@@ -4559,6 +4559,10 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
   button:not(:disabled),a,[role="button"]{touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
   @media (prefers-reduced-motion:no-preference){button:not(:disabled),.btn,.icon-btn,.chat-header-back,.chat-header-icon-btn{transition:transform .08s ease,opacity .08s ease,background-color .12s ease,border-color .12s ease;}button:not(:disabled):active,.btn:active,.icon-btn:active,.chat-header-back:active,.chat-header-icon-btn:active{transform:scale(.97);}}
 </style>
+<style id="offline-first-marketplace">
+.offline-browse-notice{display:flex;align-items:flex-start;gap:.55rem;margin:.55rem .15rem .85rem;padding:.65rem .8rem;border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));background:color-mix(in srgb,var(--primary) 7%,var(--card));border-radius:12px;color:var(--text-muted);font-size:.78rem;line-height:1.35;}
+.offline-browse-notice i{color:var(--primary);margin-top:.08rem;flex:0 0 auto;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -8294,11 +8298,105 @@ function setupAutoScroll(container, { interval = 3200, pauseAfterInteraction = 8
   autoScrollTimers.push(timer);
 }
 
+// ---------- OFFLINE MARKETPLACE CACHE ----------
+// Levromart remains a usable browse experience after a previous online visit.
+// The service worker keeps the app shell/assets available offline, while this
+// small catalogue cache keeps the last useful marketplace data on-device.
+const OFFLINE_HOME_CACHE_KEY = "levromart-offline-home-v2";
+const OFFLINE_HOME_CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+let offlineCatalog = null;
+function readOfflineHomeCache() {
+  try {
+    const raw = localStorage.getItem(OFFLINE_HOME_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.savedAt || (Date.now() - parsed.savedAt) > OFFLINE_HOME_CACHE_MAX_AGE) return null;
+    return parsed.data || null;
+  } catch (e) { return null; }
+}
+function writeOfflineHomeCache(data) {
+  try {
+    const compact = {
+      categories: data.categories || [],
+      sectors: data.sectors || [],
+      trending: data.trending || [],
+      browseProducts: data.browseProducts || [],
+      topVendors: data.topVendors || [],
+      recentProducts: data.recentProducts || [],
+      packages: data.packages || []
+    };
+    localStorage.setItem(OFFLINE_HOME_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data: compact }));
+    offlineCatalog = compact;
+  } catch (e) {
+    // Storage can be full/private-mode restricted. Offline support should
+    // never make the normal online marketplace fail.
+  }
+}
+function getOfflineHomeCache() { return offlineCatalog || readOfflineHomeCache(); }
+function browserLooksOffline() { return navigator.onLine === false; }
+function offlineHomeNotice() {
+  return `<div class="offline-browse-notice" role="status"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Showing the latest Levromart marketplace saved on this device. You can still browse what was previously loaded.</span></div>`;
+}
+function offlineFilterProducts(products, search, listing, catId, sectorId) {
+  const q = String(search || "").trim().toLowerCase();
+  const cats = new Map((window.__categories || []).map(c => [String(c.id), c]));
+  let out = (products || []).filter(p => {
+    const cat = cats.get(String(p.category_id));
+    if (sectorId && String(cat?.sector_id) !== String(sectorId)) return false;
+    if (catId && String(p.category_id) !== String(catId)) return false;
+    if (listing === "rent" && !["rent", "both"].includes(p.listing_type)) return false;
+    if (listing === "sale" && !["sale", "both"].includes(p.listing_type)) return false;
+    if (q && !`${p.name || ""} ${cat?.name || ""} ${p.vendor?.business_name || ""}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  return out;
+}
+function renderOfflineHomeFromCache(cache) {
+  if (!cache) return null;
+  const categories = cache.categories || [];
+  const cachedSectors = cache.sectors || [];
+  if (!sectors.length) sectors = cachedSectors;
+  window.__categories = categories;
+  const activeSector = sectors.find(s => String(s.id) === String(currentSectorId)) || null;
+  const activeCategory = categories.find(c => String(c.id) === String(currentHomeCategoryId)) || null;
+  const subCats = categories.filter(c => c.parent_category_id && (!activeSector || String(c.sector_id) === String(activeSector.id)));
+  const inScope = p => { const cat = categories.find(c => String(c.id) === String(p.category_id)); return (!activeSector || String(cat?.sector_id) === String(activeSector.id)) && (!activeCategory || String(p.category_id) === String(activeCategory.id)); };
+  const trending = (cache.trending || []).filter(inScope).slice(0, 10);
+  const packages = (cache.packages || []).filter(pkg => (!activeSector || (pkg.items || []).some(it => String((categories.find(c => String(c.id) === String(it.product?.category_id)) || {}).sector_id) === String(activeSector.id))) && (!activeCategory || (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))).slice(0, 8);
+  const topVendors = cache.topVendors || [];
+  const heroPhotos = (cache.recentProducts || []).map(product => {
+    const photos = Array.isArray(product.photos) ? product.photos.filter(Boolean) : [];
+    return photos[0] ? { id: product.id, name: product.name || "Product", url: photos[0] } : null;
+  }).filter(Boolean);
+  window.__homePackages = packages;
+  const recommendedPackages = [...packages].sort((a,b) => {
+    const score = pkg => (pkg.items || []).reduce((sum,it) => sum + (favoriteIds.has(it.product?.id) ? 10 : 0), 0);
+    return score(b) - score(a);
+  }).slice(0, 6);
+  const hasPersonalPackageMatch = recommendedPackages.some(pkg => (pkg.items || []).some(it => favoriteIds.has(it.product?.id)));
+  let html = offlineHomeNotice();
+  html += `<div class="hero"><div class="hero-aurora"></div><div class="hero-content"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div><div class="hero-quick-actions"><button class="quick-action" onclick="scrollToBrowse('rent')"><span class="quick-action-icon"><i class='fa-solid fa-rotate'></i></span><span>Rent</span></button><button class="quick-action" onclick="scrollToBrowse('sale')"><span class="quick-action-icon"><i class='fa-solid fa-cart-shopping'></i></span><span>Buy</span></button><button class="quick-action outline" onclick="requireLoginThen('requestEquipment')"><span class="quick-action-icon"><i class='fa-solid fa-hand'></i></span><span>Request</span></button></div></div></div>`;
+  if (sectors.length) html += `<div class="cat-row sector-row"><button class="cat-chip sector-chip ${!activeSector ? "active" : ""}" onclick="switchSector(null)"><span class="cat-icon"><i class="fa-solid fa-border-all"></i></span><span>All</span></button>${sectors.map(s => `<button class="cat-chip sector-chip ${activeSector?.id === s.id ? "active" : ""}" onclick="switchSector('${s.id}')"><span class="cat-icon"><i class="fa-solid ${esc(s.icon)}"></i></span><span>${esc(s.name)}</span></button>`).join("")}</div>`;
+  if (subCats.length) html += `<div class="cat-row">${subCats.map(c => `<button class="cat-chip" onclick="filterByCategory('${c.id}')"><span class="cat-icon">${categoryIcon(c.name)}</span><span>${esc(c.name)}</span></button>`).join("")}</div>`;
+  if (trending.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trending.map(productCardHtml).join("")}</div>`;
+  if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
+  if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
+  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="flex" style="margin-bottom:1.2rem;"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" /><select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
+  setTimeout(filterHomeProducts, 0);
+  return html;
+}
+
 // ---------- HOME (marketplace browse) ----------
 let currentSectorId = null;
+let currentHomeCategoryId = null;
 let sectors = [];
 
 async function renderHome() {
+  const cachedHome = getOfflineHomeCache();
+  if (browserLooksOffline()) {
+    if (cachedHome) return renderOfflineHomeFromCache(cachedHome);
+    return `<div class="offline-browse-notice"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Connect once to load Levromart's marketplace, then the app will keep a browseable copy available for your next offline visit.</span></div><div class="empty-state"><i class="fa-solid fa-shop" style="display:block;font-size:1.8rem;margin-bottom:.55rem;"></i>Levromart is ready. Your marketplace will appear here after the first online load.</div>`;
+  }
   const [{ data: categories }, { data: sectorsData }] = await Promise.all([
     sb.from("categories").select("*").order("name"),
     sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
@@ -8307,10 +8405,12 @@ async function renderHome() {
   if (!sectors.length) sectors = sectorsData || [];
 
   const activeSector = sectors.find((s) => s.id === currentSectorId) || null;
+  const activeCategory = (categories || []).find((c) => String(c.id) === String(currentHomeCategoryId)) || null;
 
   let vendorQuery = sb.from("products").select("id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url), category:categories(sector_id)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
+  if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
   let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url").eq("verification_status", "verified");
   if (activeSector) topVendorsQuery = topVendorsQuery.eq("sector_id", activeSector.id);
   const recentPhotosQuery = sb.from("products")
@@ -8318,8 +8418,15 @@ async function renderHome() {
     .eq("status", "active")
     .eq("vendor.verification_status", "verified")
     .eq("vendor.is_active", true);
+  const browseCatalogQuery = sb.from("products")
+    .select(PRODUCT_LIST_SELECT)
+    .eq("status", "active")
+    .eq("vendor.verification_status", "verified")
+    .eq("vendor.is_active", true)
+    .order("view_count", { ascending: false })
+    .limit(80);
   const packageQuery = sb.from("vendor_packages")
-    .select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id, business_name, logo_url, delivery_fee, verification_status, is_active), items:package_items(quantity, product:products(id, name, photos, category:categories(name)))")
+    .select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id, business_name, logo_url, delivery_fee, verification_status, is_active), items:package_items(quantity, product:products(id, name, category_id, photos, category:categories(name)))")
     .eq("status", "active")
     .eq("vendor.verification_status", "verified")
     .eq("vendor.is_active", true)
@@ -8329,12 +8436,18 @@ async function renderHome() {
   // Keep the initial marketplace paint to one parallel batch. Packages are
   // first-class marketplace listings now, so they load alongside products
   // rather than causing a second visible page refresh.
-  const [{ data: trending }, { data: topVendors }, { data: recentProducts }, { data: packages }] = await Promise.all([
-    vendorQuery.order("view_count", { ascending: false }).limit(6),
+  const [{ data: trending }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
+    vendorQuery.order("view_count", { ascending: false }).limit(10),
     topVendorsQuery.order("avg_rating", { ascending: false }).limit(6),
     recentPhotosQuery.order("created_at", { ascending: false }).limit(3),
     packageQuery,
+    browseCatalogQuery,
   ]);
+  // Keep an all-category catalogue locally. The active category is applied
+  // instantly on-device when a category chip is tapped, so the offline cache
+  // must not be overwritten with only the currently selected category.
+  const cachedTrending = (browseProducts || []).slice().sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0)).slice(0, 20);
+  writeOfflineHomeCache({ categories, sectors: sectors || sectorsData || [], trending: cachedTrending, browseProducts, topVendors, recentProducts, packages });
 
   const heroPhotos = (recentProducts || [])
     .map((product) => {
@@ -8343,8 +8456,11 @@ async function renderHome() {
     })
     .filter(Boolean);
 
-  window.__homePackages = packages || [];
-  const recommendedPackages = [...(packages || [])].sort((a, b) => {
+  const scopedPackages = activeCategory
+    ? (packages || []).filter(pkg => (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))
+    : packages || [];
+  window.__homePackages = scopedPackages;
+  const recommendedPackages = [...scopedPackages].sort((a, b) => {
     const score = (pkg) => (pkg.items || []).reduce((sum, it) => sum + (favoriteIds.has(it.product?.id) ? 10 : 0), 0);
     return score(b) - score(a);
   }).slice(0, 6);
@@ -8380,7 +8496,7 @@ async function renderHome() {
   }
 
   if (trending && trending.length) {
-    html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now</h3><div class="hscroll trending-scroll">${trending.map(productCardHtml).join("")}</div>`;
+    html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trending.map(productCardHtml).join("")}</div>`;
   }
 
   if (recommendedPackages.length) {
@@ -8405,6 +8521,7 @@ async function renderHome() {
 
 function switchSector(sectorId) {
   currentSectorId = sectorId;
+  currentHomeCategoryId = null;
   navigate("home", {}, false);
 }
 
@@ -8414,8 +8531,38 @@ function scrollToBrowse(listingType) {
   byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 function filterByCategory(catId) {
+  currentHomeCategoryId = catId || null;
   const sel = byId("filterCategory");
-  if (sel) { sel.value = catId; filterHomeProducts(); }
+  if (sel) sel.value = catId || "";
+  // Repaint the marketplace immediately from the local catalogue. This is
+  // deliberately cache-first so category taps feel instant even on mobile.
+  const cache = getOfflineHomeCache();
+  if (cache) {
+    const app = byId("app");
+    const rendered = renderOfflineHomeFromCache(cache);
+    if (rendered && app) { app.innerHTML = rendered; syncLeviFabVisibility(); updateHeaderNavActive(); clearAutoScrollTimers(); document.querySelectorAll("#app .cat-row, #app .hscroll").forEach(el => setupAutoScroll(el)); window.scrollTo({top:0,behavior:"auto"}); }
+    if (!browserLooksOffline()) {
+      // Refresh the selected category in the background without replacing
+      // the instantly painted cache-first screen with a loading page.
+      setTimeout(async () => {
+        try {
+          const cat = (window.__categories || []).find(c => String(c.id) === String(catId));
+          let q = sb.from("products").select(PRODUCT_LIST_SELECT).eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).eq("category_id",catId).order("view_count",{ascending:false}).limit(10);
+          const { data: fresh } = await q;
+          if (!fresh?.length) return;
+          const cacheNow = getOfflineHomeCache() || { categories: window.__categories || [], sectors, trending: [], browseProducts: [], topVendors: [], recentProducts: [], packages: [] };
+          const merged = new Map((cacheNow.browseProducts || []).map(p => [String(p.id), p]));
+          fresh.forEach(p => merged.set(String(p.id), p));
+          const nextBrowse = [...merged.values()].slice(0, 120);
+          const nextTrending = nextBrowse.slice().sort((a,b)=>Number(b.view_count||0)-Number(a.view_count||0)).slice(0,20);
+          writeOfflineHomeCache({...cacheNow, browseProducts: nextBrowse, trending: nextTrending});
+          const liveGrid = byId("productGrid");
+          if (liveGrid && currentHomeCategoryId === catId) liveGrid.innerHTML = fresh.map(productCardHtml).join("");
+        } catch (e) {}
+      }, 120);
+    }
+    return;
+  }
   byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 let searchSuggestTimer = null;
@@ -8430,7 +8577,7 @@ function syncHeroSearch() {
 
   clearTimeout(searchSuggestTimer);
   const term = val.trim();
-  if (!term) { hideSearchSuggestions(); return; }
+  if (!term || browserLooksOffline()) { hideSearchSuggestions(); return; }
   searchSuggestTimer = setTimeout(() => fetchSearchSuggestions(term), 220);
 }
 function submitHeroSearch() {
@@ -8471,11 +8618,15 @@ async function fetchSearchSuggestions(term) {
 }
 function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hidden"); }
 
-const PRODUCT_LIST_SELECT = "id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, vendor:vendors!inner(id, business_name, verification_status, logo_url), category:categories(sector_id)";
+const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, vendor:vendors!inner(id, business_name, verification_status, logo_url), category:categories(sector_id)";
 
 // Used whenever a search/filter comes up empty - instead of a dead end,
 // show what IS available so the buyer isn't stuck looking at nothing.
 async function fetchFallbackProducts(excludeIds) {
+  if (browserLooksOffline()) {
+    const cache = getOfflineHomeCache();
+    return offlineFilterProducts(cache?.browseProducts || [], "", "", "", currentSectorId).filter(p => !excludeIds?.includes(p.id)).slice(0, 8);
+  }
   let q = sb
     .from("products")
     .select(PRODUCT_LIST_SELECT)
@@ -8503,6 +8654,11 @@ function scheduleHomeSearch() {
 async function searchHomePackages(term) {
   const q = String(term || "").trim();
   if (!q) return [];
+  if (browserLooksOffline()) {
+    const needle = q.toLowerCase();
+    const cache = getOfflineHomeCache();
+    return (cache?.packages || []).filter(pkg => `${pkg.name || ""} ${pkg.description || ""} ${(pkg.items || []).map(it => it.product?.name || "").join(" ")}`.toLowerCase().includes(needle)).slice(0, 8);
+  }
   const [{ data: direct }, { data: itemMatches }] = await Promise.all([
     sb.from("vendor_packages").select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id,business_name,logo_url,delivery_fee,verification_status,is_active), items:package_items(quantity, product:products(id,name,photos,category:categories(name)))")
       .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
@@ -8543,6 +8699,16 @@ async function filterHomeProducts() {
   if (!grid) return;
 
   renderHomePackageSearch(search).catch(() => {});
+  if (browserLooksOffline()) {
+    const cache = getOfflineHomeCache();
+    const products = offlineFilterProducts(cache?.browseProducts || [], search, listing, catId, currentSectorId);
+    if (!products.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="fa-solid fa-wifi-slash" style="display:block;font-size:1.5rem;margin-bottom:.5rem;"></i>No saved products match these filters while you're offline.</div>`;
+    } else {
+      grid.innerHTML = products.map(productCardHtml).join("");
+    }
+    return;
+  }
 
   let matchingIds = null;
   if (search) {
@@ -16229,7 +16395,13 @@ window.addEventListener("popstate", (e) => {
   initAiChatMic();
   byId("footerYear").textContent = new Date().getFullYear();
   history.replaceState({ view: "home", params: {} }, "", location.pathname + location.search);
-  await refreshAuthStateOnce();
+  // Never hold the first paint hostage to an Auth network round-trip.
+  // Supabase restores a cached session locally; if the network is unavailable,
+  // Home can still render from the offline catalogue immediately.
+  await Promise.race([
+    refreshAuthStateOnce(),
+    new Promise(resolve => setTimeout(resolve, 900))
+  ]).catch(() => {});
 
   const urlParams = new URLSearchParams(location.search);
   if (urlParams.get("storefront")) {
@@ -16342,6 +16514,23 @@ window.addEventListener("popstate", (e) => {
   } finally {
     hideLevromartSplash();
   }
+})();
+
+
+// Offline/online state: if a connection returns after an offline browse,
+// quietly refresh Home in the background without making the tap wait.
+(function(){
+  let offlineWasShown = false;
+  function refreshOfflineState(){
+    if (navigator.onLine) {
+      if (offlineWasShown && currentView === "home") navigate("home", {}, false).catch(()=>{});
+      offlineWasShown = false;
+      return;
+    }
+    offlineWasShown = true;
+  }
+  window.addEventListener("online", refreshOfflineState, { passive:true });
+  window.addEventListener("offline", refreshOfflineState, { passive:true });
 })();
 
 if ("serviceWorker" in navigator) {
