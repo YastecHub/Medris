@@ -291,7 +291,25 @@
   .hours-day-row .hours-day-check input { width: auto; margin: 0; }
   .hours-day-row .hours-day-times { display: flex; align-items: center; gap: 0.4rem; flex: 1; }
   .hours-day-row .hours-day-times input[type="time"] { margin: 0; padding: 0.4rem 0.5rem; font-size: 0.85rem; }
-  .hours-day-row .hours-day-closed-label { color: var(--text-muted); font-size: 0.82rem; }
+  /* Keep both time controls fully inside the card on narrow phones. */
+  .hours-day-row { min-width:0; }
+  .hours-day-row .hours-day-check { width:5.15rem; min-width:5.15rem; }
+  .hours-day-row .hours-day-times { min-width:0; display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:.35rem; }
+  .hours-day-row .hours-day-times input[type="time"] { width:100%; min-width:0; box-sizing:border-box; }
+  @media (max-width:430px){
+    .hours-day-row { gap:.4rem; }
+    .hours-day-row .hours-day-check { width:4.55rem; min-width:4.55rem; gap:.32rem; }
+    .hours-day-row .hours-day-times { gap:.25rem; }
+    .hours-day-row .hours-day-times input[type="time"] { padding-left:.38rem; padding-right:.38rem; font-size:.82rem; }
+  }
+
+  .package-photo-main { width:100%; height:150px; object-fit:cover; border-radius:12px; background:var(--border); display:block; cursor:zoom-in; }
+  .package-photo-strip { display:flex; gap:.45rem; overflow-x:auto; margin-top:.5rem; padding-bottom:.1rem; scrollbar-width:none; }
+  .package-photo-strip::-webkit-scrollbar { display:none; }
+  .package-photo-thumb { flex:0 0 58px; width:58px; height:48px; padding:0; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--input-bg); cursor:pointer; }
+  .package-photo-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .package-gallery-placeholder { height:150px; border-radius:12px; background:var(--input-bg); border:1px dashed var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-muted); }
+  .package-photo-count { font-size:.72rem; color:var(--text-muted); margin-top:.35rem; }
   input, select, textarea, .ms-btn { width: 100%; padding: 0.7rem; border: 1px solid var(--border); border-radius: 0.7rem; margin: 0.3rem 0 0.5rem; font-size: 1rem; font-family: inherit; background: var(--input-bg); color: var(--text); transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
   input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent); }
   .ms-btn { text-align: left; }
@@ -4836,9 +4854,20 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
     <textarea id="pkgDesc" rows="2" placeholder="What's included, who it's for…"></textarea>
     <label>Package price (₦)</label>
     <input type="number" id="pkgPrice" step="0.01" placeholder="e.g. 5000" />
+
+    <label>Package photos</label>
+    <div class="photo-grid" id="pkgExistingPhotos"></div>
+    <label class="photo-dropzone" id="packagePhotoDropzone" for="pkgPhotoFiles">
+      <i class="fa-solid fa-cloud-arrow-up"></i>
+      <strong>Add package photos</strong>
+      <span class="muted">First photo is the main package image. Add other photos to show the contents.</span>
+    </label>
+    <input type="file" id="pkgPhotoFiles" accept="image/*" multiple class="hidden" onchange="previewNewPackagePhotos()" />
+    <div class="photo-grid" id="pkgNewPhotoPreviews"></div>
+
     <label>Items in this package</label>
     <div id="pkgItemsList" class="pkg-items-list"></div>
-    <p class="muted" style="font-size:0.8rem;">Only your products listed for sale can go in a package.</p>
+    <p class="muted" style="font-size:0.8rem;">Only your products listed for sale can go in a package. The photos above are the package/gallery images buyers see.</p>
     <div class="flex" style="justify-content: flex-end; margin-top:0.8rem;">
       <button class="btn btn-sm" style="background:#6b7280;" onclick="closePackageModal()">Cancel</button>
       <button class="btn" id="savePackageBtn" onclick="savePackage()">Save Package</button>
@@ -7402,6 +7431,7 @@ function updateAuthUI() {
     if (vendor && profile.role !== "admin") {
       links.push({ label: "My Shop", action: "navigate('vendorDashboard')" });
       links.push({ label: "Edit Business Profile", action: "navigate('vendorEditProfile')" });
+      links.push({ label: "Buyer requests", action: "navigate('vendorRequests')" });
     } else if (profile.role !== "admin") {
       links.push({ label: "My Orders", action: "navigate('buyerOrders')" });
       links.push({ label: "Request an item", action: "navigate('requestEquipment')" });
@@ -10827,8 +10857,19 @@ function storefrontTableHtml(list) {
 }
 
 function packageCardHtml(pkg, vendorDeliveryFee) {
+  const photos = Array.isArray(pkg.photos) ? pkg.photos.filter(Boolean) : [];
+  const galleryId = `pkgGallery-${pkg.id}`;
+  const mainPhoto = photos[0] || "";
+  const galleryHtml = mainPhoto
+    ? `<div class="package-gallery" id="${galleryId}">
+        <img class="package-photo-main" src="${esc(mainPhoto)}" alt="${esc(pkg.name)}" loading="lazy" onclick="openPackageImageLightbox('${esc(mainPhoto)}',event)" />
+        ${photos.length > 1 ? `<div class="package-photo-strip">${photos.map((u,i) => `<button type="button" class="package-photo-thumb" onclick="setPackageCardPhoto('${galleryId}',${i},event)" aria-label="View package photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" /></button>`).join("")}</div>` : ""}
+        ${photos.length > 1 ? `<div class="package-photo-count"><i class="fa-solid fa-images"></i> ${photos.length} photos</div>` : ""}
+      </div>`
+    : `<div class="package-gallery-placeholder"><i class="fa-solid fa-box-open"></i>&nbsp; No package photo</div>`;
   return `<div class="card">
-    <div class="flex" style="justify-content:space-between;"><strong>${esc(pkg.name)}</strong><span class="badge">${naira(pkg.price)}</span></div>
+    ${galleryHtml}
+    <div class="flex" style="justify-content:space-between;margin-top:.75rem;"><strong>${esc(pkg.name)}</strong><span class="badge">${naira(pkg.price)}</span></div>
     ${pkg.description ? `<p class="muted" style="margin:0.3rem 0;">${esc(pkg.description)}</p>` : ""}
     <p class="muted" style="font-size:0.85rem;"><i class="fa-solid fa-box-open"></i> Includes: ${(pkg.items || []).map((it) => `${it.quantity}× ${esc(it.product?.name || "")}`).join(", ")}</p>
     ${profile?.role === "admin"
@@ -10840,6 +10881,22 @@ function packageCardHtml(pkg, vendorDeliveryFee) {
       <p id="pkgBuyError-${pkg.id}" class="error-text hidden"></p>
     </div>`}
   </div>`;
+}
+function setPackageCardPhoto(galleryId, index, event) {
+  event?.stopPropagation?.();
+  const gallery = byId(galleryId);
+  if (!gallery) return;
+  const photos = [...gallery.querySelectorAll(".package-photo-thumb img")].map((img) => img.src);
+  const main = gallery.querySelector(".package-photo-main");
+  if (!main || !photos[index]) return;
+  main.src = photos[index];
+  main.onclick = (e) => openPackageImageLightbox(photos[index], e);
+}
+function openPackageImageLightbox(url, event) {
+  event?.stopPropagation?.();
+  const img = byId("productLightboxImage");
+  if (img) img.src = url;
+  byId("productImageLightbox")?.classList.remove("hidden");
 }
 function togglePackageBuy(packageId) {
   byId(`pkgBuyWrap-${packageId}`)?.classList.toggle("hidden");
@@ -12274,7 +12331,8 @@ async function renderVendorPackages() {
 
   if (!packages || packages.length === 0) { html += `<div class="empty-state">No packages yet. Bundle products you already sell into one fixed-price deal to stand out.</div>`; return html; }
 
-  html += `<div class="grid">${packages.map((pkg) => `<div class="card package-card">
+    html += `<div class="grid">${packages.map((pkg) => `<div class="card package-card">
+     ${Array.isArray(pkg.photos) && pkg.photos[0] ? `<img class="package-photo-main" src="${esc(pkg.photos[0])}" alt="${esc(pkg.name)}" loading="lazy" />` : `<div class="package-gallery-placeholder" style="height:120px;margin-bottom:.65rem;"><i class="fa-solid fa-box-open"></i>&nbsp; No package photo</div>`}
     <div class="flex" style="justify-content:space-between;"><strong>${esc(pkg.name)}</strong><span class="badge ${pkg.status === "active" ? "success" : "warning"}">${esc(pkg.status)}</span></div>
     ${pkg.description ? `<p class="muted" style="margin:0.3rem 0;">${esc(pkg.description)}</p>` : ""}
     <p class="muted" style="font-size:0.85rem;">${(pkg.items || []).map((it) => `${it.quantity}× ${esc(it.product?.name || "")}`).join(", ") || "No items yet"}</p>
@@ -12299,16 +12357,25 @@ async function openEditPackageModal(packageId) {
 
 async function showPackageModal() {
   byId("packageError").classList.add("hidden");
+  byId("pkgExistingPhotos").innerHTML = "";
+  byId("pkgNewPhotoPreviews").innerHTML = "";
+  byId("pkgPhotoFiles").value = "";
+  window.__existingPackagePhotos = [];
+  window.__newPackagePhotoFiles = [];
+
   const { data: myProducts } = await sb.from("products").select("id, name, sale_price")
     .eq("vendor_id", vendor.id).eq("status", "active").not("sale_price", "is", null).order("name");
 
   let selectedQty = {};
   if (editingPackageId) {
-    const { data: pkg } = await sb.from("vendor_packages").select("*, items:package_items(product_id, quantity)").eq("id", editingPackageId).single();
+    const { data: pkg, error } = await sb.from("vendor_packages").select("*, items:package_items(product_id, quantity)").eq("id", editingPackageId).single();
+    if (error || !pkg) { showToast(error?.message || "Package not found.", "error"); return; }
     byId("packageModalTitle").textContent = "Edit Package";
-    byId("pkgName").value = pkg.name;
+    byId("pkgName").value = pkg.name || "";
     byId("pkgDesc").value = pkg.description || "";
-    byId("pkgPrice").value = pkg.price;
+    byId("pkgPrice").value = pkg.price ?? "";
+    window.__existingPackagePhotos = Array.isArray(pkg.photos) ? pkg.photos.filter(Boolean) : [];
+    renderExistingPackagePhotos();
     (pkg.items || []).forEach((it) => { selectedQty[it.product_id] = it.quantity; });
   } else {
     byId("packageModalTitle").textContent = "Add New Package";
@@ -12328,6 +12395,72 @@ async function showPackageModal() {
   byId("packageModal").classList.remove("hidden");
   trackModalOpened("packageModal");
 }
+function renderExistingPackagePhotos() {
+  const wrap = byId("pkgExistingPhotos");
+  if (!wrap) return;
+  wrap.innerHTML = (window.__existingPackagePhotos || []).map((url, index) =>
+    `<div class="photo-thumb"><img src="${esc(url)}" alt="Package photo ${index + 1}" /><button type="button" class="photo-remove" onclick="removeExistingPackagePhoto(${index})" title="Remove" aria-label="Remove package photo"><i class="fa-solid fa-xmark"></i></button></div>`
+  ).join("");
+}
+function removeExistingPackagePhoto(index) {
+  window.__existingPackagePhotos = (window.__existingPackagePhotos || []).filter((_, i) => i !== index);
+  renderExistingPackagePhotos();
+}
+function syncNewPackagePhotoInput() {
+  const input = byId("pkgPhotoFiles");
+  if (!input) return;
+  try {
+    const dt = new DataTransfer();
+    (window.__newPackagePhotoFiles || []).forEach((file) => dt.items.add(file));
+    input.files = dt.files;
+  } catch (_) {}
+}
+function renderNewPackagePhotos() {
+  const wrap = byId("pkgNewPhotoPreviews");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  (window.__newPackagePhotoFiles || []).forEach((f, index) => {
+    const url = URL.createObjectURL(f);
+    const node = document.createElement("div");
+    node.className = "photo-thumb";
+    node.innerHTML = `<img src="${url}" alt="${esc(f.name || "Package image")}" /><button type="button" class="photo-remove" onclick="removeNewPackagePhoto(${index})" title="Remove photo" aria-label="Remove photo"><i class="fa-solid fa-xmark"></i></button><span class="photo-pending-badge">new</span>`;
+    wrap.appendChild(node);
+  });
+}
+function previewNewPackagePhotos() {
+  const files = [...(byId("pkgPhotoFiles")?.files || [])].filter((f) => f.type?.startsWith("image/"));
+  window.__newPackagePhotoFiles = [...(window.__newPackagePhotoFiles || []), ...files];
+  syncNewPackagePhotoInput();
+  renderNewPackagePhotos();
+}
+function removeNewPackagePhoto(index) {
+  const files = window.__newPackagePhotoFiles || [];
+  if (index < 0 || index >= files.length) return;
+  window.__newPackagePhotoFiles = files.filter((_, i) => i !== index);
+  syncNewPackagePhotoInput();
+  renderNewPackagePhotos();
+}
+(function setupPackagePhotoDropzone() {
+  document.addEventListener("dragover", (e) => {
+    const zone = e.target.closest && e.target.closest("#packagePhotoDropzone");
+    if (zone) { e.preventDefault(); zone.classList.add("drag-over"); }
+  });
+  document.addEventListener("dragleave", (e) => {
+    const zone = e.target.closest && e.target.closest("#packagePhotoDropzone");
+    if (zone) zone.classList.remove("drag-over");
+  });
+  document.addEventListener("drop", (e) => {
+    const zone = e.target.closest && e.target.closest("#packagePhotoDropzone");
+    if (!zone) return;
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    const files = [...(e.dataTransfer?.files || [])].filter((f) => f.type?.startsWith("image/"));
+    if (!files.length) return;
+    window.__newPackagePhotoFiles = [...(window.__newPackagePhotoFiles || []), ...files];
+    syncNewPackagePhotoInput();
+    renderNewPackagePhotos();
+  });
+})();
 
 function togglePkgItemQty(productId) {
   const checked = byId(`pkgCheck-${productId}`).checked;
@@ -12357,7 +12490,18 @@ async function savePackage() {
     });
     if (items.length === 0) throw new Error("Pick at least one product for this package.");
 
-    const payload = { vendor_id: vendor.id, name, description: byId("pkgDesc").value.trim() || null, price };
+    const newFiles = [...(window.__newPackagePhotoFiles || byId("pkgPhotoFiles")?.files || [])];
+    const newPhotoUrls = [];
+    for (const file of newFiles) {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${vendor.id}/packages/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, file, { contentType: file.type });
+      if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
+      const { data } = sb.storage.from("product-photos").getPublicUrl(path);
+      newPhotoUrls.push(data.publicUrl);
+    }
+    const photos = [...(window.__existingPackagePhotos || []), ...newPhotoUrls];
+    const payload = { vendor_id: vendor.id, name, description: byId("pkgDesc").value.trim() || null, price, photos };
     let packageId = editingPackageId;
     if (packageId) {
       const { error } = await sb.from("vendor_packages").update(payload).eq("id", packageId);
