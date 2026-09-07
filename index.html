@@ -4462,6 +4462,32 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 
 </style>
 
+
+<style id="levi-input-placeholder-fix">
+/* Levi composer: keep the placeholder on one clean line and vertically centered.
+   The previous wrapped placeholder could be clipped because the composer starts
+   at a single-line textarea height while the placeholder itself wrapped. */
+.ai-chat-input-row {
+  align-items: center !important;
+}
+.ai-chat-input-row textarea {
+  box-sizing: border-box !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  line-height: 1.25 !important;
+  padding: .72rem .9rem !important;
+  overflow-x: hidden !important;
+}
+.ai-chat-input-row textarea::placeholder {
+  white-space: nowrap !important;
+  font-size: .84rem !important;
+  line-height: 1.25 !important;
+  opacity: .72;
+}
+/* Once the user types, autoGrowChatInput() is allowed to increase the
+   textarea height normally; only the untouched placeholder needs the fixed
+   single-line treatment above. */
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -6760,8 +6786,16 @@ async function renderNotifPanel() {
   if (!panel) return;
   let q = sb.from("notifications").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(30);
   q = notifViewMode === "trash" ? q.not("deleted_at", "is", null) : q.is("deleted_at", null).eq("archived", notifViewMode === "archived");
-  const { data: items } = await q;
+  const { data: items, error } = await q;
   if (renderToken !== notifRenderEpoch) return;
+  if (error) {
+    // Do not turn a temporary database/network error into a fake empty state.
+    // Keep the drawer honest and let the user retry by reopening/switching tabs.
+    window.__notifPanelIds = [];
+    panel.innerHTML = `<div class="drawer-header"><h4>${esc({ inbox: "Notifications", archived: "Archived", trash: "Recently deleted" }[notifViewMode] || "Notifications")}</h4><button type="button" class="drawer-close-btn" onclick="closeAllPanels()" aria-label="Close"><i class='fa-solid fa-xmark'></i></button></div><div class="notif-tabs"><button class="notif-tab ${notifViewMode === "inbox" ? "active" : ""}" onclick="switchNotifView('inbox')">Inbox</button><button class="notif-tab ${notifViewMode === "archived" ? "active" : ""}" onclick="switchNotifView('archived')">Archived</button><button class="notif-tab ${notifViewMode === "trash" ? "active" : ""}" onclick="switchNotifView('trash')">Trash</button></div><p class="muted" style="padding:1rem;text-align:center;">Couldn’t load notifications right now. Please try again.</p>`;
+    panel.classList.toggle("selecting", false);
+    return;
+  }
   window.__notifPanelIds = (items || []).map((n) => n.id);
 
   const modeLabel = { inbox: "Notifications", archived: "Archived", trash: "Recently deleted" }[notifViewMode];
@@ -6959,18 +6993,32 @@ async function batchArchiveOrRestoreSelected() {
   window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
   const count = ids.length;
   exitNotifSelectMode(false);
-  refreshNotifications(false);
+  // Re-query the active view after the DB mutation so the UI is driven by the
+  // persisted state, not only by manual DOM removal. This prevents archived
+  // items from reappearing after the drawer is closed/reopened.
+  await renderNotifPanel();
+  await refreshNotifications(false);
   showToast(restoring ? `${count} restored.` : `${count} archived.`, "success");
 }
 async function quickArchiveNotif(id) {
-  await sb.from("notifications").update({ archived: true }).eq("id", id);
-  refreshNotifications();
-  showUndoToast("Notification archived.", async () => { await sb.from("notifications").update({ archived: false }).eq("id", id); refreshNotifications(); });
+  const { error } = await sb.from("notifications").update({ archived: true }).eq("id", id);
+  if (error) { showToast(error.message || "Couldn’t archive notification.", "error"); return; }
+  await refreshNotifications();
+  showUndoToast("Notification archived.", async () => {
+    const { error: undoError } = await sb.from("notifications").update({ archived: false }).eq("id", id);
+    if (undoError) { showToast(undoError.message || "Couldn’t restore notification.", "error"); return; }
+    await refreshNotifications();
+  });
 }
 async function quickUnarchiveNotif(id) {
-  await sb.from("notifications").update({ archived: false }).eq("id", id);
-  refreshNotifications();
-  showUndoToast("Notification restored.", async () => { await sb.from("notifications").update({ archived: true }).eq("id", id); refreshNotifications(); });
+  const { error } = await sb.from("notifications").update({ archived: false }).eq("id", id);
+  if (error) { showToast(error.message || "Couldn’t restore notification.", "error"); return; }
+  await refreshNotifications();
+  showUndoToast("Notification restored.", async () => {
+    const { error: undoError } = await sb.from("notifications").update({ archived: true }).eq("id", id);
+    if (undoError) { showToast(undoError.message || "Couldn’t archive notification.", "error"); return; }
+    await refreshNotifications();
+  });
 }
 
 // ---- inbox/archive -> trash (soft delete) ----
@@ -6995,9 +7043,14 @@ async function batchTrashSelected() {
   showToast(`${count} moved to trash.`, "success");
 }
 async function quickTrashNotif(id) {
-  await sb.from("notifications").update({ deleted_at: new Date().toISOString() }).eq("id", id);
-  refreshNotifications();
-  showUndoToast("Notification moved to trash.", async () => { await sb.from("notifications").update({ deleted_at: null }).eq("id", id); refreshNotifications(); });
+  const { error } = await sb.from("notifications").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  if (error) { showToast(error.message || "Couldn’t move notification to trash.", "error"); return; }
+  await refreshNotifications();
+  showUndoToast("Notification moved to trash.", async () => {
+    const { error: undoError } = await sb.from("notifications").update({ deleted_at: null }).eq("id", id);
+    if (undoError) { showToast(undoError.message || "Couldn’t restore notification.", "error"); return; }
+    await refreshNotifications();
+  });
 }
 
 // ---- trash -> restore ----
@@ -7012,20 +7065,24 @@ async function batchRestoreSelected() {
   window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
   const count = ids.length;
   exitNotifSelectMode(false);
-  refreshNotifications(false);
+  await renderNotifPanel();
+  await refreshNotifications(false);
   showToast(`${count} restored.`, "success");
 }
 async function quickRestoreFromTrash(id) {
-  await sb.from("notifications").update({ deleted_at: null }).eq("id", id);
-  refreshNotifications();
+  const { error } = await sb.from("notifications").update({ deleted_at: null }).eq("id", id);
+  if (error) { showToast(error.message || "Couldn’t restore notification.", "error"); return; }
+  await refreshNotifications();
   showToast("Notification restored.", "success");
 }
 
 // ---- trash -> gone forever (irreversible: always confirm) ----
 async function confirmPurgeOne(id) {
   if (!(await showConfirmDialog("Delete this notification permanently? This can't be undone.", { title: "Delete forever", okLabel: "Delete forever", danger: true }))) { renderNotifPanel(); return; }
-  await sb.from("notifications").delete().eq("id", id);
-  refreshNotifications();
+  const { error } = await sb.from("notifications").delete().eq("id", id);
+  if (error) { showToast(error.message || "Couldn’t delete notification.", "error"); return; }
+  await refreshNotifications();
+  showToast("Notification deleted permanently.", "success");
 }
 async function batchPurgeSelected() {
   const ids = [...notifSelectedIds].map(String);
@@ -7039,7 +7096,8 @@ async function batchPurgeSelected() {
   window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
   const count = ids.length;
   exitNotifSelectMode(false);
-  refreshNotifications(false);
+  await renderNotifPanel();
+  await refreshNotifications(false);
   showToast(`${count} deleted permanently.`, "success");
 }
 
