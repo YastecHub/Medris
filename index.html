@@ -4563,6 +4563,17 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 .offline-browse-notice{display:flex;align-items:flex-start;gap:.55rem;margin:.55rem .15rem .85rem;padding:.65rem .8rem;border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));background:color-mix(in srgb,var(--primary) 7%,var(--card));border-radius:12px;color:var(--text-muted);font-size:.78rem;line-height:1.35;}
 .offline-browse-notice i{color:var(--primary);margin-top:.08rem;flex:0 0 auto;}
 </style>
+<style id="instant-nav-speed-fix">
+.instant-page-shell{min-height:42vh;padding:0 .15rem;animation:instantNavIn .12s ease-out;}
+.instant-page-shell h2{margin:.15rem 0 1rem;display:flex;align-items:center;gap:.5rem;}
+.instant-content-placeholder{display:grid;gap:.65rem;max-width:700px;margin:0 auto;}
+.instant-line{height:58px;border-radius:12px;background:var(--ui-surface-2,#f4f6f5);opacity:.72;}
+.instant-line.wide{height:82px;} .instant-line.short{width:58%;}
+.instant-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin:.8rem 0;}
+.instant-filter-row span{height:42px;border-radius:10px;background:var(--ui-surface-2,#f4f6f5);}
+.instant-order-row{height:88px;border-radius:14px;background:var(--ui-surface-2,#f4f6f5);}
+@keyframes instantNavIn{from{opacity:.72}to{opacity:1}}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -8124,6 +8135,34 @@ let lastNonSettingsView = "home";
 // Tokenize navigation so a slower request can never overwrite a newer tap.
 let navigationGeneration = 0;
 let messageChannelClosePromise = Promise.resolve();
+// Keep the last successfully rendered screen in memory so returning to a
+// page is instant. Fresh Supabase data still refreshes it in the background.
+const routeHtmlCache = new Map();
+function routeCacheKey(view, params = {}) {
+  try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
+}
+function navigationShellHtml(view) {
+  const icon = {
+    vendorDashboard:'fa-box', vendorProducts:'fa-box', vendorPackages:'fa-boxes-packing',
+    vendorEarnings:'fa-sack-dollar', vendorOrders:'fa-receipt', buyerOrders:'fa-receipt',
+    messages:'fa-comment-dots', vendors:'fa-store', cart:'fa-cart-shopping', wishlist:'fa-heart',
+    requestEquipment:'fa-hand', settings:'fa-gear'
+  }[view] || 'fa-circle';
+  const title = {
+    vendorDashboard:'My Shop', vendorProducts:'My Products', vendorPackages:'My Packages',
+    vendorEarnings:'Earnings', vendorOrders:'Orders', buyerOrders:'My Orders',
+    messages:'Messages', vendors:'Vendors', cart:'Cart', wishlist:'Wishlist',
+    requestEquipment:'Requests', settings:'Settings'
+  }[view] || '';
+  if (view === 'vendorDashboard') {
+    return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> My Shop</h2><div class="dash-tabs shop-tabs-rail"><button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button><button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button><button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button><button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions</button></div><div class="instant-content-placeholder"><div class="instant-line wide"></div><div class="instant-line"></div><div class="instant-line short"></div></div></div>`;
+  }
+  if (view === 'vendorOrders' || view === 'buyerOrders') {
+    return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-filter-row"><span></span><span></span><span></span></div><div class="instant-content-placeholder"><div class="instant-order-row"></div><div class="instant-order-row"></div><div class="instant-order-row"></div></div></div>`;
+  }
+  if (title) return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-content-placeholder"><div class="instant-line wide"></div><div class="instant-line"></div></div></div>`;
+  return `<div class="instant-page-shell" aria-hidden="true"></div>`;
+}
 function isOwnVendorId(vendorId) {
   return !!(session?.user?.id && vendor?.id && String(vendor.id) === String(vendorId));
 }
@@ -8193,13 +8232,14 @@ async function navigate(view, params = {}, pushHistory = true) {
   // instead.
   try { sessionStorage.setItem("medris_last_view", JSON.stringify({ view, params })); } catch (e) {}
   if (view !== "storefront") resetStorefrontSocialMeta();
-  // Paint immediate feedback for every real route change. The old screen used
-  // to remain frozen until all route queries finished, making healthy network
-  // requests feel like button lag. A cached DM gets an even faster chat shell;
-  // every other route gets the tiny destination loader immediately.
+  // Paint the destination immediately. Reuse a previously rendered screen
+  // when available; otherwise show a lightweight page shell. Do not block a
+  // tap on Supabase and do not show a generic "Loading..." page.
   const hasChatFastPath = view === "messages" && !!params?.conversationId && profile?.role !== "admin" && !!((window.__conversations || []).find((c) => c.conversation_id === params.conversationId));
+  const cacheKey = routeCacheKey(view, params);
+  const cachedRouteHtml = routeHtmlCache.get(cacheKey);
   if (app && (pushHistory || previousView !== view) && !hasChatFastPath) {
-    app.innerHTML = navigationLoadingHtml(view);
+    app.innerHTML = cachedRouteHtml || navigationShellHtml(view);
     syncLeviFabVisibility();
     hideLevromartSplash();
     clearAutoScrollTimers();
@@ -8250,6 +8290,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   // Ignore an older request if the user has already navigated somewhere else.
   if (navToken !== navigationGeneration) return;
+  if (html && !lastRenderError) routeHtmlCache.set(cacheKey, html);
   const preserveSameViewScroll = !pushHistory && previousView === view;
   const sameViewScrollY = preserveSameViewScroll ? window.scrollY : 0;
   app.innerHTML = html;
