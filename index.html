@@ -4668,11 +4668,11 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
       <p class="muted" style="font-size:.75rem;margin:.15rem 0 .55rem;">Email is optional when registering. Your phone number can be used to sign in if you do not add an email.</p>
     </div>
 
-    <label>Email <span class="muted" style="font-size:.78rem;font-weight:400;">(optional when registering)</span></label>
+    <label>Email</label>
     <input type="email" id="loginEmail" placeholder="Email address" autocomplete="email" />
     <div id="loginPasswordWrap">
       <label>Password</label>
-      <input type="password" id="loginPassword" placeholder="Password (min 8 characters)" />
+      <div class="password-input-wrap"><input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" /><button type="button" class="password-eye-btn" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" title="Show password"><i class="fa-regular fa-eye"></i></button></div>
     </div>
     <div id="confirmPasswordWrap" class="hidden">
       <label>Confirm password</label>
@@ -4704,7 +4704,7 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
       <input type="password" id="currentPasswordInput" placeholder="Your current password" autocomplete="current-password" />
     </div>
     <label>New password</label>
-    <input type="password" id="newPasswordInput" placeholder="New password (min 8 characters)" autocomplete="new-password" />
+    <input type="password" id="newPasswordInput" placeholder="New password" autocomplete="new-password" />
     <div class="flex" style="justify-content:flex-end;margin-top:0.8rem;">
       <button class="btn btn-sm btn-outline hidden" id="resetPasswordCancel" onclick="closeChangePasswordModal()">Cancel</button>
       <button class="btn btn-sm" id="resetPasswordSubmit" onclick="submitNewPassword()">Set password</button>
@@ -6133,14 +6133,24 @@ function initSound() {
 
 // ---------- ACCESSIBILITY FONT SIZE ----------
 const LEVRO_FONT_MIN=0.85, LEVRO_FONT_MAX=1.25, LEVRO_FONT_STEP=0.05;
-function getLevromartFontScale(){const n=Number(localStorage.getItem("levromart-font-scale"));return Number.isFinite(n)?Math.max(LEVRO_FONT_MIN,Math.min(LEVRO_FONT_MAX,n)):1;}
+function getLevromartFontScale(){const n=Number(localStorage.getItem("levromart-font-scale"));return Number.isFinite(n)?Math.max(LEVRO_FONT_MIN,Math.min(LEVRO_FONT_MAX,n)):0.95;}
 function setLevromartFontScale(value){const n=Math.max(LEVRO_FONT_MIN,Math.min(LEVRO_FONT_MAX,Number(value)||1));const v=String(Number(n.toFixed(2)));localStorage.setItem("levromart-font-scale",v);document.documentElement.style.setProperty("--levro-font-scale",v);document.documentElement.style.setProperty("font-size",`calc(16px * ${v})`);document.body?.style.setProperty("--levro-font-scale",v);const range=byId("levroFontScaleRange");if(range)range.value=v;const out=byId("levroFontScaleValue");if(out)out.textContent=`${Math.round(n*100)}%`;}
+function ensureCurrentInterfaceDefaults(){
+  const KEY = "levromart-interface-defaults-v2";
+  try {
+    if (localStorage.getItem(KEY) !== "1") {
+      localStorage.setItem("levromart-font-scale", "0.95");
+      localStorage.setItem("medris-levi-fab-size", "55");
+      localStorage.setItem(KEY, "1");
+    }
+  } catch (_) {}
+}
 function applyLevromartFontScale(){setLevromartFontScale(getLevromartFontScale());}
 
 // ---------- LEVI FAB SIZE ----------
 const LEVI_FAB_MIN_SIZE=44;
 const LEVI_FAB_MAX_SIZE=74;
-function getLeviFabSize(){const n=Number(localStorage.getItem("medris-levi-fab-size"));return Number.isFinite(n)?Math.max(LEVI_FAB_MIN_SIZE,Math.min(LEVI_FAB_MAX_SIZE,Math.round(n))):54;}
+function getLeviFabSize(){const n=Number(localStorage.getItem("medris-levi-fab-size"));return Number.isFinite(n)?Math.max(LEVI_FAB_MIN_SIZE,Math.min(LEVI_FAB_MAX_SIZE,Math.round(n))):55;}
 function setLeviFabSize(value){const size=Math.max(LEVI_FAB_MIN_SIZE,Math.min(LEVI_FAB_MAX_SIZE,Math.round(Number(value)||LEVI_FAB_MAX_SIZE)));localStorage.setItem("medris-levi-fab-size",String(size));document.documentElement.style.setProperty("--levi-fab-size",`${size}px`);const fab=byId("aiChatFab");if(fab){fab.style.setProperty("width",`${size}px`,"important");fab.style.setProperty("height",`${size}px`,"important");fab.style.setProperty("min-width",`${size}px`,"important");fab.style.setProperty("min-height",`${size}px`,"important");}const out=byId("leviSizeValue");if(out)out.textContent=`${size}px`;const range=byId("leviSizeRange");if(range)range.value=String(size);}
 function applyLeviFabSize(){setLeviFabSize(getLeviFabSize());}
 
@@ -6787,8 +6797,7 @@ async function renderNotifPanel() {
           </div>
         </div>
       </div>
-      ${tabs}
-      <p class="muted" style="font-size:0.72rem;margin:0.5rem 0;">Tap <strong>⋯</strong> or long-press any notification to select it. In selection mode, tap notifications to add or remove them.</p>`;
+      ${tabs}`;
 
   const emptyMsg = { inbox: "You're all caught up.", archived: "No archived notifications.", trash: "Trash is empty." }[notifViewMode];
   const hasUnread = (items || []).some((n) => !n.read);
@@ -6976,8 +6985,13 @@ async function batchTrashSelected() {
   ids.forEach(id => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)?.closest(".notif-item-wrap")?.remove());
   window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
   const count = ids.length;
+  // Clear the selection and rebuild the visible Inbox immediately. The previous
+  // implementation only refreshed badge/count data here, which left the old
+  // notification DOM alive until a later render and made deleted notifications
+  // appear again when the drawer was closed/reopened.
   exitNotifSelectMode(false);
-  refreshNotifications(false);
+  await renderNotifPanel();
+  refreshNotifications(false).catch(() => {});
   showToast(`${count} moved to trash.`, "success");
 }
 async function quickTrashNotif(id) {
@@ -7602,6 +7616,17 @@ async function signInWithGoogle() {
   });
   if (error) showToast(error.message, "error");
 }
+function togglePasswordVisibility(inputId, button) {
+  const input = byId(inputId);
+  if (!input) return;
+  const showing = input.type === "text";
+  input.type = showing ? "password" : "text";
+  button?.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+  button?.setAttribute("title", showing ? "Show password" : "Hide password");
+  const icon = button?.querySelector("i");
+  if (icon) icon.className = `fa-regular ${showing ? "fa-eye" : "fa-eye-slash"}`;
+}
+
 async function submitAuth() {
   const email = byId("loginEmail").value.trim();
   const password = byId("loginPassword").value;
@@ -7892,7 +7917,7 @@ async function resetLevromartPreferences() {
     { title: "Reset preferences", okLabel: "Reset", danger: true }
   );
   if (!confirmed) return;
-  ["medris-theme", "medris-accent", "medris-install-dismissed", "medris-notif-dismissed", "medris-ai-chat-expanded", "medris-levi-fab-size", "medris-levi-visible", "medris-ai-voice", "levromart-font-scale", "levromart_ai_fab_pos", "levromart_cart_fab_pos", "levromart_ai_panel_pos"].forEach((k) => { try { localStorage.removeItem(k); } catch (e) {} });
+  ["medris-theme", "medris-accent", "medris-install-dismissed", "medris-notif-dismissed", "medris-ai-chat-expanded", "medris-levi-fab-size", "medris-levi-visible", "medris-ai-voice", "levromart-font-scale", "levromart-interface-defaults-v2", "levromart_ai_fab_pos", "levromart_cart_fab_pos", "levromart_ai_panel_pos"].forEach((k) => { try { localStorage.removeItem(k); } catch (e) {} });
   currentAccentIndex = DEFAULT_ACCENT_INDEX;
   leviVisible = true;
   setTheme("light");
@@ -9803,7 +9828,7 @@ async function sendChatMessage(conversationId) {
   const input = byId("chatInput");
   const body = input.value.trim();
   if (!body) return;
-  if (msgListening || msgVoicePaused) { try { msgRecognizer?.abort(); } catch (_) {} msgRecognizer = null; msgListening = false; msgVoicePaused = false; msgVoiceFinalTranscript = ""; msgVoiceInterimTranscript = ""; renderMsgVoiceState(); }
+  if (msgListening || msgVoicePaused) { stopMsgVoiceRecording(); }
   clearTimeout(typingStopTimer);
   publishChatTyping(false);
   resetChatInput(input);
@@ -11417,7 +11442,7 @@ async function renderVendorEditProfile() {
   <div class="card" style="max-width:480px;margin:1.2rem auto 0;">
     <h2><i class="fa-solid fa-location-dot"></i> Shop location ${infoPopoverHtml("veLocationInfo", "This is what buyers see on the map and what Levi uses to point people to your nearest listing. Tap \"Use my current location\" while you're actually at the shop, then drag the pin to fine-tune if the GPS lands a little off.")}</h2>
     ${v.lat != null ? `<p class="muted" style="font-size:0.82rem;"><i class="fa-solid fa-circle-check" style="color:var(--success);"></i> Location set.</p>` : `<p class="muted" style="font-size:0.82rem;">Not set yet, buyers can't find you on the map until you set this.</p>`}
-    <div id="veLocationMap" style="height:220px;border-radius:0.8rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;"></div>
+    <div id="veLocationMap" style="height:220px;border-radius:0.8rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;margin-top:0.9rem;"></div>
     <input type="hidden" id="veLat" value="${v.lat ?? ""}" />
     <input type="hidden" id="veLng" value="${v.lng ?? ""}" />
     <p class="muted" style="font-size:0.78rem;margin-top:0.55rem;"><i class="fa-solid fa-hand-pointer"></i> Tap anywhere on the map to choose a shop location, or drag the pin.</p>
@@ -12346,8 +12371,9 @@ function orderStatsHtml(orders) {
   return `<div class="accordion-section" id="orderStatsAccordion" style="margin-bottom:1rem;">
     <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-chart-simple"></i> Order stats</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
     <div class="accordion-body">
-      <div class="segmented-tabs" id="orderStatsTabs" style="max-width:none;margin:0.2rem 0 0.7rem;">
+      <div class="order-stats-tabs-wrap"><div class="segmented-tabs" id="orderStatsTabs">
         ${Object.entries(ORDER_STATS_PERIODS).map(([p, label]) => `<button class="${p === vendorOrderStatsPeriod ? "active" : ""}" data-stats-period="${p}" onclick="switchOrderStatsPeriod('${p}')">${label}</button>`).join("")}
+      </div>
       </div>
       <table class="order-stats-table" id="orderStatsBody"></table>
     </div>
@@ -12416,7 +12442,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo) {
   // thing in a fraction of the space.
   let html = `<h2>Orders</h2>`;
   html += orderStatsHtml(safeStatsOrders);
-  html += `<div class="flex" style="gap:0.6rem;flex-wrap:wrap;margin:0.8rem 0;">
+  html += `<div class="vendor-orders-filter-row flex" style="gap:0.6rem;flex-wrap:wrap;margin:0.8rem 0;">
     <select onchange="navigate('vendorOrders',{status:this.value,type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}'})" style="flex:1;min-width:150px;">
       ${ORDER_TABS.map((t) => `<option value="${t}" ${t === status ? "selected" : ""}>${t === "all" ? "All statuses" : esc(t.replace("_", " ").replace(/^./, (c) => c.toUpperCase()))}</option>`).join("")}
     </select>
@@ -14227,6 +14253,7 @@ function toggleAiChat() {
   const wasHidden = panel.classList.contains("hidden");
   panel.classList.toggle("hidden");
   const isOpen = !panel.classList.contains("hidden");
+  if (!isOpen) resetFloatingFabPositions();
   // The FAB follows the panel state, while still respecting the user's Levi visibility preference.
   syncLeviFabVisibility();
   if (isOpen) {
@@ -14407,6 +14434,7 @@ document.addEventListener("click", (e) => {
   if (!panel || panel.classList.contains("hidden")) return;
   if (e.target.closest("#aiChatPanel, #aiChatFab")) return;
   panel.classList.add("hidden");
+  resetFloatingFabPositions();
   syncLeviFabVisibility();
 });
 // Tapping the empty space around an open conversation (not the chat thread,
@@ -14970,6 +14998,7 @@ async function cancelAiChatVoice() {
 let msgRecognizer = null;
 let msgListening = false;
 let msgVoicePaused = false;
+let msgVoiceBaseText = "";
 let msgVoiceFinalTranscript = "";
 let msgVoiceInterimTranscript = "";
 
@@ -14982,16 +15011,17 @@ function renderMsgVoiceState() {
   text.textContent = msgVoiceInterimTranscript || msgVoiceFinalTranscript || "Listening...";
   if (btn) {
     btn.classList.toggle("listening", msgListening);
-    btn.innerHTML = `<i class="fa-solid fa-microphone"></i>`;
-    btn.title = "Tap to talk";
-    btn.setAttribute("aria-label", "Tap to talk");
+    btn.innerHTML = `<i class="fa-solid fa-${msgListening ? "stop" : "microphone"}"></i>`;
+    btn.title = msgListening ? "Stop recording" : "Add voice text";
+    btn.setAttribute("aria-label", msgListening ? "Stop recording" : "Add voice text");
   }
 }
 
 function applyMsgVoiceTranscript() {
   const input = byId("chatInput");
   if (!input) return;
-  const transcript = `${msgVoiceFinalTranscript}${msgVoiceVoiceInterimForInput()}`.replace(/\s+/g, " ").trim();
+  const spoken = `${msgVoiceFinalTranscript}${msgVoiceVoiceInterimForInput()}`.replace(/\s+/g, " ").trim();
+  const transcript = [msgVoiceBaseText, spoken].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
   if (!transcript) return;
   input.value = transcript;
   autoGrowChatInput(input);
@@ -15000,16 +15030,20 @@ function applyMsgVoiceTranscript() {
   handleChatTyping(activeConversationId);
 }
 
-// Interim speech is displayed while the engine is listening, but final text is
-// committed only once. There is deliberately no continuous mode and no restart
-// loop: this mirrors Levi's stable tap-to-talk behaviour and prevents the same
-// sentence from being appended repeatedly on mobile browsers.
 function msgVoiceVoiceInterimForInput() {
   return msgVoiceInterimTranscript ? `${msgVoiceFinalTranscript ? " " : ""}${msgVoiceInterimTranscript}` : "";
 }
 
 function startMsgVoiceRecognition() {
   if (!AiSpeechRecognition) return;
+
+  const input = byId("chatInput");
+  // Preserve whatever is already in the compose box. Every new mic session
+  // appends to that text instead of replacing/clearing it.
+  msgVoiceBaseText = String(input?.value || "").trim();
+  msgVoiceFinalTranscript = "";
+  msgVoiceInterimTranscript = "";
+  msgVoicePaused = false;
 
   try { msgRecognizer?.abort(); } catch (_) {}
   msgRecognizer = new AiSpeechRecognition();
@@ -15022,16 +15056,16 @@ function startMsgVoiceRecognition() {
   msgRecognizer.onstart = () => {
     msgListening = true;
     msgVoicePaused = false;
-    byId("msgMicBtn")?.classList.add("listening");
     renderMsgVoiceState();
     scrollChatToBottom();
+    // Do NOT focus the textarea here. The microphone is a voice input control;
+    // opening it must never summon the mobile keyboard.
+    try { input?.blur(); } catch (_) {}
   };
 
   msgRecognizer.onresult = (e) => {
-    // IMPORTANT: read the current recognition session as a replacement value.
-    // Never append result events to one another. Mobile recognition engines can
-    // resend/revise interim/final phrases; appending them is what caused the
-    // visible "how much how much how much..." duplication.
+    // Only use the current recognition session. Browser engines may revise
+    // interim results, so replacement is safer than append-on-every-event.
     let transcript = "";
     for (let i = 0; i < e.results.length; i++) {
       const t = String(e.results[i]?.[0]?.transcript || "").trim();
@@ -15039,23 +15073,18 @@ function startMsgVoiceRecognition() {
     }
     transcript = transcript.replace(/\s+/g, " ").trim();
     if (!transcript) return;
-
     const finalResult = Array.from(e.results).some(r => r.isFinal);
     if (finalResult) {
-      if (transcript === msgVoiceFinalTranscript) return;
       msgVoiceFinalTranscript = transcript;
       msgVoiceInterimTranscript = "";
     } else {
       msgVoiceInterimTranscript = transcript;
     }
-
     applyMsgVoiceTranscript();
     renderMsgVoiceState();
   };
 
   msgRecognizer.onerror = (e) => {
-    // Recognition lifecycle errors are silent. Only actionable permission or
-    // engine failures get a visual message; Levromart never generates a beep.
     if (e.error === "not-allowed" || e.error === "service-not-allowed") {
       showToast("Microphone or speech recognition permission is blocked. Allow microphone access for Levromart and try again.", "error");
     } else if (e.error !== "aborted" && e.error !== "no-speech") {
@@ -15064,14 +15093,13 @@ function startMsgVoiceRecognition() {
   };
 
   msgRecognizer.onend = () => {
-    // No continuous restart. The browser may finish naturally after a pause;
-    // that is the end of this tap-to-talk session, not a reason to create a
-    // second recognizer that can duplicate the previous phrase.
+    // Natural pauses end only this recognition session. The text stays in the
+    // compose box so the user can tap the mic again and continue speaking.
     msgListening = false;
     msgVoicePaused = false;
     msgVoiceInterimTranscript = "";
     msgRecognizer = null;
-    byId("msgMicBtn")?.classList.remove("listening");
+    applyMsgVoiceTranscript();
     renderMsgVoiceState();
   };
 
@@ -15090,8 +15118,6 @@ function toggleMsgMic(evt) {
   evt?.stopPropagation?.();
   if (!AiSpeechRecognition) return;
 
-  // If the mic is tapped while speech synthesis is active, stop it first so
-  // the microphone only hears the user and never Levi's voice.
   if (("speechSynthesis" in window) && speechSynthesis.speaking) {
     try { speechSynthesis.cancel(); } catch (_) {}
   }
@@ -15101,18 +15127,17 @@ function toggleMsgMic(evt) {
     return;
   }
 
-  msgVoiceFinalTranscript = "";
-  msgVoiceInterimTranscript = "";
-  msgVoicePaused = false;
+  // IMPORTANT: do not clear the existing compose text. Starting another voice
+  // session deliberately continues from whatever is already typed/transcribed.
   startMsgVoiceRecognition();
   renderMsgVoiceState();
 }
 
-// Kept as a compatibility no-op for any older markup/event reference. Message
-// voice is intentionally not a pause/resume or continuous recording system.
 function toggleMsgMicPause() {
   if (msgListening) {
     try { msgRecognizer?.stop(); } catch (_) {}
+  } else {
+    startMsgVoiceRecognition();
   }
 }
 
@@ -15120,12 +15145,13 @@ function stopMsgVoiceRecording() {
   const status = byId("msgVoiceStatus");
   status?.classList.add("hidden");
   byId("msgMicBtn")?.classList.remove("listening");
-  try { msgRecognizer?.stop(); } catch (_) {}
   try { msgRecognizer?.abort(); } catch (_) {}
   msgRecognizer = null;
   msgListening = false;
   msgVoicePaused = false;
   msgVoiceInterimTranscript = "";
+  msgVoiceFinalTranscript = "";
+  msgVoiceBaseText = String(byId("chatInput")?.value || "").trim();
   renderMsgVoiceState();
   const input = byId("chatInput");
   if (input) { autoGrowChatInput(input); input.scrollTop = input.scrollHeight; }
@@ -15133,7 +15159,7 @@ function stopMsgVoiceRecording() {
 
 async function cancelMsgVoiceRecording() {
   if (!msgListening && !msgVoicePaused) return;
-  const confirmed = await showConfirmDialog("Cancel your current voice recording? The text captured so far will be cleared.", { title: "Cancel recording", okLabel: "Cancel recording", danger: true });
+  const confirmed = await showConfirmDialog("Cancel your current voice recording? The text captured in this voice session will be removed, while any text already in the compose box is kept.", { title: "Cancel recording", okLabel: "Cancel recording", danger: true });
   if (!confirmed) return;
   try { msgRecognizer?.abort(); } catch (_) {}
   msgRecognizer = null;
@@ -15142,7 +15168,7 @@ async function cancelMsgVoiceRecording() {
   msgVoiceFinalTranscript = "";
   msgVoiceInterimTranscript = "";
   const input = byId("chatInput");
-  if (input) resetChatInput(input);
+  if (input) { input.value = msgVoiceBaseText; autoGrowChatInput(input); input.scrollTop = input.scrollHeight; }
   renderMsgVoiceState();
 }
 function leviOfflineFallback(text) {
@@ -15193,12 +15219,41 @@ async function fetchLeviReply(payload) {
   throw lastError || new Error('Levi service unavailable.');
 }
 
+function isLeviTourRequest(text) {
+  const q = leviNormaliseText(text);
+  return /\b(take me around|take me on (?:a )?tour|take me on the tour|show me around|show me the tour|give me (?:a )?tour|tour me|walk me around|walk me through the app|guide me around|guide me through the app|take me through the app)\b/.test(q);
+}
+
+async function startLeviTourFromChat() {
+  const input = byId("aiChatInput");
+  const text = input?.value?.trim() || "";
+  if (!text) return false;
+  resetChatInput(input);
+  appendAiChatMessage("user", text);
+  persistAiMessage("user", text);
+  const reply = "Absolutely. I'll take you around Levromart now.";
+  appendAiChatMessage("assistant", reply);
+  persistAiMessage("assistant", reply);
+  setTimeout(() => showTour(), 350);
+  return true;
+}
+
 async function sendAiChatMessage() {
   const input = byId("aiChatInput");
   const text = input.value.trim();
   const wasVoice = aiChatLastInputVoice;
   aiChatLastInputVoice = false;
   if (!text) return;
+  if (isLeviTourRequest(text)) {
+    resetChatInput(input);
+    appendAiChatMessage("user", text);
+    persistAiMessage("user", text);
+    const reply = "Absolutely. I'll take you around Levromart now.";
+    appendAiChatMessage("assistant", reply);
+    persistAiMessage("assistant", reply);
+    setTimeout(() => showTour(), 350);
+    return;
+  }
   if (aiChatListening || aiChatRecognizer) { try { aiChatRecognizer?.abort(); } catch (_) {} aiChatRecognizer = null; aiChatListening = false; aiChatVoicePaused = false; updateAiVoiceStatus(); }
   resetChatInput(input);
   appendAiChatMessage("user", text);
@@ -15486,6 +15541,25 @@ async function resolveLeviLocalAction(text) {
 // Draggable floating action button - tap to fire onTap, drag to reposition
 // (and it remembers where you leave it). Shared by the Levi FAB and the
 // cart FAB, which each just pass their own element/storage key/tap action.
+function resetFloatingFabPositions() {
+  const levi = byId("aiChatFab");
+  const cart = byId("cartFab");
+  const reset = (fab) => {
+    if (!fab) return;
+    fab.style.removeProperty("left");
+    fab.style.removeProperty("top");
+    fab.style.removeProperty("right");
+    fab.style.removeProperty("bottom");
+    fab.classList.remove("dragging");
+  };
+  reset(levi);
+  reset(cart);
+  try {
+    localStorage.removeItem("levromart_ai_fab_pos");
+    localStorage.removeItem("levromart_cart_fab_pos");
+  } catch (_) {}
+}
+
 function setupDraggableFab(fab, storageKey, onTap) {
   if (!fab) return;
   const MOVE_THRESHOLD = 6;
@@ -15510,6 +15584,8 @@ function setupDraggableFab(fab, storageKey, onTap) {
     try { localStorage.removeItem(storageKey); } catch (_) {}
   }
   clearOldSavedPosition();
+  fab.style.removeProperty("left");
+  fab.style.removeProperty("top");
 
   fab.addEventListener("pointerdown", (e) => {
     if (e.button !== undefined && e.button !== 0) return;
@@ -15548,10 +15624,11 @@ function setupDraggableFab(fab, storageKey, onTap) {
 (function setupLeviFab() {
   const fab = byId("aiChatFab");
   if (!fab) return;
-  setupDraggableFab(fab, "levromart_ai_fab_pos", () => toggleAiChat());
+  setupDraggableFab(fab, "levromart_ai_fab_pos", () => { resetFloatingFabPositions(); toggleAiChat(); });
   applyLeviFabSize();
 })();
-setupDraggableFab(byId("cartFab"), "levromart_cart_fab_pos", () => navigate("cart"));
+setupDraggableFab(byId("cartFab"), "levromart_cart_fab_pos", () => { resetFloatingFabPositions(); navigate("cart"); });
+resetFloatingFabPositions();
 
 // Levi's chat panel stays centered; only the FAB itself is draggable.
 // Levi chat panel is intentionally NOT draggable. It always opens centered.
@@ -15610,6 +15687,7 @@ window.addEventListener("popstate", (e) => {
   try {
   initTheme();
   initAccent();
+  ensureCurrentInterfaceDefaults();
   applyLevromartFontScale();
   initSound();
   initLocationSetting();
@@ -16005,6 +16083,49 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 #vendorProfileImageLightbox .vendor-profile-image-fallback i{font-size:35%;}
 #profilePanel,#notifPanel{touch-action:pan-y !important;}
 #profilePanel::after,#notifPanel::after{pointer-events:none;}
+</style>
+
+<style id="levromart-requested-precision-fixes">
+/* Default accessibility values for a fresh device. User changes still persist. */
+
+/* Order stats: use the full content width, remove the visual left gutter, and
+   centre the period control as one balanced unit. */
+#orderStatsAccordion .accordion-body { padding-left: 0.9rem !important; padding-right: 0.9rem !important; }
+#orderStatsAccordion .order-stats-tabs-wrap { width:100%; display:flex; justify-content:center; }
+#orderStatsAccordion #orderStatsTabs { width:min(100%, 520px) !important; max-width:520px !important; margin:0.2rem auto 0.7rem !important; }
+#orderStatsAccordion .order-stats-table { width:100% !important; margin:0 auto !important; table-layout:fixed; }
+#orderStatsAccordion .order-stats-table td:first-child { padding-left:0 !important; text-align:left !important; }
+#orderStatsAccordion .order-stats-table td:last-child { padding-right:0 !important; text-align:right !important; }
+.vendor-orders-filter-row { width:100%; align-items:stretch !important; justify-content:center !important; }
+.vendor-orders-filter-row > select { flex:1 1 180px !important; min-width:0 !important; max-width:none !important; }
+@media (max-width:520px) {
+  #orderStatsAccordion #orderStatsTabs { width:100% !important; }
+  #orderStatsAccordion .segmented-tabs button { font-size:.72rem !important; padding:.5rem .2rem !important; }
+  .vendor-orders-filter-row > select { flex:1 1 100% !important; width:100% !important; }
+}
+
+/* Login password: familiar eye control inside the field, without changing
+   the surrounding auth card layout. */
+.password-input-wrap { position:relative; width:100%; }
+.password-input-wrap input { width:100%; padding-right:3rem !important; box-sizing:border-box; }
+.password-eye-btn { position:absolute; right:.35rem; top:50%; transform:translateY(-50%); width:2.35rem; height:2.35rem; border:0; outline:0; background:transparent; color:var(--text-muted); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; border-radius:50%; -webkit-appearance:none; appearance:none; }
+.password-eye-btn:hover { color:var(--primary); background:color-mix(in srgb,var(--primary) 8%,transparent); }
+.password-eye-btn:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+
+/* Shop location: give the saved-location state breathing room before the map. */
+#veLocationMap { margin-top:.9rem !important; }
+
+/* Settings-page Levi mark only: preserve the real green arcs and white centre;
+   the floating Levi button has its own independent logo rules. */
+#settings-page .settings-levi-logo-wrap { filter:none !important; -webkit-filter:none !important; }
+#settings-page .settings-levi-logo { filter:none !important; -webkit-filter:none !important; opacity:1 !important; }
+#settings-page .settings-levi-logo-wrap::before {
+  width:.42rem !important; height:.42rem !important; border:1px solid color-mix(in srgb,var(--primary) 68%,transparent) !important;
+  box-shadow:0 0 5px color-mix(in srgb,var(--primary) 42%,transparent),0 0 11px color-mix(in srgb,var(--primary) 24%,transparent) !important;
+}
+
+/* Voice compose never forces focus/keyboard when the mic is tapped. */
+#msgMicBtn { -webkit-tap-highlight-color:transparent; }
 </style>
 </body>
 </html>
