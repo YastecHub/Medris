@@ -8392,7 +8392,7 @@ function offlineFilterProducts(products, search, listing, catId, sectorId) {
   });
   return out;
 }
-function renderOfflineHomeFromCache(cache) {
+function renderOfflineHomeFromCache(cache, options = {}) {
   if (!cache) return null;
   const categories = cache.categories || [];
   const cachedSectors = cache.sectors || [];
@@ -8415,14 +8415,14 @@ function renderOfflineHomeFromCache(cache) {
     return score(b) - score(a);
   }).slice(0, 6);
   const hasPersonalPackageMatch = recommendedPackages.some(pkg => (pkg.items || []).some(it => favoriteIds.has(it.product?.id)));
-  let html = offlineHomeNotice();
+  let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
   html += `<div class="hero"><div class="hero-aurora"></div><div class="hero-content"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div><div class="hero-quick-actions"><button class="quick-action" onclick="scrollToBrowse('rent')"><span class="quick-action-icon"><i class='fa-solid fa-rotate'></i></span><span>Rent</span></button><button class="quick-action" onclick="scrollToBrowse('sale')"><span class="quick-action-icon"><i class='fa-solid fa-cart-shopping'></i></span><span>Buy</span></button><button class="quick-action outline" onclick="requireLoginThen('requestEquipment')"><span class="quick-action-icon"><i class='fa-solid fa-hand'></i></span><span>Request</span></button></div></div></div>`;
   if (sectors.length) html += `<div class="cat-row sector-row"><button class="cat-chip sector-chip ${!activeSector ? "active" : ""}" onclick="switchSector(null)"><span class="cat-icon"><i class="fa-solid fa-border-all"></i></span><span>All</span></button>${sectors.map(s => `<button class="cat-chip sector-chip ${activeSector?.id === s.id ? "active" : ""}" onclick="switchSector('${s.id}')"><span class="cat-icon"><i class="fa-solid ${esc(s.icon)}"></i></span><span>${esc(s.name)}</span></button>`).join("")}</div>`;
   if (subCats.length) html += `<div class="cat-row">${subCats.map(c => `<button class="cat-chip" onclick="filterByCategory('${c.id}')"><span class="cat-icon">${categoryIcon(c.name)}</span><span>${esc(c.name)}</span></button>`).join("")}</div>`;
   if (trending.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trending.map(productCardHtml).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
-  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="flex" style="margin-bottom:1.2rem;"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" /><select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
+  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="flex" style="margin-bottom:1.2rem;"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" /><select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
   return html;
 }
@@ -8560,10 +8560,78 @@ async function renderHome() {
   return html;
 }
 
+function paintHomeFromLocalCatalog(showOfflineNotice = false) {
+  const cache = getOfflineHomeCache();
+  if (!cache) return false;
+  const app = byId("app");
+  const rendered = renderOfflineHomeFromCache(cache, { showOfflineNotice });
+  if (!rendered || !app) return false;
+  app.innerHTML = rendered;
+  syncLeviFabVisibility();
+  updateHeaderNavActive();
+  clearAutoScrollTimers();
+  document.querySelectorAll("#app .cat-row, #app .hscroll").forEach(el => setupAutoScroll(el));
+  window.scrollTo({ top: 0, behavior: "auto" });
+  return true;
+}
+
+async function refreshHomeCategorySelection() {
+  if (browserLooksOffline()) return;
+  const categoryId = currentHomeCategoryId;
+  const sectorId = currentSectorId;
+  try {
+    let productQuery = sb.from("products")
+      .select(PRODUCT_LIST_SELECT + ",view_count,created_at")
+      .eq("status", "active")
+      .eq("vendor.verification_status", "verified")
+      .eq("vendor.is_active", true)
+      .order("view_count", { ascending: false })
+      .limit(40);
+    if (categoryId) productQuery = productQuery.eq("category_id", categoryId);
+    else if (sectorId) productQuery = productQuery.eq("category.sector_id", sectorId);
+
+    const { data: freshProducts } = await productQuery;
+    if (categoryId !== currentHomeCategoryId || sectorId !== currentSectorId) return;
+
+    const cacheNow = getOfflineHomeCache() || { categories: window.__categories || [], sectors, trending: [], browseProducts: [], topVendors: [], recentProducts: [], packages: [] };
+    const merged = new Map((cacheNow.browseProducts || []).map(p => [String(p.id), p]));
+    (freshProducts || []).forEach(p => merged.set(String(p.id), p));
+    const nextBrowse = [...merged.values()];
+    const nextTrending = (freshProducts || []).slice().sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0)).slice(0, 20);
+
+    // Keep all previously cached packages, but make sure packages containing
+    // products in the selected category/sector can be surfaced immediately.
+    let nextPackages = cacheNow.packages || [];
+    if (categoryId || sectorId) {
+      const packageRows = await sb.from("vendor_packages")
+        .select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id, business_name, logo_url, delivery_fee, verification_status, is_active), items:package_items(quantity, product:products(id, name, category_id, photos, category:categories(name, sector_id)))")
+        .eq("status", "active")
+        .eq("vendor.verification_status", "verified")
+        .eq("vendor.is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(40);
+      if (packageRows.data) nextPackages = packageRows.data;
+    }
+
+    writeOfflineHomeCache({ ...cacheNow, browseProducts: nextBrowse, trending: nextTrending, packages: nextPackages });
+
+    // Repaint the visible rails from the fresh result without ever showing a
+    // loading screen. filterHomeProducts() will fill the lower browse grid.
+    paintHomeFromLocalCatalog(false);
+  } catch (e) {
+    // The cached category view is already usable; a failed refresh must not
+    // interrupt browsing.
+  }
+}
+
 function switchSector(sectorId) {
   currentSectorId = sectorId;
   currentHomeCategoryId = null;
-  navigate("home", {}, false);
+  // Category/sector browsing is cache-first both online and offline. The
+  // selected rail changes immediately; online data is refreshed silently.
+  const painted = paintHomeFromLocalCatalog(false);
+  if (!painted) navigate("home", {}, false);
+  else refreshHomeCategorySelection();
 }
 
 function scrollToBrowse(listingType) {
@@ -8573,38 +8641,14 @@ function scrollToBrowse(listingType) {
 }
 function filterByCategory(catId) {
   currentHomeCategoryId = catId || null;
-  const sel = byId("filterCategory");
-  if (sel) sel.value = catId || "";
-  // Repaint the marketplace immediately from the local catalogue. This is
-  // deliberately cache-first so category taps feel instant even on mobile.
-  const cache = getOfflineHomeCache();
-  if (cache) {
-    const app = byId("app");
-    const rendered = renderOfflineHomeFromCache(cache);
-    if (rendered && app) { app.innerHTML = rendered; syncLeviFabVisibility(); updateHeaderNavActive(); clearAutoScrollTimers(); document.querySelectorAll("#app .cat-row, #app .hscroll").forEach(el => setupAutoScroll(el)); window.scrollTo({top:0,behavior:"auto"}); }
-    if (!browserLooksOffline()) {
-      // Refresh the selected category in the background without replacing
-      // the instantly painted cache-first screen with a loading page.
-      setTimeout(async () => {
-        try {
-          const cat = (window.__categories || []).find(c => String(c.id) === String(catId));
-          let q = sb.from("products").select(PRODUCT_LIST_SELECT).eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).eq("category_id",catId).order("view_count",{ascending:false}).limit(10);
-          const { data: fresh } = await q;
-          if (!fresh?.length) return;
-          const cacheNow = getOfflineHomeCache() || { categories: window.__categories || [], sectors, trending: [], browseProducts: [], topVendors: [], recentProducts: [], packages: [] };
-          const merged = new Map((cacheNow.browseProducts || []).map(p => [String(p.id), p]));
-          fresh.forEach(p => merged.set(String(p.id), p));
-          const nextBrowse = [...merged.values()].slice(0, 120);
-          const nextTrending = nextBrowse.slice().sort((a,b)=>Number(b.view_count||0)-Number(a.view_count||0)).slice(0,20);
-          writeOfflineHomeCache({...cacheNow, browseProducts: nextBrowse, trending: nextTrending});
-          const liveGrid = byId("productGrid");
-          if (liveGrid && currentHomeCategoryId === catId) liveGrid.innerHTML = fresh.map(productCardHtml).join("");
-        } catch (e) {}
-      }, 120);
-    }
+  const painted = paintHomeFromLocalCatalog(false);
+  if (!painted) {
+    const sel = byId("filterCategory");
+    if (sel) sel.value = catId || "";
+    byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
-  byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  refreshHomeCategorySelection();
 }
 let searchSuggestTimer = null;
 function syncHeroSearch() {
@@ -15442,8 +15486,13 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
         if (addResult.added) parts.push(`${addResult.added} added`);
         if (addResult.failed) parts.push(`${addResult.failed} couldn't be added`);
         if (removeResult.removed) parts.push(`${removeResult.removed} removed`);
-        navHint.innerHTML = `<i class="fa-solid fa-arrow-right"></i> ${parts.join(", ") || "Cart updated"} - taking you there…`;
-        setTimeout(() => { toggleAiChat(); navigate("cart"); }, 900);
+        navHint.innerHTML = `<i class="fa-solid fa-arrow-right"></i> ${parts.join(", ") || "Cart updated"}`;
+        // Cart actions from Levi must never leave the chat panel covering the
+        // destination. Close Levi first, then open the cart immediately so the
+        // buyer can see the result of the add/remove action without another tap.
+        closeLeviAfterCartAction();
+        updateCartFab();
+        requestAnimationFrame(() => navigate("cart"));
       });
     }
   }
@@ -16217,6 +16266,11 @@ async function resolveLeviLocalAction(text) {
         const names = results.filter(r => r.error === "ambiguous").flatMap(r => r.matches || []).map(p => p?.name).filter(Boolean).slice(0, 6);
         return { handled: true, reply: `I found more than one cart match: ${names.join(", ")}. Tell me which one you mean.` };
       }
+      if (ok.length) {
+        closeLeviAfterCartAction();
+        updateCartFab();
+        await navigate("cart");
+      }
       return { handled: true, reply: [
         ok.length ? `Done - I removed ${ok.map(r => r.product.name).join(", ")} from your cart.` : "",
         failed.length ? `I couldn't remove ${failed.map(r => r.product.name).join(", ")} right now.` : "",
@@ -16269,10 +16323,19 @@ async function resolveLeviLocalAction(text) {
     if (empty.length) lines.push(`${empty.map(r => r.product.name).join(", ")} ${empty.length === 1 ? "is" : "are"} out of stock.`);
     if (failed.length) lines.push(`I couldn't add ${failed.map(r => r.product.name).join(", ")} right now.`);
     if (missing.length) lines.push(`I couldn't find ${missing.map(r => `“${r.part}”`).join(", ")}.`);
-    if (ok.length) await navigate("cart");
+    if (ok.length) {
+      closeLeviAfterCartAction();
+      updateCartFab();
+      await navigate("cart");
+    }
     return { handled: true, reply: lines.join(" ") || "Tell me the product name, or open the product and say “add this to my cart”." };
   }
   if (mode === "remove") {
+    if (ok.length) {
+      closeLeviAfterCartAction();
+      updateCartFab();
+      await navigate("cart");
+    }
     return { handled: true, reply: ok.length ? `Done - I removed ${ok.map(r => r.product.name).join(", ")} from your cart.` : "I couldn't find that item in your cart." };
   }
   return { handled: true, reply: ok.length ? `Done - ${ok.map(r => r.product.name).join(", ")} ${ok.length === 1 ? "is" : "are"} on your wishlist.` : "I couldn't save that item right now." };
