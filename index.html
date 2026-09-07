@@ -4506,6 +4506,50 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
    textarea height normally; only the untouched placeholder needs the fixed
    single-line treatment above. */
 </style>
+
+<style id="package-experience-performance-fix">
+/* Package browsing: cards behave like real listings, while controls remain tappable. */
+.package-listing-card { cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.package-listing-card:hover { transform: translateY(-2px); box-shadow: var(--ui-shadow-lg); border-color: color-mix(in srgb, var(--primary) 24%, var(--ui-border)); }
+.package-listing-card .package-card-actions { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+.package-search-row { display:flex; align-items:center; gap:.45rem; margin:.65rem 0 .8rem; }
+.package-search-row input { margin:0 !important; flex:1 1 auto; min-width:0; }
+.package-search-toggle { width:2.25rem; height:2.25rem; min-width:2.25rem; padding:0; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; }
+.package-detail-gallery { display:grid; gap:.65rem; }
+.package-detail-main { width:100%; height:min(58vw,360px); object-fit:cover; border-radius:14px; background:var(--input-bg); cursor:zoom-in; }
+.package-detail-thumbs { display:flex; gap:.45rem; overflow-x:auto; scrollbar-width:none; }
+.package-detail-thumbs::-webkit-scrollbar { display:none; }
+.package-detail-thumb { flex:0 0 64px; width:64px; height:54px; padding:0; border:1px solid var(--border); border-radius:9px; overflow:hidden; background:var(--input-bg); cursor:pointer; }
+.package-detail-thumb.active { border-color:var(--primary); box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 14%,transparent); }
+.package-detail-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.package-detail-items { display:grid; gap:.55rem; }
+.package-detail-item { display:flex; align-items:center; gap:.65rem; padding:.65rem; border:1px solid var(--border); border-radius:11px; cursor:pointer; background:var(--card); }
+.package-detail-item img,.package-detail-item .pkg-item-placeholder { width:52px; height:52px; border-radius:9px; object-fit:cover; flex:0 0 52px; background:var(--input-bg); display:flex; align-items:center; justify-content:center; color:var(--text-muted); }
+.package-detail-item .pkg-item-copy { min-width:0; flex:1; }
+.package-detail-item .pkg-item-copy strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.package-detail-price { font-size:1.35rem; font-weight:800; color:var(--primary); }
+.package-recommendation-strip .card { min-width:230px; max-width:270px; }
+/* Keep the working-hours controls inside the card on narrow phones. */
+.hours-day-row { display:grid !important; grid-template-columns:minmax(5rem,6rem) minmax(0,1fr) !important; gap:.5rem !important; }
+.hours-day-row .hours-day-times { min-width:0 !important; display:grid !important; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) !important; gap:.35rem !important; }
+.hours-day-row .hours-day-times input[type="time"] { width:100% !important; min-width:0 !important; box-sizing:border-box !important; }
+.hours-day-row .hours-day-times > span { white-space:nowrap; align-self:center; }
+@media (max-width:420px) {
+  .hours-day-row { grid-template-columns:5rem minmax(0,1fr) !important; gap:.35rem !important; }
+  .hours-day-row .hours-day-times { gap:.25rem !important; }
+  .hours-day-row .hours-day-times input[type="time"] { padding-left:.35rem !important; padding-right:.35rem !important; font-size:.82rem !important; }
+}
+/* Let long catalog pages render progressively instead of painting every card at once. */
+.hscroll, .grid { contain:layout paint style; }
+.product-card-wrap img, .package-listing-card img { decoding:auto; }
+</style>
+
+<style id="package-section-search-fix">
+.storefront-packages-head { padding:.1rem .45rem .1rem .15rem; }
+.storefront-packages-head .storefront-packages-toggle { flex:1 1 auto; min-width:0; }
+.storefront-packages-head .package-search-toggle { flex:0 0 2.35rem; }
+.storefront-packages-body .package-search-row.hidden { display:none !important; }
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -8107,7 +8151,9 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (pushHistory) {
     const navUrl = view === "storefront" && params?.vendorId
       ? `${location.pathname}?storefront=${encodeURIComponent(params.vendorId)}`
-      : location.pathname;
+      : view === "packageDetail" && params?.packageId
+        ? `${location.pathname}?package=${encodeURIComponent(params.packageId)}`
+        : location.pathname;
     history.pushState({ view, params }, "", navUrl);
   }
   // Mobile browsers (and installed PWAs especially) routinely discard a
@@ -8123,6 +8169,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     switch (view) {
       case "home": html = await renderHome(); break;
       case "productDetail": html = await renderProductDetail(params.productId); break;
+      case "packageDetail": html = await renderPackageDetail(params.packageId); break;
       case "storefront": html = await renderStorefront(params.vendorId); break;
       case "vendors": html = renderVendorsDirectory(); break;
       case "vendorApply": html = await renderVendorApply(); break;
@@ -8223,36 +8270,34 @@ async function renderHome() {
 
   const activeSector = sectors.find((s) => s.id === currentSectorId) || null;
 
-  // Filtered by the product's own category's sector, not the vendor's
-  // registered sector - a vendor can list across any sector now, so
-  // "browsing Fashion" should surface a Fashion product even from a
-  // vendor whose primary sector is Healthcare.
   let vendorQuery = sb.from("products").select("id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url), category:categories(sector_id)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url").eq("verification_status", "verified");
   if (activeSector) topVendorsQuery = topVendorsQuery.eq("sector_id", activeSector.id);
-  // The hero backdrop is just the 3 most recently listed products' photos --
-  // deliberately not the trending list below, so it stays fresh and never
-  // turns into a cluttered wall of every product photo on the site.
-  // The backdrop is always the three newest ACTIVE products on the entire
-  // marketplace. It intentionally ignores the currently selected sector:
-  // these are the three latest listings site-wide, not three static/staged
-  // images and not three photos from one product.
   const recentPhotosQuery = sb.from("products")
     .select("id, name, photos, created_at, vendor:vendors!inner(verification_status, is_active)")
     .eq("status", "active")
     .eq("vendor.verification_status", "verified")
     .eq("vendor.is_active", true);
+  const packageQuery = sb.from("vendor_packages")
+    .select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id, business_name, logo_url, delivery_fee, verification_status, is_active), items:package_items(quantity, product:products(id, name, photos, category:categories(name)))")
+    .eq("status", "active")
+    .eq("vendor.verification_status", "verified")
+    .eq("vendor.is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(16);
 
-  const [{ data: trending }, { data: topVendors }, { data: recentProducts }] = await Promise.all([
+  // Keep the initial marketplace paint to one parallel batch. Packages are
+  // first-class marketplace listings now, so they load alongside products
+  // rather than causing a second visible page refresh.
+  const [{ data: trending }, { data: topVendors }, { data: recentProducts }, { data: packages }] = await Promise.all([
     vendorQuery.order("view_count", { ascending: false }).limit(6),
     topVendorsQuery.order("avg_rating", { ascending: false }).limit(6),
     recentPhotosQuery.order("created_at", { ascending: false }).limit(3),
+    packageQuery,
   ]);
 
-  // One image per product: product #1, product #2, product #3.
-  // Never use multiple angles from the same product in the home backdrop.
   const heroPhotos = (recentProducts || [])
     .map((product) => {
       const photos = Array.isArray(product.photos) ? product.photos.filter(Boolean) : [];
@@ -8260,13 +8305,20 @@ async function renderHome() {
     })
     .filter(Boolean);
 
+  window.__homePackages = packages || [];
+  const recommendedPackages = [...(packages || [])].sort((a, b) => {
+    const score = (pkg) => (pkg.items || []).reduce((sum, it) => sum + (favoriteIds.has(it.product?.id) ? 10 : 0), 0);
+    return score(b) - score(a);
+  }).slice(0, 6);
+  const hasPersonalPackageMatch = recommendedPackages.some((pkg) => (pkg.items || []).some((it) => favoriteIds.has(it.product?.id)));
+
   let html = `<div class="hero">
-    ${heroPhotos.length >= 1 ? `<div class="hero-photo-collage"><div class="hero-photo-row">${heroPhotos.map((p) => `<button type="button" class="hero-photo-link" onclick="navigate(\'productDetail\',{productId:\'${esc(p.id)}\'})" aria-label="View ${esc(p.name)}"><img src="${esc(p.url)}" alt="${esc(p.name)}" loading="lazy" /></button>`).join("")}</div><div class="hero-photo-scrim"></div></div>` : ""}
+    ${heroPhotos.length >= 1 ? `<div class="hero-photo-collage"><div class="hero-photo-row">${heroPhotos.map((p) => `<button type="button" class="hero-photo-link" onclick="navigate('productDetail',{productId:'${esc(p.id)}'})" aria-label="View ${esc(p.name)}"><img src="${esc(p.url)}" alt="${esc(p.name)}" loading="lazy" decoding="async" /></button>`).join("")}</div><div class="hero-photo-scrim"></div></div>` : ""}
     <div class="hero-aurora"></div>
     <div class="hero-content">
       <div class="hero-search flex">
         <i class="fa-solid fa-magnifying-glass hero-search-icon"></i>
-        <input type="text" id="heroSearch" placeholder="Search products, services, or a vendor name…" oninput="syncHeroSearch()" onfocus="if(this.value.trim())fetchSearchSuggestions(this.value.trim())" onblur="setTimeout(hideSearchSuggestions,150)" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" />
+        <input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onfocus="if(this.value.trim())fetchSearchSuggestions(this.value.trim())" onblur="setTimeout(hideSearchSuggestions,150)" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" />
         <div id="heroSearchSuggest" class="search-suggest hidden"></div>
       </div>
       <div class="hero-quick-actions">
@@ -8292,17 +8344,23 @@ async function renderHome() {
   if (trending && trending.length) {
     html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now</h3><div class="hscroll trending-scroll">${trending.map(productCardHtml).join("")}</div>`;
   }
+
+  if (recommendedPackages.length) {
+    html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
+  }
+
   if (topVendors && topVendors.length) {
     html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
   }
 
   html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
   html += `<div class="flex" style="margin-bottom:1.2rem;">
-    <input type="text" id="searchInput" placeholder="Search…" oninput="filterHomeProducts()" style="max-width:280px;" />
+    <input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" />
     <select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select>
     <select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
   </div>`;
   html += `<div class="grid" id="productGrid"><p class="muted">Loading…</p></div>`;
+  html += `<div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
   return html;
 }
@@ -8345,12 +8403,12 @@ function submitHeroSearch() {
 async function fetchSearchSuggestions(term) {
   const box = byId("heroSearchSuggest");
   if (!box) return;
-  // Same word-by-word + typo-tolerant matching as the full browse search,
-  // so a product shows up here even if the buyer only typed a related
-  // keyword or category rather than the exact product name.
-  const [{ data: idRows }, { data: vends }] = await Promise.all([
+  // Search products, vendors and packages together so the hero search is a
+  // real marketplace search rather than a product-only shortcut.
+  const [{ data: idRows }, { data: vends }, { data: packageRows }] = await Promise.all([
     sb.rpc("search_product_ids", { p_query: term }),
     sb.from("vendors").select("id,business_name").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(3),
+    sb.from("vendor_packages").select("id,name,price,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(4),
   ]);
   // still typing? don't flash a stale list
   if (byId("heroSearch")?.value.trim() !== term) return;
@@ -8366,6 +8424,7 @@ async function fetchSearchSuggestions(term) {
 
   const items = [
     ...(prods || []).map((p) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('productDetail',{productId:'${p.id}'})"><i class='fa-solid fa-magnifying-glass'></i><span class="ss-name">${esc(p.name)}</span><span class="ss-meta">${esc(p.vendor?.business_name || "")}</span></div>`),
+    ...(packageRows || []).map((pkg) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('packageDetail',{packageId:'${pkg.id}'})"><i class='fa-solid fa-box-open'></i><span class="ss-name">${esc(pkg.name)}</span><span class="ss-meta">Package · ${naira(pkg.price)}</span></div>`),
     ...(vends || []).map((v) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('storefront',{vendorId:'${v.id}'})"><i class='fa-solid fa-store'></i><span class="ss-name">${esc(v.business_name)}</span><span class="ss-meta">Vendor</span></div>`),
   ];
   if (!items.length) { hideSearchSuggestions(); return; }
@@ -8397,6 +8456,47 @@ function noResultsWithFallbackHtml(message, fallback) {
   return notice + fallback.map(productCardHtml).join("");
 }
 
+let homeSearchTimer = null;
+function scheduleHomeSearch() {
+  clearTimeout(homeSearchTimer);
+  homeSearchTimer = setTimeout(() => filterHomeProducts(), 160);
+}
+
+async function searchHomePackages(term) {
+  const q = String(term || "").trim();
+  if (!q) return [];
+  const [{ data: direct }, { data: itemMatches }] = await Promise.all([
+    sb.from("vendor_packages").select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id,business_name,logo_url,delivery_fee,verification_status,is_active), items:package_items(quantity, product:products(id,name,photos,category:categories(name)))")
+      .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
+      .or(`name.ilike.%${q}%,description.ilike.%${q}%`).limit(8),
+    sb.from("package_items").select("package_id, product:products!inner(name,description)").ilike("product.name", `%${q}%`).limit(30),
+  ]);
+  const ids = [...new Set([...(direct || []).map((p) => p.id), ...(itemMatches || []).map((r) => r.package_id)])].slice(0, 8);
+  if (!ids.length) return [];
+  const directById = new Map((direct || []).map((p) => [p.id, p]));
+  const missing = ids.filter((id) => !directById.has(id));
+  if (missing.length) {
+    const { data } = await sb.from("vendor_packages").select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id,business_name,logo_url,delivery_fee,verification_status,is_active), items:package_items(quantity, product:products(id,name,photos,category:categories(name)))")
+      .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).in("id", missing);
+    (data || []).forEach((p) => directById.set(p.id, p));
+  }
+  return ids.map((id) => directById.get(id)).filter(Boolean);
+}
+
+async function renderHomePackageSearch(term) {
+  const wrap = byId("packageSearchResults");
+  if (!wrap) return;
+  const q = String(term || "").trim();
+  if (!q) { wrap.classList.add("hidden"); wrap.innerHTML = ""; return; }
+  wrap.classList.remove("hidden");
+  wrap.innerHTML = `<h3 class="section-title"><span><i class="fa-solid fa-box-open"></i> Package matches</span></h3><p class="muted">Searching packages…</p>`;
+  const packages = await searchHomePackages(q);
+  if (byId("searchInput")?.value.trim() !== q) return;
+  wrap.innerHTML = packages.length
+    ? `<h3 class="section-title"><span><i class="fa-solid fa-box-open"></i> Package matches</span></h3><div class="grid">${packages.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`
+    : `<h3 class="section-title"><span><i class="fa-solid fa-box-open"></i> Package matches</span></h3><div class="empty-state">No package matches for “${esc(q)}”.</div>`;
+}
+
 async function filterHomeProducts() {
   const search = byId("searchInput")?.value.trim() || "";
   const listing = byId("filterListing")?.value || "";
@@ -8404,13 +8504,10 @@ async function filterHomeProducts() {
   const grid = byId("productGrid");
   if (!grid) return;
 
+  renderHomePackageSearch(search).catch(() => {});
+
   let matchingIds = null;
   if (search) {
-    // search_product_ids does word-by-word + typo-tolerant matching (not
-    // just "the whole query as one substring"), so "blue traditional
-    // dress" can find a product named "Aso-Ebi Blue" filed under
-    // Traditional Wear - and it returns best-match-first, which the plain
-    // .order("created_at") below would otherwise throw away.
     const { data: idRows } = await sb.rpc("search_product_ids", { p_query: search });
     matchingIds = (idRows || []).map((r) => r.id);
     if (matchingIds.length === 0) {
@@ -8431,8 +8528,6 @@ async function filterHomeProducts() {
   if (listing === "rent") query = query.in("listing_type", ["rent", "both"]);
   if (listing === "sale") query = query.in("listing_type", ["sale", "both"]);
   if (catId) query = query.eq("category_id", catId);
-  // Filtered by the product's own category's sector - a vendor can list
-  // across any sector, so this must not depend on vendor.sector_id.
   if (currentSectorId) query = query.eq("category.sector_id", currentSectorId);
 
   const { data: products, error } = await query.order("created_at", { ascending: false });
@@ -8444,8 +8539,6 @@ async function filterHomeProducts() {
     grid.innerHTML = noResultsWithFallbackHtml(message, fallback);
     return;
   }
-  // Restore search relevance order (best match first) instead of the
-  // created_at order the query above applies by default.
   if (matchingIds) products.sort((a, b) => matchingIds.indexOf(a.id) - matchingIds.indexOf(b.id));
   grid.innerHTML = products.map(productCardHtml).join("");
 }
@@ -8458,7 +8551,7 @@ function productCardHtml(p) {
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     ${canQuickAdd ? `<button class="card-cart-btn" onclick="quickAddToCart(event,'${p.id}',this)" title="Add to cart"><i class="fa-solid fa-cart-plus"></i></button>` : ""}
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
-      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:0.5rem;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
+      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;border-radius:0.5rem;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
       <h4 style="margin:0.6rem 0 0.2rem;">${esc(p.name)}</h4>
       <div class="flex" style="justify-content:space-between;">
         <span class="badge">${p.is_service ? "service" : p.listing_type}</span>
@@ -9993,6 +10086,100 @@ function closeProductImageLightbox(event) {
   if (event && event.target?.id !== "productImageLightbox" && !event.target?.closest?.(".image-lightbox-close")) return;
   byId("productImageLightbox")?.classList.add("hidden");
 }
+// ---------- PACKAGE DETAIL ----------
+let packageDetailGalleryIndex = 0;
+function setPackageDetailPhoto(index) {
+  const photos = window.__packageDetailPhotos || [];
+  if (!photos.length) return;
+  packageDetailGalleryIndex = Math.max(0, Math.min(index, photos.length - 1));
+  const main = byId("packageDetailMainImage");
+  if (main) main.src = photos[packageDetailGalleryIndex];
+  document.querySelectorAll(".package-detail-thumb").forEach((el) => el.classList.toggle("active", Number(el.dataset.index) === packageDetailGalleryIndex));
+}
+function changePackageDetailPhoto(delta) { setPackageDetailPhoto(packageDetailGalleryIndex + delta); }
+function openPackageDetailLightbox() {
+  const photos = window.__packageDetailPhotos || [];
+  if (!photos.length) return;
+  const img = byId("productLightboxImage");
+  if (img) img.src = photos[packageDetailGalleryIndex || 0];
+  byId("productImageLightbox")?.classList.remove("hidden");
+}
+async function buyPackageFromDetail(packageId) {
+  if (!session) { showLogin(); return; }
+  const errorEl = byId("packageDetailBuyError");
+  errorEl?.classList.add("hidden");
+  const delivery = readDeliveryFields("pkgdetail", errorEl);
+  if (!delivery) return;
+  const { data: orderId, error } = await sb.rpc("create_package_order", {
+    p_package_id: packageId,
+    p_delivery_method: delivery.method,
+    p_delivery_address: delivery.address,
+    p_delivery_phone: delivery.phone,
+  });
+  if (error) {
+    if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); }
+    return;
+  }
+  navigate("orderDetail", { orderId });
+}
+async function renderPackageDetail(packageId) {
+  const { data: pkg, error } = await sb.from("vendor_packages")
+    .select("id, vendor_id, name, description, price, photos, created_at, status, vendor:vendors!inner(id,business_name,previous_business_name,name_changed_at,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng), items:package_items(quantity, product:products(id,name,sale_price,rental_rate,rental_rate_unit,photos,quantity_available,condition,listing_type,is_service,service_price_unit,category:categories(name)))")
+    .eq("id", packageId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
+  if (error || !pkg) return '<div class="empty-state"><i class="fa-solid fa-box-open" style="font-size:1.6rem;display:block;margin-bottom:.6rem;"></i>Package not found or no longer available.</div>';
+
+  const photos = Array.isArray(pkg.photos) ? pkg.photos.filter(Boolean) : [];
+  window.__packageDetailPhotos = photos;
+  packageDetailGalleryIndex = 0;
+  const v = pkg.vendor || {};
+  const items = pkg.items || [];
+  const vendorLogo = v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;" />` : `<span class="avatar-circle" style="width:2.2rem;height:2.2rem;">${esc((v.business_name || "V").slice(0,1).toUpperCase())}</span>`;
+  const gallery = photos.length
+    ? `<div class="package-detail-gallery">
+        <div style="position:relative;">
+          <img id="packageDetailMainImage" class="package-detail-main" src="${esc(photos[0])}" alt="${esc(pkg.name)}" onclick="openPackageDetailLightbox()" />
+          ${photos.length > 1 ? `<div class="product-gallery-nav"><button type="button" onclick="event.stopPropagation();changePackageDetailPhoto(-1)" aria-label="Previous package image"><i class="fa-solid fa-chevron-left"></i></button><button type="button" onclick="event.stopPropagation();changePackageDetailPhoto(1)" aria-label="Next package image"><i class="fa-solid fa-chevron-right"></i></button></div><span class="product-gallery-count"><i class="fa-solid fa-images"></i> ${photos.length}</span>` : ""}
+        </div>
+        ${photos.length > 1 ? `<div class="package-detail-thumbs">${photos.map((u,i) => `<button type="button" class="package-detail-thumb ${i === 0 ? "active" : ""}" data-index="${i}" onclick="setPackageDetailPhoto(${i})"><img src="${esc(u)}" alt="Package image ${i+1}" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
+      </div>`
+    : `<div class="package-gallery-placeholder" style="height:260px;"><i class="fa-solid fa-box-open"></i>&nbsp; No package photos</div>`;
+
+  let html = `<div class="card" style="position:relative;">
+    <button type="button" class="icon-btn" style="position:absolute;right:.75rem;top:.75rem;z-index:2;" onclick="navigate('home')" aria-label="Back to marketplace"><i class="fa-solid fa-xmark"></i></button>
+    <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.8rem;">${vendorLogo}<div><strong>${esc(v.business_name || "Vendor")}</strong><div class="muted" style="font-size:.78rem;">Verified vendor${v.city ? ` · ${esc(v.city)}` : ""}</div></div></div>
+    ${gallery}
+    <div style="margin-top:1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start;"><div><h2 style="margin:0 0 .25rem;">${esc(pkg.name)}</h2><p class="muted" style="margin:0;">Special package</p></div><span class="package-detail-price">${naira(pkg.price)}</span></div>
+    ${pkg.description ? `<p style="margin:1rem 0 0;line-height:1.55;">${esc(pkg.description)}</p>` : ""}
+  </div>`;
+
+  html += `<div class="card"><h3 style="margin-top:0;"><i class="fa-solid fa-box-open"></i> What's included</h3><div class="package-detail-items">${items.length ? items.map((it) => {
+    const p = it.product || {};
+    const img = p.photos?.[0];
+    return `<div class="package-detail-item" onclick="navigate('productDetail',{productId:'${p.id}'})">${img ? `<img src="${esc(img)}" alt="${esc(p.name || "Product")}" loading="lazy" decoding="async" />` : `<div class="pkg-item-placeholder"><i class="fa-solid fa-box"></i></div>`}<div class="pkg-item-copy"><strong>${esc(p.name || "Included item")}</strong><span class="muted" style="font-size:.78rem;">${it.quantity}×${p.category?.name ? ` · ${esc(p.category.name)}` : ""}</span></div><i class="fa-solid fa-chevron-right muted"></i></div>`;
+  }).join("") : `<p class="muted">No items are currently attached to this package.</p>`}</div></div>`;
+
+  if (profile?.role === "admin") {
+    html += `<div class="card"><p class="muted"><i class="fa-solid fa-circle-info"></i> Admin accounts can't make purchases on Levromart.</p></div>`;
+  } else {
+    html += `<div class="card"><h3 style="margin-top:0;"><i class="fa-solid fa-cart-shopping"></i> Buy this package</h3>
+      ${deliveryFieldsHtml("pkgdetail", v.delivery_fee, v.lat, v.lng, v.delivery_fee_mode, v.delivery_fee_per_km, "Pickup")}
+      <button class="btn" style="width:100%;justify-content:center;" onclick="buyPackageFromDetail('${pkg.id}')">Buy package · ${naira(pkg.price)}</button>
+      <p id="packageDetailBuyError" class="error-text hidden"></p>
+    </div>`;
+  }
+
+  html += `<div class="card"><div class="flex" style="justify-content:space-between;align-items:center;"><div><h3 style="margin:0;">About the vendor</h3><p class="muted" style="margin:.25rem 0 0;">${v.avg_rating != null ? `★ ${Number(v.avg_rating).toFixed(1)} · ${v.review_count || 0} reviews` : "Verified vendor"}</p></div><button class="btn btn-sm btn-outline" onclick="navigate('storefront',{vendorId:'${v.id}'})">View storefront</button></div></div>`;
+
+  const { data: morePackages } = await sb.from("vendor_packages")
+    .select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id,business_name,logo_url,delivery_fee,verification_status,is_active), items:package_items(quantity, product:products(id,name,photos))")
+    .eq("vendor_id", v.id).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).neq("id", pkg.id).order("created_at", { ascending: false }).limit(4);
+  if (morePackages?.length) {
+    html += `<h3 class="section-title"><span><i class="fa-solid fa-layer-group"></i> More packages from ${esc(v.business_name || "this vendor")}</span></h3><div class="hscroll package-recommendation-strip">${morePackages.map((p) => packageCardHtml(p, p.vendor?.delivery_fee, true)).join("")}</div>`;
+  }
+  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('home')"><i class="fa-solid fa-arrow-left"></i> Back to Marketplace</button>`;
+  return html;
+}
+
 // ---------- PRODUCT DETAIL ----------
 async function renderProductDetail(productId) {
   const { data: product, error } = await sb
@@ -10358,9 +10545,10 @@ function renderVendorsDirectory() {
 }
 
 async function loadVendorsDirectory() {
-  const [{ data: vendors }, { data: products }, { data: sectorsData }] = await Promise.all([
+  const [{ data: vendors }, { data: products }, { data: vendorPackages }, { data: sectorsData }] = await Promise.all([
     sb.from("vendors").select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, lat, lng").eq("verification_status", "verified").eq("is_active", true).order("business_name"),
     sb.from("products").select("vendor_id, name, description, category:categories(name)").eq("status", "active"),
+    sb.from("vendor_packages").select("vendor_id, name, description").eq("status", "active"),
     sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
   ]);
   if (!sectors.length) sectors = sectorsData || [];
@@ -10371,6 +10559,9 @@ async function loadVendorsDirectory() {
     const name = p.category?.name;
     if (name) (catsByVendor[p.vendor_id] ||= new Set()).add(name);
     (productTextByVendor[p.vendor_id] ||= []).push(p.name, p.description, name);
+  });
+  (vendorPackages || []).forEach((pkg) => {
+    (productTextByVendor[pkg.vendor_id] ||= []).push(pkg.name, pkg.description, "package", "bundle");
   });
 
   // Lets the vendor search box double as a product search - typing "paracetamol"
@@ -10759,15 +10950,26 @@ async function renderStorefront(vendorId) {
   }
 
   if (packages && packages.length > 0) {
+    window.__storefrontPackages = packages || [];
     html += `<section class="storefront-packages storefront-packages-collapsed" id="storefrontPackagesSection">
-      <button class="storefront-packages-toggle" type="button" aria-expanded="false" onclick="toggleStorefrontPackages()">
-        <span><i class="fa-solid fa-box-open"></i><strong>Special packages</strong><em>${packages.length}</em></span>
-        <i class="fa-solid fa-chevron-down storefront-packages-chevron"></i>
-      </button>
+      <div class="storefront-packages-head" style="display:flex;align-items:center;justify-content:space-between;gap:.45rem;">
+        <button class="storefront-packages-toggle" type="button" aria-expanded="false" onclick="toggleStorefrontPackages()">
+          <span><i class="fa-solid fa-box-open"></i><strong>Special packages</strong><em>${packages.length}</em></span>
+          <i class="fa-solid fa-chevron-down storefront-packages-chevron"></i>
+        </button>
+        <button type="button" class="icon-btn package-search-toggle" aria-label="Search special packages" title="Search packages" onclick="toggleStorefrontPackageSearch(event)"><i class="fa-solid fa-magnifying-glass"></i></button>
+      </div>
       <div class="storefront-packages-body" id="storefrontPackagesBody">
-        <div class="grid">${packages.map((pkg) => packageCardHtml(pkg, v.delivery_fee)).join("")}</div>
+        <div class="package-search-row hidden" id="storefrontPackageSearchRow">
+          <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+          <input type="text" id="storefrontPackageSearch" placeholder="Search packages or what's inside…" oninput="filterStorefrontPackages()" />
+          <button type="button" class="icon-btn" onclick="clearStorefrontPackageSearch()" aria-label="Clear package search"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="grid" id="storefrontPackagesGrid">${packages.map((pkg) => packageCardHtml(pkg, v.delivery_fee, true)).join("")}</div>
       </div>
     </section>`;
+  } else {
+    window.__storefrontPackages = [];
   }
 
   html += `<section class="storefront-products-shell" id="storefrontProductsShell">
@@ -10805,6 +11007,37 @@ function toggleStorefrontPackages() {
   const expanded = section.classList.toggle("open");
   toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
 }
+function toggleStorefrontPackageSearch(event) {
+  event?.stopPropagation?.();
+  const section = byId("storefrontPackagesSection");
+  if (!section) return;
+  if (!section.classList.contains("open")) toggleStorefrontPackages();
+  const row = byId("storefrontPackageSearchRow");
+  row?.classList.toggle("hidden");
+  if (!row?.classList.contains("hidden")) setTimeout(() => byId("storefrontPackageSearch")?.focus(), 0);
+}
+function clearStorefrontPackageSearch() {
+  const input = byId("storefrontPackageSearch");
+  if (input) input.value = "";
+  filterStorefrontPackages();
+  input?.focus();
+}
+function filterStorefrontPackages() {
+  const q = (byId("storefrontPackageSearch")?.value || "").trim().toLowerCase();
+  const all = window.__storefrontPackages || [];
+  const grid = byId("storefrontPackagesGrid");
+  if (!grid) return;
+  const shown = q
+    ? all.filter((pkg) => {
+        const text = [pkg.name, pkg.description, ...(pkg.items || []).map((it) => it.product?.name || "")].join(" ").toLowerCase();
+        return text.includes(q);
+      })
+    : all;
+  grid.innerHTML = shown.length
+    ? shown.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee, true)).join("")
+    : `<div class="empty-state" style="grid-column:1/-1;">No packages match “${esc(q)}”.</div>`;
+}
+
 
 let storefrontViewMode = "grid";
 function switchStorefrontView(mode) {
@@ -10856,32 +11089,31 @@ function storefrontTableHtml(list) {
   </table>`;
 }
 
-function packageCardHtml(pkg, vendorDeliveryFee) {
+function packageCardHtml(pkg, vendorDeliveryFee, compact = false) {
   const photos = Array.isArray(pkg.photos) ? pkg.photos.filter(Boolean) : [];
-  const galleryId = `pkgGallery-${pkg.id}`;
+  const galleryId = `pkgGallery-${pkg.id}-${Math.random().toString(36).slice(2,7)}`;
   const mainPhoto = photos[0] || "";
   const galleryHtml = mainPhoto
-    ? `<div class="package-gallery" id="${galleryId}">
-        <img class="package-photo-main" src="${esc(mainPhoto)}" alt="${esc(pkg.name)}" loading="lazy" onclick="openPackageImageLightbox('${esc(mainPhoto)}',event)" />
-        ${photos.length > 1 ? `<div class="package-photo-strip">${photos.map((u,i) => `<button type="button" class="package-photo-thumb" onclick="setPackageCardPhoto('${galleryId}',${i},event)" aria-label="View package photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" /></button>`).join("")}</div>` : ""}
+    ? `<div class="package-gallery" id="${galleryId}" onclick="event.stopPropagation();">
+        <img class="package-photo-main" src="${esc(mainPhoto)}" alt="${esc(pkg.name)}" loading="lazy" decoding="async" onclick="openPackageImageLightbox('${esc(mainPhoto)}',event)" />
+        ${photos.length > 1 ? `<div class="package-photo-strip">${photos.map((u,i) => `<button type="button" class="package-photo-thumb" onclick="setPackageCardPhoto('${galleryId}',${i},event)" aria-label="View package photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
         ${photos.length > 1 ? `<div class="package-photo-count"><i class="fa-solid fa-images"></i> ${photos.length} photos</div>` : ""}
       </div>`
-    : `<div class="package-gallery-placeholder"><i class="fa-solid fa-box-open"></i>&nbsp; No package photo</div>`;
-  return `<div class="card">
+    : `<div class="package-gallery-placeholder" onclick="event.stopPropagation();"><i class="fa-solid fa-box-open"></i>&nbsp; No package photo</div>`;
+  const itemsText = (pkg.items || []).map((it) => `${it.quantity}× ${esc(it.product?.name || "")}`).join(", ") || "No items listed";
+  const vendorName = pkg.vendor?.business_name || "Vendor";
+  return `<div class="card package-listing-card" onclick="navigate('packageDetail',{packageId:'${pkg.id}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('packageDetail',{packageId:'${pkg.id}'})}">
     ${galleryHtml}
-    <div class="flex" style="justify-content:space-between;margin-top:.75rem;"><strong>${esc(pkg.name)}</strong><span class="badge">${naira(pkg.price)}</span></div>
-    ${pkg.description ? `<p class="muted" style="margin:0.3rem 0;">${esc(pkg.description)}</p>` : ""}
-    <p class="muted" style="font-size:0.85rem;"><i class="fa-solid fa-box-open"></i> Includes: ${(pkg.items || []).map((it) => `${it.quantity}× ${esc(it.product?.name || "")}`).join(", ")}</p>
-    ${profile?.role === "admin"
-      ? `<p class="muted"><i class="fa-solid fa-circle-info"></i> Admin accounts can't make purchases on Levromart.</p>`
-      : `<button class="btn btn-sm" onclick="togglePackageBuy('${pkg.id}')">Buy this package</button>
-    <div id="pkgBuyWrap-${pkg.id}" class="hidden" style="margin-top:0.6rem;">
-      ${deliveryFieldsHtml("pkg" + pkg.id, vendorDeliveryFee)}
-      <button class="btn btn-sm" style="margin-top:0.4rem;" onclick="buyPackage('${pkg.id}')">Confirm purchase</button>
-      <p id="pkgBuyError-${pkg.id}" class="error-text hidden"></p>
-    </div>`}
+    <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.55rem;margin-top:.75rem;"><strong>${esc(pkg.name)}</strong><span class="badge">${naira(pkg.price)}</span></div>
+    ${pkg.description ? `<p class="muted" style="margin:0.3rem 0;display:-webkit-box;-webkit-line-clamp:${compact ? 2 : 3};-webkit-box-orient:vertical;overflow:hidden;">${esc(pkg.description)}</p>` : ""}
+    <p class="muted" style="font-size:0.85rem;margin:.45rem 0;"><i class="fa-solid fa-box-open"></i> Includes: ${itemsText}</p>
+    <div class="flex package-card-actions" style="justify-content:space-between;">
+      <span class="muted" style="font-size:.78rem;"><i class="fa-solid fa-store"></i> ${esc(vendorName)}</span>
+      ${profile?.role === "admin" ? `<span class="badge">Admin</span>` : `<button class="btn btn-sm" onclick="event.stopPropagation();navigate('packageDetail',{packageId:'${pkg.id}'})"><i class="fa-solid fa-arrow-right"></i> View package</button>`}
+    </div>
   </div>`;
 }
+
 function setPackageCardPhoto(galleryId, index, event) {
   event?.stopPropagation?.();
   const gallery = byId(galleryId);
@@ -14266,10 +14498,11 @@ function renderTerms() {
   return `<div class="legal-page">
     <h2>Terms of Service</h2>
     <p class="muted">Last updated: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
-    <p>Levromart is an online marketplace that connects buyers with independent vendors across Lagos, including healthcare equipment, food, electronics, and other goods and services, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
+    <p>Levromart is an online marketplace that connects buyers with independent vendors across Lagos, including healthcare equipment, food, electronics, packages/bundles, and other goods and services, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
 
     <h3>1. What Levromart is (and isn't)</h3>
-    <p>Levromart provides the platform, payment processing, and vendor verification. We are not the seller or renter of record. Every listing belongs to an independent vendor, who is responsible for the condition, safety, and accuracy of their goods, services, and descriptions.</p>
+    <p>Levromart is a marketplace and transaction-facilitation platform. We provide the technology, vendor onboarding/verification, payment and order records, messaging, and dispute process. We are not the seller or renter of record for a vendor's listing. Every product, service, or package is supplied by the independent vendor shown on the listing, and that vendor is responsible for the legality, authenticity, condition, safety, availability, accuracy, and fulfilment of what they offer.</p>
+    <p>Vendor verification means that Levromart has completed the verification checks required for that account; it is not a guarantee that every future transaction or listing by that vendor will be problem-free.</p>
 
     <h3>2. Accounts</h3>
     <p>You must provide accurate information when registering. A phone number and password are required; an email address is optional. You're responsible for keeping your password secure and for all activity under your account. Vendor accounts additionally require identity/business verification before their storefront goes live.</p>
@@ -14283,8 +14516,10 @@ function renderTerms() {
       <li>Some vendors accept offline payment (cash/transfer) on handover. Levromart still tracks commission owed on these orders.</li>
     </ul>
 
-    <h3>4. Cancellations &amp; disputes</h3>
-    <p>See our <a href="#" onclick="navigate('refundPolicy');return false;">Refund &amp; Cancellation Policy</a> for cancellation windows. If something goes wrong with an order, either party can raise a dispute from the order page; Levromart admins review and resolve disputes in good faith, but are not a court of law.</p>
+    <h3>4. Cancellations, scams &amp; disputes</h3>
+    <p>See our <a href="#" onclick="navigate('refundPolicy');return false;">Refund &amp; Cancellation Policy</a> for cancellation windows. If a buyer believes they have been scammed, received a counterfeit or materially misrepresented item, paid for an order that was not fulfilled, or otherwise suffered a transaction problem, they should report it through the order's dispute process as soon as possible and provide payment records, messages, photos, delivery/handover evidence, and any other relevant evidence.</p>
+    <p>The vendor is the primary party responsible for the goods, services, package contents, representations, and fulfilment of the transaction. Levromart may pause the vendor, restrict the account, preserve relevant records, investigate the complaint, and direct a refund or other remedy where the platform's policies and the available evidence support it. Levromart may also cooperate with lawful requests from regulators or law-enforcement authorities.</p>
+    <p>Nothing in these terms removes any right or remedy that cannot lawfully be excluded or limited under Nigerian law.</p>
 
     <h3>5. Prohibited use</h3>
     <p>No listing or sale of counterfeit, unsafe, expired, stolen, or unlicensed goods, including medical equipment that requires regulatory approval, food that doesn't meet basic safety standards, or any item Nigerian law restricts the sale of. No harassment of other users. No attempting to circumvent Levromart payments to avoid commission. This undermines the buyer protections (verified vendors, dispute resolution, payment records) that come with paying through the platform.</p>
@@ -14293,7 +14528,8 @@ function renderTerms() {
     <p>Levromart may pause or suspend a vendor's storefront or a user's account for violations of these terms, fraud, or repeated disputes, with notice where practical.</p>
 
     <h3>7. Liability</h3>
-    <p>Levromart facilitates transactions between independent parties and is not liable for the performance, safety, or fitness of any item listed by a vendor. Always inspect goods before accepting them, and consult a licensed healthcare provider for clinical use questions about medical equipment.</p>
+    <p>To the extent permitted by law, Levromart is not responsible for a vendor's independent acts, omissions, representations, goods, services, package contents, or fulfilment. However, Levromart remains responsible for obligations that the law places on Levromart itself, including obligations arising from services that Levromart directly provides. Any limitation of liability in these terms applies only to the extent it is lawful and was properly brought to the user's attention.</p>
+    <p>Nothing here prevents a buyer from using the dispute process, seeking a refund where the applicable policy allows it, or exercising rights available under Nigerian consumer-protection or other applicable law. Always inspect goods before accepting them, and consult a licensed healthcare provider for clinical use questions about medical equipment.</p>
 
     <h3>8. Contact</h3>
     <p>Questions about these terms can be raised through your account, or with a Levromart admin via a support request.</p>
@@ -14310,12 +14546,12 @@ function renderPrivacy() {
     <ul>
       <li><strong>Account data:</strong> name, email, phone, city, and (for vendors) business details and verification documents.</li>
       <li><strong>Order data:</strong> what you bought/rented, delivery address, order status, and payment status (not your card number; that's handled entirely by Paystack).</li>
-      <li><strong>Usage data:</strong> product views, wishlist saves, and searches, used to show relevant listings.</li>
-      <li><strong>Photos:</strong> profile pictures and vendor product photos you choose to upload.</li>
+      <li><strong>Usage data:</strong> product/package views, wishlist saves, searches, and interactions, used to improve search relevance and show relevant listings or package recommendations.</li>
+      <li><strong>Photos:</strong> profile pictures, vendor product photos, and package/gallery photos you choose to upload.</li>
     </ul>
 
     <h3>2. How we use it</h3>
-    <p>To run the marketplace: process orders and payments, verify vendors, show buyers and vendors each other's contact details once an order is placed, send order/notification updates, and improve search relevance. We do not sell your personal data to third parties.</p>
+    <p>To run the marketplace: process orders and payments, verify vendors, show buyers and vendors each other's contact details once an order is placed, send order/notification updates, improve search relevance, and make marketplace/package recommendations that are relevant to your activity. We do not sell your personal data to third parties.</p>
 
     <h3>3. Who it's shared with</h3>
     <ul>
@@ -14666,7 +14902,7 @@ document.addEventListener("click", (e) => {
 // tolerates those slips.
 const AI_NAV_TAG_RE = /`?\[\[NAV:([^\]]*)\]\]`?/;
 const AI_NAV_ALLOWED_VIEWS = new Set([
-  "home", "vendors", "storefront", "productDetail", "wishlist", "cart", "requestEquipment", "buyerOrders", "messages", "settings",
+  "home", "vendors", "storefront", "productDetail", "packageDetail", "wishlist", "cart", "requestEquipment", "buyerOrders", "messages", "settings",
   "vendorDashboard", "vendorProducts", "vendorOrders", "vendorEditProfile", "vendorRequests",
 ]);
 function parseAiNavTag(content) {
@@ -15904,6 +16140,12 @@ window.addEventListener("popstate", (e) => {
     const vendorId = urlParams.get("storefront");
     history.replaceState({ view: "storefront", params: { vendorId } }, "", location.pathname + "?storefront=" + encodeURIComponent(vendorId));
     await navigate("storefront", { vendorId }, false);
+    return;
+  }
+  if (urlParams.get("package")) {
+    const packageId = urlParams.get("package");
+    history.replaceState({ view: "packageDetail", params: { packageId } }, "", location.pathname + "?package=" + encodeURIComponent(packageId));
+    await navigate("packageDetail", { packageId }, false);
     return;
   }
   if (urlParams.get("share")) {
