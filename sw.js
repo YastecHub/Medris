@@ -1,110 +1,143 @@
-const CACHE = "levromart-v4";
-const APP_SHELL = ["/", "/index.html", "/manifest.json"];
+const CACHE = 'levromart-shell-v3';
+const RUNTIME = 'levromart-runtime-v3';
+const OFFLINE_FALLBACK = '/';
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).catch(() => {})
-  );
-  self.skipWaiting();
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+
+    try {
+      await cache.addAll([
+        OFFLINE_FALLBACK,
+        '/manifest.json',
+        '/apple-touch-icon.png'
+      ]);
+    } catch (e) {}
+
+    self.skipWaiting();
+  })());
 });
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE)
-          .map((key) => caches.delete(key))
-      )
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+
+    await Promise.all(
+      keys
+        .filter(k => ![CACHE, RUNTIME].includes(k))
+        .map(k => caches.delete(k))
+    );
+
+    await self.clients.claim();
+  })());
+});
+
+function isImageRequest(request) {
+  return (
+    request.destination === 'image' ||
+    /\.(?:png|jpe?g|webp|gif|svg|ico)(?:\?|$)/i.test(
+      new URL(request.url).pathname
     )
   );
-  self.clients.claim();
-});
+}
 
-self.addEventListener("fetch", (event) => {
+self.addEventListener('fetch', event => {
   const request = event.request;
+
+  if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
 
-  if (
-    request.method !== "GET" ||
-    url.origin !== self.location.origin ||
-    url.pathname.startsWith("/api/")
-  ) {
+  /*
+   * Navigation requests
+   *
+   * Online:
+   *   Fetch the newest version and update the cache.
+   *
+   * Offline:
+   *   Use the cached page instead of failing.
+   */
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          const fresh = await fetch(request);
+
+          const cache = await caches.open(CACHE);
+
+          cache
+            .put(request, fresh.clone())
+            .catch(() => {});
+
+          return fresh;
+        } catch (e) {
+          return (
+            (await caches.match(request)) ||
+            (await caches.match(OFFLINE_FALLBACK)) ||
+            new Response(
+              'Levromart is offline.',
+              {
+                status: 503,
+                headers: {
+                  'Content-Type': 'text/plain'
+                }
+              }
+            )
+          );
+        }
+      })()
+    );
+
     return;
   }
 
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response && response.ok) {
-          const copy = response.clone();
+  /*
+   * Runtime resources
+   *
+   * Cache images and application resources as they are used.
+   * This allows previously loaded marketplace content to remain
+   * available when the user temporarily loses internet access.
+   */
+  if (
+    isImageRequest(request) ||
+    url.origin === location.origin ||
+    url.hostname.includes('cdnjs.cloudflare.com') ||
+    url.hostname.includes('fonts.googleapis.com') ||
+    url.hostname.includes('fonts.gstatic.com') ||
+    url.hostname.includes('unpkg.com')
+  ) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(RUNTIME);
 
-          caches
-            .open(CACHE)
-            .then((cache) => cache.put(request, copy))
-            .catch(() => {});
-        }
+        const cached = await cache.match(request);
 
-        return response;
-      })
-      .catch(() =>
-        caches
-          .match(request)
-          .then(
-            (cached) =>
-              cached || caches.match("/index.html")
-          )
-      )
-  );
-});
+        const network = fetch(request)
+          .then(response => {
+            if (
+              response &&
+              (response.ok || response.type === 'opaque')
+            ) {
+              cache
+                .put(request, response.clone())
+                .catch(() => {});
+            }
 
-self.addEventListener("push", (event) => {
-  let data = {};
+            return response;
+          })
+          .catch(() => null);
 
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch (_) {}
-
-  const title = data.title || "Levromart";
-
-  const options = {
-    body: data.body || "",
-    icon: "/icon-192.png",
-    badge: "/icon-badge.png",
-    tag: data.tag || "levromart-notification",
-    renotify: true,
-    data: {
-      url: data.url || "/"
-    }
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
-});
-
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-
-  const url = event.notification.data?.url || "/";
-
-  event.waitUntil(
-    clients
-      .matchAll({
-        type: "window",
-        includeUncontrolled: true
-      })
-      .then((windows) => {
-        const existing = windows.find(
-          (client) => "focus" in client
+        /*
+         * Cache-first means already downloaded resources appear
+         * immediately. Network is still attempted in the background
+         * when there is no cached copy.
+         */
+        return (
+          cached ||
+          (await network) ||
+          new Response('', { status: 504 })
         );
-
-        if (existing) {
-          existing.navigate(url);
-          return existing.focus();
-        }
-
-        return clients.openWindow(url);
-      })
-  );
+      })()
+    );
+  }
 });
