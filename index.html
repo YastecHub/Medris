@@ -16971,20 +16971,20 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
     if (nav) {
       // Auto-navigates rather than waiting for a tap - a beat to actually
       // read the reply first, then Levi points the way and takes you there.
-      const navHint = document.createElement("div");
+      const navHint = document.createElement("a");
       navHint.className = "ai-chat-nav-hint";
+      navHint.href = "#";
       navHint.innerHTML = `<i class="fa-solid fa-arrow-right"></i> Taking you there…`;
       navHint.title = "Open this destination";
-      navHint.setAttribute("role","button");
-      navHint.tabIndex = 0;
       let navTriggered = false;
-      const triggerNav = () => {
+      const triggerNav = (ev) => {
+        ev?.preventDefault?.();
+        ev?.stopPropagation?.();
         if (navTriggered) return;
         navTriggered = true;
         goToAiChatNav(nav);
       };
       navHint.addEventListener("click", triggerNav);
-      navHint.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); triggerNav(); } });
       el.appendChild(navHint);
       // Begin navigation shortly after the response is painted. The hint
       // remains an immediate manual fallback if the user taps it first.
@@ -17028,10 +17028,15 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
         if (addResult.failed) parts.push(`${addResult.failed} couldn't be added`);
         if (removeResult.removed) parts.push(`${removeResult.removed} removed`);
         navHint.innerHTML = `<i class="fa-solid fa-arrow-right"></i> ${parts.join(", ") || "Cart updated"}`;
-        // Cart actions from Levi keep the buyer on the current page. Close
-        // Levi so the updated cart badge is visible, but do not navigate away.
+        // The cart is the source of truth after an AI cart action. Refresh it
+        // immediately so the buyer sees the newly added/removed rows without
+        // having to tap the cart icon again. This is a same-view refresh, so
+        // any existing cart navigation remains stable while the data is re-read.
         closeLeviAfterCartAction();
         updateCartFab();
+        if (addResult.added || removeResult.removed) {
+          Promise.resolve(navigate("cart", {}, false)).catch(() => {});
+        }
       });
     }
   }
@@ -17914,6 +17919,42 @@ async function resolveLeviProduct(target) {
     .select("id,name,listing_type,sale_price,rental_rate,quantity_available,status,is_service,vendor:vendors(business_name)")
     .eq("status", "active").ilike("name", `%${first}%`).limit(8);
   if (!fallbackError && fallback?.length) return { product: fallback[0], matches: fallback };
+
+  // Last-resort typo tolerance for small spelling mistakes (e.g. "shooe"
+  // for "shoe"). We compare against active marketplace names only and keep
+  // the closest high-confidence match. This is deliberately conservative so
+  // a wildly different word does not silently turn into the wrong product.
+  try {
+    const { data: candidates } = await sb.from("products")
+      .select("id,name,listing_type,sale_price,rental_rate,quantity_available,status,is_service,vendor:vendors(business_name)")
+      .eq("status", "active").limit(600);
+    const clean = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+    const editDistance = (a,b) => {
+      const aa = clean(a), bb = clean(b);
+      if (!aa || !bb) return 999;
+      const prev = Array.from({length:bb.length+1}, (_,i)=>i);
+      for (let i=1;i<=aa.length;i++) {
+        const cur=[i];
+        for (let j=1;j<=bb.length;j++) cur[j] = Math.min(cur[j-1]+1, prev[j]+1, prev[j-1]+(aa[i-1]===bb[j-1]?0:1));
+        for (let j=0;j<cur.length;j++) prev[j]=cur[j];
+      }
+      return prev[bb.length];
+    };
+    const scored = (candidates || []).map(p => {
+      const name = clean(p.name);
+      const direct = name === clean(q);
+      const tokens = clean(q).split(' ').filter(Boolean);
+      const nameTokens = name.split(' ').filter(Boolean);
+      const tokenHit = tokens.length && tokens.every(t => nameTokens.some(nt => nt.includes(t) || editDistance(t,nt) <= (t.length >= 5 ? 2 : 1)));
+      return { p, direct, tokenHit, d: editDistance(q, name) };
+    }).sort((a,b) => (b.direct-a.direct) || (b.tokenHit-a.tokenHit) || (a.d-b.d));
+    const best = scored[0];
+    const qLen = clean(q).length;
+    const maxDistance = qLen >= 7 ? 2 : qLen >= 4 ? 1 : 0;
+    if (best && (best.direct || best.tokenHit || best.d <= maxDistance)) {
+      return { product: best.p, matches: [best.p], exact: !!best.direct, typoRecovered: !best.direct };
+    }
+  } catch (_) {}
   return { product: null, matches: [] };
 }
 
@@ -18085,13 +18126,25 @@ async function resolveLeviLocalAction(text) {
                                    : leviExtractCartTarget(q, mode === "remove" ? "remove" : "add");
   target = target.replace(/\s{2,}/g, " ").trim();
 
-  const qtyMatch = addIntent ? q.match(/\b(\d+)\s*(?:x|of)?\b/) : null;
-  const quantity = Math.max(1, Math.min(20, qtyMatch ? parseInt(qtyMatch[1], 10) : 1));
+  const numberWords = {
+    zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10,
+    eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20
+  };
+  const parseQuantityPrefix = (segment) => {
+    const raw = String(segment || "").trim();
+    const numeric = raw.match(/^(\d+)\s*(?:x|of)?\s*(.+)$/i);
+    if (numeric) return { quantity: Math.max(1, Math.min(20, parseInt(numeric[1],10))), part: numeric[2].trim() };
+    const words = raw.match(/^(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\s+(?:x|of)?\s*(.+)$/i);
+    if (words) return { quantity: numberWords[words[1].toLowerCase()] ?? 1, part: words[2].trim() };
+    return { quantity: 1, part: raw };
+  };
 
-  // Support "shoe and shirt", comma-separated requests, and natural lists.
-  const parts = (mode !== "remove" && /\s+and\s+|,/.test(target))
+  // Support per-item quantities such as "4 shoes and 1 sleeve". Quantities
+  // are attached to their own segment instead of being reused for every item.
+  const rawParts = (mode !== "remove" && /\s+and\s+|,/.test(target))
     ? target.split(/\s+and\s+|,/).map(s => s.trim()).filter(Boolean)
     : [target];
+  const parts = rawParts.map(parseQuantityPrefix);
 
   const results = [];
 
@@ -18104,7 +18157,8 @@ async function resolveLeviLocalAction(text) {
       .eq("buyer_id", session.user.id);
     if (!cartErr) {
       const cart = cartRows || [];
-      for (const part of parts.slice(0, 5)) {
+      for (const partInfo of parts.slice(0, 5)) {
+        const part = partInfo.part;
         const needle = leviNormaliseText(part);
         const matches = cart.filter((row) => {
           const name = leviNormaliseText(row.product?.name || "");
@@ -18136,7 +18190,9 @@ async function resolveLeviLocalAction(text) {
     }
   }
 
-  for (const part of parts.slice(0, 5)) {
+  for (const partInfo of parts.slice(0, 5)) {
+    const part = partInfo.part;
+    const requestedQuantity = mode === "add" ? partInfo.quantity : 1;
     const resolved = await resolveLeviProduct(part);
     if (!resolved.product) { results.push({ part, error: "not-found" }); continue; }
 
@@ -18147,8 +18203,8 @@ async function resolveLeviLocalAction(text) {
     const product = resolved.product;
     if (mode === "add") {
       if (Number(product.quantity_available ?? 1) < 1) { results.push({ product, error: "out-of-stock" }); continue; }
-      const error = await addCartWithFallback(product.id, quantity);
-      results.push({ product, error: error ? "failed" : null });
+      const error = await addCartWithFallback(product.id, requestedQuantity);
+      results.push({ product, quantity: requestedQuantity, error: error ? "failed" : null });
     } else if (mode === "remove") {
       const { error } = await sb.from("cart_items").delete()
         .eq("buyer_id", session.user.id).eq("product_id", product.id);
@@ -18176,13 +18232,17 @@ async function resolveLeviLocalAction(text) {
 
   if (mode === "add") {
     const lines = [];
-    if (ok.length) lines.push(`Done - I added ${ok.map(r => `${quantity > 1 ? `${quantity} × ` : ""}${r.product.name}`).join(", ")} to your cart.`);
+    if (ok.length) lines.push(`Done - I added ${ok.map(r => `${r.quantity > 1 ? `${r.quantity} × ` : ""}${r.product.name}`).join(", ")} to your cart.`);
     if (empty.length) lines.push(`${empty.map(r => r.product.name).join(", ")} ${empty.length === 1 ? "is" : "are"} out of stock.`);
     if (failed.length) lines.push(`I couldn't add ${failed.map(r => r.product.name).join(", ")} right now.`);
     if (missing.length) lines.push(`I couldn't find ${missing.map(r => `“${r.part}”`).join(", ")}.`);
     if (ok.length) {
       closeLeviAfterCartAction();
       updateCartFab();
+      // Show the fresh cart immediately after a successful Levi add. The
+      // navigation performs a new cart query, so newly-added quantities are
+      // visible without requiring the buyer to tap the cart icon again.
+      await navigate("cart", {}, false);
     }
     return { handled: true, reply: lines.join(" ") || "Tell me the product name, or open the product and say “add this to my cart”." };
   }
@@ -18190,6 +18250,7 @@ async function resolveLeviLocalAction(text) {
     if (ok.length) {
       closeLeviAfterCartAction();
       updateCartFab();
+      await navigate("cart", {}, false);
     }
     return { handled: true, reply: ok.length ? `Done - I removed ${ok.map(r => r.product.name).join(", ")} from your cart.` : "I couldn't find that item in your cart." };
   }
