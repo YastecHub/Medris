@@ -8697,6 +8697,14 @@ function navigationShellHtml(view) {
   return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating…</div></div>`;
 }
 
+function isOwnVendorId(vendorId) {
+  return !!(session?.user?.id && vendor?.id && String(vendor.id) === String(vendorId));
+}
+function blockOwnVendorPurchase(vendorId, verb = "buy") {
+  if (!isOwnVendorId(vendorId)) return false;
+  showToast(`You can't ${verb} from your own shop.`, "error");
+  return true;
+}
 function navigationLoadingHtml(view) {
   const label = view === "messages" ? "Opening messages…" : view === "cart" ? "Opening cart…" : "Loading…";
   return `<div class="page-loading-shell" aria-live="polite"><span class="page-loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i></span><span>${label}</span></div>`;
@@ -9007,52 +9015,6 @@ let currentSectorId = null;
 let currentHomeCategoryId = null;
 let sectors = [];
 
-function homeQueryTimeout(promise, label, ms = 2500) {
-  const timeout = new Promise((resolve) => setTimeout(() => {
-    resolve({ data: null, error: new Error(`${label} request timed out`) });
-  }, ms));
-  return Promise.race([
-    Promise.resolve(promise).catch((error) => ({ data: null, error })),
-    timeout
-  ]).then((result) => {
-    if (result?.error) console.warn(`[Levromart] Home ${label}:`, result.error);
-    return result || { data: null, error: new Error(`${label} returned no result`) };
-  });
-}
-
-function homeFallbackHtml(message = "Levromart is ready. Listings will appear as soon as the marketplace connection is available.") {
-  return `<div class="hero">
-    <div class="hero-aurora"></div>
-    <div class="hero-content">
-      <div class="hero-search flex">
-        <i class="fa-solid fa-magnifying-glass hero-search-icon"></i>
-        <input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onfocus="if(this.value.trim())fetchSearchSuggestions(this.value.trim())" onblur="setTimeout(hideSearchSuggestions,150)" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" />
-        <div id="heroSearchSuggest" class="search-suggest hidden"></div>
-      </div>
-      <div class="hero-quick-actions">
-        <button class="quick-action" onclick="scrollToBrowse('rent')"><span class="quick-action-icon"><i class='fa-solid fa-rotate'></i></span><span>Rent</span></button>
-        <button class="quick-action" onclick="scrollToBrowse('sale')"><span class="quick-action-icon"><i class='fa-solid fa-cart-shopping'></i></span><span>Buy</span></button>
-        <button class="quick-action outline" onclick="requireLoginThen('requestEquipment')"><span class="quick-action-icon"><i class='fa-solid fa-hand'></i></span><span>Request</span></button>
-      </div>
-    </div>
-  </div>
-  <div class="empty-state" style="margin-top:1rem;">
-    <i class="fa-solid fa-store" style="display:block;font-size:1.6rem;margin-bottom:.55rem;"></i>
-    ${esc(message)}
-  </div>`;
-}
-
-/*
- * HOME FIRST-PAINT GUARD
- *
- * Do not make navigation wait for Supabase. The old implementation painted a
- * "Connecting to the marketplace" shell and then awaited several network
- * requests before returning the actual Home HTML. On mobile Safari that could
- * leave the shell visible indefinitely when a request/connection got stuck.
- *
- * renderHome() is intentionally synchronous now: it returns a usable Home
- * surface immediately and hydrates the real catalogue in the background.
- */
 async function renderHome() {
   const cachedHome = getOfflineHomeCache();
   if (browserLooksOffline()) {
@@ -9185,6 +9147,208 @@ async function renderHome() {
   return html;
 }
 
+function paintHomeFromLocalCatalog(showOfflineNotice = false) {
+  const cache = getOfflineHomeCache();
+  if (!cache) return false;
+  const app = byId("app");
+  const rendered = renderOfflineHomeFromCache(cache, { showOfflineNotice });
+  if (!rendered || !app) return false;
+  app.innerHTML = rendered;
+  syncLeviFabVisibility();
+  updateHeaderNavActive();
+  clearAutoScrollTimers();
+  document.querySelectorAll("#app .cat-row, #app .hscroll").forEach(el => setupAutoScroll(el));
+  window.scrollTo({ top: 0, behavior: "auto" });
+  return true;
+}
+
+async function refreshHomeCategorySelection() {
+  if (browserLooksOffline()) return;
+  const categoryId = currentHomeCategoryId;
+  const sectorId = currentSectorId;
+  try {
+    let productQuery = sb.from("products")
+      .select(PRODUCT_LIST_SELECT + ",view_count,created_at")
+      .eq("status", "active")
+      .eq("vendor.verification_status", "verified")
+      .eq("vendor.is_active", true)
+      .order("view_count", { ascending: false })
+      .limit(40);
+    if (categoryId) productQuery = productQuery.eq("category_id", categoryId);
+    else if (sectorId) productQuery = productQuery.eq("category.sector_id", sectorId);
+
+    const { data: freshProducts } = await productQuery;
+    if (categoryId !== currentHomeCategoryId || sectorId !== currentSectorId) return;
+
+    const cacheNow = getOfflineHomeCache() || { categories: window.__categories || [], sectors, trending: [], browseProducts: [], topVendors: [], recentProducts: [], packages: [] };
+    const merged = new Map((cacheNow.browseProducts || []).map(p => [String(p.id), p]));
+    (freshProducts || []).forEach(p => merged.set(String(p.id), p));
+    const nextBrowse = [...merged.values()];
+    const nextTrending = (freshProducts || []).slice().sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0)).slice(0, 20);
+
+    // Keep all previously cached packages, but make sure packages containing
+    // products in the selected category/sector can be surfaced immediately.
+    let nextPackages = cacheNow.packages || [];
+    if (categoryId || sectorId) {
+      const packageRows = await sb.from("vendor_packages")
+        .select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id, business_name, logo_url, delivery_fee, verification_status, is_active), items:package_items(quantity, product:products(id, name, category_id, photos, category:categories(name, sector_id)))")
+        .eq("status", "active")
+        .eq("vendor.verification_status", "verified")
+        .eq("vendor.is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(40);
+      if (packageRows.data) nextPackages = packageRows.data;
+    }
+
+    writeOfflineHomeCache({ ...cacheNow, browseProducts: nextBrowse, trending: nextTrending, packages: nextPackages });
+
+    // Repaint the visible rails from the fresh result without ever showing a
+    // loading screen. filterHomeProducts() will fill the lower browse grid.
+    paintHomeFromLocalCatalog(false);
+  } catch (e) {
+    // The cached category view is already usable; a failed refresh must not
+    // interrupt browsing.
+  }
+}
+
+function switchSector(sectorId) {
+  currentSectorId = sectorId;
+  currentHomeCategoryId = null;
+  // Category/sector browsing is cache-first both online and offline. The
+  // selected rail changes immediately; online data is refreshed silently.
+  const painted = paintHomeFromLocalCatalog(false);
+  if (!painted) navigate("home", {}, false);
+  else refreshHomeCategorySelection();
+}
+
+function scrollToBrowse(listingType) {
+  const sel = byId("filterListing");
+  if (sel) { sel.value = listingType; filterHomeProducts(); }
+  byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function filterByCategory(catId) {
+  currentHomeCategoryId = catId || null;
+  const painted = paintHomeFromLocalCatalog(false);
+  if (!painted) {
+    const sel = byId("filterCategory");
+    if (sel) sel.value = catId || "";
+    byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  refreshHomeCategorySelection();
+}
+let searchSuggestTimer = null;
+function syncHeroSearch() {
+  const val = byId("heroSearch").value;
+  const target = byId("searchInput");
+  if (target) { target.value = val; filterHomeProducts(); }
+  // No auto-scroll here - the suggestions dropdown already shows matches
+  // right under the search bar as you type; jumping the whole page down on
+  // every keystroke was disorienting. Only Enter (submitHeroSearch) jumps
+  // to the full results, as a deliberate action.
+
+  clearTimeout(searchSuggestTimer);
+  const term = val.trim();
+  if (!term || browserLooksOffline()) { hideSearchSuggestions(); return; }
+  searchSuggestTimer = setTimeout(() => fetchSearchSuggestions(term), 220);
+}
+function submitHeroSearch() {
+  hideSearchSuggestions();
+  byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function fetchSearchSuggestions(term) {
+  const box = byId("heroSearchSuggest");
+  if (!box) return;
+  // Search products, vendors and packages together so the hero search is a
+  // real marketplace search rather than a product-only shortcut.
+  const [{ data: idRows }, { data: vends }, { data: packageRows }] = await Promise.all([
+    sb.rpc("search_product_ids", { p_query: term }),
+    sb.from("vendors").select("id,business_name").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(3),
+    sb.from("vendor_packages").select("id,name,price,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(4),
+  ]);
+  // still typing? don't flash a stale list
+  if (byId("heroSearch")?.value.trim() !== term) return;
+
+  const topIds = (idRows || []).slice(0, 5).map((r) => r.id);
+  let prods = [];
+  if (topIds.length) {
+    const { data } = await sb.from("products").select("id,name,vendor:vendors!inner(business_name,verification_status)")
+      .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).in("id", topIds);
+    prods = (data || []).sort((a, b) => topIds.indexOf(a.id) - topIds.indexOf(b.id));
+  }
+  if (byId("heroSearch")?.value.trim() !== term) return;
+
+  const items = [
+    ...(prods || []).map((p) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('productDetail',{productId:'${p.id}'})"><i class='fa-solid fa-magnifying-glass'></i><span class="ss-name">${esc(p.name)}</span><span class="ss-meta">${esc(p.vendor?.business_name || "")}</span></div>`),
+    ...(packageRows || []).map((pkg) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('packageDetail',{packageId:'${pkg.id}'})"><i class='fa-solid fa-box-open'></i><span class="ss-name">${esc(pkg.name)}</span><span class="ss-meta">Package · ${naira(pkg.price)}</span></div>`),
+    ...(vends || []).map((v) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('storefront',{vendorId:'${v.id}'})"><i class='fa-solid fa-store'></i><span class="ss-name">${esc(v.business_name)}</span><span class="ss-meta">Vendor</span></div>`),
+  ];
+  if (!items.length) { hideSearchSuggestions(); return; }
+  box.innerHTML = items.join("");
+  box.classList.remove("hidden");
+}
+function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hidden"); }
+
+const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, vendor:vendors!inner(id, business_name, verification_status, logo_url), category:categories(sector_id)";
+
+// Used whenever a search/filter comes up empty - instead of a dead end,
+// show what IS available so the buyer isn't stuck looking at nothing.
+async function fetchFallbackProducts(excludeIds) {
+  if (browserLooksOffline()) {
+    const cache = getOfflineHomeCache();
+    return offlineFilterProducts(cache?.browseProducts || [], "", "", "", currentSectorId).filter(p => !excludeIds?.includes(p.id)).slice(0, 8);
+  }
+  let q = sb
+    .from("products")
+    .select(PRODUCT_LIST_SELECT)
+    .eq("status", "active")
+    .eq("vendor.verification_status", "verified")
+    .eq("vendor.is_active", true);
+  if (currentSectorId) q = q.eq("category.sector_id", currentSectorId);
+  if (excludeIds?.length) q = q.not("id", "in", `(${excludeIds.join(",")})`);
+  const { data } = await q.order("created_at", { ascending: false }).limit(8);
+  return data || [];
+}
+
+function noResultsWithFallbackHtml(message, fallback) {
+  const notice = `<div class="empty-state" style="grid-column:1/-1;padding:1.5rem 1rem;">${esc(message)}</div>`;
+  if (!fallback.length) return `<div class="empty-state">No products found. Vendors, start listing!</div>`;
+  return notice + fallback.map(productCardHtml).join("");
+}
+
+let homeSearchTimer = null;
+function scheduleHomeSearch() {
+  clearTimeout(homeSearchTimer);
+  homeSearchTimer = setTimeout(() => filterHomeProducts(), 160);
+}
+
+async function searchHomePackages(term) {
+  const q = String(term || "").trim();
+  if (!q) return [];
+  if (browserLooksOffline()) {
+    const needle = q.toLowerCase();
+    const cache = getOfflineHomeCache();
+    return (cache?.packages || []).filter(pkg => `${pkg.name || ""} ${pkg.description || ""} ${(pkg.items || []).map(it => it.product?.name || "").join(" ")}`.toLowerCase().includes(needle)).slice(0, 8);
+  }
+  const [{ data: direct }, { data: itemMatches }] = await Promise.all([
+    sb.from("vendor_packages").select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id,business_name,logo_url,delivery_fee,verification_status,is_active), items:package_items(quantity, product:products(id,name,photos,category:categories(name)))")
+      .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
+      .or(`name.ilike.%${q}%,description.ilike.%${q}%`).limit(8),
+    sb.from("package_items").select("package_id, product:products!inner(name,description)").ilike("product.name", `%${q}%`).limit(30),
+  ]);
+  const ids = [...new Set([...(direct || []).map((p) => p.id), ...(itemMatches || []).map((r) => r.package_id)])].slice(0, 8);
+  if (!ids.length) return [];
+  const directById = new Map((direct || []).map((p) => [p.id, p]));
+  const missing = ids.filter((id) => !directById.has(id));
+  if (missing.length) {
+    const { data } = await sb.from("vendor_packages").select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id,business_name,logo_url,delivery_fee,verification_status,is_active), items:package_items(quantity, product:products(id,name,photos,category:categories(name)))")
+      .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).in("id", missing);
+    (data || []).forEach((p) => directById.set(p.id, p));
+  }
+  return ids.map((id) => directById.get(id)).filter(Boolean);
+}
+
 async function renderHomePackageSearch(term) {
   const wrap = byId("packageSearchResults");
   if (!wrap) return;
@@ -9216,10 +9380,6 @@ async function filterHomeProducts() {
   if (localCatalog.length) {
     const localFiltered = offlineFilterProducts(localCatalog, search, listing, catId, currentSectorId).filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
     grid.innerHTML = localFiltered.length ? localFiltered.map(productCardHtml).join("") : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
-    // The locally loaded catalogue is already authoritative enough for the
-    // first interaction. Do not immediately replace it with a slower network
-    // response unless the user actually searched and needs server ranking.
-    if (!search) return;
   }
   if (browserLooksOffline()) {
     const cache = getOfflineHomeCache();
@@ -9232,11 +9392,10 @@ async function filterHomeProducts() {
     return;
   }
 
-  try {
-    let matchingIds = null;
-    if (search) {
-      const { data: idRows } = await homeQueryTimeout(sb.rpc("search_product_ids", { p_query: search }), "product search", 2500);
-      matchingIds = (idRows || []).map((r) => r.id);
+  let matchingIds = null;
+  if (search) {
+    const { data: idRows } = await sb.rpc("search_product_ids", { p_query: search });
+    matchingIds = (idRows || []).map((r) => r.id);
     if (matchingIds.length === 0) {
       const fallback = await fetchFallbackProducts();
       grid.innerHTML = noResultsWithFallbackHtml(`No product named "${search}" yet - but here's what's available:`, fallback);
@@ -9269,19 +9428,6 @@ async function filterHomeProducts() {
   if (matchingIds) products.sort((a, b) => matchingIds.indexOf(a.id) - matchingIds.indexOf(b.id));
   const tabProducts = (products || []).filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
   grid.innerHTML = tabProducts.length ? tabProducts.map(productCardHtml).join("") : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
-  } catch (error) {
-    console.warn("[Levromart] Home browse refresh failed:", error);
-    // Keep whatever the local catalogue already rendered. Only show an
-    // explicit empty state if there was genuinely nothing local to display.
-    if (!grid.innerHTML.trim() || /Loading/.test(grid.textContent || "")) {
-      const cache = getOfflineHomeCache();
-      const fallback = offlineFilterProducts(cache?.browseProducts || [], search, listing, catId, currentSectorId)
-        .filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
-      grid.innerHTML = fallback.length
-        ? fallback.map(productCardHtml).join("")
-        : `<div class="empty-state">The marketplace is temporarily unavailable. Please try again shortly.</div>`;
-    }
-  }
 }
 
 function productCardHtml(p) {
@@ -9336,11 +9482,9 @@ function vendorCardHtml(v) {
     <strong>${esc(v.business_name)}</strong>
     <p class="muted" style="margin:0.3rem 0;">${esc(v.city || "")}</p>
     ${v.categories && v.categories.length ? `<p class="muted" style="margin:0 0 0.4rem;font-size:0.78rem;"><i class="fa-solid fa-tags"></i> ${v.categories.map(esc).join(", ")}</p>` : ""}
-    ${buyerLocation && v.lat != null && v.lng != null ? `<span class="badge" style="margin-left:0;"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>` : ""}
-    <div class="vendor-card-footer">
-      <span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>
-      ${v.avg_rating != null ? `<span class="badge ${ratingBadgeClass(v.avg_rating)}">★ ${Number(v.avg_rating).toFixed(1)}${v.review_count != null ? ` (${v.review_count})` : ""}</span>` : ""}
-    </div>
+    <span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>
+    ${v.avg_rating != null ? `<span class="badge ${ratingBadgeClass(v.avg_rating)}" style="margin-left:0.3rem;">★ ${Number(v.avg_rating).toFixed(1)}${v.review_count != null ? ` (${v.review_count})` : ""}</span>` : ""}
+    ${buyerLocation && v.lat != null && v.lng != null ? `<span class="badge" style="margin-left:0.3rem;"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>` : ""}
   </div>`;
 }
 
@@ -11903,8 +12047,7 @@ async function renderStorefront(vendorId) {
         </div>
       </div>
       <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)}</h1>
-      <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${v.whatsapp_visible && v.whatsapp_number ? `<a class="badge" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> ${esc(v.whatsapp_number)}</a>` : ""}</div>
-      <div class="storefront-verified-row"><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span></div>
+      <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>${v.whatsapp_visible && v.whatsapp_number ? `<a class="badge" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> ${esc(v.whatsapp_number)}</a>` : ""}</div>
       ${v.bio ? `<p class="storefront-bio">${esc(v.bio)}</p>` : ""}
       <div class="storefront-stats">
         <span><strong>${allProducts.length}</strong> listing${allProducts.length === 1 ? "" : "s"}</span>
@@ -11952,10 +12095,6 @@ async function renderStorefront(vendorId) {
 
   html += `<section class="storefront-products-shell" id="storefrontProductsShell">
     <div class="storefront-section-head"><h3>Products & services</h3></div>
-    <div class="catalog-type-tabs storefront-catalog-tabs" role="tablist" aria-label="Storefront products and services">
-      <button type="button" id="storefrontProductsTab" class="catalog-type-tab active" role="tab" aria-selected="true" onclick="switchStorefrontCatalogTab('products')"><i class="fa-solid fa-box"></i> Products <span id="storefrontProductsCount"></span></button>
-      <button type="button" id="storefrontServicesTab" class="catalog-type-tab" role="tab" aria-selected="false" onclick="switchStorefrontCatalogTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services <span id="storefrontServicesCount"></span></button>
-    </div>
     ${allProducts.length ? `<div class="storefront-products-toolbar"><div class="storefront-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="storefrontSearch" placeholder="Search this shop" oninput="filterStorefrontProducts()" /></div><div class="storefront-view-buttons"><button class="btn btn-sm btn-outline active" id="storefrontViewGridBtn" onclick="switchStorefrontView('grid')" title="Grid view"><i class="fa-solid fa-grip"></i></button><button class="btn btn-sm btn-outline" id="storefrontViewTableBtn" onclick="switchStorefrontView('table')" title="List view"><i class="fa-solid fa-list"></i></button></div></div>` : ""}
     <div id="storefrontGrid" class="grid">${allProducts.length ? "<p class='muted'>Loading…</p>" : '<div class="empty-state">No products listed yet.</div>'}</div>
     <div id="storefrontTable" class="hidden" style="overflow-x:auto;max-height:30rem;overflow-y:auto;"></div>
@@ -12039,6 +12178,186 @@ async function sendOffer(requestId) {
   navigate("vendorRequests");
 }
 
+function scrollToVendorReviews() {
+  const reviews = byId("vendorReviews");
+  if (!reviews) return;
+  reviews.scrollIntoView({ behavior: "smooth", block: "start" });
+  setTimeout(() => {
+    const list = byId("reviewsList");
+    if (list?.classList.contains("hidden")) toggleReviewsList();
+  }, 180);
+}
+
+function toggleStorefrontPackages() {
+  const section = byId("storefrontPackagesSection");
+  const toggle = section?.querySelector(".storefront-packages-toggle");
+  if (!section || !toggle) return;
+  const expanded = section.classList.toggle("open");
+  toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+}
+
+function toggleStorefrontPackageSearch(event) {
+  event?.stopPropagation?.();
+  const section = byId("storefrontPackagesSection");
+  if (!section) return;
+  if (!section.classList.contains("open")) toggleStorefrontPackages();
+  const row = byId("storefrontPackageSearchRow");
+  row?.classList.toggle("hidden");
+  if (!row?.classList.contains("hidden")) setTimeout(() => byId("storefrontPackageSearch")?.focus(), 0);
+}
+
+function clearStorefrontPackageSearch() {
+  const input = byId("storefrontPackageSearch");
+  if (input) input.value = "";
+  filterStorefrontPackages();
+  input?.focus();
+}
+
+function filterStorefrontPackages() {
+  const q = (byId("storefrontPackageSearch")?.value || "").trim().toLowerCase();
+  const all = window.__storefrontPackages || [];
+  const grid = byId("storefrontPackagesGrid");
+  if (!grid) return;
+  const shown = q
+    ? all.filter((pkg) => {
+        const text = [pkg.name, pkg.description, ...(pkg.items || []).map((it) => it.product?.name || "")].join(" ").toLowerCase();
+        return text.includes(q);
+      })
+    : all;
+  grid.innerHTML = shown.length
+    ? shown.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee, true)).join("")
+    : `<div class="empty-state" style="grid-column:1/-1;">No packages match “${esc(q)}”.</div>`;
+}
+
+function switchStorefrontView(mode) {
+  storefrontViewMode = mode;
+  byId("storefrontViewGridBtn")?.classList.toggle("active", mode === "grid");
+  byId("storefrontViewTableBtn")?.classList.toggle("active", mode === "table");
+  byId("storefrontGrid")?.classList.toggle("hidden", mode !== "grid");
+  byId("storefrontTable")?.classList.toggle("hidden", mode !== "table");
+  filterStorefrontProducts();
+}
+
+function switchStorefrontCatalogTab(tab) {
+  storefrontCatalogTab = tab === "services" ? "services" : "products";
+  byId("storefrontProductsTab")?.classList.toggle("active", storefrontCatalogTab === "products");
+  byId("storefrontServicesTab")?.classList.toggle("active", storefrontCatalogTab === "services");
+  window.__storefrontExpanded = false;
+  filterStorefrontProducts();
+}
+
+function filterStorefrontProducts() {
+  const q = (byId("storefrontSearch")?.value || "").trim().toLowerCase();
+  const all = window.__storefrontProducts || [];
+  const products = all.filter(p => !p.is_service);
+  const services = all.filter(p => !!p.is_service);
+  const current = storefrontCatalogTab === "services" ? services : products;
+  const filtered = q ? current.filter((p) => `${p.name || ""} ${(p.category?.name || "")}`.toLowerCase().includes(q)) : current;
+  const expanded = Boolean(window.__storefrontExpanded) || Boolean(q);
+  const visible = expanded ? filtered : filtered.slice(0, 6);
+  const gridEl = byId("storefrontGrid");
+  if (gridEl) gridEl.innerHTML = visible.length ? visible.map(productCardHtml).join("") : `<div class="empty-state">No ${storefrontCatalogTab} found${q ? ` for “${esc(q)}”` : ""}.</div>`;
+  const tableEl = byId("storefrontTable");
+  if (tableEl) tableEl.innerHTML = visible.length ? storefrontTableHtml(visible) : `<div class="empty-state">No ${storefrontCatalogTab} found.</div>`;
+  const pCount = byId("storefrontProductsCount"), sCount = byId("storefrontServicesCount");
+  if (pCount) pCount.textContent = `(${products.length})`;
+  if (sCount) sCount.textContent = `(${services.length})`;
+  const wrap = byId("storefrontViewMoreWrap");
+  if (wrap) {
+    if (!q && filtered.length > 6) wrap.innerHTML = `<button class="btn btn-outline" onclick="toggleStorefrontProducts()">${expanded ? `Show fewer ${storefrontCatalogTab}` : `View more ${storefrontCatalogTab} (${filtered.length - 6})`}</button>`;
+    else wrap.innerHTML = "";
+  }
+}
+
+function toggleStorefrontProducts() {
+  window.__storefrontExpanded = !window.__storefrontExpanded;
+  filterStorefrontProducts();
+  if (!window.__storefrontExpanded) byId("storefrontProductsShell")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function storefrontTableHtml(list) {
+  return `<table style="width:100%;border-collapse:collapse;">
+    <thead><tr>
+      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">${list.some(p => p.is_service) && list.every(p => p.is_service) ? "Service" : "Product"}</th>
+      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Category</th>
+      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Price</th>
+      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Available</th>
+    </tr></thead>
+    <tbody>${list.map((p) => `<tr style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
+      <td style="padding:0.5rem;border-bottom:1px solid var(--border);">${esc(p.name)}</td>
+      <td style="padding:0.5rem;border-bottom:1px solid var(--border);">${esc(p.category?.name || "-")}</td>
+      <td style="padding:0.5rem;border-bottom:1px solid var(--border);white-space:nowrap;">${p.is_service ? `${naira(p.sale_price)}${servicePriceSuffix(p)}` : [p.sale_price != null ? `Buy: ${naira(p.sale_price)}` : "", p.rental_rate != null ? `Rent: ${naira(p.rental_rate)}/${p.rental_rate_unit}` : ""].filter(Boolean).join(" · ")}</td>
+      <td style="padding:0.5rem;border-bottom:1px solid var(--border);">${p.is_service ? "-" : p.quantity_available}</td>
+    </tr>`).join("")}</tbody>
+  </table>`;
+}
+
+function packageCardHtml(pkg, vendorDeliveryFee, compact = false) {
+  const photos = Array.isArray(pkg.photos) ? pkg.photos.filter(Boolean) : [];
+  const galleryId = `pkgGallery-${pkg.id}-${Math.random().toString(36).slice(2,7)}`;
+  const mainPhoto = photos[0] || "";
+  const galleryHtml = mainPhoto
+    ? `<div class="package-gallery" id="${galleryId}" onclick="event.stopPropagation();">
+        <img class="package-photo-main" src="${esc(mainPhoto)}" alt="${esc(pkg.name)}" loading="lazy" decoding="async" onclick="openPackageImageLightbox('${esc(mainPhoto)}',event)" />
+        ${photos.length > 1 ? `<div class="package-photo-strip">${photos.map((u,i) => `<button type="button" class="package-photo-thumb" onclick="setPackageCardPhoto('${galleryId}',${i},event)" aria-label="View package photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
+        ${photos.length > 1 ? `<div class="package-photo-count"><i class="fa-solid fa-images"></i> ${photos.length} photos</div>` : ""}
+      </div>`
+    : `<div class="package-gallery-placeholder" onclick="event.stopPropagation();"><i class="fa-solid fa-box-open"></i>&nbsp; No package photo</div>`;
+  const itemsText = (pkg.items || []).map((it) => `${it.quantity}× ${esc(it.product?.name || "")}`).join(", ") || "No items listed";
+  const vendorName = pkg.vendor?.business_name || "Vendor";
+  const ownPackage = isOwnVendorId(pkg.vendor?.id);
+  return `<div class="card package-listing-card" onclick="navigate('packageDetail',{packageId:'${pkg.id}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('packageDetail',{packageId:'${pkg.id}'})}">
+    ${galleryHtml}
+    <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.55rem;margin-top:.75rem;"><strong>${esc(pkg.name)}</strong><span class="badge">${naira(pkg.price)}</span></div>
+    ${pkg.description ? `<p class="muted" style="margin:0.3rem 0;display:-webkit-box;-webkit-line-clamp:${compact ? 2 : 3};-webkit-box-orient:vertical;overflow:hidden;">${esc(pkg.description)}</p>` : ""}
+    <p class="muted" style="font-size:0.85rem;margin:.45rem 0;"><i class="fa-solid fa-box-open"></i> Includes: ${itemsText}</p>
+    <div class="flex package-card-actions" style="justify-content:space-between;">
+      <span class="muted" style="font-size:.78rem;"><i class="fa-solid fa-store"></i> ${esc(vendorName)}</span>
+      ${profile?.role === "admin" ? `<span class="badge">Admin</span>` : ownPackage ? `<span class="badge own-listing-badge"><i class="fa-solid fa-store"></i> Your package</span>` : `<button class="btn btn-sm" onclick="event.stopPropagation();navigate('packageDetail',{packageId:'${pkg.id}'})"><i class="fa-solid fa-arrow-right"></i> View package</button>`}
+    </div>
+  </div>`;
+}
+
+function setPackageCardPhoto(galleryId, index, event) {
+  event?.stopPropagation?.();
+  const gallery = byId(galleryId);
+  if (!gallery) return;
+  const photos = [...gallery.querySelectorAll(".package-photo-thumb img")].map((img) => img.src);
+  const main = gallery.querySelector(".package-photo-main");
+  if (!main || !photos[index]) return;
+  main.src = photos[index];
+  main.onclick = (e) => openPackageImageLightbox(photos[index], e);
+}
+
+function openPackageImageLightbox(url, event) {
+  event?.stopPropagation?.();
+  const img = byId("productLightboxImage");
+  if (img) img.src = url;
+  byId("productImageLightbox")?.classList.remove("hidden");
+}
+
+function togglePackageBuy(packageId) {
+  byId(`pkgBuyWrap-${packageId}`)?.classList.toggle("hidden");
+}
+
+async function buyPackage(packageId) {
+  if (!session) { showLogin(); return; }
+  if (blockOwnVendorPurchase(window.__packageDetailVendorId, "buy")) return;
+  const prefix = "pkg" + packageId;
+  const errorEl = byId(`pkgBuyError-${packageId}`);
+  errorEl.classList.add("hidden");
+  const delivery = readDeliveryFields(prefix, errorEl);
+  if (!delivery) return;
+
+  const { data: orderId, error } = await sb.rpc("create_package_order", {
+    p_package_id: packageId,
+    p_delivery_method: delivery.method,
+    p_delivery_address: delivery.address,
+    p_delivery_phone: delivery.phone,
+  });
+  if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
+  navigate("orderDetail", { orderId });
+}
 // ---------- VENDOR APPLICATION ----------
 async function renderVendorApply() {
   if (!session) return '<div class="empty-state">Please log in to apply as a vendor.</div>';
