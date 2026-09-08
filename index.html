@@ -28,7 +28,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://unpkg.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';"></script>
 <style>
 
   /* Clean page-heading rhythm: headings must never visually collide with the
@@ -4828,6 +4828,16 @@ body.product-detail-view #aiChatFab{display:none !important;pointer-events:none 
 #profilePanel,#notifPanel{will-change:transform;}
 </style>
 
+
+<style id="levi-cart-state-guard">
+  body.ai-chat-open #cartFab,
+  #aiChatPanel:not(.hidden) ~ #cartFab {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -8196,7 +8206,9 @@ function initFloatingScrollVisibility(){
 function updateCartFab() {
   const fab = byId("cartFab");
   if (!fab) return;
-  const show = session && profile?.role !== "admin";
+  const leviPanel = byId("aiChatPanel");
+  const leviOpen = !!leviPanel && !leviPanel.classList.contains("hidden");
+  const show = session && profile?.role !== "admin" && !leviOpen;
   fab.classList.toggle("hidden", !show);
   const badge = byId("cartFabBadge");
   if (badge) {
@@ -8760,8 +8772,20 @@ async function navigate(view, params = {}, pushHistory = true) {
     }
     lastRenderError = null;
   } catch (err) {
-    html = errorStateHtml(err);
-    lastRenderError = err.message;
+    lastRenderError = err?.message || String(err || "");
+    const cachedFallback = routeHtmlCache.get(cacheKey);
+    if (cachedFallback) {
+      html = cachedFallback;
+      lastRenderError = null;
+    } else if (view === "home") {
+      const cachedHome = getOfflineHomeCache();
+      html = cachedHome
+        ? renderOfflineHomeFromCache(cachedHome, { showOfflineNotice: true })
+        : navigationShellHtml(view) || '<div class="empty-state">Levromart is ready. Reconnect once to load the marketplace.</div>';
+      lastRenderError = null;
+    } else {
+      html = navigationShellHtml(view) || '<div class="empty-state">This page is temporarily unavailable. Please try again.</div>';
+    }
   }
   // Ignore an older request if the user has already navigated somewhere else.
   if (navToken !== navigationGeneration) return;
@@ -8935,6 +8959,10 @@ let sectors = [];
 
 async function renderHome() {
   const cachedHome = getOfflineHomeCache();
+  if (typeof sb === "undefined" || !sb) {
+    if (cachedHome) return renderOfflineHomeFromCache(cachedHome, { showOfflineNotice: false });
+    return `<div class="empty-state"><i class="fa-solid fa-shop" style="display:block;font-size:1.8rem;margin-bottom:.55rem;"></i>Levromart is ready. Reconnect once to load the marketplace.</div>`;
+  }
   if (browserLooksOffline()) {
     if (cachedHome) return renderOfflineHomeFromCache(cachedHome);
     return `<div class="offline-browse-notice"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Connect once to load Levromart's marketplace, then the app will keep a browseable copy available for your next offline visit.</span></div><div class="empty-state"><i class="fa-solid fa-shop" style="display:block;font-size:1.8rem;margin-bottom:.55rem;"></i>Levromart is ready. Your marketplace will appear here after the first online load.</div>`;
@@ -16011,6 +16039,7 @@ function toggleAiChat() {
   if (!isOpen) resetFloatingFabPositions();
   // The FAB follows the panel state, while still respecting the user's Levi visibility preference.
   syncLeviFabVisibility();
+  updateCartFab();
   if (isOpen) {
     playSound("open");
     let wasExpanded = false;
@@ -16022,7 +16051,6 @@ function toggleAiChat() {
       if (!aiChatResumeAttempted) { aiChatResumeAttempted = true; resumeLastAiConversation(); }
       else showAiChatGreeting();
     }
-    byId("aiChatInput").focus();
   }
 }
 function showAiChatGreeting() {
@@ -17488,8 +17516,9 @@ try { localStorage.removeItem('levromart_ai_panel_pos'); } catch (_) {}
 function closeLeviAfterCartAction(){
   const panel=byId("aiChatPanel");
   if(panel) panel.classList.add("hidden");
-  const fab=byId("aiChatFab");
-  if(fab) fab.classList.remove("hidden");
+  resetFloatingFabPositions();
+  syncLeviFabVisibility();
+  updateCartFab();
 }
 
 // ---------- MODAL BACK-BUTTON / OUTSIDE-CLICK DISMISSAL ----------
