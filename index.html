@@ -5027,13 +5027,10 @@ body.chat-full-page > #app{
 /* Request page must remain a real, usable page, not an empty route shell. */
 #app .request-equipment-page{min-height:20rem;}
 
-/* Levi: one clean glass copy button only. No thumbs/reaction/three-dot toolbar. */
+/* Levi message actions: no persistent toolbar. Long-press exposes Copy only. */
 #aiChatMessages .ai-chat-action-row,
-#aiChatMessages .ai-chat-message-menu,
-#aiChatMessages .ai-msg-reactions-row{display:none !important;}
-.ai-chat-copy-row{display:flex !important;align-items:center !important;margin:.48rem 0 .15rem !important;}
-.ai-chat-copy-btn{width:2.15rem !important;height:2.15rem !important;border-radius:50% !important;border:1px solid color-mix(in srgb,var(--text) 12%,transparent) !important;background:color-mix(in srgb,var(--card) 58%,transparent) !important;color:var(--text-muted) !important;backdrop-filter:blur(18px) saturate(160%) !important;-webkit-backdrop-filter:blur(18px) saturate(160%) !important;box-shadow:0 5px 18px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.12) !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;padding:0 !important;cursor:pointer !important;}
-.ai-chat-copy-btn:hover,.ai-chat-copy-btn:active{color:var(--primary) !important;border-color:color-mix(in srgb,var(--primary) 45%,transparent) !important;background:color-mix(in srgb,var(--primary) 9%,var(--card)) !important;}
+#aiChatMessages .ai-msg-reactions-row,
+#aiChatMessages .ai-chat-copy-row{display:none !important;}
 
 /* Jump-to-latest: compact glass circle, never a full-width black bar. */
 #aiChatBottomBtn{position:absolute !important;right:.9rem !important;bottom:5rem !important;width:2.65rem !important;height:2.65rem !important;min-width:2.65rem !important;min-height:2.65rem !important;padding:0 !important;border-radius:50% !important;border:1px solid color-mix(in srgb,var(--text) 15%,transparent) !important;background:color-mix(in srgb,var(--card) 58%,transparent) !important;color:var(--text) !important;backdrop-filter:blur(20px) saturate(170%) !important;-webkit-backdrop-filter:blur(20px) saturate(170%) !important;box-shadow:0 8px 24px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.15) !important;}
@@ -5083,6 +5080,28 @@ html[data-theme="light"] #aiChatBottomBtn,html:not([data-theme="dark"]):not([dat
 /* Photo messages get an explicit right breathing edge inside the chat viewport. */
 .chat-page-wrap .chat-bubble-wrap.mine:has(.chat-image-attachment){padding-right:.25rem !important;}
 .chat-page-wrap .chat-bubble-wrap.theirs:has(.chat-image-attachment){padding-right:.25rem !important;}
+</style>
+<style id="levromart-final-v5-precision-fixes">
+#aiChatBottomBtn{left:50% !important;right:auto !important;transform:translateX(-50%) !important;width:2.75rem !important;height:2.75rem !important;min-width:2.75rem !important;min-height:2.75rem !important;padding:0 !important;border-radius:50% !important;display:flex !important;align-items:center !important;justify-content:center !important;background:color-mix(in srgb,var(--card) 62%,transparent) !important;color:var(--text) !important;border:1px solid color-mix(in srgb,var(--text) 15%,transparent) !important;backdrop-filter:blur(22px) saturate(170%) !important;-webkit-backdrop-filter:blur(22px) saturate(170%) !important;box-shadow:0 10px 28px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.16) !important;}
+#aiChatBottomBtn i{position:static !important;margin:0 !important;transform:none !important;line-height:1 !important;font-size:.92rem !important;}
+#aiChatBottomBtn.hidden{display:none !important;}
+#aiChatMessages .ai-chat-msg-speak,#aiChatMessages .ai-chat-msg-copy{display:inline-flex !important;width:1.35rem !important;height:1.35rem !important;margin:.35rem .05rem 0 .15rem !important;padding:0 !important;border:0 !important;background:transparent !important;color:var(--text-muted) !important;align-items:center !important;justify-content:center !important;cursor:pointer !important;font-size:.72rem !important;opacity:.72 !important;border-radius:7px !important;}
+#aiChatMessages .ai-chat-msg-copy:hover,#aiChatMessages .ai-chat-msg-copy:active{color:var(--primary) !important;background:color-mix(in srgb,var(--primary) 9%,transparent) !important;opacity:1 !important;}
+#aiChatMessages .ai-chat-action-row,#aiChatMessages .ai-msg-reactions-row,#aiChatMessages .ai-chat-copy-row{display:none !important;}
+body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .chat-thread{touch-action:none !important;overscroll-behavior:none !important;}
+.chat-page-wrap .chat-page-header,.chat-page-wrap .chat-input-row,.chat-page-wrap .chat-input-row *{touch-action:none !important;}
+.chat-page-wrap .chat-messages{touch-action:pan-y !important;overflow-y:auto !important;overflow-x:hidden !important;overscroll-behavior-y:contain !important;overscroll-behavior-x:none !important;padding-left:1rem !important;padding-right:1rem !important;box-sizing:border-box !important;-webkit-overflow-scrolling:touch !important;}
+.chat-page-wrap .chat-bubble-wrap{max-width:calc(100% - .75rem) !important;box-sizing:border-box !important;}
+.chat-page-wrap .chat-bubble-wrap.mine{margin-right:.35rem !important;}
+.chat-page-wrap .chat-bubble-wrap.theirs{margin-left:.35rem !important;}
+.chat-page-wrap .chat-image-attachment{max-width:calc(100% - .5rem) !important;margin-right:.25rem !important;}
+.chat-page-wrap .chat-image-attachment .msg-attachment-img{max-width:100% !important;width:auto !important;height:auto !important;display:block !important;}
+.chat-page-wrap .chat-bubble{touch-action:pan-y !important;}
+.chat-page-wrap .chat-image-attachment,.chat-page-wrap .chat-image-attachment img{touch-action:pan-y !important;}
+#storefrontTable{overflow-y:auto !important;overflow-x:auto !important;max-height:24rem !important;-webkit-overflow-scrolling:touch !important;}
+#storefrontTable .storefront-data-table th.available-col,#storefrontTable .storefront-data-table td.available-col{text-align:center !important;vertical-align:middle !important;padding-left:.2rem !important;padding-right:.2rem !important;}
+#vendorsGrid .vendor-card{border:1.5px solid var(--border) !important;box-sizing:border-box !important;}
+#vendorsGrid .vendor-card:hover,#vendorsGrid .vendor-card:active{border-color:var(--primary) !important;}
 </style>
 </head>
 <body>
@@ -8910,6 +8929,14 @@ function blockOwnVendorPurchase(vendorId, verb = "buy") {
   showToast(`You can't ${verb} from your own shop.`, "error");
   return true;
 }
+function withRouteTimeout(promise, ms = 7000, timeoutValue = null) {
+  let timer;
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((resolve) => { timer = setTimeout(() => resolve(timeoutValue), ms); })
+  ]).finally(() => clearTimeout(timer));
+}
+
 function navigationLoadingHtml(view) {
   const label = view === "messages" ? "Opening messages…" : view === "cart" ? "Opening cart…" : "Loading…";
   return `<div class="page-loading-shell" aria-live="polite"><span class="page-loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i></span><span>${label}</span></div>`;
@@ -9196,6 +9223,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     const photos = Array.isArray(product.photos) ? product.photos.filter(Boolean) : [];
     return photos[0] ? { id: product.id, name: product.name || "Product", url: photos[0] } : null;
   }).filter(Boolean);
+  window.__allHomePackages = cache.packages || [];
   window.__homePackages = packages;
   const recommendedPackages = [...packages].sort((a,b) => {
     const score = pkg => (pkg.items || []).reduce((sum,it) => sum + (favoriteIds.has(it.product?.id) ? 10 : 0), 0);
@@ -9291,9 +9319,11 @@ async function renderHome() {
     })
     .filter(Boolean);
 
+  const allHomePackages = packages || [];
+  window.__allHomePackages = allHomePackages;
   const scopedPackages = activeCategory
-    ? (packages || []).filter(pkg => (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))
-    : packages || [];
+    ? allHomePackages.filter(pkg => (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))
+    : allHomePackages;
   window.__homePackages = scopedPackages;
   const recommendedPackages = [...scopedPackages].sort((a, b) => {
     const score = (pkg) => (pkg.items || []).reduce((sum, it) => sum + (favoriteIds.has(it.product?.id) ? 10 : 0), 0);
@@ -9601,10 +9631,11 @@ function switchHomeListingTab(tab) {
 }
 
 async function loadHomePackagesForTab() {
-  const existing = Array.isArray(window.__homePackages) ? window.__homePackages : [];
-  if (existing.length) return existing;
+  const allCached = Array.isArray(window.__allHomePackages) ? window.__allHomePackages : null;
+  if (allCached) return allCached;
   const cached = getOfflineHomeCache()?.packages || [];
   if (cached.length && browserLooksOffline()) {
+    window.__allHomePackages = cached;
     window.__homePackages = cached;
     return cached;
   }
@@ -9616,8 +9647,9 @@ async function loadHomePackagesForTab() {
     .order("created_at", { ascending:false })
     .limit(50);
   if (error) throw error;
-  window.__homePackages = data || [];
-  return window.__homePackages;
+  window.__allHomePackages = data || [];
+  window.__homePackages = window.__allHomePackages;
+  return window.__allHomePackages;
 }
 
 async function renderHomePackageTab() {
@@ -9820,11 +9852,16 @@ async function renderCart() {
   if (!session) return '<div class="empty-state">Log in to see your cart.</div>';
   if (profile?.role === "admin") return '<div class="empty-state">Admin accounts can\'t make purchases on Levromart.</div>';
 
-  const { data: items, error } = await sb.from("cart_items")
-    .select("id, quantity, created_at, product:products(id, name, sale_price, photos, quantity_available, status, vendor:vendors(id, business_name, previous_business_name, name_changed_at, is_active, verification_status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng))")
-    .eq("buyer_id", session.user.id)
-    .order("created_at", { ascending: true });
-  if (error) return errorStateHtml(error);
+  const cartResult = await withRouteTimeout(
+    sb.from("cart_items")
+      .select("id, quantity, created_at, product:products(id, name, sale_price, photos, quantity_available, status, vendor:vendors(id, business_name, previous_business_name, name_changed_at, is_active, verification_status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng))")
+      .eq("buyer_id", session.user.id)
+      .order("created_at", { ascending: true }),
+    8000,
+    { data: null, error: new Error("Your cart is taking too long to load. Please try again.") }
+  );
+  const { data: items, error } = cartResult || { data: null, error: new Error("Your cart could not be loaded.") };
+  if (error) return `<h2 class="cart-page-title"><i class="fa-solid fa-cart-shopping"></i> Your Cart</h2>${errorStateHtml(error)}<button class="btn btn-outline" onclick="navigate('cart',{},false)"><i class="fa-solid fa-rotate-right"></i> Try again</button>`;
 
   let html = `<h2 class="cart-page-title"><i class="fa-solid fa-cart-shopping"></i> Your Cart</h2>`;
   if (!items || items.length === 0) {
@@ -11064,12 +11101,12 @@ function setupMessageSwipeReply(root) {
       // Let ordinary vertical chat scrolling win. We only take control after
       // a clear horizontal intent is established.
       if (!horizontal) {
-        if (Math.abs(dy) > Math.abs(dx) * 1.08 && Math.abs(dy) > 7) {
+        if (Math.abs(dy) > Math.abs(dx) * 1.35 && Math.abs(dy) > 9) {
           reset();
           return;
         }
-        if (Math.abs(dx) < 10) return;
-        horizontal = Math.abs(dx) > Math.abs(dy) * 1.08;
+        if (Math.abs(dx) < 6) return;
+        horizontal = Math.abs(dx) > Math.abs(dy) * 0.78;
         if (!horizontal) return;
         wrap.classList.add("chat-swipe-active");
       }
@@ -11084,7 +11121,7 @@ function setupMessageSwipeReply(root) {
 
     const finish = () => {
       if (!tracking) return;
-      const shouldReply = horizontal && Math.abs(dx) >= 32;
+      const shouldReply = horizontal && Math.abs(dx) >= 24;
       const msgId = bubble.dataset.msgId;
       reset();
       if (shouldReply && msgId) {
@@ -12425,12 +12462,175 @@ async function renderStorefront(vendorId) {
   return html;
 }
 
+function showSupportInfo() {
+  const modal = byId("supportInfoModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  trackModalOpened("supportInfoModal");
+}
+function closeSupportInfo() {
+  const modal = byId("supportInfoModal");
+  if (modal) modal.classList.add("hidden");
+}
+function supportStatusLabel(status) {
+  return ({
+    open: 'Submitted',
+    in_progress: 'In progress',
+    resolved: 'Resolved',
+    closed: 'Closed'
+  })[status] || 'Submitted';
+}
+function supportStatusNote(status) {
+  return ({
+    open: 'Received — waiting for a support/admin response.',
+    in_progress: 'A support/admin member is handling this request.',
+    resolved: 'Support has marked this issue as resolved.',
+    closed: 'This support request has been closed.'
+  })[status] || 'Received — waiting for a support/admin response.';
+}
+function supportAttachmentHtml(a, signedUrl) {
+  const name = esc(a?.name || 'Attachment');
+  const type = String(a?.type || '').toLowerCase();
+  if (type.startsWith('image/') && signedUrl) {
+    return `<a class="support-attachment" href="${esc(signedUrl)}" target="_blank" rel="noopener" title="Open ${name}"><img src="${esc(signedUrl)}" alt="${name}" loading="lazy" decoding="async"><span class="support-attachment-name">${name}</span></a>`;
+  }
+  return `<a class="support-attachment" href="${esc(signedUrl || '#')}" ${signedUrl ? 'target="_blank" rel="noopener"' : ''} title="${name}"><span class="support-attachment-file"><i class="fa-solid ${type === 'application/pdf' ? 'fa-file-pdf' : 'fa-paperclip'}"></i><span>${name}</span></span></a>`;
+}
+async function getSupportAttachmentHtml(attachments) {
+  if (!Array.isArray(attachments) || !attachments.length) return '';
+  const rendered = await Promise.all(attachments.map(async a => {
+    let signedUrl = '';
+    if (a?.path) {
+      const { data } = await sb.storage.from('support-attachments').createSignedUrl(a.path, 3600);
+      signedUrl = data?.signedUrl || '';
+    }
+    return supportAttachmentHtml(a, signedUrl);
+  }));
+  return `<div class="support-request-attachments">${rendered.join('')}</div>`;
+}
+async function renderSupportRequest() {
+  if (!session) return '<div class="empty-state">Please log in to contact Levromart support.</div>';
+  const { data: requests, error } = await sb.from("support_requests")
+    .select("id,subject,message,status,admin_reply,attachments,created_at,updated_at")
+    .eq("user_id", session.user.id)
+    .order("created_at", { ascending: false });
+  let html = `<div class="support-page-head"><h2><i class="fa-solid fa-headset"></i> Support request</h2><button type="button" class="support-info-btn" onclick="showSupportInfo()" aria-label="About support requests" title="About support requests"><i class="fa-solid fa-info"></i></button></div>`;
+  html += `<div class="card support-page-card" style="margin-bottom:1rem;">
+    <h3 style="margin-top:0;">Send a support request</h3>
+    <label for="supportSubject">Subject</label>
+    <input id="supportSubject" maxlength="140" placeholder="What do you need help with?" />
+    <label for="supportMessage" style="margin-top:.7rem;">Message</label>
+    <textarea id="supportMessage" rows="6" maxlength="4000" placeholder="Explain what happened and include any order number or useful details."></textarea>
+    <div class="support-attachments">
+      <div class="support-attachments-label"><span><i class="fa-solid fa-paperclip"></i> Attach files</span><span class="muted" style="font-size:.76rem;">Optional</span></div>
+      <input class="support-file-input" id="supportAttachments" type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt" onchange="previewSupportAttachments(this)">
+      <label class="support-file-dropzone" id="supportFileDropzone" for="supportAttachments" onclick="event.stopPropagation()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleSupportFileDrop(event)">
+        <span class="support-file-dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+        <span class="support-file-dropzone-copy"><strong>Upload files</strong><span>Tap to choose, or drag screenshots and documents here</span></span>
+        <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:var(--muted);"></i>
+      </label>
+      <small class="support-file-help muted">Screenshots, payment evidence, photos, PDFs or other useful files. Up to 5 files, 10 MB each.</small>
+      <div id="supportFileList" class="support-file-list" aria-live="polite"></div>
+    </div>
+    <div class="flex" style="justify-content:flex-end;margin-top:.85rem;">
+      <button class="btn" id="supportSubmitBtn" onclick="submitSupportRequest()"><i class="fa-solid fa-paper-plane"></i> Send request</button>
+    </div>
+  </div>`;
+  if (error) return html + errorStateHtml(error);
+  if (!requests?.length) return html + `<div class="support-requests-accordion"><div class="support-requests-empty-head"><h3>Your requests</h3></div><div class="empty-state">You have not sent a support request yet.</div></div>`;
+  html += `<details class="support-requests-accordion"><summary><h3>Your requests</h3><span class="support-requests-summary-right"><span>${requests.length} request${requests.length === 1 ? '' : 's'}</span><i class="fa-solid fa-chevron-down support-requests-chevron"></i></span></summary><div class="support-requests-list">`;
+  for (const r of requests) {
+    const attachments = await getSupportAttachmentHtml(r.attachments);
+    html += `<details class="support-request-accordion">
+      <summary>
+        <span class="support-request-summary-main"><span class="support-request-summary-subject">${esc(r.subject)}</span><span class="support-request-summary-meta">${new Date(r.created_at).toLocaleString('en-GB')}</span></span>
+        <span class="flex" style="align-items:center;gap:.45rem;flex:0 0 auto;"><span class="badge ${r.status === 'resolved' ? 'success' : r.status === 'closed' ? 'danger' : r.status === 'in_progress' ? 'warning' : ''}">${supportStatusLabel(r.status)}</span><i class="fa-solid fa-chevron-down support-request-chevron"></i></span>
+      </summary>
+      <div class="support-request-body">
+        <div class="support-request-status-note">${supportStatusNote(r.status)}</div>
+        <p style="white-space:pre-wrap;margin:.75rem 0 0;">${esc(r.message)}</p>
+        ${attachments}
+        ${r.admin_reply ? `<div class="banner" style="margin-top:.8rem;"><strong>Levromart support</strong><div style="white-space:pre-wrap;margin-top:.25rem;">${esc(r.admin_reply)}</div></div>` : ''}
+      </div>
+    </details>`;
+  }
+  html += `</div></details>`;
+  return html;
+}
+function handleSupportFileDrop(event) {
+  event.preventDefault();
+  const zone = event.currentTarget;
+  zone?.classList.remove('dragover');
+  const input = byId('supportAttachments');
+  if (!input) return;
+  const files = Array.from(event.dataTransfer?.files || []);
+  if (!files.length) return;
+  const dt = new DataTransfer();
+  files.slice(0, 5).forEach(f => dt.items.add(f));
+  input.files = dt.files;
+  previewSupportAttachments(input);
+}
+function previewSupportAttachments(input) {
+  const list = byId('supportFileList');
+  if (!list) return;
+  const files = Array.from(input?.files || []);
+  if (files.length > 5) {
+    showToast('You can attach up to 5 files.', 'error');
+    input.value = '';
+    list.innerHTML = '';
+    return;
+  }
+  const tooLarge = files.find(f => f.size > 10 * 1024 * 1024);
+  if (tooLarge) {
+    showToast(`${tooLarge.name} is larger than 10 MB.`, 'error');
+    input.value = '';
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = files.map(f => `<div class="support-file-chip"><i class="fa-solid ${f.type.startsWith('image/') ? 'fa-image' : 'fa-paperclip'}"></i><span>${esc(f.name)}</span><small class="muted">${(f.size/1024/1024).toFixed(1)} MB</small></div>`).join('');
+}
+async function submitSupportRequest() {
+  if (!session) { showLogin(); return; }
+  const subject = String(byId('supportSubject')?.value || '').trim();
+  const message = String(byId('supportMessage')?.value || '').trim();
+  const files = Array.from(byId('supportAttachments')?.files || []);
+  if (!subject || !message) { showToast('Please enter a subject and message.', 'error'); return; }
+  if (files.length > 5) { showToast('You can attach up to 5 files.', 'error'); return; }
+  const tooLarge = files.find(f => f.size > 10 * 1024 * 1024);
+  if (tooLarge) { showToast(`${tooLarge.name} is larger than 10 MB.`, 'error'); return; }
+  const btn = byId('supportSubmitBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending…'; }
+  const { data: request, error } = await sb.from('support_requests').insert({ user_id: session.user.id, subject, message, attachments: [] }).select('id').single();
+  if (error || !request?.id) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send request'; }
+    showToast(error?.message || 'Could not send support request.', 'error'); return;
+  }
+  const uploaded = [];
+  try {
+    for (const file of files) {
+      const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+      const path = `${session.user.id}/${request.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await sb.storage.from('support-attachments').upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
+      if (uploadError) throw uploadError;
+      uploaded.push({ path, name: file.name, type: file.type || 'application/octet-stream', size: file.size });
+    }
+    const { error: updateError } = await sb.from('support_requests').update({ attachments: uploaded }).eq('id', request.id).eq('user_id', session.user.id);
+    if (updateError) throw updateError;
+  } catch (e) {
+    if (uploaded.length) await Promise.all(uploaded.map(a => sb.storage.from('support-attachments').remove([a.path])));
+    await sb.from('support_requests').delete().eq('id', request.id).eq('user_id', session.user.id);
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send request'; }
+    showToast(e?.message || 'One or more attachments could not be uploaded.', 'error'); return;
+  }
+  showToast('Support request sent.', 'success');
+  navigate('supportRequest', {}, { replace: true });
+}
 // ---------- REQUEST EQUIPMENT (buyers post needs, vendors compete) ----------
 async function renderRequestEquipment() {
   if (!session) return '<div class="empty-state">Please log in to request an item.</div>';
-  const [{ data: myRequests }] = await Promise.all([
-    sb.from("equipment_requests").select("*, offers:request_offers(id, vendor_id, message, price, status, created_at, vendor:vendors(business_name, avg_rating, phone, whatsapp_number, delivery_fee))")
-      .eq("buyer_id", session.user.id).order("created_at", { ascending: false }),
+  const [{ data: myRequests, error: myRequestsError }] = await Promise.all([
+    withRouteTimeout(sb.from("equipment_requests").select("*, offers:request_offers(id, vendor_id, message, price, status, created_at, vendor:vendors(business_name, avg_rating, phone, whatsapp_number, delivery_fee))")
+      .eq("buyer_id", session.user.id).order("created_at", { ascending: false }), 7000, { data: null, error: new Error("Your requests are taking too long to load.") }),
     (async () => { if (!sectors.length) { const { data } = await sb.from("sectors").select("*").order("sort_order"); sectors = data || []; } })(),
     (async () => { if (!window.__categories?.length) { const { data } = await sb.from("categories").select("*").order("name"); window.__categories = data || []; } })(),
   ]);
@@ -12462,7 +12662,8 @@ async function renderRequestEquipment() {
       <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-list-check"></i> Your requests${myRequests?.length ? ` (${myRequests.length})` : ""}</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
       <div class="accordion-body">`;
 
-  if (!myRequests || myRequests.length === 0) html += `<p class="muted">You haven't posted any requests yet.</p>`;
+  if (myRequestsError) html += `<p class="muted" style="margin:.7rem 0;">Your request history could not be loaded right now. You can still post a new request.</p>`;
+  else if (!myRequests || myRequests.length === 0) html += `<p class="muted">You haven't posted any requests yet.</p>`;
   (myRequests || []).forEach((r) => {
     const offers = r.offers || [];
     html += `<div class="card">
@@ -16699,23 +16900,17 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       speakBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i>`;
       speakBtn.onclick = () => speakAiChatMessage(displayText, speakBtn);
       el.appendChild(speakBtn);
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "ai-chat-msg-copy";
+      copyBtn.title = "Copy";
+      copyBtn.setAttribute("aria-label", "Copy message");
+      copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i>`;
+      copyBtn.onclick = (evt) => copyAiMessageText(evt, displayText);
+      el.appendChild(copyBtn);
       // Levi never reads replies automatically. Voice input only transcribes;
       // the user explicitly taps the speaker button when they want audio.
     }
     if (role === "assistant" && msgId) attachAiReactionUI(el, msgId, existingReaction);
-    if (role === "assistant") {
-      const copyRow = document.createElement("div");
-      copyRow.className = "ai-chat-copy-row";
-      const copyBtn = document.createElement("button");
-      copyBtn.type = "button";
-      copyBtn.className = "ai-chat-copy-btn";
-      copyBtn.title = "Copy response";
-      copyBtn.setAttribute("aria-label", "Copy response");
-      copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i>`;
-      copyBtn.onclick = (ev) => copyAiMessageText(ev, displayText);
-      copyRow.appendChild(copyBtn);
-      el.appendChild(copyRow);
-    }
     if (nav) {
       // Auto-navigates rather than waiting for a tap - a beat to actually
       // read the reply first, then Levi points the way and takes you there.
