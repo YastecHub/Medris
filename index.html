@@ -4235,6 +4235,12 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
   -webkit-user-select: none !important;
   user-select: none !important;
 }
+
+/* FINAL LEVI NAV/COPY POLISH */
+#aiChatMessages .ai-chat-nav-hint{cursor:pointer !important;pointer-events:auto !important;text-decoration:none !important;}
+#aiChatMessages .ai-chat-msg.user{margin-bottom:1.65rem !important;}
+#aiChatMessages .ai-chat-msg-user-copy{position:absolute !important;top:calc(100% + .28rem) !important;right:.28rem !important;width:1.25rem !important;height:1.25rem !important;padding:0 !important;border:0 !important;border-radius:7px !important;background:transparent !important;color:var(--text-muted) !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;font-size:.7rem !important;opacity:.72 !important;cursor:pointer !important;}
+#aiChatMessages .ai-chat-msg-user-copy:hover,#aiChatMessages .ai-chat-msg-user-copy:active{color:var(--primary) !important;background:color-mix(in srgb,var(--primary) 9%,transparent) !important;opacity:1 !important;}
 </style>
 
 
@@ -7311,49 +7317,60 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPa
   if (window.__drawerEdgeGesturesReady) return;
   window.__drawerEdgeGesturesReady = true;
 
-  // Deliberately conservative gesture rules. Opening is allowed only from the
-  // extreme screen edges and never from a product/card/map/table/form/rail.
-  // Closing is allowed only from the drawer's own non-scrollable shell, never
-  // from its scrollable list/content. This prevents the gesture from stealing
-  // ordinary page, map, table, carousel and chat swipes.
-  const EDGE = 24;
-  const MIN = 58;
-  const MOVE = 9;
-  const blockedPage = [
+  // Open gestures deliberately avoid the OS edge. They may begin anywhere on
+  // Levromart's bare outer page background (including near the centre), but
+  // NEVER on cards, products, maps, tables, rails, forms, chat or controls.
+  // Direction decides the drawer: swipe right = Profile; swipe left = Alerts.
+  const OS_GUTTER = 34;
+  const MIN = 54;
+  const MOVE = 10;
+  const blocked = [
     'button,a,input,textarea,select,[contenteditable="true"]',
-    '.card,.grid,.hscroll,.cat-row,.table-wrap,table,.leaflet',
-    '.product-gallery,.product-gallery-main,.product-gallery-thumbs',
-    '.product-gallery-track,.package-detail-gallery-track',
-    '.chat-page-wrap,.chat-thread,.chat-bubble,.chat-image-attachment',
+    '.card,.grid,.hscroll,.cat-row,.table-wrap,table,.leaflet,.map-wrap',
+    '.product-card-wrap,.vendor-card,.package-card,.storefront-products-shell',
+    '.product-gallery,.product-gallery-main,.product-gallery-thumbs,.product-gallery-track,.package-detail-gallery-track',
+    '.chat-page-wrap,.chat-thread,.chat-bubble,.chat-image-attachment,.conv-list-item',
     '.modal,.modal-content,.bottom-nav,.ai-chat-panel,.ai-chat-fab,.cart-fab',
-    '.side-drawer,.notif-item-wrap,.profile-panel-scroll'
+    '.side-drawer,.notif-item-wrap,.profile-panel-scroll,.notif-list-scroll',
+    'img,video,canvas,svg'
   ].join(',');
   const blockedDrawer = [
     'button,a,input,textarea,select,[contenteditable="true"]',
     '.profile-panel-scroll,.notif-list-scroll,.notif-item-wrap',
-    '.card,.grid,.table-wrap,table,.hscroll,.cat-row,.leaflet',
+    '.card,.grid,.table-wrap,table,.hscroll,.cat-row,.leaflet,.map-wrap',
     '.product-gallery,.product-gallery-main,.product-gallery-thumbs',
     '.chat-page-wrap,.chat-thread,.chat-bubble,.chat-image-attachment',
     '.modal,.modal-content'
   ].join(',');
 
-  const safeEdgeStart = (target) => {
-    if (!target || target.closest?.('.side-drawer,.modal,.ai-chat-panel,.chat-page-wrap')) return false;
-    return !target.closest?.(blockedPage);
+  const isBarePageBackground = (target, x) => {
+    if (!target || x < OS_GUTTER || x > window.innerWidth - OS_GUTTER) return false;
+    if (target.closest?.(blocked)) return false;
+    const app = byId('app');
+    // The target itself must be the page shell/background, not arbitrary text
+    // inside a content section. This is intentionally strict to avoid stealing
+    // product/carousel/table/map gestures.
+    return target === document.body || target === document.documentElement || target === app || target.classList?.contains('container');
   };
   const safeDrawerStart = (target, panel) => {
     if (!target || !panel || !panel.contains(target)) return false;
-    // Drawer content/list scrolling belongs entirely to the drawer, not to the
-    // global close gesture.
-    if (target.closest?.(blockedDrawer)) return false;
-    return true;
+    return !target.closest?.(blockedDrawer);
   };
 
   let g = null;
+  const backdrop = () => byId('drawerBackdrop');
   const resetVisual = (state) => {
-    const el = state?.el;
-    if (el) { el.style.transition=''; el.style.transform=''; }
+    if (state?.el) {
+      state.el.style.removeProperty('transition');
+      state.el.style.removeProperty('transform');
+    }
+    if (state?.previewBackdrop && !state?.committed) backdrop()?.classList.remove('open');
     document.body.classList.remove('profile-reveal-dragging');
+  };
+  const previewTransform = (el, value) => {
+    if (!el) return;
+    el.style.setProperty('transition','none','important');
+    el.style.setProperty('transform',value,'important');
   };
 
   document.addEventListener('pointerdown', (e) => {
@@ -7363,24 +7380,18 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPa
     const profileOpen = !!profile?.classList.contains('open');
     const notifOpen = !!notif?.classList.contains('open');
 
-    // Closing: only a horizontal outward drag that starts on the drawer's
-    // non-scrollable shell. Never start from the drawer's scroll list/content.
     if (profileOpen && safeDrawerStart(e.target, profile)) {
-      g = { id:e.pointerId, x:e.clientX, y:e.clientY, side:'left', mode:'close', el:profile, active:false };
+      g = { id:e.pointerId, x:e.clientX, y:e.clientY, side:'left', mode:'close', el:profile, active:false, committed:false };
       return;
     }
     if (notifOpen && safeDrawerStart(e.target, notif)) {
-      g = { id:e.pointerId, x:e.clientX, y:e.clientY, side:'right', mode:'close', el:notif, active:false };
+      g = { id:e.pointerId, x:e.clientX, y:e.clientY, side:'right', mode:'close', el:notif, active:false, committed:false };
       return;
     }
     if (profileOpen || notifOpen) return;
 
-    // Opening: only from the screen edges, and only when the thing touched is
-    // the page/background rather than a control or scrollable component.
-    if (e.clientX <= EDGE && safeEdgeStart(e.target)) {
-      g = { id:e.pointerId, x:e.clientX, y:e.clientY, side:'left', mode:'open', el:profile, active:false };
-    } else if (e.clientX >= window.innerWidth - EDGE && safeEdgeStart(e.target)) {
-      g = { id:e.pointerId, x:e.clientX, y:e.clientY, side:'right', mode:'open', el:notif, active:false };
+    if (isBarePageBackground(e.target, e.clientX)) {
+      g = { id:e.pointerId, x:e.clientX, y:e.clientY, side:null, mode:'open', el:null, active:false, committed:false, previewBackdrop:false };
     }
   }, { passive:true });
 
@@ -7389,40 +7400,54 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPa
     const dx = e.clientX - g.x, dy = e.clientY - g.y;
     if (!g.active) {
       if (Math.hypot(dx,dy) < MOVE) return;
-      if (Math.abs(dx) <= Math.abs(dy) * 1.35) { g=null; return; }
+      if (Math.abs(dx) <= Math.abs(dy) * 1.3) { g=null; return; }
       g.active = true;
-      if (g.el) g.el.style.transition='none';
       document.body.classList.add('profile-reveal-dragging');
+      if (g.mode === 'open') {
+        g.side = dx > 0 ? 'left' : 'right';
+        g.el = byId(g.side === 'left' ? 'profilePanel' : 'notifPanel');
+        backdrop()?.classList.add('open');
+        g.previewBackdrop = true;
+      }
     }
     if (!g.el) return;
     const w = g.el.getBoundingClientRect().width || Math.min(304, window.innerWidth * .78);
     if (g.mode === 'open') {
-      const offset = g.side==='left' ? Math.min(w, Math.max(0, dx)) : Math.max(-w, Math.min(0, dx));
-      g.el.style.transform = `translateX(${g.side==='left' ? (-w+offset) : (w+offset)}px)`;
+      if ((g.side === 'left' && dx <= 0) || (g.side === 'right' && dx >= 0)) return;
+      const progress = Math.min(w, Math.abs(dx));
+      previewTransform(g.el, `translateX(${g.side === 'left' ? (-w + progress) : (w - progress)}px)`);
     } else {
-      const offset = g.side==='left' ? Math.min(0, dx) : Math.max(0, dx);
-      g.el.style.transform = `translateX(${offset}px)`;
+      // Swipe the panel back toward the edge it came from.
+      const offset = g.side === 'left' ? Math.min(0, dx) : Math.max(0, dx);
+      previewTransform(g.el, `translateX(${offset}px)`);
     }
   }, { passive:false });
 
   const finish = (e) => {
     if (!g || e.pointerId !== g.id) { g=null; return; }
     const dx = e.clientX - g.x, dy = e.clientY - g.y;
-    const valid = g.active && Math.abs(dx) >= MIN && Math.abs(dx) > Math.abs(dy) * 1.35;
-    const side=g.side, mode=g.mode;
-    resetVisual(g);
+    const valid = g.active && Math.abs(dx) >= MIN && Math.abs(dx) > Math.abs(dy) * 1.3;
+    const state = g;
     if (valid) {
-      if (mode === 'open' && ((side==='left' && dx>0) || (side==='right' && dx<0))) {
-        side==='left' ? toggleProfilePanel() : toggleNotifPanel();
-      } else if (mode === 'close' && ((side==='left' && dx<0) || (side==='right' && dx>0))) {
+      if (state.mode === 'open' && ((state.side === 'left' && dx > 0) || (state.side === 'right' && dx < 0))) {
+        state.committed = true;
+        // Remove preview overrides before the normal drawer transition takes over.
+        state.el?.style.removeProperty('transition');
+        state.el?.style.removeProperty('transform');
+        state.side === 'left' ? toggleProfilePanel() : toggleNotifPanel();
+      } else if (state.mode === 'close' && ((state.side === 'left' && dx < 0) || (state.side === 'right' && dx > 0))) {
+        state.committed = true;
+        state.el?.style.removeProperty('transition');
+        state.el?.style.removeProperty('transform');
         closeAllPanels();
       }
     }
+    resetVisual(state);
     g=null;
   };
   document.addEventListener('pointerup', finish, { passive:true });
   document.addEventListener('pointercancel', (e) => { if (g?.id === e.pointerId) { resetVisual(g); g=null; } }, { passive:true });
-})();
+})();;
 
 // Swipe left/right ANYWHERE on the page (not just the bottom bar) moves to
 // the next/previous bottom-nav tab - e.g. swipe from Home and land on
@@ -16926,7 +16951,7 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
     // an old "take you there" tag (or an old cart add/remove) firing again
     // would yank someone away, or re-apply a cart change, on a conversation
     // they're just re-reading.
-    nav = isReplay ? null : parsedNav.nav;
+    nav = parsedNav.nav;
     draft = parsedDraft.draft;
     cartItems = isReplay ? [] : parsedCart.items;
     removeCartItems = isReplay ? [] : parsedRemoveCart.items;
@@ -16950,6 +16975,15 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
   if (role === "typing") { el.id = "aiChatTyping"; el.innerHTML = `<i class="fa-solid fa-ellipsis" style="opacity:.6;"></i>`; }
   else {
     el.textContent = displayText;
+    if (role === "user") {
+      const userCopyBtn = document.createElement("button");
+      userCopyBtn.className = "ai-chat-msg-user-copy";
+      userCopyBtn.title = "Copy";
+      userCopyBtn.setAttribute("aria-label", "Copy your message");
+      userCopyBtn.innerHTML = `<i class="fa-regular fa-copy"></i>`;
+      userCopyBtn.onclick = (evt) => copyAiMessageText(evt, displayText);
+      el.appendChild(userCopyBtn);
+    }
     if (role === "assistant" && "speechSynthesis" in window) {
       const speakBtn = document.createElement("button");
       speakBtn.className = "ai-chat-msg-speak";
@@ -16976,21 +17010,22 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       navHint.href = "#";
       navHint.innerHTML = `<i class="fa-solid fa-arrow-right"></i> Taking you there…`;
       navHint.title = "Open this destination";
-      let navTriggered = false;
+      let autoNavFired = false;
       const triggerNav = (ev) => {
         ev?.preventDefault?.();
         ev?.stopPropagation?.();
-        if (navTriggered) return;
-        navTriggered = true;
+        // Manual navigation must always remain available, even after Levi's
+        // automatic navigation has already fired once. This makes every
+        // visible "Taking you there…" a reliable fallback link.
         goToAiChatNav(nav);
       };
       navHint.addEventListener("click", triggerNav);
       el.appendChild(navHint);
-      // Begin navigation shortly after the response is painted. The hint
-      // remains an immediate manual fallback if the user taps it first.
-      setTimeout(() => {
-        if (nav && document.body.contains(el) && !navTriggered) {
-          navTriggered = true;
+      // Replayed/history messages keep their destination clickable but must
+      // never auto-navigate simply because the old conversation was opened.
+      if (!isReplay) setTimeout(() => {
+        if (nav && document.body.contains(el) && !autoNavFired) {
+          autoNavFired = true;
           goToAiChatNav(nav);
         }
       }, 220);
@@ -17073,7 +17108,7 @@ function attachAiLongPressCopyUI(el) {
   };
 
   const isInteractive = (target) => !!target?.closest?.(
-    'button,a,input,textarea,select,.ai-chat-message-menu,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-msg-speak,.reaction-picker,.ai-chat-copy-row'
+    'button,a,input,textarea,select,.ai-chat-message-menu,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-msg-speak,.ai-chat-msg-user-copy,.reaction-picker,.ai-chat-copy-row'
   );
 
   const positionCopyMenu = (menu) => {
@@ -17185,7 +17220,7 @@ function attachAiReactionUI(el, msgId, existingReaction) {
 
 function displayTextForAiElement(el) {
   const clone = el.cloneNode(true);
-  clone.querySelectorAll(".ai-chat-action-row,.ai-chat-message-menu,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-msg-speak,.reaction-picker,.ai-chat-copy-row").forEach((n) => n.remove());
+  clone.querySelectorAll(".ai-chat-action-row,.ai-chat-message-menu,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-msg-speak,.ai-chat-msg-user-copy,.reaction-picker,.ai-chat-copy-row").forEach((n) => n.remove());
   return (clone.textContent || "").trim();
 }
 async function copyAiMessageText(evt, text) {
@@ -17816,6 +17851,9 @@ async function sendAiChatMessage() {
       appendAiChatMessage("assistant", action.reply, wasVoice);
       persistAiMessage("assistant", action.reply);
       playSound("notify");
+      if (typeof action.afterReply === "function") {
+        setTimeout(() => { Promise.resolve(action.afterReply()).catch((err) => console.warn("Levi post-action failed:", err)); }, 140);
+      }
       return;
     }
   } catch (err) {
@@ -18026,7 +18064,9 @@ async function resolveLeviLocalAction(text) {
   // instead of sending the user to Settings. Destructive listing/cart changes
   // still use the existing guarded functions/confirmation flows.
   // Accent colours can be selected by name (or by a loose colour word).
-  if (/\b(change|set|switch|make)\b[\s\S]*\b(accent|theme colour|theme color)\b/.test(q) || /\b(accent)\b[\s\S]*\b(to)\b/.test(q)) {
+  if (/\b(change|set|switch|make)\b[\s\S]*\b(accent|theme colour|theme color)\b/.test(q)
+      || /\b(accent|theme colour|theme color)\b[\s\S]*\b(to\s+)?(red|blue|purple|violet|pink|orange|yellow|gold|green|teal|cyan|indigo)\b/.test(q)
+      || /\b(red|blue|purple|violet|pink|orange|yellow|gold|green|teal|cyan|indigo)\b[\s\S]*\b(accent|theme colour|theme color)\b/.test(q)) {
     const raw = String(text || "").toLowerCase();
     const colourAliases = [
       ["green", "Greens"], ["teal", "Greens"], ["cyan", "Blues"],
@@ -18039,21 +18079,30 @@ async function resolveLeviLocalAction(text) {
       return raw.includes(name);
     });
     const colourWord = raw.match(/\b(red|blue|purple|violet|pink|orange|yellow|gold|green|teal|cyan|indigo)\b/)?.[1];
-    const requestedGroup = colourAliases.find(([word]) => word === colourWord)?.[1] || (colourWord ? `${colourWord[0].toUpperCase()}${colourWord.slice(1)}s` : null);
+    const requestedGroup = colourAliases.find(([word]) => word === colourWord)?.[1] || null;
     const groupIndex = requestedGroup ? ACCENT_PALETTE.findIndex((p) => p.group === requestedGroup) : -1;
-    // A named shade wins when the user explicitly asks for it. A plain hue
-    // word intentionally selects the FIRST shade in that hue group.
     const paletteIndex = explicitMatch >= 0 ? explicitMatch : groupIndex;
     if (paletteIndex >= 0) {
       setAccent(paletteIndex);
-      // Apply the requested hue immediately, then take the user to Settings so
-      // they can optionally choose another shade from the full palette.
       const chosen = ACCENT_PALETTE[paletteIndex].name;
-      closeLeviIfOpen();
-      setTimeout(() => { navigate("settings"); }, 90);
-      return { handled:true, reply:`Done - I changed your Levromart accent to ${chosen}. I opened Settings too, so you can choose another shade if you want.` };
+      const openSettingsAccent = async () => {
+        try { if (byId("aiChatPanel") && !byId("aiChatPanel").classList.contains("hidden")) toggleAiChat(); } catch (_) {}
+        await navigate("settings");
+        let tries = 0;
+        const reveal = () => {
+          const body = byId("accentPalettePageBody");
+          if (body) {
+            if (body.classList.contains("hidden")) toggleAccentPalettePage();
+            document.querySelector(".accent-page-dropdown-trigger")?.scrollIntoView({ behavior:"smooth", block:"center" });
+            return;
+          }
+          if (++tries < 10) setTimeout(reveal, 80);
+        };
+        setTimeout(reveal, 80);
+      };
+      return { handled:true, reply:`Done - I changed your Levromart accent to ${chosen}. I’ll open the accent shades too in case you want a different one.`, afterReply:openSettingsAccent };
     }
-    return { handled:true, reply:"I can change the accent colour. Tell me the colour you want, such as green, blue, purple or red." };
+    return { handled:true, reply:"I can change the accent colour. Tell me the colour you want, such as green, blue, purple, orange, pink or red." };
   }
 
   // Vendor product management: Levi opens the existing product manager for
@@ -18113,7 +18162,10 @@ async function resolveLeviLocalAction(text) {
     if(!(await showConfirmDialog(`Remove all ${rows.length} item${rows.length===1?"":"s"} from your cart?`,{title:"Clear cart",okLabel:"Clear cart",danger:true}))) return {handled:true,reply:"Okay - I left your cart unchanged."};
     const {error:delErr}=await sb.from("cart_items").delete().eq("buyer_id",session.user.id);
     if(delErr)return {handled:true,reply:"I couldn't clear your cart right now."};
-    updateCartFab(); refreshNotifications(); closeLeviIfOpen();
+    updateCartFab();
+    await refreshNotifications(false).catch(() => {});
+    closeLeviIfOpen();
+    await navigate("cart", {}, false).catch(() => {});
     return {handled:true,reply:`Done - I cleared all ${rows.length} item${rows.length===1?"":"s"} from your cart.`};
   }
   const addIntent = /\b(add|put|place)\b[\s\S]*\b(cart|basket)\b/.test(q) || /\b(add|put|place)\b.*\b(this|that)\b/.test(q);
