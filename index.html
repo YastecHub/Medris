@@ -16112,27 +16112,29 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
 <style id="levi-longpress-copy-final">
 /* Long-press Copy for both the user's messages and Levi's replies.
    One compact glass menu replaces the old cramped multi-button strip. */
-#aiChatMessages .ai-chat-message-menu.ai-chat-longpress-copy-menu{
-  display:block !important; position:absolute !important; left:0 !important; top:calc(100% + .45rem) !important; bottom:auto !important;
-  min-width:92px !important; width:auto !important; max-width:none !important; padding:.28rem !important;
-  border-radius:14px !important; background:color-mix(in srgb,var(--card) 76%,transparent) !important;
-  border:1px solid color-mix(in srgb,var(--text) 14%,transparent) !important;
-  backdrop-filter:blur(22px) saturate(170%) !important; -webkit-backdrop-filter:blur(22px) saturate(170%) !important;
-  box-shadow:0 12px 32px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.16) !important;
-  z-index:120 !important;
+/* Long-press Copy: render the menu at document level instead of inside the
+   message bubble. This guarantees the menu visually sits outside the message
+   surface and can open above/below it without being clipped by bubble bounds. */
+.ai-chat-message-menu.ai-chat-longpress-copy-menu{
+  display:block !important; position:fixed !important; left:0; top:0;
+  min-width:96px !important; width:max-content !important; max-width:calc(100vw - 20px) !important;
+  padding:.22rem !important; border-radius:14px !important;
+  background:color-mix(in srgb,var(--card) 72%,transparent) !important;
+  border:1px solid color-mix(in srgb,var(--text) 13%,transparent) !important;
+  backdrop-filter:blur(24px) saturate(175%) !important; -webkit-backdrop-filter:blur(24px) saturate(175%) !important;
+  box-shadow:0 12px 34px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.16) !important;
+  z-index:10050 !important; opacity:1 !important; transform:none !important;
 }
-#aiChatMessages .ai-chat-message-menu.ai-chat-longpress-copy-menu.opens-up{top:auto !important;bottom:calc(100% + .45rem) !important;}
-#aiChatMessages .ai-chat-message-menu.ai-chat-longpress-copy-menu button{
-  width:auto !important; min-width:86px !important; min-height:40px !important; padding:.55rem .7rem !important;
+.ai-chat-message-menu.ai-chat-longpress-copy-menu button{
+  width:auto !important; min-width:88px !important; min-height:34px !important; padding:.42rem .62rem !important;
   border:0 !important; border-radius:10px !important; background:transparent !important; color:var(--text) !important;
-  display:flex !important; align-items:center !important; justify-content:center !important; gap:.45rem !important;
-  font:inherit !important; font-size:.88rem !important; font-weight:650 !important; cursor:pointer !important;
+  display:flex !important; align-items:center !important; justify-content:center !important; gap:.42rem !important;
+  font:inherit !important; font-size:.80rem !important; font-weight:650 !important; cursor:pointer !important;
+  -webkit-user-select:none !important; user-select:none !important;
 }
-#aiChatMessages .ai-chat-message-menu.ai-chat-longpress-copy-menu button i{color:var(--primary) !important; width:auto !important;}
-#aiChatMessages .ai-chat-message-menu.ai-chat-longpress-copy-menu button:hover,
-#aiChatMessages .ai-chat-message-menu.ai-chat-longpress-copy-menu button:active{background:color-mix(in srgb,var(--primary) 10%,transparent) !important;}
-#aiChatMessages .ai-chat-msg.user,
-#aiChatMessages .ai-chat-msg.assistant{position:relative !important;}
+.ai-chat-message-menu.ai-chat-longpress-copy-menu button i{color:var(--primary) !important; width:auto !important; font-size:.78rem !important;}
+.ai-chat-message-menu.ai-chat-longpress-copy-menu button:hover,
+.ai-chat-message-menu.ai-chat-longpress-copy-menu button:active{background:color-mix(in srgb,var(--primary) 10%,transparent) !important;}
 </style>
 </head><body>
     <h1>Levromart Transactions</h1>
@@ -17012,6 +17014,25 @@ function attachAiLongPressCopyUI(el) {
     'button,a,input,textarea,select,.ai-chat-message-menu,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-msg-speak,.reaction-picker,.ai-chat-copy-row'
   );
 
+  const positionCopyMenu = (menu) => {
+    const r = el.getBoundingClientRect();
+    const gap = 8;
+    // Measure the real fixed-position menu before choosing its side.
+    menu.style.left = "0px";
+    menu.style.top = "0px";
+    const mr = menu.getBoundingClientRect();
+    const roomBelow = window.innerHeight - r.bottom - gap;
+    const roomAbove = r.top - gap;
+    const openAbove = roomBelow < mr.height && roomAbove >= mr.height;
+    let top = openAbove ? r.top - mr.height - gap : r.bottom + gap;
+    let left = el.classList.contains("user") ? r.right - mr.width : r.left;
+    const edge = 8;
+    left = Math.max(edge, Math.min(left, window.innerWidth - mr.width - edge));
+    top = Math.max(edge, Math.min(top, window.innerHeight - mr.height - edge));
+    menu.style.left = `${Math.round(left)}px`;
+    menu.style.top = `${Math.round(top)}px`;
+  };
+
   const showCopyMenu = (evt) => {
     const text = messageText();
     if (!text || isInteractive(evt?.target)) return;
@@ -17019,7 +17040,7 @@ function attachAiLongPressCopyUI(el) {
     longPressed = true;
     evt?.preventDefault?.();
     evt?.stopPropagation?.();
-    document.querySelectorAll(".ai-chat-message-menu").forEach((m) => m.remove());
+    closeAiMessageMenu();
 
     const menu = document.createElement("div");
     menu.className = "ai-chat-message-menu ai-chat-longpress-copy-menu";
@@ -17032,19 +17053,8 @@ function attachAiLongPressCopyUI(el) {
       await copyAiMessageText(e, text);
       closeAiMessageMenu();
     };
-    el.appendChild(menu);
-
-    requestAnimationFrame(() => {
-      const rect = menu.getBoundingClientRect();
-      const gap = 10;
-      const roomBelow = window.innerHeight - rect.bottom - gap;
-      const roomAbove = rect.top - gap;
-      if (roomBelow < rect.height && roomAbove >= rect.height) menu.classList.add("opens-up");
-
-      const r = menu.getBoundingClientRect();
-      if (r.right > window.innerWidth - 8) menu.style.left = `${Math.min(0, window.innerWidth - 8 - r.right)}px`;
-      if (r.left < 8) menu.style.left = `${8 - r.left}px`;
-    });
+    document.body.appendChild(menu);
+    requestAnimationFrame(() => positionCopyMenu(menu));
   };
 
   el.addEventListener("pointerdown", (evt) => {
@@ -17059,7 +17069,7 @@ function attachAiLongPressCopyUI(el) {
 
   el.addEventListener("pointermove", (evt) => {
     if (!timer) return;
-    if (Math.hypot(evt.clientX - startX, evt.clientY - startY) > 12) clearTimer();
+    if (Math.hypot(evt.clientX - startX, evt.clientY - startY) > 10) clearTimer();
   }, { passive: true });
 
   el.addEventListener("pointerup", (evt) => {
@@ -17073,12 +17083,12 @@ function attachAiLongPressCopyUI(el) {
 
   el.addEventListener("pointercancel", clearTimer, { passive: true });
 
-  // Desktop/right-click fallback and iOS browser callout suppression.
   el.addEventListener("contextmenu", (evt) => {
     if (isInteractive(evt.target)) return;
     showCopyMenu(evt);
   });
 }
+
 // A single-user conversation only ever needs one reaction per message
 // (no need to aggregate across people, unlike buyer/vendor chat), so this
 // is just a react button plus, once picked, a small pill showing the choice.
@@ -17153,6 +17163,24 @@ function toggleAiMessageMenu(evt, msgId, el) {
 }
 
 function closeAiMessageMenu() { document.querySelectorAll(".ai-chat-message-menu").forEach((m) => m.remove()); }
+// Dismiss the long-press Copy menu immediately when the user taps elsewhere,
+// presses Escape, or opens another message menu. The menu never lingers just
+// because the user decided not to copy anything.
+if (!window.__leviCopyMenuDismissBound) {
+  window.__leviCopyMenuDismissBound = true;
+  document.addEventListener("pointerdown", (evt) => {
+    // Any tap outside the floating menu dismisses it immediately, including
+    // a tap on another message. This keeps the menu from lingering when the
+    // user simply changes their mind or starts interacting elsewhere.
+    if (!evt.target.closest?.(".ai-chat-message-menu.ai-chat-longpress-copy-menu")) closeAiMessageMenu();
+  }, { capture: true, passive: true });
+  document.addEventListener("keydown", (evt) => {
+    if (evt.key === "Escape") closeAiMessageMenu();
+  });
+  window.addEventListener("resize", () => closeAiMessageMenu(), { passive: true });
+  window.addEventListener("scroll", () => closeAiMessageMenu(), { passive: true, capture: true });
+}
+
 async function retryAiMessage(msgId) {
   closeAiMessageMenu();
   let prompt = "";
@@ -17902,22 +17930,25 @@ async function resolveLeviLocalAction(text) {
   // Accent colours can be selected by name (or by a loose colour word).
   if (/\b(change|set|switch|make)\b[\s\S]*\b(accent|theme colour|theme color)\b/.test(q) || /\b(accent)\b[\s\S]*\b(to)\b/.test(q)) {
     const raw = String(text || "").toLowerCase();
-    const paletteIndex = ACCENT_PALETTE.findIndex((p) => {
+    const colourAliases = [
+      ["green", "Greens"], ["teal", "Greens"], ["cyan", "Blues"],
+      ["blue", "Blues"], ["indigo", "Purples"], ["purple", "Purples"], ["violet", "Purples"],
+      ["red", "Reds"], ["pink", "Pinks"], ["orange", "Oranges"],
+      ["yellow", "Yellows"], ["gold", "Yellows"],
+    ];
+    const explicitMatch = ACCENT_PALETTE.findIndex((p) => {
       const name = String(p.name || "").toLowerCase();
-      const group = String(p.group || "").toLowerCase();
-      return raw.includes(name) || raw.includes(group);
+      return raw.includes(name);
     });
+    const colourWord = raw.match(/\b(red|blue|purple|violet|pink|orange|yellow|gold|green|teal|cyan|indigo)\b/)?.[1];
+    const requestedGroup = colourAliases.find(([word]) => word === colourWord)?.[1] || (colourWord ? `${colourWord[0].toUpperCase()}${colourWord.slice(1)}s` : null);
+    const groupIndex = requestedGroup ? ACCENT_PALETTE.findIndex((p) => p.group === requestedGroup) : -1;
+    // A named shade wins when the user explicitly asks for it. A plain hue
+    // word intentionally selects the FIRST shade in that hue group.
+    const paletteIndex = explicitMatch >= 0 ? explicitMatch : groupIndex;
     if (paletteIndex >= 0) {
       setAccent(paletteIndex);
       return { handled:true, reply:`Done - I changed your Levromart accent to ${ACCENT_PALETTE[paletteIndex].name}.` };
-    }
-    const colourWord = raw.match(/\b(red|blue|purple|violet|pink|orange|yellow|gold|green|teal|cyan|indigo)\b/)?.[1];
-    if (colourWord) {
-      const paletteIndex2 = ACCENT_PALETTE.findIndex((p) => `${p.name} ${p.group}`.toLowerCase().includes(colourWord));
-      if (paletteIndex2 >= 0) {
-        setAccent(paletteIndex2);
-        return { handled:true, reply:`Done - I changed your Levromart accent to ${ACCENT_PALETTE[paletteIndex2].name}.` };
-      }
     }
     return { handled:true, reply:"I can change the accent colour. Tell me the colour you want, such as green, blue, purple or red." };
   }
@@ -17970,14 +18001,17 @@ async function resolveLeviLocalAction(text) {
   if (/\b(mark|clear|read)\b[\s\S]*\bnotifications?\b/.test(q)) {
     closeLeviIfOpen(); toggleNotifPanel(); return {handled:true,reply:"Done - I opened your notifications so you can manage them."};
   }
-  if (/\b(clear|empty)\s+(my\s+)?cart\b/.test(q)) {
+  if (/\b(clear|empty|remove|delete|wipe|clean)\b[\s\S]*\b(all|everything|every|entire|whole)\b[\s\S]*\b(my\s+)?cart\b/.test(q)
+      || /\b(clear|empty|remove|delete|wipe|clean)\b[\s\S]*\b(my\s+)?cart\b/.test(q)
+      || /\b(take|remove|delete|clear|empty)\b[\s\S]*\beverything\b[\s\S]*\b(?:from|out of|in)\b[\s\S]*\bcart\b/.test(q)) {
     const {data:rows,error}=await sb.from("cart_items").select("id").eq("buyer_id",session.user.id);
     if(error)return {handled:true,reply:"I couldn't load your cart right now."};
     if(!rows?.length){closeLeviIfOpen();return {handled:true,reply:"Your cart is already empty."};}
     if(!(await showConfirmDialog(`Remove all ${rows.length} item${rows.length===1?"":"s"} from your cart?`,{title:"Clear cart",okLabel:"Clear cart",danger:true}))) return {handled:true,reply:"Okay - I left your cart unchanged."};
     const {error:delErr}=await sb.from("cart_items").delete().eq("buyer_id",session.user.id);
     if(delErr)return {handled:true,reply:"I couldn't clear your cart right now."};
-    updateCartFab(); refreshNotifications(); return {handled:true,reply:"Done - I cleared your cart."};
+    updateCartFab(); refreshNotifications(); closeLeviIfOpen();
+    return {handled:true,reply:`Done - I cleared all ${rows.length} item${rows.length===1?"":"s"} from your cart.`};
   }
   const addIntent = /\b(add|put|place)\b[\s\S]*\b(cart|basket)\b/.test(q) || /\b(add|put|place)\b.*\b(this|that)\b/.test(q);
   const removeIntent = /\b(remove|delete|take)\b[\s\S]*\bcart\b/.test(q);
