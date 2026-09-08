@@ -5895,6 +5895,19 @@ async function syncPushSubscription(registration) {
   if (error) throw error;
   return sub;
 }
+
+async function refreshPushSubscription() {
+  if (!session || !pushSupported() || Notification.permission !== "granted") return null;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) return null;
+    await syncPushSubscription(reg);
+    return sub;
+  } catch (_) {
+    return null;
+  }
+}
 async function enablePushNotifications() {
   try {
     const permission = await Notification.requestPermission();
@@ -16740,20 +16753,33 @@ async function openAiConversation(id) {
   exitAiChatHistoryMode();
 }
 async function deleteAiConversation(id, evt) {
-  evt?.stopPropagation();
-  if(!(await showConfirmDialog("Delete this chat? This can't be undone.",{title:"Delete chat",okLabel:"Delete",danger:true})))return;
-  const {error}=await sb.from("ai_conversations").delete().eq("id",id);
-  if(error){showToast(error.message,"error");return;}
-  const panel=byId("aiChatPanel"),fab=byId("aiChatFab");
-  const wasOpen=!!panel&&!panel.classList.contains("hidden");
-  const wasHistory=!!panel&&panel.classList.contains("history-mode");
-  if(currentAiConversationId===id){
-    currentAiConversationId=null;aiConversationCreatePromise=null;localStorage.removeItem("medris-ai-last-conversation");
-    aiChatMessages=[];aiChatLastDateKey=null;
-    if(panel){panel.classList.remove("hidden");panel.classList.toggle("history-mode",wasHistory);byId("aiChatMessages").innerHTML="";if(!wasHistory)showAiChatGreeting();else loadAiChatHistoryList();}
-    if(fab)fab.classList.toggle("hidden",wasOpen);
-  }else{loadAiChatHistoryList();}
-  showToast("Chat deleted.","success");
+  evt?.stopPropagation?.();
+  if (!(await showConfirmDialog("Delete this chat? This can't be undone.",{title:"Delete chat",okLabel:"Delete",danger:true}))) return;
+  const { error } = await sb.from("ai_conversations").delete().eq("id", id);
+  if (error) { showToast(error.message || "Couldn't delete this chat.", "error"); return; }
+
+  const panel = byId("aiChatPanel");
+  const wasHistory = !!panel && panel.classList.contains("history-mode");
+
+  // Deleting a chat must never close/collapse Levi. Keep the current surface
+  // exactly where the user is. In history mode, simply refresh the list; in
+  // normal mode, clear the deleted thread and show a fresh greeting.
+  if (currentAiConversationId === id) {
+    currentAiConversationId = null;
+    aiConversationCreatePromise = null;
+    localStorage.removeItem("medris-ai-last-conversation");
+    aiChatMessages = [];
+    aiChatLastDateKey = null;
+    byId("aiChatMessages")?.replaceChildren();
+    if (wasHistory) {
+      await loadAiChatHistoryList();
+    } else {
+      showAiChatGreeting();
+    }
+  } else if (wasHistory) {
+    await loadAiChatHistoryList();
+  }
+  showToast("Chat deleted.", "success");
 }
 async function renderSharedAiChat(token) {
   const { data: rows, error } = await sb.rpc("get_shared_ai_conversation", { p_token: token });
@@ -18645,14 +18671,18 @@ window.addEventListener("popstate", (e) => {
   window.addEventListener("offline", refreshOfflineState, { passive:true });
 })();
 
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshPushSubscription();
+}, { passive: true });
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
       const reg = await navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
       await reg.update().catch(() => {});
-      // If permission was already granted, silently refresh the subscription
-      // after a service-worker update. Expired subscriptions are a common
-      // reason an installed iPhone suddenly stops receiving pushes.
+      // Wait for an active worker so iOS/Android doesn't race subscription
+      // creation against service-worker activation.
+      await navigator.serviceWorker.ready;
       if (session && profile && pushSupported() && Notification.permission === "granted") {
         await syncPushSubscription(reg).catch(() => {});
       }
