@@ -812,6 +812,11 @@
   .card-cart-btn { position: absolute; top: 0.6rem; left: 0.6rem; z-index: 2; width: 2rem; height: 2rem; border-radius: 50%; border: none; background: var(--primary); color: #fff; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.15s; }
   .card-cart-btn:hover { transform: scale(1.12); }
   .card-cart-btn.added { background: var(--success); }
+  /* Service listings use a dedicated service marker in the same prominent
+     position as the cart action, so buyers can identify a service before
+     opening the card. It is intentionally non-actionable. */
+  .card-service-btn { position: absolute; top: 0.6rem; left: 0.6rem; z-index: 2; width: 2rem; height: 2rem; border-radius: 50%; border: none; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 0.82rem; pointer-events: none; }
+  .card-service-btn i { line-height: 1; }
   /* Compact, Jumia-style 2-up product grid on phones -- browsing shouldn't
      mean one giant card per screen. Scoped to grids of actual product
      cards (:has) so vendor/package card grids, which carry more text,
@@ -824,7 +829,7 @@
     .grid:has(.product-card-wrap) .product-card-wrap .badge { font-size: 0.6rem; padding: 0.12rem 0.4rem; }
     .grid:has(.product-card-wrap) .product-card-wrap p.muted { font-size: 0.66rem; margin: 0.25rem 0 0; }
     .grid:has(.product-card-wrap) .product-card-wrap div[style*="margin:0.5rem 0"] { margin: 0.3rem 0 !important; font-size: 0.78rem; }
-    .grid:has(.product-card-wrap) .fav-btn, .grid:has(.product-card-wrap) .card-cart-btn { width: 1.5rem; height: 1.5rem; font-size: 0.7rem; top: 0.4rem; }
+    .grid:has(.product-card-wrap) .fav-btn, .grid:has(.product-card-wrap) .card-cart-btn, .grid:has(.product-card-wrap) .card-service-btn { width: 1.5rem; height: 1.5rem; font-size: 0.7rem; top: 0.4rem; }
     .grid:has(.product-card-wrap) .fav-btn { right: 0.4rem; }
     .grid:has(.product-card-wrap) .card-cart-btn { left: 0.4rem; }
     .grid:has(.product-card-wrap) .product-card-wrap [style*="gap:0.3rem"] { max-width: 5.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; }
@@ -4574,6 +4579,11 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 .instant-order-row{height:88px;border-radius:14px;background:var(--ui-surface-2,#f4f6f5);}
 @keyframes instantNavIn{from{opacity:.72}to{opacity:1}}
 </style>
+
+<style id="support-request-polish">
+#supportSubject,#supportMessage{box-sizing:border-box;width:100%;}
+#supportMessage{resize:vertical;min-height:9rem;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -7513,9 +7523,11 @@ function updateAuthUI() {
       links.push({ label: "Admin panel", action: "navigate('adminPanel')" });
       links.push({ label: "Manage admins", action: "navigate('adminUsers')" });
       links.push({ label: "Vendors &amp; transactions", action: "navigate('adminFinance')" });
+      links.push({ label: `Support requests`, action: "navigate('adminSupportRequests')" });
       links.push({ label: `Feedback${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('adminFeedback')" });
     }
     if (vendor) links.push({ label: `Suggestions${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('vendorSuggestionsInbox')" });
+    if (profile.role !== "admin") links.push({ label: "Support request", action: "navigate('supportRequest')" });
     if (profile.role !== "admin") links.push({ label: "Send feedback", action: "showSuggestionModal('platform')" });
     links.push({ label: "Take the tour", action: "showTour()" });
     links.push({ label: "Settings", action: "navigate('settings')" });
@@ -7542,7 +7554,7 @@ function updateAuthUI() {
       <div class="profile-panel-scroll">
         ${links.map((l) => {
           const raw = String(l.label).replace(/<[^>]*>/g, '').trim().toLowerCase();
-          const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
+          const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') || raw.includes('support request') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
           return `<a class="profile-nav-link" onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
         }).join("")}
         <a class="profile-nav-link profile-nav-link-danger" onclick="closeAllPanels();logout();"><span class="profile-item-icon"><i class="fa-solid fa-arrow-right-from-bracket"></i></span><span class="profile-nav-text">Log out</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>
@@ -8265,6 +8277,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "orderDetail": html = await renderOrderDetail(params.orderId); break;
       case "adminPanel": html = await renderAdminPanel(params.status); break;
       case "adminDisputes": html = await renderAdminDisputes(); break;
+      case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
       case "adminPeople": html = await renderAdminPeople(); break;
       case "adminFeedback": html = await renderAdminFeedback(); break;
       case "vendorSuggestionsInbox": html = await renderVendorSuggestionsInbox(); break;
@@ -8275,6 +8288,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "cart": html = await renderCart(); break;
       case "messages": html = await renderMessages(params.conversationId); break;
       case "requestEquipment": html = await renderRequestEquipment(); break;
+      case "supportRequest": html = await renderSupportRequest(); break;
       case "vendorRequests": html = await renderVendorRequests(); break;
       case "terms": html = renderTerms(); break;
       case "privacy": html = renderPrivacy(); break;
@@ -8839,7 +8853,7 @@ function productCardHtml(p) {
   const canQuickAdd = !ownListing && !p.is_service && (p.listing_type === "sale" || p.listing_type === "both") && profile?.role !== "admin";
   return `<div class="product-card-wrap">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
-    ${canQuickAdd ? `<button class="card-cart-btn" onclick="quickAddToCart(event,'${p.id}',this,'${p.vendor?.id || ""}')" title="Add to cart"><i class="fa-solid fa-cart-plus"></i></button>` : ownListing ? `<span class="badge own-listing-badge" title="You can't buy your own listing"><i class="fa-solid fa-store"></i> Your listing</span>` : ""}
+    ${p.is_service ? `<span class="card-service-btn" title="Service" aria-label="Service"><i class="fa-solid fa-hand-holding-heart"></i></span>` : canQuickAdd ? `<button class="card-cart-btn" onclick="quickAddToCart(event,'${p.id}',this,'${p.vendor?.id || ""}')" title="Add to cart"><i class="fa-solid fa-cart-plus"></i></button>` : ownListing ? `<span class="badge own-listing-badge" title="You can't buy your own listing"><i class="fa-solid fa-store"></i> Your listing</span>` : ""}
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;border-radius:0.5rem;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
       <h4 style="margin:0.6rem 0 0.2rem;">${esc(p.name)}</h4>
@@ -11498,6 +11512,50 @@ async function buyPackage(packageId) {
   navigate("orderDetail", { orderId });
 }
 
+// ---------- SUPPORT REQUESTS ----------
+async function renderSupportRequest() {
+  if (!session) return '<div class="empty-state">Please log in to contact Levromart support.</div>';
+  const { data: requests, error } = await sb.from("support_requests")
+    .select("id,subject,message,status,admin_reply,created_at,updated_at")
+    .eq("user_id", session.user.id)
+    .order("created_at", { ascending: false });
+  let html = `<div class="page-head"><div><h2><i class="fa-solid fa-headset"></i> Support request</h2><p class="muted">Contact Levromart directly about account issues, orders, scams, payments, technical problems, or anything that needs admin help.</p></div></div>`;
+  html += `<div class="card" style="max-width:680px;margin-bottom:1rem;">
+    <h3 style="margin-top:0;">Send a support request</h3>
+    <label for="supportSubject">Subject</label>
+    <input id="supportSubject" maxlength="140" placeholder="What do you need help with?" />
+    <label for="supportMessage" style="margin-top:.7rem;">Message</label>
+    <textarea id="supportMessage" rows="6" maxlength="4000" placeholder="Explain what happened and include any order number or useful details."></textarea>
+    <div class="flex" style="justify-content:flex-end;margin-top:.7rem;">
+      <button class="btn" id="supportSubmitBtn" onclick="submitSupportRequest()"><i class="fa-solid fa-paper-plane"></i> Send request</button>
+    </div>
+  </div>`;
+  if (error) return html + errorStateHtml(error);
+  html += `<h3 style="margin-top:1rem;">Your requests</h3>`;
+  html += requests?.length ? requests.map(r => `<div class="card" style="margin-bottom:.7rem;">
+    <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.6rem;">
+      <div><strong>${esc(r.subject)}</strong><div class="muted" style="font-size:.76rem;">${new Date(r.created_at).toLocaleString('en-GB')}</div></div>
+      <span class="badge ${r.status === 'resolved' ? 'success' : r.status === 'closed' ? 'danger' : ''}">${esc(r.status)}</span>
+    </div>
+    <p style="white-space:pre-wrap;margin:.55rem 0 0;">${esc(r.message)}</p>
+    ${r.admin_reply ? `<div class="banner" style="margin-top:.7rem;"><strong>Levromart support</strong><div style="white-space:pre-wrap;margin-top:.25rem;">${esc(r.admin_reply)}</div></div>` : ''}
+  </div>`).join('') : `<div class="empty-state">You have not sent a support request yet.</div>`;
+  return html;
+}
+async function submitSupportRequest() {
+  if (!session) { showLogin(); return; }
+  const subject = String(byId('supportSubject')?.value || '').trim();
+  const message = String(byId('supportMessage')?.value || '').trim();
+  if (!subject || !message) { showToast('Please enter a subject and message.', 'error'); return; }
+  const btn = byId('supportSubmitBtn');
+  if (btn) btn.disabled = true;
+  const { error } = await sb.from('support_requests').insert({ user_id: session.user.id, subject, message });
+  if (btn) btn.disabled = false;
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('Support request sent.', 'success');
+  navigate('supportRequest', {}, { replace: true });
+}
+
 // ---------- REQUEST EQUIPMENT (buyers post needs, vendors compete) ----------
 async function renderRequestEquipment() {
   if (!session) return '<div class="empty-state">Please log in to request an item.</div>';
@@ -14027,11 +14085,48 @@ function adminNavHtml(active) {
     ["adminPeople", "fa-users", "People"],
     ["adminFinance", "fa-sack-dollar", "Finance"],
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
+    ["adminSupportRequests", "fa-headset", "Support"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],
     ["adminUsers", "fa-user-shield", "Admins"],
     ["adminLog", "fa-clock-rotate-left", "Log"],
   ];
   return `<div class="dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>`).join("")}</div>`;
+}
+
+async function renderAdminSupportRequests() {
+  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  const { data: requests, error } = await sb.from("support_requests")
+    .select("id,user_id,subject,message,status,admin_reply,created_at,updated_at,user:users(name,email,phone)")
+    .order("created_at", { ascending: false });
+  let html = `<h2><i class="fa-solid fa-headset"></i> Support requests</h2>`;
+  html += adminNavHtml("adminSupportRequests");
+  if (error) return html + errorStateHtml(error);
+  if (!requests?.length) return html + `<div class="empty-state">No support requests yet.</div>`;
+  html += requests.map(r => `<div class="card" style="margin-bottom:.75rem;">
+    <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.7rem;">
+      <div><strong>${esc(r.subject)}</strong><div class="muted" style="font-size:.78rem;">${esc(r.user?.name || 'User')} · ${esc(r.user?.email || '')} · ${new Date(r.created_at).toLocaleString('en-GB')}</div></div>
+      <span class="badge ${r.status === 'resolved' ? 'success' : r.status === 'closed' ? 'danger' : ''}">${esc(r.status)}</span>
+    </div>
+    <p style="white-space:pre-wrap;margin:.6rem 0;">${esc(r.message)}</p>
+    <label>Admin reply</label>
+    <textarea id="supportReply_${r.id}" rows="3" maxlength="4000" placeholder="Reply to the user…">${esc(r.admin_reply || '')}</textarea>
+    <div class="flex" style="justify-content:flex-end;align-items:center;margin-top:.55rem;gap:.5rem;">
+      <select id="supportStatus_${r.id}" style="max-width:180px;">
+        ${['open','in_progress','resolved','closed'].map(st => `<option value="${st}" ${r.status === st ? 'selected' : ''}>${st.replace('_',' ')}</option>`).join('')}
+      </select>
+      <button class="btn btn-sm" onclick="saveSupportRequest('${r.id}')"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+    </div>
+  </div>`).join('');
+  return html;
+}
+async function saveSupportRequest(id) {
+  if (!session || profile?.role !== 'admin') return;
+  const status = byId(`supportStatus_${id}`)?.value;
+  const admin_reply = String(byId(`supportReply_${id}`)?.value || '').trim() || null;
+  const { error } = await sb.from('support_requests').update({ status, admin_reply }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('Support request updated.', 'success');
+  navigate('adminSupportRequests', {}, { replace: true });
 }
 
 async function renderAdminPanel(status) {
@@ -15700,7 +15795,9 @@ function scrollAiVoiceIntoView() {
   if (input) input.scrollTop = input.scrollHeight;
 }
 function toggleAiChatMic(evt) {
+  evt?.preventDefault?.();
   evt?.stopPropagation?.();
+  try { document.activeElement?.blur?.(); } catch (_) {}
   if (!AiSpeechRecognition) return;
   // Tapping the mic means "let me talk". Stop Levi's speech immediately so
   // the browser never has Levi's TTS competing with the microphone.
@@ -15718,8 +15815,10 @@ function toggleAiChatMic(evt) {
   aiChatRecognizer.onstart = () => {
     aiChatListening = true;
     aiChatVoicePaused = false;
+    const input = byId("aiChatInput");
+    if (input) { input.readOnly = true; try { input.blur(); } catch (_) {} }
+    try { document.activeElement?.blur?.(); } catch (_) {}
     updateAiVoiceStatus();
-    byId("aiChatInput")?.focus();
   };
   aiChatRecognizer.onresult = (e) => {
     // This is deliberately the original non-continuous, tap-to-talk model.
@@ -15755,8 +15854,18 @@ function toggleAiChatMic(evt) {
     aiChatListening = false;
     aiChatVoicePaused = false;
     aiChatRecognizer = null;
+    const input = byId("aiChatInput");
+    if (input) input.readOnly = false;
+    try { document.activeElement?.blur?.(); } catch (_) {}
     updateAiVoiceStatus();
   };
+  // Do not focus the Levi composer while starting voice input. Blurring the
+  // active element keeps mobile keyboards closed when the mic is tapped.
+  try {
+    const input = byId("aiChatInput");
+    if (input) input.readOnly = true;
+    try { document.activeElement?.blur?.(); } catch (_) {}
+  } catch (_) {}
   try {
     aiChatRecognizer.start();
   } catch (e) {
@@ -15778,7 +15887,8 @@ async function cancelAiChatVoice() {
   aiChatLastVoiceTranscript = "";
   aiChatLastInputVoice = false;
   const input = byId("aiChatInput");
-  if (input) resetChatInput(input);
+  if (input) { input.readOnly = false; resetChatInput(input); }
+  try { document.activeElement?.blur?.(); } catch (_) {}
   updateAiVoiceStatus();
 }
 
