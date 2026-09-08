@@ -4701,6 +4701,8 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
   #aiChatFab.scroll-faded,#cartFab.scroll-faded{transform:translateY(1.15rem) scale(.82) !important;opacity:0 !important;pointer-events:none !important;}
 }
 @media (prefers-reduced-motion:reduce){#aiChatFab,#cartFab{transition:none !important;}#aiChatFab.scroll-faded,#cartFab.scroll-faded{transform:none !important;opacity:1 !important;pointer-events:auto !important;}}
+.instant-nav-status{display:flex;align-items:center;gap:.45rem;color:var(--text-muted);font-size:.78rem;padding:.55rem 0;opacity:.78}.instant-nav-status i{color:var(--primary);font-size:.72rem}
+@media(max-width:720px){#drawerBackdrop{touch-action:pan-y !important}.product-gallery-track,.package-detail-gallery-track{scroll-behavior:auto !important;scroll-snap-type:x mandatory !important}.product-detail-card .product-gallery-track{border-radius:0 !important}}
 </style>
 <style id="2026-09-08-marketplace-polish">
 /* Product cards: wishlist lives away from the bottom-right action. */
@@ -4744,6 +4746,88 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
   .product-gallery-main, .package-detail-main { aspect-ratio:1/1 !important; }
 }
 </style>
+<style id="2026-09-08-final-mobile-ux">
+/* Product detail: floating controls stay away from the title/content edge. */
+body.product-detail-view #cartFab{right:.7rem !important;bottom:5.25rem !important;left:auto !important;top:auto !important;}
+body.product-detail-view #aiChatFab{right:.7rem !important;bottom:.65rem !important;left:auto !important;top:auto !important;}
+@media(max-width:720px){
+  .product-detail-card .product-detail-media{margin-left:-1rem !important;margin-right:-1rem !important;margin-bottom:1rem !important;width:calc(100% + 2rem) !important;}
+  .product-detail-card{overflow:visible !important;padding-left:1rem !important;padding-right:1rem !important;}
+}
+.product-detail-media,.product-detail-media .product-gallery-carousel{width:100% !important;max-width:none !important;}
+.product-gallery-track,.package-detail-gallery-track{margin-left:0 !important;margin-right:0 !important;width:100% !important;}
+.product-gallery-carousel{width:100%;}
+.product-gallery-track,.package-detail-gallery-track{display:flex !important;overflow-x:auto !important;overflow-y:hidden !important;scroll-snap-type:x mandatory !important;scroll-behavior:smooth !important;scrollbar-width:none !important;-webkit-overflow-scrolling:touch !important;touch-action:pan-x !important;gap:0 !important;overscroll-behavior-x:contain !important;position:relative !important;}
+.product-gallery-track::-webkit-scrollbar,.package-detail-gallery-track::-webkit-scrollbar{display:none;}
+.product-gallery-slide,.package-detail-gallery-slide{flex:0 0 100% !important;width:100% !important;min-width:100% !important;scroll-snap-align:center !important;scroll-snap-stop:always !important;position:relative !important;height:100% !important;cursor:zoom-in !important;}
+.product-gallery-slide img,.package-detail-gallery-slide img{width:100% !important;height:100% !important;display:block !important;object-fit:cover !important;background:transparent !important;border-radius:0 !important;}
+.product-gallery-track{aspect-ratio:4/3 !important;border-radius:.9rem !important;}
+.package-detail-gallery-track{aspect-ratio:4/3 !important;border-radius:14px !important;}
+.product-gallery-count{pointer-events:none !important;}
+.storefront-verified-row{margin-top:.4rem !important;display:flex !important;justify-content:flex-start !important;}
+.storefront-verified-row .badge{width:max-content !important;}
+.storefront-catalog-tabs{margin:.9rem 0 .65rem !important;}
+.storefront-products-shell .storefront-section-head{margin-bottom:.2rem !important;}
+/* Quiet, non-white navigation skeletons. */
+.instant-content-placeholder{display:flex !important;flex-direction:column !important;gap:.65rem !important;background:transparent !important;padding:.65rem 0 !important;}
+.instant-line,.instant-order-row{background:color-mix(in srgb,var(--primary) 5%,transparent) !important;border:1px solid color-mix(in srgb,var(--primary) 10%,transparent) !important;box-shadow:none !important;}
+.instant-order-row{height:4.2rem !important;border-radius:1rem !important;}
+.instant-filter-row span{background:color-mix(in srgb,var(--primary) 5%,transparent) !important;border:1px solid color-mix(in srgb,var(--primary) 8%,transparent) !important;}
+.order-date-filter-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:.75rem 0 .95rem;}
+.order-date-filter-label{display:flex;align-items:center;gap:.5rem;margin:0;flex:1;font-size:.8rem;font-weight:700;color:var(--text-muted);}
+.order-date-filter-label select{flex:1;min-width:0;margin:0;background:var(--card);}
+.order-clear-date-btn{border:0;background:transparent;color:var(--primary);font:inherit;font-size:.78rem;font-weight:700;padding:.5rem .2rem;}
+.order-date-dialog-content{max-width:520px !important;}
+.order-date-custom-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;}
+.order-date-custom-grid label{display:flex;flex-direction:column;gap:.3rem;font-weight:700;font-size:.82rem;color:var(--text-muted);}
+.order-date-custom-grid input{margin:0;}
+.avatar-crop-modal-content{max-width:520px !important;}
+.avatar-crop-viewport{position:relative;width:min(80vw,360px);aspect-ratio:1;margin:.6rem auto;border-radius:50%;overflow:hidden;background:color-mix(in srgb,var(--text) 9%,transparent);border:2px solid var(--primary);touch-action:none;box-shadow:0 10px 30px rgba(0,0,0,.18);}
+.avatar-crop-viewport::after{content:"";position:absolute;inset:0;border:2px solid rgba(255,255,255,.78);border-radius:50%;pointer-events:none;}
+.avatar-crop-viewport img{position:absolute;left:50%;top:50%;max-width:none;user-select:none;-webkit-user-drag:none;touch-action:none;transform-origin:center;}
+.avatar-crop-zoom{display:flex;align-items:center;gap:.7rem;margin-top:.75rem;font-size:.82rem;font-weight:700;}
+.avatar-crop-zoom input{flex:1;}
+.chat-image-attachment{display:block !important;width:auto !important;max-width:78vw !important;margin:.15rem 0 !important;padding:0 !important;border:0 !important;background:transparent !important;box-shadow:none !important;}
+.chat-image-attachment .msg-attachment-img{width:auto !important;max-width:min(78vw,24rem) !important;max-height:30rem !important;object-fit:contain !important;border-radius:12px !important;background:transparent !important;}
+@media(max-width:430px){.order-date-custom-grid{grid-template-columns:1fr;}.order-date-filter-row{align-items:stretch;}.order-date-filter-label{align-items:stretch;flex-direction:column;gap:.35rem;}}
+</style>
+
+<style id="2026-09-08-user-ux-final">
+/* Keep the floating Levi control out of product/package detail content. */
+body.product-detail-view #aiChatFab{display:none !important;pointer-events:none !important;}
+/* Vendor cards: verified is a bottom-left status, not part of the location row. */
+.vendor-card .vendor-card-footer{display:flex;align-items:center;justify-content:flex-start;gap:.35rem;margin-top:.55rem;min-height:1.55rem;flex-wrap:wrap;}
+.vendor-card .vendor-card-footer .badge{margin-left:0 !important;}
+/* Product listings must actually occupy their grid tracks. */
+.storefront-products-shell #storefrontGrid,
+.storefront-products-shell #storefrontGrid .product-card-wrap,
+.storefront-products-shell #storefrontGrid .product-card-wrap .card{width:100% !important;min-width:0 !important;}
+.storefront-products-shell #storefrontGrid{margin-left:0 !important;margin-right:0 !important;padding-left:0 !important;padding-right:0 !important;}
+/* The browse rails behave like a continuous scroll surface, not a sequence of snaps. */
+.hscroll,.cat-row,.storefront-product-strip{scroll-snap-type:none !important;scroll-behavior:auto !important;-webkit-overflow-scrolling:touch !important;}
+.hscroll > *,.cat-row > *,.storefront-product-strip > *{scroll-snap-align:none !important;}
+/* Small, quiet scrollbar on devices/browsers that expose it. */
+.hscroll,.cat-row,.storefront-product-strip{scrollbar-width:thin;}
+/* Never fall back to a bright white skeleton in dark mode. */
+:root{--ui-surface-2:color-mix(in srgb,var(--card) 94%,var(--primary) 6%);}
+[data-theme="dark"],[data-theme="black"]{--ui-surface-2:color-mix(in srgb,var(--card) 92%,var(--primary) 8%);}
+.instant-line,.instant-filter-row span,.instant-order-row{background:var(--ui-surface-2) !important;border-color:color-mix(in srgb,var(--ui-border) 80%,transparent) !important;}
+.support-attachments{background:color-mix(in srgb,var(--card) 96%,var(--primary) 4%) !important;color:var(--text) !important;}
+.support-file-dropzone{background:color-mix(in srgb,var(--card) 94%,var(--primary) 6%) !important;color:var(--text) !important;}
+.support-file-dropzone:hover,.support-file-dropzone.dragover{background:color-mix(in srgb,var(--card) 90%,var(--primary) 10%) !important;}
+.support-attachment-file,.support-attachment img{background:var(--ui-surface-2) !important;}
+/* Date filters use compact relative periods; the old custom from/to popup is removed. */
+.order-date-filter-row{display:flex !important;align-items:center !important;gap:.55rem !important;flex-wrap:wrap !important;}
+.order-date-filter-label{display:flex !important;align-items:center !important;gap:.45rem !important;margin:0 !important;}
+.order-date-filter-label > select{min-width:160px !important;}
+@media(max-width:430px){.order-date-filter-row{gap:.4rem !important}.order-date-filter-label{width:100% !important}.order-date-filter-label > select{width:100% !important;min-width:0 !important;}}
+/* Image long-press/reaction surfaces: suppress browser image selection/menus. */
+.chat-image-attachment,.chat-image-attachment img,.image-lightbox img{user-select:none !important;-webkit-user-select:none !important;-webkit-touch-callout:none !important;-webkit-user-drag:none !important;}
+.image-lightbox-download{touch-action:manipulation !important;}
+/* Drawer swipe feedback. */
+#profilePanel,#notifPanel{will-change:transform;}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -6940,68 +7024,77 @@ function setupDrawerSwipe(drawer, side) { return; }
 // swipe right -> profile, swipe left -> notifications. Closing an open drawer:
 // swipe right. We deliberately ignore cards, maps, tables, horizontal rails,
 // form controls and other interactive surfaces so their own gestures remain intact.
-function bindProfileEdgeSwipe(){
-  if (window.__drawerSwipeReady) return;
-  window.__drawerSwipeReady = true;
-  let start = null;
-  let tracking = false;
-  const blocked = (target) => {
-    if (!target?.closest) return false;
-    return !!target.closest('button,a,input,textarea,select,.card,.product-card-wrap,.vendor-card,.grid,.hscroll,.cat-row,.table-wrap,table,.leaflet,.leaflet-container,.bottom-nav,.modal-content,.side-drawer,.chat-page-wrap,.package-detail-item,.product-gallery,.storefront-products-shell');
-  };
-  const centerZone = (x) => x >= window.innerWidth * 0.20 && x <= window.innerWidth * 0.80;
-  const openPanel = (panel) => { if (panel === 'profile') toggleProfilePanel(); else toggleNotifPanel(); };
-  document.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return;
-    if (!centerZone(e.clientX) || blocked(e.target)) return;
-    const openProfile = byId('profilePanel') && !byId('profilePanel').classList.contains('hidden');
-    const openNotif = byId('notifPanel') && !byId('notifPanel').classList.contains('hidden');
-    if (openProfile || openNotif) {
-      const backdrop = byId('drawerBackdrop');
-      if (e.target !== backdrop && !e.target?.classList?.contains('drawer-backdrop')) return;
+function bindProfileEdgeSwipe(){ return; }
+setTimeout(bindProfileEdgeSwipe, 0);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPanels(); });
+
+// Native-feeling drawer gestures: only the extreme left/right edge opens a
+// drawer, and only a horizontal outward drag inside an already-open drawer
+// closes it. Vertical scrolling, controls, cards and content remain untouched.
+(function setupDrawerEdgeGestures(){
+  if (window.__drawerEdgeGesturesReady) return;
+  window.__drawerEdgeGesturesReady = true;
+  const EDGE = 28, MIN = 64, MOVE = 10;
+  const blocked = (t) => !!t?.closest?.('button,a,input,textarea,select,[contenteditable="true"],.card,.grid,.hscroll,.cat-row,.table-wrap,table,.leaflet,.modal-content,.bottom-nav,.chat-page-wrap');
+  let g = null;
+  document.addEventListener('pointerdown',(e)=>{
+    if(e.pointerType==='mouse'||e.pointerType==='pen') return;
+    const profileOpen=byId('profilePanel')?.classList.contains('open');
+    const notifOpen=byId('notifPanel')?.classList.contains('open');
+    const target=e.target;
+    if(profileOpen && target.closest?.('#profilePanel')){
+      if(blocked(target)) return;
+      g={id:e.pointerId,x:e.clientX,y:e.clientY,side:'left',mode:'close',active:false,el:byId('profilePanel')};
+      return;
     }
-    start = { x:e.clientX, y:e.clientY, time:Date.now(), openProfile, openNotif };
-    tracking = false;
-  }, { passive:true });
-  document.addEventListener('pointermove', (e) => {
-    if (!start || e.pointerType === 'mouse') return;
-    const dx = e.clientX - start.x, dy = e.clientY - start.y;
-    if (!tracking) {
-      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-      if (Math.abs(dx) <= Math.abs(dy) * 1.25 || Math.abs(dx) < 28) { start = null; return; }
-      tracking = true;
+    if(notifOpen && target.closest?.('#notifPanel')){
+      if(blocked(target)) return;
+      g={id:e.pointerId,x:e.clientX,y:e.clientY,side:'right',mode:'close',active:false,el:byId('notifPanel')};
+      return;
+    }
+    if(profileOpen||notifOpen) return;
+    if(e.clientX<=EDGE){g={id:e.pointerId,x:e.clientX,y:e.clientY,side:'left',mode:'open',active:false,el:byId('profilePanel')};}
+    else if(e.clientX>=window.innerWidth-EDGE){g={id:e.pointerId,x:e.clientX,y:e.clientY,side:'right',mode:'open',active:false,el:byId('notifPanel')};}
+  },{passive:true});
+  document.addEventListener('pointermove',(e)=>{
+    if(!g||e.pointerId!==g.id||e.pointerType==='mouse'||e.pointerType==='pen') return;
+    const dx=e.clientX-g.x,dy=e.clientY-g.y;
+    if(!g.active){
+      if(Math.hypot(dx,dy)<MOVE) return;
+      if(Math.abs(dx)<Math.abs(dy)*1.35){g=null;return;}
+      g.active=true;
+      if(g.el) g.el.style.transition='none';
+    }
+    if(g.el&&g.mode==='open'){
+      const w=g.el.getBoundingClientRect().width||Math.min(304,window.innerWidth*.78);
+      const offset=g.side==='left'?Math.min(w,Math.max(0,dx)):Math.max(-w,Math.min(0,dx));
+      g.el.style.transform=`translateX(${g.side==='left'?(-w+offset):(w+offset)}px)`;
+    }else if(g.el&&g.mode==='close'){
+      const w=g.el.getBoundingClientRect().width||Math.min(304,window.innerWidth*.78);
+      const offset=g.side==='left'?Math.min(0,dx):Math.max(0,dx);
+      g.el.style.transform=`translateX(${offset}px)`;
     }
     e.preventDefault?.();
-    const panel = start.openProfile ? byId('profilePanel') : start.openNotif ? byId('notifPanel') : null;
-    if (panel) {
-      const raw = Math.max(-100, Math.min(120, dx));
-      // Right drawer: leftward drag reveals more, rightward drag closes.
-      panel.style.transition = 'none';
-      panel.style.transform = `translateX(${Math.max(0, raw > 0 ? raw : 0)}px)`;
+  },{passive:false});
+  const finish=(e)=>{
+    if(!g||e.pointerId!==g.id){g=null;return;}
+    const dx=e.clientX-g.x,dy=e.clientY-g.y;
+    const valid=g.active&&Math.abs(dx)>=MIN&&Math.abs(dx)>Math.abs(dy)*1.35;
+    const side=g.side,mode=g.mode,el=g.el;
+    if(el){el.style.transition='';el.style.transform='';}
+    if(valid){
+      if(mode==='open' && ((side==='left'&&dx>0)||(side==='right'&&dx<0))){
+        side==='left'?toggleProfilePanel():toggleNotifPanel();
+      }else if(mode==='close' && ((side==='left'&&dx<0)||(side==='right'&&dx>0))){
+        closeAllPanels();
+      }
     }
-  }, { passive:false });
-  document.addEventListener('pointerup', (e) => {
-    if (!start || e.pointerType === 'mouse') { start = null; tracking = false; return; }
-    const dx = e.clientX - start.x, dy = e.clientY - start.y;
-    const fastEnough = Date.now() - start.time < 700;
-    const valid = Math.abs(dx) > 52 && Math.abs(dx) > Math.abs(dy) * 1.25 && fastEnough;
-    const open = start.openProfile || start.openNotif;
-    const targetPanel = start.openProfile ? byId('profilePanel') : start.openNotif ? byId('notifPanel') : null;
-    if (targetPanel) {
-      targetPanel.style.transition = '';
-      targetPanel.style.transform = '';
-      if (valid && dx > 0) closeAllPanels();
-    } else if (valid) {
-      // Closed state: right swipe opens profile; left swipe opens notifications.
-      openPanel(dx > 0 ? 'profile' : 'notifications');
-    }
-    start = null; tracking = false;
-  }, { passive:true });
-  document.addEventListener('pointercancel', () => { start = null; tracking = false; });
-}
+    g=null;
+  };
+  document.addEventListener('pointerup',finish,{passive:true});
+  document.addEventListener('pointercancel',()=>{if(g?.el){g.el.style.transition='';g.el.style.transform='';}g=null;},{passive:true});
+})();
 
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPanels(); });
-setTimeout(bindProfileEdgeSwipe, 0);
 
 // Swipe left/right ANYWHERE on the page (not just the bottom bar) moves to
 // the next/previous bottom-nav tab - e.g. swipe from Home and land on
@@ -7816,20 +7909,75 @@ function updateAuthUI() {
   }
 }
 
-async function uploadAvatar(event) {
-  const file = event.target.files[0];
+let pendingAvatarFile = null;
+let avatarCropState = null;
+function uploadAvatar(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
   if (!file || !session) return;
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${session.user.id}/avatar.${ext}`;
-  const { error: upErr } = await sb.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
-  if (upErr) { showToast(upErr.message, "error"); return; }
-  const { data: pub } = sb.storage.from("avatars").getPublicUrl(path);
-  const url = `${pub.publicUrl}?t=${Date.now()}`;
-  const { error } = await sb.from("users").update({ avatar_url: url }).eq("id", session.user.id);
-  if (error) { showToast(error.message, "error"); return; }
-  profile.avatar_url = url;
-  updateAuthUI();
-  showToast("Profile photo updated.", "success");
+  if (!String(file.type || '').startsWith('image/')) { showToast('Please choose an image.', 'error'); return; }
+  pendingAvatarFile = file;
+  openAvatarCropModal(file);
+}
+function openAvatarCropModal(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const modal = document.createElement('div');
+    modal.id = 'avatarCropModal';
+    modal.className = 'modal';
+    modal.innerHTML = `<div class="modal-content avatar-crop-modal-content">
+      <div class="drawer-header"><h3 style="margin:0;"><i class="fa-solid fa-crop-simple"></i> Adjust profile photo</h3><button type="button" class="drawer-close-btn" onclick="closeAvatarCropModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+      <p class="muted" style="margin:.25rem 0 .8rem;">Move and zoom the photo to choose exactly what people see.</p>
+      <div class="avatar-crop-viewport" id="avatarCropViewport"><img id="avatarCropImage" src="${esc(reader.result)}" alt="Profile photo crop" draggable="false"></div>
+      <label class="avatar-crop-zoom"><span>Zoom</span><input id="avatarCropZoom" type="range" min="1" max="3" step="0.01" value="1" oninput="updateAvatarCropTransform()"></label>
+      <div class="flex" style="justify-content:flex-end;margin-top:.9rem;"><button type="button" class="btn btn-outline" onclick="closeAvatarCropModal()">Cancel</button><button type="button" class="btn" onclick="saveAvatarCrop()"><i class="fa-solid fa-check"></i> Use photo</button></div>
+    </div>`;
+    document.body.appendChild(modal);
+    const img = byId('avatarCropImage');
+    avatarCropState = { scale:1, x:0, y:0, sx:0, sy:0, ox:0, oy:0, dragging:false, imgNaturalW:0, imgNaturalH:0 };
+    img.onload = () => { avatarCropState.imgNaturalW=img.naturalWidth; avatarCropState.imgNaturalH=img.naturalHeight; updateAvatarCropTransform(); };
+    bindAvatarCropDrag();
+  };
+  reader.readAsDataURL(file);
+}
+function bindAvatarCropDrag() {
+  const viewport = byId('avatarCropViewport');
+  if (!viewport || viewport.dataset.bound) return;
+  viewport.dataset.bound = '1';
+  const start = (e) => { if (!avatarCropState) return; avatarCropState.dragging=true; avatarCropState.ox=e.clientX-avatarCropState.x; avatarCropState.oy=e.clientY-avatarCropState.y; try{viewport.setPointerCapture(e.pointerId);}catch(_){} };
+  const move = (e) => { if (!avatarCropState?.dragging) return; avatarCropState.x=e.clientX-avatarCropState.ox; avatarCropState.y=e.clientY-avatarCropState.oy; updateAvatarCropTransform(); };
+  const end = () => { if (avatarCropState) avatarCropState.dragging=false; };
+  viewport.addEventListener('pointerdown',start); viewport.addEventListener('pointermove',move); viewport.addEventListener('pointerup',end); viewport.addEventListener('pointercancel',end);
+}
+function updateAvatarCropTransform() {
+  const img=byId('avatarCropImage'); const v=byId('avatarCropViewport'); if(!img||!v||!avatarCropState)return;
+  const scale=Number(byId('avatarCropZoom')?.value||1); avatarCropState.scale=scale;
+  const base=Math.max(v.clientWidth/(img.naturalWidth||1), v.clientHeight/(img.naturalHeight||1));
+  img.style.width=`${(img.naturalWidth||100)*base}px`; img.style.height=`${(img.naturalHeight||100)*base}px`;
+  img.style.transform=`translate(calc(-50% + ${avatarCropState.x}px), calc(-50% + ${avatarCropState.y}px)) scale(${scale})`;
+}
+function closeAvatarCropModal(){ byId('avatarCropModal')?.remove(); avatarCropState=null; pendingAvatarFile=null; }
+async function saveAvatarCrop(){
+  if(!pendingAvatarFile||!avatarCropState)return;
+  const v=byId('avatarCropViewport'), img=byId('avatarCropImage'); if(!v||!img)return;
+  const size=800; const canvas=document.createElement('canvas'); canvas.width=size; canvas.height=size; const ctx=canvas.getContext('2d');
+  const base=Math.max(v.clientWidth/(img.naturalWidth||1), v.clientHeight/(img.naturalHeight||1));
+  const displayW=(img.naturalWidth||1)*base*avatarCropState.scale, displayH=(img.naturalHeight||1)*base*avatarCropState.scale;
+  const left=(v.clientWidth-displayW)/2+avatarCropState.x, top=(v.clientHeight-displayH)/2+avatarCropState.y;
+  const sx=Math.max(0,-left)*(img.naturalWidth/displayW), sy=Math.max(0,-top)*(img.naturalHeight/displayH);
+  const sw=Math.min(img.naturalWidth, v.clientWidth*img.naturalWidth/displayW); const sh=Math.min(img.naturalHeight, v.clientHeight*img.naturalHeight/displayH);
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
+  canvas.toBlob(async (blob)=>{
+    if(!blob){showToast('Could not prepare that photo.','error');return;}
+    const path=`${session.user.id}/avatar.jpg`;
+    const {error:upErr}=await sb.storage.from('avatars').upload(path,blob,{upsert:true,contentType:'image/jpeg'});
+    if(upErr){showToast(upErr.message,'error');return;}
+    const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
+    const url=`${pub.publicUrl}?t=${Date.now()}`;
+    const {error}=await sb.from('users').update({avatar_url:url}).eq('id',session.user.id);
+    if(error){showToast(error.message,'error');return;}
+    profile.avatar_url=url; updateAuthUI(); closeAvatarCropModal(); showToast('Profile photo updated.','success');
+  },'image/jpeg',0.9);
 }
 
 // ---------- DEDICATED LEVROMART SETTINGS PAGE ----------
@@ -8486,35 +8634,15 @@ function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
 function navigationShellHtml(view) {
-  const icon = {
-    vendorDashboard:'fa-box', vendorProducts:'fa-box', vendorPackages:'fa-boxes-packing',
-    vendorEarnings:'fa-sack-dollar', vendorOrders:'fa-receipt', buyerOrders:'fa-receipt',
-    messages:'fa-comment-dots', vendors:'fa-store', cart:'fa-cart-shopping', wishlist:'fa-heart',
-    requestEquipment:'fa-hand', settings:'fa-gear'
-  }[view] || 'fa-circle';
-  const title = {
-    vendorDashboard:'My Shop', vendorProducts:'My Products', vendorPackages:'My Packages',
-    vendorEarnings:'Earnings', vendorOrders:'Orders', buyerOrders:'My Orders',
-    messages:'Messages', vendors:'Vendors', cart:'Cart', wishlist:'Wishlist',
-    requestEquipment:'Requests', settings:'Settings'
-  }[view] || '';
-  if (view === 'vendorDashboard') {
-    return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> My Shop</h2><div class="dash-tabs shop-tabs-rail"><button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button><button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button><button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button><button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions</button></div><div class="instant-content-placeholder"><div class="instant-line wide"></div><div class="instant-line"></div><div class="instant-line short"></div></div></div>`;
-  }
-  if (view === 'vendorOrders' || view === 'buyerOrders') {
-    return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-filter-row"><span></span><span></span><span></span></div><div class="instant-content-placeholder"><div class="instant-order-row"></div><div class="instant-order-row"></div><div class="instant-order-row"></div></div></div>`;
-  }
-  if (title) return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-content-placeholder"><div class="instant-line wide"></div><div class="instant-line"></div></div></div>`;
-  return `<div class="instant-page-shell" aria-hidden="true"></div>`;
+  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors"};
+  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store"};
+  const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
+  if(!title)return "";
+  if(view==='vendorDashboard') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> My Shop</h2><div class="dash-tabs shop-tabs-rail"><button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button><button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button><button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button><button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions</button></div><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating your shop…</div></div>`;
+  if(view==='vendorOrders'||view==='buyerOrders') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating orders…</div></div>`;
+  return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating…</div></div>`;
 }
-function isOwnVendorId(vendorId) {
-  return !!(session?.user?.id && vendor?.id && String(vendor.id) === String(vendorId));
-}
-function blockOwnVendorPurchase(vendorId, verb = "buy") {
-  if (!isOwnVendorId(vendorId)) return false;
-  showToast(`You can't ${verb} from your own shop.`, "error");
-  return true;
-}
+
 function navigationLoadingHtml(view) {
   const label = view === "messages" ? "Opening messages…" : view === "cart" ? "Opening cart…" : "Loading…";
   return `<div class="page-loading-shell" aria-live="polite"><span class="page-loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i></span><span>${label}</span></div>`;
@@ -8543,6 +8671,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // treatment (see #dedicated-chat-page-fix); the conversation list and
   // the admin's read-only viewer keep the normal in-app layout.
   document.body.classList.toggle("chat-full-page", view === "messages" && !!(params && params.conversationId) && profile?.role !== "admin");
+  document.body.classList.toggle("product-detail-view", view === "productDetail" || view === "packageDetail");
   // Instant paint: if we already have this conversation's name/photo from
   // the inbox list, show the real header + a spinner right away instead of
   // leaving the old screen sitting there while the network calls below
@@ -8658,31 +8787,21 @@ async function navigate(view, params = {}, pushHistory = true) {
 
 // ---------- SWIPE PRODUCT / PACKAGE GALLERIES ----------
 function initGallerySwipeSurfaces() {
-  document.querySelectorAll('.swipe-gallery-image').forEach((surface) => {
-    if (surface.dataset.swipeReady === '1') return;
-    surface.dataset.swipeReady = '1';
-    let start = null;
-    surface.addEventListener('pointerdown', (e) => {
-      if (e.pointerType === 'mouse') return;
-      if (e.target.closest?.('button,a')) return;
-      start = { x:e.clientX, y:e.clientY };
-    }, { passive:true });
-    surface.addEventListener('pointerup', (e) => {
-      if (!start || e.pointerType === 'mouse') { start = null; return; }
-      const dx = e.clientX - start.x;
-      const dy = e.clientY - start.y;
-      if (Math.abs(dx) > 42 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-        surface.dataset.suppressClick = '1';
-        if (surface.id === 'productGalleryMain' || surface.querySelector('#productGalleryMain')) {
-          changeProductGalleryPhoto(dx < 0 ? 1 : -1);
-        } else if (surface.id === 'packageDetailMainImage' || surface.querySelector('#packageDetailMainImage')) {
-          changePackageDetailPhoto(dx < 0 ? 1 : -1);
-        }
-        setTimeout(() => { if (surface.dataset.suppressClick === '1') surface.dataset.suppressClick = ''; }, 280);
-      }
-      start = null;
-    }, { passive:true });
-    surface.addEventListener('pointercancel', () => { start = null; }, { passive:true });
+  document.querySelectorAll('.product-gallery-track, .package-detail-gallery-track').forEach((track) => {
+    if (track.dataset.carouselReady === '1') return;
+    track.dataset.carouselReady = '1';
+    let raf = 0;
+    const sync = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (track.id === 'productGalleryTrack') syncProductGalleryIndex(track);
+        else syncPackageGalleryIndex(track);
+      });
+    };
+    track.addEventListener('scroll', sync, { passive: true });
+    track.addEventListener('pointerup', sync, { passive: true });
+    track.addEventListener('touchend', sync, { passive: true });
   });
 }
 
@@ -8692,8 +8811,10 @@ function clearAutoScrollTimers() {
   autoScrollTimers.forEach(clearInterval);
   autoScrollTimers = [];
 }
-function setupAutoScroll(container, { interval = 3200, pauseAfterInteraction = 8000 } = {}) {
+function setupAutoScroll(container, { interval = 55, pauseAfterInteraction = 8500 } = {}) {
   if (!container) return;
+  if (container.dataset.continuousCarouselReady === "1") return;
+  container.dataset.continuousCarouselReady = "1";
   let paused = false;
   let pauseTimeout = null;
   const pause = () => {
@@ -8708,10 +8829,10 @@ function setupAutoScroll(container, { interval = 3200, pauseAfterInteraction = 8
     if (paused || !container.isConnected) return;
     const maxScroll = container.scrollWidth - container.clientWidth;
     if (maxScroll <= 4) return;
-    const step = Math.max(container.clientWidth * 0.85, 200);
+    const step = 1.1;
     let next = container.scrollLeft + step;
-    if (next >= maxScroll - 2) next = 0; // reached the end - slide back to the start
-    container.scrollTo({ left: next, behavior: "smooth" });
+    if (next >= maxScroll - 1) next = 0;
+    container.scrollLeft = next;
   }, interval);
   autoScrollTimers.push(timer);
 }
@@ -9279,9 +9400,11 @@ function vendorCardHtml(v) {
     <strong>${esc(v.business_name)}</strong>
     <p class="muted" style="margin:0.3rem 0;">${esc(v.city || "")}</p>
     ${v.categories && v.categories.length ? `<p class="muted" style="margin:0 0 0.4rem;font-size:0.78rem;"><i class="fa-solid fa-tags"></i> ${v.categories.map(esc).join(", ")}</p>` : ""}
-    <span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>
-    ${v.avg_rating != null ? `<span class="badge ${ratingBadgeClass(v.avg_rating)}" style="margin-left:0.3rem;">★ ${Number(v.avg_rating).toFixed(1)}${v.review_count != null ? ` (${v.review_count})` : ""}</span>` : ""}
-    ${buyerLocation && v.lat != null && v.lng != null ? `<span class="badge" style="margin-left:0.3rem;"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>` : ""}
+    ${buyerLocation && v.lat != null && v.lng != null ? `<span class="badge" style="margin-left:0;"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>` : ""}
+    <div class="vendor-card-footer">
+      <span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>
+      ${v.avg_rating != null ? `<span class="badge ${ratingBadgeClass(v.avg_rating)}">★ ${Number(v.avg_rating).toFixed(1)}${v.review_count != null ? ` (${v.review_count})` : ""}</span>` : ""}
+    </div>
   </div>`;
 }
 
@@ -10131,14 +10254,22 @@ async function resolveAttachmentUrl(path) {
 }
 async function resolveVisibleAttachments(root) {
   const els = [...(root || document).querySelectorAll("[data-attachment-path]:not([data-resolved])")];
-  await Promise.all(els.map(async (el) => {
-    el.setAttribute("data-resolved", "1");
-    const url = await resolveAttachmentUrl(el.dataset.attachmentPath);
-    if (!url) return;
-    el.dataset.resolvedUrl = url;
-    if (el.tagName === "A") el.href = url;
-    const img = el.tagName === "IMG" ? el : el.querySelector("img");
-    if (img) { img.src = url; img.loading = "eager"; try { img.fetchPriority = "high"; } catch (_) {} }
+  if (!els.length) return;
+  els.forEach(el => el.setAttribute("data-resolved", "1"));
+  const uniquePaths=[...new Set(els.map(el=>el.dataset.attachmentPath).filter(Boolean))];
+  let signedMap=new Map();
+  try {
+    const {data,error}=await sb.storage.from("chat-attachments").createSignedUrls(uniquePaths,3600);
+    if(!error && data) uniquePaths.forEach((path,i)=>{ const u=data[i]?.signedUrl; if(u) signedMap.set(path,u); });
+  } catch(_) {}
+  await Promise.all(els.map(async (el)=>{
+    const path=el.dataset.attachmentPath;
+    const url=signedMap.get(path)||await resolveAttachmentUrl(path);
+    if(!url)return;
+    el.dataset.resolvedUrl=url;
+    if(el.tagName==='A') el.href=url;
+    const img=el.tagName==='IMG'?el:el.querySelector('img');
+    if(img){ img.src=url; img.loading='eager'; img.decoding='async'; try{img.fetchPriority='high';}catch(_){} }
   }));
 }
 function openChatImageLightboxFromMessage(event, el) {
@@ -10154,8 +10285,31 @@ function openChatImageLightbox(url, name) {
   const dl = byId("imageLightboxDownload");
   if (!box || !img || !url) return;
   img.src = url; img.alt = name || "Chat image";
-  if (dl) { dl.href = url; dl.download = sanitizeFilename(name || "levromart-image"); dl.classList.remove("hidden"); }
+  if (dl) { dl.href = url; dl.download = sanitizeFilename(name || "levromart-image"); dl.classList.remove("hidden"); dl.onclick = (e) => { e.preventDefault(); e.stopPropagation(); saveImageFromLightbox(url, name || "levromart-image"); }; }
   box.classList.remove("hidden");
+}
+async function saveImageFromLightbox(url,name='levromart-image') {
+  if (!url) return;
+  const filename = sanitizeFilename(name || 'levromart-image') + (/[.]\w{2,5}$/.test(name || '') ? '' : '.jpg');
+  try {
+    const res = await fetch(url, { mode:'cors', cache:'force-cache' });
+    if (!res.ok) throw new Error('download failed');
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 3000);
+    showToast('Image saved to your downloads.', 'success');
+  } catch (_) {
+    // Do not redirect to the raw image. A failed download is reported instead.
+    showToast('Your browser blocked automatic saving for this image. Try Save image again or use the browser share/save option.', 'info');
+  }
 }
 function attachmentHtml(m) {
   if (!m.attachment_url) return "";
@@ -10449,7 +10603,11 @@ function setupMessageDoubleTap(root) {
       bubble.addEventListener("touchend", (e) => {
         if (chatSelectionMode || bubble.classList.contains("deleted")) return;
         const now = Date.now();
-        if (now - lastTap < 320) { e.preventDefault(); openReactionPicker(e, bubble.dataset.msgId); lastTap = 0; }
+        if (now - lastTap < 320) {
+          const isImage = !!e.target.closest?.('.chat-image-attachment');
+          if (isImage) { e.preventDefault(); e.stopPropagation(); }
+          openReactionPicker(e, bubble.dataset.msgId); lastTap = 0;
+        }
         else lastTap = now;
       }, { passive: false });
     } else {
@@ -10500,7 +10658,9 @@ function setupMessageLongPress(root) {
         bubble.classList.remove("chat-long-pressing");
         if (navigator.vibrate) navigator.vibrate(12);
         chatSuppressClickUntil = Date.now() + 700;
-        if (chatSelectionMode) toggleChatMessageSelection(bubble.dataset.msgId);
+        const imageOnly = !!bubble.querySelector('.chat-image-attachment') && !bubble.querySelector('.chat-bubble-text');
+        if (imageOnly) openReactionPicker({ target: bubble, stopPropagation(){} }, bubble.dataset.msgId);
+        else if (chatSelectionMode) toggleChatMessageSelection(bubble.dataset.msgId);
         else showMessageActionMenu(bubble);
         timer = null;
       }, LONG_PRESS_MS);
@@ -10534,7 +10694,9 @@ function setupMessageLongPress(root) {
       e.preventDefault();
       clear();
       chatSuppressClickUntil = Date.now() + 700;
-      if (chatSelectionMode) toggleChatMessageSelection(bubble.dataset.msgId);
+      const imageOnly = !!bubble.querySelector('.chat-image-attachment') && !bubble.querySelector('.chat-bubble-text');
+      if (imageOnly) openReactionPicker({ target: bubble, stopPropagation(){} }, bubble.dataset.msgId);
+      else if (chatSelectionMode) toggleChatMessageSelection(bubble.dataset.msgId);
       else showMessageActionMenu(bubble);
     });
   });
@@ -10575,6 +10737,13 @@ function setupMessageInteractions(root) {
   setupMessageLongPress(root);
   setupMessageDoubleTap(root);
   setupMessageSwipeReply(root);
+  const scope = root || document;
+  scope.querySelectorAll?.('.chat-image-attachment img').forEach((img) => {
+    if (img.dataset.imageMenuBound === '1') return;
+    img.dataset.imageMenuBound = '1';
+    img.addEventListener('contextmenu', (e) => e.preventDefault(), { capture:true });
+    img.addEventListener('dragstart', (e) => e.preventDefault(), { capture:true });
+  });
 }
 document.addEventListener("click", (e) => {
   if (e.target.closest?.("#vendorReviewModalSubmit")) {
@@ -10841,17 +11010,34 @@ function stripProductVariantMeta(description) {
   return String(description || "").replace(/\s*<!--LEVROMART_VARIANTS:[\s\S]*?-->/, "").trim();
 }
 let productGalleryIndex = 0;
-function setProductGalleryPhoto(index) {
+function setProductGalleryPhoto(index, smooth = true) {
   const photos = window.__productGalleryPhotos || [];
-  if (!photos.length) return;
+  const track = byId("productGalleryTrack");
+  if (!photos.length || !track) return;
   productGalleryIndex = (index + photos.length) % photos.length;
-  const main = byId("productGalleryMain");
-  if (main) main.src = photos[productGalleryIndex];
+  const slide = track.querySelector(`.product-gallery-slide[data-gallery-index="${productGalleryIndex}"]`);
+  slide?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", inline: "center", block: "nearest" });
   const count = byId("productGalleryCount");
   if (count) count.textContent = String(productGalleryIndex + 1);
-  document.querySelectorAll("#productDetail .product-gallery-thumb, .product-gallery-thumb").forEach((el) => el.classList.toggle("active", Number(el.dataset.galleryIndex) === productGalleryIndex));
 }
 function changeProductGalleryPhoto(delta) { setProductGalleryPhoto(productGalleryIndex + delta); }
+function syncProductGalleryIndex(track) {
+  if (!track) return;
+  const slides = [...track.querySelectorAll('.product-gallery-slide')];
+  if (!slides.length) return;
+  const center = track.scrollLeft + track.clientWidth / 2;
+  let best = 0, bestDist = Infinity;
+  slides.forEach((slide, i) => {
+    const c = slide.offsetLeft + slide.offsetWidth / 2;
+    const d = Math.abs(c - center);
+    if (d < bestDist) { bestDist = d; best = i; }
+  });
+  productGalleryIndex = Number(slides[best].dataset.galleryIndex) || 0;
+  const count = byId('productGalleryCount');
+  if (count) count.textContent = String(productGalleryIndex + 1);
+}
+
+
 function openProductImageLightbox() {
   const photos = window.__productGalleryPhotos || [];
   if (!photos.length) return;
@@ -10865,19 +11051,43 @@ function closeProductImageLightbox(event) {
   byId("productImageLightbox")?.classList.add("hidden");
   byId("imageLightboxDownload")?.classList.add("hidden");
 }
+function openProductGallerySlide(event, index) {
+  event?.stopPropagation?.();
+  const track = byId('productGalleryTrack');
+  if (track?.dataset.suppressClick === '1') { track.dataset.suppressClick = ''; return; }
+  setProductGalleryPhoto(index, false);
+  openProductImageLightbox();
+}
 // ---------- PACKAGE DETAIL ----------
 let packageDetailGalleryIndex = 0;
-function setPackageDetailPhoto(index) {
+function setPackageDetailPhoto(index, smooth = true) {
   const photos = window.__packageDetailPhotos || [];
-  if (!photos.length) return;
+  const track = byId("packageDetailGalleryTrack");
+  if (!photos.length || !track) return;
   packageDetailGalleryIndex = Math.max(0, Math.min(index, photos.length - 1));
-  const main = byId("packageDetailMainImage");
-  if (main) main.src = photos[packageDetailGalleryIndex];
+  const slide = track.querySelector(`.package-detail-gallery-slide[data-gallery-index="${packageDetailGalleryIndex}"]`);
+  slide?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", inline: "center", block: "nearest" });
   const count = byId("packageGalleryCount");
   if (count) count.textContent = String(packageDetailGalleryIndex + 1);
-  document.querySelectorAll(".package-detail-thumb").forEach((el) => el.classList.toggle("active", Number(el.dataset.index) === packageDetailGalleryIndex));
 }
 function changePackageDetailPhoto(delta) { setPackageDetailPhoto(packageDetailGalleryIndex + delta); }
+function syncPackageGalleryIndex(track) {
+  if (!track) return;
+  const slides = [...track.querySelectorAll('.package-detail-gallery-slide')];
+  if (!slides.length) return;
+  const center = track.scrollLeft + track.clientWidth / 2;
+  let best = 0, bestDist = Infinity;
+  slides.forEach((slide, i) => {
+    const c = slide.offsetLeft + slide.offsetWidth / 2;
+    const d = Math.abs(c - center);
+    if (d < bestDist) { bestDist = d; best = i; }
+  });
+  packageDetailGalleryIndex = Number(slides[best].dataset.galleryIndex) || 0;
+  const count = byId('packageGalleryCount');
+  if (count) count.textContent = String(packageDetailGalleryIndex + 1);
+}
+
+
 
 async function togglePackageFavorite(evt, packageId) {
   evt?.stopPropagation?.();
@@ -10929,6 +11139,13 @@ function openPackageDetailLightbox() {
   byId("imageLightboxDownload")?.classList.add("hidden");
   byId("productImageLightbox")?.classList.remove("hidden");
 }
+function openPackageGallerySlide(event, index) {
+  event?.stopPropagation?.();
+  const track = byId('packageDetailGalleryTrack');
+  if (track?.dataset.suppressClick === '1') { track.dataset.suppressClick = ''; return; }
+  setPackageDetailPhoto(index, false);
+  openPackageDetailLightbox();
+}
 async function buyPackageFromDetail(packageId) {
   if (!session) { showLogin(); return; }
   if (blockOwnVendorPurchase(window.__packageDetailVendorId, "buy")) return;
@@ -10963,11 +11180,10 @@ async function renderPackageDetail(packageId) {
   const vendorLogo = v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;" />` : `<span class="avatar-circle" style="width:2.2rem;height:2.2rem;">${esc((v.business_name || "V").slice(0,1).toUpperCase())}</span>`;
   const gallery = photos.length
     ? `<div class="package-detail-gallery">
-        <div style="position:relative;">
-          <img id="packageDetailMainImage" class="package-detail-main swipe-gallery-image" src="${esc(photos[0])}" alt="${esc(pkg.name)}" onclick="if(this.dataset.suppressClick==='1'){this.dataset.suppressClick='';return;}openPackageDetailLightbox()" />
+        <div class="package-detail-gallery-track product-gallery-main" id="packageDetailGalleryTrack" aria-label="Package photos">
+          ${photos.map((u,i) => `<div class="package-detail-gallery-slide" data-gallery-index="${i}" onclick="openPackageGallerySlide(event,${i})"><img class="package-detail-main" src="${esc(u)}" alt="${esc(pkg.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
           ${photos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="packageGalleryCount">1</span>/${photos.length}</span>` : ""}
         </div>
-        ${photos.length > 1 ? `<div class="package-detail-thumbs">${photos.map((u,i) => `<button type="button" class="package-detail-thumb ${i === 0 ? "active" : ""}" data-index="${i}" onclick="setPackageDetailPhoto(${i})"><img src="${esc(u)}" alt="Package image ${i+1}" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
       </div>`
     : `<div class="package-gallery-placeholder" style="height:260px;"><i class="fa-solid fa-box-open"></i>&nbsp; No package photos</div>`;
 
@@ -11033,12 +11249,11 @@ async function renderProductDetail(productId) {
   const productPhotos = Array.isArray(product.photos) ? product.photos.filter(Boolean) : [];
   const cleanDescription = stripProductVariantMeta(product.description || "");
   const photosHtml = productPhotos.length
-    ? `<div class="product-gallery">
-        <div class="product-gallery-main swipe-gallery-image" onclick="if(this.dataset.suppressClick==='1'){this.dataset.suppressClick='';return;}openProductImageLightbox()">
-          <img id="productGalleryMain" src="${esc(productPhotos[0])}" alt="${esc(product.name)}" />
+    ? `<div class="product-gallery product-gallery-carousel">
+        <div class="product-gallery-main product-gallery-track" id="productGalleryTrack" aria-label="Product photos">
+          ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
           ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
-        ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})"><img src="${esc(u)}" alt="View ${i+1}" loading="lazy" /></button>`).join("")}</div>` : ""}
       </div>`
     : `<div class="product-img" style="height:220px;"><i class='fa-solid fa-camera'></i> No image</div>`;
   window.__productGalleryPhotos = productPhotos;
@@ -11765,7 +11980,8 @@ async function renderStorefront(vendorId) {
         </div>
       </div>
       <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)}</h1>
-      <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>${v.whatsapp_visible && v.whatsapp_number ? `<a class="badge" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> ${esc(v.whatsapp_number)}</a>` : ""}</div>
+      <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${v.whatsapp_visible && v.whatsapp_number ? `<a class="badge" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> ${esc(v.whatsapp_number)}</a>` : ""}</div>
+      <div class="storefront-verified-row"><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span></div>
       ${v.bio ? `<p class="storefront-bio">${esc(v.bio)}</p>` : ""}
       <div class="storefront-stats">
         <span><strong>${allProducts.length}</strong> listing${allProducts.length === 1 ? "" : "s"}</span>
@@ -11813,6 +12029,10 @@ async function renderStorefront(vendorId) {
 
   html += `<section class="storefront-products-shell" id="storefrontProductsShell">
     <div class="storefront-section-head"><h3>Products & services</h3></div>
+    <div class="catalog-type-tabs storefront-catalog-tabs" role="tablist" aria-label="Storefront products and services">
+      <button type="button" id="storefrontProductsTab" class="catalog-type-tab active" role="tab" aria-selected="true" onclick="switchStorefrontCatalogTab('products')"><i class="fa-solid fa-box"></i> Products <span id="storefrontProductsCount"></span></button>
+      <button type="button" id="storefrontServicesTab" class="catalog-type-tab" role="tab" aria-selected="false" onclick="switchStorefrontCatalogTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services <span id="storefrontServicesCount"></span></button>
+    </div>
     ${allProducts.length ? `<div class="storefront-products-toolbar"><div class="storefront-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="storefrontSearch" placeholder="Search this shop" oninput="filterStorefrontProducts()" /></div><div class="storefront-view-buttons"><button class="btn btn-sm btn-outline active" id="storefrontViewGridBtn" onclick="switchStorefrontView('grid')" title="Grid view"><i class="fa-solid fa-grip"></i></button><button class="btn btn-sm btn-outline" id="storefrontViewTableBtn" onclick="switchStorefrontView('table')" title="List view"><i class="fa-solid fa-list"></i></button></div></div>` : ""}
     <div id="storefrontGrid" class="grid">${allProducts.length ? "<p class='muted'>Loading…</p>" : '<div class="empty-state">No products listed yet.</div>'}</div>
     <div id="storefrontTable" class="hidden" style="overflow-x:auto;max-height:30rem;overflow-y:auto;"></div>
@@ -11892,6 +12112,8 @@ function switchStorefrontCatalogTab(tab) {
   storefrontCatalogTab = tab === "services" ? "services" : "products";
   byId("storefrontProductsTab")?.classList.toggle("active", storefrontCatalogTab === "products");
   byId("storefrontServicesTab")?.classList.toggle("active", storefrontCatalogTab === "services");
+  byId("storefrontProductsTab")?.setAttribute("aria-selected", storefrontCatalogTab === "products" ? "true" : "false");
+  byId("storefrontServicesTab")?.setAttribute("aria-selected", storefrontCatalogTab === "services" ? "true" : "false");
   window.__storefrontExpanded = false;
   filterStorefrontProducts();
 }
@@ -11924,18 +12146,18 @@ function toggleStorefrontProducts() {
 }
 
 function storefrontTableHtml(list) {
-  return `<table style="width:100%;border-collapse:collapse;">
+  return `<table style="width:100%;border-collapse:collapse;table-layout:fixed;">
     <thead><tr>
       <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">${list.some(p => p.is_service) && list.every(p => p.is_service) ? "Service" : "Product"}</th>
       <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Category</th>
       <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Price</th>
-      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Available</th>
+      <th style="text-align:center;padding:0.5rem;border-bottom:1px solid var(--border);width:18%;">Available</th>
     </tr></thead>
     <tbody>${list.map((p) => `<tr style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <td style="padding:0.5rem;border-bottom:1px solid var(--border);">${esc(p.name)}</td>
       <td style="padding:0.5rem;border-bottom:1px solid var(--border);">${esc(p.category?.name || "-")}</td>
       <td style="padding:0.5rem;border-bottom:1px solid var(--border);white-space:nowrap;">${p.is_service ? `${naira(p.sale_price)}${servicePriceSuffix(p)}` : [p.sale_price != null ? `Buy: ${naira(p.sale_price)}` : "", p.rental_rate != null ? `Rent: ${naira(p.rental_rate)}/${p.rental_rate_unit}` : ""].filter(Boolean).join(" · ")}</td>
-      <td style="padding:0.5rem;border-bottom:1px solid var(--border);">${p.is_service ? "-" : p.quantity_available}</td>
+      <td style="padding:0.5rem;border-bottom:1px solid var(--border);text-align:center;">${p.is_service ? "-" : p.quantity_available}</td>
     </tr>`).join("")}</tbody>
   </table>`;
 }
@@ -13843,6 +14065,48 @@ function switchOrderStatsPeriod(period) {
   renderOrderStatsBody();
 }
 
+function localDateKey(d = new Date()) {
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function orderDatePresetValue(dateFrom, dateTo) {
+  if (!dateFrom && !dateTo) return 'all';
+  const today=localDateKey();
+  if(dateFrom===today&&dateTo===today)return 'today';
+  const a=dateFrom?new Date(`${dateFrom}T00:00:00`):null,b=dateTo?new Date(`${dateTo}T23:59:59`):null;
+  const diff=a&&b?Math.round((b-a)/86400000)+1:null;
+  if(dateTo===today&&diff===7)return '7';
+  if(dateTo===today&&diff===30)return '30';
+  if(dateTo===today&&diff>=89&&diff<=93)return '90';
+  return 'custom';
+}
+function orderDateRangeParams(preset){
+  if(!preset||preset==='all')return {dateFrom:'',dateTo:''};
+  const now=new Date(),end=localDateKey(now);
+  if(preset==='today')return {dateFrom:end,dateTo:end};
+  if(['7','30','90'].includes(preset)){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate());d.setDate(d.getDate()-Number(preset)+1);return {dateFrom:localDateKey(d),dateTo:end};}
+  return null;
+}
+
+function applyOrderDatePreset(view,status,type,payment,preset){
+  const range=orderDateRangeParams(preset);
+  if(range) return navigate(view,{status,type,payment,...range});
+  openCustomOrderDateDialog(view,status,type,payment);
+}
+function openCustomOrderDateDialog(view,status,type,payment){
+  if(byId('orderDateDialog')) byId('orderDateDialog').remove();
+  const now=new Date().toISOString().slice(0,10);
+  const modal=document.createElement('div'); modal.id='orderDateDialog'; modal.className='modal';
+  modal.innerHTML=`<div class="modal-content order-date-dialog-content"><div class="drawer-header"><h3 style="margin:0;"><i class="fa-regular fa-calendar"></i> Choose dates</h3><button type="button" class="drawer-close-btn" onclick="byId('orderDateDialog')?.remove()"><i class="fa-solid fa-xmark"></i></button></div><div class="order-date-custom-grid"><label>Start date<input id="customDateFrom" type="date" max="${now}" /></label><label>End date<input id="customDateTo" type="date" max="${now}" /></label></div><div class="flex" style="justify-content:flex-end;margin-top:.9rem;"><button class="btn btn-outline" type="button" onclick="byId('orderDateDialog')?.remove()">Cancel</button><button class="btn" type="button" onclick="submitCustomOrderDate('${view}','${status}','${type}','${payment}')">Apply</button></div></div>`;
+  document.body.appendChild(modal);
+}
+function submitCustomOrderDate(view,status,type,payment){
+  const from=byId('customDateFrom')?.value||'', to=byId('customDateTo')?.value||'';
+  if(from&&to&&from>to){showToast('Start date must be before end date.','error');return;}
+  byId('orderDateDialog')?.remove(); navigate(view,{status,type,payment,dateFrom:from,dateTo:to});
+}
+function clearOrderDateFilters(view,status,type,payment){ navigate(view,{status,type,payment,dateFrom:'',dateTo:''}); }
+
 async function renderVendorOrders(status, type, payment, dateFrom, dateTo) {
   if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
   if (!vendor) { const { data: v } = await sb.from("vendors").select("id").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle(); vendor = v; }
@@ -13906,11 +14170,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo) {
       <option value="unpaid" ${payment === "unpaid" ? "selected" : ""}>Not paid yet</option>
     </select>
   </div>
-  <div class="flex" style="gap:0.6rem;flex-wrap:wrap;margin:0 0 0.8rem;align-items:center;">
-    <label style="margin:0;font-size:0.78rem;font-weight:400;">From <input type="date" autocomplete="off" value="${esc(dateFrom)}" onchange="this.dataset.touched='1';navigate('vendorOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:this.value,dateTo:'${dateTo}'})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
-    <label style="margin:0;font-size:0.78rem;font-weight:400;">To <input type="date" autocomplete="off" value="${esc(dateTo)}" onchange="this.dataset.touched='1';navigate('vendorOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:this.value})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
-    ${dateFrom || dateTo ? `<a href="#" onclick="clearOrderDateFilters('vendorOrders','${status}','${type}','${payment}');return false;">Clear dates</a>` : ""}
-  </div>`;
+  <div class="order-date-filter-row"><label class="order-date-filter-label">Date range<select onchange="applyOrderDatePreset('vendorOrders','${status}','${type}','${payment}',this.value)"><option value="all" ${orderDatePresetValue(dateFrom,dateTo)==='all'?'selected':''}>All time</option><option value="today" ${orderDatePresetValue(dateFrom,dateTo)==='today'?'selected':''}>Today</option><option value="7" ${orderDatePresetValue(dateFrom,dateTo)==='7'?'selected':''}>Last 7 days</option><option value="30" ${orderDatePresetValue(dateFrom,dateTo)==='30'?'selected':''}>Last 30 days</option><option value="90" ${orderDatePresetValue(dateFrom,dateTo)==='90'?'selected':''}>Last 3 months</option></select></label>${dateFrom || dateTo ? `<button class="order-clear-date-btn" type="button" onclick="clearOrderDateFilters('vendorOrders','${status}','${type}','${payment}')">Clear</button>` : ''}</div>`;
   orderListViewMode = "cards";
   orderListExpanded = false;
   const sortedOrders = sortOrdersForList(orders);
@@ -13925,9 +14185,6 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo) {
   return html;
 }
 
-async function clearOrderDateFilters(view, status, type, payment) {
-  navigate(view, { status, type, payment, dateFrom:"", dateTo:"" });
-}
 async function renderBuyerOrders(status, type, payment, dateFrom, dateTo) {
   if (!session) return '<div class="empty-state">Please log in.</div>';
   status = ORDER_TABS.includes(status) ? status : "all";
@@ -13970,11 +14227,7 @@ async function renderBuyerOrders(status, type, payment, dateFrom, dateTo) {
       <option value="unpaid" ${payment === "unpaid" ? "selected" : ""}>Not paid yet</option>
     </select>
   </div>
-  <div class="flex" style="gap:0.6rem;flex-wrap:wrap;margin:0 0 0.8rem;align-items:center;">
-    <label style="margin:0;font-size:0.78rem;font-weight:400;">From <input type="date" autocomplete="off" value="${esc(dateFrom)}" onchange="this.dataset.touched='1';navigate('buyerOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:this.value,dateTo:'${dateTo}'})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
-    <label style="margin:0;font-size:0.78rem;font-weight:400;">To <input type="date" autocomplete="off" value="${esc(dateTo)}" onchange="this.dataset.touched='1';navigate('buyerOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:this.value})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
-    ${dateFrom || dateTo ? `<a href="#" onclick="clearOrderDateFilters('buyerOrders','${status}','${type}','${payment}');return false;">Clear dates</a>` : ""}
-  </div>`;
+  <div class="order-date-filter-row"><label class="order-date-filter-label">Date range<select onchange="applyOrderDatePreset('buyerOrders','${status}','${type}','${payment}',this.value)"><option value="all" ${orderDatePresetValue(dateFrom,dateTo)==='all'?'selected':''}>All time</option><option value="today" ${orderDatePresetValue(dateFrom,dateTo)==='today'?'selected':''}>Today</option><option value="7" ${orderDatePresetValue(dateFrom,dateTo)==='7'?'selected':''}>Last 7 days</option><option value="30" ${orderDatePresetValue(dateFrom,dateTo)==='30'?'selected':''}>Last 30 days</option><option value="90" ${orderDatePresetValue(dateFrom,dateTo)==='90'?'selected':''}>Last 3 months</option></select></label>${dateFrom || dateTo ? `<button class="order-clear-date-btn" type="button" onclick="clearOrderDateFilters('buyerOrders','${status}','${type}','${payment}')">Clear</button>` : ''}</div>`;
   orderListViewMode = "cards";
   orderListExpanded = false;
   const sortedOrders = sortOrdersForList(orders);
@@ -15929,6 +16182,10 @@ async function shareCurrentAiChat() {
     await showConfirmDialog(link, { title: "Share link", okLabel: "Close" });
   }
 }
+document.addEventListener("contextmenu", (e) => {
+  if (e.target?.closest?.(".chat-image-attachment img, #productImageLightbox img")) e.preventDefault();
+}, { capture:true });
+
 window.addEventListener("scroll", () => { closeAllInfoPopovers(); }, { passive:true });
 
 document.addEventListener("click", (e) => {
@@ -16169,7 +16426,9 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       navHint.addEventListener("click", () => goToAiChatNav(nav));
       navHint.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); goToAiChatNav(nav); } });
       el.appendChild(navHint);
-      setTimeout(() => { if (el.isConnected) goToAiChatNav(nav); }, 1100);
+      // Navigation remains available as an explicit in-chat action. Do not
+      // auto-redirect after a delay; Levi should never unexpectedly pull the
+      // user away from the conversation.
     }
     if (draft) {
       const card = document.createElement("div");
@@ -16715,7 +16974,7 @@ function leviOfflineFallback(text) {
 
 async function fetchLeviReply(payload) {
   const urls = ['/api/chat', '/api/chat.js'];
-  const deadline = Date.now() + 7000;
+  const deadline = Date.now() + 6500;
   let lastError = null;
   for (const url of urls) {
     const remaining = deadline - Date.now();
@@ -16810,7 +17069,7 @@ async function sendAiChatMessage() {
     for (let i = leviHistory.length - 1; i >= 0; i--) {
       const msg = leviHistory[i];
       const textLen = String(msg.content || "").length;
-      if (boundedLeviHistory.length >= 12 || leviChars + textLen > 7000) break;
+      if (boundedLeviHistory.length >= 12 || leviChars + textLen > 6500) break;
       boundedLeviHistory.unshift(msg);
       leviChars += textLen;
     }
@@ -16964,6 +17223,51 @@ async function resolveLeviLocalAction(text) {
     closeLeviIfOpen(); await navigate("vendorEditProfile"); return { handled: true, reply: "Done - I opened your business profile editor." };
   }
 
+
+
+  // Direct app controls: Levi performs simple, reversible account/UI actions
+  // instead of sending the user to Settings. Destructive listing/cart changes
+  // still use the existing guarded functions/confirmation flows.
+  if (/\b(light|light mode|bright mode)\b/.test(q) && !/\bnot\b/.test(q)) {
+    setTheme("light"); return { handled:true, reply:"Done - I switched Levromart to light mode." };
+  }
+  if (/\b(dark|dark mode)\b/.test(q) && !/\bnot\b/.test(q)) {
+    setTheme("dark"); return { handled:true, reply:"Done - I switched Levromart to dark mode." };
+  }
+  if (/\b(deep black|black mode|oled mode)\b/.test(q)) {
+    setTheme("black"); return { handled:true, reply:"Done - I switched Levromart to deep black." };
+  }
+  if (/\b(change|update|edit|set)\s+(my\s+)?(profile\s+)?name\b/.test(q)) {
+    const rawText=String(text||"").trim();
+    const m=rawText.match(/\b(?:to|as)\s+(.+)$/i);
+    const name=(m?.[1]||"").replace(/\b(please|levi)\b/gi," ").trim();
+    if(name.length>=2&&name.length<=80){
+      const {error}=await sb.from("users").update({name}).eq("id",session.user.id);
+      if(!error){profile.name=name;updateAuthUI();return {handled:true,reply:`Done - I changed your profile name to ${name}.`};}
+      return {handled:true,reply:"I couldn't update your name right now. Please try again."};
+    }
+    closeLeviIfOpen(); await navigate("editProfile"); return {handled:true,reply:"Open My details and enter the name you want me to use."};
+  }
+  if (/\b(change|update|edit|set)\b[\s\S]*\b(profile picture|profile photo|avatar)\b/.test(q)) {
+    const input=byId("avatarFileInput");
+    if(input){ input.click(); return {handled:true,reply:"Sure - choose the photo you want. I’ll open the crop tool so you can position exactly what people see."}; }
+    return {handled:true,reply:"I can change your profile picture, but the profile photo picker isn't available on this screen."};
+  }
+  if (/\b(take me to|open|show|go to)\s+(the\s+)?map\b/.test(q)) {
+    closeLeviIfOpen(); await navigate("vendors"); setTimeout(()=>switchVendorsView("map"),80); return {handled:true,reply:"Done - I opened the vendor map."};
+  }
+  if (/\b(mark|clear|read)\b[\s\S]*\bnotifications?\b/.test(q)) {
+    closeLeviIfOpen(); toggleNotifPanel(); return {handled:true,reply:"Done - I opened your notifications so you can manage them."};
+  }
+  if (/\b(clear|empty)\s+(my\s+)?cart\b/.test(q)) {
+    const {data:rows,error}=await sb.from("cart_items").select("id").eq("buyer_id",session.user.id);
+    if(error)return {handled:true,reply:"I couldn't load your cart right now."};
+    if(!rows?.length){closeLeviIfOpen();return {handled:true,reply:"Your cart is already empty."};}
+    if(!(await showConfirmDialog(`Remove all ${rows.length} item${rows.length===1?"":"s"} from your cart?`,{title:"Clear cart",okLabel:"Clear cart",danger:true}))) return {handled:true,reply:"Okay - I left your cart unchanged."};
+    const {error:delErr}=await sb.from("cart_items").delete().eq("buyer_id",session.user.id);
+    if(delErr)return {handled:true,reply:"I couldn't clear your cart right now."};
+    updateCartFab(); refreshNotifications(); return {handled:true,reply:"Done - I cleared your cart."};
+  }
   const addIntent = /\b(add|put|place)\b[\s\S]*\b(cart|basket)\b/.test(q) || /\b(add|put|place)\b.*\b(this|that)\b/.test(q);
   const removeIntent = /\b(remove|delete|take)\b[\s\S]*\bcart\b/.test(q);
   const wishIntent = /\b(save|add|put)\b[\s\S]*\b(wishlist|wish list)\b/.test(q) || /\b(favourite|favorite|wishlist)\b/.test(q);
