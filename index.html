@@ -4889,6 +4889,12 @@ body.product-detail-view #aiChatFab{display:none !important;pointer-events:none 
 .prod-delivery-settings .delivery-setting-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.65rem;}
 @media(max-width:560px){.prod-delivery-settings .delivery-setting-grid{grid-template-columns:1fr;}}
 </style>
+
+<style id="final-drawer-drag-and-dashboard-dot-polish">
+/* Finger-following drawers: no accidental horizontal overflow during drag. */
+.side-drawer { overscroll-behavior:contain; }
+.chart-dot { vector-effect:non-scaling-stroke; }
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -4976,29 +4982,9 @@ body.product-detail-view #aiChatFab{display:none !important;pointer-events:none 
       <div class="settings-info-note"><i class="fa-solid fa-shield-halved"></i><span>Your account data and marketplace permissions are controlled separately from these device preferences.</span></div>
     </div>
   </div>
-  <div class="accordion-section hidden" id="accountDangerSection">
-    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class='fa-solid fa-user-xmark' style="color:var(--danger);"></i> Account</span><i class='fa-solid fa-chevron-down accordion-chevron'></i></button>
-    <div class="accordion-body">
-      <p class="muted" style="font-size:0.8rem;margin:0.2rem 0 0.7rem;">Permanently closes this account. Vendor accounts must have no orders still in progress and no unsettled commission. Buyer accounts may close even with pending buyer orders.</p>
-      <button class="btn btn-sm btn-danger" onclick="startDeleteAccount()">Delete my account</button>
-    </div>
-  </div>
 </div>
 <div class="side-drawer left" id="profilePanel"></div>
 
-<div id="deleteAccountModal" class="modal hidden">
-  <div class="modal-content" style="max-width:380px;">
-    <h3><i class="fa-solid fa-triangle-exclamation"></i> Delete your account?</h3>
-    <p class="muted" style="margin:0.6rem 0;">This can't be undone. Confirm your password, then type <strong>delete my account</strong> below to continue.</p>
-    <input type="password" id="deleteAccountPassword" placeholder="Your password" autocomplete="off" />
-    <input type="text" id="deleteAccountPhrase" placeholder="Type: delete my account" autocomplete="off" style="margin-top:0.5rem;" />
-    <p id="deleteAccountError" class="error-text hidden"></p>
-    <div class="flex" style="justify-content:flex-end;">
-      <button class="btn btn-sm" style="background:#6b7280;" onclick="byId('deleteAccountModal').classList.add('hidden')">Cancel</button>
-      <button class="btn btn-sm btn-danger" id="deleteAccountConfirmBtn" onclick="confirmDeleteAccount()">Delete permanently</button>
-    </div>
-  </div>
-</div>
 
 <div class="container" id="app"></div>
 
@@ -7120,81 +7106,124 @@ function toggleProfilePanel() { openDrawer("profilePanel"); }
 
 function setupDrawerSwipe(drawer, side) { return; }
 
-// Backdrop/centre swipe gestures for the two right-hand drawers. Opening:
-// swipe right -> profile, swipe left -> notifications. Closing an open drawer:
-// swipe right. We deliberately ignore cards, maps, tables, horizontal rails,
-// form controls and other interactive surfaces so their own gestures remain intact.
-function bindProfileEdgeSwipe(){ return; }
-setTimeout(bindProfileEdgeSwipe, 0);
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPanels(); });
-
-// Native-feeling drawer gestures: only the extreme left/right edge opens a
-// drawer, and only a horizontal outward drag inside an already-open drawer
-// closes it. Vertical scrolling, controls, cards and content remain untouched.
-(function setupDrawerEdgeGestures(){
-  if (window.__drawerEdgeGesturesReady) return;
-  window.__drawerEdgeGesturesReady = true;
-  const EDGE = 28, MIN = 64, MOVE = 10;
-  const blocked = (t) => !!t?.closest?.('button,a,input,textarea,select,[contenteditable="true"],.card,.grid,.hscroll,.cat-row,.table-wrap,table,.leaflet,.modal-content,.bottom-nav,.chat-page-wrap');
-  let g = null;
-  document.addEventListener('pointerdown',(e)=>{
-    if(e.pointerType==='mouse'||e.pointerType==='pen') return;
-    const profileOpen=byId('profilePanel')?.classList.contains('open');
-    const notifOpen=byId('notifPanel')?.classList.contains('open');
-    const target=e.target;
-    if(profileOpen && target.closest?.('#profilePanel')){
-      if(blocked(target)) return;
-      g={id:e.pointerId,x:e.clientX,y:e.clientY,side:'left',mode:'close',active:false,el:byId('profilePanel')};
-      return;
-    }
-    if(notifOpen && target.closest?.('#notifPanel')){
-      if(blocked(target)) return;
-      g={id:e.pointerId,x:e.clientX,y:e.clientY,side:'right',mode:'close',active:false,el:byId('notifPanel')};
-      return;
-    }
-    if(profileOpen||notifOpen) return;
-    if(e.clientX<=EDGE){g={id:e.pointerId,x:e.clientX,y:e.clientY,side:'left',mode:'open',active:false,el:byId('profilePanel')};}
-    else if(e.clientX>=window.innerWidth-EDGE){g={id:e.pointerId,x:e.clientX,y:e.clientY,side:'right',mode:'open',active:false,el:byId('notifPanel')};}
-  },{passive:true});
-  document.addEventListener('pointermove',(e)=>{
-    if(!g||e.pointerId!==g.id||e.pointerType==='mouse'||e.pointerType==='pen') return;
-    const dx=e.clientX-g.x,dy=e.clientY-g.y;
-    if(!g.active){
-      if(Math.hypot(dx,dy)<MOVE) return;
-      if(Math.abs(dx)<Math.abs(dy)*1.35){g=null;return;}
-      g.active=true;
-      if(g.el) g.el.style.transition='none';
-    }
-    if(g.el&&g.mode==='open'){
-      const w=g.el.getBoundingClientRect().width||Math.min(304,window.innerWidth*.78);
-      const offset=g.side==='left'?Math.min(w,Math.max(0,dx)):Math.max(-w,Math.min(0,dx));
-      g.el.style.transform=`translateX(${g.side==='left'?(-w+offset):(w+offset)}px)`;
-    }else if(g.el&&g.mode==='close'){
-      const w=g.el.getBoundingClientRect().width||Math.min(304,window.innerWidth*.78);
-      const offset=g.side==='left'?Math.min(0,dx):Math.max(0,dx);
-      g.el.style.transform=`translateX(${offset}px)`;
-    }
-    e.preventDefault?.();
-  },{passive:false});
-  const finish=(e)=>{
-    if(!g||e.pointerId!==g.id){g=null;return;}
-    const dx=e.clientX-g.x,dy=e.clientY-g.y;
-    const valid=g.active&&Math.abs(dx)>=MIN&&Math.abs(dx)>Math.abs(dy)*1.35;
-    const side=g.side,mode=g.mode,el=g.el;
-    if(el){el.style.transition='';el.style.transform='';}
-    if(valid){
-      if(mode==='open' && ((side==='left'&&dx>0)||(side==='right'&&dx<0))){
-        side==='left'?toggleProfilePanel():toggleNotifPanel();
-      }else if(mode==='close' && ((side==='left'&&dx<0)||(side==='right'&&dx>0))){
-        closeAllPanels();
-      }
-    }
-    g=null;
+// Native-feeling draggable drawers.  This is deliberately a DRAG, not a
+// threshold-only swipe: the drawer follows the finger while it is being
+// pulled, then settles open/closed.  Opening is available from the page
+// background (including the middle of the screen), but never from cards,
+// products, maps, tables, forms, links, rails or other interactive surfaces.
+(function setupDrawerDragGestures(){
+  if (window.__drawerDragGesturesReady) return;
+  window.__drawerDragGesturesReady = true;
+  const MIN_DRAG = 42;
+  const AXIS_RATIO = 1.15;
+  const START_ZONE = 0.50;
+  const isBlocked = (target) => {
+    if (!target?.closest) return false;
+    return !!target.closest([
+      '#aiChatPanel','#aiChatFab','#cartFab',
+      'header','.bottom-nav','.site-footer',
+      'button','a','input','textarea','select','label',
+      '.card','.product-card-wrap','.vendor-card','.package-card',
+      '.grid','.hscroll','.cat-row','.table-wrap','table',
+      '.leaflet','.modal','.modal-content',
+      '.chat-page-wrap','.chat-messages','.chat-input-wrap',
+      '[contenteditable="true"]','.swiper','.carousel','.gallery',
+      '[data-no-drawer-gesture]'
+    ].join(','));
   };
-  document.addEventListener('pointerup',finish,{passive:true});
-  document.addEventListener('pointercancel',()=>{if(g?.el){g.el.style.transition='';g.el.style.transform='';}g=null;},{passive:true});
+  const getOpen = () => ({
+    profile: byId('profilePanel')?.classList.contains('open') || false,
+    notif: byId('notifPanel')?.classList.contains('open') || false
+  });
+  let drag = null;
+  const begin = (e) => {
+    if (e.pointerType === 'mouse' || e.pointerType === 'pen') return;
+    const open = getOpen();
+    const target = e.target;
+
+    if (open.profile || open.notif) {
+      const side = open.profile ? 'left' : 'right';
+      const panel = open.profile ? byId('profilePanel') : byId('notifPanel');
+      // While a drawer is open, only the drawer's non-interactive/background
+      // surface can start the close drag. Product rows, buttons, maps, etc.
+      // keep their normal touch behaviour.
+      if (!panel || !panel.contains(target) || isBlocked(target)) return;
+      drag = { id:e.pointerId, x:e.clientX, y:e.clientY, side, mode:'close', panel, active:false };
+      try { panel.setPointerCapture?.(e.pointerId); } catch (_) {}
+      return;
+    }
+
+    // Opening: choose the drawer by which half of the background the drag
+    // starts in. This intentionally avoids the extreme screen edge so Android
+    // back gestures do not compete with Levromart's drawer gesture.
+    if (isBlocked(target)) return;
+    const startLeft = e.clientX < window.innerWidth * START_ZONE;
+    const side = startLeft ? 'left' : 'right';
+    const panel = side === 'left' ? byId('profilePanel') : byId('notifPanel');
+    if (!panel) return;
+    drag = { id:e.pointerId, x:e.clientX, y:e.clientY, side, mode:'open', panel, active:false };
+  };
+  const move = (e) => {
+    if (!drag || e.pointerId !== drag.id || e.pointerType === 'mouse' || e.pointerType === 'pen') return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.active) {
+      if (Math.hypot(dx,dy) < 6) return;
+      if (Math.abs(dx) < Math.abs(dy) * AXIS_RATIO) { drag = null; return; }
+      const correctDirection = drag.mode === 'open'
+        ? (drag.side === 'left' ? dx > 0 : dx < 0)
+        : (drag.side === 'left' ? dx < 0 : dx > 0);
+      if (!correctDirection) { drag = null; return; }
+      drag.active = true;
+      drag.panel.style.transition = 'none';
+      drag.panel.style.willChange = 'transform';
+      try { drag.panel.setPointerCapture?.(e.pointerId); } catch (_) {}
+    }
+    const w = drag.panel.getBoundingClientRect().width || Math.min(380, window.innerWidth * .91);
+    let tx;
+    if (drag.mode === 'open') {
+      const distance = drag.side === 'left' ? Math.max(0, dx) : Math.min(0, dx);
+      const progress = Math.min(1, Math.abs(distance) / w);
+      tx = drag.side === 'left' ? -w + (w * progress) : w - (w * progress);
+    } else {
+      const distance = drag.side === 'left' ? Math.min(0, dx) : Math.max(0, dx);
+      tx = distance;
+    }
+    drag.panel.style.transform = `translateX(${tx}px)`;
+    e.preventDefault?.();
+  };
+  const end = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    const dx = e.clientX - d.x, dy = e.clientY - d.y;
+    const w = d.panel?.getBoundingClientRect().width || Math.min(380, window.innerWidth * .91);
+    const progress = Math.min(1, Math.abs(dx) / Math.max(w,1));
+    const velocityEnough = Math.abs(dx) >= 22 && Math.abs(dx) / Math.max(1, (performance.now() - (d.startedAt || performance.now()))) > .25;
+    const enough = Math.abs(dx) >= MIN_DRAG || progress >= .22 || velocityEnough;
+    const correct = d.mode === 'open'
+      ? (d.side === 'left' ? dx > 0 : dx < 0)
+      : (d.side === 'left' ? dx < 0 : dx > 0);
+    d.panel.style.transition = 'transform .24s cubic-bezier(.22,.8,.2,1)';
+    d.panel.style.willChange = '';
+    d.panel.style.transform = '';
+    if (d.active && enough && correct && Math.abs(dx) > Math.abs(dy) * AXIS_RATIO) {
+      if (d.mode === 'open') d.side === 'left' ? toggleProfilePanel() : toggleNotifPanel();
+      else closeAllPanels();
+    }
+    drag = null;
+  };
+  document.addEventListener('pointerdown', (e) => { if (e.isPrimary !== false) { begin(e); if (drag) drag.startedAt = performance.now(); } }, {passive:true});
+  document.addEventListener('pointermove', move, {passive:false});
+  document.addEventListener('pointerup', end, {passive:true});
+  document.addEventListener('pointercancel', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    drag.panel.style.transition = '';
+    drag.panel.style.willChange = '';
+    drag.panel.style.transform = '';
+    drag = null;
+  }, {passive:true});
 })();
 
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPanels(); });
 
 // Swipe left/right ANYWHERE on the page (not just the bottom bar) moves to
 // the next/previous bottom-nav tab - e.g. swipe from Home and land on
@@ -8091,7 +8120,7 @@ function renderSettingsPage(){
     <section class="settings-page-section"><h3><i class="fa-solid fa-text-height"></i> Text size</h3><p class="settings-section-note">Make Levromart easier to read. This changes the app's text scale on this device.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Font size</strong><span>Choose a comfortable size from 85% to 125%.</span></div><div class="levi-size-value" id="levroFontScaleValue">${Math.round(getLevromartFontScale()*100)}%</div><input class="levi-size-range" id="levroFontScaleRange" type="range" min="0.85" max="1.25" step="0.05" value="${getLevromartFontScale()}" aria-label="Levromart font size" oninput="setLevromartFontScale(this.value)" onchange="setLevromartFontScale(this.value)" /></div></section>
     <section class="settings-page-section"><h3><span class="settings-levi-logo-wrap"><img class="settings-levi-logo" src="${esc(MEDRIS_LOGO)}" alt="" /></span> Levi</h3><p class="settings-section-note">Adjust Levi's size, visibility, data preference and voice.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Levi size</strong><span>Drag the scale to make Levi smaller or restore the current maximum.</span></div><div class="levi-size-value" id="leviSizeValue">${getLeviFabSize()}px</div><input class="levi-size-range" id="leviSizeRange" type="range" min="44" max="74" step="1" value="${getLeviFabSize()}" aria-label="Levi size" oninput="setLeviFabSize(this.value)" /></div><div class="settings-divider"></div><div class="settings-toggle-row" id="leviVisibleSettingRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="settingsAiConsentPageRow"></div><div class="settings-divider"></div><div class="settings-voice-wrap"><div class="settings-control-copy"><strong>Levi's voice</strong><span>Choose from the voices available on your device.</span></div><select id="voiceSelectPage" class="settings-select" aria-label="Levi voice"></select><button class="btn btn-outline settings-full-btn" onclick="previewAiVoice()"><i class="fa-solid fa-play"></i> Preview voice</button></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-sliders"></i> App preferences</h3><div class="settings-simple-row" id="settingsInstallPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="settingsNotifPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="locationSettingPageRow"></div></section>
-    <section class="settings-page-section"><h3><i class="fa-solid fa-lock"></i> Account</h3><button class="settings-action-row" onclick="showChangePassword()"><i class="fa-solid fa-key"></i><span><strong>Change password</strong><small>Update your account password</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showLevromartAbout()"><i class="fa-solid fa-circle-info"></i><span><strong>About Levromart</strong><small>Version and platform information</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row settings-action-danger" onclick="startDeleteAccount()"><i class="fa-solid fa-user-xmark"></i><span><strong>Delete account permanently</strong><small>${vendor ? "Vendors must clear all active orders and unsettled commission first." : "Permanently close this Levromart account. Pending buyer orders do not block deletion."}</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
+    <section class="settings-page-section"><h3><i class="fa-solid fa-lock"></i> Account</h3><button class="settings-action-row" onclick="showChangePassword()"><i class="fa-solid fa-key"></i><span><strong>Change password</strong><small>Update your account password</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showLevromartAbout()"><i class="fa-solid fa-circle-info"></i><span><strong>About Levromart</strong><small>Version and platform information</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
     <button class="settings-close-page" onclick="navigate(lastNonSettingsView||'home')">Back to Levromart</button>
   </div>`;
 }
@@ -8593,58 +8622,6 @@ async function logout() {
   navigate("home");
 }
 
-function startDeleteAccount() {
-  closeAllPanels();
-  byId("deleteAccountPassword").value = "";
-  byId("deleteAccountPhrase").value = "";
-  byId("deleteAccountError").classList.add("hidden");
-  byId("deleteAccountModal").classList.remove("hidden");
-}
-async function confirmDeleteAccount() {
-  const password = byId("deleteAccountPassword").value;
-  const phrase = byId("deleteAccountPhrase").value.trim().toLowerCase();
-  const errorEl = byId("deleteAccountError");
-  errorEl.classList.add("hidden");
-  if (!password) { errorEl.textContent = "Enter your password to confirm."; errorEl.classList.remove("hidden"); return; }
-  if (phrase !== "delete my account") { errorEl.textContent = 'Type "delete my account" exactly to confirm.'; errorEl.classList.remove("hidden"); return; }
-  const btn = byId("deleteAccountConfirmBtn");
-  btn.disabled = true;
-  try {
-    // Re-authenticating here rotates the client's session -- read the
-    // fresh access token straight off this response instead of the global
-    // `session` variable, which only catches up once the auth-state-change
-    // listener fires. Using the stale one was throwing a false "Invalid
-    // session" from the API below even with the right password and phrase.
-    const deleteLoginEmail = profile?.email || session?.user?.email;
-    if (!deleteLoginEmail) throw new Error("This account has no email address. Please use the account password to continue.");
-    const { data: authData, error: pwError } = await sb.auth.signInWithPassword({ email: deleteLoginEmail, password });
-    if (pwError) throw new Error("Incorrect password.");
-    const freshAccessToken = authData?.session?.access_token || session.access_token;
-
-    const res = await fetch("/api/delete-account", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken: freshAccessToken }),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Could not delete account.");
-
-    byId("deleteAccountModal").classList.add("hidden");
-    await sb.auth.signOut();
-    await refreshAuthStateOnce();
-    navigate("home");
-    showToast("Your account has been deleted.", "success");
-  } catch (err) {
-    const raw = String(err?.message || "");
-    const technical = /foreign key|constraint|schema cache|postgres|postgrest|violates|relation .* does not exist|column .* does not exist/i.test(raw);
-    errorEl.textContent = technical
-      ? "We couldn't complete the account deletion. Please try again in a moment."
-      : raw || "We couldn't complete the account deletion. Please try again.";
-    errorEl.classList.remove("hidden");
-  } finally {
-    btn.disabled = false;
-  }
-}
 
 // ---------- SETTINGS EXTRAS ----------
 function toggleSettingsMoreMenu(evt) {
@@ -15118,7 +15095,7 @@ function buildRevenueChart(paidTxns, range, opts) {
   const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
   const areaPath = `${linePath} L${points[points.length - 1].x.toFixed(2)},${H} L${points[0].x.toFixed(2)},${H} Z`;
   const gradId = `chartFill${Math.random().toString(36).slice(2, 8)}`;
-  const dotsSvg = points.map((p, i) => `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="0.6" class="chart-dot" data-i="${i}" style="transition-delay:${(0.5 + i * 0.04).toFixed(2)}s;"></circle>`).join("");
+  const dotsSvg = points.map((p, i) => `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="0.38" class="chart-dot" data-i="${i}" style="transition-delay:${(0.5 + i * 0.04).toFixed(2)}s;"></circle>`).join("");
 
   wrap.innerHTML = `<div class="modern-chart-card">
     <div class="flex" style="justify-content:space-between;align-items:flex-start;">
