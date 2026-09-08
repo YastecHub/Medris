@@ -1,11 +1,10 @@
-const CACHE = 'levromart-shell-v3';
-const RUNTIME = 'levromart-runtime-v3';
+const CACHE = 'levromart-shell-v4';
+const RUNTIME = 'levromart-runtime-v4';
 const OFFLINE_FALLBACK = '/';
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-
     try {
       await cache.addAll([
         OFFLINE_FALLBACK,
@@ -13,7 +12,6 @@ self.addEventListener('install', event => {
         '/apple-touch-icon.png'
       ]);
     } catch (e) {}
-
     self.skipWaiting();
   })());
 });
@@ -48,15 +46,6 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url);
 
-  /*
-   * Navigation requests
-   *
-   * Online:
-   *   Fetch the newest version and update the cache.
-   *
-   * Offline:
-   *   Use the cached page instead of failing.
-   */
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
@@ -64,10 +53,7 @@ self.addEventListener('fetch', event => {
           const fresh = await fetch(request);
 
           const cache = await caches.open(CACHE);
-
-          cache
-            .put(request, fresh.clone())
-            .catch(() => {});
+          cache.put(request, fresh.clone()).catch(() => {});
 
           return fresh;
         } catch (e) {
@@ -91,13 +77,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  /*
-   * Runtime resources
-   *
-   * Cache images and application resources as they are used.
-   * This allows previously loaded marketplace content to remain
-   * available when the user temporarily loses internet access.
-   */
   if (
     isImageRequest(request) ||
     url.origin === location.origin ||
@@ -109,7 +88,6 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       (async () => {
         const cache = await caches.open(RUNTIME);
-
         const cached = await cache.match(request);
 
         const network = fetch(request)
@@ -118,26 +96,153 @@ self.addEventListener('fetch', event => {
               response &&
               (response.ok || response.type === 'opaque')
             ) {
-              cache
-                .put(request, response.clone())
-                .catch(() => {});
+              cache.put(request, response.clone()).catch(() => {});
             }
 
             return response;
           })
           .catch(() => null);
 
-        /*
-         * Cache-first means already downloaded resources appear
-         * immediately. Network is still attempted in the background
-         * when there is no cached copy.
-         */
         return (
           cached ||
           (await network) ||
-          new Response('', { status: 504 })
+          new Response('', {
+            status: 504
+          })
         );
       })()
     );
   }
+});
+
+
+/*
+ * WEB PUSH
+ *
+ * This push listener is required so that incoming Web Push messages
+ * actually produce a visible notification on the device.
+ */
+
+self.addEventListener('push', event => {
+  event.waitUntil(
+    (async () => {
+      let data = {};
+
+      try {
+        data = event.data
+          ? event.data.json()
+          : {};
+      } catch (_) {
+        try {
+          data = {
+            body: event.data
+              ? event.data.text()
+              : ''
+          };
+        } catch (_) {}
+      }
+
+      const title = String(
+        data.title || 'Levromart'
+      );
+
+      const body = String(
+        data.body ||
+        'You have a new Levromart update.'
+      );
+
+      const url = String(
+        data.url || '/'
+      );
+
+      const icon = String(
+        data.icon ||
+        '/apple-touch-icon.png'
+      );
+
+      const badge = String(
+        data.badge ||
+        '/apple-touch-icon.png'
+      );
+
+      return self.registration.showNotification(
+        title,
+        {
+          body,
+          icon,
+          badge,
+
+          data: {
+            url
+          },
+
+          tag: data.tag
+            ? String(data.tag)
+            : 'levromart-notification',
+
+          renotify: true,
+
+          vibrate: [
+            100,
+            50,
+            100
+          ]
+        }
+      );
+    })()
+  );
+});
+
+
+/*
+ * NOTIFICATION CLICK
+ *
+ * When a user taps a notification, open/focus Levromart
+ * and navigate to the relevant destination.
+ */
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+
+  const target =
+    event.notification?.data?.url || '/';
+
+  event.waitUntil(
+    (async () => {
+      const clientsList =
+        await self.clients.matchAll({
+          type: 'window',
+          includeUncontrolled: true
+        });
+
+      for (const client of clientsList) {
+        if ('focus' in client) {
+          try {
+            if (
+              target &&
+              target.startsWith('/')
+            ) {
+              await client.navigate(
+                new URL(
+                  target,
+                  self.location.origin
+                ).href
+              );
+            }
+          } catch (_) {}
+
+          return client.focus();
+        }
+      }
+
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(
+          new URL(
+            target,
+            self.location.origin
+          ).href
+        );
+      }
+    })()
+  );
 });
