@@ -4776,9 +4776,9 @@ body.product-detail-view #aiChatFab{right:.7rem !important;bottom:.65rem !import
 .product-detail-media,.product-detail-media .product-gallery-carousel{width:100% !important;max-width:none !important;}
 .product-gallery-track,.package-detail-gallery-track{margin-left:0 !important;margin-right:0 !important;width:100% !important;}
 .product-gallery-carousel{width:100%;}
-.product-gallery-track,.package-detail-gallery-track{display:flex !important;overflow-x:auto !important;overflow-y:hidden !important;scroll-snap-type:x mandatory !important;scroll-behavior:smooth !important;scrollbar-width:none !important;-webkit-overflow-scrolling:touch !important;touch-action:pan-x !important;gap:0 !important;overscroll-behavior-x:contain !important;position:relative !important;}
+.product-gallery-track,.package-detail-gallery-track{display:flex !important;overflow-x:auto !important;overflow-y:hidden !important;scroll-snap-type:none !important;scroll-behavior:smooth !important;scrollbar-width:none !important;-webkit-overflow-scrolling:touch !important;touch-action:pan-x !important;gap:0 !important;overscroll-behavior-x:contain !important;position:relative !important;}
 .product-gallery-track::-webkit-scrollbar,.package-detail-gallery-track::-webkit-scrollbar{display:none;}
-.product-gallery-slide,.package-detail-gallery-slide{flex:0 0 100% !important;width:100% !important;min-width:100% !important;scroll-snap-align:center !important;scroll-snap-stop:always !important;position:relative !important;height:100% !important;cursor:zoom-in !important;}
+.product-gallery-slide,.package-detail-gallery-slide{flex:0 0 100% !important;width:100% !important;min-width:100% !important;position:relative !important;height:100% !important;cursor:zoom-in !important;}
 .product-gallery-slide img,.package-detail-gallery-slide img{width:100% !important;height:100% !important;display:block !important;object-fit:cover !important;background:transparent !important;border-radius:0 !important;}
 .product-gallery-track{aspect-ratio:4/3 !important;border-radius:.9rem !important;}
 .package-detail-gallery-track{aspect-ratio:4/3 !important;border-radius:14px !important;}
@@ -11074,6 +11074,7 @@ function setProductGalleryPhoto(index, smooth = true) {
   slide?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", inline: "center", block: "nearest" });
   const count = byId("productGalleryCount");
   if (count) count.textContent = String(productGalleryIndex + 1);
+  document.querySelectorAll(".product-gallery-thumb").forEach((el) => el.classList.toggle("active", Number(el.dataset.galleryIndex) === productGalleryIndex));
 }
 function changeProductGalleryPhoto(delta) { setProductGalleryPhoto(productGalleryIndex + delta); }
 function syncProductGalleryIndex(track) {
@@ -11306,6 +11307,7 @@ async function renderProductDetail(productId) {
           ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
           ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
+        ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
       </div>`
     : `<div class="product-img" style="height:220px;"><i class='fa-solid fa-camera'></i> No image</div>`;
   window.__productGalleryPhotos = productPhotos;
@@ -15451,7 +15453,54 @@ function exportFinancePdf() {
       .stat{border:1px solid #e2e8f0;border-radius:8px;padding:0.8rem 1.2rem;}
       .stat b{display:block;font-size:1.3rem;color:#0e8f7f;}
     
-</style></head><body>
+</style>
+<style id="2026-09-08-product-chat-polish">
+/* Product varieties: keep the full swipe gallery and restore the small
+   horizontally scrollable photo strip underneath it. */
+.product-gallery-thumbs{
+  display:flex !important; gap:.55rem !important; overflow-x:auto !important;
+  padding:.65rem .1rem .2rem !important; scrollbar-width:none !important;
+  -webkit-overflow-scrolling:touch !important; touch-action:pan-x !important;
+  overscroll-behavior-x:contain !important;
+}
+.product-gallery-thumbs::-webkit-scrollbar{display:none !important;}
+.product-gallery-thumb{
+  flex:0 0 4.5rem !important; width:4.5rem !important; height:4.5rem !important;
+  border:2px solid transparent !important; border-radius:.65rem !important;
+  padding:0 !important; overflow:hidden !important; background:var(--border) !important;
+  cursor:pointer !important; appearance:none !important; -webkit-appearance:none !important;
+}
+.product-gallery-thumb.active{border-color:var(--primary) !important;box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 18%,transparent) !important;}
+.product-gallery-thumb img{width:100% !important;height:100% !important;object-fit:cover !important;display:block !important;}
+.product-detail-top-actions{left:auto !important;right:1rem !important;justify-content:flex-end !important;width:auto !important;}
+.product-detail-title{padding-right:0 !important;max-width:calc(100% - 5rem) !important;}
+@media(max-width:720px){
+  .product-detail-top-actions{right:.75rem !important;top:.75rem !important;}
+  .product-detail-title{max-width:calc(100% - 4.2rem) !important;}
+}
+
+/* Levi response controls sit underneath the response rather than inside its
+   text. The controls are quiet and compact, like an AI assistant toolbar. */
+.ai-chat-action-row{display:flex;align-items:center;gap:.1rem;margin-top:.38rem;padding:0;}
+.ai-chat-action-btn{width:31px;height:29px;border:0;background:transparent;color:var(--text-muted);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+.ai-chat-action-btn:hover,.ai-chat-action-btn:focus-visible{background:color-mix(in srgb,var(--primary) 9%,transparent);color:var(--primary);outline:none;}
+.ai-chat-action-btn.active{color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent);}
+.ai-chat-message-menu{position:absolute;left:0;top:calc(100% + .35rem);z-index:100;min-width:210px;max-width:min(250px,78vw);padding:.35rem;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);box-shadow:0 18px 44px rgba(0,0,0,.22);}
+.ai-chat-message-menu button{width:100%;display:flex;align-items:center;gap:.65rem;border:0;background:transparent;color:var(--text);padding:.62rem .68rem;border-radius:9px;font:inherit;font-size:.83rem;text-align:left;cursor:pointer;}
+.ai-chat-message-menu button:hover{background:color-mix(in srgb,var(--primary) 8%,transparent);}
+.ai-chat-message-menu button i{width:18px;text-align:center;color:var(--primary);}
+.ai-chat-msg.assistant{overflow:visible !important;}
+
+/* A dedicated DM must not rubber-band as a whole document. Only the message
+   list is scrollable; the fixed chat shell remains anchored to the viewport. */
+body.chat-full-page{position:fixed !important;inset:0 !important;width:100% !important;height:100% !important;overflow:hidden !important;overscroll-behavior:none !important;}
+body.chat-full-page > #app{height:100% !important;overflow:hidden !important;overscroll-behavior:none !important;}
+.chat-page-wrap{position:fixed !important;inset:0 !important;height:100dvh !important;min-height:100dvh !important;overflow:hidden !important;overscroll-behavior:none !important;touch-action:pan-y !important;}
+.chat-page-wrap .chat-thread{min-height:0 !important;height:auto !important;overflow:hidden !important;overscroll-behavior:none !important;}
+.chat-page-wrap .chat-messages{overscroll-behavior-y:contain !important;overscroll-behavior-x:none !important;touch-action:pan-y !important;-webkit-overflow-scrolling:touch !important;}
+.chat-page-wrap .chat-input-row{touch-action:manipulation !important;}
+</style>
+</head><body>
     <h1>Levromart Transactions</h1>
     <p class="muted">Range: ${rangeLabel(adminFinanceRange)} · Generated ${new Date().toLocaleString()}</p>
     <div class="stats">
@@ -16187,7 +16236,8 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       speakBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i>`;
       speakBtn.onclick = () => speakAiChatMessage(displayText, speakBtn);
       el.appendChild(speakBtn);
-      if (autoSpeak) speakAiChatMessage(displayText, speakBtn);
+      // Levi never reads replies automatically. Voice input only transcribes;
+      // the user explicitly taps the speaker button when they want audio.
     }
     if (role === "assistant" && msgId) attachAiReactionUI(el, msgId, existingReaction);
     if (nav) {
@@ -16254,48 +16304,148 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
 // (no need to aggregate across people, unlike buyer/vendor chat), so this
 // is just a react button plus, once picked, a small pill showing the choice.
 function attachAiReactionUI(el, msgId, existingReaction) {
-  const reactBtn = document.createElement("button");
-  reactBtn.className = "ai-chat-msg-react";
-  reactBtn.title = "React";
-  reactBtn.setAttribute("aria-label", "React to Levi's message");
-  reactBtn.innerHTML = existingReaction ? existingReaction : `<i class="fa-regular fa-face-smile"></i>`;
-  reactBtn.onclick = (evt) => toggleAiReactionPicker(evt, msgId, el);
-  el.appendChild(reactBtn);
+  // One compact action row under every persisted Levi response, inspired by
+  // the familiar ChatGPT controls: copy, thumbs up/down, and more actions.
+  const row = document.createElement("div");
+  row.className = "ai-chat-action-row";
+  row.setAttribute("role", "toolbar");
+  row.setAttribute("aria-label", "Levi message actions");
 
-  // Mobile-friendly double tap: react directly to a Levi message without
-  // requiring the small reaction button. Ignore controls, links and the
-  // picker itself so normal interaction remains untouched.
-  let lastTap = 0;
-  let lastTapX = 0;
-  let lastTapY = 0;
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "ai-chat-action-btn";
+  copyBtn.title = "Copy text";
+  copyBtn.setAttribute("aria-label", "Copy Levi response");
+  copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i>`;
+  copyBtn.onclick = (evt) => copyAiMessageText(evt, displayTextForAiElement(el));
+  row.appendChild(copyBtn);
+
+  const upBtn = document.createElement("button");
+  upBtn.type = "button";
+  upBtn.className = `ai-chat-action-btn ai-feedback-btn ${existingReaction === "👍" ? "active" : ""}`;
+  upBtn.title = "Good response";
+  upBtn.setAttribute("aria-label", "Thumbs up");
+  upBtn.innerHTML = `<i class="fa-regular fa-thumbs-up"></i>`;
+  upBtn.onclick = (evt) => reactToAiMessage(evt, msgId, "👍");
+  row.appendChild(upBtn);
+
+  const downBtn = document.createElement("button");
+  downBtn.type = "button";
+  downBtn.className = `ai-chat-action-btn ai-feedback-btn ${existingReaction === "👎" ? "active" : ""}`;
+  downBtn.title = "Needs improvement";
+  downBtn.setAttribute("aria-label", "Thumbs down");
+  downBtn.innerHTML = `<i class="fa-regular fa-thumbs-down"></i>`;
+  downBtn.onclick = (evt) => reactToAiMessage(evt, msgId, "👎");
+  row.appendChild(downBtn);
+
+  const moreBtn = document.createElement("button");
+  moreBtn.type = "button";
+  moreBtn.className = "ai-chat-action-btn ai-more-btn";
+  moreBtn.title = "More actions";
+  moreBtn.setAttribute("aria-label", "More actions");
+  moreBtn.innerHTML = `<i class="fa-solid fa-ellipsis"></i>`;
+  moreBtn.onclick = (evt) => toggleAiMessageMenu(evt, msgId, el);
+  row.appendChild(moreBtn);
+
+  el.appendChild(row);
+
+  // Keep the existing lightweight double-tap reaction behaviour for users
+  // who prefer gestures; it now maps to the thumbs-up feedback control.
+  let lastTap = 0, lastTapX = 0, lastTapY = 0;
   const isMessageSurface = (target) => {
-    if (!target || target.closest?.('button,a,input,textarea,select,.reaction-picker,.ai-chat-nav-hint,.ai-chat-draft-card')) return false;
+    if (!target || target.closest?.('button,a,input,textarea,select,.reaction-picker,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-action-row,.ai-chat-message-menu')) return false;
     return target.closest?.('.ai-chat-msg') === el;
   };
-  el.addEventListener('dblclick', (evt) => {
-    if (isMessageSurface(evt.target)) {
-      evt.preventDefault();
-      toggleAiReactionPicker(evt, msgId, el);
-    }
-  });
   el.addEventListener('touchend', (evt) => {
     if (!isMessageSurface(evt.target)) return;
     const touch = evt.changedTouches?.[0];
     if (!touch) return;
     const now = Date.now();
-    const dx = touch.clientX - lastTapX;
-    const dy = touch.clientY - lastTapY;
+    const dx = touch.clientX - lastTapX, dy = touch.clientY - lastTapY;
     if (now - lastTap < 360 && Math.hypot(dx, dy) < 34) {
       evt.preventDefault();
       lastTap = 0;
-      toggleAiReactionPicker(evt, msgId, el);
+      reactToAiMessage(evt, msgId, "👍");
     } else {
-      lastTap = now;
-      lastTapX = touch.clientX;
-      lastTapY = touch.clientY;
+      lastTap = now; lastTapX = touch.clientX; lastTapY = touch.clientY;
     }
   }, { passive: false });
 }
+function displayTextForAiElement(el) {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll(".ai-chat-action-row,.ai-chat-message-menu,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-msg-speak,.reaction-picker").forEach((n) => n.remove());
+  return (clone.textContent || "").trim();
+}
+async function copyAiMessageText(evt, text) {
+  evt?.stopPropagation?.();
+  const value = String(text || "").trim();
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    showToast("Copied.", "success");
+  } catch (_) {
+    const ta = document.createElement("textarea");
+    ta.value = value; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); showToast("Copied.", "success"); }
+    catch (_) { showToast("Couldn't copy this response.", "error"); }
+    ta.remove();
+  }
+}
+function toggleAiMessageMenu(evt, msgId, el) {
+  evt?.stopPropagation?.();
+  document.querySelectorAll(".ai-chat-message-menu").forEach((m) => m.remove());
+  const menu = document.createElement("div");
+  menu.className = "ai-chat-message-menu";
+  const assistantIndex = [...aiChatMessages].findIndex((m) => m.role === "assistant" && String(m.content || "") === displayTextForAiElement(el));
+  const previousUser = assistantIndex > 0 ? [...aiChatMessages].slice(0, assistantIndex).reverse().find((m) => m.role === "user") : null;
+  const safeText = displayTextForAiElement(el);
+  menu.innerHTML = `
+    <button type="button" onclick="copyAiMessageText(event,${JSON.stringify(safeText).replace(/</g,'\\u003c')});closeAiMessageMenu()"><i class="fa-regular fa-copy"></i><span>Copy text</span></button>
+    <button type="button" onclick="speakAiChatMessage(${JSON.stringify(safeText).replace(/</g,'\\u003c')},null);closeAiMessageMenu()"><i class="fa-solid fa-volume-high"></i><span>Read aloud</span></button>
+    <button type="button" onclick="retryAiMessage('${msgId || ""}');closeAiMessageMenu()"><i class="fa-solid fa-rotate-right"></i><span>Retry</span></button>
+    <button type="button" onclick="searchFromLeviMenu();closeAiMessageMenu()"><i class="fa-solid fa-magnifying-glass"></i><span>Search Levromart</span></button>
+    <button type="button" onclick="startNewAiChat();closeAiMessageMenu()"><i class="fa-solid fa-code-branch"></i><span>Branch to new chat</span></button>`;
+  el.appendChild(menu);
+  requestAnimationFrame(() => {
+    const rect = menu.getBoundingClientRect();
+    if (rect.bottom > window.innerHeight - 12) menu.style.top = `-${Math.min(rect.height + 8, 260)}px`;
+  });
+}
+function closeAiMessageMenu() { document.querySelectorAll(".ai-chat-message-menu").forEach((m) => m.remove()); }
+async function retryAiMessage(msgId) {
+  closeAiMessageMenu();
+  let prompt = "";
+  try {
+    if (msgId) {
+      const { data: current } = await sb.from("ai_messages").select("conversation_id,created_at").eq("id", msgId).maybeSingle();
+      if (current?.conversation_id) {
+        const { data: rows } = await sb.from("ai_messages").select("role,content,created_at").eq("conversation_id", current.conversation_id).order("created_at", { ascending: true });
+        const idx = (rows || []).findIndex((r) => String(r.created_at) === String(current.created_at) && r.role === "assistant");
+        if (idx >= 0) prompt = [...(rows || [])].slice(0, idx).reverse().find((r) => r.role === "user")?.content || "";
+      }
+    }
+  } catch (_) {}
+  if (!prompt) prompt = [...aiChatMessages].reverse().find((m) => m.role === "user")?.content || "";
+  const input = byId("aiChatInput");
+  if (!prompt || !input) return showToast("I couldn't find the message to retry.", "error");
+  input.value = prompt;
+  autoGrowChatInput(input);
+  await sendAiChatMessage();
+}
+async function searchFromLeviMenu() {
+  closeAiMessageMenu();
+  const q = await showTextPromptDialog("Search Levromart", "Search products, services, vendors or packages.", { placeholder: "What are you looking for?", okLabel: "Search" });
+  if (!q || !q.trim()) return;
+  toggleAiChat();
+  await navigate("home", {}, true);
+  setTimeout(() => {
+    const input = byId("heroSearch");
+    if (input) { input.value = q.trim(); handleHeroSearchInput(q.trim()); input.focus(); }
+  }, 120);
+}
+
 async function toggleAiReactionPicker(evt, msgId, el) {
   evt.stopPropagation();
   if (evt.type === "dblclick") evt.preventDefault();
@@ -16315,8 +16465,14 @@ async function reactToAiMessage(evt, msgId, emoji) {
   document.querySelectorAll(".reaction-picker").forEach((p) => p.remove());
   const { data, error } = await sb.rpc("toggle_ai_message_reaction", { p_message_id: msgId, p_emoji: emoji });
   if (error) { showToast(error.message, "error"); return; }
-  const btn = document.querySelector(`.ai-chat-msg[data-msg-id="${msgId}"] .ai-chat-msg-react`);
-  if (btn) btn.innerHTML = data ? data : `<i class="fa-regular fa-face-smile"></i>`;
+  const messageEl = document.querySelector(`.ai-chat-msg[data-msg-id="${msgId}"]`);
+  if (messageEl) {
+    messageEl.querySelectorAll(".ai-feedback-btn").forEach((btn) => {
+      const isUp = btn.getAttribute("aria-label") === "Thumbs up";
+      const isDown = btn.getAttribute("aria-label") === "Thumbs down";
+      btn.classList.toggle("active", (isUp && data === "👍") || (isDown && data === "👎"));
+    });
+  }
 }
 // ---------- LEVI VOICE ----------
 let aiVoices = []; // browser speechSynthesis voices
@@ -17004,6 +17160,46 @@ async function resolveLeviLocalAction(text) {
   // Direct app controls: Levi performs simple, reversible account/UI actions
   // instead of sending the user to Settings. Destructive listing/cart changes
   // still use the existing guarded functions/confirmation flows.
+  // Accent colours can be selected by name (or by a loose colour word).
+  if (/\b(change|set|switch|make)\b[\s\S]*\b(accent|theme colour|theme color)\b/.test(q) || /\b(accent)\b[\s\S]*\b(to)\b/.test(q)) {
+    const raw = String(text || "").toLowerCase();
+    const paletteIndex = ACCENT_PALETTE.findIndex((p) => {
+      const name = String(p.name || "").toLowerCase();
+      const group = String(p.group || "").toLowerCase();
+      return raw.includes(name) || raw.includes(group);
+    });
+    if (paletteIndex >= 0) {
+      setAccent(paletteIndex);
+      return { handled:true, reply:`Done - I changed your Levromart accent to ${ACCENT_PALETTE[paletteIndex].name}.` };
+    }
+    const colourWord = raw.match(/\b(red|blue|purple|violet|pink|orange|yellow|gold|green|teal|cyan|indigo)\b/)?.[1];
+    if (colourWord) {
+      const paletteIndex2 = ACCENT_PALETTE.findIndex((p) => `${p.name} ${p.group}`.toLowerCase().includes(colourWord));
+      if (paletteIndex2 >= 0) {
+        setAccent(paletteIndex2);
+        return { handled:true, reply:`Done - I changed your Levromart accent to ${ACCENT_PALETTE[paletteIndex2].name}.` };
+      }
+    }
+    return { handled:true, reply:"I can change the accent colour. Tell me the colour you want, such as green, blue, purple or red." };
+  }
+
+  // Vendor product management: Levi opens the existing product manager for
+  // additions and uses the existing guarded removal function for deletions.
+  if (vendor && /\b(add|create|list)\b[\s\S]*\b(product|item)\b/.test(q)) {
+    closeLeviIfOpen(); await navigate("vendorProducts");
+    setTimeout(() => openAddProductModal(), 80);
+    return { handled:true, reply:"Done - I opened your product manager. Add the product details and save it." };
+  }
+  if (vendor && /\b(remove|delete|take down)\b[\s\S]*\b(product|item|listing)\b/.test(q)) {
+    const target = q.replace(/\b(please|levi|can you|could you|remove|delete|take down|the|product|item|listing|from|my|shop|store)\b/g, " ").replace(/\s+/g," ").trim();
+    if (!target) return { handled:true, reply:"Tell me the product name you want removed, and I'll handle it." };
+    const { data: products } = await sb.from("products").select("id,name,status,quantity_available,vendor_id").eq("vendor_id", vendor.id).ilike("name", `%${target}%`).limit(8);
+    const matches = products || [];
+    if (!matches.length) return { handled:true, reply:`I couldn't find a product matching “${target}” in your shop.` };
+    if (matches.length > 1) return { handled:true, reply:`I found several matches: ${matches.map(p=>p.name).join(", ")}. Tell me which one to remove.` };
+    await removeProduct(matches[0].id);
+    return { handled:true, reply:`I handled the removal request for ${matches[0].name}.` };
+  }
   if (/\b(light|light mode|bright mode)\b/.test(q) && !/\bnot\b/.test(q)) {
     setTheme("light"); return { handled:true, reply:"Done - I switched Levromart to light mode." };
   }
