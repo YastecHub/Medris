@@ -4206,6 +4206,26 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
   outline:2.5px solid var(--primary) !important; outline-offset:2px !important;
 }
 
+
+/* Levi replies are selectable/copyable like normal AI chat text. Keep the
+   surrounding controls non-selectable while allowing long-press copy on the
+   assistant's actual reply. */
+#aiChatMessages .ai-chat-msg.assistant {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+  cursor: text;
+}
+#aiChatMessages .ai-chat-msg.assistant::selection {
+  background: color-mix(in srgb, var(--primary) 32%, transparent);
+}
+#aiChatMessages .ai-chat-msg.assistant .ai-chat-msg-speak,
+#aiChatMessages .ai-chat-msg.assistant .ai-chat-msg-react,
+#aiChatMessages .ai-chat-msg.assistant .ai-chat-nav-hint,
+#aiChatMessages .ai-chat-msg.assistant .reaction-picker {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
 </style>
 
 
@@ -8671,11 +8691,11 @@ function navigationShellHtml(view) {
   const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",storefront:"Storefront"};
   const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",storefront:"fa-store"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
-  if(view === "home") return homeFallbackHtml("Connecting to the marketplace…");
+  if(view === "home") return homeFallbackHtml("Welcome to Levromart. Your marketplace is ready.");
   if(!title)return "";
   if(view==='vendorDashboard') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> My Shop</h2><div class="dash-tabs shop-tabs-rail"><button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button><button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button><button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button><button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions</button></div><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating your shop…</div></div>`;
   if(view==='vendorOrders'||view==='buyerOrders') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating orders…</div></div>`;
-  if(view==='storefront') return `<div class="instant-page-shell storefront-loading-shell"><div class="storefront-loading-brand"><div class="storefront-loading-avatar"><i class="fa-solid fa-store"></i></div><div><h2 style="margin:.1rem 0 .15rem;"><i class="fa-solid ${icon}"></i> Storefront</h2><div class="instant-nav-status" style="margin:0;"><i class="fa-solid fa-arrows-rotate fa-spin"></i> Opening this shop…</div></div></div></div>`;
+  if(view==='storefront') return `<div class="instant-page-shell storefront-loading-shell"><div class="storefront-loading-brand"><div class="storefront-loading-avatar"><i class="fa-solid fa-store"></i></div><div><h2 style="margin:.1rem 0 .15rem;"><i class="fa-solid ${icon}"></i> Storefront</h2><div class="instant-nav-status" style="margin:0;"><i class="fa-solid fa-arrows-rotate"></i> Preparing this shop…</div></div></div></div>`;
   return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating…</div></div>`;
 }
 
@@ -9016,7 +9036,52 @@ function homeFallbackHtml(message = "Levromart is ready. Listings will appear as
   </div>`;
 }
 
-async function renderHome() {
+/*
+ * HOME FIRST-PAINT GUARD
+ *
+ * Do not make navigation wait for Supabase. The old implementation painted a
+ * "Connecting to the marketplace" shell and then awaited several network
+ * requests before returning the actual Home HTML. On mobile Safari that could
+ * leave the shell visible indefinitely when a request/connection got stuck.
+ *
+ * renderHome() is intentionally synchronous now: it returns a usable Home
+ * surface immediately and hydrates the real catalogue in the background.
+ */
+function renderHome() {
+  const cache = getOfflineHomeCache();
+  const token = navigationGeneration;
+  let initialHtml = null;
+  try {
+    if (cache) initialHtml = renderOfflineHomeFromCache(cache, { showOfflineNotice: false });
+  } catch (err) {
+    console.warn("[Levromart] Cached Home render failed:", err);
+  }
+  if (!initialHtml) initialHtml = homeFallbackHtml("Welcome to Levromart. The marketplace is loading in the background.");
+
+  // Never await this. If Supabase is slow, Home is still already usable.
+  Promise.resolve().then(() => hydrateHomeMarketplace()).then((html) => {
+    if (!html || currentView !== "home" || navigationGeneration !== token) return;
+    const app = byId("app");
+    if (!app) return;
+    app.innerHTML = html;
+    routeHtmlCache.set(routeCacheKey("home", {}), html);
+    syncLeviFabVisibility();
+    clearAutoScrollTimers();
+    document.querySelectorAll("#app .cat-row, #app .hscroll").forEach((el) => setupAutoScroll(el));
+    initGallerySwipeSurfaces();
+    initDeliveryFieldsOnPage();
+  }).catch((err) => {
+    console.warn("[Levromart] Background Home hydration failed:", err);
+    // Keep the already-painted Home instead of replacing it with a spinner.
+    const app = byId("app");
+    if (app && currentView === "home" && navigationGeneration === token && !app.innerHTML.trim()) {
+      app.innerHTML = homeFallbackHtml("Levromart is ready. Please try again in a moment.");
+    }
+  });
+  return initialHtml;
+}
+
+async function hydrateHomeMarketplace() {
   const cachedHome = getOfflineHomeCache();
   if (typeof sb === "undefined" || !sb) {
     if (cachedHome) return renderOfflineHomeFromCache(cachedHome, { showOfflineNotice: false });
@@ -12052,7 +12117,46 @@ function closeStorefrontShareModal(goBack = false) {
   dismissibleModalId = wasTracked ? null : dismissibleModalId;
   if (goBack && wasTracked && history.state?.dismissibleModal === "storefrontShareModal") history.back();
 }
-async function renderStorefront(vendorId) {
+/*
+ * STOREFRONT FIRST-PAINT GUARD
+ *
+ * Opening a storefront must never leave the navigation shell waiting on the
+ * vendor/products/stats/reviews/package requests. Return immediately, then
+ * replace the shell with the real storefront when the background request is
+ * ready. Successful HTML is cached in memory for instant revisits.
+ */
+function renderStorefront(vendorId) {
+  if (!vendorId) return '<div class="empty-state">Storefront not found.</div>';
+  if (!window.__storefrontHtmlCache) window.__storefrontHtmlCache = new Map();
+  const cached = window.__storefrontHtmlCache.get(String(vendorId));
+  const token = navigationGeneration;
+  const initialHtml = cached || `<div class="instant-page-shell storefront-loading-shell"><div class="storefront-loading-brand"><div class="storefront-loading-avatar"><i class="fa-solid fa-store"></i></div><div><h2 style="margin:.1rem 0 .15rem;"><i class="fa-solid fa-store"></i> Storefront</h2><div class="instant-nav-status" style="margin:0;"><i class="fa-solid fa-arrows-rotate"></i> Preparing this shop…</div></div></div></div>`;
+
+  Promise.resolve().then(() => hydrateStorefront(vendorId)).then((html) => {
+    if (!html || currentView !== "storefront" || String(currentViewParams?.vendorId || "") !== String(vendorId) || navigationGeneration !== token) return;
+    window.__storefrontHtmlCache.set(String(vendorId), html);
+    const app = byId("app");
+    if (!app) return;
+    app.innerHTML = html;
+    routeHtmlCache.set(routeCacheKey("storefront", { vendorId }), html);
+    syncLeviFabVisibility();
+    clearAutoScrollTimers();
+    document.querySelectorAll("#app .cat-row, #app .hscroll").forEach((el) => setupAutoScroll(el));
+    initGallerySwipeSurfaces();
+    initDeliveryFieldsOnPage();
+  }).catch((err) => {
+    console.warn("[Levromart] Background storefront hydration failed:", err);
+    // If the real storefront fails, keep the usable shell/cache visible. Do
+    // not leave the user on a blank page or an endless loading state.
+    const app = byId("app");
+    if (app && currentView === "storefront" && navigationGeneration === token && !cached) {
+      app.innerHTML = `<div class="empty-state"><i class="fa-solid fa-store-slash" style="display:block;font-size:1.6rem;margin-bottom:.6rem;"></i>This storefront could not be reached right now. Please try again.</div>`;
+    }
+  });
+  return initialHtml;
+}
+
+async function hydrateStorefront(vendorId) {
   if (!vendorId) return '<div class="empty-state">Storefront not found.</div>';
   // The vendor record is the only critical request. Everything else is
   // optional enrichment and is isolated so a slow stats/reviews/packages
