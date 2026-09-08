@@ -4584,6 +4584,46 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 #supportSubject,#supportMessage{box-sizing:border-box;width:100%;}
 #supportMessage{resize:vertical;min-height:9rem;}
 </style>
+
+<style id="support-card-actions-refinement">
+/* Product/service actions live in the white information area, not over the image. */
+.product-card-wrap .card { position: relative !important; padding-bottom: 3.15rem !important; }
+.product-card-wrap .card .card-cart-btn,
+.product-card-wrap .card .card-service-btn {
+  position: absolute !important;
+  right: .72rem !important;
+  left: auto !important;
+  bottom: .72rem !important;
+  top: auto !important;
+  z-index: 3 !important;
+  width: 2.35rem !important;
+  height: 2.35rem !important;
+  border-radius: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.14) !important;
+  border: 0 !important;
+}
+.product-card-wrap .card .card-cart-btn { background: var(--primary) !important; color: #fff !important; cursor: pointer !important; font-size: .9rem !important; }
+.product-card-wrap .card .card-service-btn { background: var(--primary) !important; color: #fff !important; cursor: pointer !important; pointer-events: auto !important; font-size: .88rem !important; }
+.product-card-wrap .card .card-cart-btn:hover,
+.product-card-wrap .card .card-service-btn:hover { transform: scale(1.06); }
+@media (max-width: 640px) {
+  .grid:has(.product-card-wrap) .product-card-wrap .card { padding-bottom: 2.85rem !important; }
+  .grid:has(.product-card-wrap) .product-card-wrap .card .card-cart-btn,
+  .grid:has(.product-card-wrap) .product-card-wrap .card .card-service-btn {
+    width: 2rem !important; height: 2rem !important; right: .55rem !important; bottom: .55rem !important;
+    font-size: .74rem !important;
+  }
+}
+.support-page-head { display:flex; align-items:center; gap:.55rem; margin-bottom:1.15rem !important; }
+.support-page-head h2 { margin:0 !important; }
+.support-info-btn { width:1.85rem; height:1.85rem; border-radius:50%; border:1px solid var(--ui-border); background:var(--ui-surface); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto; box-shadow:var(--ui-shadow); }
+.support-info-btn:hover { transform:scale(1.04); }
+.support-page-card { max-width:680px; margin-top:.15rem !important; }
+.support-info-modal-copy { line-height:1.55; }
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -5054,6 +5094,22 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
     <label>Confirm password</label>
     <input type="password" id="setPasswordConfirmInput" autocomplete="new-password" />
     <button class="btn" style="margin-top:0.8rem;" onclick="setAccountPassword()">Set password</button>
+  </div>
+</div>
+
+<div id="supportInfoModal" class="modal hidden" onclick="if(event.target===this)closeSupportInfo()">
+  <div class="modal-content" style="max-width:430px;">
+    <div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;">
+      <h3 style="margin:0;"><i class="fa-solid fa-headset"></i> About support</h3>
+      <button type="button" class="drawer-close-btn" onclick="closeSupportInfo()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="support-info-modal-copy" style="margin-top:.85rem;">
+      <p style="margin:.35rem 0;">Use support when you need Levromart admin help with an account, order, payment, scam report, technical issue, or another marketplace problem.</p>
+      <p class="muted" style="margin:.7rem 0 0;">For an order or scam issue, include the order number and any useful evidence such as payment details, messages, photos, or delivery information.</p>
+    </div>
+    <div class="flex" style="justify-content:flex-end;margin-top:1rem;">
+      <button type="button" class="btn btn-sm" onclick="closeSupportInfo()">Got it</button>
+    </div>
   </div>
 </div>
 
@@ -8851,9 +8907,15 @@ function productCardHtml(p) {
   const isFav = favoriteIds.has(p.id);
   const ownListing = isOwnVendorId(p.vendor?.id);
   const canQuickAdd = !ownListing && !p.is_service && (p.listing_type === "sale" || p.listing_type === "both") && profile?.role !== "admin";
+  const actionHtml = p.is_service
+    ? `<button type="button" class="card-service-btn" title="Open service" aria-label="Open service" onclick="event.stopPropagation();navigate('productDetail',{productId:'${p.id}'})"><i class="fa-solid fa-hand-holding-heart"></i></button>`
+    : canQuickAdd
+      ? `<button type="button" class="card-cart-btn" onclick="quickAddToCart(event,'${p.id}',this,'${p.vendor?.id || ""}')" title="Add to cart" aria-label="Add ${esc(p.name)} to cart"><i class="fa-solid fa-cart-plus"></i></button>`
+      : ownListing
+        ? `<span class="badge own-listing-badge" title="You can't buy your own listing"><i class="fa-solid fa-store"></i> Your listing</span>`
+        : "";
   return `<div class="product-card-wrap">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
-    ${p.is_service ? `<span class="card-service-btn" title="Service" aria-label="Service"><i class="fa-solid fa-hand-holding-heart"></i></span>` : canQuickAdd ? `<button class="card-cart-btn" onclick="quickAddToCart(event,'${p.id}',this,'${p.vendor?.id || ""}')" title="Add to cart"><i class="fa-solid fa-cart-plus"></i></button>` : ownListing ? `<span class="badge own-listing-badge" title="You can't buy your own listing"><i class="fa-solid fa-store"></i> Your listing</span>` : ""}
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;border-radius:0.5rem;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
       <h4 style="margin:0.6rem 0 0.2rem;">${esc(p.name)}</h4>
@@ -8869,6 +8931,7 @@ function productCardHtml(p) {
         ${p.rental_rate != null ? `<span><strong>Rent:</strong> ${naira(p.rental_rate)}/${p.rental_rate_unit}</span>` : ""}
       </div>
       ${p.is_service ? "" : `<p class="muted">Available: ${p.quantity_available} · ${esc((p.condition || "").replace("-", " "))}</p>`}
+      ${actionHtml}
     </div>
   </div>`;
 }
@@ -11513,14 +11576,24 @@ async function buyPackage(packageId) {
 }
 
 // ---------- SUPPORT REQUESTS ----------
+function showSupportInfo() {
+  const modal = byId("supportInfoModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  trackModalOpened("supportInfoModal");
+}
+function closeSupportInfo() {
+  const modal = byId("supportInfoModal");
+  if (modal) modal.classList.add("hidden");
+}
 async function renderSupportRequest() {
   if (!session) return '<div class="empty-state">Please log in to contact Levromart support.</div>';
   const { data: requests, error } = await sb.from("support_requests")
     .select("id,subject,message,status,admin_reply,created_at,updated_at")
     .eq("user_id", session.user.id)
     .order("created_at", { ascending: false });
-  let html = `<div class="page-head"><div><h2><i class="fa-solid fa-headset"></i> Support request</h2><p class="muted">Contact Levromart directly about account issues, orders, scams, payments, technical problems, or anything that needs admin help.</p></div></div>`;
-  html += `<div class="card" style="max-width:680px;margin-bottom:1rem;">
+  let html = `<div class="support-page-head"><h2><i class="fa-solid fa-headset"></i> Support request</h2><button type="button" class="support-info-btn" onclick="showSupportInfo()" aria-label="About support requests" title="About support requests"><i class="fa-solid fa-info"></i></button></div>`;
+  html += `<div class="card support-page-card" style="margin-bottom:1rem;">
     <h3 style="margin-top:0;">Send a support request</h3>
     <label for="supportSubject">Subject</label>
     <input id="supportSubject" maxlength="140" placeholder="What do you need help with?" />
