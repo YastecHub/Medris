@@ -4838,6 +4838,23 @@ body.product-detail-view #aiChatFab{display:none !important;pointer-events:none 
   }
 </style>
 
+
+<style id="home-loading-resilience">
+.home-loading-shell{padding:1rem 0 2rem;min-height:48vh;}
+.home-loading-hero{border-radius:1.25rem;padding:1rem;background:linear-gradient(145deg,color-mix(in srgb,var(--primary) 12%,var(--card)),var(--card));border:1px solid var(--border);margin-bottom:1rem;}
+.home-loading-search{height:3rem;border-radius:999px;background:color-mix(in srgb,var(--text) 8%,transparent);animation:levromartPulse 1.35s ease-in-out infinite;}
+.home-loading-actions{display:flex;gap:.55rem;margin-top:.8rem;}
+.home-loading-actions span{height:2.35rem;flex:1;border-radius:.8rem;background:color-mix(in srgb,var(--text) 7%,transparent);animation:levromartPulse 1.35s ease-in-out infinite;}
+.home-loading-line{width:42%;height:1rem;border-radius:999px;background:color-mix(in srgb,var(--text) 8%,transparent);margin:1rem 0;}
+.home-loading-rail{display:flex;gap:.65rem;overflow:hidden;margin-bottom:1.25rem;}
+.home-loading-rail span{flex:0 0 7rem;height:2.8rem;border-radius:999px;background:color-mix(in srgb,var(--text) 7%,transparent);}
+.home-loading-title{width:34%;height:1rem;border-radius:999px;background:color-mix(in srgb,var(--text) 8%,transparent);margin:1rem 0;}
+.home-loading-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;}
+.home-loading-grid span{height:11rem;border-radius:1rem;background:color-mix(in srgb,var(--text) 7%,transparent);}
+@keyframes levromartPulse{0%,100%{opacity:.48}50%{opacity:.9}}
+@media(prefers-reduced-motion:reduce){.home-loading-search,.home-loading-actions span{animation:none}}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -8649,6 +8666,16 @@ function navigationShellHtml(view) {
   const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors"};
   const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
+  if(view === "home") return `<div class="instant-page-shell home-loading-shell" aria-live="polite">
+    <div class="home-loading-hero">
+      <div class="home-loading-search"></div>
+      <div class="home-loading-actions"><span></span><span></span><span></span></div>
+    </div>
+    <div class="home-loading-line"></div>
+    <div class="home-loading-rail"><span></span><span></span><span></span></div>
+    <div class="home-loading-title"></div>
+    <div class="home-loading-grid"><span></span><span></span><span></span></div>
+  </div>`;
   if(!title)return "";
   if(view==='vendorDashboard') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> My Shop</h2><div class="dash-tabs shop-tabs-rail"><button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button><button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button><button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button><button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions</button></div><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating your shop…</div></div>`;
   if(view==='vendorOrders'||view==='buyerOrders') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating orders…</div></div>`;
@@ -8781,7 +8808,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       const cachedHome = getOfflineHomeCache();
       html = cachedHome
         ? renderOfflineHomeFromCache(cachedHome, { showOfflineNotice: true })
-        : navigationShellHtml(view) || '<div class="empty-state">Levromart is ready. Reconnect once to load the marketplace.</div>';
+        : homeFallbackHtml("The marketplace connection is taking longer than expected. You can keep using the navigation while it reconnects.");
       lastRenderError = null;
     } else {
       html = navigationShellHtml(view) || '<div class="empty-state">This page is temporarily unavailable. Please try again.</div>';
@@ -8957,6 +8984,41 @@ let currentSectorId = null;
 let currentHomeCategoryId = null;
 let sectors = [];
 
+function homeQueryTimeout(promise, label, ms = 5500) {
+  const timeout = new Promise((resolve) => setTimeout(() => {
+    resolve({ data: null, error: new Error(`${label} request timed out`) });
+  }, ms));
+  return Promise.race([
+    Promise.resolve(promise).catch((error) => ({ data: null, error })),
+    timeout
+  ]).then((result) => {
+    if (result?.error) console.warn(`[Levromart] Home ${label}:`, result.error);
+    return result || { data: null, error: new Error(`${label} returned no result`) };
+  });
+}
+
+function homeFallbackHtml(message = "Levromart is ready. Listings will appear as soon as the marketplace connection is available.") {
+  return `<div class="hero">
+    <div class="hero-aurora"></div>
+    <div class="hero-content">
+      <div class="hero-search flex">
+        <i class="fa-solid fa-magnifying-glass hero-search-icon"></i>
+        <input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onfocus="if(this.value.trim())fetchSearchSuggestions(this.value.trim())" onblur="setTimeout(hideSearchSuggestions,150)" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" />
+        <div id="heroSearchSuggest" class="search-suggest hidden"></div>
+      </div>
+      <div class="hero-quick-actions">
+        <button class="quick-action" onclick="scrollToBrowse('rent')"><span class="quick-action-icon"><i class='fa-solid fa-rotate'></i></span><span>Rent</span></button>
+        <button class="quick-action" onclick="scrollToBrowse('sale')"><span class="quick-action-icon"><i class='fa-solid fa-cart-shopping'></i></span><span>Buy</span></button>
+        <button class="quick-action outline" onclick="requireLoginThen('requestEquipment')"><span class="quick-action-icon"><i class='fa-solid fa-hand'></i></span><span>Request</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="empty-state" style="margin-top:1rem;">
+    <i class="fa-solid fa-store" style="display:block;font-size:1.6rem;margin-bottom:.55rem;"></i>
+    ${esc(message)}
+  </div>`;
+}
+
 async function renderHome() {
   const cachedHome = getOfflineHomeCache();
   if (typeof sb === "undefined" || !sb) {
@@ -8967,11 +9029,15 @@ async function renderHome() {
     if (cachedHome) return renderOfflineHomeFromCache(cachedHome);
     return `<div class="offline-browse-notice"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Connect once to load Levromart's marketplace, then the app will keep a browseable copy available for your next offline visit.</span></div><div class="empty-state"><i class="fa-solid fa-shop" style="display:block;font-size:1.8rem;margin-bottom:.55rem;"></i>Levromart is ready. Your marketplace will appear here after the first online load.</div>`;
   }
-  const [{ data: categories }, { data: sectorsData }] = await Promise.all([
-    sb.from("categories").select("*").order("name"),
-    sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
+  const [categoryResult, sectorResult] = await Promise.all([
+    homeQueryTimeout(sb.from("categories").select("*").order("name"), "categories"),
+    sectors.length
+      ? Promise.resolve({ data: sectors, error: null })
+      : homeQueryTimeout(sb.from("sectors").select("*").order("sort_order"), "sectors"),
   ]);
-  window.__categories = categories || [];
+  const categories = categoryResult.data || getOfflineHomeCache()?.categories || [];
+  const sectorsData = sectorResult.data || getOfflineHomeCache()?.sectors || [];
+  window.__categories = categories;
   if (!sectors.length) sectors = sectorsData || [];
 
   const activeSector = sectors.find((s) => s.id === currentSectorId) || null;
@@ -8995,6 +9061,9 @@ async function renderHome() {
     .eq("vendor.is_active", true)
     .order("view_count", { ascending: false })
     .limit(80);
+
+  // Packages are deliberately non-critical to the first Home paint. A slow
+  // package query must never blank or delay the marketplace itself.
   const packageQuery = sb.from("vendor_packages")
     .select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id, business_name, logo_url, delivery_fee, verification_status, is_active), items:package_items(quantity, product:products(id, name, category_id, photos, category:categories(name)))")
     .eq("status", "active")
@@ -9003,21 +9072,33 @@ async function renderHome() {
     .order("created_at", { ascending: false })
     .limit(16);
 
-  // Keep the initial marketplace paint to one parallel batch. Packages are
-  // first-class marketplace listings now, so they load alongside products
-  // rather than causing a second visible page refresh.
-  const [{ data: trending }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
-    vendorQuery.order("view_count", { ascending: false }).limit(10),
-    topVendorsQuery.order("avg_rating", { ascending: false }).limit(6),
-    recentPhotosQuery.order("created_at", { ascending: false }).limit(3),
-    packageQuery,
-    browseCatalogQuery,
+  const [
+    trendingResult,
+    topVendorsResult,
+    recentProductsResult,
+    browseProductsResult
+  ] = await Promise.all([
+    homeQueryTimeout(vendorQuery.order("view_count", { ascending: false }).limit(10), "trending products"),
+    homeQueryTimeout(topVendorsQuery.order("avg_rating", { ascending: false }).limit(6), "top vendors"),
+    homeQueryTimeout(recentPhotosQuery.order("created_at", { ascending: false }).limit(3), "recent products"),
+    homeQueryTimeout(browseCatalogQuery, "browse catalogue"),
   ]);
+
+  const cachedHomeData = getOfflineHomeCache() || {};
+  const trending = trendingResult.data || cachedHomeData.trending || [];
+  const topVendors = topVendorsResult.data || cachedHomeData.topVendors || [];
+  const recentProducts = recentProductsResult.data || cachedHomeData.recentProducts || [];
+  const browseProducts = browseProductsResult.data || cachedHomeData.browseProducts || [];
+
+  // This is the local catalogue used by the browse filters. Previously the
+  // renderer forgot to populate it, so the filter immediately made another
+  // network request even though Home had already fetched the catalogue.
+  window.__homeBrowseCatalog = browseProducts || [];
+  window.__homePackages = [];
   // Keep an all-category catalogue locally. The active category is applied
-  // instantly on-device when a category chip is tapped, so the offline cache
-  // must not be overwritten with only the currently selected category.
+  // instantly on-device when a category chip is tapped.
   const cachedTrending = (browseProducts || []).slice().sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0)).slice(0, 20);
-  writeOfflineHomeCache({ categories, sectors: sectors || sectorsData || [], trending: cachedTrending, browseProducts, topVendors, recentProducts, packages });
+  writeOfflineHomeCache({ categories, sectors: sectors || sectorsData || [], trending: cachedTrending, browseProducts, topVendors, recentProducts, packages: cachedHomeData.packages || [] });
 
   const heroPhotos = (recentProducts || [])
     .map((product) => {
@@ -9026,15 +9107,8 @@ async function renderHome() {
     })
     .filter(Boolean);
 
-  const scopedPackages = activeCategory
-    ? (packages || []).filter(pkg => (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))
-    : packages || [];
-  window.__homePackages = scopedPackages;
-  const recommendedPackages = [...scopedPackages].sort((a, b) => {
-    const score = (pkg) => (pkg.items || []).reduce((sum, it) => sum + (favoriteIds.has(it.product?.id) ? 10 : 0), 0);
-    return score(b) - score(a);
-  }).slice(0, 6);
-  const hasPersonalPackageMatch = recommendedPackages.some((pkg) => (pkg.items || []).some((it) => favoriteIds.has(it.product?.id)));
+  const recommendedPackages = [];
+  const hasPersonalPackageMatch = false;
 
   let html = `<div class="hero">
     ${heroPhotos.length >= 1 ? `<div class="hero-photo-collage"><div class="hero-photo-row">${heroPhotos.map((p) => `<button type="button" class="hero-photo-link" onclick="navigate('productDetail',{productId:'${esc(p.id)}'})" aria-label="View ${esc(p.name)}"><img src="${esc(p.url)}" alt="${esc(p.name)}" loading="lazy" decoding="async" /></button>`).join("")}</div><div class="hero-photo-scrim"></div></div>` : ""}
@@ -9072,9 +9146,7 @@ async function renderHome() {
     if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(productCardHtml).join("")}</div>`;
   }
 
-  if (recommendedPackages.length) {
-    html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
-  }
+  html += `<div id="homePackageSection"></div>`;
 
   if (topVendors && topVendors.length) {
     html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
@@ -9090,6 +9162,32 @@ async function renderHome() {
   html += `<div class="grid" id="productGrid"><p class="muted">Loading…</p></div>`;
   html += `<div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
+
+  // Hydrate packages after the main Home has painted. This keeps packages a
+  // progressive enhancement instead of a critical dependency.
+  const homePackageToken = Date.now() + Math.random();
+  window.__homePackageToken = homePackageToken;
+  homeQueryTimeout(packageQuery, "packages", 4500).then((packageResult) => {
+    if (window.__homePackageToken !== homePackageToken || currentView !== "home") return;
+    const loadedPackages = packageResult.data || cachedHomeData.packages || [];
+    window.__homePackages = loadedPackages;
+    const scopedPackages = activeCategory
+      ? loadedPackages.filter(pkg => (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))
+      : loadedPackages;
+    const recommendedPackages = [...scopedPackages].sort((a, b) => {
+      const score = (pkg) => (pkg.items || []).reduce((sum, it) => sum + (favoriteIds.has(it.product?.id) ? 10 : 0), 0);
+      return score(b) - score(a);
+    }).slice(0, 6);
+    const hasPersonalPackageMatch = recommendedPackages.some((pkg) => (pkg.items || []).some((it) => favoriteIds.has(it.product?.id)));
+    const section = byId("homePackageSection");
+    if (section) {
+      section.innerHTML = recommendedPackages.length
+        ? `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`
+        : "";
+    }
+    writeOfflineHomeCache({ categories, sectors: sectors || sectorsData || [], trending: cachedTrending, browseProducts, topVendors, recentProducts, packages: loadedPackages });
+  }).catch((error) => console.warn("[Levromart] Package hydration failed:", error));
+
   return html;
 }
 
@@ -9326,6 +9424,10 @@ async function filterHomeProducts() {
   if (localCatalog.length) {
     const localFiltered = offlineFilterProducts(localCatalog, search, listing, catId, currentSectorId).filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
     grid.innerHTML = localFiltered.length ? localFiltered.map(productCardHtml).join("") : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+    // The locally loaded catalogue is already authoritative enough for the
+    // first interaction. Do not immediately replace it with a slower network
+    // response unless the user actually searched and needs server ranking.
+    if (!search) return;
   }
   if (browserLooksOffline()) {
     const cache = getOfflineHomeCache();
@@ -9338,9 +9440,10 @@ async function filterHomeProducts() {
     return;
   }
 
-  let matchingIds = null;
-  if (search) {
-    const { data: idRows } = await sb.rpc("search_product_ids", { p_query: search });
+  try {
+    let matchingIds = null;
+    if (search) {
+      const { data: idRows } = await homeQueryTimeout(sb.rpc("search_product_ids", { p_query: search }), "product search", 4500);
     matchingIds = (idRows || []).map((r) => r.id);
     if (matchingIds.length === 0) {
       const fallback = await fetchFallbackProducts();
@@ -9374,6 +9477,19 @@ async function filterHomeProducts() {
   if (matchingIds) products.sort((a, b) => matchingIds.indexOf(a.id) - matchingIds.indexOf(b.id));
   const tabProducts = (products || []).filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
   grid.innerHTML = tabProducts.length ? tabProducts.map(productCardHtml).join("") : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+  } catch (error) {
+    console.warn("[Levromart] Home browse refresh failed:", error);
+    // Keep whatever the local catalogue already rendered. Only show an
+    // explicit empty state if there was genuinely nothing local to display.
+    if (!grid.innerHTML.trim() || /Loading/.test(grid.textContent || "")) {
+      const cache = getOfflineHomeCache();
+      const fallback = offlineFilterProducts(cache?.browseProducts || [], search, listing, catId, currentSectorId)
+        .filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
+      grid.innerHTML = fallback.length
+        ? fallback.map(productCardHtml).join("")
+        : `<div class="empty-state">The marketplace is temporarily unavailable. Please try again shortly.</div>`;
+    }
+  }
 }
 
 function productCardHtml(p) {
