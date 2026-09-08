@@ -2138,6 +2138,15 @@ h2 + .grid, h3 + .grid, .section-title + .grid{margin-top:.8rem}
 .storefront-view-buttons .btn{width:42px;height:42px;padding:0;justify-content:center;border-radius:12px;}
 .storefront-view-more{display:flex;justify-content:center;margin:1rem 0 .25rem;}
 .storefront-view-more .btn{min-width:190px;justify-content:center;}
+
+.storefront-catalog-tabs{display:flex;gap:.45rem;overflow-x:auto;margin:.15rem 0 1rem;padding:.1rem .05rem .2rem;border-bottom:1px solid var(--border);scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.storefront-catalog-tabs::-webkit-scrollbar{display:none;}
+.storefront-catalog-tab{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:.38rem;min-height:42px;padding:.55rem .9rem;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--text-muted);font:inherit;font-weight:700;cursor:pointer;white-space:nowrap;transition:background-color .18s ease,color .18s ease,border-color .18s ease;}
+.storefront-catalog-tab:hover{color:var(--text);background:color-mix(in srgb,var(--primary) 7%,var(--card));}
+.storefront-catalog-tab.active{color:var(--primary);background:color-mix(in srgb,var(--primary) 12%,var(--card));border-color:color-mix(in srgb,var(--primary) 30%,var(--border));}
+.storefront-catalog-tab .tab-count{font-size:.72rem;min-width:1.35rem;height:1.35rem;padding:0 .3rem;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);font-weight:800;}
+.storefront-tab-panel-hidden{display:none !important;}
+@media(max-width:620px){.storefront-catalog-tabs{margin-left:-.15rem;margin-right:-.15rem;padding-left:.15rem;padding-right:.15rem;}.storefront-catalog-tab{min-height:40px;padding:.5rem .78rem;font-size:.86rem;}}
 @media(max-width:620px){
   .storefront-cover{height:148px;border-radius:18px 18px 0 0;}
   .storefront-profile-body{padding:0 .9rem .9rem;border-radius:0 0 18px 18px;}
@@ -8893,7 +8902,7 @@ function clearAutoScrollTimers() {
   autoScrollTimers.forEach(clearInterval);
   autoScrollTimers = [];
 }
-function setupAutoScroll(container, { interval = 55, pauseAfterInteraction = 8500 } = {}) {
+function setupAutoScroll(container, { interval = 28, pauseAfterInteraction = 6500 } = {}) {
   if (!container) return;
   if (container.dataset.continuousCarouselReady === "1") return;
   container.dataset.continuousCarouselReady = "1";
@@ -8911,7 +8920,9 @@ function setupAutoScroll(container, { interval = 55, pauseAfterInteraction = 850
     if (paused || !container.isConnected) return;
     const maxScroll = container.scrollWidth - container.clientWidth;
     if (maxScroll <= 4) return;
-    const step = 1.1;
+    // Moderate, steady movement: comfortably faster than the previous
+    // setting without becoming a fast auto-scroll.
+    const step = 1.5;
     let next = container.scrollLeft + step;
     if (next >= maxScroll - 1) next = 0;
     container.scrollLeft = next;
@@ -12072,33 +12083,34 @@ async function renderStorefront(vendorId) {
     </section>`;
   }
 
-  if (packages && packages.length > 0) {
-    window.__storefrontPackages = packages || [];
-    html += `<section class="storefront-packages storefront-packages-collapsed" id="storefrontPackagesSection">
-      <div class="storefront-packages-head" style="display:flex;align-items:center;justify-content:space-between;gap:.45rem;">
-        <button class="storefront-packages-toggle" type="button" aria-expanded="false" onclick="toggleStorefrontPackages()">
-          <span><i class="fa-solid fa-box-open"></i><strong>Special packages</strong><em>${packages.length}</em></span>
-          <i class="fa-solid fa-chevron-down storefront-packages-chevron"></i>
-        </button>
-        <button type="button" class="icon-btn package-search-toggle" aria-label="Search special packages" title="Search packages" onclick="toggleStorefrontPackageSearch(event)"><i class="fa-solid fa-magnifying-glass"></i></button>
+  window.__storefrontPackages = packages || [];
+  const productCount = allProducts.filter((p) => !p.is_service).length;
+  const serviceCount = allProducts.filter((p) => !!p.is_service).length;
+  html += `<div class="storefront-catalog-tabs" role="tablist" aria-label="Storefront catalogue">
+    <button type="button" class="storefront-catalog-tab active" id="storefrontProductsTab" role="tab" aria-selected="true" onclick="switchStorefrontCatalogTab('products')"><i class="fa-solid fa-box"></i> Products <span class="tab-count" id="storefrontProductsCount">(${productCount})</span></button>
+    <button type="button" class="storefront-catalog-tab" id="storefrontServicesTab" role="tab" aria-selected="false" onclick="switchStorefrontCatalogTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services <span class="tab-count" id="storefrontServicesCount">(${serviceCount})</span></button>
+    <button type="button" class="storefront-catalog-tab" id="storefrontPackagesTab" role="tab" aria-selected="false" onclick="switchStorefrontCatalogTab('packages')"><i class="fa-solid fa-box-open"></i> Packages <span class="tab-count">(${packages?.length || 0})</span></button>
+  </div>`;
+
+  html += `<section class="storefront-packages storefront-tab-panel-hidden" id="storefrontPackagesSection">
+    <div class="storefront-section-head">
+      <h3>Special packages</h3>
+      ${packages && packages.length ? `<button type="button" class="icon-btn package-search-toggle" aria-label="Search special packages" title="Search packages" onclick="toggleStorefrontPackageSearch(event)"><i class="fa-solid fa-magnifying-glass"></i></button>` : ""}
+    </div>
+    ${packages && packages.length ? `<div class="storefront-packages-body" id="storefrontPackagesBody">
+      <div class="package-search-row hidden" id="storefrontPackageSearchRow">
+        <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
+        <input type="text" id="storefrontPackageSearch" placeholder="Search packages or what's inside…" oninput="filterStorefrontPackages()" />
+        <button type="button" class="icon-btn" onclick="clearStorefrontPackageSearch()" aria-label="Clear package search"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="storefront-packages-body" id="storefrontPackagesBody">
-        <div class="package-search-row hidden" id="storefrontPackageSearchRow">
-          <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
-          <input type="text" id="storefrontPackageSearch" placeholder="Search packages or what's inside…" oninput="filterStorefrontPackages()" />
-          <button type="button" class="icon-btn" onclick="clearStorefrontPackageSearch()" aria-label="Clear package search"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="grid" id="storefrontPackagesGrid">${packages.map((pkg) => packageCardHtml(pkg, v.delivery_fee, true)).join("")}</div>
-      </div>
-    </section>`;
-  } else {
-    window.__storefrontPackages = [];
-  }
+      <div class="grid" id="storefrontPackagesGrid">${packages.map((pkg) => packageCardHtml(pkg, v.delivery_fee, true)).join("")}</div>
+    </div>` : `<div class="empty-state">No packages listed yet.</div>`}
+  </section>`;
 
   html += `<section class="storefront-products-shell" id="storefrontProductsShell">
     <div class="storefront-section-head"><h3>Products & services</h3></div>
     ${allProducts.length ? `<div class="storefront-products-toolbar"><div class="storefront-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="storefrontSearch" placeholder="Search this shop" oninput="filterStorefrontProducts()" /></div><div class="storefront-view-buttons"><button class="btn btn-sm btn-outline active" id="storefrontViewGridBtn" onclick="switchStorefrontView('grid')" title="Grid view"><i class="fa-solid fa-grip"></i></button><button class="btn btn-sm btn-outline" id="storefrontViewTableBtn" onclick="switchStorefrontView('table')" title="List view"><i class="fa-solid fa-list"></i></button></div></div>` : ""}
-    <div id="storefrontGrid" class="grid">${allProducts.length ? "<p class='muted'>Loading…</p>" : '<div class="empty-state">No products listed yet.</div>'}</div>
+    <div id="storefrontGrid" class="grid">${allProducts.length ? "<p class='muted'>Loading…</p>" : '<div class="empty-state">No products or services listed yet.</div>'}</div>
     <div id="storefrontTable" class="hidden" style="overflow-x:auto;max-height:30rem;overflow-y:auto;"></div>
     <div class="storefront-view-more" id="storefrontViewMoreWrap"></div>
   </section>`;
@@ -12191,21 +12203,15 @@ function scrollToVendorReviews() {
 }
 
 function toggleStorefrontPackages() {
-  const section = byId("storefrontPackagesSection");
-  const toggle = section?.querySelector(".storefront-packages-toggle");
-  if (!section || !toggle) return;
-  const expanded = section.classList.toggle("open");
-  toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+  switchStorefrontCatalogTab("packages");
 }
 
 function toggleStorefrontPackageSearch(event) {
   event?.stopPropagation?.();
-  const section = byId("storefrontPackagesSection");
-  if (!section) return;
-  if (!section.classList.contains("open")) toggleStorefrontPackages();
   const row = byId("storefrontPackageSearchRow");
-  row?.classList.toggle("hidden");
-  if (!row?.classList.contains("hidden")) setTimeout(() => byId("storefrontPackageSearch")?.focus(), 0);
+  if (!row) return;
+  row.classList.toggle("hidden");
+  if (!row.classList.contains("hidden")) setTimeout(() => byId("storefrontPackageSearch")?.focus(), 0);
 }
 
 function clearStorefrontPackageSearch() {
@@ -12241,11 +12247,21 @@ function switchStorefrontView(mode) {
 }
 
 function switchStorefrontCatalogTab(tab) {
-  storefrontCatalogTab = tab === "services" ? "services" : "products";
-  byId("storefrontProductsTab")?.classList.toggle("active", storefrontCatalogTab === "products");
-  byId("storefrontServicesTab")?.classList.toggle("active", storefrontCatalogTab === "services");
+  storefrontCatalogTab = ["products", "services", "packages"].includes(tab) ? tab : "products";
+  ["products", "services", "packages"].forEach((name) => {
+    const btn = byId(`storefront${name.charAt(0).toUpperCase() + name.slice(1)}Tab`);
+    if (btn) {
+      btn.classList.toggle("active", storefrontCatalogTab === name);
+      btn.setAttribute("aria-selected", storefrontCatalogTab === name ? "true" : "false");
+    }
+  });
   window.__storefrontExpanded = false;
+  const productsShell = byId("storefrontProductsShell");
+  const packagesSection = byId("storefrontPackagesSection");
+  if (productsShell) productsShell.classList.toggle("storefront-tab-panel-hidden", storefrontCatalogTab === "packages");
+  if (packagesSection) packagesSection.classList.toggle("storefront-tab-panel-hidden", storefrontCatalogTab !== "packages");
   filterStorefrontProducts();
+  if (storefrontCatalogTab === "packages") filterStorefrontPackages();
 }
 
 function filterStorefrontProducts() {
@@ -12266,6 +12282,7 @@ function filterStorefrontProducts() {
   if (sCount) sCount.textContent = `(${services.length})`;
   const wrap = byId("storefrontViewMoreWrap");
   if (wrap) {
+    if (storefrontCatalogTab === "packages") { wrap.innerHTML = ""; return; }
     if (!q && filtered.length > 6) wrap.innerHTML = `<button class="btn btn-outline" onclick="toggleStorefrontProducts()">${expanded ? `Show fewer ${storefrontCatalogTab}` : `View more ${storefrontCatalogTab} (${filtered.length - 6})`}</button>`;
     else wrap.innerHTML = "";
   }
@@ -16163,11 +16180,20 @@ async function sendAiDraftMessage(vendorId, btn) {
   }
 }
 function goToAiChatNav(nav) {
-  toggleAiChat();
-  animateAiFabPointing().then(() => {
-    if (nav.view === "settings") { toggleSettingsPanel(); return; }
-    navigate(nav.view, nav.params);
-  });
+  if (!nav || !AI_NAV_ALLOWED_VIEWS.has(nav.view)) return;
+  // Navigation is the primary action. Never wait for the cosmetic FAB
+  // animation; on mobile browsers that animation could leave Levi saying
+  // "Taking you there…" without actually changing screens.
+  try {
+    const panel = byId("aiChatPanel");
+    if (panel && !panel.classList.contains("hidden")) toggleAiChat();
+  } catch (_) {}
+  if (nav.view === "settings") {
+    toggleSettingsPanel();
+    return;
+  }
+  Promise.resolve(navigate(nav.view, nav.params)).catch(() => {});
+  try { animateAiFabPointing(); } catch (_) {}
 }
 // A little flourish so tapping "Take me there" feels like Levi is
 // physically pointing the way rather than just silently redirecting.
@@ -16249,12 +16275,23 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       navHint.title = "Open this destination";
       navHint.setAttribute("role","button");
       navHint.tabIndex = 0;
-      navHint.addEventListener("click", () => goToAiChatNav(nav));
-      navHint.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); goToAiChatNav(nav); } });
+      let navTriggered = false;
+      const triggerNav = () => {
+        if (navTriggered) return;
+        navTriggered = true;
+        goToAiChatNav(nav);
+      };
+      navHint.addEventListener("click", triggerNav);
+      navHint.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); triggerNav(); } });
       el.appendChild(navHint);
-      // Navigation remains available as an explicit in-chat action. Do not
-      // auto-redirect after a delay; Levi should never unexpectedly pull the
-      // user away from the conversation.
+      // Begin navigation shortly after the response is painted. The hint
+      // remains an immediate manual fallback if the user taps it first.
+      setTimeout(() => {
+        if (nav && document.body.contains(el) && !navTriggered) {
+          navTriggered = true;
+          goToAiChatNav(nav);
+        }
+      }, 220);
     }
     if (draft) {
       const card = document.createElement("div");
