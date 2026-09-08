@@ -814,7 +814,7 @@
   .card-cart-btn:hover { transform: scale(1.12); }
   .card-cart-btn.added { background: var(--success); }
   /* Service listings use a dedicated service marker in the same prominent
-     position as the cart action, so buyers can identify a service before
+     position as the cart action, so customers can identify a service before
      opening the card. It is intentionally non-actionable. */
   .card-service-btn { position: absolute; top: 0.6rem; left: 0.6rem; z-index: 2; width: 2rem; height: 2rem; border-radius: 50%; border: none; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.2); font-size: 0.82rem; pointer-events: none; }
   .card-service-btn i { line-height: 1; }
@@ -4338,6 +4338,50 @@ body { padding-top:calc(64px + env(safe-area-inset-top,0px)) !important; }
 
 </style>
 
+<style id="levromart-search-and-rail-preferences">
+/* Home search stays available after the user leaves the hero. While the page
+   is moving it contracts into a quiet glass pill; when scrolling settles it
+   returns to full prominence. */
+@media (max-width: 859px){
+  .hero-search.home-search-pinned{
+    position:fixed !important;
+    left:max(1rem,3vw) !important;
+    right:max(1rem,3vw) !important;
+    top:calc(var(--levro-header-height,68px) + .55rem) !important;
+    max-width:none !important;
+    width:auto !important;
+    z-index:170 !important;
+    margin:0 !important;
+    transition:transform .22s ease,opacity .22s ease,background-color .22s ease,backdrop-filter .22s ease,box-shadow .22s ease !important;
+  }
+  .hero-search.home-search-pinned.home-search-scrolling{
+    transform:scale(.86) translateY(-.15rem) !important;
+    opacity:.42 !important;
+    background:color-mix(in srgb,var(--bg) 42%,transparent) !important;
+    box-shadow:none !important;
+    backdrop-filter:blur(10px) !important;
+    -webkit-backdrop-filter:blur(10px) !important;
+  }
+  .home-search-spacer{height:0;transition:height .18s ease;}
+  body.home-search-active .hero{padding-top:4.8rem;}
+}
+@media (min-width:860px){
+  .hero-search.home-search-pinned{position:sticky !important;top:.55rem;z-index:60;}
+}
+/* Optional automatic horizontal movement. Default is OFF. Users can still
+   drag/scroll a rail themselves whenever horizontal browsing is enabled. */
+body.levro-static-rails .hscroll,
+body.levro-static-rails .cat-row,
+body.levro-static-rails .storefront-product-strip{
+  overflow-x:auto !important;
+  flex-wrap:nowrap !important;
+  scroll-behavior:auto !important;
+}
+body.levro-static-rails .hscroll > *{flex:0 0 250px !important;min-width:0 !important;}
+body.levro-static-rails .cat-row > *{flex:0 0 auto !important;min-width:76px !important;}
+body.levro-static-rails .storefront-product-strip > *{flex:0 0 126px !important;}
+
+</style>
 <style id="bottom-nav-scroll-motion">
 /* Mobile bottom navigation: subtle Instagram-style scroll response. The bar
    stays available while scrolling, but contracts and drifts down a little on
@@ -5119,6 +5163,15 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 #accountDangerSection,#deleteAccountModal,.settings-action-danger[onclick*="startDeleteAccount"]{display:none!important;}
 </style>
 <style id="dashboard-dot-polish">.chart-dot{vector-effect:non-scaling-stroke;}</style>
+
+<style id="vendor-custom-cover">
+.storefront-cover.has-custom-cover{background-position:center;background-size:cover;background-repeat:no-repeat;}
+.storefront-cover.has-custom-cover .storefront-cover-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.5));pointer-events:none;}
+.storefront-cover-edit{position:absolute;right:.75rem;top:.75rem;z-index:5;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.48);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+.storefront-cover-edit:hover{background:rgba(0,0,0,.68);}
+.storefront-cover-edit input{display:none;}
+.storefront-cover-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:color-mix(in srgb,var(--text) 55%,transparent);font-size:.82rem;pointer-events:none;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -5209,7 +5262,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
   <div class="accordion-section hidden" id="accountDangerSection">
     <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class='fa-solid fa-user-xmark' style="color:var(--danger);"></i> Account</span><i class='fa-solid fa-chevron-down accordion-chevron'></i></button>
     <div class="accordion-body">
-      <p class="muted" style="font-size:0.8rem;margin:0.2rem 0 0.7rem;">Permanently closes this account. Vendor accounts must have no orders still in progress and no unsettled commission. Buyer accounts may close even with pending buyer orders.</p>
+      <p class="muted" style="font-size:0.8rem;margin:0.2rem 0 0.7rem;">Permanently closes this account. Vendor accounts must have no orders still in progress and no unsettled commission. Customer accounts may close even with pending orders.</p>
       <button class="btn btn-sm btn-danger" onclick="startDeleteAccount()">Delete my account</button>
     </div>
   </div>
@@ -5315,7 +5368,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
       <input type="text" id="loginName" placeholder="Full name" />
       <label>Account type</label>
       <select id="loginRole">
-        <option value="buyer">Buyer</option>
+        <option value="buyer">Customer</option>
         <option value="vendor">Vendor</option>
       </select>
       <label>City</label>
@@ -5407,11 +5460,12 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
     <div id="productError" class="error-text hidden"></div>
     <label>Product name</label>
     <input type="text" id="prodName" placeholder="e.g. BP Monitor, or Hair Braiding" />
-    <label style="display:flex;align-items:center;gap:0.5rem;font-weight:400;"><input type="checkbox" id="prodIsService" onchange="updateProductFormFields()" style="width:auto;margin:0;" /> This is a service, not a physical product (e.g. hairdressing, baking, repairs)</label>
+    <label style="display:flex;align-items:center;gap:0.5rem;font-weight:400;"><input type="checkbox" id="prodIsService" onchange="updateProductFormFields();updateProductSaveButtonLabel()" style="width:auto;margin:0;" /> This is a service, not a physical product (e.g. hairdressing, baking, repairs)</label>
     <label>Description</label>
     <textarea id="prodDesc" placeholder="Description" rows="2"></textarea>
     <label>Sector</label>
     <select id="prodSector" onchange="loadProdCategoriesForSector()"></select>
+    <input type="text" id="prodSectorOther" class="hidden" placeholder="Name your sector (e.g. Beauty &amp; Wellness)" />
     <label>Category</label>
     <select id="prodCategory" onchange="toggleProdCategoryOther()"><option value="">Uncategorized</option></select>
     <input type="text" id="prodCategoryOther" class="hidden" placeholder="Name your category (e.g. Wound Care)" />
@@ -5422,7 +5476,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
       </div>
       <div style="flex:1;" id="prodListingTypeWrap">
         <label>Listing type</label>
-        <select id="prodListingType" onchange="updateProductFormFields()"><option value="rent">Rent only</option><option value="sale">Sale only</option><option value="both">Rent &amp; Sale</option></select>
+        <select id="prodListingType" onchange="updateProductFormFields();updateProductSaveButtonLabel()"><option value="rent">Rent only</option><option value="sale">Sale only</option><option value="both">Rent &amp; Sale</option></select>
       </div>
     </div>
     <div class="flex">
@@ -5463,7 +5517,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
     <div class="photo-grid" id="prodNewPhotoPreviews"></div>
     <div class="flex" style="justify-content: flex-end; margin-top:0.8rem;">
       <button class="btn btn-sm" style="background:#6b7280;" onclick="closeProductModal()">Cancel</button>
-      <button class="btn" id="saveProductBtn" onclick="saveProduct()">Save Product</button>
+      <button class="btn" id="saveProductBtn" onclick="saveProduct()">Save to Product</button>
     </div>
   </div>
 </div>
@@ -5496,7 +5550,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 
     <label>Items in this package</label>
     <div id="pkgItemsList" class="pkg-items-list"></div>
-    <p class="muted" style="font-size:0.8rem;">Only your products listed for sale can go in a package. The photos above are the package/gallery images buyers see.</p>
+    <p class="muted" style="font-size:0.8rem;">Only your products listed for sale can go in a package. The photos above are the package/gallery images customers see.</p>
     <div class="flex" style="justify-content: flex-end; margin-top:0.8rem;">
       <button class="btn btn-sm" style="background:#6b7280;" onclick="closePackageModal()">Cancel</button>
       <button class="btn" id="savePackageBtn" onclick="savePackage()">Save Package</button>
@@ -5701,7 +5755,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // email address is identical. All buyer-owned tables use that UUID as a
 // foreign key, so make sure the public.users anchor exists before any write.
 let buyerProfileRepairPromise = null;
-async function ensureBuyerProfile(errorEl = null) {
+async function ensureCustomerProfile(errorEl = null) {
   if (!session?.user?.id) return false;
   if (buyerProfileRepairPromise) return buyerProfileRepairPromise;
 
@@ -6196,7 +6250,7 @@ let vendorPendingOrderCount = 0;
 let buyerPendingOrderCount = 0;
 // Only orders still awaiting the vendor's own action (accept, then hand
 // over) keep the nav badge lit -- once it's handed over/returned/disputed,
-// the ball is in the buyer's (or admin's) court, not something that needs
+// the ball is in the customer's (or admin's) court, not something that needs
 // a vendor to keep seeing a red flag for.
 const NON_TERMINAL_ORDER_STATUSES = ["pending", "confirmed"];
 let unreadMessageCount = 0;
@@ -6574,7 +6628,7 @@ function estimateDeliveryRange(distanceKm) {
 const BUYER_LOCATION_CACHE_KEY = "levromart-buyer-location";
 const BUYER_LOCATION_CACHE_MAX_AGE = 30 * 60 * 1000;
 
-function readCachedBuyerLocation() {
+function readCachedCustomerLocation() {
   try {
     const raw = localStorage.getItem(BUYER_LOCATION_CACHE_KEY);
     if (!raw) return null;
@@ -6585,7 +6639,7 @@ function readCachedBuyerLocation() {
   } catch (e) { return null; }
 }
 
-function writeCachedBuyerLocation(loc) {
+function writeCachedCustomerLocation(loc) {
   try {
     localStorage.setItem(BUYER_LOCATION_CACHE_KEY, JSON.stringify({
       lat: Number(loc.lat), lng: Number(loc.lng), updatedAt: Date.now()
@@ -6610,13 +6664,13 @@ function getCurrentPositionOnce() {
 // The cached position is available synchronously, so vendor cards can show
 // their distance on the first paint. A fresh browser position replaces it
 // silently afterwards.
-let buyerLocation = readCachedBuyerLocation(); // { lat, lng } | null
+let buyerLocation = readCachedCustomerLocation(); // { lat, lng } | null
 let buyerLocationRequest = null;
 let buyerLocationLastUpdatedAt = 0;
 let buyerLocationLastError = null;
 let buyerDistanceAutoEnabled = false;
 
-function getBuyerLocation(forceRefresh = false) {
+function getCustomerLocation(forceRefresh = false) {
   if (!forceRefresh && buyerLocation) return Promise.resolve(buyerLocation);
   if (buyerLocationRequest) return buyerLocationRequest;
   buyerLocationRequest = getCurrentPositionOnce()
@@ -6624,7 +6678,7 @@ function getBuyerLocation(forceRefresh = false) {
       buyerLocation = loc;
       buyerLocationLastUpdatedAt = Date.now();
       buyerLocationLastError = null;
-      writeCachedBuyerLocation(loc);
+      writeCachedCustomerLocation(loc);
       // Update visible vendor cards as soon as the fresh position arrives.
       if (byId("vendorsGrid")) filterVendorsDirectory();
       return loc;
@@ -6698,7 +6752,7 @@ function showLocationPrompt(mode = "first-use", errorMessage = "") {
   if (denied) {
     const stateText = byId("locationPromptState");
     if (stateText) stateText.textContent = locationRecoveryText("denied");
-    if (primary) { primary.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Try again'; primary.onclick = () => retryBuyerLocationFromPrompt(); }
+    if (primary) { primary.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Try again'; primary.onclick = () => retryCustomerLocationFromPrompt(); }
     if (secondary) { secondary.textContent = "Open Settings"; secondary.onclick = openLocationSettings; secondary.classList.remove("hidden"); }
     if (badge) badge.className = "fa-solid fa-location-crosshairs";
   } else {
@@ -6718,9 +6772,9 @@ function resolveLocationPrompt(granted) {
   if (granted) setAutomaticDistancePreference(true);
 }
 
-async function requestBuyerLocation(forceRefresh = buyerDistanceAutoEnabled) {
+async function requestCustomerLocation(forceRefresh = buyerDistanceAutoEnabled) {
   if (!locationSharingEnabled) throw new Error("Location sharing is off. Turn it on in Levromart Settings to use distance features.");
-  return getBuyerLocation(forceRefresh);
+  return getCustomerLocation(forceRefresh);
 }
 
 async function enableAutomaticDistances() {
@@ -6733,7 +6787,7 @@ async function enableAutomaticDistances() {
     renderLocationToggle();
   }
   try {
-    await requestBuyerLocation(true);
+    await requestCustomerLocation(true);
     setAutomaticDistancePreference(true);
     updateVendorsLocationUI();
     filterVendorsDirectory();
@@ -6753,10 +6807,10 @@ async function enableAutomaticDistances() {
   }
 }
 
-async function retryBuyerLocationFromPrompt() {
+async function retryCustomerLocationFromPrompt() {
   byId("locationPromptModal")?.classList.add("hidden");
   try {
-    await requestBuyerLocation(true);
+    await requestCustomerLocation(true);
     setAutomaticDistancePreference(true);
     updateVendorsLocationUI();
     filterVendorsDirectory();
@@ -6783,7 +6837,7 @@ function toggleLocationSetting() {
     buyerLocation = null;
     buyerLocationLastError = new Error("Location sharing is off.");
   } else if (buyerDistanceAutoEnabled) {
-    refreshBuyerLocationAutomatically();
+    refreshCustomerLocationAutomatically();
   }
   renderLocationToggle();
   showToast(locationSharingEnabled ? "Location sharing turned on. Distances will refresh automatically." : "Location sharing turned off.", "success");
@@ -6795,10 +6849,10 @@ function renderLocationToggle() {
   el.innerHTML = `<i class='fa-solid ${locationSharingEnabled ? "fa-location-dot" : "fa-location-crosshairs"}'></i> Location sharing: ${locationSharingEnabled ? "On" : "Off"}`;
 }
 
-async function refreshBuyerLocationAutomatically() {
+async function refreshCustomerLocationAutomatically() {
   if (!buyerDistanceAutoEnabled || !locationSharingEnabled || !navigator.geolocation) return null;
   try {
-    const loc = await requestBuyerLocation(true);
+    const loc = await requestCustomerLocation(true);
     updateVendorsLocationUI();
     // Only redraw the directory if it is actually on screen. This prevents
     // background refreshes from disturbing another page or resetting scroll.
@@ -6821,7 +6875,7 @@ function scheduleAutomaticLocationRefresh() {
   // events firing together, while still getting a fresh position on reload.
   if (now - lastAutomaticLocationRefreshAt < 2500) return;
   lastAutomaticLocationRefreshAt = now;
-  refreshBuyerLocationAutomatically().catch(() => {});
+  refreshCustomerLocationAutomatically().catch(() => {});
 }
 
 window.addEventListener("pageshow", () => setTimeout(scheduleAutomaticLocationRefresh, 80));
@@ -8075,7 +8129,7 @@ async function refreshAuthState() {
 
     // A deleted account can be recreated with a brand-new Auth UUID. Repair
     // the public.users anchor before any buyer_id/vendor_id FK reads or writes.
-    await ensureBuyerProfile();
+    await ensureCustomerProfile();
 
     const [profileRes, vendorRes, favsRes, pkgFavsRes] = await Promise.all([
       sb.from("users").select("*").eq("id", userId).single(),
@@ -8162,7 +8216,7 @@ let otpCheckDoneThisBoot = false;
 async function runPostAuthChecks() {
   if (!profile || !session) return;
   if (profile.has_password === false) { byId("setPasswordModal")?.classList.remove("hidden"); return; }
-  // Email OTP is intentionally restricted to administrators. Buyers and vendors
+  // Email OTP is intentionally restricted to administrators. Customers and vendors
   // use their normal authenticated Supabase session without the extra email code.
   if (profile.role !== "admin") return;
   if (!otpCheckDoneThisBoot) {
@@ -8213,7 +8267,7 @@ function updateAuthUI() {
     if (vendor && profile.role !== "admin") {
       links.push({ label: "My Shop", action: "navigate('vendorDashboard')" });
       links.push({ label: "Edit Business Profile", action: "navigate('vendorEditProfile')" });
-      links.push({ label: "Buyer requests", action: "navigate('vendorRequests')" });
+      links.push({ label: "Customer requests", action: "navigate('vendorRequests')" });
     } else if (profile.role !== "admin") {
       links.push({ label: "My Orders", action: "navigate('buyerOrders')" });
       links.push({ label: "Request an item", action: "navigate('requestEquipment')" });
@@ -8251,7 +8305,7 @@ function updateAuthUI() {
             <span class="profile-greeting muted">${greetingWord()},</span>
             <strong class="profile-account-name">${esc(profile.name || "")}</strong>
             <span class="profile-account-email muted">${esc(profile.email)}</span>
-            <span class="badge profile-role-badge">${profile.role === "admin" ? "admin" : vendor ? "vendor" : "buyer"}</span>
+            <span class="badge profile-role-badge">${profile.role === "admin" ? "admin" : vendor ? "vendor" : "customer"}</span>
           </div>
         </div>
       </div>
@@ -8356,7 +8410,7 @@ function renderSettingsPage(){
     <section class="settings-page-section"><button type="button" class="accent-page-dropdown-trigger" onclick="toggleAccentPalettePage()" aria-expanded="false"><span><i class="fa-solid fa-droplet"></i><span><strong>Accent color</strong><small>Choose the accent used across Levromart.</small></span></span><i class="fa-solid fa-chevron-down" id="accentPalettePageChevron"></i></button><div class="accent-page-dropdown-body hidden" id="accentPalettePageBody"><div class="accent-swatches settings-page-swatches" id="accentSwatchesPage"></div></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-text-height"></i> Text size</h3><p class="settings-section-note">Make Levromart easier to read. This changes the app's text scale on this device.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Font size</strong><span>Choose a comfortable size from 85% to 125%.</span></div><div class="levi-size-value" id="levroFontScaleValue">${Math.round(getLevromartFontScale()*100)}%</div><input class="levi-size-range" id="levroFontScaleRange" type="range" min="0.85" max="1.25" step="0.05" value="${getLevromartFontScale()}" aria-label="Levromart font size" oninput="setLevromartFontScale(this.value)" onchange="setLevromartFontScale(this.value)" /></div></section>
     <section class="settings-page-section"><h3><span class="settings-levi-logo-wrap"><img class="settings-levi-logo" src="${esc(MEDRIS_LOGO)}" alt="" /></span> Levi</h3><p class="settings-section-note">Adjust Levi's size, visibility, data preference and voice.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Levi size</strong><span>Drag the scale to make Levi smaller or restore the current maximum.</span></div><div class="levi-size-value" id="leviSizeValue">${getLeviFabSize()}px</div><input class="levi-size-range" id="leviSizeRange" type="range" min="44" max="74" step="1" value="${getLeviFabSize()}" aria-label="Levi size" oninput="setLeviFabSize(this.value)" /></div><div class="settings-divider"></div><div class="settings-toggle-row" id="leviVisibleSettingRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="settingsAiConsentPageRow"></div><div class="settings-divider"></div><div class="settings-voice-wrap"><div class="settings-control-copy"><strong>Levi's voice</strong><span>Choose from the voices available on your device.</span></div><select id="voiceSelectPage" class="settings-select" aria-label="Levi voice"></select><button class="btn btn-outline settings-full-btn" onclick="previewAiVoice()"><i class="fa-solid fa-play"></i> Preview voice</button></div></section>
-    <section class="settings-page-section"><h3><i class="fa-solid fa-sliders"></i> App preferences</h3><div class="settings-simple-row" id="settingsInstallPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="settingsNotifPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="locationSettingPageRow"></div></section>
+    <section class="settings-page-section"><h3><i class="fa-solid fa-sliders"></i> App preferences</h3><div class="settings-simple-row" id="settingsInstallPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="settingsNotifPageRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="horizontalBrowseSettingPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="locationSettingPageRow"></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-lock"></i> Account</h3><button class="settings-action-row" onclick="showChangePassword()"><i class="fa-solid fa-key"></i><span><strong>Change password</strong><small>Update your account password</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showLevromartAbout()"><i class="fa-solid fa-circle-info"></i><span><strong>About Levromart</strong><small>Version and platform information</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row settings-action-danger" onclick="startDeleteAccount()"><i class="fa-solid fa-user-xmark"></i><span><strong>Delete account permanently</strong><small>${vendor ? "Vendors must clear all active orders and unsettled commission first." : "Permanently close this Levromart account. Pending buyer orders do not block deletion."}</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
     <button class="settings-close-page" onclick="navigate(lastNonSettingsView||'home')">Back to Levromart</button>
   </div>`;
@@ -8373,6 +8427,7 @@ function hydrateSettingsPage(){
   if(consent&&profile) consent.innerHTML=`<i class="fa-solid fa-chart-line settings-row-icon"></i><span class="settings-row-copy"><strong>Help improve Levi</strong><small>Your product-improvement preference</small></span><button class="settings-inline-btn ${profile.ai_data_consent?'active':''}" onclick="setAiDataConsent(${!profile.ai_data_consent})">${profile.ai_data_consent?'On':'Off'}</button>`;
   const oldInstall=byId("settingsInstallRow"),oldNotif=byId("settingsNotifRow"),install=byId("settingsInstallPageRow"),notif=byId("settingsNotifPageRow");
   if(install&&oldInstall) install.innerHTML=oldInstall.innerHTML;if(notif&&oldNotif) notif.innerHTML=oldNotif.innerHTML;
+  const rail=byId("horizontalBrowseSettingPageRow");if(rail)rail.innerHTML=`<i class="fa-solid fa-arrows-left-right settings-row-icon"></i><span class="settings-row-copy"><strong>Auto-scroll horizontal products</strong><small>${horizontalBrowseEnabled?'On':'Off'} - product, category, package and service rails ${horizontalBrowseEnabled?'move automatically; you can still drag them.':'stay still automatically; you can still drag them yourself.'}</small></span><button class="settings-inline-btn ${horizontalBrowseEnabled?'active':''}" onclick="setHorizontalBrowseEnabled(!horizontalBrowseEnabled)">${horizontalBrowseEnabled?'On':'Off'}</button>`;
   const loc=byId("locationSettingPageRow");if(loc)loc.innerHTML=`<i class="fa-solid ${locationSharingEnabled?'fa-location-dot':'fa-location-crosshairs'} settings-row-icon"></i><span class="settings-row-copy"><strong>Location sharing</strong><small>${locationSharingEnabled?'On':'Off'} - nearby vendors and distance sorting</small></span><button class="settings-inline-btn ${locationSharingEnabled?'active':''}" onclick="toggleLocationSetting();setTimeout(hydrateSettingsPage,0)">${locationSharingEnabled?'On':'Off'}</button>`;
   const src=byId("voiceSelect"),page=byId("voiceSelectPage");if(src&&page){page.innerHTML=src.innerHTML;page.value=src.value||localStorage.getItem("medris-ai-voice")||"";page.onchange=function(){setAiVoice(this.value);};}
 }
@@ -8425,7 +8480,7 @@ function renderBottomNav() {
   const nav = byId("bottomNav");
   if (!nav) return;
   // Vendors run their business from here, not browse as a shopper, so
-  // "Home" (the buyer storefront) isn't a tab they need taking up space.
+  // "Home" (the customer storefront) isn't a tab they need taking up space.
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
   const items = isVendorUser ? [] : [{ icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "navigate('home')", view: "home" }];
   const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors')", view: "vendors" };
@@ -8621,7 +8676,7 @@ async function enforceSingleSession() {
 // up automatically (detectSessionInUrl is on by default), which fires the
 // same onAuthStateChange listener as any other login, so no separate
 // "handle the OAuth callback" code is needed here. First-time Google
-// sign-ins default to the buyer role via the handle_new_user trigger,
+// sign-ins default to the customer role via the handle_new_user trigger,
 // same as leaving "I am a…" on its default during a normal signup --
 // anyone who actually wants to sell can still apply as a vendor
 // afterward, same as always.
@@ -8741,7 +8796,7 @@ async function submitAuth() {
 async function finishLoginSuccess(view) {
   await refreshAuthStateOnce();
 
-  // Only refresh buyer location automatically after the buyer has explicitly
+  // Only refresh buyer location automatically after the customer has explicitly
   // opted into the one-time automatic-distance preference. This prevents a
   // fresh login from unexpectedly triggering a browser location prompt.
   if (buyerDistanceAutoEnabled && locationSharingEnabled && navigator.geolocation) {
@@ -8933,7 +8988,7 @@ async function resetLevromartPreferences() {
     { title: "Reset preferences", okLabel: "Reset", danger: true }
   );
   if (!confirmed) return;
-  ["medris-theme", "medris-accent", "medris-install-dismissed", "medris-notif-dismissed", "medris-ai-chat-expanded", "medris-levi-fab-size", "medris-levi-visible", "medris-ai-voice", "levromart-font-scale", "levromart-interface-defaults-v2", "levromart_ai_fab_pos", "levromart_cart_fab_pos", "levromart_ai_panel_pos"].forEach((k) => { try { localStorage.removeItem(k); } catch (e) {} });
+  ["medris-theme", "medris-accent", "medris-install-dismissed", "medris-notif-dismissed", "medris-ai-chat-expanded", "medris-levi-fab-size", "medris-levi-visible", "medris-ai-voice", "levromart-font-scale", "levromart-horizontal-browse", "levromart-interface-defaults-v2", "levromart_ai_fab_pos", "levromart_cart_fab_pos", "levromart_ai_panel_pos"].forEach((k) => { try { localStorage.removeItem(k); } catch (e) {} });
   currentAccentIndex = DEFAULT_ACCENT_INDEX;
   leviVisible = true;
   setTheme("light");
@@ -8971,7 +9026,7 @@ let currentViewParams = {};
 // the CURRENT screen, never a stale one from earlier in the session.
 let lastRenderError = null;
 // A raw Postgres/Supabase/network error ("cannot add postgres_changes
-// callbacks...", "Failed to fetch", etc.) means nothing to a buyer or
+// callbacks...", "Failed to fetch", etc.) means nothing to a customer or
 // vendor and just reads as a code leak -- classify it into one plain,
 // on-brand line with an icon instead. The real message still goes to the
 // console for debugging, and lastRenderError above still carries it
@@ -9089,6 +9144,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // instead.
   try { sessionStorage.setItem("medris_last_view", JSON.stringify({ view, params })); } catch (e) {}
   if (view !== "storefront") resetStorefrontSocialMeta();
+  if (view !== "home") resetHomeSearchScrollMotion();
   // Paint the destination immediately. Reuse a previously rendered screen
   // when available; otherwise show a lightweight page shell. Do not block a
   // tap on Supabase and do not show a generic "Loading..." page.
@@ -9124,7 +9180,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "vendorPackages": html = await renderVendorPackages(); break;
       case "vendorEarnings": html = await renderVendorEarnings(); break;
       case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
-      case "buyerOrders": html = await renderBuyerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
+      case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
       case "orderDetail": html = await renderOrderDetail(params.orderId); break;
       case "adminPanel": html = await renderAdminPanel(params.status); break;
       case "adminDisputes": html = await renderAdminDisputes(); break;
@@ -9176,7 +9232,11 @@ async function navigate(view, params = {}, pushHistory = true) {
   syncLeviFabVisibility();
   hideLevromartSplash();
   clearAutoScrollTimers();
-  document.querySelectorAll("#app .cat-row, #app .hscroll").forEach((el) => setupAutoScroll(el));
+  applyHorizontalBrowsePreference();
+  document.querySelectorAll("#app .cat-row, #app .hscroll, #app .storefront-product-strip").forEach((el) => {
+    if (horizontalBrowseEnabled) setupAutoScroll(el);
+  });
+  initHomeSearchScrollMotion();
   initGallerySwipeSurfaces();
   initDeliveryFieldsOnPage();
   if (view === "settings") setTimeout(hydrateSettingsPage, 0);
@@ -9207,6 +9267,28 @@ function initGallerySwipeSurfaces() {
     track.addEventListener('pointerup', sync, { passive: true });
     track.addEventListener('touchend', sync, { passive: true });
   });
+}
+
+// ---------- HORIZONTAL BROWSE PREFERENCE ----------
+const HORIZONTAL_BROWSE_KEY = "levromart-horizontal-browse";
+let horizontalBrowseEnabled = false; // default: static, no automatic movement
+function readHorizontalBrowsePreference(){
+  try { return localStorage.getItem(HORIZONTAL_BROWSE_KEY) === "1"; } catch (_) { return false; }
+}
+function applyHorizontalBrowsePreference(){
+  horizontalBrowseEnabled = readHorizontalBrowsePreference();
+  document.body.classList.toggle("levro-static-rails", !horizontalBrowseEnabled);
+  if (!horizontalBrowseEnabled) clearAutoScrollTimers();
+}
+function setHorizontalBrowseEnabled(enabled){
+  horizontalBrowseEnabled = !!enabled;
+  try { localStorage.setItem(HORIZONTAL_BROWSE_KEY, horizontalBrowseEnabled ? "1" : "0"); } catch (_) {}
+  document.body.classList.toggle("levro-static-rails", !horizontalBrowseEnabled);
+  clearAutoScrollTimers();
+  if (horizontalBrowseEnabled) {
+    document.querySelectorAll("#app .cat-row, #app .hscroll, #app .storefront-product-strip").forEach((el) => setupAutoScroll(el));
+  }
+  hydrateSettingsPage();
 }
 
 // ---------- AUTO-SLIDING CAROUSELS (category row + horizontal product/vendor rails) ----------
@@ -9333,6 +9415,49 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="flex" style="margin-bottom:1.2rem;"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" /><select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
   return html;
+}
+
+// ---------- HOME SEARCH SCROLL MOTION ----------
+let homeSearchMotionReady = false;
+let homeSearchMotionRaf = 0;
+let homeSearchMotionIdle = 0;
+function initHomeSearchScrollMotion(){
+  const search = byId("heroSearch");
+  if (!search) return;
+  const wrap = search.closest(".hero-search");
+  if (!wrap) return;
+  const header = document.querySelector("header");
+  if (header) document.documentElement.style.setProperty("--levro-header-height", `${Math.ceil(header.getBoundingClientRect().height)}px`);
+  wrap.classList.add("home-search-pinned");
+  document.body.classList.add("home-search-active");
+  if (homeSearchMotionReady) return;
+  homeSearchMotionReady = true;
+  let lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+  const apply = () => {
+    homeSearchMotionRaf = 0;
+    if (currentView !== "home") return;
+    const currentWrap = byId("heroSearch")?.closest(".hero-search");
+    if (!currentWrap || !currentWrap.isConnected) { homeSearchMotionReady=false; return; }
+    const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+    const delta = y - lastY;
+    lastY = y;
+    if (Math.abs(delta) >= 2 && y > 18) currentWrap.classList.add("home-search-scrolling");
+    if (y <= 18 || delta < -2) currentWrap.classList.remove("home-search-scrolling");
+    clearTimeout(homeSearchMotionIdle);
+    homeSearchMotionIdle = setTimeout(() => currentWrap.classList.remove("home-search-scrolling"), 520);
+  };
+  window.addEventListener("scroll", () => { if (!homeSearchMotionRaf) homeSearchMotionRaf=requestAnimationFrame(apply); }, {passive:true});
+  window.addEventListener("resize", () => {
+    const h=document.querySelector("header");
+    if(h) document.documentElement.style.setProperty("--levro-header-height", `${Math.ceil(h.getBoundingClientRect().height)}px`);
+  }, {passive:true});
+}
+
+function resetHomeSearchScrollMotion(){
+  homeSearchMotionReady = false;
+  clearTimeout(homeSearchMotionIdle);
+  document.body.classList.remove("home-search-active");
+  document.querySelectorAll(".home-search-scrolling,.home-search-pinned").forEach(el=>el.classList.remove("home-search-scrolling","home-search-pinned"));
 }
 
 // ---------- HOME (marketplace browse) ----------
@@ -9624,7 +9749,7 @@ function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hid
 const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, vendor:vendors!inner(id, business_name, verification_status, logo_url), category:categories(sector_id)";
 
 // Used whenever a search/filter comes up empty - instead of a dead end,
-// show what IS available so the buyer isn't stuck looking at nothing.
+// show what IS available so the customer isn't stuck looking at nothing.
 async function fetchFallbackProducts(excludeIds) {
   if (browserLooksOffline()) {
     const cache = getOfflineHomeCache();
@@ -10015,7 +10140,7 @@ async function addToCart(productId, qty) {
   showToast("Added to cart.", "success");
   updateCartFab();
   refreshNotifications();
-  // Stay on the current page so buyers can keep adding multiple items.
+  // Stay on the current page so customers can keep adding multiple items.
   updateCartFab();
 }
 // One-tap add straight from a product card's grid/rail listing, without
@@ -10092,7 +10217,7 @@ async function checkoutCartVendor(vendorId) {
 // One continuous text thread per (buyer, vendor) pair - replaces direct
 // WhatsApp contact so conversations stay evidence-grade for disputes
 // (messages can't be edited or deleted, enforced server-side, not just in
-// this UI). Buyers open a thread from a product/storefront page; vendors
+// this UI). Customers open a thread from a product/storefront page; vendors
 // see all their threads from a "Messages" nav entry.
 let activeMsgChannel = null;
 let activeConversationId = null;
@@ -10120,7 +10245,7 @@ async function startConversationWithVendor(vendorId, draftText) {
     showToast(`${v.business_name || "This vendor"} is outside working hours right now${status.todayText ? ` (${status.todayLabel}: ${status.todayText})` : ""}. Try again during their working hours.`, "info");
     return;
   }
-  if (!(await ensureBuyerProfile())) {
+  if (!(await ensureCustomerProfile())) {
     showToast("Your account profile could not be repaired. Please refresh the app and try again.", "error");
     return;
   }
@@ -10129,7 +10254,7 @@ async function startConversationWithVendor(vendorId, draftText) {
     // One final repair/retry handles a race where the profile was created just
     // after the first existence check.
     buyerProfileRepairPromise = null;
-    if (await ensureBuyerProfile()) {
+    if (await ensureCustomerProfile()) {
       ({ data: conversationId, error } = await sb.rpc("get_or_create_conversation", { p_vendor_id: vendorId }));
     }
   }
@@ -10558,7 +10683,7 @@ async function renderMessages(conversationId) {
 
     const convs = window.__conversations || [];
     if (convs.length === 0) {
-      return `<h2><i class="fa-solid fa-comments"></i> Messages</h2><div class="empty-state">No conversations yet. ${isVendor ? "Buyers who message you will show up here." : "Message a vendor from their storefront or a product page."}</div>`;
+      return `<h2><i class="fa-solid fa-comments"></i> Messages</h2><div class="empty-state">No conversations yet. ${isVendor ? "Customers who message you will show up here." : "Message a vendor from their storefront or a product page."}</div>`;
     }
 
     let html = `<div id="messagesSelectionBar">${msgSelectionHeaderHtml()}</div>`;
@@ -10578,13 +10703,13 @@ async function renderMessages(conversationId) {
     const p = pInfo[0];
     const { data: messages } = await sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true });
     let html = `<button class="btn btn-sm" style="margin-bottom:0.8rem;background:#6b7280;" onclick="navigate('adminDisputes')"><i class="fa-solid fa-arrow-left"></i> Back to disputes</button>`;
-    html += `<h3><i class="fa-solid fa-comments"></i> ${esc(p.buyer_name || "Buyer")} &harr; ${esc(p.vendor_name || "Vendor")}</h3>
+    html += `<h3><i class="fa-solid fa-comments"></i> ${esc(p.buyer_name || "Customer")} &harr; ${esc(p.vendor_name || "Vendor")}</h3>
       <p class="muted" style="font-size:0.85rem;">Viewing as admin, read only.</p>`;
     html += `<div class="chat-thread"><div class="chat-messages">${(messages || []).map((m) => {
-      const isBuyer = m.sender_id === p.buyer_id;
-      const senderName = isBuyer ? (p.buyer_name || "Buyer") : (p.vendor_name || "Vendor");
+      const isCustomer = m.sender_id === p.buyer_id;
+      const senderName = isCustomer ? (p.buyer_name || "Customer") : (p.vendor_name || "Vendor");
       const time = new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      return `<div class="chat-bubble ${isBuyer ? "theirs" : "mine"}"><strong style="display:block;font-size:0.72rem;opacity:0.8;">${esc(senderName)}</strong>${esc(m.body)}<span class="chat-time">${time}</span></div>`;
+      return `<div class="chat-bubble ${isCustomer ? "theirs" : "mine"}"><strong style="display:block;font-size:0.72rem;opacity:0.8;">${esc(senderName)}</strong>${esc(m.body)}<span class="chat-time">${time}</span></div>`;
     }).join("")}</div></div>`;
     return html;
   }
@@ -10602,7 +10727,7 @@ async function renderMessages(conversationId) {
 
   const isVendorSide = conv.vendor?.user_id === session.user.id;
   const op = (other && other[0]) || {};
-  const otherName = op.name || (isVendorSide ? "Buyer" : conv.vendor?.business_name || "Vendor");
+  const otherName = op.name || (isVendorSide ? "Customer" : conv.vendor?.business_name || "Vendor");
   const otherAvatar = op.avatar_url || (isVendorSide ? null : conv.vendor?.logo_url);
   const otherPhone = op.phone || "";
   lastSeenMessagesByConv.set(conversationId, messages || []);
@@ -10619,7 +10744,7 @@ async function renderMessages(conversationId) {
   // Levromart has no in-app calling -- the call icon just hands off to the
   // device's own phone app with the vendor's on-file number (same gated
   // check -- business hours -- as the "Call vendor" button elsewhere).
-  // There's no equivalent number on file for a buyer, so a vendor tapping
+  // There's no equivalent number on file for a customer, so a vendor tapping
   // it gets an honest "not available" toast instead of a dead redirect.
   const callAction = !isVendorSide
     ? (conv.vendor?.phone ? `callVendorGated(event,'${esc(conv.vendor.phone)}','${esc(conv.vendor.id)}')` : `chatNoCallNumber('vendor')`)
@@ -11879,7 +12004,7 @@ function deliveryInfoLineHtml(prefix, isDistance, hasVendorLoc, vendorLat, vendo
   return `<i class="fa-solid fa-clock"></i> ~${eta} estimated`;
 }
 // Distance-priced delivery only ever gets a real, accurate fee once we know
-// where the buyer actually is -- so for that mode, being on "Delivery"
+// where the customer actually is -- so for that mode, being on "Delivery"
 // (the default) compulsorily asks for location right away instead of
 // letting someone proceed and only finding out (or worse, getting a wrong
 // flat-rate fee) at checkout. Runs both on the delivery/pickup radio
@@ -11892,7 +12017,7 @@ async function ensureDeliveryLocation(prefix) {
   const isDistance = wrap.dataset.feeMode === "distance" && Number(wrap.dataset.perKm) > 0 && wrap.dataset.vendorLat && wrap.dataset.vendorLng;
   if (isDistance && !buyerLocation) {
     try {
-      await requestBuyerLocation();
+      await requestCustomerLocation();
     } catch (err) {
       showToast("Delivery for this vendor is priced by distance, so it needs your location. Switched to pickup.", "info");
       const pickupRadio = document.querySelector(`input[name="${prefix}DeliveryMethod"][value="pickup"]`);
@@ -11932,7 +12057,7 @@ function updateDeliveryEta(prefix) {
 }
 async function requestDeliveryEta(prefix) {
   try {
-    await requestBuyerLocation();
+    await requestCustomerLocation();
     updateDeliveryEta(prefix);
   } catch (err) { /* declined, leave as-is */ }
 }
@@ -11952,7 +12077,7 @@ function updateOrderDeliveryEta() {
 }
 async function requestOrderEta() {
   try {
-    await requestBuyerLocation();
+    await requestCustomerLocation();
     updateOrderDeliveryEta();
   } catch (err) { /* declined, leave as-is */ }
 }
@@ -12026,7 +12151,7 @@ function updateRentTotalPreview(rate, unit) {
 async function buyNow(vendorId, productId) {
   if (!session) { showLogin(); return; }
   if (blockOwnVendorPurchase(vendorId, "buy")) return;
-  if (!(await ensureBuyerProfile(byId("buyError")))) return;
+  if (!(await ensureCustomerProfile(byId("buyError")))) return;
   const qty = parseInt(byId("buyQty").value) || 1;
   const errorEl = byId("buyError");
   errorEl.classList.add("hidden");
@@ -12208,8 +12333,8 @@ function addVendorsMapRecenterControl(map) {
         btn.classList.add("is-loading");
         try {
           let loc = buyerLocation;
-          if (!loc) loc = await requestBuyerLocation(true);
-          else if (buyerDistanceAutoEnabled) loc = await requestBuyerLocation(true);
+          if (!loc) loc = await requestCustomerLocation(true);
+          else if (buyerDistanceAutoEnabled) loc = await requestCustomerLocation(true);
           if (loc) {
             map.setView([loc.lat, loc.lng], Math.max(map.getZoom(), 13), { animate: true, duration: 0.45 });
           }
@@ -12245,7 +12370,7 @@ async function renderVendorsMap() {
     if (statusEl) statusEl.textContent = "Showing vendors near you, closest first.";
   } else if (buyerDistanceAutoEnabled && locationSharingEnabled) {
     try {
-      const loc = await requestBuyerLocation(true);
+      const loc = await requestCustomerLocation(true);
       center = [loc.lat, loc.lng];
       zoom = 13;
       if (statusEl) statusEl.textContent = "Showing vendors near you, closest first.";
@@ -12266,7 +12391,7 @@ async function renderVendorsMap() {
     addVendorsMapRecenterControl(vendorsMap);
   } else {
     // Do not reset the user's map position every time filters/location refresh.
-    // The recenter control is the explicit way to jump back to the buyer.
+    // The recenter control is the explicit way to jump back to the customer.
     setTimeout(() => vendorsMap.invalidateSize(), 0);
   }
 
@@ -12293,10 +12418,17 @@ async function renderVendorsMap() {
   });
 
   if (statusEl && list.length === 0) statusEl.textContent = "None of the vendors matching your filters have set a shop location yet.";
+  if (list.length > 1 && !buyerLocation && vendorsMap && vendorsMapMarkers.length) {
+    const vendorLayers = vendorsMapMarkers.filter((m) => m && typeof m.getLatLng === "function");
+    if (vendorLayers.length > 1) {
+      const bounds = window.L.latLngBounds(vendorLayers.map((m) => m.getLatLng()));
+      if (bounds.isValid()) vendorsMap.fitBounds(bounds.pad(0.12), { animate: false, maxZoom: 15 });
+    }
+  }
 }
 
 // ---------- STOREFRONT (public vendor page) ----------
-// Shown for a couple weeks after a vendor renames, so buyers who knew them
+// Shown for a couple weeks after a vendor renames, so customers who knew them
 // by the old name don't wonder where they went.
 const VENDOR_RENAME_GRACE_DAYS = 14;
 function vendorNameWithFormerly(v) {
@@ -12457,7 +12589,8 @@ async function renderStorefront(vendorId) {
   window.__storefrontExpanded = false;
   storefrontCatalogTab = "products";
 
-  const coverPhotos = [...new Set(allProducts.map((p) => p.photos?.[0]).filter(Boolean))].slice(0, 4);
+  const customCoverUrl = v.cover_url || "";
+  const isOwnStorefront = !!vendor?.id && String(vendor.id) === String(v.id);
   const logo = v.logo_url
     ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${esc(v.logo_url)}','${esc(v.business_name || "Vendor")}',event)"><img src="${esc(v.logo_url)}" alt="${esc(v.business_name || "Vendor")}" loading="eager" draggable="false" /></button>`
     : `<button type="button" class="storefront-avatar storefront-avatar-button storefront-avatar-fallback-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('','${esc(v.business_name || "Vendor")}',event)">${avatarFallbackHtml(v.business_name || "Vendor", "100%", "", v.business_name || "Vendor")}</button>`;
@@ -12473,8 +12606,9 @@ async function renderStorefront(vendorId) {
   ].filter(Boolean).join("");
 
   let html = `<section class="storefront-profile">
-    <div class="storefront-cover">
-      ${coverPhotos.length ? `<div class="hero-photo-row">${coverPhotos.map((u) => `<img src="${esc(u)}" alt="" loading="lazy" />`).join("")}</div>` : ""}
+    <div class="storefront-cover ${customCoverUrl ? "has-custom-cover" : ""}" ${customCoverUrl ? `style="background-image:url('${esc(customCoverUrl)}')"` : ""}>
+      ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : '<div class="storefront-cover-empty">Set a custom storefront header in your business profile.</div>'}
+      ${isOwnStorefront ? `<label class="storefront-cover-edit" title="Edit storefront header" aria-label="Edit storefront header"><i class="fa-solid fa-pen"></i><input type="file" accept="image/*" onchange="uploadVendorCover(event)" /></label>` : ""}
     </div>
     <div class="storefront-profile-body">
       <div class="storefront-avatar-row">
@@ -12542,7 +12676,7 @@ async function renderStorefront(vendorId) {
   </section>`;
 
   if (reviews && reviews.length > 0) {
-    html += `<section class="storefront-reviews" id="vendorReviews"><button type="button" class="storefront-reviews-head" onclick="toggleReviewsList()"><h3 style="margin:0;">Reviews${st.review_count ? ` (${st.review_count})` : ""}</h3><i class="fa-solid fa-chevron-down" id="reviewsChevron" style="transition:transform 0.2s;color:var(--text-muted);"></i></button><div id="reviewsList">${reviews.map((r) => `<div class="card review-card">${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.3rem;height:2.3rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Buyer", "2.3rem", "", r.buyer_name || "Buyer")}<div><div class="flex" style="justify-content:space-between;gap:1rem;"><strong>${esc(r.buyer_name || "A buyer")}</strong><span class="star-display">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span></div>${r.comment ? `<p style="margin:0.3rem 0 0;">${esc(r.comment)}</p>` : ""}<p class="muted" style="font-size:0.75rem;margin-top:0.2rem;">${new Date(r.created_at).toLocaleDateString()}</p></div></div>`).join("")}</div></section>`;
+    html += `<section class="storefront-reviews" id="vendorReviews"><button type="button" class="storefront-reviews-head" onclick="toggleReviewsList()"><h3 style="margin:0;">Reviews${st.review_count ? ` (${st.review_count})` : ""}</h3><i class="fa-solid fa-chevron-down" id="reviewsChevron" style="transition:transform 0.2s;color:var(--text-muted);"></i></button><div id="reviewsList">${reviews.map((r) => `<div class="card review-card">${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.3rem;height:2.3rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.3rem", "", r.buyer_name || "Customer")}<div><div class="flex" style="justify-content:space-between;gap:1rem;"><strong>${esc(r.buyer_name || "A buyer")}</strong><span class="star-display">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span></div>${r.comment ? `<p style="margin:0.3rem 0 0;">${esc(r.comment)}</p>` : ""}<p class="muted" style="font-size:0.75rem;margin-top:0.2rem;">${new Date(r.created_at).toLocaleDateString()}</p></div></div>`).join("")}</div></section>`;
   } else {
     html += `<section class="storefront-reviews" id="vendorReviews"><h3 style="margin-top:0;">Reviews</h3><p class="muted">No reviews yet.</p></section>`;
   }
@@ -12794,7 +12928,7 @@ async function renderVendorRequests() {
   window.__myProductsForOffers = myProducts || [];
 
   const deliveryFee = Number(vendor.delivery_fee) || 0;
-  let html = `<h2><i class='fa-solid fa-clipboard-list'></i> Buyer requests ${infoPopoverHtml("vendorRequestsInfo", "Only requests matching what you sell reach you. Quote a price to win the order: pick one of your own listed products to price it instantly, or quote a custom price.")}</h2>`;
+  let html = `<h2><i class='fa-solid fa-clipboard-list'></i> Customer requests ${infoPopoverHtml("vendorRequestsInfo", "Only requests matching what you sell reach you. Quote a price to win the order: pick one of your own listed products to price it instantly, or quote a custom price.")}</h2>`;
   if (!requests || requests.length === 0) html += `<p class="muted">No open requests right now.</p>`;
   (requests || []).forEach((r) => {
     const mine = (r.offers || []).find((o) => o.vendor_id === vendor.id);
@@ -12802,7 +12936,7 @@ async function renderVendorRequests() {
     html += `<div class="card">
       <div class="flex" style="justify-content:space-between;">
         <div class="flex">
-          ${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Buyer", "2.1rem", "", r.buyer_name || "Buyer")}
+          ${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.1rem", "", r.buyer_name || "Customer")}
           <div><strong>${esc(r.title)}</strong><p class="muted" style="margin:0;font-size:0.78rem;">${esc(r.buyer_name || "A buyer")}</p></div>
         </div>
         <span class="badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span>
@@ -12821,7 +12955,7 @@ async function renderVendorRequests() {
                <input type="text" id="offerMsg-${r.id}" placeholder="Message (e.g. delivery today)" style="flex:1;" />
                <button class="btn btn-sm" onclick="sendOffer('${r.id}')">Send offer</button>
              </div>
-             ${deliveryFee > 0 ? `<p class="muted" style="font-size:0.78rem;margin-top:0.3rem;"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown to the buyer automatically alongside this quote if they need delivery.</p>` : ""}
+             ${deliveryFee > 0 ? `<p class="muted" style="font-size:0.78rem;margin-top:0.3rem;"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown to the customer automatically alongside this quote if they need delivery.</p>` : ""}
            </div>`}
     </div>`;
   });
@@ -13118,7 +13252,7 @@ async function renderVendorDashboard() {
   let statusBanner = "";
   if (v.verification_status === "pending") statusBanner = `<div class="banner banner-warning"><strong><i class='fa-solid fa-hourglass-half'></i> Verification pending.</strong> Your shop is under review. Once approved you can list products.</div>`;
   else if (v.verification_status === "rejected") statusBanner = `<div class="banner banner-danger"><strong>Application not approved.</strong> Contact support if this seems wrong.</div>`;
-  else if (!v.is_active) statusBanner = `<div class="banner banner-muted"><strong><i class='fa-solid fa-pause'></i> Storefront paused.</strong> Buyers can't see your shop or products right now.</div>`;
+  else if (!v.is_active) statusBanner = `<div class="banner banner-muted"><strong><i class='fa-solid fa-pause'></i> Storefront paused.</strong> Customers can't see your shop or products right now.</div>`;
   const verifiedTick = v.verification_status === "verified"
     ? `<span class="verified-tick" title="Verified vendor" onclick="navigate('storefront',{vendorId:'${v.id}'})"><i class="fa-solid fa-circle-check"></i></span>`
     : "";
@@ -13147,6 +13281,9 @@ async function renderVendorDashboard() {
     </div>`;
   }
   html += statusBanner;
+  if (v.verification_status === "verified" && (v.lat == null || v.lng == null)) {
+    html += `<div class="banner banner-warning" style="max-width:700px;margin:0 auto 1rem;"><strong><i class="fa-solid fa-location-dot"></i> Add your shop location</strong><p style="margin:.35rem 0 .65rem;">Your storefront cannot appear on the vendor map until a shop location is saved.</p><button class="btn btn-sm" onclick="navigate('vendorEditProfile')"><i class="fa-solid fa-map-location-dot"></i> Set shop location</button></div>`;
+  }
   html += `<div class="dash-tabs shop-tabs-rail" aria-label="My Shop sections">
     <button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button>
     <button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button>
@@ -13273,7 +13410,7 @@ function renderVendorEarningsBody() {
     html += `<div class="category-group-header flex" style="justify-content:space-between;">
       <span>${esc(dateKey)}</span><span>${naira(dayTotal)}</span>
     </div>`;
-    html += `<div class="table-wrap vendorEarningsTableWrap"><table class="data-table"><thead><tr><th>Item(s)</th><th>Buyer</th><th style="text-align:center;"><i class="fa-solid fa-arrow-down" style="color:#16a34a;"></i> Buyer paid</th><th style="text-align:center;"><i class="fa-solid fa-arrow-up" style="color:var(--primary);"></i> Paid to you</th><th style="text-align:center;">Amount</th></tr></thead><tbody>`;
+    html += `<div class="table-wrap vendorEarningsTableWrap"><table class="data-table"><thead><tr><th>Item(s)</th><th>Customer</th><th style="text-align:center;"><i class="fa-solid fa-arrow-down" style="color:#16a34a;"></i> Customer paid</th><th style="text-align:center;"><i class="fa-solid fa-arrow-up" style="color:var(--primary);"></i> Paid to you</th><th style="text-align:center;">Amount</th></tr></thead><tbody>`;
     dayOrders.forEach((o) => {
       const items = (o.items || []).map((it) => `${esc(it.product?.name || "Item")} ×${it.quantity}`).join(", ") || (o.order_type === "rental" ? "Rental" : "Sale");
       html += `<tr onclick="navigate('orderDetail',{orderId:'${o.id}'})" style="cursor:pointer;">
@@ -13428,6 +13565,13 @@ async function renderVendorEditProfile() {
   <div class="card" style="max-width:480px;margin:0 auto;">
     <h2>Edit business profile</h2>
     <div id="vendorEditError" class="error-text hidden"></div>
+    <div class="vendor-cover-editor" style="margin:0 0 1rem;">
+      <div class="storefront-cover ${v.cover_url ? "has-custom-cover" : ""}" style="height:130px;border-radius:16px;${v.cover_url ? `background-image:url('${esc(v.cover_url)}');background-size:cover;background-position:center;` : ""}">
+        ${v.cover_url ? '<div class="storefront-cover-overlay"></div>' : '<div class="storefront-cover-empty">No custom header image yet</div>'}
+        <label class="storefront-cover-edit" title="Change storefront header" aria-label="Change storefront header"><i class="fa-solid fa-pen"></i><input type="file" accept="image/*" onchange="uploadVendorCover(event)" /></label>
+      </div>
+      <p class="muted" style="font-size:.76rem;margin:.45rem 0 0;">This image is the header of your storefront. Your latest products no longer fill this area automatically.</p>
+    </div>
     <div class="avatar-edit-wrap" style="margin:0 auto 1rem;display:table;">
       ${v.logo_url ? `<img src="${esc(v.logo_url)}" class="avatar-circle" style="width:5rem;height:5rem;object-fit:cover;" alt="${esc(v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(v.business_name || "Vendor", "5rem", "", v.business_name || "Vendor")}
       <button class="avatar-edit-badge" style="width:1.7rem;height:1.7rem;font-size:0.8rem;" onclick="byId('vendorLogoInput').click()" title="Change logo"><i class="fa-solid fa-camera"></i></button>
@@ -13442,7 +13586,7 @@ async function renderVendorEditProfile() {
       <span class="switch-label-text">Show WhatsApp number to buyers</span>
       <label class="switch-toggle"><input type="checkbox" id="veWhatsappVisible" ${v.whatsapp_visible === true ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappVisibility()" /><span class="switch-toggle-track"></span></label>
     </div>
-    <label id="veDeliveryFeeLabel" class="ve-delivery-fee-label"><span>Delivery fee</span>${infoPopoverHtml("veDeliveryFeeInfo", "Charged when a buyer chooses delivery instead of pickup. Flat charges the same amount everywhere. Distance-based charges purely by the per-km rate below (buyer's shared location to your shop pin) - this flat amount is then only used as a fallback if you haven't pinned your shop's location yet. Leave amounts at 0 for free delivery.")}</label>
+    <label id="veDeliveryFeeLabel" class="ve-delivery-fee-label"><span>Delivery fee</span>${infoPopoverHtml("veDeliveryFeeInfo", "Charged when a customer chooses delivery instead of pickup. Flat charges the same amount everywhere. Distance-based charges purely by the per-km rate below (buyer's shared location to your shop pin) - this flat amount is then only used as a fallback if you haven't pinned your shop's location yet. Leave amounts at 0 for free delivery.")}</label>
     <select id="veDeliveryFeeMode" onchange="toggleVendorDeliveryFeeMode()">
       <option value="flat" ${v.delivery_fee_mode !== "distance" ? "selected" : ""}>Flat fee</option>
       <option value="distance" ${v.delivery_fee_mode === "distance" ? "selected" : ""}>Distance-based</option>
@@ -13461,7 +13605,7 @@ async function renderVendorEditProfile() {
   </div>
 
   <div class="card" style="max-width:480px;margin:1.2rem auto 0;">
-    <h2><i class="fa-solid fa-clock"></i> Working hours ${infoPopoverHtml("veHoursInfo", "Buyers see these on your storefront. Turn off a day you're closed, or set start/end times for the days you're open.")}</h2>
+    <h2><i class="fa-solid fa-clock"></i> Working hours ${infoPopoverHtml("veHoursInfo", "Customers see these on your storefront. Turn off a day you're closed, or set start/end times for the days you're open.")}</h2>
     <p class="muted" style="font-size:0.85rem;">${v.opening_hours ? esc(v.opening_hours) : "Not set yet."}</p>
     <div class="accordion-section" id="veHoursAccordion">
       <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-pen"></i> Edit hours</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
@@ -13471,7 +13615,7 @@ async function renderVendorEditProfile() {
       </div>
     </div>
     <div class="switch-row">
-      <span class="switch-label-text">Let buyers message or call you outside these hours ${infoPopoverHtml("veAfterHoursInfo", "Off: the Message and Call buttons show your working hours instead of reaching you while you're closed. On: buyers can contact you any time.")}</span>
+      <span class="switch-label-text">Let buyers message or call you outside these hours ${infoPopoverHtml("veAfterHoursInfo", "Off: the Message and Call buttons show your working hours instead of reaching you while you're closed. On: customers can contact you any time.")}</span>
       <label class="switch-toggle"><input type="checkbox" id="veAllowAfterHours" ${v.allow_after_hours_messages !== false ? "checked" : ""} onchange="toggleVendorAfterHours()" /><span class="switch-toggle-track"></span></label>
     </div>
     <div class="flex" style="margin-top:1rem;">
@@ -13480,8 +13624,8 @@ async function renderVendorEditProfile() {
   </div>
 
   <div class="card" style="max-width:480px;margin:1.2rem auto 0;">
-    <h2><i class="fa-solid fa-location-dot"></i> Shop location ${infoPopoverHtml("veLocationInfo", "This is what buyers see on the map and what Levi uses to point people to your nearest listing. Tap \"Use my current location\" while you're actually at the shop, then drag the pin to fine-tune if the GPS lands a little off.")}</h2>
-    ${v.lat != null ? `<p class="muted" style="font-size:0.82rem;"><i class="fa-solid fa-circle-check" style="color:var(--success);"></i> Location set.</p>` : `<p class="muted" style="font-size:0.82rem;">Not set yet, buyers can't find you on the map until you set this.</p>`}
+    <h2><i class="fa-solid fa-location-dot"></i> Shop location ${infoPopoverHtml("veLocationInfo", "This is what customers see on the map and what Levi uses to point people to your nearest listing. Tap \"Use my current location\" while you're actually at the shop, then drag the pin to fine-tune if the GPS lands a little off.")}</h2>
+    ${v.lat != null ? `<p class="muted" style="font-size:0.82rem;"><i class="fa-solid fa-circle-check" style="color:var(--success);"></i> Location set.</p>` : `<p class="muted" style="font-size:0.82rem;">Not set yet, customers can't find you on the map until you set this.</p>`}
     <div id="veLocationMap" style="height:220px;border-radius:0.8rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;margin-top:0.9rem;"></div>
     <input type="hidden" id="veLat" value="${v.lat ?? ""}" />
     <input type="hidden" id="veLng" value="${v.lng ?? ""}" />
@@ -13616,7 +13760,7 @@ async function toggleVendorAfterHours() {
   const { error } = await sb.from("vendors").update({ allow_after_hours_messages: checked }).eq("id", vendor.id);
   if (error) { showToast(error.message, "error"); checkbox.checked = !checked; return; }
   vendor.allow_after_hours_messages = checked;
-  showToast(checked ? "Buyers can now message or call you outside working hours." : "After-hours contact turned off.", "success");
+  showToast(checked ? "Customers can now message or call you outside working hours." : "After-hours contact turned off.", "success");
 }
 async function toggleVendorWhatsappVisibility() {
   const checkbox = byId("veWhatsappVisible");
@@ -13666,6 +13810,30 @@ async function submitVendorEditProfile() {
   showToast("Business profile saved.", "success");
   await navigate("vendorEditProfile", {}, false);
   requestAnimationFrame(() => window.scrollTo({ top: keepScrollY, left: 0, behavior: "auto" }));
+}
+
+async function uploadVendorCover(event) {
+  const file = event.target.files?.[0];
+  if (!file || !vendor) return;
+  if (!file.type.startsWith("image/")) { showToast("Please choose an image file.", "error"); return; }
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${vendor.id}/cover.${ext}`;
+  try {
+    const { error: upErr } = await sb.storage.from("vendor-logos").upload(path, file, { upsert: true, contentType: file.type });
+    if (upErr) throw upErr;
+    const { data: pub } = sb.storage.from("vendor-logos").getPublicUrl(path);
+    const url = `${pub.publicUrl}?t=${Date.now()}`;
+    const { error } = await sb.from("vendors").update({ cover_url: url }).eq("id", vendor.id);
+    if (error) throw error;
+    vendor.cover_url = url;
+    showToast("Storefront header updated.", "success");
+    if (currentView === "vendorEditProfile") await navigate("vendorEditProfile", {}, false);
+    else if (currentView === "storefront") await navigate("storefront", { vendorId: vendor.id }, false);
+  } catch (err) {
+    showToast(err.message || "Could not update storefront header.", "error");
+  } finally {
+    event.target.value = "";
+  }
 }
 
 async function uploadVendorLogo(event) {
@@ -13776,7 +13944,7 @@ async function saveVendorLocation() {
   if (error) { showToast(error.message, "error"); return; }
   vendor.lat = lat;
   vendor.lng = lng;
-  showToast("Shop location saved. Buyers can now find you on the map.", "success");
+  showToast("Shop location saved. Customers can now find you on the map.", "success");
 }
 
 // ---------- VENDOR PRODUCTS ----------
@@ -13951,7 +14119,7 @@ async function showProductModal() {
   productModalSectors = sectors;
 
   const sectorSelect = byId("prodSector");
-  sectorSelect.innerHTML = productModalSectors.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
+  sectorSelect.innerHTML = productModalSectors.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("") + '<option value="__other__">＋ Other (not listed)</option>';
 
   byId("productError").classList.add("hidden");
   byId("prodExistingPhotos").innerHTML = "";
@@ -13960,6 +14128,8 @@ async function showProductModal() {
   window.__newProductPhotoFiles = [];
   byId("prodCategoryOther").value = "";
   byId("prodCategoryOther").classList.add("hidden");
+  byId("prodSectorOther").value = "";
+  byId("prodSectorOther").classList.add("hidden");
   window.__existingPhotos = [];
 
   let presetCategoryId = "";
@@ -14004,6 +14174,7 @@ async function showProductModal() {
   sectorSelect.dispatchEvent(new Event("change", { bubbles: true }));
   loadProdCategoriesForSector(presetCategoryId);
   updateProductFormFields();
+  updateProductSaveButtonLabel();
   updateProductDeliveryFields();
   byId("productModal").classList.remove("hidden");
   trackModalOpened("productModal");
@@ -14012,6 +14183,15 @@ async function showProductModal() {
 function loadProdCategoriesForSector(presetCategoryId) {
   const sectorId = byId("prodSector").value;
   const select = byId("prodCategory");
+  const sectorOther = byId("prodSectorOther");
+  const isOtherSector = sectorId === "__other__";
+  sectorOther?.classList.toggle("hidden", !isOtherSector);
+  if (isOtherSector) {
+    select.innerHTML = '<option value="">Uncategorized</option><option value="__other__">＋ Other (not listed)</option>';
+    select.value = presetCategoryId === "__other__" ? "__other__" : "";
+    toggleProdCategoryOther();
+    return;
+  }
   const cats = productModalCategories.filter((c) => c.sector_id === sectorId);
   select.innerHTML = '<option value="">Uncategorized</option>';
   cats.filter((c) => !c.parent_category_id).forEach((parent) => {
@@ -14118,7 +14298,14 @@ function updateProductDeliveryFields() {
   byId("prodDeliveryFlatRow")?.classList.toggle("hidden", mode !== "flat");
   byId("prodDeliveryDistanceRow")?.classList.toggle("hidden", mode !== "distance");
   const hint = byId("prodDeliveryHint");
-  if (hint) hint.textContent = mode === "free" ? "Buyers will not be charged a delivery fee for this product." : mode === "flat" ? "Every delivery order for this product uses this flat fee." : "The delivery fee is calculated from the buyer's distance from your shop.";
+  if (hint) hint.textContent = mode === "free" ? "Customers will not be charged a delivery fee for this product." : mode === "flat" ? "Every delivery order for this product uses this flat fee." : "The delivery fee is calculated from the customer's distance from your shop.";
+}
+
+function updateProductSaveButtonLabel(){
+  const btn=byId("saveProductBtn"); if(!btn) return;
+  const isService=!!byId("prodIsService")?.checked;
+  const type=isService ? "Service" : ((byId("prodListingType")?.value||"sale")==="rent" ? "Product" : "Product");
+  btn.textContent = `Save to ${type}`;
 }
 
 function updateProductFormFields() {
@@ -14181,13 +14368,22 @@ async function saveProduct() {
     if (delivery_fee_mode === "distance" && delivery_fee_per_km <= 0) throw new Error("Enter a fee per kilometre for distance-based delivery.");
     if (listing_type !== "sale" && !rental_rate) throw new Error("Rental rate is required for a rental listing.");
 
+    let chosenSectorId = byId("prodSector").value || null;
+    if (chosenSectorId === "__other__") {
+      const customSectorName = byId("prodSectorOther").value.trim();
+      if (!customSectorName) throw new Error("Type a name for the new sector, or pick one from the list.");
+      const { data: newSectorId, error: sectorErr } = await sb.rpc("create_vendor_sector", { p_name: customSectorName });
+      if (sectorErr) throw new Error(`Couldn't create that sector: ${sectorErr.message}`);
+      chosenSectorId = newSectorId;
+    }
+
     let category_id = byId("prodCategory").value || null;
     if (category_id === "__other__") {
       const customName = byId("prodCategoryOther").value.trim();
       if (!customName) throw new Error("Type a name for the new category, or pick one from the list.");
-      const chosenSectorId = byId("prodSector").value;
       const { data: otherParent } = await sb.from("categories").select("id").eq("sector_id", chosenSectorId).is("parent_category_id", null).ilike("name", "Other").maybeSingle();
       const otherParentId = otherParent?.id;
+      if (!otherParentId) throw new Error("This sector does not have an Other category yet. Leave the category as Uncategorized or choose another category.");
       const { data: newCategoryId, error: catErr } = await sb.rpc("create_vendor_category", { p_name: customName, p_sector_id: chosenSectorId, p_parent_category_id: otherParentId });
       if (catErr) throw new Error(`Couldn't create that category: ${catErr.message}`);
       category_id = newCategoryId;
@@ -14667,7 +14863,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo) {
   const sortedOrders = sortOrdersForList(orders);
   const { active: activeVendorOrders, history: historyVendorOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
   window.__orderListOrders = activeVendorOrders;
-  window.__orderListIsBuyer = false;
+  window.__orderListIsCustomer = false;
   html += orderListControlsHtml(activeVendorOrders.length);
   html += `<div id="orderListWrap">${orderListHtml(activeVendorOrders, false)}</div>`;
   html += orderHistoryAccordionHtml(historyVendorOrders, false);
@@ -14676,7 +14872,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo) {
   return html;
 }
 
-async function renderBuyerOrders(status, type, payment, dateFrom, dateTo) {
+async function renderCustomerOrders(status, type, payment, dateFrom, dateTo) {
   if (!session) return '<div class="empty-state">Please log in.</div>';
   status = ORDER_TABS.includes(status) ? status : "all";
   type = ORDER_TYPE_TABS.some((t) => t.value === type) ? type : "all";
@@ -14722,12 +14918,12 @@ async function renderBuyerOrders(status, type, payment, dateFrom, dateTo) {
   orderListViewMode = "cards";
   orderListExpanded = false;
   const sortedOrders = sortOrdersForList(orders);
-  const { active: activeBuyerOrders, history: historyBuyerOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
-  window.__orderListOrders = activeBuyerOrders;
-  window.__orderListIsBuyer = true;
-  html += orderListControlsHtml(activeBuyerOrders.length);
-  html += `<div id="orderListWrap">${orderListHtml(activeBuyerOrders, true)}</div>`;
-  html += orderHistoryAccordionHtml(historyBuyerOrders, true);
+  const { active: activeCustomerOrders, history: historyCustomerOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
+  window.__orderListOrders = activeCustomerOrders;
+  window.__orderListIsCustomer = true;
+  html += orderListControlsHtml(activeCustomerOrders.length);
+  html += `<div id="orderListWrap">${orderListHtml(activeCustomerOrders, true)}</div>`;
+  html += orderHistoryAccordionHtml(historyCustomerOrders, true);
   html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('home')"><i class='fa-solid fa-arrow-left'></i> Continue shopping</button>`;
   setTimeout(() => enhanceSelectsIn(byId("app")), 0);
   return html;
@@ -14811,7 +15007,7 @@ function orderHistoryActivityLabel(order) {
   const iso = orderActivityIso(order);
   return iso ? orderDateTimeStr(iso) : "";
 }
-function orderHistoryAccordionHtml(historyOrders, isBuyerView) {
+function orderHistoryAccordionHtml(historyOrders, isCustomerView) {
   if (!historyOrders || !historyOrders.length) return "";
   const byDate = new Map();
   historyOrders.forEach((o) => {
@@ -14822,7 +15018,7 @@ function orderHistoryAccordionHtml(historyOrders, isBuyerView) {
   let inner = "";
   byDate.forEach((dayOrders, dateKey) => {
     inner += `<div class="order-history-date"><i class="fa-regular fa-calendar"></i><span>${esc(dateKey)}</span></div>`;
-    inner += `<div class="order-history-day">${dayOrders.map((o) => `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'})"><span class="order-history-main"><strong>${isBuyerView ? esc(o.vendor?.business_name || "") : esc(o.buyer?.name || "")}</strong><span class="order-history-meta"><span>${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span><small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${orderStatusBadgeClass(o.status)} order-history-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`).join("")}</div>`;
+    inner += `<div class="order-history-day">${dayOrders.map((o) => `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'})"><span class="order-history-main"><strong>${isCustomerView ? esc(o.vendor?.business_name || "") : esc(o.buyer?.name || "")}</strong><span class="order-history-meta"><span>${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span><small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${orderStatusBadgeClass(o.status)} order-history-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`).join("")}</div>`;
   });
   return `<div class="accordion-section" id="orderHistoryAccordion" style="margin-top:1.2rem;">
     <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-clock-rotate-left"></i> Order history (${historyOrders.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
@@ -14848,9 +15044,9 @@ function toggleOrderListExpanded() {
 function renderOrderListWrap() {
   const wrap = byId("orderListWrap");
   if (!wrap) return;
-  wrap.innerHTML = orderListHtml(window.__orderListOrders || [], !!window.__orderListIsBuyer);
+  wrap.innerHTML = orderListHtml(window.__orderListOrders || [], !!window.__orderListIsCustomer);
 }
-function orderListHtml(orders, isBuyerView) {
+function orderListHtml(orders, isCustomerView) {
   if (!orders || orders.length === 0) return '<div class="empty-state">No orders here.</div>';
   const total = orders.length;
   const shown = orderListExpanded ? orders : orders.slice(0, ORDER_LIST_PAGE_SIZE);
@@ -14859,16 +15055,16 @@ function orderListHtml(orders, isBuyerView) {
     : "";
   if (orderListViewMode === "table") {
     return `<div class="table-wrap" style="max-height:26rem;overflow-y:auto;"><table class="data-table"><thead><tr>
-      <th>${isBuyerView ? "Vendor" : "Buyer"}</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th>
+      <th>${isCustomerView ? "Vendor" : "Customer"}</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th>
     </tr></thead><tbody>${shown.map((o) => `<tr onclick="navigate('orderDetail',{orderId:'${o.id}'})" style="cursor:pointer;">
-      <td>${isBuyerView ? esc(o.vendor?.business_name || "") : esc(o.buyer?.name || "")}</td>
+      <td>${isCustomerView ? esc(o.vendor?.business_name || "") : esc(o.buyer?.name || "")}</td>
       <td style="text-transform:capitalize;">${esc(o.order_type)}</td>
       <td>${naira(o.total_amount)}</td>
       <td>${orderActivityIso(o) ? esc(orderActivityLabel(o)) : ""}</td>
       <td><span class="badge ${orderStatusBadgeClass(o.status)}">${o.status.replace("_", " ")}</span></td>
     </tr>`).join("")}</tbody></table></div>${moreBtn}`;
   }
-  return shown.map((o) => `<button type="button" class="order-list-card" onclick="navigate('orderDetail',{orderId:'${o.id}'})"><span class="order-list-main"><strong>${isBuyerView ? esc(o.vendor?.business_name || "") : esc(o.buyer?.name || "")}</strong><span>${esc(o.order_type)} · ${naira(o.total_amount)}</span>${orderActivityIso(o) ? `<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small>` : ""}</span><span class="badge ${orderStatusBadgeClass(o.status)} order-list-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`).join("") + moreBtn;
+  return shown.map((o) => `<button type="button" class="order-list-card" onclick="navigate('orderDetail',{orderId:'${o.id}'})"><span class="order-list-main"><strong>${isCustomerView ? esc(o.vendor?.business_name || "") : esc(o.buyer?.name || "")}</strong><span>${esc(o.order_type)} · ${naira(o.total_amount)}</span>${orderActivityIso(o) ? `<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small>` : ""}</span><span class="badge ${orderStatusBadgeClass(o.status)} order-list-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`).join("") + moreBtn;
 }
 
 // ---------- ORDER DETAIL ----------
@@ -14877,7 +15073,7 @@ function pickupMessageDraft(order) {
   return `Hi! I'd like to confirm pickup for ${itemsText}. Could you share your exact location and a good time to come by?`;
 }
 
-async function messageBuyerFromOrder(orderId) {
+async function messageCustomerFromOrder(orderId) {
   if (!session) { showLogin(); return; }
   try {
     const { data: order, error } = await sb.from("orders").select("id,buyer_id,vendor_id").eq("id", orderId).maybeSingle();
@@ -14892,7 +15088,7 @@ async function messageBuyerFromOrder(orderId) {
     }
     navigate("messages", { conversationId });
   } catch (err) {
-    showToast(err.message || "Couldn't open the buyer chat.", "error");
+    showToast(err.message || "Couldn't open the customer chat.", "error");
   }
 }
 async function renderOrderDetail(orderId) {
@@ -14904,24 +15100,24 @@ async function renderOrderDetail(orderId) {
     .maybeSingle();
   if (error || !order) return '<div class="empty-state">Order not found.</div>';
 
-  const isBuyer = order.buyer_id === session.user.id;
+  const isCustomer = order.buyer_id === session.user.id;
   const isVendor = order.vendor?.user_id === session.user.id;
-  if (!isBuyer && !isVendor && profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  if (!isCustomer && !isVendor && profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
 
   const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
   const feePaid = order.payments.some((p) => p.payment_type === feeType && p.status === "paid");
   const depositPaid = order.deposit_amount === 0 || order.payments.some((p) => p.payment_type === "deposit" && p.status === "paid");
   // Payment only opens up once the vendor has confirmed - paying at
-  // "pending" meant a decline afterward left the buyer waiting on a
+  // "pending" meant a decline afterward left the customer waiting on a
   // refund for something that should never have been charged at all.
   const canRecordPayment = isVendor && !(feePaid && depositPaid) && order.status === "confirmed";
-  const canPayOnline = isBuyer && !(feePaid && depositPaid) && order.status === "confirmed";
+  const canPayOnline = isCustomer && !(feePaid && depositPaid) && order.status === "confirmed";
 
   let html = `<div class="card">
     <div class="flex" style="justify-content:space-between;align-items:flex-start;">
       <div>
         <h2 style="margin:0;text-transform:capitalize;">${order.order_type} order</h2>
-        <p class="muted" style="margin:0.15rem 0 0;">${isVendor ? "Buyer order" : esc(order.vendor?.business_name || "")}${order.package?.name ? " · " + esc(order.package.name) : ""}</p>
+        <p class="muted" style="margin:0.15rem 0 0;">${isVendor ? "Customer order" : esc(order.vendor?.business_name || "")}${order.package?.name ? " · " + esc(order.package.name) : ""}</p>
       </div>
       <span class="badge ${orderStatusBadgeClass(order.status)}" style="text-transform:capitalize;flex-shrink:0;">${order.status.replace("_", " ")}</span>
     </div>
@@ -14943,7 +15139,7 @@ async function renderOrderDetail(orderId) {
       <strong>${esc(item.product?.name || "")}</strong>
       <p class="muted" style="margin:0.15rem 0 0;">Qty ${item.quantity} · ${naira(item.unit_price)}${item.rental_start_date ? ` · ${item.rental_start_date} → ${item.rental_end_date}` : ""}</p>
     </div>`).join("")}
-    ${order.buyer_note ? `<div class="divider"></div><p style="margin:0;"><i class="fa-regular fa-message"></i> <strong>${isVendor ? "Buyer's note" : "Your note"}:</strong> ${esc(order.buyer_note)}</p>` : ""}
+    ${order.buyer_note ? `<div class="divider"></div><p style="margin:0;"><i class="fa-regular fa-message"></i> <strong>${isVendor ? "Customer's note" : "Your note"}:</strong> ${esc(order.buyer_note)}</p>` : ""}
     <div class="divider"></div>
     <div class="grid" style="grid-template-columns:repeat(2,1fr);gap:0.9rem;">
       ${order.delivery_fee > 0 ? `<div><p class="muted" style="margin:0;">Equipment cost</p><strong>${naira(order.total_amount - order.delivery_fee)}</strong></div>
@@ -14962,16 +15158,16 @@ async function renderOrderDetail(orderId) {
   if (isVendor) {
     const { data: contact } = await sb.rpc("get_order_buyer_contact", { p_order_id: orderId });
     const c = (contact && contact[0]) || {};
-    html += `<div class="card order-buyer-card"><h3><i class="fa-solid fa-address-card"></i> Buyer</h3>
-      <p style="margin-bottom:.45rem;">${esc(c.name || "Buyer")}</p>
+    html += `<div class="card order-buyer-card"><h3><i class="fa-solid fa-address-card"></i> Customer</h3>
+      <p style="margin-bottom:.45rem;">${esc(c.name || "Customer")}</p>
       <div class="flex order-buyer-contact-actions" style="gap:.7rem;flex-wrap:wrap;align-items:center;">
-        <button class="btn btn-sm" type="button" onclick="messageBuyerFromOrder('${orderId}')"><i class="fa-solid fa-comment-dots"></i> Message buyer</button>
+        <button class="btn btn-sm" type="button" onclick="messageCustomerFromOrder('${orderId}')"><i class="fa-solid fa-comment-dots"></i> Message customer</button>
         ${c.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(c.phone)}"><i class="fa-solid fa-phone"></i> ${esc(c.phone)}</a>` : `<span class="muted" style="font-size:0.85rem;align-self:center;">No phone on file</span>`}
       </div>
     </div>`;
   }
 
-  if (order.delivery_method === "pickup" && isBuyer) {
+  if (order.delivery_method === "pickup" && isCustomer) {
     const addr = [order.vendor?.address, order.vendor?.city].filter(Boolean).map(esc).join(", ");
     html += `<div class="card"><h3><i class="fa-solid fa-location-dot"></i> Pickup location</h3>
       ${addr ? `<p>${addr}</p>` : `<p class="muted">This vendor hasn't listed a pickup address yet. Message them to confirm where to collect your order.</p>`}
@@ -15015,9 +15211,9 @@ async function renderOrderDetail(orderId) {
     </div>`;
   }
 
-  html += `<div class="order-action-wrap" style="margin-top:1.35rem;display:flex;gap:.85rem;flex-wrap:wrap;align-items:center;">${orderActionButtonsHtml(order, isBuyer, isVendor, feePaid)}</div>`;
+  html += `<div class="order-action-wrap" style="margin-top:1.35rem;display:flex;gap:.85rem;flex-wrap:wrap;align-items:center;">${orderActionButtonsHtml(order, isCustomer, isVendor, feePaid)}</div>`;
 
-  if (isBuyer && order.status === "completed" && !order.review) {
+  if (isCustomer && order.status === "completed" && !order.review) {
     html += `<div class="card"><h3>Leave a review</h3>
       <div id="reviewError" class="error-text hidden"></div>
       ${starRatingWidgetHtml(5)}
@@ -15041,7 +15237,7 @@ async function renderOrderDetail(orderId) {
           <button class="btn btn-sm" onclick="submitVendorDisputeResponse('${dispute.id}','${order.id}')">${dispute.vendor_response ? "Update response" : "Submit response"}</button>
         </div>` : ""}
     </div>`;
-  } else if ((isBuyer || isVendor) && order.status !== "cancelled") {
+  } else if ((isCustomer || isVendor) && order.status !== "cancelled") {
     html += `<div style="margin-top:1rem;">
       <a href="#" onclick="byId('disputeForm').classList.remove('hidden');this.classList.add('hidden');return false;" style="color:var(--danger);">Report an issue with this order</a>
       <div id="disputeForm" class="card hidden" style="border-color:var(--danger);margin-top:0.5rem;">
@@ -15053,7 +15249,7 @@ async function renderOrderDetail(orderId) {
   }
 
   html += `<button class="btn btn-sm" style="margin-top:1rem;background:#6b7280;" onclick="navigate('${isVendor ? "vendorOrders" : "buyerOrders"}',{status:'all'})"><i class='fa-solid fa-arrow-left'></i> Back to orders</button>`;
-  if (isBuyer && order.status === "completed" && !order.review) {
+  if (isCustomer && order.status === "completed" && !order.review) {
     setTimeout(() => showVendorReviewModal(order.id, order.vendor?.id, order.vendor?.business_name || "this vendor"), 350);
   }
   return html;
@@ -15065,7 +15261,7 @@ async function renderOrderDetail(orderId) {
 // window the vendor may already be getting the order ready, so cancelling
 // needs a dispute instead.
 const BUYER_CANCEL_WINDOW_HOURS = 5;
-function orderActionButtonsHtml(order, isBuyer, isVendor, feePaid) {
+function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   const buttons = [];
   if (isVendor) {
     if (order.status === "pending") { buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
@@ -15078,8 +15274,8 @@ function orderActionButtonsHtml(order, isBuyer, isVendor, feePaid) {
     }
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
-  if (isBuyer && order.status === "pending") buttons.push(`<button class="btn btn-sm" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
-  if (isBuyer && order.status === "confirmed") {
+  if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
+  if (isCustomer && order.status === "confirmed") {
     const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
     const paidRow = order.payments.find((p) => p.payment_type === feeType && p.status === "paid");
     const hoursSincePaid = paidRow ? (Date.now() - new Date(paidRow.paid_at || paidRow.created_at).getTime()) / 3600000 : 0;
@@ -15089,19 +15285,19 @@ function orderActionButtonsHtml(order, isBuyer, isVendor, feePaid) {
       buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
     }
   }
-  if (isBuyer && order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
-  // Only the buyer confirms completion - that's what releases an escrowed
+  if (isCustomer && order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
+  // Only the customer confirms completion - that's what releases an escrowed
   // payment to the vendor, so it can't be something the vendor self-marks.
   // Also gated on feePaid for the same reason as the vendor's handover
   // button - shouldn't be possible to complete an order that was never
   // actually paid for.
-  if (isBuyer && order.status === "handed_over" && order.order_type === "sale") {
+  if (isCustomer && order.status === "handed_over" && order.order_type === "sale") {
     if (feePaid) {
       buttons.push(`<button class="btn btn-sm" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`);
       buttons.push(notReceivedButtonHtml(order));
     } else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
   }
-  if (isBuyer && order.status === "returned" && order.order_type === "rental") {
+  if (isCustomer && order.status === "returned" && order.order_type === "rental") {
     if (feePaid) {
       buttons.push(`<button class="btn btn-sm" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> Confirm &amp; complete</button>`);
       buttons.push(notReceivedButtonHtml(order));
@@ -15125,7 +15321,7 @@ function notReceivedButtonHtml(order) {
 const ORDER_STATUS_HELP = {
   pending: "Waiting for the vendor to confirm your order. You haven't been charged yet, and you'll be able to pay once they accept.",
   confirmed: "The vendor has accepted. Next, they'll hand over the equipment.",
-  handed_over: "The equipment has physically been handed to the buyer (picked up or delivered). For rentals, either side can mark it \"returned\" once it's back with the vendor. For sales, the buyer confirms receipt to complete the order and release payment.",
+  handed_over: "The equipment has physically been handed to the customer (picked up or delivered). For rentals, either side can mark it \"returned\" once it's back with the vendor. For sales, the customer confirms receipt to complete the order and release payment.",
   returned: "The rented equipment is back with the vendor. The buyer confirms to complete the order and release payment.",
   completed: "This order is finished.",
   cancelled: "This order was cancelled.",
@@ -15144,7 +15340,7 @@ const ORDER_STATUS_SHORT_LABEL = {
 const PAYOUT_STATUS_HELP = {
   held: (date) => `Payment is being held by Levromart until you confirm receipt. It'll release automatically on ${date} even if you forget.`,
   released: () => `Payment has been released to the vendor.`,
-  refunded: () => `This payment was refunded back to the buyer.`,
+  refunded: () => `This payment was refunded back to the customer.`,
 };
 const PAYOUT_STATUS_SHORT_LABEL = {
   held: "Payment held by Levromart",
@@ -15164,7 +15360,7 @@ async function updateOrderStatus(orderId, newStatus) {
 }
 
 // Self-serve cancel for a confirmed-but-not-yet-handed-over order. Safe to
-// automate because nothing's been handed over yet; if the buyer already
+// automate because nothing's been handed over yet; if the customer already
 // paid, this also triggers an immediate Paystack refund. Once the vendor
 // marks it handed over, cancelling requires a dispute instead.
 async function buyerCancelOrder(orderId, feePaid) {
@@ -15214,7 +15410,7 @@ async function submitNotReceived() {
     // it can trigger a refund out of the platform's own balance.
     const { error: reauthError } = await sb.auth.signInWithPassword({ email: session.user.email, password });
     if (reauthError) { errorEl.textContent = "Password is incorrect."; errorEl.classList.remove("hidden"); btn.disabled = false; return; }
-    const { error } = await sb.rpc("raise_dispute", { p_order_id: notReceivedOrderId, p_reason: "Buyer reports this order was never received." });
+    const { error } = await sb.rpc("raise_dispute", { p_order_id: notReceivedOrderId, p_reason: "Customer reports this order was never received." });
     if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); btn.disabled = false; return; }
     byId("notReceivedModal").classList.add("hidden");
     showToast("Reported. An admin will review this.", "success");
@@ -15615,8 +15811,38 @@ async function setVendorStatus(id, status, filterStatus, businessName) {
     { title: "Approve vendor", okLabel: "Approve" }
   ))) return;
   if (status === "rejected" && !(await promptAdminPassword("reject this vendor"))) return;
+  const { data: targetVendor, error: targetVendorError } = await sb.from("vendors").select("id,user_id,business_name,verification_status").eq("id", id).maybeSingle();
+  if (targetVendorError || !targetVendor) { showToast(targetVendorError?.message || "Vendor application not found.", "error"); return; }
+  const previousStatus = targetVendor.verification_status;
   const { error } = await sb.from("vendors").update({ verification_status: status }).eq("id", id);
   if (error) { showToast(error.message, "error"); return; }
+
+  if (status === "verified") {
+    // Approval must promote the applicant's account role as well. This is
+    // required by create_vendor_category/create_vendor_sector and prevents
+    // an approved vendor from still being treated as a customer by RPC checks.
+    const { error: roleError } = await sb.from("users").update({ role: "vendor", role_selected: true }).eq("id", targetVendor.user_id);
+    if (roleError) { showToast(`Vendor approved, but the account role could not be updated: ${roleError.message}`, "error"); }
+
+    const { error: notifError } = await sb.from("notifications").insert({
+      user_id: targetVendor.user_id,
+      title: "Vendor application approved",
+      body: `Congratulations! ${businessName} has been approved. Your Levromart vendor account is now active and your storefront can go live.`,
+      target_view: "vendorDashboard",
+      target_params: {}
+    });
+    if (notifError) console.warn("Vendor approval notification could not be created:", notifError.message);
+  } else if (status === "rejected" && previousStatus !== "rejected") {
+    const { error: notifError } = await sb.from("notifications").insert({
+      user_id: targetVendor.user_id,
+      title: "Vendor application update",
+      body: `Your application for ${businessName} was not approved at this time. Please review your application details or contact Levromart support.`,
+      target_view: "home",
+      target_params: {}
+    });
+    if (notifError) console.warn("Vendor rejection notification could not be created:", notifError.message);
+  }
+
   logAdminAction(status === "verified" ? "approve_vendor" : "reject_vendor", "vendor", id, businessName);
   navigate("adminPanel", { status: filterStatus });
 }
@@ -15631,7 +15857,7 @@ async function adminDeleteVendor(vendorId, businessName, filterStatus) {
   const { error } = await sb.rpc("admin_delete_vendor", { p_vendor_id: vendorId });
   if (error) { showToast(error.message, "error"); return; }
   logAdminAction("delete_vendor", "vendor", vendorId, businessName);
-  showToast("Vendor deleted and demoted to a buyer.", "success");
+  showToast("Vendor deleted and demoted to a customer.", "success");
   navigate("adminPanel", { status: filterStatus });
 }
 
@@ -15639,7 +15865,7 @@ async function adminToggleVendorActive(vendorId, currentlyActive, businessName) 
   const action = currentlyActive ? "pause" : "reactivate";
   if (!(await showConfirmDialog(
     currentlyActive
-      ? "Pause this vendor's storefront? Buyers won't be able to see their shop or products until you reactivate it."
+      ? "Pause this vendor's storefront? Customers won't be able to see their shop or products until you reactivate it."
       : "Reactivate this vendor's storefront?",
     { title: `${action[0].toUpperCase()}${action.slice(1)} storefront`, okLabel: action[0].toUpperCase() + action.slice(1), danger: currentlyActive }
   ))) return;
@@ -15674,7 +15900,7 @@ async function renderAdminPeople() {
     <div class="accordion-body">
       <table class="order-stats-table">
         <tr><td>Total</td><td>${(people || []).length}</td></tr>
-        <tr><td>Buyers</td><td>${counts.buyer}</td></tr>
+        <tr><td>Customers</td><td>${counts.buyer}</td></tr>
         <tr><td>Vendors</td><td>${counts.vendor}</td></tr>
         <tr><td>Admins</td><td>${counts.admin}</td></tr>
       </table>
@@ -16010,7 +16236,7 @@ function renderAdminFinanceRange() {
     byDate.forEach((dayTxns, dateKey) => {
       tableHtml += `<div class="category-group-header">${esc(dateKey)}</div>
         <div class="table-wrap financeTxnTableWrap"><table class="data-table"><thead><tr>
-          <th>Time</th><th>Buyer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th>
+          <th>Time</th><th>Customer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th>
         </tr></thead><tbody>${dayTxns.map((t) => `<tr>
           <td>${new Date(t.created_at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" })}</td>
           <td>${esc(t.buyer_name || "")}</td>
@@ -16136,7 +16362,7 @@ function rangeLabel(range) {
 
 function exportFinanceCsv() {
   const filtered = filterTxnsByRange(__adminFinanceData.txns, adminFinanceRange);
-  const header = ["Date", "Buyer", "Vendor", "Type", "Amount", "Method", "Status", "Platform cut"];
+  const header = ["Date", "Customer", "Vendor", "Type", "Amount", "Method", "Status", "Platform cut"];
   const rows = filtered.map((t) => [
     new Date(t.created_at).toLocaleString(), t.buyer_name || "", t.vendor_name || "",
     (t.payment_type || "").replace("_", " "), t.amount, t.method, t.status, t.platform_cut,
@@ -16274,7 +16500,7 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
       <div class="stat"><b>${naira(volume)}</b>Gross volume</div>
       <div class="stat"><b>${naira(commission)}</b>Commission earned</div>
     </div>
-    <table><thead><tr><th>Date</th><th>Buyer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th></tr></thead>
+    <table><thead><tr><th>Date</th><th>Customer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th></tr></thead>
     <tbody>${filtered.map((t) => `<tr><td>${new Date(t.created_at).toLocaleString()}</td><td>${esc(t.buyer_name || "")}</td><td>${esc(t.vendor_name || "")}</td><td>${esc((t.payment_type || "").replace("_", " "))}</td><td>${naira(t.amount)}</td><td>${esc(t.method)}</td><td>${esc(t.status)}</td><td>${naira(t.platform_cut)}</td></tr>`).join("")}</tbody></table>
     <script>window.onload = () => window.print();<\/script>
     
@@ -16317,9 +16543,9 @@ async function renderAdminDisputes() {
       ${d.vendor_response ? `<p style="margin:0.5rem 0;"><strong>Vendor says:</strong> ${esc(d.vendor_response)}</p>` : `<p class="muted" style="margin:0.5rem 0;">Vendor hasn't responded yet.</p>`}
       ${d.order?.buyer_id && d.order?.vendor_id ? `<button class="btn btn-sm btn-outline" onclick="openDisputeChat('${d.order.buyer_id}','${d.order.vendor_id}')"><i class="fa-solid fa-comment-dots"></i> View chat between buyer &amp; vendor</button>` : ""}
       ${d.order?.payout_status === "held" ? `<p class="muted" style="font-size:0.82rem;margin-top:0.4rem;"><i class="fa-solid fa-shield-halved"></i> Payment on this order is still held by Levromart. The vendor hasn't been paid.</p>
-      <button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','held')"><i class="fa-solid fa-rotate-left"></i> Refund buyer in full</button>` : ""}
+      <button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','held')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>` : ""}
       ${d.order?.payout_status === "released" ? `<p class="muted" style="font-size:0.82rem;margin-top:0.4rem;"><i class="fa-solid fa-triangle-exclamation"></i> The vendor's share of this order has already been paid out (split payment). A refund here comes out of Levromart's own balance.</p>
-      <button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','released')"><i class="fa-solid fa-rotate-left"></i> Refund buyer in full</button>` : ""}
+      <button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','released')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>` : ""}
       <div class="flex">
         <textarea id="notes-${d.id}" rows="2" placeholder="Resolution notes" style="flex:1;"></textarea>
         <select id="newstatus-${d.id}"><option value="" disabled selected>Choose an outcome…</option><option value="completed">Complete (release to vendor)</option><option value="cancelled">Cancel (side with buyer)</option></select>
@@ -16344,13 +16570,13 @@ async function resolveDispute(id, orderId, payoutStatus) {
   }
 
   if (newStatus === "cancelled" && (payoutStatus === "held" || payoutStatus === "released")) {
-    showToast('This order was paid online, use "Refund buyer in full" above instead, so the buyer actually gets their money back.', "error");
+    showToast('This order was paid online, use "Refund customer in full" above instead, so the customer actually gets their money back.', "error");
     return;
   }
 
   // A held payment can't just have its status flipped to "completed" -
   // that has to actually move the money too, so it goes through the same
-  // release endpoint the buyer's own "I've received this" button uses.
+  // release endpoint the customer's own "I've received this" button uses.
   if (newStatus === "completed" && payoutStatus === "held") {
     const res = await fetch("/api/order-payout-action", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -16371,9 +16597,9 @@ async function resolveDispute(id, orderId, payoutStatus) {
 
 async function adminRefundOrder(orderId, payoutStatus) {
   const msg = payoutStatus === "released"
-    ? "Refund the buyer in full? The vendor's share has already been paid out (split payment), so this comes out of Levromart's own balance. You'll need to recover the vendor's cut from them separately, outside Paystack. This still cancels the order."
-    : "Refund the buyer in full? This sends the held payment back to their card/account and cancels the order. The vendor was never paid, so there's nothing to claw back from them.";
-  if (!(await showConfirmDialog(msg, { title: "Refund buyer", okLabel: "Refund", danger: true }))) return;
+    ? "Refund the customer in full? The vendor's share has already been paid out (split payment), so this comes out of Levromart's own balance. You'll need to recover the vendor's cut from them separately, outside Paystack. This still cancels the order."
+    : "Refund the customer in full? This sends the held payment back to their card/account and cancels the order. The vendor was never paid, so there's nothing to claw back from them.";
+  if (!(await showConfirmDialog(msg, { title: "Refund customer", okLabel: "Refund", danger: true }))) return;
   try {
     const res = await fetch("/api/order-payout-action", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -16381,7 +16607,7 @@ async function adminRefundOrder(orderId, payoutStatus) {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Could not refund this order.");
-    showToast("Buyer refunded.", "success");
+    showToast("Customer refunded.", "success");
     navigate("adminDisputes");
   } catch (err) {
     showToast(err.message, "error");
@@ -16425,19 +16651,19 @@ function renderTerms() {
     </ul>
 
     <h3>4. Cancellations, scams &amp; disputes</h3>
-    <p>See our <a href="#" onclick="navigate('refundPolicy');return false;">Refund &amp; Cancellation Policy</a> for cancellation windows. If a buyer believes they have been scammed, received a counterfeit or materially misrepresented item, paid for an order that was not fulfilled, or otherwise suffered a transaction problem, they should report it through the order's dispute process as soon as possible and provide payment records, messages, photos, delivery/handover evidence, and any other relevant evidence.</p>
+    <p>See our <a href="#" onclick="navigate('refundPolicy');return false;">Refund &amp; Cancellation Policy</a> for cancellation windows. If a customer believes they have been scammed, received a counterfeit or materially misrepresented item, paid for an order that was not fulfilled, or otherwise suffered a transaction problem, they should report it through the order's dispute process as soon as possible and provide payment records, messages, photos, delivery/handover evidence, and any other relevant evidence.</p>
     <p>The vendor is the primary party responsible for the goods, services, package contents, representations, and fulfilment of the transaction. Levromart may pause the vendor, restrict the account, preserve relevant records, investigate the complaint, and direct a refund or other remedy where the platform's policies and the available evidence support it. Levromart may also cooperate with lawful requests from regulators or law-enforcement authorities.</p>
     <p>Nothing in these terms removes any right or remedy that cannot lawfully be excluded or limited under Nigerian law.</p>
 
     <h3>5. Prohibited use</h3>
-    <p>No listing or sale of counterfeit, unsafe, expired, stolen, or unlicensed goods, including medical equipment that requires regulatory approval, food that doesn't meet basic safety standards, or any item Nigerian law restricts the sale of. No harassment of other users. No attempting to circumvent Levromart payments to avoid commission. This undermines the buyer protections (verified vendors, dispute resolution, payment records) that come with paying through the platform.</p>
+    <p>No listing or sale of counterfeit, unsafe, expired, stolen, or unlicensed goods, including medical equipment that requires regulatory approval, food that doesn't meet basic safety standards, or any item Nigerian law restricts the sale of. No harassment of other users. No attempting to circumvent Levromart payments to avoid commission. This undermines the customer protections (verified vendors, dispute resolution, payment records) that come with paying through the platform.</p>
 
     <h3>6. Account suspension</h3>
     <p>Levromart may pause or suspend a vendor's storefront or a user's account for violations of these terms, fraud, or repeated disputes, with notice where practical.</p>
 
     <h3>7. Liability</h3>
     <p>To the extent permitted by law, Levromart is not responsible for a vendor's independent acts, omissions, representations, goods, services, package contents, or fulfilment. However, Levromart remains responsible for obligations that the law places on Levromart itself, including obligations arising from services that Levromart directly provides. Any limitation of liability in these terms applies only to the extent it is lawful and was properly brought to the user's attention.</p>
-    <p>Nothing here prevents a buyer from using the dispute process, seeking a refund where the applicable policy allows it, or exercising rights available under Nigerian consumer-protection or other applicable law. Always inspect goods before accepting them, and consult a licensed healthcare provider for clinical use questions about medical equipment.</p>
+    <p>Nothing here prevents a customer from using the dispute process, seeking a refund where the applicable policy allows it, or exercising rights available under Nigerian consumer-protection or other applicable law. Always inspect goods before accepting them, and consult a licensed healthcare provider for clinical use questions about medical equipment.</p>
 
     <h3>8. Contact</h3>
     <p>Questions about these terms can be raised through your account, or with a Levromart admin via a <a href="#" class="legal-inline-link" onclick="navigate('supportRequest');return false;">support request</a>.</p>
@@ -16471,11 +16697,11 @@ function renderPrivacy() {
     <p>Your conversations with Levi are saved to your account so they're there when you come back, and are visible only to you: searchable, and deletable any time from the chat panel. Levromart's team does not read them unless you turn on "Help improve Levi" in Settings, which is off by default.</p>
 
     <h3>4. Your choices</h3>
-    <p>You can edit or delete your profile information from your account settings. You can permanently delete your own Levromart account from Settings → Account. Buyers may delete even with pending orders; vendor accounts must have all orders completed or cancelled and any unsettled commission cleared first.</p>
+    <p>You can edit or delete your profile information from your account settings. You can permanently delete your own Levromart account from Settings → Account. Customers may delete even with pending orders; vendor accounts must have all orders completed or cancelled and any unsettled commission cleared first.</p>
 
     <h3>5. Security</h3>
     <p>Passwords are never stored in plain text (handled by Supabase Auth). Every account, including ones created with Google, has a password on file so account actions that require it (like deleting your account) work consistently. Access to vendor verification documents and payment records is restricted to the account owner and admins.</p>
-    <p>Administrator accounts use an additional one-time email code at sign-in. Buyer and vendor accounts use the normal account authentication flow without this extra email-code step.</p>
+    <p>Administrator accounts use an additional one-time email code at sign-in. Customer and vendor accounts use the normal account authentication flow without this extra email-code step.</p>
 
     <h3>6. Contact</h3>
     <p>Privacy questions can be raised through your account, or with a Levromart admin via a <a href="#" class="legal-inline-link" onclick="navigate('supportRequest');return false;">support request</a>.</p>
@@ -16500,7 +16726,7 @@ function renderRefundPolicy() {
     <p>If what arrives doesn't match the listing, or is faulty on arrival, raise a dispute from the order page within 48 hours of handover. Admins will review evidence from both sides and can direct a full or partial refund from the vendor's proceeds.</p>
 
     <h3>5. Vendor no-shows or non-delivery</h3>
-    <p>If a vendor fails to deliver/hand over confirmed equipment, the buyer is entitled to a full refund of any amount paid online through Levromart.</p>
+    <p>If a vendor fails to deliver/hand over confirmed equipment, the customer is entitled to a full refund of any amount paid online through Levromart.</p>
 
     <h3>6. How refunds are paid</h3>
     <p>Refunds for online payments are issued back through Paystack to your original payment method. For orders paid offline (cash/transfer directly to the vendor), any refund is arranged directly between buyer and vendor, with Levromart admins available to mediate a dispute.</p>
@@ -16907,8 +17133,8 @@ async function applyAiAddCartItems(items) {
   return { added, failed };
 }
 // [[REMOVECART productId=<id>]] -- same self-closing, repeatable shape as
-// ADDCART. Levi is told to only ever use product ids from the buyer's own
-// "Current cart" context (see buildBuyerContext in api/chat.js), so this
+// ADDCART. Levi is told to only ever use product ids from the customer's own
+// "Current cart" context (see buildCustomerContext in api/chat.js), so this
 // is just a plain delete scoped to the signed-in buyer's own cart row.
 const AI_REMOVECART_TAG_RE = /\[\[REMOVECART productId=([a-zA-Z0-9-]+)\]\]/g;
 function parseAiRemoveCartTags(content) {
@@ -16942,7 +17168,7 @@ async function sendAiDraftMessage(vendorId, btn) {
       btn.disabled = false;
       return;
     }
-    if (!(await ensureBuyerProfile())) throw new Error("Your account profile could not be repaired. Please refresh the app and try again.");
+    if (!(await ensureCustomerProfile())) throw new Error("Your account profile could not be repaired. Please refresh the app and try again.");
     let { data: conversationId, error } = await sb.rpc("get_or_create_conversation", { p_vendor_id: vendorId });
     if (error && /foreign key|buyer_id|vendor_id/i.test(error.message || "")) {
       await fetch("/api/delete-account", {
@@ -17127,7 +17353,7 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
         if (removeResult.removed) parts.push(`${removeResult.removed} removed`);
         navHint.innerHTML = `<i class="fa-solid fa-arrow-right"></i> ${parts.join(", ") || "Cart updated"}`;
         // The cart is the source of truth after an AI cart action. Refresh it
-        // immediately so the buyer sees the newly added/removed rows without
+        // immediately so the customer sees the newly added/removed rows without
         // having to tap the cart icon again. This is a same-view refresh, so
         // any existing cart navigation remains stable while the data is re-read.
         closeLeviAfterCartAction();
@@ -18263,7 +18489,7 @@ async function resolveLeviLocalAction(text) {
 
   const results = [];
 
-  // Fast path for removals: use the buyer's actual cart as the source of truth
+  // Fast path for removals: use the customer's actual cart as the source of truth
   // and match names locally. This avoids an extra search RPC + products query,
   // which was the main reason "remove X from my cart" could feel slow.
   if (mode === "remove") {
@@ -18356,7 +18582,7 @@ async function resolveLeviLocalAction(text) {
       updateCartFab();
       // Show the fresh cart immediately after a successful Levi add. The
       // navigation performs a new cart query, so newly-added quantities are
-      // visible without requiring the buyer to tap the cart icon again.
+      // visible without requiring the customer to tap the cart icon again.
       await navigate("cart", {}, false);
     }
     return { handled: true, reply: lines.join(" ") || "Tell me the product name, or open the product and say “add this to my cart”." };
@@ -18516,6 +18742,7 @@ window.addEventListener("popstate", (e) => {
 });
 
 (async function init() {
+  applyHorizontalBrowsePreference();
   prepareLevromartSplash();
   // Absolute backstop: whatever else happens, the splash can never stay on
   // screen longer than this. The two hides below are the real triggers.
