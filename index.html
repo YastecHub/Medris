@@ -37,12 +37,12 @@
   main > h2 + .card, main > .page-title + .card { margin-top: 0.9rem !important; }
   #settingsAiConsentPageRow .settings-inline-btn { min-width: 4.25rem; justify-content:center; }
   :root {
-    --brand-grad: linear-gradient(135deg, #14a894, #075c52);
+    --brand-grad: linear-gradient(135deg, #25D366, #128C7E);
     --primary: #25D366;
-    --primary-light: #10b981;
-    --primary-grad: #10b981;
+    --primary-light: #25D366;
+    --primary-grad: #25D366;
     --bg: #f5f7fa;
-    --bg-wash: radial-gradient(at top left, rgba(20,184,166,0.10), transparent 55%), radial-gradient(at bottom right, rgba(15,118,110,0.08), transparent 50%);
+    --bg-wash: radial-gradient(at top left, rgba(37,211,102,0.08), transparent 55%), radial-gradient(at bottom right, rgba(18,140,126,0.06), transparent 50%);
     --card: #ffffff;
     --text: #1e293b;
     --text-muted: #64748b;
@@ -60,10 +60,10 @@
   }
   [data-theme="dark"] {
     --primary: #25D366;
-    --primary-light: #10b981;
-    --primary-grad: #10b981;
+    --primary-light: #25D366;
+    --primary-grad: #25D366;
     --bg: #0f172a;
-    --bg-wash: radial-gradient(at top left, rgba(45,212,191,0.10), transparent 55%), radial-gradient(at bottom right, rgba(15,118,110,0.14), transparent 50%);
+    --bg-wash: radial-gradient(at top left, rgba(37,211,102,0.08), transparent 55%), radial-gradient(at bottom right, rgba(18,140,126,0.10), transparent 50%);
     --card: #1e293b;
     --text: #e8edf5;
     --text-muted: #94a3b8;
@@ -77,10 +77,10 @@
   }
   [data-theme="black"] {
     --primary: #25D366;
-    --primary-light: #10b981;
-    --primary-grad: #10b981;
+    --primary-light: #25D366;
+    --primary-grad: #25D366;
     --bg: #000000;
-    --bg-wash: radial-gradient(at top left, rgba(45,212,191,0.08), transparent 55%), radial-gradient(at bottom right, rgba(15,118,110,0.10), transparent 50%);
+    --bg-wash: radial-gradient(at top left, rgba(37,211,102,0.06), transparent 55%), radial-gradient(at bottom right, rgba(18,140,126,0.08), transparent 50%);
     --card: #111111;
     --text: #f5f5f5;
     --text-muted: #a3a3a3;
@@ -515,7 +515,7 @@
   .ai-chat-history-delete { flex-shrink: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.3rem; font-size: 0.85rem; }
   .ai-chat-history-delete:hover { color: var(--danger); }
   .ai-chat-msg { max-width: 84%; padding: 0.6rem 0.85rem; border-radius: 0.9rem; font-size: 0.87rem; line-height: 1.4; white-space: pre-wrap; position: relative; }
-  .ai-chat-msg.user { align-self: flex-end; background: var(--primary-grad); color: white; border-bottom-right-radius: 0.2rem; }
+  .ai-chat-msg.user { align-self: flex-end; background: var(--chat-mine-bg, var(--primary-grad)); color: var(--chat-mine-text, white); border-bottom-right-radius: 0.2rem; }
   .ai-chat-msg.assistant { align-self: flex-start; background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 0.2rem; }
   .ai-chat-msg-react { display: inline-flex; align-items: center; justify-content: center; width: 1.4rem; height: 1.4rem; margin-top: 0.4rem; margin-left: 0.3rem; border: none; background: none; color: var(--text-muted); cursor: pointer; font-size: 0.9rem; opacity: 0.6; transition: opacity 0.15s ease, transform 0.12s ease; touch-action: manipulation; }
   .ai-chat-msg-react:hover { opacity: 1; }
@@ -867,7 +867,7 @@
   .chat-bubble { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; max-width: 75%; padding: 0.55rem 0.85rem; border-radius: 1rem; touch-action: pan-y; font-size: 0.92rem; line-height: 1.4; word-break: break-word; cursor: default; }
   .chat-bubble * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .chat-bubble.chat-long-pressing { transform: scale(0.995); transition: transform .08s ease; }
-  .chat-bubble.mine { align-self: flex-end; background: var(--chat-mine-bg, var(--primary-grad)); color: white; border-bottom-right-radius: 0.25rem; }
+  .chat-bubble.mine { align-self: flex-end; background: var(--chat-mine-bg, var(--primary-grad)); color: var(--chat-mine-text, white); border-bottom-right-radius: 0.25rem; }
   .chat-bubble.theirs { align-self: flex-start; background: var(--input-bg); border: 1px solid var(--border); border-bottom-left-radius: 0.25rem; }
   .chat-bubble .chat-time { display: block; font-size: 0.68rem; opacity: 0.75; margin-top: 0.2rem; }
   .chat-tick { margin-left: 0.35rem; font-size: 0.7rem; }
@@ -7109,7 +7109,7 @@ function initTheme() {
 // distinguishable shade rather than a near-duplicate.
 const ACCENT_PALETTE = [
   { name: "Teal", group: "Greens", base: "#0f766e", light: "#0f766e" },
-  { name: "Mint (Default)", group: "Greens", base: "#10b981", light: "#10b981" },
+  { name: "Mint", group: "Greens", base: "#10b981", light: "#10b981" },
   { name: "Emerald", group: "Greens", base: "#047857", light: "#047857" },
   { name: "Forest", group: "Greens", base: "#166534", light: "#166534" },
   { name: "WhatsApp Green", group: "Greens", base: "#25D366", light: "#25D366" },
@@ -7144,7 +7144,7 @@ const ACCENT_PALETTE = [
   { name: "Indigo", group: "Purples", base: "#4338ca", light: "#4338ca" },
   { name: "Deep Purple", group: "Purples", base: "#4c1d95", light: "#4c1d95" },
 ];
-const DEFAULT_ACCENT_INDEX = 1;
+const DEFAULT_ACCENT_INDEX = 4;
 let currentAccentIndex = DEFAULT_ACCENT_INDEX;
 function lightenHex(hex, amt) {
   const n = parseInt(hex.slice(1), 16);
@@ -7162,7 +7162,15 @@ function applyAccent(index) {
   // theme -- unlike --primary (which intentionally brightens in dark mode
   // for buttons/accents), a big bubble filled with that bright shade makes
   // the white text and read-receipt ticks on top of it hard to read.
-  root.style.setProperty("--chat-mine-bg", preset.base);
+  if (preset.name === "WhatsApp Green") {
+    const mineBg = theme === "light" ? "#d9fdd3" : "#005c4b";
+    const mineText = theme === "light" ? "#111b21" : "#ffffff";
+    root.style.setProperty("--chat-mine-bg", mineBg);
+    root.style.setProperty("--chat-mine-text", mineText);
+  } else {
+    root.style.setProperty("--chat-mine-bg", preset.base);
+    root.style.setProperty("--chat-mine-text", "#ffffff");
+  }
   // Accent colors are intentionally solid: no gradients or brightened end-stops.
   // Keeping every accent surface on the same single tone makes the UI feel
   // cleaner and more consistent, especially on dark/black themes.
@@ -7208,9 +7216,9 @@ function toggleAccentPalettePage() {
 }
 function initAccent() {
   const saved = localStorage.getItem("medris-accent");
-  // Migrate legacy/default accent values to the new Levromart green default.
+  // Migrate the previous built-in default (and legacy defaults) to WhatsApp Green.
   // Other user-selected colors remain untouched.
-  if (saved === "0" || saved === "2" || saved === "5") {
+  if (saved === "0" || saved === "1" || saved === "2" || saved === "5") {
     currentAccentIndex = DEFAULT_ACCENT_INDEX;
     try { localStorage.setItem("medris-accent", String(DEFAULT_ACCENT_INDEX)); } catch (e) {}
   } else {
