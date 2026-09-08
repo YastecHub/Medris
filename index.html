@@ -734,6 +734,7 @@
   .quick-action { display: flex; flex-direction: column; align-items: center; gap: 0.45rem; background: none; border: none; cursor: pointer; font-family: inherit; color: var(--text); font-size: 0.76rem; font-weight: 500; padding: 0; }
   .quick-action-icon { width: 3.3rem; height: 3.3rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; background: var(--primary-grad); color: #fff; box-shadow: var(--shadow-float); transition: transform 0.2s ease, box-shadow 0.2s ease; }
   .quick-action.outline .quick-action-icon { background: var(--card); color: var(--primary); border: 1.5px solid var(--primary); }
+  .hero-quick-actions .quick-action:not(.outline) .quick-action-icon { border: 1.5px solid var(--primary); }
   .quick-action:hover .quick-action-icon { transform: translateY(-4px) scale(1.05); }
   .dash-actions { display: flex; gap: 1.3rem; flex-wrap: wrap; justify-content: center; margin: 1rem 0 1.4rem; }
   .dash-actions .quick-action-icon { width: 2.9rem; height: 2.9rem; font-size: 1.1rem; }
@@ -4613,7 +4614,22 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 #supportMessage{resize:vertical;min-height:9rem;}
 .support-attachments{margin-top:.8rem;padding:.75rem;border:1px dashed var(--ui-border);border-radius:14px;background:var(--ui-surface-2,#f7f9f8);}
 .support-attachments-label{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.45rem;font-weight:700;}
-.support-file-input{width:100%;font-size:.88rem;}
+ .support-file-input{position:absolute !important;width:1px !important;height:1px !important;opacity:0 !important;pointer-events:none !important;}
+.support-file-dropzone{display:flex;align-items:center;gap:.7rem;min-height:74px;padding:.8rem .9rem;border:1px dashed color-mix(in srgb,var(--primary) 38%,var(--ui-border));border-radius:14px;background:color-mix(in srgb,var(--primary) 4%,var(--ui-surface));cursor:pointer;transition:transform .12s ease,border-color .15s ease,background .15s ease;}
+.support-file-dropzone:hover,.support-file-dropzone.dragover{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,var(--ui-surface));}
+.support-file-dropzone:active{transform:scale(.99);}
+.support-file-dropzone-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);font-size:1rem;flex:0 0 auto;}
+.support-file-dropzone-copy{min-width:0;display:grid;gap:.12rem;}
+.support-file-dropzone-copy strong{font-size:.88rem;}
+.support-file-dropzone-copy span{font-size:.74rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.support-requests-accordion{margin-top:1.45rem;border:0;background:transparent;overflow:visible;}
+.support-requests-accordion>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:.7rem;cursor:pointer;padding:.05rem .05rem .7rem;}
+.support-requests-accordion>summary::-webkit-details-marker{display:none;}
+.support-requests-accordion>summary h3{margin:0 !important;}
+.support-requests-summary-right{display:flex;align-items:center;gap:.45rem;color:var(--muted);font-size:.8rem;}
+.support-requests-chevron{transition:transform .18s ease;}
+.support-requests-accordion[open] .support-requests-chevron{transform:rotate(180deg);}
+.support-requests-list{display:grid;gap:.7rem;}
 .support-file-help{display:block;margin-top:.35rem;font-size:.76rem;}
 .support-file-list{display:grid;gap:.35rem;margin-top:.55rem;}
 .support-file-chip{display:flex;align-items:center;gap:.5rem;min-width:0;padding:.45rem .55rem;border-radius:10px;background:var(--ui-surface);border:1px solid var(--ui-border);}
@@ -4676,6 +4692,14 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 .support-info-btn:hover { transform:scale(1.04); }
 .support-page-card { max-width:680px; margin-top:.15rem !important; }
 .support-info-modal-copy { line-height:1.55; }
+</style>
+
+<style id="floating-scroll-visibility">
+@media (max-width:720px){
+  #aiChatFab,#cartFab{transition:transform .2s cubic-bezier(.2,.75,.25,1),opacity .18s ease !important;will-change:transform,opacity;}
+  #aiChatFab.scroll-faded,#cartFab.scroll-faded{transform:translateY(1.15rem) scale(.82) !important;opacity:0 !important;pointer-events:none !important;}
+}
+@media (prefers-reduced-motion:reduce){#aiChatFab,#cartFab{transition:none !important;}#aiChatFab.scroll-faded,#cartFab.scroll-faded{transform:none !important;opacity:1 !important;pointer-events:auto !important;}}
 </style>
 </head>
 <body>
@@ -7883,6 +7907,34 @@ function initBottomNavScrollMotion(){
 // A floating cart button, docked near Levi's FAB, is easier to notice
 // than a nav-tab would be without adding a 6th cramped item to the
 // already-full buyer bottom nav.
+function initFloatingScrollVisibility(){
+  if (window.__leviCartScrollReady) return;
+  window.__leviCartScrollReady = true;
+  let lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+  let timer = 0;
+  let raf = 0;
+  const apply = () => {
+    raf = 0;
+    const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+    const delta = y - lastY;
+    if (Math.abs(delta) >= 2 && y > 40) {
+      if (delta > 0) {
+        byId('aiChatFab')?.classList.add('scroll-faded');
+        byId('cartFab')?.classList.add('scroll-faded');
+      }
+      lastY = y;
+    }
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      byId('aiChatFab')?.classList.remove('scroll-faded');
+      byId('cartFab')?.classList.remove('scroll-faded');
+      lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+    }, 260);
+  };
+  window.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(apply); }, {passive:true});
+  ['aiChatFab','cartFab'].forEach(id => byId(id)?.addEventListener('click', () => byId(id)?.classList.remove('scroll-faded'), {passive:true}));
+}
+
 function updateCartFab() {
   const fab = byId("cartFab");
   if (!fab) return;
@@ -11752,7 +11804,12 @@ async function renderSupportRequest() {
     <div class="support-attachments">
       <div class="support-attachments-label"><span><i class="fa-solid fa-paperclip"></i> Attach files</span><span class="muted" style="font-size:.76rem;">Optional</span></div>
       <input class="support-file-input" id="supportAttachments" type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt" onchange="previewSupportAttachments(this)">
-      <small class="support-file-help muted">Add screenshots, payment evidence, photos, PDFs or other useful files. Up to 5 files, 10 MB each.</small>
+      <label class="support-file-dropzone" id="supportFileDropzone" for="supportAttachments" onclick="event.stopPropagation()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleSupportFileDrop(event)">
+        <span class="support-file-dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+        <span class="support-file-dropzone-copy"><strong>Upload files</strong><span>Tap to choose, or drag screenshots and documents here</span></span>
+        <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:var(--muted);"></i>
+      </label>
+      <small class="support-file-help muted">Screenshots, payment evidence, photos, PDFs or other useful files. Up to 5 files, 10 MB each.</small>
       <div id="supportFileList" class="support-file-list" aria-live="polite"></div>
     </div>
     <div class="flex" style="justify-content:flex-end;margin-top:.85rem;">
@@ -11760,8 +11817,8 @@ async function renderSupportRequest() {
     </div>
   </div>`;
   if (error) return html + errorStateHtml(error);
-  html += `<div class="support-requests-head"><h3>Your requests</h3>${requests?.length ? `<span class="muted" style="font-size:.8rem;">${requests.length} request${requests.length === 1 ? '' : 's'}</span>` : ''}</div>`;
-  if (!requests?.length) return html + `<div class="empty-state">You have not sent a support request yet.</div>`;
+  if (!requests?.length) return html + `<div class="support-requests-accordion"><div class="support-requests-empty-head"><h3>Your requests</h3></div><div class="empty-state">You have not sent a support request yet.</div></div>`;
+  html += `<details class="support-requests-accordion"><summary><h3>Your requests</h3><span class="support-requests-summary-right"><span>${requests.length} request${requests.length === 1 ? '' : 's'}</span><i class="fa-solid fa-chevron-down support-requests-chevron"></i></span></summary><div class="support-requests-list">`;
   for (const r of requests) {
     const attachments = await getSupportAttachmentHtml(r.attachments);
     html += `<details class="support-request-accordion">
@@ -11777,7 +11834,21 @@ async function renderSupportRequest() {
       </div>
     </details>`;
   }
+  html += `</div></details>`;
   return html;
+}
+function handleSupportFileDrop(event) {
+  event.preventDefault();
+  const zone = event.currentTarget;
+  zone?.classList.remove('dragover');
+  const input = byId('supportAttachments');
+  if (!input) return;
+  const files = Array.from(event.dataTransfer?.files || []);
+  if (!files.length) return;
+  const dt = new DataTransfer();
+  files.slice(0, 5).forEach(f => dt.items.add(f));
+  input.files = dt.files;
+  previewSupportAttachments(input);
 }
 function previewSupportAttachments(input) {
   const list = byId('supportFileList');
@@ -16893,6 +16964,7 @@ window.addEventListener("popstate", (e) => {
   initLeviVisible();
   initAiChatMic();
   initBottomNavScrollMotion();
+  initFloatingScrollVisibility();
   byId("footerYear").textContent = new Date().getFullYear();
   history.replaceState({ view: "home", params: {} }, "", location.pathname + location.search);
   // Never hold the first paint hostage to an Auth network round-trip.
