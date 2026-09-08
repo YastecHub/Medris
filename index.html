@@ -4737,7 +4737,6 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 .chat-bubble.photo-only { background:transparent !important; padding:.08rem !important; box-shadow:none !important; }
 .chat-bubble:has(.chat-image-attachment) { background:transparent !important; padding:.08rem !important; box-shadow:none !important; }
 .chat-bubble .chat-image-attachment + .chat-time { color:var(--text-muted) !important; }
-.image-lightbox-download { position:absolute; left:50%; bottom:1.4rem; transform:translateX(-50%); z-index:3; }
 .legal-inline-link { color:var(--primary); font-weight:600; text-decoration:underline; text-underline-offset:2px; }
 /* Support: keep request list compact and clearly separated. */
 .support-requests-accordion { margin-top:1.25rem !important; }
@@ -4822,8 +4821,8 @@ body.product-detail-view #aiChatFab{display:none !important;pointer-events:none 
 .order-date-filter-label > select{min-width:160px !important;}
 @media(max-width:430px){.order-date-filter-row{gap:.4rem !important}.order-date-filter-label{width:100% !important}.order-date-filter-label > select{width:100% !important;min-width:0 !important;}}
 /* Image long-press/reaction surfaces: suppress browser image selection/menus. */
-.chat-image-attachment,.chat-image-attachment img,.image-lightbox img{user-select:none !important;-webkit-user-select:none !important;-webkit-touch-callout:none !important;-webkit-user-drag:none !important;}
-.image-lightbox-download{touch-action:manipulation !important;}
+.chat-image-attachment,.chat-image-attachment img{user-select:none !important;-webkit-user-select:none !important;-webkit-touch-callout:none !important;-webkit-user-drag:none !important;}
+.image-lightbox img{user-select:auto !important;-webkit-user-select:auto !important;-webkit-touch-callout:default !important;-webkit-user-drag:auto !important;}
 /* Drawer swipe feedback. */
 #profilePanel,#notifPanel{will-change:transform;}
 </style>
@@ -4855,6 +4854,12 @@ body.product-detail-view #aiChatFab{display:none !important;pointer-events:none 
 @media(prefers-reduced-motion:reduce){.home-loading-search,.home-loading-actions span{animation:none}}
 </style>
 
+
+<style id="storefront-loading-resilience">
+.storefront-loading-shell{padding-top:.2rem;}
+.storefront-loading-brand{display:flex;align-items:center;gap:.85rem;padding:1rem;border:1px solid var(--border);background:var(--card);border-radius:1rem;box-shadow:var(--shadow,none);}
+.storefront-loading-avatar{width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 14%,var(--card));color:var(--primary);font-size:1.25rem;flex:0 0 auto;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -5190,7 +5195,7 @@ body.product-detail-view #aiChatFab{display:none !important;pointer-events:none 
 
 <div id="productImageLightbox" class="image-lightbox hidden" onclick="closeProductImageLightbox(event)">
   <button type="button" class="image-lightbox-close" onclick="closeProductImageLightbox(event)"><i class="fa-solid fa-xmark"></i></button>
-  <img id="productLightboxImage" src="" alt="Product image" /><a id="imageLightboxDownload" class="btn btn-sm image-lightbox-download hidden" href="#" download><i class="fa-solid fa-download"></i> Save image</a>
+  <img id="productLightboxImage" src="" alt="Product image" draggable="false" />
 </div>
 
 <div id="packageModal" class="modal hidden">
@@ -8663,22 +8668,14 @@ function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
 function navigationShellHtml(view) {
-  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors"};
-  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store"};
+  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",storefront:"Storefront"};
+  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",storefront:"fa-store"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
-  if(view === "home") return `<div class="instant-page-shell home-loading-shell" aria-live="polite">
-    <div class="home-loading-hero">
-      <div class="home-loading-search"></div>
-      <div class="home-loading-actions"><span></span><span></span><span></span></div>
-    </div>
-    <div class="home-loading-line"></div>
-    <div class="home-loading-rail"><span></span><span></span><span></span></div>
-    <div class="home-loading-title"></div>
-    <div class="home-loading-grid"><span></span><span></span><span></span></div>
-  </div>`;
+  if(view === "home") return homeFallbackHtml("Connecting to the marketplace…");
   if(!title)return "";
   if(view==='vendorDashboard') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> My Shop</h2><div class="dash-tabs shop-tabs-rail"><button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button><button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button><button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button><button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions</button></div><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating your shop…</div></div>`;
   if(view==='vendorOrders'||view==='buyerOrders') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating orders…</div></div>`;
+  if(view==='storefront') return `<div class="instant-page-shell storefront-loading-shell"><div class="storefront-loading-brand"><div class="storefront-loading-avatar"><i class="fa-solid fa-store"></i></div><div><h2 style="margin:.1rem 0 .15rem;"><i class="fa-solid ${icon}"></i> Storefront</h2><div class="instant-nav-status" style="margin:0;"><i class="fa-solid fa-arrows-rotate fa-spin"></i> Opening this shop…</div></div></div></div>`;
   return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating…</div></div>`;
 }
 
@@ -8984,7 +8981,7 @@ let currentSectorId = null;
 let currentHomeCategoryId = null;
 let sectors = [];
 
-function homeQueryTimeout(promise, label, ms = 5500) {
+function homeQueryTimeout(promise, label, ms = 2500) {
   const timeout = new Promise((resolve) => setTimeout(() => {
     resolve({ data: null, error: new Error(`${label} request timed out`) });
   }, ms));
@@ -9030,10 +9027,10 @@ async function renderHome() {
     return `<div class="offline-browse-notice"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Connect once to load Levromart's marketplace, then the app will keep a browseable copy available for your next offline visit.</span></div><div class="empty-state"><i class="fa-solid fa-shop" style="display:block;font-size:1.8rem;margin-bottom:.55rem;"></i>Levromart is ready. Your marketplace will appear here after the first online load.</div>`;
   }
   const [categoryResult, sectorResult] = await Promise.all([
-    homeQueryTimeout(sb.from("categories").select("*").order("name"), "categories"),
+    homeQueryTimeout(sb.from("categories").select("*").order("name"), "categories", 1800),
     sectors.length
       ? Promise.resolve({ data: sectors, error: null })
-      : homeQueryTimeout(sb.from("sectors").select("*").order("sort_order"), "sectors"),
+      : homeQueryTimeout(sb.from("sectors").select("*").order("sort_order"), "sectors", 1800),
   ]);
   const categories = categoryResult.data || getOfflineHomeCache()?.categories || [];
   const sectorsData = sectorResult.data || getOfflineHomeCache()?.sectors || [];
@@ -9443,8 +9440,8 @@ async function filterHomeProducts() {
   try {
     let matchingIds = null;
     if (search) {
-      const { data: idRows } = await homeQueryTimeout(sb.rpc("search_product_ids", { p_query: search }), "product search", 4500);
-    matchingIds = (idRows || []).map((r) => r.id);
+      const { data: idRows } = await homeQueryTimeout(sb.rpc("search_product_ids", { p_query: search }), "product search", 2500);
+      matchingIds = (idRows || []).map((r) => r.id);
     if (matchingIds.length === 0) {
       const fallback = await fetchFallbackProducts();
       grid.innerHTML = noResultsWithFallbackHtml(`No product named "${search}" yet - but here's what's available:`, fallback);
@@ -10426,34 +10423,9 @@ function openChatImageLightboxFromMessage(event, el) {
 function openChatImageLightbox(url, name) {
   const box = byId("productImageLightbox");
   const img = byId("productLightboxImage");
-  const dl = byId("imageLightboxDownload");
   if (!box || !img || !url) return;
   img.src = url; img.alt = name || "Chat image";
-  if (dl) { dl.href = url; dl.download = sanitizeFilename(name || "levromart-image"); dl.classList.remove("hidden"); dl.onclick = (e) => { e.preventDefault(); e.stopPropagation(); saveImageFromLightbox(url, name || "levromart-image"); }; }
   box.classList.remove("hidden");
-}
-async function saveImageFromLightbox(url,name='levromart-image') {
-  if (!url) return;
-  const filename = sanitizeFilename(name || 'levromart-image') + (/[.]\w{2,5}$/.test(name || '') ? '' : '.jpg');
-  try {
-    const res = await fetch(url, { mode:'cors', cache:'force-cache' });
-    if (!res.ok) throw new Error('download failed');
-    const blob = await res.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = filename;
-    a.rel = 'noopener';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(objectUrl), 3000);
-    showToast('Image saved to your downloads.', 'success');
-  } catch (_) {
-    // Do not redirect to the raw image. A failed download is reported instead.
-    showToast('Your browser blocked automatic saving for this image. Try Save image again or use the browser share/save option.', 'info');
-  }
 }
 function attachmentHtml(m) {
   if (!m.attachment_url) return "";
@@ -11187,13 +11159,11 @@ function openProductImageLightbox() {
   if (!photos.length) return;
   const img = byId("productLightboxImage");
   if (img) img.src = photos[productGalleryIndex || 0];
-  byId("imageLightboxDownload")?.classList.add("hidden");
   byId("productImageLightbox")?.classList.remove("hidden");
 }
 function closeProductImageLightbox(event) {
   if (event && event.target?.id !== "productImageLightbox" && !event.target?.closest?.(".image-lightbox-close")) return;
   byId("productImageLightbox")?.classList.add("hidden");
-  byId("imageLightboxDownload")?.classList.add("hidden");
 }
 function openProductGallerySlide(event, index) {
   event?.stopPropagation?.();
@@ -11280,7 +11250,6 @@ function openPackageDetailLightbox() {
   if (!photos.length) return;
   const img = byId("productLightboxImage");
   if (img) img.src = photos[packageDetailGalleryIndex || 0];
-  byId("imageLightboxDownload")?.classList.add("hidden");
   byId("productImageLightbox")?.classList.remove("hidden");
 }
 function openPackageGallerySlide(event, index) {
@@ -11731,9 +11700,16 @@ function renderVendorsDirectory() {
     <div id="vendorsMap" style="height:min(60vh,420px);border-radius:0.9rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;"></div>
   </div>`;
   setTimeout(async () => {
-    await loadVendorsDirectory();
-    if (buyerDistanceAutoEnabled) scheduleAutomaticLocationRefresh();
-    else updateVendorsLocationUI();
+    try {
+      await loadVendorsDirectory();
+      if (buyerDistanceAutoEnabled) scheduleAutomaticLocationRefresh();
+      else updateVendorsLocationUI();
+    } catch (err) {
+      console.warn("[Levromart] Vendor directory failed:", err);
+      const grid = byId("vendorsGrid");
+      if (grid) grid.innerHTML = errorStateHtml(err);
+      updateVendorsLocationUI();
+    }
   }, 0);
   return html;
 }
@@ -12077,20 +12053,58 @@ function closeStorefrontShareModal(goBack = false) {
   if (goBack && wasTracked && history.state?.dismissibleModal === "storefrontShareModal") history.back();
 }
 async function renderStorefront(vendorId) {
-  const { data: v, error } = await sb.from("vendors").select("*, sector:sectors(name, icon)").eq("id", vendorId).eq("verification_status", "verified").maybeSingle();
-  if (error || !v) return '<div class="empty-state">Storefront not found.</div>';
+  if (!vendorId) return '<div class="empty-state">Storefront not found.</div>';
+  // The vendor record is the only critical request. Everything else is
+  // optional enrichment and is isolated so a slow stats/reviews/packages
+  // request can never blank the storefront.
+  let vResult;
+  try {
+    vResult = await homeQueryTimeout(
+      sb.from("vendors").select("*, sector:sectors(name, icon)").eq("id", vendorId).eq("verification_status", "verified").maybeSingle(),
+      "storefront vendor",
+      2500
+    );
+  } catch (err) {
+    return errorStateHtml(err);
+  }
+  const v = vResult?.data;
+  if (vResult?.error || !v) return '<div class="empty-state">Storefront not found.</div>';
   if (!v.is_active) return '<div class="empty-state"><i class="fa-solid fa-store-slash" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>This shop is currently paused. Check back later.</div>';
-  updateStorefrontSocialMeta(v);
 
-  const [{ data: products }, { data: stats }, { data: reviews }, { data: packages }] = await Promise.all([
-    sb.from("products").select("id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, category:categories(name)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
-    sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
-    sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
-    sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
+  updateStorefrontSocialMeta(v);
+  const vendorCacheKey = `storefront:${v.id}`;
+  window.__storefrontCurrentVendor = v;
+  if (!window.__storefrontCache) window.__storefrontCache = new Map();
+
+  // Pull the non-critical pieces independently. Even if one request errors
+  // or stalls, the page below is still a complete, usable storefront.
+  const [productsResult, statsResult, reviewsResult, packagesResult] = await Promise.all([
+    homeQueryTimeout(
+      sb.from("products").select("id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, category:categories(name)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
+      "storefront products",
+      2500
+    ),
+    homeQueryTimeout(sb.rpc("get_vendor_stats", { p_vendor_id: v.id }), "storefront stats", 2200),
+    homeQueryTimeout(
+      sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
+      "storefront reviews",
+      2200
+    ),
+    homeQueryTimeout(
+      sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
+      "storefront packages",
+      2200
+    ),
   ]);
 
+  const products = productsResult?.data || [];
+  const stats = statsResult?.data || [];
+  const reviews = reviewsResult?.data || [];
+  const packages = packagesResult?.data || [];
+  window.__storefrontCache.set(vendorCacheKey, { vendor:v, products, stats, reviews, packages, savedAt:Date.now() });
+
   const st = (stats && stats[0]) || {};
-  const allProducts = products || [];
+  const allProducts = products;
   window.__storefrontProducts = allProducts;
   window.__storefrontExpanded = false;
   storefrontCatalogTab = "products";
@@ -12100,7 +12114,6 @@ async function renderStorefront(vendorId) {
     ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${esc(v.logo_url)}','${esc(v.business_name || "Vendor")}',event)"><img src="${esc(v.logo_url)}" alt="${esc(v.business_name || "Vendor")}" loading="eager" draggable="false" /></button>`
     : `<button type="button" class="storefront-avatar storefront-avatar-button storefront-avatar-fallback-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('','${esc(v.business_name || "Vendor")}',event)">${avatarFallbackHtml(v.business_name || "Vendor", "100%", "", v.business_name || "Vendor")}</button>`;
   const location = [v.address, v.city].filter(Boolean).map(esc).join(", ") || "Online business";
-
   const storefrontMoreItems = [
     v.sector?.name ? `<div class="ms-item"><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</div>` : "",
     v.cac_number ? `<div class="ms-item"><i class='fa-solid fa-building-columns'></i> CAC verified</div>` : "",
@@ -12111,9 +12124,7 @@ async function renderStorefront(vendorId) {
   ].filter(Boolean).join("");
 
   let html = `<section class="storefront-profile">
-    <div class="storefront-cover">
-      ${coverPhotos.length ? `<div class="hero-photo-row">${coverPhotos.map((u) => `<img src="${esc(u)}" alt="" loading="lazy" />`).join("")}</div>` : ""}
-    </div>
+    <div class="storefront-cover">${coverPhotos.length ? `<div class="hero-photo-row">${coverPhotos.map((u) => `<img src="${esc(u)}" alt="" loading="lazy" />`).join("")}</div>` : ""}</div>
     <div class="storefront-profile-body">
       <div class="storefront-avatar-row">
         ${logo}
@@ -12138,62 +12149,23 @@ async function renderStorefront(vendorId) {
 
   if (allProducts.length) {
     const featured = allProducts.slice(0, 6);
-    html += `<section class="storefront-featured">
-      <div class="storefront-section-head"><h3>Latest from ${esc(v.business_name || "this shop")}</h3>${allProducts.length > 6 ? `<button class="btn btn-sm btn-outline" onclick="document.getElementById('storefrontProductsShell')?.scrollIntoView({behavior:'smooth',block:'start'})">View products</button>` : ""}</div>
-      <div class="storefront-product-strip">${featured.map((p) => {
-        const img = p.photos?.[0];
-        const price = p.is_service ? `${naira(p.sale_price)}${servicePriceSuffix(p)}` : p.sale_price != null ? naira(p.sale_price) : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "View details";
-        return `<div class="storefront-product-mini" onclick="navigate('productDetail',{productId:'${p.id}'})">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" />` : `<div class="mini-placeholder"><i class="fa-solid fa-box"></i></div>`}<strong>${esc(p.name)}</strong><span>${price}</span></div>`;
-      }).join("")}</div>
-    </section>`;
+    html += `<section class="storefront-featured"><div class="storefront-section-head"><h3>Latest from ${esc(v.business_name || "this shop")}</h3>${allProducts.length > 6 ? `<button class="btn btn-sm btn-outline" onclick="document.getElementById('storefrontProductsShell')?.scrollIntoView({behavior:'smooth',block:'start'})">View products</button>` : ""}</div><div class="storefront-product-strip">${featured.map((p) => { const img=p.photos?.[0]; const price=p.is_service?`${naira(p.sale_price)}${servicePriceSuffix(p)}`:p.sale_price!=null?naira(p.sale_price):p.rental_rate!=null?`${naira(p.rental_rate)}/${p.rental_rate_unit}`:"View details"; return `<div class="storefront-product-mini" onclick="navigate('productDetail',{productId:'${p.id}'})">${img?`<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" />`:`<div class="mini-placeholder"><i class="fa-solid fa-box"></i></div>`}<strong>${esc(p.name)}</strong><span>${price}</span></div>`; }).join("")}</div></section>`;
   }
 
-  if (packages && packages.length > 0) {
-    window.__storefrontPackages = packages || [];
-    html += `<section class="storefront-packages storefront-packages-collapsed" id="storefrontPackagesSection">
-      <div class="storefront-packages-head" style="display:flex;align-items:center;justify-content:space-between;gap:.45rem;">
-        <button class="storefront-packages-toggle" type="button" aria-expanded="false" onclick="toggleStorefrontPackages()">
-          <span><i class="fa-solid fa-box-open"></i><strong>Special packages</strong><em>${packages.length}</em></span>
-          <i class="fa-solid fa-chevron-down storefront-packages-chevron"></i>
-        </button>
-        <button type="button" class="icon-btn package-search-toggle" aria-label="Search special packages" title="Search packages" onclick="toggleStorefrontPackageSearch(event)"><i class="fa-solid fa-magnifying-glass"></i></button>
-      </div>
-      <div class="storefront-packages-body" id="storefrontPackagesBody">
-        <div class="package-search-row hidden" id="storefrontPackageSearchRow">
-          <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i>
-          <input type="text" id="storefrontPackageSearch" placeholder="Search packages or what's inside…" oninput="filterStorefrontPackages()" />
-          <button type="button" class="icon-btn" onclick="clearStorefrontPackageSearch()" aria-label="Clear package search"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="grid" id="storefrontPackagesGrid">${packages.map((pkg) => packageCardHtml(pkg, v.delivery_fee, true)).join("")}</div>
-      </div>
-    </section>`;
-  } else {
-    window.__storefrontPackages = [];
-  }
+  if (packages.length > 0) {
+    window.__storefrontPackages = packages;
+    html += `<section class="storefront-packages storefront-packages-collapsed" id="storefrontPackagesSection"><div class="storefront-packages-head" style="display:flex;align-items:center;justify-content:space-between;gap:.45rem;"><button class="storefront-packages-toggle" type="button" aria-expanded="false" onclick="toggleStorefrontPackages()"><span><i class="fa-solid fa-box-open"></i><strong>Special packages</strong><em>${packages.length}</em></span><i class="fa-solid fa-chevron-down storefront-packages-chevron"></i></button><button type="button" class="icon-btn package-search-toggle" aria-label="Search special packages" title="Search packages" onclick="toggleStorefrontPackageSearch(event)"><i class="fa-solid fa-magnifying-glass"></i></button></div><div class="storefront-packages-body" id="storefrontPackagesBody"><div class="package-search-row hidden" id="storefrontPackageSearchRow"><i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);"></i><input type="text" id="storefrontPackageSearch" placeholder="Search packages or what's inside…" oninput="filterStorefrontPackages()" /><button type="button" class="icon-btn" onclick="clearStorefrontPackageSearch()" aria-label="Clear package search"><i class="fa-solid fa-xmark"></i></button></div><div class="grid" id="storefrontPackagesGrid">${packages.map((pkg) => packageCardHtml(pkg, v.delivery_fee, true)).join("")}</div></div></section>`;
+  } else { window.__storefrontPackages = []; }
 
-  html += `<section class="storefront-products-shell" id="storefrontProductsShell">
-    <div class="storefront-section-head"><h3>Products & services</h3></div>
-    <div class="catalog-type-tabs storefront-catalog-tabs" role="tablist" aria-label="Storefront products and services">
-      <button type="button" id="storefrontProductsTab" class="catalog-type-tab active" role="tab" aria-selected="true" onclick="switchStorefrontCatalogTab('products')"><i class="fa-solid fa-box"></i> Products <span id="storefrontProductsCount"></span></button>
-      <button type="button" id="storefrontServicesTab" class="catalog-type-tab" role="tab" aria-selected="false" onclick="switchStorefrontCatalogTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services <span id="storefrontServicesCount"></span></button>
-    </div>
-    ${allProducts.length ? `<div class="storefront-products-toolbar"><div class="storefront-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="storefrontSearch" placeholder="Search this shop" oninput="filterStorefrontProducts()" /></div><div class="storefront-view-buttons"><button class="btn btn-sm btn-outline active" id="storefrontViewGridBtn" onclick="switchStorefrontView('grid')" title="Grid view"><i class="fa-solid fa-grip"></i></button><button class="btn btn-sm btn-outline" id="storefrontViewTableBtn" onclick="switchStorefrontView('table')" title="List view"><i class="fa-solid fa-list"></i></button></div></div>` : ""}
-    <div id="storefrontGrid" class="grid">${allProducts.length ? "<p class='muted'>Loading…</p>" : '<div class="empty-state">No products listed yet.</div>'}</div>
-    <div id="storefrontTable" class="hidden" style="overflow-x:auto;max-height:30rem;overflow-y:auto;"></div>
-    <div class="storefront-view-more" id="storefrontViewMoreWrap"></div>
-  </section>`;
+  html += `<section class="storefront-products-shell" id="storefrontProductsShell"><div class="storefront-section-head"><h3>Products & services</h3></div><div class="catalog-type-tabs storefront-catalog-tabs" role="tablist" aria-label="Storefront products and services"><button type="button" id="storefrontProductsTab" class="catalog-type-tab active" role="tab" aria-selected="true" onclick="switchStorefrontCatalogTab('products')"><i class="fa-solid fa-box"></i> Products <span id="storefrontProductsCount"></span></button><button type="button" id="storefrontServicesTab" class="catalog-type-tab" role="tab" aria-selected="false" onclick="switchStorefrontCatalogTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services <span id="storefrontServicesCount"></span></button></div>${allProducts.length ? `<div class="storefront-products-toolbar"><div class="storefront-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="storefrontSearch" placeholder="Search this shop" oninput="filterStorefrontProducts()" /></div><div class="storefront-view-buttons"><button class="btn btn-sm btn-outline active" id="storefrontViewGridBtn" onclick="switchStorefrontView('grid')" title="Grid view"><i class="fa-solid fa-grip"></i></button><button class="btn btn-sm btn-outline" id="storefrontViewTableBtn" onclick="switchStorefrontView('table')" title="List view"><i class="fa-solid fa-list"></i></button></div></div>` : ""}<div id="storefrontGrid" class="grid">${allProducts.length ? "<p class='muted'>Loading…</p>" : '<div class="empty-state">No products listed yet.</div>'}</div><div id="storefrontTable" class="hidden" style="overflow-x:auto;max-height:30rem;overflow-y:auto;"></div><div class="storefront-view-more" id="storefrontViewMoreWrap"></div></section>`;
 
-  if (reviews && reviews.length > 0) {
-    html += `<section class="storefront-reviews" id="vendorReviews"><button type="button" class="storefront-reviews-head" onclick="toggleReviewsList()"><h3 style="margin:0;">Reviews${st.review_count ? ` (${st.review_count})` : ""}</h3><i class="fa-solid fa-chevron-down" id="reviewsChevron" style="transition:transform 0.2s;color:var(--text-muted);"></i></button><div id="reviewsList">${reviews.map((r) => `<div class="card review-card">${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.3rem;height:2.3rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Buyer", "2.3rem", "", r.buyer_name || "Buyer")}<div><div class="flex" style="justify-content:space-between;gap:1rem;"><strong>${esc(r.buyer_name || "A buyer")}</strong><span class="star-display">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span></div>${r.comment ? `<p style="margin:0.3rem 0 0;">${esc(r.comment)}</p>` : ""}<p class="muted" style="font-size:0.75rem;margin-top:0.2rem;">${new Date(r.created_at).toLocaleDateString()}</p></div></div>`).join("")}</div></section>`;
-  } else {
-    html += `<section class="storefront-reviews" id="vendorReviews"><h3 style="margin-top:0;">Reviews</h3><p class="muted">No reviews yet.</p></section>`;
-  }
+  if (reviews.length > 0) html += `<section class="storefront-reviews" id="vendorReviews"><button type="button" class="storefront-reviews-head" onclick="toggleReviewsList()"><h3 style="margin:0;">Reviews${st.review_count ? ` (${st.review_count})` : ""}</h3><i class="fa-solid fa-chevron-down" id="reviewsChevron" style="transition:transform 0.2s;color:var(--text-muted);"></i></button><div id="reviewsList">${reviews.map((r) => `<div class="card review-card">${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.3rem;height:2.3rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Buyer", "2.3rem", "", r.buyer_name || "Buyer")}<div><div class="flex" style="justify-content:space-between;gap:1rem;"><strong>${esc(r.buyer_name || "A buyer")}</strong><span class="star-display">${"★".repeat(r.rating)}${"☆".repeat(5-r.rating)}</span></div>${r.comment ? `<p style="margin:0.3rem 0 0;">${esc(r.comment)}</p>` : ""}<p class="muted" style="font-size:0.75rem;margin-top:0.2rem;">${new Date(r.created_at).toLocaleDateString()}</p></div></div>`).join("")}</div></section>`;
+  else html += `<section class="storefront-reviews" id="vendorReviews"><h3 style="margin-top:0;">Reviews</h3><p class="muted">No reviews yet.</p></section>`;
 
   storefrontViewMode = "grid";
   if (allProducts.length) setTimeout(filterStorefrontProducts, 0);
   return html;
 }
-
 function scrollToVendorReviews() {
   const reviews = byId("vendorReviews");
   if (!reviews) return;
@@ -16327,7 +16299,7 @@ async function shareCurrentAiChat() {
   }
 }
 document.addEventListener("contextmenu", (e) => {
-  if (e.target?.closest?.(".chat-image-attachment img, #productImageLightbox img")) e.preventDefault();
+  if (e.target?.closest?.(".chat-image-attachment img")) e.preventDefault();
 }, { capture:true });
 
 window.addEventListener("scroll", () => { closeAllInfoPopovers(); }, { passive:true });
