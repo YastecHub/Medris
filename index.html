@@ -4889,6 +4889,139 @@ body.product-detail-view #aiChatFab{display:none !important;pointer-events:none 
 .storefront-loading-brand{display:flex;align-items:center;gap:.85rem;padding:1rem;border:1px solid var(--border);background:var(--card);border-radius:1rem;box-shadow:var(--shadow,none);}
 .storefront-loading-avatar{width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 14%,var(--card));color:var(--primary);font-size:1.25rem;flex:0 0 auto;}
 </style>
+
+<style id="2026-09-08-final-chat-static-and-table">
+/* The DM shell itself is completely anchored. The message list is the ONLY
+   surface that may scroll vertically. This prevents iOS/WebKit rubber-band
+   movement of the entire chat page while preserving normal chat scrolling. */
+html.chat-route-lock,
+body.chat-full-page{
+  overflow:hidden !important;
+  overscroll-behavior:none !important;
+}
+body.chat-full-page{
+  position:fixed !important;
+  left:0 !important;
+  right:0 !important;
+  top:0 !important;
+  bottom:0 !important;
+  width:100% !important;
+  height:100% !important;
+  min-height:100% !important;
+  touch-action:none !important;
+}
+body.chat-full-page > #app{
+  position:fixed !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  overflow:hidden !important;
+  touch-action:none !important;
+}
+.chat-page-wrap{
+  position:fixed !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100dvh !important;
+  min-height:100dvh !important;
+  max-height:100dvh !important;
+  overflow:hidden !important;
+  overscroll-behavior:none !important;
+  touch-action:none !important;
+}
+.chat-page-wrap .chat-thread{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  height:auto !important;
+  overflow:hidden !important;
+  overscroll-behavior:none !important;
+  touch-action:none !important;
+}
+.chat-page-wrap .chat-messages{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  height:auto !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  overscroll-behavior-y:contain !important;
+  overscroll-behavior-x:none !important;
+  -webkit-overflow-scrolling:touch !important;
+  touch-action:pan-y !important;
+}
+.chat-page-wrap .chat-page-header,
+.chat-page-wrap .chat-input-row,
+.chat-page-wrap .chat-input-row *{
+  touch-action:manipulation !important;
+}
+.chat-page-wrap .chat-bubble{
+  touch-action:pan-y !important;
+  overflow-wrap:anywhere !important;
+}
+.chat-page-wrap .chat-bubble-wrap.chat-swipe-active .chat-bubble{
+  transition:none !important;
+}
+
+/* Storefront list/table: the table itself gets a bounded vertical scroll
+   surface, while the Available column is genuinely centered so the visual
+   space is balanced on both sides. */
+#storefrontTable{
+  max-height:30rem !important;
+  overflow-y:auto !important;
+  overflow-x:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior:contain !important;
+  scrollbar-width:none !important;
+}
+#storefrontTable::-webkit-scrollbar{display:none !important;}
+#storefrontTable .storefront-data-table{
+  width:100% !important;
+  min-width:620px !important;
+  border-collapse:collapse !important;
+  table-layout:fixed !important;
+}
+#storefrontTable .storefront-data-table th,
+#storefrontTable .storefront-data-table td{
+  padding:.62rem .55rem !important;
+  border-bottom:1px solid var(--border) !important;
+  vertical-align:middle !important;
+}
+#storefrontTable .storefront-data-table th:nth-child(1),
+#storefrontTable .storefront-data-table td:nth-child(1){width:28% !important;text-align:left !important;}
+#storefrontTable .storefront-data-table th:nth-child(2),
+#storefrontTable .storefront-data-table td:nth-child(2){width:25% !important;text-align:left !important;}
+#storefrontTable .storefront-data-table th:nth-child(3),
+#storefrontTable .storefront-data-table td:nth-child(3){width:27% !important;text-align:left !important;}
+#storefrontTable .storefront-data-table th.available-col,
+#storefrontTable .storefront-data-table td.available-col{
+  width:20% !important;
+  text-align:center !important;
+  padding-left:.35rem !important;
+  padding-right:.35rem !important;
+}
+#storefrontTable .storefront-data-table th.available-col{
+  font-weight:800 !important;
+}
+@media(max-width:720px){
+  #storefrontTable{max-height:24rem !important;}
+  #storefrontTable .storefront-data-table{min-width:0 !important;}
+  #storefrontTable .storefront-data-table th,
+  #storefrontTable .storefront-data-table td{padding:.62rem .35rem !important;}
+}
+</style>
+
+
+<script id="2026-09-08-chat-route-lock-js">
+(function(){
+  const applyChatLock = () => {
+    const on = document.body?.classList.contains("chat-full-page");
+    document.documentElement.classList.toggle("chat-route-lock", !!on);
+  };
+  applyChatLock();
+  const mo = new MutationObserver(applyChatLock);
+  if (document.body) mo.observe(document.body, {attributes:true, attributeFilter:["class"]});
+})();
+</script>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -5426,6 +5559,7 @@ body.product-detail-view #aiChatFab{display:none !important;pointer-events:none 
   <input type="text" id="aiChatHistorySearch" placeholder="Search chats…" oninput="searchAiChatHistory()" />
   <div id="aiChatHistoryList" class="ai-chat-history-panel"></div>
   <div id="aiChatMessages" class="ai-chat-messages"></div>
+  <button type="button" id="aiChatBottomBtn" class="ai-chat-bottom-btn hidden" onclick="scrollAiChatToBottom()" aria-label="Jump to latest message" title="Jump to latest message"><i class="fa-solid fa-arrow-down"></i></button>
   <div id="aiVoiceStatus" class="voice-recording-status hidden" aria-live="polite">
     <div class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <span id="aiVoiceStatusText">Listening...</span>
@@ -8902,7 +9036,7 @@ function clearAutoScrollTimers() {
   autoScrollTimers.forEach(clearInterval);
   autoScrollTimers = [];
 }
-function setupAutoScroll(container, { interval = 28, pauseAfterInteraction = 6500 } = {}) {
+function setupAutoScroll(container, { interval = 30, pauseAfterInteraction = 6500 } = {}) {
   if (!container) return;
   if (container.dataset.continuousCarouselReady === "1") return;
   container.dataset.continuousCarouselReady = "1";
@@ -8922,7 +9056,7 @@ function setupAutoScroll(container, { interval = 28, pauseAfterInteraction = 650
     if (maxScroll <= 4) return;
     // Moderate, steady movement: comfortably faster than the previous
     // setting without becoming a fast auto-scroll.
-    const step = 1.5;
+    const step = 1.35;
     let next = container.scrollLeft + step;
     if (next >= maxScroll - 1) next = 0;
     container.scrollLeft = next;
@@ -9146,7 +9280,7 @@ async function renderHome() {
   }
 
   html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
-  html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products and services"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-box"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button></div>`;
+  html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-box"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button></div>`;
   html += `<div class="flex" style="margin-bottom:1.2rem;">
     <input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" />
     <select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select>
@@ -9375,9 +9509,40 @@ async function renderHomePackageSearch(term) {
 }
 
 function switchHomeListingTab(tab) {
-  homeListingTab = tab === "services" ? "services" : "products";
-  document.querySelectorAll(".home-catalog-type-tabs .catalog-type-tab").forEach((b) => b.classList.toggle("active", b.textContent.toLowerCase().includes(homeListingTab.slice(0,-1))));
-  filterHomeProducts();
+  homeListingTab = ["products", "services", "packages"].includes(tab) ? tab : "products";
+  document.querySelectorAll(".home-catalog-type-tabs .catalog-type-tab").forEach((b) => {
+    const label = b.textContent.trim().toLowerCase();
+    b.classList.toggle("active", label.startsWith(homeListingTab === "packages" ? "packages" : homeListingTab));
+  });
+  const grid = byId("productGrid");
+  const packageResults = byId("packageSearchResults");
+  const listingFilter = byId("filterListing")?.closest("select") || byId("filterListing");
+  const categoryFilter = byId("filterCategory")?.closest("select") || byId("filterCategory");
+  if (homeListingTab === "packages") {
+    if (listingFilter) listingFilter.style.display = "none";
+    if (categoryFilter) categoryFilter.style.display = "none";
+    renderHomePackageTab();
+    if (grid) grid.innerHTML = "";
+    if (packageResults) packageResults.classList.add("hidden");
+  } else {
+    if (listingFilter) listingFilter.style.display = "";
+    if (categoryFilter) categoryFilter.style.display = "";
+    filterHomeProducts();
+  }
+}
+
+function renderHomePackageTab() {
+  const grid = byId("productGrid");
+  if (!grid) return;
+  const q = (byId("searchInput")?.value || "").trim().toLowerCase();
+  const all = window.__homePackages || getOfflineHomeCache()?.packages || [];
+  const shown = q ? all.filter(pkg => {
+    const text = [pkg.name, pkg.description, ...(pkg.items || []).map(it => it.product?.name || "")].join(" ").toLowerCase();
+    return text.includes(q);
+  }) : all;
+  grid.innerHTML = shown.length
+    ? shown.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")
+    : `<div class="empty-state" style="grid-column:1/-1;"><i class="fa-solid fa-box-open" style="display:block;font-size:1.5rem;margin-bottom:.5rem;"></i>No packages${q ? ` match “${esc(q)}”` : " available"}.</div>`;
 }
 async function filterHomeProducts() {
   const search = byId("searchInput")?.value.trim() || "";
@@ -9385,6 +9550,10 @@ async function filterHomeProducts() {
   const catId = byId("filterCategory")?.value || "";
   const grid = byId("productGrid");
   if (!grid) return;
+  if (homeListingTab === "packages") {
+    renderHomePackageTab();
+    return;
+  }
 
   renderHomePackageSearch(search).catch(() => {});
   const localCatalog = window.__homeBrowseCatalog || getOfflineHomeCache()?.browseProducts || [];
@@ -10772,31 +10941,71 @@ function setupMessageSwipeReply(root) {
   el.querySelectorAll?.(".chat-bubble-wrap[data-msg-wrap-id]").forEach((wrap) => {
     if (wrap.dataset.swipeReplyBound) return;
     wrap.dataset.swipeReplyBound = "1";
-    let sx = 0, sy = 0, dx = 0, active = false;
+
     const bubble = wrap.querySelector(".chat-bubble[data-msg-id]");
     if (!bubble || bubble.classList.contains("deleted")) return;
-    bubble.addEventListener("pointerdown", (e) => {
-      if (chatSelectionMode || e.button !== 0) return;
-      sx = e.clientX; sy = e.clientY; dx = 0; active = true;
-      wrap.classList.add("chat-swipe-active");
-    });
-    bubble.addEventListener("pointermove", (e) => {
-      if (!active) return;
-      dx = e.clientX - sx;
-      const dy = e.clientY - sy;
-      if (Math.abs(dy) > Math.abs(dx) * 1.15) { active = false; wrap.classList.remove("chat-swipe-active"); return; }
-      if (Math.abs(dx) > 8) e.preventDefault();
-      const shift = Math.max(-48, Math.min(48, dx * 0.42));
-      bubble.style.transform = `translateX(${shift}px)`;
-    });
-    const finish = () => {
-      if (!active) return;
-      active = false; wrap.classList.remove("chat-swipe-active"); bubble.style.transform = "";
-      if (Math.abs(dx) >= 70) { wrap.classList.add("chat-swipe-reply"); setChatReplyTarget(bubble.dataset.msgId); setTimeout(() => wrap.classList.remove("chat-swipe-reply"), 250); }
+
+    let sx = 0, sy = 0, dx = 0, dy = 0;
+    let tracking = false, horizontal = false;
+
+    const reset = () => {
+      tracking = false;
+      horizontal = false;
+      dx = dy = 0;
+      wrap.classList.remove("chat-swipe-active");
+      bubble.style.transform = "";
     };
-    bubble.addEventListener("pointerup", finish);
-    bubble.addEventListener("pointercancel", finish);
-    bubble.addEventListener("pointerleave", finish);
+
+    bubble.addEventListener("pointerdown", (e) => {
+      if (chatSelectionMode) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      sx = e.clientX || 0;
+      sy = e.clientY || 0;
+      dx = dy = 0;
+      tracking = true;
+      horizontal = false;
+    }, { passive: true });
+
+    bubble.addEventListener("pointermove", (e) => {
+      if (!tracking) return;
+      dx = (e.clientX || 0) - sx;
+      dy = (e.clientY || 0) - sy;
+
+      // Let ordinary vertical chat scrolling win. We only take control after
+      // a clear horizontal intent is established.
+      if (!horizontal) {
+        if (Math.abs(dy) > Math.abs(dx) * 1.2 && Math.abs(dy) > 7) {
+          reset();
+          return;
+        }
+        if (Math.abs(dx) < 10) return;
+        horizontal = Math.abs(dx) > Math.abs(dy) * 1.12;
+        if (!horizontal) return;
+        wrap.classList.add("chat-swipe-active");
+      }
+
+      if (horizontal) {
+        e.preventDefault();
+        const direction = dx >= 0 ? 1 : -1;
+        const shift = Math.max(-68, Math.min(68, dx * 0.62));
+        bubble.style.transform = `translateX(${shift}px)`;
+      }
+    }, { passive: false });
+
+    const finish = () => {
+      if (!tracking) return;
+      const shouldReply = horizontal && Math.abs(dx) >= 48;
+      const msgId = bubble.dataset.msgId;
+      reset();
+      if (shouldReply && msgId) {
+        wrap.classList.add("chat-swipe-reply");
+        setChatReplyTarget(msgId);
+        setTimeout(() => wrap.classList.remove("chat-swipe-reply"), 250);
+      }
+    };
+
+    bubble.addEventListener("pointerup", finish, { passive: true });
+    bubble.addEventListener("pointercancel", reset, { passive: true });
   });
 }
 function setupMessageInteractions(root) {
@@ -12295,18 +12504,18 @@ function toggleStorefrontProducts() {
 }
 
 function storefrontTableHtml(list) {
-  return `<table style="width:100%;border-collapse:collapse;">
+  return `<table class="storefront-data-table">
     <thead><tr>
-      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">${list.some(p => p.is_service) && list.every(p => p.is_service) ? "Service" : "Product"}</th>
-      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Category</th>
-      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Price</th>
-      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Available</th>
+      <th>${list.some(p => p.is_service) && list.every(p => p.is_service) ? "Service" : "Product"}</th>
+      <th>Category</th>
+      <th>Price</th>
+      <th class="available-col">Available</th>
     </tr></thead>
     <tbody>${list.map((p) => `<tr style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
-      <td style="padding:0.5rem;border-bottom:1px solid var(--border);">${esc(p.name)}</td>
-      <td style="padding:0.5rem;border-bottom:1px solid var(--border);">${esc(p.category?.name || "-")}</td>
-      <td style="padding:0.5rem;border-bottom:1px solid var(--border);white-space:nowrap;">${p.is_service ? `${naira(p.sale_price)}${servicePriceSuffix(p)}` : [p.sale_price != null ? `Buy: ${naira(p.sale_price)}` : "", p.rental_rate != null ? `Rent: ${naira(p.rental_rate)}/${p.rental_rate_unit}` : ""].filter(Boolean).join(" · ")}</td>
-      <td style="padding:0.5rem;border-bottom:1px solid var(--border);">${p.is_service ? "-" : p.quantity_available}</td>
+      <td>${esc(p.name)}</td>
+      <td>${esc(p.category?.name || "-")}</td>
+      <td class="price-col">${p.is_service ? `${naira(p.sale_price)}${servicePriceSuffix(p)}` : [p.sale_price != null ? `Buy: ${naira(p.sale_price)}` : "", p.rental_rate != null ? `Rent: ${naira(p.rental_rate)}/${p.rental_rate_unit}` : ""].filter(Boolean).join(" · ")}</td>
+      <td class="available-col">${p.is_service ? "-" : p.quantity_available}</td>
     </tr>`).join("")}</tbody>
   </table>`;
 }
@@ -15516,6 +15725,30 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
 .chat-page-wrap .chat-thread{min-height:0 !important;height:auto !important;overflow:hidden !important;overscroll-behavior:none !important;}
 .chat-page-wrap .chat-messages{overscroll-behavior-y:contain !important;overscroll-behavior-x:none !important;touch-action:pan-y !important;-webkit-overflow-scrolling:touch !important;}
 .chat-page-wrap .chat-input-row{touch-action:manipulation !important;}
+
+/* Final Home catalogue tabs: three equal choices with comfortable spacing. */
+.home-catalog-type-tabs{gap:.35rem !important;padding:.28rem !important;margin:.85rem 0 1rem !important;}
+.home-catalog-type-tabs .catalog-type-tab{min-height:46px !important;padding:.7rem .85rem !important;display:flex !important;align-items:center !important;justify-content:center !important;gap:.45rem !important;white-space:nowrap !important;}
+@media(max-width:520px){.home-catalog-type-tabs .catalog-type-tab{font-size:.76rem !important;padding:.65rem .35rem !important;gap:.3rem !important;}}
+
+/* Product detail actions must remain together beside one another; the wishlist
+   heart must never float over the product title. */
+.product-detail-top-actions{display:flex !important;align-items:center !important;justify-content:flex-end !important;gap:.55rem !important;position:absolute !important;top:.75rem !important;left:auto !important;right:.75rem !important;width:auto !important;z-index:6 !important;}
+.product-detail-top-actions .fav-btn,
+.product-detail-top-actions .product-storefront-share-btn{position:static !important;inset:auto !important;float:none !important;margin:0 !important;width:2.55rem !important;height:2.55rem !important;flex:0 0 2.55rem !important;}
+.product-detail-title{padding-right:6rem !important;max-width:none !important;}
+
+/* Levi's message menu: roomier labels and intelligent up/down placement. */
+.ai-chat-action-row{gap:.32rem !important;margin-top:.55rem !important;}
+.ai-chat-action-btn{width:34px !important;height:32px !important;border-radius:9px !important;}
+.ai-chat-message-menu{left:0 !important;top:calc(100% + .55rem) !important;min-width:235px !important;max-width:min(290px,82vw) !important;padding:.45rem !important;border-radius:14px !important;}
+.ai-chat-message-menu.opens-up{top:auto !important;bottom:calc(100% + .55rem) !important;}
+.ai-chat-message-menu button{min-height:44px !important;padding:.72rem .82rem !important;gap:.78rem !important;border-radius:10px !important;font-size:.88rem !important;}
+.ai-chat-message-menu button i{width:20px !important;flex:0 0 20px !important;font-size:.95rem !important;}
+
+/* Jump-to-latest control for Levi. It only appears after the user scrolls up. */
+.ai-chat-bottom-btn{position:absolute !important;right:1rem !important;bottom:5.2rem !important;width:40px !important;height:40px !important;border-radius:50% !important;border:1px solid var(--border) !important;background:var(--card) !important;color:var(--primary) !important;box-shadow:0 8px 22px rgba(0,0,0,.22) !important;z-index:25 !important;display:flex !important;align-items:center !important;justify-content:center !important;cursor:pointer !important;}
+.ai-chat-bottom-btn.hidden{display:none !important;}
 </style>
 </head><body>
     <h1>Levromart Transactions</h1>
@@ -15855,6 +16088,7 @@ function toggleAiChat() {
   syncLeviFabVisibility();
   updateCartFab();
   if (isOpen) {
+    setupAiChatBottomButton();
     playSound("open");
     let wasExpanded = false;
     try { wasExpanded = localStorage.getItem("levromart-ai-chat-expanded") === "1"; } catch (e) {}
@@ -15866,6 +16100,26 @@ function toggleAiChat() {
       else showAiChatGreeting();
     }
   }
+}
+function scrollAiChatToBottom() {
+  const el = byId("aiChatMessages");
+  if (!el) return;
+  el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  setTimeout(updateAiChatBottomButton, 260);
+}
+function updateAiChatBottomButton() {
+  const el = byId("aiChatMessages");
+  const btn = byId("aiChatBottomBtn");
+  if (!el || !btn) return;
+  const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+  btn.classList.toggle("hidden", distance < 90);
+}
+function setupAiChatBottomButton() {
+  const el = byId("aiChatMessages");
+  if (!el || el.dataset.bottomButtonReady === "1") return;
+  el.dataset.bottomButtonReady = "1";
+  el.addEventListener("scroll", updateAiChatBottomButton, { passive: true });
+  updateAiChatBottomButton();
 }
 function showAiChatGreeting() {
   const firstName = (profile?.name || "").trim().split(/\s+/)[0] || "";
@@ -16335,6 +16589,7 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
   }
   wrap.appendChild(el);
   wrap.scrollTop = wrap.scrollHeight;
+  updateAiChatBottomButton();
   return el;
 }
 // A single-user conversation only ever needs one reaction per message
@@ -16447,7 +16702,15 @@ function toggleAiMessageMenu(evt, msgId, el) {
   el.appendChild(menu);
   requestAnimationFrame(() => {
     const rect = menu.getBoundingClientRect();
-    if (rect.bottom > window.innerHeight - 12) menu.style.top = `-${Math.min(rect.height + 8, 260)}px`;
+    const gap = 12;
+    const below = window.innerHeight - rect.top - gap;
+    const above = rect.top - gap;
+    if (below < rect.height && above >= rect.height * .65) {
+      menu.classList.add("opens-up");
+    }
+    const finalRect = menu.getBoundingClientRect();
+    if (finalRect.right > window.innerWidth - 8) menu.style.left = `${Math.min(0, window.innerWidth - 8 - finalRect.right)}px`;
+    if (finalRect.left < 8) menu.style.left = `${8 - finalRect.left}px`;
   });
 }
 function closeAiMessageMenu() { document.querySelectorAll(".ai-chat-message-menu").forEach((m) => m.remove()); }
