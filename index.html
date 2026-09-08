@@ -4301,6 +4301,34 @@ body { padding-top:calc(64px + env(safe-area-inset-top,0px)) !important; }
 
 </style>
 
+<style id="bottom-nav-scroll-motion">
+/* Mobile bottom navigation: subtle Instagram-style scroll response. The bar
+   stays available while scrolling, but contracts and drifts down a little on
+   downward movement; scrolling upward restores its full-size resting state. */
+@media (max-width:720px){
+  .bottom-nav{
+    transform:translateY(0) scale(1);
+    transform-origin:center bottom;
+    opacity:1;
+    will-change:transform,opacity;
+    transition:transform .22s cubic-bezier(.2,.75,.25,1), opacity .18s ease, box-shadow .22s ease;
+  }
+  .bottom-nav.nav-scroll-shrink{
+    transform:translateY(.45rem) scale(.91);
+    opacity:.78;
+    box-shadow:0 10px 28px rgba(0,0,0,.14) !important;
+  }
+  .bottom-nav.nav-scroll-hide{
+    transform:translateY(1.8rem) scale(.86);
+    opacity:.18;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .bottom-nav{transition:none !important;}
+  .bottom-nav.nav-scroll-shrink,.bottom-nav.nav-scroll-hide{transform:translateY(0) scale(1);opacity:1;}
+}
+</style>
+
 <style id="final-vendor-bottom-nav-and-profile-gesture-fix">
 /* Vendor navigation: fill the complete bar. The + button owns the centre
    column; every surrounding destination receives an equal-width slot. */
@@ -4583,6 +4611,31 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 <style id="support-request-polish">
 #supportSubject,#supportMessage{box-sizing:border-box;width:100%;}
 #supportMessage{resize:vertical;min-height:9rem;}
+.support-attachments{margin-top:.8rem;padding:.75rem;border:1px dashed var(--ui-border);border-radius:14px;background:var(--ui-surface-2,#f7f9f8);}
+.support-attachments-label{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.45rem;font-weight:700;}
+.support-file-input{width:100%;font-size:.88rem;}
+.support-file-help{display:block;margin-top:.35rem;font-size:.76rem;}
+.support-file-list{display:grid;gap:.35rem;margin-top:.55rem;}
+.support-file-chip{display:flex;align-items:center;gap:.5rem;min-width:0;padding:.45rem .55rem;border-radius:10px;background:var(--ui-surface);border:1px solid var(--ui-border);}
+.support-file-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.support-request-accordion{border:1px solid var(--ui-border);border-radius:16px;background:var(--ui-surface);margin-bottom:.7rem;overflow:hidden;}
+.support-request-accordion summary{list-style:none;cursor:pointer;padding:.9rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:.7rem;}
+.support-request-accordion summary::-webkit-details-marker{display:none;}
+.support-request-summary-main{min-width:0;display:grid;gap:.18rem;}
+.support-request-summary-subject{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.support-request-summary-meta{font-size:.76rem;color:var(--muted);}
+.support-request-chevron{transition:transform .18s ease;flex:0 0 auto;}
+.support-request-accordion[open] .support-request-chevron{transform:rotate(180deg);}
+.support-request-body{padding:0 1rem 1rem;border-top:1px solid var(--ui-border);}
+.support-request-status-note{font-size:.75rem;margin-top:.25rem;color:var(--muted);}
+.support-request-attachments{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:.55rem;margin-top:.65rem;}
+.support-attachment{display:flex;flex-direction:column;gap:.3rem;min-width:0;text-decoration:none;color:inherit;}
+.support-attachment img{width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover;border:1px solid var(--ui-border);background:var(--ui-surface-2);}
+.support-attachment-file{display:flex;align-items:center;gap:.35rem;padding:.6rem;border:1px solid var(--ui-border);border-radius:10px;background:var(--ui-surface-2);font-size:.78rem;min-height:76px;}
+.support-attachment-name{font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.support-requests-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem;margin:1.25rem 0 .75rem !important;}
+.support-requests-head h3{margin:0 !important;}
+@media(max-width:520px){.support-request-accordion summary{padding:.82rem .85rem}.support-request-body{padding:0 .85rem .9rem}.support-request-attachments{grid-template-columns:repeat(3,minmax(0,1fr));}}
 </style>
 
 <style id="support-card-actions-refinement">
@@ -7766,6 +7819,67 @@ function renderBottomNav() {
     nav.innerHTML = items.map(itemHtml).join("");
   }
 }
+
+// ---------- BOTTOM NAV SCROLL MOTION ----------
+// Keep the bottom bar immediately useful, but let it subtly recede while the
+// user scrolls down and return to full prominence when they scroll up.
+function initBottomNavScrollMotion(){
+  const nav = byId("bottomNav");
+  if (!nav || nav.dataset.scrollMotionReady === "1") return;
+  nav.dataset.scrollMotionReady = "1";
+
+  let lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+  let raf = 0;
+  let idleTimer = 0;
+  let lastDirection = "up";
+
+  const prefersReduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
+  const clearMotion = () => {
+    nav.classList.remove("nav-scroll-shrink", "nav-scroll-hide");
+  };
+
+  const apply = () => {
+    raf = 0;
+    const currentY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+    const delta = currentY - lastY;
+    const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+
+    if (prefersReduced() || document.body.classList.contains("chat-full-page") || document.body.classList.contains("profile-reveal-open") || document.body.classList.contains("profile-reveal-dragging") || nav.classList.contains("nav-hidden")) {
+      clearMotion();
+      lastY = currentY;
+      return;
+    }
+
+    if (Math.abs(delta) < 3) return;
+
+    lastDirection = delta > 0 ? "down" : "up";
+    lastY = currentY;
+
+    if (lastDirection === "down" && currentY > 70 && currentY < maxY - 18) {
+      nav.classList.remove("nav-scroll-hide");
+      nav.classList.add("nav-scroll-shrink");
+    } else {
+      clearMotion();
+    }
+
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      // A settled scroll should not leave the navigation looking faded.
+      clearMotion();
+    }, 650);
+  };
+
+  window.addEventListener("scroll", () => {
+    if (!raf) raf = requestAnimationFrame(apply);
+  }, { passive:true });
+
+  nav.addEventListener("click", () => {
+    clearMotion();
+    lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+  }, { passive:true });
+}
+
 // A floating cart button, docked near Levi's FAB, is easier to notice
 // than a nav-tab would be without adding a 6th cramped item to the
 // already-full buyer bottom nav.
@@ -11586,10 +11700,46 @@ function closeSupportInfo() {
   const modal = byId("supportInfoModal");
   if (modal) modal.classList.add("hidden");
 }
+function supportStatusLabel(status) {
+  return ({
+    open: 'Submitted',
+    in_progress: 'In progress',
+    resolved: 'Resolved',
+    closed: 'Closed'
+  })[status] || 'Submitted';
+}
+function supportStatusNote(status) {
+  return ({
+    open: 'Received — waiting for a support/admin response.',
+    in_progress: 'A support/admin member is handling this request.',
+    resolved: 'Support has marked this issue as resolved.',
+    closed: 'This support request has been closed.'
+  })[status] || 'Received — waiting for a support/admin response.';
+}
+function supportAttachmentHtml(a, signedUrl) {
+  const name = esc(a?.name || 'Attachment');
+  const type = String(a?.type || '').toLowerCase();
+  if (type.startsWith('image/') && signedUrl) {
+    return `<a class="support-attachment" href="${esc(signedUrl)}" target="_blank" rel="noopener" title="Open ${name}"><img src="${esc(signedUrl)}" alt="${name}" loading="lazy" decoding="async"><span class="support-attachment-name">${name}</span></a>`;
+  }
+  return `<a class="support-attachment" href="${esc(signedUrl || '#')}" ${signedUrl ? 'target="_blank" rel="noopener"' : ''} title="${name}"><span class="support-attachment-file"><i class="fa-solid ${type === 'application/pdf' ? 'fa-file-pdf' : 'fa-paperclip'}"></i><span>${name}</span></span></a>`;
+}
+async function getSupportAttachmentHtml(attachments) {
+  if (!Array.isArray(attachments) || !attachments.length) return '';
+  const rendered = await Promise.all(attachments.map(async a => {
+    let signedUrl = '';
+    if (a?.path) {
+      const { data } = await sb.storage.from('support-attachments').createSignedUrl(a.path, 3600);
+      signedUrl = data?.signedUrl || '';
+    }
+    return supportAttachmentHtml(a, signedUrl);
+  }));
+  return `<div class="support-request-attachments">${rendered.join('')}</div>`;
+}
 async function renderSupportRequest() {
   if (!session) return '<div class="empty-state">Please log in to contact Levromart support.</div>';
   const { data: requests, error } = await sb.from("support_requests")
-    .select("id,subject,message,status,admin_reply,created_at,updated_at")
+    .select("id,subject,message,status,admin_reply,attachments,created_at,updated_at")
     .eq("user_id", session.user.id)
     .order("created_at", { ascending: false });
   let html = `<div class="support-page-head"><h2><i class="fa-solid fa-headset"></i> Support request</h2><button type="button" class="support-info-btn" onclick="showSupportInfo()" aria-label="About support requests" title="About support requests"><i class="fa-solid fa-info"></i></button></div>`;
@@ -11599,36 +11749,91 @@ async function renderSupportRequest() {
     <input id="supportSubject" maxlength="140" placeholder="What do you need help with?" />
     <label for="supportMessage" style="margin-top:.7rem;">Message</label>
     <textarea id="supportMessage" rows="6" maxlength="4000" placeholder="Explain what happened and include any order number or useful details."></textarea>
-    <div class="flex" style="justify-content:flex-end;margin-top:.7rem;">
+    <div class="support-attachments">
+      <div class="support-attachments-label"><span><i class="fa-solid fa-paperclip"></i> Attach files</span><span class="muted" style="font-size:.76rem;">Optional</span></div>
+      <input class="support-file-input" id="supportAttachments" type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt" onchange="previewSupportAttachments(this)">
+      <small class="support-file-help muted">Add screenshots, payment evidence, photos, PDFs or other useful files. Up to 5 files, 10 MB each.</small>
+      <div id="supportFileList" class="support-file-list" aria-live="polite"></div>
+    </div>
+    <div class="flex" style="justify-content:flex-end;margin-top:.85rem;">
       <button class="btn" id="supportSubmitBtn" onclick="submitSupportRequest()"><i class="fa-solid fa-paper-plane"></i> Send request</button>
     </div>
   </div>`;
   if (error) return html + errorStateHtml(error);
-  html += `<h3 style="margin-top:1rem;">Your requests</h3>`;
-  html += requests?.length ? requests.map(r => `<div class="card" style="margin-bottom:.7rem;">
-    <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.6rem;">
-      <div><strong>${esc(r.subject)}</strong><div class="muted" style="font-size:.76rem;">${new Date(r.created_at).toLocaleString('en-GB')}</div></div>
-      <span class="badge ${r.status === 'resolved' ? 'success' : r.status === 'closed' ? 'danger' : ''}">${esc(r.status)}</span>
-    </div>
-    <p style="white-space:pre-wrap;margin:.55rem 0 0;">${esc(r.message)}</p>
-    ${r.admin_reply ? `<div class="banner" style="margin-top:.7rem;"><strong>Levromart support</strong><div style="white-space:pre-wrap;margin-top:.25rem;">${esc(r.admin_reply)}</div></div>` : ''}
-  </div>`).join('') : `<div class="empty-state">You have not sent a support request yet.</div>`;
+  html += `<div class="support-requests-head"><h3>Your requests</h3>${requests?.length ? `<span class="muted" style="font-size:.8rem;">${requests.length} request${requests.length === 1 ? '' : 's'}</span>` : ''}</div>`;
+  if (!requests?.length) return html + `<div class="empty-state">You have not sent a support request yet.</div>`;
+  for (const r of requests) {
+    const attachments = await getSupportAttachmentHtml(r.attachments);
+    html += `<details class="support-request-accordion">
+      <summary>
+        <span class="support-request-summary-main"><span class="support-request-summary-subject">${esc(r.subject)}</span><span class="support-request-summary-meta">${new Date(r.created_at).toLocaleString('en-GB')}</span></span>
+        <span class="flex" style="align-items:center;gap:.45rem;flex:0 0 auto;"><span class="badge ${r.status === 'resolved' ? 'success' : r.status === 'closed' ? 'danger' : r.status === 'in_progress' ? 'warning' : ''}">${supportStatusLabel(r.status)}</span><i class="fa-solid fa-chevron-down support-request-chevron"></i></span>
+      </summary>
+      <div class="support-request-body">
+        <div class="support-request-status-note">${supportStatusNote(r.status)}</div>
+        <p style="white-space:pre-wrap;margin:.75rem 0 0;">${esc(r.message)}</p>
+        ${attachments}
+        ${r.admin_reply ? `<div class="banner" style="margin-top:.8rem;"><strong>Levromart support</strong><div style="white-space:pre-wrap;margin-top:.25rem;">${esc(r.admin_reply)}</div></div>` : ''}
+      </div>
+    </details>`;
+  }
   return html;
+}
+function previewSupportAttachments(input) {
+  const list = byId('supportFileList');
+  if (!list) return;
+  const files = Array.from(input?.files || []);
+  if (files.length > 5) {
+    showToast('You can attach up to 5 files.', 'error');
+    input.value = '';
+    list.innerHTML = '';
+    return;
+  }
+  const tooLarge = files.find(f => f.size > 10 * 1024 * 1024);
+  if (tooLarge) {
+    showToast(`${tooLarge.name} is larger than 10 MB.`, 'error');
+    input.value = '';
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = files.map(f => `<div class="support-file-chip"><i class="fa-solid ${f.type.startsWith('image/') ? 'fa-image' : 'fa-paperclip'}"></i><span>${esc(f.name)}</span><small class="muted">${(f.size/1024/1024).toFixed(1)} MB</small></div>`).join('');
 }
 async function submitSupportRequest() {
   if (!session) { showLogin(); return; }
   const subject = String(byId('supportSubject')?.value || '').trim();
   const message = String(byId('supportMessage')?.value || '').trim();
+  const files = Array.from(byId('supportAttachments')?.files || []);
   if (!subject || !message) { showToast('Please enter a subject and message.', 'error'); return; }
+  if (files.length > 5) { showToast('You can attach up to 5 files.', 'error'); return; }
+  const tooLarge = files.find(f => f.size > 10 * 1024 * 1024);
+  if (tooLarge) { showToast(`${tooLarge.name} is larger than 10 MB.`, 'error'); return; }
   const btn = byId('supportSubmitBtn');
-  if (btn) btn.disabled = true;
-  const { error } = await sb.from('support_requests').insert({ user_id: session.user.id, subject, message });
-  if (btn) btn.disabled = false;
-  if (error) { showToast(error.message, 'error'); return; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending…'; }
+  const { data: request, error } = await sb.from('support_requests').insert({ user_id: session.user.id, subject, message, attachments: [] }).select('id').single();
+  if (error || !request?.id) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send request'; }
+    showToast(error?.message || 'Could not send support request.', 'error'); return;
+  }
+  const uploaded = [];
+  try {
+    for (const file of files) {
+      const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+      const path = `${session.user.id}/${request.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await sb.storage.from('support-attachments').upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
+      if (uploadError) throw uploadError;
+      uploaded.push({ path, name: file.name, type: file.type || 'application/octet-stream', size: file.size });
+    }
+    const { error: updateError } = await sb.from('support_requests').update({ attachments: uploaded }).eq('id', request.id).eq('user_id', session.user.id);
+    if (updateError) throw updateError;
+  } catch (e) {
+    if (uploaded.length) await Promise.all(uploaded.map(a => sb.storage.from('support-attachments').remove([a.path])));
+    await sb.from('support_requests').delete().eq('id', request.id).eq('user_id', session.user.id);
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send request'; }
+    showToast(e?.message || 'One or more attachments could not be uploaded.', 'error'); return;
+  }
   showToast('Support request sent.', 'success');
   navigate('supportRequest', {}, { replace: true });
 }
-
 // ---------- REQUEST EQUIPMENT (buyers post needs, vendors compete) ----------
 async function renderRequestEquipment() {
   if (!session) return '<div class="empty-state">Please log in to request an item.</div>';
@@ -14169,27 +14374,34 @@ function adminNavHtml(active) {
 async function renderAdminSupportRequests() {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
   const { data: requests, error } = await sb.from("support_requests")
-    .select("id,user_id,subject,message,status,admin_reply,created_at,updated_at,user:users(name,email,phone)")
+    .select("id,user_id,subject,message,status,admin_reply,attachments,created_at,updated_at,user:users(name,email,phone)")
     .order("created_at", { ascending: false });
   let html = `<h2><i class="fa-solid fa-headset"></i> Support requests</h2>`;
   html += adminNavHtml("adminSupportRequests");
   if (error) return html + errorStateHtml(error);
   if (!requests?.length) return html + `<div class="empty-state">No support requests yet.</div>`;
-  html += requests.map(r => `<div class="card" style="margin-bottom:.75rem;">
-    <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.7rem;">
-      <div><strong>${esc(r.subject)}</strong><div class="muted" style="font-size:.78rem;">${esc(r.user?.name || 'User')} · ${esc(r.user?.email || '')} · ${new Date(r.created_at).toLocaleString('en-GB')}</div></div>
-      <span class="badge ${r.status === 'resolved' ? 'success' : r.status === 'closed' ? 'danger' : ''}">${esc(r.status)}</span>
-    </div>
-    <p style="white-space:pre-wrap;margin:.6rem 0;">${esc(r.message)}</p>
-    <label>Admin reply</label>
-    <textarea id="supportReply_${r.id}" rows="3" maxlength="4000" placeholder="Reply to the user…">${esc(r.admin_reply || '')}</textarea>
-    <div class="flex" style="justify-content:flex-end;align-items:center;margin-top:.55rem;gap:.5rem;">
-      <select id="supportStatus_${r.id}" style="max-width:180px;">
-        ${['open','in_progress','resolved','closed'].map(st => `<option value="${st}" ${r.status === st ? 'selected' : ''}>${st.replace('_',' ')}</option>`).join('')}
-      </select>
-      <button class="btn btn-sm" onclick="saveSupportRequest('${r.id}')"><i class="fa-solid fa-floppy-disk"></i> Save</button>
-    </div>
-  </div>`).join('');
+  for (const r of requests) {
+    const attachments = await getSupportAttachmentHtml(r.attachments);
+    html += `<details class="support-request-accordion">
+      <summary>
+        <span class="support-request-summary-main"><span class="support-request-summary-subject">${esc(r.subject)}</span><span class="support-request-summary-meta">${esc(r.user?.name || 'User')} · ${esc(r.user?.email || '')} · ${new Date(r.created_at).toLocaleString('en-GB')}</span></span>
+        <span class="flex" style="align-items:center;gap:.45rem;flex:0 0 auto;"><span class="badge ${r.status === 'resolved' ? 'success' : r.status === 'closed' ? 'danger' : r.status === 'in_progress' ? 'warning' : ''}">${supportStatusLabel(r.status)}</span><i class="fa-solid fa-chevron-down support-request-chevron"></i></span>
+      </summary>
+      <div class="support-request-body">
+        <div class="support-request-status-note">${supportStatusNote(r.status)}</div>
+        <p style="white-space:pre-wrap;margin:.75rem 0;">${esc(r.message)}</p>
+        ${attachments}
+        <label>Admin reply</label>
+        <textarea id="supportReply_${r.id}" rows="3" maxlength="4000" placeholder="Reply to the user…">${esc(r.admin_reply || '')}</textarea>
+        <div class="flex" style="justify-content:flex-end;align-items:center;margin-top:.55rem;gap:.5rem;">
+          <select id="supportStatus_${r.id}" style="max-width:180px;">
+            ${['open','in_progress','resolved','closed'].map(st => `<option value="${st}" ${r.status === st ? 'selected' : ''}>${supportStatusLabel(st)}</option>`).join('')}
+          </select>
+          <button class="btn btn-sm" onclick="saveSupportRequest('${r.id}')"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+        </div>
+      </div>
+    </details>`;
+  }
   return html;
 }
 async function saveSupportRequest(id) {
@@ -16680,6 +16892,7 @@ window.addEventListener("popstate", (e) => {
   initLocationSetting();
   initLeviVisible();
   initAiChatMic();
+  initBottomNavScrollMotion();
   byId("footerYear").textContent = new Date().getFullYear();
   history.replaceState({ view: "home", params: {} }, "", location.pathname + location.search);
   // Never hold the first paint hostage to an Auth network round-trip.
