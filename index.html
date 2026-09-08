@@ -7322,8 +7322,12 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPa
   // NEVER on cards, products, maps, tables, rails, forms, chat or controls.
   // Direction decides the drawer: swipe right = Profile; swipe left = Alerts.
   const OS_GUTTER = 34;
-  const MIN = 54;
-  const MOVE = 10;
+  // Tuned for a natural mobile drawer feel: opening needs a deliberate
+  // horizontal swipe, while closing is intentionally easier so users can
+  // dismiss a drawer without having to drag it a long distance.
+  const OPEN_MIN = 46;
+  const CLOSE_MIN = 28;
+  const MOVE = 7;
   const blocked = [
     'button,a,input,textarea,select,[contenteditable="true"]',
     '.card,.grid,.hscroll,.cat-row,.table-wrap,table,.leaflet,.map-wrap',
@@ -7400,7 +7404,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPa
     const dx = e.clientX - g.x, dy = e.clientY - g.y;
     if (!g.active) {
       if (Math.hypot(dx,dy) < MOVE) return;
-      if (Math.abs(dx) <= Math.abs(dy) * 1.3) { g=null; return; }
+      if (Math.abs(dx) <= Math.abs(dy) * 1.15) { g=null; return; }
       g.active = true;
       document.body.classList.add('profile-reveal-dragging');
       if (g.mode === 'open') {
@@ -7426,7 +7430,8 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPa
   const finish = (e) => {
     if (!g || e.pointerId !== g.id) { g=null; return; }
     const dx = e.clientX - g.x, dy = e.clientY - g.y;
-    const valid = g.active && Math.abs(dx) >= MIN && Math.abs(dx) > Math.abs(dy) * 1.3;
+    const threshold = g?.mode === 'close' ? CLOSE_MIN : OPEN_MIN;
+    const valid = g.active && Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(dy) * 1.15;
     const state = g;
     if (valid) {
       if (state.mode === 'open' && ((state.side === 'left' && dx > 0) || (state.side === 'right' && dx < 0))) {
