@@ -9194,8 +9194,12 @@ async function renderHome() {
     .eq("vendor.is_active", true)
     .order("view_count", { ascending: false })
     .limit(80);
+  // Keep the package relation query aligned with the known-working storefront
+  // implementation. Do not request product.category_id here: package_items ->
+  // products already supplies the product/category data needed by package cards,
+  // and an invalid nested column must never make the entire Home package tab empty.
   const packageQuery = sb.from("vendor_packages")
-    .select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id, business_name, logo_url, delivery_fee, verification_status, is_active), items:package_items(quantity, product:products(id, name, category_id, photos, category:categories(name)))")
+    .select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id,business_name,logo_url,delivery_fee,verification_status,is_active), items:package_items(quantity, product:products(id,name,photos,category:categories(name)))")
     .eq("status", "active")
     .eq("vendor.verification_status", "verified")
     .eq("vendor.is_active", true)
@@ -9535,7 +9539,7 @@ function renderHomePackageTab() {
   const grid = byId("productGrid");
   if (!grid) return;
   const q = (byId("searchInput")?.value || "").trim().toLowerCase();
-  const all = window.__homePackages || getOfflineHomeCache()?.packages || [];
+  const all = (Array.isArray(window.__homePackages) ? window.__homePackages : null) || getOfflineHomeCache()?.packages || [];
   const shown = q ? all.filter(pkg => {
     const text = [pkg.name, pkg.description, ...(pkg.items || []).map(it => it.product?.name || "")].join(" ").toLowerCase();
     return text.includes(q);
@@ -16596,56 +16600,14 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
 // (no need to aggregate across people, unlike buyer/vendor chat), so this
 // is just a react button plus, once picked, a small pill showing the choice.
 function attachAiReactionUI(el, msgId, existingReaction) {
-  // One compact action row under every persisted Levi response, inspired by
-  // the familiar ChatGPT controls: copy, thumbs up/down, and more actions.
-  const row = document.createElement("div");
-  row.className = "ai-chat-action-row";
-  row.setAttribute("role", "toolbar");
-  row.setAttribute("aria-label", "Levi message actions");
-
-  const copyBtn = document.createElement("button");
-  copyBtn.type = "button";
-  copyBtn.className = "ai-chat-action-btn";
-  copyBtn.title = "Copy text";
-  copyBtn.setAttribute("aria-label", "Copy Levi response");
-  copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i>`;
-  copyBtn.onclick = (evt) => copyAiMessageText(evt, displayTextForAiElement(el));
-  row.appendChild(copyBtn);
-
-  const upBtn = document.createElement("button");
-  upBtn.type = "button";
-  upBtn.className = `ai-chat-action-btn ai-feedback-btn ${existingReaction === "👍" ? "active" : ""}`;
-  upBtn.title = "Good response";
-  upBtn.setAttribute("aria-label", "Thumbs up");
-  upBtn.innerHTML = `<i class="fa-regular fa-thumbs-up"></i>`;
-  upBtn.onclick = (evt) => reactToAiMessage(evt, msgId, "👍");
-  row.appendChild(upBtn);
-
-  const downBtn = document.createElement("button");
-  downBtn.type = "button";
-  downBtn.className = `ai-chat-action-btn ai-feedback-btn ${existingReaction === "👎" ? "active" : ""}`;
-  downBtn.title = "Needs improvement";
-  downBtn.setAttribute("aria-label", "Thumbs down");
-  downBtn.innerHTML = `<i class="fa-regular fa-thumbs-down"></i>`;
-  downBtn.onclick = (evt) => reactToAiMessage(evt, msgId, "👎");
-  row.appendChild(downBtn);
-
-  const moreBtn = document.createElement("button");
-  moreBtn.type = "button";
-  moreBtn.className = "ai-chat-action-btn ai-more-btn";
-  moreBtn.title = "More actions";
-  moreBtn.setAttribute("aria-label", "More actions");
-  moreBtn.innerHTML = `<i class="fa-solid fa-ellipsis"></i>`;
-  moreBtn.onclick = (evt) => toggleAiMessageMenu(evt, msgId, el);
-  row.appendChild(moreBtn);
-
-  el.appendChild(row);
-
-  // Keep the existing lightweight double-tap reaction behaviour for users
-  // who prefer gestures; it now maps to the thumbs-up feedback control.
+  // Levi responses intentionally have no inline copy/thumbs-up/thumbs-down/
+  // three-dot toolbar. The response surface remains normal selectable text,
+  // while speech controls and the chat itself keep their existing behaviour.
+  // This also prevents the old cramped controls from appearing under every
+  // response on small screens.
   let lastTap = 0, lastTapX = 0, lastTapY = 0;
   const isMessageSurface = (target) => {
-    if (!target || target.closest?.('button,a,input,textarea,select,.reaction-picker,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-action-row,.ai-chat-message-menu')) return false;
+    if (!target || target.closest?.('button,a,input,textarea,select,.reaction-picker,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-message-menu')) return false;
     return target.closest?.('.ai-chat-msg') === el;
   };
   el.addEventListener('touchend', (evt) => {
@@ -16657,12 +16619,15 @@ function attachAiReactionUI(el, msgId, existingReaction) {
     if (now - lastTap < 360 && Math.hypot(dx, dy) < 34) {
       evt.preventDefault();
       lastTap = 0;
+      // Preserve the existing double-tap feedback behaviour without exposing
+      // the old inline action row.
       reactToAiMessage(evt, msgId, "👍");
     } else {
       lastTap = now; lastTapX = touch.clientX; lastTapY = touch.clientY;
     }
   }, { passive: false });
 }
+
 function displayTextForAiElement(el) {
   const clone = el.cloneNode(true);
   clone.querySelectorAll(".ai-chat-action-row,.ai-chat-message-menu,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-msg-speak,.reaction-picker").forEach((n) => n.remove());
@@ -18191,7 +18156,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 .storefront-avatar-fallback-button .avatar-fallback{border-radius:50%;width:100% !important;height:100% !important;}
 .chat-header-avatar.avatar-fallback{border:0 !important;display:inline-flex !important;}
 .chat-header-avatar[onclick]{cursor:pointer;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;}
-.product-detail-top-actions{position:absolute;top:1rem;left:1rem;right:1rem;display:flex;align-items:center;justify-content:space-between;gap:.35rem;z-index:4;}
+.product-detail-top-actions{position:absolute;top:1rem;left:1rem;right:1rem;display:flex;align-items:center;justify-content:flex-end;gap:.45rem;z-index:4;}
 .product-detail-top-actions .fav-btn{position:static !important;}
 .product-storefront-share-btn{width:2rem;height:2rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;border:0;background:color-mix(in srgb,var(--card) 94%,transparent);color:var(--primary);box-shadow:0 3px 12px rgba(15,23,42,.14);cursor:pointer;appearance:none;-webkit-appearance:none;}
 .product-storefront-share-btn:hover{background:color-mix(in srgb,var(--primary) 9%,var(--card));}
@@ -18213,6 +18178,16 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 .delivery-method-row label{white-space:nowrap;}
 .ms-list .ms-item,.ms-list button.ms-item,.ms-list a.ms-item{appearance:none;-webkit-appearance:none;border:0;outline:0;background:transparent;color:var(--text);box-shadow:none;text-decoration:none;}
 .ms-list button.ms-item{font-family:inherit;}
+<style id="levromart-final-product-actions-and-levi-cleanup">
+/* Product detail: wishlist and storefront-share controls belong together at the top-right. */
+.product-detail-card .product-detail-top-actions{justify-content:flex-end !important;left:auto !important;right:1rem !important;width:auto !important;gap:.45rem !important;}
+.product-detail-card .product-detail-top-actions .fav-btn,
+.product-detail-card .product-detail-top-actions .product-storefront-share-btn{position:static !important;inset:auto !important;flex:0 0 auto !important;}
+/* Levi: no primitive inline action strip beneath every answer. */
+#aiChatMessages .ai-chat-action-row{display:none !important;}
+#aiChatMessages .ai-chat-msg.assistant{user-select:text !important;-webkit-user-select:text !important;}
+#aiChatMessages .ai-chat-msg.assistant .ai-chat-action-row{display:none !important;}
+</style>
 </style>
 <div id="storefrontShareModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="storefrontShareTitle" onclick="if(event.target===this){closeStorefrontShareModal(true);}">
   <div class="storefront-share-sheet">
