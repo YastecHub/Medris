@@ -912,7 +912,8 @@
   .chat-typing-dots i:nth-child(2){animation-delay:.15s;}
   .chat-typing-dots i:nth-child(3){animation-delay:.3s;}
   @keyframes chatTypingDot { 0%,60%,100%{transform:translateY(0);opacity:.4;} 30%{transform:translateY(-3px);opacity:1;} }
-  .reaction-picker { flex-wrap:nowrap; width:min(92vw, 520px); max-width:min(92vw, 520px); overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; white-space:nowrap; border-radius:18px; gap:.18rem; padding:.38rem; }
+  .reaction-picker.reaction-picker-below { bottom:auto !important; top:calc(100% + .3rem) !important; }
+.reaction-picker { flex-wrap:nowrap; width:min(92vw, 520px); max-width:min(92vw, 520px); overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; white-space:nowrap; border-radius:18px; gap:.18rem; padding:.38rem; }
   .reaction-picker::-webkit-scrollbar { display:none; }
   .reaction-picker button { flex:0 0 auto; min-width:2rem; min-height:2rem; }
   .reaction-more-btn { font-size:.72rem !important; color:var(--text-muted); padding:.35rem .5rem !important; border-radius:999px !important; border:1px solid var(--border) !important; background:var(--card) !important; }
@@ -4701,6 +4702,48 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 }
 @media (prefers-reduced-motion:reduce){#aiChatFab,#cartFab{transition:none !important;}#aiChatFab.scroll-faded,#cartFab.scroll-faded{transform:none !important;opacity:1 !important;pointer-events:auto !important;}}
 </style>
+<style id="2026-09-08-marketplace-polish">
+/* Product cards: wishlist lives away from the bottom-right action. */
+.product-card-wrap .fav-btn { left:.58rem !important; right:auto !important; top:.58rem !important; z-index:5 !important; }
+/* The actual add/open action stays inside the information panel. */
+.product-card-wrap .card-cart-btn,
+.product-card-wrap .card-service-btn { right:.62rem !important; bottom:.62rem !important; }
+/* Gallery is a full-width swipe surface; no arrows steal horizontal space. */
+.product-gallery-main { position:relative !important; width:100% !important; aspect-ratio:1/1 !important; overflow:hidden !important; }
+.product-gallery-main > img { width:100% !important; height:100% !important; object-fit:contain !important; display:block !important; }
+.package-detail-gallery > div:first-child { position:relative; overflow:hidden; border-radius:14px; }
+.package-detail-main { width:100% !important; height:auto !important; aspect-ratio:1/1 !important; object-fit:contain !important; display:block !important; touch-action:pan-y !important; }
+.swipe-gallery-image { touch-action:pan-y !important; }
+.product-gallery-nav { display:none !important; }
+.product-gallery-count { position:absolute; right:.55rem; bottom:.55rem; z-index:2; padding:.32rem .55rem; border-radius:999px; background:rgba(0,0,0,.45); color:#fff; font-size:.72rem; backdrop-filter:blur(8px); }
+.package-detail-top-actions { display:flex; align-items:center; justify-content:space-between; margin-bottom:.65rem; }
+.package-detail-actions-right { display:flex; gap:.45rem; align-items:center; }
+.package-fav-btn.active { color:var(--primary) !important; }
+/* Products/services separation */
+.catalog-type-tabs { display:flex; gap:.45rem; margin:.75rem 0; padding:.2rem; border:1px solid var(--border); border-radius:999px; background:color-mix(in srgb,var(--primary) 3%,var(--card)); }
+.catalog-type-tab { flex:1; min-width:0; border:0; background:transparent; color:var(--text-muted); border-radius:999px; padding:.62rem .7rem; font:inherit; font-size:.84rem; font-weight:700; cursor:pointer; }
+.catalog-type-tab.active { background:var(--primary); color:#fff; box-shadow:0 4px 14px color-mix(in srgb,var(--primary) 25%,transparent); }
+.storefront-table-scroll { max-height:28rem; overflow:auto; }
+/* Chat header: only the name is the storefront link; avatar is inert. */
+.chat-header-person { display:flex; align-items:center; gap:.7rem; flex:1; min-width:0; }
+.chat-header-avatar-wrap { flex:0 0 auto; display:flex; align-items:center; justify-content:center; width:2.35rem; height:2.35rem; }
+.chat-header-name-link { border:0; background:transparent; padding:0; margin:0; color:inherit; font:inherit; cursor:pointer; text-align:left; }
+.chat-header-name-link .chat-header-name { color:var(--text); }
+.chat-inline-link { color:var(--primary); text-decoration:underline; text-underline-offset:2px; }
+.chat-image-attachment { border:0; padding:0; margin:.2rem 0; background:transparent !important; box-shadow:none !important; border-radius:12px; max-width:18rem; display:block; cursor:zoom-in; }
+.chat-image-attachment .msg-attachment-img { display:block; width:min(18rem,78vw); height:auto; max-height:28rem; object-fit:cover; border-radius:12px; }
+.chat-bubble.photo-only { background:transparent !important; padding:.08rem !important; box-shadow:none !important; }
+.chat-bubble:has(.chat-image-attachment) { background:transparent !important; padding:.08rem !important; box-shadow:none !important; }
+.chat-bubble .chat-image-attachment + .chat-time { color:var(--text-muted) !important; }
+.image-lightbox-download { position:absolute; left:50%; bottom:1.4rem; transform:translateX(-50%); z-index:3; }
+.legal-inline-link { color:var(--primary); font-weight:600; text-decoration:underline; text-underline-offset:2px; }
+/* Support: keep request list compact and clearly separated. */
+.support-requests-accordion { margin-top:1.25rem !important; }
+@media (max-width:720px){
+  .catalog-type-tab { font-size:.8rem; padding:.58rem .45rem; }
+  .product-gallery-main, .package-detail-main { aspect-ratio:1/1 !important; }
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -5036,7 +5079,7 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 
 <div id="productImageLightbox" class="image-lightbox hidden" onclick="closeProductImageLightbox(event)">
   <button type="button" class="image-lightbox-close" onclick="closeProductImageLightbox(event)"><i class="fa-solid fa-xmark"></i></button>
-  <img id="productLightboxImage" src="" alt="Product image" />
+  <img id="productLightboxImage" src="" alt="Product image" /><a id="imageLightboxDownload" class="btn btn-sm image-lightbox-download hidden" href="#" download><i class="fa-solid fa-download"></i> Save image</a>
 </div>
 
 <div id="packageModal" class="modal hidden">
@@ -5756,6 +5799,9 @@ let unreadSuggestionCount = 0;
 let buyerCartCount = 0;
 let notifTarget = null; // { view, params }
 let favoriteIds = new Set();
+let packageFavoriteIds = new Set();
+let homeListingTab = "products";
+let storefrontCatalogTab = "products";
 
 // ---------- UTILS ----------
 // ---------- AUTH IDENTIFIER HELPERS ----------
@@ -6888,12 +6934,74 @@ async function setAiDataConsent(value) {
 function toggleNotifPanel() { notifViewMode = "inbox"; exitNotifSelectMode(false); openDrawer("notifPanel"); renderNotifPanel(); }
 function toggleProfilePanel() { openDrawer("profilePanel"); }
 
-function setupDrawerSwipe(drawer, side) { /* legacy hook retained */ }
-// Profile is intentionally tap-open/tap-close on Android and iPhone.
-// Do not use an edge-swipe/page-reveal interaction here.
-function bindProfileEdgeSwipe(){ return; }
+function setupDrawerSwipe(drawer, side) { return; }
+
+// Backdrop/centre swipe gestures for the two right-hand drawers. Opening:
+// swipe right -> profile, swipe left -> notifications. Closing an open drawer:
+// swipe right. We deliberately ignore cards, maps, tables, horizontal rails,
+// form controls and other interactive surfaces so their own gestures remain intact.
+function bindProfileEdgeSwipe(){
+  if (window.__drawerSwipeReady) return;
+  window.__drawerSwipeReady = true;
+  let start = null;
+  let tracking = false;
+  const blocked = (target) => {
+    if (!target?.closest) return false;
+    return !!target.closest('button,a,input,textarea,select,.card,.product-card-wrap,.vendor-card,.grid,.hscroll,.cat-row,.table-wrap,table,.leaflet,.leaflet-container,.bottom-nav,.modal-content,.side-drawer,.chat-page-wrap,.package-detail-item,.product-gallery,.storefront-products-shell');
+  };
+  const centerZone = (x) => x >= window.innerWidth * 0.20 && x <= window.innerWidth * 0.80;
+  const openPanel = (panel) => { if (panel === 'profile') toggleProfilePanel(); else toggleNotifPanel(); };
+  document.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return;
+    if (!centerZone(e.clientX) || blocked(e.target)) return;
+    const openProfile = byId('profilePanel') && !byId('profilePanel').classList.contains('hidden');
+    const openNotif = byId('notifPanel') && !byId('notifPanel').classList.contains('hidden');
+    if (openProfile || openNotif) {
+      const backdrop = byId('drawerBackdrop');
+      if (e.target !== backdrop && !e.target?.classList?.contains('drawer-backdrop')) return;
+    }
+    start = { x:e.clientX, y:e.clientY, time:Date.now(), openProfile, openNotif };
+    tracking = false;
+  }, { passive:true });
+  document.addEventListener('pointermove', (e) => {
+    if (!start || e.pointerType === 'mouse') return;
+    const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    if (!tracking) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      if (Math.abs(dx) <= Math.abs(dy) * 1.25 || Math.abs(dx) < 28) { start = null; return; }
+      tracking = true;
+    }
+    e.preventDefault?.();
+    const panel = start.openProfile ? byId('profilePanel') : start.openNotif ? byId('notifPanel') : null;
+    if (panel) {
+      const raw = Math.max(-100, Math.min(120, dx));
+      // Right drawer: leftward drag reveals more, rightward drag closes.
+      panel.style.transition = 'none';
+      panel.style.transform = `translateX(${Math.max(0, raw > 0 ? raw : 0)}px)`;
+    }
+  }, { passive:false });
+  document.addEventListener('pointerup', (e) => {
+    if (!start || e.pointerType === 'mouse') { start = null; tracking = false; return; }
+    const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    const fastEnough = Date.now() - start.time < 700;
+    const valid = Math.abs(dx) > 52 && Math.abs(dx) > Math.abs(dy) * 1.25 && fastEnough;
+    const open = start.openProfile || start.openNotif;
+    const targetPanel = start.openProfile ? byId('profilePanel') : start.openNotif ? byId('notifPanel') : null;
+    if (targetPanel) {
+      targetPanel.style.transition = '';
+      targetPanel.style.transform = '';
+      if (valid && dx > 0) closeAllPanels();
+    } else if (valid) {
+      // Closed state: right swipe opens profile; left swipe opens notifications.
+      openPanel(dx > 0 ? 'profile' : 'notifications');
+    }
+    start = null; tracking = false;
+  }, { passive:true });
+  document.addEventListener('pointercancel', () => { start = null; tracking = false; });
+}
 
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPanels(); });
+setTimeout(bindProfileEdgeSwipe, 0);
 
 // Swipe left/right ANYWHERE on the page (not just the bottom bar) moves to
 // the next/previous bottom-nav tab - e.g. swipe from Home and land on
@@ -7493,6 +7601,7 @@ async function refreshAuthState() {
       profile = null;
       vendor = null;
       favoriteIds = new Set();
+      packageFavoriteIds = new Set();
       manualLogout = true;
       await sb.auth.signOut({ scope: "local" }).catch(() => {});
     }
@@ -7501,6 +7610,7 @@ async function refreshAuthState() {
   profile = null;
   vendor = null;
   favoriteIds = new Set();
+  packageFavoriteIds = new Set();
   if (session) {
     const userId = session.user.id;
 
@@ -7508,14 +7618,16 @@ async function refreshAuthState() {
     // the public.users anchor before any buyer_id/vendor_id FK reads or writes.
     await ensureBuyerProfile();
 
-    const [profileRes, vendorRes, favsRes] = await Promise.all([
+    const [profileRes, vendorRes, favsRes, pkgFavsRes] = await Promise.all([
       sb.from("users").select("*").eq("id", userId).single(),
       sb.from("vendors").select("*").eq("user_id", userId).is("deleted_at", null).maybeSingle(),
-      sb.from("favorites").select("product_id").eq("buyer_id", userId)
+      sb.from("favorites").select("product_id").eq("buyer_id", userId),
+      sb.from("package_favorites").select("package_id").eq("buyer_id", userId)
     ]);
     profile = profileRes.data;
     vendor = profile?.role === "admin" ? null : vendorRes.data;
     favoriteIds = new Set((favsRes.data || []).map((f) => f.product_id));
+    packageFavoriteIds = new Set((pkgFavsRes.data || []).map((f) => f.package_id));
   }
   updateAuthUI();
   renderBottomNav();
@@ -7880,7 +7992,7 @@ function initBottomNavScrollMotion(){
     lastDirection = delta > 0 ? "down" : "up";
     lastY = currentY;
 
-    if (lastDirection === "down" && currentY > 70 && currentY < maxY - 18) {
+    if (currentY > 24 && currentY < maxY - 12) {
       nav.classList.remove("nav-scroll-hide");
       nav.classList.add("nav-scroll-shrink");
     } else {
@@ -7917,11 +8029,9 @@ function initFloatingScrollVisibility(){
     raf = 0;
     const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
     const delta = y - lastY;
-    if (Math.abs(delta) >= 2 && y > 40) {
-      if (delta > 0) {
-        byId('aiChatFab')?.classList.add('scroll-faded');
-        byId('cartFab')?.classList.add('scroll-faded');
-      }
+    if (Math.abs(delta) >= 2 && y > 20) {
+      byId('aiChatFab')?.classList.add('scroll-faded');
+      byId('cartFab')?.classList.add('scroll-faded');
       lastY = y;
     }
     clearTimeout(timer);
@@ -8534,6 +8644,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   hideLevromartSplash();
   clearAutoScrollTimers();
   document.querySelectorAll("#app .cat-row, #app .hscroll").forEach((el) => setupAutoScroll(el));
+  initGallerySwipeSurfaces();
   initDeliveryFieldsOnPage();
   if (view === "settings") setTimeout(hydrateSettingsPage, 0);
   // A same-view, non-history refresh (notably live order updates) must keep
@@ -8543,6 +8654,36 @@ async function navigate(view, params = {}, pushHistory = true) {
   } else if (pushHistory || previousView !== view) {
     window.scrollTo(0, 0);
   }
+}
+
+// ---------- SWIPE PRODUCT / PACKAGE GALLERIES ----------
+function initGallerySwipeSurfaces() {
+  document.querySelectorAll('.swipe-gallery-image').forEach((surface) => {
+    if (surface.dataset.swipeReady === '1') return;
+    surface.dataset.swipeReady = '1';
+    let start = null;
+    surface.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse') return;
+      if (e.target.closest?.('button,a')) return;
+      start = { x:e.clientX, y:e.clientY };
+    }, { passive:true });
+    surface.addEventListener('pointerup', (e) => {
+      if (!start || e.pointerType === 'mouse') { start = null; return; }
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      if (Math.abs(dx) > 42 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        surface.dataset.suppressClick = '1';
+        if (surface.id === 'productGalleryMain' || surface.querySelector('#productGalleryMain')) {
+          changeProductGalleryPhoto(dx < 0 ? 1 : -1);
+        } else if (surface.id === 'packageDetailMainImage' || surface.querySelector('#packageDetailMainImage')) {
+          changePackageDetailPhoto(dx < 0 ? 1 : -1);
+        }
+        setTimeout(() => { if (surface.dataset.suppressClick === '1') surface.dataset.suppressClick = ''; }, 280);
+      }
+      start = null;
+    }, { passive:true });
+    surface.addEventListener('pointercancel', () => { start = null; }, { passive:true });
+  });
 }
 
 // ---------- AUTO-SLIDING CAROUSELS (category row + horizontal product/vendor rails) ----------
@@ -8655,7 +8796,10 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   html += `<div class="hero"><div class="hero-aurora"></div><div class="hero-content"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div><div class="hero-quick-actions"><button class="quick-action" onclick="scrollToBrowse('rent')"><span class="quick-action-icon"><i class='fa-solid fa-rotate'></i></span><span>Rent</span></button><button class="quick-action" onclick="scrollToBrowse('sale')"><span class="quick-action-icon"><i class='fa-solid fa-cart-shopping'></i></span><span>Buy</span></button><button class="quick-action outline" onclick="requireLoginThen('requestEquipment')"><span class="quick-action-icon"><i class='fa-solid fa-hand'></i></span><span>Request</span></button></div></div></div>`;
   if (sectors.length) html += `<div class="cat-row sector-row"><button class="cat-chip sector-chip ${!activeSector ? "active" : ""}" onclick="switchSector(null)"><span class="cat-icon"><i class="fa-solid fa-border-all"></i></span><span>All</span></button>${sectors.map(s => `<button class="cat-chip sector-chip ${activeSector?.id === s.id ? "active" : ""}" onclick="switchSector('${s.id}')"><span class="cat-icon"><i class="fa-solid ${esc(s.icon)}"></i></span><span>${esc(s.name)}</span></button>`).join("")}</div>`;
   if (subCats.length) html += `<div class="cat-row">${subCats.map(c => `<button class="cat-chip" onclick="filterByCategory('${c.id}')"><span class="cat-icon">${categoryIcon(c.name)}</span><span>${esc(c.name)}</span></button>`).join("")}</div>`;
-  if (trending.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trending.map(productCardHtml).join("")}</div>`;
+  const trendingProducts = (trending || []).filter(p => !p.is_service);
+  const trendingServices = (trending || []).filter(p => p.is_service);
+  if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(productCardHtml).join("")}</div>`;
+  if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(productCardHtml).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
   html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="flex" style="margin-bottom:1.2rem;"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" /><select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
@@ -8773,7 +8917,10 @@ async function renderHome() {
   }
 
   if (trending && trending.length) {
-    html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trending.map(productCardHtml).join("")}</div>`;
+    const trendingProducts = trending.filter(p => !p.is_service);
+    const trendingServices = trending.filter(p => p.is_service);
+    if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(productCardHtml).join("")}</div>`;
+    if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(productCardHtml).join("")}</div>`;
   }
 
   if (recommendedPackages.length) {
@@ -8784,7 +8931,8 @@ async function renderHome() {
     html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
   }
 
-  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
+  html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
+  html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products and services"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-box"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button></div>`;
   html += `<div class="flex" style="margin-bottom:1.2rem;">
     <input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" />
     <select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select>
@@ -9012,6 +9160,11 @@ async function renderHomePackageSearch(term) {
     : `<h3 class="section-title"><span><i class="fa-solid fa-box-open"></i> Package matches</span></h3><div class="empty-state">No package matches for “${esc(q)}”.</div>`;
 }
 
+function switchHomeListingTab(tab) {
+  homeListingTab = tab === "services" ? "services" : "products";
+  document.querySelectorAll(".home-catalog-type-tabs .catalog-type-tab").forEach((b) => b.classList.toggle("active", b.textContent.toLowerCase().includes(homeListingTab.slice(0,-1))));
+  filterHomeProducts();
+}
 async function filterHomeProducts() {
   const search = byId("searchInput")?.value.trim() || "";
   const listing = byId("filterListing")?.value || "";
@@ -9020,6 +9173,11 @@ async function filterHomeProducts() {
   if (!grid) return;
 
   renderHomePackageSearch(search).catch(() => {});
+  const localCatalog = window.__homeBrowseCatalog || getOfflineHomeCache()?.browseProducts || [];
+  if (localCatalog.length) {
+    const localFiltered = offlineFilterProducts(localCatalog, search, listing, catId, currentSectorId).filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
+    grid.innerHTML = localFiltered.length ? localFiltered.map(productCardHtml).join("") : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+  }
   if (browserLooksOffline()) {
     const cache = getOfflineHomeCache();
     const products = offlineFilterProducts(cache?.browseProducts || [], search, listing, catId, currentSectorId);
@@ -9065,7 +9223,8 @@ async function filterHomeProducts() {
     return;
   }
   if (matchingIds) products.sort((a, b) => matchingIds.indexOf(a.id) - matchingIds.indexOf(b.id));
-  grid.innerHTML = products.map(productCardHtml).join("");
+  const tabProducts = (products || []).filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
+  grid.innerHTML = tabProducts.length ? tabProducts.map(productCardHtml).join("") : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
 }
 
 function productCardHtml(p) {
@@ -9074,7 +9233,7 @@ function productCardHtml(p) {
   const ownListing = isOwnVendorId(p.vendor?.id);
   const canQuickAdd = !ownListing && !p.is_service && (p.listing_type === "sale" || p.listing_type === "both") && profile?.role !== "admin";
   const actionHtml = p.is_service
-    ? `<button type="button" class="card-service-btn" title="Open service" aria-label="Open service" onclick="event.stopPropagation();navigate('productDetail',{productId:'${p.id}'})"><i class="fa-solid fa-hand-holding-heart"></i></button>`
+    ? `<button type="button" class="card-service-btn" title="Open service" aria-label="Open ${esc(p.name)} service" onclick="event.stopPropagation();navigate('productDetail',{productId:'${p.id}'})"><i class="fa-solid fa-hand-holding-heart"></i></button>`
     : canQuickAdd
       ? `<button type="button" class="card-cart-btn" onclick="quickAddToCart(event,'${p.id}',this,'${p.vendor?.id || ""}')" title="Add to cart" aria-label="Add ${esc(p.name)} to cart"><i class="fa-solid fa-cart-plus"></i></button>`
       : ownListing
@@ -9146,19 +9305,21 @@ async function toggleFavorite(evt, productId) {
 // ---------- WISHLIST ----------
 async function renderWishlist() {
   if (!session) return '<div class="empty-state">Log in to save items to your wishlist.</div>';
-  const { data: favs } = await sb.from("favorites")
-    .select("product:products(id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, status, vendor:vendors(id, business_name, verification_status, is_active, logo_url))")
-    .eq("buyer_id", session.user.id).order("created_at", { ascending: false });
-
+  const [{ data: favs }, { data: packageFavs }] = await Promise.all([
+    sb.from("favorites").select("product:products(id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, status, vendor:vendors(id, business_name, verification_status, is_active, logo_url))").eq("buyer_id", session.user.id).order("created_at", { ascending: false }),
+    sb.from("package_favorites").select("package:vendor_packages(id, vendor_id, name, description, price, photos, created_at, status, vendor:vendors!inner(id,business_name,logo_url,delivery_fee,verification_status,is_active), items:package_items(quantity, product:products(id,name,photos))").eq("buyer_id", session.user.id).order("created_at", { ascending: false })
+  ]);
   const products = (favs || []).map((f) => f.product).filter((p) => p && p.status === "active" && p.vendor?.verification_status === "verified" && p.vendor?.is_active);
+  const packages = (packageFavs || []).map((f) => f.package).filter((p) => p && p.status === "active" && p.vendor?.verification_status === "verified" && p.vendor?.is_active);
   let html = `<h2><i class='fa-solid fa-heart'></i> Your Wishlist</h2>`;
-  html += products.length
-    ? `<div class="grid">${products.map(productCardHtml).join("")}</div>`
-    : `<div class="empty-state">Nothing saved yet. Tap the <i class='fa-regular fa-heart'></i> on any product to save it here.</div>`;
+  if (products.length) html += `<h3 class="section-title"><i class="fa-solid fa-box"></i> Products</h3><div class="grid">${products.map(productCardHtml).join("")}</div>`;
+  if (packages.length) html += `<h3 class="section-title"><i class="fa-solid fa-boxes-stacked"></i> Packages</h3><div class="grid">${packages.map((p) => packageCardHtml(p, p.vendor?.delivery_fee)).join("")}</div>`;
+  if (!products.length && !packages.length) html += `<div class="empty-state">Nothing saved yet. Tap the <i class='fa-regular fa-heart'></i> on a product or package to save it here.</div>`;
   return html;
 }
 
-// ---------- CART (buy-and-sale items only, grouped by vendor -- each
+// ---------- CART (buy-and-sale items only, grouped by vendor; add/remove actions stay on the current page) ----------
+//
 // vendor group checks out as its own order, same reasoning as the
 // single-vendor-per-checkout recommendation: one Paystack charge per
 // vendor keeps the existing per-order payment/payout machinery untouched
@@ -9254,8 +9415,8 @@ async function addToCart(productId, qty) {
   showToast("Added to cart.", "success");
   updateCartFab();
   refreshNotifications();
-  // A successful add always takes the buyer straight to the cart.
-  await navigate("cart");
+  // Stay on the current page so buyers can keep adding multiple items.
+  updateCartFab();
 }
 // One-tap add straight from a product card's grid/rail listing, without
 // opening the product page first -- same RPC as addToCart, just with a
@@ -9273,9 +9434,8 @@ async function quickAddToCart(evt, productId, btn, vendorId = "") {
   btn.innerHTML = `<i class="fa-solid fa-check"></i>`;
   btn.classList.add("added");
   setTimeout(() => { btn.innerHTML = original; btn.classList.remove("added"); }, 1200);
-  // Quick-add follows the same rule as the full product page: go directly
-  // to the cart after the item is successfully added.
-  await navigate("cart");
+  // Quick-add never navigates away; the cart badge is the confirmation.
+  updateCartFab();
 }
 async function updateCartQty(cartItemId, newQty) {
   if (newQty < 1) return;
@@ -9733,7 +9893,7 @@ function chatSkeletonHtml(cached, cachedMessages) {
   return `<div class="chat-page-wrap">
     <div class="chat-page-header">
       <button class="chat-header-back" onclick="navigate('messages')" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
-      ${profileAvatarHtml(avatar, name, "2.35rem", { extraClass: "chat-header-avatar", lightbox: !!avatar })}
+      ${profileAvatarHtml(avatar, name, "2.35rem", { extraClass: "chat-header-avatar", lightbox: false })}
       <div class="chat-header-name-wrap"><strong class="chat-header-name">${esc(name)}</strong></div>
       <div class="chat-header-actions">
         <button class="chat-header-icon-btn" style="opacity:0.4;" disabled title="Call"><i class="fa-solid fa-phone"></i></button>
@@ -9877,15 +10037,11 @@ async function renderMessages(conversationId) {
     </div>
     <div class="chat-page-header">
       <button class="chat-header-back" onclick="navigate('messages')" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
-      ${conv.vendor?.id
-        ? `<a href="#" class="chat-header-profile-link" onclick="openChatVendorStorefront(event,'${conv.vendor.id}')" title="View storefront">${otherAvatar
-          ? `<img src="${esc(otherAvatar)}" class="chat-header-avatar" alt="${esc(otherName)}" draggable="false" onclick="event.stopPropagation();openProfileImageLightbox('${esc(otherAvatar)}','${esc(otherName)}',event)" />`
-          : avatarFallbackHtml(otherName, "2.35rem", "chat-header-avatar", otherName)}
-          <div class="chat-header-name-wrap"><strong class="chat-header-name">${esc(otherName)}</strong></div></a>`
-        : `${otherAvatar
-          ? `<img src="${esc(otherAvatar)}" class="chat-header-avatar" alt="${esc(otherName)}" draggable="false" onclick="openProfileImageLightbox('${esc(otherAvatar)}','${esc(otherName)}',event)" />`
-          : avatarFallbackHtml(otherName, "2.35rem", "chat-header-avatar", otherName)}
-          <div class="chat-header-name-wrap"><strong class="chat-header-name">${esc(otherName)}</strong></div>`}
+      <div class="chat-header-person">${otherAvatar
+        ? `<span class="chat-header-avatar-wrap"><img src="${esc(otherAvatar)}" class="chat-header-avatar" alt="${esc(otherName)}" draggable="false" /></span>`
+        : `<span class="chat-header-avatar-wrap">${avatarFallbackHtml(otherName, "2.35rem", "chat-header-avatar", otherName)}</span>`}
+        <div class="chat-header-name-wrap">${conv.vendor?.id ? `<button type="button" class="chat-header-name-link" onclick="openChatVendorStorefront(event,'${conv.vendor.id}')" title="View storefront"><strong class="chat-header-name">${esc(otherName)}</strong></button>` : `<strong class="chat-header-name">${esc(otherName)}</strong>`}</div>
+      </div>
       <div class="chat-header-actions">
         ${!isVendorSide && conv.vendor?.whatsapp_visible && conv.vendor?.whatsapp_number ? `<a class="chat-header-icon-btn chat-whatsapp-btn" href="${waLink(conv.vendor.whatsapp_number)}" target="_blank" rel="noopener" title="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>` : ""}
         <button class="chat-header-icon-btn" onclick="${callAction}" title="Call"><i class="fa-solid fa-phone"></i></button>
@@ -9903,7 +10059,7 @@ async function renderMessages(conversationId) {
         <button type="button" onclick="cancelMsgVoiceRecording()" title="Cancel recording" aria-label="Cancel recording"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="chat-input-row">
-        <input type="file" id="chatFileInput" class="chat-file-input" accept="image/*,.heic,.heif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt" onchange="handleChatFileSelected(event,'${conversationId}')" />
+        <input type="file" id="chatFileInput" class="chat-file-input" accept="image/*,.heic,.heif,.webp" onchange="handleChatFileSelected(event,'${conversationId}')" />
         <button class="msg-attach-btn" onclick="byId('chatFileInput').click()" title="Attach a file (max 10MB)"><i class="fa-solid fa-paperclip"></i></button>
         ${AiSpeechRecognition ? `<button class="ai-chat-mic-btn" id="msgMicBtn" onclick="toggleMsgMic()" title="Tap to talk"><i class="fa-solid fa-microphone"></i></button>` : ""}
         <textarea id="chatInput" rows="1" placeholder="Type a message…" maxlength="2000" oninput="handleChatTyping('${conversationId}');autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}');}"></textarea>
@@ -9963,27 +10119,49 @@ function sanitizeFilename(name) {
 // The bucket is private (participant/owner-scoped RLS), so a stored
 // attachment_url is really just the storage path -- the actual viewable
 // URL has to be freshly signed each time it's displayed.
+const attachmentUrlCache = new Map();
 async function resolveAttachmentUrl(path) {
+  if (!path) return null;
+  const cached = attachmentUrlCache.get(path);
+  if (cached && cached.expiresAt > Date.now() + 60000) return cached.url;
   const { data, error } = await sb.storage.from("chat-attachments").createSignedUrl(path, 3600);
   if (error || !data) return null;
+  attachmentUrlCache.set(path, { url:data.signedUrl, expiresAt:Date.now()+55*60*1000 });
   return data.signedUrl;
 }
 async function resolveVisibleAttachments(root) {
-  const els = (root || document).querySelectorAll("[data-attachment-path]:not([data-resolved])");
-  for (const el of els) {
+  const els = [...(root || document).querySelectorAll("[data-attachment-path]:not([data-resolved])")];
+  await Promise.all(els.map(async (el) => {
     el.setAttribute("data-resolved", "1");
     const url = await resolveAttachmentUrl(el.dataset.attachmentPath);
-    if (!url) continue;
+    if (!url) return;
+    el.dataset.resolvedUrl = url;
     if (el.tagName === "A") el.href = url;
     const img = el.tagName === "IMG" ? el : el.querySelector("img");
-    if (img) img.src = url;
-  }
+    if (img) { img.src = url; img.loading = "eager"; try { img.fetchPriority = "high"; } catch (_) {} }
+  }));
+}
+function openChatImageLightboxFromMessage(event, el) {
+  event?.stopPropagation?.();
+  const path = el?.dataset?.attachmentPath || "";
+  const cached = attachmentUrlCache.get(path)?.url || el?.dataset?.resolvedUrl || el?.querySelector("img")?.src;
+  if (!cached) { resolveAttachmentUrl(path).then((url) => { if (url) openChatImageLightbox(url, el.querySelector("img")?.alt || "Chat image"); }); return; }
+  openChatImageLightbox(cached, el.querySelector("img")?.alt || "Chat image");
+}
+function openChatImageLightbox(url, name) {
+  const box = byId("productImageLightbox");
+  const img = byId("productLightboxImage");
+  const dl = byId("imageLightboxDownload");
+  if (!box || !img || !url) return;
+  img.src = url; img.alt = name || "Chat image";
+  if (dl) { dl.href = url; dl.download = sanitizeFilename(name || "levromart-image"); dl.classList.remove("hidden"); }
+  box.classList.remove("hidden");
 }
 function attachmentHtml(m) {
   if (!m.attachment_url) return "";
   const isImage = (m.attachment_type || "").startsWith("image/");
   if (isImage) {
-    return `<a class="msg-attachment" href="#" target="_blank" rel="noopener" data-attachment-path="${esc(m.attachment_url)}"><img class="msg-attachment-img" alt="${esc(m.attachment_name || "")}" /></a>`;
+    return `<button type="button" class="msg-attachment chat-image-attachment" data-attachment-path="${esc(m.attachment_url)}" onclick="openChatImageLightboxFromMessage(event,this)" aria-label="Open image"><img class="msg-attachment-img" alt="${esc(m.attachment_name || "")}" /></button>`;
   }
   return `<a class="msg-attachment-file" href="#" target="_blank" rel="noopener" data-attachment-path="${esc(m.attachment_url)}"><i class="fa-solid fa-file"></i> ${esc(m.attachment_name || "Attachment")}</a>`;
 }
@@ -10026,6 +10204,13 @@ function replyQuoteHtml(m) {
   const text = r.deleted_at ? "This message was deleted" : (r.body || r.attachment_name || "Attachment");
   return `<div class="chat-reply-quote"><span class="reply-quote-label">${esc(who)}</span><span class="reply-quote-text">${esc(text)}</span></div>`;
 }
+function linkifyChatText(text) {
+  const safe = esc(text || "");
+  return safe.replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, (match) => {
+    const href = /^www\./i.test(match) ? `https://${match}` : match;
+    return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" class="chat-inline-link">${match}</a>`;
+  }).replace(/\n/g, "<br>");
+}
 function chatBubbleHtml(m) {
   const mine = m.sender_id === session.user.id;
   const time = new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -10037,13 +10222,21 @@ function chatBubbleHtml(m) {
   }
   const editedTag = m.edited_at ? `<span class="muted" style="font-size:0.7rem;">(edited)</span>` : "";
   return `<div class="chat-bubble-wrap ${mine ? "mine" : "theirs"}" data-msg-wrap-id="${m.id}">
-    <div class="chat-bubble ${mine ? "mine" : "theirs"}" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}">${replyQuoteHtml(m)}${attachmentHtml(m)}${m.body ? `<span class="chat-bubble-text">${esc(m.body)}</span>` : ""}<span class="chat-time">${editedTag}<span class="chat-time-text">${time}${mine ? messageTicksHtml(m) : ""}</span></span></div>
+    <div class="chat-bubble ${mine ? "mine" : "theirs"}${m.attachment_url && String(m.attachment_type || "").startsWith("image/") && !m.body ? " photo-only" : ""}" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}">${replyQuoteHtml(m)}${attachmentHtml(m)}${m.body ? `<span class="chat-bubble-text">${linkifyChatText(m.body)}</span>` : ""}<span class="chat-time">${editedTag}<span class="chat-time-text">${time}${mine ? messageTicksHtml(m) : ""}</span></span></div>
     <div class="msg-reactions-row" data-reactions-for="${m.id}">${reactionsRowHtml(m)}</div>
   </div>`;
 }
 function speakMessageBubble(btn) {
   const text = btn.closest(".chat-bubble")?.querySelector(".chat-bubble-text")?.textContent || "";
   speakAiChatMessage(text, btn);
+}
+function positionReactionPicker(picker, anchor) {
+  if (!picker || !anchor) return;
+  picker.classList.remove("reaction-picker-below");
+  const r = anchor.getBoundingClientRect();
+  const ph = picker.offsetHeight || 48;
+  const margin = 10;
+  if (r.top < ph + margin) picker.classList.add("reaction-picker-below");
 }
 function openReactionPicker(evt, msgId) {
   evt?.stopPropagation?.();
@@ -10058,6 +10251,7 @@ function openReactionPicker(evt, msgId) {
   picker.innerHTML = REACTION_EMOJIS.map((e) => `<button type="button" aria-label="React ${e}" onclick="reactToMessage(event,'${msgId}','${e}')">${e}</button>`).join("") +
     `<button type="button" class="reaction-more-btn" onclick="openReactionKeyboard(event,'${msgId}')">More…</button>`;
   wrap.appendChild(picker);
+  requestAnimationFrame(() => positionReactionPicker(picker, wrap));
 }
 function toggleReactionPicker(evt, msgId) { openReactionPicker(evt, msgId); }
 function openReactionKeyboard(evt, msgId) {
@@ -10606,6 +10800,11 @@ async function handleChatFileSelected(evt, conversationId) {
   const file = evt.target.files[0];
   evt.target.value = "";
   if (!file) return;
+  if (!String(file.type || "").startsWith("image/")) {
+    showToast("Only images can be sent in chat. Videos and other file uploads are disabled.", "error");
+    evt.target.value = "";
+    return;
+  }
   if (file.size > MAX_ATTACHMENT_BYTES) { showToast("That file is over 10MB. Please pick a smaller one.", "error"); return; }
   try {
     const path = `conv/${conversationId}/${Date.now()}-${sanitizeFilename(file.name)}`;
@@ -10658,11 +10857,13 @@ function openProductImageLightbox() {
   if (!photos.length) return;
   const img = byId("productLightboxImage");
   if (img) img.src = photos[productGalleryIndex || 0];
+  byId("imageLightboxDownload")?.classList.add("hidden");
   byId("productImageLightbox")?.classList.remove("hidden");
 }
 function closeProductImageLightbox(event) {
   if (event && event.target?.id !== "productImageLightbox" && !event.target?.closest?.(".image-lightbox-close")) return;
   byId("productImageLightbox")?.classList.add("hidden");
+  byId("imageLightboxDownload")?.classList.add("hidden");
 }
 // ---------- PACKAGE DETAIL ----------
 let packageDetailGalleryIndex = 0;
@@ -10672,14 +10873,60 @@ function setPackageDetailPhoto(index) {
   packageDetailGalleryIndex = Math.max(0, Math.min(index, photos.length - 1));
   const main = byId("packageDetailMainImage");
   if (main) main.src = photos[packageDetailGalleryIndex];
+  const count = byId("packageGalleryCount");
+  if (count) count.textContent = String(packageDetailGalleryIndex + 1);
   document.querySelectorAll(".package-detail-thumb").forEach((el) => el.classList.toggle("active", Number(el.dataset.index) === packageDetailGalleryIndex));
 }
 function changePackageDetailPhoto(delta) { setPackageDetailPhoto(packageDetailGalleryIndex + delta); }
+
+async function togglePackageFavorite(evt, packageId) {
+  evt?.stopPropagation?.();
+  if (!session) { showLogin(); return; }
+  const isFav = packageFavoriteIds.has(packageId);
+  const btn = evt?.currentTarget || document.querySelector(`.package-fav-btn[data-package-id="${packageId}"]`);
+  if (btn) btn.disabled = true;
+  try {
+    if (isFav) {
+      const { error } = await sb.from("package_favorites").delete().eq("buyer_id", session.user.id).eq("package_id", packageId);
+      if (error) throw error;
+      packageFavoriteIds.delete(packageId);
+    } else {
+      const { error } = await sb.from("package_favorites").insert({ buyer_id: session.user.id, package_id: packageId });
+      if (error) throw error;
+      packageFavoriteIds.add(packageId);
+    }
+    document.querySelectorAll(`.package-fav-btn[data-package-id="${packageId}"]`).forEach((b) => {
+      b.innerHTML = packageFavoriteIds.has(packageId) ? `<i class="fa-solid fa-heart"></i>` : `<i class="fa-regular fa-heart"></i>`;
+      b.classList.toggle("active", packageFavoriteIds.has(packageId));
+      b.disabled = false;
+    });
+    showToast(packageFavoriteIds.has(packageId) ? "Package saved to wishlist." : "Package removed from wishlist.", "success");
+  } catch (err) {
+    if (btn) btn.disabled = false;
+    showToast(err?.message || "Could not update package wishlist.", "error");
+  }
+}
+async function openPackageShare(packageId) {
+  try {
+    const { data: pkg, error } = await sb.from("vendor_packages").select("id,name,price,status,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("id", packageId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
+    if (error || !pkg) throw new Error("This package is no longer available.");
+    const url = `${location.origin}${location.pathname}?package=${encodeURIComponent(pkg.id)}`;
+    const box = byId("storefrontShareModal");
+    if (!box) return;
+    const name = pkg.name || "this package";
+    byId("storefrontShareTitle").textContent = `Share ${name}`;
+    byId("storefrontShareText").textContent = `Share this package on Levromart.`;
+    box.dataset.vendorId = ""; box.dataset.url = url; box.dataset.name = name; box.dataset.whatsapp = ""; box.dataset.packageId = pkg.id;
+    box.classList.remove("hidden");
+    trackModalOpened("storefrontShareModal");
+  } catch (err) { showToast(err?.message || "Couldn't prepare package sharing.", "error"); }
+}
 function openPackageDetailLightbox() {
   const photos = window.__packageDetailPhotos || [];
   if (!photos.length) return;
   const img = byId("productLightboxImage");
   if (img) img.src = photos[packageDetailGalleryIndex || 0];
+  byId("imageLightboxDownload")?.classList.add("hidden");
   byId("productImageLightbox")?.classList.remove("hidden");
 }
 async function buyPackageFromDetail(packageId) {
@@ -10717,15 +10964,15 @@ async function renderPackageDetail(packageId) {
   const gallery = photos.length
     ? `<div class="package-detail-gallery">
         <div style="position:relative;">
-          <img id="packageDetailMainImage" class="package-detail-main" src="${esc(photos[0])}" alt="${esc(pkg.name)}" onclick="openPackageDetailLightbox()" />
-          ${photos.length > 1 ? `<div class="product-gallery-nav"><button type="button" onclick="event.stopPropagation();changePackageDetailPhoto(-1)" aria-label="Previous package image"><i class="fa-solid fa-chevron-left"></i></button><button type="button" onclick="event.stopPropagation();changePackageDetailPhoto(1)" aria-label="Next package image"><i class="fa-solid fa-chevron-right"></i></button></div><span class="product-gallery-count"><i class="fa-solid fa-images"></i> ${photos.length}</span>` : ""}
+          <img id="packageDetailMainImage" class="package-detail-main swipe-gallery-image" src="${esc(photos[0])}" alt="${esc(pkg.name)}" onclick="if(this.dataset.suppressClick==='1'){this.dataset.suppressClick='';return;}openPackageDetailLightbox()" />
+          ${photos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="packageGalleryCount">1</span>/${photos.length}</span>` : ""}
         </div>
         ${photos.length > 1 ? `<div class="package-detail-thumbs">${photos.map((u,i) => `<button type="button" class="package-detail-thumb ${i === 0 ? "active" : ""}" data-index="${i}" onclick="setPackageDetailPhoto(${i})"><img src="${esc(u)}" alt="Package image ${i+1}" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
       </div>`
     : `<div class="package-gallery-placeholder" style="height:260px;"><i class="fa-solid fa-box-open"></i>&nbsp; No package photos</div>`;
 
   let html = `<div class="card" style="position:relative;">
-    <button type="button" class="icon-btn" style="position:absolute;right:.75rem;top:.75rem;z-index:2;" onclick="navigate('home')" aria-label="Back to marketplace"><i class="fa-solid fa-xmark"></i></button>
+    <div class="package-detail-top-actions"><button type="button" class="icon-btn" onclick="navigate('home')" aria-label="Back to marketplace"><i class="fa-solid fa-xmark"></i></button><div class="package-detail-actions-right"><button type="button" class="icon-btn package-fav-btn ${packageFavoriteIds.has(pkg.id) ? "active" : ""}" data-package-id="${pkg.id}" onclick="togglePackageFavorite(event,'${pkg.id}')" aria-label="Save package to wishlist"><i class="fa-${packageFavoriteIds.has(pkg.id) ? "solid" : "regular"} fa-heart"></i></button><button type="button" class="icon-btn" onclick="openPackageShare('${pkg.id}')" aria-label="Share package"><i class="fa-solid fa-share-nodes"></i></button></div></div>
     <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.8rem;">${vendorLogo}<div><strong>${esc(v.business_name || "Vendor")}</strong><div class="muted" style="font-size:.78rem;">Verified vendor${v.city ? ` · ${esc(v.city)}` : ""}</div></div></div>
     ${gallery}
     <div style="margin-top:1rem;display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start;"><div><h2 style="margin:0 0 .25rem;">${esc(pkg.name)}</h2><p class="muted" style="margin:0;">Special package</p></div><span class="package-detail-price">${naira(pkg.price)}</span></div>
@@ -10787,9 +11034,9 @@ async function renderProductDetail(productId) {
   const cleanDescription = stripProductVariantMeta(product.description || "");
   const photosHtml = productPhotos.length
     ? `<div class="product-gallery">
-        <div class="product-gallery-main" onclick="openProductImageLightbox()">
+        <div class="product-gallery-main swipe-gallery-image" onclick="if(this.dataset.suppressClick==='1'){this.dataset.suppressClick='';return;}openProductImageLightbox()">
           <img id="productGalleryMain" src="${esc(productPhotos[0])}" alt="${esc(product.name)}" />
-          ${productPhotos.length > 1 ? `<div class="product-gallery-nav"><button type="button" onclick="event.stopPropagation();changeProductGalleryPhoto(-1)" aria-label="Previous image"><i class="fa-solid fa-chevron-left"></i></button><button type="button" onclick="event.stopPropagation();changeProductGalleryPhoto(1)" aria-label="Next image"><i class="fa-solid fa-chevron-right"></i></button></div><span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
+          ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
         ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})"><img src="${esc(u)}" alt="View ${i+1}" loading="lazy" /></button>`).join("")}</div>` : ""}
       </div>`
@@ -11411,6 +11658,7 @@ async function openStorefrontShare(vendorId) {
     box.dataset.url = url;
     box.dataset.name = name;
     box.dataset.whatsapp = v.whatsapp_visible && v.whatsapp_number ? v.whatsapp_number : "";
+    delete box.dataset.packageId;
     box.classList.remove("hidden");
     trackModalOpened("storefrontShareModal");
   } catch (err) {
@@ -11427,10 +11675,10 @@ async function copyStorefrontShareLink() {
   if (!url) return;
   try {
     await navigator.clipboard.writeText(url);
-    showToast("Storefront link copied.", "success");
+    showToast(box?.dataset.packageId ? "Package link copied." : "Storefront link copied.", "success");
     closeStorefrontShareModal(true);
   } catch (_) {
-    await showConfirmDialog(url, { title: "Storefront link", okLabel: "Close" });
+    await showConfirmDialog(url, { title: box?.dataset.packageId ? "Package link" : "Storefront link", okLabel: "Close" });
   }
 }
 async function nativeShareStorefront() {
@@ -11438,7 +11686,8 @@ async function nativeShareStorefront() {
   const url = box?.dataset.url;
   const name = box?.dataset.name || "this store";
   if (!url) return;
-  const payload = { title: `${name} | Levromart`, text: `Check out ${name}'s storefront on Levromart.`, url };
+  const isPackage = !!box?.dataset.packageId;
+  const payload = { title: `${name} | Levromart`, text: isPackage ? `Check out the ${name} package on Levromart.` : `Check out ${name}'s storefront on Levromart.`, url };
   try {
     if (navigator.share) {
       await navigator.share(payload);
@@ -11446,10 +11695,10 @@ async function nativeShareStorefront() {
       return;
     }
     await navigator.clipboard.writeText(url);
-    showToast("Native sharing isn't available here, so the storefront link was copied.", "success");
+    showToast(`Native sharing isn't available here, so the ${isPackage ? "package" : "storefront"} link was copied.`, "success");
     closeStorefrontShareModal(true);
   } catch (err) {
-    if (err?.name !== "AbortError") showToast("Couldn't share the storefront.", "error");
+    if (err?.name !== "AbortError") showToast(`Couldn't share the ${isPackage ? "package" : "storefront"}.`, "error");
   }
 }
 function whatsappShareStorefront() {
@@ -11457,7 +11706,8 @@ function whatsappShareStorefront() {
   const url = box?.dataset.url;
   const name = box?.dataset.name || "this store";
   if (!url) return;
-  const text = `Check out ${name}'s storefront on Levromart.\n${url}`;
+  const isPackage = !!box?.dataset.packageId;
+  const text = isPackage ? `Check out the ${name} package on Levromart.\n${url}` : `Check out ${name}'s storefront on Levromart.\n${url}`;
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   closeStorefrontShareModal(true);
 }
@@ -11484,6 +11734,7 @@ async function renderStorefront(vendorId) {
   const allProducts = products || [];
   window.__storefrontProducts = allProducts;
   window.__storefrontExpanded = false;
+  storefrontCatalogTab = "products";
 
   const coverPhotos = [...new Set(allProducts.map((p) => p.photos?.[0]).filter(Boolean))].slice(0, 4);
   const logo = v.logo_url
@@ -11637,21 +11888,33 @@ function switchStorefrontView(mode) {
   filterStorefrontProducts();
 }
 
+function switchStorefrontCatalogTab(tab) {
+  storefrontCatalogTab = tab === "services" ? "services" : "products";
+  byId("storefrontProductsTab")?.classList.toggle("active", storefrontCatalogTab === "products");
+  byId("storefrontServicesTab")?.classList.toggle("active", storefrontCatalogTab === "services");
+  window.__storefrontExpanded = false;
+  filterStorefrontProducts();
+}
 function filterStorefrontProducts() {
   const q = (byId("storefrontSearch")?.value || "").trim().toLowerCase();
   const all = window.__storefrontProducts || [];
-  const filtered = q ? all.filter((p) => p.name.toLowerCase().includes(q) || (p.category?.name || "").toLowerCase().includes(q)) : all;
+  const products = all.filter(p => !p.is_service);
+  const services = all.filter(p => !!p.is_service);
+  const current = storefrontCatalogTab === "services" ? services : products;
+  const filtered = q ? current.filter((p) => `${p.name || ""} ${(p.category?.name || "")}`.toLowerCase().includes(q)) : current;
   const expanded = Boolean(window.__storefrontExpanded) || Boolean(q);
   const visible = expanded ? filtered : filtered.slice(0, 6);
   const gridEl = byId("storefrontGrid");
-  if (gridEl) gridEl.innerHTML = visible.length ? visible.map(productCardHtml).join("") : '<div class="empty-state">No matching items.</div>';
+  if (gridEl) gridEl.innerHTML = visible.length ? visible.map(productCardHtml).join("") : `<div class="empty-state">No ${storefrontCatalogTab} found${q ? ` for “${esc(q)}”` : ""}.</div>`;
   const tableEl = byId("storefrontTable");
-  if (tableEl) tableEl.innerHTML = visible.length ? storefrontTableHtml(visible) : '<div class="empty-state">No matching items.</div>';
+  if (tableEl) tableEl.innerHTML = visible.length ? storefrontTableHtml(visible) : `<div class="empty-state">No ${storefrontCatalogTab} found.</div>`;
+  const pCount = byId("storefrontProductsCount"), sCount = byId("storefrontServicesCount");
+  if (pCount) pCount.textContent = `(${products.length})`;
+  if (sCount) sCount.textContent = `(${services.length})`;
   const wrap = byId("storefrontViewMoreWrap");
   if (wrap) {
-    if (!q && filtered.length > 6) {
-      wrap.innerHTML = `<button class="btn btn-outline" onclick="toggleStorefrontProducts()">${expanded ? "Show fewer products" : `View more products (${filtered.length - 6})`}</button>`;
-    } else wrap.innerHTML = "";
+    if (!q && filtered.length > 6) wrap.innerHTML = `<button class="btn btn-outline" onclick="toggleStorefrontProducts()">${expanded ? `Show fewer ${storefrontCatalogTab}` : `View more ${storefrontCatalogTab} (${filtered.length - 6})`}</button>`;
+    else wrap.innerHTML = "";
   }
 }
 function toggleStorefrontProducts() {
@@ -11663,7 +11926,7 @@ function toggleStorefrontProducts() {
 function storefrontTableHtml(list) {
   return `<table style="width:100%;border-collapse:collapse;">
     <thead><tr>
-      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Equipment</th>
+      <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">${list.some(p => p.is_service) && list.every(p => p.is_service) ? "Service" : "Product"}</th>
       <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Category</th>
       <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Price</th>
       <th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Available</th>
@@ -13644,9 +13907,9 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo) {
     </select>
   </div>
   <div class="flex" style="gap:0.6rem;flex-wrap:wrap;margin:0 0 0.8rem;align-items:center;">
-    <label style="margin:0;font-size:0.78rem;font-weight:400;">From <input type="date" value="${esc(dateFrom)}" onchange="navigate('vendorOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:this.value,dateTo:'${dateTo}'})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
-    <label style="margin:0;font-size:0.78rem;font-weight:400;">To <input type="date" value="${esc(dateTo)}" onchange="navigate('vendorOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:this.value})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
-    ${dateFrom || dateTo ? `<a href="#" onclick="navigate('vendorOrders',{status:'${status}',type:'${type}',payment:'${payment}'});return false;">Clear dates</a>` : ""}
+    <label style="margin:0;font-size:0.78rem;font-weight:400;">From <input type="date" autocomplete="off" value="${esc(dateFrom)}" onchange="this.dataset.touched='1';navigate('vendorOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:this.value,dateTo:'${dateTo}'})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
+    <label style="margin:0;font-size:0.78rem;font-weight:400;">To <input type="date" autocomplete="off" value="${esc(dateTo)}" onchange="this.dataset.touched='1';navigate('vendorOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:this.value})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
+    ${dateFrom || dateTo ? `<a href="#" onclick="clearOrderDateFilters('vendorOrders','${status}','${type}','${payment}');return false;">Clear dates</a>` : ""}
   </div>`;
   orderListViewMode = "cards";
   orderListExpanded = false;
@@ -13662,6 +13925,9 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo) {
   return html;
 }
 
+async function clearOrderDateFilters(view, status, type, payment) {
+  navigate(view, { status, type, payment, dateFrom:"", dateTo:"" });
+}
 async function renderBuyerOrders(status, type, payment, dateFrom, dateTo) {
   if (!session) return '<div class="empty-state">Please log in.</div>';
   status = ORDER_TABS.includes(status) ? status : "all";
@@ -13705,9 +13971,9 @@ async function renderBuyerOrders(status, type, payment, dateFrom, dateTo) {
     </select>
   </div>
   <div class="flex" style="gap:0.6rem;flex-wrap:wrap;margin:0 0 0.8rem;align-items:center;">
-    <label style="margin:0;font-size:0.78rem;font-weight:400;">From <input type="date" value="${esc(dateFrom)}" onchange="navigate('buyerOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:this.value,dateTo:'${dateTo}'})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
-    <label style="margin:0;font-size:0.78rem;font-weight:400;">To <input type="date" value="${esc(dateTo)}" onchange="navigate('buyerOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:this.value})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
-    ${dateFrom || dateTo ? `<a href="#" onclick="navigate('buyerOrders',{status:'${status}',type:'${type}',payment:'${payment}'});return false;">Clear dates</a>` : ""}
+    <label style="margin:0;font-size:0.78rem;font-weight:400;">From <input type="date" autocomplete="off" value="${esc(dateFrom)}" onchange="this.dataset.touched='1';navigate('buyerOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:this.value,dateTo:'${dateTo}'})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
+    <label style="margin:0;font-size:0.78rem;font-weight:400;">To <input type="date" autocomplete="off" value="${esc(dateTo)}" onchange="this.dataset.touched='1';navigate('buyerOrders',{status:'${status}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:this.value})" style="width:auto;margin:0 0 0 0.3rem;" /></label>
+    ${dateFrom || dateTo ? `<a href="#" onclick="clearOrderDateFilters('buyerOrders','${status}','${type}','${payment}');return false;">Clear dates</a>` : ""}
   </div>`;
   orderListViewMode = "cards";
   orderListExpanded = false;
@@ -15330,7 +15596,7 @@ function renderTerms() {
     <p>Nothing here prevents a buyer from using the dispute process, seeking a refund where the applicable policy allows it, or exercising rights available under Nigerian consumer-protection or other applicable law. Always inspect goods before accepting them, and consult a licensed healthcare provider for clinical use questions about medical equipment.</p>
 
     <h3>8. Contact</h3>
-    <p>Questions about these terms can be raised through your account, or with a Levromart admin via a support request.</p>
+    <p>Questions about these terms can be raised through your account, or with a Levromart admin via a <a href="#" class="legal-inline-link" onclick="navigate('supportRequest');return false;">support request</a>.</p>
   </div>`;
 }
 
@@ -15368,7 +15634,7 @@ function renderPrivacy() {
     <p>Administrator accounts use an additional one-time email code at sign-in. Buyer and vendor accounts use the normal account authentication flow without this extra email-code step.</p>
 
     <h3>6. Contact</h3>
-    <p>Privacy questions can be raised through your account, or with a Levromart admin via a support request.</p>
+    <p>Privacy questions can be raised through your account, or with a Levromart admin via a <a href="#" class="legal-inline-link" onclick="navigate('supportRequest');return false;">support request</a>.</p>
   </div>`;
 }
 
@@ -15938,12 +16204,10 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
         if (addResult.failed) parts.push(`${addResult.failed} couldn't be added`);
         if (removeResult.removed) parts.push(`${removeResult.removed} removed`);
         navHint.innerHTML = `<i class="fa-solid fa-arrow-right"></i> ${parts.join(", ") || "Cart updated"}`;
-        // Cart actions from Levi must never leave the chat panel covering the
-        // destination. Close Levi first, then open the cart immediately so the
-        // buyer can see the result of the add/remove action without another tap.
+        // Cart actions from Levi keep the buyer on the current page. Close
+        // Levi so the updated cart badge is visible, but do not navigate away.
         closeLeviAfterCartAction();
         updateCartFab();
-        requestAnimationFrame(() => navigate("cart"));
       });
     }
   }
@@ -16009,6 +16273,7 @@ async function toggleAiReactionPicker(evt, msgId, el) {
   picker.setAttribute("aria-label", "Choose a reaction");
   picker.innerHTML = REACTION_EMOJIS.map((e) => `<button type="button" aria-label="React ${e}" onclick="reactToAiMessage(event,'${msgId}','${e}')">${e}</button>`).join("");
   el.appendChild(picker);
+  requestAnimationFrame(() => positionReactionPicker(picker, el));
 }
 async function reactToAiMessage(evt, msgId, emoji) {
   evt.stopPropagation();
@@ -16450,26 +16715,32 @@ function leviOfflineFallback(text) {
 
 async function fetchLeviReply(payload) {
   const urls = ['/api/chat', '/api/chat.js'];
+  const deadline = Date.now() + 7000;
   let lastError = null;
   for (const url of urls) {
-    for (let attempt = 0; attempt < 1; attempt++) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), remaining);
+      let res;
       try {
-        const res = await fetch(url, {
+        res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
           cache: 'no-store',
           body: JSON.stringify(payload),
+          signal: controller.signal,
         });
-        const raw = await res.text();
-        let json = {};
-        try { json = raw ? JSON.parse(raw) : {}; } catch (_) {}
-        if (res.ok && json.reply) return json;
-        lastError = new Error(json.error || `Levi service returned HTTP ${res.status}.`);
-        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) break;
-      } catch (err) {
-        lastError = err;
-      }
-      if (attempt === 0 && url === urls[0]) await new Promise(r => setTimeout(r, 120));
+      } finally { clearTimeout(timeout); }
+      const raw = await res.text();
+      let json = {};
+      try { json = raw ? JSON.parse(raw) : {}; } catch (_) {}
+      if (res.ok && json.reply) return json;
+      lastError = new Error(json.error || `Levi service returned HTTP ${res.status}.`);
+      if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) break;
+    } catch (err) {
+      lastError = err;
     }
   }
   throw lastError || new Error('Levi service unavailable.');
@@ -16533,8 +16804,18 @@ async function sendAiChatMessage() {
 
   appendAiChatMessage("typing", "");
   try {
+    const leviHistory = aiChatMessages.filter((m) => m.role !== "typing").slice(-12);
+    let leviChars = 0;
+    const boundedLeviHistory = [];
+    for (let i = leviHistory.length - 1; i >= 0; i--) {
+      const msg = leviHistory[i];
+      const textLen = String(msg.content || "").length;
+      if (boundedLeviHistory.length >= 12 || leviChars + textLen > 7000) break;
+      boundedLeviHistory.unshift(msg);
+      leviChars += textLen;
+    }
     const json = await fetchLeviReply({
-      messages: aiChatMessages.filter((m) => m.role !== "typing"),
+      messages: boundedLeviHistory,
       accessToken: session?.access_token,
       lat: buyerLocation?.lat, lng: buyerLocation?.lng,
       currentView, currentViewParams, lastRenderError,
@@ -16735,7 +17016,6 @@ async function resolveLeviLocalAction(text) {
       if (ok.length) {
         closeLeviAfterCartAction();
         updateCartFab();
-        await navigate("cart");
       }
       return { handled: true, reply: [
         ok.length ? `Done - I removed ${ok.map(r => r.product.name).join(", ")} from your cart.` : "",
@@ -16792,7 +17072,6 @@ async function resolveLeviLocalAction(text) {
     if (ok.length) {
       closeLeviAfterCartAction();
       updateCartFab();
-      await navigate("cart");
     }
     return { handled: true, reply: lines.join(" ") || "Tell me the product name, or open the product and say “add this to my cart”." };
   }
@@ -16800,7 +17079,6 @@ async function resolveLeviLocalAction(text) {
     if (ok.length) {
       closeLeviAfterCartAction();
       updateCartFab();
-      await navigate("cart");
     }
     return { handled: true, reply: ok.length ? `Done - I removed ${ok.map(r => r.product.name).join(", ")} from your cart.` : "I couldn't find that item in your cart." };
   }
@@ -17336,7 +17614,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 .storefront-avatar-fallback-button .avatar-fallback{border-radius:50%;width:100% !important;height:100% !important;}
 .chat-header-avatar.avatar-fallback{border:0 !important;display:inline-flex !important;}
 .chat-header-avatar[onclick]{cursor:pointer;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;}
-.product-detail-top-actions{position:absolute;top:1rem;right:1rem;display:flex;align-items:center;gap:.35rem;z-index:4;}
+.product-detail-top-actions{position:absolute;top:1rem;left:1rem;right:1rem;display:flex;align-items:center;justify-content:space-between;gap:.35rem;z-index:4;}
 .product-detail-top-actions .fav-btn{position:static !important;}
 .product-storefront-share-btn{width:2rem;height:2rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;border:0;background:color-mix(in srgb,var(--card) 94%,transparent);color:var(--primary);box-shadow:0 3px 12px rgba(15,23,42,.14);cursor:pointer;appearance:none;-webkit-appearance:none;}
 .product-storefront-share-btn:hover{background:color-mix(in srgb,var(--primary) 9%,var(--card));}
