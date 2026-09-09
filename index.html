@@ -14419,21 +14419,57 @@ async function saveProduct() {
     if (chosenSectorId === "__other__") {
       const customSectorName = byId("prodSectorOther").value.trim();
       if (!customSectorName) throw new Error("Type a name for the new sector, or pick one from the list.");
-      const { data: newSectorId, error: sectorErr } = await sb.rpc("create_vendor_sector", { p_name: customSectorName });
-      if (sectorErr) throw new Error(`Couldn't create that sector: ${sectorErr.message}`);
-      chosenSectorId = newSectorId;
+      
+      try {
+        const { data: newSectorId, error: sectorErr } = await sb.rpc("create_vendor_sector", { p_name: customSectorName });
+        if (sectorErr) throw new Error(sectorErr.message);
+        chosenSectorId = newSectorId;
+      } catch (err) {
+        // Fallback: direct insert if RPC fails
+        console.warn("Sector RPC failed, trying direct insert:", err);
+        const { data: existing } = await sb.from("sectors")
+          .select("id").ilike("name", `%${customSectorName}%`).maybeSingle();
+        if (existing?.id) {
+          chosenSectorId = existing.id;
+        } else {
+          const { data: newSector, error: insertErr } = await sb.from("sectors")
+            .insert({ name: customSectorName, sort_order: 999 })
+            .select("id").single();
+          if (insertErr) throw new Error(`Couldn't create that sector: ${insertErr.message}`);
+          chosenSectorId = newSector.id;
+        }
+      }
     }
 
     let category_id = byId("prodCategory").value || null;
     if (category_id === "__other__") {
       const customName = byId("prodCategoryOther").value.trim();
       if (!customName) throw new Error("Type a name for the new category, or pick one from the list.");
-      const { data: otherParent } = await sb.from("categories").select("id").eq("sector_id", chosenSectorId).is("parent_category_id", null).ilike("name", "Other").maybeSingle();
-      const otherParentId = otherParent?.id;
-      if (!otherParentId) throw new Error("This sector does not have an Other category yet. Leave the category as Uncategorized or choose another category.");
-      const { data: newCategoryId, error: catErr } = await sb.rpc("create_vendor_category", { p_name: customName, p_sector_id: chosenSectorId, p_parent_category_id: otherParentId });
-      if (catErr) throw new Error(`Couldn't create that category: ${catErr.message}`);
-      category_id = newCategoryId;
+      
+      // Get or create the "Other" parent category for this sector
+      const { data: otherParent } = await sb.from("categories")
+        .select("id").eq("sector_id", chosenSectorId)
+        .is("parent_category_id", null).ilike("name", "Other").maybeSingle();
+      
+      const otherParentId = otherParent?.id || null;
+      
+      try {
+        const { data: newCategoryId, error: catErr } = await sb.rpc("create_vendor_category", { 
+          p_name: customName, 
+          p_sector_id: chosenSectorId, 
+          p_parent_category_id: otherParentId 
+        });
+        if (catErr) throw new Error(catErr.message);
+        category_id = newCategoryId;
+      } catch (err) {
+        // Fallback: direct insert if RPC fails
+        console.warn("Category RPC failed, trying direct insert:", err);
+        const { data: newCategory, error: insertErr } = await sb.from("categories")
+          .insert({ name: customName, sector_id: chosenSectorId, parent_category_id: otherParentId })
+          .select("id").single();
+        if (insertErr) throw new Error(`Couldn't create that category: ${insertErr.message}`);
+        category_id = newCategory.id;
+      }
     }
 
     const fields = {
@@ -15976,16 +16012,27 @@ if (!window.__levroAdminActionListenerInstalled) {
     const status = button.dataset.status;
     const filter = button.dataset.filterStatus || "pending";
     if (!id || !status) return;
+    
+    // Disable the button immediately to prevent double-clicks
+    button.disabled = true;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Working...';
+    
+    const handleError = (err) => {
+      console.error("[Levromart] Admin action failed:", err);
+      showToast(err?.message || "Could not perform this action.", "error");
+      button.disabled = false;
+      button.innerHTML = originalText;
+    };
+    
     if (status === "delete") {
-      adminDeleteVendor(id, filter).catch((err) => {
-        console.error("[Levromart] Admin delete vendor handler failed:", err);
-        showToast(err?.message || "Could not delete this vendor.", "error");
-      });
+      adminDeleteVendor(id, filter).then(() => {
+        navigate("adminPanel", {status: filter}, false).catch(() => {});
+      }).catch(handleError);
     } else {
-      setVendorStatus(id, status, filter).catch((err) => {
-        console.error("[Levromart] Admin vendor status handler failed:", err);
-        showToast(err?.message || "Could not update this vendor.", "error");
-      });
+      setVendorStatus(id, status, filter).then(() => {
+        navigate("adminPanel", {status: filter}, false).catch(() => {});
+      }).catch(handleError);
     }
   });
 }
