@@ -1,0 +1,117 @@
+diff --git a/index.html b/index.html
+@@ -15766,19 +15766,19 @@
+         <span class="badge">${esc(v.verification_status)}</span>
+       </div>
+       <p class="muted" style="margin:0.3rem 0;">Applicant: ${esc(v.applicant?.name || "")} (${esc(v.applicant?.email || "")})</p>
+       <p class="muted" style="margin:0.3rem 0;">${[v.address, v.city].filter(Boolean).map(esc).join(", ") || "No address given (online-only)"}</p>
+       <p class="muted" style="margin:0.3rem 0;"><i class='fa-solid fa-phone'></i> ${esc(v.phone || "-")}${v.whatsapp_number ? " · WhatsApp " + esc(v.whatsapp_number) : ""}${v.cac_number ? " · CAC " + esc(v.cac_number) : ""}</p>
+       ${v.bio ? `<p style="margin:0.3rem 0;">${esc(v.bio)}</p>` : ""}
+       <p class="muted" style="margin:0.3rem 0;">${doc ? `<a href="#" onclick="viewVendorDoc('${doc}');return false;"><i class='fa-solid fa-file-lines'></i> View submitted document</a>` : "No document uploaded"} · applied ${new Date(v.created_at).toLocaleDateString()}</p>
+       <div class="flex" style="margin-top:0.5rem;">
+-        ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}">Approve</button>` : ""}
+-        ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
+-        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
++        ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}" onclick="return window.__levroAdminVendorAction(this,event);">Approve</button>` : ""}
++        ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}" onclick="return window.__levroAdminVendorAction(this,event);">Reject</button>` : ""}
++        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}" onclick="return window.__levroAdminVendorAction(this,event);"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
+       </div>
+     </div>`;
+   });
+   return html;
+ }
+ 
+ async function viewVendorDoc(path) {
+   const { data, error } = await sb.storage.from("vendor-docs").createSignedUrl(path, 300);
+@@ -15960,40 +15960,74 @@
+   await navigate("adminPanel", { status: filterStatus || "pending" }, { replace: true });
+ }
+ 
+ 
+ window.setVendorStatus = setVendorStatus;
+ window.adminDeleteVendor = adminDeleteVendor;
+ // One authoritative admin vendor-action listener. Buttons are rendered dynamically,
+ // so delegation is used instead of per-render inline handlers.
++window.setVendorStatus = setVendorStatus;
++window.adminDeleteVendor = adminDeleteVendor;
++
++/*
++ * ADMIN VENDOR ACTIONS — direct button dispatch with a delegated fallback.
++ * The buttons are rendered dynamically. Inline dispatch is the primary path
++ * on mobile because it cannot be defeated by another document-level listener;
++ * the bubble listener is only a fallback for markup created without onclick.
++ */
++window.__levroAdminVendorAction = async function(button, event) {
++  if (event) {
++    event.preventDefault();
++    event.stopPropagation();
++  }
++  if (!button || button.dataset.busy === "1") return false;
++  const id = button.dataset.vendorId;
++  const status = button.dataset.status;
++  const filter = button.dataset.filterStatus || "pending";
++  if (!id || !status) return false;
++
++  button.dataset.busy = "1";
++  button.dataset.directHandled = "1";
++  const originalText = button.innerHTML;
++  button.disabled = true;
++  button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Working…';
++
++  try {
++    if (status === "delete") {
++      await adminDeleteVendor(id, filter);
++    } else {
++      await setVendorStatus(id, status, filter);
++    }
++  } catch (err) {
++    console.error("[Levromart] Admin vendor action failed:", err);
++    showToast(err?.message || "Could not perform this vendor action.", "error");
++  } finally {
++    if (button.isConnected) {
++      button.disabled = false;
++      button.innerHTML = originalText;
++      delete button.dataset.busy;
++      delete button.dataset.directHandled;
++    }
++  }
++  return false;
++};
++
+ if (!window.__levroAdminActionListenerInstalled) {
+   window.__levroAdminActionListenerInstalled = true;
+   document.addEventListener("click", (event) => {
+     const button = event.target?.closest?.("#adminPanel .vendor-admin-action");
+-    if (!button) return;
++    if (!button || button.dataset.directHandled === "1") return;
+     event.preventDefault();
+     event.stopPropagation();
+-    const id = button.dataset.vendorId;
+-    const status = button.dataset.status;
+-    const filter = button.dataset.filterStatus || "pending";
+-    if (!id || !status) return;
+-    if (status === "delete") {
+-      adminDeleteVendor(id, filter).catch((err) => {
+-        console.error("[Levromart] Admin delete vendor handler failed:", err);
+-        showToast(err?.message || "Could not delete this vendor.", "error");
+-      });
+-    } else {
+-      setVendorStatus(id, status, filter).catch((err) => {
+-        console.error("[Levromart] Admin vendor status handler failed:", err);
+-        showToast(err?.message || "Could not update this vendor.", "error");
+-      });
+-    }
++    window.__levroAdminVendorAction(button, event);
+   });
+ }
++
+ async function adminToggleVendorActive(vendorId, currentlyActive, businessName) {
+   const action = currentlyActive ? "pause" : "reactivate";
+   if (!(await showConfirmDialog(
+     currentlyActive
+       ? "Pause this vendor's storefront? Customers won't be able to see their shop or products until you reactivate it."
+       : "Reactivate this vendor's storefront?",
+     { title: `${action[0].toUpperCase()}${action.slice(1)} storefront`, okLabel: action[0].toUpperCase() + action.slice(1), danger: currentlyActive }
+   ))) return;
++
++
++\ No newline at end of file
