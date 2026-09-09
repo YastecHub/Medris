@@ -1,0 +1,169 @@
+name: Rebuild admin vendor actions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rebuild-admin-vendor-actions.yml'
+      - '.github/rebuild-admin-marker.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore known-good index base and rebuild admin vendor actions
+        run: |
+          git checkout 82f5a6976ed99896134fa4d98df23b7867e209ea -- index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # Remove the first later override from the vendor-logic-fixes script.
+          pat1 = re.compile(r'\n\s*/\* ---------------------------------------------------------------\n\s*ADMIN VENDOR APPROVAL.*?\n\s*\};\n\n\s*/\* ---------------------------------------------------------------\n\s*VENDOR APPLICATION', re.S)
+          s, n1 = pat1.subn('\n\n  /* ---------------------------------------------------------------\n     VENDOR APPLICATION', s, count=1)
+          if n1 != 1:
+              raise SystemExit(f'first duplicate admin vendor override not found: {n1}')
+
+          # Remove the second later override from the same script.
+          pat2 = re.compile(r'\n\s*/\* ---------------------------------------------------------------\n\s*APPROVAL: verified \+ active in ONE vendor update\..*?\n\s*\};\n\n\s*/\* ---------------------------------------------------------------\n\s*APPROVED VENDOR SESSION AUTO-LOCATION', re.S)
+          s, n2 = pat2.subn('\n\n  /* ---------------------------------------------------------------\n     APPROVED VENDOR SESSION AUTO-LOCATION', s, count=1)
+          if n2 != 1:
+              raise SystemExit(f'second duplicate admin vendor override not found: {n2}')
+
+          # Remove the obsolete admin-action delegation hotfix completely.
+          s, n3 = re.subn(r'\s*<script id="levromart-admin-action-delegation-fix">.*?</script>\s*', '\n', s, count=1, flags=re.S)
+          if n3 != 1:
+              raise SystemExit(f'old admin action listener not found: {n3}')
+
+          # The canonical functions already exist in the main application script.
+          # This controller is the single event path for the three vendor buttons.
+          controller = r'''<script id="levromart-admin-vendor-actions-v3">
+          (function(){
+            "use strict";
+            if(window.__levromartAdminVendorActionsV3) return;
+            window.__levromartAdminVendorActionsV3=true;
+            window.setVendorStatus=setVendorStatus;
+            window.adminDeleteVendor=adminDeleteVendor;
+            const selector="#adminPanel .vendor-admin-action";
+            let inFlight=false;
+
+            function busy(btn,on){
+              if(!btn)return;
+              if(on){
+                btn.dataset.adminBusy="1";
+                btn.dataset.originalHtml=btn.innerHTML;
+                btn.disabled=true;
+                btn.setAttribute("aria-busy","true");
+                btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Working…';
+              }else{
+                if(btn.dataset.originalHtml!=null&&btn.isConnected)btn.innerHTML=btn.dataset.originalHtml;
+                btn.disabled=false;
+                btn.removeAttribute("aria-busy");
+                delete btn.dataset.adminBusy;
+                delete btn.dataset.originalHtml;
+              }
+            }
+
+            async function handle(btn,event){
+              if(!btn||inFlight||btn.dataset.adminBusy==="1")return;
+              const id=String(btn.dataset.vendorId||"").trim();
+              const status=String(btn.dataset.status||"").trim();
+              const filter=["all","pending","verified","rejected"].includes(btn.dataset.filterStatus)?btn.dataset.filterStatus:"pending";
+              if(!id||!["verified","rejected","delete"].includes(status)){
+                showToast("This vendor action is invalid. Refresh the page and try again.","error");
+                return;
+              }
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              inFlight=true;
+              busy(btn,true);
+              try{
+                if(status==="delete") await adminDeleteVendor(id,filter);
+                else await setVendorStatus(id,status,filter);
+              }catch(err){
+                console.error("[Levromart] Unhandled admin vendor action error:",err);
+                showToast(`Could not complete this action: ${friendlySupabaseError(err)}`,"error");
+              }finally{
+                inFlight=false;
+                if(btn.isConnected)busy(btn,false);
+              }
+            }
+
+            document.addEventListener("click",function(event){
+              const btn=event.target?.closest?.(selector);
+              if(btn)handle(btn,event);
+            },true);
+
+            document.addEventListener("keydown",function(event){
+              if(event.key!=="Enter"&&event.key!==" ")return;
+              const btn=event.target?.closest?.(selector);
+              if(!btn)return;
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              handle(btn,event);
+            },true);
+          })();
+          </script>
+          <style id="levromart-admin-vendor-actions-v3-style">
+          #adminPanel .vendor-admin-action{pointer-events:auto!important;touch-action:manipulation!important;-webkit-tap-highlight-color:transparent;position:relative;z-index:2}
+          #adminPanel .vendor-admin-action:disabled{opacity:.72;cursor:wait}
+          </style>
+          '''
+
+          last_body = s.rfind('</body>')
+          if last_body < 0:
+              raise SystemExit('final body tag not found')
+          s = s[:last_body] + controller + '\n' + s[last_body:]
+
+          checks = {
+              'setVendorStatus_defs': len(re.findall(r'async function setVendorStatus\(', s)),
+              'adminDeleteVendor_defs': len(re.findall(r'async function adminDeleteVendor\(', s)),
+              'old_listener': len(re.findall(r'id="levromart-admin-action-delegation-fix"', s)),
+              'v3_controller': len(re.findall(r'id="levromart-admin-vendor-actions-v3"', s)),
+              'window_set_export': len(re.findall(r'window\.setVendorStatus\s*=\s*setVendorStatus', s)),
+              'window_delete_export': len(re.findall(r'window\.adminDeleteVendor\s*=\s*adminDeleteVendor', s)),
+          }
+          if checks != {'setVendorStatus_defs':1,'adminDeleteVendor_defs':1,'old_listener':0,'v3_controller':1,'window_set_export':1,'window_delete_export':1}:
+              raise SystemExit(f'admin rebuild assertions failed: {checks}')
+          p.write_text(s, encoding='utf-8')
+          print('Admin vendor rebuild OK:', checks)
+          PY
+
+      - name: Validate JavaScript
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          s = Path('index.html').read_text(encoding='utf-8')
+          blocks = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, re.S | re.I)
+          for i, block in enumerate(blocks):
+              if not block.strip():
+                  continue
+              f = Path(f'/tmp/levromart-script-{i}.js')
+              f.write_text(block, encoding='utf-8')
+              r = subprocess.run(['node', '--check', str(f)], capture_output=True, text=True)
+              if r.returncode:
+                  print(r.stderr)
+                  raise SystemExit(r.returncode)
+          print('JavaScript syntax OK:', len(blocks), 'script blocks')
+          PY
+
+      - name: Commit rebuilt index and remove one-time workflow
+        run: |
+          rm -f .github/rebuild-admin-marker.txt .github/workflows/rebuild-admin-vendor-actions.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/rebuild-admin-marker.txt .github/workflows/rebuild-admin-vendor-actions.yml
+          git commit -m 'Rebuild admin vendor action system [skip ci]'
+          git push origin main
