@@ -20364,12 +20364,12 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 </style>
 
 <style id="levromart-admin-vendor-action-touch-style">
-#adminPanel .vendor-admin-action{
+#app .vendor-admin-action{
   pointer-events:auto!important;
   touch-action:manipulation!important;
   -webkit-tap-highlight-color:transparent;
 }
-#adminPanel .vendor-admin-action:disabled{
+#app .vendor-admin-action:disabled{
   opacity:.65;
   cursor:wait;
 }
@@ -20403,14 +20403,14 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       }
     } finally {
       // The button/row may already have been replaced by a successful
-      // refresh (navigate() re-renders #adminPanel) — only touch it if
+      // refresh (navigate() re-renders #app) — only touch it if
       // it's still actually in the document.
       if(document.contains(btn)) { btn.disabled = false; btn.innerHTML = originalHtml; }
     }
   }
 
   document.addEventListener("click", function(e){
-    const btn=e.target?.closest?.("#adminPanel .vendor-admin-action");
+    const btn=e.target?.closest?.("#app .vendor-admin-action");
     if(!btn) return;
     e.preventDefault();
     e.stopPropagation();
@@ -20420,7 +20420,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   // Keyboard activation (Enter / Space) for accessibility parity with click.
   document.addEventListener("keydown", function(e){
     if(e.key !== "Enter" && e.key !== " ") return;
-    const btn=e.target?.closest?.("#adminPanel .vendor-admin-action");
+    const btn=e.target?.closest?.("#app .vendor-admin-action");
     if(!btn) return;
     e.preventDefault();
     e.stopPropagation();
