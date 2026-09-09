@@ -19234,5 +19234,747 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 /* Voice compose never forces focus/keyboard when the mic is tapped. */
 #msgMicBtn { -webkit-tap-highlight-color:transparent; }
 </style>
+<!-- LEVROMART 2026-09-09 UX/BUG PATCH
+     These overrides intentionally sit at the end so they win over older
+     styling/function declarations without disturbing the rest of the build. -->
+<style id="levromart-2026-09-09-vendor-home-fixes">
+/* ================================================================
+   HOME — TRENDING SERVICES
+   Every service card uses the SAME compact dimensions. The image is cropped
+   into the same rectangle, so a tall flyer can never make its card taller
+   than the neighbouring hairdressing/service card.
+   ================================================================ */
+@media (max-width: 720px) {
+  .service-trending-scroll > .product-card-wrap {
+    flex: 0 0 205px !important;
+    width: 205px !important;
+    max-width: 205px !important;
+    min-width: 205px !important;
+  }
+  .service-trending-scroll > .product-card-wrap > .card {
+    width: 205px !important;
+    height: 325px !important;
+    min-height: 325px !important;
+    max-height: 325px !important;
+    padding: .6rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  .service-trending-scroll .product-img {
+    width: 100% !important;
+    height: 150px !important;
+    min-height: 150px !important;
+    max-height: 150px !important;
+    aspect-ratio: auto !important;
+    flex: 0 0 150px !important;
+    overflow: hidden !important;
+    border-radius: 10px !important;
+  }
+  .service-trending-scroll .product-img img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+  .service-trending-scroll h4 {
+    flex: 0 0 auto !important;
+    min-height: 2.15em !important;
+    max-height: 2.15em !important;
+    overflow: hidden !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+  }
+  .service-trending-scroll .card > .flex {
+    min-height: 1.35rem !important;
+    max-height: 1.35rem !important;
+    overflow: hidden !important;
+  }
+  .service-trending-scroll .card > div[style*="margin:0.5rem 0"] {
+    margin: .42rem 0 !important;
+    min-height: 1.25rem !important;
+    max-height: 1.25rem !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Packages — deliberately smaller than the service cards. */
+.package-recommendation-strip > .package-listing-card,
+.package-recommendation-strip > .card {
+  flex: 0 0 190px !important;
+  width: 190px !important;
+  min-width: 190px !important;
+  max-width: 190px !important;
+}
+.package-recommendation-strip .package-listing-card {
+  padding: .55rem !important;
+  border-radius: 13px !important;
+}
+.package-recommendation-strip .package-gallery,
+.package-recommendation-strip .package-gallery-placeholder {
+  height: 118px !important;
+  min-height: 118px !important;
+  max-height: 118px !important;
+}
+.package-recommendation-strip .package-photo-main {
+  height: 118px !important;
+  object-fit: cover !important;
+}
+.package-recommendation-strip .package-photo-strip { display:none !important; }
+.package-recommendation-strip .package-photo-count { font-size:.62rem !important; }
+.package-recommendation-strip .package-listing-card > .flex { margin-top:.5rem !important; }
+.package-recommendation-strip .package-listing-card p { font-size:.7rem !important; }
+
+/* ================================================================
+   STOREFRONTS — NO PLACEHOLDER HEADER TEXT
+   A storefront with no cover image is intentionally blank. Only the owner
+   keeps the pencil control for uploading one. Buyers/other vendors see no
+   "set a custom storefront header" message at all.
+   ================================================================ */
+.storefront-cover-empty {
+  font-size: 0 !important;
+  color: transparent !important;
+}
+.storefront-cover-empty::before,
+.storefront-cover-empty::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* ================================================================
+   VENDORS DIRECTORY — compact two-column cards + grid/list/map + sorting
+   ================================================================ */
+.vendors-directory-controls {
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  gap:.55rem !important;
+  margin: .9rem 0 !important;
+}
+.vendors-directory-filter-row {
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  gap:.45rem !important;
+}
+.vendors-directory-sort-row {
+  display:flex !important;
+  align-items:center !important;
+  gap:.45rem !important;
+  flex-wrap:wrap !important;
+}
+.vendors-directory-sort-row select { flex:1 1 150px !important; min-width:0 !important; }
+.vendors-directory-view-buttons { display:flex !important; gap:.35rem !important; }
+.vendors-directory-view-buttons .btn { min-width:40px !important; padding:.55rem !important; }
+.vendors-directory-grid {
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:.65rem !important;
+  align-items:stretch !important;
+}
+.vendors-directory-grid.vendors-list-mode { grid-template-columns:1fr !important; }
+.vendors-directory-grid .vendor-card {
+  width:100% !important;
+  min-width:0 !important;
+  min-height:145px !important;
+  height:100% !important;
+  padding:.72rem !important;
+  border-radius:14px !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:flex-start !important;
+  gap:.18rem !important;
+}
+.vendors-directory-grid.vendors-list-mode .vendor-card {
+  min-height:96px !important;
+  height:auto !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  gap:.65rem !important;
+}
+.vendor-directory-card-main { min-width:0 !important; flex:1 1 auto !important; }
+.vendors-directory-grid .vendor-card .vendor-directory-logo {
+  width:2.35rem !important;
+  height:2.35rem !important;
+  margin:0 0 .3rem !important;
+  flex:0 0 auto !important;
+}
+.vendors-directory-grid.vendors-list-mode .vendor-card .vendor-directory-logo { margin:0 !important; }
+.vendors-directory-grid .vendor-directory-name {
+  display:block !important;
+  font-size:.86rem !important;
+  line-height:1.18 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+.vendors-directory-grid .vendor-directory-city {
+  margin:.2rem 0 !important;
+  font-size:.7rem !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+.vendors-directory-grid .vendor-directory-categories {
+  margin:0 0 .28rem !important;
+  font-size:.62rem !important;
+  line-height:1.25 !important;
+  display:-webkit-box !important;
+  -webkit-line-clamp:2 !important;
+  -webkit-box-orient:vertical !important;
+  overflow:hidden !important;
+}
+.vendors-directory-grid .vendor-card-footer {
+  margin-top:auto !important;
+  display:flex !important;
+  gap:.25rem !important;
+  flex-wrap:wrap !important;
+  align-items:center !important;
+}
+.vendors-directory-grid .vendor-card-footer .badge {
+  font-size:.58rem !important;
+  padding:.15rem .38rem !important;
+  margin:0 !important;
+  white-space:nowrap !important;
+}
+.vendors-directory-more {
+  width:100% !important;
+  margin:.75rem 0 0 !important;
+}
+@media (max-width:390px) {
+  .vendors-directory-grid { gap:.5rem !important; }
+  .vendors-directory-grid .vendor-card { min-height:138px !important; padding:.62rem !important; }
+  .vendors-directory-filter-row { grid-template-columns:1fr !important; }
+}
+
+/* Customer requests is an action/hand icon, not a generic circle. */
+#profilePanel .profile-nav-link[data-profile-label="Customer requests"] .profile-item-icon i {
+  color:var(--text-muted) !important;
+}
+
+/* ================================================================
+   NORMAL CHAT — WhatsApp-like image sizing and tighter bubbles
+   ================================================================ */
+.chat-page-wrap .chat-bubble-wrap {
+  max-width: min(72%, 22rem) !important;
+}
+.chat-page-wrap .chat-bubble {
+  max-width:100% !important;
+  padding:.42rem .65rem !important;
+  font-size:.84rem !important;
+  line-height:1.35 !important;
+  border-radius:12px !important;
+}
+.chat-page-wrap .chat-image-attachment {
+  width:auto !important;
+  max-width:min(230px,62vw) !important;
+  margin:.12rem 0 !important;
+  border-radius:10px !important;
+}
+.chat-page-wrap .chat-image-attachment .msg-attachment-img {
+  display:block !important;
+  width:auto !important;
+  max-width:min(230px,62vw) !important;
+  max-height:230px !important;
+  height:auto !important;
+  object-fit:cover !important;
+  border-radius:10px !important;
+}
+.chat-page-wrap .chat-bubble.photo-only,
+.chat-page-wrap .chat-bubble:has(.chat-image-attachment) {
+  padding:.05rem !important;
+}
+@media(max-width:430px){
+  .chat-page-wrap .chat-bubble-wrap { max-width:76% !important; }
+  .chat-page-wrap .chat-image-attachment,
+  .chat-page-wrap .chat-image-attachment .msg-attachment-img {
+    max-width:200px !important;
+    max-height:200px !important;
+  }
+}
+
+/* Application button should never accidentally behave like a form submit. */
+#vendorApplySubmitBtn { width:100% !important; }
+#vendorApplySubmitBtn.is-busy { opacity:.65 !important; pointer-events:none !important; }
+</style>
+
+<script id="levromart-2026-09-09-vendor-logic-fixes">
+(function () {
+  "use strict";
+
+  /* ---------------------------------------------------------------
+     CUSTOMER REQUEST ICON
+     --------------------------------------------------------------- */
+  function refreshCustomerRequestIcons() {
+    const links = document.querySelectorAll("#profilePanel .profile-nav-link");
+    links.forEach((link) => {
+      const label = link.querySelector(".profile-nav-text")?.textContent?.trim().toLowerCase() || "";
+      if (label === "customer requests") {
+        link.dataset.profileLabel = "Customer requests";
+        const icon = link.querySelector(".profile-item-icon i");
+        if (icon) icon.className = "fa-solid fa-hand";
+      }
+    });
+  }
+  window.refreshCustomerRequestIcons = refreshCustomerRequestIcons;
+  setTimeout(refreshCustomerRequestIcons, 0);
+  setTimeout(refreshCustomerRequestIcons, 250);
+
+  /* ---------------------------------------------------------------
+     VENDORS DIRECTORY
+     Six vendors are shown initially. "View more vendors" expands the
+     complete filtered set. Sort can be alphabetical or closest.
+     Grid/list/map are separate presentation modes.
+     --------------------------------------------------------------- */
+  let vendorDirectoryExpanded = false;
+  let vendorDirectorySort = "alphabetical";
+  let vendorDirectoryMode = "grid";
+
+  function vendorDirectorySortList(list) {
+    const out = [...(list || [])];
+    if (vendorDirectorySort === "closest" && typeof buyerLocation !== "undefined" && buyerLocation) {
+      return out.sort((a, b) => {
+        const da = a.lat != null && a.lng != null
+          ? haversineKm(buyerLocation.lat, buyerLocation.lng, a.lat, a.lng)
+          : Infinity;
+        const db = b.lat != null && b.lng != null
+          ? haversineKm(buyerLocation.lat, buyerLocation.lng, b.lat, b.lng)
+          : Infinity;
+        return da - db || String(a.business_name || "").localeCompare(String(b.business_name || ""));
+      });
+    }
+    return out.sort((a, b) => String(a.business_name || "").localeCompare(String(b.business_name || ""), undefined, { sensitivity: "base" }));
+  }
+
+  function renderVendorDirectoryCards() {
+    const grid = byId("vendorsGrid");
+    if (!grid) return;
+    const all = vendorDirectorySortList(window.__filteredVendors || []);
+    const visible = vendorDirectoryExpanded ? all : all.slice(0, 6);
+    grid.classList.toggle("vendors-list-mode", vendorDirectoryMode === "list");
+    grid.classList.toggle("hidden", vendorDirectoryMode === "map");
+    grid.innerHTML = visible.length
+      ? visible.map(vendorCardHtml).join("")
+      : '<div class="empty-state" style="grid-column:1/-1;">No vendors match those filters.</div>';
+
+    const more = byId("vendorsDirectoryMoreBtn");
+    if (more) {
+      const hasMore = all.length > 6;
+      more.classList.toggle("hidden", !hasMore || vendorDirectoryMode === "map");
+      more.innerHTML = vendorDirectoryExpanded
+        ? '<i class="fa-solid fa-chevron-up"></i> Show fewer vendors'
+        : '<i class="fa-solid fa-chevron-down"></i> View more vendors (' + (all.length - Math.min(all.length, 6)) + ' more)';
+    }
+
+    const count = byId("vendorsDirectoryCount");
+    if (count) count.textContent = `${all.length} verified vendor${all.length === 1 ? "" : "s"}`;
+
+    byId("vendorsViewGridBtn")?.classList.toggle("active", vendorDirectoryMode === "grid");
+    byId("vendorsViewListBtn")?.classList.toggle("active", vendorDirectoryMode === "list");
+    byId("vendorsViewMapBtn")?.classList.toggle("active", vendorDirectoryMode === "map");
+
+    if (vendorDirectoryMode === "map" && typeof renderVendorsMap === "function") {
+      byId("vendorsMapWrap")?.classList.remove("hidden");
+      setTimeout(() => renderVendorsMap(), 0);
+    } else {
+      byId("vendorsMapWrap")?.classList.add("hidden");
+    }
+  }
+
+  window.switchVendorsView = function (mode) {
+    vendorDirectoryMode = ["grid", "list", "map"].includes(mode) ? mode : "grid";
+    renderVendorDirectoryCards();
+  };
+
+  window.toggleVendorsMore = function () {
+    vendorDirectoryExpanded = !vendorDirectoryExpanded;
+    renderVendorDirectoryCards();
+  };
+
+  window.setVendorDirectorySort = function (mode) {
+    vendorDirectorySort = mode === "closest" ? "closest" : "alphabetical";
+    vendorDirectoryExpanded = false;
+    renderVendorDirectoryCards();
+  };
+
+  window.renderVendorsDirectory = function () {
+    vendorDirectoryExpanded = false;
+    vendorDirectoryMode = "grid";
+    vendorDirectorySort = "alphabetical";
+    let html = `<div class="flex" style="justify-content:space-between;align-items:center;gap:.55rem;flex-wrap:wrap;">
+      <div>
+        <h2 style="margin:0;"><i class="fa-solid fa-store"></i> All vendors</h2>
+        <p class="muted" id="vendorsDirectoryCount" style="font-size:.76rem;margin:.2rem 0 0;">Verified vendors</p>
+      </div>
+      <div class="vendors-directory-view-buttons">
+        <button class="btn btn-sm btn-outline active" id="vendorsViewGridBtn" onclick="switchVendorsView('grid')" title="Grid view" aria-label="Grid view"><i class="fa-solid fa-grip"></i></button>
+        <button class="btn btn-sm btn-outline" id="vendorsViewListBtn" onclick="switchVendorsView('list')" title="List view" aria-label="List view"><i class="fa-solid fa-list"></i></button>
+        <button class="btn btn-sm btn-outline" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view" aria-label="Map view"><i class="fa-solid fa-map-location-dot"></i></button>
+      </div>
+    </div>
+    <div class="vendors-directory-controls">
+      <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" autocomplete="off" />
+      <div class="vendors-directory-filter-row">
+        <select id="vendorSectorFilter" onchange="filterVendorsDirectory()"><option value="">All sectors</option></select>
+        <select id="vendorCityFilter" onchange="filterVendorsDirectory()"><option value="">All cities</option></select>
+      </div>
+      <div class="vendors-directory-sort-row">
+        <select id="vendorCategoryFilter" onchange="filterVendorsDirectory()"><option value="">Known for: anything</option></select>
+        <select id="vendorSortFilter" onchange="setVendorDirectorySort(this.value)" aria-label="Arrange vendors">
+          <option value="alphabetical">A–Z</option>
+          <option value="closest">Closest first</option>
+        </select>
+      </div>
+    </div>
+    <div class="vendors-directory-grid" id="vendorsGrid"><p class="muted">Loading…</p></div>
+    <button type="button" class="btn btn-sm btn-outline vendors-directory-more hidden" id="vendorsDirectoryMoreBtn" onclick="toggleVendorsMore()"></button>
+    <div id="vendorsMapWrap" class="hidden">
+      <p class="muted" id="vendorsMapStatus" style="font-size:.82rem;margin:0 0 1rem;line-height:1.45;"></p>
+      <div id="vendorsMap" style="height:min(60vh,420px);border-radius:.9rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;"></div>
+    </div>`;
+    setTimeout(async () => {
+      try {
+        await loadVendorsDirectory();
+        if (buyerDistanceAutoEnabled) scheduleAutomaticLocationRefresh();
+        else updateVendorsLocationUI();
+      } catch (err) {
+        console.warn("[Levromart] Vendor directory failed:", err);
+        const grid = byId("vendorsGrid");
+        if (grid) grid.innerHTML = errorStateHtml(err);
+        updateVendorsLocationUI();
+      }
+    }, 0);
+    return html;
+  };
+
+  window.filterVendorsDirectory = function () {
+    const search = (byId("vendorSearchInput")?.value || "").trim().toLowerCase();
+    const sectorId = byId("vendorSectorFilter")?.value || "";
+    const city = byId("vendorCityFilter")?.value || "";
+    const category = byId("vendorCategoryFilter")?.value || "";
+    let list = window.__allVendors || [];
+    if (search) list = list.filter((v) => (v.searchText || "").includes(search));
+    if (sectorId) list = list.filter((v) => String(v.sector_id) === String(sectorId));
+    if (city) list = list.filter((v) => v.city === city);
+    if (category) list = list.filter((v) => (v.categories || []).includes(category));
+    window.__filteredVendors = vendorDirectorySortList(list);
+    renderVendorDirectoryCards();
+    if (vendorDirectoryMode === "map" && typeof renderVendorsMap === "function") renderVendorsMap();
+  };
+
+  /* Keep the existing loader's select population, but re-render our compact
+     cards once it has finished. */
+  const originalLoadVendorsDirectory = window.loadVendorsDirectory;
+  if (typeof originalLoadVendorsDirectory === "function") {
+    window.loadVendorsDirectory = async function () {
+      const result = await originalLoadVendorsDirectory.apply(this, arguments);
+      const sort = byId("vendorSortFilter");
+      if (sort) sort.value = vendorDirectorySort;
+      renderVendorDirectoryCards();
+      return result;
+    };
+  }
+
+  /* ---------------------------------------------------------------
+     COMPACT VENDOR CARD
+     --------------------------------------------------------------- */
+  window.vendorCardHtml = function (v) {
+    const logo = v.logo_url
+      ? `<img src="${esc(v.logo_url)}" alt="" class="avatar-circle vendor-directory-logo" style="object-fit:cover;" />`
+      : `<div class="avatar-circle vendor-directory-logo">${esc((v.business_name || "?")[0].toUpperCase())}</div>`;
+    const distance = (typeof buyerLocation !== "undefined" && buyerLocation && v.lat != null && v.lng != null)
+      ? `<span class="badge"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>`
+      : "";
+    return `<div class="vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v.id)}'});}">
+      ${logo}
+      <div class="vendor-directory-card-main">
+        <strong class="vendor-directory-name">${esc(v.business_name || "Vendor")}</strong>
+        <p class="muted vendor-directory-city"><i class="fa-solid fa-location-dot"></i> ${esc(v.city || "Online")}</p>
+        ${v.categories?.length ? `<p class="muted vendor-directory-categories"><i class="fa-solid fa-tags"></i> ${v.categories.slice(0,4).map(esc).join(", ")}</p>` : ""}
+        <div class="vendor-card-footer">
+          <span class="badge success"><i class="fa-solid fa-circle-check"></i> Verified</span>
+          ${v.avg_rating != null ? `<span class="badge ${ratingBadgeClass(v.avg_rating)}">★ ${Number(v.avg_rating).toFixed(1)}${v.review_count != null ? ` (${v.review_count})` : ""}</span>` : ""}
+          ${distance}
+        </div>
+      </div>
+    </div>`;
+  };
+
+  /* ---------------------------------------------------------------
+     STOREFRONT HEADER TEXT — blank when no custom cover exists.
+     --------------------------------------------------------------- */
+  const originalRenderStorefront = window.renderStorefront;
+  if (typeof originalRenderStorefront === "function") {
+    window.renderStorefront = async function () {
+      const html = await originalRenderStorefront.apply(this, arguments);
+      return String(html || "").replace(
+        /<div class="storefront-cover-empty">\s*Set a custom storefront header in your business profile\.\s*<\/div>/gi,
+        '<div class="storefront-cover-empty" aria-hidden="true"></div>'
+      );
+    };
+  }
+
+  /* ---------------------------------------------------------------
+     ADMIN VENDOR APPROVAL — make the operation verifiable and prevent a
+     silent no-op. The old update() did not ask Supabase to return the row,
+     so an RLS/no-row result could look like a successful approval.
+     --------------------------------------------------------------- */
+  let vendorStatusBusy = false;
+  window.setVendorStatus = async function (id, status, filterStatus, businessName) {
+    if (vendorStatusBusy) return;
+    vendorStatusBusy = true;
+    try {
+      if (status === "verified" && !(await showConfirmDialog(
+        `Approve "${businessName}" as a vendor? Their storefront and listings go live to buyers immediately.`,
+        { title: "Approve vendor", okLabel: "Approve" }
+      ))) return;
+      if (status === "rejected" && !(await promptAdminPassword("reject this vendor"))) return;
+
+      const { data: targetVendor, error: targetVendorError } = await sb
+        .from("vendors")
+        .select("id,user_id,business_name,verification_status")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (targetVendorError || !targetVendor) {
+        showToast(targetVendorError?.message || "Vendor application not found.", "error");
+        return;
+      }
+
+      const previousStatus = targetVendor.verification_status;
+      const { data: updatedRows, error: updateError } = await sb
+        .from("vendors")
+        .update({ verification_status: status })
+        .eq("id", id)
+        .select("id,user_id,business_name,verification_status")
+        .maybeSingle();
+
+      if (updateError) {
+        console.error("[Levromart] Vendor approval update failed:", updateError);
+        showToast(updateError.message || "Could not update this vendor.", "error");
+        return;
+      }
+      if (!updatedRows || String(updatedRows.verification_status) !== String(status)) {
+        console.error("[Levromart] Vendor approval returned no updated row.", { id, status, updatedRows });
+        showToast("The vendor was not updated. Your admin session may not have permission to approve this application.", "error");
+        return;
+      }
+
+      if (status === "verified") {
+        const { error: roleError } = await sb.from("users").update({ role: "vendor", role_selected: true }).eq("id", targetVendor.user_id);
+        if (roleError) {
+          console.error("[Levromart] Vendor role update failed:", roleError);
+          showToast(`Vendor approved, but the account role could not be updated: ${roleError.message}`, "error");
+        }
+
+        const { error: notifError } = await sb.from("notifications").insert({
+          user_id: targetVendor.user_id,
+          title: "Vendor application approved",
+          body: `Congratulations! ${businessName} has been approved. Your Levromart vendor account is now active and your storefront can go live.`,
+          target_view: "vendorDashboard",
+          target_params: {}
+        });
+        if (notifError) console.warn("Vendor approval notification could not be created:", notifError.message);
+      } else if (status === "rejected" && previousStatus !== "rejected") {
+        const { error: notifError } = await sb.from("notifications").insert({
+          user_id: targetVendor.user_id,
+          title: "Vendor application update",
+          body: `Your application for ${businessName} was not approved at this time. Please review your application details or contact Levromart support.`,
+          target_view: "home",
+          target_params: {}
+        });
+        if (notifError) console.warn("Vendor rejection notification could not be created:", notifError.message);
+      }
+
+      try { await logAdminAction(status === "verified" ? "approve_vendor" : "reject_vendor", "vendor", id, businessName); } catch (e) { console.warn("Admin action log failed:", e); }
+      showToast(status === "verified" ? "Vendor approved successfully." : "Vendor rejected.", "success");
+      await navigate("adminPanel", { status: filterStatus });
+    } finally {
+      vendorStatusBusy = false;
+    }
+  };
+
+  /* ---------------------------------------------------------------
+     VENDOR APPLICATION — explicit type=button + delegated click fallback,
+     plus a busy guard so slow browsers cannot double-submit.
+     --------------------------------------------------------------- */
+  let vendorApplyBusy = false;
+  window.renderVendorApply = async function () {
+    if (!session) return '<div class="empty-state">Please log in to apply as a vendor.</div>';
+    if (profile?.role === "admin") return '<div class="empty-state">Admin accounts can\'t own a vendor store on Levromart.</div>';
+    const { data: existing } = await sb.from("vendors").select("id").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
+    if (existing) { navigate("vendorDashboard"); return '<p class="muted">Redirecting…</p>'; }
+    if (!sectors.length) { const { data } = await sb.from("sectors").select("*").order("sort_order"); sectors = data || []; }
+    return `<div class="card" style="max-width:480px;margin:0 auto;">
+      <h2>Apply as a vendor</h2>
+      <p class="muted">Tell us about your business. An admin will review this manually.</p>
+      <div id="vendorApplyError" class="error-text hidden"></div>
+      <label>Which sector is your business in? *</label>
+      <select id="vaSector">${sectors.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select>
+      <label>Business name *</label><input id="vaBusinessName" autocomplete="organization" />
+      <label>Address (leave blank if you're an online-only business)</label><input id="vaAddress" autocomplete="street-address" />
+      <label>City</label><input id="vaCity" value="Lagos" autocomplete="address-level2" />
+      <label>Phone *</label><input id="vaPhone" type="tel" autocomplete="tel" />
+      <label>WhatsApp number</label><input id="vaWhatsapp" type="tel" autocomplete="tel" />
+      <label>CAC number</label><input id="vaCac" autocomplete="off" />
+      <label>CAC document (optional upload)</label><input id="vaDoc" type="file" accept="application/pdf,image/*" />
+      <label>About your business</label><textarea id="vaBio" rows="3" placeholder="If you're online-only, mention that here: how buyers reach you, delivery area, etc."></textarea>
+      <button type="button" class="btn" id="vendorApplySubmitBtn" style="margin-top:.8rem;" onclick="submitVendorApply()"><i class="fa-solid fa-paper-plane"></i> Submit application</button>
+    </div>`;
+  };
+
+  window.submitVendorApply = async function () {
+    if (vendorApplyBusy) return;
+    const errorEl = byId("vendorApplyError");
+    const button = byId("vendorApplySubmitBtn");
+    if (!errorEl || !button) return;
+    errorEl.classList.add("hidden");
+    errorEl.textContent = "";
+    const business_name = String(byId("vaBusinessName")?.value || "").trim();
+    const address = String(byId("vaAddress")?.value || "").trim();
+    const phone = String(byId("vaPhone")?.value || "").trim();
+    if (!business_name || !phone) {
+      errorEl.textContent = "Business name and phone are required.";
+      errorEl.classList.remove("hidden");
+      return;
+    }
+    vendorApplyBusy = true;
+    button.classList.add("is-busy");
+    button.disabled = true;
+    try {
+      let verification_docs = [];
+      const file = byId("vaDoc")?.files?.[0];
+      if (file) {
+        const ext = (file.name.split(".").pop() || "bin").replace(/[^a-z0-9]/gi, "").toLowerCase() || "bin";
+        const path = `${session.user.id}/${Date.now()}.${ext}`;
+        const { error: upErr } = await sb.storage.from("vendor-docs").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
+        if (upErr) throw new Error(`Document upload failed: ${upErr.message}`);
+        verification_docs = [path];
+      }
+      const { error } = await sb.from("vendors").insert({
+        user_id: session.user.id,
+        sector_id: byId("vaSector")?.value || null,
+        business_name,
+        address: address || null,
+        city: String(byId("vaCity")?.value || "").trim() || null,
+        phone,
+        whatsapp_number: String(byId("vaWhatsapp")?.value || "").trim() || null,
+        cac_number: String(byId("vaCac")?.value || "").trim() || null,
+        bio: String(byId("vaBio")?.value || "").trim() || null,
+        verification_docs,
+      });
+      if (error) throw new Error(error.message);
+      showToast("Vendor application submitted successfully.", "success");
+      await refreshAuthState();
+      navigate("vendorDashboard");
+    } catch (err) {
+      console.error("[Levromart] Vendor application failed:", err);
+      errorEl.textContent = /network|fetch|failed to fetch|timeout/i.test(String(err?.message || ""))
+        ? "We couldn't reach Levromart. Check your connection and try again."
+        : (err?.message || "We couldn't submit your application. Please try again.");
+      errorEl.classList.remove("hidden");
+    } finally {
+      vendorApplyBusy = false;
+      button.classList.remove("is-busy");
+      button.disabled = false;
+    }
+  };
+
+  /* Some mobile browsers are more reliable with one delegated listener than
+     an inline handler after a dynamic page replacement. Keep the inline
+     handler too; this is only a safety net and ignores duplicate clicks. */
+  document.addEventListener("click", function (e) {
+    const btn = e.target?.closest?.("#vendorApplySubmitBtn");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.submitVendorApply();
+  }, true);
+
+  /* ---------------------------------------------------------------
+     LEVI — don't show the useless generic fallback for ordinary questions.
+     The normal /api/chat answer remains the primary path. If it returns the
+     old generic sentence, try one more request with a hard instruction that
+     it MUST answer the actual question. If the second request still fails,
+     use the deterministic app answer instead of the generic boilerplate.
+     --------------------------------------------------------------- */
+  const GENERIC_LEVI_PATTERNS = [
+    /^i'?m levi\. i can help with levromart products, vendors, orders, your cart, wishlist/i,
+    /^hi[, ]+[^.]*[.!] i'?m levi\. i can still help with basic levromart navigation/i,
+    /^i'?m levi\. i can still help with basic levromart navigation/i
+  ];
+  function isGenericLeviReply(reply) {
+    const text = String(reply || "").trim();
+    return GENERIC_LEVI_PATTERNS.some((re) => re.test(text));
+  }
+  function leviSpecificFallback(text) {
+    const q = leviNormaliseText(text);
+    if (/\bwhat('?s| is) in my cart\b|\bshow my cart\b/.test(q)) {
+      navigate("cart");
+      return "I opened your cart so you can see what's currently in it.";
+    }
+    if (/\b(my )?orders?\b/.test(q) && /show|open|where|check|status/.test(q)) {
+      navigate(vendor ? "vendorOrders" : "buyerOrders");
+      return "I opened your orders.";
+    }
+    if (/\bvendors?\b/.test(q) && /show|find|where|list|closest|near/.test(q)) {
+      navigate("vendors");
+      return "I opened the vendor directory. You can search, filter, sort A–Z, or use Closest first.";
+    }
+    if (/\bsettings?\b/.test(q) && /open|show|take me|go/.test(q)) {
+      navigate("settings");
+      return "I opened Settings.";
+    }
+    if (/\b(cart|basket)\b/.test(q) && /clear|empty|remove.*all|delete.*all|wipe/.test(q)) {
+      if (typeof clearEntireCart === "function") {
+        clearEntireCart();
+        return "I've started clearing your cart.";
+      }
+    }
+    return null;
+  }
+
+  const originalFetchLeviReply = window.fetchLeviReply;
+  if (typeof originalFetchLeviReply === "function") {
+    window.fetchLeviReply = async function (payload) {
+      const first = await originalFetchLeviReply.apply(this, arguments);
+      if (!isGenericLeviReply(first?.reply)) return first;
+
+      const userMessages = Array.isArray(payload?.messages) ? payload.messages : [];
+      const latestUser = [...userMessages].reverse().find((m) => m?.role === "user")?.content || "";
+      const forced = {
+        ...payload,
+        messages: [
+          {
+            role: "system",
+            content: "You are Levi, Levromart's smart in-app assistant. Answer the user's latest question directly and specifically. NEVER reply with an introduction such as 'I'm Levi, I can help...' when the user has asked a real question. Use the marketplace context supplied in the conversation. If the user asks for an action, explain what you can do and do it through the app's available controls when possible. Do not repeat generic capability lists."
+          },
+          ...userMessages,
+          ...(latestUser ? [{ role: "user", content: `Answer this specific request directly. Do not introduce yourself or give a generic capability list: ${latestUser}` }] : [])
+        ]
+      };
+      try {
+        const second = await originalFetchLeviReply.call(this, forced);
+        if (second?.reply && !isGenericLeviReply(second.reply)) return second;
+      } catch (e) {
+        console.warn("Levi second-pass answer failed:", e);
+      }
+      const deterministic = leviSpecificFallback(latestUser);
+      if (deterministic) return { ...first, reply: deterministic };
+      return { ...first, reply: "I couldn't get a useful answer from Levi right now. Please try asking the question another way." };
+    };
+  }
+
+  /* ---------------------------------------------------------------
+     APPEND A SMALL STATUS-BAR ICON FIX FOR WEB PUSH.
+     The service worker uses /levromart-badge.svg as its monochrome Android
+     notification badge instead of a full-colour PNG that can render as a
+     white square in the status bar.
+     --------------------------------------------------------------- */
+  window.LEVROMART_PUSH_BADGE = "/levromart-badge.svg";
+})();
+</script>
+
+
+
 </body>
 </html>
