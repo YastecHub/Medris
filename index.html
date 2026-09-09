@@ -9686,7 +9686,7 @@ async function renderHome() {
   const activeSector = sectors.find((s) => s.id === currentSectorId) || null;
   const activeCategory = (categories || []).find((c) => String(c.id) === String(currentHomeCategoryId)) || null;
 
-  let vendorQuery = sb.from("products").select("id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url), category:categories(sector_id)")
+  let vendorQuery = sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
@@ -9951,7 +9951,7 @@ async function fetchSearchSuggestions(term) {
 }
 function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hidden"); }
 
-const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, vendor:vendors!inner(id, business_name, verification_status, logo_url), category:categories(sector_id)";
+const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
 
 // Used whenever a search/filter comes up empty - instead of a dead end,
 // show what IS available so the customer isn't stuck looking at nothing.
@@ -10152,6 +10152,23 @@ async function filterHomeProducts() {
   grid.innerHTML = tabProducts.length ? tabProducts.map(productCardHtml).join("") : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
 }
 
+function productDeliverySummaryHtml(p) {
+  const v = p?.vendor || {};
+  const mode = String(v.delivery_fee_mode || "free").toLowerCase();
+  const flat = Number(v.delivery_fee) || 0;
+  const perKm = Number(v.delivery_fee_per_km) || 0;
+  if (mode === "distance" && perKm > 0) {
+    if (buyerLocation && v.lat != null && v.lng != null) {
+      const km = haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng);
+      const fee = Math.round((perKm * km) / 50) * 50;
+      return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: distance-based · ${naira(perKm)}/km · est. ${naira(fee)} · ${formatDistanceKm(km)}</p>`;
+    }
+    return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: distance-based · ${naira(perKm)}/km</p>`;
+  }
+  if (flat > 0) return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: flat fee · ${naira(flat)}</p>`;
+  return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Free delivery</p>`;
+}
+
 function productCardHtml(p) {
   const img = p.photos?.[0];
   const isFav = favoriteIds.has(p.id);
@@ -10183,6 +10200,7 @@ function productCardHtml(p) {
         ${p.rental_rate != null ? `<span><strong>Rent:</strong> ${naira(p.rental_rate)}/${p.rental_rate_unit}</span>` : ""}
       </div>
       ${p.is_service ? "" : `<p class="muted">Available: ${p.quantity_available} · ${esc((p.condition || "").replace("-", " "))}</p>`}
+      ${productDeliverySummaryHtml(p)}
       ${actionHtml}
     </div>
   </div>`;
@@ -12792,7 +12810,7 @@ async function renderStorefront(vendorId) {
   updateStorefrontSocialMeta(v);
 
   const [{ data: products }, { data: stats }, { data: reviews }, { data: packages }] = await Promise.all([
-    sb.from("products").select("id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, category:categories(name)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
+    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
     sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
     sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
@@ -13789,10 +13807,8 @@ async function renderVendorEditProfile() {
       <p class="muted" style="font-size:.76rem;margin:.45rem 0 0;">This image is the header of your storefront. Your latest products no longer fill this area automatically.</p>
     </div>
     <div class="avatar-edit-wrap" style="margin:0 auto 1rem;display:table;">
-      ${v.logo_url ? `<img src="${esc(v.logo_url)}" class="avatar-circle" style="width:5rem;height:5rem;object-fit:cover;" alt="${esc(v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(v.business_name || "Vendor", "5rem", "", v.business_name || "Vendor")}
-      <button class="avatar-edit-badge" style="width:1.7rem;height:1.7rem;font-size:0.8rem;" onclick="byId('vendorLogoInput').click()" title="Change logo"><i class="fa-solid fa-camera"></i></button>
-      ${v.logo_url ? `<button type="button" class="vendor-logo-remove" onclick="removeVendorLogo(event)" title="Remove logo" aria-label="Remove vendor logo"><i class="fa-solid fa-xmark"></i></button>` : ""}
-      <input type="file" id="vendorLogoInput" accept="image/*" class="hidden" onchange="uploadVendorLogo(event)" />
+      ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle" style="width:5rem;height:5rem;object-fit:cover;" alt="${esc(profile.name || v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(profile?.name || v.business_name || "Vendor", "5rem", "", profile?.name || v.business_name || "Vendor")}
+      <p class="muted" style="margin:.45rem 0 0;font-size:.76rem;">Your account profile picture is used across your vendor cards and storefront.</p>
     </div>
     <label>Business name *</label><input id="veBusinessName" value="${esc(v.business_name || "")}" />
     <label>Address (leave blank if you're an online-only business)</label><input id="veAddress" value="${esc(v.address || "")}" />
@@ -15482,19 +15498,12 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   }
 
   if (canPayOnline) {
-    html += `<div class="card"><h3><i class="fa-solid fa-credit-card"></i> Pay online ${infoPopoverHtml("payOnlineInfo", "Pay by card, bank transfer or USSD through Paystack. Instant, and the vendor gets notified right away.<br><br>No debit card? Opay, Moniepoint, Kuda, PalmPay and other microfinance banks all give you a free virtual card that works fine here.")}</h3>
-      <div id="payOnlineError" class="error-text hidden"></div>
-      <button class="btn btn-sm" id="payOnlineBtn" onclick="payOnline('${order.id}')"><i class="fa-solid fa-credit-card"></i> Pay ${naira(feePaid ? order.deposit_amount : order.total_amount)} now</button>
+    const payableAmount = feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0);
+    html += `<div class="card"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> Pay now</h3></div>
+      <p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>
+      <button class="btn btn-sm btn-outline" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
+      <button class="btn btn-sm" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor · ${naira(payableAmount)}</button>
     </div>`;
-    if (!localStorage.getItem("medris-payonline-info-seen")) {
-      localStorage.setItem("medris-payonline-info-seen", "1");
-      setTimeout(() => {
-        const el = byId("payOnlineInfo");
-        if (!el) return;
-        el.classList.remove("hidden");
-        positionInfoPopover(el);
-      }, 300);
-    }
   }
 
   if (canRecordPayment) {
@@ -20184,8 +20193,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
      --------------------------------------------------------------- */
   window.vendorCardHtml = function (v) {
     const logo = v.logo_url
-      ? `<img src="${esc(v.logo_url)}" alt="" class="avatar-circle vendor-directory-logo" style="object-fit:cover;" />`
-      : `<div class="avatar-circle vendor-directory-logo">${esc((v.business_name || "?")[0].toUpperCase())}</div>`;
+      ? `<img src="${esc(v.logo_url)}" alt="" class="avatar-circle vendor-directory-logo" />`
+      : `<div class="avatar-circle vendor-directory-logo" aria-label="${esc(v.business_name || "Vendor")} profile picture">${esc((v.business_name || "?")[0].toUpperCase())}</div>`;
     const distance = (typeof buyerLocation !== "undefined" && buyerLocation && v.lat != null && v.lng != null)
       ? `<span class="badge"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>`
       : "";
@@ -20194,7 +20203,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       <div class="vendor-directory-card-main">
         <strong class="vendor-directory-name">${esc(v.business_name || "Vendor")}</strong>
         <p class="muted vendor-directory-city"><i class="fa-solid fa-location-dot"></i> ${esc(v.city || "Online")}</p>
-        ${v.categories?.length ? `<p class="muted vendor-directory-categories"><i class="fa-solid fa-tags"></i> ${v.categories.slice(0,4).map(esc).join(", ")}</p>` : ""}
+        ${v.categories?.length ? `<p class="muted vendor-directory-categories"><i class="fa-solid fa-tags"></i> ${v.categories.slice(0,3).map(esc).join(", ")}</p>` : ""}
         <div class="vendor-card-footer">
           <span class="badge success"><i class="fa-solid fa-circle-check"></i> Verified</span>
           ${`<span class="badge ${ratingBadgeClass(Number(v.avg_rating ?? 0))}">★ ${Number(v.avg_rating ?? 0).toFixed(1)} (${Number(v.review_count ?? 0)})</span>`}
@@ -20881,41 +20890,53 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       const el = root || document;
       el.querySelectorAll?.('.chat-bubble-wrap[data-msg-wrap-id]').forEach((wrap)=>{
         if (wrap.dataset.betterSwipeReplyBound) return;
-        wrap.dataset.betterSwipeReplyBound='1';
-        const bubble=wrap.querySelector('.chat-bubble[data-msg-id]');
-        if(!bubble || bubble.classList.contains('deleted')) return;
+        const bubble = wrap.querySelector('.chat-bubble[data-msg-id]');
+        if (!bubble || bubble.classList.contains('deleted')) return;
+        wrap.dataset.betterSwipeReplyBound = '1';
         let sx=0,sy=0,dx=0,dy=0,tracking=false,horizontal=false;
-        const reset=()=>{tracking=false;horizontal=false;dx=dy=0;wrap.classList.remove('chat-swipe-active');bubble.style.transform='';};
+        const mine = bubble.classList.contains('mine');
+        const reset = ()=>{
+          tracking=false; horizontal=false; dx=dy=0;
+          wrap.classList.remove('chat-swipe-active');
+          bubble.style.transform='';
+        };
         bubble.addEventListener('pointerdown',(e)=>{
           if(chatSelectionMode || (e.pointerType==='mouse' && e.button!==0)) return;
           sx=e.clientX||0; sy=e.clientY||0; dx=dy=0; tracking=true; horizontal=false;
+          try{ bubble.setPointerCapture?.(e.pointerId); }catch(_){}
         },{passive:true});
         bubble.addEventListener('pointermove',(e)=>{
           if(!tracking) return;
           dx=(e.clientX||0)-sx; dy=(e.clientY||0)-sy;
           if(!horizontal){
-            if(Math.abs(dy)>10 && Math.abs(dy)>Math.abs(dx)*1.15){reset();return;}
-            if(Math.abs(dx)<8)return;
-            horizontal=Math.abs(dx)>Math.abs(dy)*0.72;
-            if(!horizontal)return;
+            if(Math.abs(dy)>9 && Math.abs(dy)>Math.abs(dx)*1.1){ reset(); return; }
+            if(Math.abs(dx)<5) return;
+            horizontal=Math.abs(dx)>Math.abs(dy)*0.65;
+            if(!horizontal) return;
             wrap.classList.add('chat-swipe-active');
           }
-          if(horizontal){
-            e.preventDefault();
-            /* Reply from either side, but don't allow a huge bubble jump. */
-            const shift=Math.max(-72,Math.min(72,dx*.9));
-            bubble.style.transform=`translate3d(${shift}px,0,0)`;
-          }
+          // WhatsApp-like direction: incoming → right, own → left.
+          const allowed = mine ? dx < 0 : dx > 0;
+          if(!allowed){ bubble.style.transform='translate3d(0,0,0)'; return; }
+          e.preventDefault();
+          const shift = mine ? Math.max(-72,Math.min(0,dx*0.95)) : Math.min(72,Math.max(0,dx*0.95));
+          bubble.style.transform=`translate3d(${shift}px,0,0)`;
         },{passive:false});
         const finish=()=>{
-          if(!tracking)return;
-          const shouldReply=horizontal && Math.abs(dx)>=44;
+          if(!tracking) return;
+          const allowed = mine ? dx < 0 : dx > 0;
+          const shouldReply = horizontal && allowed && Math.abs(dx)>=28;
           const id=bubble.dataset.msgId;
           reset();
-          if(shouldReply&&id){wrap.classList.add('chat-swipe-reply');setChatReplyTarget(id);setTimeout(()=>wrap.classList.remove('chat-swipe-reply'),240);}
+          if(shouldReply && id){
+            wrap.classList.add('chat-swipe-reply');
+            setChatReplyTarget(id);
+            setTimeout(()=>wrap.classList.remove('chat-swipe-reply'),240);
+          }
         };
         bubble.addEventListener('pointerup',finish,{passive:true});
         bubble.addEventListener('pointercancel',reset,{passive:true});
+        bubble.addEventListener('lostpointercapture',finish,{passive:true});
       });
     };
   }
@@ -20931,11 +20952,33 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     const chips=visible.map(v=>{
       const logo=v.logo_url?`<img src="${esc(v.logo_url)}" alt="" loading="lazy" />`:`<span class="avatar-circle">${esc((v.business_name||'?')[0].toUpperCase())}</span>`;
       const dist=(buyerLocation&&v.lat!=null&&v.lng!=null)?formatDistanceKm(haversineKm(buyerLocation.lat,buyerLocation.lng,v.lat,v.lng)):'';
-      return `<button type="button" class="vendors-map-vendor-chip" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'})">${logo}<span class="vendors-map-vendor-chip-copy"><strong>${esc(v.business_name||'Vendor')}</strong><small>${esc(v.city||'Online')}${dist?' · '+esc(dist):''}</small></span><span class="vendors-map-vendor-chip-action">View</span></button>`;
+      return `<button type="button" class="vendors-map-vendor-chip" onclick="focusVendorOnMap('${esc(v.id)}')">${logo}<span class="vendors-map-vendor-chip-copy"><strong>${esc(v.business_name||'Vendor')}</strong><small>${esc(v.city||'Online')}${dist?' · '+esc(dist):''}</small></span><span class="vendors-map-vendor-chip-action">View on map</span></button>`;
     }).join('');
     return `<div class="vendors-map-vendor-rail-head"><strong>Vendors</strong>${all.length>6?`<button type="button" onclick="switchVendorsView('list')">See all →</button>`:''}</div><div class="vendors-map-vendor-rail">${chips}</div>`;
   }
-  window.renderVendorMapRail = function(){
+  window.focusVendorOnMap = function(vendorId){
+  const list = Array.isArray(window.__filteredVendors) ? window.__filteredVendors : [];
+  const target = list.find(v => String(v.id) === String(vendorId));
+  if (!target || target.lat == null || target.lng == null) {
+    showToast("This vendor has not added a map location yet.", "info");
+    return;
+  }
+  vendorsViewMode = "map";
+  switchVendorsView("map");
+  const focus = () => {
+    if (!vendorsMap) return;
+    vendorsMap.setView([Number(target.lat), Number(target.lng)], Math.max(vendorsMap.getZoom(), 15), { animate:true, duration:.45 });
+    const geo = (window.__filteredVendors || []).filter(v => v.lat != null && v.lng != null);
+    const idx = geo.findIndex(v => String(v.id) === String(target.id));
+    const offset = buyerLocation ? 1 : 0;
+    const m = idx >= 0 ? vendorsMapMarkers[idx + offset] : null;
+    if (m?.openPopup) m.openPopup();
+  };
+  requestAnimationFrame(() => requestAnimationFrame(focus));
+  setTimeout(focus, 180);
+};
+
+window.renderVendorMapRail = function(){
     const wrap=byId('vendorsMapVendorRail');
     if(wrap) wrap.innerHTML=vendorRailHtml();
   };
@@ -21146,6 +21189,83 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     }).catch(e=>console.warn('[Levromart] Vendor metadata hydration failed:',e));
     console.info('[Levromart] Vendors first paint:',Math.round(performance.now()-started),'ms');
     return window.__allVendors;
+  };
+})();
+</script>
+
+<style id="levromart-final-marketplace-polish">
+.vendor-directory-logo{width:2.9rem !important;height:2.9rem !important;min-width:2.9rem !important;min-height:2.9rem !important;display:flex !important;align-items:center !important;justify-content:center !important;border-radius:50% !important;font-size:1rem !important;font-weight:800 !important;overflow:hidden !important;}
+#vendorsGrid .vendor-card{padding:.72rem !important;border-radius:14px !important;}
+.product-delivery-summary{margin:.32rem 0 0 !important;font-size:.76rem !important;color:var(--text-muted) !important;display:flex !important;align-items:center !important;gap:.32rem !important;line-height:1.25 !important;}
+.product-delivery-summary i{color:var(--primary) !important;flex:0 0 auto !important;}
+.manual-payment-modal .modal-content{max-width:430px !important;}
+.manual-payment-account{border:1px solid var(--border);border-radius:14px;padding:.85rem;background:color-mix(in srgb,var(--primary) 6%,var(--card));}
+.manual-payment-account-row{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.45rem 0;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent);}
+.manual-payment-account-row:last-child{border-bottom:0;}
+.manual-payment-account-row strong{min-width:0;overflow-wrap:anywhere;}
+@media(max-width:560px){#vendorsGrid .vendor-card{padding:.62rem !important}.vendor-directory-logo{width:2.65rem !important;height:2.65rem !important;min-width:2.65rem !important;min-height:2.65rem !important;}}
+
+/* Final vendor-card sizing: smaller cards, but a genuinely large uniform profile circle. */
+.vendors-directory-grid .vendor-card{min-height:118px !important;padding:.55rem !important;display:flex !important;flex-direction:row !important;align-items:center !important;gap:.65rem !important;}
+.vendors-directory-grid .vendor-card .vendor-directory-logo{width:3.05rem !important;height:3.05rem !important;min-width:3.05rem !important;min-height:3.05rem !important;margin:0 !important;flex:0 0 3.05rem !important;font-size:1.12rem !important;}
+.vendors-directory-grid.vendors-list-mode .vendor-card{min-height:86px !important;}
+.top-rated-vendors-scroll > .vendor-card{flex:0 0 188px !important;width:188px !important;min-width:188px !important;}
+.top-rated-vendors-scroll .vendor-card{min-height:112px !important;padding:.58rem !important;flex-direction:row !important;align-items:center !important;gap:.6rem !important;}
+.top-rated-vendors-scroll .vendor-card .vendor-directory-logo{width:3rem !important;height:3rem !important;min-width:3rem !important;min-height:3rem !important;flex:0 0 3rem !important;margin:0 !important;font-size:1.05rem !important;}
+.vendors-map-vendor-chip{flex-basis:196px !important;min-width:196px !important;padding:.55rem .62rem !important;}
+.vendors-map-vendor-chip img,.vendors-map-vendor-chip .avatar-circle{width:2.8rem !important;height:2.8rem !important;flex-basis:2.8rem !important;font-size:1rem !important;font-weight:800 !important;display:flex !important;align-items:center !important;justify-content:center !important;border-radius:50% !important;}
+</style>
+
+<script id="levromart-final-2026-09-09">
+(function(){
+  "use strict";
+  window.openVendorDirectPayment = async function(orderId){
+    if(!session || !orderId){showLogin();return;}
+    const {data:order,error}=await sb.from("orders").select("id,total_amount,deposit_amount,buyer_id,vendor_id,vendor:vendors(id,business_name,bank_name,account_number,account_name,phone)").eq("id",orderId).maybeSingle();
+    if(error||!order){showToast(error?.message||"Order not found.","error");return;}
+    if(String(order.buyer_id)!==String(session.user.id)){showToast("You can only pay for your own order.","error");return;}
+    const amount=Number(order.deposit_amount||0)>0?Number(order.deposit_amount):Number(order.total_amount||0);
+    byId("manualVendorPaymentModal")?.remove();
+    const modal=document.createElement("div"); modal.id="manualVendorPaymentModal"; modal.className="modal manual-payment-modal";
+    modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+      <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
+      <div class="manual-payment-account"><div class="manual-payment-account-row"><span class="muted">Bank</span><strong>${esc(order.vendor?.bank_name||"Not provided")}</strong></div><div class="manual-payment-account-row"><span class="muted">Account name</span><strong>${esc(order.vendor?.account_name||"Not provided")}</strong></div><div class="manual-payment-account-row"><span class="muted">Account number</span><strong>${esc(order.vendor?.account_number||"Not provided")}</strong></div></div>
+      <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${order.vendor?.account_number?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(order.vendor.account_number)}').then(()=>showToast('Account number copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy account number</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
+      <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount})"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
+    document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
+  };
+  window.reportDirectVendorPayment = async function(orderId,amount){
+    const err=byId("directPaymentError"),btn=byId("directPaymentReportedBtn"); if(!err||!btn)return; err.classList.add("hidden"); btn.disabled=true;
+    try{const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});if(error)throw error;byId("manualVendorPaymentModal")?.remove();showToast(data?.message||"Payment reported to the vendor.","success");await navigate("orderDetail",{orderId});}
+    catch(e){err.textContent=e?.message||"Could not report the payment.";err.classList.remove("hidden");btn.disabled=false;}
+  };
+  /* Final vendor application form: make WhatsApp and bank details mandatory. */
+  const baseApply=window.renderVendorApply;
+  if(typeof baseApply==='function') window.renderVendorApply=async function(){
+    const out=String(await baseApply.apply(this,arguments)||""); if(!out.includes('id="vendorApplySubmitBtn"'))return out;
+    const banks=typeof NIGERIAN_BANKS!=="undefined"?NIGERIAN_BANKS:[];
+    return out.replace(/<label>WhatsApp number<\/label>/i,'<label>WhatsApp number *</label>')
+      .replace(/(<input id="vaWhatsapp"[^>]*)(>)/i,'$1 required$2')
+      .replace(/<label>CAC number<\/label>/i,`<label>Bank details *</label><div class="grid" style="grid-template-columns:1fr 1fr;gap:.55rem;"><div><label style="font-size:.78rem;">Bank *</label><select id="vaBankCode" required>${banks.map(b=>`<option value="${esc(b.code)}">${esc(b.name)}</option>`).join("")}</select></div><div><label style="font-size:.78rem;">Account number *</label><input id="vaAccountNumber" inputmode="numeric" maxlength="10" required placeholder="10-digit account number" /></div></div><label>Account name *</label><input id="vaAccountName" required placeholder="Name on bank account" /><label>CAC number</label>`);
+  };
+  async function getApplicantLocation(){
+    if(!navigator.geolocation)return null;
+    return await new Promise(resolve=>{
+      navigator.geolocation.getCurrentPosition(pos=>resolve({lat:pos.coords.latitude,lng:pos.coords.longitude}),()=>resolve(null),{enableHighAccuracy:true,timeout:8000,maximumAge:300000});
+    });
+  }
+  window.submitVendorApply=async function(){
+    if(window.__vApplyFinalBusy)return; window.__vApplyFinalBusy=true; const e=byId("vendorApplyError"),b=byId("vendorApplySubmitBtn");
+    try{
+      const business_name=String(byId("vaBusinessName")?.value||"").trim(),address=String(byId("vaAddress")?.value||"").trim(),phone=String(byId("vaPhone")?.value||"").trim(),whatsapp_number=String(byId("vaWhatsapp")?.value||"").trim(),bankCode=String(byId("vaBankCode")?.value||"").trim(),accountNumber=String(byId("vaAccountNumber")?.value||"").trim(),accountName=String(byId("vaAccountName")?.value||"").trim();
+      if(!business_name||!phone||!whatsapp_number||!bankCode||!accountName||!/^\d{10}$/.test(accountNumber))throw new Error("Business name, phone, WhatsApp, bank, account number and account name are required.");
+      if(e){e.classList.add("hidden");e.textContent="";} if(b)b.disabled=true;
+      const applicantLocation=await getApplicantLocation();
+      let verification_docs=[]; const file=byId("vaDoc")?.files?.[0]; if(file){const ext=(file.name.split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase()||"bin";const path=`${session.user.id}/${Date.now()}.${ext}`;const {error:upErr}=await sb.storage.from("vendor-docs").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});if(upErr)throw new Error(`Document upload failed: ${upErr.message}`);verification_docs=[path];}
+      const bankName=(typeof NIGERIAN_BANKS!=="undefined"?NIGERIAN_BANKS.find(x=>String(x.code)===bankCode)?.name:"")||bankCode;
+      const {error}=await sb.from("vendors").insert({user_id:session.user.id,sector_id:byId("vaSector")?.value||null,business_name,address:address||null,city:String(byId("vaCity")?.value||"").trim()||null,phone,whatsapp_number,cac_number:String(byId("vaCac")?.value||"").trim()||null,bio:String(byId("vaBio")?.value||"").trim()||null,verification_docs,bank_code:bankCode,bank_name:bankName,account_number:accountNumber,account_name:accountName,logo_url:profile?.avatar_url||null,lat:applicantLocation?.lat??null,lng:applicantLocation?.lng??null,is_active:false});
+      if(error)throw new Error(error.message); showToast("Vendor application submitted successfully.","success"); await refreshAuthState(); navigate("vendorDashboard");
+    }catch(x){if(e){e.textContent=x?.message||"Could not submit your application.";e.classList.remove("hidden");}} finally{window.__vApplyFinalBusy=false;if(b)b.disabled=false;}
   };
 })();
 </script>
