@@ -37,10 +37,10 @@
   main > h2 + .card, main > .page-title + .card { margin-top: 0.9rem !important; }
   #settingsAiConsentPageRow .settings-inline-btn { min-width: 4.25rem; justify-content:center; }
   :root {
-    --brand-grad: linear-gradient(135deg, #25D366, #128C7E);
-    --primary: #25D366;
-    --primary-light: #25D366;
-    --primary-grad: #25D366;
+    --brand-grad: #10b981;
+    --primary: #10b981;
+    --primary-light: #10b981;
+    --primary-grad: #10b981;
     --bg: #f5f7fa;
     --bg-wash: radial-gradient(at top left, rgba(37,211,102,0.08), transparent 55%), radial-gradient(at bottom right, rgba(18,140,126,0.06), transparent 50%);
     --card: #ffffff;
@@ -59,9 +59,9 @@
     color-scheme: light;
   }
   [data-theme="dark"] {
-    --primary: #25D366;
-    --primary-light: #25D366;
-    --primary-grad: #25D366;
+    --primary: #10b981;
+    --primary-light: #10b981;
+    --primary-grad: #10b981;
     --bg: #0f172a;
     --bg-wash: radial-gradient(at top left, rgba(37,211,102,0.08), transparent 55%), radial-gradient(at bottom right, rgba(18,140,126,0.10), transparent 50%);
     --card: #1e293b;
@@ -76,9 +76,9 @@
     color-scheme: dark;
   }
   [data-theme="black"] {
-    --primary: #25D366;
-    --primary-light: #25D366;
-    --primary-grad: #25D366;
+    --primary: #10b981;
+    --primary-light: #10b981;
+    --primary-grad: #10b981;
     --bg: #000000;
     --bg-wash: radial-gradient(at top left, rgba(37,211,102,0.06), transparent 55%), radial-gradient(at bottom right, rgba(18,140,126,0.08), transparent 50%);
     --card: #111111;
@@ -330,7 +330,7 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent), 0 4px 14px color-mix(in srgb, var(--primary) 14%, transparent);
     background-image:
       radial-gradient(circle, color-mix(in srgb, var(--primary) 24%, transparent) 0%, transparent 72%),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f766e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
   .ms-btn.open { box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent), 0 4px 14px color-mix(in srgb, var(--primary) 14%, transparent); }
   optgroup { font-weight: 700; font-style: normal; color: var(--text-muted); }
@@ -7142,8 +7142,10 @@ function categoryIcon(name) {
 function syncSystemBarColorForTheme(theme) {
   const meta = document.querySelector('meta[name="theme-color"]');
   const apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-  const colors = { light: "#f5f7fa", dark: "#0f172a", black: "#000000" };
-  if (meta) meta.setAttribute("content", colors[theme] || colors.light);
+  const rootStyles = getComputedStyle(document.documentElement);
+  const liveBg = (rootStyles.getPropertyValue("--bg") || "").trim();
+  const fallback = { light: "#f5f7fa", dark: "#0f172a", black: "#000000" };
+  if (meta) meta.setAttribute("content", liveBg || fallback[theme] || fallback.light);
   if (apple) apple.setAttribute("content", theme === "light" ? "default" : "black-translucent");
 }
 
@@ -7211,7 +7213,7 @@ const ACCENT_PALETTE = [
   { name: "Indigo", group: "Purples", base: "#4338ca", light: "#4338ca" },
   { name: "Deep Purple", group: "Purples", base: "#4c1d95", light: "#4c1d95" },
 ];
-const DEFAULT_ACCENT_INDEX = 4;
+const DEFAULT_ACCENT_INDEX = 1;
 let currentAccentIndex = DEFAULT_ACCENT_INDEX;
 function lightenHex(hex, amt) {
   const n = parseInt(hex.slice(1), 16);
@@ -7283,15 +7285,12 @@ function toggleAccentPalettePage() {
 }
 function initAccent() {
   const saved = localStorage.getItem("medris-accent");
-  // Migrate the previous built-in default (and legacy defaults) to WhatsApp Green.
-  // Other user-selected colors remain untouched.
-  if (saved === "0" || saved === "1" || saved === "2" || saved === "5") {
-    currentAccentIndex = DEFAULT_ACCENT_INDEX;
-    try { localStorage.setItem("medris-accent", String(DEFAULT_ACCENT_INDEX)); } catch (e) {}
-  } else {
-    const parsed = saved !== null ? Number(saved) : DEFAULT_ACCENT_INDEX;
-    currentAccentIndex = Number.isInteger(parsed) && parsed >= 0 && parsed < ACCENT_PALETTE.length ? parsed : DEFAULT_ACCENT_INDEX;
-  }
+  // New installs/accounts with no saved preference use Mint (#10b981).
+  // Any valid preference the user has already selected stays exactly as-is.
+  const parsed = saved !== null ? Number(saved) : DEFAULT_ACCENT_INDEX;
+  currentAccentIndex = Number.isInteger(parsed) && parsed >= 0 && parsed < ACCENT_PALETTE.length
+    ? parsed
+    : DEFAULT_ACCENT_INDEX;
   applyAccent(currentAccentIndex);
   renderAccentSwatches();
 }
@@ -8299,6 +8298,7 @@ function updateAuthUI() {
               ? `<button type="button" class="profile-avatar-lightbox-btn" onclick="openProfileImageLightbox('${esc(profile.avatar_url)}','${esc(profile.name || "Profile")}',event)" aria-label="View profile picture"><img src="${esc(profile.avatar_url)}" class="avatar-circle avatar-lg" style="object-fit:cover;" alt="${esc(profile.name || "Profile")}" draggable="false" /></button>`
               : avatarFallbackHtml(profile.name || profile.email, "3rem", "avatar-lg", profile.name || profile.email)}
             <button class="avatar-edit-badge" onclick="byId('avatarFileInput').click()" title="Change photo"><i class="fa-solid fa-camera"></i></button>
+            ${profile.avatar_url ? `<button type="button" class="avatar-remove-badge" onclick="removeProfileAvatar(event)" title="Remove profile picture" aria-label="Remove profile picture"><i class="fa-solid fa-xmark"></i></button>` : ""}
             <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="uploadAvatar(event)" />
           </div>
           <div class="profile-account-copy">
@@ -8339,6 +8339,18 @@ function uploadAvatar(event) {
   pendingAvatarFile = file;
   openAvatarCropModal(file);
 }
+async function removeProfileAvatar(event) {
+  event?.stopPropagation?.();
+  if (!session) return;
+  const confirmed = await showConfirmDialog("Remove your profile picture?", { title: "Remove profile picture", okLabel: "Remove", danger: true });
+  if (!confirmed) return;
+  const { error } = await sb.from("users").update({ avatar_url: null }).eq("id", session.user.id);
+  if (error) { showToast(error.message || "Could not remove your profile picture.", "error"); return; }
+  profile.avatar_url = null;
+  updateAuthUI();
+  showToast("Profile picture removed.", "success");
+}
+
 function openAvatarCropModal(file) {
   const reader = new FileReader();
   reader.onload = () => {
@@ -8411,7 +8423,7 @@ function renderSettingsPage(){
     <section class="settings-page-section"><h3><i class="fa-solid fa-text-height"></i> Text size</h3><p class="settings-section-note">Make Levromart easier to read. This changes the app's text scale on this device.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Font size</strong><span>Choose a comfortable size from 85% to 125%.</span></div><div class="levi-size-value" id="levroFontScaleValue">${Math.round(getLevromartFontScale()*100)}%</div><input class="levi-size-range" id="levroFontScaleRange" type="range" min="0.85" max="1.25" step="0.05" value="${getLevromartFontScale()}" aria-label="Levromart font size" oninput="setLevromartFontScale(this.value)" onchange="setLevromartFontScale(this.value)" /></div></section>
     <section class="settings-page-section"><h3><span class="settings-levi-logo-wrap"><img class="settings-levi-logo" src="${esc(MEDRIS_LOGO)}" alt="" /></span> Levi</h3><p class="settings-section-note">Adjust Levi's size, visibility, data preference and voice.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Levi size</strong><span>Drag the scale to make Levi smaller or restore the current maximum.</span></div><div class="levi-size-value" id="leviSizeValue">${getLeviFabSize()}px</div><input class="levi-size-range" id="leviSizeRange" type="range" min="44" max="74" step="1" value="${getLeviFabSize()}" aria-label="Levi size" oninput="setLeviFabSize(this.value)" /></div><div class="settings-divider"></div><div class="settings-toggle-row" id="leviVisibleSettingRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="settingsAiConsentPageRow"></div><div class="settings-divider"></div><div class="settings-voice-wrap"><div class="settings-control-copy"><strong>Levi's voice</strong><span>Choose from the voices available on your device.</span></div><select id="voiceSelectPage" class="settings-select" aria-label="Levi voice"></select><button class="btn btn-outline settings-full-btn" onclick="previewAiVoice()"><i class="fa-solid fa-play"></i> Preview voice</button></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-sliders"></i> App preferences</h3><div class="settings-simple-row" id="settingsInstallPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="settingsNotifPageRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="horizontalBrowseSettingPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="locationSettingPageRow"></div></section>
-    <section class="settings-page-section"><h3><i class="fa-solid fa-lock"></i> Account</h3><button class="settings-action-row" onclick="showChangePassword()"><i class="fa-solid fa-key"></i><span><strong>Change password</strong><small>Update your account password</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showLevromartAbout()"><i class="fa-solid fa-circle-info"></i><span><strong>About Levromart</strong><small>Version and platform information</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row settings-action-danger" onclick="startDeleteAccount()"><i class="fa-solid fa-user-xmark"></i><span><strong>Delete account permanently</strong><small>${vendor ? "Vendors must clear all active orders and unsettled commission first." : "Permanently close this Levromart account. Pending buyer orders do not block deletion."}</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
+    <section class="settings-page-section"><h3><i class="fa-solid fa-lock"></i> Account</h3><button class="settings-action-row" onclick="showChangePassword()"><i class="fa-solid fa-key"></i><span><strong>Change password</strong><small>Update your account password</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showLevromartAbout()"><i class="fa-solid fa-circle-info"></i><span><strong>About Levromart</strong><small>Version and platform information</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
     <button class="settings-close-page" onclick="navigate(lastNonSettingsView||'home')">Back to Levromart</button>
   </div>`;
 }
@@ -12188,7 +12200,7 @@ function renderVendorsDirectory() {
     <h2 style="margin:0;"><i class="fa-solid fa-store"></i> All vendors</h2>
     <div class="flex" style="gap:0.5rem;">
       <button class="btn btn-sm btn-outline active" id="vendorsViewListBtn" onclick="switchVendorsView('list')" title="List view"><i class="fa-solid fa-grip"></i></button>
-      <button class="btn btn-sm btn-outline" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view"><i class="fa-solid fa-map-location-dot"></i></button>
+      <button class="btn btn-sm btn-outline active" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view"><i class="fa-solid fa-map-location-dot"></i></button>
     </div>
   </div>`;
   html += `<div class="flex" style="margin:1.2rem 0;flex-wrap:wrap;">
@@ -12407,7 +12419,7 @@ async function renderVendorsMap() {
   vendorsMapMarkers = [];
 
   if (buyerLocation) {
-    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim() || "#0e8f7f";
+    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim() || "#10b981";
     const me = window.L.circleMarker([buyerLocation.lat, buyerLocation.lng], { radius: 8, color: "#fff", weight: 2, fillColor: primaryColor, fillOpacity: 1 }).addTo(vendorsMap);
     me.bindPopup("You are here");
     vendorsMapMarkers.push(me);
@@ -13577,12 +13589,14 @@ async function renderVendorEditProfile() {
       <div class="storefront-cover ${v.cover_url ? "has-custom-cover" : ""}" style="height:130px;border-radius:16px;${v.cover_url ? `background-image:url('${esc(v.cover_url)}');background-size:cover;background-position:center;` : ""}">
         ${v.cover_url ? '<div class="storefront-cover-overlay"></div>' : '<div class="storefront-cover-empty">No custom header image yet</div>'}
         <label class="storefront-cover-edit" title="Change storefront header" aria-label="Change storefront header"><i class="fa-solid fa-pen"></i><input type="file" accept="image/*" onchange="uploadVendorCover(event)" /></label>
+        ${v.cover_url ? `<button type="button" class="storefront-cover-remove" onclick="removeVendorCover(event)" title="Remove storefront header" aria-label="Remove storefront header"><i class="fa-solid fa-trash-can"></i></button>` : ""}
       </div>
       <p class="muted" style="font-size:.76rem;margin:.45rem 0 0;">This image is the header of your storefront. Your latest products no longer fill this area automatically.</p>
     </div>
     <div class="avatar-edit-wrap" style="margin:0 auto 1rem;display:table;">
       ${v.logo_url ? `<img src="${esc(v.logo_url)}" class="avatar-circle" style="width:5rem;height:5rem;object-fit:cover;" alt="${esc(v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(v.business_name || "Vendor", "5rem", "", v.business_name || "Vendor")}
       <button class="avatar-edit-badge" style="width:1.7rem;height:1.7rem;font-size:0.8rem;" onclick="byId('vendorLogoInput').click()" title="Change logo"><i class="fa-solid fa-camera"></i></button>
+      ${v.logo_url ? `<button type="button" class="vendor-logo-remove" onclick="removeVendorLogo(event)" title="Remove logo" aria-label="Remove vendor logo"><i class="fa-solid fa-xmark"></i></button>` : ""}
       <input type="file" id="vendorLogoInput" accept="image/*" class="hidden" onchange="uploadVendorLogo(event)" />
     </div>
     <label>Business name *</label><input id="veBusinessName" value="${esc(v.business_name || "")}" />
@@ -13843,6 +13857,19 @@ async function uploadVendorCover(event) {
     event.target.value = "";
   }
 }
+async function removeVendorCover(event) {
+  event?.stopPropagation?.();
+  if (!vendor) return;
+  const confirmed = await showConfirmDialog("Remove your storefront header image?", { title: "Remove storefront header", okLabel: "Remove", danger: true });
+  if (!confirmed) return;
+  const { error } = await sb.from("vendors").update({ cover_url: null }).eq("id", vendor.id);
+  if (error) { showToast(error.message || "Could not remove storefront header.", "error"); return; }
+  vendor.cover_url = null;
+  if (currentView === "vendorEditProfile") await navigate("vendorEditProfile", {}, false);
+  else if (currentView === "storefront") await navigate("storefront", { vendorId: vendor.id }, false);
+  showToast("Storefront header removed.", "success");
+}
+
 
 async function uploadVendorLogo(event) {
   const file = event.target.files[0];
@@ -13859,6 +13886,18 @@ async function uploadVendorLogo(event) {
   navigate("vendorEditProfile", {}, false);
   showToast("Business logo updated.", "success");
 }
+async function removeVendorLogo(event) {
+  event?.stopPropagation?.();
+  if (!vendor) return;
+  const confirmed = await showConfirmDialog("Remove your business logo?", { title: "Remove logo", okLabel: "Remove", danger: true });
+  if (!confirmed) return;
+  const { error } = await sb.from("vendors").update({ logo_url: null }).eq("id", vendor.id);
+  if (error) { showToast(error.message || "Could not remove the business logo.", "error"); return; }
+  vendor.logo_url = null;
+  await navigate("vendorEditProfile", {}, false);
+  showToast("Business logo removed.", "success");
+}
+
 
 let veMap = null;
 let veMarker = null;
@@ -19561,7 +19600,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
      --------------------------------------------------------------- */
   let vendorDirectoryExpanded = false;
   let vendorDirectorySort = "alphabetical";
-  let vendorDirectoryMode = "grid";
+  let vendorDirectoryMode = "map";
 
   function vendorDirectorySortList(list) {
     const out = [...(list || [])];
@@ -19615,7 +19654,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   }
 
   window.switchVendorsView = function (mode) {
-    vendorDirectoryMode = ["grid", "list", "map"].includes(mode) ? mode : "grid";
+    vendorDirectoryMode = ["grid", "list", "map"].includes(mode) ? mode : "map";
     renderVendorDirectoryCards();
     if (vendorDirectoryMode === "map") {
       byId("vendorsMapWrap")?.classList.remove("hidden");
@@ -19639,7 +19678,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 
   window.renderVendorsDirectory = function () {
     vendorDirectoryExpanded = false;
-    vendorDirectoryMode = "grid";
+    vendorDirectoryMode = "map";
     vendorDirectorySort = "alphabetical";
     let html = `<div class="flex" style="justify-content:space-between;align-items:center;gap:.55rem;flex-wrap:wrap;">
       <div>
@@ -19647,7 +19686,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         <p class="muted" id="vendorsDirectoryCount" style="font-size:.76rem;margin:.2rem 0 0;">Verified vendors</p>
       </div>
       <div class="vendors-directory-view-buttons">
-        <button class="btn btn-sm btn-outline active" id="vendorsViewGridBtn" onclick="switchVendorsView('grid')" title="Grid view" aria-label="Grid view"><i class="fa-solid fa-grip"></i></button>
+        <button class="btn btn-sm btn-outline" id="vendorsViewGridBtn" onclick="switchVendorsView('grid')" title="Grid view" aria-label="Grid view"><i class="fa-solid fa-grip"></i></button>
         <button class="btn btn-sm btn-outline" id="vendorsViewListBtn" onclick="switchVendorsView('list')" title="List view" aria-label="List view"><i class="fa-solid fa-list"></i></button>
         <button class="btn btn-sm btn-outline" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view" aria-label="Map view"><i class="fa-solid fa-map-location-dot"></i></button>
       </div>
@@ -20386,3 +20425,36 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   }, true);
 })();
 </script>
+
+<style id="levromart-2026-09-09-accent-and-media-controls">
+  /* The selected Mint accent is the built-in Levromart default. All live accent
+     surfaces still use the existing --primary variables, so user-selected
+     colours continue to work without changing component markup. */
+  .avatar-edit-wrap { position: relative; }
+  .avatar-remove-badge, .vendor-logo-remove {
+    position: absolute; right: -0.15rem; bottom: -0.15rem;
+    width: 1.65rem; height: 1.65rem; border-radius: 50%;
+    border: 2px solid var(--card); background: color-mix(in srgb, var(--danger) 86%, #000 8%);
+    color: #fff; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: .72rem; z-index: 6; box-shadow: 0 4px 12px rgba(0,0,0,.22);
+  }
+  .avatar-remove-badge { right: -0.25rem; }
+  .avatar-remove-badge:hover, .vendor-logo-remove:hover { filter: brightness(1.08); transform: scale(1.04); }
+  .storefront-cover-remove {
+    position:absolute; right:.75rem; bottom:.75rem; z-index:6;
+    width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,.35);
+    background:rgba(127,29,29,.78); color:#fff; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  }
+  .storefront-cover-remove:hover { background:rgba(127,29,29,.94); }
+  .service-trending-scroll { gap: 1rem !important; }
+  .service-trending-scroll > * { flex: 0 0 250px !important; width:250px !important; }
+  .package-recommendation-strip { gap: 1rem !important; }
+  .package-recommendation-strip > * { flex: 0 0 270px !important; width:270px !important; }
+  .package-recommendation-strip .package-listing-card,
+  .package-recommendation-strip .package-card { min-height: 330px; }
+  @media (max-width:720px){
+    .package-recommendation-strip > * { flex-basis:260px !important; width:260px !important; }
+    .service-trending-scroll > * { flex-basis:245px !important; width:245px !important; }
+  }
+</style>
