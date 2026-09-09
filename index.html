@@ -13628,7 +13628,7 @@ function renderVendorEarningsBody() {
     html += `<div class="table-wrap vendorEarningsTableWrap"><table class="data-table"><thead><tr><th>Item(s)</th><th>Customer</th><th style="text-align:center;"><i class="fa-solid fa-arrow-down" style="color:#16a34a;"></i> Customer paid</th><th style="text-align:center;"><i class="fa-solid fa-arrow-up" style="color:var(--primary);"></i> Paid to you</th><th style="text-align:center;">Amount</th></tr></thead><tbody>`;
     dayOrders.forEach((o) => {
       const items = (o.items || []).map((it) => `${esc(it.product?.name || "Item")} ×${it.quantity}`).join(", ") || (o.order_type === "rental" ? "Rental" : "Sale");
-      html += `<tr onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})" style="cursor:pointer;">
+      html += `<tr onclick="navigate('orderDetail',{orderId:'${o.id}',source:'sales'})" style="cursor:pointer;">
         <td>${items}</td>
         <td>${esc(o.buyer?.name || "-")}</td>
         <td style="text-align:center;">${o.buyerPaidAt ? esc(formatEarningsDateTime(o.buyerPaidAt)) : '<span class="muted">-</span>'}</td>
@@ -15006,7 +15006,7 @@ function orderDateRangeParams(preset){
 function applyOrderDatePreset(view,status,type,payment,preset,perspective=""){
   const range=orderDateRangeParams(preset);
   if(range) return navigate(view,{status,type,payment,...range,...(perspective ? {perspective} : {})});
-  openCustomOrderDateDialog(view,status,type,payment);
+  openCustomOrderDateDialog(view,status,type,payment,perspective);
 }
 function openCustomOrderDateDialog(view,status,type,payment,perspective=""){
   if(byId('orderDateDialog')) byId('orderDateDialog').remove();
@@ -15102,9 +15102,10 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   const { active: activeVendorOrders, history: historyVendorOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
   window.__orderListOrders = activeVendorOrders;
   window.__orderListIsCustomer = false;
+  window.__orderListSourcePerspective = "sales";
   html += orderListControlsHtml(activeVendorOrders.length);
   html += `<div id="orderListWrap">${orderListHtml(activeVendorOrders, false, "sales")}</div>`;
-  html += orderHistoryAccordionHtml(historyVendorOrders, false);
+  html += orderHistoryAccordionHtml(historyVendorOrders, false, "sales");
   html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('vendorDashboard')"><i class='fa-solid fa-arrow-left'></i> Back to Dashboard</button>`;
   setTimeout(() => { enhanceSelectsIn(byId("app")); renderOrderStatsBody(); }, 0);
   return html;
@@ -15162,9 +15163,10 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   const { active: activeCustomerOrders, history: historyCustomerOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
   window.__orderListOrders = activeCustomerOrders;
   window.__orderListIsCustomer = true;
+  window.__orderListSourcePerspective = embeddedVendorOrders ? "purchases" : null;
   html += orderListControlsHtml(activeCustomerOrders.length);
   html += `<div id="orderListWrap">${orderListHtml(activeCustomerOrders, true, embeddedVendorOrders ? "purchases" : null)}</div>`;
-  html += orderHistoryAccordionHtml(historyCustomerOrders, true);
+  html += orderHistoryAccordionHtml(historyCustomerOrders, true, embeddedVendorOrders ? "purchases" : null);
   html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('home')"><i class='fa-solid fa-arrow-left'></i> Continue shopping</button>`;
   setTimeout(() => enhanceSelectsIn(byId("app")), 0);
   return html;
@@ -15248,7 +15250,7 @@ function orderHistoryActivityLabel(order) {
   const iso = orderActivityIso(order);
   return iso ? orderDateTimeStr(iso) : "";
 }
-function orderHistoryAccordionHtml(historyOrders, isCustomerView) {
+function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspective = null) {
   if (!historyOrders || !historyOrders.length) return "";
   const byDate = new Map();
   historyOrders.forEach((o) => {
@@ -15285,7 +15287,11 @@ function toggleOrderListExpanded() {
 function renderOrderListWrap() {
   const wrap = byId("orderListWrap");
   if (!wrap) return;
-  wrap.innerHTML = orderListHtml(window.__orderListOrders || [], !!window.__orderListIsCustomer);
+  wrap.innerHTML = orderListHtml(
+    window.__orderListOrders || [],
+    !!window.__orderListIsCustomer,
+    window.__orderListSourcePerspective || null
+  );
 }
 function orderListHtml(orders, isCustomerView, sourcePerspective = null) {
   if (!orders || orders.length === 0) return '<div class="empty-state">No orders here.</div>';
@@ -15341,8 +15347,28 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     .maybeSingle();
   if (error || !order) return '<div class="empty-state">Order not found.</div>';
 
-  const isCustomer = order.buyer_id === session.user.id;
-  const isVendor = order.vendor?.user_id === session.user.id;
+  const isCustomer = String(order.buyer_id || "") === String(session.user.id || "");
+  // Do not rely only on the nested vendor:user_id relationship here. A vendor
+  // can legitimately reach an order through the orders RLS policy even when
+  // the nested relationship is omitted/null by a restrictive join or when the
+  // global vendor object was refreshed through a different code path. Resolve
+  // ownership directly against the vendor row before showing Access denied.
+  let isVendor = String(order.vendor?.user_id || "") === String(session.user.id || "");
+  if (!isVendor && vendor?.id && String(vendor.id) === String(order.vendor_id)) isVendor = true;
+  if (!isVendor && profile?.role !== "admin") {
+    try {
+      const { data: ownedVendor } = await sb.from("vendors")
+        .select("id,user_id,verification_status,deleted_at")
+        .eq("id", order.vendor_id)
+        .eq("user_id", session.user.id)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (ownedVendor?.id) {
+        isVendor = true;
+        if (!vendor || String(vendor.id) !== String(ownedVendor.id)) vendor = { ...(vendor || {}), ...ownedVendor };
+      }
+    } catch (_) { /* the server-side order/RLS checks remain authoritative */ }
+  }
   if (!isCustomer && !isVendor && profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
 
   const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
@@ -20011,12 +20037,22 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     const grid = byId("vendorsGrid");
     if (!grid) return;
     const all = vendorDirectorySortList(window.__filteredVendors || []);
-    const visible = vendorDirectoryExpanded ? all : all.slice(0, 6);
-    grid.classList.toggle("vendors-list-mode", vendorDirectoryMode === "list");
-    grid.classList.toggle("hidden", vendorDirectoryMode === "map");
-    grid.innerHTML = visible.length
-      ? visible.map(vendorCardHtml).join("")
-      : '<div class="empty-state" style="grid-column:1/-1;">No vendors match those filters.</div>';
+
+    // Map view is intentionally map-first: the only vendor cards shown there
+    // are the horizontal, scrollable rail above the map. Never leave the full
+    // static grid mounted underneath/above the map, even if a previous render
+    // happened in list/grid mode.
+    if (vendorDirectoryMode === "map") {
+      grid.classList.add("hidden");
+      grid.innerHTML = "";
+    } else {
+      const visible = vendorDirectoryExpanded ? all : all.slice(0, 6);
+      grid.classList.remove("hidden");
+      grid.classList.toggle("vendors-list-mode", vendorDirectoryMode === "list");
+      grid.innerHTML = visible.length
+        ? visible.map(vendorCardHtml).join("")
+        : '<div class="empty-state" style="grid-column:1/-1;">No vendors match those filters.</div>';
+    }
 
     const more = byId("vendorsDirectoryMoreBtn");
     if (more) {
@@ -20910,7 +20946,10 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     window.renderVendorsDirectory=function(){
       let html=originalVendorRender.apply(this,arguments);
       const needle='<div id="vendorsMapWrap" class="hidden">';
-      if(html.includes(needle) && !html.includes('vendorsMapVendorRail')) html=html.replace(needle,`<div id="vendorsMapVendorRail"></div>${needle}`);
+      // Keep the horizontal rail inside the map wrapper. That makes the
+      // rail exist only in map mode and guarantees it sits directly above the
+      // map rather than becoming a second vendor-card section on the page.
+      if(html.includes(needle) && !html.includes('vendorsMapVendorRail')) html=html.replace(needle,`<div id="vendorsMapWrap" class="hidden"><div id="vendorsMapVendorRail"></div>`);
       return html;
     };
   }
