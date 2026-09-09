@@ -2,7 +2,8 @@ name: Fix admin vendor actions
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -11,13 +12,17 @@ jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Patch index.html
-        shell: python
         run: |
+          python3 <<'PY'
           from pathlib import Path
+          import re
+
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
@@ -35,116 +40,126 @@ jobs:
               '${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}" onclick="return window.__levroAdminVendorAction(this,event);"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}'
             )
           ]
-          for a,b in replacements:
-            if a in s:
-              s = s.replace(a,b,1)
+          for a, b in replacements:
+              if a in s:
+                  s = s.replace(a, b, 1)
 
-          old = '''window.setVendorStatus = setVendorStatus;
-window.adminDeleteVendor = adminDeleteVendor;
-// One authoritative admin vendor-action listener. Buttons are rendered dynamically,
-// so delegation is used instead of per-render inline handlers.
-if (!window.__levroAdminActionListenerInstalled) {
-  window.__levroAdminActionListenerInstalled = true;
-  document.addEventListener("click", (event) => {
-    const button = event.target?.closest?.("#adminPanel .vendor-admin-action");
-    if (!button) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const id = button.dataset.vendorId;
-    const status = button.dataset.status;
-    const filter = button.dataset.filterStatus || "pending";
-    if (!id || !status) return;
-    if (status === "delete") {
-      adminDeleteVendor(id, filter).catch((err) => {
-        console.error("[Levromart] Admin delete vendor handler failed:", err);
-        showToast(err?.message || "Could not delete this vendor.", "error");
-      });
-    } else {
-      setVendorStatus(id, status, filter).catch((err) => {
-        console.error("[Levromart] Admin vendor status handler failed:", err);
-        showToast(err?.message || "Could not update this vendor.", "error");
-      });
-    }
-  });
-}'''
-          new = '''window.setVendorStatus = setVendorStatus;
-window.adminDeleteVendor = adminDeleteVendor;
+          old_listener = '''window.setVendorStatus = setVendorStatus;
+          window.adminDeleteVendor = adminDeleteVendor;
+          // One authoritative admin vendor-action listener. Buttons are rendered dynamically,
+          // so delegation is used instead of per-render inline handlers.
+          if (!window.__levroAdminActionListenerInstalled) {
+            window.__levroAdminActionListenerInstalled = true;
+            document.addEventListener("click", (event) => {
+              const button = event.target?.closest?.("#adminPanel .vendor-admin-action");
+              if (!button) return;
+              event.preventDefault();
+              event.stopPropagation();
+              const id = button.dataset.vendorId;
+              const status = button.dataset.status;
+              const filter = button.dataset.filterStatus || "pending";
+              if (!id || !status) return;
+              if (status === "delete") {
+                adminDeleteVendor(id, filter).catch((err) => {
+                  console.error("[Levromart] Admin delete vendor handler failed:", err);
+                  showToast(err?.message || "Could not delete this vendor.", "error");
+                });
+              } else {
+                setVendorStatus(id, status, filter).catch((err) => {
+                  console.error("[Levromart] Admin vendor status handler failed:", err);
+                  showToast(err?.message || "Could not update this vendor.", "error");
+                });
+              }
+            });
+          }'''
 
-window.__levroAdminVendorAction = async function(button, event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  if (!button || button.dataset.busy === "1") return false;
-  const id = button.dataset.vendorId;
-  const status = button.dataset.status;
-  const filter = button.dataset.filterStatus || "pending";
-  if (!id || !status) return false;
+          new_listener = '''window.setVendorStatus = setVendorStatus;
+          window.adminDeleteVendor = adminDeleteVendor;
 
-  button.dataset.busy = "1";
-  button.dataset.directHandled = "1";
-  const originalText = button.innerHTML;
-  button.disabled = true;
-  button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Working…';
+          window.__levroAdminVendorAction = async function(button, event) {
+            if (event) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            if (!button || button.dataset.busy === "1") return false;
+            const id = button.dataset.vendorId;
+            const status = button.dataset.status;
+            const filter = button.dataset.filterStatus || "pending";
+            if (!id || !status) return false;
 
-  try {
-    if (status === "delete") await adminDeleteVendor(id, filter);
-    else await setVendorStatus(id, status, filter);
-  } catch (err) {
-    console.error("[Levromart] Admin vendor action failed:", err);
-    showToast(err?.message || "Could not perform this vendor action.", "error");
-  } finally {
-    if (button.isConnected) {
-      button.disabled = false;
-      button.innerHTML = originalText;
-      delete button.dataset.busy;
-      delete button.dataset.directHandled;
-    }
-  }
-  return false;
-};
+            button.dataset.busy = "1";
+            button.dataset.directHandled = "1";
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Working…';
 
-if (!window.__levroAdminActionListenerInstalled) {
-  window.__levroAdminActionListenerInstalled = true;
-  document.addEventListener("click", (event) => {
-    const button = event.target?.closest?.("#adminPanel .vendor-admin-action");
-    if (!button || button.dataset.directHandled === "1") return;
-    event.preventDefault();
-    event.stopPropagation();
-    window.__levroAdminVendorAction(button, event);
-  });
-}'''
-          if old in s:
-            s = s.replace(old,new,1)
+            try {
+              if (status === "delete") await adminDeleteVendor(id, filter);
+              else await setVendorStatus(id, status, filter);
+            } catch (err) {
+              console.error("[Levromart] Admin vendor action failed:", err);
+              showToast(err?.message || "Could not perform this vendor action.", "error");
+            } finally {
+              if (button.isConnected) {
+                button.disabled = false;
+                button.innerHTML = originalText;
+              }
+              delete button.dataset.busy;
+              delete button.dataset.directHandled;
+            }
+            return false;
+          };
 
-          # Remove stale late listener blocks and ensure no script remains after </html>.
-          import re
+          if (!window.__levroAdminActionListenerInstalled) {
+            window.__levroAdminActionListenerInstalled = true;
+            document.addEventListener("click", (event) => {
+              const button = event.target?.closest?.("#adminPanel .vendor-admin-action");
+              if (!button || button.dataset.directHandled === "1") return;
+              event.preventDefault();
+              event.stopPropagation();
+              window.__levroAdminVendorAction(button, event);
+            });
+          }'''
+
+          if old_listener in s:
+              s = s.replace(old_listener, new_listener, 1)
+
           s = re.sub(r'\n?<script id="levromart-admin-action-delegation-fix">.*?</script>\s*', '\n', s, flags=re.S)
-          # Add touch-safe CSS before </head>.
-          css = '''\n<style id="levromart-admin-vendor-action-touch-fix">\n#adminPanel .vendor-admin-action { pointer-events:auto !important; touch-action:manipulation !important; position:relative; z-index:2; }\n#adminPanel .vendor-admin-action:disabled { opacity:.72; cursor:wait; }\n</style>\n'''
+
+          css = '''\n<style id="levromart-admin-vendor-action-touch-fix">\n#adminPanel .vendor-admin-action{pointer-events:auto!important;touch-action:manipulation!important;position:relative;z-index:2;}\n#adminPanel .vendor-admin-action:disabled{opacity:.72;cursor:wait;}\n</style>\n'''
           if 'id="levromart-admin-vendor-action-touch-fix"' not in s:
-            s = s.replace('</head>', css + '</head>', 1)
-          # Strip any CSS accidentally appended after </html> while preserving the normal document.
-          tail = s.find('</html>')
-          if tail != -1:
-            s = s[:tail+7] + '\n'
+              s = s.replace('</head>', css + '</head>', 1)
+
+          # Keep the document well-formed: remove any fix styles/scripts that had
+          # previously been appended after </html>.
+          html_end = s.lower().rfind('</html>')
+          if html_end >= 0:
+              s = s[:html_end + len('</html>')] + '\n'
+
           p.write_text(s, encoding='utf-8')
-          print('patched', p, 'bytes', p.stat().st_size)
-      - name: Validate HTML JavaScript
+          print('index bytes:', p.stat().st_size)
+          print('inline admin handlers:', s.count('__levroAdminVendorAction(this,event)'))
+          PY
+
+      - name: Validate JavaScript
         run: |
-          python - <<'PY'
+          python3 <<'PY'
           from pathlib import Path
           import re, subprocess
-          s=Path('index.html').read_text(encoding='utf-8')
-          blocks=re.findall(r'<script(?:\\s[^>]*)?>(.*?)</script>',s,re.S|re.I)
-          for i,b in enumerate(blocks):
-            if not b.strip(): continue
-            f=Path(f'/tmp/script-{i}.js'); f.write_text(b,encoding='utf-8')
-            r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
-            if r.returncode:
-              print(r.stderr); raise SystemExit(r.returncode)
+          s = Path('index.html').read_text(encoding='utf-8')
+          blocks = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', s, re.S | re.I)
+          for i, block in enumerate(blocks):
+              if not block.strip():
+                  continue
+              f = Path(f'/tmp/levromart-script-{i}.js')
+              f.write_text(block, encoding='utf-8')
+              r = subprocess.run(['node', '--check', str(f)], capture_output=True, text=True)
+              if r.returncode:
+                  print(r.stderr)
+                  raise SystemExit(r.returncode)
           print('JavaScript syntax OK:', len(blocks), 'script blocks')
           PY
+
       - name: Commit patched index
         run: |
           if git diff --quiet -- index.html; then
