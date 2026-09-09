@@ -583,9 +583,16 @@
   #myRequestsAccordion.open .accordion-body { max-height: 3000px; }
   #veHoursAccordion.open .accordion-body { max-height: 640px; }
   #appealsAccordion.open .accordion-body { max-height: 2000px; overflow-y: auto; }
-  /* Order history can run to dozens/hundreds of orders over time - scroll
-     inside a capped height instead of clipping content past 320px. */
-  #orderHistoryAccordion.open .accordion-body { max-height: 12000px; overflow: visible; }
+  /* Order history can run to dozens/hundreds of orders over time - let it
+     expand fully instead of clipping content past 320px.
+     NOTE: the actual rendered wrapper ids are buyerOrderHistoryAccordion,
+     vendorSalesHistoryAccordion and vendorPurchaseHistoryAccordion (see
+     orderHistoryAccordionHtml()) - "#orderHistoryAccordion" never exists in
+     the DOM, so this rule (and every other #orderHistoryAccordion rule below)
+     was dead code and the base 320px cap above was always the one in effect. */
+  #buyerOrderHistoryAccordion.open .accordion-body,
+  #vendorSalesHistoryAccordion.open .accordion-body,
+  #vendorPurchaseHistoryAccordion.open .accordion-body { max-height: 12000px; overflow: visible; }
   .order-stats-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   .order-stats-table tr { border-bottom: 1px solid var(--border); }
   .order-stats-table tr:last-child { border-bottom: none; }
@@ -3340,7 +3347,7 @@ body:has(#settings-page) #app{overflow-x:clip;}
    collapse into a text stream on narrow screens.
    ================================================================ */
 #orderListWrap,
-#orderHistoryAccordion { width:100%; min-width:0; }
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion) { width:100%; min-width:0; }
 
 #orderListWrap {
   display:flex;
@@ -3436,8 +3443,8 @@ body:has(#settings-page) #app{overflow-x:clip;}
   min-width:0;
 }
 
-#orderHistoryAccordion { margin-top:1.2rem !important; }
-#orderHistoryAccordion > .accordion-trigger {
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion) { margin-top:1.2rem !important; }
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion) > .accordion-trigger {
   width:100%;
   box-sizing:border-box;
   margin:0;
@@ -3447,18 +3454,18 @@ body:has(#settings-page) #app{overflow-x:clip;}
   background:color-mix(in srgb,var(--card) 88%,var(--primary) 4%);
   border:1px solid var(--border);
 }
-#orderHistoryAccordion > .accordion-trigger > span {
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion) > .accordion-trigger > span {
   min-width:0;
   display:flex;
   align-items:center;
   gap:.7rem;
 }
-#orderHistoryAccordion > .accordion-trigger > span > i { color:var(--primary); }
-#orderHistoryAccordion > .accordion-body {
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion) > .accordion-trigger > span > i { color:var(--primary); }
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion) > .accordion-body {
   padding:0 !important;
   margin:0;
 }
-#orderHistoryAccordion.open > .accordion-body {
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion).open > .accordion-body {
   padding:.1rem 0 .9rem !important;
 }
 .order-history-date {
@@ -3535,7 +3542,7 @@ body:has(#settings-page) #app{overflow-x:clip;}
 
 /* The page itself owns vertical scrolling. Do not create a second history
    scroller that fights touch scrolling on iOS. */
-#orderHistoryAccordion .accordion-body { overflow:visible !important; }
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion) .accordion-body { overflow:visible !important; }
 
 /* During live order refreshes, avoid transitions that can make the list
    appear to twitch as cards are replaced. */
@@ -3645,10 +3652,10 @@ img, svg, video, canvas, iframe { max-width:100%; }
 
 /* Order cards: authoritative layout, including history. */
 #orderListWrap,
-#orderHistoryAccordion,
-#orderHistoryAccordion .accordion-body,
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion),
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion) .accordion-body,
 .order-history-day { width:100% !important; min-width:0 !important; max-width:100% !important; }
-#orderHistoryAccordion .accordion-body { overflow:visible !important; }
+:is(#buyerOrderHistoryAccordion,#vendorSalesHistoryAccordion,#vendorPurchaseHistoryAccordion) .accordion-body { overflow:visible !important; }
 .order-list-card,
 .order-history-card {
   display:grid !important;
@@ -4505,12 +4512,19 @@ body.chat-full-page > #app { margin:0 !important; padding:0 !important; max-widt
 <style id="levromart-2026-09-07-polish">
 /* Trending: keep the horizontal browse rail compact so the next listing is always visible. */
 @media (max-width: 720px) {
-  .hscroll.trending-scroll { gap:.7rem !important; padding:.45rem .15rem .85rem !important; }
-  .hscroll.trending-scroll > .product-card-wrap { flex:0 0 205px !important; max-width:205px !important; }
-  .hscroll.trending-scroll .product-card-wrap .card { padding:.65rem !important; border-radius:14px !important; }
-  .hscroll.trending-scroll .product-card-wrap .product-img { aspect-ratio:1 / .92 !important; }
-  .hscroll.trending-scroll .product-card-wrap h4 { font-size:.84rem !important; margin:.45rem 0 .18rem !important; }
+  .hscroll.trending-scroll { gap:.7rem !important; padding:.45rem .15rem .85rem !important; align-items:stretch !important; }
+  /* Same equal-height/square treatment already used for the 2-column product
+     grid (see #app .grid:has(> .product-card-wrap) rules further down) - the
+     trending rail never had it, which is why cards here vary in height even
+     though the grid ones don't. */
+  .hscroll.trending-scroll > .product-card-wrap { flex:0 0 205px !important; max-width:205px !important; height:auto !important; aspect-ratio:1/1.18 !important; display:flex !important; }
+  .hscroll.trending-scroll .product-card-wrap .card { padding:.65rem !important; border-radius:14px !important; height:100% !important; min-height:0 !important; display:flex !important; flex-direction:column !important; box-sizing:border-box !important; }
+  .hscroll.trending-scroll .product-card-wrap .product-img { aspect-ratio:1 / .92 !important; flex:0 0 auto !important; }
+  .hscroll.trending-scroll .product-card-wrap h4 { font-size:.84rem !important; margin:.45rem 0 .18rem !important; display:-webkit-box !important; -webkit-box-orient:vertical !important; -webkit-line-clamp:2 !important; overflow:hidden !important; }
   .hscroll.trending-scroll .product-card-wrap p.muted { font-size:.67rem !important; }
+  .hscroll.trending-scroll .product-card-wrap .card > .flex,
+  .hscroll.trending-scroll .product-card-wrap .card .card-cart-btn,
+  .hscroll.trending-scroll .product-card-wrap .card .card-service-btn { margin-top:auto !important; }
 }
 @media (max-width:420px) {
   .hscroll.trending-scroll > .product-card-wrap { flex-basis:195px !important; max-width:195px !important; }
@@ -4788,7 +4802,15 @@ body:has(#settings-page) .site-footer { margin-top: .15rem !important; padding-t
 .product-card-wrap .fav-btn { left:.58rem !important; right:auto !important; top:.58rem !important; z-index:5 !important; }
 /* The actual add/open action stays inside the information panel. */
 .product-card-wrap .card-cart-btn,
-.product-card-wrap .card-service-btn { right:.62rem !important; bottom:.62rem !important; }
+.product-card-wrap .card-service-btn {
+  /* top/left are set on the base .card-cart-btn/.card-service-btn rule with an
+     explicit width+height, so a box with top+left+width+height AND bottom+right
+     all set resolves top/left and silently ignores bottom/right (CSS2.1 abspos
+     over-constraint rules) - that's why this "move to bottom-right" never took
+     visual effect. Clearing top/left here is what actually moves it. */
+  top:auto !important; left:auto !important;
+  right:.62rem !important; bottom:.62rem !important;
+}
 /* Gallery is a full-width swipe surface; no arrows steal horizontal space. */
 .product-gallery-main { position:relative !important; width:100% !important; aspect-ratio:1/1 !important; overflow:hidden !important; }
 .product-gallery-main > img { width:100% !important; height:100% !important; object-fit:contain !important; display:block !important; }
@@ -9637,7 +9659,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(productCardHtml).join("")}</div>`;
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(productCardHtml).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
-  if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll">${topVendors.map(homeVendorCardHtml).join("")}</div>`;
+  if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
   html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="flex" style="margin-bottom:1.2rem;"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" /><select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
   return html;
@@ -9813,7 +9835,7 @@ async function renderHome() {
   }
 
   if (topVendors && topVendors.length) {
-    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll">${topVendors.map(homeVendorCardHtml).join("")}</div>`;
+    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
   }
 
   html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
@@ -10237,27 +10259,6 @@ function ratingBadgeClass(rating) {
   if (r >= 2.5) return "warning";
   return "danger";
 }
-function homeVendorCardHtml(v) {
-  const name = v?.business_name || "Vendor";
-  const avatar = v?.logo_url || v?.user_avatar_url || "";
-  const cats = Array.isArray(v?.categories) ? v.categories.filter(Boolean).slice(0,2) : [];
-  const rating = Number(v?.avg_rating ?? 0);
-  const reviews = Number(v?.review_count ?? 0);
-  const delivery = String(v?.delivery_fee_mode || "flat").toLowerCase() === "distance"
-    ? `Distance delivery · ${naira(Number(v?.delivery_fee_per_km || 0))}/km`
-    : Number(v?.delivery_fee || 0) > 0 ? `Flat delivery · ${naira(Number(v?.delivery_fee))}` : "Free delivery";
-  return `<div class="vendor-card homepage-vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || "")}'} )" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || "")}'});}">
-    ${avatar ? `<img src="${esc(avatar)}" alt="" class="vendor-home-avatar" loading="lazy" draggable="false" />` : `<span class="vendor-home-avatar vendor-home-avatar-fallback">${esc(initials(name))}</span>`}
-    <div class="vendor-home-copy">
-      <strong>${esc(name)}</strong>
-      <span class="vendor-home-city"><i class="fa-solid fa-location-dot"></i> ${esc(v?.city || "Lagos")}</span>
-      <div class="vendor-home-meta"><span class="badge success"><i class="fa-solid fa-circle-check"></i> Verified</span><span class="badge ${ratingBadgeClass(rating)}">★ ${rating.toFixed(1)} · ${reviews} reviews</span></div>
-      <span class="vendor-home-known"><i class="fa-solid fa-truck"></i> ${esc(delivery)}</span>
-      <span class="vendor-home-known"><i class="fa-solid fa-tags"></i> ${esc(cats.length ? cats.join(" · ") : "Open storefront")}</span>
-    </div>
-  </div>`;
-}
-
 function vendorCardHtml(v) {
   const name = v?.business_name || "Vendor";
   const avatar = v?.logo_url || v?.user_avatar_url || "";
@@ -13546,9 +13547,9 @@ async function renderVendorDashboard() {
 
   let html = `<h2 style="display:flex;align-items:center;gap:0.5rem;"><i class='fa-solid fa-box'></i> ${esc(v.business_name)} ${verifiedTick}</h2>`;
   if (commissionOwed > 0) {
-    html += `<div class="banner banner-warning commission-owed-card" style="max-width:480px;margin:0 auto 1rem;">
+    html += `<div class="banner banner-warning" style="max-width:480px;margin:0 auto 1rem;">
       <h3 style="margin:0;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)}</h3>
-      <div class="commission-copy"><p class="muted" style="margin-top:0.4rem;">Levromart takes ${Number(v.commission_pct ?? 3)}% on offline sales. Pay within 1 week via Paystack. After 1 week unpaid, your storefront pauses until the commission is paid.</p></div>
+      <p class="muted" style="margin-top:0.4rem;">Levromart's ${Number(v.commission_pct ?? 3)}% cut on offline sales. Pay within 1 week via Paystack. If it remains unpaid for 1 week, your storefront will be paused temporarily until the commission is paid.</p>
       <div id="commissionError" class="error-text hidden"></div>
       <button class="btn btn-sm" id="payCommissionBtn" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
     </div>`;
@@ -13824,9 +13825,9 @@ async function renderVendorEditProfile() {
   setTimeout(() => { toggleVendorDeliveryFeeMode(); updateVeDeliveryPerKmExample(); }, 0);
 
   return `${commissionOwed > 0 ? `
-  <div class="banner banner-warning commission-owed-card" style="max-width:480px;margin:0 auto 1rem;">
+  <div class="banner banner-warning" style="max-width:480px;margin:0 auto 1rem;">
     <h3 style="margin:0;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)}</h3>
-    <div class="commission-copy"><p class="muted" style="margin-top:0.4rem;">Levromart takes ${Number(v.commission_pct ?? 3)}% on offline sales. Pay within 1 week via Paystack. After 1 week unpaid, your storefront pauses until the commission is paid.</p></div>
+    <p class="muted" style="margin-top:0.4rem;">This is Levromart's ${Number(v.commission_pct ?? 3)}% cut on offline sales. Pay within 1 week via Paystack. If it remains unpaid for 1 week, your storefront will be paused temporarily until the commission is paid.</p>
     <div id="commissionError" class="error-text hidden"></div>
     <button class="btn btn-sm" id="payCommissionBtn" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
   </div>` : ""}
@@ -20826,7 +20827,11 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   .package-recommendation-strip { gap: 1rem !important; }
   .package-recommendation-strip > * { flex: 0 0 270px !important; width:270px !important; }
   .package-recommendation-strip .package-listing-card,
-  .package-recommendation-strip .package-card { min-height: 330px; }
+  /* Removed fixed 330px min-height: it forced every card in the rail to that
+     height regardless of actual content, leaving dead space under shorter
+     cards. The rail's default flex align-items:stretch already equalizes
+     card heights to the tallest real card without an arbitrary floor. */
+  .package-recommendation-strip .package-card { min-height: 0; }
   @media (max-width:720px){
     .package-recommendation-strip > * { flex-basis:260px !important; width:260px !important; }
     .service-trending-scroll > * { flex-basis:245px !important; width:245px !important; }
@@ -21231,18 +21236,11 @@ window.renderVendorMapRail = function(){
     const {data:order,error}=await sb.from("orders").select("id,total_amount,deposit_amount,buyer_id,vendor_id,order_type,vendor:vendors(id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
     if(error||!order){showToast(error?.message||"Order not found.","error");return;}
     if(String(order.buyer_id)!==String(session.user.id)){showToast("You can only pay for your own order.","error");return;}
-    // Payment details must come from the authoritative vendor profile. Use the
-    // secure RPC first so restrictive vendor RLS cannot turn real bank details
-    // into "Not provided" on the buyer payment sheet. Keep a direct row lookup
-    // only as a compatibility fallback for older deployments.
+    // The vendor relationship can be filtered by RLS on older/paused vendor rows.
+    // Refresh the payment details directly from the vendor row as a second source.
     if(order.vendor_id){
-      const {data:paymentVendor}=await sb.rpc("get_vendor_payment_details",{p_vendor_id:order.vendor_id});
-      const secureVendor=Array.isArray(paymentVendor)?paymentVendor[0]:paymentVendor;
-      if(secureVendor) order.vendor={...(order.vendor||{}),...secureVendor};
-      else {
-        const {data:freshVendor}=await sb.from("vendors").select("id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number").eq("id",order.vendor_id).maybeSingle();
-        if(freshVendor) order.vendor={...(order.vendor||{}),...freshVendor};
-      }
+      const {data:freshVendor}=await sb.from("vendors").select("id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number").eq("id",order.vendor_id).maybeSingle();
+      if(freshVendor) order.vendor={...(order.vendor||{}),...freshVendor};
     }
     const feeType=order.order_type==="rental"?"rental_fee":"sale_price";
     const paidFee=Number((order.payments||[]).filter(p=>p.payment_type===feeType&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
@@ -21340,7 +21338,7 @@ window.renderVendorMapRail = function(){
 #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > p.muted{margin:.18rem 0 0 !important;font-size:.67rem !important;line-height:1.18 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
 #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-delivery-summary{margin:.18rem 0 0 !important;font-size:.64rem !important;line-height:1.18 !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;}
 #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .card-cart-btn,
-#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .card-service-btn{position:absolute !important;right:.48rem !important;bottom:.48rem !important;width:2rem !important;height:2rem !important;min-width:2rem !important;min-height:2rem !important;border-radius:50% !important;padding:0 !important;z-index:3 !important;}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .card-service-btn{position:absolute !important;top:auto !important;left:auto !important;right:.48rem !important;bottom:.48rem !important;width:2rem !important;height:2rem !important;min-width:2rem !important;min-height:2rem !important;border-radius:50% !important;padding:0 !important;z-index:3 !important;}
 #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .own-listing-badge{position:absolute !important;right:.4rem !important;bottom:.4rem !important;font-size:.58rem !important;max-width:48% !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
 #app .grid:has(> .product-card-wrap) > .product-card-wrap > .fav-btn{z-index:6 !important;}
 .product-old-price{font-size:.72rem !important;margin-right:.18rem !important;}
@@ -22069,12 +22067,12 @@ window.renderVendorMapRail = function(){
   flex:0 0 270px !important;width:270px !important;min-width:270px !important;max-width:270px !important;
 }
 .package-recommendation-strip .package-listing-card,
-.package-recommendation-strip .package-card{min-height:330px !important;height:auto !important;max-height:none !important;}
+.package-recommendation-strip .package-card{min-height:0 !important;height:auto !important;max-height:none !important;}
 @media(max-width:720px){
   .package-recommendation-strip > .package-listing-card,
   .package-recommendation-strip > .card{flex-basis:260px !important;width:260px !important;min-width:260px !important;}
   .package-recommendation-strip .package-listing-card,
-  .package-recommendation-strip .package-card{min-height:330px !important;}
+  .package-recommendation-strip .package-card{min-height:0 !important;}
 }
 
 /* CHAT — only the message list scrolls; header and composer stay anchored like
@@ -22284,7 +22282,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     const modal=document.createElement('div');
     modal.id='commissionOverdueModal';modal.className='modal open';
     modal.style.zIndex='2500';
-    modal.innerHTML=`<div class="modal-content" style="max-width:430px;"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-lock"></i> Storefront paused</h3></div><p style="margin:.7rem 0;">Your Levromart commission has remained unpaid for more than 1 week. Your storefront is paused until the outstanding commission is paid.</p><div id="commissionOverdueAmount" class="card" style="margin:.65rem 0;padding:.8rem;">Loading amount owed…</div><p class="muted" style="font-size:.78rem;">Pay the commission owed to restore your storefront.</p><button type="button" class="btn" style="width:100%;justify-content:center;" onclick="commissionOverduePayNow()"><i class="fa-solid fa-credit-card"></i> Pay commission owed</button></div>`;
+    modal.innerHTML=`<div class="modal-content" style="max-width:430px;"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-lock"></i> Storefront paused</h3></div><p style="margin:.7rem 0;">Commission unpaid for over a week — storefront paused until it's settled.</p><div id="commissionOverdueAmount" class="card" style="margin:.65rem 0;padding:.8rem;">Loading amount owed…</div><button type="button" class="btn" style="width:100%;justify-content:center;" onclick="commissionOverduePayNow()"><i class="fa-solid fa-credit-card"></i> Pay commission owed</button></div>`;
     document.body.appendChild(modal);
     loadCommissionOverdueAmount();
   }
@@ -22329,228 +22327,5 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkCommissionDeadline();},{passive:true});
 })();
 </script>
-
-<style id="levromart-final-user-fixes-20260910">
-/* FINAL CARD / HISTORY / CHAT POLISH
-   Keep the marketplace compact and deterministic on small screens. */
-@media (max-width:900px){
-  /* Browse/product grid: true square cards. Content is deliberately compact so
-     the card itself, not just the image, stays square. */
-  #app .grid:has(> .product-card-wrap){
-    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-    grid-auto-rows:auto !important;
-    align-items:stretch !important;
-  }
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap,
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
-    width:100% !important;
-    height:auto !important;
-    min-height:0 !important;
-    aspect-ratio:1 / 1 !important;
-  }
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
-    display:flex !important;
-    flex-direction:column !important;
-    overflow:hidden !important;
-    padding:.5rem !important;
-    gap:0 !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-img{
-    width:100% !important;
-    height:auto !important;
-    aspect-ratio:1 / .78 !important;
-    flex:0 0 auto !important;
-    overflow:hidden !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-card-wrap h4{
-    margin:.24rem 0 .08rem !important;
-    min-height:0 !important;
-    max-height:2.1em !important;
-    font-size:.76rem !important;
-    line-height:1.05 !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-card-vendor-row{min-height:.9rem !important;}
-  #app .grid:has(> .product-card-wrap) .product-card-price-block{margin:.08rem 0 !important;font-size:.65rem !important;line-height:1.05 !important;}
-  #app .grid:has(> .product-card-wrap) .product-availability{font-size:.56rem !important;line-height:1.05 !important;margin:.04rem 0 !important;min-height:0 !important;}
-  #app .grid:has(> .product-card-wrap) .product-card-delivery-wrap{min-height:0 !important;margin:.04rem 0 0 !important;}
-  #app .grid:has(> .product-card-wrap) .product-delivery-summary{font-size:.54rem !important;line-height:1.05 !important;-webkit-line-clamp:1 !important;}
-  #app .grid:has(> .product-card-wrap) .product-card-action-row{min-height:1.65rem !important;margin-top:auto !important;}
-  #app .grid:has(> .product-card-wrap) .card-cart-btn,
-  #app .grid:has(> .product-card-wrap) .card-service-btn{width:1.72rem !important;height:1.72rem !important;min-width:1.72rem !important;min-height:1.72rem !important;}
-
-  /* Trending rail: every product/service card has one exact height. */
-  .hscroll.trending-scroll > .product-card-wrap,
-  .hscroll.trending-scroll > .product-card-wrap > .card{
-    flex:0 0 205px !important;
-    width:205px !important;
-    min-width:205px !important;
-    max-width:205px !important;
-  }
-  .hscroll.trending-scroll > .product-card-wrap > .card{
-    height:245px !important;
-    min-height:245px !important;
-    max-height:245px !important;
-    display:flex !important;
-    flex-direction:column !important;
-    overflow:hidden !important;
-    padding:.58rem !important;
-  }
-  .hscroll.trending-scroll .product-img{
-    height:125px !important;min-height:125px !important;max-height:125px !important;aspect-ratio:auto !important;flex:0 0 125px !important;overflow:hidden !important;
-  }
-  .hscroll.trending-scroll .product-img img{width:100% !important;height:100% !important;object-fit:cover !important;}
-  .hscroll.trending-scroll .product-card-wrap h4{font-size:.8rem !important;line-height:1.1 !important;margin:.3rem 0 .08rem !important;min-height:1.75rem !important;max-height:1.75rem !important;}
-  .hscroll.trending-scroll .product-card-price-block{font-size:.66rem !important;line-height:1.08 !important;margin:.08rem 0 !important;}
-  .hscroll.trending-scroll .product-availability{font-size:.57rem !important;line-height:1.08 !important;margin:.04rem 0 !important;}
-  .hscroll.trending-scroll .product-card-delivery-wrap{min-height:1rem !important;margin:.04rem 0 !important;}
-  .hscroll.trending-scroll .product-delivery-summary{font-size:.56rem !important;line-height:1.08 !important;-webkit-line-clamp:1 !important;}
-  .hscroll.trending-scroll .product-card-action-row{margin-top:auto !important;min-height:1.8rem !important;}
-  .hscroll.trending-scroll .card-cart-btn,.hscroll.trending-scroll .card-service-btn{width:1.8rem !important;height:1.8rem !important;min-width:1.8rem !important;min-height:1.8rem !important;}
-
-  /* Services use the same rail dimensions and keep the service icon on the right. */
-  .service-trending-scroll > .product-card-wrap > .card{height:245px !important;min-height:245px !important;max-height:245px !important;}
-  .service-trending-scroll .product-card-action-row{justify-content:flex-end !important;}
-  .service-trending-scroll .card-service-btn{position:static !important;margin-left:auto !important;align-self:flex-end !important;}
-
-  /* Package rail: remove the old 330px minimum that created the huge empty
-     area underneath short package content. */
-  .package-recommendation-strip > .package-listing-card,
-  .package-recommendation-strip > .card{
-    flex:0 0 230px !important;width:230px !important;min-width:230px !important;max-width:230px !important;
-  }
-  .package-recommendation-strip .package-listing-card,
-  .package-recommendation-strip .package-card{
-    height:245px !important;min-height:245px !important;max-height:245px !important;overflow:hidden !important;padding:.55rem !important;
-  }
-  .package-recommendation-strip .package-gallery{height:112px !important;min-height:112px !important;max-height:112px !important;overflow:hidden !important;}
-  .package-recommendation-strip .package-photo-main,.package-recommendation-strip .package-gallery-placeholder{height:112px !important;min-height:112px !important;max-height:112px !important;object-fit:cover !important;}
-  .package-recommendation-strip .package-card-title-row{margin:.28rem 0 .08rem !important;}
-  .package-recommendation-strip .package-card-description,.package-recommendation-strip .package-card-includes{margin:.08rem 0 !important;-webkit-line-clamp:1 !important;font-size:.59rem !important;line-height:1.08 !important;}
-  .package-recommendation-strip .package-card-vendor,.package-recommendation-strip .package-card-delivery{margin:.06rem 0 !important;font-size:.57rem !important;}
-
-  /* Top-rated vendor rail: informative, balanced cards instead of a mostly
-     empty rectangle. */
-  .top-rated-vendors-scroll{gap:.65rem !important;}
-  .top-rated-vendors-scroll > .homepage-vendor-card{
-    flex:0 0 255px !important;width:255px !important;min-width:255px !important;max-width:255px !important;
-    height:112px !important;min-height:112px !important;max-height:112px !important;
-    padding:.65rem !important;align-items:flex-start !important;
-  }
-  .homepage-vendor-card .vendor-home-avatar{width:3.1rem !important;height:3.1rem !important;min-width:3.1rem !important;}
-  .homepage-vendor-card .vendor-home-copy{gap:.15rem !important;}
-  .homepage-vendor-card .vendor-home-copy > strong{font-size:.84rem !important;}
-  .homepage-vendor-card .vendor-home-city{font-size:.64rem !important;}
-  .homepage-vendor-card .vendor-home-meta{flex-wrap:nowrap !important;overflow:hidden !important;}
-  .homepage-vendor-card .vendor-home-meta .badge{font-size:.5rem !important;max-width:48% !important;overflow:hidden !important;text-overflow:ellipsis !important;}
-  .homepage-vendor-card .vendor-home-known{font-size:.57rem !important;line-height:1.1 !important;}
-}
-
-/* Order history: the actual IDs are perspective-specific. The old generic
-   #orderHistoryAccordion rule never matched these IDs, so the base 320px
-   accordion cap was clipping history on both views. */
-#vendorSalesHistoryAccordion.open > .accordion-body,
-#vendorPurchaseHistoryAccordion.open > .accordion-body,
-#buyerOrderHistoryAccordion.open > .accordion-body{
-  max-height:none !important;
-  height:auto !important;
-  overflow:visible !important;
-  padding:.1rem 0 .9rem !important;
-}
-#vendorSalesHistoryAccordion,
-#vendorPurchaseHistoryAccordion,
-#buyerOrderHistoryAccordion{overflow:visible !important;}
-
-/* Commission card: same message, much less visual noise. */
-.commission-owed-card .commission-copy{max-width:42rem !important;}
-.commission-owed-card .commission-copy p{line-height:1.25 !important;}
-
-/* Chat header is a fixed app bar; keyboard changes the message viewport only. */
-body.chat-full-page .chat-page-wrap .chat-page-header{
-  position:fixed !important;top:0 !important;left:0 !important;right:0 !important;
-  width:100% !important;height:auto !important;min-height:58px !important;
-  z-index:10000 !important;transform:translateZ(0) !important;
-}
-body.chat-full-page .chat-page-wrap .chat-thread{padding-top:58px !important;}
-body.chat-full-page .chat-page-wrap .chat-messages{padding-top:.35rem !important;}
-@media(max-width:720px){body.chat-full-page .chat-page-wrap .chat-thread{padding-top:calc(58px + env(safe-area-inset-top,0px)) !important;}}
-</style>
-<script id="levromart-final-user-fixes-20260910-js">
-(function(){
-  'use strict';
-  /* Replace the long commission paragraph without changing the underlying
-     weekly deadline logic. */
-  function compactCommissionCopy(root){
-    (root||document).querySelectorAll?.('.commission-owed-card').forEach(card=>{
-      const p=card.querySelector('.commission-copy p');
-      if(p) p.textContent="Levromart takes 3% on offline sales. Pay within 1 week via Paystack. After 1 week unpaid, your storefront pauses until the commission is paid.";
-    });
-  }
-  compactCommissionCopy();
-  const app=byId('app');
-  if(app&&window.MutationObserver){
-    const mo=new MutationObserver(()=>compactCommissionCopy(app));
-    mo.observe(app,{childList:true,subtree:true});
-  }
-})();
-</script>
-
-
-<style id="levromart-final-20260910-layout-v2">
-@media(max-width:900px){
-  /* True square browse cards; no content-dependent stretching. */
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap{aspect-ratio:1/1 !important;height:auto !important;min-height:0 !important;align-self:stretch !important;}
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{aspect-ratio:1/1 !important;height:auto !important;min-height:0 !important;max-height:none !important;}
-  /* Keep the image square-ish inside the square card and reserve the bottom
-     strip for actions, while clipping only the card's own excess content. */
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img{aspect-ratio:1.18/1 !important;}
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-card-action-row{margin-top:auto !important;min-height:1.7rem !important;}
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-delivery-summary{-webkit-line-clamp:1 !important;}
-
-  /* Trending rails: identical card height regardless of description/image. */
-  .hscroll.trending-scroll > .product-card-wrap > .card{height:245px !important;min-height:245px !important;max-height:245px !important;}
-  .hscroll.trending-scroll > .product-card-wrap .product-img{height:124px !important;min-height:124px !important;max-height:124px !important;aspect-ratio:auto !important;}
-  .hscroll.trending-scroll > .product-card-wrap .product-card-action-row{margin-top:auto !important;}
-
-  /* Service action is always the right-most item and never overlays text. */
-  .service-trending-scroll .product-card-action-row{display:flex !important;justify-content:flex-end !important;align-items:center !important;margin-top:auto !important;}
-  .service-trending-scroll .card-service-btn{position:static !important;margin-left:auto !important;transform:none !important;}
-
-  /* Packages: no artificial 330px floor and no giant blank tail. */
-  .package-recommendation-strip > .package-listing-card,
-  .package-recommendation-strip > .card{width:230px !important;min-width:230px !important;max-width:230px !important;flex-basis:230px !important;}
-  .package-recommendation-strip .package-listing-card,
-  .package-recommendation-strip .package-card{height:245px !important;min-height:245px !important;max-height:245px !important;overflow:hidden !important;}
-  .package-recommendation-strip .package-gallery,.package-recommendation-strip .package-photo-main,.package-recommendation-strip .package-gallery-placeholder{height:108px !important;min-height:108px !important;max-height:108px !important;}
-
-  /* Top vendors: enough width for the at-a-glance information. */
-  .top-rated-vendors-scroll > .homepage-vendor-card{width:255px !important;min-width:255px !important;max-width:255px !important;height:112px !important;min-height:112px !important;max-height:112px !important;}
-}
-
-/* All perspective-specific order-history accordions must expand naturally. */
-#vendorSalesHistoryAccordion .accordion-body,
-#vendorPurchaseHistoryAccordion .accordion-body,
-#buyerOrderHistoryAccordion .accordion-body{max-height:none !important;height:auto !important;overflow:visible !important;}
-#vendorSalesHistoryAccordion.open .accordion-body,
-#vendorPurchaseHistoryAccordion.open .accordion-body,
-#buyerOrderHistoryAccordion.open .accordion-body{max-height:none !important;overflow:visible !important;}
-</style>
-<script id="levromart-final-20260910-layout-v2-js">
-(function(){
-  'use strict';
-  function normalizeHomepageVendors(){
-    document.querySelectorAll('.top-rated-vendors-scroll .homepage-vendor-card').forEach(card=>{
-      card.style.height='112px';
-      card.style.minHeight='112px';
-      card.style.maxHeight='112px';
-    });
-  }
-  normalizeHomepageVendors();
-  const app=byId('app');
-  if(app&&window.MutationObserver){
-    new MutationObserver(()=>normalizeHomepageVendors()).observe(app,{childList:true,subtree:true});
-  }
-})();
-</script>
-
 </body>
 </html>
