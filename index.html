@@ -7411,11 +7411,11 @@ function setupDrawerSwipe(drawer, side) { return; }
   const isBlocked = (target) => {
     if (!target?.closest) return false;
     return !!target.closest([
-      '#aiChatPanel','#aiChatFab','#cartFab',
+      '#aiChatPanel','#aiChatFab','#cartFab','#vendorsMap','#vendorsMapWrap','#veMap',
       'header','.bottom-nav','.site-footer',
       'button','a','input','textarea','select','label',
       '.card','.product-card-wrap','.vendor-card','.package-card',
-      '.grid','.hscroll','.cat-row','.table-wrap','table',
+      '.grid','.hscroll','.cat-row','.storefront-product-strip','.table-wrap','table',
       '.leaflet','.modal','.modal-content',
       '.chat-page-wrap','.chat-messages','.chat-input-wrap',
       '[contenteditable="true"]','.swiper','.carousel','.gallery',
@@ -9411,7 +9411,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(productCardHtml).join("")}</div>`;
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(productCardHtml).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
-  if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
+  if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
   html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="flex" style="margin-bottom:1.2rem;"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" /><select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
   return html;
@@ -9587,7 +9587,7 @@ async function renderHome() {
   }
 
   if (topVendors && topVendors.length) {
-    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
+    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
   }
 
   html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
@@ -10000,7 +10000,7 @@ function vendorCardHtml(v) {
     <p class="muted" style="margin:0.3rem 0;">${esc(v.city || "")}</p>
     ${v.categories && v.categories.length ? `<p class="muted" style="margin:0 0 0.4rem;font-size:0.78rem;"><i class="fa-solid fa-tags"></i> ${v.categories.map(esc).join(", ")}</p>` : ""}
     <span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>
-    ${v.avg_rating != null ? `<span class="badge ${ratingBadgeClass(v.avg_rating)}" style="margin-left:0.3rem;">★ ${Number(v.avg_rating).toFixed(1)}${v.review_count != null ? ` (${v.review_count})` : ""}</span>` : ""}
+    ${`<span class="badge ${ratingBadgeClass(Number(v.avg_rating ?? 0))}" style="margin-left:0.3rem;">★ ${Number(v.avg_rating ?? 0).toFixed(1)} (${Number(v.review_count ?? 0)})</span>`}
     ${buyerLocation && v.lat != null && v.lng != null ? `<span class="badge" style="margin-left:0.3rem;"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>` : ""}
   </div>`;
 }
@@ -11828,7 +11828,7 @@ async function renderPackageDetail(packageId) {
     </div>`;
   }
 
-  html += `<div class="card"><div class="flex" style="justify-content:space-between;align-items:center;"><div><h3 style="margin:0;">About the vendor</h3><p class="muted" style="margin:.25rem 0 0;">${v.avg_rating != null ? `★ ${Number(v.avg_rating).toFixed(1)} · ${v.review_count || 0} reviews` : "Verified vendor"}</p></div><button class="btn btn-sm btn-outline" onclick="navigate('storefront',{vendorId:'${v.id}'})">View storefront</button></div></div>`;
+  html += `<div class="card"><div class="flex" style="justify-content:space-between;align-items:center;"><div><h3 style="margin:0;">About the vendor</h3><p class="muted" style="margin:.25rem 0 0;">${`★ ${Number(v.avg_rating ?? 0).toFixed(1)} · ${Number(v.review_count ?? 0)} reviews`}</p></div><button class="btn btn-sm btn-outline" onclick="navigate('storefront',{vendorId:'${v.id}'})">View storefront</button></div></div>`;
 
   const { data: morePackages } = await sb.from("vendor_packages")
     .select("id, vendor_id, name, description, price, photos, created_at, vendor:vendors!inner(id,business_name,logo_url,delivery_fee,verification_status,is_active), items:package_items(quantity, product:products(id,name,photos))")
@@ -11893,7 +11893,7 @@ async function renderProductDetail(productId) {
     <div class="product-detail-actions">
       ${profile?.role !== "admin" ? (product.vendor.whatsapp_visible && product.vendor.whatsapp_number ? `<div class="ms-wrap product-message-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm" type="button" onclick="toggleInlineMenu('productMessageMenu-${product.id}',event)"><i class='fa-solid fa-comment-dots'></i> Message vendor</button><div class="ms-list hidden" id="productMessageMenu-${product.id}" style="left:0;right:auto;width:max-content;min-width:190px;"><button class="ms-item" type="button" onclick="startConversationWithVendor('${product.vendor.id}');closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(product.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm" onclick="startConversationWithVendor('${product.vendor.id}')"><i class='fa-solid fa-comment-dots'></i> Message vendor</button>`) : ""}
       ${product.vendor.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(product.vendor.phone)}" onclick="callVendorGated(event,'${esc(product.vendor.phone)}','${product.vendor.id}')"><i class='fa-solid fa-phone'></i> Call vendor</a>` : ""}
-      ${st.avg_rating ? `<span class="badge">★ ${Number(st.avg_rating).toFixed(1)} (${st.review_count || 0})</span>` : ""}
+      ${`<span class="badge">★ ${Number(st.avg_rating ?? 0).toFixed(1)} (${Number(st.review_count ?? 0)})</span>`}
     </div>
     <div class="product-detail-info">
       <p><strong>Vendor:</strong> <a href="#" onclick="navigate('storefront',{vendorId:'${product.vendor.id}'});return false;">${vendorNameWithFormerly(product.vendor)}</a></p>
@@ -12389,10 +12389,18 @@ async function renderVendorsMap() {
     vendorsMap.attributionControl.setPrefix(false);
     addBasemapTileLayer(vendorsMap);
     addVendorsMapRecenterControl(vendorsMap);
+    requestAnimationFrame(() => requestAnimationFrame(() => vendorsMap?.invalidateSize(true)));
+    setTimeout(() => vendorsMap?.invalidateSize(true), 120);
   } else {
     // Do not reset the user's map position every time filters/location refresh.
     // The recenter control is the explicit way to jump back to the customer.
-    setTimeout(() => vendorsMap.invalidateSize(), 0);
+    const refreshMapSize = () => {
+      if (!vendorsMap || byId("vendorsMapWrap")?.classList.contains("hidden")) return;
+      vendorsMap.invalidateSize(true);
+    };
+    requestAnimationFrame(() => { requestAnimationFrame(refreshMapSize); });
+    setTimeout(refreshMapSize, 80);
+    setTimeout(refreshMapSize, 300);
   }
 
   vendorsMapMarkers.forEach((m) => vendorsMap.removeLayer(m));
@@ -12412,7 +12420,7 @@ async function renderVendorsMap() {
     const vendorLogo = v.logo_url
       ? `<img class="vendor-map-popup-avatar" src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" onerror="this.classList.add('is-broken');this.style.display='none';" />`
       : `<span class="vendor-map-popup-avatar vendor-map-popup-avatar-fallback" aria-label="${esc(v.business_name || "Vendor")}">${'<i class="fa-solid fa-user" aria-hidden="true"></i>'}</span>`;
-    const popupMeta = `${v.avg_rating ? `★ ${Number(v.avg_rating).toFixed(1)} (${v.review_count || 0})` : ""}${dist ? `${v.avg_rating ? " · " : ""}${dist}` : ""}`;
+    const popupMeta = `${`★ ${Number(v.avg_rating ?? 0).toFixed(1)} (${Number(v.review_count ?? 0)})`}${dist ? ` · ${dist}` : ""}`;
     marker.bindPopup(`<div class="vendor-map-popup"><div class="vendor-map-popup-head">${vendorLogo}<div class="vendor-map-popup-copy"><strong>${vendorName}</strong>${popupMeta ? `<span>${esc(popupMeta)}</span>` : ""}</div></div><a class="vendor-map-popup-link" href="#" onclick="navigate('storefront',{vendorId:'${v.id}'});return false;">View storefront</a></div>`);
     vendorsMapMarkers.push(marker);
   });
@@ -12625,7 +12633,7 @@ async function renderStorefront(vendorId) {
       <div class="storefront-stats">
         <span><strong>${allProducts.length}</strong> listing${allProducts.length === 1 ? "" : "s"}</span>
         <button type="button" class="storefront-stat-link" onclick="event.stopPropagation();scrollToVendorReviews()"><strong>${st.review_count || 0}</strong> review${Number(st.review_count || 0) === 1 ? "" : "s"}</button>
-        ${st.avg_rating ? `<button type="button" class="storefront-stat-link" onclick="event.stopPropagation();scrollToVendorReviews()"><strong>★ ${Number(st.avg_rating).toFixed(1)}</strong> rating</button>` : ""}
+        ${`<button type="button" class="storefront-stat-link" onclick="event.stopPropagation();scrollToVendorReviews()"><strong>★ ${Number(st.avg_rating ?? 0).toFixed(1)}</strong> rating</button>`}
         ${v.sector?.name ? `<span>${esc(v.sector.name)}</span>` : ""}
       </div>
     </div>
@@ -15695,7 +15703,7 @@ async function renderAdminPanel(status) {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
   status = ["all", "pending", "verified", "rejected"].includes(status) ? status : "pending";
   let q = sb.from("vendors")
-    .select("id, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, created_at, applicant:users(name, email)")
+    .select("id, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, avg_rating, review_count, created_at, applicant:users(name, email)")
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
   if (status !== "all") q = q.eq("verification_status", status);
@@ -15724,9 +15732,9 @@ async function renderAdminPanel(status) {
       ${v.bio ? `<p style="margin:0.3rem 0;">${esc(v.bio)}</p>` : ""}
       <p class="muted" style="margin:0.3rem 0;">${doc ? `<a href="#" onclick="viewVendorDoc('${doc}');return false;"><i class='fa-solid fa-file-lines'></i> View submitted document</a>` : "No document uploaded"} · applied ${new Date(v.created_at).toLocaleDateString()}</p>
       <div class="flex" style="margin-top:0.5rem;">
-        ${v.verification_status !== "verified" ? `<button class="btn btn-sm" onclick="setVendorStatus('${v.id}','verified','${status}','${esc(v.business_name)}')">Approve</button>` : ""}
-        ${v.verification_status !== "rejected" ? `<button class="btn btn-sm btn-danger" onclick="setVendorStatus('${v.id}','rejected','${status}','${esc(v.business_name)}')">Reject</button>` : ""}
-        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button class="btn btn-sm btn-danger" style="background:#7f1d1d;" onclick="adminDeleteVendor('${v.id}','${esc(v.business_name)}','${status}')"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
+        ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}">Approve</button>` : ""}
+        ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
+        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
       </div>
     </div>`;
   });
@@ -15806,49 +15814,68 @@ async function logAdminAction(action, targetType, targetId, targetLabel) {
 }
 
 async function setVendorStatus(id, status, filterStatus, businessName) {
-  if (status === "verified" && !(await showConfirmDialog(
-    `Approve "${businessName}" as a vendor? Their storefront and listings go live to buyers immediately.`,
-    { title: "Approve vendor", okLabel: "Approve" }
-  ))) return;
-  if (status === "rejected" && !(await promptAdminPassword("reject this vendor"))) return;
-  const { data: targetVendor, error: targetVendorError } = await sb.from("vendors").select("id,user_id,business_name,verification_status").eq("id", id).maybeSingle();
-  if (targetVendorError || !targetVendor) { showToast(targetVendorError?.message || "Vendor application not found.", "error"); return; }
-  const previousStatus = targetVendor.verification_status;
-  const { error } = await sb.from("vendors").update({ verification_status: status }).eq("id", id);
-  if (error) { showToast(error.message, "error"); return; }
-
-  if (status === "verified") {
-    // Approval must promote the applicant's account role as well. This is
-    // required by create_vendor_category/create_vendor_sector and prevents
-    // an approved vendor from still being treated as a customer by RPC checks.
-    const { error: roleError } = await sb.from("users").update({ role: "vendor", role_selected: true }).eq("id", targetVendor.user_id);
-    if (roleError) { showToast(`Vendor approved, but the account role could not be updated: ${roleError.message}`, "error"); }
-
-    const { error: notifError } = await sb.from("notifications").insert({
-      user_id: targetVendor.user_id,
-      title: "Vendor application approved",
-      body: `Congratulations! ${businessName} has been approved. Your Levromart vendor account is now active and your storefront can go live.`,
-      target_view: "vendorDashboard",
-      target_params: {}
-    });
-    if (notifError) console.warn("Vendor approval notification could not be created:", notifError.message);
-  } else if (status === "rejected" && previousStatus !== "rejected") {
-    const { error: notifError } = await sb.from("notifications").insert({
-      user_id: targetVendor.user_id,
-      title: "Vendor application update",
-      body: `Your application for ${businessName} was not approved at this time. Please review your application details or contact Levromart support.`,
-      target_view: "home",
-      target_params: {}
-    });
-    if (notifError) console.warn("Vendor rejection notification could not be created:", notifError.message);
+  if (!session?.user?.id || profile?.role !== "admin") {
+    showToast("Admin access is required.", "error");
+    return;
   }
 
-  logAdminAction(status === "verified" ? "approve_vendor" : "reject_vendor", "vendor", id, businessName);
-  navigate("adminPanel", { status: filterStatus });
+  // Always resolve the vendor first. This avoids fragile inline strings and
+  // also gives the confirmation dialog the real business name.
+  const { data: targetVendor, error: targetVendorError } = await sb
+    .from("vendors")
+    .select("id,user_id,business_name,verification_status,is_active,avg_rating,review_count")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (targetVendorError || !targetVendor) {
+    showToast(targetVendorError?.message || "Vendor application not found.", "error");
+    return;
+  }
+
+  businessName = targetVendor.business_name || businessName || "this vendor";
+
+  if (status === "verified") {
+    if (!(await showConfirmDialog(
+      `Approve "${businessName}" as a vendor? Their storefront will become visible to customers immediately.`,
+      { title: "Approve vendor", okLabel: "Approve" }
+    ))) return;
+  }
+
+  if (status === "rejected") {
+    if (!(await promptAdminPassword(`reject "${businessName}"`))) return;
+  }
+
+  const { error } = await sb.rpc("admin_set_vendor_status", {
+    p_vendor_id: id,
+    p_status: status,
+  });
+
+  if (error) {
+    console.error("admin_set_vendor_status failed:", error);
+    showToast(`Could not ${status === "verified" ? "approve" : status === "rejected" ? "reject" : "update"} this vendor: ${error.message}`, "error");
+    return;
+  }
+
+  // Keep the current admin view on the same filter after the action.
+  showToast(
+    status === "verified"
+      ? `${businessName} approved successfully.`
+      : status === "rejected"
+        ? `${businessName} rejected.`
+        : `${businessName} updated.`,
+    "success"
+  );
+
+  navigate("adminPanel", { status: filterStatus || "pending" }, { replace: true });
 }
 
-async function adminDeleteVendor(vendorId, businessName, filterStatus) {
+async function adminDeleteVendor(vendorId, filterStatus, businessName) {
   if (profile?.email !== SUPER_ADMIN_EMAIL) return;
+  if (!businessName) {
+    const { data: target } = await sb.from("vendors").select("business_name").eq("id", vendorId).maybeSingle();
+    businessName = target?.business_name || "this vendor";
+  }
   if (!(await showConfirmDialog(
     `Permanently delete "${businessName}"? Their storefront and all listings are pulled immediately, they're demoted back to an ordinary buyer account, and this stops showing on your dashboard. Past orders and reviews stay on record for buyers.`,
     { title: "Delete vendor", okLabel: "Delete vendor", danger: true }
@@ -19245,17 +19272,18 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
    than the neighbouring hairdressing/service card.
    ================================================================ */
 @media (max-width: 720px) {
+  .service-trending-scroll { gap: 1rem !important; padding-left:.35rem !important; padding-right:.35rem !important; }
   .service-trending-scroll > .product-card-wrap {
-    flex: 0 0 205px !important;
-    width: 205px !important;
-    max-width: 205px !important;
-    min-width: 205px !important;
+    flex: 0 0 190px !important;
+    width: 190px !important;
+    max-width: 190px !important;
+    min-width: 190px !important;
   }
   .service-trending-scroll > .product-card-wrap > .card {
-    width: 205px !important;
-    height: 325px !important;
-    min-height: 325px !important;
-    max-height: 325px !important;
+    width: 190px !important;
+    height: 300px !important;
+    min-height: 300px !important;
+    max-height: 300px !important;
     padding: .6rem !important;
     display: flex !important;
     flex-direction: column !important;
@@ -19263,11 +19291,11 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   }
   .service-trending-scroll .product-img {
     width: 100% !important;
-    height: 150px !important;
-    min-height: 150px !important;
-    max-height: 150px !important;
+    height: 138px !important;
+    min-height: 138px !important;
+    max-height: 138px !important;
     aspect-ratio: auto !important;
-    flex: 0 0 150px !important;
+    flex: 0 0 138px !important;
     overflow: hidden !important;
     border-radius: 10px !important;
   }
@@ -19298,31 +19326,37 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   }
 }
 
-/* Packages — deliberately smaller than the service cards. */
+/* Packages are intentionally a little larger than the compact service rail. */
 .package-recommendation-strip > .package-listing-card,
 .package-recommendation-strip > .card {
-  flex: 0 0 190px !important;
-  width: 190px !important;
-  min-width: 190px !important;
-  max-width: 190px !important;
+  flex: 0 0 220px !important;
+  width: 220px !important;
+  min-width: 220px !important;
+  max-width: 220px !important;
 }
 .package-recommendation-strip .package-listing-card {
   padding: .55rem !important;
   border-radius: 13px !important;
 }
-.package-recommendation-strip .package-gallery,
+.package-recommendation-strip .package-gallery {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
 .package-recommendation-strip .package-gallery-placeholder {
-  height: 118px !important;
-  min-height: 118px !important;
-  max-height: 118px !important;
+  height: 132px !important;
+  min-height: 132px !important;
+  max-height: 132px !important;
 }
 .package-recommendation-strip .package-photo-main {
-  height: 118px !important;
+  height: 132px !important;
+  min-height: 132px !important;
   object-fit: cover !important;
 }
 .package-recommendation-strip .package-photo-strip { display:none !important; }
-.package-recommendation-strip .package-photo-count { font-size:.62rem !important; }
-.package-recommendation-strip .package-listing-card > .flex { margin-top:.5rem !important; }
+.package-recommendation-strip .package-photo-count { font-size:.62rem !important; display:block !important; line-height:1.2 !important; margin:.28rem 0 0 !important; min-height:1em !important; }
+.package-recommendation-strip .package-listing-card > .flex { margin-top:.7rem !important; }
 .package-recommendation-strip .package-listing-card p { font-size:.7rem !important; }
 
 /* ================================================================
@@ -19583,6 +19617,13 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   window.switchVendorsView = function (mode) {
     vendorDirectoryMode = ["grid", "list", "map"].includes(mode) ? mode : "grid";
     renderVendorDirectoryCards();
+    if (vendorDirectoryMode === "map") {
+      byId("vendorsMapWrap")?.classList.remove("hidden");
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (typeof renderVendorsMap === "function") renderVendorsMap();
+        if (vendorsMap) vendorsMap.invalidateSize(true);
+      }));
+    }
   };
 
   window.toggleVendorsMore = function () {
@@ -19692,7 +19733,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         ${v.categories?.length ? `<p class="muted vendor-directory-categories"><i class="fa-solid fa-tags"></i> ${v.categories.slice(0,4).map(esc).join(", ")}</p>` : ""}
         <div class="vendor-card-footer">
           <span class="badge success"><i class="fa-solid fa-circle-check"></i> Verified</span>
-          ${v.avg_rating != null ? `<span class="badge ${ratingBadgeClass(v.avg_rating)}">★ ${Number(v.avg_rating).toFixed(1)}${v.review_count != null ? ` (${v.review_count})` : ""}</span>` : ""}
+          ${`<span class="badge ${ratingBadgeClass(Number(v.avg_rating ?? 0))}">★ ${Number(v.avg_rating ?? 0).toFixed(1)} (${Number(v.review_count ?? 0)})</span>`}
           ${distance}
         </div>
       </div>
@@ -19731,7 +19772,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 
       const { data: targetVendor, error: targetVendorError } = await sb
         .from("vendors")
-        .select("id,user_id,business_name,verification_status")
+        .select("id,user_id,business_name,verification_status,avg_rating,review_count")
         .eq("id", id)
         .maybeSingle();
 
@@ -19740,12 +19781,13 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         return;
       }
 
+      businessName = targetVendor.business_name || businessName || "Vendor";
       const previousStatus = targetVendor.verification_status;
       const { data: updatedRows, error: updateError } = await sb
         .from("vendors")
         .update({ verification_status: status })
         .eq("id", id)
-        .select("id,user_id,business_name,verification_status")
+        .select("id,user_id,business_name,verification_status,avg_rating,review_count")
         .maybeSingle();
 
       if (updateError) {
@@ -19970,11 +20012,377 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
      notification badge instead of a full-colour PNG that can render as a
      white square in the status bar.
      --------------------------------------------------------------- */
-  window.LEVROMART_PUSH_BADGE = "/levromart-badge.svg";
+  window.LEVROMART_PUSH_BADGE = "/levromart-badge.png";
 })();
 </script>
 
 
 
+
+
+<!-- LEVROMART 2026-09-09 VENDOR LOCATION AUTO-CAPTURE -->
+<style id="levromart-vendor-location-auto-style">
+  #vendorApplyLocationStatus{
+    display:flex;
+    align-items:flex-start;
+    gap:.55rem;
+    padding:.65rem .75rem;
+    margin:.35rem 0 .65rem;
+    border:1px solid var(--border);
+    border-radius:.75rem;
+    background:color-mix(in srgb,var(--primary) 5%,var(--card));
+    font-size:.76rem;
+    line-height:1.4;
+  }
+  #vendorApplyLocationStatus i{color:var(--primary);margin-top:.12rem;flex:0 0 auto;}
+  #vendorApplyLocationStatus.is-ok{border-color:color-mix(in srgb,var(--success) 35%,var(--border));}
+  #vendorApplyLocationStatus.is-ok i{color:var(--success);}
+  #vendorApplyLocationStatus.is-error{border-color:color-mix(in srgb,var(--danger) 35%,var(--border));}
+  #vendorApplyLocationStatus.is-error i{color:var(--danger);}
+</style>
+<script id="levromart-vendor-location-auto-script">
+(function(){
+  "use strict";
+
+  /*
+   * IMPORTANT:
+   * A web app cannot ask the ADMIN'S phone for a vendor's location — that would
+   * incorrectly put the admin on the vendor's map pin. The correct flow is:
+   *   1. Capture the applicant's own current browser location when they apply.
+   *   2. Store it on that vendor record as lat/lng.
+   *   3. When an admin approves them, atomically set verification_status=verified
+   *      AND is_active=true. The public map already reads verified+active vendors.
+   *   4. When an approved vendor later opens/returns to Levromart, silently refresh
+   *      their current location without requiring Business Profile to be opened.
+   * This gives newly approved vendors an immediate map pin whenever their
+   * application has a location, while also keeping their pin fresh thereafter.
+   */
+
+  async function captureVendorCurrentLocationForApplication(){
+    try{
+      if(!navigator.geolocation) return null;
+      return await getCurrentPositionOnce();
+    }catch(err){
+      console.warn("[Levromart] Applicant location unavailable:", err);
+      return null;
+    }
+  }
+
+  function setVendorApplyLocationStatus(text, state){
+    const el=byId("vendorApplyLocationStatus");
+    if(!el) return;
+    el.className=state ? state : "";
+    el.innerHTML = state === "is-ok"
+      ? `<i class="fa-solid fa-location-dot"></i><span>${esc(text)}</span>`
+      : state === "is-error"
+        ? `<i class="fa-solid fa-triangle-exclamation"></i><span>${esc(text)}</span>`
+        : `<i class="fa-solid fa-location-crosshairs"></i><span>${esc(text)}</span>`;
+  }
+
+  /* ---------------------------------------------------------------
+     APPLICATION: capture the applicant's location before the row is created.
+     We do not block the application if the browser refuses location; the vendor
+     can still be approved, and the automatic vendor-session refresh below will
+     capture it later. We never invent coordinates.
+     --------------------------------------------------------------- */
+  const oldRenderVendorApply = window.renderVendorApply;
+  if(typeof oldRenderVendorApply === "function"){
+    window.renderVendorApply = async function(){
+      const html=await oldRenderVendorApply.apply(this,arguments);
+      const str=String(html||"");
+      if(!str.includes('id="vendorApplySubmitBtn"') || str.includes('id="vendorApplyLocationStatus"')) return str;
+      return str.replace(
+        /(<label>City<\/label>\s*<input[^>]*id="vaCity"[^>]*\/>)/i,
+        `$1\n        <div id="vendorApplyLocationStatus"><i class="fa-solid fa-location-crosshairs"></i><span>Your current location will be used as your initial shop location on the Levromart map. You won't need to enter it manually.</span></div>`
+      );
+    };
+  }
+
+  /* ---------------------------------------------------------------
+     APPLICATION: replace the latest submit handler with the same existing
+     validation/upload flow plus location capture. It intentionally keeps all
+     existing fields and behavior.
+     --------------------------------------------------------------- */
+  let vendorLocationApplyBusy=false;
+  window.submitVendorApply = async function(){
+    if(typeof vendorApplyBusy !== "undefined" && vendorApplyBusy) return;
+    if(vendorLocationApplyBusy) return;
+
+    const errorEl=byId("vendorApplyError");
+    const button=byId("vendorApplySubmitBtn");
+    if(!errorEl || !button) return;
+
+    errorEl.classList.add("hidden");
+    errorEl.textContent="";
+
+    const business_name=String(byId("vaBusinessName")?.value||"").trim();
+    const address=String(byId("vaAddress")?.value||"").trim();
+    const phone=String(byId("vaPhone")?.value||"").trim();
+
+    if(!business_name || !phone){
+      errorEl.textContent="Business name and phone are required.";
+      errorEl.classList.remove("hidden");
+      return;
+    }
+
+    vendorLocationApplyBusy=true;
+    button.classList.add("is-busy");
+    button.disabled=true;
+    const originalButton=button.innerHTML;
+
+    try{
+      let verification_docs=[];
+      const file=byId("vaDoc")?.files?.[0];
+
+      if(file){
+        const ext=(file.name.split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase()||"bin";
+        const path=`${session.user.id}/${Date.now()}.${ext}`;
+        const {error:upErr}=await sb.storage.from("vendor-docs").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});
+        if(upErr) throw new Error(`Document upload failed: ${upErr.message}`);
+        verification_docs=[path];
+      }
+
+      setVendorApplyLocationStatus("Getting your current location…", "");
+      button.innerHTML='<i class="fa-solid fa-location-dot fa-beat-fade"></i> Getting location…';
+
+      const loc=await captureVendorCurrentLocationForApplication();
+
+      if(loc){
+        setVendorApplyLocationStatus("Location captured. It will become your map location when your vendor application is approved.","is-ok");
+      }else{
+        setVendorApplyLocationStatus("We couldn't access your current location. Your application can still be submitted, but your map pin will be added automatically when Levromart can obtain your location later.","is-error");
+      }
+
+      button.innerHTML='<i class="fa-solid fa-paper-plane"></i> Submitting…';
+
+      const {error}=await sb.from("vendors").insert({
+        user_id:session.user.id,
+        sector_id:byId("vaSector")?.value||null,
+        business_name,
+        address:address||null,
+        city:String(byId("vaCity")?.value||"").trim()||null,
+        phone,
+        whatsapp_number:String(byId("vaWhatsapp")?.value||"").trim()||null,
+        cac_number:String(byId("vaCac")?.value||"").trim()||null,
+        bio:String(byId("vaBio")?.value||"").trim()||null,
+        verification_docs,
+        lat:loc?.lat ?? null,
+        lng:loc?.lng ?? null,
+        is_active:false
+      });
+
+      if(error) throw new Error(error.message);
+
+      showToast(
+        loc
+          ? "Application submitted. Your current location is saved and will appear on the map when you're approved."
+          : "Application submitted successfully. We'll add your map location automatically when your device makes it available.",
+        "success"
+      );
+
+      await refreshAuthState();
+      navigate("vendorDashboard");
+
+    }catch(err){
+      console.error("[Levromart] Vendor application/location failed:",err);
+      errorEl.textContent=/network|fetch|failed to fetch|timeout/i.test(String(err?.message||""))
+        ? "We couldn't reach Levromart. Check your connection and try again."
+        : (err?.message||"We couldn't submit your application. Please try again.");
+      errorEl.classList.remove("hidden");
+    }finally{
+      vendorLocationApplyBusy=false;
+      button.classList.remove("is-busy");
+      button.disabled=false;
+      button.innerHTML=originalButton;
+    }
+  };
+
+  /* ---------------------------------------------------------------
+     APPROVAL: verified + active in ONE vendor update. Keep the applicant's
+     captured lat/lng untouched. This makes the new vendor publicly visible
+     immediately and puts them on the map as soon as their stored coordinates
+     exist. Do not use the admin's geolocation here.
+     --------------------------------------------------------------- */
+  let approvalBusy=false;
+  window.setVendorStatus = async function(id,status,filterStatus,businessName){
+    if(approvalBusy) return;
+    approvalBusy=true;
+
+    try{
+      if(status === "verified" && !(await showConfirmDialog(
+        `Approve "${businessName}" as a vendor? Their storefront, listings and map location will become visible to buyers immediately.`,
+        {title:"Approve vendor",okLabel:"Approve"}
+      ))) return;
+
+      if(status === "rejected" && !(await promptAdminPassword("reject this vendor"))) return;
+
+      const {data:targetVendor,error:targetVendorError}=await sb
+        .from("vendors")
+        .select("id,user_id,business_name,verification_status,is_active,lat,lng,avg_rating,review_count")
+        .eq("id",id)
+        .maybeSingle();
+
+      if(targetVendorError || !targetVendor){
+        showToast(targetVendorError?.message||"Vendor application not found.","error");
+        return;
+      }
+
+      const previousStatus=targetVendor.verification_status;
+
+      const updatePayload = status === "verified"
+        ? {verification_status:"verified",is_active:true,avg_rating:targetVendor.avg_rating ?? 0,review_count:targetVendor.review_count ?? 0}
+        : {verification_status:status,is_active:false};
+
+      const {data:updatedRows,error:updateError}=await sb
+        .from("vendors")
+        .update(updatePayload)
+        .eq("id",id)
+        .select("id,user_id,business_name,verification_status,is_active,lat,lng,avg_rating,review_count")
+        .maybeSingle();
+
+      if(updateError){
+        console.error("[Levromart] Vendor approval update failed:",updateError);
+        showToast(updateError.message||"Could not update this vendor.","error");
+        return;
+      }
+
+      if(!updatedRows || String(updatedRows.verification_status)!==String(status)){
+        showToast("The vendor was not updated. Your admin session may not have permission to approve this application.","error");
+        return;
+      }
+
+      if(status === "verified"){
+        const {error:roleError}=await sb.from("users").update({role:"vendor",role_selected:true}).eq("id",targetVendor.user_id);
+        if(roleError) console.error("[Levromart] Vendor role update failed:",roleError);
+
+        const {error:notifError}=await sb.from("notifications").insert({
+          user_id:targetVendor.user_id,
+          title:"Vendor application approved",
+          body:targetVendor.lat != null && targetVendor.lng != null
+            ? `Congratulations! ${businessName} has been approved. Your Levromart vendor account is active and your shop is now visible to customers on the marketplace map.`
+            : `Congratulations! ${businessName} has been approved. Your Levromart vendor account is active. Open Levromart with Location enabled so your current shop location can be added to the marketplace map.`,
+          target_view:"vendorDashboard",
+          target_params:{}
+        });
+        if(notifError) console.warn("Vendor approval notification could not be created:",notifError.message);
+
+        try{
+          await logAdminAction("approve_vendor","vendor",id,businessName);
+        }catch(e){console.warn("Admin action log failed:",e);}
+
+        showToast(
+          targetVendor.lat != null && targetVendor.lng != null
+            ? "Vendor approved and made visible immediately, including on the map."
+            : "Vendor approved and made visible immediately. Their map pin will be added when their current location becomes available.",
+          "success"
+        );
+      }else if(status === "rejected" && previousStatus !== "rejected"){
+        const {error:notifError}=await sb.from("notifications").insert({
+          user_id:targetVendor.user_id,
+          title:"Vendor application update",
+          body:`Your application for ${businessName} was not approved at this time. Please review your application details or contact Levromart support.`,
+          target_view:"home",
+          target_params:{}
+        });
+        if(notifError) console.warn("Vendor rejection notification could not be created:",notifError.message);
+        try{await logAdminAction("reject_vendor","vendor",id,businessName);}catch(e){console.warn("Admin action log failed:",e);}
+      }
+
+      await navigate("adminPanel",{status:filterStatus});
+
+    }finally{
+      approvalBusy=false;
+    }
+  };
+
+  /* ---------------------------------------------------------------
+     APPROVED VENDOR SESSION AUTO-LOCATION.
+     This runs on vendor login/return and never requires opening Business Profile.
+     It only updates the logged-in vendor's own row.
+     --------------------------------------------------------------- */
+  let vendorAutoLocationInFlight=false;
+  let vendorAutoLocationLastRun=0;
+
+  async function refreshOwnVendorLocationSilently(force){
+    if(vendorAutoLocationInFlight) return null;
+    if(!session || profile?.role !== "vendor") return null;
+    if(!navigator.geolocation) return null;
+
+    const now=Date.now();
+    if(!force && now-vendorAutoLocationLastRun < 5*60*1000) return null;
+    vendorAutoLocationLastRun=now;
+    vendorAutoLocationInFlight=true;
+
+    try{
+      const {data:ownVendor,error:vendorError}=await sb
+        .from("vendors")
+        .select("id,verification_status,is_active,lat,lng")
+        .eq("user_id",session.user.id)
+        .maybeSingle();
+
+      if(vendorError || !ownVendor || ownVendor.verification_status !== "verified" || !ownVendor.is_active) return null;
+
+      const loc=await getCurrentPositionOnce();
+      const {error}=await sb.from("vendors").update({lat:loc.lat,lng:loc.lng}).eq("id",ownVendor.id);
+      if(error){
+        console.warn("[Levromart] Automatic vendor location update failed:",error.message);
+        return null;
+      }
+
+      return loc;
+    }catch(err){
+      console.warn("[Levromart] Automatic vendor location unavailable:",err?.message||err);
+      return null;
+    }finally{
+      vendorAutoLocationInFlight=false;
+    }
+  }
+
+  window.refreshOwnVendorLocationSilently=refreshOwnVendorLocationSilently;
+
+  /* Give the approved vendor a location as soon as their session is ready. */
+  setTimeout(()=>refreshOwnVendorLocationSilently(false),1800);
+  window.addEventListener("focus",()=>setTimeout(()=>refreshOwnVendorLocationSilently(false),300));
+  window.addEventListener("pageshow",()=>setTimeout(()=>refreshOwnVendorLocationSilently(false),500));
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState === "visible") setTimeout(()=>refreshOwnVendorLocationSilently(false),500);
+  });
+
+})();
+</script>
+
 </body>
 </html>
+<style id="levromart-2026-09-09-final-card-map-drawer-fixes">
+@media (max-width:720px){
+  .top-rated-vendors-scroll { gap: .85rem !important; padding:.45rem .25rem .8rem !important; }
+  .top-rated-vendors-scroll > .vendor-card { flex:0 0 210px !important; width:210px !important; min-width:210px !important; }
+  .top-rated-vendors-scroll .vendor-card { min-height:140px !important; padding:.65rem !important; }
+}
+
+/* Map must have breathing room from the controls and must not be painted as a
+   translucent/blurred surface while Leaflet is calculating its dimensions. */
+#vendorsMapWrap { position:relative !important; isolation:isolate !important; }
+#vendorsMap { filter:none !important; opacity:1 !important; transform:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+#vendorsMap.leaflet-container { filter:none !important; opacity:1 !important; }
+
+/* Never let the drawer gesture steal a touch that belongs to a map or a
+   horizontally scrollable listing rail. */
+#vendorsMap, #vendorsMapWrap, #veMap, .leaflet, .leaflet-container, .hscroll, .cat-row, .storefront-product-strip { touch-action:pan-x pan-y !important; }
+</style>
+
+<script id="levromart-admin-action-delegation-fix">
+(function(){
+  if(window.__levroAdminActionDelegationReady) return;
+  window.__levroAdminActionDelegationReady=true;
+  document.addEventListener("click", function(e){
+    const btn=e.target?.closest?.("#adminPanel .vendor-admin-action");
+    if(!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id=btn.dataset.vendorId, status=btn.dataset.status, filter=btn.dataset.filterStatus;
+    if(status === "delete") { if(typeof window.adminDeleteVendor === "function") window.adminDeleteVendor(id,filter); }
+    else if(typeof window.setVendorStatus === "function") window.setVendorStatus(id,status,filter);
+  }, true);
+})();
+</script>
