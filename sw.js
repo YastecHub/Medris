@@ -1,471 +1,317 @@
-const CACHE = 'levromart-shell-v6';
-const RUNTIME = 'levromart-runtime-v6';
-
+const CACHE = 'levromart-shell-v7';
+const RUNTIME = 'levromart-runtime-v7';
 const OFFLINE_FALLBACK = '/';
 
-const LEVROMART_BADGE =
-  '/levromart-badge.svg';
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
 
-const LEVROMART_ICON =
-  '/icon-512.png';
+    try {
+      await cache.addAll([
+        OFFLINE_FALLBACK,
+        '/manifest.json',
+        '/levromart-notification-icon.png',
+        '/levromart-badge.png'
+      ]);
+    } catch (e) {}
 
+    self.skipWaiting();
+  })());
+});
 
-self.addEventListener(
-  'install',
-  event => {
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
 
-    event.waitUntil(
-      (async () => {
-
-        const cache =
-          await caches.open(CACHE);
-
-        try {
-
-          await cache.addAll([
-            OFFLINE_FALLBACK,
-            '/manifest.json',
-            LEVROMART_ICON,
-            LEVROMART_BADGE
-          ]);
-
-        } catch (e) {}
-
-        self.skipWaiting();
-
-      })()
+    await Promise.all(
+      keys
+        .filter(k => ![CACHE, RUNTIME].includes(k))
+        .map(k => caches.delete(k))
     );
 
-  }
-);
-
-
-self.addEventListener(
-  'activate',
-  event => {
-
-    event.waitUntil(
-      (async () => {
-
-        const keys =
-          await caches.keys();
-
-        await Promise.all(
-
-          keys
-            .filter(
-              k =>
-                ![
-                  CACHE,
-                  RUNTIME
-                ].includes(k)
-            )
-            .map(
-              k =>
-                caches.delete(k)
-            )
-        );
-
-        await self.clients.claim();
-
-      })()
-    );
-
-  }
-);
-
+    await self.clients.claim();
+  })());
+});
 
 function isImageRequest(request) {
-
   return (
     request.destination === 'image' ||
     /\.(?:png|jpe?g|webp|gif|svg|ico)(?:\?|$)/i.test(
       new URL(request.url).pathname
     )
   );
-
 }
 
+self.addEventListener('fetch', event => {
+  const request = event.request;
 
-self.addEventListener(
-  'fetch',
-  event => {
+  if (request.method !== 'GET') return;
 
-    const request =
-      event.request;
+  const url = new URL(request.url);
 
-    if (
-      request.method !==
-      'GET'
-    ) {
-      return;
-    }
+  /*
+   * Navigation requests:
+   * Always try the network first, then fall back to cache/offline page.
+   */
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          const fresh = await fetch(request);
 
+          const cache = await caches.open(CACHE);
 
-    const url =
-      new URL(request.url);
+          cache
+            .put(request, fresh.clone())
+            .catch(() => {});
 
-
-    if (
-      request.mode ===
-      'navigate'
-    ) {
-
-      event.respondWith(
-
-        (async () => {
-
-          try {
-
-            const fresh =
-              await fetch(request);
-
-            const cache =
-              await caches.open(
-                CACHE
-              );
-
-            cache
-              .put(
-                request,
-                fresh.clone()
-              )
-              .catch(
-                () => {}
-              );
-
-            return fresh;
-
-          } catch (e) {
-
-            return (
-              (await caches.match(
-                request
-              )) ||
-
-              (await caches.match(
-                OFFLINE_FALLBACK
-              )) ||
-
-              new Response(
-                'Levromart is offline.',
-                {
-                  status: 503,
-                  headers: {
-                    'Content-Type':
-                      'text/plain'
-                  }
-                }
-              )
-            );
-
-          }
-
-        })()
-
-      );
-
-      return;
-
-    }
-
-
-    if (
-
-      isImageRequest(
-        request
-      ) ||
-
-      url.origin ===
-        location.origin ||
-
-      url.hostname.includes(
-        'cdnjs.cloudflare.com'
-      ) ||
-
-      url.hostname.includes(
-        'fonts.googleapis.com'
-      ) ||
-
-      url.hostname.includes(
-        'fonts.gstatic.com'
-      ) ||
-
-      url.hostname.includes(
-        'unpkg.com'
-      )
-
-    ) {
-
-      event.respondWith(
-
-        (async () => {
-
-          const cache =
-            await caches.open(
-              RUNTIME
-            );
-
-          const cached =
-            await cache.match(
-              request
-            );
-
-          const network =
-            fetch(request)
-
-              .then(
-                response => {
-
-                  if (
-                    response &&
-                    (
-                      response.ok ||
-                      response.type ===
-                        'opaque'
-                    )
-                  ) {
-
-                    cache
-                      .put(
-                        request,
-                        response.clone()
-                      )
-                      .catch(
-                        () => {}
-                      );
-
-                  }
-
-                  return response;
-
-                }
-              )
-
-              .catch(
-                () => null
-              );
-
-
+          return fresh;
+        } catch (e) {
           return (
-            cached ||
-            await network ||
+            (await caches.match(request)) ||
+            (await caches.match(OFFLINE_FALLBACK)) ||
             new Response(
-              '',
+              'Levromart is offline.',
               {
-                status: 504
+                status: 503,
+                headers: {
+                  'Content-Type': 'text/plain'
+                }
               }
             )
           );
+        }
+      })()
+    );
 
-        })()
-
-      );
-
-    }
-
+    return;
   }
-);
+
+  /*
+   * Runtime caching for images, same-origin resources,
+   * CDNs and fonts.
+   */
+  if (
+    isImageRequest(request) ||
+    url.origin === location.origin ||
+    url.hostname.includes('cdnjs.cloudflare.com') ||
+    url.hostname.includes('fonts.googleapis.com') ||
+    url.hostname.includes('fonts.gstatic.com') ||
+    url.hostname.includes('unpkg.com')
+  ) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(RUNTIME);
+
+        const cached = await cache.match(request);
+
+        const network = fetch(request)
+          .then(response => {
+            if (
+              response &&
+              (
+                response.ok ||
+                response.type === 'opaque'
+              )
+            ) {
+              cache
+                .put(request, response.clone())
+                .catch(() => {});
+            }
+
+            return response;
+          })
+          .catch(() => null);
+
+        return (
+          cached ||
+          await network ||
+          new Response('', {
+            status: 504
+          })
+        );
+      })()
+    );
+  }
+});
 
 
 /*
- * WEB PUSH
+ * ============================================================
+ * WEB PUSH NOTIFICATIONS
+ * ============================================================
  *
- * Android status-bar notifications use the "badge" as a monochrome
- * notification icon. The previous full-colour PNG could appear as a
- * plain white square. Use the dedicated transparent Levromart badge.
+ * This listener receives push messages from the push service
+ * and displays the Levromart notification.
+ *
+ * The dedicated Levromart notification icon prevents Android
+ * from falling back to a generic white-square notification icon.
  */
 
-self.addEventListener(
-  'push',
-  event => {
+self.addEventListener('push', event => {
+  event.waitUntil(
+    (async () => {
 
-    event.waitUntil(
+      let data = {};
 
-      (async () => {
-
-        let data = {};
-
+      try {
+        data = event.data
+          ? event.data.json()
+          : {};
+      } catch (_) {
 
         try {
+          data = {
+            body: event.data
+              ? event.data.text()
+              : ''
+          };
+        } catch (_) {}
+      }
 
-          data =
-            event.data
-              ? event.data.json()
-              : {};
 
-        } catch (_) {
+      const title = String(
+        data.title ||
+        'Levromart'
+      );
+
+
+      const body = String(
+        data.body ||
+        'You have a new Levromart update.'
+      );
+
+
+      const url = String(
+        data.url ||
+        '/'
+      );
+
+
+      /*
+       * Levromart notification icon.
+       */
+      const icon = String(
+        data.icon ||
+        '/levromart-notification-icon.png'
+      );
+
+
+      /*
+       * Monochrome notification badge.
+       */
+      const badge = String(
+        data.badge ||
+        '/levromart-badge.png'
+      );
+
+
+      return self.registration.showNotification(
+        title,
+        {
+          body,
+
+          icon,
+
+          badge,
+
+          data: {
+            url
+          },
+
+          tag: data.tag
+            ? String(data.tag)
+            : 'levromart-notification',
+
+          renotify: true,
+
+          vibrate: [
+            100,
+            50,
+            100
+          ]
+        }
+      );
+
+    })()
+  );
+});
+
+
+/*
+ * ============================================================
+ * NOTIFICATION CLICK
+ * ============================================================
+ *
+ * When the user taps a Levromart notification:
+ * 1. Close the notification.
+ * 2. Focus an existing Levromart window if possible.
+ * 3. Navigate it to the notification URL.
+ * 4. Otherwise open a new window.
+ */
+
+self.addEventListener('notificationclick', event => {
+
+  event.notification.close();
+
+
+  const target =
+    event.notification?.data?.url ||
+    '/';
+
+
+  event.waitUntil(
+    (async () => {
+
+      const clientsList =
+        await self.clients.matchAll({
+          type: 'window',
+          includeUncontrolled: true
+        });
+
+
+      for (
+        const client
+        of clientsList
+      ) {
+
+        if ('focus' in client) {
 
           try {
 
-            data = {
-              body:
-                event.data
-                  ? event.data.text()
-                  : ''
-            };
+            if (
+              target &&
+              target.startsWith('/')
+            ) {
+
+              await client.navigate(
+                new URL(
+                  target,
+                  self.location.origin
+                ).href
+              );
+
+            }
 
           } catch (_) {}
 
+
+          return client.focus();
         }
+      }
 
 
-        const title =
-          String(
-            data.title ||
-            'Levromart'
-          );
+      if (self.clients.openWindow) {
 
+        return self.clients.openWindow(
+          new URL(
+            target,
+            self.location.origin
+          ).href
+        );
 
-        const body =
-          String(
-            data.body ||
-            'You have a new Levromart update.'
-          );
+      }
 
-
-        const url =
-          String(
-            data.url ||
-            '/'
-          );
-
-
-        const icon =
-          String(
-            data.icon ||
-            LEVROMART_ICON
-          );
-
-
-        const badge =
-          String(
-            data.badge ||
-            LEVROMART_BADGE
-          );
-
-
-        return self.registration
-          .showNotification(
-            title,
-            {
-
-              body,
-
-              icon,
-
-              badge,
-
-              data: {
-                url
-              },
-
-              tag:
-                data.tag
-                  ? String(data.tag)
-                  : 'levromart-notification',
-
-              renotify:
-                true,
-
-              vibrate:
-                [
-                  100,
-                  50,
-                  100
-                ]
-
-            }
-          );
-
-      })()
-
-    );
-
-  }
-);
-
-
-self.addEventListener(
-  'notificationclick',
-  event => {
-
-    event.notification.close();
-
-
-    const target =
-      event.notification
-        ?.data
-        ?.url ||
-      '/';
-
-
-    event.waitUntil(
-
-      (async () => {
-
-        const clientsList =
-          await self.clients.matchAll(
-            {
-              type: 'window',
-              includeUncontrolled:
-                true
-            }
-          );
-
-
-        for (
-          const client
-          of clientsList
-        ) {
-
-          if (
-            'focus' in
-            client
-          ) {
-
-            try {
-
-              if (
-                target &&
-                target.startsWith('/')
-              ) {
-
-                await client.navigate(
-                  new URL(
-                    target,
-                    self.location.origin
-                  ).href
-                );
-
-              }
-
-            } catch (_) {}
-
-
-            return client.focus();
-
-          }
-
-        }
-
-
-        if (
-          self.clients.openWindow
-        ) {
-
-          return self.clients.openWindow(
-            new URL(
-              target,
-              self.location.origin
-            ).href
-          );
-
-        }
-
-      })()
-
-    );
-
-  }
-);
+    })()
+  );
+});
