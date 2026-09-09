@@ -15852,7 +15852,38 @@ async function logAdminAction(action, targetType, targetId, targetLabel) {
   });
 }
 
+// ---------------------------------------------------------------------
+// CANONICAL vendor admin actions. This is the ONLY place these two
+// functions are defined — do not add another window.setVendorStatus /
+// window.adminDeleteVendor override anywhere else in this file. Both
+// actions call the SECURITY DEFINER RPCs (admin_set_vendor_status /
+// admin_delete_vendor) rather than writing to vendors/users directly,
+// so they don't depend on the admin's session having raw table-write
+// RLS access — only on being allowed to call the RPC, which is what
+// public.is_admin() / the SUPER_ADMIN_EMAIL check already gate.
+//
+// Every action is split into two independent phases:
+//   1) the database mutation (RPC call + response validation)
+//   2) the UI refresh (toast + re-render/navigate)
+// A failure in phase 2 is logged and surfaced as a "refresh" notice —
+// it must never be reported to the admin as "approval failed" when the
+// database mutation actually succeeded. See adminVendorActionBusy below
+// for the per-vendor click guard.
+// ---------------------------------------------------------------------
+
+// Per-vendor-id busy set (not a single global flag): this blocks a
+// double-click/double-tap on the SAME vendor row while its request is
+// in flight, without blocking the admin from working on a different
+// vendor at the same time, and without any risk of a stuck global lock.
+const adminVendorActionBusy = new Set();
+
+function vendorActionLog(action, vendorId, extra) {
+  console.log("[ADMIN VENDOR ACTION]", { action, vendorId, ...extra });
+}
+
 async function setVendorStatus(id, status, filterStatus, businessName) {
+  if (adminVendorActionBusy.has(id)) return;
+
   if (!session?.user?.id || profile?.role !== "admin") {
     showToast("Admin access is required.", "error");
     return;
@@ -15885,18 +15916,66 @@ async function setVendorStatus(id, status, filterStatus, businessName) {
     if (!(await promptAdminPassword(`reject "${businessName}"`))) return;
   }
 
-  const { error } = await sb.rpc("admin_set_vendor_status", {
-    p_vendor_id: id,
-    p_status: status,
-  });
+  adminVendorActionBusy.add(id);
+  const actionWord = status === "verified" ? "approve" : status === "rejected" ? "reject" : "update";
+  let mutationSucceeded = false;
 
-  if (error) {
-    console.error("admin_set_vendor_status failed:", error);
-    showToast(`Could not ${status === "verified" ? "approve" : status === "rejected" ? "reject" : "update"} this vendor: ${error.message}`, "error");
-    return;
+  try {
+    // Confirm the RPC will run as the admin we think is signed in — a
+    // stale/expired client-side session object is a classic cause of
+    // "this worked for the first couple of vendors, then stopped".
+    const { data: { session: liveSession } = {} } = await sb.auth.getSession();
+    if (!liveSession?.user?.id) {
+      showToast("Your admin session has expired. Please sign in again and retry.", "error");
+      vendorActionLog(actionWord, id, { stage: "auth", reason: "no live session" });
+      return;
+    }
+
+    vendorActionLog(actionWord, id, { stage: "rpc:start", authUserId: liveSession.user.id });
+    const { data, error } = await sb.rpc("admin_set_vendor_status", {
+      p_vendor_id: id,
+      p_status: status,
+    });
+
+    if (error) {
+      // Actual database/RPC failure — this is a real "could not X" case.
+      vendorActionLog(actionWord, id, {
+        stage: "rpc:error",
+        message: error.message, code: error.code, details: error.details, hint: error.hint,
+      });
+      showToast(`Could not ${actionWord} this vendor: ${error.message}`, "error");
+      return;
+    }
+
+    // RPC returned without error — but don't assume that means the
+    // expected mutation happened. Validate the response shape/content.
+    const returnedVendor = data?.vendor ?? data;
+    const returnedStatus = returnedVendor?.verification_status;
+    const responseLooksValid = data && (data.success === true || data.success === undefined) &&
+      (returnedStatus === undefined || String(returnedStatus) === String(status));
+
+    if (!responseLooksValid) {
+      vendorActionLog(actionWord, id, { stage: "rpc:unexpected-response", rpcData: data });
+      showToast(
+        `The ${actionWord} request completed but returned an unexpected result. Please check this vendor's status before retrying.`,
+        "error"
+      );
+      return;
+    }
+
+    vendorActionLog(actionWord, id, { stage: "rpc:success", rpcData: data });
+    mutationSucceeded = true;
+    try { await logAdminAction(status === "verified" ? "approve_vendor" : "reject_vendor", "vendor", id, businessName); }
+    catch (e) { console.warn("Admin action log failed:", e); }
+  } finally {
+    adminVendorActionBusy.delete(id);
   }
 
-  // Keep the current admin view on the same filter after the action.
+  if (!mutationSucceeded) return;
+
+  // Phase 2: UI refresh. The database mutation above already succeeded,
+  // so from here on we tell the admin it succeeded no matter what
+  // happens to the re-render/navigation.
   showToast(
     status === "verified"
       ? `${businessName} approved successfully.`
@@ -15906,11 +15985,20 @@ async function setVendorStatus(id, status, filterStatus, businessName) {
     "success"
   );
 
-  navigate("adminPanel", { status: filterStatus || "pending" }, { replace: true });
+  try {
+    vendorActionLog(actionWord, id, { stage: "ui-refresh:start" });
+    await navigate("adminPanel", { status: filterStatus || "pending" }, { replace: true });
+    vendorActionLog(actionWord, id, { stage: "ui-refresh:done" });
+  } catch (uiError) {
+    console.error("[Levromart] Vendor list refresh failed after a successful update:", uiError);
+    showToast(`${businessName} was ${status === "rejected" ? "rejected" : "updated"}, but the list could not refresh automatically. Pull to refresh.`, "info");
+  }
 }
 
 async function adminDeleteVendor(vendorId, filterStatus, businessName) {
+  if (adminVendorActionBusy.has(vendorId)) return;
   if (profile?.email !== SUPER_ADMIN_EMAIL) return;
+
   if (!businessName) {
     const { data: target } = await sb.from("vendors").select("business_name").eq("id", vendorId).maybeSingle();
     businessName = target?.business_name || "this vendor";
@@ -15920,11 +16008,55 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
     { title: "Delete vendor", okLabel: "Delete vendor", danger: true }
   ))) return;
   if (!(await promptAdminPassword(`permanently delete "${businessName}"`))) return;
-  const { error } = await sb.rpc("admin_delete_vendor", { p_vendor_id: vendorId });
-  if (error) { showToast(error.message, "error"); return; }
-  logAdminAction("delete_vendor", "vendor", vendorId, businessName);
+
+  adminVendorActionBusy.add(vendorId);
+  let mutationSucceeded = false;
+
+  try {
+    const { data: { session: liveSession } = {} } = await sb.auth.getSession();
+    if (!liveSession?.user?.id) {
+      showToast("Your admin session has expired. Please sign in again and retry.", "error");
+      vendorActionLog("delete", vendorId, { stage: "auth", reason: "no live session" });
+      return;
+    }
+
+    vendorActionLog("delete", vendorId, { stage: "rpc:start" });
+    const { data, error } = await sb.rpc("admin_delete_vendor", { p_vendor_id: vendorId });
+
+    if (error) {
+      vendorActionLog("delete", vendorId, {
+        stage: "rpc:error",
+        message: error.message, code: error.code, details: error.details, hint: error.hint,
+      });
+      showToast(error.message || "Could not delete this vendor.", "error");
+      return;
+    }
+
+    if (!data || data.deleted !== true) {
+      vendorActionLog("delete", vendorId, { stage: "rpc:unexpected-response", rpcData: data });
+      showToast("The delete request completed but returned an unexpected result. Please check this vendor before retrying.", "error");
+      return;
+    }
+
+    vendorActionLog("delete", vendorId, { stage: "rpc:success", rpcData: data });
+    mutationSucceeded = true;
+    try { await logAdminAction("delete_vendor", "vendor", vendorId, businessName); }
+    catch (e) { console.warn("Admin action log failed:", e); }
+  } finally {
+    adminVendorActionBusy.delete(vendorId);
+  }
+
+  if (!mutationSucceeded) return;
+
   showToast("Vendor deleted and demoted to a customer.", "success");
-  navigate("adminPanel", { status: filterStatus });
+  try {
+    vendorActionLog("delete", vendorId, { stage: "ui-refresh:start" });
+    await navigate("adminPanel", { status: filterStatus });
+    vendorActionLog("delete", vendorId, { stage: "ui-refresh:done" });
+  } catch (uiError) {
+    console.error("[Levromart] Vendor list refresh failed after a successful delete:", uiError);
+    showToast(`${businessName} was deleted, but the list could not refresh automatically. Pull to refresh.`, "info");
+  }
 }
 
 async function adminToggleVendorActive(vendorId, currentlyActive, businessName) {
@@ -20211,98 +20343,6 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 })();
 </script>
 
-<script id="levromart-admin-vendor-actions-final">
-(function(){
-  "use strict";
-  if(window.__levromartAdminVendorActionsFinal) return;
-  window.__levromartAdminVendorActionsFinal = true;
-
-  // Explicit exports remove any ambiguity about which function the
-  // rendered buttons call after navigation/re-rendering.
-  if(typeof setVendorStatus === "function") window.setVendorStatus = setVendorStatus;
-  if(typeof adminDeleteVendor === "function") window.adminDeleteVendor = adminDeleteVendor;
-
-  const selector = "#adminPanel .vendor-admin-action";
-  let inFlight = false;
-
-  function setBusy(btn, busy){
-    if(!btn) return;
-    if(busy){
-      btn.dataset.adminBusy = "1";
-      btn.dataset.originalHtml = btn.innerHTML;
-      btn.disabled = true;
-      btn.setAttribute("aria-busy", "true");
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Working…';
-    } else {
-      if(btn.dataset.originalHtml != null && btn.isConnected) btn.innerHTML = btn.dataset.originalHtml;
-      btn.disabled = false;
-      btn.removeAttribute("aria-busy");
-      delete btn.dataset.adminBusy;
-      delete btn.dataset.originalHtml;
-    }
-  }
-
-  async function run(btn, event){
-    if(!btn || inFlight || btn.dataset.adminBusy === "1") return;
-
-    const id = String(btn.dataset.vendorId || "").trim();
-    const status = String(btn.dataset.status || "").trim();
-    const filter = ["all","pending","verified","rejected"].includes(btn.dataset.filterStatus)
-      ? btn.dataset.filterStatus : "pending";
-
-    if(!id || !["verified","rejected","delete"].includes(status)){
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      if(typeof showToast === "function") showToast("This vendor action is invalid. Refresh the page and try again.", "error");
-      return;
-    }
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    inFlight = true;
-    setBusy(btn, true);
-
-    try {
-      if(status === "delete") {
-        if(typeof window.adminDeleteVendor !== "function") throw new Error("Vendor delete handler is unavailable.");
-        await window.adminDeleteVendor(id, filter);
-      } else {
-        if(typeof window.setVendorStatus !== "function") throw new Error("Vendor status handler is unavailable.");
-        await window.setVendorStatus(id, status, filter);
-      }
-    } catch(err) {
-      console.error("[Levromart] Vendor admin action failed:", err);
-      if(typeof showToast === "function") showToast(`Could not complete this action: ${err?.message || String(err)}`, "error");
-    } finally {
-      inFlight = false;
-      if(btn.isConnected) setBusy(btn, false);
-    }
-  }
-
-  document.addEventListener("click", function(event){
-    const btn = event.target?.closest?.(selector);
-    if(btn) run(btn, event);
-  }, true);
-
-  document.addEventListener("keydown", function(event){
-    if(event.key !== "Enter" && event.key !== " ") return;
-    const btn = event.target?.closest?.(selector);
-    if(!btn) return;
-    run(btn, event);
-  }, true);
-})();
-</script>
-<style id="levromart-admin-vendor-actions-final-style">
-#adminPanel .vendor-admin-action{
-  pointer-events:auto!important;
-  touch-action:manipulation!important;
-  -webkit-tap-highlight-color:transparent;
-  position:relative;
-  z-index:2;
-}
-#adminPanel .vendor-admin-action:disabled{opacity:.72;cursor:wait}
-</style>
-
 </body>
 </html>
 <style id="levromart-2026-09-09-final-card-map-drawer-fixes">
@@ -20322,6 +20362,73 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
    horizontally scrollable listing rail. */
 #vendorsMap, #vendorsMapWrap, #veMap, .leaflet, .leaflet-container, .hscroll, .cat-row, .storefront-product-strip { touch-action:pan-x pan-y !important; }
 </style>
+
+<style id="levromart-admin-vendor-action-touch-style">
+#adminPanel .vendor-admin-action{
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-tap-highlight-color:transparent;
+}
+#adminPanel .vendor-admin-action:disabled{
+  opacity:.65;
+  cursor:wait;
+}
+</style>
+<script id="levromart-admin-action-delegation-fix">
+(function(){
+  if(window.__levroAdminActionDelegationReady) return;
+  window.__levroAdminActionDelegationReady=true;
+
+  // ONE delegated handler for all vendor admin buttons. Do not add a
+  // second document click/keydown listener for .vendor-admin-action
+  // anywhere else in this file — the row is re-rendered on every
+  // refresh, so delegation (rather than a per-button listener) is what
+  // keeps this working after re-renders.
+  async function dispatch(btn){
+    if(!btn || btn.disabled) return;
+    const id=btn.dataset.vendorId, status=btn.dataset.status, filter=btn.dataset.filterStatus;
+    if(!id || !status) return;
+
+    // Visual busy state only — the real re-entrancy guard lives in
+    // adminVendorActionBusy inside setVendorStatus/adminDeleteVendor,
+    // so this can never get permanently stuck even if the row's DOM
+    // node is replaced mid-request.
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    try {
+      if(status === "delete") {
+        if(typeof window.adminDeleteVendor === "function") await window.adminDeleteVendor(id, filter);
+      } else if(typeof window.setVendorStatus === "function") {
+        await window.setVendorStatus(id, status, filter);
+      }
+    } finally {
+      // The button/row may already have been replaced by a successful
+      // refresh (navigate() re-renders #adminPanel) — only touch it if
+      // it's still actually in the document.
+      if(document.contains(btn)) { btn.disabled = false; btn.innerHTML = originalHtml; }
+    }
+  }
+
+  document.addEventListener("click", function(e){
+    const btn=e.target?.closest?.("#adminPanel .vendor-admin-action");
+    if(!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dispatch(btn);
+  }, true);
+
+  // Keyboard activation (Enter / Space) for accessibility parity with click.
+  document.addEventListener("keydown", function(e){
+    if(e.key !== "Enter" && e.key !== " ") return;
+    const btn=e.target?.closest?.("#adminPanel .vendor-admin-action");
+    if(!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dispatch(btn);
+  }, true);
+})();
+</script>
+
 <style id="levromart-2026-09-09-accent-and-media-controls">
   /* The selected Mint accent is the built-in Levromart default. All live accent
      surfaces still use the existing --primary variables, so user-selected
