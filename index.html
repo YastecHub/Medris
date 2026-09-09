@@ -5172,15 +5172,6 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 .storefront-cover-edit input{display:none;}
 .storefront-cover-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:color-mix(in srgb,var(--text) 55%,transparent);font-size:.82rem;pointer-events:none;}
 </style>
-
-<style id="levromart-admin-vendor-action-touch-fix">
-#adminPanel .vendor-admin-action{pointer-events:auto!important;touch-action:manipulation!important;position:relative;z-index:2;}
-#adminPanel .vendor-admin-action:disabled{opacity:.72;cursor:wait;}
-</style>
-<style id="levromart-admin-vendor-action-touch-fix-v2">
-#adminPanel .vendor-admin-action{pointer-events:auto!important;touch-action:manipulation!important;position:relative;z-index:2;-webkit-tap-highlight-color:transparent;}
-#adminPanel .vendor-admin-action:disabled{opacity:.72;cursor:wait;}
-</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -14428,57 +14419,21 @@ async function saveProduct() {
     if (chosenSectorId === "__other__") {
       const customSectorName = byId("prodSectorOther").value.trim();
       if (!customSectorName) throw new Error("Type a name for the new sector, or pick one from the list.");
-      
-      try {
-        const { data: newSectorId, error: sectorErr } = await sb.rpc("create_vendor_sector", { p_name: customSectorName });
-        if (sectorErr) throw new Error(sectorErr.message);
-        chosenSectorId = newSectorId;
-      } catch (err) {
-        // Fallback: direct insert if RPC fails
-        console.warn("Sector RPC failed, trying direct insert:", err);
-        const { data: existing } = await sb.from("sectors")
-          .select("id").ilike("name", `%${customSectorName}%`).maybeSingle();
-        if (existing?.id) {
-          chosenSectorId = existing.id;
-        } else {
-          const { data: newSector, error: insertErr } = await sb.from("sectors")
-            .insert({ name: customSectorName, sort_order: 999 })
-            .select("id").single();
-          if (insertErr) throw new Error(`Couldn't create that sector: ${insertErr.message}`);
-          chosenSectorId = newSector.id;
-        }
-      }
+      const { data: newSectorId, error: sectorErr } = await sb.rpc("create_vendor_sector", { p_name: customSectorName });
+      if (sectorErr) throw new Error(`Couldn't create that sector: ${sectorErr.message}`);
+      chosenSectorId = newSectorId;
     }
 
     let category_id = byId("prodCategory").value || null;
     if (category_id === "__other__") {
       const customName = byId("prodCategoryOther").value.trim();
       if (!customName) throw new Error("Type a name for the new category, or pick one from the list.");
-      
-      // Get or create the "Other" parent category for this sector
-      const { data: otherParent } = await sb.from("categories")
-        .select("id").eq("sector_id", chosenSectorId)
-        .is("parent_category_id", null).ilike("name", "Other").maybeSingle();
-      
-      const otherParentId = otherParent?.id || null;
-      
-      try {
-        const { data: newCategoryId, error: catErr } = await sb.rpc("create_vendor_category", { 
-          p_name: customName, 
-          p_sector_id: chosenSectorId, 
-          p_parent_category_id: otherParentId 
-        });
-        if (catErr) throw new Error(catErr.message);
-        category_id = newCategoryId;
-      } catch (err) {
-        // Fallback: direct insert if RPC fails
-        console.warn("Category RPC failed, trying direct insert:", err);
-        const { data: newCategory, error: insertErr } = await sb.from("categories")
-          .insert({ name: customName, sector_id: chosenSectorId, parent_category_id: otherParentId })
-          .select("id").single();
-        if (insertErr) throw new Error(`Couldn't create that category: ${insertErr.message}`);
-        category_id = newCategory.id;
-      }
+      const { data: otherParent } = await sb.from("categories").select("id").eq("sector_id", chosenSectorId).is("parent_category_id", null).ilike("name", "Other").maybeSingle();
+      const otherParentId = otherParent?.id;
+      if (!otherParentId) throw new Error("This sector does not have an Other category yet. Leave the category as Uncategorized or choose another category.");
+      const { data: newCategoryId, error: catErr } = await sb.rpc("create_vendor_category", { p_name: customName, p_sector_id: chosenSectorId, p_parent_category_id: otherParentId });
+      if (catErr) throw new Error(`Couldn't create that category: ${catErr.message}`);
+      category_id = newCategoryId;
     }
 
     const fields = {
@@ -15816,9 +15771,9 @@ async function renderAdminPanel(status) {
       ${v.bio ? `<p style="margin:0.3rem 0;">${esc(v.bio)}</p>` : ""}
       <p class="muted" style="margin:0.3rem 0;">${doc ? `<a href="#" onclick="viewVendorDoc('${doc}');return false;"><i class='fa-solid fa-file-lines'></i> View submitted document</a>` : "No document uploaded"} · applied ${new Date(v.created_at).toLocaleDateString()}</p>
       <div class="flex" style="margin-top:0.5rem;">
-        ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}" onclick="return window.__levroAdminVendorAction(this,event);">Approve</button>` : ""}
-        ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}" onclick="return window.__levroAdminVendorAction(this,event);">Reject</button>` : ""}
-        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}" onclick="return window.__levroAdminVendorAction(this,event);"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
+        ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}">Approve</button>` : ""}
+        ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
+        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
       </div>
     </div>`;
   });
@@ -15903,147 +15858,73 @@ async function setVendorStatus(id, status, filterStatus, businessName) {
     return;
   }
 
-  const targetResult = await sb
+  // Always resolve the vendor first. This avoids fragile inline strings and
+  // also gives the confirmation dialog the real business name.
+  const { data: targetVendor, error: targetVendorError } = await sb
     .from("vendors")
-    .select("id,user_id,business_name,verification_status,is_active,lat,lng,avg_rating,review_count")
+    .select("id,user_id,business_name,verification_status,is_active,avg_rating,review_count")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (targetResult.error || !targetResult.data) {
-    console.error("[Levromart] Vendor lookup failed:", targetResult.error);
-    showToast(targetResult.error?.message || "Vendor application not found.", "error");
+  if (targetVendorError || !targetVendor) {
+    showToast(targetVendorError?.message || "Vendor application not found.", "error");
     return;
   }
 
-  const vendor = targetResult.data;
-  businessName = vendor.business_name || businessName || "this vendor";
+  businessName = targetVendor.business_name || businessName || "this vendor";
 
-  if (status === "verified" && !(await showConfirmDialog(
-    `Approve "${businessName}" as a vendor? Their storefront will become visible to customers immediately.`,
-    { title: "Approve vendor", okLabel: "Approve" }
-  ))) return;
+  if (status === "verified") {
+    if (!(await showConfirmDialog(
+      `Approve "${businessName}" as a vendor? Their storefront will become visible to customers immediately.`,
+      { title: "Approve vendor", okLabel: "Approve" }
+    ))) return;
+  }
 
-  if (status === "rejected" && !(await promptAdminPassword(`reject "${businessName}"`))) return;
+  if (status === "rejected") {
+    if (!(await promptAdminPassword(`reject "${businessName}"`))) return;
+  }
 
-  const { data: result, error } = await sb.rpc("admin_set_vendor_status", {
+  const { error } = await sb.rpc("admin_set_vendor_status", {
     p_vendor_id: id,
     p_status: status,
   });
 
   if (error) {
-    console.error("[Levromart] admin_set_vendor_status failed:", {
-      message: error.message, code: error.code, details: error.details, hint: error.hint,
-    });
-    const detail = error.message || error.details || error.hint || "Unknown database error";
-    showToast(`Could not ${status === "verified" ? "approve" : "reject"} ${businessName}: ${detail}`, "error");
+    console.error("admin_set_vendor_status failed:", error);
+    showToast(`Could not ${status === "verified" ? "approve" : status === "rejected" ? "reject" : "update"} this vendor: ${error.message}`, "error");
     return;
   }
 
-  if (!result?.success || result?.vendor?.id !== id || result?.vendor?.verification_status !== status) {
-    console.error("[Levromart] Vendor RPC returned an invalid result:", result);
-    showToast("The database did not confirm the vendor change. Nothing was reported as successful.", "error");
-    return;
-  }
-
-  if (status === "verified" && result?.user?.role !== "vendor") {
-    console.error("[Levromart] Vendor approved but role was not synchronized:", result);
-    showToast("Vendor status changed, but the account role was not synchronized. Please retry the approval.", "error");
-    return;
-  }
-
-  if (status === "verified") {
-    await refreshAuthState();
-  }
-
+  // Keep the current admin view on the same filter after the action.
   showToast(
-    status === "verified" ? `${businessName} approved successfully.` : `${businessName} rejected.`,
+    status === "verified"
+      ? `${businessName} approved successfully.`
+      : status === "rejected"
+        ? `${businessName} rejected.`
+        : `${businessName} updated.`,
     "success"
   );
-  await navigate("adminPanel", { status: filterStatus || "pending" }, { replace: true });
+
+  navigate("adminPanel", { status: filterStatus || "pending" }, { replace: true });
 }
 
 async function adminDeleteVendor(vendorId, filterStatus, businessName) {
-  if (!session?.user?.id || profile?.role !== "admin") {
-    showToast("Admin access is required.", "error");
-    return;
-  }
-  if (profile?.email !== SUPER_ADMIN_EMAIL) {
-    showToast("Only the super admin can delete a vendor.", "error");
-    return;
-  }
-
+  if (profile?.email !== SUPER_ADMIN_EMAIL) return;
   if (!businessName) {
-    const { data: target, error: lookupError } = await sb.from("vendors").select("business_name").eq("id", vendorId).maybeSingle();
-    if (lookupError) { showToast(lookupError.message, "error"); return; }
+    const { data: target } = await sb.from("vendors").select("business_name").eq("id", vendorId).maybeSingle();
     businessName = target?.business_name || "this vendor";
   }
-
   if (!(await showConfirmDialog(
-    `Permanently delete "${businessName}"? Their storefront and listings will be removed and their account will be demoted to a customer.`,
+    `Permanently delete "${businessName}"? Their storefront and all listings are pulled immediately, they're demoted back to an ordinary buyer account, and this stops showing on your dashboard. Past orders and reviews stay on record for buyers.`,
     { title: "Delete vendor", okLabel: "Delete vendor", danger: true }
   ))) return;
-
   if (!(await promptAdminPassword(`permanently delete "${businessName}"`))) return;
-
-  const { data: result, error } = await sb.rpc("admin_delete_vendor", { p_vendor_id: vendorId });
-  if (error) {
-    console.error("[Levromart] admin_delete_vendor failed:", {
-      message: error.message, code: error.code, details: error.details, hint: error.hint,
-    });
-    showToast(`Could not delete ${businessName}: ${error.message || error.details || "Unknown database error"}`, "error");
-    return;
-  }
-
-  if (!result?.deleted || result?.vendor_id !== vendorId) {
-    console.error("[Levromart] Vendor deletion RPC returned an invalid result:", result);
-    showToast("The database did not confirm deletion. Nothing was reported as successful.", "error");
-    return;
-  }
-
+  const { error } = await sb.rpc("admin_delete_vendor", { p_vendor_id: vendorId });
+  if (error) { showToast(error.message, "error"); return; }
+  logAdminAction("delete_vendor", "vendor", vendorId, businessName);
   showToast("Vendor deleted and demoted to a customer.", "success");
-  await navigate("adminPanel", { status: filterStatus || "pending" }, { replace: true });
-}
-
-
-window.setVendorStatus = setVendorStatus;
-window.adminDeleteVendor = adminDeleteVendor;
-// One authoritative admin vendor-action listener. Buttons are rendered dynamically,
-// so delegation is used instead of per-render inline handlers.
-if (!window.__levroAdminActionListenerInstalled) {
-  window.__levroAdminActionListenerInstalled = true;
-  document.addEventListener("click", (event) => {
-    const button = event.target?.closest?.("#adminPanel .vendor-admin-action");
-    if (!button) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const id = button.dataset.vendorId;
-    const status = button.dataset.status;
-    const filter = button.dataset.filterStatus || "pending";
-    if (!id || !status) return;
-    
-    // Disable the button immediately to prevent double-clicks
-    button.disabled = true;
-    const originalText = button.innerHTML;
-    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Working...';
-    
-    const handleError = (err) => {
-      console.error("[Levromart] Admin action failed:", err);
-      showToast(err?.message || "Could not perform this action.", "error");
-      button.disabled = false;
-      button.innerHTML = originalText;
-    };
-    
-    if (status === "delete") {
-      adminDeleteVendor(id, filter).then(() => {
-        navigate("adminPanel", {status: filter}, false).catch(() => {});
-      }).catch(handleError);
-    } else {
-      setVendorStatus(id, status, filter).then(() => {
-        navigate("adminPanel", {status: filter}, false).catch(() => {});
-      }).catch(handleError);
-    }
-  });
+  navigate("adminPanel", { status: filterStatus });
 }
 
 async function adminToggleVendorActive(vendorId, currentlyActive, businessName) {
@@ -19913,6 +19794,87 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   }
 
   /* ---------------------------------------------------------------
+     ADMIN VENDOR APPROVAL — make the operation verifiable and prevent a
+     silent no-op. The old update() did not ask Supabase to return the row,
+     so an RLS/no-row result could look like a successful approval.
+     --------------------------------------------------------------- */
+  let vendorStatusBusy = false;
+  window.setVendorStatus = async function (id, status, filterStatus, businessName) {
+    if (vendorStatusBusy) return;
+    vendorStatusBusy = true;
+    try {
+      if (status === "verified" && !(await showConfirmDialog(
+        `Approve "${businessName}" as a vendor? Their storefront and listings go live to buyers immediately.`,
+        { title: "Approve vendor", okLabel: "Approve" }
+      ))) return;
+      if (status === "rejected" && !(await promptAdminPassword("reject this vendor"))) return;
+
+      const { data: targetVendor, error: targetVendorError } = await sb
+        .from("vendors")
+        .select("id,user_id,business_name,verification_status,avg_rating,review_count")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (targetVendorError || !targetVendor) {
+        showToast(targetVendorError?.message || "Vendor application not found.", "error");
+        return;
+      }
+
+      businessName = targetVendor.business_name || businessName || "Vendor";
+      const previousStatus = targetVendor.verification_status;
+      const { data: updatedRows, error: updateError } = await sb
+        .from("vendors")
+        .update({ verification_status: status })
+        .eq("id", id)
+        .select("id,user_id,business_name,verification_status,avg_rating,review_count")
+        .maybeSingle();
+
+      if (updateError) {
+        console.error("[Levromart] Vendor approval update failed:", updateError);
+        showToast(updateError.message || "Could not update this vendor.", "error");
+        return;
+      }
+      if (!updatedRows || String(updatedRows.verification_status) !== String(status)) {
+        console.error("[Levromart] Vendor approval returned no updated row.", { id, status, updatedRows });
+        showToast("The vendor was not updated. Your admin session may not have permission to approve this application.", "error");
+        return;
+      }
+
+      if (status === "verified") {
+        const { error: roleError } = await sb.from("users").update({ role: "vendor", role_selected: true }).eq("id", targetVendor.user_id);
+        if (roleError) {
+          console.error("[Levromart] Vendor role update failed:", roleError);
+          showToast(`Vendor approved, but the account role could not be updated: ${roleError.message}`, "error");
+        }
+
+        const { error: notifError } = await sb.from("notifications").insert({
+          user_id: targetVendor.user_id,
+          title: "Vendor application approved",
+          body: `Congratulations! ${businessName} has been approved. Your Levromart vendor account is now active and your storefront can go live.`,
+          target_view: "vendorDashboard",
+          target_params: {}
+        });
+        if (notifError) console.warn("Vendor approval notification could not be created:", notifError.message);
+      } else if (status === "rejected" && previousStatus !== "rejected") {
+        const { error: notifError } = await sb.from("notifications").insert({
+          user_id: targetVendor.user_id,
+          title: "Vendor application update",
+          body: `Your application for ${businessName} was not approved at this time. Please review your application details or contact Levromart support.`,
+          target_view: "home",
+          target_params: {}
+        });
+        if (notifError) console.warn("Vendor rejection notification could not be created:", notifError.message);
+      }
+
+      try { await logAdminAction(status === "verified" ? "approve_vendor" : "reject_vendor", "vendor", id, businessName); } catch (e) { console.warn("Admin action log failed:", e); }
+      showToast(status === "verified" ? "Vendor approved successfully." : "Vendor rejected.", "success");
+      await navigate("adminPanel", { status: filterStatus });
+    } finally {
+      vendorStatusBusy = false;
+    }
+  };
+
+  /* ---------------------------------------------------------------
      VENDOR APPLICATION — explicit type=button + delegated click fallback,
      plus a busy guard so slow browsers cannot double-submit.
      --------------------------------------------------------------- */
@@ -20274,6 +20236,103 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     }
   };
 
+  /* ---------------------------------------------------------------
+     APPROVAL: verified + active in ONE vendor update. Keep the applicant's
+     captured lat/lng untouched. This makes the new vendor publicly visible
+     immediately and puts them on the map as soon as their stored coordinates
+     exist. Do not use the admin's geolocation here.
+     --------------------------------------------------------------- */
+  let approvalBusy=false;
+  window.setVendorStatus = async function(id,status,filterStatus,businessName){
+    if(approvalBusy) return;
+    approvalBusy=true;
+
+    try{
+      if(status === "verified" && !(await showConfirmDialog(
+        `Approve "${businessName}" as a vendor? Their storefront, listings and map location will become visible to buyers immediately.`,
+        {title:"Approve vendor",okLabel:"Approve"}
+      ))) return;
+
+      if(status === "rejected" && !(await promptAdminPassword("reject this vendor"))) return;
+
+      const {data:targetVendor,error:targetVendorError}=await sb
+        .from("vendors")
+        .select("id,user_id,business_name,verification_status,is_active,lat,lng,avg_rating,review_count")
+        .eq("id",id)
+        .maybeSingle();
+
+      if(targetVendorError || !targetVendor){
+        showToast(targetVendorError?.message||"Vendor application not found.","error");
+        return;
+      }
+
+      const previousStatus=targetVendor.verification_status;
+
+      const updatePayload = status === "verified"
+        ? {verification_status:"verified",is_active:true,avg_rating:targetVendor.avg_rating ?? 0,review_count:targetVendor.review_count ?? 0}
+        : {verification_status:status,is_active:false};
+
+      const {data:updatedRows,error:updateError}=await sb
+        .from("vendors")
+        .update(updatePayload)
+        .eq("id",id)
+        .select("id,user_id,business_name,verification_status,is_active,lat,lng,avg_rating,review_count")
+        .maybeSingle();
+
+      if(updateError){
+        console.error("[Levromart] Vendor approval update failed:",updateError);
+        showToast(updateError.message||"Could not update this vendor.","error");
+        return;
+      }
+
+      if(!updatedRows || String(updatedRows.verification_status)!==String(status)){
+        showToast("The vendor was not updated. Your admin session may not have permission to approve this application.","error");
+        return;
+      }
+
+      if(status === "verified"){
+        const {error:roleError}=await sb.from("users").update({role:"vendor",role_selected:true}).eq("id",targetVendor.user_id);
+        if(roleError) console.error("[Levromart] Vendor role update failed:",roleError);
+
+        const {error:notifError}=await sb.from("notifications").insert({
+          user_id:targetVendor.user_id,
+          title:"Vendor application approved",
+          body:targetVendor.lat != null && targetVendor.lng != null
+            ? `Congratulations! ${businessName} has been approved. Your Levromart vendor account is active and your shop is now visible to customers on the marketplace map.`
+            : `Congratulations! ${businessName} has been approved. Your Levromart vendor account is active. Open Levromart with Location enabled so your current shop location can be added to the marketplace map.`,
+          target_view:"vendorDashboard",
+          target_params:{}
+        });
+        if(notifError) console.warn("Vendor approval notification could not be created:",notifError.message);
+
+        try{
+          await logAdminAction("approve_vendor","vendor",id,businessName);
+        }catch(e){console.warn("Admin action log failed:",e);}
+
+        showToast(
+          targetVendor.lat != null && targetVendor.lng != null
+            ? "Vendor approved and made visible immediately, including on the map."
+            : "Vendor approved and made visible immediately. Their map pin will be added when their current location becomes available.",
+          "success"
+        );
+      }else if(status === "rejected" && previousStatus !== "rejected"){
+        const {error:notifError}=await sb.from("notifications").insert({
+          user_id:targetVendor.user_id,
+          title:"Vendor application update",
+          body:`Your application for ${businessName} was not approved at this time. Please review your application details or contact Levromart support.`,
+          target_view:"home",
+          target_params:{}
+        });
+        if(notifError) console.warn("Vendor rejection notification could not be created:",notifError.message);
+        try{await logAdminAction("reject_vendor","vendor",id,businessName);}catch(e){console.warn("Admin action log failed:",e);}
+      }
+
+      await navigate("adminPanel",{status:filterStatus});
+
+    }finally{
+      approvalBusy=false;
+    }
+  };
 
   /* ---------------------------------------------------------------
      APPROVED VENDOR SESSION AUTO-LOCATION.
@@ -20331,66 +20390,71 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 })();
 </script>
 
-<script id="levromart-admin-action-dispatcher-v2">
+</body>
+</html>
+<style id="levromart-2026-09-09-final-card-map-drawer-fixes">
+@media (max-width:720px){
+  .top-rated-vendors-scroll { gap: .85rem !important; padding:.45rem .25rem .8rem !important; }
+  .top-rated-vendors-scroll > .vendor-card { flex:0 0 210px !important; width:210px !important; min-width:210px !important; }
+  .top-rated-vendors-scroll .vendor-card { min-height:140px !important; padding:.65rem !important; }
+}
+
+/* Map must have breathing room from the controls and must not be painted as a
+   translucent/blurred surface while Leaflet is calculating its dimensions. */
+#vendorsMapWrap { position:relative !important; isolation:isolate !important; }
+#vendorsMap { filter:none !important; opacity:1 !important; transform:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+#vendorsMap.leaflet-container { filter:none !important; opacity:1 !important; }
+
+/* Never let the drawer gesture steal a touch that belongs to a map or a
+   horizontally scrollable listing rail. */
+#vendorsMap, #vendorsMapWrap, #veMap, .leaflet, .leaflet-container, .hscroll, .cat-row, .storefront-product-strip { touch-action:pan-x pan-y !important; }
+</style>
+
+<script id="levromart-admin-action-delegation-fix">
 (function(){
-  if (window.__levromartAdminVendorActionHotfixV2) return;
-  window.__levromartAdminVendorActionHotfixV2 = true;
-
-  window.__levroAdminVendorAction = async function(button, event) {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    if (!button || button.dataset.busy === "1") return false;
-
-    const id = button.dataset.vendorId;
-    const status = button.dataset.status;
-    const filter = button.dataset.filterStatus || "pending";
-    if (!id || !status) return false;
-
-    const originalText = button.innerHTML;
-    button.dataset.busy = "1";
-    button.disabled = true;
-    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Working...';
-
-    try {
-      if (status === "delete") {
-        if (typeof window.adminDeleteVendor !== "function") {
-          throw new Error("The vendor deletion handler is unavailable. Please reload Levromart.");
-        }
-        await window.adminDeleteVendor(id, filter);
-      } else {
-        if (typeof window.setVendorStatus !== "function") {
-          throw new Error("The vendor status handler is unavailable. Please reload Levromart.");
-        }
-        await window.setVendorStatus(id, status, filter);
-      }
-    } catch (err) {
-      console.error("[Levromart] Admin vendor action failed:", err);
-      if (typeof window.showToast === "function") {
-        window.showToast(err?.message || "Could not perform this vendor action.", "error");
-      }
-    } finally {
-      if (button.isConnected) {
-        button.disabled = false;
-        button.innerHTML = originalText;
-      }
-      delete button.dataset.busy;
-    }
-
-    return false;
-  };
-
-  // Fallback for any dynamically-created button that does not carry the inline
-  // handler. This deliberately runs in bubble phase.
-  document.addEventListener("click", function(event) {
-    const button = event.target?.closest?.("#adminPanel .vendor-admin-action");
-    if (!button || button.getAttribute("data-admin-handler-v2") === "1") return;
-    button.setAttribute("data-admin-handler-v2", "1");
-    window.__levroAdminVendorAction(button, event);
-  }, false);
+  if(window.__levroAdminActionDelegationReady) return;
+  window.__levroAdminActionDelegationReady=true;
+  document.addEventListener("click", function(e){
+    const btn=e.target?.closest?.("#adminPanel .vendor-admin-action");
+    if(!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id=btn.dataset.vendorId, status=btn.dataset.status, filter=btn.dataset.filterStatus;
+    if(status === "delete") { if(typeof window.adminDeleteVendor === "function") window.adminDeleteVendor(id,filter); }
+    else if(typeof window.setVendorStatus === "function") window.setVendorStatus(id,status,filter);
+  }, true);
 })();
 </script>
 
-</body>
-</html>
+<style id="levromart-2026-09-09-accent-and-media-controls">
+  /* The selected Mint accent is the built-in Levromart default. All live accent
+     surfaces still use the existing --primary variables, so user-selected
+     colours continue to work without changing component markup. */
+  .avatar-edit-wrap { position: relative; }
+  .avatar-remove-badge, .vendor-logo-remove {
+    position: absolute; right: -0.15rem; bottom: -0.15rem;
+    width: 1.65rem; height: 1.65rem; border-radius: 50%;
+    border: 2px solid var(--card); background: color-mix(in srgb, var(--danger) 86%, #000 8%);
+    color: #fff; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: .72rem; z-index: 6; box-shadow: 0 4px 12px rgba(0,0,0,.22);
+  }
+  .avatar-remove-badge { right: -0.25rem; }
+  .avatar-remove-badge:hover, .vendor-logo-remove:hover { filter: brightness(1.08); transform: scale(1.04); }
+  .storefront-cover-remove {
+    position:absolute; right:.75rem; bottom:.75rem; z-index:6;
+    width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,.35);
+    background:rgba(127,29,29,.78); color:#fff; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  }
+  .storefront-cover-remove:hover { background:rgba(127,29,29,.94); }
+  .service-trending-scroll { gap: 1rem !important; }
+  .service-trending-scroll > * { flex: 0 0 250px !important; width:250px !important; }
+  .package-recommendation-strip { gap: 1rem !important; }
+  .package-recommendation-strip > * { flex: 0 0 270px !important; width:270px !important; }
+  .package-recommendation-strip .package-listing-card,
+  .package-recommendation-strip .package-card { min-height: 330px; }
+  @media (max-width:720px){
+    .package-recommendation-strip > * { flex-basis:260px !important; width:260px !important; }
+    .service-trending-scroll > * { flex-basis:245px !important; width:245px !important; }
+  }
+</style>
