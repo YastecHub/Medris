@@ -5172,6 +5172,11 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 .storefront-cover-edit input{display:none;}
 .storefront-cover-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:color-mix(in srgb,var(--text) 55%,transparent);font-size:.82rem;pointer-events:none;}
 </style>
+
+<style id="levromart-admin-vendor-action-touch-fix">
+#adminPanel .vendor-admin-action{pointer-events:auto!important;touch-action:manipulation!important;position:relative;z-index:2;}
+#adminPanel .vendor-admin-action:disabled{opacity:.72;cursor:wait;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -15807,9 +15812,9 @@ async function renderAdminPanel(status) {
       ${v.bio ? `<p style="margin:0.3rem 0;">${esc(v.bio)}</p>` : ""}
       <p class="muted" style="margin:0.3rem 0;">${doc ? `<a href="#" onclick="viewVendorDoc('${doc}');return false;"><i class='fa-solid fa-file-lines'></i> View submitted document</a>` : "No document uploaded"} · applied ${new Date(v.created_at).toLocaleDateString()}</p>
       <div class="flex" style="margin-top:0.5rem;">
-        ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}">Approve</button>` : ""}
-        ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
-        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
+        ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}" onclick="return window.__levroAdminVendorAction(this,event);">Approve</button>` : ""}
+        ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}" onclick="return window.__levroAdminVendorAction(this,event);">Reject</button>` : ""}
+        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}" onclick="return window.__levroAdminVendorAction(this,event);"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
       </div>
     </div>`;
   });
@@ -20324,54 +20329,3 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 
 </body>
 </html>
-<style id="levromart-2026-09-09-final-card-map-drawer-fixes">
-@media (max-width:720px){
-  .top-rated-vendors-scroll { gap: .85rem !important; padding:.45rem .25rem .8rem !important; }
-  .top-rated-vendors-scroll > .vendor-card { flex:0 0 210px !important; width:210px !important; min-width:210px !important; }
-  .top-rated-vendors-scroll .vendor-card { min-height:140px !important; padding:.65rem !important; }
-}
-
-/* Map must have breathing room from the controls and must not be painted as a
-   translucent/blurred surface while Leaflet is calculating its dimensions. */
-#vendorsMapWrap { position:relative !important; isolation:isolate !important; }
-#vendorsMap { filter:none !important; opacity:1 !important; transform:none !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
-#vendorsMap.leaflet-container { filter:none !important; opacity:1 !important; }
-
-/* Never let the drawer gesture steal a touch that belongs to a map or a
-   horizontally scrollable listing rail. */
-#vendorsMap, #vendorsMapWrap, #veMap, .leaflet, .leaflet-container, .hscroll, .cat-row, .storefront-product-strip { touch-action:pan-x pan-y !important; }
-</style>
-
-
-<style id="levromart-2026-09-09-accent-and-media-controls">
-  /* The selected Mint accent is the built-in Levromart default. All live accent
-     surfaces still use the existing --primary variables, so user-selected
-     colours continue to work without changing component markup. */
-  .avatar-edit-wrap { position: relative; }
-  .avatar-remove-badge, .vendor-logo-remove {
-    position: absolute; right: -0.15rem; bottom: -0.15rem;
-    width: 1.65rem; height: 1.65rem; border-radius: 50%;
-    border: 2px solid var(--card); background: color-mix(in srgb, var(--danger) 86%, #000 8%);
-    color: #fff; display: inline-flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: .72rem; z-index: 6; box-shadow: 0 4px 12px rgba(0,0,0,.22);
-  }
-  .avatar-remove-badge { right: -0.25rem; }
-  .avatar-remove-badge:hover, .vendor-logo-remove:hover { filter: brightness(1.08); transform: scale(1.04); }
-  .storefront-cover-remove {
-    position:absolute; right:.75rem; bottom:.75rem; z-index:6;
-    width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,.35);
-    background:rgba(127,29,29,.78); color:#fff; display:flex; align-items:center; justify-content:center;
-    cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-  }
-  .storefront-cover-remove:hover { background:rgba(127,29,29,.94); }
-  .service-trending-scroll { gap: 1rem !important; }
-  .service-trending-scroll > * { flex: 0 0 250px !important; width:250px !important; }
-  .package-recommendation-strip { gap: 1rem !important; }
-  .package-recommendation-strip > * { flex: 0 0 270px !important; width:270px !important; }
-  .package-recommendation-strip .package-listing-card,
-  .package-recommendation-strip .package-card { min-height: 330px; }
-  @media (max-width:720px){
-    .package-recommendation-strip > * { flex-basis:260px !important; width:260px !important; }
-    .service-trending-scroll > * { flex-basis:245px !important; width:245px !important; }
-  }
-</style>
