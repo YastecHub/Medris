@@ -7759,7 +7759,7 @@ async function renderNotifPanel() {
   panel.classList.toggle("selecting", notifSelectMode);
 }
 
-function handleNotifItemClick(event, id) {
+async function handleNotifItemClick(event, id) {
   if (event) { event.preventDefault(); event.stopPropagation(); }
   const clicked = event?.currentTarget;
   if (clicked?.dataset.longPressConsumed === '1') { delete clicked.dataset.longPressConsumed; return; }
@@ -7769,11 +7769,24 @@ function handleNotifItemClick(event, id) {
   }
   const item = event?.currentTarget || document.querySelector(`#notifPanel .notif-item[data-id="${CSS.escape(String(id))}"]`);
   if (!item) return;
-  markSingleNotifRead(id);
-  closeAllPanels();
   let params = {};
   try { params = JSON.parse(item.dataset.params || "{}"); } catch (_) {}
-  navigate(item.dataset.view || "home", params);
+  await markSingleNotifRead(id);
+  closeAllPanels();
+  if ((item.dataset.view || "home") === "messages" && params?.conversationId) {
+    const conversationId = String(params.conversationId);
+    // Refresh the inbox snapshot first so the destination always has the
+    // exact conversation and its latest messages, even after a cold start or
+    // when the notification was generated while the inbox list was stale.
+    try { await refreshConversationInboxInBackground(); } catch (_) {}
+    try {
+      const {data:latestMessages}=await sb.from('messages').select('*').eq('conversation_id',conversationId).order('created_at',{ascending:true});
+      if(Array.isArray(latestMessages)) lastSeenMessagesByConv.set(conversationId,latestMessages);
+    } catch (_) {}
+    navigate('messages',{conversationId});
+    return;
+  }
+  navigate(item.dataset.view || 'home', params);
 }
 
 function switchNotifView(mode) {
@@ -8706,7 +8719,7 @@ function renderBottomNav() {
     if (vendor) {
       items.push(vendorsTab);
       items.push(messagesTab);
-      items.push({ icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all'})", view: "vendorOrders", badge: vendorPendingOrderCount });
+      items.push({ icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) });
       items.push({ icon: "<i class='fa-solid fa-box'></i>", label: "My Shop", action: "navigate('vendorDashboard')", view: "vendorDashboard" });
     } else {
       // Home sits at the visual center for buyers: Vendors, Request, Home, Messages, Orders.
@@ -9698,7 +9711,7 @@ async function renderHome() {
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
-  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url").eq("verification_status", "verified");
+  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, bio, delivery_fee_mode, delivery_fee, delivery_fee_per_km").eq("verification_status", "verified");
   if (activeSector) topVendorsQuery = topVendorsQuery.eq("sector_id", activeSector.id);
   const recentPhotosQuery = sb.from("products")
     .select("id, name, photos, created_at, vendor:vendors!inner(verification_status, is_active)")
@@ -10232,9 +10245,10 @@ function vendorCardHtml(v) {
     ${avatar ? `<img src="${esc(avatar)}" alt="" class="vendor-home-avatar" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name)}','3rem','vendor-home-avatar','${esc(name)}')))">` : `<span class="vendor-home-avatar vendor-home-avatar-fallback">${esc(initials(name))}</span>`}
     <div class="vendor-home-copy">
       <strong>${esc(name)}</strong>
-      <span class="vendor-home-city">${esc(v?.city || "Lagos")}</span>
-      <div class="vendor-home-meta"><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span><span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} (${Number(v?.review_count ?? 0)})</span></div>
-      ${cats.length ? `<span class="vendor-home-known"><i class="fa-solid fa-tags"></i> ${cats.map(esc).join(" · ")}</span>` : `<span class="vendor-home-known"><i class="fa-solid fa-shop"></i> View storefront</span>`}
+      <span class="vendor-home-city"><i class="fa-solid fa-location-dot"></i> ${esc(v?.city || "Lagos")}</span>
+      <div class="vendor-home-meta"><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span><span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} · ${Number(v?.review_count ?? 0)} reviews</span></div>
+      <span class="vendor-home-known"><i class="fa-solid fa-truck"></i> ${String(v?.delivery_fee_mode || "flat").toLowerCase() === "distance" ? `Distance delivery · ${naira(Number(v?.delivery_fee_per_km || 0))}/km` : Number(v?.delivery_fee || 0) > 0 ? `Flat delivery · ${naira(Number(v?.delivery_fee))}` : "Free delivery"}</span>
+      ${String(v?.bio || "").trim() ? `<span class="vendor-home-known vendor-home-bio"><i class="fa-solid fa-circle-info"></i> ${esc(String(v.bio).trim())}</span>` : cats.length ? `<span class="vendor-home-known"><i class="fa-solid fa-tags"></i> ${cats.map(esc).join(" · ")}</span>` : `<span class="vendor-home-known"><i class="fa-solid fa-shop"></i> Open storefront</span>`}
     </div>
   </div>`;
 }
@@ -13513,7 +13527,7 @@ async function renderVendorDashboard() {
   if (commissionOwed > 0) {
     html += `<div class="banner banner-warning" style="max-width:480px;margin:0 auto 1rem;">
       <h3 style="margin:0;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)}</h3>
-      <p class="muted" style="margin-top:0.4rem;">Levromart's ${Number(v.commission_pct ?? 3)}% cut on offline sales. Pay anytime via Paystack.</p>
+      <p class="muted" style="margin-top:0.4rem;">Levromart's ${Number(v.commission_pct ?? 3)}% cut on offline sales. Pay within 1 week via Paystack. If it remains unpaid for 1 week, your storefront will be paused temporarily until the commission is paid.</p>
       <div id="commissionError" class="error-text hidden"></div>
       <button class="btn btn-sm" id="payCommissionBtn" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
     </div>`;
@@ -13791,7 +13805,7 @@ async function renderVendorEditProfile() {
   return `${commissionOwed > 0 ? `
   <div class="banner banner-warning" style="max-width:480px;margin:0 auto 1rem;">
     <h3 style="margin:0;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)}</h3>
-    <p class="muted" style="margin-top:0.4rem;">This is Levromart's ${Number(v.commission_pct ?? 3)}% cut on offline sales. Pay anytime via Paystack.</p>
+    <p class="muted" style="margin-top:0.4rem;">This is Levromart's ${Number(v.commission_pct ?? 3)}% cut on offline sales. Pay within 1 week via Paystack. If it remains unpaid for 1 week, your storefront will be paused temporarily until the commission is paid.</p>
     <div id="commissionError" class="error-text hidden"></div>
     <button class="btn btn-sm" id="payCommissionBtn" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
   </div>` : ""}
@@ -15044,15 +15058,30 @@ function submitCustomOrderDate(view,status,type,payment,perspective=""){
 function clearOrderDateFilters(view,status,type,payment,perspective=""){ navigate(view,{status,type,payment,dateFrom:'',dateTo:'',...(perspective ? {perspective} : {})}); }
 
 function vendorOrdersTabsHtml(active) {
+  const salesBadge = Number(vendorPendingOrderCount || 0);
+  const purchasesBadge = Number(buyerPendingOrderCount || 0);
+  const badge = (n) => n > 0 ? `<span class="orders-perspective-badge">${n > 9 ? '9+' : n}</span>` : '';
   return `<div class="segmented-tabs vendor-orders-perspective-tabs" role="tablist" aria-label="Order perspective" style="max-width:520px;margin:.8rem auto 1rem;">
-    <button type="button" class="${active === "sales" ? "active" : ""}" onclick="navigate('vendorOrders',{status:'all',type:'all',payment:'all',dateFrom:'',dateTo:'',perspective:'sales'})" role="tab" aria-selected="${active === "sales" ? "true" : "false"}"><i class="fa-solid fa-store"></i> Orders from customers</button>
-    <button type="button" class="${active === "purchases" ? "active" : ""}" onclick="navigate('vendorOrders',{status:'all',type:'all',payment:'all',dateFrom:'',dateTo:'',perspective:'purchases'})" role="tab" aria-selected="${active === "purchases" ? "true" : "false"}"><i class="fa-solid fa-bag-shopping"></i> My purchases</button>
+    <button type="button" class="${active === "sales" ? "active" : ""}" onclick="navigate('vendorOrders',{status:'all',type:'all',payment:'all',dateFrom:'',dateTo:'',perspective:'sales'})" role="tab" aria-selected="${active === "sales" ? "true" : "false"}"><i class="fa-solid fa-store"></i> Orders from customers ${badge(salesBadge)}</button>
+    <button type="button" class="${active === "purchases" ? "active" : ""}" onclick="navigate('vendorOrders',{status:'all',type:'all',payment:'all',dateFrom:'',dateTo:'',perspective:'purchases'})" role="tab" aria-selected="${active === "purchases" ? "true" : "false"}"><i class="fa-solid fa-bag-shopping"></i> My purchases ${badge(purchasesBadge)}</button>
   </div>`;
 }
 
 async function renderVendorOrders(status, type, payment, dateFrom, dateTo, perspective = "sales") {
   perspective = perspective === "purchases" ? "purchases" : "sales";
-  if (perspective === "purchases") return renderCustomerOrders(status, type, payment, dateFrom, dateTo, true);
+  if (perspective === "purchases") {
+    if (session) {
+      try {
+        const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
+          vendor ? sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES) : Promise.resolve({ count: 0 }),
+          sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+        ]);
+        vendorPendingOrderCount = salesCount || 0;
+        buyerPendingOrderCount = purchaseCount || 0;
+      } catch (_) {}
+    }
+    return renderCustomerOrders(status, type, payment, dateFrom, dateTo, true);
+  }
   if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
   if (!vendor) { const { data: v } = await sb.from("vendors").select("id").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle(); vendor = v; }
   if (!vendor) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
@@ -15097,6 +15126,18 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   }
   window.__orderStatsOrders = safeStatsOrders;
 
+  // Refresh both perspective counts while the Orders page is open so the
+  // two perspective badges and the bottom-nav badge never depend on a stale
+  // previous screen.
+  try {
+    const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
+      sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+      sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+    ]);
+    vendorPendingOrderCount = salesCount || 0;
+    buyerPendingOrderCount = purchaseCount || 0;
+    renderBottomNav();
+  } catch (_) {}
   // Three rows of tab pills used to wrap into an unreadable jumble on
   // narrow screens - compact dropdowns plus a date range say the same
   // thing in a fraction of the space.
@@ -15284,8 +15325,10 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
     inner += `<div class="order-history-date"><i class="fa-regular fa-calendar"></i><span>${esc(dateKey)}</span></div>`;
     inner += `<div class="order-history-day">${dayOrders.map((o) => `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-history-main"><strong>${isCustomerView ? esc(o.vendor?.business_name || "") : esc(o.buyer?.name || "")}</strong><span class="order-history-meta"><span>${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span><small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${orderStatusBadgeClass(o.status)} order-history-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`).join("")}</div>`;
   });
-  return `<div class="accordion-section" id="orderHistoryAccordion" style="margin-top:1.2rem;">
-    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-clock-rotate-left"></i> Order history (${historyOrders.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
+  const historyTitle = isCustomerView ? (sourcePerspective === "purchases" ? "My purchase history" : "My order history") : "Customer order history";
+  const historyId = sourcePerspective === "purchases" ? "vendorPurchaseHistoryAccordion" : sourcePerspective === "sales" ? "vendorSalesHistoryAccordion" : "buyerOrderHistoryAccordion";
+  return `<div class="accordion-section" id="${historyId}" style="margin-top:1.2rem;">
+    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-clock-rotate-left"></i> ${historyTitle} (${historyOrders.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
     <div class="accordion-body">${inner}</div>
   </div>`;
 }
@@ -21164,9 +21207,15 @@ window.renderVendorMapRail = function(){
   "use strict";
   window.openVendorDirectPayment = async function(orderId){
     if(!session || !orderId){showLogin();return;}
-    const {data:order,error}=await sb.from("orders").select("id,total_amount,deposit_amount,buyer_id,vendor_id,order_type,vendor:vendors(id,business_name,bank_name,account_number,account_name,phone),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
+    const {data:order,error}=await sb.from("orders").select("id,total_amount,deposit_amount,buyer_id,vendor_id,order_type,vendor:vendors(id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
     if(error||!order){showToast(error?.message||"Order not found.","error");return;}
     if(String(order.buyer_id)!==String(session.user.id)){showToast("You can only pay for your own order.","error");return;}
+    // The vendor relationship can be filtered by RLS on older/paused vendor rows.
+    // Refresh the payment details directly from the vendor row as a second source.
+    if(order.vendor_id){
+      const {data:freshVendor}=await sb.from("vendors").select("id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number").eq("id",order.vendor_id).maybeSingle();
+      if(freshVendor) order.vendor={...(order.vendor||{}),...freshVendor};
+    }
     const feeType=order.order_type==="rental"?"rental_fee":"sale_price";
     const paidFee=Number((order.payments||[]).filter(p=>p.payment_type===feeType&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
     const pendingFee=(order.payments||[]).find(p=>p.payment_type===feeType&&p.status==="pending");
@@ -21177,9 +21226,12 @@ window.renderVendorMapRail = function(){
     else {showToast("There is no outstanding payment on this order.","info");return;}
     byId("manualVendorPaymentModal")?.remove();
     const modal=document.createElement("div"); modal.id="manualVendorPaymentModal"; modal.className="modal manual-payment-modal";
+    const bankName = order.vendor?.bank_name || (typeof NIGERIAN_BANKS!=="undefined" ? NIGERIAN_BANKS.find(b=>String(b.code)===String(order.vendor?.bank_code||""))?.name : null) || (order.vendor?.bank_code ? `Bank code ${order.vendor.bank_code}` : "Not provided");
+    const hasAccount = !!(order.vendor?.account_name || order.vendor?.account_number || order.vendor?.bank_code || order.vendor?.bank_name);
     modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> for the <strong>${esc(paymentLabel)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
-      <div class="manual-payment-account"><div class="manual-payment-account-row"><span class="muted">Bank</span><strong>${esc(order.vendor?.bank_name||"Not provided")}</strong></div><div class="manual-payment-account-row"><span class="muted">Account name</span><strong>${esc(order.vendor?.account_name||"Not provided")}</strong></div><div class="manual-payment-account-row"><span class="muted">Account number</span><strong>${esc(order.vendor?.account_number||"Not provided")}</strong></div></div>
+      <div class="manual-payment-account"><div class="manual-payment-account-row"><span class="muted">Bank</span><strong>${esc(bankName)}</strong></div><div class="manual-payment-account-row"><span class="muted">Account name</span><strong>${esc(order.vendor?.account_name||"Not provided")}</strong></div><div class="manual-payment-account-row"><span class="muted">Account number</span><strong>${esc(order.vendor?.account_number||"Not provided")}</strong></div></div>
+      ${!hasAccount ? `<div class="banner banner-warning" style="margin-top:.7rem;"><strong>Vendor payment details are not saved yet.</strong> Please contact the vendor before transferring.</div>` : ""}
       <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${order.vendor?.account_number?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(order.vendor.account_number)}').then(()=>showToast('Account number copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy account number</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
       <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount})"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
     document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
@@ -21667,10 +21719,10 @@ window.renderVendorMapRail = function(){
 <style id="levromart-final-2026-09-09-v4">
 /* PRODUCT CARDS — compact square cards, larger image, no overlap */
 @media (max-width: 900px){
-  #app .grid:has(> .product-card-wrap){grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:.62rem !important;}
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap{aspect-ratio:1/1 !important;min-width:0 !important;}
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{height:100% !important;display:flex !important;flex-direction:column !important;padding:.52rem !important;overflow:hidden !important;border-radius:14px !important;gap:0 !important;}
-  #app .grid:has(> .product-card-wrap) .product-img{height:auto !important;aspect-ratio:1.16/1 !important;flex:0 0 auto !important;margin:0 !important;border-radius:10px !important;overflow:hidden !important;}
+  #app .grid:has(> .product-card-wrap){grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:.62rem !important;align-items:stretch !important;grid-auto-rows:1fr !important;}
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap{min-width:0 !important;height:100% !important;display:flex !important;aspect-ratio:1/1.12 !important;}
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{height:100% !important;min-height:0 !important;display:flex !important;flex-direction:column !important;padding:.52rem !important;overflow:hidden !important;border-radius:14px !important;gap:0 !important;}
+  #app .grid:has(> .product-card-wrap) .product-img{height:auto !important;aspect-ratio:1.08/1 !important;flex:0 0 auto !important;margin:0 !important;border-radius:10px !important;overflow:hidden !important;}
   #app .grid:has(> .product-card-wrap) .product-img img{width:100% !important;height:100% !important;object-fit:cover !important;display:block !important;}
   #app .grid:has(> .product-card-wrap) .product-card-wrap h4{font-size:.78rem !important;line-height:1.12 !important;margin:.32rem 0 .12rem !important;min-height:1.75rem !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;}
   #app .product-card-vendor-row{display:flex !important;align-items:center !important;justify-content:space-between !important;gap:.25rem !important;min-width:0 !important;min-height:1.05rem !important;}
@@ -21682,7 +21734,7 @@ window.renderVendorMapRail = function(){
   #app .product-old-price{font-size:.63rem !important;margin-right:.12rem !important;}
   #app .product-current-price{font-size:.78rem !important;font-weight:800 !important;color:var(--primary) !important;}
   #app .product-availability{font-size:.59rem !important;line-height:1.1 !important;margin:.07rem 0 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;min-height:.7rem !important;}
-  #app .product-card-delivery-wrap{min-width:0 !important;min-height:1.35rem !important;margin-top:.05rem !important;}
+  #app .product-card-delivery-wrap{min-width:0 !important;min-height:1.15rem !important;margin-top:.04rem !important;}
   #app .product-card-delivery-wrap .product-delivery-summary{font-size:.58rem !important;line-height:1.08 !important;margin:0 !important;padding:0 0 0 0 !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;}
   #app .card-cart-btn,#app .card-service-btn{position:static !important;align-self:flex-end !important;flex:0 0 auto !important;width:1.88rem !important;height:1.88rem !important;min-width:1.88rem !important;min-height:1.88rem !important;margin-top:auto !important;border-radius:50% !important;z-index:2 !important;display:flex !important;align-items:center !important;justify-content:center !important;}
   #app .card-service-btn{pointer-events:none !important;background:color-mix(in srgb,var(--primary) 94%,transparent) !important;color:#fff !important;font-size:.72rem !important;box-shadow:0 2px 8px color-mix(in srgb,var(--primary) 18%,transparent) !important;}
@@ -21690,14 +21742,14 @@ window.renderVendorMapRail = function(){
 }
 
 /* HOME VENDOR CARDS — compact but informative */
-.top-rated-vendors-scroll .homepage-vendor-card{flex:0 0 13.7rem !important;min-height:8.3rem !important;padding:.78rem !important;display:flex !important;align-items:flex-start !important;gap:.7rem !important;overflow:hidden !important;}
+.top-rated-vendors-scroll .homepage-vendor-card{flex:0 0 14rem !important;width:14rem !important;min-height:8.9rem !important;padding:.72rem !important;display:flex !important;align-items:flex-start !important;gap:.62rem !important;overflow:hidden !important;}
 .vendor-home-avatar{width:3.05rem !important;height:3.05rem !important;min-width:3.05rem !important;border-radius:50% !important;object-fit:cover !important;display:flex !important;align-items:center !important;justify-content:center !important;background:color-mix(in srgb,var(--primary) 14%,var(--card)) !important;color:var(--primary) !important;font-weight:800 !important;font-size:.95rem !important;}
 .vendor-home-copy{min-width:0 !important;display:flex !important;flex-direction:column !important;gap:.18rem !important;overflow:hidden !important;}
 .vendor-home-copy > strong{font-size:.86rem !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
 .vendor-home-city{font-size:.68rem !important;color:var(--text-muted) !important;}
 .vendor-home-meta{display:flex !important;gap:.2rem !important;flex-wrap:wrap !important;}
 .vendor-home-meta .badge{font-size:.53rem !important;padding:.14rem .28rem !important;white-space:nowrap !important;}
-.vendor-home-known{font-size:.6rem !important;color:var(--text-muted) !important;line-height:1.15 !important;display:block !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}
+.vendor-home-known{font-size:.6rem !important;color:var(--text-muted) !important;line-height:1.15 !important;display:block !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}.vendor-home-bio{opacity:.9 !important;}
 
 /* PACKAGES — short, clean cards; the card itself opens the package */
 @media (max-width:900px){
@@ -22012,6 +22064,12 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 /* No stale notification-folder UI can survive a re-render. */
 .notif-message-summary{cursor:pointer !important;}
 </style>
+<style id="levromart-final-user-fixes-20260909">
+.orders-perspective-badge{display:inline-flex !important;align-items:center !important;justify-content:center !important;min-width:1.1rem !important;height:1.1rem !important;padding:0 .3rem !important;border-radius:999px !important;background:#ef4444 !important;color:#fff !important;font-size:.62rem !important;font-weight:800 !important;line-height:1 !important;margin-left:.2rem !important;vertical-align:middle !important;}
+.chat-page-wrap .chat-page-header{position:sticky !important;top:0 !important;z-index:3000 !important;flex:0 0 auto !important;transform:translateZ(0) !important;}
+.chat-page-wrap .chat-thread{min-height:0 !important;overflow:hidden !important;}
+.chat-page-wrap .chat-input-row{flex:0 0 auto !important;position:relative !important;z-index:3001 !important;}
+</style>
 
 <script id="levromart-final-qa-20260909-js">
 (function(){
@@ -22186,7 +22244,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 
   /* ---------------------------------------------------------------
      COMMISSION DEADLINE — vendor heartbeat. The DB function is authoritative;
-     this heartbeat makes the five-minute rule take effect while the vendor is
+     this heartbeat makes the one-week rule take effect while the vendor is
      using the app, without waiting for a navigation/reload.
      --------------------------------------------------------------- */
   let commissionHeartbeat=null;
@@ -22198,7 +22256,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     const modal=document.createElement('div');
     modal.id='commissionOverdueModal';modal.className='modal open';
     modal.style.zIndex='2500';
-    modal.innerHTML=`<div class="modal-content" style="max-width:430px;"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-lock"></i> Storefront paused</h3></div><p style="margin:.7rem 0;">Your Levromart commission has remained unpaid for more than 5 minutes. Your storefront is paused until the outstanding commission is paid.</p><div id="commissionOverdueAmount" class="card" style="margin:.65rem 0;padding:.8rem;">Loading amount owed…</div><p class="muted" style="font-size:.78rem;">Pay the commission owed to restore your storefront.</p><button type="button" class="btn" style="width:100%;justify-content:center;" onclick="commissionOverduePayNow()"><i class="fa-solid fa-credit-card"></i> Pay commission owed</button></div>`;
+    modal.innerHTML=`<div class="modal-content" style="max-width:430px;"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-lock"></i> Storefront paused</h3></div><p style="margin:.7rem 0;">Your Levromart commission has remained unpaid for more than 1 week. Your storefront is paused until the outstanding commission is paid.</p><div id="commissionOverdueAmount" class="card" style="margin:.65rem 0;padding:.8rem;">Loading amount owed…</div><p class="muted" style="font-size:.78rem;">Pay the commission owed to restore your storefront.</p><button type="button" class="btn" style="width:100%;justify-content:center;" onclick="commissionOverduePayNow()"><i class="fa-solid fa-credit-card"></i> Pay commission owed</button></div>`;
     document.body.appendChild(modal);
     loadCommissionOverdueAmount();
   }
@@ -22234,7 +22292,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
   function startCommissionHeartbeat(){
     if(commissionHeartbeat)clearInterval(commissionHeartbeat);
     checkCommissionDeadline();
-    commissionHeartbeat=setInterval(checkCommissionDeadline,30000);
+    commissionHeartbeat=setInterval(checkCommissionDeadline,60000);
   }
   function stopCommissionHeartbeat(){if(commissionHeartbeat){clearInterval(commissionHeartbeat);commissionHeartbeat=null;}}
   setTimeout(()=>{
