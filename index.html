@@ -7747,7 +7747,7 @@ async function renderNotifPanel() {
     : "";
   const list = (items && items.length)
     ? items.map((n) => `<div class="notif-item-wrap" data-id="${n.id}">
-        <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
+        <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
           ${notifSelectMode ? `<span class="notif-select-check"><i class="fa-solid fa-check"></i></span>` : ""}
           ${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;" />` : n.actor_name ? `<span class="avatar-circle" style="width:2.1rem;height:2.1rem;font-size:0.8rem;">${esc(initials(n.actor_name))}</span>` : `<i class='fa-solid fa-circle-info'></i>`}
           <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
@@ -11806,6 +11806,7 @@ async function sendChatMessage(conversationId) {
   byId("chatMessages")?.insertAdjacentHTML("beforeend", chatBubbleHtml(data));
   scrollChatToBottom();
   setupMessageInteractions(byId("chatMessages"));
+  requestAnimationFrame(() => { try { input.focus({ preventScroll: true }); } catch (_) { try { input.focus(); } catch (_) {} } });
 }
 async function handleChatFileSelected(evt, conversationId) {
   const file = evt.target.files[0];
@@ -20338,7 +20339,9 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   ];
   function isGenericLeviReply(reply) {
     const text = String(reply || "").trim();
-    return GENERIC_LEVI_PATTERNS.some((re) => re.test(text));
+    if (!text) return true;
+    if (GENERIC_LEVI_PATTERNS.some((re) => re.test(text))) return true;
+    return /^(?:i couldn't get a useful answer|i can help with|try asking me|ask me what to buy|i'm levi)/i.test(text);
   }
   function leviSpecificFallback(text) {
     const q = leviNormaliseText(text);
@@ -20645,8 +20648,6 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 })();
 </script>
 
-</body>
-</html>
 <style id="levromart-2026-09-09-final-card-map-drawer-fixes">
 @media (max-width:720px){
   .top-rated-vendors-scroll { gap: .85rem !important; padding:.45rem .25rem .8rem !important; }
@@ -21113,14 +21114,16 @@ window.renderVendorMapRail = function(){
         if(groupRows.length<2)return;
         const first=groupRows[0];
         const firstItem=first.querySelector('.notif-item');
-        const title=firstItem?.querySelector('.notif-copy strong')?.textContent||'Messages';
+        const sender=firstItem?.dataset.actorName || firstItem?.querySelector('.notif-copy strong')?.textContent || 'Messages';
+        const avatar=firstItem?.dataset.actorAvatar || '';
         const latest=firstItem?.querySelector('.notif-copy .muted')?.textContent||'';
-        const unread=groupRows.some(r=>r.querySelector('.notif-item')?.classList.contains('unread'));
+        const unread=groupRows.filter(r=>r.querySelector('.notif-item')?.classList.contains('unread')).length;
         const group=document.createElement('div');
         group.className='notif-group';
         group.dataset.conversationId=key;
         const head=document.createElement('button'); head.type='button'; head.className='notif-group-head';
-        head.innerHTML=`<i class="fa-solid fa-comments" style="width:2.1rem;height:2.1rem;display:inline-flex;align-items:center;justify-content:center;border-radius:.65rem;background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary);flex:0 0 2.1rem;"></i><span class="notif-group-copy"><strong>${esc(title)}${groupRows.length>1?` · ${groupRows.length} messages`:''}</strong><span class="muted">${esc(latest||'New messages')}</span></span><i class="fa-solid fa-chevron-down notif-group-chevron"></i>`;
+        const groupAvatar=avatar ? `<img class="notif-group-avatar" src="${esc(avatar)}" alt="" />` : `<span class="notif-group-avatar">${esc(initials(sender))}</span>`;
+        head.innerHTML=`${groupAvatar}<span class="notif-group-copy"><strong>${esc(sender)} <span class="notif-group-count">${groupRows.length} messages${unread?` · ${unread} unread`:''}</span></strong><span class="muted">${esc(latest||'New messages')}</span></span><i class="fa-solid fa-chevron-down notif-group-chevron"></i>`;
         const body=document.createElement('div');body.className='notif-group-body';
         groupRows.forEach(row=>{
           const item=row.querySelector('.notif-item');
@@ -21221,14 +21224,21 @@ window.renderVendorMapRail = function(){
   "use strict";
   window.openVendorDirectPayment = async function(orderId){
     if(!session || !orderId){showLogin();return;}
-    const {data:order,error}=await sb.from("orders").select("id,total_amount,deposit_amount,buyer_id,vendor_id,vendor:vendors(id,business_name,bank_name,account_number,account_name,phone)").eq("id",orderId).maybeSingle();
+    const {data:order,error}=await sb.from("orders").select("id,total_amount,deposit_amount,buyer_id,vendor_id,order_type,vendor:vendors(id,business_name,bank_name,account_number,account_name,phone),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
     if(error||!order){showToast(error?.message||"Order not found.","error");return;}
     if(String(order.buyer_id)!==String(session.user.id)){showToast("You can only pay for your own order.","error");return;}
-    const amount=Number(order.deposit_amount||0)>0?Number(order.deposit_amount):Number(order.total_amount||0);
+    const feeType=order.order_type==="rental"?"rental_fee":"sale_price";
+    const paidFee=Number((order.payments||[]).filter(p=>p.payment_type===feeType&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
+    const pendingFee=(order.payments||[]).find(p=>p.payment_type===feeType&&p.status==="pending");
+    const pendingDeposit=(order.payments||[]).find(p=>p.payment_type==="deposit"&&p.status==="pending");
+    let amount=0; let paymentLabel=order.order_type==="rental"?"rental fee":"sale price";
+    if(!paidFee){amount=Number(pendingFee?.amount||order.total_amount||0);}
+    else if(Number(order.deposit_amount||0)>0 && !((order.payments||[]).some(p=>p.payment_type==="deposit"&&p.status==="paid"))){amount=Number(pendingDeposit?.amount||order.deposit_amount||0);paymentLabel="refundable deposit";}
+    else {showToast("There is no outstanding payment on this order.","info");return;}
     byId("manualVendorPaymentModal")?.remove();
     const modal=document.createElement("div"); modal.id="manualVendorPaymentModal"; modal.className="modal manual-payment-modal";
     modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
-      <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
+      <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> for the <strong>${esc(paymentLabel)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
       <div class="manual-payment-account"><div class="manual-payment-account-row"><span class="muted">Bank</span><strong>${esc(order.vendor?.bank_name||"Not provided")}</strong></div><div class="manual-payment-account-row"><span class="muted">Account name</span><strong>${esc(order.vendor?.account_name||"Not provided")}</strong></div><div class="manual-payment-account-row"><span class="muted">Account number</span><strong>${esc(order.vendor?.account_number||"Not provided")}</strong></div></div>
       <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${order.vendor?.account_number?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(order.vendor.account_number)}').then(()=>showToast('Account number copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy account number</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
       <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount})"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
@@ -21269,3 +21279,533 @@ window.renderVendorMapRail = function(){
   };
 })();
 </script>
+
+
+<style id="levromart-final-2026-09-09-ui-polish-v2">
+/* PRODUCT GRID — compact, square cards with predictable text flow */
+@media (max-width: 900px){
+  #app .grid:has(> .product-card-wrap){grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:.65rem !important;}
+}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap{height:auto !important;min-height:0 !important;}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
+  aspect-ratio:1/1 !important;
+  min-height:0 !important;
+  height:auto !important;
+  overflow:hidden !important;
+  padding:.58rem !important;
+  border-radius:14px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:0 !important;
+}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img{
+  flex:0 0 41% !important;
+  min-height:0 !important;
+  height:auto !important;
+  aspect-ratio:auto !important;
+  border-radius:10px !important;
+  overflow:hidden !important;
+}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card h4{
+  font-size:.82rem !important;line-height:1.15 !important;margin:.42rem 0 .18rem !important;
+  display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;
+}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-card-price-block{
+  margin:.28rem 0 !important;min-height:0 !important;font-size:.76rem !important;line-height:1.22 !important;
+}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-card-price-block > span{display:block !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > .flex{min-height:1.2rem !important;align-items:center !important;gap:.25rem !important;}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > .flex .badge{font-size:.64rem !important;padding:.18rem .35rem !important;}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > .flex span:last-child{font-size:.67rem !important;max-width:58% !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > p.muted{margin:.18rem 0 0 !important;font-size:.67rem !important;line-height:1.18 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-delivery-summary{margin:.18rem 0 0 !important;font-size:.64rem !important;line-height:1.18 !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .card-cart-btn,
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .card-service-btn{position:absolute !important;right:.48rem !important;bottom:.48rem !important;width:2rem !important;height:2rem !important;min-width:2rem !important;min-height:2rem !important;border-radius:50% !important;padding:0 !important;z-index:3 !important;}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .own-listing-badge{position:absolute !important;right:.4rem !important;bottom:.4rem !important;font-size:.58rem !important;max-width:48% !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .fav-btn{z-index:6 !important;}
+.product-old-price{font-size:.72rem !important;margin-right:.18rem !important;}
+.product-current-price{font-size:.82rem !important;}
+
+/* TOP VENDOR RAIL — smaller cards, large uniform profile circles */
+.top-rated-vendors-scroll{gap:.55rem !important;padding:.25rem .1rem .55rem !important;}
+.top-rated-vendors-scroll > .vendor-card{flex:0 0 172px !important;width:172px !important;min-width:172px !important;height:92px !important;min-height:92px !important;padding:.5rem !important;}
+.top-rated-vendors-scroll .vendor-card .vendor-directory-logo{width:3.1rem !important;height:3.1rem !important;min-width:3.1rem !important;min-height:3.1rem !important;flex:0 0 3.1rem !important;border-radius:50% !important;font-size:1.08rem !important;}
+.top-rated-vendors-scroll .vendor-card .vendor-directory-copy{min-width:0 !important;flex:1 1 auto !important;overflow:hidden !important;}
+.top-rated-vendors-scroll .vendor-card .vendor-directory-name{font-size:.78rem !important;line-height:1.14 !important;display:block !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+.top-rated-vendors-scroll .vendor-card .vendor-directory-city,.top-rated-vendors-scroll .vendor-card .vendor-directory-categories{font-size:.64rem !important;line-height:1.15 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+.top-rated-vendors-scroll .vendor-card .badge{font-size:.58rem !important;padding:.16rem .28rem !important;margin:0 !important;}
+
+/* MAP RAIL — compact cards, separate storefront tap from map focus */
+.vendors-map-vendor-chip{flex:0 0 180px !important;min-width:180px !important;min-height:72px !important;padding:.52rem !important;}
+.vendors-map-vendor-chip .vendor-directory-logo,.vendors-map-vendor-chip img,.vendors-map-vendor-chip .avatar-circle{width:2.9rem !important;height:2.9rem !important;min-width:2.9rem !important;min-height:2.9rem !important;flex:0 0 2.9rem !important;border-radius:50% !important;}
+.vendors-map-vendor-chip-copy{min-width:0 !important;flex:1 1 auto !important;}
+.vendors-map-vendor-chip-copy strong{font-size:.78rem !important;}
+.vendors-map-vendor-chip-copy small{font-size:.63rem !important;}
+.vendors-map-vendor-chip-action{border:1px solid color-mix(in srgb,var(--primary) 38%,var(--border)) !important;border-radius:999px !important;padding:.25rem .38rem !important;background:color-mix(in srgb,var(--primary) 8%,transparent) !important;white-space:nowrap !important;font-size:.61rem !important;}
+
+/* CHAT — fixed WhatsApp-style header + obvious drag feedback */
+.chat-page-wrap .chat-page-header{position:sticky !important;top:0 !important;z-index:80 !important;flex:0 0 auto !important;background:var(--bg) !important;}
+.chat-page-wrap .chat-messages{scroll-behavior:auto !important;}
+.chat-page-wrap .chat-bubble-wrap.chat-swipe-active .chat-bubble{will-change:transform !important;transition:none !important;}
+.chat-page-wrap .chat-bubble-wrap.chat-swipe-active::before{left:-2.2rem !important;width:1.72rem !important;height:1.72rem !important;box-shadow:0 4px 14px color-mix(in srgb,var(--primary) 18%,transparent) !important;}
+
+/* Notification folders */
+.notif-group-head{min-height:58px !important;}
+.notif-group-head .notif-group-avatar{width:2.1rem;height:2.1rem;flex:0 0 2.1rem;border-radius:50%;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary);font-weight:800;}
+.notif-group-head .notif-group-copy strong{font-size:.88rem !important;}
+.notif-group-head .notif-group-count{font-size:.68rem !important;color:var(--text-muted) !important;margin-left:.2rem !important;}
+.notif-group-body{max-height:45vh !important;overflow-y:auto !important;}
+.notif-group-message{padding:.62rem .15rem !important;}
+</style>
+
+<script id="levromart-final-2026-09-09-ui-polish-v2-js">
+(function(){
+  "use strict";
+
+  /* ---------------------------------------------------------------
+     Uniform vendor avatars/cards. Vendor imagery follows the user's actual
+     account avatar (synced server-side) and initials use the same large circle.
+     --------------------------------------------------------------- */
+  const oldVendorCardHtml = window.vendorCardHtml;
+  window.vendorCardHtml = function(v){
+    const avatar = v?.logo_url || v?.user_avatar_url || "";
+    const name = v?.business_name || "Vendor";
+    const avatarHtml = avatar
+      ? `<img src="${esc(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name)}','3.1rem','vendor-directory-logo','${esc(name)}')))" />`
+      : `<span class="avatar-circle vendor-directory-logo" aria-label="${esc(name)}">${esc(initials(name))}</span>`;
+    return `<div class="vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || '')}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || '')}'});}">
+      ${avatarHtml}
+      <div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
+        <strong class="vendor-directory-name">${esc(name)}</strong>
+        <p class="muted vendor-directory-city" style="margin:.15rem 0;">${esc(v?.city || 'Lagos')}</p>
+        <div class="vendor-card-footer">
+          <span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>
+          <span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} (${Number(v?.review_count ?? 0)})</span>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  /* ---------------------------------------------------------------
+     Vendor rail: clicking the card opens the storefront; only the action
+     button focuses/traces the vendor on the map.
+     --------------------------------------------------------------- */
+  function vendorRailHtmlV2(){
+    const all=Array.isArray(window.__filteredVendors)?window.__filteredVendors:[];
+    if(!all.length) return '<div class="vendors-map-vendor-rail-head"><strong>Vendors</strong></div><div class="muted" style="padding:.2rem 0 .7rem;font-size:.8rem;">No vendors match these filters.</div>';
+    const chips=all.slice(0,6).map(v=>{
+      const avatar=v?.logo_url
+        ? `<img class="vendor-directory-logo" src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(v.business_name||'Vendor')}','2.9rem','vendor-directory-logo','${esc(v.business_name||'Vendor')}')))" />`
+        : `<span class="avatar-circle vendor-directory-logo">${esc(initials(v.business_name||'Vendor'))}</span>`;
+      const dist=(buyerLocation&&v.lat!=null&&v.lng!=null)?formatDistanceKm(haversineKm(buyerLocation.lat,buyerLocation.lng,v.lat,v.lng)):'';
+      return `<div class="vendors-map-vendor-chip" role="button" tabindex="0" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v.id)}'});}">
+        ${avatar}
+        <span class="vendors-map-vendor-chip-copy"><strong>${esc(v.business_name||'Vendor')}</strong><small>${esc(v.city||'Online')}${dist?' · '+esc(dist):''}</small></span>
+        <button type="button" class="vendors-map-vendor-chip-action" onclick="event.preventDefault();event.stopPropagation();focusVendorOnMap('${esc(v.id)}')">View</button>
+      </div>`;
+    }).join('');
+    return `<div class="vendors-map-vendor-rail-head"><strong>Vendors</strong>${all.length>6?`<button type="button" onclick="switchVendorsView('list')">See all →</button>`:''}</div><div class="vendors-map-vendor-rail">${chips}</div>`;
+  }
+  if(typeof window.renderVendorMapRail==='function') window.renderVendorMapRail=function(){const wrap=byId('vendorsMapVendorRail');if(wrap)wrap.innerHTML=vendorRailHtmlV2();};
+
+  /* ---------------------------------------------------------------
+     Road route trace from buyer to vendor, accent-coloured and animated.
+     OSRM gives road geometry; straight-line fallback keeps the feature usable.
+     --------------------------------------------------------------- */
+  let routeLayer=null;
+  let routeTimer=null;
+  let routeEndpoints=[];
+  function clearVendorRoute(){
+    if(routeTimer){clearInterval(routeTimer);routeTimer=null;}
+    if(vendorsMap){
+      if(routeLayer){try{vendorsMap.removeLayer(routeLayer);}catch(_){} }
+      routeEndpoints.forEach(m=>{try{vendorsMap.removeLayer(m);}catch(_){}});
+    }
+    routeLayer=null;
+    routeEndpoints=[];
+  }
+  async function traceVendorRoute(vendor){
+    if(!vendorsMap||!vendor||vendor.lat==null||vendor.lng==null) return;
+    clearVendorRoute();
+    let loc=buyerLocation;
+    if(!loc){
+      try{loc=await requestCustomerLocation(true);}catch(_){loc=null;}
+    }
+    if(!loc){showToast('Allow your location to trace the route to this vendor.','info');return;}
+    const color=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()||'#10b981';
+    let coords=[[Number(loc.lat),Number(loc.lng)],[Number(vendor.lat),Number(vendor.lng)]];
+    try{
+      const url=`https://router.project-osrm.org/route/v1/driving/${encodeURIComponent(loc.lng)},${encodeURIComponent(loc.lat)};${encodeURIComponent(vendor.lng)},${encodeURIComponent(vendor.lat)}?overview=full&geometries=geojson`;
+      const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),5500);
+      const res=await fetch(url,{signal:controller.signal});clearTimeout(timer);
+      const json=await res.json();
+      const route=json?.routes?.[0]?.geometry?.coordinates;
+      if(Array.isArray(route)&&route.length>1) coords=route.map(c=>[Number(c[1]),Number(c[0])]);
+    }catch(_){/* straight-line fallback */}
+    const finalLine=window.L.polyline([], {color,weight:4,opacity:.96,lineCap:'round',lineJoin:'round'}).addTo(vendorsMap);
+    finalLine.setStyle({dashArray:'10 7'});
+    routeLayer=finalLine;
+    routeEndpoints=[];
+    const start=window.L.circleMarker(coords[0],{radius:7,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(vendorsMap);
+    const end=window.L.circleMarker(coords[coords.length-1],{radius:8,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(vendorsMap);
+    routeEndpoints=[start,end];
+    let i=1;
+    routeTimer=setInterval(()=>{
+      const n=Math.min(coords.length,i=Math.max(i+Math.ceil(coords.length/22),i));
+      finalLine.setLatLngs(coords.slice(0,n));
+      if(n>=coords.length){clearInterval(routeTimer);routeTimer=null;}
+    },35);
+    try{vendorsMap.fitBounds(window.L.latLngBounds(coords),{padding:[36,36],animate:true,duration:.6,maxZoom:16});}catch(_){}
+  }
+
+  const oldFocus=window.focusVendorOnMap;
+  window.focusVendorOnMap=async function(vendorId){
+    const list=Array.isArray(window.__filteredVendors)?window.__filteredVendors:[];
+    const target=list.find(v=>String(v.id)===String(vendorId));
+    if(!target||target.lat==null||target.lng==null){showToast('This vendor has not added a map location yet.','info');return;}
+    vendorsViewMode='map';
+    switchVendorsView('map');
+    const focus=async()=>{
+      if(!vendorsMap)return;
+      vendorsMap.setView([Number(target.lat),Number(target.lng)],Math.max(vendorsMap.getZoom(),15),{animate:true,duration:.45});
+      const geo=(window.__filteredVendors||[]).filter(v=>v.lat!=null&&v.lng!=null);
+      const idx=geo.findIndex(v=>String(v.id)===String(target.id));
+      const offset=buyerLocation?1:0;
+      const m=idx>=0?vendorsMapMarkers[idx+offset]:null;
+      if(m?.openPopup)m.openPopup();
+      await traceVendorRoute(target);
+    };
+    requestAnimationFrame(()=>requestAnimationFrame(()=>focus()));
+    setTimeout(()=>focus(),220);
+  };
+
+  /* Clear a route when filters change or the page is left. */
+  const originalSwitch=window.switchVendorsView;
+  window.switchVendorsView=function(mode){
+    if(mode!=='map') clearVendorRoute();
+    return originalSwitch.apply(this,arguments);
+  };
+
+  /* ---------------------------------------------------------------
+     Message swipe: true finger-drag, low threshold, correct WhatsApp
+     direction, immediate reply target + focus. Prevent duplicate drag binding.
+     --------------------------------------------------------------- */
+  window.setupMessageSwipeReply=function(root){
+    const el=root||document;
+    el.querySelectorAll?.('.chat-bubble-wrap[data-msg-wrap-id]').forEach(wrap=>{
+      const bubble=wrap.querySelector('.chat-bubble[data-msg-id]');
+      if(!bubble||bubble.dataset.v2SwipeBound==='1'||bubble.classList.contains('deleted'))return;
+      bubble.dataset.v2SwipeBound='1';
+      let sx=0,sy=0,dx=0,dy=0,tracking=false,horizontal=false,armed=false,pointerId=null;
+      const mine=bubble.classList.contains('mine');
+      const reset=()=>{tracking=false;horizontal=false;dx=dy=0;armed=false;pointerId=null;wrap.classList.remove('chat-swipe-active');bubble.style.transform='';};
+      bubble.addEventListener('pointerdown',e=>{
+        if(chatSelectionMode||(e.pointerType==='mouse'&&e.button!==0))return;
+        sx=e.clientX||0;sy=e.clientY||0;dx=dy=0;tracking=true;horizontal=false;armed=false;pointerId=e.pointerId;
+        try{bubble.setPointerCapture(e.pointerId);}catch(_){}
+      },{passive:true});
+      bubble.addEventListener('pointermove',e=>{
+        if(!tracking)return;
+        dx=(e.clientX||0)-sx;dy=(e.clientY||0)-sy;
+        if(!horizontal){
+          if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)*1.15){reset();return;}
+          if(Math.abs(dx)<4)return;
+          horizontal=Math.abs(dx)>=Math.abs(dy)*0.62;
+          if(!horizontal)return;
+          wrap.classList.add('chat-swipe-active');
+        }
+        const allowed=mine?dx<0:dx>0;
+        if(!allowed){bubble.style.transform='translate3d(0,0,0)';return;}
+        e.preventDefault();
+        const shift=mine?Math.max(-96,Math.min(0,dx)):Math.min(96,Math.max(0,dx));
+        bubble.style.transform=`translate3d(${shift}px,0,0)`;
+        if(!armed&&Math.abs(shift)>=20){armed=true;if(navigator.vibrate)navigator.vibrate(8);}
+      },{passive:false});
+      const finish=()=>{
+        if(!tracking)return;
+        const allowed=mine?dx<0:dx>0;
+        const shouldReply=horizontal&&allowed&&Math.abs(dx)>=20;
+        const id=bubble.dataset.msgId;
+        reset();
+        if(shouldReply&&id){
+          wrap.classList.add('chat-swipe-reply');
+          setChatReplyTarget(id);
+          setTimeout(()=>wrap.classList.remove('chat-swipe-reply'),220);
+          requestAnimationFrame(()=>{try{byId('chatInput')?.focus({preventScroll:true});}catch(_){} });
+        }
+      };
+      bubble.addEventListener('pointerup',finish,{passive:true});
+      bubble.addEventListener('pointercancel',reset,{passive:true});
+      bubble.addEventListener('lostpointercapture',finish,{passive:true});
+    });
+  };
+
+  /* ---------------------------------------------------------------
+     Notification folders: one expandable folder per sender/conversation,
+     all messages from that person together. Clicking the folder marks every
+     unread message in it as read; individual entries open the conversation.
+     --------------------------------------------------------------- */
+  const oldNotifRender=window.renderNotifPanel;
+  if(typeof oldNotifRender==='function'&&!window.__levroNotifFoldersV2){
+    window.__levroNotifFoldersV2=true;
+    window.renderNotifPanel=async function(){
+      const result=await oldNotifRender.apply(this,arguments);
+      if(typeof notifSelectMode!=='undefined'&&notifSelectMode)return result;
+      const panel=byId('notifPanel');const list=panel?.querySelector('.notif-list-scroll');if(!list)return result;
+      const rows=[...list.querySelectorAll(':scope > .notif-item-wrap')];
+      const groups=new Map();
+      for(const row of rows){
+        const item=row.querySelector('.notif-item');if(!item)continue;
+        let params={};try{params=JSON.parse(item.dataset.params||'{}')}catch(_){}
+        if(item.dataset.view!=='messages'||!params.conversationId)continue;
+        const key=String(params.conversationId);
+        if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row);
+      }
+      for(const [key,groupRows] of groups){
+        if(groupRows.length<2)continue;
+        const firstItem=groupRows[0].querySelector('.notif-item');
+        const sender=firstItem?.dataset.actorName||firstItem?.querySelector('.notif-copy strong')?.textContent||'Messages';
+        const avatar=firstItem?.dataset.actorAvatar||'';
+        const unread=groupRows.filter(r=>r.querySelector('.notif-item')?.classList.contains('unread')).length;
+        const group=document.createElement('div');group.className='notif-group';group.dataset.conversationId=key;
+        const head=document.createElement('button');head.type='button';head.className='notif-group-head';
+        const avatarHtml=avatar?`<img class="notif-group-avatar" src="${esc(avatar)}" alt="" />`:`<span class="notif-group-avatar">${esc(initials(sender))}</span>`;
+        const latest=groupRows[0].querySelector('.notif-copy')?.querySelectorAll('.muted')?.[0]?.textContent||'New messages';
+        head.innerHTML=`${avatarHtml}<span class="notif-group-copy"><strong>${esc(sender)} <span class="notif-group-count">${groupRows.length} messages${unread?` · ${unread} unread`:''}</span></strong><span class="muted">${esc(latest)}</span></span><i class="fa-solid fa-chevron-down notif-group-chevron"></i>`;
+        const body=document.createElement('div');body.className='notif-group-body';
+        groupRows.forEach(row=>{
+          const item=row.querySelector('.notif-item');if(!item)return;
+          const copy=item.querySelector('.notif-copy');
+          const child=document.createElement('div');child.className='notif-group-message';
+          const title=copy?.querySelector('strong')?.textContent||'Message';
+          const times=copy?.querySelectorAll('.muted');
+          child.innerHTML=`<strong>${esc(title)}</strong><span class="muted">${esc(times?.[0]?.textContent||'')}</span><span class="muted">${esc(times?.[1]?.textContent||'')}</span>`;
+          child.addEventListener('click',()=>{const id=item.dataset.id;if(id)markSingleNotifRead(id);closeAllPanels();navigate('messages',{conversationId:key});});
+          body.appendChild(child);
+        });
+        head.addEventListener('click',async()=>{
+          const opening=!group.classList.contains('open');group.classList.toggle('open');
+          if(opening){
+            const ids=groupRows.map(r=>r.querySelector('.notif-item')?.dataset.id).filter(Boolean);
+            if(ids.length)await sb.from('notifications').update({read:true}).in('id',ids);
+            groupRows.forEach(r=>r.querySelector('.notif-item')?.classList.remove('unread'));
+            const count=head.querySelector('.notif-group-count');if(count)count.textContent=`${groupRows.length} messages`;
+          }
+        });
+        group.append(head,body);groupRows[0].replaceWith(group);groupRows.slice(1).forEach(r=>r.remove());
+      }
+      return result;
+    };
+  }
+
+  /* ---------------------------------------------------------------
+     Smarter local marketplace fallback for Levi. When the Gemini endpoint
+     returns a generic answer, search the real marketplace and suggest concrete
+     products/vendors instead of repeating the capability boilerplate.
+     --------------------------------------------------------------- */
+  async function leviLiveMarketplaceFallback(text){
+    const q=leviNormaliseText(text);
+    if(!q)return null;
+    const stripped=q.replace(/\b(levi|please|help me|can you|could you|where can i|where do i|i want|i need|looking for|find me|show me|do you have|is there|are there)\b/g,' ').replace(/\s+/g,' ').trim();
+    if(stripped.length<2)return null;
+    try{
+      const {data:idRows}=await sb.rpc('search_product_ids',{p_query:stripped});
+      const ids=(idRows||[]).slice(0,10).map(r=>r.id).filter(Boolean);
+      let products=[];
+      if(ids.length){
+        const {data}=await sb.from('products').select('id,name,description,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,vendor:vendors(id,business_name,avg_rating,review_count,city)').eq('status','active').in('id',ids);
+        products=(data||[]).sort((a,b)=>ids.indexOf(a.id)-ids.indexOf(b.id));
+      }
+      if(!products.length){
+        const words=stripped.split(/\s+/).filter(w=>w.length>2).slice(0,3);
+        if(words.length){
+          const ors=words.map(w=>`name.ilike.%${w}%,description.ilike.%${w}%`).join(',');
+          const {data}=await sb.from('products').select('id,name,description,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,vendor:vendors(id,business_name,avg_rating,review_count,city)').eq('status','active').or(ors).limit(10);
+          products=data||[];
+        }
+      }
+      if(products.length){
+        const top=products.slice(0,3);
+        const lines=top.map(p=>{
+          const price=p.discount_price!=null&&Number(p.discount_price)>0&&Number(p.discount_price)<Number(p.sale_price)?`${naira(p.discount_price)} (was ${naira(p.sale_price)})`:p.sale_price!=null?naira(p.sale_price):p.rental_rate!=null?`${naira(p.rental_rate)}/${p.rental_rate_unit||'day'}`:'price on request';
+          return `${p.name} — ${price} from ${p.vendor?.business_name||'a vendor'}`;
+        });
+        const first=top[0];
+        if(top.length===1)navigate('productDetail',{productId:first.id});
+        return `I found a close match: ${lines.join('; ')}. ${top.length>1?'I can narrow these down further if you tell me what matters most.':''}`;
+      }
+      const {data:vendors}=await sb.from('vendors').select('id,business_name,city,avg_rating,review_count').eq('verification_status','verified').eq('is_active',true).ilike('business_name',`%${stripped}%`).limit(6);
+      if(vendors?.length){
+        return `I found ${vendors.length===1?'a vendor':'vendors'} matching that: ${vendors.slice(0,3).map(v=>`${v.business_name} (${Number(v.avg_rating||0).toFixed(1)}★)`).join(', ')}. I can open the vendor directory for you.`;
+      }
+    }catch(e){console.warn('[Levi] live fallback search failed',e);}
+    return null;
+  }
+  const priorFetch=window.fetchLeviReply;
+  if(typeof priorFetch==='function'&&!window.__levroLeviLiveFallbackV2){
+    window.__levroLeviLiveFallbackV2=true;
+    window.fetchLeviReply=async function(payload){
+      const out=await priorFetch.apply(this,arguments);
+      if(!isGenericLeviReply(out?.reply))return out;
+      const latest=[...(payload?.messages||[])].reverse().find(m=>m?.role==='user')?.content||'';
+      const live=await leviLiveMarketplaceFallback(latest);
+      if(live)return {...out,reply:live};
+      return out;
+    };
+  }
+})();
+</script>
+
+
+<style id="levromart-final-ui-polish-v3">
+@media (max-width: 900px){
+  #app .grid:has(> .product-card-wrap){
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:.62rem !important;
+    align-items:stretch !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap{
+    aspect-ratio:1 / 1 !important;
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    align-self:stretch !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
+    position:relative !important;
+    box-sizing:border-box !important;
+    width:100% !important;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:none !important;
+    aspect-ratio:auto !important;
+    padding:.5rem !important;
+    overflow:hidden !important;
+    display:grid !important;
+    grid-template-rows:36% auto auto auto auto 1fr !important;
+    align-content:stretch !important;
+    gap:0 !important;
+    border-radius:14px !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img{
+    width:100% !important;height:100% !important;min-height:0 !important;flex:none !important;
+    aspect-ratio:auto !important;margin:0 !important;border-radius:10px !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card h4{
+    min-width:0 !important;margin:.34rem 0 .1rem !important;font-size:.78rem !important;line-height:1.12 !important;
+    display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > .flex{
+    min-width:0 !important;min-height:1.05rem !important;margin:0 !important;gap:.2rem !important;align-items:center !important;overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > .flex > .flex{
+    min-width:0 !important;max-width:62% !important;overflow:hidden !important;justify-content:flex-end !important;white-space:nowrap !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > .flex .badge{
+    flex:0 0 auto !important;font-size:.58rem !important;line-height:1 !important;padding:.17rem .3rem !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > .flex > .flex img{
+    width:1rem !important;height:1rem !important;min-width:1rem !important;min-height:1rem !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-card-price-block{
+    min-width:0 !important;margin:.14rem 0 !important;font-size:.69rem !important;line-height:1.18 !important;overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-card-price-block > span{
+    display:block !important;min-width:0 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-old-price{
+    font-size:.67rem !important;margin-right:.12rem !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-current-price{
+    font-size:.76rem !important;font-weight:800 !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > p.muted{
+    min-width:0 !important;margin:.08rem 0 0 !important;font-size:.6rem !important;line-height:1.12 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-delivery-summary{
+    min-width:0 !important;margin:.08rem 0 0 !important;padding-right:2.1rem !important;font-size:.59rem !important;line-height:1.12 !important;
+    display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .card-cart-btn,
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .card-service-btn{
+    position:absolute !important;right:.42rem !important;bottom:.42rem !important;width:1.95rem !important;height:1.95rem !important;
+    min-width:1.95rem !important;min-height:1.95rem !important;border-radius:50% !important;padding:0 !important;z-index:9 !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .own-listing-badge{
+    position:absolute !important;right:.35rem !important;bottom:.35rem !important;max-width:48% !important;font-size:.54rem !important;
+    white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;
+  }
+}
+.vendors-map-vendor-chip-action{position:relative !important;z-index:3 !important;}
+.chat-bubble-wrap[data-msg-wrap-id] .chat-bubble{touch-action:pan-y !important;transform-origin:center center !important;}
+.chat-bubble-wrap.chat-swipe-active .chat-bubble{box-shadow:0 5px 20px color-mix(in srgb,var(--primary) 18%,transparent) !important;}
+.chat-bubble-wrap.chat-swipe-active::before{opacity:1 !important;transform:translateY(-50%) scale(1) !important;}
+.chat-page-wrap{display:flex !important;flex-direction:column !important;min-height:0 !important;}
+.chat-page-wrap .chat-page-header{
+  position:sticky !important;top:0 !important;z-index:120 !important;flex:0 0 auto !important;background:var(--bg) !important;
+  backdrop-filter:blur(12px) !important;-webkit-backdrop-filter:blur(12px) !important;
+}
+.chat-page-wrap .chat-messages{flex:1 1 auto !important;min-height:0 !important;overflow-y:auto !important;overscroll-behavior:contain !important;}
+.notif-group{overflow:hidden !important;}
+.notif-group-body{display:none !important;}
+.notif-group.open .notif-group-body{display:block !important;}
+.notif-group-head{width:100% !important;text-align:left !important;display:flex !important;align-items:center !important;gap:.65rem !important;}
+.notif-group-head .notif-group-chevron{transition:transform .18s ease !important;}
+.notif-group.open .notif-group-chevron{transform:rotate(180deg) !important;}
+</style>
+
+<script id="levromart-final-ui-polish-v3-js">
+(function(){
+  "use strict";
+
+  function normalizeProductGrid(root){
+    const scope=root||document;
+    scope.querySelectorAll?.('.grid').forEach(grid=>{
+      if(!grid.querySelector(':scope > .product-card-wrap')) return;
+      grid.classList.add('levro-product-grid-square');
+      grid.querySelectorAll(':scope > .product-card-wrap').forEach(w=>{
+        w.classList.add('levro-square-product');
+        const card=w.querySelector(':scope > .card');
+        if(card) card.classList.add('levro-square-product-card');
+      });
+    });
+  }
+  normalizeProductGrid();
+
+  const originalSend=window.sendChatMessage;
+  if(typeof originalSend==='function'&&!window.__levroSendKeyboardV3){
+    window.__levroSendKeyboardV3=true;
+    window.sendChatMessage=async function(){
+      const input=byId('chatInput');
+      const keepOpen=!!input && document.activeElement===input;
+      const out=await originalSend.apply(this,arguments);
+      if(keepOpen&&input){
+        const refocus=()=>{try{input.focus({preventScroll:true});}catch(_){try{input.focus();}catch(__){}}};
+        requestAnimationFrame(refocus);setTimeout(refocus,40);setTimeout(refocus,160);
+      }
+      return out;
+    };
+  }
+
+  const oldMapRender=window.renderVendorsMap;
+  if(typeof oldMapRender==='function'&&!window.__levroMapRouteClearV3){
+    window.__levroMapRouteClearV3=true;
+    window.renderVendorsMap=function(){
+      if(typeof window.clearVendorRoute==='function'){try{window.clearVendorRoute();}catch(_){}}
+      return oldMapRender.apply(this,arguments);
+    };
+  }
+
+  window.__levroNormalizeProductGrid=normalizeProductGrid;
+  const app=byId('app');
+  if(app&&window.MutationObserver){
+    const mo=new MutationObserver(muts=>{
+      if(muts.some(m=>m.addedNodes&&m.addedNodes.length)) normalizeProductGrid(app);
+    });
+    mo.observe(app,{childList:true,subtree:true});
+  }
+})();
+</script>
+</body>
+</html>
