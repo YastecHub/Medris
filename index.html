@@ -14942,7 +14942,7 @@ function orderCategory(order) {
 }
 
 function isOrderPaid(o) {
-  return (o.payments || []).some((p) => (p.payment_type === "sale_price" || p.payment_type === "rental_fee") && p.status === "paid");
+  return (o.payments || []).some((p) => (String(p.payment_type || "").trim().toLowerCase() === "sale_price" || String(p.payment_type || "").trim().toLowerCase() === "rental_fee") && p.status === "paid");
 }
 
 // ---------- ORDER STATS (today/week/month/all-time counts by status) ----------
@@ -15346,8 +15346,8 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (!isCustomer && !isVendor && profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
 
   const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
-  const feePaid = order.payments.some((p) => p.payment_type === feeType && p.status === "paid");
-  const depositPaid = order.deposit_amount === 0 || order.payments.some((p) => p.payment_type === "deposit" && p.status === "paid");
+  const feePaid = order.payments.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
+  const depositPaid = order.deposit_amount === 0 || order.payments.some((p) => String(p.payment_type || "").trim().toLowerCase() === "deposit" && p.status === "paid");
   // Payment only opens up once the vendor has confirmed - paying at
   // "pending" meant a decline afterward left the customer waiting on a
   // refund for something that should never have been charged at all.
@@ -15417,9 +15417,41 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
-  if (order.payments.length > 0) {
+  // A payment type can have more than one database row because an online
+  // payment attempt may be created as pending before a vendor records the
+  // same fee as paid outside Paystack. The order UI should show the current
+  // payment state once, not expose every historical attempt as another
+  // "Sale price" line. A paid row always wins over pending attempts; when
+  // nothing is paid, show the newest pending attempt.
+  const displayPayments = (() => {
+    // A payment type represents one obligation on this order. Paystack can
+    // leave one or more pending attempts behind, while a vendor may later
+    // settle that same obligation manually. Never render those attempts as
+    // multiple "Sale price" lines. Normalize the type before grouping so
+    // legacy/case-variant rows cannot bypass the UI guard. A paid row always
+    // wins over pending attempts; if several paid rows somehow exist, show
+    // only the newest paid record.
+    const grouped = new Map();
+    for (const payment of (order.payments || [])) {
+      const key = String(payment.payment_type || "").trim().toLowerCase();
+      if (!key) continue;
+      const current = grouped.get(key);
+      const paymentTime = new Date(payment.paid_at || payment.created_at || 0).getTime();
+      const currentTime = current ? new Date(current.paid_at || current.created_at || 0).getTime() : -1;
+      const shouldReplace = !current
+        || (payment.status === "paid" && current.status !== "paid")
+        || (payment.status === current.status && paymentTime > currentTime);
+      if (shouldReplace) grouped.set(key, payment);
+    }
+    return Array.from(grouped.values());
+  })();
+  if (displayPayments.length > 0) {
     html += `<div class="card"><h3 style="margin-top:0;">Payments</h3>
-      ${order.payments.map((p, i) => `<div class="flex" style="justify-content:space-between;font-size:0.9rem;${i > 0 ? "border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.5rem;" : ""}"><span style="text-transform:capitalize;">${p.payment_type.replace("_", " ")}</span><span>${naira(p.amount)} · <span class="badge ${p.status === "paid" ? "success" : ""}">${p.status}</span></span></div>`).join("")}
+      ${displayPayments.map((p, i) => {
+        const paymentName = p.payment_type === "sale_price" ? "Sale price" : p.payment_type === "rental_fee" ? "Rental fee" : p.payment_type === "deposit" ? "Deposit" : String(p.payment_type || "Payment").replace(/_/g, " ");
+        const methodName = p.method === "cash" ? "Cash" : p.method === "transfer" ? "Bank transfer" : p.method === "card" ? "Card" : "";
+        return `<div class="flex" style="justify-content:space-between;font-size:0.9rem;${i > 0 ? "border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.5rem;" : ""}"><span>${esc(paymentName)}${p.status === "paid" && methodName ? `<small class="muted" style="display:block;font-size:0.75rem;margin-top:0.15rem;">${esc(methodName)}${p.provider_reference ? " · Paystack" : " · Recorded manually"}</small>` : ""}</span><span>${naira(p.amount)} · <span class="badge ${p.status === "paid" ? "success" : ""}">${esc(p.status)}</span></span></div>`;
+      }).join("")}
     </div>`;
   }
 
@@ -15440,15 +15472,15 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   }
 
   if (canRecordPayment) {
-    html += `<div class="card"><h3><i class="fa-solid fa-hand-holding-dollar"></i> Paid outside Paystack? ${infoPopoverHtml("recordPaymentInfo", "Record cash or bank transfer payments here. It marks this order paid and adds your commission to what you owe Levromart.")}</h3>
+    html += `<div class="card"><h3><i class="fa-solid fa-hand-holding-dollar"></i> Paid outside Paystack? ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It permanently settles that payment obligation as paid and prevents another paid record for the same fee.")}</h3>
       <div id="recordPaymentError" class="error-text hidden"></div>
       <label>Payment for</label>
-      <select id="rpType"><option value="${feeType}">${feeType === "sale_price" ? "Sale price" : "Rental fee"}</option><option value="deposit">Deposit</option></select>
+      <select id="rpType">${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Sale price" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Deposit</option>` : ""}</select>
       <label>Amount</label>
       <input type="number" id="rpAmount" value="${feePaid ? order.deposit_amount : order.total_amount}" />
       <label>Method</label>
       <select id="rpMethod"><option value="cash">Cash</option><option value="transfer">Transfer</option></select>
-      <button class="btn btn-sm" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check"></i> Mark as paid</button>
+      <button class="btn btn-sm" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> Mark as paid manually</button>
     </div>`;
   }
 
@@ -15512,7 +15544,7 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
     // where the order's marked handed_over/completed but no payment ever
     // actually came in.
     if (order.status === "confirmed") {
-      if (feePaid) buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','handed_over')">Mark handed over</button>`);
+      if (feePaid) buttons.push(`<button class="btn btn-sm" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-handshake"></i> Mark handed over</button>`);
       else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this can be marked handed over.</p>`);
     }
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
@@ -15520,7 +15552,7 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
   if (isCustomer && order.status === "confirmed") {
     const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
-    const paidRow = order.payments.find((p) => p.payment_type === feeType && p.status === "paid");
+    const paidRow = order.payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
     const hoursSincePaid = paidRow ? (Date.now() - new Date(paidRow.paid_at || paidRow.created_at).getTime()) / 3600000 : 0;
     if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) {
       buttons.push(`<button class="btn btn-sm" style="background:#6b7280;" onclick="buyerCancelOrder('${order.id}',${feePaid ? "true" : "false"})">Cancel order</button>`);
@@ -15602,6 +15634,19 @@ async function updateOrderStatus(orderId, newStatus) {
   await navigate("orderDetail", { orderId });
 }
 
+async function confirmHandOverOrder(orderId) {
+  const confirmed = await showConfirmDialog(
+    "Confirm that you have physically handed this order to the customer. This changes the order to Handed over and tells the customer to confirm receipt. Only continue if the handover has actually happened.",
+    { title: "Mark as handed over", okLabel: "Yes, mark handed over" }
+  );
+  if (!confirmed) return;
+  showToast("Updating order…", "info");
+  const { error } = await sb.rpc("transition_order_status", { p_order_id: orderId, p_new_status: "handed_over" });
+  if (error) { showToast(error.message, "error"); return; }
+  showToast("Order marked as handed over.", "success");
+  await navigate("orderDetail", { orderId });
+}
+
 // Self-serve cancel for a confirmed-but-not-yet-handed-over order. Safe to
 // automate because nothing's been handed over yet; if the customer already
 // paid, this also triggers an immediate Paystack refund. Once the vendor
@@ -15668,8 +15713,8 @@ async function submitNotReceived() {
 // it goes through a serverless endpoint instead of a plain RPC call.
 async function confirmReceiveOrder(orderId) {
   if (!(await showConfirmDialog(
-    "Confirm you've received this order? If payment is being held, it'll be released to the vendor right away.",
-    { title: "Confirm receipt", okLabel: "Confirm" }
+    "Confirm that you have physically received this order. This completes the order and, where applicable, releases the held payment to the vendor. Only continue after you have actually received it.",
+    { title: "Confirm I've received this", okLabel: "Yes, I've received it" }
   ))) return;
   showToast("Confirming…", "info");
   try {
@@ -15764,14 +15809,30 @@ async function payOnline(orderId) {
 async function recordOfflinePayment(orderId) {
   const errorEl = byId("recordPaymentError");
   errorEl.classList.add("hidden");
+  const paymentType = byId("rpType")?.value;
+  const amount = Number(byId("rpAmount")?.value);
+  const method = byId("rpMethod")?.value;
+  if (!paymentType || !Number.isFinite(amount) || amount <= 0 || !method) {
+    errorEl.textContent = "Enter a valid payment amount and method.";
+    errorEl.classList.remove("hidden");
+    return;
+  }
+  const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : "deposit";
+  const methodLabel = method === "cash" ? "cash" : "bank transfer";
+  const confirmed = await showConfirmDialog(
+    `Confirm that you actually received ${naira(amount)} for the ${paymentLabel} by ${methodLabel}. This records the payment as PAID outside Paystack and permanently settles this payment obligation. If it is already paid, no second paid payment will be created.`,
+    { title: "Mark as paid manually", okLabel: "Yes, mark paid" }
+  );
+  if (!confirmed) return;
   const { error } = await sb.rpc("record_offline_payment", {
     p_order_id: orderId,
-    p_payment_type: byId("rpType").value,
-    p_amount: Number(byId("rpAmount").value),
-    p_method: byId("rpMethod").value,
+    p_payment_type: paymentType,
+    p_amount: amount,
+    p_method: method,
   });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
-  navigate("orderDetail", { orderId });
+  showToast("Payment recorded as paid.", "success");
+  await navigate("orderDetail", { orderId });
 }
 
 let vendorReviewModalOrderId = null;
