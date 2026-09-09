@@ -8601,7 +8601,15 @@ async function saveAvatarCrop(){
     const url=`${pub.publicUrl}?t=${Date.now()}`;
     const {error}=await sb.from('users').update({avatar_url:url}).eq('id',session.user.id);
     if(error){showToast(error.message,'error');return;}
-    profile.avatar_url=url; updateAuthUI(); closeAvatarCropModal(); showToast('Profile photo updated.','success');
+    profile.avatar_url=url;
+    // Keep a vendor's marketplace identity tied to the same profile photo.
+    // The vendor logo is the public storefront avatar, so changing the main
+    // profile photo updates it too instead of leaving stale vendor imagery.
+    if (vendor?.id) {
+      const { error: vendorLogoError } = await sb.from('vendors').update({ logo_url:url }).eq('id', vendor.id);
+      if (!vendorLogoError) vendor.logo_url = url;
+    }
+    updateAuthUI(); closeAvatarCropModal(); showToast('Profile photo updated.','success');
   },'image/jpeg',0.9);
 }
 
@@ -10201,7 +10209,7 @@ function productCardHtml(p) {
       </div>
       ${p.is_service ? "" : `<p class="product-availability">Available: ${p.quantity_available} · ${esc((p.condition || "").replace("-", " "))}</p>`}
       <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
-      ${actionHtml}
+      <div class="product-card-action-row">${actionHtml}</div>
     </div>
   </div>`;
 }
@@ -21840,6 +21848,399 @@ window.renderVendorMapRail = function(){
       window.setupMessageSwipeReply(root);
     };
   }
+})();
+</script>
+
+
+<!-- LEVROMART FINAL QA / UX OVERRIDES — 2026-09-09 -->
+<style id="levromart-final-qa-20260909">
+/* PRODUCT CARDS — restore the pre-square card length exactly: two columns,
+   natural content height, compact 6.5rem image. Delivery remains visible and
+   the service/cart action gets its own row so it can never cover text. */
+@media (max-width:640px){
+  #app .grid:has(> .product-card-wrap){
+    grid-template-columns:repeat(2,1fr) !important;
+    gap:.6rem !important;
+    align-items:stretch !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap{
+    aspect-ratio:auto !important;
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    align-self:stretch !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    padding:.6rem !important;
+    padding-bottom:2.85rem !important;
+    display:flex !important;
+    flex-direction:column !important;
+    gap:0 !important;
+    overflow:hidden !important;
+    border-radius:.8rem !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img{
+    width:100% !important;
+    height:6.5rem !important;
+    min-height:6.5rem !important;
+    max-height:6.5rem !important;
+    aspect-ratio:auto !important;
+    flex:0 0 6.5rem !important;
+    margin:0 !important;
+    border-radius:.4rem !important;
+    overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img img{
+    width:100% !important;height:100% !important;object-fit:cover !important;display:block !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card h4{
+    font-size:.8rem !important;line-height:1.25 !important;margin:.45rem 0 .15rem !important;
+    min-height:0 !important;max-height:2.5em !important;display:-webkit-box !important;
+    -webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-vendor-row{
+    min-height:1.15rem !important;display:flex !important;align-items:center !important;
+    justify-content:space-between !important;gap:.25rem !important;overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-vendor{
+    min-width:0 !important;max-width:62% !important;white-space:nowrap !important;
+    overflow:hidden !important;text-overflow:ellipsis !important;font-size:.64rem !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-vendor img,
+  #app .grid:has(> .product-card-wrap) .product-vendor-initial{
+    width:1.05rem !important;height:1.05rem !important;min-width:1.05rem !important;
+    border-radius:50% !important;object-fit:cover !important;display:inline-flex !important;
+    align-items:center !important;justify-content:center !important;font-size:.46rem !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-price-block{
+    min-height:0 !important;margin:.3rem 0 .2rem !important;font-size:.78rem !important;
+    line-height:1.2 !important;overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-price-block > span{
+    display:block !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-old-price{font-size:.72rem !important;margin-right:.15rem !important;}
+  #app .grid:has(> .product-card-wrap) .product-current-price{font-size:.82rem !important;font-weight:800 !important;color:var(--primary) !important;}
+  #app .grid:has(> .product-card-wrap) .product-availability,
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card > p.muted{
+    font-size:.66rem !important;line-height:1.2 !important;margin:.2rem 0 0 !important;
+    white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-delivery-wrap{
+    min-width:0 !important;min-height:1.65rem !important;margin:.18rem 0 0 !important;
+    padding-right:0 !important;overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-delivery-summary{
+    margin:0 !important;padding:0 !important;font-size:.64rem !important;line-height:1.2 !important;
+    display:-webkit-box !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-action-row{
+    display:flex !important;align-items:center !important;justify-content:flex-end !important;
+    min-height:2rem !important;margin-top:.35rem !important;position:relative !important;
+  }
+  #app .grid:has(> .product-card-wrap) .card-cart-btn,
+  #app .grid:has(> .product-card-wrap) .card-service-btn{
+    position:static !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;
+    width:2rem !important;height:2rem !important;min-width:2rem !important;min-height:2rem !important;
+    margin:0 !important;border-radius:50% !important;flex:0 0 2rem !important;z-index:2 !important;
+  }
+  #app .grid:has(> .product-card-wrap) .card-service-btn{pointer-events:none !important;}
+  #app .grid:has(> .product-card-wrap) .own-listing-badge{margin:0 !important;max-width:72% !important;}
+}
+
+/* HOMEPAGE VENDOR AVATARS — one large, consistent circle, including vendors
+   with no uploaded picture. */
+.vendor-home-avatar,
+.vendors-map-vendor-chip .vendor-directory-logo,
+.vendors-map-vendor-chip .avatar-circle{
+  width:3rem !important;height:3rem !important;min-width:3rem !important;min-height:3rem !important;
+  flex:0 0 3rem !important;border-radius:50% !important;display:inline-flex !important;
+  align-items:center !important;justify-content:center !important;object-fit:cover !important;
+  overflow:hidden !important;font-size:1.05rem !important;font-weight:800 !important;
+}
+
+/* MAP VENDOR RAIL — clicking the chip opens the storefront; clicking View on
+   map focuses the exact marker and starts the route trace. */
+.vendors-map-vendor-chip{position:relative !important;overflow:hidden !important;}
+.vendors-map-vendor-chip-action{position:relative !important;z-index:4 !important;white-space:nowrap !important;}
+
+/* Animated route: the line continuously flows and gently pulses instead of
+   drawing once and becoming visually dead. The actual stroke colour is still
+   the user's current accent colour, assigned by JS. */
+.levro-vendor-route-path{
+  stroke-dasharray:14 10 !important;
+  animation:levroRouteFlow 1.15s linear infinite, levroRoutePulse 1.8s ease-in-out infinite !important;
+  transform-box:fill-box !important;
+  transform-origin:center !important;
+}
+@keyframes levroRouteFlow{to{stroke-dashoffset:-48px;}}
+@keyframes levroRoutePulse{0%,100%{opacity:.78;stroke-width:4;}50%{opacity:1;stroke-width:5;}}
+@media(prefers-reduced-motion:reduce){.levro-vendor-route-path{animation:none !important;}}
+
+/* PACKAGE CARDS — restore the original longer package-card proportions; the
+   redundant View package button is still absent because the card itself opens. */
+.package-recommendation-strip > .package-listing-card,
+.package-recommendation-strip > .card{
+  flex:0 0 270px !important;width:270px !important;min-width:270px !important;max-width:270px !important;
+}
+.package-recommendation-strip .package-listing-card,
+.package-recommendation-strip .package-card{min-height:330px !important;height:auto !important;max-height:none !important;}
+@media(max-width:720px){
+  .package-recommendation-strip > .package-listing-card,
+  .package-recommendation-strip > .card{flex-basis:260px !important;width:260px !important;min-width:260px !important;}
+  .package-recommendation-strip .package-listing-card,
+  .package-recommendation-strip .package-card{min-height:330px !important;}
+}
+
+/* CHAT — only the message list scrolls; header and composer stay anchored like
+   WhatsApp, including while the software keyboard is open. */
+body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
+.chat-page-wrap{height:100dvh !important;max-height:100dvh !important;overflow:hidden !important;display:flex !important;flex-direction:column !important;}
+.chat-page-wrap .chat-page-header{position:sticky !important;top:0 !important;z-index:1000 !important;flex:0 0 auto !important;}
+.chat-page-wrap .chat-thread{flex:1 1 auto !important;min-height:0 !important;overflow:hidden !important;display:flex !important;flex-direction:column !important;}
+.chat-page-wrap .chat-messages{flex:1 1 auto !important;min-height:0 !important;overflow-y:auto !important;overflow-x:hidden !important;-webkit-overflow-scrolling:touch !important;overscroll-behavior:contain !important;}
+.chat-page-wrap .chat-input-row{flex:0 0 auto !important;}
+
+/* The service marker is no longer allowed to sit on top of delivery text. */
+.product-card-action-row .card-service-btn,.product-card-action-row .card-cart-btn{position:static !important;}
+
+/* No stale notification-folder UI can survive a re-render. */
+.notif-message-summary{cursor:pointer !important;}
+</style>
+
+<script id="levromart-final-qa-20260909-js">
+(function(){
+  "use strict";
+
+  /* ---------------------------------------------------------------
+     MAP ROUTE — continuous accent-coloured animated trace.
+     --------------------------------------------------------------- */
+  const oldTrace = window.traceVendorRoute;
+  if(typeof oldTrace === "function" && !window.__levroAnimatedRouteFinal){
+    window.__levroAnimatedRouteFinal = true;
+    window.traceVendorRoute = async function(vendor){
+      await oldTrace.apply(this, arguments);
+      try{
+        setTimeout(()=>{
+          document.querySelectorAll('#vendorsMap .leaflet-overlay-pane path').forEach(path=>path.classList.add('levro-vendor-route-path'));
+        },60);
+      }catch(_){}
+    };
+  }
+
+  /* ---------------------------------------------------------------
+     CHAT SWIPE — one clean recogniser only. The older layered wrappers were
+     able to attach multiple pointer handlers to one bubble, which is exactly
+     the kind of competing gesture handling that makes a WhatsApp-style drag
+     feel sticky. Replace the interaction dispatcher so only this recogniser
+     is attached to fresh message DOM.
+     --------------------------------------------------------------- */
+  window.setupMessageSwipeReply = function(root){
+    const scope=root||document;
+    scope.querySelectorAll?.('.chat-bubble-wrap[data-msg-wrap-id]').forEach(wrap=>{
+      const bubble=wrap.querySelector('.chat-bubble[data-msg-id]');
+      if(!bubble || bubble.classList.contains('deleted') || bubble.dataset.finalSwipeBound==='1') return;
+      bubble.dataset.finalSwipeBound='1';
+      const mine=bubble.classList.contains('mine');
+      let tracking=false,horizontal=false,sx=0,sy=0,dx=0,dy=0,pointerId=null;
+      const reset=()=>{
+        tracking=false;horizontal=false;pointerId=null;dx=dy=0;
+        wrap.classList.remove('chat-swipe-active');
+        bubble.style.transform='';
+      };
+      bubble.addEventListener('pointerdown',e=>{
+        if(chatSelectionMode || (e.pointerType==='mouse' && e.button!==0)) return;
+        sx=e.clientX;sy=e.clientY;dx=dy=0;tracking=true;horizontal=false;pointerId=e.pointerId;
+        try{bubble.setPointerCapture(e.pointerId);}catch(_){}
+      },{passive:true});
+      bubble.addEventListener('pointermove',e=>{
+        if(!tracking || (pointerId!==null && e.pointerId!==pointerId)) return;
+        dx=e.clientX-sx;dy=e.clientY-sy;
+        if(!horizontal){
+          if(Math.abs(dy)>Math.abs(dx)*1.25 && Math.abs(dy)>7){reset();return;}
+          if(Math.abs(dx)<3)return;
+          if(Math.abs(dx)<=Math.abs(dy)*.62)return;
+          horizontal=true;wrap.classList.add('chat-swipe-active');
+        }
+        const allowed=mine?dx<0:dx>0;
+        if(!allowed){bubble.style.transform='translate3d(0,0,0)';return;}
+        e.preventDefault();
+        const shift=mine?Math.max(-88,Math.min(0,dx*.94)):Math.min(88,Math.max(0,dx*.94));
+        bubble.style.transform=`translate3d(${shift}px,0,0)`;
+      },{passive:false});
+      const finish=()=>{
+        if(!tracking)return;
+        const allowed=mine?dx<0:dx>0;
+        const shouldReply=horizontal&&allowed&&Math.abs(dx)>=18;
+        const msgId=bubble.dataset.msgId;
+        try{if(pointerId!==null)bubble.releasePointerCapture(pointerId);}catch(_){}
+        reset();
+        if(shouldReply&&msgId){
+          wrap.classList.add('chat-swipe-reply');
+          setChatReplyTarget(msgId);
+          setTimeout(()=>wrap.classList.remove('chat-swipe-reply'),220);
+          requestAnimationFrame(()=>{try{byId('chatInput')?.focus({preventScroll:true});}catch(_){} });
+        }
+      };
+      bubble.addEventListener('pointerup',finish,{passive:true});
+      bubble.addEventListener('pointercancel',reset,{passive:true});
+      bubble.addEventListener('lostpointercapture',finish,{passive:true});
+    });
+  };
+
+  window.setupMessageInteractions=function(root){
+    const scope=root||document;
+    if(typeof setupMessageLongPress==='function') setupMessageLongPress(scope);
+    if(typeof setupMessageDoubleTap==='function') setupMessageDoubleTap(scope);
+    window.setupMessageSwipeReply(scope);
+    scope.querySelectorAll?.('.chat-image-attachment img').forEach(img=>{
+      if(img.dataset.imageMenuBound==='1')return;
+      img.dataset.imageMenuBound='1';
+      img.addEventListener('contextmenu',e=>e.preventDefault(),{capture:true});
+      img.addEventListener('dragstart',e=>e.preventDefault(),{capture:true});
+    });
+  };
+
+  /* Keep the keyboard behaviour deliberately unchanged: sending clears the
+     composer but does not refocus it. Swiping to reply is the only gesture
+     here that explicitly focuses the composer. */
+  const originalSend=window.sendChatMessage;
+  if(typeof originalSend==='function' && !window.__levroSendKeyboardFinal){
+    window.__levroSendKeyboardFinal=true;
+    window.sendChatMessage=async function(){ return originalSend.apply(this,arguments); };
+  }
+
+  /* ---------------------------------------------------------------
+     LEVI — generic fallback becomes a useful clarification instead of a
+     canned identity response. Try live products/vendors first, then ask a
+     concrete "did you mean" question.
+     --------------------------------------------------------------- */
+  const oldSpecificFallback=typeof window.leviSpecificFallback==='function'?window.leviSpecificFallback:null;
+  async function smartLeviClarification(text){
+    const q=String(text||'').trim();
+    if(!q) return null;
+    try{
+      const clean=q.toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+      const tokens=clean.split(' ').filter(w=>w.length>=2).slice(0,5);
+      const {data:products}=await sb.from('products').select('id,name,description,vendor:vendors!inner(id,business_name,verification_status,is_active)').eq('status','active').eq('vendor.verification_status','verified').eq('vendor.is_active',true).limit(500);
+      const editDistance=(a,b)=>{
+        const aa=String(a||''),bb=String(b||'');
+        if(!aa||!bb)return 999;
+        const prev=Array.from({length:bb.length+1},(_,i)=>i);
+        for(let i=1;i<=aa.length;i++){
+          const cur=[i];
+          for(let j=1;j<=bb.length;j++) cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(aa[i-1]===bb[j-1]?0:1));
+          for(let j=0;j<cur.length;j++) prev[j]=cur[j];
+        }
+        return prev[bb.length];
+      };
+      const score=(p)=>{
+        const name=String(p.name||'').toLowerCase();
+        const desc=String(p.description||'').toLowerCase();
+        const nameTokens=name.split(/\s+/).filter(Boolean);
+        let n=0;
+        for(const t of tokens){
+          if(name===t)n+=10;
+          else if(name.includes(t))n+=6;
+          else if(nameTokens.some(nt=>nt.includes(t)))n+=4;
+          else if(nameTokens.some(nt=>t.length>=4 && editDistance(t,nt)<=2))n+=3;
+          else if(desc.includes(t))n+=1;
+        }
+        return n;
+      };
+      const matches=(products||[]).map(p=>({p,s:score(p)})).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,3);
+      if(matches.length){
+        const opts=matches.map(x=>`“${x.p.name}” from ${x.p.vendor?.business_name||'a verified vendor'}`).join(', ');
+        return `I couldn't match “${q}” exactly. Did you mean ${opts}?`;
+      }
+      const {data:vendors}=await sb.from('vendors').select('business_name,city').eq('verification_status','verified').eq('is_active',true).limit(100);
+      const vm=(vendors||[]).find(v=>String(v.business_name||'').toLowerCase().includes(clean));
+      if(vm)return `I found a vendor called “${vm.business_name}”${vm.city?` in ${vm.city}`:''}. Is that the one you meant?`;
+    }catch(e){console.warn('[Levromart] Levi clarification lookup failed:',e);}
+    return `I’m not sure what you mean by “${q}”. Did you mean a product, a vendor, an order, or something else on Levromart?`;
+  }
+
+  const originalFetch=window.fetchLeviReply;
+  if(typeof originalFetch==='function'&&!window.__levroLeviClarificationFinal){
+    window.__levroLeviClarificationFinal=true;
+    window.fetchLeviReply=async function(payload){
+      const first=await originalFetch.apply(this,arguments);
+      const reply=String(first?.reply||'').trim();
+      const generic=/\b(?:i['’]?m|hi[,!]?\s+i['’]?m)\s+levi\b/i.test(reply) || /^(?:i can help with|try asking me|i couldn't get a useful answer)/i.test(reply);
+      if(!generic)return first;
+      try{
+        const latest=[...(payload?.messages||[])].reverse().find(m=>m?.role==='user')?.content||'';
+        const specific=oldSpecificFallback?oldSpecificFallback(latest):null;
+        if(specific)return {...first,reply:specific};
+        const clarification=await smartLeviClarification(latest);
+        if(clarification)return {...first,reply:clarification};
+      }catch(e){console.warn('[Levromart] Levi final clarification failed:',e);}
+      return {...first,reply:'I couldn’t get a useful answer yet. Tell me what you’re looking for and I’ll help narrow it down.'};
+    };
+  }
+
+  /* ---------------------------------------------------------------
+     COMMISSION DEADLINE — vendor heartbeat. The DB function is authoritative;
+     this heartbeat makes the five-minute rule take effect while the vendor is
+     using the app, without waiting for a navigation/reload.
+     --------------------------------------------------------------- */
+  let commissionHeartbeat=null;
+  let commissionModalOpen=false;
+  function showCommissionOverdueModal(){
+    if(commissionModalOpen||!vendor?.id)return;
+    commissionModalOpen=true;
+    byId('commissionOverdueModal')?.remove();
+    const modal=document.createElement('div');
+    modal.id='commissionOverdueModal';modal.className='modal open';
+    modal.style.zIndex='2500';
+    modal.innerHTML=`<div class="modal-content" style="max-width:430px;"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-lock"></i> Storefront paused</h3></div><p style="margin:.7rem 0;">Your Levromart commission has remained unpaid for more than 5 minutes. Your storefront is paused until the outstanding commission is paid.</p><div id="commissionOverdueAmount" class="card" style="margin:.65rem 0;padding:.8rem;">Loading amount owed…</div><p class="muted" style="font-size:.78rem;">Pay the commission owed to restore your storefront.</p><button type="button" class="btn" style="width:100%;justify-content:center;" onclick="commissionOverduePayNow()"><i class="fa-solid fa-credit-card"></i> Pay commission owed</button></div>`;
+    document.body.appendChild(modal);
+    loadCommissionOverdueAmount();
+  }
+  async function loadCommissionOverdueAmount(){
+    try{
+      const {data}=await sb.rpc('get_vendor_commission_owed',{p_vendor_id:vendor.id});
+      const el=byId('commissionOverdueAmount');if(el)el.innerHTML=`<strong>${naira(Number(data||0))}</strong> commission owed`;
+    }catch(e){console.warn('[Levromart] commission amount lookup failed',e);}
+  }
+  window.commissionOverduePayNow=async function(){
+    const modal=byId('commissionOverdueModal');
+    modal?.remove();commissionModalOpen=false;
+    await payCommission();
+  };
+  async function checkCommissionDeadline(){
+    if(!session||profile?.role!=='vendor'||!vendor?.id)return;
+    try{
+      const {data}=await sb.rpc('enforce_commission_deadlines',{p_vendor_id:vendor.id});
+      if(Number(data||0)>0){
+        vendor.is_active=false;vendor.commission_paused=true;vendor.commission_pause_reason='commission_overdue';
+        showCommissionOverdueModal();
+        return;
+      }
+      const {data:owed}=await sb.rpc('get_vendor_commission_owed',{p_vendor_id:vendor.id});
+      if(Number(owed||0)>0 && vendor.commission_paused) showCommissionOverdueModal();
+      if(Number(owed||0)<=0 && vendor.commission_paused){
+        vendor.is_active=true;vendor.commission_paused=false;vendor.commission_pause_reason=null;
+        byId('commissionOverdueModal')?.remove();commissionModalOpen=false;
+        showToast('Commission settled. Your storefront is active again.','success');
+      }
+    }catch(e){console.warn('[Levromart] commission deadline check failed:',e);}
+  }
+  function startCommissionHeartbeat(){
+    if(commissionHeartbeat)clearInterval(commissionHeartbeat);
+    checkCommissionDeadline();
+    commissionHeartbeat=setInterval(checkCommissionDeadline,30000);
+  }
+  function stopCommissionHeartbeat(){if(commissionHeartbeat){clearInterval(commissionHeartbeat);commissionHeartbeat=null;}}
+  setTimeout(()=>{
+    if(session&&profile?.role==='vendor'&&vendor?.id)startCommissionHeartbeat();
+  },1000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkCommissionDeadline();},{passive:true});
 })();
 </script>
 </body>
