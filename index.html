@@ -10175,7 +10175,7 @@ function productCardHtml(p) {
   const ownListing = isOwnVendorId(p.vendor?.id);
   const canQuickAdd = !ownListing && !p.is_service && (p.listing_type === "sale" || p.listing_type === "both") && profile?.role !== "admin";
   const actionHtml = p.is_service
-    ? `<button type="button" class="card-service-btn" title="Open service" aria-label="Open ${esc(p.name)} service" onclick="event.stopPropagation();navigate('productDetail',{productId:'${p.id}'})"><i class="fa-solid fa-hand-holding-heart"></i></button>`
+    ? `<span class="card-service-btn" title="Service listing" aria-label="Service listing"><i class="fa-solid fa-hand-holding-heart"></i></span>`
     : canQuickAdd
       ? `<button type="button" class="card-cart-btn" onclick="quickAddToCart(event,'${p.id}',this,'${p.vendor?.id || ""}')" title="Add to cart" aria-label="Add ${esc(p.name)} to cart"><i class="fa-solid fa-cart-plus"></i></button>`
       : ownListing
@@ -10184,23 +10184,23 @@ function productCardHtml(p) {
   return `<div class="product-card-wrap">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
-      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;border-radius:0.5rem;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
-      <h4 style="margin:0.6rem 0 0.2rem;">${esc(p.name)}</h4>
-      <div class="flex" style="justify-content:space-between;">
+      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
+      <h4>${esc(p.name)}</h4>
+      <div class="product-card-vendor-row">
         <span class="badge">${p.is_service ? "service" : p.listing_type}</span>
-        <span class="flex" style="gap:0.3rem;font-size:0.85rem;color:var(--primary);" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${p.vendor?.id}'})">
-          ${p.vendor?.logo_url ? `<img src="${esc(p.vendor.logo_url)}" alt="" style="width:1.1rem;height:1.1rem;border-radius:50%;object-fit:cover;flex-shrink:0;" />` : ""}
-          ${esc(p.vendor?.business_name || "")}
+        <span class="product-card-vendor" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${p.vendor?.id || ""}'})">
+          ${p.vendor?.logo_url ? `<img src="${esc(p.vendor.logo_url)}" alt="" loading="lazy">` : `<span class="product-vendor-initial">${esc(initials(p.vendor?.business_name || "Vendor"))}</span>`}
+          <span>${esc(p.vendor?.business_name || "")}</span>
         </span>
       </div>
-      <div class="product-card-price-block" style="margin:0.5rem 0;">
+      <div class="product-card-price-block">
         ${p.sale_price != null ? (p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price)
-          ? `<span class="product-discount-price"><strong>${p.is_service ? "Price" : "Buy"}:</strong> <span class="product-old-price">${naira(p.sale_price)}</span> <span class="product-current-price">${naira(p.discount_price)}</span>${servicePriceSuffix(p)}</span>`
+          ? `<span><strong>${p.is_service ? "Price" : "Buy"}:</strong> <span class="product-old-price">${naira(p.sale_price)}</span> <span class="product-current-price">${naira(p.discount_price)}</span>${servicePriceSuffix(p)}</span>`
           : `<span><strong>${p.is_service ? "Price" : "Buy"}:</strong> ${naira(p.sale_price)}${servicePriceSuffix(p)}</span>`) : ""}
         ${p.rental_rate != null ? `<span><strong>Rent:</strong> ${naira(p.rental_rate)}/${p.rental_rate_unit}</span>` : ""}
       </div>
-      ${p.is_service ? "" : `<p class="muted">Available: ${p.quantity_available} · ${esc((p.condition || "").replace("-", " "))}</p>`}
-      ${productDeliverySummaryHtml(p)}
+      ${p.is_service ? "" : `<p class="product-availability">Available: ${p.quantity_available} · ${esc((p.condition || "").replace("-", " "))}</p>`}
+      <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
       ${actionHtml}
     </div>
   </div>`;
@@ -10217,16 +10217,17 @@ function ratingBadgeClass(rating) {
   return "danger";
 }
 function vendorCardHtml(v) {
-  return `<div class="vendor-card" onclick="navigate('storefront',{vendorId:'${v.id}'})">
-    ${v.logo_url
-      ? `<img src="${esc(v.logo_url)}" alt="" class="avatar-circle" style="width:2.6rem;height:2.6rem;object-fit:cover;margin-bottom:0.4rem;" />`
-      : `<div class="avatar-circle" style="width:2.6rem;height:2.6rem;margin-bottom:0.4rem;">${esc((v.business_name || "?")[0].toUpperCase())}</div>`}
-    <strong>${esc(v.business_name)}</strong>
-    <p class="muted" style="margin:0.3rem 0;">${esc(v.city || "")}</p>
-    ${v.categories && v.categories.length ? `<p class="muted" style="margin:0 0 0.4rem;font-size:0.78rem;"><i class="fa-solid fa-tags"></i> ${v.categories.map(esc).join(", ")}</p>` : ""}
-    <span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>
-    ${`<span class="badge ${ratingBadgeClass(Number(v.avg_rating ?? 0))}" style="margin-left:0.3rem;">★ ${Number(v.avg_rating ?? 0).toFixed(1)} (${Number(v.review_count ?? 0)})</span>`}
-    ${buyerLocation && v.lat != null && v.lng != null ? `<span class="badge" style="margin-left:0.3rem;"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>` : ""}
+  const name = v?.business_name || "Vendor";
+  const avatar = v?.logo_url || v?.user_avatar_url || "";
+  const cats = Array.isArray(v?.categories) ? v.categories.filter(Boolean).slice(0, 2) : [];
+  return `<div class="vendor-card homepage-vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || "")}')}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || "")}'});}">
+    ${avatar ? `<img src="${esc(avatar)}" alt="" class="vendor-home-avatar" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name)}','3rem','vendor-home-avatar','${esc(name)}')))">` : `<span class="vendor-home-avatar vendor-home-avatar-fallback">${esc(initials(name))}</span>`}
+    <div class="vendor-home-copy">
+      <strong>${esc(name)}</strong>
+      <span class="vendor-home-city">${esc(v?.city || "Lagos")}</span>
+      <div class="vendor-home-meta"><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span><span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} (${Number(v?.review_count ?? 0)})</span></div>
+      ${cats.length ? `<span class="vendor-home-known"><i class="fa-solid fa-tags"></i> ${cats.map(esc).join(" · ")}</span>` : `<span class="vendor-home-known"><i class="fa-solid fa-shop"></i> View storefront</span>`}
+    </div>
   </div>`;
 }
 
@@ -11806,7 +11807,6 @@ async function sendChatMessage(conversationId) {
   byId("chatMessages")?.insertAdjacentHTML("beforeend", chatBubbleHtml(data));
   scrollChatToBottom();
   setupMessageInteractions(byId("chatMessages"));
-  requestAnimationFrame(() => { try { input.focus({ preventScroll: true }); } catch (_) { try { input.focus(); } catch (_) {} } });
 }
 async function handleChatFileSelected(evt, conversationId) {
   const file = evt.target.files[0];
@@ -13344,23 +13344,19 @@ function packageCardHtml(pkg, vendorDeliveryFee, compact = false) {
   const mainPhoto = photos[0] || "";
   const galleryHtml = mainPhoto
     ? `<div class="package-gallery" id="${galleryId}" onclick="event.stopPropagation();">
-        <img class="package-photo-main" src="${esc(mainPhoto)}" alt="${esc(pkg.name)}" loading="lazy" decoding="async" onclick="openPackageImageLightbox('${esc(mainPhoto)}',event)" />
-        ${photos.length > 1 ? `<div class="package-photo-strip">${photos.map((u,i) => `<button type="button" class="package-photo-thumb" onclick="setPackageCardPhoto('${galleryId}',${i},event)" aria-label="View package photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
-        ${photos.length > 1 ? `<div class="package-photo-count"><i class="fa-solid fa-images"></i> ${photos.length} photos</div>` : ""}
+        <img class="package-photo-main" src="${esc(mainPhoto)}" alt="${esc(pkg.name)}" loading="lazy" decoding="async" onclick="openPackageImageLightbox('${esc(mainPhoto)}',event)">
       </div>`
     : `<div class="package-gallery-placeholder" onclick="event.stopPropagation();"><i class="fa-solid fa-box-open"></i>&nbsp; No package photo</div>`;
   const itemsText = (pkg.items || []).map((it) => `${it.quantity}× ${esc(it.product?.name || "")}`).join(", ") || "No items listed";
   const vendorName = pkg.vendor?.business_name || "Vendor";
-  const ownPackage = isOwnVendorId(pkg.vendor?.id);
   return `<div class="card package-listing-card" onclick="navigate('packageDetail',{packageId:'${pkg.id}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('packageDetail',{packageId:'${pkg.id}'})}">
     ${galleryHtml}
-    <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.55rem;margin-top:.75rem;"><strong>${esc(pkg.name)}</strong><span class="badge">${naira(pkg.price)}</span></div>
-    ${pkg.description ? `<p class="muted" style="margin:0.3rem 0;display:-webkit-box;-webkit-line-clamp:${compact ? 2 : 3};-webkit-box-orient:vertical;overflow:hidden;">${esc(pkg.description)}</p>` : ""}
-    <p class="muted" style="font-size:0.85rem;margin:.45rem 0;"><i class="fa-solid fa-box-open"></i> Includes: ${itemsText}</p>
-    <div class="flex package-card-actions" style="justify-content:space-between;">
-      <span class="muted" style="font-size:.78rem;"><i class="fa-solid fa-store"></i> ${esc(vendorName)}</span>
-      ${profile?.role === "admin" ? `<span class="badge">Admin</span>` : ownPackage ? `<span class="badge own-listing-badge"><i class="fa-solid fa-store"></i> Your package</span>` : `<button class="btn btn-sm" onclick="event.stopPropagation();navigate('packageDetail',{packageId:'${pkg.id}'})"><i class="fa-solid fa-arrow-right"></i> View package</button>`}
-    </div>
+    <div class="package-card-title-row"><strong>${esc(pkg.name)}</strong><span class="badge">${naira(pkg.price)}</span></div>
+    ${pkg.description ? `<p class="package-card-description muted">${esc(pkg.description)}</p>` : ""}
+    <p class="package-card-includes muted"><i class="fa-solid fa-box-open"></i> Includes: ${itemsText}</p>
+    <div class="package-card-vendor"><i class="fa-solid fa-store"></i> ${esc(vendorName)}</div>
+    ${pkg.vendor?.delivery_fee_mode === "distance" ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Distance delivery · ${naira(pkg.vendor.delivery_fee_per_km || 0)}/km</div>` : Number(pkg.vendor?.delivery_fee || 0) > 0 ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Delivery · ${naira(pkg.vendor.delivery_fee)}</div>` : `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Free delivery</div>`}
+    ${profile?.role === "admin" ? `<span class="badge package-card-owner-badge">Admin</span>` : isOwnVendorId(pkg.vendor?.id) ? `<span class="badge own-listing-badge package-card-owner-badge"><i class="fa-solid fa-store"></i> Your package</span>` : ""}
   </div>`;
 }
 
@@ -21081,71 +21077,7 @@ window.renderVendorMapRail = function(){
   /* Make any remaining plus trigger use the chooser. */
   document.querySelectorAll?.('.bottom-nav-add').forEach(btn=>{btn.setAttribute('onclick','openAddChooser()');btn.title='Add listing';});
 
-  /* ---------------------------------------------------------------
-     5. NOTIFICATION GROUPING — collapse consecutive message notifications
-     from the same conversation/person into one card. Other notifications are
-     left exactly as individual cards. Selection mode remains individual.
-     --------------------------------------------------------------- */
-  const originalRenderNotifPanel=window.renderNotifPanel;
-  if(typeof originalRenderNotifPanel==='function' && !window.__levroNotifGrouping){
-    window.__levroNotifGrouping=true;
-    window.renderNotifPanel=async function(){
-      /* Let the canonical renderer do its query, tabs, selection controls and
-         unread bookkeeping. Then replace only the visible message-notification
-         rows with grouped cards. */
-      const result=await originalRenderNotifPanel.apply(this,arguments);
-      if(typeof notifSelectMode!=='undefined' && notifSelectMode)return result;
-      const panel=byId('notifPanel');
-      if(!panel)return result;
-      const list=panel.querySelector('.notif-list-scroll');
-      if(!list)return result;
-      const rows=[...list.querySelectorAll(':scope > .notif-item-wrap')];
-      const groups=new Map();
-      rows.forEach(row=>{
-        const item=row.querySelector('.notif-item'); if(!item)return;
-        let params={}; try{params=JSON.parse(item.dataset.params||'{}')}catch(_){ }
-        const view=item.dataset.view||'';
-        if(view!=='messages' || !params.conversationId)return;
-        const key=String(params.conversationId);
-        if(!groups.has(key))groups.set(key,[]);
-        groups.get(key).push(row);
-      });
-      groups.forEach((groupRows,key)=>{
-        if(groupRows.length<2)return;
-        const first=groupRows[0];
-        const firstItem=first.querySelector('.notif-item');
-        const sender=firstItem?.dataset.actorName || firstItem?.querySelector('.notif-copy strong')?.textContent || 'Messages';
-        const avatar=firstItem?.dataset.actorAvatar || '';
-        const latest=firstItem?.querySelector('.notif-copy .muted')?.textContent||'';
-        const unread=groupRows.filter(r=>r.querySelector('.notif-item')?.classList.contains('unread')).length;
-        const group=document.createElement('div');
-        group.className='notif-group';
-        group.dataset.conversationId=key;
-        const head=document.createElement('button'); head.type='button'; head.className='notif-group-head';
-        const groupAvatar=avatar ? `<img class="notif-group-avatar" src="${esc(avatar)}" alt="" />` : `<span class="notif-group-avatar">${esc(initials(sender))}</span>`;
-        head.innerHTML=`${groupAvatar}<span class="notif-group-copy"><strong>${esc(sender)} <span class="notif-group-count">${groupRows.length} messages${unread?` · ${unread} unread`:''}</span></strong><span class="muted">${esc(latest||'New messages')}</span></span><i class="fa-solid fa-chevron-down notif-group-chevron"></i>`;
-        const body=document.createElement('div');body.className='notif-group-body';
-        groupRows.forEach(row=>{
-          const item=row.querySelector('.notif-item');
-          const copy=item?.querySelector('.notif-copy');
-          const child=document.createElement('div');child.className='notif-group-message';
-          child.innerHTML=`<strong>${esc(copy?.querySelector('strong')?.textContent||'Message')}</strong><span class="muted">${esc(copy?.querySelectorAll('.muted')?.[0]?.textContent||'')}</span><span class="muted">${esc(copy?.querySelectorAll('.muted')?.[1]?.textContent||'')}</span>`;
-          child.addEventListener('click',()=>{
-            const id=item?.dataset.id; if(id) markSingleNotifRead(id);
-            closeAllPanels(); navigate('messages',{conversationId:key});
-          });
-          body.appendChild(child);
-        });
-        head.addEventListener('click',()=>{
-          group.classList.toggle('open');
-          groupRows.forEach(row=>{const item=row.querySelector('.notif-item');if(item?.classList.contains('unread')) markSingleNotifRead(item.dataset.id);});
-        });
-        group.appendChild(head);group.appendChild(body);
-        first.replaceWith(group); groupRows.slice(1).forEach(r=>r.remove());
-      });
-      return result;
-    };
-  }
+  /* Notification grouping intentionally handled by the final compact summary renderer. */
 })();
 </script>
 
@@ -21350,12 +21282,7 @@ window.renderVendorMapRail = function(){
 .chat-page-wrap .chat-bubble-wrap.chat-swipe-active::before{left:-2.2rem !important;width:1.72rem !important;height:1.72rem !important;box-shadow:0 4px 14px color-mix(in srgb,var(--primary) 18%,transparent) !important;}
 
 /* Notification folders */
-.notif-group-head{min-height:58px !important;}
-.notif-group-head .notif-group-avatar{width:2.1rem;height:2.1rem;flex:0 0 2.1rem;border-radius:50%;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary);font-weight:800;}
-.notif-group-head .notif-group-copy strong{font-size:.88rem !important;}
-.notif-group-head .notif-group-count{font-size:.68rem !important;color:var(--text-muted) !important;margin-left:.2rem !important;}
-.notif-group-body{max-height:45vh !important;overflow-y:auto !important;}
-.notif-group-message{padding:.62rem .15rem !important;}
+
 </style>
 
 <script id="levromart-final-2026-09-09-ui-polish-v2-js">
@@ -21541,64 +21468,6 @@ window.renderVendorMapRail = function(){
   };
 
   /* ---------------------------------------------------------------
-     Notification folders: one expandable folder per sender/conversation,
-     all messages from that person together. Clicking the folder marks every
-     unread message in it as read; individual entries open the conversation.
-     --------------------------------------------------------------- */
-  const oldNotifRender=window.renderNotifPanel;
-  if(typeof oldNotifRender==='function'&&!window.__levroNotifFoldersV2){
-    window.__levroNotifFoldersV2=true;
-    window.renderNotifPanel=async function(){
-      const result=await oldNotifRender.apply(this,arguments);
-      if(typeof notifSelectMode!=='undefined'&&notifSelectMode)return result;
-      const panel=byId('notifPanel');const list=panel?.querySelector('.notif-list-scroll');if(!list)return result;
-      const rows=[...list.querySelectorAll(':scope > .notif-item-wrap')];
-      const groups=new Map();
-      for(const row of rows){
-        const item=row.querySelector('.notif-item');if(!item)continue;
-        let params={};try{params=JSON.parse(item.dataset.params||'{}')}catch(_){}
-        if(item.dataset.view!=='messages'||!params.conversationId)continue;
-        const key=String(params.conversationId);
-        if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row);
-      }
-      for(const [key,groupRows] of groups){
-        if(groupRows.length<2)continue;
-        const firstItem=groupRows[0].querySelector('.notif-item');
-        const sender=firstItem?.dataset.actorName||firstItem?.querySelector('.notif-copy strong')?.textContent||'Messages';
-        const avatar=firstItem?.dataset.actorAvatar||'';
-        const unread=groupRows.filter(r=>r.querySelector('.notif-item')?.classList.contains('unread')).length;
-        const group=document.createElement('div');group.className='notif-group';group.dataset.conversationId=key;
-        const head=document.createElement('button');head.type='button';head.className='notif-group-head';
-        const avatarHtml=avatar?`<img class="notif-group-avatar" src="${esc(avatar)}" alt="" />`:`<span class="notif-group-avatar">${esc(initials(sender))}</span>`;
-        const latest=groupRows[0].querySelector('.notif-copy')?.querySelectorAll('.muted')?.[0]?.textContent||'New messages';
-        head.innerHTML=`${avatarHtml}<span class="notif-group-copy"><strong>${esc(sender)} <span class="notif-group-count">${groupRows.length} messages${unread?` · ${unread} unread`:''}</span></strong><span class="muted">${esc(latest)}</span></span><i class="fa-solid fa-chevron-down notif-group-chevron"></i>`;
-        const body=document.createElement('div');body.className='notif-group-body';
-        groupRows.forEach(row=>{
-          const item=row.querySelector('.notif-item');if(!item)return;
-          const copy=item.querySelector('.notif-copy');
-          const child=document.createElement('div');child.className='notif-group-message';
-          const title=copy?.querySelector('strong')?.textContent||'Message';
-          const times=copy?.querySelectorAll('.muted');
-          child.innerHTML=`<strong>${esc(title)}</strong><span class="muted">${esc(times?.[0]?.textContent||'')}</span><span class="muted">${esc(times?.[1]?.textContent||'')}</span>`;
-          child.addEventListener('click',()=>{const id=item.dataset.id;if(id)markSingleNotifRead(id);closeAllPanels();navigate('messages',{conversationId:key});});
-          body.appendChild(child);
-        });
-        head.addEventListener('click',async()=>{
-          const opening=!group.classList.contains('open');group.classList.toggle('open');
-          if(opening){
-            const ids=groupRows.map(r=>r.querySelector('.notif-item')?.dataset.id).filter(Boolean);
-            if(ids.length)await sb.from('notifications').update({read:true}).in('id',ids);
-            groupRows.forEach(r=>r.querySelector('.notif-item')?.classList.remove('unread'));
-            const count=head.querySelector('.notif-group-count');if(count)count.textContent=`${groupRows.length} messages`;
-          }
-        });
-        group.append(head,body);groupRows[0].replaceWith(group);groupRows.slice(1).forEach(r=>r.remove());
-      }
-      return result;
-    };
-  }
-
-  /* ---------------------------------------------------------------
      Smarter local marketplace fallback for Levi. When the Gemini endpoint
      returns a generic answer, search the real marketplace and suggest concrete
      products/vendors instead of repeating the capability boilerplate.
@@ -21747,12 +21616,7 @@ window.renderVendorMapRail = function(){
   backdrop-filter:blur(12px) !important;-webkit-backdrop-filter:blur(12px) !important;
 }
 .chat-page-wrap .chat-messages{flex:1 1 auto !important;min-height:0 !important;overflow-y:auto !important;overscroll-behavior:contain !important;}
-.notif-group{overflow:hidden !important;}
-.notif-group-body{display:none !important;}
-.notif-group.open .notif-group-body{display:block !important;}
-.notif-group-head{width:100% !important;text-align:left !important;display:flex !important;align-items:center !important;gap:.65rem !important;}
-.notif-group-head .notif-group-chevron{transition:transform .18s ease !important;}
-.notif-group.open .notif-group-chevron{transform:rotate(180deg) !important;}
+
 </style>
 
 <script id="levromart-final-ui-polish-v3-js">
@@ -21772,22 +21636,6 @@ window.renderVendorMapRail = function(){
     });
   }
   normalizeProductGrid();
-
-  const originalSend=window.sendChatMessage;
-  if(typeof originalSend==='function'&&!window.__levroSendKeyboardV3){
-    window.__levroSendKeyboardV3=true;
-    window.sendChatMessage=async function(){
-      const input=byId('chatInput');
-      const keepOpen=!!input && document.activeElement===input;
-      const out=await originalSend.apply(this,arguments);
-      if(keepOpen&&input){
-        const refocus=()=>{try{input.focus({preventScroll:true});}catch(_){try{input.focus();}catch(__){}}};
-        requestAnimationFrame(refocus);setTimeout(refocus,40);setTimeout(refocus,160);
-      }
-      return out;
-    };
-  }
-
   const oldMapRender=window.renderVendorsMap;
   if(typeof oldMapRender==='function'&&!window.__levroMapRouteClearV3){
     window.__levroMapRouteClearV3=true;
@@ -21804,6 +21652,193 @@ window.renderVendorMapRail = function(){
       if(muts.some(m=>m.addedNodes&&m.addedNodes.length)) normalizeProductGrid(app);
     });
     mo.observe(app,{childList:true,subtree:true});
+  }
+})();
+</script>
+
+<style id="levromart-final-2026-09-09-v4">
+/* PRODUCT CARDS — compact square cards, larger image, no overlap */
+@media (max-width: 900px){
+  #app .grid:has(> .product-card-wrap){grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:.62rem !important;}
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap{aspect-ratio:1/1 !important;min-width:0 !important;}
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{height:100% !important;display:flex !important;flex-direction:column !important;padding:.52rem !important;overflow:hidden !important;border-radius:14px !important;gap:0 !important;}
+  #app .grid:has(> .product-card-wrap) .product-img{height:auto !important;aspect-ratio:1.16/1 !important;flex:0 0 auto !important;margin:0 !important;border-radius:10px !important;overflow:hidden !important;}
+  #app .grid:has(> .product-card-wrap) .product-img img{width:100% !important;height:100% !important;object-fit:cover !important;display:block !important;}
+  #app .grid:has(> .product-card-wrap) .product-card-wrap h4{font-size:.78rem !important;line-height:1.12 !important;margin:.32rem 0 .12rem !important;min-height:1.75rem !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;}
+  #app .product-card-vendor-row{display:flex !important;align-items:center !important;justify-content:space-between !important;gap:.25rem !important;min-width:0 !important;min-height:1.05rem !important;}
+  #app .product-card-vendor-row > .badge{font-size:.57rem !important;padding:.16rem .3rem !important;flex:0 0 auto !important;}
+  #app .product-card-vendor{display:flex !important;align-items:center !important;gap:.22rem !important;min-width:0 !important;max-width:62% !important;color:var(--primary) !important;font-size:.62rem !important;font-weight:700 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+  #app .product-card-vendor img,#app .product-vendor-initial{width:1rem !important;height:1rem !important;min-width:1rem !important;border-radius:50% !important;object-fit:cover !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;font-size:.46rem !important;background:color-mix(in srgb,var(--primary) 14%,transparent) !important;color:var(--primary) !important;}
+  #app .product-card-price-block{margin:.16rem 0 !important;font-size:.68rem !important;line-height:1.12 !important;min-height:1rem !important;overflow:hidden !important;}
+  #app .product-card-price-block > span{display:block !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+  #app .product-old-price{font-size:.63rem !important;margin-right:.12rem !important;}
+  #app .product-current-price{font-size:.78rem !important;font-weight:800 !important;color:var(--primary) !important;}
+  #app .product-availability{font-size:.59rem !important;line-height:1.1 !important;margin:.07rem 0 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;min-height:.7rem !important;}
+  #app .product-card-delivery-wrap{min-width:0 !important;min-height:1.35rem !important;margin-top:.05rem !important;}
+  #app .product-card-delivery-wrap .product-delivery-summary{font-size:.58rem !important;line-height:1.08 !important;margin:0 !important;padding:0 0 0 0 !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;}
+  #app .card-cart-btn,#app .card-service-btn{position:static !important;align-self:flex-end !important;flex:0 0 auto !important;width:1.88rem !important;height:1.88rem !important;min-width:1.88rem !important;min-height:1.88rem !important;margin-top:auto !important;border-radius:50% !important;z-index:2 !important;display:flex !important;align-items:center !important;justify-content:center !important;}
+  #app .card-service-btn{pointer-events:none !important;background:color-mix(in srgb,var(--primary) 94%,transparent) !important;color:#fff !important;font-size:.72rem !important;box-shadow:0 2px 8px color-mix(in srgb,var(--primary) 18%,transparent) !important;}
+  #app .own-listing-badge{align-self:flex-end !important;margin-top:auto !important;max-width:52% !important;font-size:.52rem !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+}
+
+/* HOME VENDOR CARDS — compact but informative */
+.top-rated-vendors-scroll .homepage-vendor-card{flex:0 0 13.7rem !important;min-height:8.3rem !important;padding:.78rem !important;display:flex !important;align-items:flex-start !important;gap:.7rem !important;overflow:hidden !important;}
+.vendor-home-avatar{width:3.05rem !important;height:3.05rem !important;min-width:3.05rem !important;border-radius:50% !important;object-fit:cover !important;display:flex !important;align-items:center !important;justify-content:center !important;background:color-mix(in srgb,var(--primary) 14%,var(--card)) !important;color:var(--primary) !important;font-weight:800 !important;font-size:.95rem !important;}
+.vendor-home-copy{min-width:0 !important;display:flex !important;flex-direction:column !important;gap:.18rem !important;overflow:hidden !important;}
+.vendor-home-copy > strong{font-size:.86rem !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+.vendor-home-city{font-size:.68rem !important;color:var(--text-muted) !important;}
+.vendor-home-meta{display:flex !important;gap:.2rem !important;flex-wrap:wrap !important;}
+.vendor-home-meta .badge{font-size:.53rem !important;padding:.14rem .28rem !important;white-space:nowrap !important;}
+.vendor-home-known{font-size:.6rem !important;color:var(--text-muted) !important;line-height:1.15 !important;display:block !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}
+
+/* PACKAGES — short, clean cards; the card itself opens the package */
+@media (max-width:900px){
+  .package-recommendation-strip .package-listing-card,.package-listing-card{flex:0 0 14.5rem !important;width:14.5rem !important;min-height:0 !important;height:16.2rem !important;padding:.55rem !important;overflow:hidden !important;border-radius:13px !important;}
+  .package-listing-card .package-gallery{height:6.4rem !important;min-height:6.4rem !important;border-radius:9px !important;overflow:hidden !important;}
+  .package-listing-card .package-photo-main,.package-listing-card .package-gallery-placeholder{width:100% !important;height:100% !important;object-fit:cover !important;min-height:0 !important;}
+  .package-listing-card .package-card-title-row{display:flex !important;align-items:center !important;justify-content:space-between !important;gap:.35rem !important;margin:.38rem 0 .12rem !important;min-width:0 !important;}
+  .package-listing-card .package-card-title-row strong{font-size:.78rem !important;line-height:1.1 !important;min-width:0 !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;}
+  .package-listing-card .package-card-title-row .badge{font-size:.55rem !important;padding:.15rem .28rem !important;flex:0 0 auto !important;}
+  .package-card-description{font-size:.61rem !important;line-height:1.12 !important;margin:.12rem 0 !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;}
+  .package-card-includes{font-size:.58rem !important;line-height:1.12 !important;margin:.12rem 0 !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;}
+  .package-card-vendor,.package-card-delivery{font-size:.58rem !important;line-height:1.1 !important;margin:.1rem 0 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+  .package-card-owner-badge{font-size:.52rem !important;margin-top:.12rem !important;max-width:70% !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+}
+
+/* CHAT — the header stays visible while only the messages area scrolls */
+.chat-page-wrap{height:100dvh !important;max-height:100dvh !important;overflow:hidden !important;display:flex !important;flex-direction:column !important;}
+.chat-page-wrap .chat-page-header{position:sticky !important;top:0 !important;z-index:1000 !important;flex:0 0 auto !important;}
+.chat-page-wrap .chat-thread{flex:1 1 auto !important;height:auto !important;min-height:0 !important;overflow:hidden !important;}
+.chat-page-wrap .chat-messages{flex:1 1 auto !important;min-height:0 !important;overflow-y:auto !important;-webkit-overflow-scrolling:touch !important;overscroll-behavior:contain !important;}
+
+/* EASY WHATSAPP-LIKE DRAG REPLY */
+.chat-bubble-wrap[data-msg-wrap-id] .chat-bubble{touch-action:pan-y !important;transition:transform .08s linear !important;}
+.chat-bubble-wrap.chat-swipe-active .chat-bubble{transition:none !important;will-change:transform !important;}
+.chat-bubble-wrap.chat-swipe-active::before{opacity:1 !important;transform:translateY(-50%) scale(1) !important;}
+
+/* Notifications: one row per conversation, with an explicit "multiple messages" label. */
+.notif-message-summary{display:flex !important;align-items:center !important;gap:.7rem !important;width:100% !important;padding:.74rem .7rem !important;border-radius:.8rem !important;background:var(--card) !important;border:1px solid var(--border) !important;color:var(--text) !important;text-align:left !important;cursor:pointer !important;box-sizing:border-box !important;}
+.notif-message-summary:hover{background:color-mix(in srgb,var(--primary) 8%,var(--card)) !important;}
+.notif-message-summary .notif-summary-avatar{width:2.25rem !important;height:2.25rem !important;min-width:2.25rem !important;border-radius:50% !important;object-fit:cover !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;background:color-mix(in srgb,var(--primary) 14%,transparent) !important;color:var(--primary) !important;font-weight:800 !important;}
+.notif-message-summary-copy{min-width:0 !important;flex:1 !important;display:flex !important;flex-direction:column !important;gap:.14rem !important;}
+.notif-message-summary-title{font-weight:800 !important;font-size:.86rem !important;line-height:1.2 !important;}
+.notif-message-summary-sub{font-size:.7rem !important;color:var(--text-muted) !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+.notif-message-summary-count{font-size:.69rem !important;color:var(--primary) !important;font-weight:700 !important;}
+.notif-message-summary.unread{border-color:color-mix(in srgb,var(--primary) 32%,var(--border)) !important;background:color-mix(in srgb,var(--primary) 6%,var(--card)) !important;}
+</style>
+<script id="levromart-final-2026-09-09-v4-js">
+(function(){
+  "use strict";
+
+  /* Replace the previous expandable notification-folder behaviour. Multiple
+     message notifications from one conversation become one compact, clickable
+     row. Nothing expands in-place; clicking opens the conversation and marks
+     every grouped notification as read. */
+  const oldRenderNotifications = window.renderNotifPanel;
+  if(typeof oldRenderNotifications === 'function' && !window.__levroNotifMultipleV4){
+    window.__levroNotifMultipleV4 = true;
+    window.renderNotifPanel = async function(){
+      const result = await oldRenderNotifications.apply(this, arguments);
+      const panel = byId('notifPanel');
+      const list = panel?.querySelector('.notif-list-scroll');
+      if(!list || typeof notifSelectMode !== 'undefined' && notifSelectMode) return result;
+      const rows=[...list.querySelectorAll(':scope > .notif-item-wrap')];
+      const groups=new Map();
+      rows.forEach(row=>{
+        const item=row.querySelector('.notif-item'); if(!item) return;
+        let params={}; try{params=JSON.parse(item.dataset.params||'{}');}catch(_){ }
+        if(item.dataset.view!=='messages' || !params.conversationId) return;
+        const key=String(params.conversationId);
+        if(!groups.has(key)) groups.set(key,[]);
+        groups.get(key).push(row);
+      });
+      for(const [conversationId, groupRows] of groups){
+        if(groupRows.length < 2) continue;
+        const firstItem=groupRows[0].querySelector('.notif-item');
+        const sender=firstItem?.dataset.actorName || firstItem?.querySelector('.notif-copy strong')?.textContent || 'Someone';
+        const avatar=firstItem?.dataset.actorAvatar || '';
+        const unread=groupRows.filter(r=>r.querySelector('.notif-item')?.classList.contains('unread')).length;
+        const latest=groupRows[0].querySelector('.notif-copy .muted')?.textContent || 'New message';
+        const ids=groupRows.map(r=>r.querySelector('.notif-item')?.dataset.id).filter(Boolean);
+        const wrap=document.createElement('div');
+        wrap.className='notif-item-wrap';
+        const row=document.createElement('button'); row.type='button';
+        row.className='notif-message-summary'+(unread?' unread':'');
+        const av=avatar ? `<img class="notif-summary-avatar" src="${esc(avatar)}" alt="">` : `<span class="notif-summary-avatar">${esc(initials(sender))}</span>`;
+        row.innerHTML=`${av}<span class="notif-message-summary-copy"><span class="notif-message-summary-title">New message from ${esc(sender)}</span><span class="notif-message-summary-count">${groupRows.length} multiple messages${unread?` · ${unread} unread`:''}</span><span class="notif-message-summary-sub">${esc(latest)}</span></span><i class="fa-solid fa-chevron-right" style="color:var(--text-muted);font-size:.72rem;"></i>`;
+        row.addEventListener('click',async()=>{
+          if(ids.length){
+            await sb.from('notifications').update({read:true}).in('id',ids);
+            notifCount=Math.max(0,notifCount-unread);
+            const dot=byId('notifDot');
+            if(dot){if(notifCount>0){dot.textContent=notifCount>9?'9+':notifCount;dot.classList.remove('hidden');}else dot.classList.add('hidden');}
+          }
+          closeAllPanels(); navigate('messages',{conversationId});
+        });
+        wrap.appendChild(row);
+        groupRows[0].replaceWith(wrap);
+        groupRows.slice(1).forEach(r=>r.remove());
+      }
+      return result;
+    };
+  }
+
+  /* A more forgiving drag recogniser: pointer capture keeps the message in
+     contact with the finger, horizontal movement starts after only a few px,
+     and the reply threshold is intentionally easy. */
+  window.setupMessageSwipeReply = function(root){
+    const el=root||document;
+    el.querySelectorAll?.('.chat-bubble-wrap[data-msg-wrap-id]').forEach(wrap=>{
+      if(wrap.dataset.levroSwipeV4==='1') return;
+      wrap.dataset.levroSwipeV4='1';
+      const bubble=wrap.querySelector('.chat-bubble[data-msg-id]');
+      if(!bubble || bubble.classList.contains('deleted')) return;
+      let sx=0,sy=0,dx=0,dy=0,tracking=false,horizontal=false,pointerId=null;
+      const reset=()=>{tracking=false;horizontal=false;dx=dy=0;pointerId=null;wrap.classList.remove('chat-swipe-active');bubble.style.transform='';};
+      bubble.addEventListener('pointerdown',e=>{
+        if(chatSelectionMode) return;
+        if(e.pointerType==='mouse' && e.button!==0) return;
+        sx=e.clientX;sy=e.clientY;dx=dy=0;tracking=true;horizontal=false;pointerId=e.pointerId;
+        try{bubble.setPointerCapture(e.pointerId);}catch(_){ }
+      },{passive:false});
+      bubble.addEventListener('pointermove',e=>{
+        if(!tracking || (pointerId!=null && e.pointerId!==pointerId)) return;
+        dx=e.clientX-sx;dy=e.clientY-sy;
+        if(!horizontal){
+          if(Math.abs(dy)>Math.abs(dx)*1.45 && Math.abs(dy)>8){reset();return;}
+          if(Math.abs(dx)<4)return;
+          if(Math.abs(dx)<Math.abs(dy)*.72)return;
+          horizontal=true;wrap.classList.add('chat-swipe-active');
+        }
+        e.preventDefault();
+        const resistance=.88;
+        const shift=Math.max(-96,Math.min(96,dx*resistance));
+        bubble.style.transform=`translate3d(${shift}px,0,0)`;
+      },{passive:false});
+      const finish=e=>{
+        if(!tracking)return;
+        const msgId=bubble.dataset.msgId;
+        const shouldReply=horizontal && Math.abs(dx)>=14;
+        try{if(pointerId!=null)bubble.releasePointerCapture(pointerId);}catch(_){ }
+        reset();
+        if(shouldReply && msgId){
+          wrap.classList.add('chat-swipe-reply');
+          setChatReplyTarget(msgId);
+          setTimeout(()=>wrap.classList.remove('chat-swipe-reply'),220);
+          requestAnimationFrame(()=>{try{byId('chatInput')?.focus({preventScroll:true});}catch(_){ }});
+        }
+      };
+      bubble.addEventListener('pointerup',finish,{passive:false});
+      bubble.addEventListener('pointercancel',reset,{passive:false});
+      bubble.addEventListener('lostpointercapture',()=>{if(tracking)finish();},{passive:false});
+    });
+  };
+  if(typeof window.setupMessageInteractions==='function'){
+    const oldSetup=window.setupMessageInteractions;
+    window.setupMessageInteractions=function(root){
+      oldSetup.apply(this,arguments);
+      window.setupMessageSwipeReply(root);
+    };
   }
 })();
 </script>
