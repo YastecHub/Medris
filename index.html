@@ -14089,39 +14089,8 @@ async function saveVendorBankDetails() {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Could not save payout details.");
-
-    // Keep the vendor row as the single source of truth for offline/direct
-    // transfer details too. The Paystack endpoint creates/updates the payout
-    // account, but the buyer-facing manual-payment flow reads these fields
-    // from vendors. Mirroring them here prevents a successful payout setup
-    // from appearing as "Not provided" later.
-    if (vendor?.id) {
-      const bankName = (typeof NIGERIAN_BANKS !== "undefined" ? NIGERIAN_BANKS.find(b => String(b.code) === String(bankCode))?.name : "") || json.bank_name || bankCode;
-      const mirror = {
-        bank_code: bankCode,
-        bank_name: bankName,
-        account_number: accountNumber,
-        account_name: String(json.account_name || "").trim() || null,
-      };
-      const subaccountCode = json.subaccount_code || json.paystack_subaccount_code || json.data?.subaccount_code;
-      if (subaccountCode) mirror.paystack_subaccount_code = subaccountCode;
-      const { error: mirrorError } = await sb.from("vendors").update(mirror)
-        .eq("id", vendor.id).eq("user_id", session.user.id);
-      if (mirrorError) console.warn("[Levromart] Could not mirror payout details to vendor row:", mirrorError);
-    }
-
-    // Refresh the in-memory vendor object so returning to the dashboard or
-    // business profile immediately shows the same saved details.
-    if (vendor?.id) {
-      vendor.bank_code = bankCode;
-      vendor.bank_name = (typeof NIGERIAN_BANKS !== "undefined" ? NIGERIAN_BANKS.find(b => String(b.code) === String(bankCode))?.name : "") || json.bank_name || bankCode;
-      vendor.account_number = accountNumber;
-      vendor.account_name = String(json.account_name || "").trim() || vendor.account_name || null;
-      if (json.subaccount_code || json.paystack_subaccount_code || json.data?.subaccount_code) vendor.paystack_subaccount_code = json.subaccount_code || json.paystack_subaccount_code || json.data?.subaccount_code;
-    }
-
     const keepScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-    showToast(`Payouts set up for ${json.account_name || vendor?.account_name || "your account"}.`, "success");
+    showToast(`Payouts set up for ${json.account_name}.`, "success");
     await navigate("vendorEditProfile", {}, false);
     requestAnimationFrame(() => window.scrollTo({ top: keepScrollY, left: 0, behavior: "auto" }));
   } catch (err) {
@@ -17209,269 +17178,6 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
 #profilePanel,#notifPanel{touch-action:pan-y !important;}
 #profilePanel::after,#notifPanel::after{pointer-events:none;}
 </style>
-
-<!-- LEVROMART FINAL USER REQUEST FIXES — 2026-09-10 -->
-<style id="levromart-final-user-request-fixes">
-/* TOP-RATED VENDORS: profile photo on the left, ALL vendor information on the
-   right. Do not stack the copy underneath the avatar on narrow screens. */
-@media (max-width: 720px){
-  #app .top-rated-vendors-scroll{display:flex !important;align-items:stretch !important;gap:.7rem !important;overflow-x:auto !important;}
-  #app .top-rated-vendors-scroll > .homepage-vendor-card,
-  #app .top-rated-vendors-scroll > .vendor-card{
-    flex:0 0 214px !important; width:214px !important; min-width:214px !important;
-    min-height:116px !important; height:auto !important; padding:.62rem !important;
-    display:grid !important; grid-template-columns:3.15rem minmax(0,1fr) !important;
-    align-items:start !important; column-gap:.62rem !important; row-gap:0 !important;
-    overflow:hidden !important; box-sizing:border-box !important;
-  }
-  #app .top-rated-vendors-scroll .vendor-home-avatar,
-  #app .top-rated-vendors-scroll .vendor-directory-logo{
-    grid-column:1 !important; grid-row:1 !important; width:3.15rem !important; height:3.15rem !important;
-    min-width:3.15rem !important; min-height:3.15rem !important; margin:0 !important;
-    align-self:start !important;
-  }
-  #app .top-rated-vendors-scroll .vendor-home-copy,
-  #app .top-rated-vendors-scroll .vendor-directory-copy{
-    grid-column:2 !important; grid-row:1 !important; min-width:0 !important; width:auto !important;
-    display:flex !important; flex-direction:column !important; gap:.18rem !important;
-    overflow:hidden !important;
-  }
-  #app .top-rated-vendors-scroll .vendor-home-copy > strong,
-  #app .top-rated-vendors-scroll .vendor-directory-name{
-    display:block !important; font-size:.82rem !important; line-height:1.15 !important;
-    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-  }
-  #app .top-rated-vendors-scroll .vendor-home-city,
-  #app .top-rated-vendors-scroll .vendor-directory-city,
-  #app .top-rated-vendors-scroll .vendor-directory-categories{
-    display:block !important; font-size:.64rem !important; line-height:1.15 !important;
-    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-  }
-  #app .top-rated-vendors-scroll .vendor-home-meta,
-  #app .top-rated-vendors-scroll .vendor-card-footer{
-    display:flex !important; flex-wrap:wrap !important; gap:.2rem !important;
-    min-width:0 !important; overflow:hidden !important;
-  }
-  #app .top-rated-vendors-scroll .vendor-home-meta .badge,
-  #app .top-rated-vendors-scroll .vendor-card-footer .badge{
-    font-size:.54rem !important; line-height:1 !important; padding:.16rem .28rem !important;
-    max-width:100% !important; white-space:nowrap !important; overflow:hidden !important;
-    text-overflow:ellipsis !important;
-  }
-  #app .top-rated-vendors-scroll .vendor-home-known{
-    display:block !important; font-size:.59rem !important; line-height:1.15 !important;
-    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-  }
-}
-
-/* BROWSE EVERYTHING: two-column, genuinely square product/service cards.
-   The image and content are kept compact so the bottom of the card never has
-   a large empty pocket. The card remains square even when listings differ in
-   description length; secondary text is clamped rather than stretching rows. */
-@media (max-width: 900px){
-  #app .grid:has(> .product-card-wrap){
-    grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:.62rem !important;
-    align-items:start !important; grid-auto-rows:auto !important;
-  }
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap{
-    width:100% !important; min-width:0 !important; height:auto !important;
-    aspect-ratio:1 / 1 !important; display:block !important;
-  }
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
-    width:100% !important; height:100% !important; min-height:0 !important;
-    max-height:none !important; aspect-ratio:1 / 1 !important; box-sizing:border-box !important;
-    padding:.5rem !important; overflow:hidden !important; display:flex !important;
-    flex-direction:column !important; gap:0 !important; border-radius:14px !important;
-  }
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img{
-    width:100% !important; height:auto !important; flex:0 0 42% !important; min-height:0 !important;
-    max-height:none !important; aspect-ratio:1 / 1 !important; border-radius:10px !important;
-    overflow:hidden !important;
-  }
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img img{
-    width:100% !important; height:100% !important; object-fit:cover !important; display:block !important;
-  }
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card h4{
-    min-width:0 !important; margin:.28rem 0 .08rem !important; font-size:.76rem !important;
-    line-height:1.1 !important; min-height:0 !important; max-height:2.2em !important;
-    display:-webkit-box !important; -webkit-box-orient:vertical !important;
-    -webkit-line-clamp:2 !important; overflow:hidden !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-card-vendor-row{
-    min-height:0 !important; height:1.05rem !important; flex:0 0 1.05rem !important;
-    display:flex !important; align-items:center !important; gap:.2rem !important;
-    overflow:hidden !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-card-vendor{
-    min-width:0 !important; max-width:62% !important; font-size:.59rem !important;
-    line-height:1 !important; white-space:nowrap !important; overflow:hidden !important;
-    text-overflow:ellipsis !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-card-vendor img,
-  #app .grid:has(> .product-card-wrap) .product-vendor-initial{
-    width:.95rem !important; height:.95rem !important; min-width:.95rem !important;
-    min-height:.95rem !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-card-price-block{
-    min-height:0 !important; margin:.16rem 0 !important; font-size:.65rem !important;
-    line-height:1.08 !important; overflow:hidden !important; flex:0 0 auto !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-card-price-block > span{
-    display:block !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-availability{
-    margin:.04rem 0 !important; min-height:0 !important; font-size:.56rem !important; line-height:1.05 !important;
-    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-card-delivery-wrap{
-    min-height:0 !important; margin:.04rem 0 !important; overflow:hidden !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-delivery-summary{
-    margin:0 !important; padding:0 !important; font-size:.55rem !important; line-height:1.05 !important;
-    display:-webkit-box !important; -webkit-box-orient:vertical !important;
-    -webkit-line-clamp:1 !important; overflow:hidden !important;
-  }
-  #app .grid:has(> .product-card-wrap) .product-card-action-row{
-    display:flex !important; justify-content:flex-end !important; align-items:center !important;
-    min-height:0 !important; height:1.9rem !important; margin-top:auto !important; flex:0 0 1.9rem !important;
-  }
-  #app .grid:has(> .product-card-wrap) .card-cart-btn,
-  #app .grid:has(> .product-card-wrap) .card-service-btn{
-    position:static !important; width:1.82rem !important; height:1.82rem !important;
-    min-width:1.82rem !important; min-height:1.82rem !important; margin:0 !important;
-    flex:0 0 1.82rem !important; border-radius:50% !important;
-  }
-  #app .grid:has(> .product-card-wrap) .own-listing-badge{
-    position:static !important; margin:0 !important; max-width:70% !important; font-size:.5rem !important;
-    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-  }
-}
-
-/* Direct-payment account rows: make the number look like a real bank detail
-   and make copying obvious without changing the payment flow. */
-.manual-payment-account-row.account-number-row{cursor:pointer !important;}
-.manual-payment-account-row.account-number-row strong{font-variant-numeric:tabular-nums !important;letter-spacing:.02em !important;}
-</style>
-<script id="levromart-final-user-request-fixes-js">
-(function(){
-  "use strict";
-
-  window.copyVendorAccountNumber = async function(value,event){
-    if(event){try{event.stopPropagation();}catch(_){} }
-    const number=String(value||"").trim();
-    if(!number){showToast("No account number is available.","info");return;}
-    try{
-      if(navigator.clipboard?.writeText){
-        await navigator.clipboard.writeText(number);
-      }else{
-        const ta=document.createElement("textarea");
-        ta.value=number; ta.setAttribute("readonly",""); ta.style.position="fixed"; ta.style.opacity="0";
-        document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
-      }
-      showToast("Account number copied.","success");
-    }catch(_){showToast("Copy failed. Please copy the account number manually.","info");}
-  };
-
-  /* The marketplace search RPC can rank semantically related words above an
-     exact product name. Levi should never turn a product request into an
-     unrelated answer. For product-looking questions, score the real active
-     catalogue locally and give the model the concrete matches. */
-  function cleanLeviSearchText(value){
-    return String(value||"").toLowerCase().replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim();
-  }
-  function levenshtein(a,b){
-    a=String(a||""); b=String(b||""); if(!a||!b)return Math.max(a.length,b.length);
-    const prev=Array.from({length:b.length+1},(_,i)=>i);
-    for(let i=1;i<=a.length;i++){
-      const cur=[i];
-      for(let j=1;j<=b.length;j++) cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
-      for(let j=0;j<cur.length;j++) prev[j]=cur[j];
-    }
-    return prev[b.length];
-  }
-  function looksLikeProductLookup(q){
-    // Leave deterministic cart/order actions to the original Levi action layer.
-    // This wrapper is only for genuine marketplace/product discovery questions.
-    if (/\b(add|put|place|remove|delete|clear|empty|take|drop)\b[\s\S]*\b(cart|basket)\b/.test(q)) return false;
-    if (/\b(cart|basket)\b[\s\S]*\b(add|put|place|remove|delete|clear|empty|take|drop)\b/.test(q)) return false;
-    return /\b(product|products|item|items|buy|buying|price|cost|how much|find|looking for|do you have|is there|show me|available|sell|selling|need|want|where can i get|where do i get)\b/.test(q);
-  }
-  async function searchLeviMarketplace(text){
-    const q=cleanLeviSearchText(text);
-    if(!q || !looksLikeProductLookup(q)) return [];
-    const stop=new Set(["what","which","where","when","how","much","can","could","would","you","please","find","show","me","do","have","is","there","any","the","a","an","for","i","need","want","buy","buying","product","products","item","items","available","sell","selling","price","cost","get","from","on","in","my","and","or","of","to"]);
-    const tokens=q.split(/\s+/).filter(t=>t.length>=2&&!stop.has(t)).slice(0,8);
-    if(!tokens.length)return [];
-    try{
-      const {data:rows,error}=await sb.from("products")
-        .select("id,name,description,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,quantity_available,vendor:vendors!inner(id,business_name,verification_status,is_active,city)")
-        .eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).limit(700);
-      if(error)throw error;
-      const scored=(rows||[]).map(p=>{
-        const name=cleanLeviSearchText(p.name);
-        const desc=cleanLeviSearchText(p.description);
-        const nameTokens=name.split(/\s+/).filter(Boolean);
-        let score=0;
-        if(name===q)score+=100;
-        if(name.includes(q))score+=45;
-        for(const t of tokens){
-          if(nameTokens.includes(t))score+=18;
-          else if(name.includes(t))score+=11;
-          else if(nameTokens.some(nt=>t.length>=4&&levenshtein(t,nt)<=1))score+=7;
-          else if(desc.includes(t))score+=2;
-        }
-        if(Number(p.quantity_available)>0)score+=1;
-        return {p,score};
-      }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
-      if(!scored.length)return [];
-      const best=scored[0].score;
-      return scored.filter(x=>x.score>=Math.max(6,best-18)).slice(0,4).map(x=>x.p);
-    }catch(e){
-      console.warn("[Levi] catalogue lookup failed:",e);
-      return [];
-    }
-  }
-  function leviMarketplaceReply(products,text){
-    const top=(products||[]).slice(0,4);
-    if(!top.length)return null;
-    const lines=top.map(p=>{
-      const price=p.discount_price!=null&&Number(p.discount_price)>0&&Number(p.sale_price)>Number(p.discount_price)
-        ? `${naira(p.discount_price)} (was ${naira(p.sale_price)})`
-        : p.sale_price!=null ? naira(p.sale_price)
-        : p.rental_rate!=null ? `${naira(p.rental_rate)}/${p.rental_rate_unit||"day"}`
-        : "price on request";
-      const availability=p.is_service?"service":Number(p.quantity_available||0)>0?`${p.quantity_available} available`:"availability not listed";
-      return `• ${p.name} — ${price} · ${p.vendor?.business_name||"verified vendor"} · ${availability}`;
-    });
-    return `I found these on Levromart:\n${lines.join("\n")}\n\nTell me which one you want and I can open it for you.`;
-  }
-
-  const originalSend=window.sendAiChatMessage;
-  if(typeof originalSend==="function"&&!window.__levroProductAwareLeviV1){
-    window.__levroProductAwareLeviV1=true;
-    window.sendAiChatMessage=async function(){
-      const input=byId("aiChatInput");
-      const text=input?.value?.trim()||"";
-      if(text && looksLikeProductLookup(cleanLeviSearchText(text))){
-        try{
-          const products=await searchLeviMarketplace(text);
-          if(products.length){
-            const reply=leviMarketplaceReply(products,text);
-            if(reply){
-              const wasVoice=aiChatLastInputVoice; aiChatLastInputVoice=false;
-              resetChatInput(input); appendAiChatMessage("user",text); persistAiMessage("user",text);
-              appendAiChatMessage("assistant",reply,wasVoice); persistAiMessage("assistant",reply); playSound("notify");
-              return;
-            }
-          }
-        }catch(e){console.warn("[Levi] product-aware send failed:",e);}
-      }
-      return originalSend.apply(this,arguments);
-    };
-  }
-})();
-</script>
-
 </body></html>`);
   w.document.close();
 }
@@ -21605,6 +21311,8 @@ window.renderVendorMapRail = function(){
 .manual-payment-account-row{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.45rem 0;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent);}
 .manual-payment-account-row:last-child{border-bottom:0;}
 .manual-payment-account-row strong{min-width:0;overflow-wrap:anywhere;}
+.manual-payment-copy-btn{flex:0 0 auto;width:1.9rem;height:1.9rem;min-width:1.9rem;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;font-size:.78rem;cursor:pointer;}
+.manual-payment-copy-btn:hover{background:color-mix(in srgb,var(--primary) 10%,var(--card));}
 @media(max-width:560px){#vendorsGrid .vendor-card{padding:.62rem !important}.vendor-directory-logo{width:2.65rem !important;height:2.65rem !important;min-width:2.65rem !important;min-height:2.65rem !important;}}
 
 /* Final vendor-card sizing: smaller cards, but a genuinely large uniform profile circle. */
@@ -21626,18 +21334,8 @@ window.renderVendorMapRail = function(){
     const {data:order,error}=await sb.from("orders").select("id,total_amount,deposit_amount,buyer_id,vendor_id,order_type,vendor:vendors(id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
     if(error||!order){showToast(error?.message||"Order not found.","error");return;}
     if(String(order.buyer_id)!==String(session.user.id)){showToast("You can only pay for your own order.","error");return;}
-
-    // Buyer-authorized RPC is the primary source for transfer details. It is
-    // deliberately scoped to this order + current buyer, so bank details are
-    // not exposed through a general public vendor lookup. The ordinary vendor
-    // query remains as a compatibility fallback for older deployments.
-    if(order.id){
-      try {
-        const {data:paymentVendor}=await sb.rpc("get_order_vendor_payment_details",{p_order_id:order.id});
-        const pv=Array.isArray(paymentVendor)?paymentVendor[0]:paymentVendor;
-        if(pv) order.vendor={...(order.vendor||{}),...pv};
-      } catch (_) {}
-    }
+    // The vendor relationship can be filtered by RLS on older/paused vendor rows.
+    // Refresh the payment details directly from the vendor row as a second source.
     if(order.vendor_id){
       const {data:freshVendor}=await sb.from("vendors").select("id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number").eq("id",order.vendor_id).maybeSingle();
       if(freshVendor) order.vendor={...(order.vendor||{}),...freshVendor};
@@ -21656,9 +21354,13 @@ window.renderVendorMapRail = function(){
     const hasAccount = !!(order.vendor?.account_name || order.vendor?.account_number || order.vendor?.bank_code || order.vendor?.bank_name);
     modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> for the <strong>${esc(paymentLabel)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
-      <div class="manual-payment-account"><div class="manual-payment-account-row"><span class="muted">Bank</span><strong>${esc(bankName)}</strong></div><div class="manual-payment-account-row"><span class="muted">Account name</span><strong>${esc(order.vendor?.account_name||"Not provided")}</strong></div><div class="manual-payment-account-row"><span class="muted">Account number</span><strong>${esc(order.vendor?.account_number||"Not provided")}</strong></div></div>
+      <div class="manual-payment-account">
+        <div class="manual-payment-account-row"><span class="muted">Bank</span><strong>${esc(bankName)}</strong>${order.vendor?.bank_name||order.vendor?.bank_code?`<button type="button" class="icon-btn manual-payment-copy-btn" title="Copy bank name" aria-label="Copy bank name" onclick="navigator.clipboard?.writeText('${esc(bankName)}').then(()=>showToast('Bank name copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i></button>`:""}</div>
+        <div class="manual-payment-account-row"><span class="muted">Account name</span><strong>${esc(order.vendor?.account_name||"Not provided")}</strong>${order.vendor?.account_name?`<button type="button" class="icon-btn manual-payment-copy-btn" title="Copy account name" aria-label="Copy account name" onclick="navigator.clipboard?.writeText('${esc(order.vendor.account_name)}').then(()=>showToast('Account name copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i></button>`:""}</div>
+        <div class="manual-payment-account-row"><span class="muted">Account number</span><strong>${esc(order.vendor?.account_number||"Not provided")}</strong>${order.vendor?.account_number?`<button type="button" class="icon-btn manual-payment-copy-btn" title="Copy account number" aria-label="Copy account number" onclick="navigator.clipboard?.writeText('${esc(order.vendor.account_number)}').then(()=>showToast('Account number copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i></button>`:""}</div>
+      </div>
       ${!hasAccount ? `<div class="banner banner-warning" style="margin-top:.7rem;"><strong>Vendor payment details are not saved yet.</strong> Please contact the vendor before transferring.</div>` : ""}
-      <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${order.vendor?.account_number?`<button type="button" class="btn btn-sm btn-outline" onclick="copyVendorAccountNumber('${esc(order.vendor.account_number)}',event)"><i class="fa-regular fa-copy"></i> Copy account number</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
+      <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
       <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount})"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
     document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
   };
@@ -22515,6 +22217,72 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 .chat-page-wrap .chat-page-header{position:sticky !important;top:0 !important;z-index:3000 !important;flex:0 0 auto !important;transform:translateZ(0) !important;}
 .chat-page-wrap .chat-thread{min-height:0 !important;overflow:hidden !important;}
 .chat-page-wrap .chat-input-row{flex:0 0 auto !important;position:relative !important;z-index:3001 !important;}
+</style>
+
+<!-- ================================================================
+     MOBILE FEEDBACK PASS — 2026-09-10
+     1) Top-rated vendor cards: force avatar-beside-details (row) layout
+        instead of avatar-above-details (column), at the top of the
+        cascade so no earlier !important rule can re-stack them.
+     2) Browse-everything cards (products/services/packages): stop
+        forcing every card in a grid row to match the tallest card's
+        height (that's what was leaving dead air under the cart icon on
+        shorter cards) and make the thumbnail a true square.
+     ================================================================ -->
+<style id="levromart-mobile-feedback-20260910">
+/* --- 1) Vendor home cards: avatar + details side by side --- */
+#app .top-rated-vendors-scroll .homepage-vendor-card,
+#app .homepage-vendor-card.vendor-card{
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:nowrap !important;
+  align-items:flex-start !important;
+  gap:.65rem !important;
+}
+#app .homepage-vendor-card .vendor-home-avatar{
+  flex:0 0 3.05rem !important;
+  width:3.05rem !important;
+  height:3.05rem !important;
+  margin:0 !important;
+}
+#app .homepage-vendor-card .vendor-home-copy{
+  flex:1 1 auto !important;
+  min-width:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+
+/* --- 2) Browse-everything product/service/package cards --- */
+#app .grid:has(> .product-card-wrap){
+  align-items:start !important;
+  grid-auto-rows:auto !important;
+}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap{
+  height:auto !important;
+  min-height:0 !important;
+}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
+  height:auto !important;
+  min-height:0 !important;
+  padding:.55rem .55rem 2.3rem !important;
+}
+#app .grid:has(> .product-card-wrap) .product-img{
+  aspect-ratio:1 / 1 !important;
+  height:auto !important;
+  width:100% !important;
+}
+#app .grid:has(> .product-card-wrap) .product-img img{
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  display:block !important;
+}
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .card-cart-btn,
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .card-service-btn{
+  position:absolute !important;
+  top:auto !important; left:auto !important;
+  bottom:.5rem !important; right:.5rem !important;
+}
 </style>
 
 <script id="levromart-final-qa-20260909-js">
