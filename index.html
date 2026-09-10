@@ -5704,6 +5704,91 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   }
 }
 </style>
+
+<style id="levromart-20260910-final-ux-pass">
+/* Bottom navigation: remove the duplicated iOS safe-area padding that was creating a large empty band inside the glass bar. */
+@media (max-width:720px){
+  body{padding-bottom:calc(4.85rem + env(safe-area-inset-bottom,0px)) !important;}
+  #bottomNav{
+    bottom:calc(.65rem + env(safe-area-inset-bottom,0px)) !important;
+    min-height:0 !important;
+    height:68px !important;
+    padding:.22rem .22rem !important;
+    box-sizing:border-box !important;
+    align-items:center !important;
+  }
+  #bottomNav.has-add{
+    height:68px !important;
+    padding:.22rem .22rem !important;
+  }
+  #bottomNav.has-add .bottom-nav-item{min-height:0 !important;height:54px !important;padding:.28rem .06rem !important;}
+  #bottomNav.has-add .bottom-nav-add{width:52px !important;height:52px !important;top:-.72rem !important;}
+  #bottomNav .bn-icon{line-height:1 !important;}
+}
+
+/* Messages inbox: a WhatsApp-like conversation surface rather than one giant card. */
+#app .messages-inbox-heading{
+  display:flex !important;align-items:center !important;justify-content:space-between !important;
+  gap:.6rem !important;margin:0 0 .8rem !important;
+}
+#app .messages-inbox-title{display:flex !important;align-items:center !important;gap:.4rem !important;min-width:0 !important;}
+#app .messages-inbox-title h2{margin:0 !important;display:flex !important;align-items:center !important;gap:.35rem !important;}
+#app .messages-inbox-back,#app .messages-inbox-more{
+  width:2.55rem !important;height:2.55rem !important;flex:0 0 2.55rem !important;border:0 !important;border-radius:50% !important;
+  background:color-mix(in srgb,var(--primary) 7%,var(--card)) !important;color:var(--text) !important;
+  display:inline-flex !important;align-items:center !important;justify-content:center !important;cursor:pointer !important;font:inherit !important;
+}
+#app .messages-inbox-back:hover,#app .messages-inbox-more:hover{color:var(--primary) !important;background:color-mix(in srgb,var(--primary) 12%,var(--card)) !important;}
+#app .messages-search{display:block !important;width:100% !important;max-width:none !important;margin:.2rem 0 .75rem !important;}
+#app .messages-conversation-list{
+  width:100% !important;margin:0 !important;padding:0 !important;background:transparent !important;border:0 !important;
+  overflow:visible !important;box-shadow:none !important;
+}
+#app .messages-conversation-list .conv-list-item{
+  min-height:4.6rem !important;padding:.72rem .15rem !important;background:transparent !important;
+  border-bottom:1px solid var(--border) !important;border-radius:0 !important;box-shadow:none !important;
+}
+#app .messages-conversation-list .conv-list-item:last-child{border-bottom:0 !important;}
+#app .messages-conversation-list .conv-list-item:hover{background:color-mix(in srgb,var(--primary) 4%,transparent) !important;}
+#app .messages-conversation-list .conv-list-item .avatar-circle{width:3.25rem !important;height:3.25rem !important;}
+#app .messages-conversation-list .conv-list-item .conv-meta{min-width:0 !important;}
+#app .messages-conversation-list .conv-list-item .conv-name,
+#app .messages-conversation-list .conv-list-item strong{font-size:.92rem !important;}
+#app .messages-conversation-list .conv-list-item .conv-preview{font-size:.8rem !important;margin-top:.12rem !important;}
+
+/* Compact request stack: same centered hierarchy, less vertical weight. */
+#app .vendor-request-card{
+  max-width:620px !important;padding:.9rem !important;margin-bottom:.7rem !important;
+}
+#app .vendor-request-card-head{gap:.45rem !important;}
+#app .vendor-request-person .avatar-circle{width:3rem !important;height:3rem !important;}
+#app .vendor-request-description{margin:.55rem auto .15rem !important;line-height:1.3 !important;}
+#app .vendor-request-meta{margin:.15rem auto 0 !important;min-height:0 !important;}
+#app .vendor-request-card .vendor-interest-row{margin:.75rem auto .15rem !important;gap:.55rem !important;}
+#app .vendor-request-card .vendor-interest-row .btn{
+  min-width:132px !important;min-height:40px !important;height:40px !important;padding:.48rem .85rem !important;font-size:.78rem !important;border-radius:11px !important;
+}
+#app .vendor-more-requests{max-width:620px !important;margin:.25rem auto .8rem !important;border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border)) !important;border-radius:15px !important;background:color-mix(in srgb,var(--primary) 3%,var(--card)) !important;overflow:hidden !important;}
+#app .vendor-more-requests summary{list-style:none !important;cursor:pointer !important;display:flex !important;align-items:center !important;justify-content:space-between !important;gap:.65rem !important;padding:.72rem .9rem !important;color:var(--primary) !important;font-weight:750 !important;font-size:.78rem !important;}
+#app .vendor-more-requests summary::-webkit-details-marker{display:none !important;}
+#app .vendor-more-requests summary small{color:var(--text-muted) !important;font-weight:650 !important;}
+#app .vendor-more-requests[open] summary i{transform:rotate(180deg) !important;}
+#app .vendor-more-requests-body{padding:.55rem .45rem .1rem !important;border-top:1px solid color-mix(in srgb,var(--primary) 12%,var(--border)) !important;}
+#app .vendor-more-requests-body .vendor-request-card{margin-bottom:.7rem !important;}
+@media(max-width:480px){
+  #app .vendor-request-card{max-width:100% !important;padding:.8rem !important;}
+  #app .vendor-request-card .vendor-interest-row .btn{min-width:126px !important;height:40px !important;}
+}
+</style>
+<script id="levromart-20260910-final-ux-hooks">
+(function(){
+  'use strict';
+  /* Keep the dedicated chat shell stable if Safari/iOS changes the visual viewport. */
+  function refresh(){ try{ window.__levromartSyncChatViewport?.(); }catch(_){} }
+  window.addEventListener('pageshow', refresh, {passive:true});
+  window.addEventListener('orientationchange', function(){ setTimeout(refresh,120); }, {passive:true});
+})();
+</script>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -11716,6 +11801,11 @@ function setMsgListFilter(f) {
   navigate("messages", {}, false);
 }
 
+function backFromMessagesInbox() {
+  const target = (lastNonSettingsView && lastNonSettingsView !== "messages") ? lastNonSettingsView : "home";
+  navigate(target, {}, false);
+}
+
 function filterMsgList() {
   cleanupExpiredChatPins().catch(()=>{});
   const wrap = byId("convListWrap");
@@ -11935,14 +12025,16 @@ async function renderMessages(conversationId) {
     }
 
     const convs = window.__conversations || [];
+    const inboxBack = `<button type="button" class="messages-inbox-back" onclick="backFromMessagesInbox()" aria-label="Back" title="Back"><i class="fa-solid fa-arrow-left"></i></button>`;
     if (convs.length === 0) {
-      return `<h2><i class="fa-solid fa-comments"></i> Messages</h2><div class="empty-state">No conversations yet. ${isVendor ? "Customers who message you will show up here." : "Message a vendor from their storefront or a product page."}</div>`;
+      return `<div class="messages-inbox-heading"><div class="messages-inbox-title">${inboxBack}<h2><i class="fa-solid fa-comments"></i> Messages</h2></div></div><div class="empty-state">No conversations yet. ${isVendor ? "Customers who message you will show up here." : "Message a vendor from their storefront or a product page."}</div>`;
     }
 
     let html = `<div id="messagesSelectionBar">${msgSelectionHeaderHtml()}</div>`;
+    html += `<div class="messages-inbox-heading"><div class="messages-inbox-title">${inboxBack}<h2><i class="fa-solid fa-comments"></i> Messages</h2></div><button type="button" class="messages-inbox-more" aria-label="More message options" title="More"><i class="fa-solid fa-ellipsis"></i></button></div>`;
     html += chatListTabsHtml();
-    html += `<input type="text" id="msgSearchInput" placeholder="Search conversations…" oninput="filterMsgList()" style="margin:0.2rem 0 0.8rem;max-width:340px;" />`;
-    html += `<div class="card" style="padding:0;overflow:hidden;" id="convListWrap"></div>`;
+    html += `<input type="text" id="msgSearchInput" class="messages-search" placeholder="Search conversations…" oninput="filterMsgList()" />`;
+    html += `<div id="convListWrap" class="messages-conversation-list" aria-label="Conversations"></div>`;
     setTimeout(filterMsgList, 0);
     return html;
   }
@@ -14482,7 +14574,7 @@ async function renderVendorRequests() {
   if (requestsError) html += `<div class="banner banner-danger">Could not load customer requests right now. Please try again.</div>`;
   else if (!visibleRequests.length) html += `<div class="empty-state">No customer requests to show right now.</div>`;
 
-  visibleRequests.forEach((r) => {
+  const requestRender = (r) => {
     const mine = (r.offers || []).find((o) => o.vendor_id === vendor.id);
     const matches = (myProducts || []).filter((p) => !r.category_id || p.category_id === r.category_id);
     const interestKey = `levromart-vendor-interest-${vendor.id}-${r.id}`;
@@ -14528,7 +14620,16 @@ async function renderVendorRequests() {
               <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
             </div>`}
     </article>`;
-  });
+  };
+
+  const requestPreviewCount = 3;
+  visibleRequests.slice(0, requestPreviewCount).forEach(requestRender);
+  if (visibleRequests.length > requestPreviewCount) {
+    const remainingCount = visibleRequests.length - requestPreviewCount;
+    html += `<details class="vendor-more-requests"><summary><span><i class="fa-solid fa-chevron-down"></i> View ${remainingCount} more request${remainingCount === 1 ? "" : "s"}</span><small>Show all</small></summary><div class="vendor-more-requests-body">`;
+    visibleRequests.slice(requestPreviewCount).forEach(requestRender);
+    html += `</div></details>`;
+  }
   html += `</section><section id="vendorMyRequestsTab" class="vendor-request-tab-panel hidden">`;
   if (!myRequests?.length) html += `<div class="empty-state"><i class="fa-solid fa-list-check" style="font-size:1.5rem;display:block;margin-bottom:.5rem;"></i>You haven't posted any requests yet.<br><button type="button" class="btn btn-sm" style="margin-top:.7rem;" onclick="navigate('requestEquipment')">Post a request</button></div>`;
   (myRequests || []).forEach((r) => {
