@@ -4449,6 +4449,9 @@ body.chat-full-page > .site-footer,
 body.chat-full-page > #cartFab,
 body.chat-full-page > #aiChatFab { display:none !important; }
 body.chat-full-page > #app { margin:0 !important; padding:0 !important; max-width:none !important; width:100% !important; }
+body.chat-full-page #bottomNav,
+body.chat-full-page #cartFab,
+body.chat-full-page #aiChatFab { display:none !important; }
 
 .chat-page-wrap { position:fixed; inset:0; z-index:210; display:flex; flex-direction:column; height:100dvh; background:var(--card); }
 .chat-page-header {
@@ -5424,6 +5427,11 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 #app .vendor-request-tab.active{background:var(--primary) !important;color:#fff !important;box-shadow:0 5px 14px color-mix(in srgb,var(--primary) 22%,transparent) !important;}
 #app .vendor-request-tab span{background:rgba(255,255,255,.22) !important;color:inherit !important;}
 #app .vendor-offer-compose{margin-top:.75rem !important;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border)) !important;border-radius:16px !important;padding:.8rem !important;background:color-mix(in srgb,var(--primary) 3%,var(--card)) !important;}
+#app .vendor-offer-compose-title{display:flex !important;align-items:center !important;gap:.45rem !important;margin:0 0 .65rem !important;flex-wrap:wrap !important;color:var(--text) !important;}
+#app .vendor-offer-compose-title i{color:var(--primary) !important;}
+#app .vendor-offer-compose-title span{width:100% !important;font-size:.72rem !important;line-height:1.35 !important;}
+#app .vendor-offer-actions{display:grid !important;grid-template-columns:minmax(0,1fr) auto !important;gap:.45rem !important;margin-top:.55rem !important;}
+#app .vendor-offer-actions .vendor-send-offer-btn{margin-top:0 !important;}
 #app .vendor-offer-compose.hidden{display:none !important;}
 /* Vendor directory: type tabs + one clean filter dropdown. */
 #app .vendor-listing-tabs{display:flex !important;justify-content:center !important;gap:.45rem !important;flex-wrap:wrap !important;margin:.85rem auto 1rem !important;padding:.3rem !important;max-width:max-content !important;background:color-mix(in srgb,var(--primary) 6%,var(--card)) !important;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border)) !important;border-radius:999px !important;box-shadow:var(--shadow) !important;}
@@ -14246,6 +14254,23 @@ async function renderVendorRequests() {
     const interestKey = `levromart-vendor-interest-${vendor.id}-${r.id}`;
     let interest = "";
     try { interest = localStorage.getItem(interestKey) || ""; } catch (_) {}
+    const offerComposer = (showCancel = true) => `<div class="vendor-offer-compose" id="vendorOfferCompose-${r.id}">
+      <div class="vendor-offer-compose-title"><i class="fa-solid fa-paper-plane"></i><strong>Make an offer</strong><span class="muted">Enter your price and add an optional message to the customer.</span></div>
+      ${matches.length ? `<select id="offerProduct-${r.id}" onchange="applyOfferProductPrice('${r.id}','${r.request_type}')">
+        <option value="">Quote a custom price…</option>
+        ${matches.map((p) => `<option value="${p.id}">Use my "${esc(p.name)}": ${p.sale_price != null ? naira(p.sale_price) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</option>`).join("")}
+      </select>` : ""}
+      <div class="vendor-offer-fields">
+        <input type="number" id="offerPrice-${r.id}" placeholder="Price (₦)" inputmode="decimal" min="0" step="0.01" />
+        <textarea id="offerMsg-${r.id}" rows="3" placeholder="Message to the customer (e.g. availability, delivery time, or other details)…"></textarea>
+      </div>
+      <div class="vendor-offer-actions">
+        <button class="btn vendor-send-offer-btn" type="button" onclick="sendOffer('${r.id}')"><i class="fa-solid fa-paper-plane"></i> Send offer</button>
+        ${showCancel ? `<button class="btn btn-sm btn-outline" type="button" onclick="setVendorRequestInterest('${r.id}','cancel-interest')">Cancel</button>` : ""}
+      </div>
+      ${deliveryFee > 0 ? `<p class="muted vendor-offer-note"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown to the customer automatically when delivery is needed.</p>` : ""}
+    </div>`;
+
     html += `<article class="card vendor-request-card" id="vendorRequestCard-${r.id}">
       <div class="vendor-request-card-head">
         <div class="vendor-request-person">
@@ -14256,24 +14281,18 @@ async function renderVendorRequests() {
       </div>
       ${r.description ? `<p class="muted vendor-request-description">${esc(r.description)}</p>` : ""}
       <p class="muted vendor-request-meta">${[r.city, r.request_type !== "buy" && r.needed_from ? r.needed_from + " → " + (r.needed_to || "") : ""].filter(Boolean).map(esc).join(" · ")}</p>
-      <div class="vendor-interest-row">
-        <button type="button" class="btn btn-sm vendor-interest-btn ${interest === "interested" ? "active" : ""}" onclick="setVendorRequestInterest('${r.id}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
-        <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
-      </div>
       ${mine
-        ? `<div class="vendor-offer-status"><i class="fa-solid fa-circle-check"></i> You already sent an offer · <strong>${esc(mine.status || "pending")}</strong></div>`
-        : `<div class="vendor-offer-compose hidden" id="vendorOfferCompose-${r.id}">
-             ${matches.length ? `<select id="offerProduct-${r.id}" onchange="applyOfferProductPrice('${r.id}','${r.request_type}')">
-               <option value="">Quote a custom price…</option>
-               ${matches.map((p) => `<option value="${p.id}">Use my "${esc(p.name)}": ${p.sale_price != null ? naira(p.sale_price) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</option>`).join("")}
-             </select>` : ""}
-             <div class="vendor-offer-fields">
-               <input type="number" id="offerPrice-${r.id}" placeholder="Price (₦)" inputmode="decimal" />
-               <textarea id="offerMsg-${r.id}" rows="3" placeholder="Message to the customer (e.g. availability, delivery time, or other details)…"></textarea>
-             </div>
-             <button class="btn vendor-send-offer-btn" type="button" onclick="sendOffer('${r.id}')"><i class="fa-solid fa-paper-plane"></i> Send offer</button>
-             ${deliveryFee > 0 ? `<p class="muted vendor-offer-note"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown to the customer automatically when delivery is needed.</p>` : ""}
-           </div>`}
+        ? `<div class="vendor-interest-row">
+             <button type="button" class="btn btn-sm vendor-interest-btn" disabled><i class="fa-solid fa-heart"></i> Interested</button>
+             <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
+           </div>
+           <div class="vendor-offer-status"><i class="fa-solid fa-circle-check"></i> You already sent an offer · <strong>${esc(mine.status || "pending")}</strong></div>`
+        : interest === "interested"
+          ? offerComposer(true)
+          : `<div class="vendor-interest-row">
+              <button type="button" class="btn btn-sm vendor-interest-btn" onclick="setVendorRequestInterest('${r.id}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
+              <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
+            </div>`}
     </article>`;
   });
   html += `</section><section id="vendorMyRequestsTab" class="vendor-request-tab-panel hidden">`;
@@ -14305,6 +14324,18 @@ async function setVendorRequestInterest(requestId, state) {
   const hiddenKey = `levromart-vendor-hidden-requests-${vendor.id}`;
   const card = byId(`vendorRequestCard-${requestId}`);
 
+  if (state === "cancel-interest") {
+    try { localStorage.removeItem(interestKey); } catch (_) {}
+    const compose = byId(`vendorOfferCompose-${requestId}`);
+    if (compose) {
+      compose.outerHTML = `<div class="vendor-interest-row">
+        <button type="button" class="btn btn-sm vendor-interest-btn" onclick="setVendorRequestInterest('${requestId}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
+        <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${requestId}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
+      </div>`;
+    }
+    return;
+  }
+
   if (state === "not-interested") {
     const ok = await showConfirmDialog("Are you sure you are not interested in this request? It will be removed from your customer requests dashboard.", { title: "Not interested", okLabel: "Remove request", danger: true });
     if (!ok) return;
@@ -14319,16 +14350,22 @@ async function setVendorRequestInterest(requestId, state) {
   }
 
   try { localStorage.setItem(interestKey, "interested"); } catch (_) {}
-  const interestBtn = card?.querySelector(".vendor-interest-btn");
-  const compose = byId(`vendorOfferCompose-${requestId}`);
-  if (interestBtn) {
-    interestBtn.classList.add("active");
-    interestBtn.innerHTML = `<i class="fa-solid fa-heart"></i> Interested`;
+  const interestRow = card?.querySelector(".vendor-interest-row");
+  const existingCompose = byId(`vendorOfferCompose-${requestId}`);
+  if (interestRow && !existingCompose) {
+    const composer = document.createElement("div");
+    composer.className = "vendor-offer-compose";
+    composer.id = `vendorOfferCompose-${requestId}`;
+    const products = window.__myProductsForOffers || [];
+    const req = (window.__vendorCustomerRequests || []).find((x) => String(x.id) === String(requestId));
+    const html = `<div class="vendor-offer-compose-title"><i class="fa-solid fa-paper-plane"></i><strong>Make an offer</strong><span class="muted">Enter your price and add an optional message to the customer.</span></div>
+      ${products.length ? `<select id="offerProduct-${requestId}" onchange="applyOfferProductPrice('${requestId}','${req?.request_type || 'buy'}')"><option value="">Quote a custom price…</option>${products.filter(p=>!req?.category_id || p.category_id===req.category_id).map(p=>`<option value="${p.id}">Use my "${esc(p.name)}": ${p.sale_price != null ? naira(p.sale_price) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</option>`).join("")}</select>` : ""}
+      <div class="vendor-offer-fields"><input type="number" id="offerPrice-${requestId}" placeholder="Price (₦)" inputmode="decimal" min="0" step="0.01" /><textarea id="offerMsg-${requestId}" rows="3" placeholder="Message to the customer (e.g. availability, delivery time, or other details)…"></textarea></div>
+      <div class="vendor-offer-actions"><button class="btn vendor-send-offer-btn" type="button" onclick="sendOffer('${requestId}')"><i class="fa-solid fa-paper-plane"></i> Send offer</button><button class="btn btn-sm btn-outline" type="button" onclick="setVendorRequestInterest('${requestId}','cancel-interest')">Cancel</button></div>`;
+    composer.innerHTML = html;
+    interestRow.replaceWith(composer);
   }
-  if (compose) {
-    compose.classList.remove("hidden");
-    setTimeout(() => compose.querySelector(`#offerPrice-${requestId}`)?.focus(), 0);
-  }
+  setTimeout(() => byId(`offerPrice-${requestId}`)?.focus(), 0);
   showToast("You're interested — add your price and message to send an offer.", "success");
 }
 
@@ -18549,6 +18586,23 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
   }
 }
 </style>
+
+<style id="levromart-user-final-20260910-request-vendor-pass">
+/* Vendor directory: clear Buy / Rent segmentation and one consolidated filter control. */
+#app #vendorsListingTabs{display:flex !important;align-items:center !important;gap:.3rem !important;flex-wrap:wrap !important;margin:.75rem 0 !important;padding:.28rem !important;border:1px solid color-mix(in srgb,var(--border) 90%,transparent) !important;border-radius:999px !important;background:color-mix(in srgb,var(--card) 86%,transparent) !important;box-shadow:var(--shadow) !important;}
+#app #vendorsListingTabs .vendor-listing-tab{border:0 !important;border-radius:999px !important;background:transparent !important;color:var(--text-muted) !important;padding:.58rem .82rem !important;font:inherit !important;font-size:.72rem !important;font-weight:750 !important;white-space:nowrap !important;cursor:pointer !important;}
+#app #vendorsListingTabs .vendor-listing-tab.active{background:var(--primary) !important;color:#fff !important;box-shadow:0 5px 14px color-mix(in srgb,var(--primary) 20%,transparent) !important;}
+#app .vendors-directory-controls{display:grid !important;grid-template-columns:minmax(0,1fr) auto !important;gap:.55rem !important;align-items:center !important;margin:.8rem 0 .45rem !important;}
+#app .vendors-directory-controls input{min-width:0 !important;}
+#app .vendors-filters-toggle{height:100% !important;min-height:46px !important;white-space:nowrap !important;}
+#app .vendors-filters-panel{margin:.25rem 0 .9rem !important;}
+@media(max-width:560px){#app #vendorsListingTabs{border-radius:18px !important;}#app #vendorsListingTabs .vendor-listing-tab{flex:1 1 calc(50% - .3rem) !important;text-align:center !important;}#app .vendors-directory-controls{grid-template-columns:minmax(0,1fr) !important;}#app .vendors-filters-toggle{width:100% !important;justify-content:center !important;}}
+
+/* A direct-message thread owns the entire viewport. The navigation lives inside #app, so body > .bottom-nav is not enough. */
+body.chat-full-page #bottomNav,
+body.chat-full-page #cartFab,
+body.chat-full-page #aiChatFab{display:none !important;visibility:hidden !important;pointer-events:none !important;}
+</style>
 </body></html>`);
   w.document.close();
 }
@@ -21793,18 +21847,27 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         <button class="btn btn-sm btn-outline" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view" aria-label="Map view"><i class="fa-solid fa-map-location-dot"></i></button>
       </div>
     </div>
+    <div class="vendor-listing-tabs" id="vendorsListingTabs" role="tablist" aria-label="Vendor type">
+      <button type="button" class="vendor-listing-tab active" data-filter="all" onclick="setVendorsListingFilter('all')">All vendors</button>
+      <button type="button" class="vendor-listing-tab" data-filter="buy" onclick="setVendorsListingFilter('buy')">Buy</button>
+      <button type="button" class="vendor-listing-tab" data-filter="rent" onclick="setVendorsListingFilter('rent')">Rent</button>
+      <button type="button" class="vendor-listing-tab" data-filter="both" onclick="setVendorsListingFilter('both')">Buy &amp; Rent</button>
+    </div>
     <div class="vendors-directory-controls">
       <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" autocomplete="off" />
-      <div class="vendors-directory-filter-row">
-        <select id="vendorSectorFilter" onchange="filterVendorsDirectory()"><option value="">All sectors</option></select>
-        <select id="vendorCityFilter" onchange="filterVendorsDirectory()"><option value="">All cities</option></select>
-      </div>
-      <div class="vendors-directory-sort-row">
-        <select id="vendorCategoryFilter" onchange="filterVendorsDirectory()"><option value="">Known for: anything</option></select>
-        <select id="vendorSortFilter" onchange="setVendorDirectorySort(this.value)" aria-label="Arrange vendors">
+      <button type="button" class="btn btn-sm btn-outline vendors-filters-toggle" id="vendorsFiltersToggle" aria-expanded="false" onclick="toggleVendorsFilters()">
+        <i class="fa-solid fa-sliders"></i> Filters <i class="fa-solid fa-chevron-down vendors-filters-chevron"></i>
+      </button>
+    </div>
+    <div class="vendors-filters-panel hidden" id="vendorsFiltersPanel">
+      <div class="vendors-filter-grid">
+        <label>Sector<select id="vendorSectorFilter" onchange="filterVendorsDirectory()"><option value="">All sectors</option></select></label>
+        <label>City<select id="vendorCityFilter" onchange="filterVendorsDirectory()"><option value="">All cities</option></select></label>
+        <label>Category<select id="vendorCategoryFilter" onchange="filterVendorsDirectory()"><option value="">Known for: anything</option></select></label>
+        <label>Arrange<select id="vendorSortFilter" onchange="setVendorDirectorySort(this.value)">
           <option value="alphabetical">A–Z</option>
           <option value="closest">Closest first</option>
-        </select>
+        </select></label>
       </div>
     </div>
     <div class="vendors-directory-grid" id="vendorsGrid"><p class="muted">Loading…</p></div>
@@ -21834,11 +21897,15 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     const city = byId("vendorCityFilter")?.value || "";
     const category = byId("vendorCategoryFilter")?.value || "";
     let list = window.__allVendors || [];
+    if (vendorsListingFilter === "buy") list = list.filter((v) => v.canBuy);
+    if (vendorsListingFilter === "rent") list = list.filter((v) => v.canRent);
+    if (vendorsListingFilter === "both") list = list.filter((v) => v.canBuy && v.canRent);
     if (search) list = list.filter((v) => (v.searchText || "").includes(search));
     if (sectorId) list = list.filter((v) => String(v.sector_id) === String(sectorId));
     if (city) list = list.filter((v) => v.city === city);
     if (category) list = list.filter((v) => (v.categories || []).includes(category));
     window.__filteredVendors = vendorDirectorySortList(list);
+    document.querySelectorAll("#vendorsListingTabs .vendor-listing-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.filter === vendorsListingFilter));
     renderVendorDirectoryCards();
     if (vendorDirectoryMode === "map" && typeof renderVendorsMap === "function") renderVendorsMap();
   };
@@ -22768,7 +22835,7 @@ window.renderVendorMapRail = function(){
     const [{data:vendors,error:vendorErr},{data:sectorsData}]=await Promise.all([vendorPromise,sectorPromise]);
     if(vendorErr)throw vendorErr;
     if(!sectors.length)sectors=sectorsData||[];
-    window.__allVendors=(vendors||[]).map(v=>({...v,categories:[],searchText:[v.business_name,v.city].filter(Boolean).join(' ').toLowerCase()}));
+    window.__allVendors=(vendors||[]).map(v=>({...v,categories:[],canBuy:false,canRent:false,searchText:[v.business_name,v.city].filter(Boolean).join(' ').toLowerCase()}));
     window.__filteredVendors=[...window.__allVendors];
     const sectorSel=byId('vendorSectorFilter');
     if(sectorSel)sectorSel.innerHTML='<option value="">All sectors</option>'+sectors.map(s=>`<option value="${esc(s.id)}" ${currentSectorId===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
@@ -22779,14 +22846,14 @@ window.renderVendorMapRail = function(){
 
     /* Hydrate search/category metadata without blocking first paint. */
     Promise.all([
-      sb.from('products').select('vendor_id,name,description,category:categories(name)').eq('status','active').limit(5000),
+      sb.from('products').select('vendor_id,name,description,listing_type,category:categories(name)').eq('status','active').limit(5000),
       sb.from('vendor_packages').select('vendor_id,name,description').eq('status','active').limit(2000)
     ]).then(([pr,pk])=>{
       const byIdMap=new Map((window.__allVendors||[]).map(v=>[String(v.id),v]));
-      const cats=new Map(); const text=new Map();
-      (pr.data||[]).forEach(p=>{const id=String(p.vendor_id);if(!byIdMap.has(id))return;const name=p.category?.name;if(name){if(!cats.has(id))cats.set(id,new Set());cats.get(id).add(name);}if(!text.has(id))text.set(id,[]);text.get(id).push(p.name,p.description,name);});
+      const cats=new Map(); const text=new Map(); const caps=new Map();
+      (pr.data||[]).forEach(p=>{const id=String(p.vendor_id);if(!byIdMap.has(id))return; const cap=caps.get(id)||{canBuy:false,canRent:false}; if(["sale","both"].includes(p.listing_type)) cap.canBuy=true; if(["rent","both"].includes(p.listing_type)) cap.canRent=true; caps.set(id,cap); const name=p.category?.name;if(name){if(!cats.has(id))cats.set(id,new Set());cats.get(id).add(name);}if(!text.has(id))text.set(id,[]);text.get(id).push(p.name,p.description,name);});
       (pk.data||[]).forEach(p=>{const id=String(p.vendor_id);if(!byIdMap.has(id))return;if(!text.has(id))text.set(id,[]);text.get(id).push(p.name,p.description,'package','bundle');});
-      (window.__allVendors||[]).forEach(v=>{v.categories=[...(cats.get(String(v.id))||[])];v.searchText=[v.business_name,v.city,...(text.get(String(v.id))||[])].filter(Boolean).join(' ').toLowerCase();});
+      (window.__allVendors||[]).forEach(v=>{const cap=caps.get(String(v.id))||{canBuy:false,canRent:false};v.canBuy=!!cap.canBuy;v.canRent=!!cap.canRent;v.categories=[...(cats.get(String(v.id))||[])];v.searchText=[v.business_name,v.city,...(text.get(String(v.id))||[])].filter(Boolean).join(' ').toLowerCase();});
       const catSel=byId('vendorCategoryFilter');
       if(catSel){const allCats=[...new Set((window.__allVendors||[]).flatMap(v=>v.categories||[]))].sort();catSel.innerHTML='<option value="">Known for: anything</option>'+allCats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');}
       filterVendorsDirectory();
