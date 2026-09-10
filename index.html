@@ -4174,6 +4174,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 }
 /* Keep fixed controls clear of the final content/card area. */
 #app { padding-bottom:calc(9rem + env(safe-area-inset-bottom,0px)) !important; overflow:visible !important; }
+/* Keep short product-list routes content-sized so the legal footer follows the final card closely instead of a viewport-sized flex spacer. */
+#app:has(.product-card-wrap) { flex:0 0 auto !important; }
 
 /* Fast, stable horizontal shop navigation. */
 .shop-tabs-rail {
@@ -13214,6 +13216,27 @@ async function buyNow(vendorId, productId) {
 }
 
 // ---------- VENDORS DIRECTORY ----------
+let vendorsListingFilter = "all";
+function setVendorsListingFilter(filter) {
+  vendorsListingFilter = ["all", "buy", "rent", "both"].includes(filter) ? filter : "all";
+  document.querySelectorAll("#vendorsListingTabs .vendor-listing-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.filter === vendorsListingFilter);
+  });
+  filterVendorsDirectory();
+}
+
+function toggleVendorsFilters(force) {
+  const panel = byId("vendorsFiltersPanel");
+  if (!panel) return;
+  const next = typeof force === "boolean" ? force : panel.classList.contains("hidden");
+  panel.classList.toggle("hidden", !next);
+  const btn = byId("vendorsFiltersToggle");
+  if (btn) {
+    btn.setAttribute("aria-expanded", String(next));
+    btn.classList.toggle("active", next);
+  }
+}
+
 function renderVendorsDirectory() {
   let html = `<div class="flex" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
     <h2 style="margin:0;"><i class="fa-solid fa-store"></i> All vendors</h2>
@@ -13222,11 +13245,22 @@ function renderVendorsDirectory() {
       <button class="btn btn-sm btn-outline active" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view"><i class="fa-solid fa-map-location-dot"></i></button>
     </div>
   </div>`;
-  html += `<div class="flex" style="margin:1.2rem 0;flex-wrap:wrap;">
-    <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" style="max-width:280px;" />
-    <select id="vendorSectorFilter" onchange="filterVendorsDirectory()"><option value="">All sectors</option></select>
-    <select id="vendorCityFilter" onchange="filterVendorsDirectory()"><option value="">All cities</option></select>
-    <select id="vendorCategoryFilter" onchange="filterVendorsDirectory()"><option value="">Known for: anything</option></select>
+  html += `<div class="vendor-listing-tabs" id="vendorsListingTabs" role="tablist" aria-label="Vendor type">
+    <button type="button" class="vendor-listing-tab active" data-filter="all" onclick="setVendorsListingFilter('all')">All vendors</button>
+    <button type="button" class="vendor-listing-tab" data-filter="buy" onclick="setVendorsListingFilter('buy')">Buy</button>
+    <button type="button" class="vendor-listing-tab" data-filter="rent" onclick="setVendorsListingFilter('rent')">Rent</button>
+    <button type="button" class="vendor-listing-tab" data-filter="both" onclick="setVendorsListingFilter('both')">Buy &amp; Rent</button>
+  </div>
+  <div class="vendors-directory-toolbar">
+    <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" />
+    <button type="button" class="btn btn-sm btn-outline vendors-filters-toggle" id="vendorsFiltersToggle" aria-expanded="false" onclick="toggleVendorsFilters()"><i class="fa-solid fa-sliders"></i> Filters <i class="fa-solid fa-chevron-down vendors-filters-chevron"></i></button>
+  </div>
+  <div class="vendors-filters-panel hidden" id="vendorsFiltersPanel">
+    <div class="vendors-filter-grid">
+      <label>Sector<select id="vendorSectorFilter" onchange="filterVendorsDirectory()"><option value="">All sectors</option></select></label>
+      <label>City<select id="vendorCityFilter" onchange="filterVendorsDirectory()"><option value="">All cities</option></select></label>
+      <label>Category<select id="vendorCategoryFilter" onchange="filterVendorsDirectory()"><option value="">Known for: anything</option></select></label>
+    </div>
   </div>`;
   html += `<div class="grid" id="vendorsGrid"><p class="muted">Loading…</p></div>`;
   html += `<div id="vendorsMapWrap" class="hidden">
@@ -13251,7 +13285,7 @@ function renderVendorsDirectory() {
 async function loadVendorsDirectory() {
   const [{ data: vendors }, { data: products }, { data: vendorPackages }, { data: sectorsData }] = await Promise.all([
     sb.from("vendors").select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, lat, lng").eq("verification_status", "verified").eq("is_active", true).order("business_name"),
-    sb.from("products").select("vendor_id, name, description, category:categories(name)").eq("status", "active"),
+    sb.from("products").select("vendor_id, name, description, listing_type, is_service, category:categories(name)").eq("status", "active"),
     sb.from("vendor_packages").select("vendor_id, name, description").eq("status", "active"),
     sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
   ]);
@@ -13259,7 +13293,11 @@ async function loadVendorsDirectory() {
 
   const catsByVendor = {};
   const productTextByVendor = {};
+  const capabilitiesByVendor = {};
   (products || []).forEach((p) => {
+    const cap = (capabilitiesByVendor[p.vendor_id] ||= { canBuy: false, canRent: false });
+    if (["sale", "both"].includes(p.listing_type)) cap.canBuy = true;
+    if (["rent", "both"].includes(p.listing_type)) cap.canRent = true;
     const name = p.category?.name;
     if (name) (catsByVendor[p.vendor_id] ||= new Set()).add(name);
     (productTextByVendor[p.vendor_id] ||= []).push(p.name, p.description, name);
@@ -13275,6 +13313,8 @@ async function loadVendorsDirectory() {
     ...v,
     categories: [...(catsByVendor[v.id] || [])],
     searchText: [v.business_name, ...(productTextByVendor[v.id] || [])].filter(Boolean).join(" ").toLowerCase(),
+    canBuy: !!capabilitiesByVendor[v.id]?.canBuy,
+    canRent: !!capabilitiesByVendor[v.id]?.canRent,
   }));
 
   const sectorSel = byId("vendorSectorFilter");
@@ -13301,6 +13341,9 @@ function filterVendorsDirectory() {
   const city = byId("vendorCityFilter")?.value || "";
   const category = byId("vendorCategoryFilter")?.value || "";
   let list = window.__allVendors || [];
+  if (vendorsListingFilter === "buy") list = list.filter((v) => v.canBuy);
+  if (vendorsListingFilter === "rent") list = list.filter((v) => v.canRent);
+  if (vendorsListingFilter === "both") list = list.filter((v) => v.canBuy && v.canRent);
   if (search) list = list.filter((v) => (v.searchText || "").includes(search));
   if (sectorId) list = list.filter((v) => v.sector_id === sectorId);
   if (city) list = list.filter((v) => v.city === city);
@@ -13888,6 +13931,95 @@ async function submitSupportRequest() {
   showToast('Support request sent.', 'success');
   navigate('supportRequest', {}, { replace: true });
 }
+// ---------- REQUEST FORM HANDLERS ----------
+function updateRequestFormFields() {
+  const type = document.querySelector('input[name="reqType"]:checked')?.value || "rent";
+  const wrap = byId("reqDatesWrap");
+  if (wrap) wrap.classList.toggle("hidden", type === "buy");
+  if (type === "buy") {
+    const from = byId("reqFrom");
+    const to = byId("reqTo");
+    if (from) from.value = "";
+    if (to) to.value = "";
+  }
+}
+
+async function submitEquipmentRequest() {
+  if (!session?.user?.id) {
+    showToast("Please log in to post a request.", "error");
+    return;
+  }
+  const btn = document.querySelector('#app button[onclick="submitEquipmentRequest()"]');
+  const errorEl = byId("reqError");
+  const type = document.querySelector('input[name="reqType"]:checked')?.value || "rent";
+  const title = String(byId("reqTitle")?.value || "").trim();
+  const description = String(byId("reqDesc")?.value || "").trim();
+  const categoryId = byId("reqCategory")?.value || "";
+  const city = String(byId("reqCity")?.value || "").trim();
+  const neededFrom = byId("reqFrom")?.value || null;
+  const neededTo = byId("reqTo")?.value || null;
+
+  if (errorEl) { errorEl.textContent = ""; errorEl.classList.add("hidden"); }
+  if (!title) {
+    if (errorEl) { errorEl.textContent = "Please tell us what you need."; errorEl.classList.remove("hidden"); }
+    byId("reqTitle")?.focus();
+    return;
+  }
+  if (!categoryId) {
+    if (errorEl) { errorEl.textContent = "Please choose a category."; errorEl.classList.remove("hidden"); }
+    byId("reqCategory")?.focus();
+    return;
+  }
+  if (type === "rent" && neededFrom && neededTo && neededTo < neededFrom) {
+    if (errorEl) { errorEl.textContent = "The rental end date cannot be before the start date."; errorEl.classList.remove("hidden"); }
+    byId("reqTo")?.focus();
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Posting…'; }
+  try {
+    const { data: created, error } = await sb.from("equipment_requests").insert({
+      buyer_id: session.user.id,
+      title,
+      description: description || null,
+      category_id: categoryId || null,
+      city: city || null,
+      needed_from: type === "rent" ? (neededFrom || null) : null,
+      needed_to: type === "rent" ? (neededTo || null) : null,
+      request_type: type,
+      buyer_name: profile?.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || null,
+      buyer_avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url || null,
+    }).select("id").single();
+    if (error) throw error;
+    showToast(type === "buy" ? "Buy request posted successfully." : "Rental request posted successfully.", "success");
+    await navigate("requestEquipment");
+    // Keep dates/controls correct after the route re-renders.
+    setTimeout(updateRequestFormFields, 0);
+    return created;
+  } catch (err) {
+    console.error("[Levromart] Equipment request failed:", err);
+    if (errorEl) {
+      errorEl.textContent = err?.message || "Your request could not be posted right now.";
+      errorEl.classList.remove("hidden");
+    }
+    showToast(err?.message || "Your request could not be posted.", "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = "Post request"; }
+  }
+}
+
+async function cancelEquipmentRequest(requestId) {
+  if (!session?.user?.id || !requestId) return;
+  const { error } = await sb.from("equipment_requests")
+    .update({ status: "cancelled" })
+    .eq("id", requestId)
+    .eq("buyer_id", session.user.id)
+    .eq("status", "open");
+  if (error) { showToast(error.message || "Couldn’t cancel the request.", "error"); return; }
+  showToast("Request cancelled.", "success");
+  navigate("requestEquipment", {}, { replace: true });
+}
+
 // ---------- REQUEST EQUIPMENT (buyers post needs, vendors compete) ----------
 async function renderRequestEquipment() {
   if (!session) return '<div class="empty-state">Please log in to request an item.</div>';
@@ -13899,7 +14031,7 @@ async function renderRequestEquipment() {
   ]);
 
   let html = `<h2><i class='fa-solid fa-hand'></i> Request an item ${infoPopoverHtml("reqEquipInfo", "Can't find what you need? Post it and nearby vendors will send you offers.")}</h2>
-    <div class="card" style="max-width:520px;">
+    <div class="card request-equipment-page" style="max-width:520px;">
       <div id="reqError" class="error-text hidden"></div>
       <label>What do you need? *</label><input id="reqTitle" placeholder="e.g. Oxygen concentrator, jollof rice for 20…" />
       <label>I want to</label>
@@ -13955,6 +14087,7 @@ async function renderRequestEquipment() {
     </div>`;
   });
   html += `</div></div>`;
+  setTimeout(updateRequestFormFields, 0);
   return html;
 }
 
@@ -23636,6 +23769,22 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 
 /* Top-rated Vendors: narrow vertical cards with everything centered. */
 #app .top-rated-vendors-scroll{display:flex !important;flex-wrap:nowrap !important;align-items:stretch !important;gap:.65rem !important;overflow-x:auto !important;padding:.35rem .2rem .75rem !important;scroll-behavior:auto !important;scrollbar-width:none !important;}
+#app .vendor-listing-tabs{display:flex !important;gap:.45rem !important;overflow-x:auto !important;scrollbar-width:none !important;padding:.15rem .05rem .35rem !important;margin:.65rem 0 .7rem !important;-webkit-overflow-scrolling:touch !important;}
+#app .vendor-listing-tabs::-webkit-scrollbar{display:none !important;}
+#app .vendor-listing-tab{flex:0 0 auto !important;border:1px solid var(--border) !important;background:var(--card) !important;color:var(--text-muted) !important;border-radius:999px !important;padding:.55rem .85rem !important;font:inherit !important;font-size:.82rem !important;font-weight:700 !important;cursor:pointer !important;white-space:nowrap !important;}
+#app .vendor-listing-tab.active{background:color-mix(in srgb,var(--primary) 12%,var(--card)) !important;color:var(--primary) !important;border-color:color-mix(in srgb,var(--primary) 55%,var(--border)) !important;}
+#app .vendors-directory-toolbar{display:flex !important;gap:.55rem !important;align-items:center !important;margin:.35rem 0 .65rem !important;}
+#app .vendors-directory-toolbar input{flex:1 1 auto !important;min-width:0 !important;margin:0 !important;}
+#app .vendors-filters-toggle{flex:0 0 auto !important;white-space:nowrap !important;min-height:44px !important;}
+#app .vendors-filters-toggle.active{border-color:var(--primary) !important;color:var(--primary) !important;background:color-mix(in srgb,var(--primary) 8%,var(--card)) !important;}
+#app .vendors-filters-chevron{margin-left:.2rem !important;transition:transform .18s ease !important;}
+#app .vendors-filters-toggle.active .vendors-filters-chevron{transform:rotate(180deg) !important;}
+#app .vendors-filters-panel{border:1px solid var(--border) !important;border-radius:16px !important;background:color-mix(in srgb,var(--card) 94%,transparent) !important;padding:.8rem !important;margin:.25rem 0 .9rem !important;box-shadow:0 8px 24px rgba(0,0,0,.06) !important;}
+#app .vendors-filter-grid{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:.65rem !important;}
+#app .vendors-filter-grid label{display:flex !important;flex-direction:column !important;gap:.3rem !important;font-size:.72rem !important;font-weight:700 !important;color:var(--text-muted) !important;}
+#app .vendors-filter-grid select{margin:0 !important;min-width:0 !important;width:100% !important;}
+@media(max-width:720px){#app .vendors-directory-toolbar{align-items:stretch !important;}#app .vendors-directory-toolbar input{max-width:none !important;}#app .vendors-filter-grid{grid-template-columns:1fr !important;}}
+
 #app .top-rated-vendors-scroll::-webkit-scrollbar{display:none !important;}
 #app .top-rated-vendors-scroll > .vendor-card,
 #app .top-rated-vendors-scroll > .homepage-vendor-card{
