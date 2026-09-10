@@ -5210,6 +5210,11 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
   -webkit-filter:var(--levi-accent-filter, none) !important;
 }
 </style>
+<style id="levromart-levi-white-mark">
+/* Levi's tour mark is intentionally monochrome white; the rest of the app may still use the live accent. */
+#tourLeviLogo{filter:brightness(0) invert(1) !important;-webkit-filter:brightness(0) invert(1) !important;}
+.brand-spinner-arc-1,.brand-spinner-arc-2{stroke:#fff !important;}
+</style>
 <style id="levromart-media-action-sheet">
 .media-action-sheet{position:fixed;inset:0;z-index:10070;display:flex;align-items:flex-end;justify-content:center;}
 .media-action-sheet-backdrop{position:absolute;inset:0;background:rgba(2,8,23,.48);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
@@ -5322,20 +5327,40 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
   min-height:1.8rem !important; margin-top:.25rem !important;
 }
 </style>
-\n<style id="levromart-home-carousel-admin">
+<style id="levromart-product-variant-pricing">
+.product-variant-pricing{margin-top:.85rem;padding:.8rem;border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--primary) 3%,var(--card));}
+.product-variant-pricing-head{display:flex;justify-content:space-between;align-items:flex-start;gap:.7rem;margin-bottom:.7rem;}
+.product-variant-pricing-head strong{display:block;}
+.variant-price-row{display:grid;grid-template-columns:74px minmax(0,1fr) 130px 130px 38px;gap:.5rem;align-items:center;padding:.55rem 0;border-top:1px solid var(--border);}
+.variant-price-row:first-child{border-top:0;}
+.variant-price-thumb{width:74px;height:56px;border-radius:9px;overflow:hidden;border:1px solid var(--border);background:var(--input-bg);}
+.variant-price-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.variant-price-row input{margin:0;min-width:0;}
+.variant-price-remove{width:38px;height:38px;border:0;border-radius:10px;background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger);cursor:pointer;}
+.variant-price-note{font-size:.72rem;color:var(--text-muted);line-height:1.35;margin:.15rem 0 0;}
+@media(max-width:720px){.variant-price-row{grid-template-columns:64px minmax(0,1fr) 1fr 1fr 36px;}.variant-price-thumb{width:64px;height:50px;}}
+@media(max-width:520px){.variant-price-row{grid-template-columns:58px minmax(0,1fr) 36px;}.variant-price-row .variant-sale-price,.variant-price-row .variant-discount-price{grid-column:2 / 3;}.variant-price-remove{grid-column:3;grid-row:1 / span 2;}.variant-price-thumb{width:58px;height:46px;}.variant-price-row:after{content:"Use individual prices only where this photo represents a different variety.";grid-column:2 / 3;font-size:.66rem;color:var(--text-muted);}}
+.product-variant-picker{margin-top:.7rem;padding:.75rem;border:1px solid var(--border);border-radius:13px;background:color-mix(in srgb,var(--primary) 3%,var(--card));}
+.product-variant-picker-head{display:flex;align-items:center;justify-content:space-between;gap:.65rem;margin-bottom:.5rem;}
+.product-variant-picker-list{display:flex;gap:.45rem;overflow-x:auto;padding:.1rem 0 .15rem;scrollbar-width:none;}
+.product-variant-picker-list::-webkit-scrollbar{display:none;}
+.product-variant-choice{flex:0 0 auto;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:11px;padding:.45rem .6rem;cursor:pointer;display:flex;flex-direction:column;gap:.1rem;align-items:flex-start;min-width:110px;}
+.product-variant-choice.active{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 9%,var(--card));box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 10%,transparent);}
+.product-variant-choice strong{font-size:.78rem;line-height:1.15;}
+.product-variant-choice small{font-size:.7rem;color:var(--text-muted);}
+</style>
+<style id="levromart-home-carousel-admin">
   /* Promotional homepage carousel */
   .home-promotional-carousel{position:relative;width:100%;margin:0 0 1.05rem;border-radius:18px;overflow:hidden;background:var(--card);border:1px solid var(--ui-border,var(--border));box-shadow:0 10px 30px rgba(15,23,42,.08);isolation:isolate}
-  .home-promotional-viewport{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;touch-action:pan-y}
+  .home-promotional-viewport{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;touch-action:pan-y pinch-zoom;cursor:grab}
+  .home-promotional-viewport:active{cursor:grabbing}
   .home-promotional-track{display:flex;width:100%;height:100%;transform:translate3d(0,0,0);transition:transform .45s cubic-bezier(.22,.8,.2,1);will-change:transform}
   .home-promotional-slide{flex:0 0 100%;width:100%;height:100%;position:relative;display:block;border:0;padding:0;background:none;cursor:pointer}
   .home-promotional-slide img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;user-select:none;-webkit-user-drag:none}
   .home-promotional-dots{position:absolute;left:50%;bottom:.7rem;transform:translateX(-50%);display:flex;gap:.42rem;padding:.38rem .55rem;border-radius:999px;background:rgba(0,0,0,.24);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .home-promotional-dot{width:.48rem;height:.48rem;border:0;padding:0;border-radius:999px;background:rgba(255,255,255,.58);cursor:pointer;transition:width .2s ease,background .2s ease,opacity .2s ease}
   .home-promotional-dot.active{width:1.25rem;background:#fff}
-  .home-promotional-arrow{position:absolute;top:50%;transform:translateY(-50%);width:2.35rem;height:2.35rem;border:1px solid rgba(255,255,255,.4);border-radius:50%;background:rgba(0,0,0,.28);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .home-promotional-arrow:hover{background:rgba(0,0,0,.42)}
-  .home-promotional-arrow.prev{left:.7rem}.home-promotional-arrow.next{right:.7rem}
-  @media(max-width:600px){.home-promotional-carousel{border-radius:14px}.home-promotional-arrow{width:2rem;height:2rem;font-size:.78rem}.home-promotional-arrow.prev{left:.45rem}.home-promotional-arrow.next{right:.45rem}.home-promotional-dots{bottom:.5rem}}
+  @media(max-width:600px){.home-promotional-carousel{border-radius:14px}.home-promotional-dots{bottom:.5rem}}
   @media(prefers-reduced-motion:reduce){.home-promotional-track{transition:none}}
 
   /* Admin carousel manager */
@@ -5698,6 +5723,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
     </label>
     <input type="file" id="prodPhotoFiles" accept="image/*" multiple class="hidden" onchange="previewNewProductPhotos()" />
     <div class="photo-grid" id="prodNewPhotoPreviews"></div>
+    <div class="product-variant-pricing" id="productVariantPricing"></div>
     <div class="flex" style="justify-content: flex-end; margin-top:0.8rem;">
       <button class="btn btn-sm" style="background:#6b7280;" onclick="closeProductModal()">Cancel</button>
       <button class="btn" id="saveProductBtn" onclick="saveProduct()">Save to Product</button>
@@ -9881,7 +9907,7 @@ function renderHomepageCarouselHtml(slides) {
   return `<section class="home-promotional-carousel" id="homePromotionalCarousel" aria-label="Levromart promotions">
     <div class="home-promotional-viewport" id="homePromotionalViewport">
       <div class="home-promotional-track" id="homePromotionalTrack">${slidesHtml}</div>
-      ${usable.length > 1 ? `<button type="button" class="home-promotional-arrow prev" onclick="changeHomeCarouselSlide(-1)" aria-label="Previous promotion"><i class="fa-solid fa-chevron-left"></i></button><button type="button" class="home-promotional-arrow next" onclick="changeHomeCarouselSlide(1)" aria-label="Next promotion"><i class="fa-solid fa-chevron-right"></i></button><div class="home-promotional-dots" id="homePromotionalDots">${dots}</div>` : ""}
+      ${usable.length > 1 ? `<div class="home-promotional-dots" id="homePromotionalDots">${dots}</div>` : ""}
     </div>
   </section>`;
 }
@@ -10827,6 +10853,7 @@ async function checkoutCartVendor(vendorId) {
     p_buyer_note: byId(`cartNote-${vendorId}`)?.value.trim() || null,
     p_buyer_lat: buyerLocation?.lat ?? null,
     p_buyer_lng: buyerLocation?.lng ?? null,
+    ...(selectedVariantId ? { p_variant_id: selectedVariantId } : {}),
   });
   if (error) {
     if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); }
@@ -12486,6 +12513,7 @@ async function renderProductDetail(productId) {
   const canRent = !ownListing && (product.listing_type === "rent" || product.listing_type === "both");
   const canBuy = !ownListing && (product.listing_type === "sale" || product.listing_type === "both");
   const productPhotos = Array.isArray(product.photos) ? product.photos.filter(Boolean) : [];
+  const productVariants = Array.isArray(product.variants) ? product.variants.slice().sort((a,b) => Number(a.sort_order||0) - Number(b.sort_order||0)) : [];
   const cleanDescription = stripProductVariantMeta(product.description || "");
   const photosHtml = productPhotos.length
     ? `<div class="product-gallery product-gallery-carousel">
@@ -12547,12 +12575,13 @@ async function renderProductDetail(productId) {
     const buyLabel = product.is_service ? "Book Now" : "Buy Now";
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
+      ${!product.is_service && productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" onclick="selectProductVariant('${esc(v.id)}')"><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
       <div class="flex">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
           : `<input type="number" id="buyQty" value="1" min="1" max="${product.quantity_available}" placeholder="Qty" oninput="updateBuyTotalPreview(${product.sale_price ?? 0})" style="width:90px;" />`}
       </div>
-      ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview">Total: ${naira(product.sale_price)}</p>` : ""}
+      ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview">Total: ${naira(productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price)}</p>` : ""}
       ${deliveryFieldsHtml("buy", product.vendor.delivery_fee, product.vendor.lat, product.vendor.lng, product.vendor.delivery_fee_mode, product.vendor.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
       ${!product.is_service ? `<div style="margin-top:0.7rem;">
         <label style="margin:0;">Note for the vendor <span class="muted" style="font-weight:400;">(optional)</span></label>
@@ -12772,6 +12801,21 @@ function updateRentTotalPreview(rate, unit) {
   el.textContent = `Total: ${naira(rate * units * qty)} (${qty} × ${units} ${unit}${units === 1 ? "" : "s"} × ${naira(rate)}/${unit})`;
 }
 
+function selectProductVariant(variantId) {
+  const variants = Array.isArray(currentProductDetail?.variants) ? currentProductDetail.variants : [];
+  const variant = variants.find(v => String(v.id) === String(variantId));
+  if (!variant) return;
+  const hidden = byId("selectedProductVariantId");
+  if (hidden) hidden.value = variant.id;
+  document.querySelectorAll(".product-variant-choice").forEach(btn => btn.classList.toggle("active", btn.getAttribute("onclick")?.includes(String(variant.id))));
+  const qty = parseInt(byId("buyQty")?.value || 1) || 1;
+  const unit = Number(variant.discount_price ?? variant.sale_price ?? 0);
+  const preview = byId("serviceTotalPreview");
+  if (preview && unit > 0) preview.textContent = `Total: ${naira(unit * qty)} (${qty} × ${naira(unit)})`;
+  const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => u === variant.photo_url) ?? -1);
+  if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex);
+}
+
 async function buyNow(vendorId, productId) {
   if (!session) { showLogin(); return; }
   if (blockOwnVendorPurchase(vendorId, "buy")) return;
@@ -12784,6 +12828,8 @@ async function buyNow(vendorId, productId) {
 
   const productName = currentProductDetail?.name || "this item";
   const verb = currentProductDetail?.is_service ? "Book" : "Buy";
+  const selectedVariantId = byId("selectedProductVariantId")?.value || null;
+  const selectedVariant = (currentProductDetail?.variants || []).find(v => String(v.id) === String(selectedVariantId));
 
   const previewEl = byId("serviceTotalPreview");
   const totalText = previewEl ? previewEl.textContent.replace(/^Total:\s*/, "") : (currentProductDetail?.sale_price != null ? naira(currentProductDetail.sale_price * qty) : "");
@@ -14770,10 +14816,14 @@ async function showProductModal() {
   byId("prodSectorOther").value = "";
   byId("prodSectorOther").classList.add("hidden");
   window.__existingPhotos = [];
+  window.__productVariants = [];
+  renderProductVariantPricing();
 
   let presetCategoryId = "";
   if (editingProductId) {
     const { data: p } = await sb.from("products").select("*").eq("id", editingProductId).single();
+    const { data: productVariants } = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
+    window.__productVariants = productVariants || [];
     byId("productModalTitle").textContent = "Edit Product";
     byId("prodName").value = p.name;
     byId("prodDesc").value = stripProductVariantMeta(p.description || "");
@@ -14792,6 +14842,7 @@ async function showProductModal() {
     byId("prodServiceUnit").value = p.service_price_unit || "flat";
     window.__existingPhotos = p.photos || [];
     renderExistingPhotos();
+    renderProductVariantPricing();
     const currentCat = productModalCategories.find((c) => c.id === p.category_id);
     sectorSelect.value = currentCat?.sector_id || vendor.sector_id || productModalSectors[0]?.id || "";
     presetCategoryId = p.category_id || "";
@@ -14806,6 +14857,7 @@ async function showProductModal() {
     byId("prodIsService").checked = false;
     byId("prodServiceUnit").value = "flat";
     sectorSelect.value = vendor.sector_id || productModalSectors[0]?.id || "";
+    renderProductVariantPricing();
   }
   // Fires the custom dropdown's own resync (see enhanceSelect) as well as
   // the plain onchange="loadProdCategoriesForSector()" on the real select -
@@ -14858,6 +14910,7 @@ function renderExistingPhotos() {
 function removeExistingPhoto(url) {
   window.__existingPhotos = (window.__existingPhotos || []).filter((u) => u !== url);
   renderExistingPhotos();
+  renderProductVariantPricing();
 }
 
 // Live thumbnails for photos just picked but not yet uploaded - so "Add
@@ -14891,6 +14944,7 @@ function renderNewProductPhotos() {
 function previewNewProductPhotos() {
   window.__newProductPhotoFiles = [...(byId("prodPhotoFiles").files || [])];
   renderNewProductPhotos();
+  renderProductVariantPricing();
 }
 function removeNewProductPhoto(index) {
   const files = window.__newProductPhotoFiles || [];
@@ -14900,6 +14954,7 @@ function removeNewProductPhoto(index) {
   const wrap = byId("prodNewPhotoPreviews");
   if (wrap) wrap.innerHTML = "";
   renderNewProductPhotos();
+  renderProductVariantPricing();
 }
 (function setupPhotoDropzone() {
   document.addEventListener("dragover", (e) => {
@@ -14922,6 +14977,7 @@ function removeNewProductPhoto(index) {
       const wrap = byId("prodNewPhotoPreviews");
       if (wrap) wrap.innerHTML = "";
       renderNewProductPhotos();
+      renderProductVariantPricing();
     }
   });
 })();
@@ -14979,6 +15035,73 @@ function updateProductFormFields() {
 function closeProductModal() {
   byId("productModal").classList.add("hidden");
   if (dismissibleModalId === "productModal") dismissibleModalId = null;
+}
+
+function renderProductVariantPricing() {
+  const wrap = byId("productVariantPricing");
+  if (!wrap) return;
+  const existing = Array.isArray(window.__existingPhotos) ? window.__existingPhotos : [];
+  const pending = Array.isArray(window.__newProductPhotoFiles) ? window.__newProductPhotoFiles : [];
+  const rows = [];
+  const variants = Array.isArray(window.__productVariants) ? window.__productVariants : [];
+
+  existing.forEach((url, idx) => {
+    const v = variants.find(x => String(x.photo_url || "") === String(url)) || {};
+    rows.push({ source: "existing", key: `existing-${idx}`, photo: url, name: v.name || "", sale: v.sale_price ?? "", discount: v.discount_price ?? "" });
+  });
+  pending.forEach((file, idx) => {
+    const v = variants.find(x => x.temp_index === idx) || {};
+    rows.push({ source: "new", key: `new-${idx}`, photo: URL.createObjectURL(file), name: v.name || "", sale: v.sale_price ?? "", discount: v.discount_price ?? "" });
+  });
+
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties &amp; individual prices</strong><div class="variant-price-note">Add photos above first. Each photo can optionally represent a different variety with its own price.</div></div></div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties &amp; individual prices</strong><div class="variant-price-note">Optional. Give a photo a variety name and its own sale price when different varieties cost different amounts. Leave the fields blank for normal product photos.</div></div></div>
+    ${rows.map(r => `<div class="variant-price-row" data-variant-source="${r.source}" data-variant-key="${r.key}" data-photo-url="${r.source === "existing" ? esc(r.photo) : ""}">
+      <div class="variant-price-thumb"><img src="${esc(r.photo)}" alt="" /></div>
+      <input class="variant-name" type="text" maxlength="120" placeholder="Variety name e.g. Black" value="${esc(r.name)}" />
+      <input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="Sale price" value="${r.sale === "" ? "" : esc(String(r.sale))}" />
+      <input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="Discount price" value="${r.discount === "" ? "" : esc(String(r.discount))}" />
+      <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Clear this variety price" title="Clear variety price"><i class="fa-solid fa-xmark"></i></button>
+    </div>`).join("")}`;
+}
+function clearProductVariantRow(btn) {
+  const row = btn?.closest?.(".variant-price-row");
+  if (!row) return;
+  row.querySelectorAll("input").forEach(i => i.value = "");
+}
+function collectProductVariantDrafts(photoUrls) {
+  const rows = [...document.querySelectorAll("#productVariantPricing .variant-price-row")];
+  const drafts = [];
+  rows.forEach((row) => {
+    const name = String(row.querySelector(".variant-name")?.value || "").trim();
+    const saleRaw = row.querySelector(".variant-sale-price")?.value;
+    const discountRaw = row.querySelector(".variant-discount-price")?.value;
+    const sale = saleRaw === "" ? null : Number(saleRaw);
+    const discount = discountRaw === "" ? null : Number(discountRaw);
+    if (!name && sale == null && discount == null) return;
+    if (!name) throw new Error("Every individual variety price needs a variety name.");
+    if (!Number.isFinite(sale) || sale <= 0) throw new Error(`Enter a valid sale price for ${name}.`);
+    if (discount != null && (!Number.isFinite(discount) || discount <= 0 || discount >= sale)) throw new Error(`Discount price for ${name} must be lower than its regular price.`);
+    let photoUrl = row.dataset.photoUrl || "";
+    if (row.dataset.variantSource === "new") {
+      const idx = Number(String(row.dataset.variantKey || "").split("-").pop());
+      photoUrl = photoUrls[idx] || "";
+    }
+    drafts.push({ name, photo_url: photoUrl || null, sale_price: sale, discount_price: discount, sort_order: drafts.length });
+  });
+  return drafts;
+}
+async function saveProductVariants(productId, drafts) {
+  if (!productId) return;
+  const { error: delErr } = await sb.from("product_variants").delete().eq("product_id", productId);
+  if (delErr) throw delErr;
+  if (!drafts.length) return;
+  const payload = drafts.map(d => ({ product_id: productId, ...d }));
+  const { error } = await sb.from("product_variants").insert(payload);
+  if (error) throw error;
 }
 
 async function saveProduct() {
@@ -15059,6 +15182,7 @@ async function saveProduct() {
     }
     const photos = [...(window.__existingPhotos || []), ...newPhotoUrls];
 
+    let savedProductId = editingProductId;
     if (editingProductId) {
       const { data: existing } = await sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single();
       const sold = existing ? existing.quantity_total - existing.quantity_available : 0;
@@ -15066,8 +15190,14 @@ async function saveProduct() {
       const { error } = await sb.from("products").update({ ...fields, quantity_available, photos }).eq("id", editingProductId);
       if (error) throw new Error(error.message);
     } else {
-      const { error } = await sb.from("products").insert({ ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos });
+      const { data: createdProduct, error } = await sb.from("products").insert({ ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos }).select("id").single();
       if (error) throw new Error(error.message);
+      savedProductId = createdProduct?.id;
+    }
+
+    if (!is_service) {
+      const variantDrafts = collectProductVariantDrafts(photos);
+      await saveProductVariants(savedProductId, variantDrafts);
     }
 
     closeProductModal();
@@ -15782,7 +15912,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (!session) return '<div class="empty-state">Please log in.</div>';
   const { data: order, error } = await sb
     .from("orders")
-    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, address, city, opening_hours, user_id, lat, lng), items:order_items(*,product:products(name)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at), package:vendor_packages(name)")
+    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, address, city, opening_hours, user_id, lat, lng), items:order_items(*,variant:product_variants(name),product:products(name)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at), package:vendor_packages(name)")
     .eq("id", orderId)
     .maybeSingle();
   if (error || !order) return '<div class="empty-state">Order not found.</div>';
@@ -15843,7 +15973,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   html += `<div class="card">
     <h3 style="margin-top:0;">Items</h3>
     ${order.items.map((item, i) => `<div style="${i > 0 ? "border-top:1px solid var(--border);padding-top:0.7rem;margin-top:0.7rem;" : ""}">
-      <strong>${esc(item.product?.name || "")}</strong>
+      <strong>${esc(item.product?.name || "")}${item.variant?.name ? ` · ${esc(item.variant.name)}` : ""}</strong>
       <p class="muted" style="margin:0.15rem 0 0;">Qty ${item.quantity} · ${naira(item.unit_price)}${item.rental_start_date ? ` · ${item.rental_start_date} → ${item.rental_end_date}` : ""}</p>
     </div>`).join("")}
     ${order.buyer_note ? `<div class="divider"></div><p style="margin:0;"><i class="fa-regular fa-message"></i> <strong>${isVendor ? "Customer's note" : "Your note"}:</strong> ${esc(order.buyer_note)}</p>` : ""}
@@ -15938,7 +16068,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <label>Amount</label>
       <input type="number" id="rpAmount" value="${feePaid ? order.deposit_amount : order.total_amount}" />
       <label>Method</label>
-      <select id="rpMethod"><option value="cash">Cash</option><option value="transfer">Transfer</option></select>
+      <select id="rpMethod"><option value="transfer" selected>Transfer</option><option value="cash">Cash</option></select>
       <button class="btn btn-sm" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> Mark as paid manually</button>
     </div>`;
   }
@@ -15983,9 +16113,6 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const orderBackView = (isVendor && sourcePerspective === "purchases") ? "vendorOrders" : (isVendor ? "vendorOrders" : "buyerOrders");
   const orderBackParams = orderBackView === "vendorOrders" ? `{status:"all",type:"all",payment:"all",dateFrom:"",dateTo:"",perspective:"${sourcePerspective === "purchases" ? "purchases" : "sales"}"}` : `{status:"all"}`;
   html += `<button class="btn btn-sm" style="margin-top:1rem;background:#6b7280;" onclick='navigate("${orderBackView}",${orderBackParams})'><i class="fa-solid fa-arrow-left"></i> Back to orders</button>`;
-  if (isCustomer && order.status === "completed" && !order.review) {
-    setTimeout(() => showVendorReviewModal(order.id, order.vendor?.id, order.vendor?.business_name || "this vendor"), 350);
-  }
   return html;
 }
 
@@ -16298,6 +16425,8 @@ let vendorReviewModalOrderId = null;
 let vendorReviewModalVendorId = null;
 let vendorReviewModalOpening = false;
 function showVendorReviewModal(orderId, vendorId, vendorName) {
+  // Review entry is intentionally inline on the order page; don't interrupt buyers with a popup.
+  return;
   if (!session?.user?.id || !orderId || !vendorId) return;
   if (vendorReviewModalOpening) return;
   const modal = byId("vendorReviewModal");
