@@ -9776,8 +9776,7 @@ function writeOfflineHomeCache(data) {
       browseProducts: data.browseProducts || [],
       topVendors: data.topVendors || [],
       recentProducts: data.recentProducts || [],
-      packages: data.packages || [],
-      homepageCarouselSlides: data.homepageCarouselSlides || []
+      packages: data.packages || []
     };
     localStorage.setItem(OFFLINE_HOME_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data: compact }));
     offlineCatalog = compact;
@@ -9818,7 +9817,10 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   const trending = (cache.trending || []).filter(inScope).slice(0, 10);
   const packages = (cache.packages || []).filter(pkg => (!activeSector || (pkg.items || []).some(it => String((categories.find(c => String(c.id) === String(it.product?.category_id)) || {}).sector_id) === String(activeSector.id))) && (!activeCategory || (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))).slice(0, 8);
   const topVendors = cache.topVendors || [];
-
+  const heroPhotos = (cache.recentProducts || []).map(product => {
+    const photos = Array.isArray(product.photos) ? product.photos.filter(Boolean) : [];
+    return photos[0] ? { id: product.id, name: product.name || "Product", url: photos[0] } : null;
+  }).filter(Boolean);
   window.__allHomePackages = cache.packages || [];
   window.__homePackages = packages;
   const recommendedPackages = [...packages].sort((a,b) => {
@@ -9826,12 +9828,8 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     return score(b) - score(a);
   }).slice(0, 6);
   const hasPersonalPackageMatch = recommendedPackages.some(pkg => (pkg.items || []).some(it => favoriteIds.has(it.product?.id)));
-  const offlineCarouselSlides = (Array.isArray(cache.homepageCarouselSlides) && cache.homepageCarouselSlides.length)
-    ? cache.homepageCarouselSlides
-    : (homeCarouselSlides.length ? homeCarouselSlides : INITIAL_HOME_CAROUSEL_SLIDES);
-  homeCarouselSlides = offlineCarouselSlides.filter(s => s?.image_url).slice(0, 12);
   let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
-  html += `<div class="hero">${renderHomepageCarouselHtml(homeCarouselSlides)}<div class="hero-content"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div></div></div>`;
+  html += `<div class="hero"><div class="hero-aurora"></div><div class="hero-content"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div><div class="hero-quick-actions"><button class="quick-action" onclick="scrollToBrowse('rent')"><span class="quick-action-icon"><i class='fa-solid fa-rotate'></i></span><span>Rent</span></button><button class="quick-action" onclick="scrollToBrowse('sale')"><span class="quick-action-icon"><i class='fa-solid fa-cart-shopping'></i></span><span>Buy</span></button><button class="quick-action outline" onclick="requireLoginThen('requestEquipment')"><span class="quick-action-icon"><i class='fa-solid fa-hand'></i></span><span>Request</span></button></div></div></div>`;
   if (sectors.length) html += `<div class="cat-row sector-row"><button class="cat-chip sector-chip ${!activeSector ? "active" : ""}" onclick="switchSector(null)"><span class="cat-icon"><i class="fa-solid fa-border-all"></i></span><span>All</span></button>${sectors.map(s => `<button class="cat-chip sector-chip ${activeSector?.id === s.id ? "active" : ""}" onclick="switchSector('${s.id}')"><span class="cat-icon"><i class="fa-solid ${esc(s.icon)}"></i></span><span>${esc(s.name)}</span></button>`).join("")}</div>`;
   if (subCats.length) html += `<div class="cat-row">${subCats.map(c => `<button class="cat-chip" onclick="filterByCategory('${c.id}')"><span class="cat-icon">${categoryIcon(c.name)}</span><span>${esc(c.name)}</span></button>`).join("")}</div>`;
   const trendingProducts = (trending || []).filter(p => !p.is_service);
@@ -10356,7 +10354,7 @@ async function renderHome() {
   // instantly on-device when a category chip is tapped, so the offline cache
   // must not be overwritten with only the currently selected category.
   const cachedTrending = (browseProducts || []).slice().sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0)).slice(0, 20);
-  writeOfflineHomeCache({ categories, sectors: sectors || sectorsData || [], trending: cachedTrending, browseProducts, topVendors, recentProducts, packages, homepageCarouselSlides });
+  writeOfflineHomeCache({ categories, sectors: sectors || sectorsData || [], trending: cachedTrending, browseProducts, topVendors, recentProducts, packages });
 
   const homepageCarouselSlides = await loadHomepageCarouselSlides();
 
@@ -10429,15 +10427,12 @@ function paintHomeFromLocalCatalog(showOfflineNotice = false) {
   const app = byId("app");
   const rendered = renderOfflineHomeFromCache(cache, { showOfflineNotice });
   if (!rendered || !app) return false;
-  const previousScrollY = window.scrollY || document.documentElement.scrollTop || 0;
   app.innerHTML = rendered;
   syncLeviFabVisibility();
   updateHeaderNavActive();
   clearAutoScrollTimers();
   document.querySelectorAll("#app .cat-row, #app .hscroll").forEach(el => setupAutoScroll(el));
-  initHomeSearchScrollMotion();
-  initHomepageCarousel();
-  requestAnimationFrame(() => window.scrollTo({ top: previousScrollY, behavior: "auto" }));
+  window.scrollTo({ top: 0, behavior: "auto" });
   return true;
 }
 
@@ -10459,7 +10454,7 @@ async function refreshHomeCategorySelection() {
     const { data: freshProducts } = await productQuery;
     if (categoryId !== currentHomeCategoryId || sectorId !== currentSectorId) return;
 
-    const cacheNow = getOfflineHomeCache() || { categories: window.__categories || [], sectors, trending: [], browseProducts: [], topVendors: [], recentProducts: [], packages: [], homepageCarouselSlides: homeCarouselSlides || [] };
+    const cacheNow = getOfflineHomeCache() || { categories: window.__categories || [], sectors, trending: [], browseProducts: [], topVendors: [], recentProducts: [], packages: [] };
     const merged = new Map((cacheNow.browseProducts || []).map(p => [String(p.id), p]));
     (freshProducts || []).forEach(p => merged.set(String(p.id), p));
     const nextBrowse = [...merged.values()];
@@ -10479,7 +10474,7 @@ async function refreshHomeCategorySelection() {
       if (packageRows.data) nextPackages = packageRows.data;
     }
 
-    writeOfflineHomeCache({ ...cacheNow, browseProducts: nextBrowse, trending: nextTrending, packages: nextPackages, homepageCarouselSlides: cacheNow.homepageCarouselSlides || homeCarouselSlides || [] });
+    writeOfflineHomeCache({ ...cacheNow, browseProducts: nextBrowse, trending: nextTrending, packages: nextPackages });
 
     // Repaint the visible rails from the fresh result without ever showing a
     // loading screen. filterHomeProducts() will fill the lower browse grid.
