@@ -8529,7 +8529,7 @@ function updateAuthUI() {
     if (vendor && profile.role !== "admin") {
       links.push({ label: "My Shop", action: "navigate('vendorDashboard')" });
       links.push({ label: "Edit Business Profile", action: "navigate('vendorEditProfile')" });
-      links.push({ label: "Customer requests", action: "navigate('vendorRequests')" });
+      links.push({ label: "Requests", action: "navigate('vendorRequests')" });
     } else if (profile.role !== "admin") {
       links.push({ label: "My Orders", action: "navigate('buyerOrders')" });
       links.push({ label: "Request an item", action: "navigate('requestEquipment')" });
@@ -8577,8 +8577,8 @@ function updateAuthUI() {
       <div class="profile-panel-scroll">
         ${links.map((l) => {
           const raw = String(l.label).replace(/<[^>]*>/g, '').trim().toLowerCase();
-          const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('customer requests') ? 'fa-hand' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') || raw.includes('support request') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('link library') ? 'fa-link' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
-          const profileLabelAttr = raw === "customer requests" ? ` data-profile-label="Customer requests"` : ""; return `<a class="profile-nav-link"${profileLabelAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
+          const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('customer requests') || raw === 'requests' ? 'fa-hand' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') || raw.includes('support request') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('link library') ? 'fa-link' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
+          const profileLabelAttr = raw === "customer requests" || raw === "requests" ? ` data-profile-label="Requests"` : ""; return `<a class="profile-nav-link"${profileLabelAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
         }).join("")}
         <a class="profile-nav-link profile-nav-link-danger" onclick="closeAllPanels();logout();"><span class="profile-item-icon"><i class="fa-solid fa-arrow-right-from-bracket"></i></span><span class="profile-nav-text">Log out</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>
       </div>
@@ -8877,6 +8877,7 @@ function renderBottomNav() {
   } else if (session) {
     if (vendor) {
       items.push(vendorsTab);
+      items.push({ icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 });
       items.push(messagesTab);
       items.push({ icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) });
       items.push({ icon: "<i class='fa-solid fa-box'></i>", label: "My Shop", action: "navigate('vendorDashboard')", view: "vendorDashboard" });
@@ -13978,7 +13979,11 @@ async function submitEquipmentRequest() {
 
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Posting…'; }
   try {
-    const { data: created, error } = await sb.from("equipment_requests").insert({
+    // Do not chain .select() onto the insert. An INSERT can be permitted by
+    // RLS while the follow-up SELECT is not; that made successful requests
+    // look like they had failed on some accounts. The request is reloaded
+    // from the normal request view immediately after this insert.
+    const { error } = await sb.from("equipment_requests").insert({
       buyer_id: session.user.id,
       title,
       description: description || null,
@@ -13989,13 +13994,13 @@ async function submitEquipmentRequest() {
       request_type: type,
       buyer_name: profile?.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || null,
       buyer_avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url || null,
-    }).select("id").single();
+    });
     if (error) throw error;
     showToast(type === "buy" ? "Buy request posted successfully." : "Rental request posted successfully.", "success");
     await navigate("requestEquipment");
     // Keep dates/controls correct after the route re-renders.
     setTimeout(updateRequestFormFields, 0);
-    return created;
+    return true;
   } catch (err) {
     console.error("[Levromart] Equipment request failed:", err);
     if (errorEl) {
@@ -14093,45 +14098,119 @@ async function renderRequestEquipment() {
 
 async function renderVendorRequests() {
   if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
-  const [{ data: requests }, { data: myProducts }] = await Promise.all([
+  if (!vendor?.id) {
+    const { data: currentVendor } = await sb.from("vendors").select("*").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
+    if (currentVendor) vendor = currentVendor;
+  }
+  if (!vendor?.id) return '<div class="empty-state">Your vendor profile is not available yet.</div>';
+
+  const [{ data: requests, error: requestsError }, { data: myProducts }, { data: myRequests }] = await Promise.all([
     sb.from("equipment_requests").select("*, offers:request_offers(id, vendor_id, status)").eq("status", "open").order("created_at", { ascending: false }),
     sb.from("products").select("id, name, category_id, sale_price, rental_rate, rental_rate_unit").eq("vendor_id", vendor.id).eq("status", "active"),
+    sb.from("equipment_requests").select("*, offers:request_offers(id, vendor_id, message, price, status, created_at, vendor:vendors(business_name, avg_rating, phone, whatsapp_number, delivery_fee))").eq("buyer_id", session.user.id).order("created_at", { ascending: false }),
   ]);
   window.__myProductsForOffers = myProducts || [];
+  window.__vendorCustomerRequests = requests || [];
+  window.__vendorMyRequests = myRequests || [];
 
   const deliveryFee = Number(vendor.delivery_fee) || 0;
-  let html = `<h2><i class='fa-solid fa-clipboard-list'></i> Customer requests ${infoPopoverHtml("vendorRequestsInfo", "Only requests matching what you sell reach you. Quote a price to win the order: pick one of your own listed products to price it instantly, or quote a custom price.")}</h2>`;
-  if (!requests || requests.length === 0) html += `<p class="muted">No open requests right now.</p>`;
-  (requests || []).forEach((r) => {
+  let html = `<div class="vendor-requests-page">
+    <div class="vendor-requests-heading-row">
+      <div><h2><i class='fa-solid fa-hand'></i> Requests ${infoPopoverHtml("vendorRequestsInfo", "As a vendor, you can respond to customer requests. You can also request products or services yourself — vendors are customers too.")}</h2><p class="muted" style="margin:.25rem 0 0;">Find customers to serve, or manage things you need yourself.</p></div>
+      <button class="btn btn-sm" type="button" onclick="navigate('requestEquipment')"><i class="fa-solid fa-plus"></i> Post request</button>
+    </div>
+    <div class="vendor-request-tabs" role="tablist" aria-label="Requests">
+      <button type="button" class="vendor-request-tab active" data-request-tab="customers" onclick="switchVendorRequestTab('customers')"><i class="fa-solid fa-users"></i> Customer requests${requests?.length ? ` <span>${requests.length}</span>` : ""}</button>
+      <button type="button" class="vendor-request-tab" data-request-tab="mine" onclick="switchVendorRequestTab('mine')"><i class="fa-solid fa-list-check"></i> My requests${myRequests?.length ? ` <span>${myRequests.length}</span>` : ""}</button>
+    </div>
+    <section id="vendorCustomerRequestsTab" class="vendor-request-tab-panel">`;
+
+  const hiddenInterestKey = `levromart-vendor-hidden-requests-${vendor.id}`;
+  let hidden = [];
+  try { hidden = JSON.parse(localStorage.getItem(hiddenInterestKey) || "[]"); } catch (_) { hidden = []; }
+  const visibleRequests = (requests || []).filter((r) => !hidden.includes(String(r.id)));
+  if (requestsError) html += `<div class="banner banner-danger">Could not load customer requests right now. Please try again.</div>`;
+  else if (!visibleRequests.length) html += `<div class="empty-state">No customer requests to show right now.</div>`;
+
+  visibleRequests.forEach((r) => {
     const mine = (r.offers || []).find((o) => o.vendor_id === vendor.id);
     const matches = (myProducts || []).filter((p) => !r.category_id || p.category_id === r.category_id);
-    html += `<div class="card">
-      <div class="flex" style="justify-content:space-between;">
-        <div class="flex">
-          ${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.1rem", "", r.buyer_name || "Customer")}
-          <div><strong>${esc(r.title)}</strong><p class="muted" style="margin:0;font-size:0.78rem;">${esc(r.buyer_name || "A buyer")}</p></div>
+    const interestKey = `levromart-vendor-interest-${vendor.id}-${r.id}`;
+    let interest = "";
+    try { interest = localStorage.getItem(interestKey) || ""; } catch (_) {}
+    html += `<article class="card vendor-request-card" id="vendorRequestCard-${r.id}">
+      <div class="vendor-request-card-head">
+        <div class="vendor-request-person">
+          ${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.6rem;height:2.6rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.6rem", "", r.buyer_name || "Customer")}
+          <div><strong class="vendor-request-title">${esc(r.title)}</strong><p class="muted" style="margin:.15rem 0 0;font-size:.78rem;">${esc(r.buyer_name || "A buyer")}</p></div>
         </div>
         <span class="badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span>
       </div>
-      ${r.description ? `<p class="muted" style="margin:0.5rem 0 0;">${esc(r.description)}</p>` : ""}
-      <p class="muted" style="font-size:0.8rem;">${[r.city, r.request_type !== "buy" && r.needed_from ? r.needed_from + " → " + (r.needed_to || "") : ""].filter(Boolean).map(esc).join(" · ")}</p>
+      ${r.description ? `<p class="muted vendor-request-description">${esc(r.description)}</p>` : ""}
+      <p class="muted vendor-request-meta">${[r.city, r.request_type !== "buy" && r.needed_from ? r.needed_from + " → " + (r.needed_to || "") : ""].filter(Boolean).map(esc).join(" · ")}</p>
+      <div class="vendor-interest-row">
+        <button type="button" class="btn btn-sm vendor-interest-btn ${interest === "interested" ? "active" : ""}" onclick="setVendorRequestInterest('${r.id}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
+        <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
+      </div>
       ${mine
-        ? `<p class="muted" style="margin-top:0.5rem;">You offered. Status: <strong>${esc(mine.status)}</strong></p>`
-        : `<div style="margin-top:0.5rem;">
-             ${matches.length ? `<select id="offerProduct-${r.id}" onchange="applyOfferProductPrice('${r.id}','${r.request_type}')" style="margin-bottom:0.4rem;">
+        ? `<div class="vendor-offer-status"><i class="fa-solid fa-circle-check"></i> You already sent an offer · <strong>${esc(mine.status || "pending")}</strong></div>`
+        : `<div class="vendor-offer-compose">
+             ${matches.length ? `<select id="offerProduct-${r.id}" onchange="applyOfferProductPrice('${r.id}','${r.request_type}')">
                <option value="">Quote a custom price…</option>
                ${matches.map((p) => `<option value="${p.id}">Use my "${esc(p.name)}": ${p.sale_price != null ? naira(p.sale_price) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</option>`).join("")}
              </select>` : ""}
-             <div class="flex">
-               <input type="number" id="offerPrice-${r.id}" placeholder="Price (₦)" style="width:140px;" />
-               <input type="text" id="offerMsg-${r.id}" placeholder="Message (e.g. delivery today)" style="flex:1;" />
-               <button class="btn btn-sm" onclick="sendOffer('${r.id}')">Send offer</button>
+             <div class="vendor-offer-fields">
+               <input type="number" id="offerPrice-${r.id}" placeholder="Price (₦)" inputmode="decimal" />
+               <textarea id="offerMsg-${r.id}" rows="3" placeholder="Message to the customer (e.g. availability, delivery time, or other details)…"></textarea>
              </div>
-             ${deliveryFee > 0 ? `<p class="muted" style="font-size:0.78rem;margin-top:0.3rem;"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown to the customer automatically alongside this quote if they need delivery.</p>` : ""}
+             <button class="btn vendor-send-offer-btn" type="button" onclick="sendOffer('${r.id}')"><i class="fa-solid fa-paper-plane"></i> Send offer</button>
+             ${deliveryFee > 0 ? `<p class="muted vendor-offer-note"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown to the customer automatically when delivery is needed.</p>` : ""}
            </div>`}
-    </div>`;
+    </article>`;
   });
+  html += `</section><section id="vendorMyRequestsTab" class="vendor-request-tab-panel hidden">`;
+  if (!myRequests?.length) html += `<div class="empty-state"><i class="fa-solid fa-list-check" style="font-size:1.5rem;display:block;margin-bottom:.5rem;"></i>You haven't posted any requests yet.<br><button type="button" class="btn btn-sm" style="margin-top:.7rem;" onclick="navigate('requestEquipment')">Post a request</button></div>`;
+  (myRequests || []).forEach((r) => {
+    const offers = r.offers || [];
+    html += `<article class="card vendor-my-request-card">
+      <div class="vendor-request-card-head"><div><strong>${esc(r.title)}</strong><p class="muted" style="margin:.2rem 0 0;font-size:.78rem;">${esc(r.city || "No city")}</p></div><span class="badge ${r.status === "fulfilled" ? "success" : r.status === "cancelled" ? "danger" : ""}">${esc(r.status || "open")}</span></div>
+      <div class="vendor-my-request-meta"><span class="badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span>${r.request_type === "rent" && r.needed_from ? `<span class="muted">${esc(r.needed_from)} → ${esc(r.needed_to || "")}</span>` : ""}<span class="muted">${offers.length} offer${offers.length === 1 ? "" : "s"}</span></div>
+      ${r.description ? `<p class="muted" style="margin:.45rem 0 0;">${esc(r.description)}</p>` : ""}
+      ${offers.length ? `<div class="vendor-my-offers"><strong>${offers.length} offer${offers.length === 1 ? "" : "s"}</strong>${offers.map((o) => `<div class="vendor-my-offer-row"><div><strong>${esc(o.vendor?.business_name || "Vendor")}</strong><p class="muted" style="margin:.15rem 0 0;">${esc(o.message || "No message")}</p></div><div style="text-align:right;">${o.price != null ? `<strong>${naira(o.price)}</strong>` : ""}<div><span class="badge ${o.status === "accepted" ? "success" : o.status === "declined" ? "danger" : ""}">${esc(o.status || "pending")}</span></div></div></div>`).join("")}</div>` : ""}
+      ${r.status === "open" ? `<button type="button" class="btn btn-sm btn-outline" style="margin-top:.65rem;" onclick="cancelEquipmentRequest('${r.id}')"><i class="fa-solid fa-ban"></i> Cancel request</button>` : ""}
+    </article>`;
+  });
+  html += `</section></div>`;
   return html;
+}
+
+function switchVendorRequestTab(tab) {
+  const target = tab === "mine" ? "mine" : "customers";
+  document.querySelectorAll("#app .vendor-request-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.requestTab === target));
+  byId("vendorCustomerRequestsTab")?.classList.toggle("hidden", target !== "customers");
+  byId("vendorMyRequestsTab")?.classList.toggle("hidden", target !== "mine");
+}
+
+async function setVendorRequestInterest(requestId, state) {
+  if (!vendor?.id || !requestId) return;
+  const interestKey = `levromart-vendor-interest-${vendor.id}-${requestId}`;
+  const hiddenKey = `levromart-vendor-hidden-requests-${vendor.id}`;
+  if (state === "not-interested") {
+    const ok = await showConfirmDialog("Are you sure you are not interested in this request? It will be removed from your customer requests dashboard.", { title: "Not interested", okLabel: "Remove request", danger: true });
+    if (!ok) return;
+    let hidden = [];
+    try { hidden = JSON.parse(localStorage.getItem(hiddenKey) || "[]"); } catch (_) { hidden = []; }
+    if (!hidden.includes(String(requestId))) hidden.push(String(requestId));
+    localStorage.setItem(hiddenKey, JSON.stringify(hidden));
+    try { localStorage.removeItem(interestKey); } catch (_) {}
+    byId(`vendorRequestCard-${requestId}`)?.remove();
+    showToast("Request removed from your dashboard.", "success");
+    return;
+  }
+  try { localStorage.setItem(interestKey, "interested"); } catch (_) {}
+  const card = byId(`vendorRequestCard-${requestId}`);
+  card?.querySelector(".vendor-interest-btn")?.classList.add("active");
+  showToast("Request marked as interested.", "success");
 }
 
 function applyOfferProductPrice(requestId, requestType) {
@@ -18053,6 +18132,106 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
 .ai-chat-message-menu.ai-chat-longpress-copy-menu button:hover,
 .ai-chat-message-menu.ai-chat-longpress-copy-menu button:active{background:color-mix(in srgb,var(--primary) 10%,transparent) !important;}
 </style>
+
+<style id="levromart-20260910-final-request-layout-fix">
+/* FINAL REQUEST / FOOTER / DIRECTORY PASS — scoped so existing marketplace
+   cards, colours and navigation remain unchanged outside these fixes. */
+
+/* Never manufacture a viewport-sized dead zone between page content and legal footer. */
+.container, #app { flex:0 0 auto !important; min-height:0 !important; }
+.site-footer { margin-top:.25rem !important; padding-top:.8rem !important; padding-bottom:.8rem !important; }
+
+/* Browse Everything packages: one wide, content-sized listing rather than a
+   narrow first column with an empty second column. This only affects package
+   cards in the main home catalogue, not the recommendation rail or storefront. */
+#app #productGrid:has(.package-listing-card) { grid-template-columns:minmax(0,1fr) !important; gap:.8rem !important; }
+#app #productGrid > .package-listing-card,
+#app #productGrid > .card.package-listing-card {
+  width:100% !important; min-width:0 !important; max-width:none !important;
+  padding:.85rem !important; margin:0 !important; height:auto !important; min-height:0 !important;
+}
+#app #productGrid > .package-listing-card .package-gallery,
+#app #productGrid > .card.package-listing-card .package-gallery {
+  width:100% !important; height:clamp(190px,34vw,300px) !important; min-height:190px !important;
+  border-radius:13px !important; overflow:hidden !important;
+}
+#app #productGrid > .package-listing-card .package-photo-main,
+#app #productGrid > .card.package-listing-card .package-photo-main,
+#app #productGrid > .package-listing-card .package-gallery-placeholder,
+#app #productGrid > .card.package-listing-card .package-gallery-placeholder {
+  width:100% !important; height:100% !important; min-height:0 !important; object-fit:cover !important;
+}
+#app #productGrid > .package-listing-card .package-card-title-row { margin:.65rem 0 .25rem !important; }
+#app #productGrid > .package-listing-card .package-card-title-row strong { font-size:1rem !important; line-height:1.2 !important; }
+#app #productGrid > .package-listing-card .package-card-title-row .badge { font-size:.78rem !important; padding:.3rem .6rem !important; }
+#app #productGrid > .package-listing-card .package-card-description,
+#app #productGrid > .package-listing-card .package-card-includes,
+#app #productGrid > .package-listing-card .package-card-vendor,
+#app #productGrid > .package-listing-card .package-card-delivery {
+  font-size:.78rem !important; line-height:1.35 !important; margin:.28rem 0 !important; white-space:normal !important;
+  overflow:visible !important; text-overflow:clip !important; display:block !important; -webkit-line-clamp:unset !important;
+}
+
+/* Admin People: allow the table wrapper to scroll both directions. */
+#app .admin-people-table-wrap {
+  overflow-x:auto !important; overflow-y:auto !important; max-height:min(62vh,520px) !important;
+  -webkit-overflow-scrolling:touch !important; touch-action:pan-x pan-y !important;
+  overscroll-behavior:contain !important;
+}
+
+/* Vendor directory controls stay compact: type tabs + a single Filters control,
+   with sector/city/category selectors only revealed on demand. */
+#app .vendor-listing-tabs { margin:.55rem 0 .55rem !important; }
+#app .vendors-filters-panel { max-height:320px !important; overflow-y:auto !important; }
+
+/* Vendor request workspace. */
+#app .vendor-requests-heading-row { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:.75rem; }
+#app .vendor-request-tabs { display:flex; gap:.45rem; overflow-x:auto; scrollbar-width:none; border-bottom:1px solid var(--border); margin:.35rem 0 .9rem; }
+#app .vendor-request-tabs::-webkit-scrollbar { display:none; }
+#app .vendor-request-tab { flex:0 0 auto; border:0; border-bottom:3px solid transparent; background:transparent; color:var(--text-muted); padding:.65rem .8rem; font:inherit; font-size:.82rem; font-weight:700; cursor:pointer; white-space:nowrap; }
+#app .vendor-request-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+#app .vendor-request-tab span { display:inline-flex; align-items:center; justify-content:center; min-width:1.2rem; height:1.2rem; padding:0 .25rem; margin-left:.2rem; border-radius:999px; background:color-mix(in srgb,var(--primary) 12%,transparent); color:var(--primary); font-size:.68rem; }
+#app .vendor-request-card { margin-bottom:.75rem !important; padding:1rem !important; }
+#app .vendor-request-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:.7rem; }
+#app .vendor-request-person { display:flex; align-items:center; gap:.65rem; min-width:0; }
+#app .vendor-request-title { display:block; overflow-wrap:anywhere; }
+#app .vendor-request-description { margin:.55rem 0 0 !important; line-height:1.45 !important; }
+#app .vendor-request-meta { font-size:.78rem !important; margin:.3rem 0 0 !important; }
+#app .vendor-interest-row { display:flex; gap:.5rem; flex-wrap:wrap; margin:.7rem 0 .6rem; }
+#app .vendor-interest-btn.active { background:var(--primary) !important; color:#fff !important; border-color:var(--primary) !important; }
+#app .vendor-offer-compose { border-top:1px solid var(--border); padding-top:.7rem; margin-top:.2rem; }
+#app .vendor-offer-compose select { margin:0 0 .55rem !important; }
+#app .vendor-offer-fields { display:grid; grid-template-columns:minmax(110px,.38fr) minmax(0,1fr); gap:.55rem; align-items:stretch; }
+#app .vendor-offer-fields input, #app .vendor-offer-fields textarea { margin:0 !important; width:100% !important; min-width:0 !important; }
+#app .vendor-offer-fields textarea { resize:vertical; min-height:88px; line-height:1.4; }
+#app .vendor-send-offer-btn { width:100%; justify-content:center; margin-top:.55rem; }
+#app .vendor-offer-note { font-size:.72rem !important; margin:.45rem 0 0 !important; line-height:1.35 !important; }
+#app .vendor-offer-status { margin-top:.7rem; padding:.65rem .75rem; border-radius:12px; background:color-mix(in srgb,var(--primary) 7%,var(--card)); color:var(--text-muted); font-size:.78rem; }
+#app .vendor-my-request-card { margin-bottom:.75rem !important; padding:1rem !important; }
+#app .vendor-my-request-meta { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-top:.55rem; }
+#app .vendor-my-offers { margin-top:.7rem; border-top:1px solid var(--border); }
+#app .vendor-my-offer-row { display:flex; justify-content:space-between; gap:.8rem; padding:.65rem 0; border-bottom:1px solid var(--border); }
+#app .vendor-my-offer-row:last-child { border-bottom:0; }
+@media(max-width:560px){
+  #app .vendor-requests-heading-row { flex-direction:column; align-items:stretch; }
+  #app .vendor-requests-heading-row > .btn { width:100%; justify-content:center; }
+  #app .vendor-offer-fields { grid-template-columns:1fr; }
+}
+
+/* Login mark: preserve the white centre while adding a subtle green halo so it
+   remains visible against the white/light auth surface. */
+#loginModal .login-modal-logo {
+  background:radial-gradient(circle, rgba(16,185,129,.28) 0%, rgba(16,185,129,.12) 38%, transparent 72%) !important;
+  border-radius:50% !important;
+  padding:.12rem !important;
+  filter:drop-shadow(0 0 12px rgba(16,185,129,.48)) !important;
+  -webkit-filter:drop-shadow(0 0 12px rgba(16,185,129,.48)) !important;
+}
+
+/* The Levi/get-app mark uses white arcs, explicitly. */
+#installModalLogo { filter:brightness(0) invert(1) !important; -webkit-filter:brightness(0) invert(1) !important; }
+.brand-spinner-arc-1, .brand-spinner-arc-2 { stroke:#fff !important; }
+</style>
 </head><body>
     <h1>Levromart Transactions</h1>
     <p class="muted">Range: ${rangeLabel(adminFinanceRange)} · Generated ${new Date().toLocaleString()}</p>
@@ -21239,7 +21418,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 }
 
 /* Customer requests is an action/hand icon, not a generic circle. */
-#profilePanel .profile-nav-link[data-profile-label="Customer requests"] .profile-item-icon i {
+#profilePanel .profile-nav-link[data-profile-label="Requests"] .profile-item-icon i {
   color:var(--text-muted) !important;
 }
 
@@ -21300,8 +21479,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     const links = document.querySelectorAll("#profilePanel .profile-nav-link");
     links.forEach((link) => {
       const label = link.querySelector(".profile-nav-text")?.textContent?.trim().toLowerCase() || "";
-      if (label === "customer requests") {
-        link.dataset.profileLabel = "Customer requests";
+      if (label === "customer requests" || label === "requests") {
+        link.dataset.profileLabel = "Requests";
         const icon = link.querySelector(".profile-item-icon i");
         if (icon) icon.className = "fa-solid fa-hand";
       }
@@ -23867,8 +24046,8 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 @media(max-width:720px){#app .admin-people-table-wrap{max-width:100% !important;}#app .admin-people-table{min-width:760px !important;}}
 
 /* Customer requests icon: explicit Font Awesome hand, never generic circle. */
-#app #profilePanel .profile-nav-link[data-profile-label="Customer requests"] .profile-item-icon i{font-family:"Font Awesome 6 Free" !important;font-weight:900 !important;}
-#app #profilePanel .profile-nav-link[data-profile-label="Customer requests"] .profile-item-icon i:before{content:"\f256" !important;}
+#app #profilePanel .profile-nav-link[data-profile-label="Requests"] .profile-item-icon i{font-family:"Font Awesome 6 Free" !important;font-weight:900 !important;}
+#app #profilePanel .profile-nav-link[data-profile-label="Requests"] .profile-item-icon i:before{content:"\f256" !important;}
 </style>
 <style id="levromart-20260910-link-open-fix">
 .admin-link-row{display:grid !important;grid-template-columns:minmax(0,1fr) auto !important;gap:.75rem !important;align-items:center !important;}
