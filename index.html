@@ -10645,7 +10645,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     ? cache.carouselSlides
     : INITIAL_HOME_CAROUSEL_SLIDES.slice();
   let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
-  html += `<div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div><div class="hero-content levro-home-search-wrap"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div></div>`;
+  html += `<div class="hero-content levro-home-search-wrap"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div></div><div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
   html += `<section class="levro-home-quick-actions" aria-label="Quick actions">
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span>Shop products</span></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span>Book services</span></button>
@@ -25527,9 +25527,9 @@ body > footer.site-footer{display:none !important;}
 </style>
 
 <style id="levromart-home-search-sticky-scroll-final">
-/* Homepage search stays BELOW the hero carousel in normal flow. Once it reaches
-   the fixed header it stays available while the page scrolls, subtly shrinks
-   while moving, and restores after scrolling settles. */
+/* Homepage search sits ABOVE the hero carousel in normal flow. It remains
+   accessible while scrolling, contracts and becomes translucent while moving,
+   then restores to its normal size when scrolling settles. */
 #app .levro-home-search-wrap{
   position:sticky !important;
   top:var(--levro-search-sticky-top,72px) !important;
