@@ -5789,6 +5789,33 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   window.addEventListener('orientationchange', function(){ setTimeout(refresh,120); }, {passive:true});
 })();
 </script>
+
+<style id="levromart-20260910-request-message-final-polish">
+/* Messages inbox: one heading only, with the back arrow directly beside it. */
+#app .messages-toolbar{display:flex !important;align-items:center !important;justify-content:space-between !important;gap:.65rem !important;margin:0 0 .7rem !important;}
+#app .messages-toolbar-title{display:flex !important;align-items:center !important;gap:.5rem !important;min-width:0 !important;}
+#app .messages-toolbar-title h2{margin:0 !important;display:flex !important;align-items:center !important;gap:.3rem !important;}
+#app .messages-toolbar-title .messages-inbox-back{width:2.45rem !important;height:2.45rem !important;flex:0 0 2.45rem !important;border:0 !important;border-radius:50% !important;background:color-mix(in srgb,var(--primary) 8%,var(--card)) !important;color:var(--text) !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;cursor:pointer !important;font:inherit !important;}
+#app .messages-toolbar-title .messages-inbox-back:hover{color:var(--primary) !important;background:color-mix(in srgb,var(--primary) 14%,var(--card)) !important;}
+
+/* Requests: compact card without losing the centered visual hierarchy. */
+#app .vendor-request-card{max-width:560px !important;padding:.72rem .78rem !important;margin-bottom:.62rem !important;}
+#app .vendor-request-card-head{gap:.35rem !important;}
+#app .vendor-request-person{gap:.38rem !important;}
+#app .vendor-request-person .avatar-circle{width:2.6rem !important;height:2.6rem !important;}
+#app .vendor-request-title{font-size:1rem !important;line-height:1.15 !important;}
+#app .vendor-request-person p{margin:.08rem 0 0 !important;font-size:.74rem !important;line-height:1.1 !important;}
+#app .vendor-request-card > .badge{margin-top:.02rem !important;padding:.28rem .62rem !important;font-size:.72rem !important;}
+#app .vendor-request-description{max-width:500px !important;margin:.38rem auto .08rem !important;font-size:.78rem !important;line-height:1.25 !important;}
+#app .vendor-request-meta{font-size:.78rem !important;line-height:1.15 !important;margin:.08rem auto 0 !important;}
+#app .vendor-request-card .vendor-interest-row{margin:.58rem auto .08rem !important;gap:.52rem !important;}
+#app .vendor-request-card .vendor-interest-row .btn{min-width:128px !important;min-height:38px !important;height:38px !important;padding:.46rem .78rem !important;font-size:.76rem !important;border-radius:10px !important;}
+
+/* Post request: compact, centered button with breathing room below the heading/info row. */
+#app .vendor-requests-heading-row{display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;gap:.75rem !important;margin-bottom:1.15rem !important;}
+#app .vendor-requests-heading-row > div:first-child{width:100% !important;text-align:left !important;}
+#app .vendor-requests-heading-row > .btn{width:auto !important;min-width:170px !important;align-self:center !important;margin-top:.05rem !important;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -11757,7 +11784,10 @@ async function batchMarkChatsRead(read) {
 function msgSelectionHeaderHtml() {
   if (!msgSelectMode) {
     return `<div class="messages-toolbar">
-      <div class="messages-toolbar-title"><h2><i class="fa-solid fa-comments"></i> Messages</h2></div>
+      <div class="messages-toolbar-title">
+        <button type="button" class="messages-inbox-back" onclick="backFromMessagesInbox()" aria-label="Back" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
+        <h2><i class="fa-solid fa-comments"></i> Messages</h2>
+      </div>
       <button type="button" class="icon-btn messages-more-btn" onclick="toggleInlineMenu('messagesMoreMenu',event)" aria-label="Message actions"><i class="fa-solid fa-ellipsis"></i></button>
       <div class="ms-list hidden messages-more-menu" id="messagesMoreMenu">
         <button type="button" class="ms-item" onclick="enterMsgSelectMode();toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-check-double"></i> Select chats</button>
@@ -12025,13 +12055,11 @@ async function renderMessages(conversationId) {
     }
 
     const convs = window.__conversations || [];
-    const inboxBack = `<button type="button" class="messages-inbox-back" onclick="backFromMessagesInbox()" aria-label="Back" title="Back"><i class="fa-solid fa-arrow-left"></i></button>`;
     if (convs.length === 0) {
-      return `<div class="messages-inbox-heading"><div class="messages-inbox-title">${inboxBack}<h2><i class="fa-solid fa-comments"></i> Messages</h2></div></div><div class="empty-state">No conversations yet. ${isVendor ? "Customers who message you will show up here." : "Message a vendor from their storefront or a product page."}</div>`;
+      return `<div id="messagesSelectionBar">${msgSelectionHeaderHtml()}</div><div class="empty-state">No conversations yet. ${isVendor ? "Customers who message you will show up here." : "Message a vendor from their storefront or a product page."}</div>`;
     }
 
     let html = `<div id="messagesSelectionBar">${msgSelectionHeaderHtml()}</div>`;
-    html += `<div class="messages-inbox-heading"><div class="messages-inbox-title">${inboxBack}<h2><i class="fa-solid fa-comments"></i> Messages</h2></div><button type="button" class="messages-inbox-more" aria-label="More message options" title="More"><i class="fa-solid fa-ellipsis"></i></button></div>`;
     html += chatListTabsHtml();
     html += `<input type="text" id="msgSearchInput" class="messages-search" placeholder="Search conversations…" oninput="filterMsgList()" />`;
     html += `<div id="convListWrap" class="messages-conversation-list" aria-label="Conversations"></div>`;
