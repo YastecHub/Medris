@@ -5463,7 +5463,8 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 #app .dash-tabs::-webkit-scrollbar{display:none !important;}
 #app .dash-tab{flex-shrink:0 !important;min-width:3.9rem !important;}
 @media(max-width:720px){
-  #app .vendor-request-tabs{max-width:calc(100vw - 2rem) !important;overflow-x:auto !important;justify-content:flex-start !important;}
+  #app .vendor-request-tabs{width:calc(100vw - 2rem) !important;max-width:calc(100vw - 2rem) !important;overflow-x:auto !important;justify-content:center !important;margin-left:auto !important;margin-right:auto !important;}
+  #app .vendor-request-tabs .vendor-request-tab{flex:0 0 auto !important;}
   #app .vendor-listing-tabs{max-width:100% !important;}
   #app .vendors-directory-toolbar{grid-template-columns:1fr !important;}
   #app .admin-people-toolbar{align-items:stretch !important;}
@@ -5472,6 +5473,44 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #app .admin-people-export-actions .btn{flex:1 1 0 !important;justify-content:center !important;}
   #app .admin-people-controls{grid-template-columns:1fr !important;}
   #app .admin-people-sort{justify-content:space-between !important;}
+}
+</style>
+<style id="levromart-user-final-20260910-precision-pass">
+/* Messages route: the inbox and chat are dedicated pages and must not carry the global bottom navigation. */
+@media (max-width:720px){
+  #bottomNav.messages-route-hidden{display:none !important;visibility:hidden !important;pointer-events:none !important;transform:translateY(150%) !important;}
+}
+
+/* Admin navigation: keep Vendors + People visible and make the entire rail usable on narrow screens. */
+#app .admin-dash-tabs{
+  display:flex !important;align-items:center !important;justify-content:flex-start !important;
+  gap:.15rem !important;overflow-x:auto !important;overflow-y:hidden !important;
+  -webkit-overflow-scrolling:touch !important;scrollbar-width:none !important;
+  width:100% !important;max-width:100% !important;padding:.2rem .25rem .55rem !important;
+  scroll-padding-inline:.5rem !important;
+}
+#app .admin-dash-tabs::-webkit-scrollbar{display:none !important;}
+#app .admin-dash-tabs .dash-tab{flex:0 0 auto !important;min-width:4.2rem !important;}
+@media(max-width:720px){
+  #app .admin-dash-tabs{flex-wrap:wrap !important;overflow-x:visible !important;overflow-y:visible !important;justify-content:center !important;gap:.35rem !important;padding:.25rem .1rem .7rem !important;}
+  #app .admin-dash-tabs .dash-tab{min-width:4.7rem !important;}
+}
+
+/* My Requests: use the whole card deliberately instead of leaving a large empty right side. */
+#app .vendor-my-request-card{padding:1rem !important;}
+#app .vendor-my-request-layout{display:grid !important;grid-template-columns:minmax(0,1.05fr) minmax(0,1.35fr) minmax(7rem,.65fr) !important;align-items:center !important;gap:1rem !important;width:100% !important;}
+#app .vendor-my-request-identity{display:flex !important;align-items:center !important;gap:.7rem !important;min-width:0 !important;}
+#app .vendor-my-request-title{display:flex !important;flex-direction:column !important;gap:.18rem !important;min-width:0 !important;}
+#app .vendor-my-request-title strong{font-size:1rem !important;line-height:1.25 !important;overflow-wrap:anywhere !important;}
+#app .vendor-my-request-title .muted{font-size:.78rem !important;}
+#app .vendor-my-request-details{display:flex !important;align-items:center !important;gap:.5rem !important;flex-wrap:wrap !important;min-width:0 !important;}
+#app .vendor-my-request-details p{width:100% !important;margin:.15rem 0 0 !important;line-height:1.35 !important;overflow-wrap:anywhere !important;}
+#app .vendor-my-request-actions{display:flex !important;align-items:center !important;justify-content:flex-end !important;gap:.45rem !important;flex-wrap:wrap !important;}
+@media(max-width:720px){
+  #app .vendor-my-request-layout{grid-template-columns:minmax(0,1fr) auto !important;gap:.75rem !important;}
+  #app .vendor-my-request-identity{grid-column:1 / 2 !important;}
+  #app .vendor-my-request-details{grid-column:1 / -1 !important;padding-left:3.7rem !important;margin-top:-.2rem !important;}
+  #app .vendor-my-request-actions{grid-column:2 / 3 !important;grid-row:1 / 2 !important;align-self:start !important;}
 }
 </style>
 </head>
@@ -8978,6 +9017,10 @@ async function submitEditProfile() {
 function renderBottomNav() {
   const nav = byId("bottomNav");
   if (!nav) return;
+
+  // The Messages section owns its own navigation/header chrome. Keep the
+  // global bottom navigation out of both the inbox and an individual chat.
+  nav.classList.toggle("messages-route-hidden", currentView === "messages");
 
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
   const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors')", view: "vendors" };
@@ -14050,7 +14093,7 @@ async function submitSupportRequest() {
 }
 // ---------- REQUEST FORM HANDLERS ----------
 function updateRequestFormFields() {
-  const type = document.querySelector('input[name="reqType"]:checked')?.value || "rent";
+  const type = document.querySelector('input[name="reqType"]:checked')?.value || "buy";
   const wrap = byId("reqDatesWrap");
   if (wrap) wrap.classList.toggle("hidden", type === "buy");
   if (type === "buy") {
@@ -14068,7 +14111,7 @@ async function submitEquipmentRequest() {
   }
   const btn = document.querySelector('#app button[onclick="submitEquipmentRequest()"]');
   const errorEl = byId("reqError");
-  const type = document.querySelector('input[name="reqType"]:checked')?.value || "rent";
+  const type = document.querySelector('input[name="reqType"]:checked')?.value || "buy";
   const title = String(byId("reqTitle")?.value || "").trim();
   const description = String(byId("reqDesc")?.value || "").trim();
   const categoryId = byId("reqCategory")?.value || "";
@@ -14157,8 +14200,8 @@ async function renderRequestEquipment() {
       <label>What do you need? *</label><input id="reqTitle" placeholder="e.g. Oxygen concentrator, jollof rice for 20…" />
       <label>I want to</label>
       <div class="flex">
-        <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="rent" checked onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Rent</label>
-        <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="buy" onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Buy</label>
+        <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="rent" onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Rent</label>
+        <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="buy" checked onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Buy</label>
       </div>
       <label>More details</label><textarea id="reqDesc" rows="2" placeholder="Duration, specs, delivery preferences…"></textarea>
       <div class="flex">
@@ -14232,7 +14275,7 @@ async function renderVendorRequests() {
   const deliveryFee = Number(vendor.delivery_fee) || 0;
   let html = `<div class="vendor-requests-page">
     <div class="vendor-requests-heading-row">
-      <div><h2><i class='fa-solid fa-hand'></i> Requests ${infoPopoverHtml("vendorRequestsInfo", "As a vendor, you can respond to customer requests. You can also request products or services yourself — vendors are customers too.")}</h2><p class="muted" style="margin:.25rem 0 0;">Find customers to serve, or manage things you need yourself.</p></div>
+      <div><h2><i class='fa-solid fa-hand'></i> Requests ${infoPopoverHtml("vendorRequestsInfo", "As a vendor, you can respond to customer requests. You can also request products or services yourself — vendors are customers too.")}</h2></div>
       <button class="btn btn-sm" type="button" onclick="navigate('requestEquipment')"><i class="fa-solid fa-plus"></i> Post request</button>
     </div>
     <div class="vendor-request-tabs" role="tablist" aria-label="Requests">
@@ -14300,11 +14343,23 @@ async function renderVendorRequests() {
   (myRequests || []).forEach((r) => {
     const offers = r.offers || [];
     html += `<article class="card vendor-my-request-card">
-      <div class="vendor-request-card-head"><div><strong>${esc(r.title)}</strong><p class="muted" style="margin:.2rem 0 0;font-size:.78rem;">${esc(r.city || "No city")}</p></div><span class="badge ${r.status === "fulfilled" ? "success" : r.status === "cancelled" ? "danger" : ""}">${esc(r.status || "open")}</span></div>
-      <div class="vendor-my-request-meta"><span class="badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span>${r.request_type === "rent" && r.needed_from ? `<span class="muted">${esc(r.needed_from)} → ${esc(r.needed_to || "")}</span>` : ""}<span class="muted">${offers.length} offer${offers.length === 1 ? "" : "s"}</span></div>
-      ${r.description ? `<p class="muted" style="margin:.45rem 0 0;">${esc(r.description)}</p>` : ""}
+      <div class="vendor-my-request-layout">
+        <div class="vendor-my-request-identity">
+          ${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:3rem;height:3rem;object-fit:cover;flex:0 0 3rem;" alt="" />` : avatarFallbackHtml(r.buyer_name || profile?.name || "You", "3rem", "", r.buyer_name || profile?.name || "You")}
+          <div class="vendor-my-request-title"><strong>${esc(r.title)}</strong><span class="muted">${esc(r.city || "No city")}</span></div>
+        </div>
+        <div class="vendor-my-request-details">
+          <span class="badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span>
+          ${r.request_type === "rent" && r.needed_from ? `<span class="muted">${esc(r.needed_from)} → ${esc(r.needed_to || "")}</span>` : ""}
+          <span class="muted">${offers.length} offer${offers.length === 1 ? "" : "s"}</span>
+          ${r.description ? `<p class="muted">${esc(r.description)}</p>` : ""}
+        </div>
+        <div class="vendor-my-request-actions">
+          <span class="badge ${r.status === "fulfilled" ? "success" : r.status === "cancelled" ? "danger" : ""}">${esc(r.status || "open")}</span>
+          ${r.status === "open" ? `<button type="button" class="btn btn-sm btn-outline" onclick="cancelEquipmentRequest('${r.id}')"><i class="fa-solid fa-ban"></i> Cancel</button>` : ""}
+        </div>
+      </div>
       ${offers.length ? `<div class="vendor-my-offers"><strong>${offers.length} offer${offers.length === 1 ? "" : "s"}</strong>${offers.map((o) => `<div class="vendor-my-offer-row"><div><strong>${esc(o.vendor?.business_name || "Vendor")}</strong><p class="muted" style="margin:.15rem 0 0;">${esc(o.message || "No message")}</p></div><div style="text-align:right;">${o.price != null ? `<strong>${naira(o.price)}</strong>` : ""}<div><span class="badge ${o.status === "accepted" ? "success" : o.status === "declined" ? "danger" : ""}">${esc(o.status || "pending")}</span></div></div></div>`).join("")}</div>` : ""}
-      ${r.status === "open" ? `<button type="button" class="btn btn-sm btn-outline" style="margin-top:.65rem;" onclick="cancelEquipmentRequest('${r.id}')"><i class="fa-solid fa-ban"></i> Cancel request</button>` : ""}
     </article>`;
   });
   html += `</section></div>`;
@@ -17267,7 +17322,7 @@ function adminNavHtml(active) {
     ["adminLog", "fa-clock-rotate-left", "Log"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
-  return `<div class="dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>`).join("")}</div>`;
+  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>`).join("")}</div>`;
 }
 
 async function renderAdminSupportRequests() {
