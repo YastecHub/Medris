@@ -711,6 +711,20 @@
   .avatar-edit-badge { position: absolute; bottom: -2px; right: -2px; width: 1.3rem; height: 1.3rem; border-radius: 50%; background: var(--primary); color: white; border: 2px solid var(--card); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; cursor: pointer; }
   .avatar-edit-badge:hover { filter: brightness(1.1); }
 
+  /* ---- homepage promotional carousel (admin-managed slides) ---- */
+  .promo-carousel { position: relative; margin: 0.7rem 0 0.9rem; }
+  .promo-carousel-track {
+    display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    border-radius: 1.1rem; scrollbar-width: none; box-shadow: var(--shadow);
+  }
+  .promo-carousel-track::-webkit-scrollbar { display: none; }
+  .promo-carousel-slide { flex: 0 0 100%; scroll-snap-align: start; aspect-ratio: 16 / 9; background: var(--card); }
+  .promo-carousel-slide a, .promo-carousel-slide img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .promo-carousel-dots { display: flex; justify-content: center; gap: 0.4rem; margin-top: 0.55rem; }
+  .promo-carousel-dot { width: 0.45rem; height: 0.45rem; border-radius: 999px; border: none; padding: 0; background: var(--border); cursor: pointer; transition: background 0.2s, width 0.2s; }
+  .promo-carousel-dot.active { background: var(--primary); width: 1.1rem; border-radius: 999px; }
+  @media (min-width: 720px) { .promo-carousel-slide { aspect-ratio: 21 / 9; } }
+
   /* ---- homepage: hero, categories, horizontal scroll sections ---- */
   .hero { position: relative; overflow: visible; padding: 0.9rem 0 0.6rem; margin-bottom: 0.6rem; }
   .hero-aurora { position: absolute; left: -15%; right: -15%; top: -60%; height: 220%; pointer-events: none; filter: blur(60px); opacity: 0.55;
@@ -8503,6 +8517,7 @@ function updateAuthUI() {
     }
     if (profile.role === "admin") {
       links.push({ label: "Admin panel", action: "navigate('adminPanel')" });
+      links.push({ label: "Homepage carousel", action: "navigate('adminCarousel')" });
       links.push({ label: "Manage admins", action: "navigate('adminUsers')" });
       links.push({ label: "Vendors &amp; transactions", action: "navigate('adminFinance')" });
       links.push({ label: `Support requests`, action: "navigate('adminSupportRequests')" });
@@ -9527,6 +9542,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
       case "orderDetail": html = await renderOrderDetail(params.orderId, params.source); break;
       case "adminPanel": html = await renderAdminPanel(params.status); break;
+      case "adminCarousel": html = await renderAdminCarousel(); break;
       case "adminDisputes": html = await renderAdminDisputes(); break;
       case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
       case "adminPeople": html = await renderAdminPeople(); break;
@@ -9583,6 +9599,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   initHomeSearchScrollMotion();
   initGallerySwipeSurfaces();
   initDeliveryFieldsOnPage();
+  if (view === "home") initPromoCarousel();
   if (view === "settings") setTimeout(hydrateSettingsPage, 0);
   // A same-view, non-history refresh (notably live order updates) must keep
   // the user's scroll position. Real navigation still starts at the top.
@@ -9591,6 +9608,61 @@ async function navigate(view, params = {}, pushHistory = true) {
   } else if (pushHistory || previousView !== view) {
     window.scrollTo(0, 0);
   }
+}
+
+// ---------- HOMEPAGE PROMOTIONAL CAROUSEL ----------
+// Swipe/scroll is native (CSS scroll-snap on .promo-carousel-track). This
+// just keeps the dots in sync and handles gentle autoplay, pausing while
+// the visitor is actually interacting with it.
+let promoCarouselAutoplay = null;
+function initPromoCarousel() {
+  const track = byId("promoCarouselTrack");
+  if (!track) return;
+  const dots = document.querySelectorAll("#promoCarousel .promo-carousel-dot");
+  clearInterval(promoCarouselAutoplay);
+
+  const syncDots = () => {
+    const slideW = track.clientWidth || 1;
+    const idx = Math.round(track.scrollLeft / slideW);
+    dots.forEach((d, i) => d.classList.toggle("active", i === idx));
+  };
+  track.addEventListener("scroll", () => {
+    clearTimeout(track._promoScrollT);
+    track._promoScrollT = setTimeout(syncDots, 80);
+  }, { passive: true });
+
+  if (dots.length > 1) {
+    let paused = false;
+    track.addEventListener("pointerdown", () => { paused = true; }, { passive: true });
+    track.addEventListener("pointerup", () => { setTimeout(() => { paused = false; }, 3000); }, { passive: true });
+    promoCarouselAutoplay = setInterval(() => {
+      if (paused || document.hidden) return;
+      const slideW = track.clientWidth || 1;
+      const maxScroll = track.scrollWidth - slideW;
+      const next = track.scrollLeft >= maxScroll - 4 ? 0 : track.scrollLeft + slideW;
+      track.scrollTo({ left: next, behavior: "smooth" });
+    }, 5000);
+  }
+}
+function goToPromoSlide(i) {
+  const track = byId("promoCarouselTrack");
+  if (!track) return;
+  track.scrollTo({ left: track.clientWidth * i, behavior: "smooth" });
+}
+function handlePromoSlideClick(e, linkUrl) {
+  if (!linkUrl) return true;
+  // Internal in-app links (e.g. "vendors", "category:123") go through the
+  // SPA router instead of a full page navigation; anything else (a real
+  // URL) is left to behave like a normal link.
+  if (!/^https?:\/\//i.test(linkUrl)) {
+    e.preventDefault();
+    const [view, id] = linkUrl.split(":");
+    if (view === "vendors") navigate("vendors");
+    else if (view === "category" && id) navigate("home", { categoryId: id });
+    else navigate(linkUrl);
+    return false;
+  }
+  return true;
 }
 
 // ---------- SWIPE PRODUCT / PACKAGE GALLERIES ----------
@@ -9858,12 +9930,18 @@ async function renderHome() {
   // Keep the initial marketplace paint to one parallel batch. Packages are
   // first-class marketplace listings now, so they load alongside products
   // rather than causing a second visible page refresh.
-  const [{ data: trending }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
+  const carouselQuery = sb.from("homepage_carousel_slides")
+    .select("id, image_url, link_url, alt_text")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  const [{ data: trending }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }, { data: carouselSlides }] = await Promise.all([
     vendorQuery.order("view_count", { ascending: false }).limit(10),
     topVendorsQuery.order("avg_rating", { ascending: false }).limit(6),
     recentPhotosQuery.order("created_at", { ascending: false }).limit(3),
     packageQuery,
     browseCatalogQuery,
+    carouselQuery,
   ]);
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
@@ -9890,7 +9968,19 @@ async function renderHome() {
   }).slice(0, 6);
   const hasPersonalPackageMatch = recommendedPackages.some((pkg) => (pkg.items || []).some((it) => favoriteIds.has(it.product?.id)));
 
-  let html = `<div class="hero">
+  let html = "";
+  if (carouselSlides?.length) {
+    html += `<div class="promo-carousel" id="promoCarousel">
+      <div class="promo-carousel-track" id="promoCarouselTrack">
+        ${carouselSlides.map((s) => {
+          const img = `<img src="${esc(s.image_url)}" alt="${esc(s.alt_text || "Levromart promotion")}" loading="lazy" decoding="async" />`;
+          return `<div class="promo-carousel-slide">${s.link_url ? `<a href="${esc(s.link_url)}" onclick="return handlePromoSlideClick(event,'${esc(s.link_url)}')">${img}</a>` : img}</div>`;
+        }).join("")}
+      </div>
+      ${carouselSlides.length > 1 ? `<div class="promo-carousel-dots">${carouselSlides.map((_, i) => `<button type="button" class="promo-carousel-dot ${i === 0 ? "active" : ""}" onclick="goToPromoSlide(${i})" aria-label="Go to slide ${i + 1}"></button>`).join("")}</div>` : ""}
+    </div>`;
+  }
+  html += `<div class="hero">
     ${heroPhotos.length >= 1 ? `<div class="hero-photo-collage"><div class="hero-photo-row">${heroPhotos.map((p) => `<button type="button" class="hero-photo-link" onclick="navigate('productDetail',{productId:'${esc(p.id)}'})" aria-label="View ${esc(p.name)}"><img src="${esc(p.url)}" alt="${esc(p.name)}" loading="lazy" decoding="async" /></button>`).join("")}</div><div class="hero-photo-scrim"></div></div>` : ""}
     <div class="hero-aurora"></div>
     <div class="hero-content">
@@ -16142,6 +16232,7 @@ async function fileDispute(orderId) {
 function adminNavHtml(active) {
   const items = [
     ["adminPanel", "fa-user-check", "Vendors"],
+    ["adminCarousel", "fa-images", "Carousel"],
     ["adminPeople", "fa-users", "People"],
     ["adminFinance", "fa-sack-dollar", "Finance"],
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
@@ -16236,6 +16327,151 @@ async function renderAdminPanel(status) {
     </div>`;
   });
   return html;
+}
+
+// ---------------------------------------------------------------------
+// HOMEPAGE PROMOTIONAL CAROUSEL — admin-managed.
+// Slides live in public.homepage_carousel_slides + the "homepage-carousel"
+// storage bucket. Admins upload/replace/remove/reorder images here; the
+// homepage (renderHome) just reads the active rows back out, so changing
+// the carousel never requires touching code again.
+// ---------------------------------------------------------------------
+async function renderAdminCarousel() {
+  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  const { data: slides, error } = await sb.from("homepage_carousel_slides")
+    .select("id, image_url, link_url, alt_text, sort_order, is_active, created_at")
+    .order("sort_order", { ascending: true });
+
+  let html = `<h2><i class="fa-solid fa-images"></i> Admin: Homepage carousel</h2>`;
+  html += adminNavHtml("adminCarousel");
+  html += `<p class="muted" style="margin:0.2rem 0 0.9rem;">These images are the promotional banner shown at the top of the homepage. Upload, reorder, or remove slides here — changes go live immediately, no app update needed.</p>`;
+
+  html += `<div class="card" style="margin-bottom:1rem;">
+    <label for="carouselUploadInput">Add a new slide</label>
+    <input type="file" id="carouselUploadInput" accept="image/*" onchange="uploadCarouselSlide(this.files[0])" />
+    <p class="muted" style="margin-top:0.4rem;font-size:0.85rem;">Recommended: wide promotional banners (about 1600×900 or similar), JPG/PNG/WebP. New uploads are added to the end of the order.</p>
+    <div id="carouselUploadStatus" class="muted" style="margin-top:0.4rem;font-size:0.85rem;"></div>
+  </div>`;
+
+  if (error) return html + errorStateHtml(error);
+  if (!slides?.length) {
+    html += `<div class="empty-state">No slides yet. Upload an image above to start the homepage carousel.</div>`;
+    return html;
+  }
+
+  html += `<div class="admin-carousel-list">`;
+  slides.forEach((s, i) => {
+    html += `<div class="card admin-carousel-row" style="display:flex;gap:0.9rem;align-items:center;margin-bottom:0.7rem;">
+      <img src="${esc(s.image_url)}" alt="${esc(s.alt_text || "")}" style="width:8rem;height:4.5rem;object-fit:cover;border-radius:0.6rem;flex:0 0 auto;background:var(--bg);" />
+      <div style="flex:1;min-width:0;">
+        <div class="flex" style="justify-content:space-between;align-items:center;gap:0.5rem;">
+          <strong>Slide ${i + 1}</strong>
+          <label class="flex" style="gap:0.4rem;align-items:center;font-size:0.85rem;font-weight:500;cursor:pointer;">
+            <input type="checkbox" ${s.is_active ? "checked" : ""} onchange="toggleCarouselSlideActive('${s.id}', this.checked)" /> Active
+          </label>
+        </div>
+        <input type="text" placeholder="Optional link (e.g. a category or vendor page)" value="${esc(s.link_url || "")}" id="carouselLink_${s.id}" style="margin-top:0.4rem;font-size:0.85rem;" onchange="updateCarouselSlideLink('${s.id}', this.value)" />
+        <div class="flex" style="margin-top:0.5rem;gap:0.4rem;">
+          <button type="button" class="btn btn-sm" ${i === 0 ? "disabled" : ""} onclick="moveCarouselSlide('${s.id}','up')"><i class="fa-solid fa-arrow-up"></i></button>
+          <button type="button" class="btn btn-sm" ${i === slides.length - 1 ? "disabled" : ""} onclick="moveCarouselSlide('${s.id}','down')"><i class="fa-solid fa-arrow-down"></i></button>
+          <label class="btn btn-sm" style="cursor:pointer;">
+            <i class="fa-solid fa-arrows-rotate"></i> Replace
+            <input type="file" accept="image/*" style="display:none;" onchange="replaceCarouselSlide('${s.id}', this.files[0])" />
+          </label>
+          <button type="button" class="btn btn-sm btn-danger" onclick="deleteCarouselSlide('${s.id}')"><i class="fa-solid fa-trash"></i> Delete</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+async function uploadCarouselSlide(file) {
+  if (!file || !session || profile?.role !== "admin") return;
+  const statusEl = byId("carouselUploadStatus");
+  if (statusEl) statusEl.textContent = "Uploading…";
+  try {
+    const ext = (file.name.split(".").pop() || "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: upErr } = await sb.storage.from("homepage-carousel").upload(path, file, { contentType: file.type || "image/jpeg" });
+    if (upErr) throw upErr;
+    const { data: pub } = sb.storage.from("homepage-carousel").getPublicUrl(path);
+    const { count } = await sb.from("homepage_carousel_slides").select("id", { count: "exact", head: true });
+    const { error: insErr } = await sb.from("homepage_carousel_slides").insert({
+      storage_path: path,
+      image_url: pub.publicUrl,
+      sort_order: count || 0,
+      created_by: session.user.id,
+    });
+    if (insErr) throw insErr;
+    showToast("Slide added.", "success");
+    navigate("adminCarousel", {}, { replace: true });
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "";
+    showToast(e.message || "Upload failed.", "error");
+  }
+}
+
+async function replaceCarouselSlide(id, file) {
+  if (!file || !session || profile?.role !== "admin") return;
+  try {
+    const { data: existing } = await sb.from("homepage_carousel_slides").select("storage_path").eq("id", id).single();
+    const ext = (file.name.split(".").pop() || "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: upErr } = await sb.storage.from("homepage-carousel").upload(path, file, { contentType: file.type || "image/jpeg" });
+    if (upErr) throw upErr;
+    const { data: pub } = sb.storage.from("homepage-carousel").getPublicUrl(path);
+    const { error: updErr } = await sb.from("homepage_carousel_slides").update({ storage_path: path, image_url: pub.publicUrl }).eq("id", id);
+    if (updErr) throw updErr;
+    if (existing?.storage_path) await sb.storage.from("homepage-carousel").remove([existing.storage_path]).catch(() => {});
+    showToast("Slide replaced.", "success");
+    navigate("adminCarousel", {}, { replace: true });
+  } catch (e) {
+    showToast(e.message || "Replace failed.", "error");
+  }
+}
+
+async function deleteCarouselSlide(id) {
+  if (!session || profile?.role !== "admin") return;
+  if (!confirm("Remove this slide from the homepage carousel?")) return;
+  try {
+    const { data: existing } = await sb.from("homepage_carousel_slides").select("storage_path").eq("id", id).single();
+    const { error } = await sb.from("homepage_carousel_slides").delete().eq("id", id);
+    if (error) throw error;
+    if (existing?.storage_path) await sb.storage.from("homepage-carousel").remove([existing.storage_path]).catch(() => {});
+    showToast("Slide removed.", "success");
+    navigate("adminCarousel", {}, { replace: true });
+  } catch (e) {
+    showToast(e.message || "Delete failed.", "error");
+  }
+}
+
+async function toggleCarouselSlideActive(id, isActive) {
+  if (!session || profile?.role !== "admin") return;
+  const { error } = await sb.from("homepage_carousel_slides").update({ is_active: isActive }).eq("id", id);
+  if (error) { showToast(error.message, "error"); return; }
+  showToast(isActive ? "Slide is now live." : "Slide hidden from the homepage.", "success");
+}
+
+async function updateCarouselSlideLink(id, linkUrl) {
+  if (!session || profile?.role !== "admin") return;
+  const { error } = await sb.from("homepage_carousel_slides").update({ link_url: linkUrl.trim() || null }).eq("id", id);
+  if (error) showToast(error.message, "error");
+}
+
+async function moveCarouselSlide(id, direction) {
+  if (!session || profile?.role !== "admin") return;
+  const { data: slides, error } = await sb.from("homepage_carousel_slides").select("id, sort_order").order("sort_order", { ascending: true });
+  if (error) { showToast(error.message, "error"); return; }
+  const idx = slides.findIndex((s) => s.id === id);
+  const swapWith = direction === "up" ? idx - 1 : idx + 1;
+  if (idx === -1 || swapWith < 0 || swapWith >= slides.length) return;
+  const a = slides[idx], b = slides[swapWith];
+  const { error: e1 } = await sb.from("homepage_carousel_slides").update({ sort_order: b.sort_order }).eq("id", a.id);
+  const { error: e2 } = await sb.from("homepage_carousel_slides").update({ sort_order: a.sort_order }).eq("id", b.id);
+  if (e1 || e2) { showToast((e1 || e2).message, "error"); return; }
+  navigate("adminCarousel", {}, { replace: true });
 }
 
 async function viewVendorDoc(path) {
