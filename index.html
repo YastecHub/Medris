@@ -6130,12 +6130,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </div>
   </div>
   <div class="accordion-section">
-    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class='fa-solid fa-fill-drip'></i> Accent color</span><i class='fa-solid fa-chevron-down accordion-chevron'></i></button>
-    <div class="accordion-body">
-      <div class="accent-swatches" id="accentSwatches"></div>
-    </div>
-  </div>
-  <div class="accordion-section">
     <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class='fa-solid fa-mobile-screen-button'></i> App &amp; notifications</span><i class='fa-solid fa-chevron-down accordion-chevron'></i></button>
     <div class="accordion-body">
       <div id="settingsInstallRow" class="flex" style="justify-content:space-between;margin-bottom:0.6rem;"></div>
@@ -8153,7 +8147,8 @@ function accentLogoFilter(hex){
   return `hue-rotate(${delta.toFixed(1)}deg) saturate(1.08)`;
 }
 function applyAccent(index) {
-  const preset = ACCENT_PALETTE[index] || ACCENT_PALETTE[0];
+  /* Accent customization has been retired: Levromart uses one calm brand green everywhere. */
+  const preset = { name: "Levromart Green", group: "Brand", base: "#10b080", light: "#10b080" };
   const theme = localStorage.getItem("medris-theme") || "light";
   const root = document.documentElement;
   // Chat bubbles always use the accent's darker "base" tone, regardless of
@@ -8180,14 +8175,11 @@ function applyAccent(index) {
   // follows the live accent selected by the user.
   root.style.setProperty("--levi-accent-filter", accentLogoFilter(preset.base));
 }
-function setAccent(index) {
-  currentAccentIndex = index;
-  localStorage.setItem("medris-accent", String(index));
-  applyAccent(index);
-  renderAccentSwatches("accentSwatches");
-  renderAccentSwatches("accentSwatchesPage");
-  const summary = byId("accentPalettePageSummary");
-  if (summary) summary.textContent = ACCENT_PALETTE[index]?.name || "Accent color";
+function setAccent() {
+  /* Backward-compatible no-op for older callers: never allow a custom accent. */
+  currentAccentIndex = DEFAULT_ACCENT_INDEX;
+  try { localStorage.removeItem("medris-accent"); } catch (e) {}
+  applyAccent(DEFAULT_ACCENT_INDEX);
 }
 function renderAccentSwatches(targetId = "accentSwatches") {
   const wrap = byId(targetId);
@@ -8217,15 +8209,10 @@ function toggleAccentPalettePage() {
   trigger?.setAttribute("aria-expanded", String(opening));
 }
 function initAccent() {
-  const saved = localStorage.getItem("medris-accent");
-  // New installs/accounts with no saved preference use Mint (#10b981).
-  // Any valid preference the user has already selected stays exactly as-is.
-  const parsed = saved !== null ? Number(saved) : DEFAULT_ACCENT_INDEX;
-  currentAccentIndex = Number.isInteger(parsed) && parsed >= 0 && parsed < ACCENT_PALETTE.length
-    ? parsed
-    : DEFAULT_ACCENT_INDEX;
+  /* One Levromart brand accent only; ignore and clear any legacy custom accent. */
+  currentAccentIndex = DEFAULT_ACCENT_INDEX;
+  try { localStorage.removeItem("medris-accent"); } catch (e) {}
   applyAccent(currentAccentIndex);
-  renderAccentSwatches();
 }
 function toggleAccordion(trigger) {
   const section = trigger.closest(".accordion-section");
@@ -9522,7 +9509,6 @@ function renderSettingsPage(){
   return `<div class="settings-page" id="settings-page">
     <div class="settings-page-header"><button class="settings-back-btn" onclick="navigate(lastNonSettingsView||'home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><span class="settings-kicker">Levromart</span><h2>Settings</h2><p class="muted">Manage your account and app experience.</p></div></div>
     <section class="settings-page-section"><h3><i class="fa-solid fa-palette"></i> Appearance</h3><p class="settings-section-note">Choose how Levromart looks on this device.</p><div class="settings-choice-list"><button class="settings-choice" data-theme-choice="light" onclick="setTheme('light')"><i class="fa-solid fa-sun"></i><span><strong>Light</strong><small>Bright and clean</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-theme-choice="dark" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i><span><strong>Dark</strong><small>Comfortable for low light</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-theme-choice="black" onclick="setTheme('black')"><i class="fa-solid fa-circle"></i><span><strong>Deep black</strong><small>OLED-friendly black</small></span><i class="fa-solid fa-check settings-choice-check"></i></button></div></section>
-    <section class="settings-page-section"><button type="button" class="accent-page-dropdown-trigger" onclick="toggleAccentPalettePage()" aria-expanded="false"><span><i class="fa-solid fa-droplet"></i><span><strong>Accent color</strong><small>Choose the accent used across Levromart.</small></span></span><i class="fa-solid fa-chevron-down" id="accentPalettePageChevron"></i></button><div class="accent-page-dropdown-body hidden" id="accentPalettePageBody"><div class="accent-swatches settings-page-swatches" id="accentSwatchesPage"></div></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-text-height"></i> Text size</h3><p class="settings-section-note">Make Levromart easier to read. This changes the app's text scale on this device.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Font size</strong><span>Choose a comfortable size from 85% to 125%.</span></div><div class="levi-size-value" id="levroFontScaleValue">${Math.round(getLevromartFontScale()*100)}%</div><input class="levi-size-range" id="levroFontScaleRange" type="range" min="0.85" max="1.25" step="0.05" value="${getLevromartFontScale()}" aria-label="Levromart font size" oninput="setLevromartFontScale(this.value)" onchange="setLevromartFontScale(this.value)" /></div></section>
     <section class="settings-page-section"><h3><span class="settings-levi-logo-wrap"><img class="settings-levi-logo" src="${esc(MEDRIS_LOGO)}" alt="" /></span> Levi</h3><p class="settings-section-note">Adjust Levi's size, visibility, data preference and voice.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Levi size</strong><span>Drag the scale to make Levi smaller or restore the current maximum.</span></div><div class="levi-size-value" id="leviSizeValue">${getLeviFabSize()}px</div><input class="levi-size-range" id="leviSizeRange" type="range" min="44" max="74" step="1" value="${getLeviFabSize()}" aria-label="Levi size" oninput="setLeviFabSize(this.value)" /></div><div class="settings-divider"></div><div class="settings-toggle-row" id="leviVisibleSettingRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="settingsAiConsentPageRow"></div><div class="settings-divider"></div><div class="settings-voice-wrap"><div class="settings-control-copy"><strong>Levi's voice</strong><span>Choose from the voices available on your device.</span></div><select id="voiceSelectPage" class="settings-select" aria-label="Levi voice"></select><button class="btn btn-outline settings-full-btn" onclick="previewAiVoice()"><i class="fa-solid fa-play"></i> Preview voice</button></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-sliders"></i> App preferences</h3><div class="settings-simple-row" id="settingsInstallPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="settingsNotifPageRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="horizontalBrowseSettingPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="locationSettingPageRow"></div></section>
@@ -9534,8 +9520,6 @@ function hydrateSettingsPage(){
   setLevromartFontScale(getLevromartFontScale());
   const theme=document.documentElement.dataset.theme||localStorage.getItem("medris-theme")||"light";
   document.querySelectorAll("#settings-page .settings-choice").forEach(el=>{const on=el.dataset.themeChoice===theme;el.classList.toggle("active",on);el.dataset.active=String(on);});
-  const accent=byId("accentSwatchesPage");
-  if(accent) renderAccentSwatches("accentSwatchesPage");
   const vis=byId("leviVisibleSettingRow");
   if(vis) vis.innerHTML=`<i class="fa-solid ${leviVisible?'fa-comment-dots':'fa-comment-slash'} settings-row-icon"></i><span class="settings-row-copy"><strong>Levi assistant</strong><small>${leviVisible?'Shown on the app':'Hidden from the app'}</small></span><button class="settings-inline-btn" onclick="toggleLeviVisible();setTimeout(hydrateSettingsPage,0)">${leviVisible?'Hide':'Show'}</button>`;
   const consent=byId("settingsAiConsentPageRow");
@@ -26005,22 +25989,18 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   }
 }
 
-/* Homepage quick actions: solid, clearly differentiated icon circles. */
-#app .levro-home-quick-actions .levro-quick-action:nth-child(1){--quick-solid:#2563eb !important;}
-#app .levro-home-quick-actions .levro-quick-action:nth-child(2){--quick-solid:#f97316 !important;}
-#app .levro-home-quick-actions .levro-quick-action:nth-child(3){--quick-solid:#eab308 !important;}
-#app .levro-home-quick-actions .levro-quick-action:nth-child(4){--quick-solid:#16a34a !important;}
-#app .levro-home-quick-actions .levro-quick-action:nth-child(5){--quick-solid:#ef4444 !important;}
-#app .levro-home-quick-actions .levro-quick-action:nth-child(6){--quick-solid:#8b5cf6 !important;}
+/* Levromart brand accent: one calm green across the entire application. */
+#app .levro-home-quick-actions .levro-quick-action{--quick-solid:#10b080 !important;}
 #app .levro-home-quick-actions .levro-quick-icon{
-  background:var(--quick-solid) !important;
+  background:#10b080 !important;
   color:#fff !important;
   border:0 !important;
-  box-shadow:0 7px 18px color-mix(in srgb,var(--quick-solid) 24%,transparent) !important;
+  box-shadow:none !important;
 }
 #app .levro-home-quick-actions .levro-quick-action:hover .levro-quick-icon,
 #app .levro-home-quick-actions .levro-quick-action:focus-visible .levro-quick-icon{
-  background:var(--quick-solid) !important;
+  background:#10b080 !important;
   color:#fff !important;
+  box-shadow:none !important;
 }
 </style>
