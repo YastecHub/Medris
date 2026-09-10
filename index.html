@@ -5380,6 +5380,23 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
   .admin-carousel-status{display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;font-weight:700;padding:.22rem .55rem;border-radius:999px;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary)}
   @media(max-width:650px){.admin-carousel-form-grid{grid-template-columns:1fr}.admin-carousel-form-grid .full{grid-column:auto}.admin-carousel-item{grid-template-columns:1fr}.admin-carousel-thumb{max-height:220px}}
 </style>
+<style id="admin-link-library-styles">
+  .admin-link-library{display:flex;flex-direction:column;gap:1rem}
+  .admin-link-library-search{position:sticky;top:0;z-index:2;padding:.7rem 0;background:var(--bg)}
+  .admin-link-library-search .field-wrap{position:relative}
+  .admin-link-library-search input{width:100%;padding:.82rem 2.7rem .82rem 2.7rem;border:1px solid var(--border);border-radius:14px;background:var(--input-bg);color:var(--text);font:inherit}
+  .admin-link-library-search i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--text-muted)}
+  .admin-link-library-count{font-size:.72rem;color:var(--text-muted)}
+  .admin-link-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.85rem;align-items:center;padding:.85rem 0;border-bottom:1px solid var(--border)}
+  .admin-link-row:last-child{border-bottom:0}
+  .admin-link-copy{min-width:0}
+  .admin-link-copy strong{display:block;font-size:.9rem}
+  .admin-link-copy small{display:block;color:var(--text-muted);font-size:.68rem;line-height:1.35;margin-top:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .admin-link-url{margin-top:.45rem;padding:.48rem .6rem;border-radius:9px;background:color-mix(in srgb,var(--text) 5%,transparent);font-size:.64rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .admin-link-copy-btn{min-width:82px;white-space:nowrap}
+  .admin-link-empty{text-align:center;padding:2rem 1rem;color:var(--text-muted)}
+  @media(max-width:560px){.admin-link-row{grid-template-columns:1fr}.admin-link-copy-btn{width:100%}.admin-link-url{white-space:normal;overflow-wrap:anywhere}}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -8570,6 +8587,9 @@ function updateAuthUI() {
     if (vendor) links.push({ label: `Suggestions${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('vendorSuggestionsInbox')" });
     if (profile.role !== "admin") links.push({ label: "Support request", action: "navigate('supportRequest')" });
     if (profile.role !== "admin") links.push({ label: "Send feedback", action: "showSuggestionModal('platform')" });
+    if (profile.role === "admin") {
+      links.push({ label: "Link Library", action: "navigate('adminLinkLibrary')" });
+    }
     links.push({ label: "Take the tour", action: "showTour()" });
     links.push({ label: "Settings", action: "navigate('settings')" });
 
@@ -8595,7 +8615,7 @@ function updateAuthUI() {
       <div class="profile-panel-scroll">
         ${links.map((l) => {
           const raw = String(l.label).replace(/<[^>]*>/g, '').trim().toLowerCase();
-          const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') || raw.includes('support request') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
+          const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') || raw.includes('support request') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('link library') ? 'fa-link' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
           return `<a class="profile-nav-link" onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
         }).join("")}
         <a class="profile-nav-link profile-nav-link-danger" onclick="closeAllPanels();logout();"><span class="profile-item-icon"><i class="fa-solid fa-arrow-right-from-bracket"></i></span><span class="profile-nav-text">Log out</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>
@@ -9587,6 +9607,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "orderDetail": html = await renderOrderDetail(params.orderId, params.source); break;
       case "adminPanel": html = await renderAdminPanel(params.status); break;
       case "adminCarousel": html = await renderAdminCarousel(); break;
+      case "adminLinkLibrary": html = renderAdminLinkLibrary(); break;
       case "adminDisputes": html = await renderAdminDisputes(); break;
       case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
       case "adminPeople": html = await renderAdminPeople(); break;
@@ -9915,8 +9936,18 @@ function renderHomepageCarouselHtml(slides) {
 function handleHomeCarouselSlideClick(event, index) {
   const slide = event.currentTarget;
   const url = slide?.dataset?.linkUrl || "";
-  if (url) { try { window.open(url, "_blank", "noopener,noreferrer"); } catch (_) {} }
   activateHomeCarouselSlide(index, true);
+  if (!url) return;
+  try {
+    const target = new URL(url, location.href);
+    const sameApp = target.origin === location.origin && target.pathname === location.pathname;
+    if (sameApp && (target.searchParams.has("levro") || target.searchParams.has("storefront") || target.searchParams.has("package"))) {
+      event.preventDefault();
+      window.location.assign(target.href);
+      return;
+    }
+    window.open(target.href, "_blank", "noopener,noreferrer");
+  } catch (_) {}
 }
 function stopHomeCarouselAutoPlay() {
   if (homeCarouselTimer) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; }
@@ -9961,6 +9992,103 @@ function initHomepageCarousel() {
   viewport.addEventListener("mouseleave", startHomeCarouselAutoPlay);
   activateHomeCarouselSlide(0, false);
   startHomeCarouselAutoPlay();
+}
+
+// ---------- ADMIN LINK LIBRARY ----------
+// One private, searchable source of truth for internal carousel destination URLs.
+// These are generated from the current origin/pathname so admins never need to
+// hand-edit links when the app is moved between domains/environments.
+const ADMIN_LINK_LIBRARY_ENTRIES = [
+  { label: "Browse Everything", description: "Open the main marketplace catalogue.", url: () => buildLevromartDeepLink("home", {}, "browse") },
+  { label: "Cart", description: "Open the shopping cart.", url: () => buildLevromartDeepLink("cart") },
+  { label: "Featured Products", description: "Open the homepage product discovery area.", url: () => buildLevromartDeepLink("home", {}, "products") },
+  { label: "Messages", description: "Open the messages inbox.", url: () => buildLevromartDeepLink("messages") },
+  { label: "My Shop", description: "Open the vendor's shop management area.", url: () => buildLevromartDeepLink("vendorDashboard") },
+  { label: "Notifications", description: "Open the notifications panel.", url: () => buildLevromartDeepLink("notifications") },
+  { label: "Orders", description: "Open the appropriate orders area for the signed-in account.", url: () => buildLevromartDeepLink("orders") },
+  { label: "Packages", description: "Open the homepage packages catalogue.", url: () => buildLevromartDeepLink("home", {}, "packages") },
+  { label: "Profile", description: "Open the signed-in user's profile panel.", url: () => buildLevromartDeepLink("profile") },
+  { label: "Request an Item", description: "Open the customer request flow.", url: () => buildLevromartDeepLink("requestEquipment") },
+  { label: "Services", description: "Open the homepage services catalogue.", url: () => buildLevromartDeepLink("home", {}, "services") },
+  { label: "Settings", description: "Open application settings.", url: () => buildLevromartDeepLink("settings") },
+  { label: "Support Request", description: "Open the support request page.", url: () => buildLevromartDeepLink("supportRequest") },
+  { label: "Top Rated Vendors", description: "Open the vendor directory/map.", url: () => buildLevromartDeepLink("vendors") },
+  { label: "Vendor Directory / Map", description: "Open Vendors with the map as the default view.", url: () => buildLevromartDeepLink("vendors") },
+  { label: "Wishlist", description: "Open the saved-items wishlist.", url: () => buildLevromartDeepLink("wishlist") },
+];
+
+function buildLevromartDeepLink(view, params = {}, section = "") {
+  const u = new URL(location.href);
+  u.search = "";
+  u.hash = "";
+  if (view === "notifications" || view === "profile") {
+    u.searchParams.set("levro", view);
+  } else if (view === "orders") {
+    u.searchParams.set("levro", "orders");
+  } else {
+    u.searchParams.set("levro", view);
+    Object.entries(params || {}).forEach(([k,v]) => { if (v != null && v !== "") u.searchParams.set(k, String(v)); });
+  }
+  if (section) u.searchParams.set("section", section);
+  return u.toString();
+}
+
+function copyAdminLink(url, button) {
+  if (!isCarouselAdmin()) return;
+  const done = () => {
+    const old = button?.innerHTML;
+    if (button) { button.innerHTML = '<i class="fa-solid fa-check"></i> Copied'; button.disabled = true; }
+    showToast("Link copied to clipboard.", "success");
+    setTimeout(() => { if (button) { button.innerHTML = old || '<i class="fa-solid fa-copy"></i> Copy'; button.disabled = false; } }, 1400);
+  };
+  const fallback = () => {
+    try {
+      const ta = document.createElement("textarea"); ta.value = url; ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); ta.remove(); done();
+    } catch (_) { showToast("Could not copy the link. Please select and copy it manually.", "error"); }
+  };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done).catch(fallback);
+  else fallback();
+}
+
+function renderAdminLinkLibrary() {
+  if (!isCarouselAdmin()) return '<div class="empty-state">Access denied.</div>';
+  const entries = ADMIN_LINK_LIBRARY_ENTRIES.map(e => ({...e, resolvedUrl: e.url()})).sort((a,b) => a.label.localeCompare(b.label));
+  const rows = entries.map((e,i) => `<div class="admin-link-row" data-admin-link-label="${esc(e.label.toLowerCase())}">
+    <div class="admin-link-copy"><strong>${esc(e.label)}</strong><small>${esc(e.description)}</small><div class="admin-link-url">${esc(e.resolvedUrl)}</div></div>
+    <button type="button" class="btn btn-sm admin-link-copy-btn" onclick="copyAdminLink(${JSON.stringify(e.resolvedUrl)},this)"><i class="fa-solid fa-copy"></i> Copy</button>
+  </div>`).join("");
+  return `<div class="instant-page-shell admin-link-library">
+    <div><h2 style="margin-bottom:.25rem;"><i class="fa-solid fa-link"></i> Link Library</h2><p class="muted" style="margin:0;">Admin-only destination links for carousel banners and other promotional artwork. Copy a link and paste it into the carousel's Link URL field.</p></div>
+    <div class="card" style="padding:0 1rem;">
+      <div class="admin-link-library-search"><div class="field-wrap"><i class="fa-solid fa-magnifying-glass"></i><input id="adminLinkLibrarySearch" type="search" placeholder="Search links…" autocomplete="off" oninput="filterAdminLinkLibrary()"></div></div>
+      <div id="adminLinkLibraryCount" class="admin-link-library-count" style="padding:.15rem 0 .4rem;">${entries.length} links</div>
+      <div id="adminLinkLibraryRows">${rows}</div>
+      <div id="adminLinkLibraryEmpty" class="admin-link-empty hidden">No matching links.</div>
+    </div>
+    <div class="flex" style="justify-content:flex-start;gap:.55rem;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-outline" onclick="copyAllAdminLinks()"><i class="fa-solid fa-copy"></i> Copy all links</button>
+      <button class="btn btn-sm btn-outline" onclick="navigate('adminCarousel')"><i class="fa-solid fa-images"></i> Carousel manager</button>
+      <button class="btn btn-sm btn-outline" onclick="navigate('adminPanel')"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>
+    </div>
+  </div>`;
+}
+
+function filterAdminLinkLibrary() {
+  const q = String(byId("adminLinkLibrarySearch")?.value || "").trim().toLowerCase();
+  let visible = 0;
+  document.querySelectorAll("#adminLinkLibraryRows .admin-link-row").forEach(row => {
+    const match = !q || String(row.dataset.adminLinkLabel || "").includes(q);
+    row.classList.toggle("hidden", !match); if (match) visible++;
+  });
+  const count = byId("adminLinkLibraryCount"); if (count) count.textContent = `${visible} link${visible === 1 ? "" : "s"}`;
+  byId("adminLinkLibraryEmpty")?.classList.toggle("hidden", visible !== 0);
+}
+
+function copyAllAdminLinks() {
+  if (!isCarouselAdmin()) return;
+  const links = ADMIN_LINK_LIBRARY_ENTRIES.map(e => `${e.label}: ${e.url()}`).sort((a,b) => a.localeCompare(b));
+  copyAdminLink(links.join("\n"), null);
 }
 
 // Admin-only carousel management. All image mutations go through the existing
@@ -19872,6 +20000,41 @@ window.addEventListener("popstate", (e) => {
     history.replaceState({ view: "packageDetail", params: { packageId } }, "", location.pathname + "?package=" + encodeURIComponent(packageId));
     await navigate("packageDetail", { packageId }, false);
     return;
+  }
+  // Admin-generated carousel destination links. Public destinations open
+  // directly; authenticated destinations use the existing login gate.
+  if (urlParams.get("levro")) {
+    const deepView = urlParams.get("levro");
+    const section = urlParams.get("section") || "";
+    if (deepView === "notifications" || deepView === "profile") {
+      history.replaceState({ view: "home", params: {} }, "", location.pathname);
+      if (!session) { showLogin(); return; }
+      await navigate("home", {}, false);
+      setTimeout(() => deepView === "notifications" ? toggleNotifPanel() : toggleProfilePanel(), 60);
+      return;
+    }
+    if (deepView === "orders") {
+      history.replaceState({ view: "home", params: {} }, "", location.pathname);
+      if (!session) { showLogin(); return; }
+      await navigate(profile?.role === "admin" ? "adminFinance" : (vendor ? "vendorOrders" : "buyerOrders"), vendor ? {status:"all",perspective:"sales"} : {}, false);
+      return;
+    }
+    if (["cart","messages","vendorDashboard","requestEquipment","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary"].includes(deepView)) {
+      history.replaceState({ view: "home", params: {} }, "", location.pathname);
+      if (!session && ["cart","messages","vendorDashboard","requestEquipment","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary"].includes(deepView)) { showLogin(); return; }
+      await navigate(deepView, {}, false);
+      return;
+    }
+    if (deepView === "home") {
+      history.replaceState({ view: "home", params: {} }, "", location.pathname);
+      await navigate("home", {}, false);
+      setTimeout(() => {
+        if (section === "services" || section === "packages" || section === "products") { try { switchHomeListingTab(section); } catch (_) {} }
+        const anchor = section === "browse" || section === "services" || section === "packages" || section === "products" ? byId("browseSection") : null;
+        if (anchor) anchor.scrollIntoView({behavior:"smooth", block:"start"});
+      }, 80);
+      return;
+    }
   }
   if (urlParams.get("share")) {
     const token = urlParams.get("share");
