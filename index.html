@@ -6031,6 +6031,65 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #bottomNav.has-add .bottom-nav-item>span:last-child{font-size:.6rem !important;}
 }
 </style>
+
+<style id="levromart-20260910-chat-media-editor-polish">
+/* WhatsApp-inspired multi-photo composer/editor. Scope is limited to the chat attachment editor. */
+#chatAttachmentEditorModal .chat-attachment-editor-content{width:min(94vw,760px)!important;max-width:760px!important;padding:0!important;overflow:hidden!important;border-radius:22px!important}
+#chatAttachmentEditorModal .chat-media-editor-head{display:flex!important;align-items:center!important;gap:.7rem!important;padding:.85rem 1rem .7rem!important;border-bottom:1px solid var(--border)!important}
+#chatAttachmentEditorModal .chat-media-editor-head .media-editor-title{display:flex!important;align-items:center!important;gap:.55rem!important;min-width:0!important;flex:1!important}
+#chatAttachmentEditorModal .chat-media-editor-head h3{margin:0!important;font-size:1rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#chatAttachmentEditorModal .chat-media-editor-close{width:36px!important;height:36px!important;border-radius:50%!important;border:0!important;background:transparent!important;color:var(--text-muted)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}
+#chatAttachmentEditorModal .chat-media-editor-tools{display:flex!important;align-items:center!important;justify-content:center!important;gap:.28rem!important;padding:.55rem .8rem!important;border-bottom:1px solid var(--border)!important;overflow-x:auto!important;scrollbar-width:none!important}
+#chatAttachmentEditorModal .chat-media-editor-tools::-webkit-scrollbar{display:none!important}
+#chatAttachmentEditorModal .chat-media-tool{width:42px!important;height:42px!important;flex:0 0 42px!important;border:0!important;border-radius:50%!important;background:transparent!important;color:var(--text)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:1rem!important;cursor:pointer!important}
+#chatAttachmentEditorModal .chat-media-tool.active{background:color-mix(in srgb,var(--primary) 14%,var(--card))!important;color:var(--primary)!important}
+#chatAttachmentEditorModal .chat-media-tool:active{transform:scale(.96)!important}
+#chatAttachmentEditorModal .chat-media-editor-stage{position:relative!important;padding:.65rem .75rem .5rem!important;background:color-mix(in srgb,var(--text) 3%,var(--card))!important}
+#chatAttachmentEditorModal .chat-attachment-canvas-wrap{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;min-height:240px!important;max-height:58vh!important;overflow:hidden!important;border-radius:16px!important;background:#111!important;touch-action:none!important}
+#chatAttachmentEditorModal #chatAttachmentEditorCanvas{display:block!important;max-width:100%!important;max-height:58vh!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}
+#chatAttachmentEditorModal .chat-media-nav{position:absolute!important;inset:50% .55rem auto!important;transform:translateY(-50%)!important;display:flex!important;justify-content:space-between!important;pointer-events:none!important}
+#chatAttachmentEditorModal .chat-media-nav button{pointer-events:auto!important;width:36px!important;height:36px!important;border:0!important;border-radius:50%!important;background:rgba(0,0,0,.48)!important;color:#fff!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
+#chatAttachmentEditorModal .chat-media-count{position:absolute!important;right:.7rem!important;top:.7rem!important;padding:.3rem .55rem!important;border-radius:999px!important;background:rgba(0,0,0,.52)!important;color:#fff!important;font-size:.7rem!important;font-weight:750!important;line-height:1!important}
+#chatAttachmentEditorModal .chat-media-thumbs{display:flex!important;gap:.45rem!important;overflow-x:auto!important;padding:.55rem .05rem .15rem!important;scrollbar-width:none!important;scroll-snap-type:x proximity!important}
+#chatAttachmentEditorModal .chat-media-thumbs::-webkit-scrollbar{display:none!important}
+#chatAttachmentEditorModal .chat-media-thumb{width:54px!important;height:54px!important;flex:0 0 54px!important;padding:0!important;border:2px solid transparent!important;border-radius:10px!important;overflow:hidden!important;background:#111!important;scroll-snap-align:center!important;cursor:pointer!important}
+#chatAttachmentEditorModal .chat-media-thumb.active{border-color:var(--primary)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 18%,transparent)!important}
+#chatAttachmentEditorModal .chat-media-thumb img{width:100%!important;height:100%!important;object-fit:cover!important;display:block!important}
+#chatAttachmentEditorModal .chat-media-caption{display:block!important;padding:.35rem .85rem .7rem!important}
+#chatAttachmentEditorModal .chat-media-caption span{display:block!important;margin:0 0 .35rem!important;font-size:.72rem!important;font-weight:750!important;color:var(--text-muted)!important}
+#chatAttachmentEditorModal #chatAttachmentCaption{width:100%!important;min-height:42px!important;max-height:100px!important;resize:none!important;border-radius:12px!important;padding:.62rem .72rem!important}
+#chatAttachmentEditorModal .chat-media-editor-footer{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.7rem!important;padding:.65rem .85rem calc(.7rem + env(safe-area-inset-bottom,0px))!important;border-top:1px solid var(--border)!important}
+#chatAttachmentEditorModal .chat-media-editor-footer .muted{font-size:.72rem!important;white-space:nowrap!important}
+#chatAttachmentEditorModal .chat-media-editor-footer .media-editor-actions{display:flex!important;align-items:center!important;gap:.45rem!important}
+@media(max-width:520px){
+  #chatAttachmentEditorModal .chat-attachment-editor-content{width:100vw!important;max-width:none!important;border-radius:20px 20px 0 0!important;margin-top:auto!important}
+  #chatAttachmentEditorModal .chat-attachment-canvas-wrap{min-height:210px!important;max-height:52vh!important}
+  #chatAttachmentEditorModal #chatAttachmentEditorCanvas{max-height:52vh!important}
+  #chatAttachmentEditorModal .chat-media-editor-tools{justify-content:flex-start!important}
+  #chatAttachmentEditorModal .chat-media-editor-footer{padding-left:.72rem!important;padding-right:.72rem!important}
+}
+</style>
+
+<style id="levromart-20260910-chat-media-group-ui">
+/* Grouped chat photos: one WhatsApp-style media bubble instead of separate photo cards. */
+.chat-media-group{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:2px!important;width:min(75vw,360px)!important;max-width:75%!important;align-self:flex-end!important;overflow:hidden!important;border-radius:16px!important;position:relative!important;background:transparent!important}
+.chat-media-group.theirs{align-self:flex-start!important}
+.chat-media-group .chat-media-group-item{display:block!important;width:100%!important;max-width:none!important;margin:0!important;align-items:stretch!important}
+.chat-media-group .chat-media-group-item .chat-bubble{width:100%!important;max-width:none!important;padding:0!important;margin:0!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+.chat-media-group .chat-media-group-item .chat-image-attachment{display:block!important;width:100%!important;height:150px!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important;overflow:hidden!important;background:var(--input-bg)!important;cursor:pointer!important}
+.chat-media-group .chat-media-group-item .msg-attachment-img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important}
+.chat-media-group .chat-media-group-item:nth-child(3):last-child .chat-image-attachment{height:185px!important}
+.chat-media-group .chat-media-group-item:not(:last-child) .chat-bubble-text,
+.chat-media-group .chat-media-group-item:not(:last-child) .chat-time{display:none!important}
+.chat-media-group .chat-media-group-item:last-child .chat-bubble-text{display:block!important;margin:.35rem .45rem .05rem!important}
+.chat-media-group .chat-media-group-item:last-child .chat-time{display:block!important;margin:.15rem .45rem .35rem!important}
+.chat-media-group .chat-media-group-item .msg-reactions-row{display:none!important}
+@media(max-width:520px){
+  .chat-media-group{width:min(76vw,330px)!important;max-width:76%!important}
+  .chat-media-group .chat-media-group-item .chat-image-attachment{height:120px!important}
+  .chat-media-group .chat-media-group-item:nth-child(3):last-child .chat-image-attachment{height:150px!important}
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -19225,6 +19284,8 @@ body.chat-full-page #bottomNav,
 body.chat-full-page #cartFab,
 body.chat-full-page #aiChatFab{display:none !important;visibility:hidden !important;pointer-events:none !important;}
 </style>
+
+
 </body></html>`);
   w.document.close();
 }
@@ -24846,6 +24907,289 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
   };
   setTimeout(window.__levroEnsureVendorRequestsLabel,100);
   setTimeout(window.__levroEnsureVendorRequestsLabel,600);
+})();
+</script>
+<script id="levromart-20260910-chat-media-editor-runtime">
+(function(){
+  'use strict';
+
+  const GROUP_PREFIX='__LM_CHAT_GROUP__';
+  function mediaGroupToken(name){
+    const raw=String(name||'');
+    const m=raw.match(/^__LM_CHAT_GROUP__([a-zA-Z0-9_-]+)__\|([\s\S]*)$/);
+    return m?{id:m[1],name:m[2]}:null;
+  }
+  window.__levroChatMediaGroupToken=mediaGroupToken;
+
+  /* Show the real filename, not the internal grouping marker. */
+  const originalAttachmentHtml=window.attachmentHtml;
+  window.attachmentHtml=function(m){
+    if(!m?.attachment_url) return '';
+    const isImage=(m.attachment_type||'').startsWith('image/');
+    const parsed=mediaGroupToken(m.attachment_name);
+    const displayName=parsed?.name || m.attachment_name || '';
+    if(isImage) return `<button type="button" class="msg-attachment chat-image-attachment" data-attachment-path="${esc(m.attachment_url)}" onclick="openChatImageLightboxFromMessage(event,this)" aria-label="Open image"><img class="msg-attachment-img" alt="${esc(displayName)}" /></button>`;
+    return originalAttachmentHtml ? originalAttachmentHtml({...m,attachment_name:displayName}) : '';
+  };
+
+  const originalChatBubbleHtml=window.chatBubbleHtml;
+  window.chatBubbleHtml=function(m){
+    const html=originalChatBubbleHtml ? originalChatBubbleHtml(m) : '';
+    const token=mediaGroupToken(m?.attachment_name);
+    if(!token || !html) return html;
+    return html.replace(/class="chat-bubble-wrap /,`class="chat-bubble-wrap chat-media-group-item `).replace(/data-msg-wrap-id="([^"]+)"/,`data-msg-wrap-id="$1" data-media-group="${esc(token.id)}"`);
+  };
+
+  function groupChatMediaMessages(root){
+    if(!root) return;
+    /* Ungroup only wrappers we created; this makes the routine safe to rerun after realtime inserts. */
+    root.querySelectorAll('.chat-media-group').forEach(group=>{
+      const parent=group.parentNode;
+      [...group.children].forEach(ch=>parent.insertBefore(ch,group));
+      group.remove();
+    });
+    const children=[...root.children];
+    let i=0;
+    while(i<children.length){
+      const first=children[i];
+      const id=first?.dataset?.mediaGroup;
+      if(!id){i++;continue;}
+      const items=[first];
+      let j=i+1;
+      while(j<children.length && children[j]?.dataset?.mediaGroup===id){items.push(children[j]);j++;}
+      if(items.length>1){
+        const group=document.createElement('div');
+        group.className='chat-media-group';
+        group.dataset.mediaGroup=id;
+        group.classList.add(items[0].classList.contains('mine')?'mine':'theirs');
+        items[0].parentNode.insertBefore(group,items[0]);
+        items.forEach(item=>group.appendChild(item));
+      }
+      i=j;
+    }
+  }
+  window.groupChatMediaMessages=groupChatMediaMessages;
+
+  const oldResolve=window.resolveVisibleAttachments;
+  if(typeof oldResolve==='function'){
+    /* The original resolver remains authoritative; grouping is visual only. */
+    window.resolveVisibleAttachments=async function(root){
+      const result=await oldResolve(root);
+      groupChatMediaMessages(root||byId('chatMessages'));
+      return result;
+    };
+  }
+
+  let editorState=null;
+  let thumbUrls=[];
+
+  function editor(){return byId('chatAttachmentEditorModal');}
+  function currentItem(){return editorState?.items?.[editorState.index]||null;}
+  function revokeThumbs(){thumbUrls.forEach(u=>{try{URL.revokeObjectURL(u)}catch(_){}});thumbUrls=[];}
+
+  function ensureEditor(){
+    if(editor()) return editor();
+    const modal=document.createElement('div');
+    modal.id='chatAttachmentEditorModal';
+    modal.className='modal hidden chat-attachment-editor-modal';
+    modal.innerHTML=`<div class="modal-content chat-attachment-editor-content" role="dialog" aria-modal="true" aria-label="Edit photos">
+      <div class="chat-media-editor-head">
+        <div class="media-editor-title"><i class="fa-solid fa-images"></i><h3>Edit photos</h3></div>
+        <button type="button" class="chat-media-editor-close" onclick="closeChatAttachmentEditor(false)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="chat-media-editor-tools" role="toolbar" aria-label="Photo editing tools">
+        <button type="button" class="chat-media-tool active" data-editor-tool="draw" onclick="setChatImageEditorTool('draw',this)" title="Draw" aria-label="Draw"><i class="fa-solid fa-pencil"></i></button>
+        <button type="button" class="chat-media-tool" data-editor-tool="highlight" onclick="setChatImageEditorTool('highlight',this)" title="Highlight" aria-label="Highlight"><i class="fa-solid fa-highlighter"></i></button>
+        <button type="button" class="chat-media-tool" data-editor-tool="crop" onclick="setChatImageEditorTool('crop',this)" title="Crop" aria-label="Crop"><i class="fa-solid fa-crop-simple"></i></button>
+        <button type="button" class="chat-media-tool" onclick="rotateChatImageEditor()" title="Rotate" aria-label="Rotate"><i class="fa-solid fa-rotate-right"></i></button>
+        <button type="button" class="chat-media-tool" onclick="resetChatImageEditor()" title="Reset current photo" aria-label="Reset current photo"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+      </div>
+      <div class="chat-media-editor-stage">
+        <div class="chat-attachment-canvas-wrap">
+          <canvas id="chatAttachmentEditorCanvas"></canvas>
+          <div class="chat-media-nav"><button type="button" onclick="changeChatEditorImage(-1)" aria-label="Previous photo"><i class="fa-solid fa-chevron-left"></i></button><button type="button" onclick="changeChatEditorImage(1)" aria-label="Next photo"><i class="fa-solid fa-chevron-right"></i></button></div>
+          <span class="chat-media-count" id="chatAttachmentEditorCount"></span>
+        </div>
+        <div class="chat-media-thumbs" id="chatAttachmentEditorThumbs" aria-label="Selected photos"></div>
+      </div>
+      <label class="chat-media-caption"><span>Caption</span><textarea id="chatAttachmentCaption" rows="2" maxlength="500" placeholder="Add a caption…"></textarea></label>
+      <div class="chat-media-editor-footer"><span id="chatAttachmentEditorStatus" class="muted"></span><div class="media-editor-actions"><button type="button" class="btn btn-sm btn-outline" onclick="closeChatAttachmentEditor(false)">Cancel</button><button type="button" class="btn btn-sm" onclick="saveChatAttachmentEditor()"><i class="fa-solid fa-check"></i> Use photos</button></div></div>
+    </div>`;
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function loadSource(file){
+    return new Promise((resolve,reject)=>{
+      const url=URL.createObjectURL(file);
+      const img=new Image();
+      img.onload=()=>{
+        try{
+          const max=2400, scale=Math.min(1,max/img.width,max/img.height);
+          const c=document.createElement('canvas');
+          c.width=Math.max(1,Math.round(img.width*scale)); c.height=Math.max(1,Math.round(img.height*scale));
+          c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+          URL.revokeObjectURL(url); resolve({file,sourceCanvas:c,strokes:[],crop:null,previewUrl:URL.createObjectURL(file)});
+        }catch(e){URL.revokeObjectURL(url);reject(e)}
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error(`Could not open ${file.name}.`));};
+      img.src=url;
+    });
+  }
+
+  function fitCanvas(){
+    const st=editorState, item=currentItem(), canvas=byId('chatAttachmentEditorCanvas');
+    if(!st||!item||!canvas)return;
+    const wrap=canvas.parentElement;
+    const maxW=Math.max(240,Math.min(760,(wrap?.clientWidth||760)-4));
+    const maxH=Math.max(210,Math.min(620,window.innerHeight*.52));
+    const scale=Math.min(1,maxW/item.sourceCanvas.width,maxH/item.sourceCanvas.height);
+    canvas.width=Math.max(1,Math.round(item.sourceCanvas.width*scale));
+    canvas.height=Math.max(1,Math.round(item.sourceCanvas.height*scale));
+    canvas.style.width=canvas.width+'px'; canvas.style.height=canvas.height+'px';
+    st.renderScale=scale;
+  }
+
+  function renderEditor(){
+    const st=editorState,item=currentItem(),canvas=byId('chatAttachmentEditorCanvas'); if(!st||!item||!canvas)return;
+    fitCanvas();
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(item.sourceCanvas,0,0,canvas.width,canvas.height);
+    item.strokes.forEach(s=>{ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=s.color;ctx.lineWidth=s.width;ctx.globalAlpha=s.alpha||1;ctx.beginPath();s.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.restore();});
+    if(item.crop?.w>1 && item.crop?.h>1){
+      const c=item.crop;
+      ctx.save();ctx.fillStyle='rgba(0,0,0,.48)';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.clearRect(c.x,c.y,c.w,c.h);ctx.drawImage(item.sourceCanvas,0,0,canvas.width,canvas.height); 
+      item.strokes.forEach(s=>{ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=s.color;ctx.lineWidth=s.width;ctx.globalAlpha=s.alpha||1;ctx.beginPath();s.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.restore();});
+      ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.setLineDash([7,5]);ctx.strokeRect(c.x,c.y,c.w,c.h);ctx.restore();
+    }
+    const count=byId('chatAttachmentEditorCount'); if(count)count.textContent=st.items.length>1?`${st.index+1} / ${st.items.length}`:'';
+    const status=byId('chatAttachmentEditorStatus'); if(status)status.textContent=st.items.length>1?'Swipe or tap a thumbnail to edit another photo.':'';
+    const thumbs=byId('chatAttachmentEditorThumbs');
+    if(thumbs){thumbs.innerHTML=st.items.map((it,i)=>`<button type="button" class="chat-media-thumb ${i===st.index?'active':''}" onclick="setChatEditorImage(${i})" aria-label="Photo ${i+1}"><img src="${esc(it.previewUrl)}" alt="Photo ${i+1}"></button>`).join('');}
+    document.querySelectorAll('#chatAttachmentEditorModal [data-editor-tool]').forEach(b=>b.classList.toggle('active',b.dataset.editorTool===st.tool));
+    if(thumbs){const active=thumbs.querySelector('.active');active?.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});}
+  }
+
+  function setChatEditorImage(index){
+    if(!editorState?.items?.length)return;
+    editorState.index=(index+editorState.items.length)%editorState.items.length;
+    editorState.tool='draw';
+    renderEditor();
+  }
+  window.setChatEditorImage=setChatEditorImage;
+  window.changeChatEditorImage=function(delta){setChatEditorImage((editorState?.index||0)+delta)};
+
+  window.ensureChatAttachmentEditor=ensureEditor;
+  window.openChatAttachmentEditor=function(files,index,total,done){
+    const modal=ensureEditor();
+    const list=Array.isArray(files)?files:[files];
+    Promise.all(list.map(loadSource)).then(items=>{
+      revokeThumbs(); editorState={items,index:Math.max(0,Math.min(Number(index)||0,items.length-1)),tool:'draw'};
+      byId('chatAttachmentCaption').value=''; modal.classList.remove('hidden');
+      requestAnimationFrame(renderEditor);
+      editorState.done=done;
+    }).catch(err=>{showToast(err?.message||'Could not open the selected photos.','error');done?.(null)});
+  };
+
+  window.setChatImageEditorTool=function(tool,btn){
+    if(!editorState)return; editorState.tool=tool;
+    document.querySelectorAll('#chatAttachmentEditorModal [data-editor-tool]').forEach(b=>b.classList.toggle('active',b===btn||b.dataset.editorTool===tool));
+    const canvas=byId('chatAttachmentEditorCanvas'); if(canvas)canvas.style.cursor=tool==='crop'?'crosshair':'crosshair';
+  };
+
+  window.rotateChatImageEditor=function(){
+    const item=currentItem(); if(!item)return;
+    const src=item.sourceCanvas,out=document.createElement('canvas'); out.width=src.height;out.height=src.width;
+    const c=out.getContext('2d');c.translate(out.width/2,out.height/2);c.rotate(Math.PI/2);c.drawImage(src,-src.width/2,-src.height/2);
+    item.sourceCanvas=out;item.strokes=[];item.crop=null;renderEditor();
+  };
+  window.resetChatImageEditor=function(){const item=currentItem();if(!item)return;item.strokes=[];item.crop=null;renderEditor()};
+
+  window.saveChatAttachmentEditor=async function(){
+    const st=editorState;if(!st?.items?.length)return;
+    const caption=byId('chatAttachmentCaption')?.value?.trim()||'';
+    const results=[];
+    try{
+      for(const item of st.items){
+        const src=item.sourceCanvas, canvas=document.createElement('canvas');
+        let sx=0,sy=0,sw=src.width,sh=src.height;
+        /* Crop is stored in displayed-canvas coordinates, so convert back to source coordinates. */
+        const scale=canvasDisplayScale(src); const crop=item.crop;
+        if(crop?.w>1&&crop?.h>1){sx=Math.max(0,Math.round(crop.x/scale));sy=Math.max(0,Math.round(crop.y/scale));sw=Math.max(1,Math.min(src.width-sx,Math.round(crop.w/scale)));sh=Math.max(1,Math.min(src.height-sy,Math.round(crop.h/scale)));}
+        canvas.width=sw;canvas.height=sh;
+        const ctx=canvas.getContext('2d');ctx.drawImage(src,sx,sy,sw,sh,0,0,sw,sh);
+        /* Repaint annotations into the same crop in source coordinates. */
+        item.strokes.forEach(stroke=>{
+          if(!stroke.points.length)return;ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=stroke.color;ctx.lineWidth=stroke.width/scale;ctx.globalAlpha=stroke.alpha||1;ctx.beginPath();stroke.points.forEach((p,i)=>{const x=p.x/scale-sx,y=p.y/scale-sy;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();ctx.restore();
+        });
+        const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not prepare the photo.')),'image/jpeg',.92));
+        results.push({blob,caption,name:item.file.name,type:'image/jpeg'});
+      }
+      const done=st.done; closeChatAttachmentEditor(true); done?.(results);
+    }catch(err){showToast(err?.message||'Could not prepare the selected photos.','error');}
+  };
+  function canvasDisplayScale(src){
+    const canvas=byId('chatAttachmentEditorCanvas');
+    if(!canvas||!src)return 1;
+    return canvas.width/src.width||1;
+  }
+  window.closeChatAttachmentEditor=function(keep){
+    const modal=editor();if(modal)modal.classList.add('hidden');
+    if(!keep){const done=editorState?.done;editorState=null;revokeThumbs();if(done)done(null)}
+    else{editorState=null;revokeThumbs()}
+  };
+
+  /* Fresh pointer binding: draw/highlight work directly on the stable canvas and crop is always square. */
+  function bindPointer(){
+    const canvas=byId('chatAttachmentEditorCanvas'); if(!canvas||canvas.dataset.mediaEditorBound==='1')return;
+    canvas.dataset.mediaEditorBound='1'; let drawing=false,points=[],start=null;
+    const pos=e=>{const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*(canvas.width/r.width),y:(e.clientY-r.top)*(canvas.height/r.height)}};
+    canvas.addEventListener('pointerdown',e=>{const st=editorState;if(!st)return;e.preventDefault();canvas.setPointerCapture?.(e.pointerId);const p=pos(e);const item=currentItem();
+      if(st.tool==='crop'){start=p;item.crop={x:p.x,y:p.y,w:0,h:0};}
+      else{drawing=true;points=[p];item.strokes.push({color:st.tool==='highlight'?'#ffe04a':'#ff3040',width:st.tool==='highlight'?22:4,alpha:st.tool==='highlight'?.42:1,points});}
+      renderEditor();
+    });
+    canvas.addEventListener('pointermove',e=>{const st=editorState;if(!st)return;const item=currentItem(),p=pos(e);
+      if(st.tool==='crop'&&start){const dx=p.x-start.x,dy=p.y-start.y;const size=Math.min(Math.abs(dx),Math.abs(dy));const sx=dx<0?-1:1,sy=dy<0?-1:1;item.crop={x:sx<0?start.x-size:start.x,y:sy<0?start.y-size:start.y,w:size,h:size};renderEditor();}
+      else if(drawing){points.push(p);renderEditor();}
+    });
+    const end=()=>{drawing=false;points=[];start=null};canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);canvas.addEventListener('pointerleave',()=>{if(drawing){} });
+  }
+  const oldEnsure=window.ensureChatAttachmentEditor;
+  window.ensureChatAttachmentEditor=function(){const m=oldEnsure();setTimeout(bindPointer,0);return m};
+  window.addEventListener('resize',()=>{if(editorState)renderEditor()},{passive:true});
+
+  window.handleChatFileSelected=function(evt,conversationId){
+    const files=[...(evt.target.files||[])];evt.target.value='';if(!files.length)return;
+    const valid=files.filter(f=>String(f.type||'').startsWith('image/')&&f.size<=MAX_ATTACHMENT_BYTES);
+    if(!valid.length){showToast('Choose one or more images up to 10MB each.','error');return;}
+    if(valid.length<files.length)showToast('Some files were skipped because they are not images or are over 10MB.','info');
+    const finish=(results)=>{
+      if(!results?.length)return;
+      (async()=>{try{
+        const input=byId('chatInput');clearTimeout(typingStopTimer);publishChatTyping(false);const replyToId=chatReplyTarget?.id||null;const snap=chatReplyTarget?{...chatReplyTarget}:null;resetChatInput(input);
+        const groupId=results.length>1?`${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`:null;
+        for(const item of results) await sendPreparedChatImage(conversationId,item,replyToId,snap,groupId);
+        chatReplyTarget=null;renderChatReplyPreview();scrollChatToBottom();const root=byId('chatMessages');resolveVisibleAttachments(root);groupChatMediaMessages(root);setupMessageInteractions(root);showToast(`${results.length} photo${results.length===1?'':'s'} sent.`,'success');
+      }catch(err){showToast(err?.message||'Could not send those photos.','error')}})();
+    };
+    ensureEditor();openChatAttachmentEditor(valid,0,valid.length,finish);setTimeout(bindPointer,0);
+  };
+
+  const originalSendPrepared=window.sendPreparedChatImage;
+  window.sendPreparedChatImage=async function(conversationId,prepared,replyToId,replyTargetSnapshot,groupId){
+    if(!groupId)return originalSendPrepared(conversationId,prepared,replyToId,replyTargetSnapshot);
+    const path=`conv/${conversationId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeFilename(prepared.name||'photo.jpg')}`;
+    const {error:upErr}=await sb.storage.from('chat-attachments').upload(path,prepared.blob,{contentType:'image/jpeg',upsert:false});if(upErr)throw upErr;
+    const markedName=`${GROUP_PREFIX}${groupId}__|${prepared.name||'photo.jpg'}`;
+    const {data,error}=await sb.from('messages').insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||'',reply_to_id:replyToId,attachment_url:path,attachment_name:markedName,attachment_type:'image/jpeg',attachment_size:prepared.blob.size}).select('*').single();if(error)throw error;
+    if(replyTargetSnapshot)data.reply_to={id:replyTargetSnapshot.id,body:replyTargetSnapshot.body,attachment_name:replyTargetSnapshot.attachment,sender_id:document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains('mine')?session.user.id:''};
+    byId('chatMessages')?.insertAdjacentHTML('beforeend',chatBubbleHtml(data));
+  };
+
+  /* Existing chats and realtime inserts can contain grouped markers. */
+  const patchGrouping=()=>groupChatMediaMessages(byId('chatMessages'));
+  window.addEventListener('load',()=>setTimeout(patchGrouping,80),{once:true});
 })();
 </script>
 </body>
