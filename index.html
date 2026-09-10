@@ -5897,6 +5897,140 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #app .vendor-request-card .vendor-interest-row .btn{min-width:124px !important;height:37px !important;min-height:37px !important;padding:.42rem .68rem !important;font-size:.73rem !important;}
 }
 </style>
+
+<style id="levromart-20260910-latest-precision-ui">
+/* ONLY: final request-card sizing, bottom-nav density/white icon treatment,
+   and protected-route auth readiness. */
+
+/* Request card: compact horizontal presentation. */
+#app .vendor-request-card{
+  width:100% !important; max-width:680px !important;
+  margin:.42rem auto !important; padding:.55rem .7rem !important;
+  min-height:0 !important;
+  display:grid !important;
+  grid-template-columns:auto minmax(0,1fr) auto !important;
+  grid-template-areas:
+    "person description badge"
+    "person meta badge"
+    "actions actions actions" !important;
+  column-gap:.65rem !important; row-gap:.04rem !important;
+  align-items:center !important;
+}
+#app .vendor-request-card .vendor-request-card-head{display:contents !important;}
+#app .vendor-request-card .vendor-request-person{
+  grid-area:person !important; display:flex !important; align-items:center !important;
+  gap:.42rem !important; min-width:0 !important;
+}
+#app .vendor-request-card .vendor-request-person .avatar-circle{
+  width:2.45rem !important; height:2.45rem !important;
+  min-width:2.45rem !important; min-height:2.45rem !important;
+}
+#app .vendor-request-card .vendor-request-title{
+  font-size:.84rem !important; line-height:1.08 !important;
+  max-width:13rem !important; white-space:nowrap !important;
+  overflow:hidden !important; text-overflow:ellipsis !important;
+}
+#app .vendor-request-card .vendor-request-person p{
+  margin:.06rem 0 0 !important; font-size:.64rem !important;
+  line-height:1.05 !important; white-space:nowrap !important;
+  overflow:hidden !important; text-overflow:ellipsis !important;
+}
+#app .vendor-request-card > .badge{
+  grid-area:badge !important; justify-self:end !important; align-self:center !important;
+  display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  width:auto !important; min-width:2.35rem !important; max-width:max-content !important;
+  height:1.65rem !important; padding:.16rem .42rem !important;
+  margin:0 !important; border-radius:.48rem !important;
+  font-size:.64rem !important; line-height:1 !important; white-space:nowrap !important;
+}
+#app .vendor-request-card .vendor-request-description{
+  grid-area:description !important; margin:0 !important;
+  font-size:.67rem !important; line-height:1.08 !important;
+  max-width:none !important; white-space:nowrap !important;
+  overflow:hidden !important; text-overflow:ellipsis !important;
+}
+#app .vendor-request-card .vendor-request-meta{
+  grid-area:meta !important; margin:0 !important;
+  font-size:.62rem !important; line-height:1.05 !important;
+  white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+}
+#app .vendor-request-card .vendor-interest-row{
+  grid-area:actions !important; width:100% !important;
+  display:flex !important; justify-content:center !important; align-items:center !important;
+  gap:.45rem !important; margin:.38rem 0 0 !important;
+}
+#app .vendor-request-card .vendor-interest-row .btn{
+  flex:0 0 auto !important; width:auto !important; min-width:0 !important;
+  height:34px !important; min-height:34px !important;
+  padding:.38rem .72rem !important; border-radius:9px !important;
+  font-size:.68rem !important; line-height:1 !important;
+  white-space:nowrap !important; justify-content:center !important;
+}
+#app .vendor-request-card .vendor-offer-status{
+  grid-column:1 / -1 !important; margin:.35rem 0 0 !important;
+  font-size:.65rem !important; line-height:1.1 !important; text-align:center !important;
+}
+#app .vendor-more-requests{
+  width:100% !important; max-width:680px !important; margin:.35rem auto .65rem !important;
+  border-radius:12px !important; overflow:hidden !important;
+}
+#app .vendor-more-requests summary{
+  list-style:none !important; cursor:pointer !important;
+  display:flex !important; align-items:center !important; justify-content:space-between !important;
+  gap:.5rem !important; padding:.52rem .7rem !important;
+  font-size:.68rem !important; font-weight:700 !important;
+}
+#app .vendor-more-requests summary::-webkit-details-marker{display:none !important;}
+#app .vendor-more-requests summary small{font-size:.6rem !important; opacity:.78 !important;}
+#app .vendor-more-requests[open] summary i{transform:rotate(180deg) !important;}
+
+@media(max-width:560px){
+  #app .vendor-request-card{max-width:calc(100% - .15rem) !important; padding:.5rem .58rem !important; column-gap:.48rem !important;}
+  #app .vendor-request-card .vendor-request-person .avatar-circle{width:2.3rem !important;height:2.3rem !important;min-width:2.3rem !important;min-height:2.3rem !important;}
+  #app .vendor-request-card .vendor-request-title{font-size:.8rem !important;max-width:9.2rem !important;}
+  #app .vendor-request-card .vendor-request-person p{font-size:.61rem !important;}
+  #app .vendor-request-card > .badge{height:1.55rem !important;min-width:2.15rem !important;font-size:.61rem !important;padding:.14rem .36rem !important;}
+  #app .vendor-request-card .vendor-request-description{font-size:.64rem !important;}
+  #app .vendor-request-card .vendor-request-meta{font-size:.59rem !important;}
+  #app .vendor-request-card .vendor-interest-row{gap:.38rem !important;margin-top:.32rem !important;}
+  #app .vendor-request-card .vendor-interest-row .btn{height:32px !important;min-height:32px !important;padding:.34rem .62rem !important;font-size:.65rem !important;}
+}
+
+/* Bottom nav: tighter iPhone footprint + Instagram-like white inactive icons. */
+#bottomNav{
+  min-height:56px !important;
+  height:auto !important;
+  padding:.22rem .22rem max(.22rem, env(safe-area-inset-bottom, 0px)) !important;
+  border-radius:20px !important;
+}
+#bottomNav.has-add{
+  padding:.22rem .22rem max(.22rem, env(safe-area-inset-bottom, 0px)) !important;
+}
+#bottomNav .bottom-nav-item{
+  color:#fff !important;
+  min-height:45px !important;
+  height:45px !important;
+  padding:.2rem .1rem !important;
+}
+#bottomNav .bottom-nav-item i,
+#bottomNav .bottom-nav-item .bn-icon{color:#fff !important;}
+#bottomNav .bottom-nav-item.active{
+  color:#fff !important;
+  background:color-mix(in srgb,var(--primary) 17%,transparent) !important;
+  border-radius:12px !important;
+}
+#bottomNav .bottom-nav-item.active i,
+#bottomNav .bottom-nav-item.active .bn-icon{color:#fff !important;}
+#bottomNav .bottom-nav-add{
+  width:50px !important; height:50px !important; top:-.62rem !important;
+  border-radius:50% !important;
+}
+@media(max-width:720px){
+  #bottomNav{left:.65rem !important;right:.65rem !important;bottom:calc(.5rem + env(safe-area-inset-bottom,0px)) !important;}
+  #bottomNav .bottom-nav-item{min-height:44px !important;height:44px !important;}
+  #bottomNav.has-add .bottom-nav-item>span:last-child{font-size:.6rem !important;}
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -10040,6 +10174,28 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (profile?.suspended_at && view !== "suspended") view = "suspended";
   const navToken = ++navigationGeneration;
   const previousView = currentView;
+
+  // Protected routes must never render their access guard while Supabase is
+  // still restoring the cached session/profile in the background. This is the
+  // common source of the brief "Access denied" flash/tap on routes such as
+  // My Shop and Requests. Reuse the shared in-flight auth refresh when one
+  // exists; otherwise kick off one bounded refresh before rendering.
+  const protectedRouteViews = new Set([
+    "cart","messages","vendorDashboard","vendorProducts","vendorPackages",
+    "vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests",
+    "settings","supportRequest","wishlist","buyerOrders","orderDetail",
+    "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
+    "adminSupportRequests","adminPeople","adminFeedback","adminUsers",
+    "adminFinance","adminLog","vendorSuggestionsInbox","requestEquipment"
+  ]);
+  if (protectedRouteViews.has(view) && (!session || !profile)) {
+    try {
+      await Promise.race([
+        refreshAuthStateOnce(),
+        new Promise(resolve => setTimeout(resolve, 2500))
+      ]);
+    } catch (_) {}
+  }
   if (view !== "settings" && previousView !== "settings") lastNonSettingsView = previousView || "home";
   // Closing a Realtime channel is a network operation. Never make a normal
   // navigation tap wait for it; queue the close in the background and only
