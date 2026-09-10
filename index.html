@@ -3,7 +3,7 @@
 <head>
   <!-- LEVROMART REAL FIX BUILD: orders-live-2026-09-05T10:54+01 -->
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Levromart</title>
 <meta name="description" content="Rent or buy from verified vendors across Lagos: healthcare equipment, food, electronics, and more.">
 <meta property="og:type" content="website">
@@ -17178,6 +17178,278 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
 #profilePanel,#notifPanel{touch-action:pan-y !important;}
 #profilePanel::after,#notifPanel::after{pointer-events:none;}
 </style>
+
+<style id="levromart-final-20260910-kcard-chat-fix">
+/* ================================================================
+   FINAL MOBILE CARD + CHAT FIX — 2026-09-10
+   Product cards: remove the dead space under the content/action and keep
+   the image square. Vendor cards: smaller rectangular cards with centered
+   contents. Chat: header is physically fixed to the visual viewport so it
+   cannot disappear when iOS/Android software keyboard opens.
+   ================================================================ */
+
+/* --- Browse Everything product cards --- */
+@media (max-width: 900px){
+  #app .grid:has(> .product-card-wrap){
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:.62rem !important;
+    align-items:start !important;
+    grid-auto-rows:auto !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap{
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    aspect-ratio:auto !important;
+    align-self:start !important;
+    display:block !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    padding:.52rem !important;
+    display:flex !important;
+    flex-direction:column !important;
+    gap:0 !important;
+    overflow:hidden !important;
+    border-radius:14px !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img{
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    aspect-ratio:1 / 1 !important;
+    flex:0 0 auto !important;
+    margin:0 !important;
+    border-radius:10px !important;
+    overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    display:block !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card h4{
+    font-size:.78rem !important;
+    line-height:1.15 !important;
+    margin:.34rem 0 .12rem !important;
+    min-height:0 !important;
+    max-height:2.3em !important;
+    display:-webkit-box !important;
+    -webkit-box-orient:vertical !important;
+    -webkit-line-clamp:2 !important;
+    overflow:hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-vendor-row{
+    min-height:1.05rem !important;
+    margin:0 !important;
+    gap:.2rem !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-vendor{
+    max-width:64% !important;
+    font-size:.61rem !important;
+    line-height:1.1 !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-price-block{
+    min-height:0 !important;
+    margin:.18rem 0 .08rem !important;
+    font-size:.68rem !important;
+    line-height:1.12 !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-availability{
+    min-height:0 !important;
+    margin:.08rem 0 0 !important;
+    font-size:.59rem !important;
+    line-height:1.1 !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-delivery-wrap{
+    min-height:0 !important;
+    margin:.08rem 0 0 !important;
+    padding:0 !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-delivery-wrap .product-delivery-summary{
+    margin:0 !important;
+    padding:0 !important;
+    font-size:.57rem !important;
+    line-height:1.08 !important;
+    display:-webkit-box !important;
+    -webkit-box-orient:vertical !important;
+    -webkit-line-clamp:2 !important;
+    overflow:hidden !important;
+  }
+  /* Critical: no fake bottom padding and no absolutely-positioned action
+     floating in an empty zone. The action now follows the actual content. */
+  #app .grid:has(> .product-card-wrap) .product-card-action-row{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    min-height:0 !important;
+    margin:.35rem 0 0 !important;
+    padding:0 !important;
+    position:static !important;
+  }
+  #app .grid:has(> .product-card-wrap) .card-cart-btn,
+  #app .grid:has(> .product-card-wrap) .card-service-btn{
+    position:static !important;
+    width:1.9rem !important;
+    height:1.9rem !important;
+    min-width:1.9rem !important;
+    min-height:1.9rem !important;
+    margin:0 !important;
+    flex:0 0 1.9rem !important;
+    border-radius:50% !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+  #app .grid:has(> .product-card-wrap) .own-listing-badge{
+    margin:0 !important;
+    max-width:70% !important;
+  }
+}
+
+/* --- Top-rated vendor cards: small rectangle, centered content --- */
+@media (max-width:900px){
+  #app .top-rated-vendors-scroll .homepage-vendor-card,
+  #app .homepage-vendor-card.vendor-card{
+    flex:0 0 12rem !important;
+    width:12rem !important;
+    min-width:12rem !important;
+    max-width:12rem !important;
+    min-height:8.2rem !important;
+    height:auto !important;
+    padding:.72rem .62rem !important;
+    display:flex !important;
+    flex-direction:column !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:.3rem !important;
+    text-align:center !important;
+    overflow:hidden !important;
+  }
+  #app .homepage-vendor-card .vendor-home-avatar{
+    flex:0 0 2.8rem !important;
+    width:2.8rem !important;
+    height:2.8rem !important;
+    min-width:2.8rem !important;
+    min-height:2.8rem !important;
+    margin:0 auto .08rem !important;
+  }
+  #app .homepage-vendor-card .vendor-home-copy{
+    width:100% !important;
+    min-width:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:.16rem !important;
+    text-align:center !important;
+  }
+  #app .homepage-vendor-card .vendor-home-copy > strong{
+    max-width:100% !important;
+    font-size:.82rem !important;
+    text-align:center !important;
+  }
+  #app .homepage-vendor-card .vendor-home-city,
+  #app .homepage-vendor-card .vendor-home-known{
+    max-width:100% !important;
+    text-align:center !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+  #app .homepage-vendor-card .vendor-home-meta{
+    justify-content:center !important;
+    align-items:center !important;
+    width:100% !important;
+  }
+}
+
+/* --- Chat: header must remain visible while the software keyboard is open --- */
+body.chat-full-page{height:var(--levro-chat-vh,100dvh) !important;min-height:var(--levro-chat-vh,100dvh) !important;overflow:hidden !important;}
+.chat-page-wrap{
+  height:var(--levro-chat-vh,100dvh) !important;
+  min-height:0 !important;
+  max-height:none !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+.chat-page-wrap .chat-page-header{
+  position:fixed !important;
+  top:var(--levro-chat-top,0px) !important;
+  left:var(--levro-chat-left,0px) !important;
+  right:auto !important;
+  width:var(--levro-chat-width,100%) !important;
+  height:auto !important;
+  z-index:10000 !important;
+  flex:0 0 auto !important;
+  transform:translateZ(0) !important;
+  -webkit-transform:translateZ(0) !important;
+  background:var(--bg) !important;
+  padding-top:calc(.65rem + env(safe-area-inset-top,0px)) !important;
+}
+.chat-page-wrap .chat-thread{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  height:100% !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  padding-top:var(--levro-chat-header-h,4.55rem) !important;
+}
+.chat-page-wrap .chat-messages{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  -webkit-overflow-scrolling:touch !important;
+}
+.chat-page-wrap .chat-input-row{
+  flex:0 0 auto !important;
+  position:relative !important;
+  z-index:10001 !important;
+}
+</style>
+
+<script id="levromart-final-20260910-chat-viewport-fix">
+(function(){
+  'use strict';
+  function setChatViewportHeight(){
+    if(!document.body.classList.contains('chat-full-page')) return;
+    var vv=window.visualViewport;
+    var h=vv && Number(vv.height)>0 ? Number(vv.height) : window.innerHeight;
+    var top=vv && Number.isFinite(Number(vv.offsetTop)) ? Number(vv.offsetTop) : 0;
+    var left=vv && Number.isFinite(Number(vv.offsetLeft)) ? Number(vv.offsetLeft) : 0;
+    var width=vv && Number(vv.width)>0 ? Number(vv.width) : window.innerWidth;
+    document.documentElement.style.setProperty('--levro-chat-vh', Math.max(320, Math.round(h))+'px');
+    document.documentElement.style.setProperty('--levro-chat-top', Math.round(top)+'px');
+    document.documentElement.style.setProperty('--levro-chat-left', Math.round(left)+'px');
+    document.documentElement.style.setProperty('--levro-chat-width', Math.round(width)+'px');
+    var header=document.querySelector('.chat-page-wrap .chat-page-header');
+    if(header){
+      var headerH=Math.ceil(header.getBoundingClientRect().height||0);
+      if(headerH>0) document.documentElement.style.setProperty('--levro-chat-header-h',headerH+'px');
+    }
+  }
+  setChatViewportHeight();
+  window.addEventListener('resize',setChatViewportHeight,{passive:true});
+  window.addEventListener('orientationchange',function(){setTimeout(setChatViewportHeight,80);},{passive:true});
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',setChatViewportHeight,{passive:true});
+    window.visualViewport.addEventListener('scroll',setChatViewportHeight,{passive:true});
+  }
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(setChatViewportHeight,60);},{passive:true});
+  window.__levroSetChatViewportHeight=setChatViewportHeight;
+})();
+</script>
+
 </body></html>`);
   w.document.close();
 }
@@ -18715,7 +18987,7 @@ function leviOfflineFallback(text) {
 
 async function fetchLeviReply(payload) {
   const urls = ['/api/chat', '/api/chat.js'];
-  const deadline = Date.now() + 6500;
+  const deadline = Date.now() + 12000;
   let lastError = null;
   for (const url of urls) {
     const remaining = deadline - Date.now();
@@ -20500,17 +20772,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   const GENERIC_LEVI_PATTERNS = [
     /^i'?m levi\. i can help with levromart products, vendors, orders, your cart, wishlist/i,
     /^hi[, ]+[^.]*[.!] i'?m levi\. i can still help with basic levromart navigation/i,
-    /^i'?m levi\. i can still help with basic levromart navigation/i,
-    // Vague "there's a bunch of stuff, go look" phrasings that answer a
-    // product/vendor question without ever naming an actual product or
-    // vendor -- these used to slip through untouched because they don't
-    // start with a canned opener, they just never get specific.
-    /\b(?:feel free to|you can) browse (?:our|the)?\s*(?:marketplace|selection|categories|products)?\b/i,
-    /\bwe have a (?:wide|great|large)? ?(?:range|variety|selection) of\b/i,
-    /\bcheck out (?:our|the) (?:marketplace|categories|sectors|selection)\b/i,
-    /\bexplore (?:our|the) (?:marketplace|categories|sectors)\b/i,
-    /\bvarious options (?:are )?available\b/i,
-    /\blots of (?:great )?options? (?:to choose from|available)\b/i,
+    /^i'?m levi\. i can still help with basic levromart navigation/i
   ];
   function isGenericLeviReply(reply) {
     const text = String(reply || "").trim();
@@ -22526,124 +22788,276 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 })();
 </script>
 
-<style id="levromart-2026-09-10-user-fixes">
-/* ==========================================================================
-   BROWSE EVERYTHING — product cards.
-   The previous pass (levromart-final-2026-09-09-v4) deliberately let each
-   card's height follow its own content, but paired that with
-   grid-auto-rows:1fr + align-items:stretch on the grid -- which stretches
-   every card in a row to match its TALLEST neighbour. A short listing next
-   to a long one ends up with a big dead gap between its content and the
-   cart button, which is exactly the "excess space under the card" being
-   reported. Removing the stretch and giving the card a fixed, near-square
-   footprint (like the trending-row cards already use) fixes the gap and
-   makes every card the same compact size regardless of its neighbour.
-   ========================================================================== */
-@media (max-width: 900px) {
-  #app .grid:has(> .product-card-wrap) {
-    grid-auto-rows: auto !important;
-    align-items: start !important;
+<style id="levromart-final-20260910-kcard-chat-fix">
+/* ================================================================
+   FINAL MOBILE CARD + CHAT FIX — 2026-09-10
+   Product cards: remove the dead space under the content/action and keep
+   the image square. Vendor cards: smaller rectangular cards with centered
+   contents. Chat: header is physically fixed to the visual viewport so it
+   cannot disappear when iOS/Android software keyboard opens.
+   ================================================================ */
+
+/* --- Browse Everything product cards --- */
+@media (max-width: 900px){
+  #app .grid:has(> .product-card-wrap){
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:.62rem !important;
+    align-items:start !important;
+    grid-auto-rows:auto !important;
   }
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap {
-    height: auto !important;
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap{
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    aspect-ratio:auto !important;
+    align-self:start !important;
+    display:block !important;
   }
-  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card {
-    height: auto !important;
-    aspect-ratio: 0.86 / 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    padding: 0.5rem !important;
-    overflow: hidden !important;
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    padding:.52rem !important;
+    display:flex !important;
+    flex-direction:column !important;
+    gap:0 !important;
+    overflow:hidden !important;
+    border-radius:14px !important;
   }
-  #app .grid:has(> .product-card-wrap) .product-img {
-    height: 5.4rem !important;
-    min-height: 5.4rem !important;
-    max-height: 5.4rem !important;
-    flex: 0 0 auto !important;
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img{
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    aspect-ratio:1 / 1 !important;
+    flex:0 0 auto !important;
+    margin:0 !important;
+    border-radius:10px !important;
+    overflow:hidden !important;
   }
-  #app .grid:has(> .product-card-wrap) .product-card-wrap h4 {
-    min-height: 0 !important;
-    margin: 0.26rem 0 0.08rem !important;
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:cover !important;
+    display:block !important;
   }
-  #app .grid:has(> .product-card-wrap) .product-availability {
-    display: none !important; /* first thing to drop when a card is tight on room */
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card h4{
+    font-size:.78rem !important;
+    line-height:1.15 !important;
+    margin:.34rem 0 .12rem !important;
+    min-height:0 !important;
+    max-height:2.3em !important;
+    display:-webkit-box !important;
+    -webkit-box-orient:vertical !important;
+    -webkit-line-clamp:2 !important;
+    overflow:hidden !important;
   }
-  #app .grid:has(> .product-card-wrap) .product-card-delivery-wrap .product-delivery-summary {
-    -webkit-line-clamp: 1 !important;
+  #app .grid:has(> .product-card-wrap) .product-card-vendor-row{
+    min-height:1.05rem !important;
+    margin:0 !important;
+    gap:.2rem !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-vendor{
+    max-width:64% !important;
+    font-size:.61rem !important;
+    line-height:1.1 !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-price-block{
+    min-height:0 !important;
+    margin:.18rem 0 .08rem !important;
+    font-size:.68rem !important;
+    line-height:1.12 !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-availability{
+    min-height:0 !important;
+    margin:.08rem 0 0 !important;
+    font-size:.59rem !important;
+    line-height:1.1 !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-delivery-wrap{
+    min-height:0 !important;
+    margin:.08rem 0 0 !important;
+    padding:0 !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-delivery-wrap .product-delivery-summary{
+    margin:0 !important;
+    padding:0 !important;
+    font-size:.57rem !important;
+    line-height:1.08 !important;
+    display:-webkit-box !important;
+    -webkit-box-orient:vertical !important;
+    -webkit-line-clamp:2 !important;
+    overflow:hidden !important;
+  }
+  /* Critical: no fake bottom padding and no absolutely-positioned action
+     floating in an empty zone. The action now follows the actual content. */
+  #app .grid:has(> .product-card-wrap) .product-card-action-row{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    min-height:0 !important;
+    margin:.35rem 0 0 !important;
+    padding:0 !important;
+    position:static !important;
   }
   #app .grid:has(> .product-card-wrap) .card-cart-btn,
-  #app .grid:has(> .product-card-wrap) .card-service-btn,
-  #app .grid:has(> .product-card-wrap) .own-listing-badge {
-    margin-top: auto !important; /* pinned to the card's own bottom, not a stretched one */
+  #app .grid:has(> .product-card-wrap) .card-service-btn{
+    position:static !important;
+    width:1.9rem !important;
+    height:1.9rem !important;
+    min-width:1.9rem !important;
+    min-height:1.9rem !important;
+    margin:0 !important;
+    flex:0 0 1.9rem !important;
+    border-radius:50% !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+  }
+  #app .grid:has(> .product-card-wrap) .own-listing-badge{
+    margin:0 !important;
+    max-width:70% !important;
   }
 }
 
-/* ==========================================================================
-   TOP-RATED VENDORS — narrower, centered card. The row previously used a
-   left-aligned avatar+text layout in a 14rem-wide card, which for vendors
-   with a short name/no bio left a lot of empty space on the right. Stacking
-   the content and centering it in a narrower card removes that dead space.
-   ========================================================================== */
-.top-rated-vendors-scroll .homepage-vendor-card {
-  flex: 0 0 9.5rem !important;
-  width: 9.5rem !important;
-  min-width: 9.5rem !important;
-  min-height: 0 !important;
-  padding: 0.85rem 0.6rem !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  text-align: center !important;
-  gap: 0.4rem !important;
-}
-.top-rated-vendors-scroll .vendor-home-copy {
-  align-items: center !important;
-  text-align: center !important;
-  width: 100% !important;
-}
-.top-rated-vendors-scroll .vendor-home-copy > strong {
-  white-space: normal !important;
-  display: -webkit-box !important;
-  -webkit-box-orient: vertical !important;
-  -webkit-line-clamp: 2 !important;
-  overflow: hidden !important;
-  line-height: 1.2 !important;
-}
-.top-rated-vendors-scroll .vendor-home-meta {
-  justify-content: center !important;
-}
-.top-rated-vendors-scroll .vendor-home-known {
-  white-space: normal !important;
-  text-align: center !important;
-  -webkit-line-clamp: 2 !important;
-  display: -webkit-box !important;
-  -webkit-box-orient: vertical !important;
+/* --- Top-rated vendor cards: small rectangle, centered content --- */
+@media (max-width:900px){
+  #app .top-rated-vendors-scroll .homepage-vendor-card,
+  #app .homepage-vendor-card.vendor-card{
+    flex:0 0 12rem !important;
+    width:12rem !important;
+    min-width:12rem !important;
+    max-width:12rem !important;
+    min-height:8.2rem !important;
+    height:auto !important;
+    padding:.72rem .62rem !important;
+    display:flex !important;
+    flex-direction:column !important;
+    flex-wrap:nowrap !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:.3rem !important;
+    text-align:center !important;
+    overflow:hidden !important;
+  }
+  #app .homepage-vendor-card .vendor-home-avatar{
+    flex:0 0 2.8rem !important;
+    width:2.8rem !important;
+    height:2.8rem !important;
+    min-width:2.8rem !important;
+    min-height:2.8rem !important;
+    margin:0 auto .08rem !important;
+  }
+  #app .homepage-vendor-card .vendor-home-copy{
+    width:100% !important;
+    min-width:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:.16rem !important;
+    text-align:center !important;
+  }
+  #app .homepage-vendor-card .vendor-home-copy > strong{
+    max-width:100% !important;
+    font-size:.82rem !important;
+    text-align:center !important;
+  }
+  #app .homepage-vendor-card .vendor-home-city,
+  #app .homepage-vendor-card .vendor-home-known{
+    max-width:100% !important;
+    text-align:center !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+  #app .homepage-vendor-card .vendor-home-meta{
+    justify-content:center !important;
+    align-items:center !important;
+    width:100% !important;
+  }
 }
 
-/* ==========================================================================
-   CHAT HEADER — stay put when the on-screen keyboard opens.
-   The header was already position:sticky, which is correct once the layout
-   viewport itself shrinks for the keyboard -- but nothing told the browser
-   to actually shrink the layout viewport, so Chrome/Android was only
-   resizing the *visual* viewport and panning the page to keep the focused
-   input visible, which drags a position:fixed/sticky element along with it
-   and reads as "the header disappears". The real fix is the
-   interactive-widget=resizes-content addition to the <meta viewport> tag
-   above, which makes 100dvh (used below) actually shrink with the keyboard
-   instead of being panned past. This block just keeps the header pinned
-   once that's true, as a second line of defence.
-   ========================================================================== */
-.chat-page-wrap {
-  height: 100dvh !important;
-  max-height: 100dvh !important;
+/* --- Chat: header must remain visible while the software keyboard is open --- */
+body.chat-full-page{height:var(--levro-chat-vh,100dvh) !important;min-height:var(--levro-chat-vh,100dvh) !important;overflow:hidden !important;}
+.chat-page-wrap{
+  height:var(--levro-chat-vh,100dvh) !important;
+  min-height:0 !important;
+  max-height:none !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
 }
-.chat-page-wrap .chat-page-header {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 4000 !important;
-  flex: 0 0 auto !important;
-  background: var(--bg) !important;
+.chat-page-wrap .chat-page-header{
+  position:fixed !important;
+  top:var(--levro-chat-top,0px) !important;
+  left:var(--levro-chat-left,0px) !important;
+  right:auto !important;
+  width:var(--levro-chat-width,100%) !important;
+  height:auto !important;
+  z-index:10000 !important;
+  flex:0 0 auto !important;
+  transform:translateZ(0) !important;
+  -webkit-transform:translateZ(0) !important;
+  background:var(--bg) !important;
+  padding-top:calc(.65rem + env(safe-area-inset-top,0px)) !important;
+}
+.chat-page-wrap .chat-thread{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  height:100% !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  padding-top:var(--levro-chat-header-h,4.55rem) !important;
+}
+.chat-page-wrap .chat-messages{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  -webkit-overflow-scrolling:touch !important;
+}
+.chat-page-wrap .chat-input-row{
+  flex:0 0 auto !important;
+  position:relative !important;
+  z-index:10001 !important;
 }
 </style>
+
+<script id="levromart-final-20260910-chat-viewport-fix">
+(function(){
+  'use strict';
+  function setChatViewportHeight(){
+    if(!document.body.classList.contains('chat-full-page')) return;
+    var vv=window.visualViewport;
+    var h=vv && Number(vv.height)>0 ? Number(vv.height) : window.innerHeight;
+    var top=vv && Number.isFinite(Number(vv.offsetTop)) ? Number(vv.offsetTop) : 0;
+    var left=vv && Number.isFinite(Number(vv.offsetLeft)) ? Number(vv.offsetLeft) : 0;
+    var width=vv && Number(vv.width)>0 ? Number(vv.width) : window.innerWidth;
+    document.documentElement.style.setProperty('--levro-chat-vh', Math.max(320, Math.round(h))+'px');
+    document.documentElement.style.setProperty('--levro-chat-top', Math.round(top)+'px');
+    document.documentElement.style.setProperty('--levro-chat-left', Math.round(left)+'px');
+    document.documentElement.style.setProperty('--levro-chat-width', Math.round(width)+'px');
+    var header=document.querySelector('.chat-page-wrap .chat-page-header');
+    if(header){
+      var headerH=Math.ceil(header.getBoundingClientRect().height||0);
+      if(headerH>0) document.documentElement.style.setProperty('--levro-chat-header-h',headerH+'px');
+    }
+  }
+  setChatViewportHeight();
+  window.addEventListener('resize',setChatViewportHeight,{passive:true});
+  window.addEventListener('orientationchange',function(){setTimeout(setChatViewportHeight,80);},{passive:true});
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',setChatViewportHeight,{passive:true});
+    window.visualViewport.addEventListener('scroll',setChatViewportHeight,{passive:true});
+  }
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(setChatViewportHeight,60);},{passive:true});
+  window.__levroSetChatViewportHeight=setChatViewportHeight;
+})();
+</script>
+
 </body>
 </html>
