@@ -10673,66 +10673,73 @@ let homeSearchMotionIdle = 0;
 let homeSearchMotionLastY = 0;
 function initHomeSearchScrollMotion(){
   resetHomeSearchScrollMotion();
-  const appHeader = document.querySelector("body > header");
-  if (appHeader) {
-    const syncHeaderOffset = () => {
-      const rect = appHeader.getBoundingClientRect();
-      document.documentElement.style.setProperty("--levro-search-sticky-top", `${Math.ceil(rect.height + 4)}px`);
-    };
-    syncHeaderOffset();
-    window.addEventListener("resize", syncHeaderOffset, { passive:true });
-  }
   const wrap = document.querySelector("#app .levro-home-search-wrap");
   const search = wrap?.querySelector(".hero-search");
   if (!wrap || !search) return;
 
-  // Keep the homepage search available while the document scrolls. It becomes
-  // sticky beneath the fixed app header, then contracts quietly while the
-  // user is actively scrolling and returns to full prominence when scrolling
-  // settles. This is deliberately limited to the homepage search.
-  wrap.classList.add("home-search-pinned");
-  search.classList.add("home-search-pinned");
-  homeSearchMotionLastY = window.scrollY || 0;
-  homeSearchMotionReady = true;
+  const header = document.querySelector("body > header");
+  const syncDockTop = () => {
+    const rect = header?.getBoundingClientRect();
+    const top = Math.ceil((rect?.bottom ?? 64) + 6);
+    document.documentElement.style.setProperty("--levro-search-dock-top", `${top}px`);
+  };
+  syncDockTop();
+
+  let idleTimer = 0;
+  let rafId = 0;
+  let lastY = window.scrollY || 0;
+
+  const restoreNormal = () => {
+    wrap.classList.remove("home-search-fixed", "home-search-scrolling");
+    document.body.classList.remove("home-search-active");
+  };
 
   const onScroll = () => {
-    if (!homeSearchMotionReady) return;
-    if (homeSearchMotionRaf) return;
-    homeSearchMotionRaf = requestAnimationFrame(() => {
-      homeSearchMotionRaf = 0;
-      const y = window.scrollY || 0;
-      const moving = Math.abs(y - homeSearchMotionLastY) > 0.5;
-      homeSearchMotionLastY = y;
-      if (!moving || document.activeElement?.closest(".hero-search")) return;
-
-      search.classList.add("home-search-scrolling");
-      wrap.classList.add("home-search-scrolling");
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = 0;
+      const y = window.scrollY || window.pageYOffset || 0;
+      lastY = y;
+      syncDockTop();
+      if (y <= 8) {
+        restoreNormal();
+        return;
+      }
+      wrap.classList.add("home-search-fixed", "home-search-scrolling");
       document.body.classList.add("home-search-active");
-      clearTimeout(homeSearchMotionIdle);
-      homeSearchMotionIdle = setTimeout(() => {
-        if (!document.activeElement?.closest(".hero-search")) {
-          search.classList.remove("home-search-scrolling");
-          wrap.classList.remove("home-search-scrolling");
-        }
-        document.body.classList.remove("home-search-active");
-      }, 220);
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        if (!search.matches(":focus-within")) wrap.classList.remove("home-search-scrolling");
+      }, 180);
     });
   };
 
-  window.addEventListener("scroll", onScroll, { passive: true });
-  search.addEventListener("focus", () => {
-    clearTimeout(homeSearchMotionIdle);
-    search.classList.remove("home-search-scrolling");
+  const onFocus = () => {
+    clearTimeout(idleTimer);
+    wrap.classList.add("home-search-fixed");
     wrap.classList.remove("home-search-scrolling");
-  });
+    document.body.classList.add("home-search-active");
+    syncDockTop();
+  };
+
+  const onResize = () => syncDockTop();
+
+  window.addEventListener("scroll", onScroll, {passive:true});
+  window.addEventListener("resize", onResize, {passive:true});
+  search.addEventListener("focus", onFocus, true);
   search.addEventListener("blur", () => {
-    homeSearchMotionLastY = window.scrollY || 0;
-  });
+    lastY = window.scrollY || window.pageYOffset || 0;
+    if (lastY <= 8) restoreNormal();
+  }, true);
+
   wrap._homeSearchScrollCleanup = () => {
     window.removeEventListener("scroll", onScroll);
-    clearTimeout(homeSearchMotionIdle);
-    if (homeSearchMotionRaf) cancelAnimationFrame(homeSearchMotionRaf);
-    homeSearchMotionRaf = 0;
+    window.removeEventListener("resize", onResize);
+    search.removeEventListener("focus", onFocus, true);
+    clearTimeout(idleTimer);
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
+    restoreNormal();
   };
 }
 function resetHomeSearchScrollMotion(){
@@ -10743,7 +10750,7 @@ function resetHomeSearchScrollMotion(){
   homeSearchMotionIdle = 0;
   document.querySelectorAll(".levro-home-search-wrap").forEach(el=>el._homeSearchScrollCleanup?.());
   document.body.classList.remove("home-search-active");
-  document.querySelectorAll(".home-search-scrolling,.home-search-pinned").forEach(el=>el.classList.remove("home-search-scrolling","home-search-pinned"));
+  document.querySelectorAll(".home-search-scrolling,.home-search-pinned,.home-search-fixed").forEach(el=>el.classList.remove("home-search-scrolling","home-search-pinned","home-search-fixed"));
 }
 
 
@@ -25571,6 +25578,9 @@ body > footer.site-footer{display:none !important;}
   #app .levro-home-search-wrap .hero-search{width:calc(100% - .1rem) !important;}
 }
 </style>
+
+
+
 </html>
 
 <style id="levromart-20260910-canonical-fixes">
@@ -26206,54 +26216,35 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 </style>
 
 <style id="levromart-search-final-authoritative">
-/* FINAL HOMEPAGE SEARCH CONTRACT:
-   normal flow = header -> search -> carousel; while scrolling the search remains
-   accessible below the fixed header and quietly contracts instead of disappearing. */
-#app .levro-home-search-wrap {
-  position: sticky !important;
-  top: var(--levro-search-sticky-top, 70px) !important;
-  z-index: 120 !important;
-  width: 100% !important;
-  max-width: 760px !important;
-  margin: 0 auto !important;
-  padding: .45rem 0 .55rem !important;
-  background: transparent !important;
-  transform: translateZ(0) !important;
+/* Canonical homepage search: normal flow above the carousel at the top; after
+   scrolling starts it becomes a fixed dock beneath the header, shrinks/fades
+   while moving, then restores when scrolling settles. */
+#app .levro-home-search-wrap{
+  position:relative !important; top:auto !important; left:auto !important; right:auto !important; bottom:auto !important; inset:auto !important;
+  z-index:130 !important; width:100% !important; max-width:none !important; margin:0 auto !important; padding:.35rem 0 .55rem !important;
+  background:transparent !important; transform:none !important;
 }
-#app .levro-home-search-wrap .hero-search {
-  position: relative !important;
-  inset: auto !important;
-  width: 100% !important;
-  max-width: 760px !important;
-  margin: 0 auto !important;
-  transform: scale(1) !important;
-  transform-origin: center top !important;
-  opacity: 1 !important;
-  transition: transform .22s cubic-bezier(.2,.75,.25,1), opacity .2s ease, filter .2s ease, box-shadow .22s ease !important;
-  will-change: transform, opacity, filter !important;
+#app .levro-home-search-wrap .hero-search{
+  position:relative !important; top:auto !important; left:auto !important; right:auto !important; bottom:auto !important; inset:auto !important;
+  width:min(100%,760px) !important; max-width:760px !important; margin:0 auto !important;
+  transform:scale(1) !important; transform-origin:center top !important; opacity:1 !important;
+  transition:transform .20s ease,opacity .20s ease,filter .20s ease,box-shadow .20s ease !important;
+  will-change:transform,opacity,filter !important;
 }
-#app .levro-home-search-wrap.home-search-scrolling .hero-search {
-  transform: scale(.86) !important;
-  opacity: .32 !important;
-  filter: saturate(.65) !important;
-  box-shadow: none !important;
+#app .levro-home-search-wrap.home-search-fixed .hero-search{
+  position:fixed !important; top:var(--levro-search-dock-top,72px) !important; left:50% !important; right:auto !important; bottom:auto !important;
+  width:min(calc(100% - 1.1rem),760px) !important; max-width:760px !important; margin:0 !important;
+  transform:translateX(-50%) scale(1) !important; opacity:1 !important; z-index:230 !important;
 }
-#app .levro-home-search-wrap:has(.hero-search:focus-within) .hero-search {
-  transform: scale(1) !important;
-  opacity: 1 !important;
-  filter: none !important;
+#app .levro-home-search-wrap.home-search-fixed.home-search-scrolling .hero-search{
+  transform:translateX(-50%) scale(.86) !important; opacity:.30 !important; filter:saturate(.62) !important; box-shadow:none !important;
 }
-#app .levro-home-search-wrap + .levro-home-hero {
-  margin-top: 0 !important;
+#app .levro-home-search-wrap.home-search-fixed:has(.hero-search:focus-within) .hero-search{
+  transform:translateX(-50%) scale(1) !important; opacity:1 !important; filter:none !important;
 }
-@media (max-width: 720px) {
-  #app .levro-home-search-wrap {
-    top: var(--levro-search-sticky-top, 70px) !important;
-    padding: .3rem 0 .45rem !important;
-    max-width: none !important;
-  }
-  #app .levro-home-search-wrap .hero-search {
-    width: 100% !important;
-  }
+@media(max-width:720px){
+  #app .levro-home-search-wrap{padding:.24rem 0 .42rem !important;}
+  #app .levro-home-search-wrap .hero-search{width:100% !important;}
+  #app .levro-home-search-wrap.home-search-fixed .hero-search{width:calc(100% - 1.1rem) !important;}
 }
 </style>
