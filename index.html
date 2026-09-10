@@ -9618,8 +9618,9 @@ function renderBottomNav() {
       { icon: "<i class='fa-solid fa-shield-halved'></i>", label: "Admin", action: "navigate('adminPanel')", view: "adminPanel" },
       { icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
   } else if (isVendorUser) {
-    // Vendor priority: Home → Vendors → Requests | + | Messages → Orders → My Shop.
-    items = [homeTab, vendorsTab, requestsTab, messagesTab, ordersTab, myShopTab];
+    // Vendor navigation keeps the + action centered with two controls on each side.
+    // Priority: Vendors, Orders | + | Messages, My Shop.
+    items = [vendorsTab, ordersTab, messagesTab, myShopTab];
   } else if (session) {
     // Buyer priority: Vendors → Request → Home → Messages → Orders.
     // Buyers do not get the vendor-only centered + action or My Shop.
@@ -25280,6 +25281,62 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
   window.addEventListener('load',()=>setTimeout(patchGrouping,80),{once:true});
 })();
 </script>
+
+<style id="levromart-20260911-home-vendor-polish">
+/* Vendor navigation: four controls only, two on each side of the centered +. */
+@media (max-width:720px){
+  #bottomNav.has-add{
+    grid-template-columns:minmax(0,1fr) 4.1rem minmax(0,1fr) !important;
+  }
+  #bottomNav.has-add .bn-group{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:.08rem !important;
+  }
+  #bottomNav.has-add .bn-group .bottom-nav-item{
+    min-width:0 !important;
+    width:100% !important;
+  }
+}
+
+/* Homepage quick actions: distinct, app-like accent colors while keeping the
+   flyer-inspired circular/icon-first treatment. */
+#app .levro-quick-action:nth-child(1){--quick-accent:#14b8a6 !important;}
+#app .levro-quick-action:nth-child(2){--quick-accent:#f59e0b !important;}
+#app .levro-quick-action:nth-child(3){--quick-accent:#6366f1 !important;}
+#app .levro-quick-action:nth-child(4){--quick-accent:#10b981 !important;}
+#app .levro-quick-action:nth-child(5){--quick-accent:#ef4444 !important;}
+#app .levro-quick-action:nth-child(6){--quick-accent:#3b82f6 !important;}
+#app .levro-quick-icon{
+  background:color-mix(in srgb,var(--quick-accent) 13%,var(--card)) !important;
+  color:var(--quick-accent) !important;
+  border-color:color-mix(in srgb,var(--quick-accent) 18%,var(--border)) !important;
+  box-shadow:0 5px 14px color-mix(in srgb,var(--quick-accent) 12%,transparent) !important;
+}
+#app .levro-quick-action:hover .levro-quick-icon{
+  background:color-mix(in srgb,var(--quick-accent) 18%,var(--card)) !important;
+}
+
+/* Bring Home's search/carousel closer to the header; avoid the excessive top
+   breathing room visible on mobile while preserving the existing hierarchy. */
+#app:has(.levro-home-hero){margin-top:.25rem !important;}
+#app .levro-home-hero{padding-top:0 !important;margin-top:0 !important;gap:.45rem !important;}
+#app .levro-home-search-wrap{margin-top:-.12rem !important;}
+#app .levro-home-hero .hero-search{margin-bottom:.55rem !important;}
+
+/* Light mode navigation: readable slate rather than heavy near-black. */
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item>span:last-child,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item i,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item .bn-icon{
+  color:#64748b !important;
+}
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item.active,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item.active>span:last-child,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item.active i,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item.active .bn-icon{
+  color:#64748b !important;
+}
+</style>
 </body>
 <style id="levromart-20260910-final-polish">
 /* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
