@@ -6913,7 +6913,7 @@ async function enablePushNotifications() {
 const LIVE_TOUR_STEPS = [
   { icon: "fa-hand-sparkles", title: "Hi, I'm Levi", body: "I'll walk you through the app myself, live, on the actual site. Just follow me around.", selector: null, view: "home" },
   { icon: "fa-house", title: "This is Home", body: "Tap the Levromart logo any time, from anywhere in the app, and I'll bring you straight back here.", selector: "header h1", view: "home" },
-  { icon: "fa-border-all", title: "Browse by sector", body: "Tap a sector to narrow the marketplace down to just what's relevant to you: Healthcare, Food, Electronics, and more.", selector: ".sector-row", view: "home" },
+  { icon: "fa-bolt", title: "Quick actions", body: "These six shortcuts take you straight to shopping, services, rentals, trusted vendors, item requests, and direct chat — without digging through the marketplace.", selector: ".levro-home-quick-actions", view: "home" },
   { icon: "fa-compass", title: "Get around from here", body: "The bottom bar is always one tap away, wherever you are on the site.", selector: "#bottomNav", view: "home" },
   { icon: "fa-comments", title: "That's me, right there", body: "Tap this any time to talk to me. Ask what to buy, and I'll point you straight to a vendor, or explain how anything on here works.", selector: "#aiChatFab", view: "home" },
   { icon: "fa-bell", title: "Stay in the loop", body: "Turn on notifications so you're pinged the moment there's an order, offer, or update, right on your device.", selector: "#notifWrap", view: "home" },
@@ -9621,8 +9621,8 @@ function renderBottomNav() {
     // Vendor priority: Home → Vendors → Requests | + | Messages → Orders → My Shop.
     items = [homeTab, vendorsTab, requestsTab, messagesTab, ordersTab, myShopTab];
   } else if (session) {
-    // Buyer priority: Vendors → Request → Home | + | Messages → Orders → My Shop.
-    // Keep the existing buyer experience; My Shop is not exposed to buyers.
+    // Buyer priority: Vendors → Request → Home → Messages → Orders.
+    // Buyers do not get the vendor-only centered + action or My Shop.
     items = [vendorsTab, requestsTab, homeTab, messagesTab, ordersTab];
   } else {
     items = [homeTab, vendorsTab, requestsTab,
@@ -9632,20 +9632,22 @@ function renderBottomNav() {
   const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}" onclick="${it.action}"><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
 
   if (isVendorUser) {
+    nav.classList.remove("buyer-no-add");
     nav.classList.add("has-add");
     nav.innerHTML = `<div class="bn-group bn-group-left">${items.slice(0, 3).map(itemHtml).join("")}</div>
       <button class="bottom-nav-add" onclick="openAddChooser()" title="Add listing"><i class="fa-solid fa-plus"></i></button>
       <div class="bn-group bn-group-right">${items.slice(3, 6).map(itemHtml).join("")}</div>`;
   } else if (session && profile?.role === "admin") {
-    nav.classList.remove("has-add");
+    nav.classList.remove("has-add", "buyer-no-add");
     nav.innerHTML = items.map(itemHtml).join("");
   } else if (session) {
-    nav.classList.add("has-add");
-    nav.innerHTML = `<div class="bn-group bn-group-left">${items.slice(0, 2).map(itemHtml).join("")}</div>
-      <button class="bottom-nav-add" onclick="openAddChooser()" title="Create"><i class="fa-solid fa-plus"></i></button>
-      <div class="bn-group bn-group-right">${items.slice(2).map(itemHtml).join("")}</div>`;
-  } else {
+    // Buyers use a clean five-item rail. Home is the middle slot and there is
+    // deliberately no + creation control on the buyer interface.
     nav.classList.remove("has-add");
+    nav.classList.add("buyer-no-add");
+    nav.innerHTML = items.map(itemHtml).join("");
+  } else {
+    nav.classList.remove("has-add", "buyer-no-add");
     nav.innerHTML = items.map(itemHtml).join("");
   }
 }
@@ -25724,3 +25726,46 @@ body.chat-full-page > #app{
   setTimeout(normalizeEditor,0);
 })();
 </script>
+
+<style id="levromart-20260910-ui-precision-v5">
+/* BUYER NAV: five equal items, no vendor + action, Home centered. */
+@media (max-width:720px){
+  #bottomNav.buyer-no-add{
+    display:grid !important;
+    grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+    align-items:center !important;
+    gap:0 !important;
+    height:68px !important;
+    min-height:0 !important;
+    padding:.22rem .28rem !important;
+    box-sizing:border-box !important;
+  }
+  #bottomNav.buyer-no-add .bottom-nav-item{
+    width:100% !important; min-width:0 !important; height:54px !important; min-height:54px !important;
+    padding:.28rem .08rem !important; display:flex !important; align-items:center !important; justify-content:center !important;
+  }
+  #bottomNav.buyer-no-add .bottom-nav-item > span:last-child{
+    font-size:.6rem !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; max-width:100% !important;
+  }
+  #bottomNav.buyer-no-add .bn-icon{font-size:1.05rem !important; line-height:1 !important;}
+}
+
+/* LIGHT MODE: dark/ink icons are required for contrast; dark/black modes stay white. */
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item i,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item .bn-icon{color:var(--text) !important;}
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item.active i,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item.active .bn-icon{color:var(--text) !important;}
+
+/* REVIEW SECTION: keep the heading and the first review card visibly separated. */
+#app .storefront-reviews-head{margin-bottom:.75rem !important;}
+#app #reviewsList{display:grid !important;gap:.7rem !important;margin-top:0 !important;}
+#app #reviewsList .review-card{margin:0 !important;}
+
+/* QUICK-ACTION LAUNCHER: preserve a clean three-by-two rhythm under Home. */
+#app .levro-home-quick-actions{grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:.7rem .35rem !important;margin:.8rem auto 1.1rem !important;}
+#app .levro-quick-action{min-height:70px !important;}
+
+/* Navigation should feel instant when a previously visited route is reused. */
+#app .instant-page-shell{contain:layout paint style !important;}
+#app .bottom-nav{contain:layout paint style !important;}
+</style>
