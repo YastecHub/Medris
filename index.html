@@ -11297,15 +11297,15 @@ async function renderHome() {
   }).slice(0, 6);
   const hasPersonalPackageMatch = recommendedPackages.some((pkg) => (pkg.items || []).some((it) => favoriteIds.has(it.product?.id)));
 
-  let html = `<div class="hero levro-home-hero">
-    ${renderHomepageCarouselHtml(homepageCarouselSlides)}
-  </div>
-  <div class="hero-content levro-home-search-wrap">
+  let html = `<div class="hero-content levro-home-search-wrap">
     <div class="hero-search flex">
       <i class="fa-solid fa-magnifying-glass hero-search-icon"></i>
       <input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onfocus="if(this.value.trim())fetchSearchSuggestions(this.value.trim())" onblur="setTimeout(hideSearchSuggestions,150)" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" />
       <div id="heroSearchSuggest" class="search-suggest hidden"></div>
     </div>
+  </div>
+  <div class="hero levro-home-hero">
+    ${renderHomepageCarouselHtml(homepageCarouselSlides)}
   </div>`;
 
   // The homepage now uses six high-value actions instead of the old scrolling
@@ -26202,5 +26202,58 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   background:#10b080 !important;
   color:#fff !important;
   box-shadow:none !important;
+}
+</style>
+
+<style id="levromart-search-final-authoritative">
+/* FINAL HOMEPAGE SEARCH CONTRACT:
+   normal flow = header -> search -> carousel; while scrolling the search remains
+   accessible below the fixed header and quietly contracts instead of disappearing. */
+#app .levro-home-search-wrap {
+  position: sticky !important;
+  top: var(--levro-search-sticky-top, 70px) !important;
+  z-index: 120 !important;
+  width: 100% !important;
+  max-width: 760px !important;
+  margin: 0 auto !important;
+  padding: .45rem 0 .55rem !important;
+  background: transparent !important;
+  transform: translateZ(0) !important;
+}
+#app .levro-home-search-wrap .hero-search {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: 760px !important;
+  margin: 0 auto !important;
+  transform: scale(1) !important;
+  transform-origin: center top !important;
+  opacity: 1 !important;
+  transition: transform .22s cubic-bezier(.2,.75,.25,1), opacity .2s ease, filter .2s ease, box-shadow .22s ease !important;
+  will-change: transform, opacity, filter !important;
+}
+#app .levro-home-search-wrap.home-search-scrolling .hero-search {
+  transform: scale(.86) !important;
+  opacity: .32 !important;
+  filter: saturate(.65) !important;
+  box-shadow: none !important;
+}
+#app .levro-home-search-wrap:has(.hero-search:focus-within) .hero-search {
+  transform: scale(1) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+#app .levro-home-search-wrap + .levro-home-hero {
+  margin-top: 0 !important;
+}
+@media (max-width: 720px) {
+  #app .levro-home-search-wrap {
+    top: var(--levro-search-sticky-top, 70px) !important;
+    padding: .3rem 0 .45rem !important;
+    max-width: none !important;
+  }
+  #app .levro-home-search-wrap .hero-search {
+    width: 100% !important;
+  }
 }
 </style>
