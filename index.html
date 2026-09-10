@@ -9531,7 +9531,7 @@ function hydrateSettingsPage(){
   if(consent&&profile) consent.innerHTML=`<i class="fa-solid fa-chart-line settings-row-icon"></i><span class="settings-row-copy"><strong>Help improve Levi</strong><small>Your product-improvement preference</small></span><button class="settings-inline-btn ${profile.ai_data_consent?'active':''}" onclick="setAiDataConsent(${!profile.ai_data_consent})">${profile.ai_data_consent?'On':'Off'}</button>`;
   const oldInstall=byId("settingsInstallRow"),oldNotif=byId("settingsNotifRow"),install=byId("settingsInstallPageRow"),notif=byId("settingsNotifPageRow");
   if(install&&oldInstall) install.innerHTML=oldInstall.innerHTML;if(notif&&oldNotif) notif.innerHTML=oldNotif.innerHTML;
-  const rail=byId("horizontalBrowseSettingPageRow");if(rail)rail.innerHTML=`<i class="fa-solid fa-arrows-left-right settings-row-icon"></i><span class="settings-row-copy"><strong>Auto-scroll horizontal products</strong><small>${horizontalBrowseEnabled?'On':'Off'} - product, category, package and service rails ${horizontalBrowseEnabled?'move automatically; you can still drag them.':'stay still automatically; you can still drag them yourself.'}</small></span><button class="settings-inline-btn ${horizontalBrowseEnabled?'active':''}" onclick="setHorizontalBrowseEnabled(!horizontalBrowseEnabled)">${horizontalBrowseEnabled?'On':'Off'}</button>`;
+  const rail=byId("horizontalBrowseSettingPageRow");if(rail)rail.innerHTML=`<i class="fa-solid fa-arrows-left-right settings-row-icon"></i><span class="settings-row-copy"><strong>Auto-scroll horizontal products</strong><small>${horizontalBrowseEnabled?'On':'Off'} · horizontal product rails ${horizontalBrowseEnabled?'move automatically; you can still drag them.':'stay still; you can still drag them yourself.'}</small></span><button class="settings-inline-btn ${horizontalBrowseEnabled?'active':''}" onclick="setHorizontalBrowseEnabled(!horizontalBrowseEnabled)">${horizontalBrowseEnabled?'On':'Off'}</button>`;
   const loc=byId("locationSettingPageRow");if(loc)loc.innerHTML=`<i class="fa-solid ${locationSharingEnabled?'fa-location-dot':'fa-location-crosshairs'} settings-row-icon"></i><span class="settings-row-copy"><strong>Location sharing</strong><small>${locationSharingEnabled?'On':'Off'} - nearby vendors and distance sorting</small></span><button class="settings-inline-btn ${locationSharingEnabled?'active':''}" onclick="toggleLocationSetting();setTimeout(hydrateSettingsPage,0)">${locationSharingEnabled?'On':'Off'}</button>`;
   const src=byId("voiceSelect"),page=byId("voiceSelectPage");if(src&&page){page.innerHTML=src.innerHTML;page.value=src.value||localStorage.getItem("medris-ai-voice")||"";page.onchange=function(){setAiVoice(this.value);};}
 }
@@ -9877,6 +9877,7 @@ async function submitAuth() {
       }
 
       // The account is already confirmed by the server, so sign in immediately.
+      try { sessionStorage.setItem("levromart-just-registered", "1"); } catch (_) {}
       const loginEmail = email || authAliasFromPhone(phone);
       const { error: loginError } = await sb.auth.signInWithPassword({
         email: loginEmail,
@@ -9909,6 +9910,27 @@ async function submitAuth() {
 
 async function finishLoginSuccess(view) {
   await refreshAuthStateOnce();
+
+  let justRegistered = false;
+  try { justRegistered = sessionStorage.getItem("levromart-just-registered") === "1"; if (justRegistered) sessionStorage.removeItem("levromart-just-registered"); } catch (_) {}
+  if (justRegistered) {
+    // New accounts start with Levromart's own location setting enabled. The
+    // browser/device still owns the real permission and will show its prompt
+    // when the request is made. If permission is denied, use our recovery UI.
+    locationSharingEnabled = true;
+    try { localStorage.setItem("medris-location-enabled", "1"); } catch (_) {}
+    setAutomaticDistancePreference(true);
+    setTimeout(async () => {
+      if (!session || !profile || !navigator.geolocation) return;
+      try {
+        await getCustomerLocation(true);
+        updateVendorsLocationUI();
+      } catch (err) {
+        const state = await getBrowserLocationPermission();
+        showLocationPrompt("recovery", state === "denied" ? locationRecoveryText("denied") : (err?.message || "Allow Levromart to access your location so nearby vendors can be shown automatically."));
+      }
+    }, 500);
+  }
 
   // Only refresh buyer location automatically after the customer has explicitly
   // opted into the one-time automatic-distance preference. This prevents a
@@ -10623,7 +10645,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     ? cache.carouselSlides
     : INITIAL_HOME_CAROUSEL_SLIDES.slice();
   let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
-  html += `<div class="hero levro-home-hero"><div class="hero-content levro-home-search-wrap"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div></div>${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
+  html += `<div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div><div class="hero-content levro-home-search-wrap"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div></div>`;
   html += `<section class="levro-home-quick-actions" aria-label="Quick actions">
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span>Shop products</span></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span>Book services</span></button>
@@ -10651,6 +10673,15 @@ let homeSearchMotionIdle = 0;
 let homeSearchMotionLastY = 0;
 function initHomeSearchScrollMotion(){
   resetHomeSearchScrollMotion();
+  const appHeader = document.querySelector("body > header");
+  if (appHeader) {
+    const syncHeaderOffset = () => {
+      const rect = appHeader.getBoundingClientRect();
+      document.documentElement.style.setProperty("--levro-search-sticky-top", `${Math.ceil(rect.height + 4)}px`);
+    };
+    syncHeaderOffset();
+    window.addEventListener("resize", syncHeaderOffset, { passive:true });
+  }
   const wrap = document.querySelector("#app .levro-home-search-wrap");
   const search = wrap?.querySelector(".hero-search");
   if (!wrap || !search) return;
@@ -11267,14 +11298,14 @@ async function renderHome() {
   const hasPersonalPackageMatch = recommendedPackages.some((pkg) => (pkg.items || []).some((it) => favoriteIds.has(it.product?.id)));
 
   let html = `<div class="hero levro-home-hero">
-    <div class="hero-content levro-home-search-wrap">
-      <div class="hero-search flex">
-        <i class="fa-solid fa-magnifying-glass hero-search-icon"></i>
-        <input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onfocus="if(this.value.trim())fetchSearchSuggestions(this.value.trim())" onblur="setTimeout(hideSearchSuggestions,150)" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" />
-        <div id="heroSearchSuggest" class="search-suggest hidden"></div>
-      </div>
-    </div>
     ${renderHomepageCarouselHtml(homepageCarouselSlides)}
+  </div>
+  <div class="hero-content levro-home-search-wrap">
+    <div class="hero-search flex">
+      <i class="fa-solid fa-magnifying-glass hero-search-icon"></i>
+      <input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onfocus="if(this.value.trim())fetchSearchSuggestions(this.value.trim())" onblur="setTimeout(hideSearchSuggestions,150)" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" />
+      <div id="heroSearchSuggest" class="search-suggest hidden"></div>
+    </div>
   </div>`;
 
   // The homepage now uses six high-value actions instead of the old scrolling
@@ -12107,7 +12138,7 @@ function convRowHtml(c) {
   return `<div class="conv-row-wrap ${selected ? "selected" : ""}">
     <div class="conv-list-item ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}" onclick="handleConvRowClick(event,'${c.conversation_id}')">
       ${msgSelectMode ? `<span class="conv-select-check ${selected ? "active" : ""}" aria-hidden="true"><i class="fa-solid fa-check"></i></span>` : ""}
-      ${profileAvatarHtml(c.other_avatar, name, "2.6rem", { lightbox: !!c.other_avatar })}
+      ${profileAvatarHtml(c.other_avatar, name, "2.6rem", { lightbox: !!c.other_avatar && !msgSelectMode })}
       <div class="conv-meta">
         <strong>${esc(name)}</strong>
         <div class="conv-preview">${c.last_message ? esc(c.last_message) : "No messages yet"}</div>
@@ -25496,82 +25527,53 @@ body > footer.site-footer{display:none !important;}
 </style>
 
 <style id="levromart-home-search-sticky-scroll-final">
-/* Homepage search: fixed-in-view once reached, then subtly contracts during
-   active scrolling. It restores immediately when scrolling settles. */
-@media (max-width:720px){
-  #app .levro-home-search-wrap.home-search-pinned{
-    position:sticky !important;
-    top:calc(58px + env(safe-area-inset-top,0px)) !important;
-    z-index:120 !important;
-    width:100% !important;
-    margin:0 !important;
-    padding:.22rem 0 .38rem !important;
-    background:transparent !important;
-    pointer-events:none !important;
-  }
-  #app .levro-home-search-wrap.home-search-pinned .hero-search{
-    position:relative !important;
-    inset:auto !important;
-    width:min(100%,760px) !important;
-    max-width:760px !important;
-    margin:0 auto !important;
-    transform:scale(1) !important;
-    transform-origin:center top !important;
-    opacity:1 !important;
-    transition:transform .22s cubic-bezier(.2,.75,.25,1),opacity .2s ease,filter .2s ease,box-shadow .22s ease !important;
-    will-change:transform,opacity,filter !important;
-    pointer-events:auto !important;
-  }
-  #app .levro-home-search-wrap.home-search-pinned.home-search-scrolling .hero-search{
-    transform:scale(.86) !important;
-    opacity:.42 !important;
-    filter:saturate(.65) !important;
-    box-shadow:none !important;
-  }
+/* Homepage search stays BELOW the hero carousel in normal flow. Once it reaches
+   the fixed header it stays available while the page scrolls, subtly shrinks
+   while moving, and restores after scrolling settles. */
+#app .levro-home-search-wrap{
+  position:sticky !important;
+  top:var(--levro-search-sticky-top,72px) !important;
+  z-index:120 !important;
+  width:100% !important;
+  margin:0 auto !important;
+  padding:.3rem 0 .45rem !important;
+  background:transparent !important;
+  transform:translateZ(0) !important;
 }
-@media (min-width:721px){
-  #app .levro-home-search-wrap.home-search-pinned{
-    position:sticky !important;
-    top:64px !important;
-    z-index:120 !important;
-    width:100% !important;
-    margin:0 !important;
-    padding:.28rem 0 .42rem !important;
-    background:transparent !important;
-    pointer-events:none !important;
-  }
-  #app .levro-home-search-wrap.home-search-pinned .hero-search{
-    position:relative !important;
-    inset:auto !important;
-    width:min(100%,760px) !important;
-    max-width:760px !important;
-    margin:0 auto !important;
-    transform:scale(1) !important;
-    opacity:1 !important;
-    transition:transform .22s ease,opacity .2s ease,filter .2s ease,box-shadow .22s ease !important;
-    will-change:transform,opacity,filter !important;
-    pointer-events:auto !important;
-  }
-  #app .levro-home-search-wrap.home-search-pinned.home-search-scrolling .hero-search{
-    transform:scale(.9) !important;
-    opacity:.48 !important;
-    filter:saturate(.7) !important;
-    box-shadow:none !important;
-  }
+#app .levro-home-search-wrap .hero-search{
+  position:relative !important;
+  inset:auto !important;
+  width:min(100%,760px) !important;
+  max-width:760px !important;
+  margin:0 auto !important;
+  transform:scale(1) !important;
+  transform-origin:center top !important;
+  opacity:1 !important;
+  transition:transform .22s cubic-bezier(.2,.75,.25,1),opacity .2s ease,filter .2s ease,box-shadow .22s ease !important;
+  will-change:transform,opacity,filter !important;
+}
+#app .levro-home-search-wrap.home-search-scrolling .hero-search{
+  transform:scale(.86) !important;
+  opacity:.34 !important;
+  filter:saturate(.62) !important;
+  box-shadow:none !important;
+}
+#app .levro-home-search-wrap:has(.hero-search:focus-within) .hero-search{
+  transform:scale(1) !important;
+  opacity:1 !important;
+  filter:none !important;
+}
+#app .levro-home-search-wrap.home-search-scrolling{
+  background:transparent !important;
+}
+@media(max-width:720px){
+  #app .levro-home-search-wrap{top:var(--levro-search-sticky-top,70px) !important;padding:.18rem 0 .34rem !important;}
+  #app .levro-home-search-wrap .hero-search{width:calc(100% - .1rem) !important;}
 }
 </style>
 </html>
 
 <style id="levromart-20260910-canonical-fixes">
-/* Search must remain below the promotional carousel in normal page flow. */
-#app .hero > .hero-content{position:relative !important;z-index:1 !important;width:100% !important;margin:0 !important;}
-#app .hero > .hero-content .hero-search,
-#app .hero > .hero-content .hero-search.home-search-pinned,
-#app .hero > .hero-content .hero-search.home-search-scrolling{
-  position:relative !important;inset:auto !important;left:auto !important;right:auto !important;top:auto !important;
-  width:min(100%,760px) !important;max-width:760px !important;margin:1rem auto 0 !important;
-  transform:none !important;opacity:1 !important;z-index:1 !important;
-}
 
 /* Top-rated Vendors: narrow vertical cards with everything centered. */
 #app .top-rated-vendors-scroll{display:flex !important;flex-wrap:nowrap !important;align-items:stretch !important;gap:.65rem !important;overflow-x:auto !important;padding:.35rem .2rem .75rem !important;scroll-behavior:auto !important;scrollbar-width:none !important;}
@@ -25831,9 +25833,8 @@ body.chat-full-page > #app{
 
 <style id="levromart-precision-20260910-final">
 /* Homepage: search first, then promotional carousel, then six calm action tiles. */
-#app .levro-home-hero{display:flex !important;flex-direction:column !important;gap:.7rem !important;}
-#app .levro-home-search-wrap{order:0 !important;margin:0 !important;}
-#app .levro-home-hero .home-promotional-carousel{order:1 !important;margin-bottom:0 !important;}
+#app .levro-home-hero{display:block !important;margin:0 !important;}
+#app .levro-home-search-wrap{margin:0 auto !important;}
 #app .levro-home-quick-actions{
   display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr)) !important;
   gap:.65rem !important;margin:.25rem 0 1rem !important;width:100% !important;
