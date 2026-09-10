@@ -5407,6 +5407,65 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 /* Do not let a final app child create a bottom margin gap before the footer. */
 #app > *:last-child{margin-bottom:0 !important;}
 </style>
+
+<style id="levromart-request-vendor-admin-final-pass-20260910">
+/* Vendor bottom navigation: exactly three controls on each side of +. */
+@media (max-width:720px){
+  #bottomNav.has-add{display:grid !important;grid-template-columns:minmax(0,1fr) 4.1rem minmax(0,1fr) !important;align-items:center !important;gap:.1rem !important;padding:.42rem .28rem calc(.42rem + env(safe-area-inset-bottom,0px)) !important;}
+  #bottomNav.has-add .bn-group{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:.05rem !important;min-width:0 !important;}
+  #bottomNav.has-add .bottom-nav-item{min-width:0 !important;width:100% !important;padding:.38rem .08rem !important;}
+  #bottomNav.has-add .bottom-nav-item > span:last-child{font-size:.64rem !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+  #bottomNav.has-add .bn-icon{font-size:1.02rem !important;}
+  #bottomNav.has-add .bottom-nav-add{width:3.5rem !important;height:3.5rem !important;justify-self:center !important;align-self:center !important;}
+}
+/* Request tabs: accent-colored pills, centered, with breathing room from the card. */
+#app .vendor-request-tabs{display:flex !important;justify-content:center !important;align-items:center !important;gap:.55rem !important;overflow:visible !important;border:0 !important;margin:1rem auto 1.15rem !important;padding:.28rem !important;max-width:max-content !important;background:color-mix(in srgb,var(--primary) 7%,var(--card)) !important;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border)) !important;border-radius:999px !important;box-shadow:var(--shadow) !important;}
+#app .vendor-request-tab{border:0 !important;border-radius:999px !important;background:transparent !important;color:var(--text-muted) !important;padding:.62rem .95rem !important;min-height:2.5rem !important;}
+#app .vendor-request-tab.active{background:var(--primary) !important;color:#fff !important;box-shadow:0 5px 14px color-mix(in srgb,var(--primary) 22%,transparent) !important;}
+#app .vendor-request-tab span{background:rgba(255,255,255,.22) !important;color:inherit !important;}
+#app .vendor-offer-compose{margin-top:.75rem !important;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border)) !important;border-radius:16px !important;padding:.8rem !important;background:color-mix(in srgb,var(--primary) 3%,var(--card)) !important;}
+#app .vendor-offer-compose.hidden{display:none !important;}
+/* Vendor directory: type tabs + one clean filter dropdown. */
+#app .vendor-listing-tabs{display:flex !important;justify-content:center !important;gap:.45rem !important;flex-wrap:wrap !important;margin:.85rem auto 1rem !important;padding:.3rem !important;max-width:max-content !important;background:color-mix(in srgb,var(--primary) 6%,var(--card)) !important;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border)) !important;border-radius:999px !important;box-shadow:var(--shadow) !important;}
+#app .vendor-listing-tab{border:0 !important;border-radius:999px !important;background:transparent !important;color:var(--text-muted) !important;padding:.58rem .9rem !important;font-weight:700 !important;cursor:pointer !important;}
+#app .vendor-listing-tab.active{background:var(--primary) !important;color:#fff !important;}
+#app .vendors-directory-toolbar{display:grid !important;grid-template-columns:minmax(0,1fr) auto !important;gap:.65rem !important;align-items:center !important;}
+#app .vendors-filters-toggle.active{background:var(--primary) !important;color:#fff !important;border-color:var(--primary) !important;}
+#app .vendors-filters-panel{margin:.65rem 0 1rem !important;padding:.8rem !important;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border)) !important;border-radius:16px !important;background:color-mix(in srgb,var(--primary) 3%,var(--card)) !important;box-shadow:var(--shadow) !important;}
+/* Admin People: two-axis table scrolling and a touch-safe tab rail. */
+#app .admin-people-toolbar{display:flex !important;justify-content:space-between !important;align-items:center !important;gap:.75rem !important;flex-wrap:wrap !important;margin:0 auto 1rem !important;max-width:920px !important;}
+#app .admin-people-role-tabs{display:flex !important;gap:.25rem !important;padding:.28rem !important;background:var(--card) !important;border:1px solid var(--border) !important;border-radius:999px !important;box-shadow:var(--shadow) !important;}
+#app .admin-people-role-tab{display:inline-flex !important;align-items:center !important;gap:.4rem !important;border:0 !important;background:transparent !important;color:var(--text-muted) !important;padding:.55rem .78rem !important;border-radius:999px !important;font:inherit !important;font-size:.78rem !important;font-weight:700 !important;white-space:nowrap !important;cursor:pointer !important;}
+#app .admin-people-role-tab.active{background:var(--primary) !important;color:#fff !important;}
+#app .admin-people-role-tab strong{font-size:.68rem !important;min-width:1.25rem !important;height:1.25rem !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;border-radius:999px !important;background:color-mix(in srgb,var(--primary) 12%,transparent) !important;color:var(--primary) !important;}
+#app .admin-people-role-tab.active strong{background:rgba(255,255,255,.22) !important;color:#fff !important;}
+#app .admin-people-export-actions{display:flex !important;gap:.45rem !important;}
+#app .admin-people-controls{display:grid !important;grid-template-columns:minmax(0,1fr) auto !important;gap:.65rem !important;max-width:920px !important;margin:0 auto 1rem !important;}
+#app .admin-people-search-wrap{position:relative !important;min-width:0 !important;}
+#app .admin-people-search-wrap > i{position:absolute !important;left:.95rem !important;top:50% !important;transform:translateY(-50%) !important;color:var(--text-muted) !important;pointer-events:none !important;}
+#app .admin-people-search-wrap input{width:100% !important;margin:0 !important;padding-left:2.7rem !important;}
+#app .admin-people-sort{display:flex !important;align-items:center !important;gap:.4rem !important;padding:.15rem .2rem .15rem .7rem !important;border:1px solid var(--border) !important;border-radius:14px !important;background:var(--card) !important;color:var(--text-muted) !important;font-size:.76rem !important;font-weight:700 !important;}
+#app .admin-people-sort select{margin:0 !important;border:0 !important;background:transparent !important;box-shadow:none !important;width:auto !important;min-width:4.7rem !important;padding:.6rem .5rem !important;color:var(--text) !important;font:inherit !important;}
+#app .admin-people-table-wrap{width:100% !important;max-width:920px !important;max-height:min(58vh,34rem) !important;margin:0 auto !important;overflow:auto !important;-webkit-overflow-scrolling:touch !important;overscroll-behavior:contain !important;touch-action:pan-x pan-y !important;border-radius:16px !important;}
+#app .admin-people-table{width:max-content !important;min-width:760px !important;table-layout:auto !important;}
+#app .admin-people-table th{position:sticky !important;top:0 !important;z-index:3 !important;background:var(--card) !important;}
+#app .admin-people-table td,#app .admin-people-table th{white-space:nowrap !important;}
+#app .admin-people-hint{max-width:920px !important;margin:.55rem auto 0 !important;font-size:.72rem !important;text-align:center !important;}
+#app .dash-tabs{width:100% !important;max-width:100% !important;overflow-x:auto !important;overflow-y:hidden !important;touch-action:pan-x !important;-webkit-overflow-scrolling:touch !important;overscroll-behavior-x:contain !important;scrollbar-width:none !important;padding-inline:.45rem !important;scroll-padding-inline:.45rem !important;}
+#app .dash-tabs::-webkit-scrollbar{display:none !important;}
+#app .dash-tab{flex-shrink:0 !important;min-width:3.9rem !important;}
+@media(max-width:720px){
+  #app .vendor-request-tabs{max-width:calc(100vw - 2rem) !important;overflow-x:auto !important;justify-content:flex-start !important;}
+  #app .vendor-listing-tabs{max-width:100% !important;}
+  #app .vendors-directory-toolbar{grid-template-columns:1fr !important;}
+  #app .admin-people-toolbar{align-items:stretch !important;}
+  #app .admin-people-role-tabs,#app .admin-people-export-actions{width:100% !important;}
+  #app .admin-people-role-tab{flex:1 1 0 !important;justify-content:center !important;}
+  #app .admin-people-export-actions .btn{flex:1 1 0 !important;justify-content:center !important;}
+  #app .admin-people-controls{grid-template-columns:1fr !important;}
+  #app .admin-people-sort{justify-content:space-between !important;}
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -8911,56 +8970,58 @@ async function submitEditProfile() {
 function renderBottomNav() {
   const nav = byId("bottomNav");
   if (!nav) return;
-  // Vendors run their business from here, not browse as a shopper, so
-  // "Home" (the customer storefront) isn't a tab they need taking up space.
+
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
-  const items = isVendorUser ? [] : [{ icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "navigate('home')", view: "home" }];
   const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors')", view: "vendors" };
   const messagesTab = { icon: "<i class='fa-solid fa-comment-dots'></i>", label: "Messages", action: "navigate('messages')", view: "messages", badge: unreadMessageCount };
+  const requestsTab = isVendorUser
+    ? { icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
+    : { icon: "<i class='fa-solid fa-hand'></i>", label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
+  const ordersTab = isVendorUser
+    ? { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
+    : { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
+  const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "navigate('home')", view: "home" };
+  const myShopTab = { icon: "<i class='fa-solid fa-box'></i>", label: "My Shop", action: "navigate('vendorDashboard')", view: "vendorDashboard" };
+
+  let items;
   if (session && profile?.role === "admin") {
-    items.push(vendorsTab);
-    items.push({ icon: "<i class='fa-solid fa-shield-halved'></i>", label: "Admin", action: "navigate('adminPanel')", view: "adminPanel" });
-    items.push({ icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" });
+    // Admin navigation remains unchanged; the centered + button is not used here.
+    items = [vendorsTab,
+      { icon: "<i class='fa-solid fa-shield-halved'></i>", label: "Admin", action: "navigate('adminPanel')", view: "adminPanel" },
+      { icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
+  } else if (isVendorUser) {
+    // Vendor priority: Home → Vendors → Requests | + | Messages → Orders → My Shop.
+    items = [homeTab, vendorsTab, requestsTab, messagesTab, ordersTab, myShopTab];
   } else if (session) {
-    if (vendor) {
-      items.push(vendorsTab);
-      items.push({ icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 });
-      items.push(messagesTab);
-      items.push({ icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) });
-      items.push({ icon: "<i class='fa-solid fa-box'></i>", label: "My Shop", action: "navigate('vendorDashboard')", view: "vendorDashboard" });
-    } else {
-      // Home sits at the visual center for buyers: Vendors, Request, Home, Messages, Orders.
-      const homeTab = items.shift(); // pull "Home" out of its default leading slot from the prefix above
-      items.push(vendorsTab);
-      items.push({ icon: "<i class='fa-solid fa-hand'></i>", label: "Request", action: "navigate('requestEquipment')", view: "requestEquipment" });
-      items.push(homeTab);
-      items.push(messagesTab);
-      items.push({ icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount });
-    }
+    // Buyer priority: Vendors → Request → Home | + | Messages → Orders → My Shop.
+    // Keep the existing buyer experience; My Shop is not exposed to buyers.
+    items = [vendorsTab, requestsTab, homeTab, messagesTab, ordersTab];
   } else {
-    items.push(vendorsTab);
-    items.push({ icon: "<i class='fa-solid fa-hand'></i>", label: "Request", action: "requireLoginThen('requestEquipment')", view: "requestEquipment" });
-    items.push({ icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null });
+    items = [homeTab, vendorsTab, requestsTab,
+      { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
   }
+
   const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}" onclick="${it.action}"><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
-  if (vendor) {
-    // Split evenly into two groups either side of the "+" - a dedicated
-    // center grid column, not a flex item - so it's always dead-center
-    // regardless of whether the counts on each side match.
-    const mid = Math.ceil(items.length / 2);
+
+  if (isVendorUser) {
     nav.classList.add("has-add");
-    nav.innerHTML = `<div class="bn-group">${items.slice(0, mid).map(itemHtml).join("")}</div>
+    nav.innerHTML = `<div class="bn-group bn-group-left">${items.slice(0, 3).map(itemHtml).join("")}</div>
       <button class="bottom-nav-add" onclick="openAddChooser()" title="Add listing"><i class="fa-solid fa-plus"></i></button>
-      <div class="bn-group">${items.slice(mid).map(itemHtml).join("")}</div>`;
+      <div class="bn-group bn-group-right">${items.slice(3, 6).map(itemHtml).join("")}</div>`;
+  } else if (session && profile?.role === "admin") {
+    nav.classList.remove("has-add");
+    nav.innerHTML = items.map(itemHtml).join("");
+  } else if (session) {
+    nav.classList.add("has-add");
+    nav.innerHTML = `<div class="bn-group bn-group-left">${items.slice(0, 2).map(itemHtml).join("")}</div>
+      <button class="bottom-nav-add" onclick="openAddChooser()" title="Create"><i class="fa-solid fa-plus"></i></button>
+      <div class="bn-group bn-group-right">${items.slice(2).map(itemHtml).join("")}</div>`;
   } else {
     nav.classList.remove("has-add");
     nav.innerHTML = items.map(itemHtml).join("");
   }
 }
 
-// ---------- BOTTOM NAV SCROLL MOTION ----------
-// Keep the bottom bar immediately useful, but let it subtly recede while the
-// user scrolls down and return to full prominence when they scroll up.
 function initBottomNavScrollMotion(){
   const nav = byId("bottomNav");
   if (!nav || nav.dataset.scrollMotionReady === "1") return;
@@ -14201,7 +14262,7 @@ async function renderVendorRequests() {
       </div>
       ${mine
         ? `<div class="vendor-offer-status"><i class="fa-solid fa-circle-check"></i> You already sent an offer · <strong>${esc(mine.status || "pending")}</strong></div>`
-        : `<div class="vendor-offer-compose">
+        : `<div class="vendor-offer-compose hidden" id="vendorOfferCompose-${r.id}">
              ${matches.length ? `<select id="offerProduct-${r.id}" onchange="applyOfferProductPrice('${r.id}','${r.request_type}')">
                <option value="">Quote a custom price…</option>
                ${matches.map((p) => `<option value="${p.id}">Use my "${esc(p.name)}": ${p.sale_price != null ? naira(p.sale_price) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</option>`).join("")}
@@ -14242,6 +14303,8 @@ async function setVendorRequestInterest(requestId, state) {
   if (!vendor?.id || !requestId) return;
   const interestKey = `levromart-vendor-interest-${vendor.id}-${requestId}`;
   const hiddenKey = `levromart-vendor-hidden-requests-${vendor.id}`;
+  const card = byId(`vendorRequestCard-${requestId}`);
+
   if (state === "not-interested") {
     const ok = await showConfirmDialog("Are you sure you are not interested in this request? It will be removed from your customer requests dashboard.", { title: "Not interested", okLabel: "Remove request", danger: true });
     if (!ok) return;
@@ -14250,14 +14313,23 @@ async function setVendorRequestInterest(requestId, state) {
     if (!hidden.includes(String(requestId))) hidden.push(String(requestId));
     localStorage.setItem(hiddenKey, JSON.stringify(hidden));
     try { localStorage.removeItem(interestKey); } catch (_) {}
-    byId(`vendorRequestCard-${requestId}`)?.remove();
+    card?.remove();
     showToast("Request removed from your dashboard.", "success");
     return;
   }
+
   try { localStorage.setItem(interestKey, "interested"); } catch (_) {}
-  const card = byId(`vendorRequestCard-${requestId}`);
-  card?.querySelector(".vendor-interest-btn")?.classList.add("active");
-  showToast("Request marked as interested.", "success");
+  const interestBtn = card?.querySelector(".vendor-interest-btn");
+  const compose = byId(`vendorOfferCompose-${requestId}`);
+  if (interestBtn) {
+    interestBtn.classList.add("active");
+    interestBtn.innerHTML = `<i class="fa-solid fa-heart"></i> Interested`;
+  }
+  if (compose) {
+    compose.classList.remove("hidden");
+    setTimeout(() => compose.querySelector(`#offerPrice-${requestId}`)?.focus(), 0);
+  }
+  showToast("You're interested — add your price and message to send an offer.", "success");
 }
 
 function applyOfferProductPrice(requestId, requestType) {
@@ -17569,64 +17641,139 @@ async function adminToggleVendorActive(vendorId, currentlyActive, businessName) 
 // for seeing who's actually on the platform and how many of each kind.
 async function renderAdminPeople() {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
-  const [{ data: people }, { data: appeals }] = await Promise.all([
-    sb.from("users").select("id, name, email, role, city, created_at, suspended_at, suspended_reason").order("created_at", { ascending: false }),
-    sb.rpc("admin_get_pending_appeals"),
-  ]);
+  const result = window.__adminPeopleLoadedData;
+  if (result) return renderAdminPeopleFromData(result.people || [], result.appeals || []);
 
+  // The route renderer is allowed to be synchronous, so render a loading shell
+  // immediately and hydrate it once the two admin queries finish.
+  setTimeout(async () => {
+    try {
+      const [{ data: people, error: peopleError }, { data: appeals, error: appealsError }] = await Promise.all([
+        sb.from("users").select("id, name, email, role, city, created_at, suspended_at, suspended_reason").order("created_at", { ascending: false }),
+        sb.rpc("admin_get_pending_appeals"),
+      ]);
+      if (peopleError) throw peopleError;
+      window.__adminPeopleLoadedData = { people: people || [], appeals: appeals || [] };
+      const app = byId("app");
+      if (app && currentView === "adminPeople") app.innerHTML = renderAdminPeopleFromData(people || [], appeals || []);
+    } catch (err) {
+      const app = byId("app");
+      if (app && currentView === "adminPeople") app.innerHTML = `<div class="empty-state">${errorStateHtml(err)}</div>`;
+    }
+  }, 0);
+  return `<div class="admin-people-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading people…</div>`;
+}
+
+function renderAdminPeopleFromData(people, appeals) {
   const counts = { buyer: 0, vendor: 0, admin: 0 };
   (people || []).forEach((p) => { if (counts[p.role] != null) counts[p.role]++; });
   const appealByUser = {};
   (appeals || []).forEach((a) => { appealByUser[a.user_id] = a; });
+  window.__adminPeopleAll = people || [];
+  window.__adminPeopleRole = ["buyer", "vendor"].includes(window.__adminPeopleRole) ? window.__adminPeopleRole : "buyer";
+  window.__adminPeopleSort = window.__adminPeopleSort === "za" ? "za" : "az";
 
   let html = `<h2><i class='fa-solid fa-users'></i> People on Levromart</h2>`;
   html += adminNavHtml("adminPeople");
-  html += `<div class="accordion-section admin-people-summary" style="max-width:560px;margin:0 auto 1.2rem;">
-    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-chart-simple"></i> Summary</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
-    <div class="accordion-body">
-      <table class="order-stats-table">
-        <tr><td>Total</td><td>${(people || []).length}</td></tr>
-        <tr><td>Customers</td><td>${counts.buyer}</td></tr>
-        <tr><td>Vendors</td><td>${counts.vendor}</td></tr>
-        <tr><td>Admins</td><td>${counts.admin}</td></tr>
-      </table>
+  html += `<section class="admin-people-toolbar">
+    <div class="admin-people-role-tabs" role="tablist" aria-label="People type">
+      <button type="button" class="admin-people-role-tab ${window.__adminPeopleRole === "buyer" ? "active" : ""}" data-role="buyer" onclick="setAdminPeopleRole('buyer')"><i class="fa-solid fa-user"></i><span>Buyers</span><strong>${counts.buyer}</strong></button>
+      <button type="button" class="admin-people-role-tab ${window.__adminPeopleRole === "vendor" ? "active" : ""}" data-role="vendor" onclick="setAdminPeopleRole('vendor')"><i class="fa-solid fa-store"></i><span>Vendors</span><strong>${counts.vendor}</strong></button>
     </div>
+    <div class="admin-people-export-actions">
+      <button type="button" class="btn btn-sm btn-outline" onclick="adminExportPeople(window.__adminPeopleRole,'csv')"><i class="fa-solid fa-file-csv"></i> CSV</button>
+      <button type="button" class="btn btn-sm" onclick="adminExportPeople(window.__adminPeopleRole,'pdf')"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+    </div>
+  </section>
+  <div class="admin-people-controls">
+    <div class="admin-people-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="adminPeopleSearch" placeholder="Search by name or email…" oninput="filterAdminPeople()" /></div>
+    <label class="admin-people-sort"><span>Sort</span><select id="adminPeopleSort" onchange="setAdminPeopleSort(this.value)"><option value="az" ${window.__adminPeopleSort === "az" ? "selected" : ""}>A–Z</option><option value="za" ${window.__adminPeopleSort === "za" ? "selected" : ""}>Z–A</option></select></label>
   </div>`;
-  if (appeals && appeals.length) {
-    html += `<div class="accordion-section open" id="appealsAccordion" style="max-width:600px;margin-bottom:1.2rem;border-color:var(--warning);">
-      <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-flag"></i> Suspension appeals awaiting review (${appeals.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
-      <div class="accordion-body">
-        ${appeals.map((a) => `<div style="border-top:1px solid var(--border);padding:0.6rem 0;">
-          <strong>${esc(a.user_name || a.user_email)}</strong>
-          <p class="muted" style="margin:0.2rem 0;font-size:0.82rem;">Suspended for: ${esc(a.suspension_reason || "")}</p>
-          <p style="margin:0.3rem 0;">${esc(a.message)}</p>
-          <div class="flex" style="gap:0.5rem;">
-            <button class="btn btn-sm" onclick="approveAppeal('${a.user_id}')"><i class="fa-solid fa-check"></i> Approve &amp; unsuspend</button>
-            <button class="btn btn-sm btn-outline" onclick="denyAppealPrompt('${a.id}')"><i class="fa-solid fa-xmark"></i> Deny</button>
-          </div>
-        </div>`).join("")}
-      </div>
-    </div>`;
+  html += `<div class="accordion-section admin-people-summary" style="max-width:560px;margin:0 auto 1rem;">
+    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-chart-simple"></i> Summary</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
+    <div class="accordion-body"><table class="order-stats-table"><tr><td>Total accounts</td><td>${people.length}</td></tr><tr><td>Buyers</td><td>${counts.buyer}</td></tr><tr><td>Vendors</td><td>${counts.vendor}</td></tr><tr><td>Admins</td><td>${counts.admin}</td></tr></table></div>
+  </div>`;
+  if (appeals?.length) {
+    html += `<div class="accordion-section open" id="appealsAccordion" style="max-width:600px;margin:0 auto 1rem;border-color:var(--warning);"><button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-flag"></i> Suspension appeals awaiting review (${appeals.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button><div class="accordion-body">${appeals.map((a) => `<div style="border-top:1px solid var(--border);padding:.6rem 0;"><strong>${esc(a.user_name || a.user_email)}</strong><p class="muted" style="margin:.2rem 0;font-size:.82rem;">Suspended for: ${esc(a.suspension_reason || "")}</p><p style="margin:.3rem 0;">${esc(a.message)}</p><div class="flex" style="gap:.5rem;"><button class="btn btn-sm" onclick="approveAppeal('${a.user_id}')"><i class="fa-solid fa-check"></i> Approve &amp; unsuspend</button><button class="btn btn-sm btn-outline" onclick="denyAppealPrompt('${a.id}')"><i class="fa-solid fa-xmark"></i> Deny</button></div></div>`).join("")}</div></div>`;
   }
-  html += `<div class="admin-people-search-wrap"><input type="text" id="adminPeopleSearch" placeholder="Search by name or email…" oninput="filterAdminPeople()" /></div>`;
-  html += `<div class="table-wrap admin-people-table-wrap"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr>
-    <th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Joined</th><th>Status</th><th></th>
-  </tr></thead><tbody>`;
-  html += (people || []).map((p, idx) => `<tr>
-    <td class="admin-people-number">${idx + 1}</td>
-    <td>${esc(p.name || "-")}</td>
-    <td>${esc(p.email)}</td>
-    <td><span class="badge">${esc(p.role)}</span></td>
-    <td>${esc(p.city || "-")}</td>
-    <td>${new Date(p.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>
-    <td>${p.suspended_at ? `<span class="badge danger" title="${esc(p.suspended_reason || "")}">Suspended</span>` : `<span class="badge success">Active</span>`}${appealByUser[p.id] ? ` <span class="badge warning">Appealed</span>` : ""}</td>
-    <td>${p.role === "admin" ? "" : p.suspended_at
-      ? `<button class="btn btn-sm btn-outline" onclick="unsuspendUser('${p.id}','${esc(p.name || p.email)}')">Unsuspend</button>`
-      : `<button class="btn btn-sm btn-danger" onclick="suspendUserPrompt('${p.id}','${esc(p.name || p.email)}')">Suspend</button>`}</td>
-  </tr>`).join("");
-  html += `</tbody></table></div>`;
+  html += `<div class="table-wrap admin-people-table-wrap"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div>`;
+  html += `<p class="muted admin-people-hint"><i class="fa-solid fa-arrows-up-down-left-right"></i> Scroll the table vertically for more people and horizontally for wider columns.</p>`;
+  setTimeout(() => renderAdminPeopleRows(), 0);
   return html;
 }
+
+function getAdminPeopleFilteredRows() {
+  const role = window.__adminPeopleRole || "buyer";
+  const q = (byId("adminPeopleSearch")?.value || "").trim().toLowerCase();
+  const sort = window.__adminPeopleSort || "az";
+  let rows = (window.__adminPeopleAll || []).filter((p) => p.role === role);
+  if (q) rows = rows.filter((p) => `${p.name || ""} ${p.email || ""} ${p.city || ""}`.toLowerCase().includes(q));
+  rows.sort((a,b) => {
+    const aa = String(a.name || a.email || "").toLocaleLowerCase();
+    const bb = String(b.name || b.email || "").toLocaleLowerCase();
+    const cmp = aa.localeCompare(bb, undefined, { sensitivity: "base" });
+    return sort === "za" ? -cmp : cmp;
+  });
+  return rows;
+}
+
+function renderAdminPeopleRows() {
+  const tbody = byId("adminPeopleTable")?.querySelector("tbody");
+  if (!tbody) return;
+  const rows = getAdminPeopleFilteredRows();
+  tbody.innerHTML = rows.map((p, idx) => `<tr>
+    <td>${idx + 1}</td><td>${esc(p.name || "-")}</td><td>${esc(p.email || "-")}</td><td><span class="badge">${esc(p.role)}</span></td><td>${esc(p.city || "-")}</td>
+    <td>${p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB", {day:"numeric",month:"short",year:"numeric"}) : "-"}</td>
+    <td>${p.suspended_at ? `<span class="badge danger" title="${esc(p.suspended_reason || "")}">Suspended</span>` : `<span class="badge success">Active</span>`}</td>
+    <td>${p.role === "admin" ? "" : p.suspended_at ? `<button class="btn btn-sm btn-outline" onclick="unsuspendUser('${p.id}','${esc(p.name || p.email)}')">Unsuspend</button>` : `<button class="btn btn-sm btn-danger" onclick="suspendUserPrompt('${p.id}','${esc(p.name || p.email)}')">Suspend</button>`}</td>
+  </tr>`).join("") || `<tr><td colspan="8" class="muted" style="text-align:center;padding:1.2rem;">No ${window.__adminPeopleRole === "vendor" ? "vendors" : "buyers"} match your search.</td></tr>`;
+}
+
+function setAdminPeopleRole(role) {
+  window.__adminPeopleRole = role === "vendor" ? "vendor" : "buyer";
+  document.querySelectorAll(".admin-people-role-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.role === window.__adminPeopleRole));
+  renderAdminPeopleRows();
+}
+function setAdminPeopleSort(sort) {
+  window.__adminPeopleSort = sort === "za" ? "za" : "az";
+  renderAdminPeopleRows();
+}
+function filterAdminPeople() { renderAdminPeopleRows(); }
+
+function adminCsvEscape(value) { return `"${String(value ?? "").replace(/"/g, '""')}"`; }
+function adminPeopleRowsForExport(role) {
+  return (window.__adminPeopleAll || []).filter((p) => p.role === role).slice().sort((a,b) => String(a.name || a.email || "").localeCompare(String(b.name || b.email || ""), undefined, {sensitivity:"base"}));
+}
+async function adminExportPeople(role, format) {
+  const people = adminPeopleRowsForExport(role);
+  const label = role === "vendor" ? "vendors" : "buyers";
+  if (!people.length) { showToast(`No ${label} to export.`, "info"); return; }
+  const rows = people.map((p,i) => [i+1,p.name||"-",p.email||"-",p.role||"-",p.city||"-",p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}) : "-",p.suspended_at ? "Suspended" : "Active"]);
+  if (format === "csv") {
+    const csv = [["#","Name","Email","Role","City","Joined","Status"], ...rows].map(r => r.map(adminCsvEscape).join(",")).join("\r\n");
+    const blob = new Blob(["\ufeff",csv], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`levromart-${label}-${new Date().toISOString().slice(0,10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    showToast(`${label[0].toUpperCase()+label.slice(1)} CSV downloaded.`, "success"); return;
+  }
+  try {
+    const jsPDF = await ensureAdminJsPdf();
+    const doc = new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+    const margin=12, pageW=297, pageH=210, rowH=8, cols=[10,42,78,18,34,38,32];
+    let y=16;
+    const title=label[0].toUpperCase()+label.slice(1);
+    const drawHeader=()=>{ doc.setFontSize(14); doc.text(`Levromart — ${title}`,margin,y); y+=6; doc.setFontSize(8); doc.text(`Downloaded ${new Date().toLocaleString("en-GB")}`,margin,y); y+=7; doc.setFontSize(7); let x=margin; ["#","Name","Email","Role","City","Joined","Status"].forEach((h,i)=>{doc.setFont(undefined,"bold");doc.text(h,x,y);x+=cols[i];}); y+=4; doc.setFont(undefined,"normal"); };
+    drawHeader();
+    rows.forEach((r)=>{ if(y>pageH-12){doc.addPage();y=16;drawHeader();} let x=margin; r.forEach((v,i)=>{let text=String(v); const max=Math.max(10,cols[i]-2); const approx=Math.floor(max*1.65); if(text.length>approx) text=text.slice(0,Math.max(0,approx-1))+"…"; doc.text(text,x,y); x+=cols[i];}); y+=rowH; });
+    doc.save(`levromart-${label}-${new Date().toISOString().slice(0,10)}.pdf`); showToast(`${title} PDF downloaded.`, "success");
+  } catch(err) { showToast(err?.message || "Could not create PDF.", "error"); }
+}
+async function ensureAdminJsPdf() {
+  if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+  await new Promise((resolve,reject)=>{ const script=document.createElement("script"); script.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"; script.onload=resolve; script.onerror=()=>reject(new Error("PDF library could not be loaded. Check your connection and try again.")); document.head.appendChild(script); });
+  if (!window.jspdf?.jsPDF) throw new Error("PDF library unavailable.");
+  return window.jspdf.jsPDF;
+}
+
 async function suspendUserPrompt(userId, name) {
   const reason = await showTextPromptDialog(`Suspend ${name}`, "This reason is sent to the user as their suspension notice, so make it clear.", { placeholder: "Reason for suspension…", okLabel: "Suspend", danger: true });
   if (reason === null) return;
