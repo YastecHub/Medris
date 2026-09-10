@@ -22288,19 +22288,22 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
         shorter cards) and make the thumbnail a true square.
      ================================================================ -->
 <style id="levromart-mobile-feedback-20260910">
-/* --- 1) Vendor home cards: avatar + details side by side --- */
+/* --- 1) Vendor home cards: narrow, avatar-above-details "standing
+   rectangle" card. (This used to force a row layout here, which fought
+   the width-reduction rule lower in the cascade for the same element —
+   made vertical here too so the two rules agree instead of racing.) --- */
 #app .top-rated-vendors-scroll .homepage-vendor-card,
 #app .homepage-vendor-card.vendor-card{
   display:flex !important;
-  flex-direction:row !important;
+  flex-direction:column !important;
   flex-wrap:nowrap !important;
-  align-items:flex-start !important;
-  gap:.65rem !important;
+  align-items:center !important;
+  gap:.35rem !important;
 }
 #app .homepage-vendor-card .vendor-home-avatar{
-  flex:0 0 3.05rem !important;
-  width:3.05rem !important;
-  height:3.05rem !important;
+  flex:0 0 2.7rem !important;
+  width:2.7rem !important;
+  height:2.7rem !important;
   margin:0 !important;
 }
 #app .homepage-vendor-card .vendor-home-copy{
@@ -22308,6 +22311,8 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
   min-width:0 !important;
   display:flex !important;
   flex-direction:column !important;
+  align-items:center !important;
+  text-align:center !important;
 }
 
 /* --- 2) Browse-everything product/service/package cards --- */
