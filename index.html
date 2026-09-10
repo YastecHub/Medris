@@ -18692,7 +18692,7 @@ async function cancelMsgVoiceRecording() {
   if (input) { input.value = msgVoiceBaseText; autoGrowChatInput(input); input.scrollTop = input.scrollHeight; }
   renderMsgVoiceState();
 }
-function leviOfflineFallback(text) {
+async function leviOfflineFallback(text) {
   const q = leviNormaliseText(text);
   if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(q)) {
     const name = (profile?.name || '').trim().split(/\s+/)[0];
@@ -18710,7 +18710,17 @@ function leviOfflineFallback(text) {
     navigate('vendors');
     return 'Done - here are the vendors.';
   }
-  return `I'm Levi. I can help with Levromart products, vendors, orders, your cart, wishlist, and how the marketplace works. Try asking me what to buy, where to find something, or what you want me to do in the app.`;
+  // The smart backend is down/unreachable, but a plain product search
+  // doesn't need it -- try that before giving up, so an outage doesn't
+  // turn every product question into the same unhelpful stock sentence.
+  try {
+    const result = await resolveLeviProduct(q);
+    if (result?.product) {
+      navigate("productDetail", { productId: result.product.id });
+      return `The smart assistant is unreachable right now, but I found ${result.product.name}${result.product.vendor?.business_name ? ` from ${result.product.vendor.business_name}` : ""} — opening it for you.`;
+    }
+  } catch (_) {}
+  return `I can't reach Levromart's smart assistant right now (connection or server issue) — that's why this reply is limited. I can still open your cart, wishlist, orders, vendors, or your shop directly, or you can try your question again in a moment.`;
 }
 
 async function fetchLeviReply(payload) {
@@ -18832,7 +18842,7 @@ async function sendAiChatMessage() {
   } catch (err) {
     byId("aiChatTyping")?.remove();
     console.error("Levi chat error:", err);
-    const fallback = leviOfflineFallback(text);
+    const fallback = await leviOfflineFallback(text);
     appendAiChatMessage("assistant", fallback, wasVoice);
     persistAiMessage("assistant", fallback);
   }
@@ -19001,6 +19011,44 @@ async function resolveLeviLocalAction(text) {
   }
   if (/^(open|show|go to|take me to)\s+(edit\s+business\s+profile|business\s+profile)$/.test(q) && vendor) {
     closeLeviIfOpen(); await navigate("vendorEditProfile"); return { handled: true, reply: "Done - I opened your business profile editor." };
+  }
+
+  // Deterministic "I need/want X" -> find it and take the person straight
+  // there. This is intentionally a local DB lookup, not a call to the AI
+  // model -- so "I need shoe" behaves the same and just as fast whether the
+  // Gemini-backed /api/chat is up, slow, or unreachable. If nothing in the
+  // marketplace matches at all, send them to post a request instead of
+  // leaving them with a dead end.
+  const needMatch =
+    q.match(/^(?:i\s*(?:really\s+)?)?(?:need|want|require)(?:\s+to\s+(?:buy|rent|get|find))?\s+(?:a\s+|an\s+|some\s+)?(.+)$/) ||
+    q.match(/\b(?:looking|searching)\s+for\s+(?:a\s+|an\s+|some\s+)?(.+)$/) ||
+    q.match(/\bdo you (?:have|sell)\s+(?:a\s+|an\s+|any\s+)?(.+?)\??$/) ||
+    q.match(/\bwhere (?:can|do) i (?:get|find|buy|rent)\s+(?:a\s+|an\s+)?(.+?)\??$/) ||
+    q.match(/^(?:find|get)\s+me\s+(?:a\s+|an\s+|some\s+)?(.+)$/);
+  if (needMatch) {
+    const target = (needMatch[1] || "").trim().replace(/[?!.]+$/, "");
+    // Guard against phrasing that shares this shape but isn't a product
+    // ask ("I need to open my cart", "I need help") -- those either match
+    // a more specific branch above already, or aren't a product at all.
+    const nonProduct = /^(to|help|assistance|advice|someone|somebody|a hand|a favou?r)\b/;
+    if (target.length >= 2 && target.length <= 60 && !nonProduct.test(target)) {
+      const result = await resolveLeviProduct(target);
+      if (result.product && (result.exact || (result.matches || []).length === 1)) {
+        closeLeviIfOpen();
+        await navigate("productDetail", { productId: result.product.id });
+        return { handled: true, reply: `Here's ${result.product.name}${result.product.vendor?.business_name ? ` from ${result.product.vendor.business_name}` : ""} — take a look.` };
+      }
+      if ((result.matches || []).length > 1) {
+        closeLeviIfOpen();
+        await navigate("productDetail", { productId: result.matches[0].id });
+        const others = result.matches.slice(1, 3).map((p) => p.name).join(", ");
+        return { handled: true, reply: `I found a few matches for "${target}" — opening ${result.matches[0].name} first${others ? ` (also: ${others})` : ""}.` };
+      }
+      closeLeviIfOpen();
+      await navigate("requestEquipment");
+      setTimeout(() => { const el = byId("reqTitle"); if (el && !el.value) el.value = target.charAt(0).toUpperCase() + target.slice(1); }, 150);
+      return { handled: true, reply: `I couldn't find "${target}" on Levromart right now, so I've opened a request for it — add any details and post it for nearby vendors to offer on.` };
+    }
   }
 
 
@@ -22548,12 +22596,22 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     height: auto !important;
   }
   #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card {
+    /* A fixed aspect-ratio + overflow:hidden was clipping the cart button
+       and "Your listing" badge on some cards -- the ratio was tuned to the
+       shortest possible card content, not the tallest. Using min-height
+       instead of a hard aspect-ratio keeps the compact, near-square look
+       for most cards while letting a card with more to show (rental price
+       line, longer delivery text) simply grow a little taller instead of
+       having its bottom row sliced off. overflow is visible so nothing is
+       ever cropped.
+    */
     height: auto !important;
-    aspect-ratio: 0.86 / 1 !important;
+    min-height: 12.6rem !important;
+    aspect-ratio: unset !important;
     display: flex !important;
     flex-direction: column !important;
     padding: 0.5rem !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
   #app .grid:has(> .product-card-wrap) .product-img {
     height: 5.4rem !important;
@@ -22571,48 +22629,65 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
   #app .grid:has(> .product-card-wrap) .product-card-delivery-wrap .product-delivery-summary {
     -webkit-line-clamp: 1 !important;
   }
+  #app .grid:has(> .product-card-wrap) .product-card-action-row {
+    min-height: 2.1rem !important;
+    margin-top: auto !important;
+    display: flex !important;
+    align-items: flex-end !important;
+  }
   #app .grid:has(> .product-card-wrap) .card-cart-btn,
   #app .grid:has(> .product-card-wrap) .card-service-btn,
   #app .grid:has(> .product-card-wrap) .own-listing-badge {
-    margin-top: auto !important; /* pinned to the card's own bottom, not a stretched one */
+    position: static !important; /* was absolutely positioned in some rules, which is how it got clipped by an ancestor's overflow */
   }
 }
 
 /* ==========================================================================
-   TOP-RATED VENDORS — narrower, centered card. The row previously used a
-   left-aligned avatar+text layout in a 14rem-wide card, which for vendors
-   with a short name/no bio left a lot of empty space on the right. Stacking
-   the content and centering it in a narrower card removes that dead space.
+   TOP-RATED VENDORS — narrower, centered "standing rectangle" card.
+   NOTE: an earlier, higher-specificity rule at #app .top-rated-vendors-scroll
+   .homepage-vendor-card (defined near the top of the stylesheet, width
+   15.5rem, row layout) was winning over every later attempt to narrow this
+   card, because CSS specificity beats source order when both have
+   !important. Matching that same #app-prefixed specificity here (not just
+   .top-rated-vendors-scroll .homepage-vendor-card) is what actually makes
+   this override take effect.
    ========================================================================== */
-.top-rated-vendors-scroll .homepage-vendor-card {
-  flex: 0 0 9.5rem !important;
-  width: 9.5rem !important;
-  min-width: 9.5rem !important;
-  min-height: 0 !important;
-  padding: 0.85rem 0.6rem !important;
+#app .top-rated-vendors-scroll .homepage-vendor-card {
+  flex: 0 0 7.6rem !important;
+  width: 7.6rem !important;
+  min-width: 7.6rem !important;
+  min-height: 9.6rem !important;
+  padding: 0.8rem 0.5rem !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   text-align: center !important;
-  gap: 0.4rem !important;
+  gap: 0.35rem !important;
 }
-.top-rated-vendors-scroll .vendor-home-copy {
+#app .vendor-home-avatar {
+  width: 2.7rem !important;
+  height: 2.7rem !important;
+  min-width: 2.7rem !important;
+}
+#app .vendor-home-copy {
   align-items: center !important;
   text-align: center !important;
   width: 100% !important;
 }
-.top-rated-vendors-scroll .vendor-home-copy > strong {
+#app .vendor-home-copy > strong {
   white-space: normal !important;
   display: -webkit-box !important;
   -webkit-box-orient: vertical !important;
   -webkit-line-clamp: 2 !important;
   overflow: hidden !important;
   line-height: 1.2 !important;
+  font-size: 0.8rem !important;
 }
-.top-rated-vendors-scroll .vendor-home-meta {
+#app .vendor-home-meta {
   justify-content: center !important;
+  flex-wrap: wrap !important;
 }
-.top-rated-vendors-scroll .vendor-home-known {
+#app .vendor-home-known {
   white-space: normal !important;
   text-align: center !important;
   -webkit-line-clamp: 2 !important;
