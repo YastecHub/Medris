@@ -19,6 +19,7 @@
 <link id="faviconLink" rel="icon" type="image/webp" href="">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#f5f7fa">
+<meta name="levromart-build" content="2026-09-10-nav-request-precision-2">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -5407,6 +5408,149 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 /* Do not let a final app child create a bottom margin gap before the footer. */
 #app > *:last-child{margin-bottom:0 !important;}
 </style>
+
+<style id="levromart-20260910-precision-nav-request-pass">
+/* VENDOR BOTTOM NAV — exactly 3 destinations on each side of +. */
+@media(max-width:720px){
+  .bottom-nav.has-add{
+    grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr) !important;
+    column-gap:.15rem !important;
+  }
+  .bottom-nav.has-add .bn-group{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:.08rem !important;
+  }
+  .bottom-nav.has-add .bn-group .bottom-nav-item{
+    width:100% !important; min-width:0 !important; padding:.28rem .04rem !important;
+    justify-content:center !important; align-items:center !important;
+  }
+  .bottom-nav.has-add .bn-group .bottom-nav-item .bn-icon{font-size:1.05rem !important;}
+  .bottom-nav.has-add .bn-group .bottom-nav-item span:last-child{
+    font-size:.58rem !important; line-height:1.08 !important; text-align:center !important;
+  }
+}
+
+/* REQUEST TABS — match the product/service/packages segmented-tab language. */
+#app .vendor-request-tabs{
+  width:min(100%,520px) !important;
+  margin:1rem auto 1.1rem !important;
+  padding:.28rem !important;
+  display:flex !important;
+  align-items:stretch !important;
+  justify-content:stretch !important;
+  gap:.25rem !important;
+  overflow:visible !important;
+  border:1px solid var(--border) !important;
+  border-radius:999px !important;
+  background:var(--card) !important;
+  box-shadow:0 2px 10px color-mix(in srgb,var(--text) 5%,transparent) !important;
+}
+#app .vendor-request-tab{
+  flex:1 1 0 !important;
+  min-width:0 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  background:transparent !important;
+  color:var(--text-muted) !important;
+  padding:.62rem .75rem !important;
+  font:inherit !important;
+  font-size:.8rem !important;
+  font-weight:700 !important;
+  line-height:1.1 !important;
+  text-align:center !important;
+  cursor:pointer !important;
+  white-space:nowrap !important;
+  transition:background-color .16s ease,color .16s ease,box-shadow .16s ease !important;
+}
+#app .vendor-request-tab.active{
+  background:var(--primary) !important;
+  color:#fff !important;
+  border:0 !important;
+  box-shadow:0 6px 18px color-mix(in srgb,var(--primary) 24%,transparent) !important;
+}
+#app .vendor-request-tab span{
+  background:color-mix(in srgb,var(--primary) 14%,transparent) !important;
+  color:var(--primary) !important;
+}
+#app .vendor-request-tab.active span{background:rgba(255,255,255,.20) !important;color:#fff !important;}
+@media(max-width:520px){
+  #app .vendor-request-tabs{width:100% !important;}
+  #app .vendor-request-tab{font-size:.73rem !important;padding:.58rem .45rem !important;}
+}
+
+/* INTEREST → OFFER COMPOSER. */
+#app .vendor-interest-actions{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:.55rem !important;
+  margin:.75rem 0 .6rem !important;
+}
+#app .vendor-interest-actions .vendor-interest-btn,
+#app .vendor-interest-actions .vendor-not-interest-btn{
+  min-height:48px !important;
+  justify-content:center !important;
+  border-radius:15px !important;
+}
+#app .vendor-interest-actions .vendor-interest-btn.active{
+  background:var(--primary) !important; color:#fff !important; border-color:var(--primary) !important;
+}
+#app .vendor-offer-compose{
+  border-top:1px solid var(--border) !important;
+  margin-top:.35rem !important;
+  padding-top:.9rem !important;
+  animation:levroOfferReveal .2s ease-out !important;
+}
+#app .vendor-offer-compose-heading{
+  display:flex !important; flex-direction:column !important; gap:.12rem !important; margin-bottom:.7rem !important;
+}
+#app .vendor-offer-compose-heading strong{font-size:.95rem !important;}
+#app .vendor-offer-compose-heading .muted{font-size:.75rem !important;}
+#app .vendor-offer-fields textarea,
+#app textarea[id^="offerMsg-"]{
+  min-height:150px !important; height:150px !important;
+  padding:.8rem !important;
+}
+@keyframes levroOfferReveal{from{opacity:.1;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* VENDOR DIRECTORY — one compact type tab row + a clean expandable filter control. */
+#app .vendor-listing-tabs{
+  display:flex !important; gap:.4rem !important; overflow-x:auto !important; overflow-y:hidden !important;
+  flex-wrap:nowrap !important; scrollbar-width:none !important;
+  margin:.75rem 0 .7rem !important; padding:.15rem .05rem .25rem !important;
+}
+#app .vendor-listing-tab{
+  flex:0 0 auto !important; border:1px solid var(--border) !important;
+  background:var(--card) !important; color:var(--text-muted) !important;
+  border-radius:999px !important; padding:.55rem .9rem !important;
+  font:inherit !important; font-size:.8rem !important; font-weight:700 !important;
+}
+#app .vendor-listing-tab.active{
+  background:var(--primary) !important; color:#fff !important; border-color:var(--primary) !important;
+}
+#app .vendors-directory-toolbar{
+  display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; gap:.55rem !important; align-items:center !important;
+}
+#app .vendors-directory-toolbar input{margin:0 !important; min-width:0 !important;}
+#app .vendors-filters-toggle{
+  min-height:44px !important; border-radius:999px !important; white-space:nowrap !important;
+}
+#app .vendors-filters-toggle.active{background:color-mix(in srgb,var(--primary) 10%,var(--card)) !important;color:var(--primary) !important;}
+#app .vendors-filters-panel{
+  margin:.55rem 0 .85rem !important; padding:.8rem !important;
+  border:1px solid var(--border) !important; border-radius:16px !important;
+  background:color-mix(in srgb,var(--card) 94%,var(--primary) 6%) !important;
+  box-shadow:var(--shadow) !important;
+}
+#app .vendors-filters-panel.hidden{display:none !important;}
+#app .vendors-filter-grid{gap:.6rem !important;}
+
+/* Keep the app content compact; no artificial empty runway before the footer. */
+body > .container#app{min-height:0 !important;}
+#app > *:last-child{margin-bottom:0 !important;}
+.site-footer{margin-top:.25rem !important;}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -8915,6 +9059,7 @@ function renderBottomNav() {
   // "Home" (the customer storefront) isn't a tab they need taking up space.
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
   const items = isVendorUser ? [] : [{ icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "navigate('home')", view: "home" }];
+  const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "navigate('home')", view: "home" };
   const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors')", view: "vendors" };
   const messagesTab = { icon: "<i class='fa-solid fa-comment-dots'></i>", label: "Messages", action: "navigate('messages')", view: "messages", badge: unreadMessageCount };
   if (session && profile?.role === "admin") {
@@ -8923,6 +9068,9 @@ function renderBottomNav() {
     items.push({ icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" });
   } else if (session) {
     if (vendor) {
+      // Vendor priority around the centre + button: Home, Vendors, Requests | Messages, Orders, My Shop.
+      // Keep exactly three destinations on each side so the centre button stays optically balanced.
+      items.push(homeTab);
       items.push(vendorsTab);
       items.push({ icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 });
       items.push(messagesTab);
@@ -14195,20 +14343,21 @@ async function renderVendorRequests() {
       </div>
       ${r.description ? `<p class="muted vendor-request-description">${esc(r.description)}</p>` : ""}
       <p class="muted vendor-request-meta">${[r.city, r.request_type !== "buy" && r.needed_from ? r.needed_from + " → " + (r.needed_to || "") : ""].filter(Boolean).map(esc).join(" · ")}</p>
-      <div class="vendor-interest-row">
-        <button type="button" class="btn btn-sm vendor-interest-btn ${interest === "interested" ? "active" : ""}" onclick="setVendorRequestInterest('${r.id}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
-        <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
-      </div>
       ${mine
         ? `<div class="vendor-offer-status"><i class="fa-solid fa-circle-check"></i> You already sent an offer · <strong>${esc(mine.status || "pending")}</strong></div>`
-        : `<div class="vendor-offer-compose">
+        : `<div class="vendor-interest-actions">
+             <button type="button" class="btn vendor-interest-btn ${interest === "interested" ? "active" : ""}" aria-pressed="${interest === "interested" ? "true" : "false"}" onclick="setVendorRequestInterest('${r.id}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
+             <button type="button" class="btn btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
+           </div>
+           <div id="vendorOfferCompose-${r.id}" class="vendor-offer-compose ${interest === "interested" ? "" : "hidden"}">
+             <div class="vendor-offer-compose-heading"><strong>Send an offer</strong><span class="muted">Tell ${esc(r.buyer_name || "the customer")} what you can provide.</span></div>
              ${matches.length ? `<select id="offerProduct-${r.id}" onchange="applyOfferProductPrice('${r.id}','${r.request_type}')">
                <option value="">Quote a custom price…</option>
                ${matches.map((p) => `<option value="${p.id}">Use my "${esc(p.name)}": ${p.sale_price != null ? naira(p.sale_price) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</option>`).join("")}
              </select>` : ""}
              <div class="vendor-offer-fields">
                <input type="number" id="offerPrice-${r.id}" placeholder="Price (₦)" inputmode="decimal" />
-               <textarea id="offerMsg-${r.id}" rows="3" placeholder="Message to the customer (e.g. availability, delivery time, or other details)…"></textarea>
+               <textarea id="offerMsg-${r.id}" rows="5" placeholder="Message to the customer (availability, delivery time, condition, what is included, etc.)…"></textarea>
              </div>
              <button class="btn vendor-send-offer-btn" type="button" onclick="sendOffer('${r.id}')"><i class="fa-solid fa-paper-plane"></i> Send offer</button>
              ${deliveryFee > 0 ? `<p class="muted vendor-offer-note"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown to the customer automatically when delivery is needed.</p>` : ""}
@@ -14256,8 +14405,18 @@ async function setVendorRequestInterest(requestId, state) {
   }
   try { localStorage.setItem(interestKey, "interested"); } catch (_) {}
   const card = byId(`vendorRequestCard-${requestId}`);
-  card?.querySelector(".vendor-interest-btn")?.classList.add("active");
-  showToast("Request marked as interested.", "success");
+  if (card) {
+    const interestBtn = card.querySelector(".vendor-interest-btn");
+    interestBtn?.classList.add("active");
+    interestBtn?.setAttribute("aria-pressed", "true");
+    const composer = byId(`vendorOfferCompose-${requestId}`);
+    if (composer) {
+      composer.classList.remove("hidden");
+      requestAnimationFrame(() => composer.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+      setTimeout(() => byId(`offerPrice-${requestId}`)?.focus({ preventScroll: true }), 180);
+    }
+  }
+  showToast("Request marked as interested. Send your offer below.", "success");
 }
 
 function applyOfferProductPrice(requestId, requestType) {
@@ -18402,6 +18561,22 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
   }
 }
 </style>
+
+<script id="levromart-20260910-request-interaction-defensive-patch">
+(function(){
+  const original = window.setVendorRequestInterest;
+  if(typeof original !== 'function' || window.__levroRequestInterestPatched) return;
+  window.__levroRequestInterestPatched = true;
+  window.setVendorRequestInterest = async function(requestId, state){
+    await original.apply(this, arguments);
+    if(state === 'interested') {
+      const composer = document.getElementById(`vendorOfferCompose-${requestId}`);
+      if(composer) composer.classList.remove('hidden');
+    }
+  };
+})();
+</script>
+
 </body></html>`);
   w.document.close();
 }
