@@ -5360,6 +5360,53 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
   .admin-link-empty{text-align:center;padding:2rem 1rem;color:var(--text-muted)}
   @media(max-width:560px){.admin-link-row{grid-template-columns:1fr}.admin-link-copy-btn{width:100%}.admin-link-url{white-space:normal;overflow-wrap:anywhere}}
 </style>
+<style id="levromart-user-fixes-2026-09-10-v2">
+/* KENNIS REQUESTED FIXES — V2. Kept inside <head> so these rules are parsed. */
+body > .container#app{flex:0 0 auto !important;min-height:0 !important;margin-bottom:0 !important;padding-bottom:1.25rem !important;}
+body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;padding-top:.8rem !important;padding-bottom:.8rem !important;}
+@media(max-width:720px){body > .container#app{padding-bottom:1.5rem !important;}}
+#app .request-equipment-page{padding-bottom:1rem !important;}
+
+/* Browse Everything → Packages: one wide card, no dead right-hand column. */
+#app #productGrid:has(> .package-listing-card),#app #productGrid:has(> .card.package-listing-card){display:grid !important;grid-template-columns:minmax(0,1fr) !important;width:100% !important;gap:.75rem !important;align-items:start !important;}
+#app #productGrid > .package-listing-card,#app #productGrid > .card.package-listing-card{width:100% !important;max-width:none !important;min-width:0 !important;height:auto !important;min-height:0 !important;margin:0 !important;padding:.8rem !important;}
+#app #productGrid > .package-listing-card .package-gallery,#app #productGrid > .card.package-listing-card .package-gallery{width:100% !important;height:clamp(220px,48vw,360px) !important;min-height:220px !important;overflow:hidden !important;border-radius:14px !important;}
+#app #productGrid > .package-listing-card .package-photo-main,#app #productGrid > .card.package-listing-card .package-photo-main,#app #productGrid > .package-listing-card .package-gallery-placeholder,#app #productGrid > .card.package-listing-card .package-gallery-placeholder{width:100% !important;height:100% !important;min-height:0 !important;object-fit:cover !important;}
+#app #productGrid > .package-listing-card .package-card-title-row{margin:.55rem 0 .2rem !important;}
+#app #productGrid > .package-listing-card .package-card-description,#app #productGrid > .package-listing-card .package-card-includes,#app #productGrid > .package-listing-card .package-card-vendor,#app #productGrid > .package-listing-card .package-card-delivery{margin:.22rem 0 !important;line-height:1.3 !important;}
+
+/* Admin People: both vertical and horizontal touch scrolling. */
+#app .admin-people-table-wrap{overflow-x:auto !important;overflow-y:auto !important;max-height:min(62vh,520px) !important;height:auto !important;-webkit-overflow-scrolling:touch !important;touch-action:pan-x pan-y !important;overscroll-behavior:contain !important;}
+
+/* Login mark: subtle green halo so the white centre is visible on light backgrounds. */
+#loginModal .login-modal-logo{background:radial-gradient(circle,rgba(16,185,129,.16) 0 38%,rgba(16,185,129,0) 70%) !important;border-radius:50% !important;padding:.15rem !important;filter:drop-shadow(0 0 5px rgba(16,185,129,.34)) drop-shadow(0 0 14px rgba(16,185,129,.18)) !important;}
+
+/* Get-the-app / brand spinner arcs are white. */
+.brand-spinner-arc-1,.brand-spinner-arc-2{stroke:#fff !important;}
+
+/* Post Request must remain tappable above the fixed mobile navigation. */
+#app #postEquipmentRequestBtn{position:relative !important;z-index:20 !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;min-height:46px !important;cursor:pointer !important;pointer-events:auto !important;touch-action:manipulation !important;}
+#app #postEquipmentRequestBtn:disabled{pointer-events:none !important;}
+
+/* Vendor type tabs + compact expandable filter control. */
+#app .vendor-listing-tabs{display:flex !important;overflow-x:auto !important;overflow-y:hidden !important;flex-wrap:nowrap !important;scrollbar-width:none !important;}
+#app .vendor-listing-tabs::-webkit-scrollbar{display:none !important;}
+#app .vendors-directory-toolbar{display:flex !important;align-items:center !important;gap:.55rem !important;}
+#app .vendors-directory-toolbar input{flex:1 1 auto !important;min-width:0 !important;}
+#app .vendors-filters-toggle{flex:0 0 auto !important;}
+#app .vendors-filters-panel.hidden{display:none !important;}
+#app .vendors-filters-panel:not(.hidden){display:block !important;}
+#app .vendors-filter-grid{display:grid !important;gap:.6rem !important;}
+@media(min-width:721px){#app .vendors-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr)) !important;}}
+
+/* Vendor offer message box: deliberately larger. */
+#app .vendor-offer-fields textarea,#app textarea[id^="offerMsg-"]{min-height:130px !important;height:130px !important;resize:vertical !important;line-height:1.45 !important;}
+#app .vendor-interest-row{display:flex !important;gap:.5rem !important;flex-wrap:wrap !important;}
+#app .vendor-interest-btn,#app .vendor-not-interest-btn{min-height:42px !important;}
+
+/* Do not let a final app child create a bottom margin gap before the footer. */
+#app > *:last-child{margin-bottom:0 !important;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -14056,7 +14103,7 @@ async function renderRequestEquipment() {
         <label>Needed from</label><input type="date" id="reqFrom" style="width:100%;" />
         <label>Needed to</label><input type="date" id="reqTo" style="width:100%;" />
       </div>
-      <button class="btn" style="margin-top:0.6rem;" onclick="submitEquipmentRequest()">Post request</button>
+      <button type="button" class="btn" id="postEquipmentRequestBtn" style="margin-top:0.6rem;" aria-label="Post request">Post request</button>
     </div>
     <div class="accordion-section" id="myRequestsAccordion" style="margin-top:1.5rem;">
       <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-list-check"></i> Your requests${myRequests?.length ? ` (${myRequests.length})` : ""}</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
@@ -23932,6 +23979,39 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
   background: var(--bg) !important;
 }
 </style>
+<script id="levromart-user-fixes-2026-09-10-request-handler">
+(function(){
+  "use strict";
+  /* Capture the tap at document level because the request page is rendered dynamically. */
+  document.addEventListener("click",function(e){
+    const btn=e.target?.closest?.("#postEquipmentRequestBtn");
+    if(!btn || btn.dataset.levroHandled==="1") return;
+    btn.dataset.levroHandled="1";
+    e.preventDefault();
+    e.stopPropagation();
+    try{
+      const result=window.submitEquipmentRequest?.();
+      if(result?.finally) result.finally(()=>{try{delete btn.dataset.levroHandled;}catch(_){}});
+      else setTimeout(()=>{try{delete btn.dataset.levroHandled;}catch(_){}},500);
+    }catch(err){
+      try{delete btn.dataset.levroHandled;}catch(_){}
+      console.error("[Levromart] Post request click failed:",err);
+    }
+  },true);
+  window.__levroEnsureVendorRequestsLabel=function(){
+    document.querySelectorAll("#profilePanel .profile-nav-link").forEach(function(link){
+      const text=(link.querySelector(".profile-nav-text")?.textContent||"").trim().toLowerCase();
+      if(text==="customer requests"){
+        const span=link.querySelector(".profile-nav-text");
+        if(span) span.textContent="Requests";
+        link.setAttribute("data-profile-label","Requests");
+      }
+    });
+  };
+  setTimeout(window.__levroEnsureVendorRequestsLabel,100);
+  setTimeout(window.__levroEnsureVendorRequestsLabel,600);
+})();
+</script>
 </body>
 </html>
 
