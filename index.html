@@ -6197,10 +6197,10 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 
 <div class="container" id="app"></div>
 
-<footer class="site-footer">
-  <a href="#" onclick="navigate('terms');return false;">Terms of Service</a>
-  <a href="#" onclick="navigate('privacy');return false;">Privacy Policy</a>
-  <a href="#" onclick="navigate('refundPolicy');return false;">Refund &amp; Cancellation</a>
+<footer class="site-footer" aria-hidden="true">
+  <a href="#" tabindex="-1" onclick="navigate('terms');return false;">Terms of Service</a>
+  <a href="#" tabindex="-1" onclick="navigate('privacy');return false;">Privacy Policy</a>
+  <a href="#" tabindex="-1" onclick="navigate('refundPolicy');return false;">Refund &amp; Cancellation</a>
   <span class="muted" style="font-size:0.78rem;">© <span id="footerYear"></span> Levromart</span>
 </footer>
 
@@ -6512,6 +6512,11 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <div><span>Assistant</span><strong>Levi</strong></div>
       <div><span>Year</span><strong id="aboutYear"></strong></div>
       <div><span>Platform</span><strong>Web app / PWA</strong></div>
+    </div>
+    <div class="about-legal-links" aria-label="Legal information">
+      <button type="button" onclick="closeLevromartAbout();navigate('terms')"><i class="fa-regular fa-file-lines"></i><span>Terms &amp; Conditions</span><i class="fa-solid fa-chevron-right"></i></button>
+      <button type="button" onclick="closeLevromartAbout();navigate('privacy')"><i class="fa-solid fa-shield-halved"></i><span>Privacy Policy</span><i class="fa-solid fa-chevron-right"></i></button>
+      <button type="button" onclick="closeLevromartAbout();navigate('refundPolicy')"><i class="fa-solid fa-receipt"></i><span>Refund &amp; Cancellation</span><i class="fa-solid fa-chevron-right"></i></button>
     </div>
     <button class="btn" style="width:100%;justify-content:center;margin-top:1rem;" onclick="closeLevromartAbout()">Done</button>
   </div>
@@ -10633,7 +10638,8 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(productCardHtml).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll">${topVendors.map(vendorCardHtml).join("")}</div>`;
-  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="flex" style="margin-bottom:1.2rem;"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" /><select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
+  window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
+  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" /><select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><div class="browse-category-picker"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
   return html;
 }
@@ -10642,10 +10648,61 @@ function renderOfflineHomeFromCache(cache, options = {}) {
 let homeSearchMotionReady = false;
 let homeSearchMotionRaf = 0;
 let homeSearchMotionIdle = 0;
+let homeSearchMotionLastY = 0;
 function initHomeSearchScrollMotion(){
-  // Intentionally disabled. Home search stays in normal document flow
-  // immediately after the promotional carousel and never becomes sticky.
   resetHomeSearchScrollMotion();
+  const wrap = document.querySelector("#app .levro-home-search-wrap");
+  const search = wrap?.querySelector(".hero-search");
+  if (!wrap || !search) return;
+
+  // Keep the homepage search available while the document scrolls. It becomes
+  // sticky beneath the fixed app header, then contracts quietly while the
+  // user is actively scrolling and returns to full prominence when scrolling
+  // settles. This is deliberately limited to the homepage search.
+  wrap.classList.add("home-search-pinned");
+  search.classList.add("home-search-pinned");
+  homeSearchMotionLastY = window.scrollY || 0;
+  homeSearchMotionReady = true;
+
+  const onScroll = () => {
+    if (!homeSearchMotionReady) return;
+    if (homeSearchMotionRaf) return;
+    homeSearchMotionRaf = requestAnimationFrame(() => {
+      homeSearchMotionRaf = 0;
+      const y = window.scrollY || 0;
+      const moving = Math.abs(y - homeSearchMotionLastY) > 0.5;
+      homeSearchMotionLastY = y;
+      if (!moving || document.activeElement?.closest(".hero-search")) return;
+
+      search.classList.add("home-search-scrolling");
+      wrap.classList.add("home-search-scrolling");
+      document.body.classList.add("home-search-active");
+      clearTimeout(homeSearchMotionIdle);
+      homeSearchMotionIdle = setTimeout(() => {
+        if (!document.activeElement?.closest(".hero-search")) {
+          search.classList.remove("home-search-scrolling");
+          wrap.classList.remove("home-search-scrolling");
+        }
+        document.body.classList.remove("home-search-active");
+      }, 220);
+    });
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  search.addEventListener("focus", () => {
+    clearTimeout(homeSearchMotionIdle);
+    search.classList.remove("home-search-scrolling");
+    wrap.classList.remove("home-search-scrolling");
+  });
+  search.addEventListener("blur", () => {
+    homeSearchMotionLastY = window.scrollY || 0;
+  });
+  wrap._homeSearchScrollCleanup = () => {
+    window.removeEventListener("scroll", onScroll);
+    clearTimeout(homeSearchMotionIdle);
+    if (homeSearchMotionRaf) cancelAnimationFrame(homeSearchMotionRaf);
+    homeSearchMotionRaf = 0;
+  };
 }
 function resetHomeSearchScrollMotion(){
   homeSearchMotionReady = false;
@@ -10653,6 +10710,7 @@ function resetHomeSearchScrollMotion(){
   homeSearchMotionRaf = 0;
   clearTimeout(homeSearchMotionIdle);
   homeSearchMotionIdle = 0;
+  document.querySelectorAll(".levro-home-search-wrap").forEach(el=>el._homeSearchScrollCleanup?.());
   document.body.classList.remove("home-search-active");
   document.querySelectorAll(".home-search-scrolling,.home-search-pinned").forEach(el=>el.classList.remove("home-search-scrolling","home-search-pinned"));
 }
@@ -11185,6 +11243,7 @@ async function renderHome() {
     packageQuery,
     browseCatalogQuery,
   ]);
+  window.__homeBrowseCatalog = Array.isArray(browseProducts) ? browseProducts : [];
   const homepageCarouselSlides = await loadHomepageCarouselSlides();
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
@@ -11246,10 +11305,13 @@ async function renderHome() {
 
   html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
   html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" data-tab="products" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-box"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" data-tab="services" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" data-tab="packages" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button></div>`;
-  html += `<div class="flex" style="margin-bottom:1.2rem;">
-    <input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" style="max-width:300px;" />
+  html += `<div class="browse-filter-toolbar">
+    <input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" />
     <select id="filterListing" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select>
-    <select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
+    <div class="browse-category-picker">
+      <input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" />
+      <select id="filterCategory" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
+    </div>
   </div>`;
   html += `<div class="grid" id="productGrid"><p class="muted">Loading…</p></div>`;
   html += `<div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
@@ -11535,7 +11597,24 @@ async function renderHomePackageTab() {
     ? shown.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")
     : `<div class="empty-state" style="grid-column:1/-1;"><i class="fa-solid fa-box-open" style="display:block;font-size:1.5rem;margin-bottom:.5rem;"></i>No packages${q ? ` match “${esc(q)}”` : " available"}.</div>`;
 }
+function filterBrowseCategoryOptions() {
+  const input = byId("filterCategorySearch");
+  const select = byId("filterCategory");
+  if (!input || !select) return;
+  if (!select._allCategoryOptions) {
+    select._allCategoryOptions = [...select.options].map(o => ({ value:o.value, label:o.textContent }));
+  }
+  const q = String(input.value || "").trim().toLowerCase();
+  const currentValue = select.value || "";
+  const all = select._allCategoryOptions;
+  const filtered = all.filter((o, i) => i === 0 || !q || o.label.toLowerCase().includes(q));
+  select.innerHTML = filtered.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("");
+  select.value = filtered.some(o => String(o.value) === String(currentValue)) ? currentValue : "";
+}
+
+let homeFilterGeneration = 0;
 async function filterHomeProducts() {
+  const generation = ++homeFilterGeneration;
   const search = byId("searchInput")?.value.trim() || "";
   const listing = byId("filterListing")?.value || "";
   const catId = byId("filterCategory")?.value || "";
@@ -11566,9 +11645,11 @@ async function filterHomeProducts() {
   let matchingIds = null;
   if (search) {
     const { data: idRows } = await sb.rpc("search_product_ids", { p_query: search });
+    if (generation !== homeFilterGeneration || !byId("productGrid")) return;
     matchingIds = (idRows || []).map((r) => r.id);
     if (matchingIds.length === 0) {
       const fallback = await fetchFallbackProducts();
+      if (generation !== homeFilterGeneration) return;
       grid.innerHTML = noResultsWithFallbackHtml(`No product named "${search}" yet - but here's what's available:`, fallback);
       return;
     }
@@ -11588,8 +11669,10 @@ async function filterHomeProducts() {
   if (currentSectorId) query = query.eq("category.sector_id", currentSectorId);
 
   const { data: products, error } = await query.order("created_at", { ascending: false });
+  if (generation !== homeFilterGeneration) return;
   if (error || !products || products.length === 0) {
     const fallback = await fetchFallbackProducts();
+    if (generation !== homeFilterGeneration) return;
     const message = search
       ? `No exact match for "${search}" with these filters - but here's what's available:`
       : "No products match these filters - but here's what's available:";
@@ -16149,7 +16232,10 @@ async function renderVendorProducts() {
 
   if (!products || products.length === 0) { html += `<div class="empty-state">No products yet.</div>`; return html; }
 
-  html += `<input type="text" id="vendorProductSearch" placeholder="Search your products…" oninput="filterVendorProducts()" style="margin:0.8rem 0;max-width:340px;" />`;
+  html += `<div class="vendor-products-toolbar">
+    <input type="text" id="vendorProductSearch" placeholder="Search your products…" oninput="filterVendorProducts()" />
+    <label class="vendor-products-sort"><span>Sort</span><select id="vendorProductSort" onchange="filterVendorProducts()"><option value="az">A–Z</option><option value="za">Z–A</option></select></label>
+  </div>`;
 
   if (vendorProductsView === "table") {
     const totalRevenue = Object.values(revenueByProduct).reduce((s, n) => s + n, 0);
@@ -16235,14 +16321,30 @@ function showProductRegions(productId, productName) {
 }
 function filterVendorProducts() {
   const q = (byId("vendorProductSearch")?.value || "").trim().toLowerCase();
+  const sort = byId("vendorProductSort")?.value || "az";
+  const compare = (a,b) => {
+    const an = String(a?.dataset?.vpName || "").trim();
+    const bn = String(b?.dataset?.vpName || "").trim();
+    return (sort === "za" ? -1 : 1) * an.localeCompare(bn, undefined, { sensitivity: "base", numeric: true });
+  };
   document.querySelectorAll("[data-vp-name]").forEach((el) => {
     const matches = !q || el.dataset.vpName.includes(q) || (el.dataset.vpCat || "").includes(q);
     el.classList.toggle("hidden", !matches);
   });
+
+  // Reorder within the existing DOM containers rather than rebuilding the page.
   document.querySelectorAll("[data-vp-group]").forEach((group) => {
-    const anyVisible = [...group.querySelectorAll("[data-vp-name]")].some((el) => !el.classList.contains("hidden"));
+    const grid = group.querySelector(":scope > .grid");
+    if (!grid) return;
+    [...grid.children].sort(compare).forEach(el => grid.appendChild(el));
+    const anyVisible = [...grid.querySelectorAll("[data-vp-name]")].some((el) => !el.classList.contains("hidden"));
     group.classList.toggle("hidden", !anyVisible);
   });
+
+  const tbody = document.querySelector("#app .data-table tbody");
+  if (tbody && tbody.querySelector("[data-vp-name]")) {
+    [...tbody.children].sort(compare).forEach(el => tbody.appendChild(el));
+  }
 }
 
 async function openAddProductModal() {
@@ -25360,6 +25462,103 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 #chatAttachmentEditorModal .chat-media-nav,#chatAttachmentEditorModal .chat-media-thumbs{display:none!important}
 #chatAttachmentEditorModal .chat-media-caption span{font-size:.72rem!important}
 #chatAttachmentEditorModal .chat-media-caption textarea{min-height:52px!important}
+</style>
+
+<style id="levromart-20260911-final-ui-fixes">
+/* Legal links live under About; the persistent footer is intentionally absent from normal pages. */
+body > footer.site-footer{display:none !important;}
+.about-legal-links{display:flex;flex-direction:column;gap:.35rem;margin-top:1rem;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card);text-align:left;}
+.about-legal-links button{width:100%;border:0;background:transparent;color:var(--text);display:grid;grid-template-columns:1.25rem minmax(0,1fr) 1rem;align-items:center;gap:.7rem;padding:.8rem .9rem;font:inherit;text-align:left;cursor:pointer;}
+.about-legal-links button+button{border-top:1px solid var(--border);}
+.about-legal-links button>i:first-child{color:var(--primary);}
+.about-legal-links button>i:last-child{color:var(--text-muted);font-size:.72rem;}
+.about-legal-links button:hover{background:color-mix(in srgb,var(--primary) 5%,transparent);}
+.vendor-products-toolbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin:.8rem 0;}
+.vendor-products-toolbar>input{margin:0!important;max-width:340px;flex:1 1 220px;}
+.vendor-products-sort{display:flex;align-items:center;gap:.35rem;color:var(--text-muted);font-size:.74rem;font-weight:650;}
+.vendor-products-sort select{margin:0;min-width:86px;}
+.browse-filter-toolbar{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(110px,.55fr) minmax(180px,1fr);gap:.55rem;align-items:end;margin-bottom:1.2rem;}
+.browse-filter-toolbar>input,.browse-filter-toolbar>select,.browse-category-picker input,.browse-category-picker select{width:100%;min-width:0;}
+.browse-category-picker{display:grid;grid-template-rows:auto auto;gap:.35rem;min-width:0;}
+.browse-category-picker input{font-size:.78rem;padding:.55rem .7rem;}
+@media(max-width:680px){.browse-filter-toolbar{grid-template-columns:1fr 1fr;}.browse-filter-toolbar>input{grid-column:1/-1;}.browse-category-picker{grid-column:1/-1;}}
+/* Keep carousel pagination visually out of the promotional artwork. */
+.home-promotional-carousel .home-promotional-dots{pointer-events:auto;}
+</style>
+
+<style id="levromart-20260911-final-visual-polish-v2">
+body > footer.site-footer{display:none !important;}
+.home-promotional-carousel .home-promotional-dots{left:50% !important;bottom:.55rem !important;transform:translateX(-50%) !important;display:flex !important;align-items:center !important;justify-content:center !important;gap:.38rem !important;padding:0 !important;border:0 !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
+.home-promotional-carousel .home-promotional-dot{width:.48rem !important;height:.48rem !important;flex:0 0 .48rem !important;border-radius:50% !important;border:1px solid rgba(255,255,255,.78) !important;background:rgba(255,255,255,.45) !important;padding:0 !important;}
+.home-promotional-carousel .home-promotional-dot.active{width:.58rem !important;height:.58rem !important;flex-basis:.58rem !important;border-color:#fff !important;background:#fff !important;transform:none !important;}
+.accent-page-dropdown-trigger,.accent-page-dropdown-body,#accentPaletteBody,#accentPalettePageBody,.settings-page-swatches,.accent-swatches{display:none !important;}
+#app .levro-home-quick-actions .levro-quick-icon{background:var(--primary) !important;color:#fff !important;border:0 !important;box-shadow:none !important;}
+</style>
+
+<style id="levromart-home-search-sticky-scroll-final">
+/* Homepage search: fixed-in-view once reached, then subtly contracts during
+   active scrolling. It restores immediately when scrolling settles. */
+@media (max-width:720px){
+  #app .levro-home-search-wrap.home-search-pinned{
+    position:sticky !important;
+    top:calc(58px + env(safe-area-inset-top,0px)) !important;
+    z-index:120 !important;
+    width:100% !important;
+    margin:0 !important;
+    padding:.22rem 0 .38rem !important;
+    background:transparent !important;
+    pointer-events:none !important;
+  }
+  #app .levro-home-search-wrap.home-search-pinned .hero-search{
+    position:relative !important;
+    inset:auto !important;
+    width:min(100%,760px) !important;
+    max-width:760px !important;
+    margin:0 auto !important;
+    transform:scale(1) !important;
+    transform-origin:center top !important;
+    opacity:1 !important;
+    transition:transform .22s cubic-bezier(.2,.75,.25,1),opacity .2s ease,filter .2s ease,box-shadow .22s ease !important;
+    will-change:transform,opacity,filter !important;
+    pointer-events:auto !important;
+  }
+  #app .levro-home-search-wrap.home-search-pinned.home-search-scrolling .hero-search{
+    transform:scale(.86) !important;
+    opacity:.42 !important;
+    filter:saturate(.65) !important;
+    box-shadow:none !important;
+  }
+}
+@media (min-width:721px){
+  #app .levro-home-search-wrap.home-search-pinned{
+    position:sticky !important;
+    top:64px !important;
+    z-index:120 !important;
+    width:100% !important;
+    margin:0 !important;
+    padding:.28rem 0 .42rem !important;
+    background:transparent !important;
+    pointer-events:none !important;
+  }
+  #app .levro-home-search-wrap.home-search-pinned .hero-search{
+    position:relative !important;
+    inset:auto !important;
+    width:min(100%,760px) !important;
+    max-width:760px !important;
+    margin:0 auto !important;
+    transform:scale(1) !important;
+    opacity:1 !important;
+    transition:transform .22s ease,opacity .2s ease,filter .2s ease,box-shadow .22s ease !important;
+    will-change:transform,opacity,filter !important;
+    pointer-events:auto !important;
+  }
+  #app .levro-home-search-wrap.home-search-pinned.home-search-scrolling .hero-search{
+    transform:scale(.9) !important;
+    opacity:.48 !important;
+    filter:saturate(.7) !important;
+    box-shadow:none !important;
+  }
+}
 </style>
 </html>
 
