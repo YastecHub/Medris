@@ -23492,19 +23492,42 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 #app .dash-tabs{justify-content:center !important;align-items:center !important;overflow-x:auto !important;scrollbar-width:none !important;}
 #app .dash-tabs::-webkit-scrollbar{display:none !important;}
 
-/* People: compact mobile table with controlled columns and readable scrolling. */
-#app .admin-people-table-wrap{width:min(100%,760px) !important;max-width:760px !important;margin:0 auto !important;overflow-x:auto !important;-webkit-overflow-scrolling:touch !important;}
-#app .admin-people-table{width:100% !important;min-width:0 !important;font-size:.72rem !important;}
-#app .admin-people-table th,#app .admin-people-table td{padding:.45rem .4rem !important;}
-#app .admin-people-table th{font-size:.62rem !important;}
-@media(max-width:720px){
-  #app .admin-people-table{table-layout:fixed !important;}
-  #app .admin-people-table th,#app .admin-people-table td{white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
-  #app .admin-people-table th:nth-child(1),#app .admin-people-table td:nth-child(1){width:2.5rem !important;text-align:center !important;}
-  #app .admin-people-table th:nth-child(2),#app .admin-people-table td:nth-child(2){width:30% !important;}
-  #app .admin-people-table th:nth-child(3),#app .admin-people-table td:nth-child(3){width:44% !important;}
-  #app .admin-people-table th:nth-child(n+4),#app .admin-people-table td:nth-child(n+4){width:18% !important;}
+/* People: compact table without squeezing the columns into a chopped viewport. */
+#app .admin-people-table-wrap{
+  width:min(100%,760px) !important; max-width:760px !important; margin:0 auto 1rem !important;
+  overflow-x:auto !important; overflow-y:hidden !important; -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior-x:contain !important; touch-action:pan-x pan-y !important; scrollbar-width:thin !important;
 }
+#app .admin-people-table{
+  width:max-content !important; min-width:760px !important; max-width:none !important;
+  table-layout:auto !important; font-size:.72rem !important;
+}
+#app .admin-people-table th,#app .admin-people-table td{
+  padding:.5rem .55rem !important; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important;
+}
+#app .admin-people-table th{font-size:.62rem !important;}
+#app .admin-people-table th:first-child,#app .admin-people-table td:first-child{width:2.5rem !important;text-align:center !important;}
+#app .admin-people-table th:nth-child(2),#app .admin-people-table td:nth-child(2){min-width:8.5rem !important;}
+#app .admin-people-table th:nth-child(3),#app .admin-people-table td:nth-child(3){min-width:13rem !important;}
+#app .admin-people-table th:nth-child(4),#app .admin-people-table td:nth-child(4){min-width:6rem !important;}
+#app .admin-people-table th:nth-child(5),#app .admin-people-table td:nth-child(5){min-width:6rem !important;}
+#app .admin-people-table th:nth-child(6),#app .admin-people-table td:nth-child(6){min-width:7rem !important;}
+#app .admin-people-table th:nth-child(7),#app .admin-people-table td:nth-child(7){min-width:8rem !important;}
+#app .admin-people-table th:last-child,#app .admin-people-table td:last-child{min-width:7rem !important;}
+
+/* Link Library search: keep the magnifier clear of the placeholder text. */
+#app .admin-link-library-search .field-wrap{position:relative !important;width:100% !important;min-width:0 !important;}
+#app .admin-link-library-search .field-wrap > i.fa-magnifying-glass{
+  position:absolute !important; left:1rem !important; right:auto !important; top:50% !important;
+  width:1.25rem !important; height:1.25rem !important; margin:0 !important; transform:translateY(-50%) !important;
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  pointer-events:none !important; z-index:3 !important;
+}
+#app .admin-link-library-search input#adminLinkLibrarySearch{
+  display:block !important; box-sizing:border-box !important; width:100% !important; min-width:0 !important;
+  height:3.35rem !important; padding:.82rem 1rem .82rem 3.25rem !important; margin:0 !important; line-height:1.35 !important;
+}
+@media(max-width:720px){#app .admin-people-table-wrap{max-width:100% !important;}#app .admin-people-table{min-width:760px !important;}}
 
 /* Customer requests icon: explicit Font Awesome hand, never generic circle. */
 #app #profilePanel .profile-nav-link[data-profile-label="Customer requests"] .profile-item-icon i{font-family:"Font Awesome 6 Free" !important;font-weight:900 !important;}
