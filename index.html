@@ -4174,6 +4174,9 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 }
 /* Keep fixed controls clear of the final content/card area. */
 #app { padding-bottom:calc(9rem + env(safe-area-inset-bottom,0px)) !important; overflow:visible !important; }
+/* Global content-height fix: never stretch the main page container to fill empty viewport space. */
+#app, .container { flex:0 0 auto !important; align-self:stretch !important; }
+.site-footer { margin-top:.45rem !important; }
 /* Keep short product-list routes content-sized so the legal footer follows the final card closely instead of a viewport-sized flex spacer. */
 #app:has(.product-card-wrap) { flex:0 0 auto !important; }
 
@@ -5360,6 +5363,25 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
   .admin-link-empty{text-align:center;padding:2rem 1rem;color:var(--text-muted)}
   @media(max-width:560px){.admin-link-row{grid-template-columns:1fr}.admin-link-copy-btn{width:100%}.admin-link-url{white-space:normal;overflow-wrap:anywhere}}
 </style>
+<style id="levromart-20260910-final-request-ui">
+html body #app, html body .container { flex:0 0 auto !important; align-self:stretch !important; }
+html body .site-footer { margin-top:.45rem !important; }
+.vendor-requests-tabs{display:flex;gap:.45rem;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:.1rem 0 .9rem;padding:.15rem 0 .35rem;}
+.vendor-requests-tabs::-webkit-scrollbar{display:none;}
+.vendor-request-tab{flex:0 0 auto;border:1px solid var(--border);background:var(--card);color:var(--text-muted);border-radius:999px;padding:.62rem .9rem;font:inherit;font-size:.82rem;font-weight:750;cursor:pointer;white-space:nowrap;}
+.vendor-request-tab.active{background:color-mix(in srgb,var(--primary) 12%,var(--card));color:var(--primary);border-color:color-mix(in srgb,var(--primary) 55%,var(--border));}
+.vendor-request-interest-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin:.65rem 0 .55rem;padding:.55rem .65rem;border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--card) 96%,var(--primary) 4%);}
+.vendor-interest-actions{display:flex;gap:.4rem;flex-wrap:wrap;}
+.vendor-interest-state{color:var(--text-muted);font-size:.75rem;font-weight:700;}
+.vendor-interest-state.is-interested{color:var(--primary);}
+.vendor-offer-form{display:grid;grid-template-columns:minmax(110px,140px) minmax(0,1fr) auto;gap:.5rem;align-items:stretch;}
+.vendor-offer-form textarea{min-height:5rem;resize:vertical;width:100%;}
+.vendor-offer-form input{width:100%;min-width:0;}
+.vendor-offer-form .btn{align-self:center;white-space:nowrap;}
+.vendor-request-existing-offer{margin:.65rem 0 .2rem;}
+@media(max-width:680px){.vendor-offer-form{grid-template-columns:1fr;}.vendor-offer-form .btn{width:100%;justify-content:center;}.vendor-request-interest-row{align-items:flex-start;}}
+#loginModal .login-modal-logo{filter:drop-shadow(0 0 .55rem color-mix(in srgb,var(--primary) 55%,transparent)) drop-shadow(0 0 1.15rem color-mix(in srgb,var(--primary) 28%,transparent)) !important;background:radial-gradient(circle,color-mix(in srgb,var(--primary) 14%,transparent) 0 52%,transparent 70%);border-radius:50%;padding:.18rem;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -5484,7 +5506,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 
 <div id="installPromptModal" class="modal hidden">
   <div class="modal-content install-modal-content">
-    <div class="install-modal-badge"><img id="installModalLogo" alt="" /></div>
+    <div class="install-modal-badge install-modal-levi-mark" aria-hidden="true"><span class="install-levi-dot"></span></div>
     <h3>Get the Levromart app</h3>
     <p class="muted">Install it on your home screen for a faster, full-screen experience, even offline.</p>
     <p id="installModalIosMsg" class="muted install-modal-ios hidden"><i class="fa-solid fa-arrow-up-from-bracket"></i> Tap the Share icon, then "Add to Home Screen".</p>
@@ -8529,7 +8551,7 @@ function updateAuthUI() {
     if (vendor && profile.role !== "admin") {
       links.push({ label: "My Shop", action: "navigate('vendorDashboard')" });
       links.push({ label: "Edit Business Profile", action: "navigate('vendorEditProfile')" });
-      links.push({ label: "Customer requests", action: "navigate('vendorRequests')" });
+      links.push({ label: "Requests", action: "navigate('vendorRequests')" });
     } else if (profile.role !== "admin") {
       links.push({ label: "My Orders", action: "navigate('buyerOrders')" });
       links.push({ label: "Request an item", action: "navigate('requestEquipment')" });
@@ -8577,7 +8599,7 @@ function updateAuthUI() {
       <div class="profile-panel-scroll">
         ${links.map((l) => {
           const raw = String(l.label).replace(/<[^>]*>/g, '').trim().toLowerCase();
-          const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('customer requests') ? 'fa-hand' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') || raw.includes('support request') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('link library') ? 'fa-link' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
+          const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('customer requests') ? 'fa-hand' : raw === 'requests' ? 'fa-clipboard-list' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') || raw.includes('support request') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('link library') ? 'fa-link' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
           const profileLabelAttr = raw === "customer requests" ? ` data-profile-label="Customer requests"` : ""; return `<a class="profile-nav-link"${profileLabelAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
         }).join("")}
         <a class="profile-nav-link profile-nav-link-danger" onclick="closeAllPanels();logout();"><span class="profile-item-icon"><i class="fa-solid fa-arrow-right-from-bracket"></i></span><span class="profile-nav-text">Log out</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>
@@ -13247,8 +13269,8 @@ function renderVendorsDirectory() {
   </div>`;
   html += `<div class="vendor-listing-tabs" id="vendorsListingTabs" role="tablist" aria-label="Vendor type">
     <button type="button" class="vendor-listing-tab active" data-filter="all" onclick="setVendorsListingFilter('all')">All vendors</button>
-    <button type="button" class="vendor-listing-tab" data-filter="buy" onclick="setVendorsListingFilter('buy')">Buy</button>
-    <button type="button" class="vendor-listing-tab" data-filter="rent" onclick="setVendorsListingFilter('rent')">Rent</button>
+    <button type="button" class="vendor-listing-tab" data-filter="buy" onclick="setVendorsListingFilter('buy')">Buy vendors</button>
+    <button type="button" class="vendor-listing-tab" data-filter="rent" onclick="setVendorsListingFilter('rent')">Rent vendors</button>
     <button type="button" class="vendor-listing-tab" data-filter="both" onclick="setVendorsListingFilter('both')">Buy &amp; Rent</button>
   </div>
   <div class="vendors-directory-toolbar">
@@ -13992,9 +14014,12 @@ async function submitEquipmentRequest() {
     }).select("id").single();
     if (error) throw error;
     showToast(type === "buy" ? "Buy request posted successfully." : "Rental request posted successfully.", "success");
-    await navigate("requestEquipment");
-    // Keep dates/controls correct after the route re-renders.
-    setTimeout(updateRequestFormFields, 0);
+    if (profile?.role === "vendor" && byId("vendorRequestsShell")) {
+      await switchVendorRequestsTab("mine");
+    } else {
+      await navigate("requestEquipment");
+      setTimeout(updateRequestFormFields, 0);
+    }
     return created;
   } catch (err) {
     console.error("[Levromart] Equipment request failed:", err);
@@ -14091,49 +14116,50 @@ async function renderRequestEquipment() {
   return html;
 }
 
-async function renderVendorRequests() {
-  if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
-  const [{ data: requests }, { data: myProducts }] = await Promise.all([
-    sb.from("equipment_requests").select("*, offers:request_offers(id, vendor_id, status)").eq("status", "open").order("created_at", { ascending: false }),
-    sb.from("products").select("id, name, category_id, sale_price, rental_rate, rental_rate_unit").eq("vendor_id", vendor.id).eq("status", "active"),
+const VENDOR_REQUEST_INTEREST_KEY = "levromart.vendorRequestInterest.v1";
+function getVendorRequestInterestState(){ try{return JSON.parse(localStorage.getItem(VENDOR_REQUEST_INTEREST_KEY)||"{}");}catch{return {};}}
+function saveVendorRequestInterestState(state){try{localStorage.setItem(VENDOR_REQUEST_INTEREST_KEY,JSON.stringify(state||{}));}catch{}}
+function setVendorRequestInterest(requestId,interested){if(!requestId||!vendor?.id)return;const s=getVendorRequestInterestState();const k=String(vendor.id);s[k] ||= {};s[k][String(requestId)] = interested ? "interested" : "dismissed";saveVendorRequestInterestState(s);}
+function vendorRequestInterestStatus(requestId){const s=getVendorRequestInterestState();return s?.[String(vendor?.id||"")]?.[String(requestId)]||null;}
+async function confirmVendorNotInterested(requestId){if(!(await showConfirmDialog("Are you sure you’re not interested in this request? It will be removed from your requests dashboard.",{title:"Not interested",okLabel:"Remove",danger:true})))return;setVendorRequestInterest(requestId,false);await renderVendorRequestsTab("customer");}
+function markVendorInterested(requestId){setVendorRequestInterest(requestId,true);renderVendorRequestsTab("customer");showToast("Marked as interested. You can now send an offer.","success");}
+async function switchVendorRequestsTab(tab){const active=tab==='mine'?'mine':'customer';document.querySelectorAll('#vendorRequestsTabs .vendor-request-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===active));const cw=byId('vendorCustomerRequestsTab'),mw=byId('vendorMyRequestsTab');if(cw)cw.classList.toggle('hidden',active!=='customer');if(mw)mw.classList.toggle('hidden',active!=='mine');if(active==='mine'&&mw){mw.innerHTML='<div class="page-loading-shell"><i class="fa-solid fa-spinner fa-spin"></i> Loading your requests…</div>';try{mw.innerHTML=await renderRequestEquipment();setTimeout(updateRequestFormFields,0);}catch(e){mw.innerHTML=errorStateHtml(e);}}}
+async function renderVendorRequestsTab(tab='customer'){
+ const wrap=byId('vendorCustomerRequestsTab'); if(!wrap||!vendor?.id)return;
+ wrap.innerHTML='<div class="page-loading-shell"><i class="fa-solid fa-spinner fa-spin"></i> Loading customer requests…</div>';
+ try{
+  const [{data:requests},{data:myProducts}]=await Promise.all([
+   sb.from('equipment_requests').select('*, offers:request_offers(id, vendor_id, status)').eq('status','open').order('created_at',{ascending:false}),
+   sb.from('products').select('id,name,category_id,sale_price,rental_rate,rental_rate_unit').eq('vendor_id',vendor.id).eq('status','active')
   ]);
-  window.__myProductsForOffers = myProducts || [];
-
-  const deliveryFee = Number(vendor.delivery_fee) || 0;
-  let html = `<h2><i class='fa-solid fa-clipboard-list'></i> Customer requests ${infoPopoverHtml("vendorRequestsInfo", "Only requests matching what you sell reach you. Quote a price to win the order: pick one of your own listed products to price it instantly, or quote a custom price.")}</h2>`;
-  if (!requests || requests.length === 0) html += `<p class="muted">No open requests right now.</p>`;
-  (requests || []).forEach((r) => {
-    const mine = (r.offers || []).find((o) => o.vendor_id === vendor.id);
-    const matches = (myProducts || []).filter((p) => !r.category_id || p.category_id === r.category_id);
-    html += `<div class="card">
-      <div class="flex" style="justify-content:space-between;">
-        <div class="flex">
-          ${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.1rem", "", r.buyer_name || "Customer")}
-          <div><strong>${esc(r.title)}</strong><p class="muted" style="margin:0;font-size:0.78rem;">${esc(r.buyer_name || "A buyer")}</p></div>
-        </div>
-        <span class="badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span>
-      </div>
-      ${r.description ? `<p class="muted" style="margin:0.5rem 0 0;">${esc(r.description)}</p>` : ""}
-      <p class="muted" style="font-size:0.8rem;">${[r.city, r.request_type !== "buy" && r.needed_from ? r.needed_from + " → " + (r.needed_to || "") : ""].filter(Boolean).map(esc).join(" · ")}</p>
-      ${mine
-        ? `<p class="muted" style="margin-top:0.5rem;">You offered. Status: <strong>${esc(mine.status)}</strong></p>`
-        : `<div style="margin-top:0.5rem;">
-             ${matches.length ? `<select id="offerProduct-${r.id}" onchange="applyOfferProductPrice('${r.id}','${r.request_type}')" style="margin-bottom:0.4rem;">
-               <option value="">Quote a custom price…</option>
-               ${matches.map((p) => `<option value="${p.id}">Use my "${esc(p.name)}": ${p.sale_price != null ? naira(p.sale_price) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</option>`).join("")}
-             </select>` : ""}
-             <div class="flex">
-               <input type="number" id="offerPrice-${r.id}" placeholder="Price (₦)" style="width:140px;" />
-               <input type="text" id="offerMsg-${r.id}" placeholder="Message (e.g. delivery today)" style="flex:1;" />
-               <button class="btn btn-sm" onclick="sendOffer('${r.id}')">Send offer</button>
-             </div>
-             ${deliveryFee > 0 ? `<p class="muted" style="font-size:0.78rem;margin-top:0.3rem;"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown to the customer automatically alongside this quote if they need delivery.</p>` : ""}
-           </div>`}
-    </div>`;
+  window.__myProductsForOffers=myProducts||[];
+  const deliveryFee=Number(vendor.delivery_fee)||0;
+  const visible=(requests||[]).filter(r=>vendorRequestInterestStatus(r.id)!=='dismissed');
+  let html='<div class="vendor-requests-intro"><p class="muted">Customer requests that match the kinds of things you sell. Mark a request as interested, then send an offer.</p></div>';
+  if(!visible.length) html+='<div class="empty-state"><i class="fa-solid fa-clipboard-check"></i><p>No customer requests here right now.</p></div>';
+  visible.forEach(r=>{
+   const mine=(r.offers||[]).find(o=>o.vendor_id===vendor.id); const matches=(myProducts||[]).filter(p=>!r.category_id||p.category_id===r.category_id); const interest=vendorRequestInterestStatus(r.id);
+   html+=`<div class="card vendor-request-card" data-request-id="${r.id}">
+    <div class="flex vendor-request-card-head" style="justify-content:space-between;align-items:flex-start;gap:.65rem;">
+      <div class="flex" style="min-width:0;">${r.buyer_avatar_url?`<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.6rem;height:2.6rem;object-fit:cover;" />`:avatarFallbackHtml(r.buyer_name||'Customer','2.6rem','',r.buyer_name||'Customer')}<div style="min-width:0;"><strong>${esc(r.title)}</strong><p class="muted" style="margin:0;font-size:.78rem;">${esc(r.buyer_name||'A buyer')}</p></div></div>
+      <span class="badge">${r.request_type==='buy'?'Buy':'Rent'}</span>
+    </div>
+    ${r.description?`<p class="muted" style="margin:.55rem 0 0;">${esc(r.description)}</p>`:''}
+    <p class="muted" style="font-size:.8rem;margin:.35rem 0;">${[r.city,r.request_type!=='buy'&&r.needed_from?r.needed_from+' → '+(r.needed_to||''):''].filter(Boolean).map(esc).join(' · ')}</p>
+    ${mine?`<div class="vendor-request-existing-offer"><span class="badge success"><i class="fa-solid fa-check"></i> Offer sent · ${esc(mine.status)}</span></div>`:
+      `<div class="vendor-request-interest-row"><span class="vendor-interest-state ${interest==='interested'?'is-interested':''}">${interest==='interested'?"<i class='fa-solid fa-circle-check'></i> Interested":"Not marked yet"}</span><div class="vendor-interest-actions"><button type="button" class="btn btn-sm ${interest==='interested'?'':'btn-outline'}" onclick="markVendorInterested('${r.id}')"><i class="fa-solid fa-thumbs-up"></i> Interested</button><button type="button" class="btn btn-sm btn-outline" onclick="confirmVendorNotInterested('${r.id}')"><i class="fa-solid fa-xmark"></i> Not interested</button></div></div>
+      <div class="vendor-offer-area">${matches.length?`<select id="offerProduct-${r.id}" onchange="applyOfferProductPrice('${r.id}','${r.request_type}')" style="margin-bottom:.5rem;width:100%;"><option value="">Quote a custom price…</option>${matches.map(p=>`<option value="${p.id}">Use my "${esc(p.name)}": ${p.sale_price!=null?naira(p.sale_price):''}${p.sale_price!=null&&p.rental_rate!=null?' / ':''}${p.rental_rate!=null?naira(p.rental_rate)+'/'+p.rental_rate_unit:''}</option>`).join('')}</select>`:''}<div class="vendor-offer-form"><input type="number" id="offerPrice-${r.id}" placeholder="Price (₦)" /><textarea id="offerMsg-${r.id}" rows="3" placeholder="Message to the customer (e.g. I have this available and can deliver tomorrow)"></textarea><button type="button" class="btn" onclick="sendOffer('${r.id}')"><i class="fa-solid fa-paper-plane"></i> Send offer</button></div>${deliveryFee>0?`<p class="muted" style="font-size:.78rem;margin-top:.35rem;"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown automatically alongside this offer.</p>`:''}</div>`}
+   </div>`;
   });
-  return html;
+  wrap.innerHTML=html;
+ }catch(e){console.error('[Levromart] Customer requests failed:',e);wrap.innerHTML=errorStateHtml(e);}
 }
-
+async function renderVendorRequests(){
+ if(!session||profile?.role==='admin'||(profile?.role!=='vendor'&&!vendor))return '<div class="empty-state">Access denied.</div>';
+ window.__myProductsForOffers=[];
+ const html=`<div id="vendorRequestsShell"><h2 style="margin-bottom:.55rem;"><i class='fa-solid fa-clipboard-list'></i> Requests ${infoPopoverHtml('vendorRequestsInfo','See requests from customers and manage requests you have posted yourself.')}</h2><div class="vendor-requests-tabs" id="vendorRequestsTabs" role="tablist" aria-label="Requests"><button type="button" class="vendor-request-tab active" data-tab="customer" onclick="switchVendorRequestsTab('customer')"><i class="fa-solid fa-users"></i> Customer requests</button><button type="button" class="vendor-request-tab" data-tab="mine" onclick="switchVendorRequestsTab('mine')"><i class="fa-solid fa-hand"></i> My requests</button></div><div id="vendorCustomerRequestsTab"></div><div id="vendorMyRequestsTab" class="hidden"></div></div>`;
+ setTimeout(()=>renderVendorRequestsTab('customer'),0); return html;
+}
 function applyOfferProductPrice(requestId, requestType) {
   const productId = byId(`offerProduct-${requestId}`).value;
   const priceEl = byId(`offerPrice-${requestId}`);
@@ -20487,11 +20513,24 @@ window.addEventListener("popstate", (e) => {
   else navigate("home", {}, false);
 });
 
+window.addEventListener("error", () => {
+  try { const splash = document.getElementById("levromartSplash"); if (splash) { splash.classList.add("is-hidden"); splash.style.display = "none"; } } catch (_) {}
+}, { once: true });
+window.addEventListener("unhandledrejection", () => {
+  try { const splash = document.getElementById("levromartSplash"); if (splash) { splash.classList.add("is-hidden"); splash.style.display = "none"; } } catch (_) {}
+}, { once: true });
+
 (async function init() {
-  applyHorizontalBrowsePreference();
-  prepareLevromartSplash();
-  // Absolute backstop: whatever else happens, the splash can never stay on
-  // screen longer than this. The two hides below are the real triggers.
+  // HARD SPLASH BACKSTOP: schedule this before touching any other initializer.
+  // A single unexpected startup exception must never leave the black splash
+  // sitting over the entire app on a phone.
+  setTimeout(() => { try { hideLevromartSplash(); } catch (_) {
+    const splash = document.getElementById("levromartSplash");
+    if (splash) { splash.classList.add("is-hidden"); splash.style.display = "none"; }
+  } }, 4000);
+  try { applyHorizontalBrowsePreference(); } catch (_) {}
+  try { prepareLevromartSplash(); } catch (_) {}
+  // Absolute backstop: whichever hide path wins, the splash cannot remain.
   setTimeout(() => hideLevromartSplash(), 4000);
   try {
   initTheme();
@@ -23878,3 +23917,324 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 .admin-link-actions{display:flex !important;align-items:center !important;gap:.45rem !important;justify-content:flex-end !important;flex-wrap:wrap !important;}
 @media(max-width:600px){.admin-link-row{grid-template-columns:1fr !important;}.admin-link-actions{justify-content:flex-start !important;}}
 </style>
+
+
+<style id="levromart-20260910-final-requested-polish">
+/* ================================================================
+   GLOBAL PAGE FLOW — remove the giant dead zone before the legal footer.
+   Fixed bottom navigation is visually overlaid, so the old 9rem #app
+   padding was creating a very large empty strip underneath short pages.
+   Keep a small content cushion and let the footer carry the safe-area space.
+   ================================================================ */
+body:not(.chat-full-page){padding-bottom:0 !important;}
+body:not(.chat-full-page) > #app,
+body:not(.chat-full-page) .container#app{
+  flex:0 0 auto !important;
+  min-height:0 !important;
+  height:auto !important;
+  padding-bottom:.9rem !important;
+  margin-bottom:0 !important;
+}
+body:not(.chat-full-page) > .site-footer{
+  flex:0 0 auto !important;
+  margin-top:.15rem !important;
+  padding-top:.8rem !important;
+  padding-bottom:calc(5.9rem + env(safe-area-inset-bottom,0px)) !important;
+}
+
+/* ================================================================
+   BROWSE EVERYTHING → PACKAGES — one wide card, not a narrow column.
+   Applies only to the Browse Everything #productGrid (and its package
+   search result grid), not the separate homepage package rail.
+   ================================================================ */
+#productGrid:has(> .package-listing-card){
+  grid-template-columns:minmax(0,1fr) !important;
+  gap:.85rem !important;
+  align-items:start !important;
+}
+#productGrid:has(> .package-listing-card) > .package-listing-card{
+  width:100% !important;
+  min-width:0 !important;
+  max-width:none !important;
+  height:auto !important;
+  min-height:0 !important;
+  box-sizing:border-box !important;
+  padding:.7rem !important;
+  overflow:hidden !important;
+  border-radius:16px !important;
+}
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-gallery{
+  width:100% !important;
+  height:clamp(12rem,30vw,18rem) !important;
+  min-height:12rem !important;
+  max-height:18rem !important;
+  overflow:hidden !important;
+  border-radius:12px !important;
+}
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-photo-main,
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-gallery-placeholder{
+  width:100% !important;
+  height:100% !important;
+  min-height:0 !important;
+  object-fit:cover !important;
+  border-radius:12px !important;
+}
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-card-title-row{
+  margin:.6rem 0 .18rem !important;
+  gap:.6rem !important;
+}
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-card-title-row strong{
+  font-size:1.05rem !important;
+  line-height:1.2 !important;
+}
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-card-title-row .badge{
+  font-size:.78rem !important;
+  padding:.28rem .48rem !important;
+}
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-card-description,
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-card-includes,
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-card-vendor,
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-card-delivery{
+  margin:.24rem 0 !important;
+  font-size:.8rem !important;
+  line-height:1.35 !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  display:block !important;
+}
+#productGrid:has(> .package-listing-card) > .package-listing-card .package-card-includes{
+  display:-webkit-box !important;
+  -webkit-box-orient:vertical !important;
+  -webkit-line-clamp:3 !important;
+  overflow:hidden !important;
+}
+#packageSearchResults .grid:has(> .package-listing-card){
+  grid-template-columns:minmax(0,1fr) !important;
+  gap:.85rem !important;
+}
+#packageSearchResults .grid:has(> .package-listing-card) > .package-listing-card{
+  width:100% !important;max-width:none !important;min-width:0 !important;height:auto !important;min-height:0 !important;
+}
+
+/* ================================================================
+   ADMIN PEOPLE — true two-axis scrolling, with vertical movement allowed.
+   ================================================================ */
+#app .admin-people-table-wrap{
+  overflow-x:auto !important;
+  overflow-y:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior:contain !important;
+  touch-action:pan-x pan-y !important;
+  max-height:min(62vh,38rem) !important;
+  min-height:0 !important;
+  scrollbar-width:thin !important;
+}
+#app .admin-people-table-wrap::-webkit-scrollbar{width:8px;height:8px !important;}
+#app .admin-people-table-wrap::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--text) 24%,transparent);border-radius:99px;}
+#app .admin-people-table-wrap::-webkit-scrollbar-track{background:transparent;}
+
+/* ================================================================
+   VENDORS — Buy / Rent / Buy & Rent tabs + compact filter dropdown.
+   ================================================================ */
+#app .vendor-listing-tabs{
+  display:flex !important;gap:.45rem !important;overflow-x:auto !important;overflow-y:hidden !important;
+  -webkit-overflow-scrolling:touch !important;scrollbar-width:none !important;
+  padding:.15rem .05rem .45rem !important;margin:.55rem 0 .55rem !important;
+}
+#app .vendor-listing-tabs::-webkit-scrollbar{display:none !important;}
+#app .vendor-listing-tab{
+  flex:0 0 auto !important;white-space:nowrap !important;border:1px solid var(--border) !important;
+  background:var(--card) !important;color:var(--text-muted) !important;border-radius:999px !important;
+  padding:.55rem .85rem !important;font:inherit !important;font-size:.8rem !important;font-weight:750 !important;cursor:pointer !important;
+}
+#app .vendor-listing-tab.active{
+  color:var(--primary) !important;background:color-mix(in srgb,var(--primary) 12%,var(--card)) !important;
+  border-color:color-mix(in srgb,var(--primary) 55%,var(--border)) !important;
+}
+#app .vendors-directory-controls{
+  display:flex !important;align-items:center !important;gap:.55rem !important;margin:.35rem 0 .75rem !important;
+}
+#app .vendors-directory-controls > input:first-child{flex:1 1 auto !important;min-width:0 !important;margin:0 !important;}
+#app .vendors-directory-controls > .vendors-filter-trigger{
+  flex:0 0 auto !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;
+  gap:.35rem !important;min-height:44px !important;white-space:nowrap !important;
+}
+#app .vendors-filter-menu{
+  border:1px solid var(--border) !important;border-radius:16px !important;background:color-mix(in srgb,var(--card) 96%,transparent) !important;
+  box-shadow:0 10px 28px rgba(0,0,0,.12) !important;padding:.75rem !important;margin:-.2rem 0 .8rem !important;
+}
+#app .vendors-filter-menu.hidden{display:none !important;}
+#app .vendors-filter-menu-grid{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:.6rem !important;}
+#app .vendors-filter-menu label{display:flex !important;flex-direction:column !important;gap:.28rem !important;font-size:.7rem !important;font-weight:750 !important;color:var(--text-muted) !important;}
+#app .vendors-filter-menu select{width:100% !important;min-width:0 !important;margin:0 !important;}
+/* The old full-width filter rows remain in the DOM only so existing event
+   handlers keep working; the new menu owns their visible presentation. */
+#app .vendors-directory-controls > .vendors-directory-filter-row,
+#app .vendors-directory-controls > .vendors-directory-sort-row{display:none !important;}
+@media(max-width:720px){
+  #app .vendors-filter-menu-grid{grid-template-columns:1fr !important;}
+  #app .vendors-directory-controls{align-items:stretch !important;}
+  #app .vendors-directory-controls > input:first-child{width:100% !important;}
+}
+
+/* Vendor request offer composer: comfortably usable on phones. */
+#app .vendor-offer-form{display:grid !important;grid-template-columns:minmax(0,8rem) minmax(0,1fr) auto !important;gap:.55rem !important;align-items:stretch !important;}
+#app .vendor-offer-form textarea{min-height:7.5rem !important;height:7.5rem !important;width:100% !important;resize:vertical !important;}
+#app .vendor-offer-form input{min-height:48px !important;}
+#app .vendor-offer-form .btn{min-height:48px !important;white-space:nowrap !important;}
+@media(max-width:620px){#app .vendor-offer-form{grid-template-columns:1fr !important;}#app .vendor-offer-form textarea{min-height:8.5rem !important;height:8.5rem !important;}}
+
+/* ================================================================
+   GET THE LEVROMART APP — white arcs on the green square.
+   This is scoped to the install prompt only, so the normal Levi artwork
+   elsewhere in the app is untouched.
+   ================================================================ */
+.install-modal-levi-mark{position:relative !important;background:var(--primary-grad) !important;}
+.install-modal-levi-mark .install-levi-dot{
+  width:.82rem !important;height:.82rem !important;border-radius:50% !important;background:#fff !important;display:block !important;position:relative !important;z-index:3 !important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.18) !important;
+}
+.install-modal-levi-mark::before,
+.install-modal-levi-mark::after{
+  content:"" !important;position:absolute !important;top:50% !important;width:1.65rem !important;height:2.75rem !important;
+  border:5px solid #fff !important;border-radius:50% !important;transform:translateY(-50%) !important;background:transparent !important;z-index:2 !important;}
+.install-modal-levi-mark::before{left:.55rem !important;border-right-color:transparent !important;}
+.install-modal-levi-mark::after{right:.55rem !important;border-left-color:transparent !important;}
+.install-modal-levi-mark img{display:none !important;}
+</style>
+
+<script id="levromart-20260910-final-requested-js">
+(function(){
+  'use strict';
+
+  /* ---------- vendor type capability hydration ---------- */
+  window.__levroVendorCapabilityMap = window.__levroVendorCapabilityMap || {};
+  async function hydrateVendorCapabilities(){
+    try{
+      const {data,error}=await sb.from('products').select('vendor_id,listing_type,is_service').eq('status','active').limit(5000);
+      if(error) throw error;
+      const map=window.__levroVendorCapabilityMap;
+      (data||[]).forEach(p=>{
+        if(p.is_service) return;
+        const id=String(p.vendor_id);
+        const c=(map[id] ||= {canBuy:false,canRent:false});
+        if(['sale','both'].includes(String(p.listing_type))) c.canBuy=true;
+        if(['rent','both'].includes(String(p.listing_type))) c.canRent=true;
+      });
+      (window.__allVendors||[]).forEach(v=>{
+        const c=map[String(v.id)] || {canBuy:false,canRent:false};
+        v.canBuy=!!c.canBuy; v.canRent=!!c.canRent;
+      });
+    }catch(e){console.warn('[Levromart] Vendor capability hydration failed:',e);}
+  }
+
+  function currentVendorFilter(){
+    return window.__levroVendorListingFilter || 'all';
+  }
+  window.setLevromartVendorListingFilter=function(mode){
+    window.__levroVendorListingFilter=['all','buy','rent','both'].includes(mode)?mode:'all';
+    document.querySelectorAll('#vendorsListingTabs .vendor-listing-tab').forEach(btn=>btn.classList.toggle('active',btn.dataset.filter===window.__levroVendorListingFilter));
+    if(typeof window.filterVendorsDirectory==='function') window.filterVendorsDirectory();
+  };
+
+  function ensureVendorDirectoryUI(){
+    const grid=byId('vendorsGrid');
+    const controls=grid?.parentElement?.querySelector('.vendors-directory-controls') || byId('vendorsGrid')?.previousElementSibling;
+    if(!grid || !controls) return;
+
+    if(!byId('vendorsListingTabs')){
+      const tabs=document.createElement('div');
+      tabs.className='vendor-listing-tabs';tabs.id='vendorsListingTabs';tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','Vendor type');
+      tabs.innerHTML=`<button type="button" class="vendor-listing-tab active" data-filter="all" onclick="setLevromartVendorListingFilter('all')">All vendors</button><button type="button" class="vendor-listing-tab" data-filter="buy" onclick="setLevromartVendorListingFilter('buy')">Buy vendors</button><button type="button" class="vendor-listing-tab" data-filter="rent" onclick="setLevromartVendorListingFilter('rent')">Rent vendors</button><button type="button" class="vendor-listing-tab" data-filter="both" onclick="setLevromartVendorListingFilter('both')">Buy &amp; Rent</button>`;
+      controls.parentNode.insertBefore(tabs,controls);
+    }
+
+    /* Convert the existing three/four selects into a hidden dropdown panel
+       without changing their IDs or onchange handlers. */
+    let panel=byId('vendorsFilterMenu');
+    if(!panel){
+      panel=document.createElement('div');panel.id='vendorsFilterMenu';panel.className='vendors-filter-menu hidden';
+      panel.innerHTML='<div class="vendors-filter-menu-grid"></div>';
+      controls.parentNode.insertBefore(panel,grid);
+    }
+    const menuGrid=panel.querySelector('.vendors-filter-menu-grid');
+    if(menuGrid){
+      const ids=['vendorSectorFilter','vendorCityFilter','vendorCategoryFilter','vendorSortFilter'];
+      ids.forEach(id=>{
+        const sel=byId(id); if(!sel||sel.parentElement===menuGrid) return;
+        const label=document.createElement('label');
+        label.innerHTML=id==='vendorSectorFilter'?'Sector':id==='vendorCityFilter'?'City':id==='vendorCategoryFilter'?'Category':'Sort';
+        sel.parentElement?.removeChild(sel);
+        label.appendChild(sel);menuGrid.appendChild(label);
+      });
+    }
+    let btn=byId('vendorsFilterTrigger');
+    if(!btn){
+      btn=document.createElement('button');btn.type='button';btn.id='vendorsFilterTrigger';btn.className='btn btn-sm btn-outline vendors-filter-trigger';
+      btn.innerHTML='<i class="fa-solid fa-sliders"></i> Filters <i class="fa-solid fa-chevron-down"></i>';
+      btn.onclick=()=>{const open=panel.classList.contains('hidden');panel.classList.toggle('hidden',!open);btn.classList.toggle('active',open);};
+      controls.appendChild(btn);
+    }
+
+    const filter=currentVendorFilter();
+    document.querySelectorAll('#vendorsListingTabs .vendor-listing-tab').forEach(b=>b.classList.toggle('active',b.dataset.filter===filter));
+  }
+
+  function filterByVendorCapability(){
+    const mode=currentVendorFilter();
+    if(mode==='all') return;
+    const map=window.__levroVendorCapabilityMap||{};
+    const list=Array.isArray(window.__filteredVendors)?window.__filteredVendors:[];
+    const filtered=list.filter(v=>{
+      const c=map[String(v.id)] || {canBuy:!!v.canBuy,canRent:!!v.canRent};
+      return mode==='buy' ? c.canBuy : mode==='rent' ? c.canRent : (c.canBuy&&c.canRent);
+    });
+    window.__filteredVendors=filtered;
+    const grid=byId('vendorsGrid');
+    if(grid && typeof window.renderVendorDirectoryCards==='function') window.renderVendorDirectoryCards();
+    else if(grid) grid.innerHTML=filtered.length?filtered.map(vendorCardHtml).join(''):'<div class="empty-state">No vendors match that type.</div>';
+  }
+
+  /* Wrap the final vendor loader so capabilities are available regardless of
+     which of the earlier loaders won the cascade. */
+  const origLoad=window.loadVendorsDirectory;
+  if(typeof origLoad==='function' && !window.__levroCapabilityLoadWrapped){
+    window.__levroCapabilityLoadWrapped=true;
+    window.loadVendorsDirectory=async function(){
+      const result=await origLoad.apply(this,arguments);
+      await hydrateVendorCapabilities();
+      ensureVendorDirectoryUI();
+      if(typeof window.filterVendorsDirectory==='function') window.filterVendorsDirectory();
+      return result;
+    };
+  }
+
+  /* Wrap the currently-active filter so type tabs survive every rerender. */
+  const origFilter=window.filterVendorsDirectory;
+  if(typeof origFilter==='function' && !window.__levroCapabilityFilterWrapped){
+    window.__levroCapabilityFilterWrapped=true;
+    window.filterVendorsDirectory=function(){
+      origFilter.apply(this,arguments);
+      ensureVendorDirectoryUI();
+      const mode=currentVendorFilter();
+      if(mode==='all') return;
+      const map=window.__levroVendorCapabilityMap||{};
+      const base=Array.isArray(window.__filteredVendors)?window.__filteredVendors:[];
+      const filtered=base.filter(v=>{
+        const c=map[String(v.id)] || {canBuy:!!v.canBuy,canRent:!!v.canRent};
+        return mode==='buy' ? c.canBuy : mode==='rent' ? c.canRent : (c.canBuy&&c.canRent);
+      });
+      window.__filteredVendors=filtered;
+      if(typeof window.renderVendorDirectoryCards==='function') window.renderVendorDirectoryCards();
+      else {const grid=byId('vendorsGrid');if(grid)grid.innerHTML=filtered.length?filtered.map(vendorCardHtml).join(''):'<div class="empty-state">No vendors match that type.</div>';}
+    };
+  }
+
+  /* Ensure the UI is available immediately on a currently-mounted Vendors page. */
+  setTimeout(()=>{ensureVendorDirectoryUI();hydrateVendorCapabilities().then(()=>{if(byId('vendorsGrid')) window.filterVendorsDirectory?.();});},0);
+
+  /* Ensure request/profile naming stays "Requests" for vendors. */
+  window.refreshCustomerRequestIcons?.();
+})();
+</script>
