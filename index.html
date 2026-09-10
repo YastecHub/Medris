@@ -10249,10 +10249,19 @@ async function navigate(view, params = {}, pushHistory = true) {
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
     try {
+      /* Mobile Safari can restore the cached session after the route tap.
+         Never let the protected renderer mistake that short gap for a real
+         permission failure. Wait for the shared auth/profile refresh first. */
       await Promise.race([
         refreshAuthStateOnce(),
-        new Promise(resolve => setTimeout(resolve, 2500))
+        new Promise(resolve => setTimeout(resolve, 8000))
       ]);
+      if (session && !profile) {
+        const authGraceUntil = Date.now() + 3000;
+        while (Date.now() < authGraceUntil && session && !profile) {
+          await new Promise(resolve => setTimeout(resolve, 120));
+        }
+      }
     } catch (_) {}
   }
   if (view !== "settings" && previousView !== "settings") lastNonSettingsView = previousView || "home";
@@ -10368,6 +10377,36 @@ async function navigate(view, params = {}, pushHistory = true) {
       default: html = await renderHome();
     }
     lastRenderError = null;
+    /* A restored Supabase session can briefly exist before the role/vendor row
+       has finished resolving. If a protected renderer nevertheless returned
+       its guard page, give auth one bounded retry before committing that HTML.
+       This fixes the tap -> Access denied -> refresh behavior without changing
+       any permissions or backend rules. */
+    if (protectedRouteViews.has(view) && /Access denied\.?<\/div>/i.test(String(html || ""))) {
+      try {
+        await refreshAuthStateOnce();
+        if (view !== "home") {
+          switch (view) {
+            case "vendorDashboard": html = await renderVendorDashboard(); break;
+            case "vendorProducts": html = await renderVendorProducts(); break;
+            case "vendorPackages": html = await renderVendorPackages(); break;
+            case "vendorEarnings": html = await renderVendorEarnings(); break;
+            case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
+            case "vendorEditProfile": html = await renderVendorEditProfile(); break;
+            case "vendorRequests": html = await renderVendorRequests(); break;
+            case "messages": html = await renderMessages(params.conversationId); break;
+            case "cart": html = await renderCart(); break;
+            case "wishlist": html = await renderWishlist(); break;
+            case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
+            case "orderDetail": html = await renderOrderDetail(params.orderId, params.source); break;
+            case "requestEquipment": html = await renderRequestEquipment(); break;
+            default: break;
+          }
+        }
+      } catch (retryErr) {
+        console.warn("[Levromart] Protected route auth retry failed:", retryErr);
+      }
+    }
   } catch (err) {
     lastRenderError = err?.message || String(err || "");
     const cachedFallback = routeHtmlCache.get(cacheKey);
@@ -10572,9 +10611,15 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     ? cache.carouselSlides
     : INITIAL_HOME_CAROUSEL_SLIDES.slice();
   let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
-  html += `<div class="hero">${renderHomepageCarouselHtml(offlineCarousel)}<div class="hero-content"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div></div></div>`;
-  if (sectors.length) html += `<div class="cat-row sector-row"><button class="cat-chip sector-chip ${!activeSector ? "active" : ""}" onclick="switchSector(null)"><span class="cat-icon"><i class="fa-solid fa-border-all"></i></span><span>All</span></button>${sectors.map(s => `<button class="cat-chip sector-chip ${activeSector?.id === s.id ? "active" : ""}" onclick="switchSector('${s.id}')"><span class="cat-icon"><i class="fa-solid ${esc(s.icon)}"></i></span><span>${esc(s.name)}</span></button>`).join("")}</div>`;
-  if (subCats.length) html += `<div class="cat-row">${subCats.map(c => `<button class="cat-chip" onclick="filterByCategory('${c.id}')"><span class="cat-icon">${categoryIcon(c.name)}</span><span>${esc(c.name)}</span></button>`).join("")}</div>`;
+  html += `<div class="hero levro-home-hero"><div class="hero-content levro-home-search-wrap"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div></div>${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
+  html += `<section class="levro-home-quick-actions" aria-label="Quick actions">
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span>Shop products</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span>Book services</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('rent')"><span class="levro-quick-icon"><i class="fa-solid fa-key"></i></span><span>Rent items</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('vendors')"><span class="levro-quick-icon"><i class="fa-solid fa-store"></i></span><span>Explore verified vendors</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span>Request an item</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
+  </section>`;
   const trendingProducts = (trending || []).filter(p => !p.is_service);
   const trendingServices = (trending || []).filter(p => p.is_service);
   if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(productCardHtml).join("")}</div>`;
@@ -11155,28 +11200,27 @@ async function renderHome() {
   }).slice(0, 6);
   const hasPersonalPackageMatch = recommendedPackages.some((pkg) => (pkg.items || []).some((it) => favoriteIds.has(it.product?.id)));
 
-  let html = `<div class="hero">
-    ${renderHomepageCarouselHtml(homepageCarouselSlides)}
-    <div class="hero-content">
+  let html = `<div class="hero levro-home-hero">
+    <div class="hero-content levro-home-search-wrap">
       <div class="hero-search flex">
         <i class="fa-solid fa-magnifying-glass hero-search-icon"></i>
-        <input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onfocus="if(this.value.trim())fetchSearchSuggestions(this.value.trim())" onblur="setTimeout(hideSearchSuggestions,150)" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" />
+        <input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onfocus="if(this.value.trim())fetchSearchSuggestions(this.value.trim())" onblur="setTimeout(hideSearchSuggestions,150)" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" />
         <div id="heroSearchSuggest" class="search-suggest hidden"></div>
       </div>
     </div>
+    ${renderHomepageCarouselHtml(homepageCarouselSlides)}
   </div>`;
 
-  if (sectors.length) {
-    html += `<div class="cat-row sector-row">
-      <button class="cat-chip sector-chip ${!activeSector ? "active" : ""}" onclick="switchSector(null)"><span class="cat-icon"><i class="fa-solid fa-border-all"></i></span><span>All</span></button>
-      ${sectors.map((s) => `<button class="cat-chip sector-chip ${activeSector?.id === s.id ? "active" : ""}" onclick="switchSector('${s.id}')"><span class="cat-icon"><i class="fa-solid ${esc(s.icon)}"></i></span><span>${esc(s.name)}</span></button>`).join("")}
-    </div>`;
-  }
-
-  const subCats = (categories || []).filter((c) => c.parent_category_id && (!activeSector || c.sector_id === activeSector.id));
-  if (subCats.length) {
-    html += `<div class="cat-row">${subCats.map((c) => `<button class="cat-chip" onclick="filterByCategory('${c.id}')"><span class="cat-icon">${categoryIcon(c.name)}</span><span>${esc(c.name)}</span></button>`).join("")}</div>`;
-  }
+  // The homepage now uses six high-value actions instead of the old scrolling
+  // sector/category rails. Each action stays inside the SPA; no hard reloads.
+  html += `<section class="levro-home-quick-actions" aria-label="Quick actions">
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span>Shop products</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span>Book services</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('rent')"><span class="levro-quick-icon"><i class="fa-solid fa-key"></i></span><span>Rent items</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('vendors')"><span class="levro-quick-icon"><i class="fa-solid fa-store"></i></span><span>Explore verified vendors</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span>Request an item</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
+  </section>`;
 
   if (trending && trending.length) {
     const trendingProducts = trending.filter(p => !p.is_service);
@@ -12453,7 +12497,7 @@ async function renderMessages(conversationId) {
         <button type="button" onclick="cancelMsgVoiceRecording()" title="Cancel recording" aria-label="Cancel recording"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="chat-input-row">
-        <input type="file" id="chatFileInput" class="chat-file-input" accept="image/*,.heic,.heif,.webp" multiple onchange="handleChatFileSelected(event,'${conversationId}')" />
+        <input type="file" id="chatFileInput" class="chat-file-input" accept="image/*,.heic,.heif,.webp" onchange="handleChatFileSelected(event,'${conversationId}')" />
         <button class="msg-attach-btn" onclick="byId('chatFileInput').click()" title="Attach a file (max 10MB)"><i class="fa-solid fa-paperclip"></i></button>
         ${AiSpeechRecognition ? `<button class="ai-chat-mic-btn" id="msgMicBtn" onclick="toggleMsgMic()" title="Tap to talk"><i class="fa-solid fa-microphone"></i></button>` : ""}
         <textarea id="chatInput" rows="1" placeholder="Type a message…" maxlength="2000" oninput="handleChatTyping('${conversationId}');autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}');}"></textarea>
@@ -13360,7 +13404,7 @@ function bindChatImageEditorPointer(){
   let drawing=false, points=[],start=null;
   const pos=e=>{const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*(canvas.width/r.width),y:(e.clientY-r.top)*(canvas.height/r.height)};};
   canvas.addEventListener("pointerdown",e=>{const st=chatAttachmentEditorState;if(!st)return;e.preventDefault();canvas.setPointerCapture?.(e.pointerId);const p=pos(e);if(st.tool==="crop"){start=p;st.crop={x:p.x,y:p.y,w:0,h:0};}else{drawing=true;points=[p];st.strokes.push({color:st.tool==="highlight"?"rgba(255,230,0,.38)":"#ff3040",width:st.tool==="highlight"?18:4,points});}});
-  canvas.addEventListener("pointermove",e=>{const st=chatAttachmentEditorState;if(!st)return;const p=pos(e);if(st.tool==="crop"&&start){st.crop={x:Math.min(start.x,p.x),y:Math.min(start.y,p.y),w:Math.abs(p.x-start.x),h:Math.abs(p.y-start.y)};drawEditorPreview();}else if(drawing){points.push(p);drawEditorPreview();}});
+  canvas.addEventListener("pointermove",e=>{const st=chatAttachmentEditorState;if(!st)return;const p=pos(e);if(st.tool==="crop"&&start){const dx=p.x-start.x,dy=p.y-start.y;const size=Math.min(Math.abs(dx),Math.abs(dy));const x=dx<0?start.x-size:start.x;const y=dy<0?start.y-size:start.y;st.crop={x:Math.max(0,x),y:Math.max(0,y),w:Math.min(size,canvas.width-Math.max(0,x)),h:Math.min(size,canvas.height-Math.max(0,y))};drawEditorPreview();}else if(drawing){points.push(p);drawEditorPreview();}});
   const end=()=>{drawing=false;start=null;};canvas.addEventListener("pointerup",end);canvas.addEventListener("pointercancel",end);
 }
 
@@ -14899,7 +14943,7 @@ async function renderVendorRequests() {
       <button class="btn btn-sm" type="button" onclick="navigate('requestEquipment')"><i class="fa-solid fa-plus"></i> Post request</button>
     </div>
     <div class="vendor-request-tabs" role="tablist" aria-label="Requests">
-      <button type="button" class="vendor-request-tab active" data-request-tab="customers" onclick="switchVendorRequestTab('customers')"><i class="fa-solid fa-users"></i> Customer requests${visibleRequests.length ? ` <span>${visibleRequests.length}</span>` : ""}</button>
+      <button type="button" class="vendor-request-tab active" data-request-tab="customers" onclick="switchVendorRequestTab('customers')"><i class="fa-solid fa-users"></i> Customer requests${visibleRequests.length ? ` <span data-request-customer-count>${visibleRequests.length}</span>` : ""}</button>
       <button type="button" class="vendor-request-tab" data-request-tab="mine" onclick="switchVendorRequestTab('mine')"><i class="fa-solid fa-list-check"></i> My requests${myRequests?.length ? ` <span>${myRequests.length}</span>` : ""}</button>
     </div>
     <section id="vendorCustomerRequestsTab" class="vendor-request-tab-panel">`;
@@ -14930,38 +14974,38 @@ async function renderVendorRequests() {
     </div>`;
 
     html += `<article class="card vendor-request-card" id="vendorRequestCard-${r.id}">
-      <div class="vendor-request-card-head">
-        <div class="vendor-request-person">
-          ${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.6rem;height:2.6rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.6rem", "", r.buyer_name || "Customer")}
-          <div><strong class="vendor-request-title">${esc(r.title)}</strong><p class="muted" style="margin:.15rem 0 0;font-size:.78rem;">${esc(r.buyer_name || "A buyer")}</p></div>
+      <div class="vendor-request-person">
+        ${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.55rem;height:2.55rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.55rem", "", r.buyer_name || "Customer")}
+        <div class="vendor-request-identity-copy">
+          <strong class="vendor-request-title">${esc(r.title)}</strong>
+          <span class="muted vendor-request-buyer">${esc(r.buyer_name || "A buyer")}</span>
+          <span class="muted vendor-request-city">${esc(r.city || "Lagos")}</span>
         </div>
-        <span class="badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span>
       </div>
-      ${r.description ? `<p class="muted vendor-request-description">${esc(r.description)}</p>` : ""}
-      <p class="muted vendor-request-meta">${[r.city, r.request_type !== "buy" && r.needed_from ? r.needed_from + " → " + (r.needed_to || "") : ""].filter(Boolean).map(esc).join(" · ")}</p>
-      ${mine
-        ? `<div class="vendor-interest-row">
-             <button type="button" class="btn btn-sm vendor-interest-btn" disabled><i class="fa-solid fa-heart"></i> Interested</button>
-             <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
-           </div>
-           <div class="vendor-offer-status"><i class="fa-solid fa-circle-check"></i> You already sent an offer · <strong>${esc(mine.status || "pending")}</strong></div>`
-        : interest === "interested"
-          ? offerComposer(true)
-          : `<div class="vendor-interest-row">
-              <button type="button" class="btn btn-sm vendor-interest-btn" onclick="setVendorRequestInterest('${r.id}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
-              <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
-            </div>`}
+      <div class="vendor-request-right">
+        <span class="badge vendor-request-type-badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span>
+        ${r.description ? `<p class="muted vendor-request-description">${esc(r.description)}</p>` : ""}
+        ${mine
+          ? `<div class="vendor-interest-row">
+               <button type="button" class="btn btn-sm vendor-interest-btn" disabled><i class="fa-solid fa-heart"></i> Interested</button>
+               <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
+             </div>
+             <div class="vendor-offer-status"><i class="fa-solid fa-circle-check"></i> You already sent an offer · <strong>${esc(mine.status || "pending")}</strong></div>`
+          : interest === "interested"
+            ? offerComposer(true)
+            : `<div class="vendor-interest-row">
+                <button type="button" class="btn btn-sm vendor-interest-btn" onclick="setVendorRequestInterest('${r.id}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
+                <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
+              </div>`}
+      </div>
     </article>`;
   };
 
-  // Keep the default view compact: one request is visible, while the rest
-  // stay behind a native details/summary dropdown.
-  const requestPreviewCount = 1;
-  visibleRequests.slice(0, requestPreviewCount).forEach(requestRender);
-  if (visibleRequests.length > requestPreviewCount) {
-    const remainingCount = visibleRequests.length - requestPreviewCount;
-    html += `<details class="vendor-more-requests"><summary><span><i class="fa-solid fa-chevron-down"></i> View ${remainingCount} more request${remainingCount === 1 ? "" : "s"}</span><small>Show all</small></summary><div class="vendor-more-requests-body">`;
-    visibleRequests.slice(requestPreviewCount).forEach(requestRender);
+  // Keep the request area compact while making the request list explicitly
+  // collapsible. It opens by default so the current request remains visible.
+  if (visibleRequests.length) {
+    html += `<details class="vendor-more-requests" open><summary><span><i class="fa-solid fa-chevron-down"></i> ${visibleRequests.length} customer request${visibleRequests.length === 1 ? "" : "s"}</span><small>Collapse / expand</small></summary><div class="vendor-more-requests-body">`;
+    visibleRequests.forEach(requestRender);
     html += `</div></details>`;
   }
   html += `</section><section id="vendorMyRequestsTab" class="vendor-request-tab-panel hidden">`;
@@ -15026,6 +15070,16 @@ async function setVendorRequestInterest(requestId, state) {
     localStorage.setItem(hiddenKey, JSON.stringify(hidden));
     try { localStorage.removeItem(interestKey); } catch (_) {}
     card?.remove();
+    const countEl = document.querySelector('[data-request-customer-count]');
+    const remaining = document.querySelectorAll('#vendorCustomerRequestsTab .vendor-more-requests-body .vendor-request-card').length;
+    if (countEl) { countEl.textContent = remaining ? String(remaining) : ''; countEl.classList.toggle('hidden', remaining === 0); }
+    const tabBtn = document.querySelector('#vendorCustomerRequestsTab')?.closest('.vendor-requests-page')?.querySelector('[data-request-tab="customers"]');
+    if (tabBtn) {
+      const m = tabBtn.querySelector('[data-request-customer-count]');
+      if (remaining === 0) m?.remove();
+      else if (m) m.textContent = String(remaining);
+      else tabBtn.insertAdjacentHTML('beforeend', ` <span data-request-customer-count>${remaining}</span>`);
+    }
     showToast("Request removed from your dashboard.", "success");
     return;
   }
@@ -24992,9 +25046,9 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     const modal=document.createElement('div');
     modal.id='chatAttachmentEditorModal';
     modal.className='modal hidden chat-attachment-editor-modal';
-    modal.innerHTML=`<div class="modal-content chat-attachment-editor-content" role="dialog" aria-modal="true" aria-label="Edit photos">
+    modal.innerHTML=`<div class="modal-content chat-attachment-editor-content" role="dialog" aria-modal="true" aria-label="Edit photo">
       <div class="chat-media-editor-head">
-        <div class="media-editor-title"><i class="fa-solid fa-images"></i><h3>Edit photos</h3></div>
+        <div class="media-editor-title"><i class="fa-solid fa-image"></i><h3>Edit photo</h3></div>
         <button type="button" class="chat-media-editor-close" onclick="closeChatAttachmentEditor(false)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="chat-media-editor-tools" role="toolbar" aria-label="Photo editing tools">
@@ -25013,7 +25067,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
         <div class="chat-media-thumbs" id="chatAttachmentEditorThumbs" aria-label="Selected photos"></div>
       </div>
       <label class="chat-media-caption"><span>Caption</span><textarea id="chatAttachmentCaption" rows="2" maxlength="500" placeholder="Add a caption…"></textarea></label>
-      <div class="chat-media-editor-footer"><span id="chatAttachmentEditorStatus" class="muted"></span><div class="media-editor-actions"><button type="button" class="btn btn-sm btn-outline" onclick="closeChatAttachmentEditor(false)">Cancel</button><button type="button" class="btn btn-sm" onclick="saveChatAttachmentEditor()"><i class="fa-solid fa-check"></i> Use photos</button></div></div>
+      <div class="chat-media-editor-footer"><span id="chatAttachmentEditorStatus" class="muted"></span><div class="media-editor-actions"><button type="button" class="btn btn-sm btn-outline" onclick="closeChatAttachmentEditor(false)">Cancel</button><button type="button" class="btn btn-sm" onclick="saveChatAttachmentEditor()"><i class="fa-solid fa-check"></i> Use photo</button></div></div>
     </div>`;
     document.body.appendChild(modal);
     return modal;
@@ -25056,6 +25110,17 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     const ctx=canvas.getContext('2d');
     ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(item.sourceCanvas,0,0,canvas.width,canvas.height);
     item.strokes.forEach(s=>{ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=s.color;ctx.lineWidth=s.width;ctx.globalAlpha=s.alpha||1;ctx.beginPath();s.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.restore();});
+    if(st.tool==='crop' && !(item.crop?.w>1 && item.crop?.h>1)){
+      const guide=Math.max(40,Math.min(canvas.width,canvas.height)*.78);
+      const gx=(canvas.width-guide)/2, gy=(canvas.height-guide)/2;
+      ctx.save();
+      ctx.fillStyle='rgba(0,0,0,.32)';ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.clearRect(gx,gy,guide,guide);ctx.drawImage(item.sourceCanvas,0,0,canvas.width,canvas.height);
+      ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.setLineDash([7,5]);ctx.strokeRect(gx,gy,guide,guide);
+      ctx.setLineDash([]);ctx.fillStyle='#fff';
+      [[gx,gy],[gx+guide,gy],[gx,gy+guide],[gx+guide,gy+guide]].forEach(([x,y])=>ctx.fillRect(x-4,y-4,8,8));
+      ctx.restore();
+    }
     if(item.crop?.w>1 && item.crop?.h>1){
       const c=item.crop;
       ctx.save();ctx.fillStyle='rgba(0,0,0,.48)';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.clearRect(c.x,c.y,c.w,c.h);ctx.drawImage(item.sourceCanvas,0,0,canvas.width,canvas.height); 
@@ -25193,6 +25258,45 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 })();
 </script>
 </body>
+<style id="levromart-20260910-final-polish">
+/* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
+#app .vendor-more-requests{width:min(100%,560px)!important;max-width:560px!important;margin:.42rem auto .72rem!important;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border))!important;border-radius:14px!important;background:color-mix(in srgb,var(--card) 96%,var(--primary) 4%)!important;overflow:hidden!important}
+#app .vendor-more-requests summary{list-style:none!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.45rem!important;padding:.46rem .68rem!important;color:var(--text)!important;font-size:.66rem!important;font-weight:750!important}
+#app .vendor-more-requests summary::-webkit-details-marker{display:none!important}
+#app .vendor-more-requests summary i{color:var(--primary)!important;margin-right:.25rem!important;transition:transform .18s ease!important}
+#app .vendor-more-requests[open] summary i{transform:rotate(180deg)!important}
+#app .vendor-more-requests summary small{font-size:.56rem!important;color:var(--text-muted)!important;font-weight:600!important}
+#app .vendor-more-requests-body{padding:.15rem .28rem .3rem!important;border-top:1px solid color-mix(in srgb,var(--primary) 10%,var(--border))!important}
+#app .vendor-more-requests-body .vendor-request-card{margin:.3rem auto!important}
+#app .vendor-request-card{width:100%!important;max-width:560px!important;box-sizing:border-box!important;display:grid!important;grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr)!important;gap:.42rem!important;align-items:center!important;margin:.3rem auto!important;padding:.46rem .56rem!important;min-height:0!important;border-radius:13px!important}
+#app .vendor-request-card .vendor-request-person{display:flex!important;align-items:center!important;gap:.4rem!important;min-width:0!important;align-self:start!important}
+#app .vendor-request-card .vendor-request-person .avatar-circle{width:2.3rem!important;height:2.3rem!important;min-width:2.3rem!important;min-height:2.3rem!important}
+#app .vendor-request-identity-copy{min-width:0!important;display:flex!important;flex-direction:column!important;line-height:1.02!important}
+#app .vendor-request-title{font-size:.77rem!important;line-height:1.05!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#app .vendor-request-buyer,#app .vendor-request-city{font-size:.57rem!important;line-height:1.06!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;margin-top:.1rem!important}
+#app .vendor-request-right{min-width:0!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:.18rem!important}
+#app .vendor-request-type-badge{align-self:flex-start!important;width:max-content!important;height:1.38rem!important;min-width:2.25rem!important;padding:.14rem .45rem!important;border-radius:7px!important;font-size:.59rem!important;line-height:1!important}
+#app .vendor-request-description{font-size:.57rem!important;line-height:1.05!important;margin:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#app .vendor-request-card .vendor-interest-row{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;justify-content:stretch!important;align-items:center!important;gap:.3rem!important;width:100%!important;margin:.16rem 0 0!important}
+#app .vendor-request-card .vendor-interest-row .btn{flex:1 1 0!important;width:0!important;min-width:0!important;height:29px!important;min-height:29px!important;padding:.27rem .3rem!important;border-radius:8px!important;font-size:.57rem!important;line-height:1!important;white-space:nowrap!important;justify-content:center!important}
+#app .vendor-request-card .vendor-offer-status{font-size:.56rem!important;line-height:1.04!important;margin:.12rem 0 0!important;text-align:left!important}
+@media(max-width:480px){#app .vendor-request-card{grid-template-columns:minmax(0,.86fr) minmax(0,1.44fr)!important;padding:.42rem .48rem!important;gap:.36rem!important}#app .vendor-request-card .vendor-request-person .avatar-circle{width:2.1rem!important;height:2.1rem!important;min-width:2.1rem!important;min-height:2.1rem!important}#app .vendor-request-title{font-size:.71rem!important}#app .vendor-request-buyer,#app .vendor-request-city{font-size:.53rem!important}#app .vendor-request-type-badge{height:1.27rem!important;font-size:.55rem!important;padding:.12rem .38rem!important}#app .vendor-request-card .vendor-interest-row .btn{height:27px!important;min-height:27px!important;font-size:.54rem!important;padding:.23rem .22rem!important}}
+
+/* Homepage: flyer-inspired 3 × 2 action grid — icon-first, light and modern. */
+#app .levro-home-quick-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.72rem .35rem!important;width:min(100%,560px)!important;margin:.65rem auto 1.05rem!important;padding:.1rem .05rem!important}
+#app .levro-quick-action{min-width:0!important;min-height:72px!important;padding:.16rem .12rem!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--text)!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:.3rem!important;font:inherit!important;font-size:.6rem!important;font-weight:750!important;text-align:center!important;cursor:pointer!important;transition:transform .15s ease!important}
+#app .levro-quick-action:active{transform:scale(.96)!important}
+#app .levro-quick-icon{width:2.65rem!important;height:2.65rem!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;background:color-mix(in srgb,var(--primary) 10%,var(--card))!important;color:var(--primary)!important;font-size:1.02rem!important;box-shadow:none!important;border:0!important}
+@media(max-width:560px){#app .levro-home-quick-actions{gap:.55rem .18rem!important;margin:.5rem auto .9rem!important}#app .levro-quick-action{min-height:67px!important;font-size:.56rem!important}#app .levro-quick-icon{width:2.48rem!important;height:2.48rem!important;font-size:.96rem!important}}
+
+/* Single-photo chat editor: compact icon tools and a clearly visible crop guide. */
+#chatAttachmentEditorModal .chat-media-editor-content{width:min(94vw,620px)!important;max-width:620px!important}
+#chatAttachmentEditorModal .chat-media-editor-tools{display:flex!important;align-items:center!important;justify-content:center!important;gap:.35rem!important}
+#chatAttachmentEditorModal .chat-media-tool{width:42px!important;height:42px!important;min-width:42px!important;padding:0!important;border-radius:11px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}
+#chatAttachmentEditorModal .chat-media-nav,#chatAttachmentEditorModal .chat-media-thumbs{display:none!important}
+#chatAttachmentEditorModal .chat-media-caption span{font-size:.72rem!important}
+#chatAttachmentEditorModal .chat-media-caption textarea{min-height:52px!important}
+</style>
 </html>
 
 <style id="levromart-20260910-canonical-fixes">
@@ -25459,5 +25563,164 @@ body.chat-full-page > #app{
   document.addEventListener('focusout', function(){ setTimeout(schedule,80); }, true);
   setTimeout(schedule,0);
   setTimeout(schedule,120);
+})();
+</script>
+
+<style id="levromart-precision-20260910-final">
+/* Homepage: search first, then promotional carousel, then six calm action tiles. */
+#app .levro-home-hero{display:flex !important;flex-direction:column !important;gap:.7rem !important;}
+#app .levro-home-search-wrap{order:0 !important;margin:0 !important;}
+#app .levro-home-hero .home-promotional-carousel{order:1 !important;margin-bottom:0 !important;}
+#app .levro-home-quick-actions{
+  display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:.65rem !important;margin:.25rem 0 1rem !important;width:100% !important;
+}
+#app .levro-quick-action{
+  min-width:0 !important;min-height:88px !important;padding:.72rem .42rem !important;
+  border:1px solid color-mix(in srgb,var(--primary) 13%,var(--border)) !important;
+  border-radius:16px !important;background:color-mix(in srgb,var(--primary) 4%,var(--card)) !important;
+  color:var(--text) !important;display:flex !important;flex-direction:column !important;
+  align-items:center !important;justify-content:center !important;gap:.42rem !important;
+  font:inherit !important;font-size:.7rem !important;font-weight:750 !important;text-align:center !important;
+  box-shadow:0 5px 18px rgba(15,23,42,.055) !important;cursor:pointer !important;
+  transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease !important;
+}
+#app .levro-quick-action:active{transform:scale(.97) !important;}
+#app .levro-quick-icon{
+  width:2.45rem !important;height:2.45rem !important;border-radius:50% !important;
+  display:flex !important;align-items:center !important;justify-content:center !important;
+  background:color-mix(in srgb,var(--primary) 11%,var(--card)) !important;color:var(--primary) !important;
+  font-size:1rem !important;
+}
+@media(max-width:560px){
+  #app .levro-home-quick-actions{gap:.5rem !important;margin-top:.15rem !important;}
+  #app .levro-quick-action{min-height:82px !important;border-radius:14px !important;font-size:.64rem !important;padding:.58rem .28rem !important;}
+  #app .levro-quick-icon{width:2.25rem !important;height:2.25rem !important;font-size:.92rem !important;}
+}
+
+/* Request card: compact, modern two-column composition. Buy + actions live together. */
+#app .vendor-request-card{
+  display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1.65fr) !important;
+  grid-template-areas:"person right" !important;align-items:center !important;
+  gap:.62rem !important;width:min(100%,620px) !important;max-width:620px !important;
+  margin:.42rem auto !important;padding:.62rem .68rem !important;min-height:0 !important;
+  box-sizing:border-box !important;
+}
+#app .vendor-request-card .vendor-request-person{
+  grid-area:person !important;display:flex !important;align-items:center !important;
+  gap:.45rem !important;min-width:0 !important;align-self:start !important;
+}
+#app .vendor-request-card .vendor-request-person .avatar-circle{
+  width:2.5rem !important;height:2.5rem !important;min-width:2.5rem !important;min-height:2.5rem !important;
+}
+#app .vendor-request-identity-copy{min-width:0 !important;display:flex !important;flex-direction:column !important;line-height:1.05 !important;}
+#app .vendor-request-title{font-size:.86rem !important;line-height:1.08 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+#app .vendor-request-buyer,#app .vendor-request-city{font-size:.63rem !important;line-height:1.1 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;margin-top:.14rem !important;}
+#app .vendor-request-right{grid-area:right !important;min-width:0 !important;display:flex !important;flex-direction:column !important;align-items:stretch !important;gap:.28rem !important;}
+#app .vendor-request-type-badge{align-self:flex-end !important;width:max-content !important;height:1.5rem !important;min-width:2.35rem !important;padding:.18rem .55rem !important;border-radius:8px !important;font-size:.64rem !important;line-height:1 !important;}
+#app .vendor-request-description{font-size:.62rem !important;line-height:1.12 !important;margin:0 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+#app .vendor-request-card .vendor-interest-row{
+  display:flex !important;justify-content:flex-start !important;align-items:center !important;
+  gap:.42rem !important;width:100% !important;margin:.22rem 0 0 !important;flex-wrap:nowrap !important;
+}
+#app .vendor-request-card .vendor-interest-row .btn{
+  flex:1 1 0 !important;min-width:0 !important;width:auto !important;height:33px !important;min-height:33px !important;
+  padding:.34rem .48rem !important;border-radius:9px !important;font-size:.64rem !important;
+  line-height:1 !important;white-space:nowrap !important;justify-content:center !important;
+}
+#app .vendor-request-card .vendor-offer-status{font-size:.61rem !important;line-height:1.1 !important;text-align:left !important;margin:.18rem 0 0 !important;}
+#app .vendor-more-requests{width:min(100%,620px) !important;max-width:620px !important;margin:.35rem auto .7rem !important;}
+@media(max-width:480px){
+  #app .vendor-request-card{grid-template-columns:minmax(0,.82fr) minmax(0,1.65fr) !important;gap:.48rem !important;padding:.55rem .58rem !important;}
+  #app .vendor-request-card .vendor-request-person .avatar-circle{width:2.3rem !important;height:2.3rem !important;min-width:2.3rem !important;min-height:2.3rem !important;}
+  #app .vendor-request-title{font-size:.77rem !important;}
+  #app .vendor-request-buyer,#app .vendor-request-city{font-size:.58rem !important;}
+  #app .vendor-request-type-badge{height:1.42rem !important;font-size:.6rem !important;padding:.16rem .46rem !important;}
+  #app .vendor-request-card .vendor-interest-row .btn{height:31px !important;min-height:31px !important;font-size:.6rem !important;padding:.32rem .35rem !important;}
+}
+
+/* Photo editor: this pass deliberately accepts ONE image only. Keep crop visible. */
+#chatAttachmentEditorModal .chat-media-nav,#chatAttachmentEditorModal .chat-media-thumbs{display:none !important;}
+#chatAttachmentEditorModal .chat-media-editor-head h3{font-size:1rem !important;}
+#chatAttachmentEditorModal .chat-media-editor-tools{gap:.32rem !important;justify-content:center !important;}
+#chatAttachmentEditorModal .chat-media-tool{width:42px !important;height:42px !important;min-width:42px !important;border-radius:12px !important;}
+#chatAttachmentEditorModal .chat-media-caption span{font-size:.72rem !important;}
+#chatAttachmentEditorModal .chat-media-caption textarea{min-height:52px !important;}
+</style>
+<script id="levromart-precision-20260910-final-runtime">
+(function(){
+  'use strict';
+  window.openHomeQuickAction = async function(action){
+    try{
+      if(action==='products' || action==='services'){
+        homeListingTab = action==='services' ? 'services' : 'products';
+        await navigate('home');
+        requestAnimationFrame(()=>setTimeout(()=>{
+          switchHomeListingTab(homeListingTab);
+          byId('browseSection')?.scrollIntoView({behavior:'smooth',block:'start'});
+        },40));
+        return;
+      }
+      if(action==='rent'){
+        if(typeof vendorsListingFilter!=='undefined') vendorsListingFilter='rent';
+        await navigate('vendors');
+        return;
+      }
+      if(action==='vendors'){
+        if(typeof vendorsViewMode!=='undefined') vendorsViewMode='map';
+        if(typeof vendorsListingFilter!=='undefined') vendorsListingFilter='all';
+        await navigate('vendors');
+        return;
+      }
+      if(action==='request'){ await navigate('requestEquipment'); return; }
+      if(action==='chat'){ await navigate('messages'); return; }
+    }catch(err){ console.warn('[Levromart] Quick action navigation failed:',err); }
+  };
+
+  /* The browser file picker may return several files. Levromart intentionally
+     sends them through the editor ONE AT A TIME to keep caption/edit behavior
+     deterministic on mobile. */
+  window.handleChatFileSelected = function(evt, conversationId){
+    const files=[...(evt?.target?.files||[])];
+    if(evt?.target) evt.target.value='';
+    if(!files.length) return;
+    const first=files.find(f=>String(f.type||'').startsWith('image/') && f.size<=MAX_ATTACHMENT_BYTES);
+    if(!first){ showToast('Choose one image up to 10MB.','error'); return; }
+    if(files.length>1) showToast('Only one photo can be selected at a time.','info');
+    bindChatImageEditorPointer();
+    openChatAttachmentEditor(first,0,1,async function(result){
+      if(!result) return;
+      try{
+        const input=byId('chatInput'); clearTimeout(typingStopTimer); publishChatTyping(false);
+        const replyToId=chatReplyTarget?.id||null; const snap=chatReplyTarget?{...chatReplyTarget}:null;
+        resetChatInput(input);
+        const prepared=Array.isArray(result)?result[0]:result;
+        if(!prepared) return;
+        await sendPreparedChatImage(conversationId,prepared,replyToId,snap);
+        chatReplyTarget=null; renderChatReplyPreview(); scrollChatToBottom();
+        resolveVisibleAttachments(byId('chatMessages')); setupMessageInteractions(byId('chatMessages'));
+        showToast('Photo sent.','success');
+      }catch(err){showToast(err?.message||'Could not send the photo.','error');}
+    });
+  };
+
+  /* Keep the final editor's crop interaction square and visibly bounded. */
+  const oldTool=window.setChatImageEditorTool;
+  window.setChatImageEditorTool=function(tool,btn){
+    oldTool?.(tool,btn);
+    const canvas=byId('chatAttachmentEditorCanvas');
+    if(canvas) canvas.style.cursor=tool==='crop'?'crosshair':'default';
+  };
+
+  /* If the editor is opened by any older attachment trigger, normalize its
+     chrome to the same single-photo presentation. */
+  const normalizeEditor=()=>{
+    const modal=byId('chatAttachmentEditorModal'); if(!modal)return;
+    const title=modal.querySelector('.media-editor-title h3'); if(title) title.textContent='Edit photo';
+    const use=modal.querySelector('.media-editor-actions .btn:not(.btn-outline)'); if(use) use.innerHTML='<i class="fa-solid fa-check"></i> Use photo';
+  };
+  const observer=new MutationObserver(()=>normalizeEditor());
+  observer.observe(document.body,{subtree:true,childList:true});
+  setTimeout(normalizeEditor,0);
 })();
 </script>
