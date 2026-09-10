@@ -14391,8 +14391,8 @@ async function renderRequestEquipment() {
       <label>What do you need? *</label><input id="reqTitle" placeholder="e.g. Oxygen concentrator, jollof rice for 20…" />
       <label>I want to</label>
       <div class="flex">
-        <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="rent" onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Rent</label>
         <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="buy" checked onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Buy</label>
+        <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="rent" onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Rent</label>
       </div>
       <label>More details</label><textarea id="reqDesc" rows="2" placeholder="Duration, specs, delivery preferences…"></textarea>
       <div class="flex">
@@ -24597,3 +24597,147 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 .admin-link-actions{display:flex !important;align-items:center !important;gap:.45rem !important;justify-content:flex-end !important;flex-wrap:wrap !important;}
 @media(max-width:600px){.admin-link-row{grid-template-columns:1fr !important;}.admin-link-actions{justify-content:flex-start !important;}}
 </style>
+
+<!-- 2026-09-10 PRECISION PATCH: request action sizing + chat viewport stability -->
+<style id="levromart-request-chat-precision-20260910">
+/* Request actions: compact rectangular buttons, centered as a pair. */
+#app .vendor-request-card .vendor-interest-row{
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:wrap !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:.7rem !important;
+  width:100% !important;
+  margin:1rem auto .35rem !important;
+}
+#app .vendor-request-card .vendor-interest-row .btn{
+  flex:0 0 auto !important;
+  width:auto !important;
+  min-width:140px !important;
+  min-height:42px !important;
+  height:42px !important;
+  padding:.55rem 1rem !important;
+  border-radius:12px !important;
+  font-size:.82rem !important;
+  line-height:1 !important;
+  justify-content:center !important;
+  white-space:nowrap !important;
+}
+@media(max-width:480px){
+  #app .vendor-request-card .vendor-interest-row{
+    flex-direction:row !important;
+    flex-wrap:wrap !important;
+    gap:.6rem !important;
+  }
+  #app .vendor-request-card .vendor-interest-row .btn{
+    width:auto !important;
+    min-width:132px !important;
+    min-height:40px !important;
+    height:40px !important;
+    padding:.5rem .85rem !important;
+    font-size:.8rem !important;
+  }
+}
+
+/* Dedicated chat: mimic WhatsApp's anchored shell. The header remains visible
+   while only the messages region scrolls, including while the OS keyboard is open. */
+body.chat-full-page{
+  overflow:hidden !important;
+  position:fixed !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+}
+body.chat-full-page > #app{
+  position:fixed !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  overflow:hidden !important;
+}
+.chat-page-wrap{
+  position:fixed !important;
+  left:0 !important;
+  right:0 !important;
+  top:0 !important;
+  height:100dvh !important;
+  max-height:100dvh !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  overscroll-behavior:none !important;
+}
+.chat-page-wrap .chat-page-header{
+  position:relative !important;
+  top:auto !important;
+  flex:0 0 auto !important;
+  min-height:calc(4.1rem + env(safe-area-inset-top,0px)) !important;
+  z-index:10000 !important;
+  transform:translateZ(0) !important;
+  will-change:auto !important;
+}
+.chat-page-wrap .chat-thread{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  height:auto !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+.chat-page-wrap .chat-messages{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  height:auto !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  touch-action:pan-y !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior-y:contain !important;
+  overscroll-behavior-x:none !important;
+  scroll-behavior:auto !important;
+}
+.chat-page-wrap .chat-input-row{
+  flex:0 0 auto !important;
+  position:relative !important;
+  z-index:10001 !important;
+}
+</style>
+<script id="levromart-chat-viewport-stabilizer-20260910">
+(function(){
+  'use strict';
+  var rafId = 0;
+  function syncChatViewport(){
+    var wrap = document.querySelector('.chat-page-wrap');
+    if(!wrap || !document.body.classList.contains('chat-full-page')) return;
+    var vv = window.visualViewport;
+    if(!vv) return;
+    var h = Math.max(280, Math.round(vv.height));
+    var top = Math.max(0, Math.round(vv.offsetTop));
+    wrap.style.setProperty('height', h + 'px', 'important');
+    wrap.style.setProperty('max-height', h + 'px', 'important');
+    wrap.style.setProperty('top', top + 'px', 'important');
+    wrap.style.setProperty('bottom', 'auto', 'important');
+  }
+  function schedule(){
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(syncChatViewport);
+  }
+  window.__levromartSyncChatViewport = schedule;
+  window.addEventListener('resize', schedule, {passive:true});
+  window.addEventListener('orientationchange', function(){ setTimeout(schedule,120); }, {passive:true});
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', schedule, {passive:true});
+    window.visualViewport.addEventListener('scroll', schedule, {passive:true});
+  }
+  var observer = new MutationObserver(schedule);
+  observer.observe(document.body, {attributes:true, attributeFilter:['class']});
+  document.addEventListener('focusin', function(e){
+    if(e.target && (e.target.id === 'chatInput' || e.target.closest('.chat-page-wrap'))){ setTimeout(schedule,80); }
+  }, true);
+  document.addEventListener('focusout', function(){ setTimeout(schedule,80); }, true);
+  setTimeout(schedule,0);
+  setTimeout(schedule,120);
+})();
+</script>
