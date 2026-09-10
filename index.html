@@ -9635,9 +9635,9 @@ function renderBottomNav() {
   if (isVendorUser) {
     nav.classList.remove("buyer-no-add");
     nav.classList.add("has-add");
-    nav.innerHTML = `<div class="bn-group bn-group-left">${items.slice(0, 3).map(itemHtml).join("")}</div>
+    nav.innerHTML = `<div class="bn-group bn-group-left">${items.slice(0, 2).map(itemHtml).join("")}</div>
       <button class="bottom-nav-add" onclick="openAddChooser()" title="Add listing"><i class="fa-solid fa-plus"></i></button>
-      <div class="bn-group bn-group-right">${items.slice(3, 6).map(itemHtml).join("")}</div>`;
+      <div class="bn-group bn-group-right">${items.slice(2, 4).map(itemHtml).join("")}</div>`;
   } else if (session && profile?.role === "admin") {
     nav.classList.remove("has-add", "buyer-no-add");
     nav.innerHTML = items.map(itemHtml).join("");
@@ -25991,3 +25991,36 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   setTimeout(clearStaleOfflineNotice,0);
 })();
 </script>
+
+<style id="levromart-final-requested-vendor-nav-quick-colors">
+/* Vendor rail: four controls, exactly two on each side of the centered +. */
+@media (max-width:720px){
+  #bottomNav.has-add{
+    grid-template-columns:minmax(0,1fr) 4.1rem minmax(0,1fr) !important;
+    gap:.12rem !important;
+  }
+  #bottomNav.has-add .bn-group{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:.06rem !important;
+  }
+}
+
+/* Homepage quick actions: solid, clearly differentiated icon circles. */
+#app .levro-home-quick-actions .levro-quick-action:nth-child(1){--quick-solid:#2563eb !important;}
+#app .levro-home-quick-actions .levro-quick-action:nth-child(2){--quick-solid:#f97316 !important;}
+#app .levro-home-quick-actions .levro-quick-action:nth-child(3){--quick-solid:#eab308 !important;}
+#app .levro-home-quick-actions .levro-quick-action:nth-child(4){--quick-solid:#16a34a !important;}
+#app .levro-home-quick-actions .levro-quick-action:nth-child(5){--quick-solid:#ef4444 !important;}
+#app .levro-home-quick-actions .levro-quick-action:nth-child(6){--quick-solid:#8b5cf6 !important;}
+#app .levro-home-quick-actions .levro-quick-icon{
+  background:var(--quick-solid) !important;
+  color:#fff !important;
+  border:0 !important;
+  box-shadow:0 7px 18px color-mix(in srgb,var(--quick-solid) 24%,transparent) !important;
+}
+#app .levro-home-quick-actions .levro-quick-action:hover .levro-quick-icon,
+#app .levro-home-quick-actions .levro-quick-action:focus-visible .levro-quick-icon{
+  background:var(--quick-solid) !important;
+  color:#fff !important;
+}
+</style>
