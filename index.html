@@ -10408,6 +10408,20 @@ async function navigate(view, params = {}, pushHistory = true) {
       } catch (retryErr) {
         console.warn("[Levromart] Protected route auth retry failed:", retryErr);
       }
+      // Never commit an Access denied guard merely because auth/vendor state
+      // is still settling. If a real session exists, keep the destination
+      // shell visible and let the bounded background retry replace it with
+      // the real page as soon as the authoritative role/vendor row arrives.
+      if (/Access denied\.?<\/div>/i.test(String(html || "")) && session) {
+        html = navigationShellHtml(view) || '<div class="page-loading-shell"><span class="page-loading-spinner"><i class="fa-solid fa-circle-notch fa-spin"></i></span><span>Opening…</span></div>';
+        setTimeout(() => {
+          if (navigationGeneration !== navToken || !session) return;
+          refreshAuthStateOnce().then(() => {
+            if (navigationGeneration !== navToken) return;
+            return navigate(view, params, false);
+          }).catch(() => {});
+        }, 180);
+      }
     }
   } catch (err) {
     lastRenderError = err?.message || String(err || "");
@@ -10417,9 +10431,14 @@ async function navigate(view, params = {}, pushHistory = true) {
       lastRenderError = null;
     } else if (view === "home") {
       const cachedHome = getOfflineHomeCache();
+      // Only label the marketplace as offline when the browser actually
+      // reports an offline state. A transient Supabase/query failure while
+      // online must never surface the offline banner.
       html = cachedHome
-        ? renderOfflineHomeFromCache(cachedHome, { showOfflineNotice: true })
-        : homeFallbackHtml("The marketplace connection is taking longer than expected. You can keep using the navigation while it reconnects.");
+        ? renderOfflineHomeFromCache(cachedHome, { showOfflineNotice: browserLooksOffline() })
+        : homeFallbackHtml(browserLooksOffline()
+            ? "You're offline. Connect once to load Levromart's marketplace."
+            : "The marketplace is taking a moment to load. Please try again.");
       lastRenderError = null;
     } else if (view === "home" || view === "storefront") {
       html = app?.innerHTML?.trim() ? app.innerHTML : '<div class="empty-state">Please try again.</div>';
@@ -10571,7 +10590,8 @@ function writeOfflineHomeCache(data) {
   }
 }
 function getOfflineHomeCache() { return offlineCatalog || readOfflineHomeCache(); }
-function browserLooksOffline() { return navigator.onLine === false; }
+let __levroOfflineEventSeen = false;
+function browserLooksOffline() { return __levroOfflineEventSeen && navigator.onLine === false; }
 function offlineHomeNotice() {
   return `<div class="offline-browse-notice" role="status"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Showing the latest Levromart marketplace saved on this device. You can still browse what was previously loaded.</span></div>`;
 }
@@ -21845,8 +21865,9 @@ window.addEventListener("popstate", (e) => {
     }
     offlineWasShown = true;
   }
-  window.addEventListener("online", refreshOfflineState, { passive:true });
-  window.addEventListener("offline", refreshOfflineState, { passive:true });
+  window.addEventListener("online", () => { __levroOfflineEventSeen = false; refreshOfflineState(); }, { passive:true });
+  window.addEventListener("offline", () => { __levroOfflineEventSeen = true; refreshOfflineState(); }, { passive:true });
+  if (navigator.onLine === false) __levroOfflineEventSeen = true;
 })();
 
 document.addEventListener("visibilitychange", () => {
@@ -25769,3 +25790,147 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 #app .instant-page-shell{contain:layout paint style !important;}
 #app .bottom-nav{contain:layout paint style !important;}
 </style>
+
+
+<style id="levromart-20260910-final-bugfix-pass">
+/* Homepage quick actions: flyer-inspired circular icon treatment. Keep the
+   six actions themselves borderless; only the icon gets the visual weight. */
+#app .levro-home-quick-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.78rem .35rem!important;margin:.72rem auto 1.05rem!important;padding:.05rem 0!important}
+#app .levro-quick-action{min-height:74px!important;padding:.18rem .12rem!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--text)!important;gap:.42rem!important;font-size:.64rem!important;font-weight:760!important}
+#app .levro-quick-icon{width:2.72rem!important;height:2.72rem!important;border-radius:50%!important;background:color-mix(in srgb,var(--primary) 13%,var(--card))!important;color:var(--primary)!important;border:1px solid color-mix(in srgb,var(--primary) 8%,transparent)!important;box-shadow:0 4px 12px color-mix(in srgb,var(--primary) 8%,transparent)!important;font-size:1.02rem!important}
+#app .levro-quick-action:active{transform:scale(.97)!important}
+@media(max-width:560px){#app .levro-home-quick-actions{gap:.62rem .15rem!important;margin:.58rem auto .92rem!important}#app .levro-quick-action{min-height:70px!important;font-size:.6rem!important}#app .levro-quick-icon{width:2.52rem!important;height:2.52rem!important;font-size:.95rem!important}}
+
+/* Light mode: icons AND labels use the same dark ink tone for contrast,
+   without forcing pure black. Dark themes retain the existing white treatment. */
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item>span:last-child,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item i,
+html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-item .bn-icon{color:#334155!important}
+
+/* Reviews accordion: use a dedicated state class so a stale/overridden
+   .hidden rule can never leave the arrow and content out of sync. */
+#app #reviewsList.reviews-collapsed{display:none!important}
+#app .storefront-reviews-head{margin-bottom:.8rem!important}
+#app #reviewsList{margin-top:0!important}
+
+/* A protected route must not flash an authorization error while the restored
+   session is still resolving. */
+#app .page-loading-shell{min-height:32vh;display:flex;align-items:center;justify-content:center;gap:.55rem;color:var(--text-muted)}
+</style>
+<script id="levromart-20260910-final-bugfix-runtime">
+(function(){
+  'use strict';
+
+  /* Reviews: explicit open/closed state. This fixes the case where the arrow
+     rotated but the review list remained visible (or vice versa). */
+  window.toggleReviewsList=function(){
+    const list=byId('reviewsList');
+    const chevron=byId('reviewsChevron');
+    if(!list) return;
+    const collapsed=!list.classList.contains('reviews-collapsed');
+    list.classList.toggle('reviews-collapsed',collapsed);
+    list.classList.toggle('hidden',collapsed);
+    if(chevron){
+      chevron.style.transform=collapsed?'rotate(0deg)':'rotate(180deg)';
+      chevron.setAttribute('aria-expanded',collapsed?'false':'true');
+    }
+  };
+
+  /* Keep the review heading's initial state deterministic after a storefront
+     rerender: expanded by default, with the arrow pointing down. */
+  function normalizeReviewAccordion(){
+    const list=byId('reviewsList'), chevron=byId('reviewsChevron');
+    if(!list) return;
+    if(!list.classList.contains('reviews-collapsed')) list.classList.remove('hidden');
+    if(chevron){
+      chevron.style.transform=list.classList.contains('reviews-collapsed')?'rotate(0deg)':'rotate(0deg)';
+      chevron.setAttribute('aria-expanded',list.classList.contains('reviews-collapsed')?'false':'true');
+    }
+  }
+  document.addEventListener('click',function(e){
+    const head=e.target?.closest?.('.storefront-reviews-head');
+    if(!head) return;
+    /* The inline onclick calls the same function; this listener intentionally
+       does nothing so we don't double-toggle. */
+  },true);
+  const reviewObserver=new MutationObserver(()=>{ if(byId('reviewsList')) setTimeout(normalizeReviewAccordion,0); });
+  reviewObserver.observe(document.body,{subtree:true,childList:true});
+
+  /* Single-photo attachment flow: do not invoke the heavyweight multi-image
+     canvas editor on the file-picker path. This is deliberately conservative
+     on mobile Safari: one image + one caption, then upload the original file.
+     The existing crop/editor implementation remains in the file for other
+     entry points, but it can no longer freeze the chat just from tapping clip. */
+  let simpleAttachmentModal=null;
+  function closeSimpleAttachment(){
+    if(simpleAttachmentModal){simpleAttachmentModal.remove();simpleAttachmentModal=null;}
+  }
+  function openSimpleAttachment(file,conversationId){
+    closeSimpleAttachment();
+    const url=URL.createObjectURL(file);
+    const modal=document.createElement('div');
+    modal.className='modal';
+    modal.style.cssText='display:flex;align-items:flex-end;justify-content:center;padding:0;z-index:1000;';
+    modal.innerHTML=`<div class="modal-content" style="width:min(100%,620px);max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.8rem 1rem;border-bottom:1px solid var(--border);">
+        <strong><i class="fa-solid fa-image"></i> Send photo</strong>
+        <button type="button" class="icon-btn" aria-label="Close" data-simple-close><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="padding:.8rem;background:color-mix(in srgb,var(--text) 3%,var(--card));">
+        <img src="${esc(url)}" alt="Selected photo" style="display:block;width:100%;max-height:55vh;object-fit:contain;border-radius:14px;background:#111;" />
+      </div>
+      <div style="padding:.7rem .85rem .9rem;">
+        <label style="display:block;font-size:.75rem;font-weight:750;color:var(--text-muted);margin-bottom:.35rem;">Caption</label>
+        <textarea id="simpleChatCaption" rows="2" maxlength="500" placeholder="Add a caption…" style="width:100%;resize:none;border-radius:12px;padding:.65rem .72rem;"></textarea>
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.65rem;">
+          <button type="button" class="btn btn-sm btn-outline" data-simple-cancel>Cancel</button>
+          <button type="button" class="btn btn-sm" data-simple-send><i class="fa-solid fa-paper-plane"></i> Send photo</button>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(modal); simpleAttachmentModal=modal;
+    const cleanup=()=>{URL.revokeObjectURL(url);closeSimpleAttachment();};
+    modal.querySelector('[data-simple-close]')?.addEventListener('click',cleanup);
+    modal.querySelector('[data-simple-cancel]')?.addEventListener('click',cleanup);
+    modal.addEventListener('click',e=>{if(e.target===modal)cleanup();});
+    modal.querySelector('[data-simple-send]')?.addEventListener('click',async()=>{
+      const btn=modal.querySelector('[data-simple-send]'); if(!btn||btn.disabled)return;
+      btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-circle-notch fa-spin"></i> Sending…';
+      try{
+        const input=byId('chatInput'); clearTimeout(typingStopTimer); publishChatTyping(false);
+        const replyToId=chatReplyTarget?.id||null; const snap=chatReplyTarget?{...chatReplyTarget}:null;
+        const caption=modal.querySelector('#simpleChatCaption')?.value?.trim()||'';
+        resetChatInput(input);
+        await sendPreparedChatImage(conversationId,{blob:file,caption,name:file.name,type:file.type||'image/jpeg'},replyToId,snap);
+        chatReplyTarget=null; renderChatReplyPreview(); scrollChatToBottom();
+        resolveVisibleAttachments(byId('chatMessages')); setupMessageInteractions(byId('chatMessages'));
+        cleanup(); showToast('Photo sent.','success');
+      }catch(err){
+        btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Send photo';
+        showToast(err?.message||'Could not send the photo.','error');
+      }
+    });
+  }
+
+  window.handleChatFileSelected=function(evt,conversationId){
+    const input=evt?.target; const files=[...(input?.files||[])];
+    if(input) input.value='';
+    if(!files.length)return;
+    const file=files.find(f=>String(f.type||'').startsWith('image/') && f.size<=MAX_ATTACHMENT_BYTES);
+    if(!file){showToast('Choose one image up to 10MB.','error');return;}
+    if(files.length>1)showToast('Only one photo can be selected at a time.','info');
+    openSimpleAttachment(file,conversationId);
+  };
+
+  /* If the page is genuinely offline, the banner remains valid. If it is
+     online, remove any stale offline notice that may have been rendered by a
+     previous transient failure. */
+  function clearStaleOfflineNotice(){
+    if(!navigator.onLine)return;
+    document.querySelectorAll('.offline-browse-notice').forEach(el=>el.remove());
+  }
+  window.addEventListener('online',clearStaleOfflineNotice,{passive:true});
+  setTimeout(clearStaleOfflineNotice,0);
+})();
+</script>
