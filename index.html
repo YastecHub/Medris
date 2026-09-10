@@ -5513,6 +5513,197 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #app .vendor-my-request-actions{grid-column:2 / 3 !important;grid-row:1 / 2 !important;align-self:start !important;}
 }
 </style>
+
+<style id="levromart-20260910-people-request-polish-v3">
+/* ======================================================================
+   PEOPLE — let the page own vertical scrolling; keep only horizontal
+   scrolling inside the wide table. This avoids iOS nested-scroll trapping.
+   ====================================================================== */
+#app .admin-people-table-xscroll{
+  width:100% !important;
+  max-width:920px !important;
+  margin:0 auto 1rem !important;
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+  -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior-x:contain !important;
+  touch-action:pan-x pan-y !important;
+  scrollbar-width:thin !important;
+  border-radius:16px !important;
+}
+#app .admin-people-table-xscroll::-webkit-scrollbar{height:8px !important;}
+#app .admin-people-table-xscroll::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--text) 24%,transparent);border-radius:99px;}
+#app .admin-people-table-xscroll .admin-people-table{
+  width:max-content !important;
+  min-width:760px !important;
+  max-width:none !important;
+  table-layout:auto !important;
+}
+#app .admin-people-table-xscroll .admin-people-table th{position:sticky !important;top:0 !important;z-index:3 !important;background:var(--card) !important;}
+
+/* ======================================================================
+   REQUESTS — centered, balanced request cards and clean action spacing.
+   ====================================================================== */
+#app .vendor-requests-heading-row{
+  margin-bottom:1.2rem !important;
+  gap:1rem !important;
+}
+#app .vendor-requests-heading-row > div:first-child{
+  min-width:0 !important;
+}
+#app .vendor-requests-heading-row > .btn{
+  margin-top:.25rem !important;
+}
+#app .vendor-request-tabs{
+  margin:1rem auto 1.25rem !important;
+  justify-content:center !important;
+  align-self:center !important;
+}
+#app .vendor-request-card{
+  width:100% !important;
+  max-width:720px !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  padding:1.15rem !important;
+  text-align:center !important;
+}
+#app .vendor-request-card-head{
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:100% !important;
+  gap:.7rem !important;
+  text-align:center !important;
+}
+#app .vendor-request-person{
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+  width:100% !important;
+  gap:.5rem !important;
+}
+#app .vendor-request-person > div{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+}
+#app .vendor-request-person .avatar-circle{
+  width:3.35rem !important;
+  height:3.35rem !important;
+}
+#app .vendor-request-title{
+  text-align:center !important;
+  font-size:1.05rem !important;
+  line-height:1.25 !important;
+}
+#app .vendor-request-description{
+  width:100% !important;
+  max-width:560px !important;
+  margin:.8rem auto .25rem !important;
+  text-align:center !important;
+}
+#app .vendor-request-meta{
+  width:100% !important;
+  margin:.25rem auto 0 !important;
+  text-align:center !important;
+  min-height:1.05rem !important;
+}
+#app .vendor-request-card > .badge{
+  align-self:center !important;
+}
+#app .vendor-request-card .vendor-interest-row{
+  width:100% !important;
+  justify-content:center !important;
+  align-items:center !important;
+  margin:1rem auto .35rem !important;
+  gap:.75rem !important;
+}
+#app .vendor-request-card .vendor-interest-row .btn{
+  flex:0 1 220px !important;
+  min-width:180px !important;
+  min-height:48px !important;
+  justify-content:center !important;
+}
+#app .vendor-request-card .vendor-offer-compose{
+  width:100% !important;
+  max-width:620px !important;
+  margin:.8rem auto 0 !important;
+  text-align:left !important;
+}
+#app .vendor-request-card .vendor-offer-actions{
+  justify-content:center !important;
+}
+
+/* My request cards get the same balanced visual hierarchy. */
+#app .vendor-my-request-card{
+  width:100% !important;
+  max-width:760px !important;
+  margin-left:auto !important;
+  margin-right:auto !important;
+  padding:1.1rem !important;
+}
+#app .vendor-my-request-layout{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) auto !important;
+  gap:1rem !important;
+  align-items:center !important;
+}
+#app .vendor-my-request-identity{
+  justify-content:center !important;
+  text-align:center !important;
+}
+#app .vendor-my-request-title{
+  text-align:center !important;
+}
+#app .vendor-my-request-title span{
+  text-align:center !important;
+}
+#app .vendor-my-request-details{
+  text-align:center !important;
+}
+#app .vendor-my-request-actions{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:.45rem !important;
+}
+#app .vendor-my-offers{
+  text-align:left !important;
+}
+@media(max-width:720px){
+  #app .admin-people-table-xscroll{max-width:100% !important;}
+  #app .vendor-requests-heading-row{gap:1rem !important;}
+  #app .vendor-requests-heading-row > .btn{
+    width:min(100%,280px) !important;
+    align-self:center !important;
+    margin-top:.2rem !important;
+  }
+  #app .vendor-my-request-layout{
+    grid-template-columns:1fr !important;
+    justify-items:center !important;
+    gap:.7rem !important;
+  }
+  #app .vendor-my-request-identity,
+  #app .vendor-my-request-details,
+  #app .vendor-my-request-actions{
+    width:100% !important;
+  }
+}
+@media(max-width:480px){
+  #app .vendor-request-card{padding:1rem .8rem !important;}
+  #app .vendor-request-card .vendor-interest-row{
+    flex-direction:column !important;
+  }
+  #app .vendor-request-card .vendor-interest-row .btn{
+    width:min(100%,300px) !important;
+    min-width:0 !important;
+  }
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -17788,7 +17979,7 @@ function renderAdminPeopleFromData(people, appeals) {
   if (appeals?.length) {
     html += `<div class="accordion-section open" id="appealsAccordion" style="max-width:600px;margin:0 auto 1rem;border-color:var(--warning);"><button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-flag"></i> Suspension appeals awaiting review (${appeals.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button><div class="accordion-body">${appeals.map((a) => `<div style="border-top:1px solid var(--border);padding:.6rem 0;"><strong>${esc(a.user_name || a.user_email)}</strong><p class="muted" style="margin:.2rem 0;font-size:.82rem;">Suspended for: ${esc(a.suspension_reason || "")}</p><p style="margin:.3rem 0;">${esc(a.message)}</p><div class="flex" style="gap:.5rem;"><button class="btn btn-sm" onclick="approveAppeal('${a.user_id}')"><i class="fa-solid fa-check"></i> Approve &amp; unsuspend</button><button class="btn btn-sm btn-outline" onclick="denyAppealPrompt('${a.id}')"><i class="fa-solid fa-xmark"></i> Deny</button></div></div>`).join("")}</div></div>`;
   }
-  html += `<div class="table-wrap admin-people-table-wrap"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div>`;
+  html += `<div class="admin-people-table-xscroll"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div>`;
   html += `<p class="muted admin-people-hint"><i class="fa-solid fa-arrows-up-down-left-right"></i> Scroll the table vertically for more people and horizontally for wider columns.</p>`;
   setTimeout(() => renderAdminPeopleRows(), 0);
   return html;
