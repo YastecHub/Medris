@@ -5299,12 +5299,6 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
    delivery line and bio/category line are always visible instead of
    being clipped into looking like an empty card. */
 #app .top-rated-vendors-scroll{ align-items:stretch !important; }
-#app .top-rated-vendors-scroll .homepage-vendor-card{
-  flex:0 0 15.5rem !important; width:15.5rem !important; min-width:15.5rem !important;
-  height:auto !important; min-height:9.5rem !important; max-height:none !important;
-  padding:.85rem !important; overflow:visible !important;
-  display:flex !important; align-items:flex-start !important; gap:.65rem !important;
-}
 #app .vendor-home-copy{ overflow:visible !important; gap:.28rem !important; min-width:0 !important; flex:1 1 auto !important; }
 #app .vendor-home-meta{ overflow:visible !important; }
 #app .vendor-home-known{
@@ -9512,6 +9506,23 @@ function navigationLoadingHtml(view) {
 
 async function navigate(view, params = {}, pushHistory = true) {
   const app = byId("app");
+  // Accept both the historical boolean and the newer {replace:true} form so
+  // every internal destination still uses one router without accidental
+  // duplicate browser-history entries.
+  const navOptions = pushHistory && typeof pushHistory === "object" ? pushHistory : null;
+  const shouldPushHistory = navOptions ? navOptions.replace !== true : pushHistory !== false;
+  // The vendors map owns DOM/native map resources. Destroy it before #app is
+  // swapped to another route; doing this here keeps map cleanup in the
+  // canonical router rather than in a second competing navigate wrapper.
+  try {
+    if (currentView === "vendors" && view !== "vendors" && typeof vendorsMap !== "undefined" && vendorsMap) {
+      try { vendorsMap.remove(); } catch (_) {}
+      vendorsMap = null;
+      if (typeof vendorsMapMarkers !== "undefined") vendorsMapMarkers = [];
+    }
+  } catch (_) {}
+  if (navOptions && navOptions.replace) pushHistory = false;
+  else pushHistory = shouldPushHistory;
   // A suspended account is locked to this one screen no matter what it
   // tries to navigate to -- appealing (or logging out) is all that's left.
   if (profile?.suspended_at && view !== "suspended") view = "suspended";
@@ -9720,13 +9731,15 @@ function setHorizontalBrowseEnabled(enabled){
 // ---------- AUTO-SLIDING CAROUSELS (category row + horizontal product/vendor rails) ----------
 let autoScrollTimers = [];
 function clearAutoScrollTimers() {
-  autoScrollTimers.forEach(clearInterval);
+  autoScrollTimers.forEach((timer) => {
+    try { clearInterval(timer); } catch (_) {}
+    try { timer.__container && delete timer.__container.__levroAutoScrollTimer; } catch (_) {}
+  });
   autoScrollTimers = [];
 }
 function setupAutoScroll(container, { interval = 30, pauseAfterInteraction = 6500 } = {}) {
-  if (!container) return;
-  if (container.dataset.continuousCarouselReady === "1") return;
-  container.dataset.continuousCarouselReady = "1";
+  if (!container || !horizontalBrowseEnabled) return;
+  if (container.__levroAutoScrollTimer) return;
   let paused = false;
   let pauseTimeout = null;
   const pause = () => {
@@ -9734,20 +9747,23 @@ function setupAutoScroll(container, { interval = 30, pauseAfterInteraction = 650
     clearTimeout(pauseTimeout);
     pauseTimeout = setTimeout(() => { paused = false; }, pauseAfterInteraction);
   };
-  container.addEventListener("touchstart", pause, { passive: true });
-  container.addEventListener("wheel", pause, { passive: true });
-  container.addEventListener("mousedown", pause);
+  if (container.dataset.continuousCarouselReady !== "1") {
+    container.dataset.continuousCarouselReady = "1";
+    container.addEventListener("touchstart", pause, { passive: true });
+    container.addEventListener("wheel", pause, { passive: true });
+    container.addEventListener("mousedown", pause);
+  }
   const timer = setInterval(() => {
-    if (paused || !container.isConnected) return;
+    if (!horizontalBrowseEnabled || paused || !container.isConnected) return;
     const maxScroll = container.scrollWidth - container.clientWidth;
     if (maxScroll <= 4) return;
-    // Moderate, steady movement: comfortably faster than the previous
-    // setting without becoming a fast auto-scroll.
     const step = 1.8;
     let next = container.scrollLeft + step;
     if (next >= maxScroll - 1) next = 0;
     container.scrollLeft = next;
   }, interval);
+  timer.__container = container;
+  container.__levroAutoScrollTimer = timer;
   autoScrollTimers.push(timer);
 }
 
@@ -9776,7 +9792,8 @@ function writeOfflineHomeCache(data) {
       browseProducts: data.browseProducts || [],
       topVendors: data.topVendors || [],
       recentProducts: data.recentProducts || [],
-      packages: data.packages || []
+      packages: data.packages || [],
+      carouselSlides: data.carouselSlides || []
     };
     localStorage.setItem(OFFLINE_HOME_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data: compact }));
     offlineCatalog = compact;
@@ -9817,10 +9834,6 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   const trending = (cache.trending || []).filter(inScope).slice(0, 10);
   const packages = (cache.packages || []).filter(pkg => (!activeSector || (pkg.items || []).some(it => String((categories.find(c => String(c.id) === String(it.product?.category_id)) || {}).sector_id) === String(activeSector.id))) && (!activeCategory || (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))).slice(0, 8);
   const topVendors = cache.topVendors || [];
-  const heroPhotos = (cache.recentProducts || []).map(product => {
-    const photos = Array.isArray(product.photos) ? product.photos.filter(Boolean) : [];
-    return photos[0] ? { id: product.id, name: product.name || "Product", url: photos[0] } : null;
-  }).filter(Boolean);
   window.__allHomePackages = cache.packages || [];
   window.__homePackages = packages;
   const recommendedPackages = [...packages].sort((a,b) => {
@@ -9828,8 +9841,11 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     return score(b) - score(a);
   }).slice(0, 6);
   const hasPersonalPackageMatch = recommendedPackages.some(pkg => (pkg.items || []).some(it => favoriteIds.has(it.product?.id)));
+  const offlineCarousel = Array.isArray(cache.carouselSlides) && cache.carouselSlides.length
+    ? cache.carouselSlides
+    : INITIAL_HOME_CAROUSEL_SLIDES.slice();
   let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
-  html += `<div class="hero"><div class="hero-aurora"></div><div class="hero-content"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div><div class="hero-quick-actions"><button class="quick-action" onclick="scrollToBrowse('rent')"><span class="quick-action-icon"><i class='fa-solid fa-rotate'></i></span><span>Rent</span></button><button class="quick-action" onclick="scrollToBrowse('sale')"><span class="quick-action-icon"><i class='fa-solid fa-cart-shopping'></i></span><span>Buy</span></button><button class="quick-action outline" onclick="requireLoginThen('requestEquipment')"><span class="quick-action-icon"><i class='fa-solid fa-hand'></i></span><span>Request</span></button></div></div></div>`;
+  html += `<div class="hero">${renderHomepageCarouselHtml(offlineCarousel)}<div class="hero-content"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, packages, services, or a vendor name…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div></div></div>`;
   if (sectors.length) html += `<div class="cat-row sector-row"><button class="cat-chip sector-chip ${!activeSector ? "active" : ""}" onclick="switchSector(null)"><span class="cat-icon"><i class="fa-solid fa-border-all"></i></span><span>All</span></button>${sectors.map(s => `<button class="cat-chip sector-chip ${activeSector?.id === s.id ? "active" : ""}" onclick="switchSector('${s.id}')"><span class="cat-icon"><i class="fa-solid ${esc(s.icon)}"></i></span><span>${esc(s.name)}</span></button>`).join("")}</div>`;
   if (subCats.length) html += `<div class="cat-row">${subCats.map(c => `<button class="cat-chip" onclick="filterByCategory('${c.id}')"><span class="cat-icon">${categoryIcon(c.name)}</span><span>${esc(c.name)}</span></button>`).join("")}</div>`;
   const trendingProducts = (trending || []).filter(p => !p.is_service);
@@ -9892,12 +9908,12 @@ function resetHomeSearchScrollMotion(){
 // These bundled images are the initial launch set. Once an admin publishes them
 // to the carousel table, the homepage becomes fully database-driven.
 const INITIAL_HOME_CAROUSEL_SLIDES = [
-  { id: "bundled-support-local", image_url: "carousel/support-local-businesses.jpeg", alt_text: "Support Local Businesses", sort_order: 10, is_active: true, storage_path: null, bundled: true },
-  { id: "bundled-trusted-services", image_url: "carousel/trusted-services.jpeg", alt_text: "Find Trusted Services", sort_order: 20, is_active: true, storage_path: null, bundled: true },
-  { id: "bundled-quality-products", image_url: "carousel/quality-products.jpeg", alt_text: "Shop Quality Products", sort_order: 30, is_active: true, storage_path: null, bundled: true },
-  { id: "bundled-nearby-vendors", image_url: "carousel/nearby-vendors.jpeg", alt_text: "Explore Nearby Vendors", sort_order: 40, is_active: true, storage_path: null, bundled: true },
-  { id: "bundled-everything", image_url: "carousel/everything-you-need.jpeg", alt_text: "Everything You Need in One Place", sort_order: 50, is_active: true, storage_path: null, bundled: true },
-  { id: "bundled-better-choices", image_url: "carousel/better-choices.jpeg", alt_text: "Better Choices for a Brighter Tomorrow", sort_order: 60, is_active: true, storage_path: null, bundled: true },
+  { id: "bundled-support-local", image_url: `${SUPABASE_URL}/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png`, alt_text: "Support Local Businesses", sort_order: 10, is_active: true, storage_path: "slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png", bundled: true },
+  { id: "bundled-trusted-services", image_url: `${SUPABASE_URL}/storage/v1/object/public/homepage-carousel/slides/c4eede28-ee51-4bee-bc47-5df821d6ad36.png`, alt_text: "Find Trusted Services", sort_order: 20, is_active: true, storage_path: "slides/c4eede28-ee51-4bee-bc47-5df821d6ad36.png", bundled: true },
+  { id: "bundled-quality-products", image_url: `${SUPABASE_URL}/storage/v1/object/public/homepage-carousel/slides/e2717c23-4210-4d9a-b11d-85ce7b61df5a.png`, alt_text: "Shop Quality Products", sort_order: 30, is_active: true, storage_path: "slides/e2717c23-4210-4d9a-b11d-85ce7b61df5a.png", bundled: true },
+  { id: "bundled-nearby-vendors", image_url: `${SUPABASE_URL}/storage/v1/object/public/homepage-carousel/slides/ff8c621b-ec6c-4ee4-90fe-b6065cfd5619.png`, alt_text: "Explore Nearby Vendors", sort_order: 40, is_active: true, storage_path: "slides/ff8c621b-ec6c-4ee4-90fe-b6065cfd5619.png", bundled: true },
+  { id: "bundled-everything", image_url: `${SUPABASE_URL}/storage/v1/object/public/homepage-carousel/slides/3ca26253-9bce-4c2a-8768-30d51fa97ee5.png`, alt_text: "Everything You Need in One Place", sort_order: 50, is_active: true, storage_path: "slides/3ca26253-9bce-4c2a-8768-30d51fa97ee5.png", bundled: true },
+  { id: "bundled-better-choices", image_url: `${SUPABASE_URL}/storage/v1/object/public/homepage-carousel/slides/b6fe961f-ee94-4fd4-8a84-493fac1ddc06.png`, alt_text: "Better Choices for a Brighter Tomorrow", sort_order: 60, is_active: true, storage_path: "slides/b6fe961f-ee94-4fd4-8a84-493fac1ddc06.png", bundled: true },
 ];
 let homeCarouselSlides = [];
 let homeCarouselTimer = null;
@@ -9918,12 +9934,26 @@ async function loadHomepageCarouselSlides({ includeInactive = false } = {}) {
   }
 }
 
+function handleHomeCarouselImageError(img, failedIndex) {
+  if (!img) return;
+  img.dataset.failed = "1";
+  const fallback = homeCarouselSlides.find((slide, idx) => idx !== failedIndex && slide?.image_url && slide.image_url !== img.src && !slide.__failed);
+  if (fallback) {
+    img.onerror = null;
+    img.src = fallback.image_url;
+    return;
+  }
+  img.onerror = null;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420"><rect width="1200" height="420" fill="#0f172a"/><circle cx="920" cy="120" r="180" fill="#10b981" fill-opacity=".22"/><circle cx="980" cy="180" r="110" fill="#10b981" fill-opacity=".18"/><text x="80" y="215" font-family="Arial, sans-serif" font-size="48" font-weight="700" fill="#ffffff">Levromart</text><text x="80" y="270" font-family="Arial, sans-serif" font-size="28" fill="#d1fae5">Explore the marketplace</text></svg>`;
+  img.src = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+  img.closest(".home-promotional-slide")?.classList.add("image-failed");
+}
 function renderHomepageCarouselHtml(slides) {
   const usable = (slides || []).filter(s => s?.image_url).slice(0, 12);
   if (!usable.length) return "";
   homeCarouselSlides = usable;
   homeCarouselIndex = 0;
-  const slidesHtml = usable.map((s, i) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(s.image_url)}" alt="${esc(s.alt_text || "Levromart promotion")}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="this.closest('.home-promotional-slide')?.classList.add('image-failed')"></button>`).join("");
+  const slidesHtml = usable.map((s, i) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(s.image_url)}" alt="${esc(s.alt_text || "Levromart promotion")}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`).join("");
   const dots = usable.map((s, i) => `<button type="button" class="home-promotional-dot ${i === 0 ? "active" : ""}" onclick="activateHomeCarouselSlide(${i},true)" aria-label="Go to slide ${i + 1}"></button>`).join("");
   return `<section class="home-promotional-carousel" id="homePromotionalCarousel" aria-label="Levromart promotions">
     <div class="home-promotional-viewport" id="homePromotionalViewport">
@@ -9941,7 +9971,7 @@ function handleHomeCarouselSlideClick(event, index) {
   try {
     const target = new URL(url, location.href);
     const sameApp = target.origin === location.origin && target.pathname === location.pathname;
-    if (sameApp && (target.searchParams.has("levro") || target.searchParams.has("storefront") || target.searchParams.has("package"))) {
+    if (sameApp && (target.searchParams.has("levro") || target.searchParams.has("storefront") || target.searchParams.has("package") || target.searchParams.has("section"))) {
       event.preventDefault();
       // Keep carousel navigation inside the SPA. Do not assign/reload the
       // document just because a banner points at another in-app destination.
@@ -9973,8 +10003,9 @@ function handleHomeCarouselSlideClick(event, index) {
         }, 80));
         return;
       }
-      if (["cart","messages","vendorDashboard","requestEquipment","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary"].includes(deepView)) {
-        if (!session && ["cart","messages","vendorDashboard","requestEquipment","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary"].includes(deepView)) { showLogin(); return; }
+      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox"].includes(deepView)) {
+        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox"];
+        if (!session && authViews.includes(deepView)) { showLogin(); return; }
         navigate(deepView, {}, true);
         return;
       }
@@ -10048,6 +10079,14 @@ const ADMIN_LINK_LIBRARY_ENTRIES = [
   { label: "Top Rated Vendors", description: "Open the vendor directory/map.", url: () => buildLevromartDeepLink("vendors") },
   { label: "Vendor Directory / Map", description: "Open Vendors with the map as the default view.", url: () => buildLevromartDeepLink("vendors", { map: "1" }) },
   { label: "Wishlist", description: "Open the saved-items wishlist.", url: () => buildLevromartDeepLink("wishlist") },
+  { label: "Admin Panel", description: "Open the admin vendor-approval dashboard.", url: () => buildLevromartDeepLink("adminPanel") },
+  { label: "Admin Carousel", description: "Open carousel management.", url: () => buildLevromartDeepLink("adminCarousel") },
+  { label: "Admin Link Library", description: "Open the admin destination-link library.", url: () => buildLevromartDeepLink("adminLinkLibrary") },
+  { label: "People", description: "Open the admin people directory.", url: () => buildLevromartDeepLink("adminPeople") },
+  { label: "Finance", description: "Open admin finance tools.", url: () => buildLevromartDeepLink("adminFinance") },
+  { label: "Disputes", description: "Open admin disputes.", url: () => buildLevromartDeepLink("adminDisputes") },
+  { label: "Feedback", description: "Open admin feedback and suggestions.", url: () => buildLevromartDeepLink("adminFeedback") },
+  { label: "Vendor Support", description: "Open vendor-support tools.", url: () => buildLevromartDeepLink("vendorSuggestionsInbox") },
 ];
 
 function buildLevromartDeepLink(view, params = {}, section = "") {
@@ -10066,7 +10105,13 @@ function buildLevromartDeepLink(view, params = {}, section = "") {
   return u.toString();
 }
 
-async function copyAdminLink(url, button) {
+function copyAdminLinkFromRow(button) {
+  const row = button?.closest?.(".admin-link-row");
+  const input = row?.querySelector?.(".admin-link-url");
+  if (!input) return false;
+  return copyAdminLink(input.value, button, input);
+}
+async function copyAdminLink(url, button, sourceInput = null) {
   if (!isCarouselAdmin()) return false;
   const text = String(url || "");
   if (!text) return false;
@@ -10104,12 +10149,20 @@ async function copyAdminLink(url, button) {
     ta.remove();
     if (copied) return done();
   } catch (_) {}
-  // Last-resort iOS-friendly fallback: a native prompt gives the admin a
-  // selectable, genuine URL rather than pretending a copy succeeded.
-  try {
-    window.prompt("Copy this Levromart link:", text);
-  } catch (_) {}
-  showToast("The browser blocked automatic copying. The link is ready to select and copy.", "info");
+  // Last resort: keep the genuine URL selected in the visible field so iOS
+  // Safari/PWA users can copy it manually without a deceptive success state.
+  if (sourceInput) {
+    try {
+      sourceInput.focus();
+      sourceInput.select();
+      sourceInput.setSelectionRange(0, sourceInput.value.length);
+    } catch (_) {}
+  } else {
+    try {
+      window.prompt("Copy this Levromart link:", text);
+    } catch (_) {}
+  }
+  showToast("The browser blocked automatic copying. The link is selected for manual copy.", "info");
   return false;
 }
 
@@ -10117,8 +10170,8 @@ function renderAdminLinkLibrary() {
   if (!isCarouselAdmin()) return '<div class="empty-state">Access denied.</div>';
   const entries = ADMIN_LINK_LIBRARY_ENTRIES.map(e => ({...e, resolvedUrl: e.url()})).sort((a,b) => a.label.localeCompare(b.label));
   const rows = entries.map((e) => `<div class="admin-link-row" data-admin-link-label="${esc(e.label.toLowerCase())}">
-    <div class="admin-link-copy"><strong>${esc(e.label)}</strong><small>${esc(e.description)}</small><a class="admin-link-url" href="${esc(e.resolvedUrl)}" target="_blank" rel="noopener noreferrer">${esc(e.resolvedUrl)}</a></div>
-    <button type="button" class="btn btn-sm admin-link-copy-btn" onclick="copyAdminLink(${JSON.stringify(e.resolvedUrl)},this)"><i class="fa-solid fa-copy"></i> Copy</button>
+    <div class="admin-link-copy"><strong>${esc(e.label)}</strong><small>${esc(e.description)}</small><div class="admin-link-url-wrap"><input class="admin-link-url" type="url" readonly value="${esc(e.resolvedUrl)}" aria-label="${esc(e.label)} URL" onclick="this.select()" onfocus="this.select()"><a class="admin-link-open" href="${esc(e.resolvedUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${esc(e.label)}"><i class="fa-solid fa-arrow-up-right-from-square"></i></a></div></div>
+    <button type="button" class="btn btn-sm admin-link-copy-btn" onclick="copyAdminLinkFromRow(this)"><i class="fa-solid fa-copy"></i> Copy</button>
   </div>`).join("");
   return `<div class="instant-page-shell admin-link-library">
     <div><h2 style="margin-bottom:.25rem;"><i class="fa-solid fa-link"></i> Link Library</h2><p class="muted" style="margin:0;">Admin-only destination links for carousel banners and other promotional artwork. Copy a link and paste it into the carousel's Link URL field.</p></div>
@@ -10350,13 +10403,15 @@ async function renderHome() {
     packageQuery,
     browseCatalogQuery,
   ]);
+  const homepageCarouselSlides = await loadHomepageCarouselSlides();
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
   // must not be overwritten with only the currently selected category.
   const cachedTrending = (browseProducts || []).slice().sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0)).slice(0, 20);
-  writeOfflineHomeCache({ categories, sectors: sectors || sectorsData || [], trending: cachedTrending, browseProducts, topVendors, recentProducts, packages });
-
-  const homepageCarouselSlides = await loadHomepageCarouselSlides();
+  writeOfflineHomeCache({
+    categories, sectors: sectors || sectorsData || [], trending: cachedTrending,
+    browseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
+  });
 
   const allHomePackages = packages || [];
   window.__allHomePackages = allHomePackages;
@@ -10886,13 +10941,16 @@ async function renderWishlist() {
 // instead of inventing a split-charge system) ----------
 function cartItemRowHtml(it) {
   const p = it.product;
-  const img = p.photos && p.photos[0];
+  const variant = it.variant || null;
+  const effectivePrice = Number(variant?.discount_price ?? variant?.sale_price ?? p.discount_price ?? p.sale_price ?? 0);
+  const img = variant?.photo_url || (p.photos && p.photos[0]);
   return `<div class="flex" style="justify-content:space-between;align-items:center;gap:0.6rem;padding:0.5rem 0;border-top:1px solid var(--border);">
     <div class="flex" style="gap:0.6rem;align-items:center;min-width:0;">
       ${img ? `<img src="${esc(img)}" style="width:2.6rem;height:2.6rem;border-radius:0.5rem;object-fit:cover;flex-shrink:0;" />` : `<div class="avatar-circle" style="flex-shrink:0;"><i class="fa-solid fa-box"></i></div>`}
       <div style="min-width:0;">
         <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:11rem;">${esc(p.name)}</strong>
-        <span class="muted" style="font-size:0.82rem;">${naira(p.sale_price)} each</span>
+        ${variant ? `<span style="display:block;font-size:.78rem;font-weight:600;">${esc(variant.name)}</span>` : ""}
+        <span class="muted" style="font-size:0.82rem;">${naira(effectivePrice)} each</span>
       </div>
     </div>
     <div class="flex" style="align-items:center;gap:0.4rem;flex-shrink:0;">
@@ -10909,7 +10967,7 @@ async function renderCart() {
 
   const cartResult = await withRouteTimeout(
     sb.from("cart_items")
-      .select("id, quantity, created_at, product:products(id, name, sale_price, photos, quantity_available, status, vendor:vendors(id, business_name, previous_business_name, name_changed_at, is_active, verification_status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng))")
+      .select("id, variant_id, quantity, created_at, variant:product_variants(id,name,photo_url,sale_price,discount_price), product:products(id, name, sale_price, discount_price, photos, quantity_available, status, vendor:vendors(id, business_name, previous_business_name, name_changed_at, is_active, verification_status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng))")
       .eq("buyer_id", session.user.id)
       .order("created_at", { ascending: true }),
     8000,
@@ -10944,7 +11002,7 @@ async function renderCart() {
   window.__cartByVendor = byVendor;
 
   [...byVendor.values()].forEach(({ vendor: v, items: vItems }) => {
-    const subtotal = vItems.reduce((s, it) => s + Number(it.product.sale_price || 0) * it.quantity, 0);
+    const subtotal = vItems.reduce((s, it) => s + Number(it.variant?.discount_price ?? it.variant?.sale_price ?? it.product.discount_price ?? it.product.sale_price ?? 0) * it.quantity, 0);
     const ownCartVendor = isOwnVendorId(v.id);
     html += `<div class="card cart-vendor-card ${ownCartVendor ? "own-cart-vendor" : ""}" style="margin-bottom:1rem;">
       <h3 style="margin-top:0;"><a href="#" onclick="navigate('storefront',{vendorId:'${v.id}'});return false;">${vendorNameWithFormerly(v)}</a></h3>
@@ -10971,11 +11029,12 @@ async function renderCart() {
   }
   return html;
 }
-async function addToCart(productId, qty) {
+async function addToCart(productId, qty, variantId = null) {
   if (!session) { showLogin(); return; }
   if (blockOwnVendorPurchase(currentProductDetail?.vendor?.id, "buy")) return;
   const amount = Math.max(1, Number(qty) || 1);
-  const { error } = await sb.rpc("add_to_cart", { p_product_id: productId, p_quantity: amount });
+  const chosenVariantId = variantId || byId("selectedProductVariantId")?.value || null;
+  const { error } = await sb.rpc("add_to_cart", { p_product_id: productId, p_quantity: amount, p_variant_id: chosenVariantId });
   if (error) { showToast(error.message, "error"); return; }
   showToast("Added to cart.", "success");
   updateCartFab();
@@ -10991,7 +11050,7 @@ async function quickAddToCart(evt, productId, btn, vendorId = "") {
   if (!session) { showLogin(); return; }
   if (blockOwnVendorPurchase(vendorId, "buy")) return;
   btn.disabled = true;
-  const { error } = await sb.rpc("add_to_cart", { p_product_id: productId, p_quantity: 1 });
+  const { error } = await sb.rpc("add_to_cart", { p_product_id: productId, p_quantity: 1, p_variant_id: null });
   btn.disabled = false;
   if (error) { showToast(error.message, "error"); return; }
   refreshNotifications();
@@ -11030,7 +11089,7 @@ async function checkoutCartVendor(vendorId) {
   const delivery = readDeliveryFields(`cart-${vendorId}`, errorEl);
   if (!delivery) return;
 
-  const items = group.items.map((it) => ({ product_id: it.product.id, quantity: it.quantity }));
+  const items = group.items.map((it) => ({ product_id: it.product.id, quantity: it.quantity, variant_id: it.variant?.id || null }));
   const confirmMsg = `Check out ${items.length} item${items.length === 1 ? "" : "s"} from ${group.vendor.business_name}, with ${delivery.method === "delivery" ? "delivery" : "pickup"}?`;
   if (!(await showConfirmDialog(confirmMsg, { title: "Confirm checkout", okLabel: "Checkout" }))) return;
 
@@ -12693,6 +12752,14 @@ async function renderProductDetail(productId) {
     .maybeSingle();
 
   if (error || !product) return '<div class="empty-state">Product not found.</div>';
+  const { data: loadedProductVariants, error: variantsError } = await sb
+    .from("product_variants")
+    .select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order")
+    .eq("product_id", productId)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (variantsError) console.warn("[Levromart] Product varieties could not be loaded:", variantsError);
+  product.variants = loadedProductVariants || [];
   currentProductDetail = product;
 
   sb.rpc("increment_product_view", { p_product_id: productId }).then(() => {}).catch(() => {});
@@ -13035,6 +13102,7 @@ async function buyNow(vendorId, productId) {
     p_delivery_phone: delivery.phone,
     p_buyer_note: byId("buyNote")?.value.trim() || null,
     p_buyer_lat: buyerLocation?.lat ?? null,
+    p_variant_id: selectedVariant?.id || null,
     p_buyer_lng: buyerLocation?.lng ?? null,
   });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
@@ -17790,88 +17858,6 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
 .home-promotional-carousel [data-carousel-next]{display:none !important;}
 .home-promotional-viewport{touch-action:pan-y pinch-zoom !important;-webkit-user-select:none !important;user-select:none !important;}
 
-/* TOP-RATED VENDORS: genuinely short horizontal cards with centered content. */
-#app .top-rated-vendors-scroll > .homepage-vendor-card,
-#app .top-rated-vendors-scroll > .vendor-card.homepage-vendor-card{
-  flex:0 0 8.6rem !important;
-  width:8.6rem !important;
-  min-width:8.6rem !important;
-  max-width:8.6rem !important;
-  min-height:9.8rem !important;
-  height:auto !important;
-  padding:.7rem .42rem !important;
-  display:flex !important;
-  flex-direction:column !important;
-  align-items:center !important;
-  justify-content:flex-start !important;
-  text-align:center !important;
-  gap:.32rem !important;
-  overflow:hidden !important;
-  box-sizing:border-box !important;
-}
-#app .top-rated-vendors-scroll > .homepage-vendor-card .vendor-home-avatar,
-#app .top-rated-vendors-scroll > .homepage-vendor-card .vendor-directory-logo{
-  flex:0 0 2.7rem !important;width:2.7rem !important;height:2.7rem !important;min-width:2.7rem !important;min-height:2.7rem !important;margin:0 auto !important;
-}
-#app .top-rated-vendors-scroll > .homepage-vendor-card .vendor-home-copy,
-#app .top-rated-vendors-scroll > .homepage-vendor-card .vendor-directory-copy{
-  width:100% !important;min-width:0 !important;align-items:center !important;text-align:center !important;overflow:hidden !important;
-}
-#app .top-rated-vendors-scroll > .homepage-vendor-card .vendor-home-copy > strong,
-#app .top-rated-vendors-scroll > .homepage-vendor-card .vendor-directory-name{
-  width:100% !important;text-align:center !important;white-space:normal !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;overflow:hidden !important;font-size:.76rem !important;line-height:1.12 !important;
-}
-#app .top-rated-vendors-scroll > .homepage-vendor-card .vendor-home-meta{justify-content:center !important;width:100% !important;}
-#app .top-rated-vendors-scroll > .homepage-vendor-card .vendor-home-meta .badge{font-size:.5rem !important;padding:.13rem .24rem !important;}
-#app .top-rated-vendors-scroll > .homepage-vendor-card .vendor-home-city,
-#app .top-rated-vendors-scroll > .homepage-vendor-card .vendor-home-known{font-size:.58rem !important;text-align:center !important;line-height:1.1 !important;}
-
-/* Admin navigation: center when it fits; remain horizontally scrollable when it doesn't. */
-#app .dash-tabs{justify-content:center !important;overflow-x:auto !important;scrollbar-width:none !important;}
-#app .dash-tabs::-webkit-scrollbar{display:none !important;}
-#app .dash-tabs .dash-tab{flex:0 0 auto !important;}
-
-/* Vendor application status tabs: centered, evenly spaced, mobile friendly. */
-#app .tabs{display:flex !important;justify-content:center !important;align-items:center !important;gap:clamp(1rem,5vw,2.6rem) !important;overflow-x:auto !important;scrollbar-width:none !important;text-align:center !important;}
-#app .tabs::-webkit-scrollbar{display:none !important;}
-#app .tabs a{flex:0 0 auto !important;text-align:center !important;}
-
-/* People summary: use the available width instead of pushing the values to
-   the extreme edge of a wide box. */
-#app .admin-people-summary{width:min(560px,100%) !important;}
-#app .admin-people-summary .accordion-body{padding:.25rem .8rem .75rem !important;}
-#app .admin-people-summary .order-stats-table{width:100% !important;table-layout:fixed !important;}
-#app .admin-people-summary .order-stats-table td{vertical-align:middle !important;padding:.65rem .35rem !important;}
-#app .admin-people-summary .order-stats-table td:first-child{width:68% !important;text-align:left !important;}
-#app .admin-people-summary .order-stats-table td:last-child{width:32% !important;text-align:center !important;padding-right:.35rem !important;}
-
-/* People directory: compact shell on both desktop and mobile. */
-#app .admin-people-search-wrap{display:flex;justify-content:center;margin:0 auto .75rem;}
-#app .admin-people-search-wrap input{width:min(420px,100%);max-width:none !important;margin:0 !important;}
-#app .admin-people-table-wrap{width:min(100%,980px) !important;margin:0 auto 1rem !important;max-height:28rem !important;overflow:auto !important;-webkit-overflow-scrolling:touch !important;}
-#app .admin-people-table{width:100% !important;min-width:0 !important;table-layout:fixed !important;white-space:normal !important;font-size:.78rem !important;}
-#app .admin-people-table th,#app .admin-people-table td{padding:.58rem .45rem !important;vertical-align:middle !important;overflow-wrap:anywhere !important;}
-#app .admin-people-table th:nth-child(1),#app .admin-people-table td:nth-child(1){width:7% !important;text-align:center !important;}
-#app .admin-people-table th:nth-child(2),#app .admin-people-table td:nth-child(2){width:17% !important;}
-#app .admin-people-table th:nth-child(3),#app .admin-people-table td:nth-child(3){width:24% !important;}
-#app .admin-people-table th:nth-child(4),#app .admin-people-table td:nth-child(4){width:11% !important;text-align:center !important;}
-#app .admin-people-table th:nth-child(5),#app .admin-people-table td:nth-child(5){width:12% !important;}
-#app .admin-people-table th:nth-child(6),#app .admin-people-table td:nth-child(6){width:11% !important;}
-#app .admin-people-table th:nth-child(7),#app .admin-people-table td:nth-child(7){width:12% !important;text-align:center !important;}
-#app .admin-people-table th:nth-child(8),#app .admin-people-table td:nth-child(8){width:6% !important;text-align:center !important;}
-#app .admin-people-table .btn{font-size:.62rem !important;padding:.35rem .42rem !important;white-space:nowrap !important;}
-@media(max-width:700px){
-  #app .admin-people-table{font-size:.69rem !important;}
-  #app .admin-people-table th,#app .admin-people-table td{padding:.5rem .3rem !important;}
-  #app .admin-people-table th:nth-child(5),#app .admin-people-table td:nth-child(5),
-  #app .admin-people-table th:nth-child(6),#app .admin-people-table td:nth-child(6){display:none !important;}
-  #app .admin-people-table th:nth-child(1),#app .admin-people-table td:nth-child(1){width:9% !important;}
-  #app .admin-people-table th:nth-child(2),#app .admin-people-table td:nth-child(2){width:25% !important;}
-  #app .admin-people-table th:nth-child(3),#app .admin-people-table td:nth-child(3){width:33% !important;}
-  #app .admin-people-table th:nth-child(4),#app .admin-people-table td:nth-child(4){width:14% !important;}
-  #app .admin-people-table th:nth-child(7),#app .admin-people-table td:nth-child(7){width:12% !important;}
-  #app .admin-people-table th:nth-child(8),#app .admin-people-table td:nth-child(8){width:7% !important;}
-}
 
 /* Link Library: URLs are genuine anchors, not pseudo-link text. Keep the
    copy control easy to hit on phones. */
@@ -17884,6 +17870,75 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
    happens to be present. Swipe/pointer navigation remains enabled. */
 .home-promotional-carousel button[aria-label*="previous" i],
 .home-promotional-carousel button[aria-label*="next" i]{display:none !important;}
+</style>
+
+<style id="levromart-canonical-vendor-cards-20260910">
+/* One canonical Top-rated Vendors card definition. */
+#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-city,
+@media(min-width:860px){
+}
+</style>
+<style id="levromart-canonical-admin-links-20260910">
+.admin-link-url-wrap{display:flex;align-items:center;gap:.35rem;min-width:0;}
+.admin-link-url{width:100%;min-width:0;border:1px solid var(--border);border-radius:.55rem;background:var(--input-bg);color:var(--text-muted);padding:.42rem .55rem;font:inherit;font-size:.74rem;line-height:1.3;}
+.admin-link-url:focus{outline:2px solid color-mix(in srgb,var(--primary) 40%,transparent);outline-offset:1px;}
+.admin-link-open{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:.5rem;color:var(--text-muted);}
+.admin-link-open:hover{color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent);text-decoration:none;}
+.ai-chat-nav-btn{margin-top:.55rem;border:1px solid color-mix(in srgb,var(--primary) 45%,var(--border));background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--primary);border-radius:999px;padding:.42rem .75rem;font:inherit;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;}
+.ai-chat-nav-btn:hover{background:color-mix(in srgb,var(--primary) 16%,var(--card));}
+.ai-chat-cart-action{margin-top:.55rem;display:inline-flex;align-items:center;gap:.35rem;color:var(--text-muted);font-size:.82rem;}
+</style>
+
+
+<style id="levromart-levi-tour-white-20260910">
+.tour-spotlight-hole{--levi-tour-white:#fff;}
+.tour-spotlight-hole + .tour-callout{}
+</style>
+<style id="levromart-final-link-nav-safety-20260910">
+.admin-link-url-wrap{display:flex;align-items:center;gap:.35rem;min-width:0;}
+.admin-link-url{width:100%;min-width:0;box-sizing:border-box;user-select:text;-webkit-user-select:text;}
+.ai-chat-nav-btn{appearance:none;-webkit-appearance:none;}
+</style>
+
+<style id="levromart-canonical-vendor-cards-20260910-final">
+/* Canonical Top-rated Vendors rail card: compact, vertical, centered. */
+#app .top-rated-vendors-scroll .homepage-vendor-card{
+  flex:0 0 8rem !important;width:8rem !important;min-width:8rem !important;max-width:8rem !important;
+  min-height:9.6rem !important;max-height:none !important;padding:.65rem .45rem !important;
+  display:flex !important;flex-direction:column !important;align-items:center !important;
+  justify-content:flex-start !important;text-align:center !important;gap:.35rem !important;overflow:hidden !important;
+}
+#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-avatar{
+  flex:0 0 2.7rem !important;width:2.7rem !important;height:2.7rem !important;
+  min-width:2.7rem !important;min-height:2.7rem !important;margin:0 auto !important;
+}
+#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-copy{
+  width:100% !important;min-width:0 !important;display:flex !important;flex-direction:column !important;
+  align-items:center !important;text-align:center !important;overflow:hidden !important;
+}
+#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-copy>strong{
+  width:100% !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;
+  overflow:hidden !important;white-space:normal !important;text-overflow:ellipsis !important;
+  text-align:center !important;font-size:.75rem !important;line-height:1.15 !important;
+}
+#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-city,
+#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-known{
+  width:100% !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;
+  overflow:hidden !important;text-overflow:ellipsis !important;white-space:normal !important;
+  font-size:.58rem !important;line-height:1.12 !important;text-align:center !important;
+}
+#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-meta{
+  width:100% !important;display:flex !important;justify-content:center !important;align-items:center !important;
+  gap:.2rem !important;flex-wrap:wrap !important;
+}
+#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-meta .badge{
+  font-size:.48rem !important;padding:.12rem .22rem !important;line-height:1.1 !important;
+}
+@media(min-width:860px){
+  #app .top-rated-vendors-scroll .homepage-vendor-card{
+    flex-basis:8rem !important;width:8rem !important;min-width:8rem !important;max-width:8rem !important;
+  }
+}
 </style>
 </body></html>`);
   w.document.close();
@@ -18655,32 +18710,17 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
     }
     if (role === "assistant" && msgId) attachAiReactionUI(el, msgId, existingReaction);
     if (nav) {
-      // Auto-navigates rather than waiting for a tap - a beat to actually
-      // read the reply first, then Levi points the way and takes you there.
-      const navHint = document.createElement("a");
-      navHint.className = "ai-chat-nav-hint";
-      navHint.href = "#";
-      navHint.innerHTML = `<i class="fa-solid fa-arrow-right"></i> Taking you there…`;
+      const navHint = document.createElement("button");
+      navHint.type = "button";
+      navHint.className = "ai-chat-nav-btn";
+      navHint.innerHTML = `<i class="fa-solid fa-arrow-right"></i> Take me there`;
       navHint.title = "Open this destination";
-      let autoNavFired = false;
-      const triggerNav = (ev) => {
-        ev?.preventDefault?.();
-        ev?.stopPropagation?.();
-        // Manual navigation must always remain available, even after Levi's
-        // automatic navigation has already fired once. This makes every
-        // visible "Taking you there…" a reliable fallback link.
+      navHint.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
         goToAiChatNav(nav);
-      };
-      navHint.addEventListener("click", triggerNav);
+      });
       el.appendChild(navHint);
-      // Replayed/history messages keep their destination clickable but must
-      // never auto-navigate simply because the old conversation was opened.
-      if (!isReplay) setTimeout(() => {
-        if (nav && document.body.contains(el) && !autoNavFired) {
-          autoNavFired = true;
-          goToAiChatNav(nav);
-        }
-      }, 220);
     }
     if (draft) {
       const card = document.createElement("div");
@@ -18698,12 +18738,8 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       });
     }
     if ((cartItems && cartItems.length) || (removeCartItems && removeCartItems.length)) {
-      // Same "beat to read, then go" pattern as the NAV tag above -- a cart
-      // change takes you straight to the cart page to see the result,
-      // rather than leaving a "View cart" button someone has to notice
-      // and tap themselves.
       const navHint = document.createElement("div");
-      navHint.className = "ai-chat-nav-hint";
+      navHint.className = "ai-chat-cart-action";
       navHint.innerHTML = `<i class="fa-solid fa-cart-shopping"></i> Updating your cart…`;
       el.appendChild(navHint);
       Promise.all([
@@ -18714,15 +18750,16 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
         if (addResult.added) parts.push(`${addResult.added} added`);
         if (addResult.failed) parts.push(`${addResult.failed} couldn't be added`);
         if (removeResult.removed) parts.push(`${removeResult.removed} removed`);
-        navHint.innerHTML = `<i class="fa-solid fa-arrow-right"></i> ${parts.join(", ") || "Cart updated"}`;
-        // The cart is the source of truth after an AI cart action. Refresh it
-        // immediately so the customer sees the newly added/removed rows without
-        // having to tap the cart icon again. This is a same-view refresh, so
-        // any existing cart navigation remains stable while the data is re-read.
-        closeLeviAfterCartAction();
+        navHint.innerHTML = `<i class="fa-solid fa-cart-shopping"></i> ${parts.join(", ") || "Cart updated"}`;
         updateCartFab();
+        refreshNotifications();
         if (addResult.added || removeResult.removed) {
-          Promise.resolve(navigate("cart", {}, false)).catch(() => {});
+          const viewCartBtn = document.createElement("button");
+          viewCartBtn.type = "button";
+          viewCartBtn.className = "ai-chat-nav-btn";
+          viewCartBtn.innerHTML = `<i class="fa-solid fa-arrow-right"></i> View cart`;
+          viewCartBtn.onclick = () => goToAiChatNav({ view: "cart", params: {} });
+          el.appendChild(viewCartBtn);
         }
       });
     }
@@ -20210,9 +20247,10 @@ window.addEventListener("popstate", (e) => {
       await navigate(profile?.role === "admin" ? "adminFinance" : (vendor ? "vendorOrders" : "buyerOrders"), vendor ? {status:"all",perspective:"sales"} : {}, false);
       return;
     }
-    if (["cart","messages","vendorDashboard","requestEquipment","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary"].includes(deepView)) {
+    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox"].includes(deepView)) {
       history.replaceState({ view: "home", params: {} }, "", location.pathname);
-      if (!session && ["cart","messages","vendorDashboard","requestEquipment","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary"].includes(deepView)) { showLogin(); return; }
+      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox"];
+      if (!session && authViews.includes(deepView)) { showLogin(); return; }
       await navigate(deepView, {}, false);
       if (deepView === "vendors" && urlParams.get("map") === "1") {
         setTimeout(() => { try { switchVendorsView("map"); } catch (_) {} }, 80);
@@ -22008,22 +22046,6 @@ window.renderVendorMapRail = function(){
     };
   }
 
-  /* Destroy the old map before the SPA swaps #app away from the vendors view. */
-  const originalNavigate=window.navigate;
-  if(typeof originalNavigate==='function' && !window.__levroMapNavigateCleanup){
-    window.__levroMapNavigateCleanup=true;
-    window.navigate=async function(view,params,pushHistory){
-      try{
-        if(typeof currentView!=='undefined' && currentView==='vendors' && view!=='vendors' && typeof vendorsMap!=='undefined' && vendorsMap){
-          try{vendorsMap.remove();}catch(_){ }
-          vendorsMap=null;
-          if(typeof vendorsMapMarkers!=='undefined') vendorsMapMarkers=[];
-        }
-      }catch(_){ }
-      return originalNavigate.apply(this,arguments);
-    };
-  }
-
   /* ---------------------------------------------------------------
      4. ADD (+) BUTTON — one clear chooser for Product, Service, Package.
      The product modal's existing service checkbox remains available when
@@ -22692,8 +22714,6 @@ window.renderVendorMapRail = function(){
   #app .own-listing-badge{align-self:flex-end !important;margin-top:auto !important;max-width:52% !important;font-size:.52rem !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
 }
 
-/* HOME VENDOR CARDS — compact but informative */
-.top-rated-vendors-scroll .homepage-vendor-card{flex:0 0 14rem !important;width:14rem !important;min-height:8.9rem !important;padding:.72rem !important;display:flex !important;align-items:flex-start !important;gap:.62rem !important;overflow:hidden !important;}
 .vendor-home-avatar{width:3.05rem !important;height:3.05rem !important;min-width:3.05rem !important;border-radius:50% !important;object-fit:cover !important;display:flex !important;align-items:center !important;justify-content:center !important;background:color-mix(in srgb,var(--primary) 14%,var(--card)) !important;color:var(--primary) !important;font-weight:800 !important;font-size:.95rem !important;}
 .vendor-home-copy{min-width:0 !important;display:flex !important;flex-direction:column !important;gap:.18rem !important;overflow:hidden !important;}
 .vendor-home-copy > strong{font-size:.86rem !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
@@ -23033,33 +23053,6 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
         shorter cards) and make the thumbnail a true square.
      ================================================================ -->
 <style id="levromart-mobile-feedback-20260910">
-/* --- 1) Vendor home cards: narrow, avatar-above-details "standing
-   rectangle" card. (This used to force a row layout here, which fought
-   the width-reduction rule lower in the cascade for the same element —
-   made vertical here too so the two rules agree instead of racing.) --- */
-#app .top-rated-vendors-scroll .homepage-vendor-card,
-#app .homepage-vendor-card.vendor-card{
-  display:flex !important;
-  flex-direction:column !important;
-  flex-wrap:nowrap !important;
-  align-items:center !important;
-  gap:.35rem !important;
-}
-#app .homepage-vendor-card .vendor-home-avatar{
-  flex:0 0 2.7rem !important;
-  width:2.7rem !important;
-  height:2.7rem !important;
-  margin:0 !important;
-}
-#app .homepage-vendor-card .vendor-home-copy{
-  flex:1 1 auto !important;
-  min-width:0 !important;
-  display:flex !important;
-  flex-direction:column !important;
-  align-items:center !important;
-  text-align:center !important;
-}
-
 /* --- 2) Browse-everything product/service/package cards --- */
 #app .grid:has(> .product-card-wrap){
   align-items:start !important;
@@ -23394,26 +23387,8 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 
 /* ==========================================================================
    TOP-RATED VENDORS — narrower, centered "standing rectangle" card.
-   NOTE: an earlier, higher-specificity rule at #app .top-rated-vendors-scroll
-   .homepage-vendor-card (defined near the top of the stylesheet, width
-   15.5rem, row layout) was winning over every later attempt to narrow this
-   card, because CSS specificity beats source order when both have
-   !important. Matching that same #app-prefixed specificity here (not just
-   .top-rated-vendors-scroll .homepage-vendor-card) is what actually makes
-   this override take effect.
+   The sizing and layout for this rail are owned by the single canonical rule below.
    ========================================================================== */
-#app .top-rated-vendors-scroll .homepage-vendor-card {
-  flex: 0 0 7.6rem !important;
-  width: 7.6rem !important;
-  min-width: 7.6rem !important;
-  min-height: 9.6rem !important;
-  padding: 0.8rem 0.5rem !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  text-align: center !important;
-  gap: 0.35rem !important;
-}
 #app .vendor-home-avatar {
   width: 2.7rem !important;
   height: 2.7rem !important;
