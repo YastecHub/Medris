@@ -3,7 +3,7 @@
 <head>
   <!-- LEVROMART REAL FIX BUILD: orders-live-2026-09-05T10:54+01 -->
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Levromart</title>
 <meta name="description" content="Rent or buy from verified vendors across Lagos: healthcare equipment, food, electronics, and more.">
 <meta property="og:type" content="website">
@@ -20500,7 +20500,17 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   const GENERIC_LEVI_PATTERNS = [
     /^i'?m levi\. i can help with levromart products, vendors, orders, your cart, wishlist/i,
     /^hi[, ]+[^.]*[.!] i'?m levi\. i can still help with basic levromart navigation/i,
-    /^i'?m levi\. i can still help with basic levromart navigation/i
+    /^i'?m levi\. i can still help with basic levromart navigation/i,
+    // Vague "there's a bunch of stuff, go look" phrasings that answer a
+    // product/vendor question without ever naming an actual product or
+    // vendor -- these used to slip through untouched because they don't
+    // start with a canned opener, they just never get specific.
+    /\b(?:feel free to|you can) browse (?:our|the)?\s*(?:marketplace|selection|categories|products)?\b/i,
+    /\bwe have a (?:wide|great|large)? ?(?:range|variety|selection) of\b/i,
+    /\bcheck out (?:our|the) (?:marketplace|categories|sectors|selection)\b/i,
+    /\bexplore (?:our|the) (?:marketplace|categories|sectors)\b/i,
+    /\bvarious options (?:are )?available\b/i,
+    /\blots of (?:great )?options? (?:to choose from|available)\b/i,
   ];
   function isGenericLeviReply(reply) {
     const text = String(reply || "").trim();
@@ -22515,5 +22525,125 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkCommissionDeadline();},{passive:true});
 })();
 </script>
+
+<style id="levromart-2026-09-10-user-fixes">
+/* ==========================================================================
+   BROWSE EVERYTHING — product cards.
+   The previous pass (levromart-final-2026-09-09-v4) deliberately let each
+   card's height follow its own content, but paired that with
+   grid-auto-rows:1fr + align-items:stretch on the grid -- which stretches
+   every card in a row to match its TALLEST neighbour. A short listing next
+   to a long one ends up with a big dead gap between its content and the
+   cart button, which is exactly the "excess space under the card" being
+   reported. Removing the stretch and giving the card a fixed, near-square
+   footprint (like the trending-row cards already use) fixes the gap and
+   makes every card the same compact size regardless of its neighbour.
+   ========================================================================== */
+@media (max-width: 900px) {
+  #app .grid:has(> .product-card-wrap) {
+    grid-auto-rows: auto !important;
+    align-items: start !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap {
+    height: auto !important;
+  }
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card {
+    height: auto !important;
+    aspect-ratio: 0.86 / 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0.5rem !important;
+    overflow: hidden !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-img {
+    height: 5.4rem !important;
+    min-height: 5.4rem !important;
+    max-height: 5.4rem !important;
+    flex: 0 0 auto !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-wrap h4 {
+    min-height: 0 !important;
+    margin: 0.26rem 0 0.08rem !important;
+  }
+  #app .grid:has(> .product-card-wrap) .product-availability {
+    display: none !important; /* first thing to drop when a card is tight on room */
+  }
+  #app .grid:has(> .product-card-wrap) .product-card-delivery-wrap .product-delivery-summary {
+    -webkit-line-clamp: 1 !important;
+  }
+  #app .grid:has(> .product-card-wrap) .card-cart-btn,
+  #app .grid:has(> .product-card-wrap) .card-service-btn,
+  #app .grid:has(> .product-card-wrap) .own-listing-badge {
+    margin-top: auto !important; /* pinned to the card's own bottom, not a stretched one */
+  }
+}
+
+/* ==========================================================================
+   TOP-RATED VENDORS — narrower, centered card. The row previously used a
+   left-aligned avatar+text layout in a 14rem-wide card, which for vendors
+   with a short name/no bio left a lot of empty space on the right. Stacking
+   the content and centering it in a narrower card removes that dead space.
+   ========================================================================== */
+.top-rated-vendors-scroll .homepage-vendor-card {
+  flex: 0 0 9.5rem !important;
+  width: 9.5rem !important;
+  min-width: 9.5rem !important;
+  min-height: 0 !important;
+  padding: 0.85rem 0.6rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  gap: 0.4rem !important;
+}
+.top-rated-vendors-scroll .vendor-home-copy {
+  align-items: center !important;
+  text-align: center !important;
+  width: 100% !important;
+}
+.top-rated-vendors-scroll .vendor-home-copy > strong {
+  white-space: normal !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  overflow: hidden !important;
+  line-height: 1.2 !important;
+}
+.top-rated-vendors-scroll .vendor-home-meta {
+  justify-content: center !important;
+}
+.top-rated-vendors-scroll .vendor-home-known {
+  white-space: normal !important;
+  text-align: center !important;
+  -webkit-line-clamp: 2 !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+}
+
+/* ==========================================================================
+   CHAT HEADER — stay put when the on-screen keyboard opens.
+   The header was already position:sticky, which is correct once the layout
+   viewport itself shrinks for the keyboard -- but nothing told the browser
+   to actually shrink the layout viewport, so Chrome/Android was only
+   resizing the *visual* viewport and panning the page to keep the focused
+   input visible, which drags a position:fixed/sticky element along with it
+   and reads as "the header disappears". The real fix is the
+   interactive-widget=resizes-content addition to the <meta viewport> tag
+   above, which makes 100dvh (used below) actually shrink with the keyboard
+   instead of being panned past. This block just keeps the header pinned
+   once that's true, as a second line of defence.
+   ========================================================================== */
+.chat-page-wrap {
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+}
+.chat-page-wrap .chat-page-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4000 !important;
+  flex: 0 0 auto !important;
+  background: var(--bg) !important;
+}
+</style>
 </body>
 </html>
