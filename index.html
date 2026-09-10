@@ -19,6 +19,7 @@
 <link id="faviconLink" rel="icon" type="image/webp" href="">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#f5f7fa">
+<meta name="levromart-build" content="2026-09-10-nav-request-precision-2">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -5407,6 +5408,149 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 /* Do not let a final app child create a bottom margin gap before the footer. */
 #app > *:last-child{margin-bottom:0 !important;}
 </style>
+
+<style id="levromart-20260910-precision-nav-request-pass">
+/* VENDOR BOTTOM NAV — exactly 3 destinations on each side of +. */
+@media(max-width:720px){
+  .bottom-nav.has-add{
+    grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr) !important;
+    column-gap:.15rem !important;
+  }
+  .bottom-nav.has-add .bn-group{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:.08rem !important;
+  }
+  .bottom-nav.has-add .bn-group .bottom-nav-item{
+    width:100% !important; min-width:0 !important; padding:.28rem .04rem !important;
+    justify-content:center !important; align-items:center !important;
+  }
+  .bottom-nav.has-add .bn-group .bottom-nav-item .bn-icon{font-size:1.05rem !important;}
+  .bottom-nav.has-add .bn-group .bottom-nav-item span:last-child{
+    font-size:.58rem !important; line-height:1.08 !important; text-align:center !important;
+  }
+}
+
+/* REQUEST TABS — match the product/service/packages segmented-tab language. */
+#app .vendor-request-tabs{
+  width:min(100%,520px) !important;
+  margin:1rem auto 1.1rem !important;
+  padding:.28rem !important;
+  display:flex !important;
+  align-items:stretch !important;
+  justify-content:stretch !important;
+  gap:.25rem !important;
+  overflow:visible !important;
+  border:1px solid var(--border) !important;
+  border-radius:999px !important;
+  background:var(--card) !important;
+  box-shadow:0 2px 10px color-mix(in srgb,var(--text) 5%,transparent) !important;
+}
+#app .vendor-request-tab{
+  flex:1 1 0 !important;
+  min-width:0 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  background:transparent !important;
+  color:var(--text-muted) !important;
+  padding:.62rem .75rem !important;
+  font:inherit !important;
+  font-size:.8rem !important;
+  font-weight:700 !important;
+  line-height:1.1 !important;
+  text-align:center !important;
+  cursor:pointer !important;
+  white-space:nowrap !important;
+  transition:background-color .16s ease,color .16s ease,box-shadow .16s ease !important;
+}
+#app .vendor-request-tab.active{
+  background:var(--primary) !important;
+  color:#fff !important;
+  border:0 !important;
+  box-shadow:0 6px 18px color-mix(in srgb,var(--primary) 24%,transparent) !important;
+}
+#app .vendor-request-tab span{
+  background:color-mix(in srgb,var(--primary) 14%,transparent) !important;
+  color:var(--primary) !important;
+}
+#app .vendor-request-tab.active span{background:rgba(255,255,255,.20) !important;color:#fff !important;}
+@media(max-width:520px){
+  #app .vendor-request-tabs{width:100% !important;}
+  #app .vendor-request-tab{font-size:.73rem !important;padding:.58rem .45rem !important;}
+}
+
+/* INTEREST → OFFER COMPOSER. */
+#app .vendor-interest-actions{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:.55rem !important;
+  margin:.75rem 0 .6rem !important;
+}
+#app .vendor-interest-actions .vendor-interest-btn,
+#app .vendor-interest-actions .vendor-not-interest-btn{
+  min-height:48px !important;
+  justify-content:center !important;
+  border-radius:15px !important;
+}
+#app .vendor-interest-actions .vendor-interest-btn.active{
+  background:var(--primary) !important; color:#fff !important; border-color:var(--primary) !important;
+}
+#app .vendor-offer-compose{
+  border-top:1px solid var(--border) !important;
+  margin-top:.35rem !important;
+  padding-top:.9rem !important;
+  animation:levroOfferReveal .2s ease-out !important;
+}
+#app .vendor-offer-compose-heading{
+  display:flex !important; flex-direction:column !important; gap:.12rem !important; margin-bottom:.7rem !important;
+}
+#app .vendor-offer-compose-heading strong{font-size:.95rem !important;}
+#app .vendor-offer-compose-heading .muted{font-size:.75rem !important;}
+#app .vendor-offer-fields textarea,
+#app textarea[id^="offerMsg-"]{
+  min-height:150px !important; height:150px !important;
+  padding:.8rem !important;
+}
+@keyframes levroOfferReveal{from{opacity:.1;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* VENDOR DIRECTORY — one compact type tab row + a clean expandable filter control. */
+#app .vendor-listing-tabs{
+  display:flex !important; gap:.4rem !important; overflow-x:auto !important; overflow-y:hidden !important;
+  flex-wrap:nowrap !important; scrollbar-width:none !important;
+  margin:.75rem 0 .7rem !important; padding:.15rem .05rem .25rem !important;
+}
+#app .vendor-listing-tab{
+  flex:0 0 auto !important; border:1px solid var(--border) !important;
+  background:var(--card) !important; color:var(--text-muted) !important;
+  border-radius:999px !important; padding:.55rem .9rem !important;
+  font:inherit !important; font-size:.8rem !important; font-weight:700 !important;
+}
+#app .vendor-listing-tab.active{
+  background:var(--primary) !important; color:#fff !important; border-color:var(--primary) !important;
+}
+#app .vendors-directory-toolbar{
+  display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; gap:.55rem !important; align-items:center !important;
+}
+#app .vendors-directory-toolbar input{margin:0 !important; min-width:0 !important;}
+#app .vendors-filters-toggle{
+  min-height:44px !important; border-radius:999px !important; white-space:nowrap !important;
+}
+#app .vendors-filters-toggle.active{background:color-mix(in srgb,var(--primary) 10%,var(--card)) !important;color:var(--primary) !important;}
+#app .vendors-filters-panel{
+  margin:.55rem 0 .85rem !important; padding:.8rem !important;
+  border:1px solid var(--border) !important; border-radius:16px !important;
+  background:color-mix(in srgb,var(--card) 94%,var(--primary) 6%) !important;
+  box-shadow:var(--shadow) !important;
+}
+#app .vendors-filters-panel.hidden{display:none !important;}
+#app .vendors-filter-grid{gap:.6rem !important;}
+
+/* Keep the app content compact; no artificial empty runway before the footer. */
+body > .container#app{min-height:0 !important;}
+#app > *:last-child{margin-bottom:0 !important;}
+.site-footer{margin-top:.25rem !important;}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -8915,6 +9059,7 @@ function renderBottomNav() {
   // "Home" (the customer storefront) isn't a tab they need taking up space.
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
   const items = isVendorUser ? [] : [{ icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "navigate('home')", view: "home" }];
+  const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "navigate('home')", view: "home" };
   const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors')", view: "vendors" };
   const messagesTab = { icon: "<i class='fa-solid fa-comment-dots'></i>", label: "Messages", action: "navigate('messages')", view: "messages", badge: unreadMessageCount };
   if (session && profile?.role === "admin") {
@@ -8923,6 +9068,9 @@ function renderBottomNav() {
     items.push({ icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" });
   } else if (session) {
     if (vendor) {
+      // Vendor priority around the centre + button: Home, Vendors, Requests | Messages, Orders, My Shop.
+      // Keep exactly three destinations on each side so the centre button stays optically balanced.
+      items.push(homeTab);
       items.push(vendorsTab);
       items.push({ icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 });
       items.push(messagesTab);
@@ -9637,7 +9785,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminLinkLibrary": html = renderAdminLinkLibrary(); break;
       case "adminDisputes": html = await renderAdminDisputes(); break;
       case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
-      case "adminPeople": html = await renderAdminPeople(); break;
+      case "adminPeople": html = await renderAdminPeople(params); break;
       case "adminFeedback": html = await renderAdminFeedback(); break;
       case "vendorSuggestionsInbox": html = await renderVendorSuggestionsInbox(); break;
       case "adminUsers": html = await renderAdminUsers(); break;
@@ -14195,20 +14343,21 @@ async function renderVendorRequests() {
       </div>
       ${r.description ? `<p class="muted vendor-request-description">${esc(r.description)}</p>` : ""}
       <p class="muted vendor-request-meta">${[r.city, r.request_type !== "buy" && r.needed_from ? r.needed_from + " → " + (r.needed_to || "") : ""].filter(Boolean).map(esc).join(" · ")}</p>
-      <div class="vendor-interest-row">
-        <button type="button" class="btn btn-sm vendor-interest-btn ${interest === "interested" ? "active" : ""}" onclick="setVendorRequestInterest('${r.id}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
-        <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
-      </div>
       ${mine
         ? `<div class="vendor-offer-status"><i class="fa-solid fa-circle-check"></i> You already sent an offer · <strong>${esc(mine.status || "pending")}</strong></div>`
-        : `<div class="vendor-offer-compose">
+        : `<div class="vendor-interest-actions">
+             <button type="button" class="btn vendor-interest-btn ${interest === "interested" ? "active" : ""}" aria-pressed="${interest === "interested" ? "true" : "false"}" onclick="setVendorRequestInterest('${r.id}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
+             <button type="button" class="btn btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
+           </div>
+           <div id="vendorOfferCompose-${r.id}" class="vendor-offer-compose ${interest === "interested" ? "" : "hidden"}">
+             <div class="vendor-offer-compose-heading"><strong>Send an offer</strong><span class="muted">Tell ${esc(r.buyer_name || "the customer")} what you can provide.</span></div>
              ${matches.length ? `<select id="offerProduct-${r.id}" onchange="applyOfferProductPrice('${r.id}','${r.request_type}')">
                <option value="">Quote a custom price…</option>
                ${matches.map((p) => `<option value="${p.id}">Use my "${esc(p.name)}": ${p.sale_price != null ? naira(p.sale_price) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</option>`).join("")}
              </select>` : ""}
              <div class="vendor-offer-fields">
                <input type="number" id="offerPrice-${r.id}" placeholder="Price (₦)" inputmode="decimal" />
-               <textarea id="offerMsg-${r.id}" rows="3" placeholder="Message to the customer (e.g. availability, delivery time, or other details)…"></textarea>
+               <textarea id="offerMsg-${r.id}" rows="5" placeholder="Message to the customer (availability, delivery time, condition, what is included, etc.)…"></textarea>
              </div>
              <button class="btn vendor-send-offer-btn" type="button" onclick="sendOffer('${r.id}')"><i class="fa-solid fa-paper-plane"></i> Send offer</button>
              ${deliveryFee > 0 ? `<p class="muted vendor-offer-note"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown to the customer automatically when delivery is needed.</p>` : ""}
@@ -14256,8 +14405,18 @@ async function setVendorRequestInterest(requestId, state) {
   }
   try { localStorage.setItem(interestKey, "interested"); } catch (_) {}
   const card = byId(`vendorRequestCard-${requestId}`);
-  card?.querySelector(".vendor-interest-btn")?.classList.add("active");
-  showToast("Request marked as interested.", "success");
+  if (card) {
+    const interestBtn = card.querySelector(".vendor-interest-btn");
+    interestBtn?.classList.add("active");
+    interestBtn?.setAttribute("aria-pressed", "true");
+    const composer = byId(`vendorOfferCompose-${requestId}`);
+    if (composer) {
+      composer.classList.remove("hidden");
+      requestAnimationFrame(() => composer.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+      setTimeout(() => byId(`offerPrice-${requestId}`)?.focus({ preventScroll: true }), 180);
+    }
+  }
+  showToast("Request marked as interested. Send your offer below.", "success");
 }
 
 function applyOfferProductPrice(requestId, requestType) {
@@ -17567,33 +17726,72 @@ async function adminToggleVendorActive(vendorId, currentlyActive, businessName) 
 // A plain directory of every registered account - separate from "Admins"
 // below, which is only for promoting/demoting admin access. This is just
 // for seeing who's actually on the platform and how many of each kind.
-async function renderAdminPeople() {
+async function renderAdminPeople(params = {}) {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  const requestedRole = params?.role === "vendor" ? "vendor" : "buyer";
+  const sortMode = params?.sort === "za" ? "za" : "az";
+  const searchQ = String(params?.q || "").trim();
+
   const [{ data: people }, { data: appeals }] = await Promise.all([
-    sb.from("users").select("id, name, email, role, city, created_at, suspended_at, suspended_reason").order("created_at", { ascending: false }),
+    sb.from("users").select("id, name, email, role, city, created_at, suspended_at, suspended_reason").in("role", ["buyer", "vendor"]).order("created_at", { ascending: false }),
     sb.rpc("admin_get_pending_appeals"),
   ]);
 
-  const counts = { buyer: 0, vendor: 0, admin: 0 };
-  (people || []).forEach((p) => { if (counts[p.role] != null) counts[p.role]++; });
+  const allPeople = people || [];
+  const counts = { buyer: 0, vendor: 0 };
+  allPeople.forEach((p) => { if (counts[p.role] != null) counts[p.role]++; });
   const appealByUser = {};
   (appeals || []).forEach((a) => { appealByUser[a.user_id] = a; });
 
+  const normalizedSearch = searchQ.toLowerCase();
+  let filtered = allPeople.filter((p) => p.role === requestedRole);
+  if (normalizedSearch) {
+    filtered = filtered.filter((p) => `${p.name || ""} ${p.email || ""} ${p.city || ""}`.toLowerCase().includes(normalizedSearch));
+  }
+  filtered.sort((a, b) => {
+    const aa = String(a.name || a.email || "").toLocaleLowerCase();
+    const bb = String(b.name || b.email || "").toLocaleLowerCase();
+    const cmp = aa.localeCompare(bb, undefined, { sensitivity: "base" });
+    return sortMode === "za" ? -cmp : cmp;
+  });
+
+  // Keep the complete dataset available to the download buttons without
+  // changing any database state. Exports deliberately ignore the search box
+  // so "Download everything" really means every account of that role.
+  window.__adminPeopleExportRows = allPeople;
+
   let html = `<h2><i class='fa-solid fa-users'></i> People on Levromart</h2>`;
   html += adminNavHtml("adminPeople");
-  html += `<div class="accordion-section admin-people-summary" style="max-width:560px;margin:0 auto 1.2rem;">
+
+  html += `<section class="admin-people-toolbar">
+    <div class="admin-people-role-tabs" role="tablist" aria-label="People type">
+      <button type="button" class="admin-people-role-tab ${requestedRole === "buyer" ? "active" : ""}" onclick="navigate('adminPeople',{role:'buyer',sort:'${sortMode}'})" role="tab" aria-selected="${requestedRole === "buyer"}">
+        <i class="fa-solid fa-user"></i><span>Buyers</span><strong>${counts.buyer}</strong>
+      </button>
+      <button type="button" class="admin-people-role-tab ${requestedRole === "vendor" ? "active" : ""}" onclick="navigate('adminPeople',{role:'vendor',sort:'${sortMode}'})" role="tab" aria-selected="${requestedRole === "vendor"}">
+        <i class="fa-solid fa-store"></i><span>Vendors</span><strong>${counts.vendor}</strong>
+      </button>
+    </div>
+    <div class="admin-people-actions">
+      <button type="button" class="btn btn-sm btn-outline" onclick="adminExportPeople('${requestedRole}','csv')"><i class="fa-solid fa-file-csv"></i> CSV</button>
+      <button type="button" class="btn btn-sm" onclick="adminExportPeople('${requestedRole}','pdf')"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+    </div>
+  </section>`;
+
+  html += `<div class="accordion-section admin-people-summary" style="max-width:560px;margin:0 auto 1rem;">
     <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-chart-simple"></i> Summary</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
     <div class="accordion-body">
       <table class="order-stats-table">
-        <tr><td>Total</td><td>${(people || []).length}</td></tr>
-        <tr><td>Customers</td><td>${counts.buyer}</td></tr>
+        <tr><td>Total accounts</td><td>${allPeople.length}</td></tr>
+        <tr><td>Buyers</td><td>${counts.buyer}</td></tr>
         <tr><td>Vendors</td><td>${counts.vendor}</td></tr>
-        <tr><td>Admins</td><td>${counts.admin}</td></tr>
+        <tr><td>Currently viewing</td><td>${requestedRole === "vendor" ? counts.vendor : counts.buyer}</td></tr>
       </table>
     </div>
   </div>`;
+
   if (appeals && appeals.length) {
-    html += `<div class="accordion-section open" id="appealsAccordion" style="max-width:600px;margin-bottom:1.2rem;border-color:var(--warning);">
+    html += `<div class="accordion-section open" id="appealsAccordion" style="max-width:600px;margin-bottom:1rem;border-color:var(--warning);">
       <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-flag"></i> Suspension appeals awaiting review (${appeals.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
       <div class="accordion-body">
         ${appeals.map((a) => `<div style="border-top:1px solid var(--border);padding:0.6rem 0;">
@@ -17608,11 +17806,23 @@ async function renderAdminPeople() {
       </div>
     </div>`;
   }
-  html += `<div class="admin-people-search-wrap"><input type="text" id="adminPeopleSearch" placeholder="Search by name or email…" oninput="filterAdminPeople()" /></div>`;
-  html += `<div class="table-wrap admin-people-table-wrap"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr>
-    <th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Joined</th><th>Status</th><th></th>
+
+  const qParam = searchQ ? `,q:${JSON.stringify(searchQ)}` : "";
+  html += `<div class="admin-people-controls">
+    <div class="admin-people-search-wrap">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="adminPeopleSearch" value="${esc(searchQ)}" placeholder="Search ${requestedRole === "vendor" ? "vendors" : "buyers"} by name, email or city…" oninput="filterAdminPeople()" />
+    </div>
+    <select id="adminPeopleSort" aria-label="Sort people" onchange="navigate('adminPeople',{role:'${requestedRole}',sort:this.value${qParam}})">
+      <option value="az" ${sortMode === "az" ? "selected" : ""}>A–Z</option>
+      <option value="za" ${sortMode === "za" ? "selected" : ""}>Z–A</option>
+    </select>
+  </div>`;
+
+  html += `<div class="admin-people-table-wrap"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr>
+    <th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Joined</th><th>Status</th><th>Action</th>
   </tr></thead><tbody>`;
-  html += (people || []).map((p, idx) => `<tr>
+  html += filtered.map((p, idx) => `<tr>
     <td class="admin-people-number">${idx + 1}</td>
     <td>${esc(p.name || "-")}</td>
     <td>${esc(p.email)}</td>
@@ -17620,13 +17830,106 @@ async function renderAdminPeople() {
     <td>${esc(p.city || "-")}</td>
     <td>${new Date(p.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>
     <td>${p.suspended_at ? `<span class="badge danger" title="${esc(p.suspended_reason || "")}">Suspended</span>` : `<span class="badge success">Active</span>`}${appealByUser[p.id] ? ` <span class="badge warning">Appealed</span>` : ""}</td>
-    <td>${p.role === "admin" ? "" : p.suspended_at
+    <td>${p.suspended_at
       ? `<button class="btn btn-sm btn-outline" onclick="unsuspendUser('${p.id}','${esc(p.name || p.email)}')">Unsuspend</button>`
       : `<button class="btn btn-sm btn-danger" onclick="suspendUserPrompt('${p.id}','${esc(p.name || p.email)}')">Suspend</button>`}</td>
   </tr>`).join("");
   html += `</tbody></table></div>`;
+  html += `<p class="muted admin-people-footer-note">Showing ${filtered.length} ${requestedRole === "vendor" ? "vendors" : "buyers"} alphabetically. Scroll the table vertically for more people, or horizontally for the wider columns.</p>`;
   return html;
 }
+
+function filterAdminPeople() {
+  const input = byId("adminPeopleSearch");
+  const q = (input?.value || "").trim().toLowerCase();
+  document.querySelectorAll("#adminPeopleTable tbody tr").forEach((row) => {
+    row.style.display = !q || row.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+}
+
+function adminCsvEscape(value) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function adminPeopleRowsForExport(role) {
+  const rows = Array.isArray(window.__adminPeopleExportRows) ? window.__adminPeopleExportRows : [];
+  return rows.filter((p) => p.role === role).sort((a, b) => String(a.name || a.email || "").localeCompare(String(b.name || b.email || ""), undefined, { sensitivity: "base" }));
+}
+
+async function adminExportPeople(role, format) {
+  const people = adminPeopleRowsForExport(role);
+  const label = role === "vendor" ? "vendors" : "buyers";
+  if (!people.length) { showToast(`No ${label} to export.`, "info"); return; }
+
+  const rows = people.map((p, i) => [
+    i + 1,
+    p.name || "-",
+    p.email || "-",
+    p.role || "-",
+    p.city || "-",
+    p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "-",
+    p.suspended_at ? "Suspended" : "Active"
+  ]);
+
+  if (format === "csv") {
+    const header = ["#", "Name", "Email", "Role", "City", "Joined", "Status"];
+    const csv = [header, ...rows].map((r) => r.map(adminCsvEscape).join(",")).join("\r\n");
+    const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `levromart-${label}-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    showToast(`${label[0].toUpperCase()+label.slice(1)} CSV downloaded.`, "success");
+    return;
+  }
+
+  try {
+    await loadAdminPdfLibrary();
+    const JsPDF = window.jspdf?.jsPDF;
+    if (!JsPDF) throw new Error("PDF library unavailable.");
+    const doc = new JsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    doc.setFontSize(16); doc.text(`Levromart — ${label[0].toUpperCase()+label.slice(1)}`, 14, 16);
+    doc.setFontSize(9); doc.text(`Downloaded ${new Date().toLocaleString("en-GB")}`, 14, 22);
+    if (typeof doc.autoTable === "function") {
+      doc.autoTable({ startY: 27, head: [["#","Name","Email","Role","City","Joined","Status"]], body: rows.map(r => r.map(v => String(v))), styles: { fontSize: 8, cellPadding: 2.2 }, headStyles: { fillColor: [16,185,129] }, margin: { left: 14, right: 14 } });
+    } else {
+      let y = 31; const line = 6;
+      doc.setFontSize(8); doc.text("#   Name                         Email                              Role     City        Joined        Status", 14, y); y += line;
+      for (const r of rows) {
+        const text = `${r[0]}   ${String(r[1]).slice(0,24)}   ${String(r[2]).slice(0,34)}   ${r[3]}   ${String(r[4]).slice(0,12)}   ${r[5]}   ${r[6]}`;
+        for (const part of doc.splitTextToSize(text, 268)) { if (y > 195) { doc.addPage(); y = 15; } doc.text(part, 14, y); y += line; }
+      }
+    }
+    doc.save(`levromart-${label}-${new Date().toISOString().slice(0,10)}.pdf`);
+    showToast(`${label[0].toUpperCase()+label.slice(1)} PDF downloaded.`, "success");
+  } catch (e) {
+    console.error("[Levromart] PDF export failed", e);
+    // Guaranteed fallback: create a printer-friendly export containing the
+    // same complete dataset, allowing iOS/Android/Desktop browsers to save it
+    // as a PDF without losing any rows.
+    const win = window.open("", "_blank");
+    if (!win) { showToast("Allow pop-ups to save the PDF.", "error"); return; }
+    win.document.write(`<html><head><title>Levromart ${label}</title><style>body{font-family:Arial,sans-serif;padding:24px}h1{font-size:20px}.meta{color:#666;margin-bottom:16px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #ddd;padding:7px;text-align:left}th{background:#10b981;color:#fff}</style></head><body><h1>Levromart — ${esc(label[0].toUpperCase()+label.slice(1))}</h1><div class="meta">${esc(new Date().toLocaleString("en-GB"))}</div><table><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Joined</th><th>Status</th></tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></body></html>`);
+    win.document.close(); win.focus(); setTimeout(() => win.print(), 250);
+  }
+}
+
+function loadAdminPdfLibrary() {
+  if (window.jspdf?.jsPDF && window.jspdf.jsPDF.API?.autoTable) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById("levromartJsPdf");
+    if (existing) { existing.addEventListener("load", () => loadAutoTable(resolve, reject), { once:true }); existing.addEventListener("error", () => reject(new Error("jsPDF failed to load")), { once:true }); return; }
+    const s = document.createElement("script"); s.id = "levromartJsPdf"; s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.onload = () => loadAutoTable(resolve, reject); s.onerror = () => reject(new Error("jsPDF failed to load")); document.head.appendChild(s);
+  });
+}
+function loadAutoTable(resolve, reject) {
+  if (window.jspdf?.jsPDF?.API?.autoTable) { resolve(); return; }
+  const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js";
+  s.onload = () => resolve(); s.onerror = () => reject(new Error("jsPDF AutoTable failed to load")); document.head.appendChild(s);
+}
+
 async function suspendUserPrompt(userId, name) {
   const reason = await showTextPromptDialog(`Suspend ${name}`, "This reason is sent to the user as their suspension notice, so make it clear.", { placeholder: "Reason for suspension…", okLabel: "Suspend", danger: true });
   if (reason === null) return;
@@ -18402,6 +18705,22 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
   }
 }
 </style>
+
+<script id="levromart-20260910-request-interaction-defensive-patch">
+(function(){
+  const original = window.setVendorRequestInterest;
+  if(typeof original !== 'function' || window.__levroRequestInterestPatched) return;
+  window.__levroRequestInterestPatched = true;
+  window.setVendorRequestInterest = async function(requestId, state){
+    await original.apply(this, arguments);
+    if(state === 'interested') {
+      const composer = document.getElementById(`vendorOfferCompose-${requestId}`);
+      if(composer) composer.classList.remove('hidden');
+    }
+  };
+})();
+</script>
+
 </body></html>`);
   w.document.close();
 }
@@ -24013,6 +24332,44 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 })();
 </script>
 </body>
+
+<style id="levromart-admin-people-final-20260910">
+/* Final admin People pass: no clipped left edge, real two-axis scrolling,
+   compact role switcher, and export controls that match the site. */
+#app .admin-people-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.75rem;max-width:900px;margin:0 auto .9rem;flex-wrap:wrap;}
+#app .admin-people-role-tabs{display:flex;align-items:center;gap:.35rem;padding:.3rem;background:var(--card);border:1px solid var(--border);border-radius:999px;box-shadow:var(--shadow);}
+#app .admin-people-role-tab{display:inline-flex;align-items:center;gap:.42rem;border:0;background:transparent;color:var(--text-muted);padding:.55rem .85rem;border-radius:999px;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+#app .admin-people-role-tab i{font-size:.8rem;}
+#app .admin-people-role-tab strong{font-size:.68rem;min-width:1.25rem;height:1.25rem;padding:0 .3rem;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:color-mix(in srgb,var(--primary) 10%,transparent);color:var(--primary);}
+#app .admin-people-role-tab.active{background:var(--primary);color:#fff;box-shadow:0 5px 16px color-mix(in srgb,var(--primary) 24%,transparent);}
+#app .admin-people-role-tab.active strong{background:rgba(255,255,255,.2);color:#fff;}
+#app .admin-people-actions{display:flex;gap:.45rem;align-items:center;}
+#app .admin-people-actions .btn{margin:0;}
+#app .admin-people-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,170px);gap:.65rem;max-width:900px;margin:0 auto .75rem;align-items:center;}
+#app .admin-people-search-wrap{position:relative;min-width:0;}
+#app .admin-people-search-wrap>i{position:absolute;left:1rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;z-index:2;}
+#app #adminPeopleSearch{width:100%;height:3.1rem;margin:0;padding:.7rem 1rem .7rem 2.75rem;border-radius:14px;}
+#app #adminPeopleSort{height:3.1rem;margin:0;padding:.7rem 2.6rem .7rem .9rem;border-radius:14px;}
+#app .admin-people-table-wrap{width:100% !important;max-width:900px !important;margin:0 auto 1rem !important;overflow-x:auto !important;overflow-y:auto !important;height:min(62vh,520px) !important;max-height:min(62vh,520px) !important;min-height:240px !important;-webkit-overflow-scrolling:touch !important;touch-action:pan-x pan-y !important;overscroll-behavior:contain !important;scrollbar-width:auto !important;}
+#app .admin-people-table{width:max-content !important;min-width:900px !important;max-width:none !important;table-layout:auto !important;}
+#app .admin-people-table th,#app .admin-people-table td{white-space:nowrap !important;}
+#app .admin-people-table th{position:sticky;top:0;z-index:4;}
+#app .admin-people-footer-note{max-width:900px;margin:.1rem auto 0;}
+/* The admin primary navigation is a horizontally scrollable rail. Never
+   center an overflowing flex rail: centering makes the first items impossible
+   to reach on narrow screens. */
+#app .dash-tabs{justify-content:flex-start !important;align-items:flex-end !important;overflow-x:auto !important;overflow-y:hidden !important;flex-wrap:nowrap !important;gap:1rem !important;padding:.1rem .45rem .05rem !important;scroll-padding-inline:.45rem !important;scrollbar-width:auto !important;touch-action:pan-x pan-y !important;-webkit-overflow-scrolling:touch !important;}
+#app .dash-tab{flex:0 0 auto !important;}
+@media(max-width:720px){
+  #app .admin-people-toolbar{align-items:stretch;}
+  #app .admin-people-role-tabs{flex:1 1 100%;justify-content:stretch;}
+  #app .admin-people-role-tab{flex:1 1 0;justify-content:center;}
+  #app .admin-people-actions{width:100%;}
+  #app .admin-people-actions .btn{flex:1 1 0;justify-content:center;}
+  #app .admin-people-controls{grid-template-columns:minmax(0,1fr);}
+  #app .admin-people-table-wrap{min-height:280px;height:min(58vh,520px) !important;max-height:min(58vh,520px) !important;}
+}
+</style>
 </html>
 
 <style id="levromart-20260910-canonical-fixes">
