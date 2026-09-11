@@ -6093,6 +6093,24 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
+<script id="levromart-splash-watchdog">
+(function(){
+  // This watchdog intentionally lives before the large application bundle.
+  // If a later script has a parse/runtime error, a network dependency stalls,
+  // or a future patch breaks init(), the black splash must still disappear.
+  var started=Date.now();
+  function hide(){
+    var el=document.getElementById("levromartSplash");
+    if(!el)return;
+    el.classList.add("is-hidden");
+    el.setAttribute("aria-hidden","true");
+  }
+  setTimeout(hide,4500);
+  window.addEventListener("load",function(){
+    setTimeout(function(){ if(Date.now()-started>900) hide(); },1200);
+  },{once:true});
+})();
+</script>
 <header>
   <div class="header-left">
     <div class="icon-wrap" id="profileWrap">
@@ -6107,7 +6125,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   </div>
   <div class="header-right">
     <div class="icon-wrap" id="headerSearchWrap">
-      <button type="button" class="icon-btn header-search-btn" id="levromartHeaderSearchButton" title="Search Levromart" aria-label="Search Levromart" onclick="window.openLevromartHeaderSearch?.()"><i class='fa-solid fa-magnifying-glass'></i></button>
+      <button type="button" class="icon-btn header-search-btn" id="levromartHeaderSearchButton" title="Search Levromart" aria-label="Search Levromart" onclick="window.__levroTopSearch(event)"><i class='fa-solid fa-magnifying-glass'></i></button>
     </div>
     <div class="icon-wrap hidden" id="notifWrap">
       <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
@@ -6441,6 +6459,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <div class="product-variant-pricing" id="productVariantPricing"></div>
     <div class="flex" style="justify-content: flex-end; margin-top:0.8rem;">
       <button class="btn btn-sm" style="background:#6b7280;" onclick="closeProductModal()">Cancel</button>
+      <button class="btn btn-outline hidden" id="saveProductDraftBtn" onclick="saveProductAsDraft()"><i class="fa-solid fa-file-lines"></i> Save draft</button>
       <button class="btn" id="saveProductBtn" onclick="saveProduct()">Save to Product</button>
     </div>
   </div>
@@ -10242,6 +10261,16 @@ function withRouteTimeout(promise, ms = 7000, timeoutValue = null) {
 function navigationLoadingHtml(view) {
   const label = view === "messages" ? "Opening messages…" : view === "cart" ? "Opening cart…" : "Loading…";
   return `<div class="page-loading-shell" aria-live="polite"><span class="page-loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i></span><span>${label}</span></div>`;
+}
+
+function homeFallbackHtml(message = "The marketplace is taking a moment to load. Please try again.") {
+  const safeMessage = typeof esc === "function" ? esc(message) : String(message).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c] || c));
+  return `<div class="empty-state levro-home-fallback" role="status" aria-live="polite">
+    <i class="fa-solid fa-store" style="display:block;font-size:2rem;margin-bottom:.65rem;color:var(--primary);"></i>
+    <strong style="display:block;margin-bottom:.35rem;">Levromart is still loading</strong>
+    <p class="muted" style="margin:0 auto .8rem;max-width:28rem;">${safeMessage}</p>
+    <button type="button" class="btn" onclick="navigate('home',{},false)"><i class="fa-solid fa-rotate-right"></i> Try again</button>
+  </div>`;
 }
 
 async function navigate(view, params = {}, pushHistory = true) {
@@ -14057,7 +14086,7 @@ async function renderProductDetail(productId) {
         <input type="number" id="rentQty" value="1" min="1" max="${product.quantity_total}" placeholder="Qty" oninput="updateRentTotalPreview(${product.rental_rate},'${product.rental_rate_unit}')" style="width:90px;" />
       </div>
       <p class="muted" id="rentTotalPreview">Pick your dates to see the total.</p>
-      ${deliveryFieldsHtml("rent", product.vendor.delivery_fee, product.vendor.lat, product.vendor.lng, product.vendor.delivery_fee_mode, product.vendor.delivery_fee_per_km)}
+      ${deliveryFieldsHtml("rent", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km)}
       <button class="btn" onclick="confirmRental('${product.vendor.id}','${product.id}')">Reserve</button>
       <p id="rentError" class="error-text hidden"></p>
     </div>`;
@@ -14073,7 +14102,7 @@ async function renderProductDetail(productId) {
           : `<input type="number" id="buyQty" value="1" min="1" max="${product.quantity_available}" placeholder="Qty" oninput="updateBuyTotalPreview(${product.sale_price ?? 0})" style="width:90px;" />`}
       </div>
       ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview">Total: ${naira(productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price)}</p>` : ""}
-      ${deliveryFieldsHtml("buy", product.vendor.delivery_fee, product.vendor.lat, product.vendor.lng, product.vendor.delivery_fee_mode, product.vendor.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
+      ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
       ${!product.is_service ? `<div style="margin-top:0.7rem;">
         <label style="margin:0;">Note for the vendor <span class="muted" style="font-weight:400;">(optional)</span></label>
         <textarea id="buyNote" rows="2" placeholder="e.g. I'd like the blue one, or a size 42" style="margin-top:0.3rem;"></textarea>
@@ -14810,7 +14839,7 @@ async function renderStorefront(vendorId) {
   storefrontCatalogTab = "products";
 
   const customCoverUrl = v.cover_url || "";
-  const isOwnStorefront = !!vendor?.id && String(vendor.id) === String(v.id);
+  const isOwnStorefront = !!session?.user?.id && String(session.user.id) === String(v.user_id);
   const logo = v.logo_url
     ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${esc(v.logo_url)}','${esc(v.business_name || "Vendor")}',event)"><img src="${esc(v.logo_url)}" alt="${esc(v.business_name || "Vendor")}" loading="eager" draggable="false" /></button>`
     : `<button type="button" class="storefront-avatar storefront-avatar-button storefront-avatar-fallback-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('','${esc(v.business_name || "Vendor")}',event)">${avatarFallbackHtml(v.business_name || "Vendor", "100%", "", v.business_name || "Vendor")}</button>`;
@@ -14825,7 +14854,7 @@ async function renderStorefront(vendorId) {
     `<button type="button" class="ms-item" onclick="openStorefrontShare('${v.id}');closeInlineMenu('storefrontMoreMenu')"><i class='fa-solid fa-share-nodes'></i> Share storefront</button>`,
   ].filter(Boolean).join("");
 
-  let html = `<section class="storefront-profile">
+  let html = `<section class="storefront-profile" data-own-storefront="${isOwnStorefront ? "1" : "0"}">
     <div class="storefront-cover ${customCoverUrl ? "has-custom-cover" : ""}" ${customCoverUrl ? `style="background-image:url('${esc(customCoverUrl)}')"` : ""}>
       ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : '<div class="storefront-cover-empty">Set a custom storefront header in your business profile.</div>'}
       ${isOwnStorefront ? `<label class="storefront-cover-edit" title="Edit storefront header" aria-label="Edit storefront header"><i class="fa-solid fa-pen"></i><input type="file" accept="image/*" onchange="uploadVendorCover(event)" /></label>` : ""}
@@ -14834,7 +14863,7 @@ async function renderStorefront(vendorId) {
       <div class="storefront-avatar-row">
         ${logo}
         <div class="storefront-profile-actions storefront-top-actions">
-          <div class="storefront-follow-wrap" data-follow-vendor-id="${v.id}">
+          ${!isOwnStorefront ? `<div class="storefront-follow-wrap" data-follow-vendor-id="${v.id}">
             <div class="storefront-follow-controls">
               <button type="button" class="btn btn-sm follow-btn ${followState?.[0]?.following ? "" : "btn-outline"}" aria-label="${followState?.[0]?.following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${followState?.[0]?.following ? "Unfollow vendor" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${followState?.[0]?.following ? "fa-check" : "fa-plus"}"></i> ${followState?.[0]?.following ? "Following" : "Follow"}</button>
               <button type="button" class="btn btn-sm btn-outline follow-settings-btn" ${followState?.[0]?.following ? "" : "disabled"} aria-expanded="false" aria-label="Notification preferences" title="${followState?.[0]?.following ? "Notification preferences" : "Follow this vendor to manage notifications"}" onclick="window.toggleLevromartFollowNotifications?.('${v.id}',event)"><i class="fa-solid fa-bell"></i></button>
@@ -14852,7 +14881,7 @@ async function renderStorefront(vendorId) {
                 <button type="button" data-mute="none">On</button><button type="button" data-mute="1h">1 hour</button><button type="button" data-mute="8h">8 hours</button><button type="button" data-mute="always" style="grid-column:1/-1;">Always</button>
               </div>
             </div>
-          </div>
+          </div>` : ""}
           ${storefrontMoreItems ? `<div class="ms-wrap storefront-more-wrap" style="position:relative;display:inline-flex;width:auto;"><button class="btn btn-sm btn-outline storefront-more-icon" type="button" aria-label="More vendor details" title="More vendor details" onclick="toggleInlineMenu('storefrontMoreMenu',event)"><i class="fa-solid fa-ellipsis"></i></button><div class="ms-list hidden" id="storefrontMoreMenu" style="left:auto;right:0;width:max-content;min-width:180px;">${storefrontMoreItems}</div></div>` : ""}
         </div>
       </div>
@@ -15774,8 +15803,7 @@ async function renderVendorDashboard() {
     html += `<div class="banner banner-warning" style="max-width:700px;margin:0 auto 1rem;"><strong><i class="fa-solid fa-location-dot"></i> Add your shop location</strong><p style="margin:.35rem 0 .65rem;">Your storefront cannot appear on the vendor map until a shop location is saved.</p><button class="btn btn-sm" onclick="navigate('vendorEditProfile')"><i class="fa-solid fa-map-location-dot"></i> Set shop location</button></div>`;
   }
   html += `<div class="dash-tabs shop-tabs-rail" aria-label="My Shop sections">
-    <button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button>
-    <button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button>
+    <button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-layer-group"></i> Listings</button>
     <button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button>
     <button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions${unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>
   </div>`;
@@ -16075,17 +16103,7 @@ async function renderVendorEditProfile() {
       <span class="switch-label-text">Show WhatsApp number to buyers</span>
       <label class="switch-toggle"><input type="checkbox" id="veWhatsappVisible" ${v.whatsapp_visible === true ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappVisibility()" /><span class="switch-toggle-track"></span></label>
     </div>
-    <label id="veDeliveryFeeLabel" class="ve-delivery-fee-label"><span>Delivery fee</span>${infoPopoverHtml("veDeliveryFeeInfo", "Charged when a customer chooses delivery instead of pickup. Flat charges the same amount everywhere. Distance-based charges purely by the per-km rate below (buyer's shared location to your shop pin) - this flat amount is then only used as a fallback if you haven't pinned your shop's location yet. Leave amounts at 0 for free delivery.")}</label>
-    <select id="veDeliveryFeeMode" onchange="toggleVendorDeliveryFeeMode()">
-      <option value="flat" ${v.delivery_fee_mode !== "distance" ? "selected" : ""}>Flat fee</option>
-      <option value="distance" ${v.delivery_fee_mode === "distance" ? "selected" : ""}>Distance-based</option>
-    </select>
-    <input id="veDeliveryFee" type="number" min="0" step="50" placeholder="e.g. 1500" value="${v.delivery_fee || 0}" />
-    <div id="veDeliveryPerKmRow" class="${v.delivery_fee_mode === "distance" ? "" : "hidden"}">
-      <label>₦ per km <span class="muted" style="font-weight:400;">(the only charge - no flat amount added on top)</span></label>
-      <input id="veDeliveryPerKm" type="number" min="0" step="10" placeholder="e.g. 100" value="${v.delivery_fee_per_km || 0}" oninput="updateVeDeliveryPerKmExample()" />
-      <p class="muted" id="veDeliveryPerKmExample" style="font-size:0.8rem;margin-top:0.3rem;"></p>
-    </div>
+    <p class="muted vendor-profile-setting-note">Delivery is configured separately for each product or service listing.</p>
     <label>About your business</label><textarea id="veBio" rows="3">${esc(v.bio || "")}</textarea>
     <div class="flex" style="margin-top:0.8rem;">
       <button class="btn" onclick="submitVendorEditProfile()">Save changes</button>
@@ -16141,21 +16159,7 @@ async function renderVendorEditProfile() {
       <button class="btn btn-sm" style="margin-top:0.6rem;" id="saveBankBtn" onclick="saveVendorBankDetails()">Save payout details</button>
     </div>
   </div>
-
-  <div class="card" style="max-width:480px;margin:1.2rem auto 0;">
-    <h2><i class="fa-solid fa-file-invoice-dollar"></i> How you pay Levromart ${infoPopoverHtml("billingInfo", `Commission-based deducts ${Number(v.commission_pct ?? 3)}% from each sale automatically. Monthly is a flat ₦1,000 per active listing, charged to a saved card. Better if your sales are hard to track (e.g. you take payment off-platform a lot).`)}</h2>
-    <div id="billingError" class="error-text hidden"></div>
-    <div class="flex" style="gap:1.2rem;margin:0.6rem 0;">
-      <label style="display:flex;align-items:center;gap:0.4rem;margin:0;font-weight:400;"><input type="radio" name="veBillingModel" value="commission" ${v.billing_model !== "monthly" ? "checked" : ""} onchange="submitVendorBillingModel(this.value)" style="width:auto;margin:0;" /> Commission-based</label>
-      <label style="display:flex;align-items:center;gap:0.4rem;margin:0;font-weight:400;"><input type="radio" name="veBillingModel" value="monthly" ${v.billing_model === "monthly" ? "checked" : ""} onchange="submitVendorBillingModel(this.value)" style="width:auto;margin:0;" /> Monthly per listing</label>
-    </div>
-    ${v.billing_model === "monthly" ? `
-      ${v.monthly_billing_status === "active" ? `<div class="banner banner-success"><strong><i class="fa-solid fa-circle-check"></i> Monthly billing active.</strong> ${bp.listing_count} active listing${bp.listing_count === 1 ? "" : "s"} · ${naira(bp.amount)}/month · next charge ${v.next_monthly_charge_at ? new Date(v.next_monthly_charge_at).toLocaleDateString() : "-"}</div>`
-      : v.monthly_billing_status === "past_due" ? `<div class="banner banner-danger"><strong><i class="fa-solid fa-triangle-exclamation"></i> Payment failed, storefront paused.</strong> Set up billing again to reactivate.</div>`
-      : `<div class="banner banner-warning"><strong><i class="fa-solid fa-circle-info"></i> Card not set up yet.</strong> Currently: ${bp.listing_count} active listing${bp.listing_count === 1 ? "" : "s"} · ${naira(Math.max(bp.amount, 1000))} due today to activate.</div>`}
-      <button class="btn btn-sm" id="setupBillingBtn" onclick="setupMonthlyBilling()">${v.monthly_billing_status === "active" ? "Update card" : "Set up monthly billing"}</button>
-    ` : ""}
-  </div>`;
+`;
 }
 
 // Small hardcoded fallback for if the live Paystack bank list can't be
@@ -16283,9 +16287,6 @@ async function submitVendorEditProfile() {
     opening_hours: summarizeBusinessHours(business_hours) || null,
     business_hours,
     allow_after_hours_messages: byId("veAllowAfterHours").checked,
-    delivery_fee: Math.max(0, Number(byId("veDeliveryFee").value) || 0),
-    delivery_fee_mode: byId("veDeliveryFeeMode").value,
-    delivery_fee_per_km: Math.max(0, Number(byId("veDeliveryPerKm").value) || 0),
     bio: byId("veBio").value.trim() || null,
   }).eq("id", vendor.id);
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
@@ -16501,7 +16502,7 @@ async function renderVendorProducts() {
 
   html += `<div id="vendorDiscardedPanel" class="vendor-discarded-panel hidden">
     <div class="vendor-discarded-head"><div><strong>Discarded items</strong><span class="muted">Products removed from your live catalogue stay here when order history prevents permanent deletion.</span></div><button type="button" class="icon-btn" aria-label="Close discarded items" onclick="toggleVendorDiscarded(event,false)"><i class="fa-solid fa-xmark"></i></button></div>
-    ${removedProducts.length ? `<div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-name="${esc((p.name||'').toLowerCase())}"><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
+    ${removedProducts.length ? `<div class="vendor-discarded-bulkbar"><label><input type="checkbox" id="discardedSelectAll" onchange="toggleAllDiscardedItems(this.checked)"> <span>Select all</span></label><span id="discardedSelectedCount" class="muted">0 selected</span><button type="button" class="btn btn-sm btn-danger" id="discardedBulkDeleteBtn" disabled onclick="deleteSelectedDiscardedItems()"><i class="fa-solid fa-trash-can"></i> Delete selected</button></div><div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-id="${esc(p.id)}" data-discarded-name="${esc((p.name||'').toLowerCase())}"><label class="discarded-select"><input type="checkbox" class="discarded-item-check" value="${esc(p.id)}" onchange="updateDiscardedSelection()" aria-label="Select ${esc(p.name)}"></label><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
   </div>`;
 
   if (!products || products.length === 0) { html += `<div class="empty-state">No products yet.</div>`; return html; }
@@ -16696,9 +16697,9 @@ async function showProductModal() {
   } else {
     byId("productModalTitle").textContent = "Add New Product";
     ["prodName", "prodDesc", "prodSalePrice", "prodDiscountPrice", "prodRentalRate", "prodDeposit"].forEach((id) => (byId(id).value = ""));
-    byId("prodDeliveryMode").value = vendor?.delivery_fee_mode === "distance" && Number(vendor?.delivery_fee_per_km) > 0 ? "distance" : Number(vendor?.delivery_fee) > 0 ? "flat" : "free";
-    byId("prodDeliveryFee").value = vendor?.delivery_fee ?? 0;
-    byId("prodDeliveryPerKm").value = vendor?.delivery_fee_per_km ?? 0;
+    byId("prodDeliveryMode").value = "free";
+    byId("prodDeliveryFee").value = 0;
+    byId("prodDeliveryPerKm").value = 0;
     byId("prodQtyTotal").value = 1;
     byId("prodCondition").value = "new";
     byId("prodListingType").value = "sale";
@@ -17038,26 +17039,36 @@ async function saveProduct() {
     const photos = [...(window.__existingPhotos || []), ...newPhotoUrls];
 
     let savedProductId = editingProductId;
+    let variantDrafts = [];
+    const isNewMonthlyListing = !editingProductId && billing_model === "monthly";
     if (editingProductId) {
       const { data: existing } = await sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single();
       const sold = existing ? existing.quantity_total - existing.quantity_available : 0;
       const quantity_available = Math.max(quantity_total - sold, 0);
       const { error } = await sb.from("products").update({ ...fields, quantity_available, photos }).eq("id", editingProductId);
       if (error) throw new Error(error.message);
-    } else {
+    } else if (!isNewMonthlyListing) {
       const { data: createdProduct, error } = await sb.from("products").insert({ ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos }).select("id").single();
       if (error) throw new Error(error.message);
       savedProductId = createdProduct?.id;
     }
 
     if (!is_service) {
-      const variantDrafts = collectProductVariantDrafts(photos);
-      await saveProductVariants(savedProductId, variantDrafts);
+      variantDrafts = collectProductVariantDrafts(photos);
+      if (!isNewMonthlyListing) await saveProductVariants(savedProductId, variantDrafts);
     }
 
-    if (!editingProductId && billing_model === "monthly") {
-      const pay = await startListingMonthlyPayment("product", savedProductId);
-      if (!pay) throw new Error("Monthly listing payment could not be started.");
+    if (isNewMonthlyListing) {
+      // Nothing has been inserted into public.products yet. The browser keeps
+      // the completed draft in sessionStorage while Paystack is open, and the
+      // row is created only after the server verifies the successful ₦1,000
+      // payment when the user returns.
+      const draft={kind:"product",vendor_id:vendor.id,fields:{...fields},photos,variantDrafts};
+      ["status","billing_status","billing_reference","billing_paid_until"].forEach(k=>delete draft.fields[k]);
+      const saved=await saveListingDraftServer(draft);
+      if(!saved?.id)throw new Error(saved?.error||"Could not save this listing draft.");
+      const pay=await payListingDraft(saved.id);
+      if(!pay)throw new Error("Monthly listing payment could not be started. Your draft has been saved under My Shop.");
       closeProductModal();
       return;
     }
@@ -17115,21 +17126,47 @@ async function restoreProduct(id) {
   showToast(`${p.name} restored to your live products.`, "success");
   navigate("vendorProducts");
 }
-async function deleteProductCompletely(id) {
+async function deleteProductCompletely(id, options = {}) {
   if ((window.__vendorPendingProductIds || new Set()).has(id)) {
     showToast("This product has a pending order. It can't be deleted until that order is cleared.", "error");
-    return;
+    return false;
   }
-  if (!(await showConfirmDialog("Delete this product completely? If order history prevents deletion, it will remain in Discarded items instead.", { title: "Delete permanently", okLabel: "Delete permanently", danger: true }))) return;
+  if (!options.skipConfirm && !(await showConfirmDialog("Delete this product completely? If order history prevents deletion, it will remain in Discarded items instead.", { title: "Delete permanently", okLabel: "Delete permanently", danger: true }))) return false;
+  const card = document.querySelector(`.vendor-discarded-card[data-discarded-id="${CSS.escape(String(id))}"]`);
   const { error } = await sb.from("products").delete().eq("id", id).eq("vendor_id", vendor.id);
   if (error) {
     await sb.from("products").update({ status:"removed", billing_status: "cancelled" }).eq("id", id).eq("vendor_id", vendor.id);
-    showToast("This product has past order history, so it was kept safely in Discarded items instead.", "error");
-    navigate("vendorProducts");
-    return;
+    showToast("This product has past order history, so it was kept safely in Discarded items.", "error");
+    return false;
+  }
+  card?.remove();
+  updateDiscardedSelection();
+  if (!document.querySelector('.vendor-discarded-card')) {
+    const grid = document.querySelector('.vendor-discarded-grid');
+    if (grid) grid.outerHTML = '<div class="empty-state" style="margin:0;">No discarded products.</div>';
+    document.querySelector('.vendor-discarded-bulkbar')?.remove();
   }
   showToast("Product permanently deleted.", "success");
-  navigate("vendorProducts");
+  return true;
+}
+function updateDiscardedSelection(){
+  const checks=[...document.querySelectorAll('.discarded-item-check')];
+  const selected=checks.filter(c=>c.checked);
+  const count=byId('discardedSelectedCount'); if(count) count.textContent=`${selected.length} selected`;
+  const bulk=byId('discardedBulkDeleteBtn'); if(bulk) bulk.disabled=selected.length===0;
+  const all=byId('discardedSelectAll'); if(all){all.checked=checks.length>0&&selected.length===checks.length;all.indeterminate=selected.length>0&&selected.length<checks.length;}
+}
+function toggleAllDiscardedItems(checked){
+  document.querySelectorAll('.discarded-item-check').forEach(c=>c.checked=!!checked);
+  updateDiscardedSelection();
+}
+async function deleteSelectedDiscardedItems(){
+  const ids=[...document.querySelectorAll('.discarded-item-check:checked')].map(c=>c.value).filter(Boolean);
+  if(!ids.length)return;
+  if(!(await showConfirmDialog(`Delete ${ids.length} selected discarded product${ids.length===1?'':'s'} permanently?`,{title:'Delete selected',okLabel:'Delete permanently',danger:true})))return;
+  const bulk=byId('discardedBulkDeleteBtn'); if(bulk)bulk.disabled=true;
+  for(const id of ids) await deleteProductCompletely(id,{skipConfirm:true});
+  updateDiscardedSelection();
 }
 
 // ---------- VENDOR PACKAGES (bundle deals, e.g. an "Outreach Kit") ----------
@@ -19808,6 +19845,22 @@ body.chat-full-page #aiChatFab{display:none !important;visibility:hidden !import
 
 
 
+
+<style id="levromart-discarded-bulk-css">
+.vendor-discarded-bulkbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin:0 0 .65rem;padding:.55rem .65rem;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--card) 92%,transparent);font-size:.75rem}
+.vendor-discarded-bulkbar label{display:inline-flex;align-items:center;gap:.4rem;font-weight:700;cursor:pointer}
+.vendor-discarded-bulkbar .btn{margin-left:auto!important}
+.vendor-discarded-card{position:relative!important;align-items:flex-start!important}
+.discarded-select{display:grid;place-items:center;flex:0 0 auto;padding-top:.2rem;cursor:pointer}
+.discarded-select input{width:18px;height:18px;accent-color:var(--primary)}
+</style>
+
+
+<style id="levromart-hard-top-search-css">
+#levromartHeaderSearchBackdrop{z-index:2147483000!important}
+#levromartHeaderSearchDock{z-index:2147483001!important}
+#levromartHeaderSearchButton{position:relative!important;z-index:2147483002!important;cursor:pointer!important}
+</style>
 </html>`);
   w.document.close();
 }
@@ -21939,7 +21992,7 @@ async function resolveLeviLocalAction(text) {
     [/^(open|show|take me to|go to|view)\s+(my\s+)?shop$/, {view:"vendorDashboard"}],
     [/^(open|show|take me to|go to|view)\s+(my\s+)?products?$/, {view:"vendorProducts"}],
     [/^(open|show|take me to|go to|view)\s+(settings|app settings|my settings|account settings)$/, {view:"settings"}],
-    [/^(where (?:can|do) i (?:find|change|manage)|how (?:do|can) i (?:change|manage)|i want to change)\s+(?:my\s+)?(?:app\s+)?settings?.*$/, {view:"settings"}],
+    [/^(where (?:can|do) i (?:find|change|manage)|how (?:do|can) i (?:change|manage)|i want to (?:change|edit|update)|take me to|open|show)\s+(?:my\s+)?(?:app\s+)?(?:settings?|preferences?|configuration|notifications? settings?|privacy settings?|account settings?).*$/, {view:"settings"}],
     [/^(open|show|take me to|go to|view)\s+(my\s+)?profile$/, {view:"profile"}],
     [/^(open|show|take me to|go to|view)\s+(my\s+)?messages?$/, {view:"messages"}],
     [/^(open|show|take me to|go to|view)\s+(my\s+)?wishlist$/, {view:"wishlist"}],
@@ -22624,7 +22677,17 @@ window.addEventListener("popstate", (e) => {
     const last = JSON.parse(sessionStorage.getItem("medris_last_view") || "null");
     if (last && last.view && last.view !== "home") { await navigate(last.view, last.params || {}, false); resumed = true; }
   } catch (e) {}
-  if (!resumed) navigate("home");
+  if (!resumed) {
+    try {
+      await navigate("home");
+    } catch (e) {
+      // Final first-paint guard: a failed Home render must never leave the
+      // user with an empty app shell or a permanent splash screen.
+      const app = byId("app");
+      if (app) app.innerHTML = homeFallbackHtml("We could not load the marketplace right now. Your data is safe — try again.");
+      console.error("[Levromart] Initial Home navigation failed:", e);
+    }
+  }
 
   // Offer the installable app to every visitor, not just after login - give
   // Chrome a moment to fire beforeinstallprompt first.
@@ -24678,7 +24741,18 @@ window.renderVendorMapRail = function(){
     if(!loc){
       try{loc=await requestCustomerLocation(true);}catch(_){loc=null;}
     }
-    if(!loc){showToast('Allow your location to trace the route to this vendor.','info');return;}
+    if(!loc){
+      try{
+        const perm=await getBrowserLocationPermission();
+        if(perm==='granted') loc=await getCurrentPositionOnce();
+      }catch(_){ }
+    }
+    if(!loc){
+      const perm=await getBrowserLocationPermission();
+      if(perm==='denied') showLocationPrompt('recovery','Levromart already has permission to use location at the app level, but your browser/device permission is blocking the map. Turn Location back on for this site and try again.');
+      else showToast('We could not get your current location yet. Tap Locate me on the map and try again.','info');
+      return;
+    }
     const color=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()||'#10b981';
     let coords=[[Number(loc.lat),Number(loc.lng)],[Number(vendor.lat),Number(vendor.lng)]];
     try{
@@ -26135,6 +26209,174 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   color:#64748b !important;
 }
 </style>
+
+<style id="levromart-final-product-social-ux">
+/* Final source-of-truth UX pass. */
+.vendor-profile-setting-note{display:block;margin:.35rem 0 .9rem;padding:.65rem .75rem;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--primary) 5%,transparent);font-size:.78rem;color:var(--text-muted)}
+.vendor-commission-card{max-width:520px;margin:0 auto 1rem!important;border-radius:18px!important;padding:.85rem 1rem!important}
+.vendor-commission-card .commission-main{display:flex;align-items:center;gap:.65rem}
+.vendor-commission-card .commission-main h3{margin:0;flex:1}
+.vendor-commission-card .commission-sub{margin:.25rem 0 .6rem;font-size:.76rem}
+.vendor-commission-countdown{font-variant-numeric:tabular-nums;font-weight:800;color:var(--primary)}
+.vendor-commission-info{width:28px;height:28px;min-width:28px;border:1px solid var(--border);border-radius:50%;background:transparent;color:var(--text-muted);display:inline-grid;place-items:center;cursor:pointer}
+.vendor-products-unified-tabs{display:flex;gap:.35rem;overflow-x:auto;padding:.15rem 0 .5rem;margin:.75rem 0 .65rem;scrollbar-width:none}
+.vendor-products-unified-tabs::-webkit-scrollbar{display:none}
+.vendor-products-unified-tabs button{flex:1 0 auto;border:1px solid var(--border);background:var(--card);color:var(--text-muted);border-radius:999px;padding:.6rem .8rem;font:inherit;font-size:.78rem;font-weight:750;cursor:pointer;white-space:nowrap}
+.vendor-products-unified-tabs button.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.vendor-drafts-panel{border:1px solid var(--border);border-radius:16px;padding:.75rem;margin:.65rem 0 1rem;background:color-mix(in srgb,var(--primary) 4%,var(--card))}
+.vendor-drafts-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.55rem}
+.vendor-draft-card{display:flex;align-items:center;gap:.65rem;border:1px solid var(--border);border-radius:13px;padding:.6rem;background:var(--card);margin-top:.45rem}
+.vendor-draft-copy{min-width:0;flex:1}.vendor-draft-copy strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vendor-draft-copy small{display:block;color:var(--text-muted);margin-top:.12rem}
+.vendor-draft-actions{display:flex;gap:.35rem;flex:0 0 auto}
+.vendor-product-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.65rem!important}
+.vendor-product-card-grid .card{min-width:0!important;padding:.65rem!important;border-radius:16px!important}
+.vendor-product-card-grid .product-img{height:155px!important;border-radius:12px!important}
+.vendor-product-card-grid h4{font-size:.9rem!important}
+.vendor-product-card-grid p{font-size:.74rem!important}
+.storefront-follow-count-button{border:0;background:none;padding:0;color:inherit;font:inherit;cursor:pointer}
+.storefront-follow-count-button:hover{text-decoration:underline}
+.followers-modal-list{display:grid;gap:.5rem;max-height:55vh;overflow:auto}.follower-row{display:flex;align-items:center;gap:.6rem;padding:.5rem;border:1px solid var(--border);border-radius:12px}.follower-row img,.follower-avatar{width:38px;height:38px;border-radius:50%;object-fit:cover}.follower-copy{min-width:0}.follower-copy strong{display:block}.follower-copy small{color:var(--text-muted)}
+.vendor-unified-packages{margin-top:1rem}.vendor-unified-packages .vendor-product-card-grid{margin-top:.6rem}.vendor-unified-packages .product-img{height:145px!important;border-radius:12px}.vendor-map-locate-control{position:absolute;right:10px;top:10px;z-index:1000;width:42px;height:42px;border:0;border-radius:50%;background:var(--card);color:var(--text);box-shadow:0 6px 20px rgba(0,0,0,.18);cursor:pointer;display:grid;place-items:center;font-size:1rem}
+@media(max-width:520px){.vendor-product-card-grid .product-img{height:125px!important}.vendor-product-card-grid{gap:.5rem!important}.vendor-draft-card{align-items:flex-start}.vendor-draft-actions{flex-direction:column}}
+</style>
+<script id="levromart-final-source-of-truth-20260911">
+(function(){
+  'use strict';
+  const SEARCH_KEY='levromart-search-history-v1', MAX_SEARCHES=8;
+  const escHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const readHistory=()=>{try{const x=JSON.parse(localStorage.getItem(SEARCH_KEY)||'[]');return Array.isArray(x)?x.map(String).map(x=>x.trim()).filter(Boolean).slice(0,MAX_SEARCHES):[]}catch(_){return[]}};
+  const writeHistory=q=>{q=String(q||'').trim();if(!q)return;try{localStorage.setItem(SEARCH_KEY,JSON.stringify([q,...readHistory().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,MAX_SEARCHES)))}catch(_){} };
+  const removeHistory=q=>{try{localStorage.setItem(SEARCH_KEY,JSON.stringify(readHistory().filter(x=>x.toLowerCase()!==String(q).toLowerCase())))}catch(_){} };
+  const clearHistory=()=>{try{localStorage.removeItem(SEARCH_KEY)}catch(_){} };
+  function ensureSearchUI(){
+    let b=document.getElementById('levromartHeaderSearchBackdrop');
+    if(!b){b=document.createElement('div');b.id='levromartHeaderSearchBackdrop';document.body.appendChild(b)}
+    let d=document.getElementById('levromartHeaderSearchDock');
+    if(!d){d=document.createElement('div');d.id='levromartHeaderSearchDock';d.innerHTML='<div class="header-search-space" role="dialog" aria-label="Search Levromart"><div class="header-search-bar"><i class="fa-solid fa-magnifying-glass"></i><input id="levromartHeaderSearchInput" type="search" autocomplete="off" placeholder="Search products, services, vendors…" aria-label="Search Levromart"><button type="button" class="header-search-close" id="levromartHeaderSearchClose" aria-label="Close search"><i class="fa-solid fa-xmark"></i></button></div><div id="levromartHeaderSearchSuggest" class="header-search-content"></div></div>';document.body.appendChild(d)}
+    return {b,d,i:d.querySelector('#levromartHeaderSearchInput'),c:d.querySelector('#levromartHeaderSearchSuggest')};
+  }
+  function historyMarkup(){
+    const h=readHistory();
+    const recent='<section class="levro-search-section"><div class="levro-search-section-head"><strong>Recent searches</strong>'+ (h.length?'<button type="button" class="levro-search-clear-all">Clear all</button>':'')+'</div>'+(h.length?'<div class="levro-search-history-list">'+h.map(q=>'<div class="levro-search-history-row"><button type="button" class="levro-search-history-use" data-q="'+escHtml(q)+'"><i class="fa-solid fa-clock-rotate-left"></i><span>'+escHtml(q)+'</span></button><button type="button" class="levro-search-history-remove" data-q="'+escHtml(q)+'" aria-label="Remove '+escHtml(q)+'"><i class="fa-solid fa-xmark"></i></button></div>').join('')+'</div>':'<p class="levro-search-empty-history">Your recent searches will appear here.</p>')+'</section>';
+    const recs=[['products','Shop products','fa-box'],['services','Find a service','fa-hand-holding-heart'],['vendors','Explore vendors','fa-store'],['packages','Browse packages','fa-box-open']];
+    return recent+'<section class="levro-search-section"><div class="levro-search-section-head"><strong>Recommended</strong></div><div class="levro-search-recommendations">'+recs.map(x=>'<button type="button" class="levro-search-recommendation" data-rec="'+x[0]+'"><i class="fa-solid '+x[2]+'"></i>'+x[1]+'</button>').join('')+'</div></section>';
+  }
+  function bindSearchContent(ui){
+    ui.c.querySelector('.levro-search-clear-all')?.addEventListener('click',()=>{clearHistory();ui.c.innerHTML=historyMarkup();bindSearchContent(ui)});
+    ui.c.querySelectorAll('.levro-search-history-remove').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();removeHistory(btn.dataset.q);ui.c.innerHTML=historyMarkup();bindSearchContent(ui)}));
+    ui.c.querySelectorAll('.levro-search-history-use').forEach(btn=>btn.addEventListener('click',()=>{const q=btn.dataset.q||'';ui.i.value=q;ui.i.focus();runSearch(q)}));
+    ui.c.querySelectorAll('[data-rec]').forEach(btn=>btn.addEventListener('click',()=>{const a=btn.dataset.rec;closeSearch();if(a==='vendors')navigate('vendors');else if(a==='services')navigate('home',{section:'services'});else if(a==='packages')navigate('home',{section:'packages'});else navigate('home',{section:'products'})}));
+  }
+  function closeSearch(){const ui=ensureSearchUI();ui.b.classList.remove('open');ui.d.classList.remove('open');document.body.classList.remove('search-input-active');ui.i?.blur()}
+  function runSearch(q){q=String(q||'').trim();if(!q)return;writeHistory(q);closeSearch();if(typeof window.routeSearch==='function')window.routeSearch(q);else if(typeof navigate==='function')navigate('home',{section:'products',search:q});}
+  function openSearch(){const ui=ensureSearchUI();ui.b.classList.add('open');ui.d.classList.add('open');document.body.classList.add('search-input-active');ui.c.innerHTML=historyMarkup();bindSearchContent(ui);requestAnimationFrame(()=>{try{ui.i?.focus({preventScroll:true})}catch(_){ui.i?.focus()}})}
+  window.openLevromartHeaderSearch=openSearch;window.closeLevromartHeaderSearch=closeSearch;window.__levroTopSearch=function(e){e?.preventDefault?.();e?.stopPropagation?.();const d=document.getElementById('levromartHeaderSearchDock');if(d?.classList.contains('open'))closeSearch();else openSearch();return false};
+  function bindTopButton(){const b=document.getElementById('levromartHeaderSearchButton');if(!b)return;b.onclick=window.__levroTopSearch;b.setAttribute('aria-label','Search Levromart');b.title='Search Levromart'}
+  function bindSearchEvents(){const ui=ensureSearchUI();bindTopButton();if(ui.b.dataset.finalBound!=='1'){ui.b.dataset.finalBound='1';ui.b.addEventListener('pointerdown',e=>{if(e.target===ui.b){e.preventDefault();closeSearch()}});ui.d.querySelector('#levromartHeaderSearchClose')?.addEventListener('click',closeSearch);ui.i?.addEventListener('input',()=>{const q=ui.i.value.trim();if(!q){ui.c.innerHTML=historyMarkup();bindSearchContent(ui);return}ui.c.innerHTML='<section class="levro-search-section"><div class="levro-search-section-head"><strong>Search</strong></div><p class="levro-search-no-results">Press Enter to search for “'+escHtml(q)+'”.</p></section>'});ui.i?.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeSearch()}else if(e.key==='Enter'){e.preventDefault();runSearch(ui.i.value)}})}}
+  window.addEventListener('load',bindSearchEvents);bindSearchEvents();setTimeout(bindSearchEvents,250);setTimeout(bindSearchEvents,1000);
+  new MutationObserver(()=>{clearTimeout(window.__levroSearchBindTimer);window.__levroSearchBindTimer=setTimeout(bindSearchEvents,80)}).observe(document.body,{childList:true,subtree:true});
+
+  // Follow/unfollow is instant; no confirmation dialog.
+  async function followState(vendorId){try{const r=await sb.rpc('get_vendor_follow_state',{p_vendor_id:vendorId});return r.error?null:r.data?.[0]||null}catch(_){return null}}
+  async function toggleFollow(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();if(!session){showLogin?.();return}const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const next=!st.following;const btn=wrap.querySelector('.follow-btn');if(btn)btn.disabled=true;try{const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});if(r.error)throw r.error;await refreshFollow(vendorId);if(typeof showToast==='function')showToast(next?'Following vendor.':'Unfollowed vendor.','success')}catch(e){showToast?.(e.message||'Could not update your following list.','error')}finally{if(btn)btn.disabled=false}}
+  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-plus')+'"></i> '+(following?'Following':'Follow');btn.title=following?'Unfollow vendor':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}const count=document.querySelector('[data-follow-count]');if(count){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
+  async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const open=menu.classList.toggle('hidden')===false;bell.setAttribute('aria-expanded',String(open));if(open)await refreshFollow(vendorId)}
+  window.toggleLevromartVendorFollow=toggleFollow;window.toggleLevromartFollowNotifications=toggleFollowBell;
+  document.addEventListener('change',e=>{const cb=e.target?.closest?.('.follow-menu input[data-pref]');if(!cb)return;const wrap=cb.closest('.storefront-follow-wrap'),id=wrap?.dataset.followVendorId;if(!id)return;const checked=k=>!!wrap.querySelector('[data-pref="'+k+'"]')?.checked;sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:'none',p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')}).then(()=>refreshFollow(id)).catch(()=>{})},true);
+  document.addEventListener('click',e=>{if(!e.target.closest?.('.storefront-follow-wrap'))document.querySelectorAll('.follow-menu:not(.hidden)').forEach(m=>m.classList.add('hidden'))},true);
+
+  // Follower list for the shop owner.
+  window.showVendorFollowers=async function(vendorId){if(!session)return;let modal=document.getElementById('vendorFollowersModal');if(!modal){modal=document.createElement('div');modal.id='vendorFollowersModal';modal.className='modal hidden';document.body.appendChild(modal)}modal.innerHTML='<div class="modal-content" style="max-width:480px"><div class="flex" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Followers</h3><button class="icon-btn" type="button" aria-label="Close" onclick="document.getElementById(\'vendorFollowersModal\').classList.add(\'hidden\')"><i class="fa-solid fa-xmark"></i></button></div><div class="followers-modal-list"><p class="muted">Loading followers…</p></div></div>';modal.classList.remove('hidden');try{const r=await sb.rpc('get_vendor_followers',{p_vendor_id:vendorId});if(r.error)throw r.error;const list=r.data||[];modal.querySelector('.followers-modal-list').innerHTML=list.length?list.map(x=>'<div class="follower-row">'+(x.avatar_url?'<img src="'+escHtml(x.avatar_url)+'" alt="">':'<div class="follower-avatar avatar-circle">'+escHtml((x.name||'U').charAt(0).toUpperCase())+'</div>')+'<div class="follower-copy"><strong>'+escHtml(x.name||'Levromart user')+'</strong><small>Following since '+new Date(x.followed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+'</small></div></div>').join(''):'<p class="muted">No followers yet.</p>'}catch(e){modal.querySelector('.followers-modal-list').innerHTML='<p class="muted">Could not load followers.</p>'}}
+  function makeFollowerStatClickable(){const stat=document.querySelector('[data-follow-count]');const wrap=document.querySelector('.storefront-follow-wrap');const own=document.querySelector('.storefront-profile')?.dataset.ownStorefront==='1';if(!stat||(!wrap&&!own))return;const id=wrap?.dataset.followVendorId||currentViewParams?.vendorId;if(!id)return;if(own){stat.classList.add('storefront-follow-count-button');stat.setAttribute('role','button');stat.setAttribute('tabindex','0');stat.setAttribute('aria-label','View followers');stat.title='View your followers';stat.onclick=()=>showVendorFollowers(id);stat.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showVendorFollowers(id)}}}else{stat.classList.remove('storefront-follow-count-button');stat.onclick=null;stat.onkeydown=null}}
+
+  // Commission deadline/countdown: vendors may pay at any time during the 7-day window.
+  async function loadCommissionDeadline(){if(!vendor?.id||typeof sb==='undefined')return null;try{const r=await sb.rpc('get_vendor_commission_deadline',{p_vendor_id:vendor.id});if(!r.error&&r.data?.[0])return r.data[0]}catch(_){}try{const r=await sb.from('commission_charges').select('amount,due_at').eq('vendor_id',vendor.id).eq('status','owed').order('due_at',{ascending:true});if(r.error)return null;const rows=r.data||[];return {total_owed:rows.reduce((s,x)=>s+Number(x.amount||0),0),earliest_due_at:rows[0]?.due_at||null}}catch(_){return null}}
+  function renderCountdown(el,due){if(!el)return;const t=new Date(due).getTime()-Date.now();if(t<=0){el.textContent='Due now';return}const d=Math.floor(t/86400000),h=Math.floor((t%86400000)/3600000),m=Math.floor((t%3600000)/60000);el.textContent=d?d+'d '+h+'h left':h?h+'h '+m+'m left':m+'m left'}
+  async function decorateCommissionBoxes(){
+    const data=await loadCommissionDeadline();
+    document.querySelectorAll('.banner').forEach(box=>{
+      const h=box.querySelector('h3');if(!h||!/^\s*Commission owed:/i.test(h.textContent||''))return;
+      if(!box.querySelector('.levro-commission-deadline')){
+        const info=document.createElement('button');info.type='button';info.className='vendor-commission-info';info.title='About commission';info.setAttribute('aria-label','About commission');info.innerHTML='<i class="fa-solid fa-info"></i>';info.onclick=window.levroCommissionInfo;
+        h.appendChild(info);
+        const p=box.querySelector('p');if(p)p.innerHTML='<strong>Pay anytime within 7 days.</strong> Levromart takes the platform commission only from commission-based listings.';
+        const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:.2rem 0 .65rem;font-size:.76rem';row.innerHTML='<span><i class="fa-regular fa-clock"></i> Payment window</span><span class="vendor-commission-countdown levro-commission-deadline">Calculating…</span>';h.parentElement.insertBefore(row,p?.nextSibling||null);
+      }
+    });
+    if(data?.earliest_due_at){clearInterval(window.__levroCommissionTimer);const tick=()=>document.querySelectorAll('.levro-commission-deadline').forEach(el=>renderCountdown(el,data.earliest_due_at));tick();window.__levroCommissionTimer=setInterval(tick,30000)}
+  }
+  window.levroCommissionInfo=function(){showToast?.('Commission is charged only on commission-based listings and is due within 7 days of the offline sale. You can pay it at any time before the deadline.','info')}
+
+  // Unified My Shop listings page: products, services and packages in one screen.
+  window.switchVendorListingTab=function(tab){
+    document.querySelectorAll('[data-vendor-listing-section]').forEach(el=>el.classList.toggle('hidden',tab!=='all'&&el.dataset.vendorListingSection!==tab));
+    document.querySelectorAll('.vendor-products-unified-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+    document.querySelectorAll('[data-vendor-listing-section="products"] .card').forEach(card=>card.classList.toggle('hidden',tab==='services'));
+    document.querySelectorAll('[data-vendor-listing-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab==='products'));
+    document.querySelectorAll('[data-vendor-listing-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab==='services'));
+    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>{if(tab==='packages')g.classList.add('hidden');else g.classList.remove('hidden');});
+    try{localStorage.setItem('levromart-vendor-listing-tab',tab)}catch(_){}
+  }
+  window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
+  window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
+  window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
+  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
+  async function renderUnifiedEnhancements(){
+    const heading=document.querySelector('.vendor-products-heading');
+    if(!heading)return;
+    if(!document.querySelector('.vendor-products-unified-tabs')){
+      const rail=document.createElement('div');rail.className='vendor-products-unified-tabs';
+      rail.innerHTML='<button data-tab="all" onclick="switchVendorListingTab(\'all\')">All listings</button><button data-tab="products" onclick="switchVendorListingTab(\'products\')">Products</button><button data-tab="services" onclick="switchVendorListingTab(\'services\')">Services</button><button data-tab="packages" onclick="switchVendorListingTab(\'packages\')">Packages</button>';
+      heading.insertAdjacentElement('afterend',rail);
+    }
+    const host=heading.parentElement;
+    if(host&&!document.querySelector('.vendor-drafts-panel')&&session?.access_token){
+      try{
+        const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'list-listing-drafts',accessToken:session.access_token})});
+        const d=await r.json().catch(()=>({}));const drafts=d.drafts||[];
+        if(drafts.length){
+          const panel=document.createElement('div');panel.className='vendor-drafts-panel';
+          panel.innerHTML='<div class="vendor-drafts-head"><strong><i class="fa-solid fa-file-lines"></i> Drafts ('+drafts.length+')</strong><span class="muted" style="font-size:.72rem">Unpaid monthly listings</span></div>'+drafts.map(x=>'<div class="vendor-draft-card"><div class="vendor-draft-copy"><strong>'+escHtml(x.draft_data?.fields?.name||'Untitled listing')+'</strong><small>₦1,000 activation · saved '+new Date(x.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</small></div><div class="vendor-draft-actions"><button class="btn btn-sm" onclick="payListingDraft(\''+escHtml(x.id)+'\')">Pay ₦1,000</button><button class="btn btn-sm btn-outline" onclick="deleteListingDraft(\''+escHtml(x.id)+'\')" aria-label="Delete draft"><i class="fa-solid fa-trash"></i></button></div></div>').join('');
+          heading.insertAdjacentElement('afterend',panel);
+        }
+      }catch(_){ }
+    }
+    // Tag every product/service card and its grid so the unified rail can filter cleanly.
+    document.querySelectorAll('.vendor-products-heading ~ .grid .card').forEach(card=>{
+      if(card.dataset.vendorListingKind)return;
+      const text=card.textContent||'';card.dataset.vendorListingKind=/\bService\b/i.test(text)?'services':'products';
+    });
+    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>g.dataset.vendorListingSection='products');
+    // Packages live in the same My Shop screen; they are loaded once and rendered as compact cards.
+    if(!host.querySelector('[data-vendor-listing-section="packages"]')){
+      try{
+        const r=await sb.from('vendor_packages').select('id,name,description,price,photos,status,billing_model,billing_paid_until,created_at').eq('vendor_id',vendor.id).neq('status','removed').order('created_at',{ascending:false});
+        const packs=r.data||[];const section=document.createElement('section');section.dataset.vendorListingSection='packages';section.className='vendor-unified-packages';
+        section.innerHTML='<div class="category-group-header"><i class="fa-solid fa-boxes-packing"></i> Packages</div>'+(packs.length?'<div class="vendor-product-card-grid">'+packs.map(x=>'<article class="card" data-package-id="'+escHtml(x.id)+'"><div class="product-img">'+(x.photos?.[0]?'<img src="'+escHtml(x.photos[0])+'" alt="" loading="lazy">':'<i class="fa-solid fa-box-open"></i>')+'</div><h4>'+escHtml(x.name)+'</h4><p class="muted">'+escHtml(x.description||'Package')+'</p><strong>'+naira(x.price)+'</strong><div style="margin-top:.5rem;display:flex;gap:.35rem"><button class="btn btn-sm btn-outline" onclick="navigate(\'vendorPackages\')">Manage</button></div></article>').join('')+'</div>':'<div class="empty-state">No packages yet.</div>');
+        host.appendChild(section);
+      }catch(_){ }
+    }
+    const remembered=(()=>{try{return localStorage.getItem('levromart-vendor-listing-tab')||'all'}catch(_){return'all'}})();
+    window.switchVendorListingTab(remembered);
+    decorateCommissionBoxes();
+  }
+
+  function patchVendorProductsMarkup(){const btn=byId('saveProductDraftBtn'),sel=byId('prodBillingModel'),service=byId('prodIsService');if(btn){const show=!service?.checked&&sel?.value==='monthly'&&!editingProductId;btn.classList.toggle('hidden',!show)} }
+  document.addEventListener('change',e=>{if(e.target?.id==='prodBillingModel'||e.target?.id==='prodIsService')patchVendorProductsMarkup()},true);
+  const observer=new MutationObserver(()=>{clearTimeout(window.__levroFinalUxTimer2);window.__levroFinalUxTimer2=setTimeout(()=>{bindTopButton();patchVendorProductsMarkup();renderUnifiedEnhancements()},120)});observer.observe(document.body,{childList:true,subtree:true});
+  setTimeout(()=>{bindTopButton();patchVendorProductsMarkup();renderUnifiedEnhancements()},350);
+
+  async function autoWarmBuyerLocation(){
+    if(!navigator.geolocation||!locationSharingEnabled)return;
+    try{const perm=await getBrowserLocationPermission();if(perm==='granted'&&!buyerLocation)await getCustomerLocation(true)}catch(_){ }
+  }
+  setTimeout(autoWarmBuyerLocation,500);
+
+  // Add a Locate Me button to the vendor profile map.
+  function addVendorMapLocate(){const map=byId('veLocationMap');if(!map||map.querySelector('.vendor-map-locate-control'))return;const b=document.createElement('button');b.type='button';b.className='vendor-map-locate-control';b.title='Use my current location';b.setAttribute('aria-label','Use my current location');b.innerHTML='<i class="fa-solid fa-location-crosshairs"></i>';b.onclick=()=>useMyLocationForVendor?.();map.appendChild(b)}
+  new MutationObserver(addVendorMapLocate).observe(document.body,{childList:true,subtree:true});setTimeout(addVendorMapLocate,500);
+})();
+</script>
 </body>
 <style id="levromart-20260910-final-polish">
 /* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
@@ -28760,6 +29002,42 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       window.location.assign(data.authorization_url);return true;
     }catch(e){if(typeof showToast==='function')showToast(e.message||"Could not start the listing payment.","error");return false;}
   };
+  window.startNewListingMonthlyPayment=async function(kind,draft){
+    if(!(typeof session!=="undefined"&&session?.access_token)){if(typeof showLogin==='function')showLogin();return false;}
+    try{
+      sessionStorage.setItem("levromart-pending-listing-draft",JSON.stringify(draft));
+      const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({action:"prepare-listing-payment",kind,accessToken:session.access_token})});
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok||!data.authorization_url)throw new Error(data.error||"Could not start the ₦1,000 listing payment.");
+      sessionStorage.setItem("levromart-pending-listing-reference",data.reference);
+      window.location.assign(data.authorization_url); return true;
+    }catch(e){sessionStorage.removeItem("levromart-pending-listing-draft");sessionStorage.removeItem("levromart-pending-listing-reference");if(typeof showToast==='function')showToast(e.message||"Could not start the listing payment.","error");return false;}
+  };
+  async function finalizePaidListingDraft(reference,expectedKind){
+    const raw=sessionStorage.getItem("levromart-pending-listing-draft");
+    if(!raw)return {ok:false,error:"Your paid listing draft is no longer available on this device. Please contact support before paying again."};
+    let draft; try{draft=JSON.parse(raw);}catch(_){return {ok:false,error:"The pending listing draft could not be read."};}
+    if(!draft||draft.kind!==expectedKind||!draft.fields)return {ok:false,error:"The pending listing draft does not match this payment."};
+    const vendorId=vendor?.id; if(!vendorId)return {ok:false,error:"Your vendor profile is unavailable. Please sign in again."};
+    if(String(draft.vendor_id)!==String(vendorId))return {ok:false,error:"This listing draft belongs to a different vendor account."};
+    const fields={...draft.fields,status:"active",billing_status:"active",billing_reference:reference,billing_paid_until:(()=>{const d=new Date();const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+1);const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return d.toISOString();})()};
+    let savedProductId=null;
+    const existing=await sb.from("products").select("id").eq("vendor_id",vendorId).eq("billing_reference",reference).maybeSingle();
+    if(existing.data?.id){savedProductId=existing.data.id;}
+    else{
+      const {data:created,error}=await sb.from("products").insert({...fields,vendor_id:vendorId,quantity_available:fields.quantity_total,photos:Array.isArray(draft.photos)?draft.photos:[]}).select("id").single();
+      if(error||!created?.id)return {ok:false,error:error?.message||"Payment succeeded, but the listing could not be saved yet. Your draft has been kept so you can retry."};
+      savedProductId=created.id;
+      try{await saveProductVariants(savedProductId,Array.isArray(draft.variantDrafts)?draft.variantDrafts:[]);}catch(e){return {ok:false,error:e.message||"The listing was saved, but its varieties could not be saved yet."};}
+    }
+    const claim=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({action:"consume-listing-payment",reference,listingId:savedProductId,accessToken:session.access_token})});
+    const claimData=await claim.json().catch(()=>({}));
+    if(!claim.ok&&!/already been used/i.test(String(claimData.error||"")))return {ok:false,error:claimData.error||"The payment was received, but the payment record could not be finalized. Your listing draft is safe; please retry."};
+    await sb.from("products").update({billing_reference:null}).eq("id",savedProductId).eq("vendor_id",vendorId);
+    sessionStorage.removeItem("levromart-pending-listing-draft");sessionStorage.removeItem("levromart-pending-listing-reference");
+    return {ok:true,id:savedProductId};
+  }
+
   window.syncListingBillingUI=function(){
     const service=byId("prodIsService")?.checked, select=byId("prodBillingModel"), hint=byId("prodBillingHint");
     if(!select)return;
@@ -28773,14 +29051,22 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     const s=byId("pkgBillingModel"),h=byId("pkgBillingHint");if(h)h.textContent=s?.value==="monthly"?"The package stays hidden until the ₦1,000 Paystack activation payment succeeds.":"Commission-based packages can go live without an activation payment.";
   };
 
-  function finalPaymentReturn(){
-    const u=new URL(location.href);const paid=u.searchParams.get("listingPaid"),failed=u.searchParams.get("listingPayment");
-    if(!paid&&failed!=="failed")return;
-    const kind=u.searchParams.get("kind");
-    ["listingPaid","listingPayment","kind","id","reference","reason"].forEach(k=>u.searchParams.delete(k));
+  async function finalPaymentReturn(){
+    const u=new URL(location.href);
+    const returnMode=u.searchParams.get("listingPayment");
+    const reference=u.searchParams.get("reference");
+    if(returnMode!=="return"||!reference)return;
+    ["listingPayment","listingPaid","kind","id","reference","reason"].forEach(k=>u.searchParams.delete(k));
     history.replaceState(history.state,"",u.pathname+(u.searchParams.toString()?`?${u.searchParams}`:"")+u.hash);
-    if(typeof showToast==='function')showToast(paid==="1"?"₦1,000 received. Your listing is live for one month.":"The listing payment was not completed. Your listing remains paused until payment succeeds.",paid==="1"?"success":"error");
-    setTimeout(()=>{if(typeof navigate==='function')navigate(kind==="package"?"vendorPackages":"vendorProducts",{},false);},100);
+    if(!(typeof session!=="undefined"&&session?.access_token)){showToast?.("Payment returned successfully, but your session expired. Sign in again to finish your listing.","error");return;}
+    showToast?.("Verifying your ₦1,000 Paystack payment…","info");
+    try{
+      const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({action:"verify-listing-payment",reference,accessToken:session.access_token})});
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok||data.status!=="success")throw new Error(data.error||"The listing payment could not be verified.");
+      showToast?.("₦1,000 received. Your listing has been saved and is now live for one month.","success");
+      setTimeout(()=>navigate?.("vendorProducts",{},false),120);
+    }catch(e){showToast?.(e.message||"The listing payment could not be completed.","error");}
   }
 
   function run(){
@@ -28822,89 +29108,19 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 .follow-mute-grid button.active{background:color-mix(in srgb,var(--primary) 12%,transparent)!important;border-color:var(--primary)!important;color:var(--primary)!important;font-weight:700!important;}
 @media(max-width:620px){.storefront-follow-wrap .follow-btn{min-width:92px!important;height:38px!important;min-height:38px!important;font-size:.75rem!important;}.storefront-follow-wrap .follow-settings-btn{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;}}
 </style>
-<script id="levromart-final-follow-search-repair">
-(function(){
-  "use strict";
-  const stateOf = async (vendorId) => {
-    if(!vendorId || typeof sb === "undefined") return null;
-    try { const {data,error}=await sb.rpc("get_vendor_follow_state",{p_vendor_id:vendorId}); return error ? null : (data?.[0] || null); } catch(_) { return null; }
-  };
-  const currentVendorId = () => document.querySelector(".storefront-follow-wrap")?.dataset.followVendorId || (typeof currentViewParams !== "undefined" ? currentViewParams?.vendorId : null);
-  const refresh = async (vendorId) => {
-    const wrap=document.querySelector(`.storefront-follow-wrap[data-follow-vendor-id="${CSS.escape(String(vendorId))}"]`); if(!wrap)return;
-    const st=await stateOf(vendorId); if(!st)return;
-    const btn=wrap.querySelector(".follow-btn"), bell=wrap.querySelector(".follow-settings-btn"), menu=wrap.querySelector(".follow-menu");
-    const following=!!st.following;
-    if(btn){btn.classList.toggle("btn-outline",!following);btn.innerHTML=`<i class="fa-solid ${following?'fa-check':'fa-plus'}"></i> ${following?'Following':'Follow'}`;btn.setAttribute("aria-label",`${following?'Unfollow':'Follow'} vendor`);btn.title=following?'Unfollow vendor':'Follow vendor';}
-    if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications';}
-    if(menu){menu.querySelectorAll("input[data-pref]").forEach(cb=>{cb.checked=st[cb.dataset.pref] !== false;});menu.querySelectorAll("[data-mute]").forEach(b=>b.classList.toggle("active",(st.mute_mode||'none')===b.dataset.mute));}
-    const count=document.querySelector("[data-follow-count]"); if(count) count.innerHTML=`<strong>${Number(st.follower_count||0).toLocaleString()}</strong> follower${Number(st.follower_count||0)===1?'':'s'}`;
-  };
-  window.toggleLevromartVendorFollow = async function(vendorId, ev){
-    ev?.preventDefault(); ev?.stopPropagation();
-    if(!(typeof session !== "undefined" && session)){ if(typeof showLogin==='function')showLogin(); return; }
-    const wrap=document.querySelector(`.storefront-follow-wrap[data-follow-vendor-id="${CSS.escape(String(vendorId))}"]`); if(!wrap)return;
-    const st=await stateOf(vendorId); if(!st)return;
-    if(st.following){
-      const name=document.querySelector(".storefront-profile-name")?.textContent?.replace(/\s+/g,' ').trim() || 'this vendor';
-      let ok=false;
-      if(typeof showConfirmDialog==='function') ok=await showConfirmDialog(`Do you want to unfollow ${name}?`,{title:'Unfollow vendor',okLabel:'Unfollow',danger:true});
-      else ok=window.confirm(`Do you want to unfollow ${name}?`);
-      if(!ok)return;
-    }
-    const btn=wrap.querySelector('.follow-btn'); if(btn)btn.disabled=true;
-    try{
-      const {data,error}=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:!st.following});
-      if(error)throw error;
-      if(typeof showToast==='function')showToast(data?'You’re now following this vendor.':'You unfollowed this vendor.','success');
-      const menu=wrap.querySelector('.follow-menu'); if(menu && data===false){menu.classList.add('hidden');wrap.querySelector('.follow-settings-btn')?.setAttribute('aria-expanded','false');}
-      await refresh(vendorId);
-    }catch(e){if(typeof showToast==='function')showToast(e.message||'Could not update your following list.','error');}
-    finally{if(btn)btn.disabled=false;}
-  };
-  window.toggleLevromartFollowNotifications = async function(vendorId,ev){
-    ev?.preventDefault();ev?.stopPropagation();
-    const wrap=document.querySelector(`.storefront-follow-wrap[data-follow-vendor-id="${CSS.escape(String(vendorId))}"]`); if(!wrap)return;
-    const bell=wrap.querySelector('.follow-settings-btn'); if(!bell || bell.disabled)return;
-    const menu=wrap.querySelector('.follow-menu'); if(!menu)return;
-    const open=menu.classList.toggle('hidden')===false; bell.setAttribute('aria-expanded',String(open));
-    if(open) await refresh(vendorId);
-  };
-  async function savePrefs(vendorId,mute){
-    const wrap=document.querySelector(`.storefront-follow-wrap[data-follow-vendor-id="${CSS.escape(String(vendorId))}"]`); if(!wrap)return;
-    const checked=k=>!!wrap.querySelector(`[data-pref="${k}"]`)?.checked;
-    try{
-      const {error}=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:vendorId,p_mute_mode:mute,p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')});
-      if(error)throw error;
-      if(typeof showToast==='function')showToast('Vendor notification preferences saved.','success');
-      await refresh(vendorId);
-    }catch(e){if(typeof showToast==='function')showToast(e.message||'Could not save notification preferences.','error');}
-  }
-  function bindFollow(){
-    document.querySelectorAll('.storefront-follow-wrap').forEach(w=>{
-      if(w.dataset.repairBound==='1')return; w.dataset.repairBound='1'; const id=w.dataset.followVendorId;
-      w.querySelectorAll('input[data-pref]').forEach(cb=>cb.addEventListener('change',()=>stateOf(id).then(st=>savePrefs(id,st?.mute_mode||'none'))));
-      w.querySelectorAll('[data-mute]').forEach(b=>b.addEventListener('click',()=>savePrefs(id,b.dataset.mute)));
-      refresh(id);
-    });
-  }
-  function bindTopSearch(){
-    const b=document.getElementById('levromartHeaderSearchButton'); if(!b || b.dataset.repairBound==='1')return;
-    b.dataset.repairBound='1'; b.removeAttribute('onclick');
-    b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation(); if(typeof window.openLevromartHeaderSearch==='function')window.openLevromartHeaderSearch();});
-  }
-  function repairSearchBackdrop(){
-    const backdrop=document.getElementById('levromartHeaderSearchBackdrop'); if(!backdrop || backdrop.dataset.repairBound==='1')return;
-    backdrop.dataset.repairBound='1'; backdrop.addEventListener('pointerdown',e=>{if(e.target===backdrop){e.preventDefault();window.closeLevromartHeaderSearch?.();}});
-  }
-  document.addEventListener('pointerdown',e=>{
-    const menu=e.target.closest?.('.follow-menu'),wrap=e.target.closest?.('.storefront-follow-wrap');
-    if(!menu && !wrap)document.querySelectorAll('.follow-menu:not(.hidden)').forEach(m=>{m.classList.add('hidden');m.closest('.storefront-follow-wrap')?.querySelector('.follow-settings-btn')?.setAttribute('aria-expanded','false');});
-  },true);
-  const run=()=>{bindFollow();bindTopSearch();repairSearchBackdrop();};
-  run(); setTimeout(run,200); setTimeout(run,700);
-  new MutationObserver(()=>{clearTimeout(window.__levroFollowRepairTimer);window.__levroFollowRepairTimer=setTimeout(run,60);}).observe(document.body,{childList:true,subtree:true});
-})();
-</script>
+<style id="levromart-discarded-bulk-css">
+.vendor-discarded-bulkbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin:0 0 .65rem;padding:.55rem .65rem;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--card) 92%,transparent);font-size:.75rem}
+.vendor-discarded-bulkbar label{display:inline-flex;align-items:center;gap:.4rem;font-weight:700;cursor:pointer}
+.vendor-discarded-bulkbar .btn{margin-left:auto!important}
+.vendor-discarded-card{position:relative!important;align-items:flex-start!important}
+.discarded-select{display:grid;place-items:center;flex:0 0 auto;padding-top:.2rem;cursor:pointer}
+.discarded-select input{width:18px;height:18px;accent-color:var(--primary)}
+</style>
 
+
+<style id="levromart-hard-top-search-css">
+#levromartHeaderSearchBackdrop{z-index:2147483000!important}
+#levromartHeaderSearchDock{z-index:2147483001!important}
+#levromartHeaderSearchButton{position:relative!important;z-index:2147483002!important;cursor:pointer!important}
+</style>
 </html>
