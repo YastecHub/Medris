@@ -6391,6 +6391,14 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
         <select id="prodListingType" onchange="updateProductFormFields();updateProductSaveButtonLabel()"><option value="rent">Rent only</option><option value="sale">Sale only</option><option value="both">Rent &amp; Sale</option></select>
       </div>
     </div>
+    <div id="prodBillingModelWrap" class="listing-billing-choice">
+      <label>How do you want to pay Levromart for this listing?</label>
+      <select id="prodBillingModel" onchange="syncListingBillingUI()">
+        <option value="commission">Commission-based — pay Levromart from each completed sale</option>
+        <option value="monthly">Monthly — ₦1,000 per listing / month</option>
+      </select>
+      <p id="prodBillingHint" class="muted" style="font-size:.74rem;margin:.35rem 0 0;"></p>
+    </div>
     <div class="flex">
       <div style="flex:1;" id="prodSalePriceWrap"><label id="prodSalePriceLabel">Price (₦)</label><input type="number" id="prodSalePrice" step="0.01" min="0" /></div>
       <div style="flex:1;" id="prodDiscountPriceWrap"><label>Discount price (₦) <span class="muted" style="font-weight:400;">optional</span></label><input type="number" id="prodDiscountPrice" step="0.01" min="0" placeholder="e.g. 8500" /></div>
@@ -6450,6 +6458,14 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <textarea id="pkgDesc" rows="2" placeholder="What's included, who it's for…"></textarea>
     <label>Package price (₦)</label>
     <input type="number" id="pkgPrice" step="0.01" placeholder="e.g. 5000" />
+    <div class="listing-billing-choice">
+      <label>How do you want to pay Levromart for this package?</label>
+      <select id="pkgBillingModel" onchange="syncPackageBillingUI()">
+        <option value="commission">Commission-based — pay Levromart from completed sales</option>
+        <option value="monthly">Monthly — ₦1,000 per package / month</option>
+      </select>
+      <p id="pkgBillingHint" class="muted" style="font-size:.74rem;margin:.35rem 0 0;"></p>
+    </div>
 
     <label>Package photos</label>
     <div class="photo-grid" id="pkgExistingPhotos"></div>
@@ -16462,7 +16478,7 @@ async function renderVendorProducts() {
         <div class="flex">
           <button class="btn btn-sm" onclick="openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
           ${p.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setProductStatus('${p.id}','paused')">Pause</button>` : ""}
-          ${p.status === "paused" ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>` : ""}
+          ${p.status === "paused" ? (p.billing_status === "pending_payment" && p.billing_model === "monthly" ? `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000 to activate</button>` : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
           ${p.status !== "removed" ? `<button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>` : ""}
           ${p.status === "removed" ? `<button class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class='fa-solid fa-trash-can'></i> Delete completely</button>` : ""}
         </div>
@@ -16579,6 +16595,7 @@ async function showProductModal() {
     byId("prodQtyTotal").value = p.quantity_total;
     byId("prodIsService").checked = !!p.is_service;
     byId("prodServiceUnit").value = p.service_price_unit || "flat";
+    if (byId("prodBillingModel")) byId("prodBillingModel").value = p.billing_model || (p.is_service ? "monthly" : "commission");
     window.__existingPhotos = p.photos || [];
     renderExistingPhotos();
     renderProductVariantPricing();
@@ -16593,6 +16610,7 @@ async function showProductModal() {
     byId("prodDeliveryPerKm").value = vendor?.delivery_fee_per_km ?? 0;
     byId("prodQtyTotal").value = 1;
     byId("prodListingType").value = "rent";
+    if (byId("prodBillingModel")) byId("prodBillingModel").value = "commission";
     byId("prodIsService").checked = false;
     byId("prodServiceUnit").value = "flat";
     sectorSelect.value = vendor.sector_id || productModalSectors[0]?.id || "";
@@ -16852,6 +16870,7 @@ async function saveProduct() {
   try {
     const is_service = byId("prodIsService").checked;
     const listing_type = is_service ? "sale" : byId("prodListingType").value;
+    const billing_model = is_service ? "monthly" : (byId("prodBillingModel")?.value || "commission");
     const name = byId("prodName").value.trim();
     const quantity_total = is_service ? 999 : parseInt(byId("prodQtyTotal").value) || 1;
     const sale_price = byId("prodSalePrice").value ? Number(byId("prodSalePrice").value) : null;
@@ -16863,6 +16882,8 @@ async function saveProduct() {
     const rental_rate_unit = byId("prodRateUnit").value;
     const service_price_unit = is_service ? (byId("prodServiceUnit").value || "flat") : null;
     if (!name) throw new Error("Product name is required.");
+    if (is_service && billing_model !== "monthly") throw new Error("Services can only use monthly billing.");
+    if (!is_service && !["commission","monthly"].includes(billing_model)) throw new Error("Choose how you want to pay Levromart for this listing.");
     if (!is_service && listing_type !== "rent" && !sale_price) throw new Error("Price is required for a sale listing.");
     if (is_service && !sale_price) throw new Error("Enter a price for this service.");
     if (discount_price != null && (sale_price == null || discount_price <= 0 || discount_price >= sale_price)) throw new Error("Discount price must be lower than the regular price.");
@@ -16907,7 +16928,11 @@ async function saveProduct() {
       rental_rate_unit: listing_type === "sale" ? null : rental_rate_unit,
       deposit_amount: is_service ? null : (byId("prodDeposit").value ? Number(byId("prodDeposit").value) : null),
       quantity_total,
+      billing_model,
+      billing_status: editingProductId ? undefined : (billing_model === "monthly" ? "pending_payment" : "active"),
+      billing_paid_until: editingProductId ? undefined : null,
     };
+    if (editingProductId) { delete fields.billing_model; delete fields.billing_status; delete fields.billing_paid_until; } else if (billing_model === "monthly") { fields.status = "paused"; }
 
     const newFiles = [...(window.__newProductPhotoFiles || byId("prodPhotoFiles").files || [])];
     const newPhotoUrls = [];
@@ -16937,6 +16962,13 @@ async function saveProduct() {
     if (!is_service) {
       const variantDrafts = collectProductVariantDrafts(photos);
       await saveProductVariants(savedProductId, variantDrafts);
+    }
+
+    if (!editingProductId && billing_model === "monthly") {
+      const pay = await startListingMonthlyPayment("product", savedProductId);
+      if (!pay) throw new Error("Monthly listing payment could not be started.");
+      closeProductModal();
+      return;
     }
 
     closeProductModal();
@@ -17005,7 +17037,7 @@ async function renderVendorPackages() {
     <p style="margin:0.4rem 0;"><strong>${naira(pkg.price)}</strong></p>
     <div class="flex">
       <button class="btn btn-sm" onclick="openEditPackageModal('${pkg.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
-      ${pkg.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setPackageStatus('${pkg.id}','paused')">Pause</button>` : `<button class="btn btn-sm" onclick="setPackageStatus('${pkg.id}','active')">Activate</button>`}
+      ${pkg.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setPackageStatus('${pkg.id}','paused')">Pause</button>` : (pkg.billing_status === "pending_payment" && pkg.billing_model === "monthly" ? `<button class="btn btn-sm" onclick="startListingMonthlyPayment('package','${pkg.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000 to activate</button>` : `<button class="btn btn-sm" onclick="setPackageStatus('${pkg.id}','active')">Activate</button>`)}
       <button class="btn btn-sm btn-danger" onclick="deletePackage('${pkg.id}')"><i class='fa-solid fa-trash'></i> Delete</button>
     </div>
   </div>`).join("")}</div>`;
@@ -17040,11 +17072,13 @@ async function showPackageModal() {
     byId("pkgName").value = pkg.name || "";
     byId("pkgDesc").value = pkg.description || "";
     byId("pkgPrice").value = pkg.price ?? "";
+    if (byId("pkgBillingModel")) byId("pkgBillingModel").value = pkg.billing_model || "commission";
     window.__existingPackagePhotos = Array.isArray(pkg.photos) ? pkg.photos.filter(Boolean) : [];
     renderExistingPackagePhotos();
     (pkg.items || []).forEach((it) => { selectedQty[it.product_id] = it.quantity; });
   } else {
     byId("packageModalTitle").textContent = "Add New Package";
+    if (byId("pkgBillingModel")) byId("pkgBillingModel").value = "commission";
     byId("pkgName").value = "";
     byId("pkgDesc").value = "";
     byId("pkgPrice").value = "";
@@ -17167,7 +17201,14 @@ async function savePackage() {
       newPhotoUrls.push(data.publicUrl);
     }
     const photos = [...(window.__existingPackagePhotos || []), ...newPhotoUrls];
+    const billing_model = byId("pkgBillingModel")?.value || "commission";
+    const isNewPackage = !editingPackageId;
     const payload = { vendor_id: vendor.id, name, description: byId("pkgDesc").value.trim() || null, price, photos };
+    if (isNewPackage) {
+      payload.billing_model = billing_model;
+      payload.billing_status = billing_model === "monthly" ? "pending_payment" : "active";
+      if (billing_model === "monthly") payload.status = "paused";
+    }
     let packageId = editingPackageId;
     if (packageId) {
       const { error } = await sb.from("vendor_packages").update(payload).eq("id", packageId);
@@ -17180,6 +17221,13 @@ async function savePackage() {
     }
     const { error: itemsError } = await sb.from("package_items").insert(items.map((it) => ({ ...it, package_id: packageId })));
     if (itemsError) throw itemsError;
+
+    if (isNewPackage && billing_model === "monthly") {
+      const pay = await startListingMonthlyPayment("package", packageId);
+      if (!pay) throw new Error("Monthly package payment could not be started.");
+      closePackageModal();
+      return;
+    }
 
     closePackageModal();
     navigate("vendorPackages");
@@ -19756,8 +19804,8 @@ function renderTerms() {
       <li>Payments are processed through Paystack. Levromart never stores your card details.</li>
       <li>Vendors are paid automatically once a sale is confirmed. Funds typically reach their bank account the next business day.</li>
       <li>Rentals may require a refundable deposit. If there's a dispute over damage or non-return, Levromart's dispute resolution process decides how it's handled, including a refund from Levromart where warranted.</li>
-      <li>Vendors set their own prices; Levromart deducts a commission on completed transactions, disclosed to vendors in their dashboard.</li>
-      <li>Some vendors accept offline payment (cash/transfer) on handover. Levromart still tracks commission owed on these orders.</li>
+      <li>Vendors set their own prices. Eligible listings may use commission-based billing or a monthly listing fee; monthly listings require a ₦1,000 activation payment before they go live and the fee covers one month.</li>
+      <li>Some vendors accept offline payment (cash/transfer) on handover. Levromart still tracks any commission owed on commission-based listings.</li>
     </ul>
 
     <h3>4. Cancellations, scams &amp; disputes</h3>
@@ -27543,4 +27591,49 @@ html[data-theme="black"] #app .order-filter-clear-btn{
 body.product-detail-view #aiChatFab{display:flex !important;visibility:visible !important;pointer-events:auto !important;}
 body.product-detail-view #aiChatFab.scroll-faded{pointer-events:none !important;}
 </style>
+<style id="levromart-20260911-feature-pack-css">
+.listing-billing-choice{margin:.7rem 0;padding:.75rem;border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border));border-radius:14px;background:color-mix(in srgb,var(--primary) 5%,var(--card));}
+.listing-billing-choice label{font-size:.76rem;font-weight:750;margin:0 0 .35rem;display:block;}
+.listing-billing-choice select{margin:0;width:100%;}
+.header-search-btn{position:relative!important;}
+#levromartHeaderSearchDock{position:fixed;left:.75rem;right:.75rem;top:calc(58px + env(safe-area-inset-top,0px) + .45rem);z-index:205;display:none;}
+#levromartHeaderSearchDock.open{display:block;}
+#levromartHeaderSearchDock .header-search-shell{position:relative;max-width:760px;margin:0 auto;background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid color-mix(in srgb,var(--primary) 28%,var(--border));border-radius:18px;box-shadow:0 18px 48px rgba(0,0,0,.2);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);padding:.35rem;}
+#levromartHeaderSearchInput{width:100%;margin:0;border:0!important;background:transparent!important;box-shadow:none!important;padding:.72rem 2.65rem .72rem 2.55rem!important;border-radius:14px;}
+#levromartHeaderSearchDock .header-search-close{position:absolute;right:.45rem;top:50%;transform:translateY(-50%);}
+#levromartHeaderSearchSuggest{position:absolute;left:.35rem;right:.35rem;top:calc(100% + .35rem);max-height:55vh;overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 18px 44px rgba(0,0,0,.18);padding:.35rem;}
+.levro-smart-suggestion{width:100%;display:flex;align-items:center;gap:.65rem;padding:.68rem .62rem;border:0;background:transparent;color:var(--text);border-radius:12px;text-align:left;cursor:pointer;font:inherit;}
+.levro-smart-suggestion:hover{background:color-mix(in srgb,var(--primary) 8%,transparent);}
+.levro-smart-suggestion i{width:1.25rem;text-align:center;color:var(--primary);}
+.levro-smart-suggestion span{display:flex;flex-direction:column;min-width:0;}
+.levro-smart-suggestion strong{font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.levro-smart-suggestion small{font-size:.66rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.browse-smart-search-host{position:relative!important;z-index:240!important;}
+.browse-smart-search-menu{position:absolute;left:0;right:0;top:calc(100% + .35rem);max-height:22rem;overflow:auto;background:var(--card);border:1px solid color-mix(in srgb,var(--primary) 25%,var(--border));border-radius:16px;box-shadow:0 16px 40px rgba(0,0,0,.18);padding:.35rem;z-index:9999;}
+.order-history-search{width:100%;margin:0!important;min-height:44px;border-radius:14px!important;}
+.order-search-wrap{margin:.65rem 0 .15rem;position:relative;}
+.order-search-wrap i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;}
+.order-search-wrap input{padding-left:2.55rem!important;}
+body.search-input-active .bottom-nav{transform:translateY(calc(100% + 1rem))!important;opacity:0!important;pointer-events:none!important;}
+@media(max-width:720px){
+  #levromartHeaderSearchDock{top:calc(56px + env(safe-area-inset-top,0px) + .35rem);}
+  #app .levro-home-search-wrap{display:none!important;}
+  #app .browse-filter-toolbar{grid-template-columns:1fr!important;gap:.55rem!important;}
+  #app .browse-filter-toolbar .browse-filter-trigger{order:-2!important;}
+  #app .browse-filter-toolbar>input{grid-column:auto!important;order:-1!important;}
+}
+@media(min-width:721px){#app .levro-home-search-wrap{display:none!important;}}
+.follow-btn{min-width:98px;}
+.follow-menu{position:absolute;right:0;top:calc(100% + .45rem);width:min(330px,calc(100vw - 2rem));background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 18px 46px rgba(0,0,0,.2);padding:.75rem;z-index:200;}
+.follow-menu.hidden{display:none;}
+.follow-pref-row{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.75rem;}
+.follow-pref-row:last-child{border-bottom:0;}
+.follow-mute-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.35rem;margin-top:.45rem;}
+.follow-mute-grid button{padding:.45rem .25rem;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:10px;font:600 .68rem inherit;cursor:pointer;}
+.follow-mute-grid button.active{border-color:var(--primary);color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,transparent);}
+.storefront-follow-wrap{position:relative;display:inline-flex;}
+</style>
+
+<script src="/levromart-marketplace-enhancements.js" defer></script>
+
 </html>
