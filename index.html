@@ -6387,11 +6387,11 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <div class="flex">
       <div style="flex:1;" id="prodConditionWrap">
         <label>Condition</label>
-        <select id="prodCondition"><option value="new">New</option><option value="used-good" selected>Used - good</option><option value="used-fair">Used - fair</option></select>
+        <select id="prodCondition"><option value="new" selected>New</option><option value="used-good">Used - good</option><option value="used-fair">Used - fair</option></select>
       </div>
       <div style="flex:1;" id="prodListingTypeWrap">
         <label>Listing type</label>
-        <select id="prodListingType" onchange="updateProductFormFields();updateProductSaveButtonLabel()"><option value="rent">Rent only</option><option value="sale">Sale only</option><option value="both">Rent &amp; Sale</option></select>
+        <select id="prodListingType" onchange="updateProductFormFields();updateProductSaveButtonLabel()"><option value="sale" selected>Sale only</option><option value="rent">Rent only</option><option value="both">Rent &amp; Sale</option></select>
       </div>
     </div>
     <div id="prodBillingModelWrap" class="listing-billing-choice">
@@ -12276,15 +12276,18 @@ function dedupeConversationRows(rows) {
   const source = Array.isArray(rows) ? rows : [];
   const byKey = new Map();
   const identity = (c) => {
+    const meId = session?.user?.id;
+    // Prefer the actual buyer↔vendor pair over a legacy other_user_id. Older
+    // conversation RPCs can expose inconsistent participant ids for duplicate
+    // rows; buyer_id/vendor_id are the canonical relationship.
+    if (c.vendor_id && meId && String(c.buyer_id) === String(meId)) return `vendor:${c.vendor_id}`;
+    if (c.buyer_id && meId && String(c.vendor_id) === String(vendor?.id)) return `buyer:${c.buyer_id}`;
     const stable = c.other_user_id || c.other_id || c.other_party_id || c.participant_id;
     if (stable) return `id:${stable}`;
-    const meId = session?.user?.id;
     // list_my_conversations may expose the vendor id rather than the vendor's
     // user id. For a buyer, the vendor id is the stable counterpart; for a
     // vendor, the buyer id is the stable counterpart. This collapses legacy
     // duplicate threads without merging unrelated people.
-    if (c.vendor_id && meId && String(c.buyer_id) === String(meId)) return `vendor:${c.vendor_id}`;
-    if (c.buyer_id && meId && String(c.vendor_id) === String(vendor?.id)) return `buyer:${c.buyer_id}`;
     if (c.vendor_id && c.buyer_id) return `pair:${c.buyer_id}|${c.vendor_id}`;
     const name = String(c.other_name || "").trim().toLowerCase();
     const avatar = String(c.other_avatar || "").trim();
@@ -16676,7 +16679,8 @@ async function showProductModal() {
     byId("prodDeliveryFee").value = vendor?.delivery_fee ?? 0;
     byId("prodDeliveryPerKm").value = vendor?.delivery_fee_per_km ?? 0;
     byId("prodQtyTotal").value = 1;
-    byId("prodListingType").value = "rent";
+    byId("prodCondition").value = "new";
+    byId("prodListingType").value = "sale";
     if (byId("prodBillingModel")) byId("prodBillingModel").value = "commission";
     byId("prodIsService").checked = false;
     byId("prodServiceUnit").value = "flat";
@@ -21665,9 +21669,16 @@ async function resolveLeviProduct(target) {
         .eq("status", "active").in("id", ids);
       if (!error && found?.length) {
         const ordered = [...found].sort((a,b) => ids.indexOf(a.id) - ids.indexOf(b.id));
-        const direct = ordered.filter((p) => normalize(p.name).includes(normalize(q)));
-        const chosen = direct.length ? direct : ordered;
-        return { product: chosen[0], matches: chosen, exact: chosen.length === 1 && direct.length > 0 };
+        const nq = normalize(q);
+        const direct = ordered.filter((p) => normalize(p.name).includes(nq));
+        // search_product_ids is a relevance helper, not proof that its first
+        // row matches the current request. Never treat a lone unrelated row as
+        // the requested product — that was the path that could turn a fresh
+        // request like "shoe" into the previous "Penny" listing.
+        if (direct.length) {
+          return { product: direct[0], matches: direct, exact: direct.length === 1 && normalize(direct[0].name) === nq };
+        }
+        return { product: null, matches: [], exact: false };
       }
     }
   } catch (_) {}
@@ -28132,6 +28143,195 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 }
 
 </style>
+
+
+<style id="levromart-launch-final-ux-v4">
+/* ================================================================
+   LAUNCH FINAL UX — one source of truth for compact search/sheets/storefront
+   ================================================================ */
+
+/* Search fields never contain a decorative/leading search icon. The icon is
+   the control beside the filter, not part of the input. */
+#app .browse-filter-toolbar,
+#app .vendors-directory-controls,
+#app .orders-filter-search-row{
+  position:relative !important;
+  z-index:80 !important;
+}
+#app .browse-filter-toolbar{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) 42px !important;
+  grid-auto-rows:auto !important;
+  gap:.5rem !important;
+  align-items:center !important;
+}
+#app .browse-filter-toolbar > .browse-filter-trigger{
+  grid-column:1 !important;grid-row:1 !important;width:100% !important;margin:0 !important;
+}
+#app .browse-filter-toolbar > .browse-compact-search-slot{
+  display:block !important;grid-column:2 !important;grid-row:1 !important;width:42px !important;height:42px !important;
+}
+#app .browse-filter-toolbar > .browse-compact-search-slot.levro-compact-search-wrap{
+  display:block !important;
+}
+#app .browse-filter-toolbar > .browse-compact-search-slot > .levro-compact-search-toggle{
+  width:42px !important;height:42px !important;margin:0 !important;padding:0 !important;border-radius:12px !important;
+  display:inline-flex !important;align-items:center !important;justify-content:center !important;
+  color:var(--primary) !important;background:color-mix(in srgb,var(--primary) 7%,var(--card)) !important;
+  border:1px solid color-mix(in srgb,var(--primary) 45%,var(--border)) !important;
+}
+#app .browse-filter-toolbar > .browse-compact-search-slot > #searchInput,
+#app .browse-filter-toolbar > #searchInput{
+  grid-column:1 / -1 !important;grid-row:2 !important;width:100% !important;margin:0 !important;
+  display:none !important;padding-left:1rem !important;padding-right:1rem !important;
+}
+#app .browse-filter-toolbar > .browse-compact-search-slot.open > #searchInput,
+#app .browse-filter-toolbar > #searchInput:focus{
+  display:block !important;
+}
+#app .browse-filter-toolbar > .browse-filter-panel{grid-column:1 / -1 !important;grid-row:3 !important;}
+
+#app .vendors-directory-controls{
+  display:grid !important;grid-template-columns:minmax(0,1fr) 42px !important;gap:.5rem !important;align-items:center !important;
+}
+#app .vendors-directory-controls > .vendors-filters-toggle{grid-column:1 !important;width:100% !important;margin:0 !important;}
+#app .vendors-directory-controls > .levro-compact-search-toggle{
+  grid-column:2 !important;width:42px !important;height:42px !important;min-width:42px !important;min-height:42px !important;
+  padding:0 !important;border-radius:12px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;
+  color:var(--primary) !important;background:color-mix(in srgb,var(--primary) 7%,var(--card)) !important;
+  border:1px solid color-mix(in srgb,var(--primary) 45%,var(--border)) !important;
+}
+#app .vendors-directory-search{display:none !important;height:0 !important;margin:0 !important;overflow:visible !important;position:relative !important;z-index:90 !important;}
+#app .vendors-directory-search.open{display:block !important;height:auto !important;margin:.5rem 0 .7rem !important;}
+#app .vendors-directory-search > input,
+#app .vendors-directory-search.open > input{display:block !important;width:100% !important;margin:0 !important;padding-left:1rem !important;padding-right:1rem !important;}
+#app .vendors-directory-search:not(.open) > input{display:none !important;}
+
+/* Order filter + search are peers. List/table are tiny controls aligned right
+   below them. No second/stacked search icon. */
+#app .orders-filter-search-row{display:flex !important;align-items:center !important;gap:.5rem !important;}
+#app .orders-filter-search-row .order-filters-wrap{flex:1 1 auto !important;min-width:0 !important;}
+#app .orders-filter-search-row .order-search-wrap{flex:0 0 42px !important;width:42px !important;min-height:42px !important;margin:0 !important;position:relative !important;}
+#app .orders-filter-search-row .order-search-toggle{width:42px !important;height:42px !important;min-width:42px !important;min-height:42px !important;padding:0 !important;border-radius:12px !important;}
+#app .orders-filter-search-row .order-search-wrap.open{flex:1 1 auto !important;width:auto !important;}
+#app .orders-filter-search-row .order-search-wrap.open .order-search-toggle{display:none !important;}
+#app .orders-filter-search-row .order-history-search{display:none !important;margin:0 !important;width:100% !important;padding-left:1rem !important;}
+#app .orders-filter-search-row .order-search-wrap.open .order-history-search{display:block !important;}
+#app .order-list-view-controls{display:flex !important;justify-content:flex-end !important;align-items:center !important;gap:.3rem !important;width:100% !important;margin:.38rem 0 .35rem !important;}
+#app .order-view-icon{width:34px !important;height:34px !important;min-width:34px !important;min-height:34px !important;padding:0 !important;border-radius:9px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}
+
+/* Native search affordances must not add a second icon. */
+#app input[type="search"]::-webkit-search-decoration,
+#app input[type="search"]::-webkit-search-results-button,
+#app input[type="search"]::-webkit-search-results-decoration{display:none !important;}
+#levromartHeaderSearchInput::-webkit-search-cancel-button{display:block !important;}
+
+/* Sheets always win the stacking contest. Search is below profile/notification
+   but above ordinary page content. */
+#levromartHeaderSearchDock{z-index:90000 !important;}
+#profilePanel,#notifPanel,#settingsPanel{z-index:100000 !important;position:fixed !important;isolation:isolate !important;}
+.drawer-backdrop{z-index:99990 !important;}
+.modal,.confirm-dialog,.dialog-overlay{z-index:130000 !important;}
+
+/* Storefront: one clean action row at the top-right and message/call circles
+   beside the vendor name. */
+.storefront-profile .storefront-avatar,
+.storefront-profile .storefront-avatar-button{
+  width:82px !important;height:82px !important;min-width:82px !important;min-height:82px !important;
+  aspect-ratio:1 / 1 !important;border-radius:50% !important;overflow:hidden !important;display:grid !important;place-items:center !important;
+}
+.storefront-profile .storefront-avatar img,
+.storefront-profile .storefront-avatar-button img{width:100% !important;height:100% !important;object-fit:cover !important;border-radius:50% !important;display:block !important;}
+.storefront-profile .storefront-profile-actions{position:absolute !important;right:0 !important;top:.45rem !important;display:flex !important;align-items:center !important;gap:.35rem !important;z-index:60 !important;}
+.storefront-profile .storefront-profile-actions .follow-btn{min-width:104px !important;height:40px !important;min-height:40px !important;padding:.45rem .75rem !important;border-radius:999px !important;}
+.storefront-profile .storefront-profile-actions .follow-settings-btn,
+.storefront-profile .storefront-profile-actions .storefront-more-icon{width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;padding:0 !important;border-radius:50% !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}
+.storefront-profile .storefront-profile-actions .follow-settings-label{display:none !important;}
+.storefront-profile .storefront-name-row{display:flex !important;align-items:center !important;gap:.45rem !important;flex-wrap:nowrap !important;margin-top:.3rem !important;padding-right:0 !important;}
+.storefront-profile .storefront-name-row .storefront-profile-name{flex:1 1 auto !important;min-width:0 !important;margin:.1rem 0 !important;padding-right:0 !important;font-size:1.35rem !important;}
+.storefront-profile .storefront-name-actions{display:inline-flex !important;align-items:center !important;gap:.3rem !important;flex:0 0 auto !important;}
+.storefront-profile .storefront-name-actions .storefront-social-icon{width:38px !important;height:38px !important;min-width:38px !important;min-height:38px !important;padding:0 !important;border-radius:50% !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}
+.storefront-profile .storefront-name-actions .storefront-social-icon span{display:none !important;}
+.storefront-profile .storefront-name-actions .ms-wrap > button{width:38px !important;height:38px !important;min-width:38px !important;min-height:38px !important;padding:0 !important;border-radius:50% !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}
+.storefront-profile .storefront-name-actions .ms-wrap > button span{display:none !important;}
+
+/* Notification preferences are deliberately compact so the mute controls stay
+   visible without a huge dropdown. */
+.storefront-profile .follow-menu{width:min(285px,calc(100vw - 2rem)) !important;max-height:52vh !important;overflow:auto !important;padding:.55rem !important;border-radius:14px !important;z-index:100001 !important;}
+.storefront-profile .follow-menu strong{font-size:.72rem !important;margin-bottom:.2rem !important;}
+.storefront-profile .follow-pref-row{min-height:31px !important;padding:.2rem .05rem !important;font-size:.66rem !important;}
+.storefront-profile .follow-pref-row input[type=checkbox]{width:16px !important;height:16px !important;margin:0 !important;}
+.storefront-profile .follow-menu small{font-size:.6rem !important;margin-top:.3rem !important;}
+.storefront-profile .follow-mute-grid{gap:.25rem !important;margin-top:.25rem !important;}
+.storefront-profile .follow-mute-grid button{min-height:28px !important;padding:.25rem .15rem !important;font-size:.57rem !important;border-radius:8px !important;}
+
+/* Product manager action spacing: metadata and buttons are visually separated. */
+#app .vendor-product-actions{display:flex !important;flex-wrap:wrap !important;gap:.55rem !important;margin-top:.65rem !important;padding-top:.15rem !important;}
+#app .vendor-product-actions .btn{margin:0 !important;min-width:0 !important;}
+#app .vendor-product-actions + *{margin-top:.5rem !important;}
+#app .vendor-discarded-actions{display:flex !important;flex-wrap:wrap !important;gap:.45rem !important;margin-top:.45rem !important;}
+#app .vendor-discarded-actions .btn{margin:0 !important;}
+
+@media(max-width:620px){
+  .storefront-profile .storefront-avatar,.storefront-profile .storefront-avatar-button{width:74px !important;height:74px !important;min-width:74px !important;min-height:74px !important;}
+  .storefront-profile .storefront-profile-actions{top:.35rem !important;gap:.25rem !important;}
+  .storefront-profile .storefront-profile-actions .follow-btn{min-width:92px !important;height:36px !important;min-height:36px !important;padding:.4rem .6rem !important;font-size:.72rem !important;}
+  .storefront-profile .storefront-profile-actions .follow-settings-btn,.storefront-profile .storefront-profile-actions .storefront-more-icon{width:36px !important;height:36px !important;min-width:36px !important;min-height:36px !important;}
+  .storefront-profile .storefront-name-row{gap:.3rem !important;}
+  .storefront-profile .storefront-name-row .storefront-profile-name{font-size:1.18rem !important;}
+  .storefront-profile .storefront-name-actions .storefront-social-icon,.storefront-profile .storefront-name-actions .ms-wrap > button{width:34px !important;height:34px !important;min-width:34px !important;min-height:34px !important;}
+}
+</style>
+
+<script id="levromart-launch-final-ux-v4-js">
+(function(){
+  "use strict";
+  function closeSearchBeforeSheet(){
+    try{ window.closeLevromartHeaderSearch?.(); }catch(_){}
+    document.querySelectorAll('.levro-compact-search-wrap.open,.order-search-wrap.open').forEach(el=>{
+      el.classList.remove('open');
+      const input=el.querySelector('input');
+      if(input) input.blur();
+    });
+    if(!document.querySelector('input:focus,textarea:focus')) document.body.classList.remove('search-input-active');
+  }
+  function wireSheetTriggers(){
+    document.querySelectorAll('[onclick*="toggleProfilePanel"],[onclick*="toggleNotifPanel"],[onclick*="toggleSettingsPanel"]').forEach(btn=>{
+      if(btn.dataset.levroSheetGuard==='1') return;
+      btn.dataset.levroSheetGuard='1';
+      btn.addEventListener('click',closeSearchBeforeSheet,true);
+    });
+  }
+  function enforceStack(){
+    wireSheetTriggers();
+    ['profilePanel','notifPanel','settingsPanel'].forEach(id=>{
+      const el=document.getElementById(id); if(!el)return;
+      el.style.setProperty('z-index','100000','important');
+      el.style.setProperty('position','fixed','important');
+    });
+    const dock=document.getElementById('levromartHeaderSearchDock');
+    if(dock) dock.style.setProperty('z-index','90000','important');
+  }
+  const mo=new MutationObserver(enforceStack);
+  mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+  enforceStack();
+
+  // Ensure every compact search field has a clean close path and its search
+  // query is saved when the user commits it.
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Enter')return;
+    const input=e.target?.closest?.('#searchInput,#vendorSearchInput,#orderHistorySearch');
+    if(input && input.value.trim()){
+      try{
+        const key='levromart-search-history-v1';
+        const old=JSON.parse(localStorage.getItem(key)||'[]');
+        const q=input.value.trim();
+        localStorage.setItem(key,JSON.stringify([q,...(Array.isArray(old)?old:[]).filter(x=>String(x).toLowerCase()!==q.toLowerCase())].slice(0,8)));
+      }catch(_){}
+    }
+  },true);
+})();
+</script>
 
 <script src="/levromart-marketplace-enhancements.js" defer></script>
 
