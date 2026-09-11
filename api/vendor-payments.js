@@ -2,7 +2,7 @@
 //
 // This intentionally combines the vendor-facing payment flows that used to
 // live in multiple Vercel functions. Keeping listing activation in this file
-// avoids adding a 13th serverless function on Vercel Hobby while preserving
+// avoids adding a 13th serverless function on Vercel while preserving
 // the existing /api/vendor-payments contract.
 const { readBody, env } = require("./_util");
 
@@ -15,12 +15,21 @@ module.exports = async function handler(req, res) {
     if (req.method === "GET") {
       const reference = String(req.query?.reference || "").trim();
       const purpose = String(req.query?.purpose || "").trim();
-      // GET on this router is reserved for listing-payment callbacks. The
-      // purpose flag is preferred; accepting a reference alone also keeps
-      // older /api/listing-payments callback URLs working through the Vercel
-      // rewrite in vercel.json.
-      if (reference && (!purpose || purpose === "listing")) return finishListingPayment(req, res, reference);
-      return res.status(400).json({ error: "payment reference is required" });
+
+      // GET on this router is reserved for listing-payment callbacks.
+      // The purpose flag is preferred; accepting a reference alone also
+      // keeps older /api/listing-payments callback URLs working through
+      // the Vercel rewrite in vercel.json.
+      if (
+        reference &&
+        (!purpose || purpose === "listing")
+      ) {
+        return finishListingPayment(req, res, reference);
+      }
+
+      return res
+        .status(400)
+        .json({ error: "payment reference is required" });
     }
 
     if (req.method !== "POST") {
@@ -29,471 +38,1405 @@ module.exports = async function handler(req, res) {
     }
 
     const body = JSON.parse(await readBody(req));
-    const origin = req.headers.origin || `https://${req.headers.host}`;
+    const origin =
+      req.headers.origin ||
+      `https://${req.headers.host}`;
 
-    if (body.action === "create-subaccount") return createSubaccount(body, res);
-    if (body.action === "pay-commission") return payCommission(body, res, origin);
-    if (body.action === "setup-monthly-billing") return setupMonthlyBilling(body, res, origin);
-    if (body.action === "pay-listing") return startListingPayment(req, res, body);
-    if (body.action === "save-listing-draft") return saveListingDraft(body, res);
-    if (body.action === "list-listing-drafts") return listListingDrafts(body, res);
-    if (body.action === "delete-listing-draft") return deleteListingDraft(body, res);
-    if (body.action === "prepare-listing-payment") return prepareListingDraftPayment(req, res, body);
+    if (body.action === "create-subaccount") {
+      return createSubaccount(body, res);
+    }
 
-    res.status(400).json({ error: "Unknown payment action" });
+    if (body.action === "pay-commission") {
+      return payCommission(body, res, origin);
+    }
+
+    if (body.action === "setup-monthly-billing") {
+      return setupMonthlyBilling(body, res, origin);
+    }
+
+    if (body.action === "pay-listing") {
+      return startListingPayment(req, res, body);
+    }
+
+    res.status(400).json({
+      error: "Unknown payment action"
+    });
   } catch (err) {
     console.error("[vendor-payments]", err);
-    res.status(500).json({ error: err.message || "Server error" });
+
+    res.status(500).json({
+      error: err.message || "Server error"
+    });
   }
 };
 
-async function createSubaccount({ accessToken, bankCode, accountNumber }, res) {
-  if (!accessToken || !bankCode || !accountNumber) {
-    res.status(400).json({ error: "accessToken, bankCode and accountNumber are required" });
+
+/* =========================================================
+   CREATE PAYSTACK SUBACCOUNT
+   ========================================================= */
+
+async function createSubaccount(
+  {
+    accessToken,
+    bankCode,
+    accountNumber
+  },
+  res
+) {
+  if (
+    !accessToken ||
+    !bankCode ||
+    !accountNumber
+  ) {
+    res.status(400).json({
+      error:
+        "accessToken, bankCode and accountNumber are required"
+    });
+
     return;
   }
 
   const SUPABASE_URL = env("SUPABASE_URL");
   const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
-  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY");
+  const SERVICE_KEY = env(
+    "SUPABASE_SERVICE_ROLE_KEY"
+  );
+  const PAYSTACK_SECRET_KEY = env(
+    "PAYSTACK_SECRET_KEY"
+  );
 
-  const meRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` },
-  });
+  const meRes = await fetch(
+    `${SUPABASE_URL}/auth/v1/user`,
+    {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  );
+
   const me = await meRes.json();
-  if (!meRes.ok || !me?.id) { res.status(401).json({ error: "Invalid session" }); return; }
 
-  const vendorRes = await fetch(`${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${encodeURIComponent(me.id)}&select=id,business_name,commission_pct&limit=1`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` },
-  });
+  if (!meRes.ok || !me?.id) {
+    res.status(401).json({
+      error: "Invalid session"
+    });
+
+    return;
+  }
+
+  const vendorRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${encodeURIComponent(
+      me.id
+    )}&select=id,business_name,commission_pct&limit=1`,
+    {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  );
+
   const [vendorRow] = await vendorRes.json();
-  if (!vendorRow) { res.status(404).json({ error: "No vendor profile found for this account." }); return; }
+
+  if (!vendorRow) {
+    res.status(404).json({
+      error:
+        "No vendor profile found for this account."
+    });
+
+    return;
+  }
 
   const resolveRes = await fetch(
-    `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`,
-    { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` } }
+    `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(
+      accountNumber
+    )}&bank_code=${encodeURIComponent(bankCode)}`,
+    {
+      headers: {
+        Authorization:
+          `Bearer ${PAYSTACK_SECRET_KEY}`
+      }
+    }
   );
-  const resolveJson = await resolveRes.json();
-  if (!resolveRes.ok || !resolveJson.status) { res.status(400).json({ error: resolveJson.message || "Could not verify that bank account." }); return; }
-  const accountName = resolveJson.data.account_name;
 
-  const subRes = await fetch("https://api.paystack.co/subaccount", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      business_name: vendorRow.business_name,
-      settlement_bank: bankCode,
-      account_number: accountNumber,
-      percentage_charge: Number(vendorRow.commission_pct) || 3,
-    }),
-  });
-  const subJson = await subRes.json();
-  if (!subRes.ok || !subJson.status) { res.status(400).json({ error: subJson.message || "Could not set up payouts with Paystack." }); return; }
+  const resolveJson =
+    await resolveRes.json();
 
-  await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${encodeURIComponent(vendorRow.id)}`, {
-    method: "PATCH",
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
-    body: JSON.stringify({ bank_code: bankCode, account_number: accountNumber, account_name: accountName, paystack_subaccount_code: subJson.data.subaccount_code }),
-  });
+  if (
+    !resolveRes.ok ||
+    !resolveJson.status
+  ) {
+    res.status(400).json({
+      error:
+        resolveJson.message ||
+        "Could not verify that bank account."
+    });
 
-  res.status(200).json({ account_name: accountName, subaccount_code: subJson.data.subaccount_code });
-}
-
-async function payCommission({ accessToken }, res, origin) {
-  if (!accessToken) { res.status(400).json({ error: "accessToken is required" }); return; }
-
-  const SUPABASE_URL = env("SUPABASE_URL");
-  const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
-  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY");
-
-  const meRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` },
-  });
-  const me = await meRes.json();
-  if (!meRes.ok || !me?.id) { res.status(401).json({ error: "Invalid session" }); return; }
-
-  const vendorRes = await fetch(`${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${encodeURIComponent(me.id)}&select=id&limit=1`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` },
-  });
-  const [vendorRow] = await vendorRes.json();
-  if (!vendorRow) { res.status(404).json({ error: "No vendor profile found for this account." }); return; }
-
-  const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/create_commission_payment_intent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ p_vendor_id: vendorRow.id }),
-  });
-  const rpcJson = await rpcRes.json();
-  if (!rpcRes.ok) { res.status(400).json({ error: rpcJson.message || "Could not start commission payment." }); return; }
-  const intent = Array.isArray(rpcJson) ? rpcJson[0] : rpcJson;
-  const { reference, amount } = intent || {};
-
-  const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(me.id)}&select=email&limit=1`, {
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-  });
-  const [userRow] = await userRes.json();
-  const email = userRow?.email || me.email;
-  if (!email || !reference || !Number.isFinite(Number(amount))) { res.status(400).json({ error: "Could not prepare the commission payment." }); return; }
-
-  const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email,
-      amount: Math.round(Number(amount) * 100),
-      reference,
-      callback_url: `${origin}/?commissionPaid=1&reference=${encodeURIComponent(reference)}`,
-    }),
-  });
-  const initJson = await initRes.json();
-  if (!initRes.ok || !initJson.status || !initJson.data?.authorization_url) { res.status(400).json({ error: initJson.message || "Paystack error" }); return; }
-
-  res.status(200).json({ authorization_url: initJson.data.authorization_url, reference });
-}
-
-async function setupMonthlyBilling({ accessToken }, res, origin) {
-  if (!accessToken) { res.status(400).json({ error: "accessToken is required" }); return; }
-
-  const SUPABASE_URL = env("SUPABASE_URL");
-  const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
-  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY");
-  const svcAuth = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
-
-  const meRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` },
-  });
-  const me = await meRes.json();
-  if (!meRes.ok || !me?.id) { res.status(401).json({ error: "Invalid session" }); return; }
-
-  const vendorRes = await fetch(`${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${encodeURIComponent(me.id)}&select=id,billing_model&limit=1`, { headers: svcAuth });
-  const [vendorRow] = await vendorRes.json();
-  if (!vendorRow) { res.status(404).json({ error: "No vendor profile found for this account." }); return; }
-  if (vendorRow.billing_model !== "monthly") { res.status(400).json({ error: "Switch to monthly billing in your profile first." }); return; }
-
-  const amountRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/compute_monthly_billing_amount`, {
-    method: "POST", headers: { ...svcAuth, "Content-Type": "application/json" },
-    body: JSON.stringify({ p_vendor_id: vendorRow.id }),
-  });
-  const amountJson = await amountRes.json();
-  const intentAmount = Array.isArray(amountJson) ? amountJson[0] : amountJson;
-  const listing_count = Number(intentAmount?.listing_count || 0);
-  const amount = Number(intentAmount?.amount || 0);
-  const dueAmount = Math.max(amount, 1500);
-
-  const uRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(me.id)}&select=email&limit=1`, { headers: svcAuth });
-  const [u] = await uRes.json();
-  if (!u?.email) { res.status(400).json({ error: "Could not resolve your email." }); return; }
-
-  const reference = "billing_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const chargeRes = await fetch(`${SUPABASE_URL}/rest/v1/vendor_monthly_charges`, {
-    method: "POST", headers: { ...svcAuth, "Content-Type": "application/json", Prefer: "return=minimal" },
-    body: JSON.stringify({ vendor_id: vendorRow.id, listing_count, amount: dueAmount, status: "pending", provider_reference: reference }),
-  });
-  if (!chargeRes.ok) { res.status(500).json({ error: "Could not prepare monthly billing." }); return; }
-
-  const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: u.email,
-      amount: Math.round(dueAmount * 100),
-      reference,
-      channels: ["card"],
-      callback_url: `${origin}/?billingSetup=1&reference=${encodeURIComponent(reference)}`,
-    }),
-  });
-  const initJson = await initRes.json();
-  if (!initRes.ok || !initJson.status || !initJson.data?.authorization_url) { res.status(400).json({ error: initJson.message || "Paystack error" }); return; }
-
-  res.status(200).json({ authorization_url: initJson.data.authorization_url, reference });
-}
-
-// ---------------------------------------------------------------------------
-// Unpaid monthly-listing drafts. Drafts are stored server-side so a vendor can
-// leave the listing screen, return later, and pay without creating a live row.
-// ---------------------------------------------------------------------------
-async function authenticate(accessToken) {
-  const SUPABASE_URL = env("SUPABASE_URL");
-  const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
-  const meRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` },
-  });
-  const me = await meRes.json().catch(() => null);
-  if (!meRes.ok || !me?.id) return null;
-  return me;
-}
-
-async function getOwnedVendor(accessToken, userId) {
-  const SUPABASE_URL = env("SUPABASE_URL");
-  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const q = `${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${encodeURIComponent(userId)}&deleted_at=is.null&select=id,user_id,business_name&limit=1`;
-  const r = await fetch(q, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
-  const rows = await r.json().catch(() => []);
-  return rows?.[0] || null;
-}
-
-function normalizeProductDraft(draft, vendorId) {
-  const f = draft?.fields || {};
-  const quantity = Math.max(1, Number(f.quantity_total) || 1);
-  return {
-    name: String(f.name || "").trim(), description: f.description || null, category_id: f.category_id || null,
-    condition: f.condition || "new", listing_type: f.listing_type || "sale", is_service: false,
-    service_price_unit: null, sale_price: f.listing_type === "rent" ? null : (f.sale_price == null ? null : Number(f.sale_price)),
-    discount_price: f.listing_type === "rent" ? null : (f.discount_price == null ? null : Number(f.discount_price)),
-    delivery_fee_mode: ["free","flat","distance"].includes(String(f.delivery_fee_mode || "free")) ? f.delivery_fee_mode : "free",
-    delivery_fee: Math.max(0, Number(f.delivery_fee) || 0), delivery_fee_per_km: Math.max(0, Number(f.delivery_fee_per_km) || 0),
-    rental_rate: f.listing_type === "sale" ? null : (f.rental_rate == null ? null : Number(f.rental_rate)),
-    rental_rate_unit: f.listing_type === "sale" ? null : (f.rental_rate_unit || "day"),
-    deposit_amount: f.deposit_amount == null ? null : Number(f.deposit_amount), quantity_total: quantity,
-    quantity_available: quantity, billing_model: "monthly", billing_status: "active", status: "active",
-    billing_paid_until: null, photos: Array.isArray(draft?.photos) ? draft.photos.slice(0, 20).map(String) : [], vendor_id: vendorId,
-  };
-}
-
-async function saveListingDraft({ accessToken, kind, draft }, res) {
-  if (!accessToken || !draft || !["product","package"].includes(kind || draft.kind)) return res.status(400).json({ error: "A valid listing draft is required." });
-  const me = await authenticate(accessToken); if (!me) return res.status(401).json({ error: "Invalid session" });
-  const vendor = await getOwnedVendor(accessToken, me.id); if (!vendor) return res.status(403).json({ error: "No vendor profile found." });
-  const actualKind = kind || draft.kind;
-  if (actualKind !== "product") return res.status(400).json({ error: "Only product drafts are supported in this phase." });
-  const normalized = { ...draft, kind: actualKind, vendor_id: vendor.id, fields: { ...(draft.fields || {}), billing_model: "monthly" } };
-  if (!String(normalized.fields.name || "").trim()) return res.status(400).json({ error: "Product name is required." });
-  const SUPABASE_URL = env("SUPABASE_URL"), SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/listing_drafts`, {
-    method: "POST", headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" },
-    body: JSON.stringify({ vendor_id: vendor.id, kind: actualKind, draft_data: normalized }),
-  });
-  const rows = await r.json().catch(() => []);
-  if (!r.ok) return res.status(500).json({ error: rows?.message || "Could not save the listing draft." });
-  return res.status(200).json({ id: rows?.[0]?.id });
-}
-
-async function listListingDrafts({ accessToken }, res) {
-  if (!accessToken) return res.status(400).json({ error: "accessToken is required" });
-  const me = await authenticate(accessToken); if (!me) return res.status(401).json({ error: "Invalid session" });
-  const vendor = await getOwnedVendor(accessToken, me.id); if (!vendor) return res.status(403).json({ error: "No vendor profile found." });
-  const SUPABASE_URL = env("SUPABASE_URL"), SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/listing_drafts?vendor_id=eq.${encodeURIComponent(vendor.id)}&select=id,kind,draft_data,created_at,updated_at&order=created_at.desc`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
-  const drafts = await r.json().catch(() => []);
-  if (!r.ok) return res.status(500).json({ error: "Could not load listing drafts." });
-  return res.status(200).json({ drafts: Array.isArray(drafts) ? drafts : [] });
-}
-
-async function deleteListingDraft({ accessToken, draftId }, res) {
-  if (!accessToken || !draftId) return res.status(400).json({ error: "draftId and accessToken are required" });
-  const me = await authenticate(accessToken); if (!me) return res.status(401).json({ error: "Invalid session" });
-  const vendor = await getOwnedVendor(accessToken, me.id); if (!vendor) return res.status(403).json({ error: "No vendor profile found." });
-  const SUPABASE_URL = env("SUPABASE_URL"), SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/listing_drafts?id=eq.${encodeURIComponent(draftId)}&vendor_id=eq.${encodeURIComponent(vendor.id)}`, { method: "DELETE", headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
-  if (!r.ok) return res.status(500).json({ error: "Could not delete the draft." });
-  return res.status(200).json({ ok: true });
-}
-
-async function prepareListingDraftPayment(req, res, { accessToken, draftId }) {
-  if (!accessToken || !draftId) return res.status(400).json({ error: "draftId and accessToken are required" });
-  const me = await authenticate(accessToken); if (!me) return res.status(401).json({ error: "Invalid session" });
-  const vendor = await getOwnedVendor(accessToken, me.id); if (!vendor) return res.status(403).json({ error: "No vendor profile found." });
-  const SUPABASE_URL = env("SUPABASE_URL"), SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY"), PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY");
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/listing_drafts?id=eq.${encodeURIComponent(draftId)}&vendor_id=eq.${encodeURIComponent(vendor.id)}&select=id,kind,draft_data&limit=1`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
-  const rows = await r.json().catch(() => []); const draft = rows?.[0];
-  if (!draft) return res.status(404).json({ error: "Listing draft not found." });
-  const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(me.id)}&select=email&limit=1`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
-  const users = await userRes.json().catch(() => []); const email = users?.[0]?.email || me.email;
-  if (!email) return res.status(400).json({ error: "Add an email address to your account before paying." });
-  const reference = `levro_listing_draft_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
-  const origin = req.headers.origin || `https://${req.headers.host}`;
-  const initRes = await fetch("https://api.paystack.co/transaction/initialize", { method:"POST", headers:{Authorization:`Bearer ${PAYSTACK_SECRET_KEY}`,"Content-Type":"application/json"}, body:JSON.stringify({ email, amount:MONTHLY_LISTING_KOBO, currency:"NGN", reference, callback_url:`${origin}/api/vendor-payments?purpose=listing&reference=${encodeURIComponent(reference)}`, metadata:{purpose:"levromart_listing_monthly",kind:draft.kind,draft_id:draft.id,vendor_id:vendor.id,user_id:me.id,amount_naira:MONTHLY_LISTING_NAIRA} }) });
-  const initJson = await initRes.json().catch(() => ({}));
-  if (!initRes.ok || !initJson.status || !initJson.data?.authorization_url) return res.status(502).json({ error:initJson.message || "Paystack could not start the listing payment." });
-  return res.status(200).json({ authorization_url:initJson.data.authorization_url, reference, amount:MONTHLY_LISTING_NAIRA });
-}
-
-// ---------------------------------------------------------------------------
-// Individual ₦1,000 listing activation/renewal.
-// ---------------------------------------------------------------------------
-async function startListingPayment(req, res, body) {
-  const SUPABASE_URL = env("SUPABASE_URL");
-  const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
-  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY");
-
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SERVICE_KEY || !PAYSTACK_SECRET_KEY) {
-    return res.status(500).json({ error: "Listing billing is not configured on the server yet." });
-  }
-  if (!body?.accessToken || !body?.kind || !body?.id) {
-    return res.status(400).json({ error: "A listing and signed-in session are required." });
-  }
-  if (!["product", "package"].includes(body.kind)) {
-    return res.status(400).json({ error: "Invalid listing type." });
+    return;
   }
 
-  const meRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${body.accessToken}` },
-  });
-  const me = await meRes.json().catch(() => null);
-  if (!meRes.ok || !me?.id) return res.status(401).json({ error: "Your session expired. Please log in again." });
+  const accountName =
+    resolveJson.data.account_name;
 
-  const table = body.kind === "product" ? "products" : "vendor_packages";
-  const listingRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(body.id)}&select=id,vendor_id,name,status,billing_model,billing_status,billing_reference,billing_paid_until&limit=1`, {
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-  });
-  const [listing] = await listingRes.json().catch(() => []);
-  if (!listing) return res.status(404).json({ error: "Listing not found." });
-
-  const vendorRes = await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${encodeURIComponent(listing.vendor_id)}&select=id,user_id,business_name&limit=1`, {
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-  });
-  const [vendor] = await vendorRes.json().catch(() => []);
-  if (!vendor || String(vendor.user_id) !== String(me.id)) return res.status(403).json({ error: "You can only pay for your own listing." });
-  if (listing.billing_model !== "monthly") return res.status(400).json({ error: "This listing is not using monthly billing." });
-
-  if (listing.billing_status === "active" && listing.billing_paid_until && new Date(listing.billing_paid_until).getTime() > Date.now()) {
-    return res.status(200).json({ alreadyActive: true });
-  }
-
-  const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(me.id)}&select=email&limit=1`, {
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-  });
-  const [user] = await userRes.json().catch(() => []);
-  const email = user?.email || me.email;
-  if (!email) return res.status(400).json({ error: "Add an email address to your account before paying for a listing." });
-
-  const reference = `levro_listing_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-  const patchUrl = `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(listing.id)}&vendor_id=eq.${encodeURIComponent(listing.vendor_id)}`;
-  const patchHeaders = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" };
-  const prepRes = await fetch(patchUrl, {
-    method: "PATCH",
-    headers: patchHeaders,
-    body: JSON.stringify({ billing_status: "pending_payment", billing_reference: reference, status: "paused" }),
-  });
-  if (!prepRes.ok) return res.status(500).json({ error: "Could not prepare the listing for payment." });
-
-  const origin = req.headers.origin || `https://${req.headers.host}`;
-  const callbackUrl = `${origin}/api/vendor-payments?purpose=listing&reference=${encodeURIComponent(reference)}`;
-  const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email,
-      amount: MONTHLY_LISTING_KOBO,
-      currency: "NGN",
-      reference,
-      callback_url: callbackUrl,
-      metadata: {
-        purpose: "levromart_listing_monthly",
-        kind: body.kind,
-        listing_id: listing.id,
-        vendor_id: listing.vendor_id,
-        user_id: me.id,
-        amount_naira: MONTHLY_LISTING_NAIRA,
+  const subRes = await fetch(
+    "https://api.paystack.co/subaccount",
+    {
+      method: "POST",
+      headers: {
+        Authorization:
+          `Bearer ${PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json"
       },
-    }),
-  });
-  const initJson = await initRes.json().catch(() => ({}));
-  if (!initRes.ok || !initJson.status || !initJson.data?.authorization_url) {
-    // The listing was not successfully sent to Paystack. Do not leave the
-    // product looking as though it is permanently locked in payment.
-    await fetch(patchUrl, {
+      body: JSON.stringify({
+        business_name:
+          vendorRow.business_name,
+
+        settlement_bank:
+          bankCode,
+
+        account_number:
+          accountNumber,
+
+        percentage_charge:
+          Number(
+            vendorRow.commission_pct
+          ) || 3
+      })
+    }
+  );
+
+  const subJson =
+    await subRes.json();
+
+  if (
+    !subRes.ok ||
+    !subJson.status
+  ) {
+    res.status(400).json({
+      error:
+        subJson.message ||
+        "Could not set up payouts with Paystack."
+    });
+
+    return;
+  }
+
+  await fetch(
+    `${SUPABASE_URL}/rest/v1/vendors?id=eq.${encodeURIComponent(
+      vendorRow.id
+    )}`,
+    {
       method: "PATCH",
-      headers: patchHeaders,
-      body: JSON.stringify({ billing_status: listing.billing_status || "pending_payment", billing_reference: null, status: listing.status || "paused" }),
-    }).catch(() => {});
-    return res.status(502).json({ error: initJson.message || "Paystack could not start the listing payment." });
-  }
 
-  return res.status(200).json({ authorization_url: initJson.data.authorization_url, reference, amount: MONTHLY_LISTING_NAIRA });
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization:
+          `Bearer ${SERVICE_KEY}`,
+        "Content-Type":
+          "application/json",
+        Prefer:
+          "return=minimal"
+      },
+
+      body: JSON.stringify({
+        bank_code:
+          bankCode,
+
+        account_number:
+          accountNumber,
+
+        account_name:
+          accountName,
+
+        paystack_subaccount_code:
+          subJson.data.subaccount_code
+      })
+    }
+  );
+
+  res.status(200).json({
+    account_name:
+      accountName,
+
+    subaccount_code:
+      subJson.data.subaccount_code
+  });
 }
 
-async function finishListingPayment(req, res, reference) {
-  const SUPABASE_URL = env("SUPABASE_URL");
-  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY");
-  const base = req.headers.origin || `https://${req.headers.host}`;
-  const fail = (reason = "payment") => res.writeHead(302, { Location: `${base}/?listingPayment=failed&reference=${encodeURIComponent(reference)}&reason=${encodeURIComponent(reason)}` }).end();
 
-  if (!SUPABASE_URL || !SERVICE_KEY || !PAYSTACK_SECRET_KEY) return fail("configuration");
+/* =========================================================
+   PAY COMMISSION
+   ========================================================= */
 
-  const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
-    headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-  });
-  const verifyJson = await verifyRes.json().catch(() => ({}));
-  const tx = verifyJson?.data;
-  const metadata = tx?.metadata || {};
-  const kind = metadata.kind;
-  const draftId = metadata.draft_id;
-  const listingId = metadata.listing_id;
-  const vendorId = metadata.vendor_id;
-  const table = kind === "product" ? "products" : kind === "package" ? "vendor_packages" : null;
+async function payCommission(
+  { accessToken },
+  res,
+  origin
+) {
+  if (!accessToken) {
+    res.status(400).json({
+      error:
+        "accessToken is required"
+    });
 
-  if (!verifyRes.ok || !verifyJson.status || tx?.status !== "success" || Number(tx.amount) !== MONTHLY_LISTING_KOBO || !table || !vendorId) return fail("verification");
-
-  // New monthly listings are created only after Paystack confirms success.
-  if (draftId) {
-    const draftRes = await fetch(`${SUPABASE_URL}/rest/v1/listing_drafts?id=eq.${encodeURIComponent(draftId)}&vendor_id=eq.${encodeURIComponent(vendorId)}&select=id,kind,draft_data&limit=1`, { headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`} });
-    const draftRows = await draftRes.json().catch(() => []);
-    const draft = draftRows?.[0];
-    // Paystack can retry a callback. If the draft was already consumed, return
-    // the existing listing instead of telling the vendor their successful
-    // payment failed.
-    if (!draft) {
-      const existingRes = await fetch(`${SUPABASE_URL}/rest/v1/products?vendor_id=eq.${encodeURIComponent(vendorId)}&billing_reference=eq.${encodeURIComponent(reference)}&select=id&limit=1`, { headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`} });
-      const existingRows = await existingRes.json().catch(() => []);
-      if (existingRows?.[0]?.id) return res.writeHead(302,{Location:`${base}/?listingPaid=1&kind=product&id=${encodeURIComponent(existingRows[0].id)}&reference=${encodeURIComponent(reference)}`}).end();
-      return fail("listing");
-    }
-    if (draft.kind !== kind || kind !== "product") return fail("listing");
-    const normalized = normalizeProductDraft(draft.draft_data, vendorId);
-    if (!normalized.name) return fail("listing");
-    const createRes = await fetch(`${SUPABASE_URL}/rest/v1/products`, { method:"POST", headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,"Content-Type":"application/json",Prefer:"return=representation"}, body:JSON.stringify({...normalized,billing_paid_until:addOneCalendarMonth(new Date()).toISOString(),billing_reference:reference}) });
-    const createdRows = await createRes.json().catch(() => []);
-    if (!createRes.ok || !createdRows?.[0]?.id) return fail("activation");
-    const createdId = createdRows[0].id;
-    const variants = Array.isArray(draft.draft_data?.variantDrafts) ? draft.draft_data.variantDrafts : [];
-    if (variants.length) {
-      const payload = variants.slice(0,50).filter(v=>v?.name && Number(v.sale_price)>0).map((v,i)=>({product_id:createdId,name:String(v.name),photo_url:v.photo_url||null,sale_price:Number(v.sale_price),discount_price:v.discount_price==null?null:Number(v.discount_price),sort_order:i}));
-      if (payload.length) await fetch(`${SUPABASE_URL}/rest/v1/product_variants`, {method:"POST",headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify(payload)});
-    }
-    await fetch(`${SUPABASE_URL}/rest/v1/listing_drafts?id=eq.${encodeURIComponent(draftId)}&vendor_id=eq.${encodeURIComponent(vendorId)}`, {method:"DELETE",headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`}});
-    return res.writeHead(302,{Location:`${base}/?listingPaid=1&kind=product&id=${encodeURIComponent(createdId)}&reference=${encodeURIComponent(reference)}`}).end();
+    return;
   }
 
-  if (!listingId || !vendorId) return fail("verification");
+  const SUPABASE_URL =
+    env("SUPABASE_URL");
 
-  const listingRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(listingId)}&vendor_id=eq.${encodeURIComponent(vendorId)}&select=id,vendor_id,status,billing_model,billing_status,billing_reference,billing_paid_until&limit=1`, {
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+  const SUPABASE_ANON_KEY =
+    env("SUPABASE_ANON_KEY");
+
+  const SERVICE_KEY =
+    env("SUPABASE_SERVICE_ROLE_KEY");
+
+  const PAYSTACK_SECRET_KEY =
+    env("PAYSTACK_SECRET_KEY");
+
+  const meRes = await fetch(
+    `${SUPABASE_URL}/auth/v1/user`,
+    {
+      headers: {
+        apikey:
+          SUPABASE_ANON_KEY,
+
+        Authorization:
+          `Bearer ${accessToken}`
+      }
+    }
+  );
+
+  const me =
+    await meRes.json();
+
+  if (
+    !meRes.ok ||
+    !me?.id
+  ) {
+    res.status(401).json({
+      error:
+        "Invalid session"
+    });
+
+    return;
+  }
+
+  const vendorRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${encodeURIComponent(
+        me.id
+      )}&select=id&limit=1`,
+      {
+        headers: {
+          apikey:
+            SUPABASE_ANON_KEY,
+
+          Authorization:
+            `Bearer ${accessToken}`
+        }
+      }
+    );
+
+  const [vendorRow] =
+    await vendorRes.json();
+
+  if (!vendorRow) {
+    res.status(404).json({
+      error:
+        "No vendor profile found for this account."
+    });
+
+    return;
+  }
+
+  const rpcRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/create_commission_payment_intent`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+
+          apikey:
+            SUPABASE_ANON_KEY,
+
+          Authorization:
+            `Bearer ${accessToken}`
+        },
+
+        body: JSON.stringify({
+          p_vendor_id:
+            vendorRow.id
+        })
+      }
+    );
+
+  const rpcJson =
+    await rpcRes.json();
+
+  if (!rpcRes.ok) {
+    res.status(400).json({
+      error:
+        rpcJson.message ||
+        "Could not start commission payment."
+    });
+
+    return;
+  }
+
+  const intent =
+    Array.isArray(rpcJson)
+      ? rpcJson[0]
+      : rpcJson;
+
+  const {
+    reference,
+    amount
+  } = intent || {};
+
+  const userRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(
+        me.id
+      )}&select=email&limit=1`,
+      {
+        headers: {
+          apikey:
+            SERVICE_KEY,
+
+          Authorization:
+            `Bearer ${SERVICE_KEY}`
+        }
+      }
+    );
+
+  const [userRow] =
+    await userRes.json();
+
+  const email =
+    userRow?.email ||
+    me.email;
+
+  if (
+    !email ||
+    !reference ||
+    !Number.isFinite(
+      Number(amount)
+    )
+  ) {
+    res.status(400).json({
+      error:
+        "Could not prepare the commission payment."
+    });
+
+    return;
+  }
+
+  const initRes =
+    await fetch(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        method: "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${PAYSTACK_SECRET_KEY}`,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          email,
+
+          amount:
+            Math.round(
+              Number(amount) * 100
+            ),
+
+          reference,
+
+          callback_url:
+            `${origin}/?commissionPaid=1&reference=${encodeURIComponent(
+              reference
+            )}`
+        })
+      }
+    );
+
+  const initJson =
+    await initRes.json();
+
+  if (
+    !initRes.ok ||
+    !initJson.status ||
+    !initJson.data?.authorization_url
+  ) {
+    res.status(400).json({
+      error:
+        initJson.message ||
+        "Paystack error"
+    });
+
+    return;
+  }
+
+  res.status(200).json({
+    authorization_url:
+      initJson.data.authorization_url,
+
+    reference
   });
-  const [listing] = await listingRes.json().catch(() => []);
-  if (!listing || listing.billing_model !== "monthly" || listing.billing_reference !== reference) return fail("listing");
-
-  // Renewal extends from the existing paid-through date when it is still in
-  // the future, rather than throwing away paid time.
-  const now = new Date();
-  const baseDate = listing.billing_paid_until && new Date(listing.billing_paid_until).getTime() > now.getTime()
-    ? new Date(listing.billing_paid_until)
-    : now;
-  const paidUntil = addOneCalendarMonth(baseDate);
-
-  const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(listingId)}&vendor_id=eq.${encodeURIComponent(vendorId)}&billing_reference=eq.${encodeURIComponent(reference)}`, {
-    method: "PATCH",
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
-    body: JSON.stringify({ status: "active", billing_status: "active", billing_paid_until: paidUntil.toISOString(), billing_reference: null }),
-  });
-  if (!updateRes.ok) return fail("activation");
-
-  return res.writeHead(302, {
-    Location: `${base}/?listingPaid=1&kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(listingId)}&reference=${encodeURIComponent(reference)}`,
-  }).end();
 }
 
-function addOneCalendarMonth(date) {
-  const d = new Date(date);
-  const originalDay = d.getDate();
+
+/* =========================================================
+   SETUP VENDOR MONTHLY BILLING
+   ========================================================= */
+
+async function setupMonthlyBilling(
+  { accessToken },
+  res,
+  origin
+) {
+  if (!accessToken) {
+    res.status(400).json({
+      error:
+        "accessToken is required"
+    });
+
+    return;
+  }
+
+  const SUPABASE_URL =
+    env("SUPABASE_URL");
+
+  const SUPABASE_ANON_KEY =
+    env("SUPABASE_ANON_KEY");
+
+  const SERVICE_KEY =
+    env("SUPABASE_SERVICE_ROLE_KEY");
+
+  const PAYSTACK_SECRET_KEY =
+    env("PAYSTACK_SECRET_KEY");
+
+  const svcAuth = {
+    apikey:
+      SERVICE_KEY,
+
+    Authorization:
+      `Bearer ${SERVICE_KEY}`
+  };
+
+  const meRes =
+    await fetch(
+      `${SUPABASE_URL}/auth/v1/user`,
+      {
+        headers: {
+          apikey:
+            SUPABASE_ANON_KEY,
+
+          Authorization:
+            `Bearer ${accessToken}`
+        }
+      }
+    );
+
+  const me =
+    await meRes.json();
+
+  if (
+    !meRes.ok ||
+    !me?.id
+  ) {
+    res.status(401).json({
+      error:
+        "Invalid session"
+    });
+
+    return;
+  }
+
+  const vendorRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${encodeURIComponent(
+        me.id
+      )}&select=id,billing_model&limit=1`,
+      {
+        headers:
+          svcAuth
+      }
+    );
+
+  const [vendorRow] =
+    await vendorRes.json();
+
+  if (!vendorRow) {
+    res.status(404).json({
+      error:
+        "No vendor profile found for this account."
+    });
+
+    return;
+  }
+
+  if (
+    vendorRow.billing_model !==
+    "monthly"
+  ) {
+    res.status(400).json({
+      error:
+        "Switch to monthly billing in your profile first."
+    });
+
+    return;
+  }
+
+  const amountRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/compute_monthly_billing_amount`,
+      {
+        method: "POST",
+
+        headers: {
+          ...svcAuth,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          p_vendor_id:
+            vendorRow.id
+        })
+      }
+    );
+
+  const amountJson =
+    await amountRes.json();
+
+  const intentAmount =
+    Array.isArray(amountJson)
+      ? amountJson[0]
+      : amountJson;
+
+  const listing_count =
+    Number(
+      intentAmount?.listing_count ||
+      0
+    );
+
+  const amount =
+    Number(
+      intentAmount?.amount ||
+      0
+    );
+
+  const dueAmount =
+    Math.max(
+      amount,
+      1500
+    );
+
+  const uRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(
+        me.id
+      )}&select=email&limit=1`,
+      {
+        headers:
+          svcAuth
+      }
+    );
+
+  const [u] =
+    await uRes.json();
+
+  if (!u?.email) {
+    res.status(400).json({
+      error:
+        "Could not resolve your email."
+    });
+
+    return;
+  }
+
+  const reference =
+    "billing_" +
+    Math.random()
+      .toString(36)
+      .slice(2) +
+    Date.now()
+      .toString(36);
+
+  const chargeRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/vendor_monthly_charges`,
+      {
+        method: "POST",
+
+        headers: {
+          ...svcAuth,
+
+          "Content-Type":
+            "application/json",
+
+          Prefer:
+            "return=minimal"
+        },
+
+        body: JSON.stringify({
+          vendor_id:
+            vendorRow.id,
+
+          listing_count,
+
+          amount:
+            dueAmount,
+
+          status:
+            "pending",
+
+          provider_reference:
+            reference
+        })
+      }
+    );
+
+  if (!chargeRes.ok) {
+    res.status(500).json({
+      error:
+        "Could not prepare monthly billing."
+    });
+
+    return;
+  }
+
+  const initRes =
+    await fetch(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        method: "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${PAYSTACK_SECRET_KEY}`,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          email:
+            u.email,
+
+          amount:
+            Math.round(
+              dueAmount * 100
+            ),
+
+          reference,
+
+          channels: [
+            "card"
+          ],
+
+          callback_url:
+            `${origin}/?billingSetup=1&reference=${encodeURIComponent(
+              reference
+            )}`
+        })
+      }
+    );
+
+  const initJson =
+    await initRes.json();
+
+  if (
+    !initRes.ok ||
+    !initJson.status ||
+    !initJson.data?.authorization_url
+  ) {
+    res.status(400).json({
+      error:
+        initJson.message ||
+        "Paystack error"
+    });
+
+    return;
+  }
+
+  res.status(200).json({
+    authorization_url:
+      initJson.data.authorization_url,
+
+    reference
+  });
+}
+
+
+/* =========================================================
+   INDIVIDUAL ₦1,000 LISTING PAYMENT
+   ========================================================= */
+
+async function startListingPayment(
+  req,
+  res,
+  body
+) {
+  const SUPABASE_URL =
+    env("SUPABASE_URL");
+
+  const SUPABASE_ANON_KEY =
+    env("SUPABASE_ANON_KEY");
+
+  const SERVICE_KEY =
+    env("SUPABASE_SERVICE_ROLE_KEY");
+
+  const PAYSTACK_SECRET_KEY =
+    env("PAYSTACK_SECRET_KEY");
+
+  if (
+    !SUPABASE_URL ||
+    !SUPABASE_ANON_KEY ||
+    !SERVICE_KEY ||
+    !PAYSTACK_SECRET_KEY
+  ) {
+    return res.status(500).json({
+      error:
+        "Listing billing is not configured on the server yet."
+    });
+  }
+
+  if (
+    !body?.accessToken ||
+    !body?.kind ||
+    !body?.id
+  ) {
+    return res.status(400).json({
+      error:
+        "A listing and signed-in session are required."
+    });
+  }
+
+  if (
+    ![
+      "product",
+      "package"
+    ].includes(body.kind)
+  ) {
+    return res.status(400).json({
+      error:
+        "Invalid listing type."
+    });
+  }
+
+  const meRes =
+    await fetch(
+      `${SUPABASE_URL}/auth/v1/user`,
+      {
+        headers: {
+          apikey:
+            SUPABASE_ANON_KEY,
+
+          Authorization:
+            `Bearer ${body.accessToken}`
+        }
+      }
+    );
+
+  const me =
+    await meRes
+      .json()
+      .catch(() => null);
+
+  if (
+    !meRes.ok ||
+    !me?.id
+  ) {
+    return res.status(401).json({
+      error:
+        "Your session expired. Please log in again."
+    });
+  }
+
+  const table =
+    body.kind === "product"
+      ? "products"
+      : "vendor_packages";
+
+  const listingRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(
+        body.id
+      )}&select=id,vendor_id,name,status,billing_model,billing_status,billing_reference,billing_paid_until&limit=1`,
+      {
+        headers: {
+          apikey:
+            SERVICE_KEY,
+
+          Authorization:
+            `Bearer ${SERVICE_KEY}`
+        }
+      }
+    );
+
+  const [listing] =
+    await listingRes
+      .json()
+      .catch(() => []);
+
+  if (!listing) {
+    return res.status(404).json({
+      error:
+        "Listing not found."
+    });
+  }
+
+  const vendorRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/vendors?id=eq.${encodeURIComponent(
+        listing.vendor_id
+      )}&select=id,user_id,business_name&limit=1`,
+      {
+        headers: {
+          apikey:
+            SERVICE_KEY,
+
+          Authorization:
+            `Bearer ${SERVICE_KEY}`
+        }
+      }
+    );
+
+  const [vendor] =
+    await vendorRes
+      .json()
+      .catch(() => []);
+
+  if (
+    !vendor ||
+    String(vendor.user_id) !==
+      String(me.id)
+  ) {
+    return res.status(403).json({
+      error:
+        "You can only pay for your own listing."
+    });
+  }
+
+  if (
+    listing.billing_model !==
+    "monthly"
+  ) {
+    return res.status(400).json({
+      error:
+        "This listing is not using monthly billing."
+    });
+  }
+
+  // Prevent another payment if the listing is
+  // already paid and still within its billing period.
+  if (
+    listing.billing_status ===
+      "active" &&
+    listing.billing_paid_until &&
+    new Date(
+      listing.billing_paid_until
+    ).getTime() >
+      Date.now()
+  ) {
+    return res.status(200).json({
+      alreadyActive:
+        true
+    });
+  }
+
+  const userRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(
+        me.id
+      )}&select=email&limit=1`,
+      {
+        headers: {
+          apikey:
+            SERVICE_KEY,
+
+          Authorization:
+            `Bearer ${SERVICE_KEY}`
+        }
+      }
+    );
+
+  const [user] =
+    await userRes
+      .json()
+      .catch(() => []);
+
+  const email =
+    user?.email ||
+    me.email;
+
+  if (!email) {
+    return res.status(400).json({
+      error:
+        "Add an email address to your account before paying for a listing."
+    });
+  }
+
+  const reference =
+    `levro_listing_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2, 10)}`;
+
+  const patchUrl =
+    `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(
+      listing.id
+    )}&vendor_id=eq.${encodeURIComponent(
+      listing.vendor_id
+    )}`;
+
+  const patchHeaders = {
+    apikey:
+      SERVICE_KEY,
+
+    Authorization:
+      `Bearer ${SERVICE_KEY}`,
+
+    "Content-Type":
+      "application/json",
+
+    Prefer:
+      "return=minimal"
+  };
+
+  // Mark the listing as awaiting payment before
+  // sending the vendor to Paystack.
+  const prepRes =
+    await fetch(
+      patchUrl,
+      {
+        method: "PATCH",
+
+        headers:
+          patchHeaders,
+
+        body: JSON.stringify({
+          billing_status:
+            "pending_payment",
+
+          billing_reference:
+            reference,
+
+          status:
+            "paused"
+        })
+      }
+    );
+
+  if (!prepRes.ok) {
+    return res.status(500).json({
+      error:
+        "Could not prepare the listing for payment."
+    });
+  }
+
+  const origin =
+    req.headers.origin ||
+    `https://${req.headers.host}`;
+
+  const callbackUrl =
+    `${origin}/api/vendor-payments?purpose=listing&reference=${encodeURIComponent(
+      reference
+    )}`;
+
+  const initRes =
+    await fetch(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        method: "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${PAYSTACK_SECRET_KEY}`,
+
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          email,
+
+          amount:
+            MONTHLY_LISTING_KOBO,
+
+          currency:
+            "NGN",
+
+          reference,
+
+          callback_url:
+            callbackUrl,
+
+          metadata: {
+            purpose:
+              "levromart_listing_monthly",
+
+            kind:
+              body.kind,
+
+            listing_id:
+              listing.id,
+
+            vendor_id:
+              listing.vendor_id,
+
+            user_id:
+              me.id,
+
+            amount_naira:
+              MONTHLY_LISTING_NAIRA
+          }
+        })
+      }
+    );
+
+  const initJson =
+    await initRes
+      .json()
+      .catch(() => ({}));
+
+  if (
+    !initRes.ok ||
+    !initJson.status ||
+    !initJson.data?.authorization_url
+  ) {
+    // Payment could not be started.
+    // Restore the previous listing state.
+    await fetch(
+      patchUrl,
+      {
+        method: "PATCH",
+
+        headers:
+          patchHeaders,
+
+        body: JSON.stringify({
+          billing_status:
+            listing.billing_status ||
+            "pending_payment",
+
+          billing_reference:
+            null,
+
+          status:
+            listing.status ||
+            "paused"
+        })
+      }
+    ).catch(() => {});
+
+    return res.status(502).json({
+      error:
+        initJson.message ||
+        "Paystack could not start the listing payment."
+    });
+  }
+
+  return res.status(200).json({
+    authorization_url:
+      initJson.data.authorization_url,
+
+    reference,
+
+    amount:
+      MONTHLY_LISTING_NAIRA
+  });
+}
+
+
+/* =========================================================
+   FINISH / VERIFY ₦1,000 LISTING PAYMENT
+   ========================================================= */
+
+async function finishListingPayment(
+  req,
+  res,
+  reference
+) {
+  const SUPABASE_URL =
+    env("SUPABASE_URL");
+
+  const SERVICE_KEY =
+    env("SUPABASE_SERVICE_ROLE_KEY");
+
+  const PAYSTACK_SECRET_KEY =
+    env("PAYSTACK_SECRET_KEY");
+
+  const base =
+    req.headers.origin ||
+    `https://${req.headers.host}`;
+
+  const fail = (
+    reason = "payment"
+  ) =>
+    res
+      .writeHead(
+        302,
+        {
+          Location:
+            `${base}/?listingPayment=failed&reference=${encodeURIComponent(
+              reference
+            )}&reason=${encodeURIComponent(
+              reason
+            )}`
+        }
+      )
+      .end();
+
+  if (
+    !SUPABASE_URL ||
+    !SERVICE_KEY ||
+    !PAYSTACK_SECRET_KEY
+  ) {
+    return fail(
+      "configuration"
+    );
+  }
+
+  // Verify directly with Paystack.
+  const verifyRes =
+    await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(
+        reference
+      )}`,
+      {
+        headers: {
+          Authorization:
+            `Bearer ${PAYSTACK_SECRET_KEY}`
+        }
+      }
+    );
+
+  const verifyJson =
+    await verifyRes
+      .json()
+      .catch(() => ({}));
+
+  const tx =
+    verifyJson?.data;
+
+  const metadata =
+    tx?.metadata || {};
+
+  const kind =
+    metadata.kind;
+
+  const listingId =
+    metadata.listing_id;
+
+  const vendorId =
+    metadata.vendor_id;
+
+  const table =
+    kind === "product"
+      ? "products"
+      : kind === "package"
+      ? "vendor_packages"
+      : null;
+
+  // Do not activate anything unless:
+  //
+  // 1. Paystack verification succeeds
+  // 2. Transaction status is success
+  // 3. Amount is exactly ₦1,000
+  // 4. Metadata identifies a valid listing
+  if (
+    !verifyRes.ok ||
+    !verifyJson.status ||
+    tx?.status !==
+      "success" ||
+    Number(tx.amount) !==
+      MONTHLY_LISTING_KOBO ||
+    !table ||
+    !listingId ||
+    !vendorId
+  ) {
+    return fail(
+      "verification"
+    );
+  }
+
+  const listingRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(
+        listingId
+      )}&vendor_id=eq.${encodeURIComponent(
+        vendorId
+      )}&select=id,vendor_id,status,billing_model,billing_status,billing_reference,billing_paid_until&limit=1`,
+      {
+        headers: {
+          apikey:
+            SERVICE_KEY,
+
+          Authorization:
+            `Bearer ${SERVICE_KEY}`
+        }
+      }
+    );
+
+  const [listing] =
+    await listingRes
+      .json()
+      .catch(() => []);
+
+  if (
+    !listing ||
+    listing.billing_model !==
+      "monthly" ||
+    listing.billing_reference !==
+      reference
+  ) {
+    return fail(
+      "listing"
+    );
+  }
+
+  // Extend an existing active billing period rather
+  // than throwing away any remaining paid time.
+  const now =
+    new Date();
+
+  const baseDate =
+    listing.billing_paid_until &&
+    new Date(
+      listing.billing_paid_until
+    ).getTime() >
+      now.getTime()
+      ? new Date(
+          listing.billing_paid_until
+        )
+      : now;
+
+  const paidUntil =
+    addOneCalendarMonth(
+      baseDate
+    );
+
+  // IMPORTANT:
+  // billing_reference must match the payment being
+  // verified. This prevents the same payment from
+  // accidentally activating a different listing.
+  const updateRes =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(
+        listingId
+      )}&vendor_id=eq.${encodeURIComponent(
+        vendorId
+      )}&billing_reference=eq.${encodeURIComponent(
+        reference
+      )}`,
+      {
+        method: "PATCH",
+
+        headers: {
+          apikey:
+            SERVICE_KEY,
+
+          Authorization:
+            `Bearer ${SERVICE_KEY}`,
+
+          "Content-Type":
+            "application/json",
+
+          Prefer:
+            "return=minimal"
+        },
+
+        body: JSON.stringify({
+          status:
+            "active",
+
+          billing_status:
+            "active",
+
+          billing_paid_until:
+            paidUntil.toISOString(),
+
+          // Clear the one-time payment reference
+          // after successful activation.
+          billing_reference:
+            null
+        })
+      }
+    );
+
+  if (!updateRes.ok) {
+    return fail(
+      "activation"
+    );
+  }
+
+  // Send the vendor back to Levromart with enough
+  // information for the frontend to refresh the
+  // listing immediately.
+  return res
+    .writeHead(
+      302,
+      {
+        Location:
+          `${base}/?listingPaid=1&kind=${encodeURIComponent(
+            kind
+          )}&id=${encodeURIComponent(
+            listingId
+          )}&reference=${encodeURIComponent(
+            reference
+          )}`
+      }
+    )
+    .end();
+}
+
+
+/* =========================================================
+   CALENDAR MONTH HELPER
+   ========================================================= */
+
+function addOneCalendarMonth(
+  date
+) {
+  const d =
+    new Date(date);
+
+  const originalDay =
+    d.getDate();
+
+  // Move to the first day before changing month.
+  // This prevents JavaScript's date overflow problem
+  // for dates such as January 31 -> March 3.
   d.setDate(1);
-  d.setMonth(d.getMonth() + 1);
-  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  d.setDate(Math.min(originalDay, lastDay));
+
+  d.setMonth(
+    d.getMonth() + 1
+  );
+
+  const lastDay =
+    new Date(
+      d.getFullYear(),
+      d.getMonth() + 1,
+      0
+    ).getDate();
+
+  d.setDate(
+    Math.min(
+      originalDay,
+      lastDay
+    )
+  );
+
   return d;
 }
