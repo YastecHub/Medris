@@ -12278,6 +12278,13 @@ function dedupeConversationRows(rows) {
   const identity = (c) => {
     const stable = c.other_user_id || c.other_id || c.other_party_id || c.participant_id;
     if (stable) return `id:${stable}`;
+    const meId = session?.user?.id;
+    // list_my_conversations may expose the vendor id rather than the vendor's
+    // user id. For a buyer, the vendor id is the stable counterpart; for a
+    // vendor, the buyer id is the stable counterpart. This collapses legacy
+    // duplicate threads without merging unrelated people.
+    if (c.vendor_id && meId && String(c.buyer_id) === String(meId)) return `vendor:${c.vendor_id}`;
+    if (c.buyer_id && meId && String(c.vendor_id) === String(vendor?.id)) return `buyer:${c.buyer_id}`;
     if (c.vendor_id && c.buyer_id) return `pair:${c.buyer_id}|${c.vendor_id}`;
     const name = String(c.other_name || "").trim().toLowerCase();
     const avatar = String(c.other_avatar || "").trim();
@@ -16426,11 +16433,13 @@ async function renderVendorProducts() {
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   vendor = v;
 
-  const [{ data: products }, { data: orderItems }, { data: regionRows }] = await Promise.all([
+  const [{ data: allVendorProducts }, { data: orderItems }, { data: regionRows }] = await Promise.all([
     sb.from("products").select("*, category:categories(name)").eq("vendor_id", v.id).order("created_at", { ascending: false }),
     sb.from("order_items").select("product_id, quantity, unit_price, order:orders!inner(status, vendor_id)").eq("order.vendor_id", v.id),
     sb.rpc("get_vendor_product_regions", { p_vendor_id: v.id }),
   ]);
+  const products = (allVendorProducts || []).filter((p) => p.status !== "removed");
+  const removedProducts = (allVendorProducts || []).filter((p) => p.status === "removed");
   // Already sorted order_count desc per product by the RPC -- [0] of each
   // group is that product's single busiest region.
   const regionsByProduct = {};
@@ -16450,15 +16459,26 @@ async function renderVendorProducts() {
   });
   window.__vendorPendingProductIds = pendingProductIds;
 
-  let html = `<div class="flex" style="justify-content:space-between;">
+  let html = `<div class="vendor-products-heading">
     <h2>My Products</h2>
-    <div class="flex">
+    <div class="vendor-products-heading-actions">
       <button class="btn btn-sm ${vendorProductsView === "grid" ? "" : "btn-outline"}" onclick="toggleVendorProductsView('grid')"><i class="fa-solid fa-grip"></i> Grid</button>
       <button class="btn btn-sm ${vendorProductsView === "table" ? "" : "btn-outline"}" onclick="toggleVendorProductsView('table')"><i class="fa-solid fa-table-list"></i> Inventory</button>
-      <button class="btn" onclick="openAddProductModal()">+ Add product</button>
+      <button class="btn" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add product</button>
+      <div class="vendor-products-menu-wrap">
+        <button type="button" class="icon-btn vendor-products-menu-btn" aria-label="More product options" title="More product options" onclick="toggleVendorProductsMenu(event)"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+        <div id="vendorProductsMenu" class="vendor-products-menu hidden">
+          <button type="button" onclick="toggleVendorDiscarded(event)"><i class="fa-solid fa-trash-can"></i> Discarded items <span>${removedProducts.length}</span></button>
+        </div>
+      </div>
     </div>
   </div>`;
   if (v.verification_status !== "verified") html += `<p class="muted">Products won't appear publicly until your vendor account is verified.</p>`;
+
+  html += `<div id="vendorDiscardedPanel" class="vendor-discarded-panel hidden">
+    <div class="vendor-discarded-head"><div><strong>Discarded items</strong><span class="muted">Products removed from your live catalogue stay here when order history prevents permanent deletion.</span></div><button type="button" class="icon-btn" aria-label="Close discarded items" onclick="toggleVendorDiscarded(event,false)"><i class="fa-solid fa-xmark"></i></button></div>
+    ${removedProducts.length ? `<div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-name="${esc((p.name||'').toLowerCase())}"><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
+  </div>`;
 
   if (!products || products.length === 0) { html += `<div class="empty-state">No products yet.</div>`; return html; }
 
@@ -16519,16 +16539,15 @@ async function renderVendorProducts() {
       html += `<div class="card" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}">
         <div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
         <h4 style="margin:0.5rem 0 0.2rem;">${esc(p.name)}</h4>
-        <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.quantity_available}/${p.quantity_total} available`} · ${p.status}</p>
+        <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.quantity_available}/${p.quantity_total} available`} · ${p.status}${p.billing_model === "monthly" && p.billing_paid_until ? ` · ${new Date(p.billing_paid_until).getTime() > Date.now() ? `paid until ${new Date(p.billing_paid_until).toLocaleDateString("en-GB", {day:"numeric",month:"short",year:"numeric"})}` : "subscription expired"}` : ""}</p>
         <p class="muted" style="font-size:0.8rem;"><i class='fa-solid fa-eye'></i> ${p.view_count || 0} views · <i class='fa-solid fa-heart'></i> ${favCount} saved · <i class="fa-solid fa-sack-dollar"></i> ${naira(revenueByProduct[p.id] || 0)}</p>
         ${topRegion ? `<p class="muted" style="font-size:0.8rem;"><i class="fa-solid fa-map-location-dot"></i> Sells best in <a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count} order${topRegion.order_count === 1 ? "" : "s"})</a></p>` : ""}
         ${hasPendingOrder ? `<p class="muted" style="font-size:0.8rem;color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
-        <div class="flex">
+        <div class="vendor-product-actions">
           <button class="btn btn-sm" onclick="openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
           ${p.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setProductStatus('${p.id}','paused')">Pause</button>` : ""}
-          ${p.status === "paused" ? (p.billing_status === "pending_payment" && p.billing_model === "monthly" ? `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000 to activate</button>` : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
-          ${p.status !== "removed" ? `<button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>` : ""}
-          ${p.status === "removed" ? `<button class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class='fa-solid fa-trash-can'></i> Delete completely</button>` : ""}
+          ${p.status === "paused" ? (p.billing_model === "monthly" ? (p.billing_status === "active" && p.billing_paid_until && new Date(p.billing_paid_until).getTime() > Date.now() ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Resume</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-credit-card"></i> ${p.billing_status === "pending_payment" ? "Pay ₦1,000 to activate" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
+          <button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>
         </div>
       </div>`;
     });
@@ -17041,18 +17060,51 @@ async function removeProduct(id) {
   }
   if (await showConfirmDialog("Remove this listing? It will no longer be visible to buyers.", { title: "Remove listing", okLabel: "Remove", danger: true })) setProductStatus(id, "removed");
 }
+function toggleVendorProductsMenu(event) {
+  event?.stopPropagation?.();
+  byId("vendorProductsMenu")?.classList.toggle("hidden");
+}
+function toggleVendorDiscarded(event, force) {
+  event?.stopPropagation?.();
+  const panel = byId("vendorDiscardedPanel");
+  const menu = byId("vendorProductsMenu");
+  if (!panel) return;
+  const open = typeof force === "boolean" ? force : panel.classList.contains("hidden");
+  panel.classList.toggle("hidden", !open);
+  menu?.classList.add("hidden");
+  if (open) panel.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+async function restoreProduct(id) {
+  const { data: p, error: readErr } = await sb.from("products").select("id,name,status,billing_model,billing_status,billing_paid_until").eq("id", id).eq("vendor_id", vendor.id).maybeSingle();
+  if (readErr || !p) { showToast("That discarded product could not be found.", "error"); return; }
+  if (p.billing_model === "monthly") {
+    const paidUntil = p.billing_paid_until ? new Date(p.billing_paid_until).getTime() : 0;
+    if (paidUntil <= Date.now()) {
+      const confirmed = await showConfirmDialog(`${p.name} needs a new ₦1,000 monthly listing payment before it can be restored. Continue to Paystack?`, { title:"Renew listing", okLabel:"Pay ₦1,000", danger:false });
+      if (!confirmed) return;
+      await startListingMonthlyPayment("product", id);
+      return;
+    }
+  }
+  const { error } = await sb.from("products").update({ status:"active", billing_status: p.billing_model === "monthly" ? "active" : p.billing_status }).eq("id", id).eq("vendor_id", vendor.id);
+  if (error) { showToast(error.message || "Could not restore this product.", "error"); return; }
+  showToast(`${p.name} restored to your live products.`, "success");
+  navigate("vendorProducts");
+}
 async function deleteProductCompletely(id) {
   if ((window.__vendorPendingProductIds || new Set()).has(id)) {
     showToast("This product has a pending order. It can't be deleted until that order is cleared.", "error");
     return;
   }
-  if (!(await showConfirmDialog("Delete this product completely? This can't be undone.", { title: "Delete completely", okLabel: "Delete", danger: true }))) return;
+  if (!(await showConfirmDialog("Delete this product completely? If order history prevents deletion, it will remain in Discarded items instead.", { title: "Delete permanently", okLabel: "Delete permanently", danger: true }))) return;
   const { error } = await sb.from("products").delete().eq("id", id).eq("vendor_id", vendor.id);
   if (error) {
-    showToast("Couldn't fully delete this. It has past order history on record, so it stays hidden as a removed listing instead.", "error");
+    await sb.from("products").update({ status:"removed", billing_status: "cancelled" }).eq("id", id).eq("vendor_id", vendor.id);
+    showToast("This product has past order history, so it was kept safely in Discarded items instead.", "error");
+    navigate("vendorProducts");
     return;
   }
-  showToast("Product deleted.", "success");
+  showToast("Product permanently deleted.", "success");
   navigate("vendorProducts");
 }
 
@@ -20198,6 +20250,10 @@ async function deleteAiConversation(id, evt) {
   // Deleting a chat must never close/collapse Levi. Keep the current surface
   // exactly where the user is. In history mode, simply refresh the list; in
   // normal mode, clear the deleted thread and show a fresh greeting.
+  if (wasHistory) {
+    panel?.classList.add("history-mode");
+    byId("aiChatHistoryToggleBtn")?.classList.add("active");
+  }
   if (currentAiConversationId === id) {
     currentAiConversationId = null;
     aiConversationCreatePromise = null;
@@ -21573,23 +21629,48 @@ async function resolveLeviProduct(target) {
   const q = rawTarget;
   if (!q) return { product: null, exact: false, empty: true };
 
-  // Use the same typo/word-aware database search used by the marketplace.
+  // Literal name lookup comes first. A broad/stale search index must never
+  // turn a fresh request such as "scarf" into the product that happened to be
+  // open a few turns earlier (for example Penny).
+  const words = q.split(/\s+/).filter(Boolean).slice(0, 8);
+  const phrase = words.join(" ");
+  const productSelect = "id,name,description,listing_type,sale_price,rental_rate,quantity_available,status,is_service,vendor:vendors(business_name)";
+  try {
+    const { data: byName, error: nameError } = await sb.from("products")
+      .select(productSelect)
+      .eq("status", "active")
+      .ilike("name", `%${phrase}%`)
+      .limit(12);
+    if (!nameError && byName?.length) {
+      const nq = normalize(q);
+      const ranked = [...byName].sort((a,b) => {
+        const an = normalize(a.name), bn = normalize(b.name);
+        const ae = an === nq ? 0 : an.startsWith(nq) ? 1 : 2;
+        const be = bn === nq ? 0 : bn.startsWith(nq) ? 1 : 2;
+        return ae - be;
+      });
+      return { product: ranked[0], matches: ranked, exact: normalize(ranked[0].name) === nq || ranked.length === 1 };
+    }
+  } catch (_) {}
+
+  // Use the same typo/word-aware database search used by the marketplace only
+  // after literal matching. Even here, prefer results whose names contain the
+  // current query before considering the RPC's relevance ranking.
   try {
     const { data: idRows, error: rpcError } = await sb.rpc("search_product_ids", { p_query: q });
-    const ids = (idRows || []).slice(0, 8).map((r) => r.id).filter(Boolean);
+    const ids = (idRows || []).slice(0, 12).map((r) => r.id).filter(Boolean);
     if (!rpcError && ids.length) {
       const { data: found, error } = await sb.from("products")
-        .select("id,name,listing_type,sale_price,rental_rate,quantity_available,status,is_service,vendor:vendors(business_name)")
+        .select(productSelect)
         .eq("status", "active").in("id", ids);
       if (!error && found?.length) {
         const ordered = [...found].sort((a,b) => ids.indexOf(a.id) - ids.indexOf(b.id));
-        return { product: ordered[0], matches: ordered, exact: ordered.length === 1 };
+        const direct = ordered.filter((p) => normalize(p.name).includes(normalize(q)));
+        const chosen = direct.length ? direct : ordered;
+        return { product: chosen[0], matches: chosen, exact: chosen.length === 1 && direct.length > 0 };
       }
     }
-  } catch (e) {}
-
-  const words = q.split(/\s+/).filter(Boolean).slice(0, 8);
-  const phrase = words.join(" ");
+  } catch (_) {}
   let query = sb.from("products")
     .select("id,name,listing_type,sale_price,rental_rate,quantity_available,status,is_service,vendor:vendors(business_name)")
     .eq("status", "active").limit(8);
@@ -27964,6 +28045,90 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   .storefront-profile .storefront-profile-actions .storefront-more-icon,
   .storefront-profile .storefront-profile-actions .ms-wrap > button{width:38px !important;height:38px !important;min-width:38px !important;min-height:38px !important;}
   .storefront-profile .storefront-profile-name{padding-right:6.4rem !important;}
+}
+
+/* Final product-management + overlay polish */
+.vendor-products-heading{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;}
+.vendor-products-heading h2{margin:0;}
+.vendor-products-heading-actions{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;}
+.vendor-products-menu-wrap{position:relative;display:inline-flex;}
+.vendor-products-menu-btn{width:42px!important;height:42px!important;min-width:42px!important;padding:0!important;border-radius:12px!important;}
+.vendor-products-menu{position:absolute;right:0;top:calc(100% + .35rem);z-index:5000;min-width:190px;padding:.3rem;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 16px 42px rgba(0,0,0,.16);}
+.vendor-products-menu.hidden{display:none!important;}
+.vendor-products-menu button{width:100%;display:flex;align-items:center;gap:.55rem;padding:.65rem .7rem;border:0;background:transparent;color:var(--text);border-radius:10px;font:inherit;text-align:left;cursor:pointer;}
+.vendor-products-menu button:hover{background:color-mix(in srgb,var(--primary) 8%,transparent);}
+.vendor-products-menu button span{margin-left:auto;color:var(--text-muted);font-size:.75rem;}
+.vendor-discarded-panel{margin:.8rem 0 1rem;padding:.8rem;border:1px solid color-mix(in srgb,var(--danger) 20%,var(--border));background:color-mix(in srgb,var(--danger) 3%,var(--card));border-radius:18px;scroll-margin-top:1rem;}
+.vendor-discarded-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.7rem;margin-bottom:.65rem;}
+.vendor-discarded-head>div{display:flex;flex-direction:column;gap:.18rem;}
+.vendor-discarded-head strong{font-size:.95rem;}
+.vendor-discarded-head .muted{font-size:.7rem;line-height:1.4;}
+.vendor-discarded-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.6rem;}
+.vendor-discarded-card{display:flex;gap:.65rem;align-items:center;padding:.55rem;border:1px solid var(--border);border-radius:14px;background:var(--card);min-width:0;}
+.vendor-discarded-card .product-img{width:76px;height:76px;flex:0 0 76px;border-radius:11px;overflow:hidden;background:var(--border);display:grid;place-items:center;}
+.vendor-discarded-card .product-img img{display:block;width:100%;height:100%;object-fit:cover;}
+.vendor-discarded-copy{min-width:0;display:flex;flex-direction:column;gap:.18rem;}
+.vendor-discarded-copy>strong{font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vendor-discarded-copy>span{font-size:.67rem;color:var(--text-muted);line-height:1.3;}
+.vendor-discarded-actions{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.35rem;}
+.vendor-discarded-actions .btn{margin:0!important;min-height:34px!important;padding:.42rem .58rem!important;font-size:.68rem!important;}
+.vendor-product-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin-top:.7rem!important;padding-top:.1rem;}
+.vendor-product-actions .btn{margin:0!important;}
+.vendor-products-toolbar{gap:.65rem!important;margin-top:1rem!important;}
+/* Search fields are hidden until their toolbar icon is tapped. No duplicate magnifying glass belongs inside these fields. */
+#app .browse-filter-toolbar>input#searchInput{display:none!important;grid-column:1/-1!important;grid-row:2!important;padding-left:1rem!important;}
+#app .browse-filter-toolbar.search-open>input#searchInput{display:block!important;}
+#app .browse-filter-toolbar>input#searchInput::-webkit-search-cancel-button{display:block;}
+#app .vendors-directory-search{display:none!important;height:0!important;overflow:visible!important;margin:0!important;}
+#app .vendors-directory-search.open{display:block!important;height:auto!important;margin:.55rem 0 .7rem!important;}
+#app .vendors-directory-search input#vendorSearchInput{padding-left:1rem!important;}
+#app .orders-filter-search-row{display:flex!important;align-items:center!important;gap:.5rem!important;position:relative!important;z-index:80!important;}
+#app .orders-filter-search-row .order-filters-wrap{flex:1 1 auto!important;min-width:0!important;}
+#app .orders-filter-search-row .order-search-wrap{flex:0 0 44px!important;width:44px!important;margin:0!important;}
+#app .orders-filter-search-row .order-search-wrap.open{flex:1 1 auto!important;width:auto!important;}
+#app .order-search-wrap .order-history-search{padding-left:1rem!important;}
+#app .order-search-wrap.open .order-search-toggle{display:none!important;}
+#app .order-list-view-controls{justify-content:flex-end!important;margin:.45rem 0 .35rem!important;}
+#app .order-view-icon{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;padding:0!important;border-radius:9px!important;}
+/* The global sheets always sit above search and page content. */
+#levromartHeaderSearchDock{z-index:90000!important;}
+#profilePanel,#notifPanel,#settingsPanel{z-index:100000!important;position:fixed!important;}
+.drawer-backdrop{z-index:99990!important;}
+#profilePanel.open,#notifPanel.open,#settingsPanel.open{z-index:100000!important;}
+#profilePanel.open~#levromartHeaderSearchDock,#notifPanel.open~#levromartHeaderSearchDock{z-index:90000!important;}
+/* Storefront hierarchy: follow/alerts/more at top-right; message/call circles beside name. */
+.storefront-profile .storefront-avatar,.storefront-profile .storefront-avatar-button{width:88px!important;height:88px!important;aspect-ratio:1/1!important;border-radius:50%!important;object-fit:cover!important;}
+.storefront-profile .storefront-avatar-row{min-height:66px!important;display:block!important;position:relative!important;}
+.storefront-profile .storefront-avatar-row .storefront-avatar{position:absolute!important;left:0!important;bottom:0!important;margin:0!important;}
+.storefront-profile .storefront-top-actions{position:absolute!important;right:0!important;top:.45rem!important;display:flex!important;align-items:center!important;gap:.35rem!important;flex-wrap:nowrap!important;z-index:50!important;}
+.storefront-profile .storefront-top-actions .storefront-follow-wrap{display:flex!important;align-items:center!important;gap:.35rem!important;}
+.storefront-profile .storefront-top-actions .follow-btn{min-width:104px!important;height:40px!important;min-height:40px!important;padding:.45rem .8rem!important;}
+.storefront-profile .storefront-top-actions .follow-settings-btn,.storefront-profile .storefront-top-actions .storefront-more-icon{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;padding:0!important;border-radius:50%!important;}
+.storefront-profile .storefront-top-actions .follow-settings-label{display:none!important;}
+.storefront-profile .storefront-name-row{display:flex!important;align-items:center!important;gap:.55rem!important;flex-wrap:wrap!important;margin-top:.15rem!important;}
+.storefront-profile .storefront-name-row .storefront-profile-name{margin:.15rem 0!important;padding:0!important;flex:1 1 auto!important;min-width:0!important;}
+.storefront-profile .storefront-name-actions{display:inline-flex!important;align-items:center!important;gap:.35rem!important;flex:0 0 auto!important;}
+.storefront-profile .storefront-name-actions .storefront-social-icon{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;padding:0!important;border-radius:50%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;}
+.storefront-profile .storefront-name-actions .storefront-social-icon span{display:none!important;}
+.storefront-profile .follow-menu{width:min(270px,calc(100vw - 2rem))!important;max-height:48vh!important;padding:.45rem!important;overflow:auto!important;}
+.storefront-profile .follow-pref-row{min-height:34px!important;padding:.22rem .05rem!important;font-size:.67rem!important;}
+.storefront-profile .follow-pref-row input[type=checkbox]{width:16px!important;height:16px!important;margin:0!important;}
+.storefront-profile .follow-menu strong{font-size:.72rem!important;margin-bottom:.25rem!important;}
+.storefront-profile .follow-menu small{font-size:.62rem!important;margin-top:.35rem!important;}
+.storefront-profile .follow-mute-grid{grid-template-columns:repeat(3,1fr)!important;gap:.25rem!important;margin-top:.25rem!important;}
+.storefront-profile .follow-mute-grid button{min-height:28px!important;padding:.28rem .18rem!important;font-size:.58rem!important;border-radius:8px!important;}
+@media(max-width:620px){
+  .vendor-products-heading-actions{width:100%;}
+  .vendor-products-heading-actions>.btn{flex:1 1 auto;}
+  .vendor-products-menu-wrap{margin-left:auto;}
+  .storefront-profile .storefront-avatar,.storefront-profile .storefront-avatar-button{width:76px!important;height:76px!important;}
+  .storefront-profile .storefront-avatar-row{min-height:62px!important;}
+  .storefront-profile .storefront-top-actions{top:.35rem!important;right:0!important;gap:.25rem!important;}
+  .storefront-profile .storefront-top-actions .follow-btn{min-width:92px!important;height:38px!important;min-height:38px!important;padding:.4rem .62rem!important;font-size:.72rem!important;}
+  .storefront-profile .storefront-top-actions .follow-settings-btn,.storefront-profile .storefront-top-actions .storefront-more-icon{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;}
+  .storefront-profile .storefront-name-row{gap:.35rem!important;align-items:center!important;}
+  .storefront-profile .storefront-name-row .storefront-profile-name{font-size:1.28rem!important;flex:1 1 calc(100% - 86px)!important;}
+  .storefront-profile .storefront-name-actions .storefront-social-icon{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;}
 }
 
 </style>
