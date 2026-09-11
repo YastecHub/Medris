@@ -34,6 +34,9 @@ module.exports = async function handler(req, res) {
     if (body.action === "create-subaccount") return createSubaccount(body, res);
     if (body.action === "pay-commission") return payCommission(body, res, origin);
     if (body.action === "setup-monthly-billing") return setupMonthlyBilling(body, res, origin);
+    if (body.action === "prepare-listing-payment") return prepareListingPayment(req, res, body, origin);
+    if (body.action === "verify-listing-payment") return verifyListingPayment(req, res, body);
+    if (body.action === "consume-listing-payment") return consumeListingPayment(req, res, body);
     if (body.action === "pay-listing") return startListingPayment(req, res, body);
 
     res.status(400).json({ error: "Unknown payment action" });
@@ -208,7 +211,94 @@ async function setupMonthlyBilling({ accessToken }, res, origin) {
 }
 
 // ---------------------------------------------------------------------------
-// Individual ₦1,000 listing activation/renewal.
+// New-listing payment flow. The product/package is NOT inserted into the
+// catalogue before payment. We create only a payment intent, then the browser
+// saves the draft after Paystack confirms the ₦1,000 payment.
+// ---------------------------------------------------------------------------
+async function authenticateUser(accessToken) {
+  const SUPABASE_URL = env("SUPABASE_URL");
+  const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` } });
+  const me = await r.json().catch(() => null);
+  return r.ok && me?.id ? me : null;
+}
+
+async function getOwnedVendor(userId) {
+  const SUPABASE_URL = env("SUPABASE_URL");
+  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/vendors?user_id=eq.${encodeURIComponent(userId)}&select=id,user_id,business_name&limit=1`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
+  const rows = await r.json().catch(() => []);
+  return rows?.[0] || null;
+}
+
+async function prepareListingPayment(req, res, body, origin) {
+  const SUPABASE_URL = env("SUPABASE_URL");
+  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+  const PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY");
+  if (!body?.accessToken || !["product","package"].includes(body.kind)) return res.status(400).json({ error: "A valid listing type and signed-in session are required." });
+  const me = await authenticateUser(body.accessToken);
+  if (!me) return res.status(401).json({ error: "Your session expired. Please log in again." });
+  const ownVendor = await getOwnedVendor(me.id);
+  if (!ownVendor) return res.status(403).json({ error: "No vendor profile was found for this account." });
+  const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(me.id)}&select=email&limit=1`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
+  const [user] = await userRes.json().catch(() => []);
+  const email = user?.email || me.email;
+  if (!email) return res.status(400).json({ error: "Add an email address to your account before paying for a listing." });
+
+  const reference = `levro_new_listing_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
+  const intentRes = await fetch(`${SUPABASE_URL}/rest/v1/listing_payment_intents`, {
+    method:"POST",
+    headers:{ apikey:SERVICE_KEY, Authorization:`Bearer ${SERVICE_KEY}`, "Content-Type":"application/json", Prefer:"return=minimal" },
+    body:JSON.stringify({ reference, user_id:me.id, vendor_id:ownVendor.id, kind:body.kind, amount_naira:MONTHLY_LISTING_NAIRA, status:"pending" })
+  });
+  if (!intentRes.ok) return res.status(500).json({ error:"Could not prepare the listing payment." });
+
+  const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
+    method:"POST",
+    headers:{ Authorization:`Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type":"application/json" },
+    body:JSON.stringify({
+      email, amount:MONTHLY_LISTING_KOBO, currency:"NGN", reference,
+      callback_url:`${origin}/?listingPayment=return&reference=${encodeURIComponent(reference)}&kind=${encodeURIComponent(body.kind)}`,
+      metadata:{ purpose:"levromart_listing_monthly", kind:body.kind, vendor_id:ownVendor.id, user_id:me.id, amount_naira:MONTHLY_LISTING_NAIRA }
+    })
+  });
+  const initJson=await initRes.json().catch(()=>({}));
+  if(!initRes.ok || !initJson.status || !initJson.data?.authorization_url){
+    await fetch(`${SUPABASE_URL}/rest/v1/listing_payment_intents?reference=eq.${encodeURIComponent(reference)}`,{method:"PATCH",headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({status:"failed"})}).catch(()=>{});
+    return res.status(502).json({error:initJson.message||"Paystack could not start the listing payment."});
+  }
+  return res.status(200).json({authorization_url:initJson.data.authorization_url,reference,amount:MONTHLY_LISTING_NAIRA});
+}
+
+async function verifyListingPayment(req, res, body) {
+  const SUPABASE_URL=env("SUPABASE_URL"); const SERVICE_KEY=env("SUPABASE_SERVICE_ROLE_KEY"); const PAYSTACK_SECRET_KEY=env("PAYSTACK_SECRET_KEY");
+  if(!body?.accessToken||!body?.reference) return res.status(400).json({error:"reference and accessToken are required"});
+  const me=await authenticateUser(body.accessToken); if(!me)return res.status(401).json({error:"Your session expired. Please log in again."});
+  const intentRes=await fetch(`${SUPABASE_URL}/rest/v1/listing_payment_intents?reference=eq.${encodeURIComponent(body.reference)}&user_id=eq.${encodeURIComponent(me.id)}&select=* &limit=1`.replace("select=* &","select=*&"),{headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`}});
+  const [intent]=await intentRes.json().catch(()=>[]);
+  if(!intent)return res.status(404).json({error:"Listing payment intent not found."});
+  if(intent.status==='consumed')return res.status(409).json({error:"This listing payment has already been used."});
+  const verifyRes=await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(body.reference)}`,{headers:{Authorization:`Bearer ${PAYSTACK_SECRET_KEY}`}});
+  const verifyJson=await verifyRes.json().catch(()=>({})); const tx=verifyJson?.data; const meta=tx?.metadata||{};
+  const valid=verifyRes.ok&&verifyJson.status&&tx?.status==='success'&&Number(tx.amount)===MONTHLY_LISTING_KOBO&&meta?.purpose==='levromart_listing_monthly'&&String(meta.user_id)===String(me.id)&&String(meta.vendor_id)===String(intent.vendor_id)&&String(meta.kind)===String(intent.kind);
+  if(!valid)return res.status(400).json({status:tx?.status||"failed",error:"The ₦1,000 listing payment could not be verified."});
+  if(intent.status!=='paid'){
+    await fetch(`${SUPABASE_URL}/rest/v1/listing_payment_intents?reference=eq.${encodeURIComponent(body.reference)}&user_id=eq.${encodeURIComponent(me.id)}`,{method:"PATCH",headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({status:"paid",paid_at:new Date().toISOString()})});
+  }
+  return res.status(200).json({status:"success",kind:intent.kind,vendor_id:intent.vendor_id,reference:intent.reference});
+}
+
+async function consumeListingPayment(req,res,body){
+  const SUPABASE_URL=env("SUPABASE_URL"); const SERVICE_KEY=env("SUPABASE_SERVICE_ROLE_KEY");
+  if(!body?.accessToken||!body?.reference||!body?.listingId)return res.status(400).json({error:"reference, listingId and accessToken are required"});
+  const me=await authenticateUser(body.accessToken); if(!me)return res.status(401).json({error:"Your session expired. Please log in again."});
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/listing_payment_intents?reference=eq.${encodeURIComponent(body.reference)}&user_id=eq.${encodeURIComponent(me.id)}&status=eq.paid`,{method:"PATCH",headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({status:"consumed",listing_id:body.listingId,consumed_at:new Date().toISOString()})});
+  const rows=await r.json().catch(()=>[]); if(!r.ok||!rows?.length)return res.status(409).json({error:"This listing payment has already been used or could not be claimed."});
+  return res.status(200).json({ok:true});
+}
+
+// ---------------------------------------------------------------------------
+// Existing listing renewal flow (for listings that already exist).
 // ---------------------------------------------------------------------------
 async function startListingPayment(req, res, body) {
   const SUPABASE_URL = env("SUPABASE_URL");
