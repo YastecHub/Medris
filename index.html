@@ -6344,10 +6344,10 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <div id="resetPasswordError" class="error-text hidden"></div>
     <div id="currentPasswordWrap" class="hidden">
       <label>Current password</label>
-      <input type="password" id="currentPasswordInput" placeholder="Your current password" autocomplete="current-password" />
+      <div class="password-field-wrap"><input type="password" id="currentPasswordInput" placeholder="Your current password" autocomplete="current-password" /><button type="button" class="password-visibility-toggle" data-password-target="currentPasswordInput" aria-label="Show current password" title="Show password"><i class="fa-solid fa-eye"></i></button></div>
     </div>
     <label>New password</label>
-    <input type="password" id="newPasswordInput" placeholder="New password" autocomplete="new-password" />
+    <div class="password-field-wrap"><input type="password" id="newPasswordInput" placeholder="New password" autocomplete="new-password" /><button type="button" class="password-visibility-toggle" data-password-target="newPasswordInput" aria-label="Show new password" title="Show password"><i class="fa-solid fa-eye"></i></button></div>
     <div class="flex" style="justify-content:flex-end;margin-top:0.8rem;">
       <button class="btn btn-sm btn-outline hidden" id="resetPasswordCancel" onclick="closeChangePasswordModal()">Cancel</button>
       <button class="btn btn-sm" id="resetPasswordSubmit" onclick="submitNewPassword()">Set password</button>
@@ -7201,6 +7201,7 @@ let editingProductId = null;
 let currentProductDetail = null; // whatever renderProductDetail last loaded, reused by buyNow/confirmRental for the confirmation dialog
 let authMode = "login"; // 'login' | 'register'
 let notifCount = 0;
+let requestOfferBadgeCount = 0;
 let vendorPendingOrderCount = 0;
 let buyerPendingOrderCount = 0;
 // Only orders still awaiting the vendor's own action (accept, then hand
@@ -7381,6 +7382,11 @@ document.addEventListener("click", (event) => {
       }
     }
   });
+  const pickerTarget = event.target?.closest?.(".chat-bubble[data-msg-id]");
+  if (pickerTarget) {
+    const openPicker = document.querySelector(`.reaction-picker[data-for="${CSS.escape(String(pickerTarget.dataset.msgId || ""))}"]`);
+    if (openPicker) return;
+  }
   document.querySelectorAll(".reaction-picker").forEach((p) => p.remove());
 });
 // Small "i" button + floating bubble, for swapping a paragraph of helper
@@ -8357,7 +8363,7 @@ async function setAiDataConsent(value) {
   }
   showToast(value ? "Thanks, your chats may now be reviewed to improve Levi." : "Turned off. Your chats stay private again.", "success");
 }
-function toggleNotifPanel() { notifViewMode = "inbox"; exitNotifSelectMode(false); openDrawer("notifPanel"); renderNotifPanel(); }
+function toggleNotifPanel() { requestOfferBadgeCount = 0; updateRequestOfferBadge(); try { sessionStorage.setItem("levromart-request-offers-seen-at", new Date().toISOString()); } catch (_) {} notifViewMode = "inbox"; exitNotifSelectMode(false); openDrawer("notifPanel"); renderNotifPanel(); }
 function toggleProfilePanel() { openDrawer("profilePanel"); }
 
 function setupDrawerSwipe(drawer, side) { return; }
@@ -8567,6 +8573,12 @@ let notifViewMode = "inbox"; // inbox | archived | trash
 let notifSelectMode = false;
 let notifSelectedIds = new Set();
 
+function updateRequestOfferBadge() {
+  document.querySelectorAll('[data-profile-label="Requests"] .profile-request-badge').forEach(el => {
+    if (requestOfferBadgeCount > 0) { el.textContent = requestOfferBadgeCount > 9 ? "9+" : String(requestOfferBadgeCount); el.classList.remove("hidden"); } else el.classList.add("hidden");
+  });
+}
+
 async function refreshNotifications(renderPanel = true) {
   if (!session || !profile) {
     notifCount = 0;
@@ -8583,9 +8595,11 @@ async function refreshNotifications(renderPanel = true) {
   const suggestionQ = profile?.role === "admin" ? sb.rpc("get_platform_suggestions") : vendor ? sb.rpc("get_vendor_suggestions") : Promise.resolve({ data: [] });
   const conversationsQ = sb.rpc("list_my_conversations");
   const cartQ = profile?.role !== "admin" ? sb.from("cart_items").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve({ count: 0 });
+  let requestSeenAt = ""; try { requestSeenAt = sessionStorage.getItem("levromart-request-offers-seen-at") || ""; } catch (_) {}
+  const requestOfferQ = profile?.role !== "admin" ? sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("type", "new_offer").eq("read", false).eq("archived", false).is("deleted_at", null).gt("created_at", requestSeenAt || "1970-01-01T00:00:00.000Z") : Promise.resolve({ count: 0 });
 
-  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes] = await Promise.all([
-    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ
+  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes] = await Promise.all([
+    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ
   ]);
 
   notifCount = (unreadRes?.data || []).length;
@@ -8599,6 +8613,8 @@ async function refreshNotifications(renderPanel = true) {
   unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => x.status === "new").length;
   unreadMessageCount = (conversationsRes?.data || []).reduce((sum, c) => sum + (c.unread_count > 0 ? 1 : 0), 0);
   buyerCartCount = profile?.role !== "admin" ? (cartRes?.count || 0) : 0;
+  requestOfferBadgeCount = Number(requestOfferRes?.count || 0);
+  updateRequestOfferBadge();
   updateCartFab();
 
   sb.from("messages").update({ delivered_at: new Date().toISOString() }).is("delivered_at", null).neq("sender_id", session.user.id).then(() => {}).catch(() => {});
@@ -8668,7 +8684,7 @@ async function renderNotifPanel() {
         <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
           ${notifSelectMode ? `<span class="notif-select-check"><i class="fa-solid fa-check"></i></span>` : ""}
           ${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;" />` : n.actor_name ? `<span class="avatar-circle" style="width:2.1rem;height:2.1rem;font-size:0.8rem;">${esc(initials(n.actor_name))}</span>` : `<i class='fa-solid fa-circle-info'></i>`}
-          <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
+          <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
         </button>
       </div>`).join("")
     : `<p class="muted" style="padding:0.4rem;">${emptyMsg}</p>`;
@@ -9291,7 +9307,7 @@ function updateAuthUI() {
     if (vendor && profile.role !== "admin") {
       links.push({ label: "My Shop", action: "navigate('vendorDashboard')" });
       links.push({ label: "Edit Business Profile", action: "navigate('vendorEditProfile')" });
-      links.push({ label: "Requests", action: "navigate('vendorRequests')" });
+      links.push({ label: `Requests${requestOfferBadgeCount > 0 ? ` <span class="badge danger profile-request-badge">${requestOfferBadgeCount > 9 ? "9+" : requestOfferBadgeCount}</span>` : ""}`, action: "navigate('vendorRequests')" });
     } else if (profile.role !== "admin") {
       links.push({ label: "My Orders", action: "navigate('buyerOrders')" });
       links.push({ label: "Request an item", action: "navigate('requestEquipment')" });
@@ -11952,8 +11968,8 @@ function productCardHtml(p) {
 // down a list of cards - matches the 1-5 star scale users already know.
 function ratingBadgeClass(rating) {
   const r = Number(rating);
-  if (r >= 4.5) return "success";
-  if (r >= 3.5) return "";
+  if (r >= 4.8) return "rating-five-star";
+  if (r >= 4.0) return "success";
   if (r >= 2.5) return "warning";
   return "danger";
 }
@@ -14868,6 +14884,7 @@ async function renderStorefront(vendorId) {
       <div class="storefront-avatar-row">
         ${logo}
         <div class="storefront-profile-actions storefront-top-actions">
+          ${isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-message-icon" type="button" aria-label="Messages" title="Messages" onclick="navigate('messages')"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
           ${!isOwnStorefront ? `<div class="storefront-follow-wrap" data-follow-vendor-id="${v.id}">
             <div class="storefront-follow-controls">
               <button type="button" class="btn btn-sm follow-btn ${followState?.[0]?.following ? "" : "btn-outline"}" aria-label="${followState?.[0]?.following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${followState?.[0]?.following ? "Unfollow vendor" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${followState?.[0]?.following ? "fa-check" : "fa-plus"}"></i> ${followState?.[0]?.following ? "Following" : "Follow"}</button>
@@ -14875,12 +14892,12 @@ async function renderStorefront(vendorId) {
             </div>
             <div class="follow-menu hidden" role="dialog" aria-label="Vendor notification preferences">
               <strong>Vendor notifications</strong>
-              <div class="follow-pref-row"><span>New listings</span><input type="checkbox" data-pref="notify_new_listing"></div>
-              <div class="follow-pref-row"><span>New services</span><input type="checkbox" data-pref="notify_new_service"></div>
-              <div class="follow-pref-row"><span>New packages</span><input type="checkbox" data-pref="notify_new_package"></div>
-              <div class="follow-pref-row"><span>New varieties</span><input type="checkbox" data-pref="notify_new_variety"></div>
-              <div class="follow-pref-row"><span>Price changes</span><input type="checkbox" data-pref="notify_price_change"></div>
-              <div class="follow-pref-row"><span>Discounts</span><input type="checkbox" data-pref="notify_discount"></div>
+              <div class="follow-pref-row"><span>New listings</span><input type="checkbox" data-pref="notify_new_listing" ${followState?.[0]?.notify_new_listing !== false ? "checked" : ""}></div>
+              <div class="follow-pref-row"><span>New services</span><input type="checkbox" data-pref="notify_new_service" ${followState?.[0]?.notify_new_service !== false ? "checked" : ""}></div>
+              <div class="follow-pref-row"><span>New packages</span><input type="checkbox" data-pref="notify_new_package" ${followState?.[0]?.notify_new_package !== false ? "checked" : ""}></div>
+              <div class="follow-pref-row"><span>New varieties</span><input type="checkbox" data-pref="notify_new_variety" ${followState?.[0]?.notify_new_variety !== false ? "checked" : ""}></div>
+              <div class="follow-pref-row"><span>Price changes</span><input type="checkbox" data-pref="notify_price_change" ${followState?.[0]?.notify_price_change !== false ? "checked" : ""}></div>
+              <div class="follow-pref-row"><span>Discounts</span><input type="checkbox" data-pref="notify_discount" ${followState?.[0]?.notify_discount !== false ? "checked" : ""}></div>
               <small class="muted">Mute this vendor</small>
               <div class="follow-mute-grid">
                 <button type="button" data-mute="none">On</button><button type="button" data-mute="1h">1 hour</button><button type="button" data-mute="8h">8 hours</button><button type="button" data-mute="always" style="grid-column:1/-1;">Always</button>
@@ -14893,9 +14910,9 @@ async function renderStorefront(vendorId) {
       <div class="storefront-name-row">
         <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
         <div class="storefront-name-actions">
-          ${profile?.role !== "admin" ? `<button class="btn btn-sm storefront-social-icon" type="button" aria-label="Message vendor" title="Message vendor" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button>` : ""}
-          ${profile?.role !== "admin" && v.whatsapp_visible && v.whatsapp_number ? `<a class="btn btn-sm btn-outline storefront-social-icon storefront-whatsapp-icon" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener" aria-label="WhatsApp vendor" title="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></a>` : ""}
-          ${v.phone ? `<a class="btn btn-sm btn-outline storefront-social-icon" href="${telLink(v.phone)}" aria-label="Call vendor" title="Call vendor" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i><span>Call</span></a>` : ""}
+          ${!isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm storefront-social-icon" type="button" aria-label="Message vendor" title="Message vendor" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button>` : ""}
+          ${!isOwnStorefront && profile?.role !== "admin" && v.whatsapp_visible && v.whatsapp_number ? `<a class="btn btn-sm btn-outline storefront-social-icon storefront-whatsapp-icon" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener" aria-label="WhatsApp vendor" title="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></a>` : ""}
+          ${!isOwnStorefront && v.phone ? `<a class="btn btn-sm btn-outline storefront-social-icon" href="${telLink(v.phone)}" aria-label="Call vendor" title="Call vendor" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i><span>Call</span></a>` : ""}
         </div>
       </div>
       <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
@@ -16421,6 +16438,15 @@ function selectVendorLocationPreset(index){
   showToast((x.name||"Saved location")+" selected. Drag the pin to fine-tune or use the current-location action to update the active shop location.","info");
 }
 
+async function locateVendorMapOnly() {
+  try {
+    const loc = await getCurrentPositionOnce();
+    if (veMap) veMap.setView([loc.lat, loc.lng], Math.max(16, veMap.getZoom?.() || 16), { animate: true });
+    if (veMap && veMarker) veMarker.setLatLng([loc.lat, loc.lng]);
+    showToast("Map centered on your current location.", "info");
+  } catch (err) { showToast(err?.message || "Could not get your current location.", "error"); }
+}
+
 async function useMyLocationForVendor() {
   const btn = byId("veUseLocationBtn");
   if (!btn) return;
@@ -16507,6 +16533,12 @@ async function renderVendorProducts() {
   </div>`;
   if (v.verification_status !== "verified") html += `<p class="muted">Products won't appear publicly until your vendor account is verified.</p>`;
 
+  html += `<div class="vendor-products-unified-tabs" id="vendorProductsTypeTabs" aria-label="Listing type">
+    <button type="button" class="active" data-tab="products" onclick="switchVendorListingTab('products')"><i class="fa-solid fa-box"></i> Products</button>
+    <button type="button" data-tab="services" onclick="switchVendorListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button>
+    <button type="button" data-tab="packages" onclick="switchVendorListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button>
+  </div>`;
+
   html += `<div id="vendorDiscardedPanel" class="vendor-discarded-panel hidden">
     <div class="vendor-discarded-head"><div><strong>Discarded items</strong><span class="muted">Products removed from your live catalogue stay here when order history prevents permanent deletion.</span></div><button type="button" class="icon-btn" aria-label="Close discarded items" onclick="toggleVendorDiscarded(event,false)"><i class="fa-solid fa-xmark"></i></button></div>
     ${removedProducts.length ? `<div class="vendor-discarded-bulkbar"><label><input type="checkbox" id="discardedSelectAll" onchange="toggleAllDiscardedItems(this.checked)"> <span>Select all</span></label><span id="discardedSelectedCount" class="muted">0 selected</span><button type="button" class="btn btn-sm btn-danger" id="discardedBulkDeleteBtn" disabled onclick="deleteSelectedDiscardedItems()"><i class="fa-solid fa-trash-can"></i> Delete selected</button></div><div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-id="${esc(p.id)}" data-discarded-name="${esc((p.name||'').toLowerCase())}"><label class="discarded-select"><input type="checkbox" class="discarded-item-check" value="${esc(p.id)}" onchange="updateDiscardedSelection()" aria-label="Select ${esc(p.name)}"></label><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
@@ -16537,7 +16569,7 @@ async function renderVendorProducts() {
     </tr></thead><tbody>`;
     products.forEach((p, i) => {
       const topRegion = regionsByProduct[p.id]?.[0];
-      html += `<tr onclick="openEditProductModal('${p.id}')" style="cursor:pointer;" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc((p.category?.name || "").toLowerCase())}">
+      html += `<tr onclick="openEditProductModal('${p.id}')" style="cursor:pointer;" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc((p.category?.name || "").toLowerCase())}">
         <td>${esc(p.name)}</td>
         <td>${esc(p.category?.name || "Uncategorized")}</td>
         <td>${p.sale_price != null ? naira(p.sale_price) + servicePriceSuffix(p) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</td>
@@ -16567,7 +16599,7 @@ async function renderVendorProducts() {
       const favCount = favCountByProduct[p.id] ?? 0;
       const hasPendingOrder = pendingProductIds.has(p.id);
       const topRegion = regionsByProduct[p.id]?.[0];
-      html += `<div class="card" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}">
+      html += `<div class="card" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}">
         <div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
         <h4 style="margin:0.5rem 0 0.2rem;">${esc(p.name)}</h4>
         <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.quantity_available}/${p.quantity_total} available`} · ${p.status}${p.billing_model === "monthly" && p.billing_paid_until ? ` · ${new Date(p.billing_paid_until).getTime() > Date.now() ? `paid until ${new Date(p.billing_paid_until).toLocaleDateString("en-GB", {day:"numeric",month:"short",year:"numeric"})}` : "subscription expired"}` : ""}</p>
@@ -16575,8 +16607,8 @@ async function renderVendorProducts() {
         ${topRegion ? `<p class="muted" style="font-size:0.8rem;"><i class="fa-solid fa-map-location-dot"></i> Sells best in <a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count} order${topRegion.order_count === 1 ? "" : "s"})</a></p>` : ""}
         ${hasPendingOrder ? `<p class="muted" style="font-size:0.8rem;color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
         <div class="vendor-product-actions">
-          <button class="btn btn-sm" onclick="openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
-          ${p.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setProductStatus('${p.id}','paused')">Pause</button>` : ""}
+          <button class="btn btn-sm vendor-edit-action" onclick="openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
+          ${p.status === "active" ? `<button class="btn btn-sm vendor-pause-action" onclick="setProductStatus('${p.id}','paused')">Pause</button>` : ""}
           ${p.status === "paused" ? (p.billing_model === "monthly" ? (p.billing_status === "active" && p.billing_paid_until && new Date(p.billing_paid_until).getTime() > Date.now() ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Resume</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-credit-card"></i> ${p.billing_status === "pending_payment" ? "Pay ₦1,000 to activate" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
           <button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>
         </div>
@@ -16625,6 +16657,16 @@ function filterVendorProducts() {
   if (tbody && tbody.querySelector("[data-vp-name]")) {
     [...tbody.children].sort(compare).forEach(el => tbody.appendChild(el));
   }
+}
+
+function switchVendorListingTab(tab) {
+  tab = String(tab || "products");
+  document.querySelectorAll("#vendorProductsTypeTabs [data-listing-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.listingTab === tab));
+  if (tab === "packages") { navigate("vendorPackages"); return; }
+  document.querySelectorAll("#app [data-vp-kind]").forEach(el => el.classList.toggle("hidden", el.dataset.vpKind !== tab));
+  document.querySelectorAll("#app [data-vp-group]").forEach(group => group.classList.toggle("hidden", ![...group.querySelectorAll("[data-vp-kind]")].some(el => !el.classList.contains("hidden"))));
+  const table = document.querySelector("#app .data-table tbody");
+  if (table) [...table.children].forEach(row => row.classList.toggle("hidden", row.dataset.vpKind !== tab));
 }
 
 async function openAddProductModal() {
@@ -17061,23 +17103,30 @@ async function saveProduct() {
 
     if (!is_service) {
       variantDrafts = collectProductVariantDrafts(photos);
-      if (!isNewMonthlyListing) await saveProductVariants(savedProductId, variantDrafts);
     }
 
     if (isNewMonthlyListing) {
-      // Nothing has been inserted into public.products yet. The browser keeps
-      // the completed draft in sessionStorage while Paystack is open, and the
-      // row is created only after the server verifies the successful ₦1,000
-      // payment when the user returns.
-      const draft={kind:"product",vendor_id:vendor.id,fields:{...fields},photos,variantDrafts};
-      ["status","billing_status","billing_reference","billing_paid_until"].forEach(k=>delete draft.fields[k]);
-      const saved=await saveListingDraftServer(draft);
-      if(!saved?.id)throw new Error(saved?.error||"Could not save this listing draft.");
-      const pay=await payListingDraft(saved.id);
-      if(!pay)throw new Error("Monthly listing payment could not be started. Your draft has been saved under My Shop.");
-      closeProductModal();
+      // Create the listing immediately in a safe paused/pending-payment state.
+      // This is deliberately simpler than a browser-only draft: the listing
+      // now has a real database id before Paystack opens, so the payment
+      // callback/webhook can activate exactly this listing without relying on
+      // sessionStorage or a second client-side creation step.
+      const { data: pendingProduct, error: pendingError } = await sb.from("products").insert({
+        ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos,
+        status: "paused", billing_status: "pending_payment", billing_reference: null, billing_paid_until: null
+      }).select("id").single();
+      if (pendingError || !pendingProduct?.id) throw new Error(pendingError?.message || "Could not create the listing before payment.");
+      savedProductId = pendingProduct.id;
+      if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
+      const pay = await startListingMonthlyPayment("product", savedProductId);
+      if (!pay) {
+        showToast("Listing saved as paused. Pay ₦1,000 from My Shop to activate it.", "info");
+        closeProductModal();
+        navigate("vendorProducts", {}, false);
+      }
       return;
     }
+    if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
 
     closeProductModal();
     navigate("vendorProducts");
@@ -19529,7 +19578,7 @@ function exportFinancePdf() {
     </div>
     <table><thead><tr><th>Date</th><th>Customer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th></tr></thead>
     <tbody>${filtered.map((t) => `<tr><td>${new Date(t.created_at).toLocaleString()}</td><td>${esc(t.buyer_name || "")}</td><td>${esc(t.vendor_name || "")}</td><td>${esc((t.payment_type || "").replace("_", " "))}</td><td>${naira(t.amount)}</td><td>${esc(t.method || "")}</td><td>${esc(t.status || "")}</td><td>${naira(t.platform_cut)}</td></tr>`).join("")}</tbody></table>
-    <script>window.onload = () => window.print();<\/script>
+    ${"<scr"}ipt>window.onload = () => window.print();<\/script>
   </body></html>`);
   w.document.close();
 }
@@ -25978,12 +26027,15 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 
   // Unified My Shop listings page: products, services and packages in one screen.
   window.switchVendorListingTab=function(tab){
-    document.querySelectorAll('[data-vendor-listing-section]').forEach(el=>el.classList.toggle('hidden',tab!=='all'&&el.dataset.vendorListingSection!==tab));
+    tab=String(tab||'products');
+    if(tab==='all')tab='products';
+    document.querySelectorAll('[data-vendor-listing-section]').forEach(el=>el.classList.toggle('hidden',tab==='packages'?el.dataset.vendorListingSection!=='packages':el.dataset.vendorListingSection==='packages'));
     document.querySelectorAll('.vendor-products-unified-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
-    document.querySelectorAll('[data-vendor-listing-section="products"] .card').forEach(card=>card.classList.toggle('hidden',tab==='services'));
-    document.querySelectorAll('[data-vendor-listing-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab==='products'));
-    document.querySelectorAll('[data-vendor-listing-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab==='services'));
-    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>{if(tab==='packages')g.classList.add('hidden');else g.classList.remove('hidden');});
+    document.querySelectorAll('[data-vendor-listing-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab!=='services'));
+    document.querySelectorAll('[data-vendor-listing-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab!=='products'));
+    document.querySelectorAll('[data-vp-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab!=='services'));
+    document.querySelectorAll('[data-vp-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab!=='products'));
+    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>{if(tab==='packages')g.classList.add('hidden');});
     try{localStorage.setItem('levromart-vendor-listing-tab',tab)}catch(_){}
   }
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
@@ -26025,12 +26077,12 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
         host.appendChild(section);
       }catch(_){ }
     }
-    const remembered=(()=>{try{return localStorage.getItem('levromart-vendor-listing-tab')||'all'}catch(_){return'all'}})();
+    const remembered=(()=>{try{return localStorage.getItem('levromart-vendor-listing-tab')||'products'}catch(_){return'all'}})();
     window.switchVendorListingTab(remembered);
     decorateCommissionBoxes();
   }
 
-  function patchVendorProductsMarkup(){const btn=byId('saveProductDraftBtn'),sel=byId('prodBillingModel'),service=byId('prodIsService');if(btn){const show=!service?.checked&&sel?.value==='monthly'&&!editingProductId;btn.classList.toggle('hidden',!show)} }
+  function patchVendorProductsMarkup(){const btn=byId('saveProductDraftBtn'),sel=byId('prodBillingModel'),service=byId('prodIsService');if(btn){const show=false;btn.classList.toggle('hidden',true)} }
   document.addEventListener('change',e=>{if(e.target?.id==='prodBillingModel'||e.target?.id==='prodIsService')patchVendorProductsMarkup()},true);
   const observer=new MutationObserver(()=>{clearTimeout(window.__levroFinalUxTimer2);window.__levroFinalUxTimer2=setTimeout(()=>{bindTopButton();patchVendorProductsMarkup();renderUnifiedEnhancements()},120)});observer.observe(document.body,{childList:true,subtree:true});
   setTimeout(()=>{bindTopButton();patchVendorProductsMarkup();renderUnifiedEnhancements()},350);
@@ -26042,8 +26094,34 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   setTimeout(autoWarmBuyerLocation,500);
 
   // Add a Locate Me button to the vendor profile map.
-  function addVendorMapLocate(){const map=byId('veLocationMap');if(!map||map.querySelector('.vendor-map-locate-control'))return;const b=document.createElement('button');b.type='button';b.className='vendor-map-locate-control';b.title='Use my current location';b.setAttribute('aria-label','Use my current location');b.innerHTML='<i class="fa-solid fa-location-crosshairs"></i>';b.onclick=()=>useMyLocationForVendor?.();map.appendChild(b)}
+  function addVendorMapLocate(){const map=byId('veLocationMap');if(!map||map.querySelector('.vendor-map-locate-control'))return;const b=document.createElement('button');b.type='button';b.className='vendor-map-locate-control';b.title='Use my current location';b.setAttribute('aria-label','Use my current location');b.innerHTML='<i class="fa-solid fa-location-crosshairs"></i>';b.onclick=()=>locateVendorMapOnly?.();map.appendChild(b)}
   new MutationObserver(addVendorMapLocate).observe(document.body,{childList:true,subtree:true});setTimeout(addVendorMapLocate,500);
+})();
+</script>
+<script id="levromart-phase1-commission-countdown-runtime">
+(function(){
+  let lastVendorId="", refreshTimer=0, countdownTimer=0, running=false;
+  function updateText(due){document.querySelectorAll('.levro-commission-deadline').forEach(el=>{if(!due){el.textContent='No active deadline';return;}const ms=new Date(due).getTime()-Date.now();if(ms<=0){el.textContent='Due now';return;}const days=Math.floor(ms/86400000),hours=Math.floor((ms%86400000)/3600000);el.textContent=days?days+'d '+hours+'h left':hours?hours+'h left':'Less than 1h left';});}
+  async function refresh(){
+    if(running||typeof sb==='undefined'||typeof vendor==='undefined'||!vendor?.id)return;
+    const els=[...document.querySelectorAll('.levro-commission-deadline')]; if(!els.length)return;
+    running=true; const id=String(vendor.id); lastVendorId=id;
+    try{
+      let data=null;
+      try{const r=await sb.rpc('get_vendor_commission_deadline',{p_vendor_id:vendor.id});if(!r.error&&r.data?.[0])data=r.data[0]}catch(_){}
+      if(!data?.earliest_due_at){
+        try{const r=await sb.from('commission_charges').select('due_at').eq('vendor_id',vendor.id).eq('status','owed').not('due_at','is',null).order('due_at',{ascending:true}).limit(1);if(!r.error&&r.data?.[0])data={earliest_due_at:r.data[0].due_at}}catch(_){}
+      }
+      updateText(data?.earliest_due_at||null);
+      clearInterval(countdownTimer); countdownTimer=setInterval(()=>updateText(data?.earliest_due_at||null),30000);
+    }finally{running=false}
+  }
+  function schedule(){clearTimeout(refreshTimer);refreshTimer=setTimeout(refresh,120);}
+  const app=document.getElementById('app');
+  if(app)new MutationObserver(records=>{if(records.some(r=>{const t=r.target;return !(t instanceof Element)||!t.closest?.('.levro-commission-deadline')}))schedule()}).observe(app,{childList:true,subtree:true});
+  window.addEventListener('popstate',schedule);
+  setTimeout(schedule,400);setTimeout(schedule,1200);setTimeout(schedule,2500);
+  window.__levroRefreshCommissionCountdowns=refresh;
 })();
 </script>
 </body>
@@ -28667,6 +28745,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     try{
       const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json","Cache-Control":"no-cache"},cache:"no-store",body:JSON.stringify({action:"pay-listing",kind,id,accessToken:session.access_token})});
       const data=await r.json().catch(()=>({}));
+      if(r.ok&&data.alreadyActive){showToast?.("This listing is already active and paid through "+new Date(data.paid_until||Date.now()).toLocaleDateString("en-GB")+".","success");navigate?.("vendorProducts",{},false);return true;}
       if(!r.ok||!data.authorization_url)throw new Error(data.error||"Could not start the ₦1,000 listing payment.");
       window.location.assign(data.authorization_url);return true;
     }catch(e){if(typeof showToast==='function')showToast(e.message||"Could not start the listing payment.","error");return false;}
@@ -28723,8 +28802,9 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   async function finalPaymentReturn(){
     const u=new URL(location.href);
     const returnMode=u.searchParams.get("listingPayment");
+    const listingPaid=u.searchParams.get("listingPaid");
     const reference=u.searchParams.get("reference");
-    if(returnMode!=="return"||!reference)return;
+    if((returnMode!=="return" && listingPaid!=="1")||!reference)return;
     ["listingPayment","listingPaid","kind","id","reference","reason"].forEach(k=>u.searchParams.delete(k));
     history.replaceState(history.state,"",u.pathname+(u.searchParams.toString()?`?${u.searchParams}`:"")+u.hash);
     if(!(typeof session!=="undefined"&&session?.access_token)){showToast?.("Payment returned successfully, but your session expired. Sign in again to finish your listing.","error");return;}
@@ -28869,5 +28949,40 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   // Admin bottom navigation: compact, same footprint as the normal rail.
   const style=document.createElement("style");style.textContent=`@media(max-width:720px){#bottomNav:not(.has-add):not(.buyer-no-add){height:68px!important;min-height:0!important;padding:.22rem .22rem!important;box-sizing:border-box!important;align-items:center!important}#bottomNav:not(.has-add):not(.buyer-no-add) .bottom-nav-item{height:54px!important;min-height:54px!important;padding:.28rem .08rem!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:.18rem!important}#bottomNav:not(.has-add):not(.buyer-no-add) .bottom-nav-item>span:last-child{font-size:.62rem!important;line-height:1!important}}@media(min-width:721px){#bottomNav{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(760px,calc(100vw - 2rem))!important}#bottomNav:not(.has-add) .bottom-nav-item{flex:1 1 0!important}}.vendor-commission-deadline-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:.15rem 0 .65rem;font-size:.76rem}.vendor-commission-deadline-row strong{font-variant-numeric:tabular-nums;color:var(--primary)}.phase1-search-shell{width:min(760px,100%);margin:0 auto;background:color-mix(in srgb,var(--card) 97%,transparent);border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border));border-radius:20px;box-shadow:0 24px 70px rgba(15,23,42,.22);overflow:hidden}.phase1-search-bar{display:flex;align-items:center;gap:.55rem;padding:.5rem .65rem;border-bottom:1px solid var(--border)}.phase1-search-bar>i{color:var(--primary)}#levromartHeaderSearchDock #levromartHeaderSearchInput{flex:1!important;min-width:0!important;border:0!important;background:transparent!important;box-shadow:none!important;margin:0!important;padding:.7rem .1rem!important}.phase1-search-bar>button{width:38px;height:38px;border:0;background:transparent;border-radius:50%;cursor:pointer}.phase1-search-section{padding:.7rem}.phase1-search-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem;font-size:.8rem;margin-bottom:.45rem}.phase1-search-head button{border:0;background:none;color:var(--primary);font-weight:700;cursor:pointer}.phase1-search-row{display:flex;align-items:center;border-radius:11px}.phase1-use{flex:1;display:flex;align-items:center;gap:.65rem;border:0;background:none;padding:.65rem;color:var(--text);text-align:left;cursor:pointer}.phase1-use i{color:var(--text-muted)}.phase1-use span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.phase1-remove{width:36px;height:36px;border:0;background:transparent;color:var(--text-muted);cursor:pointer}.phase1-empty{margin:.2rem 0;color:var(--text-muted);font-size:.75rem}.vendor-product-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.65rem!important}.vendor-product-card-grid .card{min-width:0!important;padding:.65rem!important}.vendor-product-card-grid .product-img{height:150px!important;border-radius:12px!important}.vendor-draft-actions button[aria-label*="Delete"],.ai-chat-history-delete{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.saved-location-delete{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.order-filters-wrap .filter-dropdown-menu,.order-filters-wrap .filters-panel,.vendor-notification-menu{max-width:min(360px,calc(100vw - 2rem))!important;width:min(360px,calc(100vw - 2rem))!important}.order-filters-wrap .filter-dropdown-menu,.order-filters-wrap .filters-panel{max-height:55vh!important;overflow:auto!important}@media(min-width:721px){#bottomNav{max-width:760px!important;margin-inline:auto!important}.admin-dash-tabs{max-width:1100px!important;margin-inline:auto!important;justify-content:center!important}.vendor-product-card-grid .product-img{height:180px!important}}@media(max-width:520px){.vendor-product-card-grid .product-img{height:118px!important}}`;document.head.appendChild(style);
 })();
+</script>
+<style id="levromart-phase1-urgent-final-css">
+#app .vendor-product-actions .btn-danger,#app .vendor-discarded-actions .btn-danger,#app button[data-status="delete"]{background:#dc2626!important;border-color:#dc2626!important;color:#fff!important}
+#app .vendor-admin-action[data-status="rejected"]{background:#d97706!important;border-color:#d97706!important;color:#fff!important}
+#app .vendor-admin-action[data-status="verified"]{background:#16a34a!important;border-color:#16a34a!important;color:#fff!important}
+#app .vendor-edit-action{background:#2563eb!important;border-color:#2563eb!important;color:#fff!important}
+#app .vendor-pause-action{background:var(--primary)!important;border-color:var(--primary)!important;color:#fff!important}
+#app button[onclick*="exportFinancePdf"]{background:transparent!important;border:1px solid var(--border)!important;color:var(--text-muted)!important}
+
+#app .vendor-products-heading-actions button[onclick*="toggleVendorProductsView"]{background:#2563eb!important;border-color:#2563eb!important;color:#fff!important}
+#app .vendor-products-heading-actions button[onclick*="toggleVendorProductsView"]:nth-child(2){background:#64748b!important;border-color:#64748b!important}
+#app .vendor-products-unified-tabs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.45rem!important;margin:.65rem 0 .9rem!important;overflow:visible!important}
+#app .vendor-products-unified-tabs button{min-height:42px!important;padding:.55rem .5rem!important;border:1px solid var(--border)!important;background:var(--card)!important;color:var(--text-muted)!important;border-radius:12px!important;font-size:.76rem!important;font-weight:750!important}
+#app .vendor-products-unified-tabs button.active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important}
+#app .vendor-product-card-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%!important;gap:.65rem!important}
+#app .vendor-product-card-grid>.card{min-width:0!important;width:100%!important}
+#app .vendor-notification-menu,#app .follow-menu{width:min(300px,calc(100vw - 2rem))!important;max-width:min(300px,calc(100vw - 2rem))!important;max-height:58vh!important;overflow:auto!important;padding:.55rem!important}
+#app .follow-menu .follow-pref-row{min-height:42px!important;padding:.28rem .25rem!important}
+#app .follow-menu .follow-mute-grid{grid-template-columns:repeat(4,1fr)!important}
+#app .order-filters-panel{width:min(300px,calc(100vw - 2rem))!important;max-width:min(300px,calc(100vw - 2rem))!important;max-height:48vh!important;overflow:auto!important;padding:.7rem!important}
+#app .orders-filter-search-row{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;width:100%!important;gap:.45rem!important}
+#app .orders-filter-search-row>.order-filters-wrap{flex:1 1 auto!important;min-width:0!important}
+#app .orders-filter-search-row>.final-order-search-wrap{flex:0 0 42px!important;width:42px!important;min-width:42px!important}
+#levromartHeaderSearchBackdrop{background:rgba(15,23,42,.10)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important}
+#levromartHeaderSearchDock .phase1-search-shell{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--card)!important}
+#confirmModal,#textPromptModal,#notReceivedModal,#suggestionModal,#storefrontShareModal,#productRegionsModal{z-index:2147483600!important}
+#confirmModal .modal-content,#textPromptModal .modal-content,#notReceivedModal .modal-content,#suggestionModal .modal-content,#storefrontShareModal .modal-content,#productRegionsModal .modal-content{position:relative!important;z-index:2147483601!important}
+.profile-request-badge{margin-left:.4rem!important;font-size:.62rem!important;min-width:1.25rem!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}.profile-request-badge.hidden{display:none!important}
+.rating-five-star{background:#7c3aed!important;color:#fff!important;border-color:#7c3aed!important}
+.password-field-wrap{position:relative!important;width:100%!important}.password-field-wrap>input{width:100%!important;padding-right:3rem!important;box-sizing:border-box!important}.password-visibility-toggle{position:absolute!important;right:.45rem!important;top:50%!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;border:0!important;background:transparent!important;color:var(--text-muted)!important;border-radius:10px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important}.password-visibility-toggle:hover{color:var(--primary)!important;background:color-mix(in srgb,var(--primary) 7%,transparent)!important}
+.storefront-own-message-icon{width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;border-radius:50%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}
+@media(max-width:520px){#app .vendor-products-unified-tabs button{font-size:.7rem!important;padding:.5rem .3rem!important}#app .vendor-product-card-grid{gap:.5rem!important}}
+</style>
+<script id="levromart-phase1-password-runtime">
+(function(){document.addEventListener("click",function(e){const b=e.target?.closest?.(".password-visibility-toggle");if(!b)return;const i=document.getElementById(b.dataset.passwordTarget);if(!i)return;const showing=i.type==="text";i.type=showing?"password":"text";const icon=b.querySelector("i");if(icon)icon.className="fa-solid "+(showing?"fa-eye":"fa-eye-slash");b.setAttribute("aria-label",(showing?"Show ":"Hide ")+"password");b.title=showing?"Show password":"Hide password"},true)})();
 </script>
 </html>
