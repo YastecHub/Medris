@@ -548,10 +548,10 @@
   .notif-dot { position: absolute; top: -2px; right: -2px; background: var(--danger); color: white; font-size: 0.65rem; font-weight: 700; min-width: 1.1rem; height: 1.1rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center; padding: 0 0.25rem; box-shadow: 0 0 0 2px var(--primary); }
 
   /* ---- slide-in drawers (settings / notifications / profile) ---- */
-  .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 190; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }
+  .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 10900; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }
   .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
   .side-drawer {
-    position: fixed; top: 0; bottom: 0; width: min(320px, 86vw); z-index: 200;
+    position: fixed; top: 0; bottom: 0; width: min(320px, 86vw); z-index: 12000;
     background: var(--glass-bg); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
     box-shadow: 0 0 46px rgba(0,0,0,0.35); padding: calc(1.1rem + env(safe-area-inset-top, 0px)) 1rem calc(1.1rem + env(safe-area-inset-bottom, 0px));
     overflow-y: auto; color: var(--text); transition: transform 0.32s cubic-bezier(.22,1,.36,1);
@@ -6107,7 +6107,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   </div>
   <div class="header-right">
     <div class="icon-wrap" id="headerSearchWrap">
-      <button type="button" class="icon-btn header-search-btn" id="levromartHeaderSearchButton" title="Search Levromart" aria-label="Search Levromart"><i class='fa-solid fa-magnifying-glass'></i></button>
+      <button type="button" class="icon-btn header-search-btn" id="levromartHeaderSearchButton" title="Search Levromart" aria-label="Search Levromart" onclick="window.openLevromartHeaderSearch?.()"><i class='fa-solid fa-magnifying-glass'></i></button>
     </div>
     <div class="icon-wrap hidden" id="notifWrap">
       <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
@@ -8255,6 +8255,7 @@ function closeAllPanels() {
   document.body.style.removeProperty("--profile-reveal-x");
 }
 function openDrawer(id) {
+  try { window.closeLevromartHeaderSearch?.(); } catch (_) {}
   const target = byId(id);
   if (!target) return;
   const wasOpen = target.classList.contains("open");
@@ -11377,8 +11378,8 @@ async function renderHome() {
   html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
   html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" data-tab="products" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-box"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" data-tab="services" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" data-tab="packages" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button></div>`;
   html += `<div class="browse-filter-toolbar">
-    <input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" />
     <button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><span>Filters</span><i class="fa-solid fa-chevron-down browse-filter-chevron"></i></button>
+    <div class="browse-compact-search-slot" id="browseCompactSearchSlot"></div>
     <div class="browse-filter-panel hidden" id="browseFilterPanel">
       <div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div>
       <div class="browse-filter-row-group">
@@ -12266,6 +12267,44 @@ async function openDisputeChat(buyerId, vendorId) {
 let msgListFilter = "all"; // all | unread | archived | list:<listId>
 let myChatLists = []; // [{id, name, conversation_ids}]
 
+// The database should contain one buyer↔vendor thread, but older data can
+// contain duplicate conversation rows for the same participant pair. Keep the
+// inbox clean at the UI boundary while preserving the newest thread and the
+// combined unread count. Prefer stable participant IDs when the RPC exposes
+// them; fall back to name/avatar only for legacy RPC shapes.
+function dedupeConversationRows(rows) {
+  const source = Array.isArray(rows) ? rows : [];
+  const byKey = new Map();
+  const identity = (c) => {
+    const stable = c.other_user_id || c.other_id || c.other_party_id || c.participant_id;
+    if (stable) return `id:${stable}`;
+    if (c.vendor_id && c.buyer_id) return `pair:${c.buyer_id}|${c.vendor_id}`;
+    const name = String(c.other_name || "").trim().toLowerCase();
+    const avatar = String(c.other_avatar || "").trim();
+    const phone = String(c.other_phone || "").trim();
+    return `legacy:${name}|${avatar}|${phone}`;
+  };
+  source.forEach((c) => {
+    if (!c?.conversation_id) return;
+    const key = identity(c);
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, { ...c });
+      return;
+    }
+    const prevTime = new Date(prev.updated_at || prev.last_message_at || prev.created_at || 0).getTime();
+    const nextTime = new Date(c.updated_at || c.last_message_at || c.created_at || 0).getTime();
+    const winner = nextTime >= prevTime ? { ...c } : { ...prev };
+    winner.unread_count = Number(prev.unread_count || 0) + Number(c.unread_count || 0);
+    byKey.set(key, winner);
+  });
+  return [...byKey.values()].sort((a,b) => {
+    const at = new Date(a.updated_at || a.last_message_at || a.created_at || 0).getTime();
+    const bt = new Date(b.updated_at || b.last_message_at || b.created_at || 0).getTime();
+    return bt - at;
+  });
+}
+
 function chatArchiveKey() { return `levromart-archived-chats:${session?.user?.id || "guest"}`; }
 function getArchivedChatIds() { try { const x = JSON.parse(localStorage.getItem(chatArchiveKey()) || "[]"); return new Set(Array.isArray(x) ? x : []); } catch (e) { return new Set(); } }
 function setArchivedChatIds(set) { try { localStorage.setItem(chatArchiveKey(), JSON.stringify([...set])); } catch (e) {} }
@@ -12478,7 +12517,7 @@ async function refreshConversationInboxInBackground() {
   if (conversationInboxRefreshPromise) return conversationInboxRefreshPromise;
   conversationInboxRefreshPromise = sb.rpc("list_my_conversations").then(({ data, error }) => {
     if (error) throw error;
-    window.__conversations = data || [];
+    window.__conversations = dedupeConversationRows(data || []);
     if (currentView === "messages" && !currentViewParams?.conversationId && byId("convListWrap")) {
       filterMsgList();
       updateMsgSelectionBar();
@@ -12654,7 +12693,7 @@ async function renderMessages(conversationId) {
     if (!hasCachedConversations) {
       const { data: convs, error } = await sb.rpc("list_my_conversations");
       if (error) return errorStateHtml(error);
-      window.__conversations = convs || [];
+      window.__conversations = dedupeConversationRows(convs || []);
       await refreshChatLists();
     } else {
       // Back from a chat should be instant. Reconcile the inbox in the
@@ -14783,13 +14822,17 @@ async function renderStorefront(vendorId) {
     <div class="storefront-profile-body">
       <div class="storefront-avatar-row">
         ${logo}
-        <div class="storefront-profile-actions">
-          ${profile?.role !== "admin" ? (v.whatsapp_visible && v.whatsapp_number ? `<div class="ms-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm" type="button" onclick="toggleInlineMenu('storefrontMessageMenu',event)"><i class='fa-solid fa-comment-dots'></i> Message</button><div class="ms-list hidden" id="storefrontMessageMenu" style="left:0;right:auto;width:max-content;min-width:180px;"><button class="ms-item" onclick="startConversationWithVendor('${v.id}');closeInlineMenu('storefrontMessageMenu')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('storefrontMessageMenu')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i> Message</button>`) : ""}
-          ${v.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(v.phone)}" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i> Call</a>` : ""}
-          ${storefrontMoreItems ? `<div class="ms-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm btn-outline" type="button" aria-label="More vendor details" onclick="toggleInlineMenu('storefrontMoreMenu',event)"><i class="fa-solid fa-ellipsis"></i></button><div class="ms-list hidden" id="storefrontMoreMenu" style="left:auto;right:0;width:max-content;min-width:180px;">${storefrontMoreItems}</div></div>` : ""}
+        <div class="storefront-profile-actions storefront-top-actions">
+          ${storefrontMoreItems ? `<div class="ms-wrap storefront-more-wrap" style="position:relative;display:inline-flex;width:auto;"><button class="btn btn-sm btn-outline storefront-more-icon" type="button" aria-label="More vendor details" title="More vendor details" onclick="toggleInlineMenu('storefrontMoreMenu',event)"><i class="fa-solid fa-ellipsis"></i></button><div class="ms-list hidden" id="storefrontMoreMenu" style="left:auto;right:0;width:max-content;min-width:180px;">${storefrontMoreItems}</div></div>` : ""}
         </div>
       </div>
-      <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)}</h1>
+      <div class="storefront-name-row">
+        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)}</h1>
+        <div class="storefront-name-actions">
+          ${profile?.role !== "admin" ? (v.whatsapp_visible && v.whatsapp_number ? `<div class="ms-wrap" style="position:relative;display:inline-flex;width:auto;"><button class="btn btn-sm storefront-social-icon" type="button" aria-label="Message vendor" title="Message vendor" onclick="toggleInlineMenu('storefrontMessageMenu',event)"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button><div class="ms-list hidden" id="storefrontMessageMenu" style="left:0;right:auto;width:max-content;min-width:180px;"><button class="ms-item" onclick="startConversationWithVendor('${v.id}');closeInlineMenu('storefrontMessageMenu')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('storefrontMessageMenu')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm storefront-social-icon" aria-label="Message vendor" title="Message vendor" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button>`) : ""}
+          ${v.phone ? `<a class="btn btn-sm btn-outline storefront-social-icon" href="${telLink(v.phone)}" aria-label="Call vendor" title="Call vendor" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i><span>Call</span></a>` : ""}
+        </div>
+      </div>
       <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>${v.whatsapp_visible && v.whatsapp_number ? `<a class="badge" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> ${esc(v.whatsapp_number)}</a>` : ""}</div>
       ${v.bio ? `<p class="storefront-bio">${esc(v.bio)}</p>` : ""}
       <div class="storefront-stats">
@@ -17485,7 +17528,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   let html = `<h2>Orders</h2>`;
   html += vendorOrdersTabsHtml("sales");
   html += orderStatsHtml(safeStatsOrders);
-  html += orderFiltersDropdownHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales");
+  html += `<div class="orders-filter-search-row">${orderFiltersDropdownHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales")}<div class="orders-search-slot"></div></div>`;
   orderListViewMode = "cards";
   orderListExpanded = false;
   const sortedOrders = sortOrdersForList(orders);
@@ -17533,7 +17576,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
 
   let html = embeddedVendorOrders ? `<h2><i class='fa-solid fa-clipboard-list'></i> Orders</h2>` : `<h2><i class='fa-solid fa-clipboard-list'></i> My Orders</h2>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
-  html += orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective);
+  html += `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}<div class="orders-search-slot"></div></div>`;
   orderListViewMode = "cards";
   orderListExpanded = false;
   const sortedOrders = sortOrdersForList(orders);
@@ -17650,9 +17693,9 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
 
 function orderListControlsHtml(total) {
   if (!total) return "";
-  return `<div class="flex order-list-view-controls" style="gap:0.7rem;justify-content:flex-end;margin:.9rem .15rem .75rem;">
-    <button class="btn btn-sm ${orderListViewMode === "cards" ? "" : "btn-outline"}" onclick="setOrderListView('cards')"><i class="fa-solid fa-list"></i> List</button>
-    <button class="btn btn-sm ${orderListViewMode === "table" ? "" : "btn-outline"}" onclick="setOrderListView('table')"><i class="fa-solid fa-table-list"></i> Table</button>
+  return `<div class="flex order-list-view-controls" aria-label="Order view controls">
+    <button type="button" class="icon-btn order-view-icon ${orderListViewMode === "cards" ? "active" : ""}" onclick="setOrderListView('cards')" title="List view" aria-label="List view"><i class="fa-solid fa-list"></i></button>
+    <button type="button" class="icon-btn order-view-icon ${orderListViewMode === "table" ? "active" : ""}" onclick="setOrderListView('table')" title="Table view" aria-label="Table view"><i class="fa-solid fa-table-list"></i></button>
   </div>`;
 }
 function setOrderListView(mode) {
@@ -17934,23 +17977,23 @@ const BUYER_CANCEL_WINDOW_HOURS = 5;
 function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   const buttons = [];
   if (isVendor) {
-    if (order.status === "pending") { buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
+    if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
     // Can't hand over what hasn't been paid for yet - avoids a mismatch
     // where the order's marked handed_over/completed but no payment ever
     // actually came in.
     if (order.status === "confirmed") {
-      if (feePaid) buttons.push(`<button class="btn btn-sm" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-handshake"></i> Mark handed over</button>`);
+      if (feePaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-handshake"></i> Mark handed over</button>`);
       else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this can be marked handed over.</p>`);
     }
-    if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
+    if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
-  if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
+  if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
   if (isCustomer && order.status === "confirmed") {
     const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
     const paidRow = order.payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
     const hoursSincePaid = paidRow ? (Date.now() - new Date(paidRow.paid_at || paidRow.created_at).getTime()) / 3600000 : 0;
     if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) {
-      buttons.push(`<button class="btn btn-sm" style="background:#6b7280;" onclick="buyerCancelOrder('${order.id}',${feePaid ? "true" : "false"})">Cancel order</button>`);
+      buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="buyerCancelOrder('${order.id}',${feePaid ? "true" : "false"})">Cancel order</button>`);
     } else {
       buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
     }
@@ -17963,13 +18006,13 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   // actually paid for.
   if (isCustomer && order.status === "handed_over" && order.order_type === "sale") {
     if (feePaid) {
-      buttons.push(`<button class="btn btn-sm" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`);
+      buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`);
       buttons.push(notReceivedButtonHtml(order));
     } else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
   }
   if (isCustomer && order.status === "returned" && order.order_type === "rental") {
     if (feePaid) {
-      buttons.push(`<button class="btn btn-sm" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> Confirm &amp; complete</button>`);
+      buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> Confirm &amp; complete</button>`);
       buttons.push(notReceivedButtonHtml(order));
     } else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
   }
@@ -21515,15 +21558,19 @@ function leviExtractCartTarget(text, mode) {
 }
 
 async function resolveLeviProduct(target) {
-  // "this" / "that" / "current item" means the product currently open.
-  if (currentView === "productDetail" && currentViewParams?.productId) {
+  const rawTarget = String(target || "").trim();
+  const referentialTarget = /^(?:this|that|this item|that item|this product|that product|the current item|current item|the current product|current product|same item|same product)$/i.test(rawTarget);
+  // Only referential requests may resolve to the product currently open. A
+  // normal new request such as "scarf" or "shoes" must ALWAYS search the
+  // catalogue, even if Levi is currently displaying another product.
+  if (referentialTarget && currentView === "productDetail" && currentViewParams?.productId) {
     const { data, error } = await sb.from("products")
       .select("id,name,listing_type,sale_price,rental_rate,quantity_available,status,is_service,vendor:vendors(business_name)")
       .eq("id", currentViewParams.productId).maybeSingle();
     if (!error && data) return { product: data, exact: true, matches: [data] };
   }
 
-  const q = String(target || "").trim();
+  const q = rawTarget;
   if (!q) return { product: null, exact: false, empty: true };
 
   // Use the same typo/word-aware database search used by the marketplace.
@@ -27663,6 +27710,262 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 .follow-mute-grid button{padding:.45rem .25rem;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:10px;font:600 .68rem inherit;cursor:pointer;}
 .follow-mute-grid button.active{border-color:var(--primary);color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,transparent);}
 .storefront-follow-wrap{position:relative;display:inline-flex;}
+/* 2026-09-11 final launch polish: compact search controls, order actions,
+   and Android-safe search interaction. */
+#app .browse-filter-toolbar{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) 46px !important;
+  align-items:center !important;
+  gap:.55rem !important;
+  position:relative !important;
+}
+#app .browse-filter-toolbar .browse-filter-trigger{
+  grid-column:1 !important;
+  grid-row:1 !important;
+  width:100% !important;
+  margin:0 !important;
+}
+#app .browse-filter-toolbar .levro-compact-search-toggle{
+  grid-column:2 !important;
+  grid-row:1 !important;
+  width:46px !important;
+  height:44px !important;
+  margin:0 !important;
+  border:1px solid color-mix(in srgb,var(--primary) 62%,var(--border)) !important;
+  background:color-mix(in srgb,var(--primary) 7%,transparent) !important;
+  color:var(--primary) !important;
+  border-radius:14px !important;
+}
+#app .browse-filter-toolbar .levro-compact-search-wrap{
+  display:contents !important;
+}
+#app .browse-filter-toolbar .levro-compact-search-wrap > input{
+  grid-column:1 / -1 !important;
+  grid-row:2 !important;
+  display:none !important;
+  width:100% !important;
+  min-height:46px !important;
+  margin:0 !important;
+}
+#app .browse-filter-toolbar .levro-compact-search-wrap.open > input{
+  display:block !important;
+}
+#app .browse-filter-toolbar .browse-filter-panel{grid-column:1 / -1 !important;grid-row:3 !important;}
+
+/* Vendor page: filter and search icon share one clean control row; the actual
+   search field drops below only when requested. */
+#app .vendors-directory-controls{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) 46px !important;
+  gap:.55rem !important;
+  align-items:center !important;
+  margin:.75rem 0 .55rem !important;
+}
+#app .vendors-directory-controls .vendors-filters-toggle{
+  grid-column:1 !important;
+  width:100% !important;
+  min-height:44px !important;
+  margin:0 !important;
+}
+#app .vendors-directory-controls .levro-compact-search-toggle{
+  grid-column:2 !important;
+  width:46px !important;
+  height:44px !important;
+  margin:0 !important;
+  border:1px solid color-mix(in srgb,var(--primary) 62%,var(--border)) !important;
+  background:color-mix(in srgb,var(--primary) 7%,transparent) !important;
+  color:var(--primary) !important;
+  border-radius:14px !important;
+}
+#app .vendors-directory-search{position:relative !important;margin:0 0 .8rem !important;width:100% !important;}
+#app .vendors-directory-search .levro-compact-search-wrap > input{display:none !important;}
+#app .vendors-directory-search.open .levro-compact-search-wrap > input,
+#app .vendors-directory-search.levro-compact-search-wrap.open > input{display:block !important;}
+
+/* Orders: view controls are deliberately icon-only. Search is a separate
+   square icon and expands into a field below the utility row. */
+#app .order-list-view-controls{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  gap:.4rem !important;
+  margin:.65rem .15rem .45rem !important;
+}
+#app .order-view-icon{
+  width:42px !important;
+  height:42px !important;
+  padding:0 !important;
+  border-radius:12px !important;
+  border:1px solid var(--border) !important;
+  background:transparent !important;
+  color:var(--text-muted) !important;
+}
+#app .order-view-icon.active{background:color-mix(in srgb,var(--primary) 12%,transparent) !important;border-color:var(--primary) !important;color:var(--primary) !important;}
+#app .order-search-wrap{
+  display:flex !important;
+  align-items:center !important;
+  width:100% !important;
+  margin:.15rem 0 .55rem !important;
+  position:relative !important;
+  min-height:42px !important;
+}
+#app .order-search-toggle{
+  width:42px !important;
+  height:42px !important;
+  padding:0 !important;
+  border:1px solid var(--border) !important;
+  border-radius:12px !important;
+  color:var(--primary) !important;
+  background:color-mix(in srgb,var(--primary) 7%,transparent) !important;
+  flex:0 0 auto !important;
+}
+#app .order-search-wrap .order-search-leading{display:none !important;}
+#app .order-search-wrap .order-history-search{display:none !important;flex:1 1 auto !important;margin-left:.5rem !important;min-height:42px !important;}
+#app .order-search-wrap.open .order-history-search{display:block !important;}
+
+/* Restore order action semantics. Neutral workflow actions are gray; explicit
+   destructive actions keep the danger/red treatment. This does not touch the
+   rest of the marketplace buttons. */
+#app .order-actions .order-action-neutral,
+#app .order-action-wrap .order-action-neutral{background:#6b7280 !important;color:#fff !important;}
+#app .order-actions .btn-danger,
+#app .order-action-wrap .btn-danger{background:var(--danger) !important;color:#fff !important;}
+
+/* Header search must always be clickable even if a later renderer reuses the
+   header node. */
+#levromartHeaderSearchButton{pointer-events:auto !important;position:relative !important;z-index:5 !important;}
+#headerSearchWrap{pointer-events:auto !important;}
+#levromartHeaderSearchDock{z-index:10050 !important;}
+
+@media(max-width:720px){
+  #app .browse-filter-toolbar{grid-template-columns:minmax(0,1fr) 46px !important;}
+  #app .vendors-directory-controls{grid-template-columns:minmax(0,1fr) 46px !important;}
+}
+
+/* ================================================================
+   FINAL MOBILE POLISH 2 — compact search, sheet stacking, storefront
+   hierarchy, compact order controls, and clean follow interactions.
+   ================================================================ */
+#levromartHeaderSearchDock{z-index:11000 !important;}
+#levromartHeaderSearchDock .header-search-leading{display:none !important;}
+#levromartHeaderSearchDock .header-search-shell{padding:.28rem !important;}
+#levromartHeaderSearchInput{padding:.72rem 2.75rem .72rem 1rem !important;}
+#levromartHeaderSearchSuggest{z-index:11001 !important;}
+#profilePanel,#notifPanel,#settingsPanel{z-index:12000 !important;}
+.drawer-backdrop{z-index:11900 !important;}
+#profilePanel.open,#notifPanel.open,#settingsPanel.open{z-index:12000 !important;}
+
+/* Browse: Filter + search icon only. The actual field appears only after tap. */
+#app .browse-filter-toolbar{
+  grid-template-columns:minmax(0,1fr) 44px !important;
+  gap:.5rem !important;
+  margin-bottom:.85rem !important;
+}
+#app .browse-filter-toolbar .browse-filter-trigger{
+  grid-column:1 !important;grid-row:1 !important;
+  width:100% !important;min-width:0 !important;
+}
+#app .browse-filter-toolbar .browse-compact-search-slot{
+  grid-column:2 !important;grid-row:1 !important;
+  width:44px !important;height:44px !important;
+}
+#app .browse-filter-toolbar .levro-compact-search-toggle{
+  width:44px !important;height:44px !important;padding:0 !important;
+  border-radius:12px !important;
+}
+#app .browse-filter-toolbar .levro-compact-search-wrap{
+  display:contents !important;
+}
+#app .browse-filter-toolbar .levro-compact-search-wrap > input{
+  grid-column:1 / -1 !important;grid-row:2 !important;
+  display:none !important;width:100% !important;margin:0 !important;
+}
+#app .browse-filter-toolbar .levro-compact-search-wrap.open > input{display:block !important;}
+#app .browse-filter-toolbar .browse-filter-panel{grid-column:1 / -1 !important;grid-row:3 !important;}
+
+/* Vendor directory: filter and search icon live on one short row. */
+#app .vendors-directory-controls{
+  grid-template-columns:minmax(0,1fr) 44px !important;
+  gap:.5rem !important;
+}
+#app .vendors-directory-controls .levro-compact-search-toggle{
+  width:44px !important;height:44px !important;padding:0 !important;
+  border-radius:12px !important;
+}
+#app .vendors-directory-search{display:none !important;height:0 !important;margin:0 !important;}
+#app .vendors-directory-search.open{display:block !important;height:auto !important;margin:.5rem 0 .7rem !important;}
+#app .vendors-directory-search.open .levro-compact-search-wrap > input{display:block !important;}
+
+/* Orders: filter/search sit beside each other. List/table are tiny square icons. */
+#app .orders-filter-search-row,
+#app .order-toolbar-row{display:flex !important;align-items:center !important;gap:.5rem !important;}
+#app .orders-filter-search-row .order-filters-trigger,
+#app .order-toolbar-row .order-filters-trigger{flex:1 1 auto !important;min-width:0 !important;}
+#app .order-search-wrap{width:44px !important;flex:0 0 44px !important;margin:0 !important;min-height:44px !important;}
+#app .order-search-wrap .order-search-toggle{width:44px !important;height:44px !important;border-radius:12px !important;}
+#app .order-search-wrap.open{width:100% !important;flex:1 1 100% !important;}
+#app .order-search-wrap.open .order-search-toggle{display:none !important;}
+#app .order-search-wrap.open .order-history-search{display:block !important;margin:0 !important;}
+#app .order-list-view-controls{margin:.45rem 0 .35rem auto !important;justify-content:flex-end !important;gap:.35rem !important;}
+#app .order-view-icon{width:36px !important;height:36px !important;min-width:36px !important;min-height:36px !important;padding:0 !important;border-radius:10px !important;}
+
+/* The search history menu is small and sits below the active field. */
+.levro-search-history-menu{position:absolute;left:0;right:0;top:calc(100% + .3rem);z-index:11002;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 14px 36px rgba(0,0,0,.16);padding:.3rem;max-height:250px;overflow:auto;}
+.levro-search-history-head{display:flex;align-items:center;justify-content:space-between;padding:.4rem .55rem;color:var(--text-muted);font-size:.68rem;font-weight:750;}
+.levro-search-history-clear{border:0;background:transparent;color:var(--primary);font:600 .68rem inherit;cursor:pointer;padding:.25rem .35rem;}
+.levro-search-history-item{display:flex;align-items:center;gap:.45rem;width:100%;padding:.55rem .55rem;border:0;background:transparent;color:var(--text);border-radius:10px;text-align:left;font:inherit;cursor:pointer;}
+.levro-search-history-item:hover{background:color-mix(in srgb,var(--primary) 8%,transparent);}
+.levro-search-history-item .history-query{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.76rem;}
+.levro-search-history-item .history-remove{width:25px;height:25px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:var(--text-muted);cursor:pointer;}
+.levro-search-history-item .history-remove:hover{color:var(--danger);background:color-mix(in srgb,var(--danger) 8%,transparent);}
+#levromartHeaderSearchDock{position:fixed !important;}
+#levromartHeaderSearchDock .levro-search-history-menu{top:calc(100% + .3rem);}
+
+/* Storefront: profile hierarchy. Avatar stays circular, actions are minimal. */
+.storefront-profile .storefront-avatar,
+.storefront-profile .storefront-avatar-button{border-radius:50% !important;aspect-ratio:1 / 1 !important;overflow:hidden !important;}
+.storefront-profile .storefront-avatar-row{position:relative !important;display:block !important;min-height:78px !important;margin-bottom:.1rem !important;}
+.storefront-profile .storefront-avatar-row .storefront-avatar{position:absolute !important;left:0 !important;bottom:0 !important;margin:0 !important;}
+.storefront-profile .storefront-profile-actions{position:absolute !important;right:0 !important;top:.65rem !important;display:flex !important;align-items:center !important;gap:.35rem !important;flex-wrap:nowrap !important;padding:0 !important;z-index:35 !important;}
+.storefront-profile .storefront-profile-actions .storefront-social-follow,
+.storefront-profile .storefront-profile-actions .follow-btn{min-height:38px !important;height:38px !important;padding:.45rem .75rem !important;border-radius:999px !important;font-size:.78rem !important;}
+.storefront-profile .storefront-profile-actions .storefront-social-icon,
+.storefront-profile .storefront-profile-actions .follow-settings-btn,
+.storefront-profile .storefront-profile-actions .storefront-more-icon{width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;padding:0 !important;border-radius:50% !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}
+.storefront-profile .storefront-profile-actions .storefront-social-icon span,
+.storefront-profile .storefront-profile-actions .follow-settings-label{display:none !important;}
+.storefront-profile .storefront-profile-actions .storefront-more-wrap{display:inline-flex !important;position:relative !important;}
+.storefront-profile .storefront-profile-actions .follow-settings-btn{min-width:40px !important;}
+.storefront-profile .storefront-profile-actions .follow-settings-btn .follow-settings-label{display:none !important;}
+.storefront-profile .storefront-profile-name{margin-top:.2rem !important;padding-right:7.2rem !important;}
+.storefront-profile .storefront-meta{padding-right:0 !important;}
+.storefront-profile .storefront-profile-actions .ms-wrap{display:inline-flex !important;position:relative !important;}
+.storefront-profile .storefront-profile-actions .ms-wrap > button{width:40px !important;height:40px !important;min-width:40px !important;min-height:40px !important;padding:0 !important;border-radius:50% !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}
+.storefront-profile .storefront-profile-actions .ms-wrap > button:not(.follow-btn){font-size:0 !important;}
+.storefront-profile .storefront-profile-actions .ms-wrap > button i{font-size:1rem !important;}
+.storefront-profile .storefront-profile-actions .follow-menu{top:calc(100% + .35rem) !important;right:0 !important;width:min(286px,calc(100vw - 2rem)) !important;max-height:58vh !important;padding:.55rem !important;border-radius:14px !important;z-index:12001 !important;}
+.storefront-profile .follow-pref-row{padding:.34rem 0 !important;font-size:.68rem !important;}
+.storefront-profile .follow-pref-row input[type=checkbox]{width:18px !important;height:18px !important;accent-color:var(--primary) !important;}
+.storefront-profile .follow-mute-grid{gap:.3rem !important;margin-top:.35rem !important;}
+.storefront-profile .follow-mute-grid button{padding:.38rem .2rem !important;font-size:.62rem !important;min-height:32px !important;}
+.storefront-profile .follow-menu strong{font-size:.75rem !important;}
+.storefront-profile .follow-menu small{font-size:.65rem !important;}
+
+/* Compact confirm dialog is intentionally above every storefront menu. */
+.modal,.modal-backdrop,.confirm-dialog,.dialog-overlay{z-index:13000 !important;}
+
+@media(max-width:620px){
+  .storefront-profile .storefront-avatar-row{min-height:70px !important;}
+  .storefront-profile .storefront-avatar{width:76px !important;height:76px !important;}
+  .storefront-profile .storefront-profile-actions{top:.5rem !important;gap:.28rem !important;}
+  .storefront-profile .storefront-profile-actions .follow-btn{min-height:36px !important;height:36px !important;padding:.42rem .68rem !important;font-size:.75rem !important;}
+  .storefront-profile .storefront-profile-actions .storefront-social-icon,
+  .storefront-profile .storefront-profile-actions .follow-settings-btn,
+  .storefront-profile .storefront-profile-actions .storefront-more-icon,
+  .storefront-profile .storefront-profile-actions .ms-wrap > button{width:38px !important;height:38px !important;min-width:38px !important;min-height:38px !important;}
+  .storefront-profile .storefront-profile-name{padding-right:6.4rem !important;}
+}
+
 </style>
 
 <script src="/levromart-marketplace-enhancements.js" defer></script>
