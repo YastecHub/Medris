@@ -25701,16 +25701,205 @@ body > footer.site-footer{display:none !important;}
 #app .browse-filter-clear{margin:.65rem auto .15rem!important;display:flex!important;}
 </style>
 
-<script id="levromart-20260911-texture-runtime">
-(function(){
-'use strict';
-const GREEN=[16,176,128];
-function isGreen(rgb){const m=String(rgb||'').match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);if(!m)return false;const r=+m[1],g=+m[2],b=+m[3];return g>r*1.35&&g>b*1.15&&Math.abs(g-GREEN[1])<80&&r<100&&b<170;}
-let timer=null;
-function scan(){timer=null;const root=document.getElementById('app')||document.body;root.querySelectorAll('*').forEach(el=>{if(!(el instanceof HTMLElement))return;const cs=getComputedStyle(el);if(isGreen(cs.backgroundColor))el.classList.add('levro-textured-bg');else el.classList.remove('levro-textured-bg');if(el.childElementCount===0&&el.textContent.trim()&&isGreen(cs.color))el.classList.add('levro-textured-accent-text');else if(el.classList.contains('levro-textured-accent-text')&&!isGreen(cs.color))el.classList.remove('levro-textured-accent-text');if((cs.backgroundColor==='rgb(255, 255, 255)'||cs.backgroundColor==='rgba(255, 255, 255, 1)')&&(el.classList.contains('icon-btn')||el.classList.contains('fav-btn')))el.classList.add('levro-textured-white-surface');});}
-function schedule(){if(!timer)timer=setTimeout(scan,140);}window.levromartTextureScan=scan;new MutationObserver(schedule).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']});window.addEventListener('load',scan,{once:true});setTimeout(scan,250);setTimeout(scan,900);
-})();
-</script>
+
+<style id="levromart-20260911-texture-stability-final">
+/* FINAL BRAND SURFACE RULES — static texture, no accent switching, no flicker. */
+:root,html[data-theme="light"],html[data-theme="dark"],html[data-theme="black"]{
+  --primary:#10b080 !important;
+  --primary-light:#10b080 !important;
+  --primary-grad:#10b080 !important;
+  --brand-green:#10b080 !important;
+  --levro-texture:url("/levromart-green-texture-tile.png") !important;
+}
+
+/* Never animate/pulse buttons or text surfaces. */
+#app button,
+#app .btn,
+#app .btn-sm,
+#app .icon-btn,
+#app .fav-btn,
+#app .cat-chip,
+#app .vendor-listing-tab,
+#app .vendor-request-tab,
+#app .browse-filter-trigger,
+#app .browse-filter-clear,
+#app .order-filters-trigger,
+#app .order-filter-clear-btn,
+#app .order-filter-done-btn{
+  animation:none !important;
+}
+
+/* The green texture belongs to the brand surfaces, not the text itself. */
+#app .btn:not(.btn-outline),
+#app .btn-primary,
+#app .btn-sm:not(.btn-outline),
+#app .browse-filter-trigger,
+#app .browse-filter-clear,
+#app .order-filter-done-btn,
+#app .order-filters-trigger.active,
+#app .vendor-request-tab.active,
+#app .vendor-interest-btn.active,
+#app .storefront-catalog-tab.active,
+#app .levro-quick-icon,
+#app #aiChatFab,
+#app .ai-chat-fab,
+#app #cartFab,
+#app .cart-fab,
+#app .home-promotional-dot.active,
+#app .action-button.active{
+  background-color:#10b080 !important;
+  background-image:var(--levro-texture) !important;
+  background-size:180px 180px !important;
+  background-repeat:repeat !important;
+  background-blend-mode:soft-light !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  text-shadow:none !important;
+}
+
+/* Vendor directory: readable pills. Only the selected type is green; the
+   other options stay neutral so the selected state is obvious. */
+#app .vendor-listing-tabs{display:flex !important;gap:.45rem !important;overflow-x:auto !important;scrollbar-width:none !important;}
+#app .vendor-listing-tab{
+  flex:0 0 auto !important;
+  border:1px solid var(--border) !important;
+  border-radius:999px !important;
+  background:var(--card) !important;
+  color:var(--text) !important;
+  -webkit-text-fill-color:var(--text) !important;
+  padding:.58rem .88rem !important;
+  font:700 .82rem inherit !important;
+  white-space:nowrap !important;
+  box-shadow:none !important;
+}
+#app .vendor-listing-tab.active{
+  background-color:#10b080 !important;
+  background-image:var(--levro-texture) !important;
+  background-size:180px 180px !important;
+  background-repeat:repeat !important;
+  background-blend-mode:soft-light !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  border-color:#10b080 !important;
+}
+
+/* View controls: stable, legible, and never flashing. */
+#app .vendors-directory-view-buttons .btn{
+  min-width:40px !important;
+  min-height:40px !important;
+  border-radius:12px !important;
+  box-shadow:none !important;
+  transition:none !important;
+}
+#app .vendors-directory-view-buttons .btn.active,
+#app .vendors-directory-view-buttons .btn[aria-pressed="true"]{
+  background-color:#10b080 !important;
+  background-image:var(--levro-texture) !important;
+  background-size:180px 180px !important;
+  background-repeat:repeat !important;
+  background-blend-mode:soft-light !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  border-color:#10b080 !important;
+}
+#app .vendors-directory-view-buttons .btn:not(.active):not([aria-pressed="true"]){
+  background:var(--card) !important;
+  color:var(--text-muted) !important;
+  -webkit-text-fill-color:var(--text-muted) !important;
+  border-color:var(--border) !important;
+}
+
+/* Vendor Filters control: no empty solid block. */
+#app .vendors-filters-toggle{
+  border:1px solid #10b080 !important;
+  border-radius:999px !important;
+  background-color:#10b080 !important;
+  background-image:var(--levro-texture) !important;
+  background-size:180px 180px !important;
+  background-repeat:repeat !important;
+  background-blend-mode:soft-light !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  min-height:42px !important;
+  padding:.58rem .9rem !important;
+  box-shadow:none !important;
+}
+#app .vendors-filters-toggle .vendors-filters-chevron{color:#fff !important;}
+
+/* Vendor filters panel and all dropdown controls use the app's own surfaces. */
+#app .vendors-filters-panel,
+#app .browse-filter-panel,
+#app .order-filters-panel{
+  background:var(--card) !important;
+  color:var(--text) !important;
+}
+#app .vendors-filter-grid select,
+#app .vendors-filters-panel select,
+#app .browse-filter-panel select,
+#app .order-filters-panel select{
+  appearance:none !important;
+  -webkit-appearance:none !important;
+  color:var(--text) !important;
+  -webkit-text-fill-color:var(--text) !important;
+  background:var(--card) !important;
+  border:1px solid var(--border) !important;
+  border-radius:12px !important;
+  min-height:42px !important;
+  padding:.55rem 2rem .55rem .72rem !important;
+  font:600 .8rem inherit !important;
+  box-shadow:none !important;
+}
+
+/* Browse Everything: always drops downward and Clear stays compact. */
+#app .browse-filter-toolbar{position:relative !important;overflow:visible !important;}
+#app .browse-filter-panel{
+  position:absolute !important;
+  top:calc(100% + .5rem) !important;
+  bottom:auto !important;
+  right:0 !important;
+  left:auto !important;
+  width:min(390px,calc(100vw - 2rem)) !important;
+  z-index:220 !important;
+}
+#app .browse-filter-clear,
+#app .order-filter-clear-btn,
+#app .order-clear-date-btn{
+  width:auto !important;
+  max-width:max-content !important;
+  min-height:36px !important;
+  border-radius:999px !important;
+  padding:.45rem .78rem !important;
+}
+
+/* Green text stays ordinary readable text. No background-clip text texture. */
+#app .levro-textured-accent-text,
+#app .levro-textured-accent-text *{
+  background-image:none !important;
+  background-clip:border-box !important;
+  -webkit-background-clip:border-box !important;
+  color:#10b080 !important;
+  -webkit-text-fill-color:#10b080 !important;
+}
+
+/* Prices, ratings, stars and other brand-green text remain stable and readable. */
+#app .product-current-price,
+#app .product-price,
+#app .price,
+#app .rating,
+#app .stars,
+#app .fa-star,
+#app .fa-star-half-stroke,
+#app .fa-star-half-alt{
+  -webkit-text-fill-color:currentColor !important;
+  background-image:none !important;
+  animation:none !important;
+}
+
+@media(max-width:560px){
+  #app .browse-filter-panel{position:fixed !important;top:calc(var(--levro-search-dock-top,72px) + 3.2rem) !important;bottom:auto !important;left:.65rem !important;right:.65rem !important;width:auto !important;}
+}
+</style>
+
 </html>
 
 <style id="levromart-20260910-canonical-fixes">
@@ -26379,75 +26568,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 }
 </style>
 
-<style id="levromart-agent-filter-texture-polish">
-/* One-brand accent texture: subtle, tactile, not glossy or 3D. */
-:root{
-  --brand-green:#10b080;
-  --brand-green-2:#0d8f69;
-  --brand-texture-image:url("/levromart-green-texture-tile.png");
-}
-.btn,.btn-sm,.btn-primary,.browse-filter-trigger,.browse-filter-clear,.vendor-offer-compose .btn:not(.btn-outline),.levro-primary-action{
-  background-color:var(--brand-green) !important;
-  background-image:var(--brand-texture-image) !important;
-  background-size:180px 180px !important;
-  background-blend-mode:soft-light !important;
-}
-#app .levro-home-quick-actions .levro-quick-icon,
-#app .ai-chat-fab,
-#app .cart-fab,
-#app .home-promotional-dot.active{
-  background-color:var(--brand-green) !important;
-  background-image:var(--brand-texture-image) !important;
-  background-size:180px 180px !important;
-  background-blend-mode:soft-light !important;
-}
-.browse-filter-toolbar{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.55rem;align-items:center;}
-.browse-filter-trigger{min-width:118px;border:1px solid var(--brand-green)!important;color:#fff!important;border-radius:999px!important;padding:.72rem .95rem!important;display:inline-flex!important;align-items:center;justify-content:center;gap:.45rem;cursor:pointer;font:600 .82rem inherit;box-shadow:none!important;}
-.browse-filter-trigger.active{filter:brightness(.96);}
-.browse-filter-chevron{font-size:.68rem;transition:transform .18s ease;}
-.browse-filter-trigger.active .browse-filter-chevron{transform:rotate(180deg);}
-.browse-filter-panel{position:absolute;right:0;top:calc(100% + .45rem);width:min(390px,calc(100vw - 2rem));z-index:180;padding:.7rem;background:var(--glass-bg);border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border));border-radius:18px;box-shadow:var(--shadow-float);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);}
-.browse-filter-panel.hidden{display:none!important;}
-.browse-filter-panel-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.15rem .15rem .5rem;border-bottom:1px solid var(--border);margin-bottom:.25rem;}
-.browse-filter-row-group{position:relative;border-bottom:1px solid var(--border);}
-.browse-filter-row-group:last-of-type{border-bottom:0;}
-.browse-filter-subtrigger{width:100%;border:0;background:transparent;color:var(--text);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.6rem;text-align:left;padding:.82rem .25rem;cursor:pointer;font:inherit;}
-.browse-filter-subtrigger span{color:var(--text-muted);font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
-.browse-filter-subtrigger strong{font-size:.82rem;text-align:right;}
-.browse-filter-submenu{position:relative;margin:0 0 .5rem;padding:.35rem;border-radius:13px;background:color-mix(in srgb,var(--primary) 3%,var(--card));border:1px solid var(--border);}
-.browse-filter-submenu.hidden{display:none!important;}
-.browse-filter-submenu button{width:100%;border:0;background:transparent;color:var(--text);text-align:left;padding:.62rem .7rem;border-radius:10px;cursor:pointer;font:500 .82rem inherit;}
-.browse-filter-submenu button:hover,.browse-filter-submenu button:focus-visible{background:color-mix(in srgb,var(--primary) 11%,transparent);color:var(--primary);outline:none;}
-.browse-category-submenu input{margin:0 0 .35rem!important;width:100%!important;}
-.browse-category-submenu #browseCategoryOptions{max-height:230px;overflow-y:auto;overscroll-behavior:contain;}
-.browse-filter-clear{margin-top:.55rem!important;width:100%;justify-content:center;border:0!important;}
-.visually-hidden-select{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;}
-@media(max-width:560px){.browse-filter-toolbar{grid-template-columns:1fr;}.browse-filter-trigger{width:100%;}.browse-filter-panel{position:fixed;right:.65rem;left:.65rem;top:calc(var(--levro-search-dock-top,72px) + 3.2rem);width:auto;max-height:min(72vh,560px);overflow:auto;}}
-/* Protected route rendering should never flash an auth-looking deny state while the session is settling. */
-.route-auth-pending{display:flex;align-items:center;justify-content:center;min-height:30vh;color:var(--text-muted);}
-</style>
-
 <style id="levromart-retired-accent-controls">
 .accent-page-dropdown-trigger,#accentPaletteBody,#accentPalettePageBody,.accent-swatches,.accent-swatch,.settings-page-swatches{display:none!important;}
 </style>
 
-<style id="levromart-brand-texture-final">
-:root, html[data-theme="light"], html[data-theme="dark"], html[data-theme="black"] {
-  --primary:#10b080 !important;
-  --primary-light:#10b080 !important;
-  --primary-grad:#10b080 !important;
-  --brand-grad:#10b080 !important;
-}
-#app .btn:not(.btn-outline),
-#app .btn-sm:not(.btn-outline),
-#app .browse-filter-trigger,
-#app .browse-filter-clear,
-#app .levro-quick-icon,
-#app #aiChatFab,
-#app #cartFab {
-  background-color:#10b080 !important;
-  background-image:url("/levromart-green-texture-tile.png") !important;
-  background-size:160px 160px !important;
-  background-blend-mode:multiply !important;
-}
-</style>
