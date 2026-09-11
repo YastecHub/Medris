@@ -6090,32 +6090,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   .chat-media-group .chat-media-group-item:nth-child(3):last-child .chat-image-attachment{height:150px!important}
 }
 </style>
-
-<style id="levromart-production-launch-hardening">
-/* Production launch hardening: semantic admin actions, stable mobile overlays,
-   compact search controls, and product-action spacing. */
-#app .vendor-admin-action[data-status="verified"]{background:var(--success)!important;color:#fff!important;}
-#app .vendor-admin-action[data-status="rejected"]{background:var(--warning)!important;color:#fff!important;border-color:var(--warning)!important;}
-#app .vendor-admin-action[data-status="delete"]{background:var(--danger)!important;color:#fff!important;border-color:var(--danger)!important;}
-#app .admin-people-export-actions .btn[onclick*="'pdf'"]{background:transparent!important;color:var(--text-muted)!important;border:1px solid var(--border)!important;box-shadow:none!important;}
-#app .admin-people-export-actions .btn[onclick*="'pdf'"]:hover{background:color-mix(in srgb,var(--text-muted) 8%,transparent)!important;color:var(--text)!important;filter:none!important;}
-#app .vendor-product-actions{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:.55rem!important;margin-top:.7rem!important;padding-top:.2rem!important;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)!important;}
-#app .vendor-product-actions .btn{margin:0!important;}
-#app .package-actions{display:flex!important;flex-wrap:wrap!important;gap:.5rem!important;margin-top:.65rem!important;padding-top:.2rem!important;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)!important;}
-#app .package-actions .btn{margin:0!important;}
-#profilePanel,#notifPanel,#settingsPanel{z-index:100000!important;position:fixed!important;isolation:isolate!important;}
-#levromartHeaderSearchDock{z-index:90000!important;}
-.drawer-backdrop{z-index:99990!important;}
-#app input[type="search"]::-webkit-search-decoration,
-#app input[type="search"]::-webkit-search-results-button,
-#app input[type="search"]::-webkit-search-results-decoration{display:none!important;}
-@media(max-width:620px){
-  #app .admin-people-export-actions{gap:.35rem!important;}
-  #app .admin-people-export-actions .btn{min-height:36px!important;}
-  #app .vendor-product-actions,#app .package-actions{gap:.4rem!important;}
-}
-</style>
-
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -14821,11 +14795,12 @@ async function renderStorefront(vendorId) {
   if (!v.is_active) return '<div class="empty-state"><i class="fa-solid fa-store-slash" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>This shop is currently paused. Check back later.</div>';
   updateStorefrontSocialMeta(v);
 
-  const [{ data: products }, { data: stats }, { data: reviews }, { data: packages }] = await Promise.all([
+  const [{ data: products }, { data: stats }, { data: reviews }, { data: packages }, { data: followState }] = await Promise.all([
     sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
     sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
     sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
+    sb.rpc("get_vendor_follow_state", { p_vendor_id: v.id }),
   ]);
 
   const st = (stats && stats[0]) || {};
@@ -14863,19 +14838,20 @@ async function renderStorefront(vendorId) {
         </div>
       </div>
       <div class="storefront-name-row">
-        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)}</h1>
+        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
         <div class="storefront-name-actions">
-          ${profile?.role !== "admin" ? (v.whatsapp_visible && v.whatsapp_number ? `<div class="ms-wrap" style="position:relative;display:inline-flex;width:auto;"><button class="btn btn-sm storefront-social-icon" type="button" aria-label="Message vendor" title="Message vendor" onclick="toggleInlineMenu('storefrontMessageMenu',event)"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button><div class="ms-list hidden" id="storefrontMessageMenu" style="left:0;right:auto;width:max-content;min-width:180px;"><button class="ms-item" onclick="startConversationWithVendor('${v.id}');closeInlineMenu('storefrontMessageMenu')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('storefrontMessageMenu')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm storefront-social-icon" aria-label="Message vendor" title="Message vendor" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button>`) : ""}
+          ${profile?.role !== "admin" ? `<button class="btn btn-sm storefront-social-icon" type="button" aria-label="Message vendor" title="Message vendor" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button>` : ""}
+          ${profile?.role !== "admin" && v.whatsapp_visible && v.whatsapp_number ? `<a class="btn btn-sm btn-outline storefront-social-icon storefront-whatsapp-icon" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener" aria-label="WhatsApp vendor" title="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></a>` : ""}
           ${v.phone ? `<a class="btn btn-sm btn-outline storefront-social-icon" href="${telLink(v.phone)}" aria-label="Call vendor" title="Call vendor" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i><span>Call</span></a>` : ""}
         </div>
       </div>
-      <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>${v.whatsapp_visible && v.whatsapp_number ? `<a class="badge" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> ${esc(v.whatsapp_number)}</a>` : ""}</div>
+      <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
       ${v.bio ? `<p class="storefront-bio">${esc(v.bio)}</p>` : ""}
       <div class="storefront-stats">
         <span><strong>${allProducts.length}</strong> listing${allProducts.length === 1 ? "" : "s"}</span>
         <button type="button" class="storefront-stat-link" onclick="event.stopPropagation();scrollToVendorReviews()"><strong>${st.review_count || 0}</strong> review${Number(st.review_count || 0) === 1 ? "" : "s"}</button>
         ${`<button type="button" class="storefront-stat-link" onclick="event.stopPropagation();scrollToVendorReviews()"><strong>★ ${Number(st.avg_rating ?? 0).toFixed(1)}</strong> rating</button>`}
-        ${v.sector?.name ? `<span>${esc(v.sector.name)}</span>` : ""}
+        <span data-follow-count><strong>${Number(followState?.[0]?.follower_count || 0).toLocaleString()}</strong> follower${Number(followState?.[0]?.follower_count || 0) === 1 ? "" : "s"}</span>
       </div>
     </div>
   </section>`;
@@ -15246,7 +15222,7 @@ async function renderRequestEquipment() {
             <div class="flex">
               ${o.price != null ? `<strong>${naira(o.price)}</strong>` : ""}
               <span class="badge ${o.status === "accepted" ? "success" : o.status === "declined" ? "danger" : ""}">${esc(o.status)}</span>
-              ${r.status === "open" && o.status === "pending" ? `<button class="btn btn-sm" onclick="acceptOffer('${o.id}')">Accept</button><button class="btn btn-sm btn-danger" onclick="declineOffer('${o.id}')">Decline</button>` : ""}
+              ${r.status === "open" && o.status === "pending" ? `<button class="btn btn-sm" onclick="acceptOffer('${o.id}')">Accept</button><button class="btn btn-sm btn-outline" onclick="declineOffer('${o.id}')">Decline</button>` : ""}
               ${o.status === "accepted" ? `<button class="btn btn-sm" onclick="startConversationWithVendor('${o.vendor_id}')" title="Message vendor"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
               ${o.status === "accepted" && o.vendor?.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(o.vendor.phone)}" onclick="callVendorGated(event,'${esc(o.vendor.phone)}','${o.vendor_id}')"><i class='fa-solid fa-phone'></i></a>` : ""}
             </div>
@@ -16574,7 +16550,7 @@ async function renderVendorProducts() {
         ${hasPendingOrder ? `<p class="muted" style="font-size:0.8rem;color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
         <div class="vendor-product-actions">
           <button class="btn btn-sm" onclick="openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
-          ${p.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setProductStatus('${p.id}','paused')">Pause</button>${p.billing_model === "monthly" && p.billing_paid_until && new Date(p.billing_paid_until).getTime() > Date.now() ? `<button class="btn btn-sm btn-outline" onclick="startListingMonthlyPayment('product','${p.id}',{renew:true})"><i class="fa-solid fa-rotate"></i> Renew ₦1,000</button>` : ""}` : ""}
+          ${p.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setProductStatus('${p.id}','paused')">Pause</button>` : ""}
           ${p.status === "paused" ? (p.billing_model === "monthly" ? (p.billing_status === "active" && p.billing_paid_until && new Date(p.billing_paid_until).getTime() > Date.now() ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Resume</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-credit-card"></i> ${p.billing_status === "pending_payment" ? "Pay ₦1,000 to activate" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
           <button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>
         </div>
@@ -17167,7 +17143,7 @@ async function renderVendorPackages() {
     <p style="margin:0.4rem 0;"><strong>${naira(pkg.price)}</strong></p>
     <div class="flex">
       <button class="btn btn-sm" onclick="openEditPackageModal('${pkg.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
-      ${pkg.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setPackageStatus('${pkg.id}','paused')">Pause</button>${pkg.billing_model === "monthly" && pkg.billing_paid_until && new Date(pkg.billing_paid_until).getTime() > Date.now() ? `<button class="btn btn-sm btn-outline" onclick="startListingMonthlyPayment('package','${pkg.id}',{renew:true})"><i class="fa-solid fa-rotate"></i> Renew ₦1,000</button>` : ""}` : (pkg.billing_status === "pending_payment" && pkg.billing_model === "monthly" ? `<button class="btn btn-sm" onclick="startListingMonthlyPayment('package','${pkg.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000 to activate</button>` : `<button class="btn btn-sm" onclick="setPackageStatus('${pkg.id}','active')">Activate</button>`)}
+      ${pkg.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setPackageStatus('${pkg.id}','paused')">Pause</button>` : (pkg.billing_status === "pending_payment" && pkg.billing_model === "monthly" ? `<button class="btn btn-sm" onclick="startListingMonthlyPayment('package','${pkg.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000 to activate</button>` : `<button class="btn btn-sm" onclick="setPackageStatus('${pkg.id}','active')">Activate</button>`)}
       <button class="btn btn-sm btn-danger" onclick="deletePackage('${pkg.id}')"><i class='fa-solid fa-trash'></i> Delete</button>
     </div>
   </div>`).join("")}</div>`;
@@ -18573,9 +18549,9 @@ async function renderAdminPanel(status) {
       ${v.bio ? `<p style="margin:0.3rem 0;">${esc(v.bio)}</p>` : ""}
       <p class="muted" style="margin:0.3rem 0;">${doc ? `<a href="#" onclick="viewVendorDoc('${doc}');return false;"><i class='fa-solid fa-file-lines'></i> View submitted document</a>` : "No document uploaded"} · applied ${new Date(v.created_at).toLocaleDateString()}</p>
       <div class="flex" style="margin-top:0.5rem;">
-        ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}"><i class="fa-solid fa-check"></i> Approve</button>` : ""}
-        ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}"><i class="fa-solid fa-xmark"></i> Reject</button>` : ""}
-        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
+        ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}">Approve</button>` : ""}
+        ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
+        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
       </div>
     </div>`;
   });
@@ -18924,7 +18900,7 @@ function renderAdminPeopleFromData(people, appeals) {
     </div>
     <div class="admin-people-export-actions">
       <button type="button" class="btn btn-sm btn-outline" onclick="adminExportPeople(window.__adminPeopleRole,'csv')"><i class="fa-solid fa-file-csv"></i> CSV</button>
-      <button type="button" class="btn btn-sm btn-outline" onclick="adminExportPeople(window.__adminPeopleRole,'pdf')"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+      <button type="button" class="btn btn-sm" onclick="adminExportPeople(window.__adminPeopleRole,'pdf')"><i class="fa-solid fa-file-pdf"></i> PDF</button>
     </div>
   </section>
   <div class="admin-people-controls">
@@ -21545,74 +21521,12 @@ async function startLeviTourFromChat() {
   return true;
 }
 
-let leviRequestSequence = 0;
-
-function extractLeviCurrentProductTarget(text) {
-  const q = leviNormaliseText(text);
-  const m =
-    q.match(/^(?:take me to|go to|show me|find me|find|open|view|get me)\s+(?:a|an|some|the)\s+(.+?)\s*[?.!]?$/) ||
-    q.match(/^(?:take me to|go to|show me|find me|find|open|view|get me)\s+(.+?)\s*[?.!]?$/) ||
-    q.match(/^(?:i need|i want|looking for|search(?:ing)? for)\s+(?:a|an|some|the)\s+(.+?)\s*[?.!]?$/) ||
-    q.match(/^(?:i need|i want|looking for|search(?:ing)? for)\s+(.+?)\s*[?.!]?$/);
-  if (m?.[1]) return m[1].replace(/[?.!]+$/, "").trim();
-  if (/^(?:hi|hello|hey|thanks|thank you|okay|ok|yes|no|help|settings|cart|orders?|vendors?|messages?|profile|wishlist|shop|products?)$/.test(q)) return "";
-  if (/^(?:how|what|where|when|why|can|could|would|do|does|is|are|tell|give|please)\b/.test(q)) return "";
-  return q;
-}
-
-async function guardLeviReplyToCurrentRequest(reply, currentText) {
-  const parsed = parseAiNavTag(reply);
-  const nav = parsed.nav;
-  if (!nav || !["productDetail", "storefront"].includes(nav.view)) return reply;
-
-  const q = leviNormaliseText(currentText);
-  const referential = /^(?:show|open|take me to|go to|view)\s+(?:this|that|this item|that item|this product|that product|the current item|current item|the current product|current product|same item|same product)$/.test(q);
-  if (referential) return reply;
-
-  if (nav.view === "productDetail") {
-    const target = extractLeviCurrentProductTarget(currentText);
-    if (!target) return parsed.text;
-    try {
-      const result = await resolveLeviProduct(target);
-      const rows = result?.matches || [];
-      const exact = result?.exact && result?.product;
-      const chosen = exact ? result.product : (rows.length === 1 ? rows[0] : null);
-      if (!chosen) {
-        return rows.length > 1
-          ? `${parsed.text} I found several current matches for "${target}": ${rows.slice(0, 5).map(p => p.name).join(", ")}. Tell me which one you want.`
-          : parsed.text;
-      }
-      if (String(chosen.id) === String(nav.params?.productId)) return reply;
-      return `I found ${chosen.name}${chosen.vendor?.business_name ? ` from ${chosen.vendor.business_name}` : ""}. Opening it now. [[NAV:productDetail|productId=${chosen.id}]]`;
-    } catch (_) {
-      return parsed.text;
-    }
-  }
-
-  if (nav.view === "storefront") {
-    const vendorTarget = q.match(/^(?:take me to|go to|show me|find|open|view|visit)\s+(?:the\s+)?(.+?)\s+(?:vendor|store|shop|seller)$/)?.[1]?.trim();
-    if (!vendorTarget) return parsed.text;
-    try {
-      const result = await resolveLeviVendor(vendorTarget);
-      if (!result?.vendor) return parsed.text;
-      if (String(result.vendor.id) === String(nav.params?.vendorId)) return reply;
-      return `I found ${result.vendor.business_name}. Opening their shop now. [[NAV:storefront|vendorId=${result.vendor.id}]]`;
-    } catch (_) {
-      return parsed.text;
-    }
-  }
-  return reply;
-}
-
 async function sendAiChatMessage() {
   const input = byId("aiChatInput");
   const text = input.value.trim();
   const wasVoice = aiChatLastInputVoice;
   aiChatLastInputVoice = false;
   if (!text) return;
-
-  const requestId = ++leviRequestSequence;
-
   if (isLeviTourRequest(text)) {
     resetChatInput(input);
     appendAiChatMessage("user", text);
@@ -21620,34 +21534,26 @@ async function sendAiChatMessage() {
     const reply = "Absolutely. I'll take you around Levromart now.";
     appendAiChatMessage("assistant", reply);
     persistAiMessage("assistant", reply);
-    setTimeout(() => { if (requestId === leviRequestSequence) showTour(); }, 350);
+    setTimeout(() => showTour(), 350);
     return;
   }
-
-  if (aiChatListening || aiChatRecognizer) {
-    try { aiChatRecognizer?.abort(); } catch (_) {}
-    aiChatRecognizer = null;
-    aiChatListening = false;
-    aiChatVoicePaused = false;
-    updateAiVoiceStatus();
-  }
-
+  if (aiChatListening || aiChatRecognizer) { try { aiChatRecognizer?.abort(); } catch (_) {} aiChatRecognizer = null; aiChatListening = false; aiChatVoicePaused = false; updateAiVoiceStatus(); }
   resetChatInput(input);
   appendAiChatMessage("user", text);
   persistAiMessage("user", text);
 
+  // Levi has a local action layer for deterministic, low-risk tasks. This
+  // means explicit commands such as "add this to my cart" do not depend on
+  // the language model remembering a private tag format. The normal AI
+  // conversation still goes to /api/chat for everything else.
   try {
     const action = await resolveLeviLocalAction(text);
-    if (requestId !== leviRequestSequence) return;
     if (action?.handled) {
       appendAiChatMessage("assistant", action.reply, wasVoice);
       persistAiMessage("assistant", action.reply);
       playSound("notify");
       if (typeof action.afterReply === "function") {
-        setTimeout(() => {
-          if (requestId !== leviRequestSequence) return;
-          Promise.resolve(action.afterReply()).catch((err) => console.warn("Levi post-action failed:", err));
-        }, 140);
+        setTimeout(() => { Promise.resolve(action.afterReply()).catch((err) => console.warn("Levi post-action failed:", err)); }, 140);
       }
       return;
     }
@@ -21655,9 +21561,7 @@ async function sendAiChatMessage() {
     console.warn("Levi local action failed; continuing with AI:", err);
   }
 
-  if (requestId !== leviRequestSequence) return;
   appendAiChatMessage("typing", "");
-
   try {
     const leviHistory = aiChatMessages.filter((m) => m.role !== "typing").slice(-12);
     let leviChars = 0;
@@ -21669,37 +21573,22 @@ async function sendAiChatMessage() {
       boundedLeviHistory.unshift(msg);
       leviChars += textLen;
     }
-
     const json = await fetchLeviReply({
       messages: boundedLeviHistory,
       accessToken: session?.access_token,
-      lat: buyerLocation?.lat,
-      lng: buyerLocation?.lng,
-      currentView,
-      currentViewParams,
-      lastRenderError,
+      lat: buyerLocation?.lat, lng: buyerLocation?.lng,
+      currentView, currentViewParams, lastRenderError,
     });
-
-    if (requestId !== leviRequestSequence) return;
     byId("aiChatTyping")?.remove();
-
-    const safeReply = await guardLeviReplyToCurrentRequest(String(json.reply || ""), text);
-    if (requestId !== leviRequestSequence) return;
-
-    const assistantEl = appendAiChatMessage("assistant", safeReply, wasVoice);
-    persistAiMessage("assistant", safeReply).then((id) => {
-      if (id && assistantEl) {
-        assistantEl.dataset.msgId = id;
-        attachAiReactionUI(assistantEl, id, null);
-      }
+    const assistantEl = appendAiChatMessage("assistant", json.reply, wasVoice);
+    persistAiMessage("assistant", json.reply).then((id) => {
+      if (id && assistantEl) { assistantEl.dataset.msgId = id; attachAiReactionUI(assistantEl, id, null); }
     });
     playSound("notify");
   } catch (err) {
-    if (requestId !== leviRequestSequence) return;
     byId("aiChatTyping")?.remove();
     console.error("Levi chat error:", err);
     const fallback = await leviOfflineFallback(text);
-    if (requestId !== leviRequestSequence) return;
     appendAiChatMessage("assistant", fallback, wasVoice);
     persistAiMessage("assistant", fallback);
   }
@@ -24675,6 +24564,12 @@ window.renderVendorMapRail = function(){
 .chat-page-wrap .chat-bubble-wrap.chat-swipe-active .chat-bubble{will-change:transform !important;transition:none !important;}
 .chat-page-wrap .chat-bubble-wrap.chat-swipe-active::before{left:-2.2rem !important;width:1.72rem !important;height:1.72rem !important;box-shadow:0 4px 14px color-mix(in srgb,var(--primary) 18%,transparent) !important;}
 
+/* Vendor verification/follower micro-badges */
+.vendor-inline-verified{color:#16a34a;font-size:.72em;vertical-align:middle;}
+.vendor-follower-badge{white-space:nowrap;}
+.storefront-whatsapp-icon{color:#16a34a !important;}
+#levromartHeaderSearchDock{z-index:90000 !important;}
+#levromartHeaderSearchBackdrop{z-index:89990 !important;}
 /* Notification folders */
 
 </style>
@@ -24705,12 +24600,12 @@ window.renderVendorMapRail = function(){
     return `<div class="vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || '')}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || '')}'});}">
       ${avatarHtml}
       <div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
-        <strong class="vendor-directory-name">${esc(name)}</strong>
+        <strong class="vendor-directory-name">${esc(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
         <p class="muted vendor-directory-city" style="margin:.15rem 0;">${esc(v?.city || 'Lagos')}</p>
         ${knownLine}
         <div class="vendor-card-footer">
-          <span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span>
           <span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} (${Number(v?.review_count ?? 0)})</span>
+          <span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> ${Number(v?.follower_count || 0).toLocaleString()} follower${Number(v?.follower_count || 0) === 1 ? "" : "s"}</span>
         </div>
       </div>
     </div>`;
@@ -27867,6 +27762,8 @@ body.product-detail-view #aiChatFab.scroll-faded{pointer-events:none !important;
 .listing-billing-choice label{font-size:.76rem;font-weight:750;margin:0 0 .35rem;display:block;}
 .listing-billing-choice select{margin:0;width:100%;}
 .header-search-btn{position:relative!important;}
+#levromartHeaderSearchBackdrop{position:fixed;inset:0;z-index:89990;display:none;background:rgba(2,8,23,.16);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);}
+#levromartHeaderSearchBackdrop.open{display:block;}
 #levromartHeaderSearchDock{position:fixed;left:.75rem;right:.75rem;top:calc(58px + env(safe-area-inset-top,0px) + .45rem);z-index:205;display:none;}
 #levromartHeaderSearchDock.open{display:block;}
 #levromartHeaderSearchDock .header-search-shell{position:relative;max-width:760px;margin:0 auto;background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid color-mix(in srgb,var(--primary) 28%,var(--border));border-radius:18px;box-shadow:0 18px 48px rgba(0,0,0,.2);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);padding:.35rem;}
@@ -28206,7 +28103,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 #app .vendors-directory-search{display:none!important;height:0!important;overflow:visible!important;margin:0!important;}
 #app .vendors-directory-search.open{display:block!important;height:auto!important;margin:.55rem 0 .7rem!important;}
 #app .vendors-directory-search input#vendorSearchInput{padding-left:1rem!important;}
-#app .orders-filter-search-row{display:flex!important;align-items:center!important;gap:.5rem!important;position:relative!important;z-index:80!important;}
+#app .orders-filter-search-row{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:.5rem!important;position:relative!important;z-index:80!important;width:100%!important;}
 #app .orders-filter-search-row .order-filters-wrap{flex:1 1 auto!important;min-width:0!important;}
 #app .orders-filter-search-row .order-search-wrap{flex:0 0 44px!important;width:44px!important;margin:0!important;}
 #app .orders-filter-search-row .order-search-wrap.open{flex:1 1 auto!important;width:auto!important;}
@@ -28322,7 +28219,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 
 /* Order filter + search are peers. List/table are tiny controls aligned right
    below them. No second/stacked search icon. */
-#app .orders-filter-search-row{display:flex !important;align-items:center !important;gap:.5rem !important;}
+#app .orders-filter-search-row{display:flex !important;flex-wrap:nowrap !important;align-items:center !important;gap:.5rem !important;width:100% !important;}
 #app .orders-filter-search-row .order-filters-wrap{flex:1 1 auto !important;min-width:0 !important;}
 #app .orders-filter-search-row .order-search-wrap{flex:0 0 42px !important;width:42px !important;min-height:42px !important;margin:0 !important;position:relative !important;}
 #app .orders-filter-search-row .order-search-toggle{width:42px !important;height:42px !important;min-width:42px !important;min-height:42px !important;padding:0 !important;border-radius:12px !important;}
