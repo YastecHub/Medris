@@ -7,6 +7,10 @@
     {
       "source": "/api/account-exists",
       "destination": "/api/delete-account"
+    },
+    {
+      "source": "/api/listing-payments",
+      "destination": "/api/vendor-payments"
     }
   ],
   "crons": [

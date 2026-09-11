@@ -14834,6 +14834,25 @@ async function renderStorefront(vendorId) {
       <div class="storefront-avatar-row">
         ${logo}
         <div class="storefront-profile-actions storefront-top-actions">
+          <div class="storefront-follow-wrap" data-follow-vendor-id="${v.id}">
+            <div class="storefront-follow-controls">
+              <button type="button" class="btn btn-sm follow-btn ${followState?.[0]?.following ? "" : "btn-outline"}" aria-label="${followState?.[0]?.following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${followState?.[0]?.following ? "Unfollow vendor" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${followState?.[0]?.following ? "fa-check" : "fa-plus"}"></i> ${followState?.[0]?.following ? "Following" : "Follow"}</button>
+              <button type="button" class="btn btn-sm btn-outline follow-settings-btn" ${followState?.[0]?.following ? "" : "disabled"} aria-expanded="false" aria-label="Notification preferences" title="${followState?.[0]?.following ? "Notification preferences" : "Follow this vendor to manage notifications"}" onclick="window.toggleLevromartFollowNotifications?.('${v.id}',event)"><i class="fa-solid fa-bell"></i></button>
+            </div>
+            <div class="follow-menu hidden" role="dialog" aria-label="Vendor notification preferences">
+              <strong>Vendor notifications</strong>
+              <div class="follow-pref-row"><span>New listings</span><input type="checkbox" data-pref="notify_new_listing"></div>
+              <div class="follow-pref-row"><span>New services</span><input type="checkbox" data-pref="notify_new_service"></div>
+              <div class="follow-pref-row"><span>New packages</span><input type="checkbox" data-pref="notify_new_package"></div>
+              <div class="follow-pref-row"><span>New varieties</span><input type="checkbox" data-pref="notify_new_variety"></div>
+              <div class="follow-pref-row"><span>Price changes</span><input type="checkbox" data-pref="notify_price_change"></div>
+              <div class="follow-pref-row"><span>Discounts</span><input type="checkbox" data-pref="notify_discount"></div>
+              <small class="muted">Mute this vendor</small>
+              <div class="follow-mute-grid">
+                <button type="button" data-mute="none">On</button><button type="button" data-mute="1h">1 hour</button><button type="button" data-mute="8h">8 hours</button><button type="button" data-mute="always" style="grid-column:1/-1;">Always</button>
+              </div>
+            </div>
+          </div>
           ${storefrontMoreItems ? `<div class="ms-wrap storefront-more-wrap" style="position:relative;display:inline-flex;width:auto;"><button class="btn btn-sm btn-outline storefront-more-icon" type="button" aria-label="More vendor details" title="More vendor details" onclick="toggleInlineMenu('storefrontMoreMenu',event)"><i class="fa-solid fa-ellipsis"></i></button><div class="ms-list hidden" id="storefrontMoreMenu" style="left:auto;right:0;width:max-content;min-width:180px;">${storefrontMoreItems}</div></div>` : ""}
         </div>
       </div>
@@ -28785,6 +28804,106 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   const observer=new MutationObserver(()=>{clearTimeout(window.__levroFinalUxTimer);window.__levroFinalUxTimer=setTimeout(()=>{setupCompactSearches();installVendorCardRenderer();hydrateFollowerCounts();syncListingBillingUI();syncPackageBillingUI();},80);});
   observer.observe(document.body,{childList:true,subtree:true});
   setTimeout(run,250);
+})();
+</script>
+
+<style id="levromart-final-follow-repair-css">
+.storefront-follow-wrap{position:relative!important;display:inline-flex!important;z-index:80!important;}
+.storefront-follow-controls{display:flex!important;align-items:center!important;gap:.35rem!important;}
+.storefront-follow-wrap .follow-btn{min-width:104px!important;height:40px!important;min-height:40px!important;border-radius:999px!important;padding:.45rem .8rem!important;white-space:nowrap!important;}
+.storefront-follow-wrap .follow-settings-btn{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;padding:0!important;border-radius:50%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;}
+.storefront-follow-wrap .follow-settings-btn:disabled{opacity:.5!important;cursor:not-allowed!important;}
+.storefront-follow-wrap .follow-menu{position:absolute!important;right:0!important;top:calc(100% + .45rem)!important;width:min(290px,calc(100vw - 2rem))!important;background:var(--card,#fff)!important;color:var(--text,#1f2937)!important;border:1px solid var(--border,#dbe3ea)!important;border-radius:16px!important;padding:.7rem!important;box-shadow:0 18px 45px rgba(15,23,42,.2)!important;z-index:100000!important;}
+.storefront-follow-wrap .follow-menu.hidden{display:none!important;}
+.storefront-follow-wrap .follow-menu>strong{display:block!important;font-size:.82rem!important;margin-bottom:.45rem!important;}
+.follow-pref-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.75rem!important;padding:.38rem 0!important;font-size:.75rem!important;}
+.follow-mute-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:.35rem!important;margin-top:.35rem!important;}
+.follow-mute-grid button{border:1px solid var(--border,#dbe3ea)!important;background:transparent!important;border-radius:9px!important;padding:.4rem .25rem!important;cursor:pointer!important;color:inherit!important;font-size:.68rem!important;}
+.follow-mute-grid button.active{background:color-mix(in srgb,var(--primary) 12%,transparent)!important;border-color:var(--primary)!important;color:var(--primary)!important;font-weight:700!important;}
+@media(max-width:620px){.storefront-follow-wrap .follow-btn{min-width:92px!important;height:38px!important;min-height:38px!important;font-size:.75rem!important;}.storefront-follow-wrap .follow-settings-btn{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;}}
+</style>
+<script id="levromart-final-follow-search-repair">
+(function(){
+  "use strict";
+  const stateOf = async (vendorId) => {
+    if(!vendorId || typeof sb === "undefined") return null;
+    try { const {data,error}=await sb.rpc("get_vendor_follow_state",{p_vendor_id:vendorId}); return error ? null : (data?.[0] || null); } catch(_) { return null; }
+  };
+  const currentVendorId = () => document.querySelector(".storefront-follow-wrap")?.dataset.followVendorId || (typeof currentViewParams !== "undefined" ? currentViewParams?.vendorId : null);
+  const refresh = async (vendorId) => {
+    const wrap=document.querySelector(`.storefront-follow-wrap[data-follow-vendor-id="${CSS.escape(String(vendorId))}"]`); if(!wrap)return;
+    const st=await stateOf(vendorId); if(!st)return;
+    const btn=wrap.querySelector(".follow-btn"), bell=wrap.querySelector(".follow-settings-btn"), menu=wrap.querySelector(".follow-menu");
+    const following=!!st.following;
+    if(btn){btn.classList.toggle("btn-outline",!following);btn.innerHTML=`<i class="fa-solid ${following?'fa-check':'fa-plus'}"></i> ${following?'Following':'Follow'}`;btn.setAttribute("aria-label",`${following?'Unfollow':'Follow'} vendor`);btn.title=following?'Unfollow vendor':'Follow vendor';}
+    if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications';}
+    if(menu){menu.querySelectorAll("input[data-pref]").forEach(cb=>{cb.checked=st[cb.dataset.pref] !== false;});menu.querySelectorAll("[data-mute]").forEach(b=>b.classList.toggle("active",(st.mute_mode||'none')===b.dataset.mute));}
+    const count=document.querySelector("[data-follow-count]"); if(count) count.innerHTML=`<strong>${Number(st.follower_count||0).toLocaleString()}</strong> follower${Number(st.follower_count||0)===1?'':'s'}`;
+  };
+  window.toggleLevromartVendorFollow = async function(vendorId, ev){
+    ev?.preventDefault(); ev?.stopPropagation();
+    if(!(typeof session !== "undefined" && session)){ if(typeof showLogin==='function')showLogin(); return; }
+    const wrap=document.querySelector(`.storefront-follow-wrap[data-follow-vendor-id="${CSS.escape(String(vendorId))}"]`); if(!wrap)return;
+    const st=await stateOf(vendorId); if(!st)return;
+    if(st.following){
+      const name=document.querySelector(".storefront-profile-name")?.textContent?.replace(/\s+/g,' ').trim() || 'this vendor';
+      let ok=false;
+      if(typeof showConfirmDialog==='function') ok=await showConfirmDialog(`Do you want to unfollow ${name}?`,{title:'Unfollow vendor',okLabel:'Unfollow',danger:true});
+      else ok=window.confirm(`Do you want to unfollow ${name}?`);
+      if(!ok)return;
+    }
+    const btn=wrap.querySelector('.follow-btn'); if(btn)btn.disabled=true;
+    try{
+      const {data,error}=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:!st.following});
+      if(error)throw error;
+      if(typeof showToast==='function')showToast(data?'You’re now following this vendor.':'You unfollowed this vendor.','success');
+      const menu=wrap.querySelector('.follow-menu'); if(menu && data===false){menu.classList.add('hidden');wrap.querySelector('.follow-settings-btn')?.setAttribute('aria-expanded','false');}
+      await refresh(vendorId);
+    }catch(e){if(typeof showToast==='function')showToast(e.message||'Could not update your following list.','error');}
+    finally{if(btn)btn.disabled=false;}
+  };
+  window.toggleLevromartFollowNotifications = async function(vendorId,ev){
+    ev?.preventDefault();ev?.stopPropagation();
+    const wrap=document.querySelector(`.storefront-follow-wrap[data-follow-vendor-id="${CSS.escape(String(vendorId))}"]`); if(!wrap)return;
+    const bell=wrap.querySelector('.follow-settings-btn'); if(!bell || bell.disabled)return;
+    const menu=wrap.querySelector('.follow-menu'); if(!menu)return;
+    const open=menu.classList.toggle('hidden')===false; bell.setAttribute('aria-expanded',String(open));
+    if(open) await refresh(vendorId);
+  };
+  async function savePrefs(vendorId,mute){
+    const wrap=document.querySelector(`.storefront-follow-wrap[data-follow-vendor-id="${CSS.escape(String(vendorId))}"]`); if(!wrap)return;
+    const checked=k=>!!wrap.querySelector(`[data-pref="${k}"]`)?.checked;
+    try{
+      const {error}=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:vendorId,p_mute_mode:mute,p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')});
+      if(error)throw error;
+      if(typeof showToast==='function')showToast('Vendor notification preferences saved.','success');
+      await refresh(vendorId);
+    }catch(e){if(typeof showToast==='function')showToast(e.message||'Could not save notification preferences.','error');}
+  }
+  function bindFollow(){
+    document.querySelectorAll('.storefront-follow-wrap').forEach(w=>{
+      if(w.dataset.repairBound==='1')return; w.dataset.repairBound='1'; const id=w.dataset.followVendorId;
+      w.querySelectorAll('input[data-pref]').forEach(cb=>cb.addEventListener('change',()=>stateOf(id).then(st=>savePrefs(id,st?.mute_mode||'none'))));
+      w.querySelectorAll('[data-mute]').forEach(b=>b.addEventListener('click',()=>savePrefs(id,b.dataset.mute)));
+      refresh(id);
+    });
+  }
+  function bindTopSearch(){
+    const b=document.getElementById('levromartHeaderSearchButton'); if(!b || b.dataset.repairBound==='1')return;
+    b.dataset.repairBound='1'; b.removeAttribute('onclick');
+    b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation(); if(typeof window.openLevromartHeaderSearch==='function')window.openLevromartHeaderSearch();});
+  }
+  function repairSearchBackdrop(){
+    const backdrop=document.getElementById('levromartHeaderSearchBackdrop'); if(!backdrop || backdrop.dataset.repairBound==='1')return;
+    backdrop.dataset.repairBound='1'; backdrop.addEventListener('pointerdown',e=>{if(e.target===backdrop){e.preventDefault();window.closeLevromartHeaderSearch?.();}});
+  }
+  document.addEventListener('pointerdown',e=>{
+    const menu=e.target.closest?.('.follow-menu'),wrap=e.target.closest?.('.storefront-follow-wrap');
+    if(!menu && !wrap)document.querySelectorAll('.follow-menu:not(.hidden)').forEach(m=>{m.classList.add('hidden');m.closest('.storefront-follow-wrap')?.querySelector('.follow-settings-btn')?.setAttribute('aria-expanded','false');});
+  },true);
+  const run=()=>{bindFollow();bindTopSearch();repairSearchBackdrop();};
+  run(); setTimeout(run,200); setTimeout(run,700);
+  new MutationObserver(()=>{clearTimeout(window.__levroFollowRepairTimer);window.__levroFollowRepairTimer=setTimeout(run,60);}).observe(document.body,{childList:true,subtree:true});
 })();
 </script>
 
