@@ -14556,6 +14556,7 @@ async function renderVendorsMap() {
   list.forEach((v) => {
     const dist = buyerLocation ? formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng)) : "";
     const marker = window.L.marker([v.lat, v.lng], { icon: vendorMapIcon() }).addTo(vendorsMap);
+    marker._levromartVendorId = v.id;
     const vendorName = esc(v.business_name || "Vendor");
     const vendorLogo = v.logo_url
       ? `<img class="vendor-map-popup-avatar" src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" onerror="this.classList.add('is-broken');this.style.display='none';" />`
@@ -20248,6 +20249,33 @@ async function applyAiAddCartItems(items) {
 // ADDCART. Levi is told to only ever use product ids from the customer's own
 // "Current cart" context (see buildCustomerContext in api/chat.js), so this
 // is just a plain delete scoped to the signed-in buyer's own cart row.
+const AI_CARTSYNC_TAG_RE = /\[\[CARTSYNC\]\]/g;
+function parseAiCartSyncTag(content){
+  const str=String(content||"");
+  AI_CARTSYNC_TAG_RE.lastIndex=0;
+  const found=AI_CARTSYNC_TAG_RE.test(str);
+  AI_CARTSYNC_TAG_RE.lastIndex=0;
+  const text=str.replace(AI_CARTSYNC_TAG_RE,"").replace(/\s{2,}/g," ").trim();
+  return {text:text||content,sync:found};
+}
+const AI_CLEARCART_TAG_RE = /\[\[CLEARCART\]\]/g;
+function parseAiClearCartTag(content){
+  const str=String(content||"");
+  AI_CLEARCART_TAG_RE.lastIndex=0;
+  const found=AI_CLEARCART_TAG_RE.test(str);
+  AI_CLEARCART_TAG_RE.lastIndex=0;
+  const text=str.replace(AI_CLEARCART_TAG_RE,"").replace(/\s{2,}/g," ").trim();
+  return {text:text||content,clear:found};
+}
+const AI_CLEARCART_CONFIRM_TAG_RE = /\[\[CLEARCART_CONFIRM\]\]/g;
+function parseAiClearCartConfirmTag(content){
+  const str=String(content||"");
+  AI_CLEARCART_CONFIRM_TAG_RE.lastIndex=0;
+  const found=AI_CLEARCART_CONFIRM_TAG_RE.test(str);
+  AI_CLEARCART_CONFIRM_TAG_RE.lastIndex=0;
+  const text=str.replace(AI_CLEARCART_CONFIRM_TAG_RE,"").replace(/\s{2,}/g," ").trim();
+  return {text:text||content,confirm:found};
+}
 const AI_REMOVECART_TAG_RE = /\[\[REMOVECART productId=([a-zA-Z0-9-]+)\]\]/g;
 function parseAiRemoveCartTags(content) {
   const str = String(content || "");
@@ -20339,6 +20367,17 @@ async function goToAiChatNav(nav) {
       return;
     }
     await navigate(nav.view, params, true);
+    if (nav.view === "vendors" && String(params.map || "").toLowerCase() === "true") {
+      setTimeout(async () => {
+        try {
+          switchVendorsView("map");
+          if (params.vendorId && typeof vendorsMap !== "undefined" && vendorsMap) {
+            const marker = Array.isArray(vendorsMapMarkers) ? vendorsMapMarkers.find(m => String(m?.options?.vendorId || m?._levromartVendorId || "") === String(params.vendorId)) : null;
+            if (marker) { vendorsMap.setView(marker.getLatLng(), 15, { animate:true }); marker.openPopup?.(); }
+          }
+        } catch (_) {}
+      }, 120);
+    }
     if (nav.view === "home" && params.section) {
       requestAnimationFrame(() => {
         const target = params.section === "vendors"
@@ -20388,14 +20427,22 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
   let draft = null;
   let cartItems = null;
   let removeCartItems = null;
+  let clearCart = false;
+  let clearCartConfirm = false;
   let suggestedProducts = null;
   if (role === "assistant") {
     const parsedNav = parseAiNavTag(content);
     const parsedDraft = parseAiDraftMsgTag(parsedNav.text);
     const parsedCart = parseAiAddCartTags(parsedDraft.text);
     const parsedRemoveCart = parseAiRemoveCartTags(parsedCart.text);
-    const parsedProducts = parseAiProductTags(parsedRemoveCart.text);
+    const parsedSync = parseAiCartSyncTag(parsedRemoveCart.text);
+    const parsedClearCart = parseAiClearCartTag(parsedSync.text);
+    const parsedClearConfirm = parseAiClearCartConfirmTag(parsedClearCart.text);
+    const parsedProducts = parseAiProductTags(parsedClearConfirm.text);
     displayText = parsedProducts.text;
+    if (!isReplay && parsedSync.sync) { try { updateCartFab(); refreshNotifications(); } catch (_) {} }
+    clearCart = isReplay ? false : parsedClearCart.clear;
+    clearCartConfirm = isReplay ? false : parsedClearConfirm.confirm;
     suggestedProducts = isReplay ? [] : parsedProducts.ids;
     // Re-showing a past conversation shouldn't replay its side effects --
     // an old "take you there" tag (or an old cart add/remove) firing again
@@ -20481,6 +20528,52 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       });
     }
     if (suggestedProducts && suggestedProducts.length) renderLeviSuggestedProducts(el, suggestedProducts);
+    if (clearCartConfirm) {
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "ai-chat-nav-btn";
+      clearBtn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Clear cart`;
+      clearBtn.onclick = async () => {
+        clearBtn.disabled = true;
+        try {
+          const { data: rows, error } = await sb.from("cart_items").select("id").eq("buyer_id", session.user.id);
+          if (error) throw error;
+          if (!rows?.length) { clearBtn.innerHTML = `<i class="fa-solid fa-check"></i> Cart already empty`; return; }
+          const ok = await showConfirmDialog(`Remove all ${rows.length} item${rows.length === 1 ? "" : "s"} from your cart?`, { title:"Clear cart", okLabel:"Clear cart", danger:true });
+          if (!ok) { clearBtn.disabled = false; return; }
+          const { error: delErr } = await sb.from("cart_items").delete().eq("buyer_id", session.user.id);
+          if (delErr) throw delErr;
+          updateCartFab(); refreshNotifications();
+          clearBtn.innerHTML = `<i class="fa-solid fa-check"></i> Cart cleared`;
+        } catch (_) {
+          clearBtn.disabled = false;
+          clearBtn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Couldn't clear cart`;
+        }
+      };
+      el.appendChild(clearBtn);
+    }
+    if (clearCart) {
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "ai-chat-nav-btn";
+      clearBtn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Clear cart`;
+      clearBtn.onclick = async () => {
+        clearBtn.disabled = true;
+        try {
+          const { data: rows, error } = await sb.from("cart_items").select("id").eq("buyer_id", session.user.id);
+          if (error) throw error;
+          if (!rows?.length) { clearBtn.innerHTML = `<i class="fa-solid fa-check"></i> Cart already empty`; return; }
+          const ok = await showConfirmDialog(`Remove all ${rows.length} item${rows.length===1?"":"s"} from your cart?`, { title:"Clear cart", okLabel:"Clear cart", danger:true });
+          if (!ok) { clearBtn.disabled=false; return; }
+          const { error: delErr } = await sb.from("cart_items").delete().eq("buyer_id", session.user.id);
+          if (delErr) throw delErr;
+          updateCartFab(); refreshNotifications();
+          clearBtn.innerHTML = `<i class="fa-solid fa-check"></i> Cart cleared`;
+          setTimeout(() => goToAiChatNav({view:"cart",params:{}}), 120);
+        } catch (_) { clearBtn.disabled=false; clearBtn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Couldn't clear cart`; }
+      };
+      el.appendChild(clearBtn);
+    }
     if ((cartItems && cartItems.length) || (removeCartItems && removeCartItems.length)) {
       const navHint = document.createElement("div");
       navHint.className = "ai-chat-cart-action";
@@ -20510,7 +20603,7 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
   }
   wrap.appendChild(el);
   if (nav && !isReplay && role === "assistant") {
-    setTimeout(() => { goToAiChatNav(nav); }, 120);
+    setTimeout(() => { goToAiChatNav(nav); }, 18);
   }
   // Both sides of a Levi conversation support a simple long-press Copy action.
   // Keep it on the message bubble itself so users can copy their own prompt
@@ -21187,7 +21280,7 @@ async function leviOfflineFallback(text) {
   const q = leviNormaliseText(text);
   if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(q)) {
     const name = (profile?.name || '').trim().split(/\s+/)[0];
-    return `Hi${name ? `, ${name}` : ''}. I'm Levi. I can still help with basic Levromart navigation, your cart, wishlist, orders, and products while the smart assistant reconnects.`;
+    return `Hi${name ? `, ${name}` : ''}. I'm Levi. I can still help with Levromart navigation, your cart, wishlist, orders, products, vendors, and requests right now.`;
   }
   if (/\b(open|show|take me to|go to)\b.*\b(cart|basket)\b/.test(q)) {
     navigate('cart');
@@ -21494,15 +21587,125 @@ async function resolveLeviVendor(target) {
 }
 
 async function resolveLeviProductSuggestions(target) {
-  const clean=String(target||"").trim(); if(!clean)return [];
-  const words=clean.split(/\s+/).filter(Boolean).slice(0,6);
-  try{
-    const queries=words.map(w=>sb.from("products").select("id,name,sale_price,discount_price,rental_rate,quantity_available,status,is_service,photos,vendor:vendors(business_name,logo_url)").eq("status","active").eq("is_service",false).ilike("name",`%${w}%`).limit(8));
-    const results=await Promise.all(queries); const map=new Map();results.forEach(r=>(r.data||[]).forEach(p=>map.set(p.id,p)));
-    return [...map.values()].filter(p=>Number(p.quantity_available??0)>0).slice(0,6);
-  }catch(_){return[];}
+  const clean = String(target || "").trim();
+  if (!clean) return [];
+  const groups = {
+    icecream:["ice cream","icecream","frozen dessert","dessert","candy","sweet","yogurt"],
+    "ice cream":["icecream","frozen dessert","dessert","candy","sweet","yogurt"],
+    watch:["wristwatch","wrist watch","smartwatch","smart watch","timepiece"],
+    jewelry:["jewellery","ring","rings","necklace","bracelet","earrings","chain"],
+    jewellery:["jewelry","ring","rings","necklace","bracelet","earrings","chain"],
+    shoe:["shoes","footwear","sneaker","sneakers","slipper","sandals","boots"],
+    shoes:["shoe","footwear","sneaker","sneakers","slipper","sandals","boots"],
+    food:["foodstuff","groceries","grocery","rice","pasta","spaghetti","penne","macaroni","snacks","candy"],
+    clothes:["clothing","fashion","shirt","dress","trousers","jeans","jacket"],
+    medical:["medical equipment","diagnostic","healthcare","clinical"]
+  };
+  const terms = new Set(clean.split(/\s+/).filter(Boolean).slice(0,6));
+  [...terms].forEach(t => (groups[leviNormaliseText(t)] || []).forEach(x => terms.add(x)));
+  try {
+    const queries = [...terms].slice(0,14).map(term => sb.from("products")
+      .select("id,name,description,sale_price,discount_price,rental_rate,quantity_available,status,is_service,photos,category:categories(id,name,sector_id),vendor:vendors(id,business_name,logo_url)")
+      .eq("status","active").eq("is_service",false).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(10));
+    const responses = await Promise.all(queries);
+    const map = new Map();
+    responses.forEach(r => (r.data || []).forEach(p => { if (Number(p.quantity_available ?? 0) > 0) map.set(p.id,p); }));
+    const qn = leviNormaliseText(clean);
+    const allTerms = [...terms].map(leviNormaliseText);
+    const score = p => { const hay=leviNormaliseText([p.name,p.description,p.category?.name].filter(Boolean).join(" ")); return (hay.includes(qn)?50:0)+allTerms.reduce((n,t)=>n+(t&&hay.includes(t)?4:0),0); };
+    return [...map.values()].sort((a,b)=>score(b)-score(a)).slice(0,6);
+  } catch (_) { return []; }
 }
+
 function leviProductSuggestionTag(products){return products?.length?`[[PRODUCTS:${products.map(p=>p.id).join(",")}]]`:"";}
+
+
+async function resolveLeviQuickDiscovery(text) {
+  const q=leviNormaliseText(text);
+  if(!session) return null;
+  const hasLocation=!!(buyerLocation && Number.isFinite(Number(buyerLocation.lat)) && Number.isFinite(Number(buyerLocation.lng)));
+  const vendorRequest=/\b(vendor|vendors|store|stores|shop|shops|seller|sellers)\b/.test(q);
+
+  // Nearby/closest vendor discovery. If the user names a product, first find
+  // vendors that actually carry it; then rank those vendors by real distance.
+  if(vendorRequest && /\b(closest|nearest|near me|nearest to me|close to me)\b/.test(q)){
+    if(!hasLocation){
+      try{ showLocationPrompt?.("first-use"); }catch(_){}
+      return {handled:true,reply:"I can find the closest vendor, but I need your location first. Turn on location and I’ll find the nearest real match."};
+    }
+    const wantsRent = /\b(rent|rents|rental|renting|hire|hiring)\b/.test(q);
+    const wantsBuy = /\b(buy|buying|purchase|sell|selling)\b/.test(q);
+    const productPhrase=q.replace(/\b(levi|please|what|is|the|a|an|my|closest|nearest|vendor|vendors|store|stores|shop|shops|seller|sellers|near|me|to|that|can|i|buy|buying|purchase|rent|rents|rental|renting|hire|hiring|from|for|around|here)\b/g," ").replace(/\s+/g," ").trim();
+    let vendors=[];
+    try{
+      if(productPhrase){
+        const {data:ids}=await sb.rpc("search_product_ids",{p_query:productPhrase});
+        const productIds=(ids||[]).slice(0,30).map(x=>x.id).filter(Boolean);
+        if(productIds.length){
+          let productQuery=sb.from("products").select("id,listing_type,vendor:vendors!inner(id,business_name,city,lat,lng,avg_rating,review_count,verification_status,is_active)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).in("id",productIds);
+          if (wantsRent) productQuery=productQuery.in("listing_type",["rent","both"]);
+          if (wantsBuy) productQuery=productQuery.in("listing_type",["sale","both"]);
+          const {data:products}=await productQuery;
+          const map=new Map();(products||[]).forEach(p=>{if(p.vendor?.id)map.set(p.vendor.id,p.vendor);});vendors=[...map.values()];
+        }
+      }
+      if(!vendors.length){
+        const {data}=await sb.from("vendors").select("id,business_name,city,lat,lng,avg_rating,review_count").eq("verification_status","verified").eq("is_active",true).limit(300);
+        vendors=data||[];
+      }
+    }catch(_){}
+    vendors=vendors.filter(v=>Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lng))).map(v=>({...v,distance:haversineKm(Number(buyerLocation.lat),Number(buyerLocation.lng),Number(v.lat),Number(v.lng))})).sort((a,b)=>a.distance-b.distance);
+    if(!vendors.length) return {handled:true,reply:"I couldn't find a vendor with a mapped location for that request yet."};
+    const top=vendors[0];
+    return {handled:true,reply:`The closest match is ${top.business_name}${productPhrase?` for ${productPhrase}`:""} — about ${formatDistanceKm(top.distance)} away. I’m taking you there now. [[NAV:storefront|vendorId=${top.id}]]`};
+  }
+
+  // Rating discovery: use real public ratings, never guesses.
+  if(vendorRequest && (/(highest|top|best|5[- ]?star|five[- ]?star|rated)/.test(q))){
+    const minFive=/\b(5[- ]?star|five[- ]?star|five star)\b/.test(q)?5:null;
+    const minFour=/\b(4[- ]?star|four[- ]?star)\b/.test(q)?4:null;
+    const minRating=minFive??minFour;
+    try{
+      const {data}=await sb.from("vendors").select("id,business_name,city,avg_rating,review_count").eq("verification_status","verified").eq("is_active",true).limit(300);
+      const rows=(data||[]).filter(v=>minRating==null||Number(v.avg_rating||0)>=minRating).sort((a,b)=>Number(b.avg_rating||0)-Number(a.avg_rating||0)||Number(b.review_count||0)-Number(a.review_count||0)).slice(0,8);
+      if(rows.length) return {handled:true,reply:`Here are the ${minRating?`${minRating}-star-and-up `:"highest-rated "}vendors I found: ${rows.map((v,i)=>`${i+1}. ${v.business_name} — ${Number(v.avg_rating||0).toFixed(1)}★ (${Number(v.review_count||0)} reviews)`).join("; ")}.`};
+    }catch(_){}
+  }
+
+  // Sector counts/lists are resolved against the live sector/vendor tables.
+  const countMatch=q.match(/(?:how many|number of)\s+vendors?\s+(?:are\s+)?(?:in|under|within)\s+(?:the\s+)?(.+)$/);
+  if(countMatch){
+    const sectorName=countMatch[1].replace(/[?.!]+$/g,"").trim();
+    try{
+      const [{data:sectorsData},{data:vendorsData}]=await Promise.all([
+        sb.from("sectors").select("id,name"),
+        sb.from("vendors").select("sector_id").eq("verification_status","verified").eq("is_active",true)
+      ]);
+      const sec=(sectorsData||[]).find(x=>normalize(x.name)===normalize(sectorName)||normalize(x.name).includes(normalize(sectorName)));
+      if(sec){const n=(vendorsData||[]).filter(v=>String(v.sector_id)===String(sec.id)).length;return {handled:true,reply:`There are ${n} verified active vendor${n===1?"":"s"} in the ${sec.name} sector.`};}
+    }catch(_){}
+  }
+
+  if(vendorRequest && /\b(list|show|all)\b/.test(q) && /\b(in|under)\b/.test(q)){
+    const sectorName=q.split(/\b(?:in|under)\b/).pop().replace(/[?.!]+$/g,"").trim();
+    try{
+      const {data:sectorsData}=await sb.from("sectors").select("id,name");
+      const sec=(sectorsData||[]).find(x=>normalize(x.name)===normalize(sectorName)||normalize(x.name).includes(normalize(sectorName)));
+      if(sec){
+        const {data}=await sb.from("vendors").select("business_name,city,avg_rating,review_count").eq("sector_id",sec.id).eq("verification_status","verified").eq("is_active",true).order("avg_rating",{ascending:false}).limit(30);
+        const rows=data||[]; return {handled:true,reply:rows.length?`Vendors in ${sec.name}: ${rows.map(v=>`${v.business_name} (${Number(v.avg_rating||0).toFixed(1)}★)`).join(", ")}.`:`There are no verified active vendors in ${sec.name} yet.`};
+      }
+    }catch(_){}
+  }
+
+  if(/\b(latest|newest|most recent)\b/.test(q) && /\b(product|listing|item)\b/.test(q)){
+    try{
+      const {data}=await sb.from("products").select("id,name,created_at,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).order("created_at",{ascending:false}).limit(5);
+      const rows=data||[]; if(rows.length) return {handled:true,reply:`The latest listings are: ${rows.map((p,i)=>`${i+1}. ${p.name} from ${p.vendor?.business_name||"a vendor"}`).join("; ")}.`};
+    }catch(_){}
+  }
+  return null;
+}
 
 async function resolveLeviLocalAction(text) {
   const q = leviNormaliseText(text);
@@ -21578,6 +21781,11 @@ async function resolveLeviLocalAction(text) {
     }
   }
 
+  // Fast live discovery handles concepts that are bigger than one product:
+  // nearest vendors, rating lists, sector counts, latest listings, etc.
+  const quickDiscovery = await resolveLeviQuickDiscovery(text);
+  if (quickDiscovery?.handled) return quickDiscovery;
+
   // A short standalone search such as "Penne", "sleeves", or "ECG machine"
   // is still an actionable request. Resolve it directly instead of forcing
   // the user to phrase it as "I need ...".
@@ -21613,16 +21821,52 @@ async function resolveLeviLocalAction(text) {
         return { handled:true, reply:`I found ${result.product.name}${result.product.vendor?.business_name ? ` from ${result.product.vendor.business_name}` : ""}. [[NAV:productDetail|productId=${result.product.id}]]` };
       }
       if ((result.matches || []).length > 1) {
-        const others = result.matches.slice(1, 3).map((p) => p.name).join(", ");
-        return { handled:true, reply:`I found a few matches for "${target}". The closest match is ${result.matches[0].name}${others ? ` (also: ${others})` : ""}. [[NAV:productDetail|productId=${result.matches[0].id}]]` };
+        const suggestions = await resolveLeviProductSuggestions(target);
+        leviPendingProductRequest = null;
+        return { handled:true, reply:`I found several real matches for "${target}". Here are the closest ones so you can choose the right listing. ${leviProductSuggestionTag(suggestions.length ? suggestions : result.matches.slice(0,6))}` };
       }
       const suggestions=await resolveLeviProductSuggestions(target);
+      if (!suggestions.length) {
+        leviPendingProductRequest=null;
+        closeLeviIfOpen();
+        await navigate("requestEquipment", {}, true);
+        setTimeout(() => {
+          const el=byId("reqTitle");
+          if(el && !el.value) el.value=target.charAt(0).toUpperCase()+target.slice(1);
+        }, 120);
+        return {handled:true, reply:`I couldn't find ${target} in the marketplace, so I've opened the request page for you. Tell Levromart exactly what you need and we'll take it from there.`};
+      }
       leviPendingProductRequest=target;
-      return { handled:true, reply:`I couldn't find an exact match for "${target}". Here are a few products that may be close — if none is what you want, tell me and I'll open the request page for you. ${leviProductSuggestionTag(suggestions)}` };
+      return {handled:true, reply:`I couldn't find an exact match for "${target}", but I found some related listings that may work. ${leviProductSuggestionTag(suggestions)}`};
     }
   }
 
 
+
+  // Fast order-history questions: answer from the signed-in user's own
+  // orders without waiting for the model. Supports phrases such as
+  // "what was my last order?" and "what was my 7th cancelled order?".
+  if (/\b(?:last|latest|most recent|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\d+(?:st|nd|rd|th)?)\b/.test(q) && /\border\b/.test(q) && /\b(?:what|which|who|show|tell)\b/.test(q)) {
+    const ordinalWords={first:1,second:2,third:3,fourth:4,fifth:5,sixth:6,seventh:7,eighth:8,ninth:9,tenth:10};
+    const om=q.match(/\b(\d+)(?:st|nd|rd|th)\b/);
+    const word=q.match(/\b(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\b/);
+    const ordinal=om?Number(om[1]):word?ordinalWords[word[1]]:1;
+    const wantCancelled=/\b(?:cancelled|canceled|cancel)\b/.test(q);
+    const wantPending=/\b(?:pending|awaiting)\b/.test(q);
+    try {
+      let oq=sb.from("orders").select("id,status,order_type,total_amount,created_at,vendor:vendors(id,business_name),items:order_items(quantity,unit_price,product:products(name))").eq("buyer_id",session.user.id).order("created_at",{ascending:false}).limit(50);
+      const {data}=await oq;
+      let rows=data||[];
+      if(wantCancelled) rows=rows.filter(o=>/cancel/i.test(String(o.status||"")));
+      if(wantPending) rows=rows.filter(o=>/pending|confirmed/i.test(String(o.status||"")));
+      const order=rows[ordinal-1];
+      if(!order) return {handled:true,reply:`I couldn't find a ${ordinal}${ordinal===1?"st":ordinal===2?"nd":ordinal===3?"rd":"th"} matching order in your history.`};
+      const itemNames=(order.items||[]).map(i=>`${Number(i.quantity||1)}× ${i.product?.name||"item"}`).join(", ")||"No item details";
+      const vendorName=order.vendor?.business_name||"a vendor";
+      const when=order.created_at?new Date(order.created_at).toLocaleDateString("en-NG",{day:"numeric",month:"short",year:"numeric"}):"";
+      return {handled:true,reply:`Your ${ordinal===1?"latest":`${ordinal}${ordinal===2?"nd":ordinal===3?"rd":"th"}`} ${wantCancelled?"cancelled ":""}order was with ${vendorName}: ${itemNames}. Total: ${naira(order.total_amount||0)}${when?` · ${when}`:""}.`};
+    } catch (_) {}
+  }
 
   // Levromart uses one fixed brand green. Keep old accent-change commands
   // harmless and explicit instead of opening a retired palette UI.
@@ -21637,6 +21881,21 @@ async function resolveLeviLocalAction(text) {
     setTimeout(() => openAddProductModal(), 80);
     return { handled:true, reply:"Done - I opened your product manager. Add the product details and save it." };
   }
+  if (vendor && /\b(pause|disable|deactivate|close)\b[\s\S]*\b(my\s+)?(shop|store|vendor|storefront)\b/.test(q)) {
+    const ok=await showConfirmDialog("Pause your storefront? Buyers will no longer see it as an active vendor until you reactivate it.",{title:"Pause storefront",okLabel:"Pause storefront",danger:true});
+    if(!ok)return {handled:true,reply:"Okay - I left your storefront active."};
+    await toggleVendorActive(true); closeLeviIfOpen(); return {handled:true,reply:"Done - I paused your storefront."};
+  }
+  if (vendor && /\b(resume|reactivate|enable|open)\b[\s\S]*\b(my\s+)?(shop|store|vendor|storefront)\b/.test(q)) {
+    await toggleVendorActive(false); closeLeviIfOpen(); return {handled:true,reply:"Done - your storefront is active again."};
+  }
+  if (/\b(remove|delete)\b[\s\S]*\b(my\s+)?(profile\s+)?(picture|photo|avatar)\b/.test(q)) {
+    await removeProfileAvatar(); closeLeviIfOpen(); return {handled:true,reply:"Okay - I handled the profile picture removal request."};
+  }
+  if (vendor && /\b(change|update|edit|set)\b[\s\S]*\b(working|business|opening)\s*hours?\b/.test(q)) {
+    closeLeviIfOpen(); await navigate("vendorEditProfile"); setTimeout(()=>document.querySelector("#veHoursRows")?.scrollIntoView({behavior:"smooth",block:"center"}),80); return {handled:true,reply:"Done - I opened your working hours so you can adjust the schedule."};
+  }
+
   if (vendor && /\b(remove|delete|take down)\b[\s\S]*\b(product|item|listing)\b/.test(q)) {
     const target = q.replace(/\b(please|levi|can you|could you|remove|delete|take down|the|product|item|listing|from|my|shop|store)\b/g, " ").replace(/\s+/g," ").trim();
     if (!target) return { handled:true, reply:"Tell me the product name you want removed, and I'll handle it." };
@@ -21671,6 +21930,14 @@ async function resolveLeviLocalAction(text) {
     const input=byId("avatarFileInput");
     if(input){ input.click(); return {handled:true,reply:"Sure - choose the photo you want. I’ll open the crop tool so you can position exactly what people see."}; }
     return {handled:true,reply:"I can change your profile picture, but the profile photo picker isn't available on this screen."};
+  }
+  const vendorMapTarget = q.match(/\b(?:show|take me to|open)\b[\s\S]*\bmap\b[\s\S]*\b(?:for|of|at)\s+(.+)$/);
+  if (vendorMapTarget) {
+    const vr = await resolveLeviVendor(vendorMapTarget[1]);
+    closeLeviIfOpen();
+    await navigate("vendors", {}, true);
+    setTimeout(() => { try { switchVendorsView("map"); } catch (_) {} }, 80);
+    return {handled:true,reply:vr.vendor ? `I found ${vr.vendor.business_name}. I’m opening their location on the map. [[NAV:vendors|map=true|vendorId=${vr.vendor.id}]]` : "I opened the vendor map. I couldn't match that vendor by name yet."};
   }
   if (/\b(take me to|open|show|go to)\s+(the\s+)?map\b/.test(q)) {
     closeLeviIfOpen(); await navigate("vendors"); setTimeout(()=>switchVendorsView("map"),80); return {handled:true,reply:"Done - I opened the vendor map."};
@@ -21718,7 +21985,7 @@ async function resolveLeviLocalAction(text) {
 
   // Support per-item quantities such as "4 shoes and 1 sleeve". Quantities
   // are attached to their own segment instead of being reused for every item.
-  const rawParts = (mode !== "remove" && /\s+and\s+|,/.test(target))
+  const rawParts = /\s+and\s+|,/.test(target)
     ? target.split(/\s+and\s+|,/).map(s => s.trim()).filter(Boolean)
     : [target];
   const parts = rawParts.map(parseQuantityPrefix);
@@ -21743,9 +22010,17 @@ async function resolveLeviLocalAction(text) {
         });
         if (!matches.length) { results.push({ part, error: "not-found" }); continue; }
         if (matches.length > 1) { results.push({ part, error: "ambiguous", matches: matches.map(r => r.product).filter(Boolean) }); continue; }
-        const product = matches[0].product;
-        const del = await sb.from("cart_items").delete().eq("id", matches[0].id).eq("buyer_id", session.user.id);
-        results.push({ product, error: del.error ? "failed" : null });
+        const row = matches[0];
+        const product = row.product;
+        const currentQty = Math.max(1, Number(row.quantity || 1));
+        const requestedQty = Math.max(1, Number(partInfo.quantity || 1));
+        if (requestedQty < currentQty) {
+          const upd = await sb.from("cart_items").update({quantity: currentQty-requestedQty}).eq("id", row.id).eq("buyer_id", session.user.id);
+          results.push({ product, removedQuantity: requestedQty, remainingQuantity: currentQty-requestedQty, error: upd.error ? "failed" : null });
+        } else {
+          const del = await sb.from("cart_items").delete().eq("id", row.id).eq("buyer_id", session.user.id);
+          results.push({ product, removedQuantity: currentQty, remainingQuantity: 0, error: del.error ? "failed" : null });
+        }
       }
       refreshNotifications(); updateCartFab();
       const ok = results.filter(r => !r.error);
@@ -21816,10 +22091,7 @@ async function resolveLeviLocalAction(text) {
     if (ok.length) {
       closeLeviAfterCartAction();
       updateCartFab();
-      // Show the fresh cart immediately after a successful Levi add. The
-      // navigation performs a new cart query, so newly-added quantities are
-      // visible without requiring the customer to tap the cart icon again.
-      await navigate("cart", {}, false);
+      // Stay on the current screen; the cart badge is refreshed immediately.
     }
     return { handled: true, reply: lines.join(" ") || "Tell me the product name, or open the product and say “add this to my cart”." };
   }
@@ -21827,7 +22099,6 @@ async function resolveLeviLocalAction(text) {
     if (ok.length) {
       closeLeviAfterCartAction();
       updateCartFab();
-      await navigate("cart", {}, false);
     }
     return { handled: true, reply: ok.length ? `Done - I removed ${ok.map(r => r.product.name).join(", ")} from your cart.` : "I couldn't find that item in your cart." };
   }
@@ -26952,4 +27223,324 @@ html[data-theme="black"] #app .order-filter-clear-btn{
 }
 </style>
 
+<script id="levromart-levi-smart-experience">
+
+/* LEVI EXPERIENCE EXTENSION — search intelligence, permission coaching,
+   compose suggestions and continuous FAB presence. This block only touches
+   Levi/search-related UI; it does not alter marketplace rendering. */
+(() => {
+  const root = document.documentElement;
+  const normalize = (v) => String(v || "").toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
+  const synonymMap = {
+    food:["foodstuff","groceries","grocery","rice","pasta","spaghetti","penne","macaroni","snacks","candy"],
+    spaghetti:["pasta","penne","macaroni","noodles"],
+    ice:["ice cream","icecream","frozen dessert","dessert","candy","sweet","yogurt"],
+    "ice cream":["icecream","frozen dessert","dessert","candy","sweet","yogurt"],
+    shoe:["shoes","footwear","sneaker","sneakers","slipper","sandals","boots"],
+    shoes:["shoe","footwear","sneaker","sneakers","slipper","sandals","boots"],
+    watch:["wristwatch","smartwatch","smart watch","timepiece"],
+    jewelry:["jewellery","ring","necklace","bracelet","earrings","chain"],
+    jewellery:["jewelry","ring","necklace","bracelet","earrings","chain"],
+    clothes:["clothing","fashion","shirt","dress","trousers","jeans","jacket"],
+    medical:["healthcare","health","hospital","clinical","medical equipment","diagnostic"],
+    laptop:["computer","notebook","macbook","pc"],
+    phone:["smartphone","mobile","iphone","android","telephone"],
+    computer:["laptop","desktop","pc","macbook","notebook"],
+    bag:["bags","handbag","backpack","purse","school bag"],
+    furniture:["chair","chairs","table","desk","sofa","bed","wardrobe"],
+    beauty:["cosmetics","makeup","skincare","hair","wig","perfume"],
+    fitness:["gym","workout","sports","exercise","weights"],
+    electronics:["gadgets","device","devices","charger","earbuds","headphones"],
+    medicine:["medication","pharmacy","drug","drugs","medical equipment"],
+    kitchen:["cookware","utensils","blender","pot","pan","plates"],
+    drink:["drinks","beverage","beverages","juice","water","soda"],
+    stationery:["books","pen","pens","notebook","school supplies"],
+    jewelry:["jewellery","ring","rings","necklace","bracelet","earrings","watch","chain"]
+  };
+  const termsFor = (q) => {
+    const n = normalize(q), out = new Set([n]);
+    Object.entries(synonymMap).forEach(([k, vals]) => {
+      if (n === k || n.includes(k) || vals.some(v => n.includes(v))) {
+        out.add(k); vals.forEach(v => out.add(v));
+      }
+    });
+    return [...out].filter(Boolean);
+  };
+  const score = (p, q) => {
+    const terms = termsFor(q);
+    const text = normalize([
+      p.name, p.description, p.category?.name, p.category_name, p.sector?.name,
+      p.sector_name, p.vendor?.business_name
+    ].filter(Boolean).join(" "));
+    let s = text.includes(normalize(q)) ? 30 : 0;
+    for (const t of terms) if (text.includes(normalize(t))) s += t === normalize(q) ? 12 : 4;
+    return s;
+  };
+
+  async function catalogue() {
+    const local = Array.isArray(window.__homeBrowseCatalog) && window.__homeBrowseCatalog.length
+      ? window.__homeBrowseCatalog
+      : (typeof getOfflineHomeCache === "function" ? (getOfflineHomeCache()?.browseProducts || []) : []);
+    if (local.length) return local;
+    try {
+      const { data } = await sb.from("products")
+        .select("id,name,description,photos,sale_price,discount_price,rental_rate,quantity_available,status,is_service,category_id,vendor:vendors!inner(id,business_name,verification_status,is_active),category:categories(id,name,sector_id)")
+        .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).limit(350);
+      return data || [];
+    } catch (_) { return []; }
+  }
+
+  function ensureMenu(input) {
+    if (!input) return null;
+    let parent = input.parentElement;
+    if (!parent) return null;
+    parent.classList.add("levi-smart-search-host");
+    let menu = parent.querySelector(".levi-smart-search-menu");
+    if (!menu) {
+      menu = document.createElement("div");
+      menu.className = "levi-smart-search-menu hidden";
+      parent.appendChild(menu);
+    }
+    return menu;
+  }
+  function hideMenu(input) { ensureMenu(input)?.classList.add("hidden"); }
+
+  async function showRecommendations(input, raw) {
+    const q = String(raw || "").trim();
+    const menu = ensureMenu(input);
+    if (!menu) return;
+    if (!q || q.length < 2) { menu.classList.add("hidden"); return; }
+    const requestId = String(Date.now()) + Math.random();
+    input.dataset.leviSuggestRequest = requestId;
+    const rows = await catalogue();
+    const [packageRes, vendorRes] = await Promise.all([
+      sb.from("vendor_packages").select("id,name,price,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).or(`name.ilike.%${q}%,description.ilike.%${q}%`).limit(5),
+      sb.from("vendors").select("id,business_name,city,avg_rating,review_count").eq("verification_status","verified").eq("is_active",true).ilike("business_name",`%${q}%`).limit(4)
+    ]);
+    if (input.dataset.leviSuggestRequest !== requestId || String(input.value || "").trim() !== q) return;
+    const packageMatches=packageRes.data||[];
+    const vendorMatches=vendorRes.data||[];
+    const matches = rows.map(p => ({ p, score: score(p, q) }))
+      .filter(x => x.score > 0 && Number(x.p?.quantity_available ?? 1) > 0)
+      .sort((a,b) => b.score - a.score)
+      .slice(0, 6)
+      .map(x => x.p);
+
+    const categories = Array.isArray(window.__categories) ? window.__categories : [];
+    const catMatches = categories.filter(c => termsFor(q).some(t => normalize(c.name).includes(normalize(t)) || normalize(t).includes(normalize(c.name)))).slice(0, 3);
+    const sectors = Array.isArray(window.sectors) ? window.sectors : [];
+    const sectorMatches = sectors.filter(s => termsFor(q).some(t => normalize(s.name).includes(normalize(t)) || normalize(t).includes(normalize(s.name)))).slice(0, 2);
+
+    const seen = new Set();
+    const items = [];
+    matches.forEach(p => {
+      if (seen.has(p.id)) return; seen.add(p.id);
+      items.push(`<button type="button" class="levi-smart-search-item" data-product-id="${esc(p.id)}"><i class="fa-solid fa-box"></i><span><strong>${esc(p.name)}</strong><small>${esc(p.vendor?.business_name || "Levromart listing")}${p.category?.name ? ` · ${esc(p.category.name)}` : ""}</small></span></button>`);
+    });
+    packageMatches.forEach(pkg => items.push(`<button type="button" class="levi-smart-search-item" data-package-id="${esc(pkg.id)}"><i class="fa-solid fa-box-open"></i><span><strong>${esc(pkg.name)}</strong><small>Package · ${esc(pkg.vendor?.business_name||"Vendor")}${pkg.price!=null?` · ${naira(pkg.price)}`:""}</small></span></button>`));
+    vendorMatches.forEach(v => items.push(`<button type="button" class="levi-smart-search-item" data-vendor-id="${esc(v.id)}"><i class="fa-solid fa-store"></i><span><strong>${esc(v.business_name)}</strong><small>Vendor${v.city?` · ${esc(v.city)}`:""}${v.avg_rating!=null?` · ${Number(v.avg_rating).toFixed(1)}★`:""}</small></span></button>`));
+    catMatches.forEach(c => items.push(`<button type="button" class="levi-smart-search-item levi-smart-search-category" data-category-id="${esc(c.id)}"><i class="fa-solid fa-layer-group"></i><span><strong>${esc(c.name)}</strong><small>Category · show related listings</small></span></button>`));
+    sectorMatches.forEach(s => items.push(`<button type="button" class="levi-smart-search-item levi-smart-search-category" data-sector-id="${esc(s.id)}"><i class="fa-solid fa-grip"></i><span><strong>${esc(s.name)}</strong><small>Sector · explore related listings</small></span></button>`));
+
+    const related = termsFor(q).filter(t => normalize(t) !== normalize(q)).slice(0, 3);
+    related.forEach(t => items.push(`<button type="button" class="levi-smart-search-item levi-smart-search-related" data-related="${esc(t)}"><i class="fa-solid fa-wand-magic-sparkles"></i><span><strong>${esc(t)}</strong><small>Related to “${esc(q)}”</small></span></button>`));
+
+    if (!items.length) { menu.classList.add("hidden"); return; }
+    menu.innerHTML = `<div class="levi-smart-search-heading"><i class="fa-solid fa-sparkles"></i> Smart suggestions</div>${items.slice(0,9).join("")}`;
+    menu.classList.remove("hidden");
+    menu.querySelectorAll("[data-product-id]").forEach(btn => btn.addEventListener("mousedown", e => { e.preventDefault(); navigate("productDetail", { productId: btn.dataset.productId }); hideMenu(input); }));
+    menu.querySelectorAll("[data-package-id]").forEach(btn => btn.addEventListener("mousedown", e => { e.preventDefault(); navigate("packageDetail", { packageId: btn.dataset.packageId }); hideMenu(input); }));
+    menu.querySelectorAll("[data-vendor-id]").forEach(btn => btn.addEventListener("mousedown", e => { e.preventDefault(); navigate("storefront", { vendorId: btn.dataset.vendorId }); hideMenu(input); }));
+    menu.querySelectorAll("[data-category-id]").forEach(btn => btn.addEventListener("mousedown", e => {
+      e.preventDefault();
+      const sel = byId("filterCategory"); if (sel) { sel.value = btn.dataset.categoryId; syncBrowseFilterLabels?.(); filterHomeProducts?.(); }
+      byId("browseSection")?.scrollIntoView({ behavior:"smooth", block:"start" });
+      hideMenu(input);
+    }));
+    menu.querySelectorAll("[data-sector-id]").forEach(btn => btn.addEventListener("mousedown", e => {
+      e.preventDefault();
+      if (typeof currentSectorId !== "undefined") currentSectorId = btn.dataset.sectorId;
+      if (typeof navigate === "function") navigate("home");
+      hideMenu(input);
+    }));
+    menu.querySelectorAll("[data-related]").forEach(btn => btn.addEventListener("mousedown", e => {
+      e.preventDefault();
+      input.value = btn.dataset.related;
+      input.dispatchEvent(new Event("input", { bubbles:true }));
+      input.focus();
+    }));
+  }
+
+  let smartTimer = null;
+  document.addEventListener("input", e => {
+    const input = e.target?.closest?.("#heroSearch,#searchInput");
+    if (!input) return;
+    clearTimeout(smartTimer);
+    smartTimer = setTimeout(() => showRecommendations(input, input.value), 180);
+  }, true);
+  document.addEventListener("focusin", e => {
+    const input = e.target?.closest?.("#heroSearch,#searchInput");
+    if (input && input.value.trim()) showRecommendations(input, input.value);
+  }, true);
+  document.addEventListener("mousedown", e => {
+    if (!e.target?.closest?.(".levi-smart-search-host")) document.querySelectorAll(".levi-smart-search-menu").forEach(m => m.classList.add("hidden"));
+  }, true);
+
+  // If Levi's existing deterministic search truly has no result, go directly
+  // to Request an item instead of leaving the user at a dead end. We keep the
+  // existing suggestion path when there are plausible alternatives.
+  const originalSuggestionFn = window.resolveLeviProductSuggestions;
+  if (typeof originalSuggestionFn === "function" && !window.__leviSmartSuggestionWrapper) {
+    window.__leviSmartSuggestionWrapper = true;
+    window.resolveLeviProductSuggestions = async function(target) {
+      const rows = await catalogue();
+      const matches = rows.map(p => ({p, score:score(p,target)})).filter(x => x.score > 0).sort((a,b)=>b.score-a.score).slice(0,6).map(x=>x.p);
+      if (matches.length) return matches;
+      try { return await originalSuggestionFn(target); } catch (_) { return []; }
+    };
+  }
+
+  // Levi is allowed to be playful, but the FAB must remain reliable. A tiny
+  // idle animation makes it feel alive without covering content or moving it.
+  let idleTimer = null;
+  function leviIdleNudge() {
+    const fab = byId("aiChatFab");
+    if (!fab || fab.classList.contains("hidden") || byId("aiChatPanel") && !byId("aiChatPanel").classList.contains("hidden")) return;
+    fab.classList.remove("levi-idle-nudge");
+    void fab.offsetWidth;
+    fab.classList.add("levi-idle-nudge");
+    setTimeout(() => fab.classList.remove("levi-idle-nudge"), 950);
+  }
+  function scheduleLeviIdleNudge() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => { leviIdleNudge(); scheduleLeviIdleNudge(); }, 45_000);
+  }
+  scheduleLeviIdleNudge();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { scheduleLeviIdleNudge(); try { syncLeviFabVisibility(); } catch (_) {} } });
+
+  // Permission coaching: the browser owns permission itself; Levi only keeps
+  // the in-app reminder alive. A denied permission cannot be re-prompted by a
+  // web app, so the reminder points the user to Settings instead of spamming
+  // the native permission dialog.
+  let permissionReminderTimer = null;
+  let lastPermissionReminder = 0;
+  async function leviPermissionReminder(force = false) {
+    if (!session) return;
+    if (Date.now() - lastPermissionReminder < 4 * 60 * 1000 && !force) return;
+    const notifState = (typeof Notification !== "undefined") ? Notification.permission : "unsupported";
+    let locationState = "unknown";
+    try { if (typeof getBrowserLocationPermission === "function") locationState = await getBrowserLocationPermission(); } catch (_) {}
+    const needsNotif = pushSupported?.() && notifState !== "granted";
+    const needsLocation = navigator.geolocation && locationState !== "granted" && locationSharingEnabled !== false;
+    if (!needsNotif && !needsLocation) return;
+    const existing = byId("leviPermissionNudge");
+    if (existing) return;
+    lastPermissionReminder = Date.now();
+    const modal = document.createElement("div");
+    modal.id = "leviPermissionNudge";
+    modal.className = "levi-permission-nudge";
+    const title = needsNotif && needsLocation ? "Turn on Levromart permissions" : needsNotif ? "Turn on notifications" : "Turn on location";
+    const body = needsNotif && needsLocation
+      ? "Notifications keep orders and messages timely, while location lets Levi find nearby vendors and calculate distances."
+      : needsNotif
+        ? "Turn on notifications so Levromart can keep you updated about orders, messages and important activity."
+        : "Turn on location so Levi can find the closest vendors and show accurate distances."
+    modal.innerHTML = `<div class="levi-permission-nudge-card"><div class="levi-permission-nudge-icon"><i class="fa-solid ${needsLocation ? "fa-location-dot" : "fa-bell"}"></i></div><div class="levi-permission-nudge-copy"><strong>${title}</strong><span>${body}</span></div><button type="button" class="levi-permission-nudge-close" aria-label="Dismiss">×</button><button type="button" class="levi-permission-nudge-action">Turn on</button></div>`;
+    document.body.appendChild(modal);
+    modal.querySelector(".levi-permission-nudge-close")?.addEventListener("click", () => modal.remove());
+    modal.querySelector(".levi-permission-nudge-action")?.addEventListener("click", async () => {
+      modal.remove();
+      try {
+        if (needsLocation && typeof showLocationPrompt === "function") { showLocationPrompt(locationState === "denied" ? "recovery" : "first-use"); return; }
+        if (needsNotif) {
+          if (notifState === "denied") {
+            navigate("settings");
+            setTimeout(() => showToast("Notifications are blocked for Levromart. Open your browser/site settings and allow them, then return here." , "info"), 120);
+          } else if (typeof maybeShowNotifPrompt === "function") {
+            maybeShowNotifPrompt();
+          }
+          return;
+        }
+      } catch (_) {}
+    });
+  }
+  function schedulePermissionReminder() {
+    clearTimeout(permissionReminderTimer);
+    permissionReminderTimer = setTimeout(async () => {
+      await leviPermissionReminder();
+      schedulePermissionReminder();
+    }, 5 * 60 * 1000);
+  }
+  setTimeout(() => { leviPermissionReminder(true).catch(() => {}); schedulePermissionReminder(); }, 12_000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) leviPermissionReminder().catch(() => {}); });
+
+  // Contextual message-compose suggestions. This is intentionally opt-in at
+  // the UI level: suggestions appear above the compose box and are never sent
+  // automatically. The backend has a dedicated lightweight suggestion mode.
+  let composeTimer = null;
+  let composeRequest = 0;
+  async function loadComposeSuggestions() {
+    const input = byId("chatInput");
+    if (!input || !session) return;
+    const bubbles = [...document.querySelectorAll("#chatMessages .chat-bubble")].slice(-8);
+    if (!bubbles.length) return;
+    const text = bubbles.map(b => `${b.classList.contains("mine") ? "Me" : "Them"}: ${normalize(b.textContent || "")}`).join("\n");
+    if (!text || text.length < 3) return;
+    const id = ++composeRequest;
+    try {
+      const response = await fetch("/api/chat", {
+        method:"POST", headers:{"Content-Type":"application/json"}, cache:"no-store",
+        body:JSON.stringify({ mode:"message_suggestions", accessToken:session.access_token, messages:[{role:"user",content:text}] })
+      });
+      const data = await response.json();
+      if (id !== composeRequest || !response.ok || !Array.isArray(data.suggestions)) return;
+      let wrap = document.getElementById("leviComposeSuggestions");
+      if (!wrap) {
+        wrap = document.createElement("div"); wrap.id = "leviComposeSuggestions";
+        input.parentElement?.parentElement?.insertBefore(wrap, input.parentElement);
+      }
+      wrap.innerHTML = data.suggestions.slice(0,3).map(s => `<button type="button" class="levi-compose-chip">${esc(s)}</button>`).join("");
+      wrap.querySelectorAll(".levi-compose-chip").forEach(btn => btn.addEventListener("click", () => { input.value = btn.textContent || ""; input.dispatchEvent(new Event("input", {bubbles:true})); input.focus(); }));
+    } catch (_) {}
+  }
+  document.addEventListener("input", e => {
+    if (e.target?.id !== "chatInput") return;
+    clearTimeout(composeTimer); composeTimer = setTimeout(loadComposeSuggestions, 550);
+  }, true);
+
+  const style = document.createElement("style");
+  style.id = "levi-smart-experience-style";
+  style.textContent = `
+    .levi-smart-search-host{position:relative !important;z-index:250 !important;}
+    .levi-smart-search-menu{position:absolute;left:0;right:0;top:calc(100% + .35rem);max-height:22rem;overflow:auto;background:var(--card,#fff);border:1px solid color-mix(in srgb,#10b080 30%,var(--border,#ddd));border-radius:16px;box-shadow:0 16px 38px rgba(0,0,0,.16);padding:.35rem;z-index:9999;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);}
+    .levi-smart-search-heading{font-size:.68rem;font-weight:800;color:#0b8f6b;padding:.45rem .55rem;display:flex;gap:.4rem;align-items:center;}
+    .levi-smart-search-item{width:100%;border:0;background:transparent;color:var(--text);display:flex;align-items:center;gap:.65rem;padding:.65rem .6rem;border-radius:12px;text-align:left;cursor:pointer;font:inherit;}
+    .levi-smart-search-item:hover,.levi-smart-search-item:focus-visible{background:color-mix(in srgb,#10b080 10%,transparent);outline:none;}
+    .levi-smart-search-item>i{width:1.25rem;text-align:center;color:#10b080;}
+    .levi-smart-search-item span{display:flex;min-width:0;flex-direction:column;gap:.08rem;}
+    .levi-smart-search-item strong{font-size:.78rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .levi-smart-search-item small{font-size:.62rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .levi-idle-nudge{animation:leviIdleNudge .95s cubic-bezier(.34,1.56,.64,1);}
+    @keyframes leviIdleNudge{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-7px) rotate(-3deg)}50%{transform:translateY(2px) rotate(2deg)}75%{transform:translateY(-4px) rotate(-1deg)}}
+    .levi-permission-nudge{position:fixed;left:1rem;right:1rem;bottom:calc(6.4rem + env(safe-area-inset-bottom,0px));z-index:9997;display:flex;justify-content:center;pointer-events:none;}
+    .levi-permission-nudge-card{pointer-events:auto;width:min(100%,520px);display:grid;grid-template-columns:auto 1fr auto;gap:.7rem;align-items:center;padding:.8rem;border:1px solid color-mix(in srgb,#10b080 28%,var(--border,#ddd));border-radius:18px;background:color-mix(in srgb,var(--card,#fff) 92%,#10b080 8%);box-shadow:0 14px 36px rgba(0,0,0,.18);backdrop-filter:blur(18px);}
+    .levi-permission-nudge-icon{width:2.4rem;height:2.4rem;border-radius:50%;display:grid;place-items:center;background:#10b080;color:#fff;}
+    .levi-permission-nudge-copy{display:flex;flex-direction:column;gap:.15rem;min-width:0;}
+    .levi-permission-nudge-copy strong{font-size:.78rem;}.levi-permission-nudge-copy span{font-size:.66rem;color:var(--text-muted);line-height:1.35;}
+    .levi-permission-nudge-action{border:0;border-radius:999px;background:#10b080;color:#fff;padding:.58rem .82rem;font:700 .7rem inherit;white-space:nowrap;cursor:pointer;}
+    .levi-permission-nudge-close{border:0;background:transparent;color:var(--text-muted);font-size:1.15rem;cursor:pointer;grid-column:3;grid-row:1;align-self:start;}
+    #leviComposeSuggestions{display:flex;gap:.4rem;overflow:auto;padding:.35rem .1rem;scrollbar-width:none;}
+    #leviComposeSuggestions::-webkit-scrollbar{display:none;}
+    .levi-compose-chip{flex:0 0 auto;border:1px solid color-mix(in srgb,#10b080 28%,var(--border,#ddd));background:color-mix(in srgb,#10b080 7%,var(--card,#fff));color:var(--text);border-radius:999px;padding:.42rem .68rem;font:600 .66rem inherit;cursor:pointer;}
+    .levi-compose-chip:hover{background:color-mix(in srgb,#10b080 13%,var(--card,#fff));}
+    @media(max-width:520px){.levi-permission-nudge{left:.65rem;right:.65rem}.levi-permission-nudge-card{grid-template-columns:auto 1fr auto}.levi-permission-nudge-copy span{font-size:.61rem}.levi-permission-nudge-action{padding:.5rem .65rem}}
+  `;
+  document.head.appendChild(style);
+})();
+
+</script>
+<style id="levi-global-presence-vnext">
+body.product-detail-view #aiChatFab{display:flex !important;visibility:visible !important;pointer-events:auto !important;}
+body.product-detail-view #aiChatFab.scroll-faded{pointer-events:none !important;}
+</style>
 </html>
