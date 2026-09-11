@@ -11395,12 +11395,19 @@ function paintHomeFromLocalCatalog(showOfflineNotice = false) {
   const app = byId("app");
   const rendered = renderOfflineHomeFromCache(cache, { showOfflineNotice });
   if (!rendered || !app) return false;
+  // Repainting the cached homepage is intentionally silent. It must never
+  // yank a user back to the top while they are browsing the catalogue.
+  const previousScrollY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
   app.innerHTML = rendered;
   syncLeviFabVisibility();
   updateHeaderNavActive();
   clearAutoScrollTimers();
   document.querySelectorAll("#app .cat-row, #app .hscroll").forEach(el => setupAutoScroll(el));
-  window.scrollTo({ top: 0, behavior: "auto" });
+  requestAnimationFrame(() => {
+    if (Math.abs((window.scrollY || document.documentElement.scrollTop || 0) - previousScrollY) > 1) {
+      window.scrollTo({ top: previousScrollY, behavior: "auto" });
+    }
+  });
   return true;
 }
 
@@ -17589,7 +17596,7 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
 
 function orderListControlsHtml(total) {
   if (!total) return "";
-  return `<div class="flex" style="gap:0.5rem;justify-content:flex-end;margin:0 0 0.5rem;">
+  return `<div class="flex order-list-view-controls" style="gap:0.7rem;justify-content:flex-end;margin:.9rem .15rem .75rem;">
     <button class="btn btn-sm ${orderListViewMode === "cards" ? "" : "btn-outline"}" onclick="setOrderListView('cards')"><i class="fa-solid fa-list"></i> List</button>
     <button class="btn btn-sm ${orderListViewMode === "table" ? "" : "btn-outline"}" onclick="setOrderListView('table')"><i class="fa-solid fa-table-list"></i> Table</button>
   </div>`;
@@ -26101,6 +26108,15 @@ body.chat-full-page > #app{
     try{
       if(action==='products' || action==='services'){
         homeListingTab = action==='services' ? 'services' : 'products';
+        // When already on Home, do not route/re-render the page. Re-rendering
+        // Home resets the carousel to slide 1 and can cause a visible flash.
+        // The shortcut should simply select the catalogue and smoothly move
+        // the user to it.
+        if(currentView === 'home' && byId('browseSection')){
+          switchHomeListingTab(homeListingTab);
+          requestAnimationFrame(()=>byId('browseSection')?.scrollIntoView({behavior:'smooth',block:'start'}));
+          return;
+        }
         await navigate('home');
         requestAnimationFrame(()=>setTimeout(()=>{
           switchHomeListingTab(homeListingTab);
@@ -26822,6 +26838,24 @@ html[data-theme="black"] #app .order-filters-panel{
 #app .browse-filter-trigger,
 #app .vendors-filters-toggle,
 #app .order-filters-trigger{animation:none !important;}
+</style>
+
+<style id="levromart-scroll-and-order-spacing-final">
+/* Keep the order view switcher visually separated from the filter control. */
+#app .order-list-view-controls{
+  align-items:center !important;
+  gap:.7rem !important;
+}
+#app .order-list-view-controls .btn{
+  min-height:44px !important;
+  padding:.62rem 1rem !important;
+  border-radius:16px !important;
+  margin:0 !important;
+}
+@media(max-width:520px){
+  #app .order-list-view-controls{gap:.6rem !important;margin-top:1rem !important;margin-left:.2rem !important;margin-right:.2rem !important;}
+  #app .order-list-view-controls .btn{flex:0 1 auto !important;min-width:132px !important;}
+}
 </style>
 
 <style id="levromart-levi-and-orders-final-polish">
