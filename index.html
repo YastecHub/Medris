@@ -14810,7 +14810,7 @@ async function renderStorefront(vendorId) {
   storefrontCatalogTab = "products";
 
   const customCoverUrl = v.cover_url || "";
-  const isOwnStorefront = !!session?.user?.id && String(session.user.id) === String(v.user_id);
+  const isOwnStorefront = !!vendor?.id && String(vendor.id) === String(v.id);
   const logo = v.logo_url
     ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${esc(v.logo_url)}','${esc(v.business_name || "Vendor")}',event)"><img src="${esc(v.logo_url)}" alt="${esc(v.business_name || "Vendor")}" loading="eager" draggable="false" /></button>`
     : `<button type="button" class="storefront-avatar storefront-avatar-button storefront-avatar-fallback-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('','${esc(v.business_name || "Vendor")}',event)">${avatarFallbackHtml(v.business_name || "Vendor", "100%", "", v.business_name || "Vendor")}</button>`;
@@ -14834,7 +14834,7 @@ async function renderStorefront(vendorId) {
       <div class="storefront-avatar-row">
         ${logo}
         <div class="storefront-profile-actions storefront-top-actions">
-          ${!isOwnStorefront ? `<div class="storefront-follow-wrap" data-follow-vendor-id="${v.id}">
+          <div class="storefront-follow-wrap" data-follow-vendor-id="${v.id}">
             <div class="storefront-follow-controls">
               <button type="button" class="btn btn-sm follow-btn ${followState?.[0]?.following ? "" : "btn-outline"}" aria-label="${followState?.[0]?.following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${followState?.[0]?.following ? "Unfollow vendor" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${followState?.[0]?.following ? "fa-check" : "fa-plus"}"></i> ${followState?.[0]?.following ? "Following" : "Follow"}</button>
               <button type="button" class="btn btn-sm btn-outline follow-settings-btn" ${followState?.[0]?.following ? "" : "disabled"} aria-expanded="false" aria-label="Notification preferences" title="${followState?.[0]?.following ? "Notification preferences" : "Follow this vendor to manage notifications"}" onclick="window.toggleLevromartFollowNotifications?.('${v.id}',event)"><i class="fa-solid fa-bell"></i></button>
@@ -14852,7 +14852,7 @@ async function renderStorefront(vendorId) {
                 <button type="button" data-mute="none">On</button><button type="button" data-mute="1h">1 hour</button><button type="button" data-mute="8h">8 hours</button><button type="button" data-mute="always" style="grid-column:1/-1;">Always</button>
               </div>
             </div>
-          </div>` : ""}
+          </div>
           ${storefrontMoreItems ? `<div class="ms-wrap storefront-more-wrap" style="position:relative;display:inline-flex;width:auto;"><button class="btn btn-sm btn-outline storefront-more-icon" type="button" aria-label="More vendor details" title="More vendor details" onclick="toggleInlineMenu('storefrontMoreMenu',event)"><i class="fa-solid fa-ellipsis"></i></button><div class="ms-list hidden" id="storefrontMoreMenu" style="left:auto;right:0;width:max-content;min-width:180px;">${storefrontMoreItems}</div></div>` : ""}
         </div>
       </div>
@@ -16501,7 +16501,7 @@ async function renderVendorProducts() {
 
   html += `<div id="vendorDiscardedPanel" class="vendor-discarded-panel hidden">
     <div class="vendor-discarded-head"><div><strong>Discarded items</strong><span class="muted">Products removed from your live catalogue stay here when order history prevents permanent deletion.</span></div><button type="button" class="icon-btn" aria-label="Close discarded items" onclick="toggleVendorDiscarded(event,false)"><i class="fa-solid fa-xmark"></i></button></div>
-    ${removedProducts.length ? `<div class="vendor-discarded-bulkbar"><label><input type="checkbox" id="discardedSelectAll" onchange="toggleAllDiscardedItems(this.checked)"> <span>Select all</span></label><span id="discardedSelectedCount" class="muted">0 selected</span><button type="button" class="btn btn-sm btn-danger" id="discardedBulkDeleteBtn" disabled onclick="deleteSelectedDiscardedItems()"><i class="fa-solid fa-trash-can"></i> Delete selected</button></div><div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-id="${esc(p.id)}" data-discarded-name="${esc((p.name||'').toLowerCase())}"><label class="discarded-select"><input type="checkbox" class="discarded-item-check" value="${esc(p.id)}" onchange="updateDiscardedSelection()" aria-label="Select ${esc(p.name)}"></label><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
+    ${removedProducts.length ? `<div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-name="${esc((p.name||'').toLowerCase())}"><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
   </div>`;
 
   if (!products || products.length === 0) { html += `<div class="empty-state">No products yet.</div>`; return html; }
@@ -17038,34 +17038,26 @@ async function saveProduct() {
     const photos = [...(window.__existingPhotos || []), ...newPhotoUrls];
 
     let savedProductId = editingProductId;
-    let variantDrafts = [];
-    const isNewMonthlyListing = !editingProductId && billing_model === "monthly";
     if (editingProductId) {
       const { data: existing } = await sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single();
       const sold = existing ? existing.quantity_total - existing.quantity_available : 0;
       const quantity_available = Math.max(quantity_total - sold, 0);
       const { error } = await sb.from("products").update({ ...fields, quantity_available, photos }).eq("id", editingProductId);
       if (error) throw new Error(error.message);
-    } else if (!isNewMonthlyListing) {
+    } else {
       const { data: createdProduct, error } = await sb.from("products").insert({ ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos }).select("id").single();
       if (error) throw new Error(error.message);
       savedProductId = createdProduct?.id;
     }
 
     if (!is_service) {
-      variantDrafts = collectProductVariantDrafts(photos);
-      if (!isNewMonthlyListing) await saveProductVariants(savedProductId, variantDrafts);
+      const variantDrafts = collectProductVariantDrafts(photos);
+      await saveProductVariants(savedProductId, variantDrafts);
     }
 
-    if (isNewMonthlyListing) {
-      // Nothing has been inserted into public.products yet. The browser keeps
-      // the completed draft in sessionStorage while Paystack is open, and the
-      // row is created only after the server verifies the successful ₦1,000
-      // payment when the user returns.
-      const draft={kind:"product",vendor_id:vendor.id,fields:{...fields},photos,variantDrafts};
-      ["status","billing_status","billing_reference","billing_paid_until"].forEach(k=>delete draft.fields[k]);
-      const pay=await startNewListingMonthlyPayment("product",draft);
-      if(!pay)throw new Error("Monthly listing payment could not be started.");
+    if (!editingProductId && billing_model === "monthly") {
+      const pay = await startListingMonthlyPayment("product", savedProductId);
+      if (!pay) throw new Error("Monthly listing payment could not be started.");
       closeProductModal();
       return;
     }
@@ -17123,47 +17115,21 @@ async function restoreProduct(id) {
   showToast(`${p.name} restored to your live products.`, "success");
   navigate("vendorProducts");
 }
-async function deleteProductCompletely(id, options = {}) {
+async function deleteProductCompletely(id) {
   if ((window.__vendorPendingProductIds || new Set()).has(id)) {
     showToast("This product has a pending order. It can't be deleted until that order is cleared.", "error");
-    return false;
+    return;
   }
-  if (!options.skipConfirm && !(await showConfirmDialog("Delete this product completely? If order history prevents deletion, it will remain in Discarded items instead.", { title: "Delete permanently", okLabel: "Delete permanently", danger: true }))) return false;
-  const card = document.querySelector(`.vendor-discarded-card[data-discarded-id="${CSS.escape(String(id))}"]`);
+  if (!(await showConfirmDialog("Delete this product completely? If order history prevents deletion, it will remain in Discarded items instead.", { title: "Delete permanently", okLabel: "Delete permanently", danger: true }))) return;
   const { error } = await sb.from("products").delete().eq("id", id).eq("vendor_id", vendor.id);
   if (error) {
     await sb.from("products").update({ status:"removed", billing_status: "cancelled" }).eq("id", id).eq("vendor_id", vendor.id);
-    showToast("This product has past order history, so it was kept safely in Discarded items.", "error");
-    return false;
-  }
-  card?.remove();
-  updateDiscardedSelection();
-  if (!document.querySelector('.vendor-discarded-card')) {
-    const grid = document.querySelector('.vendor-discarded-grid');
-    if (grid) grid.outerHTML = '<div class="empty-state" style="margin:0;">No discarded products.</div>';
-    document.querySelector('.vendor-discarded-bulkbar')?.remove();
+    showToast("This product has past order history, so it was kept safely in Discarded items instead.", "error");
+    navigate("vendorProducts");
+    return;
   }
   showToast("Product permanently deleted.", "success");
-  return true;
-}
-function updateDiscardedSelection(){
-  const checks=[...document.querySelectorAll('.discarded-item-check')];
-  const selected=checks.filter(c=>c.checked);
-  const count=byId('discardedSelectedCount'); if(count) count.textContent=`${selected.length} selected`;
-  const bulk=byId('discardedBulkDeleteBtn'); if(bulk) bulk.disabled=selected.length===0;
-  const all=byId('discardedSelectAll'); if(all){all.checked=checks.length>0&&selected.length===checks.length;all.indeterminate=selected.length>0&&selected.length<checks.length;}
-}
-function toggleAllDiscardedItems(checked){
-  document.querySelectorAll('.discarded-item-check').forEach(c=>c.checked=!!checked);
-  updateDiscardedSelection();
-}
-async function deleteSelectedDiscardedItems(){
-  const ids=[...document.querySelectorAll('.discarded-item-check:checked')].map(c=>c.value).filter(Boolean);
-  if(!ids.length)return;
-  if(!(await showConfirmDialog(`Delete ${ids.length} selected discarded product${ids.length===1?'':'s'} permanently?`,{title:'Delete selected',okLabel:'Delete permanently',danger:true})))return;
-  const bulk=byId('discardedBulkDeleteBtn'); if(bulk)bulk.disabled=true;
-  for(const id of ids) await deleteProductCompletely(id,{skipConfirm:true});
-  updateDiscardedSelection();
+  navigate("vendorProducts");
 }
 
 // ---------- VENDOR PACKAGES (bundle deals, e.g. an "Outreach Kit") ----------
@@ -19841,66 +19807,6 @@ body.chat-full-page #aiChatFab{display:none !important;visibility:hidden !import
 </body>
 
 
-
-
-<style id="levromart-discarded-bulk-css">
-.vendor-discarded-bulkbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin:0 0 .65rem;padding:.55rem .65rem;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--card) 92%,transparent);font-size:.75rem}
-.vendor-discarded-bulkbar label{display:inline-flex;align-items:center;gap:.4rem;font-weight:700;cursor:pointer}
-.vendor-discarded-bulkbar .btn{margin-left:auto!important}
-.vendor-discarded-card{position:relative!important;align-items:flex-start!important}
-.discarded-select{display:grid;place-items:center;flex:0 0 auto;padding-top:.2rem;cursor:pointer}
-.discarded-select input{width:18px;height:18px;accent-color:var(--primary)}
-</style>
-
-
-<style id="levromart-hard-top-search-css">
-#levromartHeaderSearchBackdrop{z-index:2147483000!important}
-#levromartHeaderSearchDock{z-index:2147483001!important}
-#levromartHeaderSearchButton{position:relative!important;z-index:2147483002!important;cursor:pointer!important}
-</style>
-<script id="levromart-hard-top-search-fix">
-(function(){
-  "use strict";
-  var KEY="levromart-search-history-v1", MAX=8;
-  function esc(v){return String(v==null?"":v).replace(/[&<>\"']/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":c==='\"'?"&quot;":"&#39;";});}
-  function history(){try{var x=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(x)?x.map(String).map(function(v){return v.trim();}).filter(Boolean).slice(0,MAX):[];}catch(_){return [];}}
-  function save(q){q=String(q||"").trim();if(!q)return;try{localStorage.setItem(KEY,JSON.stringify([q].concat(history().filter(function(x){return x.toLowerCase()!==q.toLowerCase();})).slice(0,MAX)));}catch(_){}}
-  function remove(q){try{localStorage.setItem(KEY,JSON.stringify(history().filter(function(x){return x.toLowerCase()!==String(q||"").toLowerCase();})));}catch(_){}}
-  function clear(){try{localStorage.removeItem(KEY);}catch(_) {}}
-  function ensure(){
-    var b=document.getElementById("levromartHeaderSearchBackdrop");
-    var d=document.getElementById("levromartHeaderSearchDock");
-    if(!b){b=document.createElement("div");b.id="levromartHeaderSearchBackdrop";document.body.appendChild(b);}
-    if(!d){d=document.createElement("div");d.id="levromartHeaderSearchDock";document.body.appendChild(d);}
-    if(!d.querySelector("#levromartHeaderSearchInput")){
-      d.innerHTML='<div class="header-search-space" role="dialog" aria-label="Search Levromart"><div class="header-search-bar"><i class="fa-solid fa-magnifying-glass"></i><input id="levromartHeaderSearchInput" type="search" autocomplete="off" placeholder="Search products, services, vendors…" aria-label="Search Levromart"><button type="button" class="header-search-close" id="levromartHeaderSearchClose" aria-label="Close search"><i class="fa-solid fa-xmark"></i></button></div><div id="levromartHeaderSearchSuggest" class="header-search-content"></div></div>';
-    }
-    return {b:b,d:d,i:d.querySelector("#levromartHeaderSearchInput"),c:d.querySelector("#levromartHeaderSearchSuggest")};
-  }
-  function renderHome(c){
-    var h=history(), html='<section class="levro-search-section"><div class="levro-search-section-head"><strong>Recent searches</strong>';
-    if(h.length) html+='<button type="button" class="levro-search-clear-all">Clear all</button>';
-    html+='</div>';
-    if(h.length){html+='<div class="levro-search-history-list">';h.forEach(function(q){html+='<div class="levro-search-history-row"><button type="button" class="levro-search-history-use" data-q="'+esc(q)+'"><i class="fa-solid fa-clock-rotate-left"></i><span>'+esc(q)+'</span></button><button type="button" class="levro-search-history-remove" data-q="'+esc(q)+'" aria-label="Remove '+esc(q)+'"><i class="fa-solid fa-xmark"></i></button></div>';});html+='</div>';}else html+='<p class="levro-search-empty-history">Your recent searches will appear here.</p>';
-    html+='</section><section class="levro-search-section"><div class="levro-search-section-head"><strong>Recommended</strong></div><div class="levro-search-recommendations"><button type="button" class="levro-search-recommendation" data-hard-rec="products"><i class="fa-solid fa-box"></i>Shop products</button><button type="button" class="levro-search-recommendation" data-hard-rec="services"><i class="fa-solid fa-hand-holding-heart"></i>Find a service</button><button type="button" class="levro-search-recommendation" data-hard-rec="vendors"><i class="fa-solid fa-store"></i>Explore vendors</button><button type="button" class="levro-search-recommendation" data-hard-rec="packages"><i class="fa-solid fa-box-open"></i>Browse packages</button></div></section>';
-    c.innerHTML=html;
-    var clearBtn=c.querySelector('.levro-search-clear-all');if(clearBtn)clearBtn.onclick=function(){clear();renderHome(c);};
-    c.querySelectorAll('.levro-search-history-remove').forEach(function(x){x.onclick=function(e){e.stopPropagation();remove(x.getAttribute('data-q'));renderHome(c);};});
-    c.querySelectorAll('.levro-search-history-use').forEach(function(x){x.onclick=function(){var q=x.getAttribute('data-q')||'';var u=document.getElementById('levromartHeaderSearchInput');save(q);if(u){u.value=q;u.focus();u.dispatchEvent(new Event('input',{bubbles:true}));}};});
-    c.querySelectorAll('[data-hard-rec]').forEach(function(x){x.onclick=function(){var a=x.getAttribute('data-hard-rec');if(a==='vendors'&&typeof window.navigate==='function')window.navigate('vendors');else if(typeof window.switchHomeListingTab==='function'){if(typeof window.navigate==='function')window.navigate('home',{},false);setTimeout(function(){window.switchHomeListingTab(a);},120);}else if(typeof window.navigate==='function')window.navigate('home');};});
-  }
-  function open(){var x=ensure();if(!x.i)return;x.b.classList.add('open');x.d.classList.add('open');document.body.classList.add('search-input-active');renderHome(x.c);requestAnimationFrame(function(){try{x.i.focus({preventScroll:true});}catch(_){x.i.focus();}});if(x.i.dataset.hardBound!=='1'){x.i.dataset.hardBound='1';x.i.addEventListener('input',function(){if(!x.i.value.trim()){renderHome(x.c);}else{x.c.innerHTML='<section class="levro-search-section"><div class="levro-search-section-head"><strong>Search</strong></div><p class="levro-search-no-results">Press Enter to search for “'+esc(x.i.value.trim())+'”.</p></section>';}});x.i.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();close();}else if(e.key==='Enter'&&x.i.value.trim()){e.preventDefault();var q=x.i.value.trim();save(q);close();if(typeof window.routeSearch==='function')window.routeSearch(q);}});}}
-  function close(){var b=document.getElementById('levromartHeaderSearchBackdrop'),d=document.getElementById('levromartHeaderSearchDock'),i=document.getElementById('levromartHeaderSearchInput');if(b)b.classList.remove('open');if(d)d.classList.remove('open');if(i)i.blur();document.body.classList.remove('search-input-active');}
-  window.openLevromartHeaderSearch=open;window.closeLevromartHeaderSearch=close;
-  document.addEventListener('pointerdown',function(e){var t=e.target&&e.target.closest?e.target.closest('#levromartHeaderSearchButton'):null;if(t){e.preventDefault();e.stopImmediatePropagation();open();}},true);
-  document.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#levromartHeaderSearchButton')){e.preventDefault();e.stopImmediatePropagation();}},true);
-  document.addEventListener('pointerdown',function(e){var b=document.getElementById('levromartHeaderSearchBackdrop');if(b&&e.target===b){e.preventDefault();close();}},true);
-  document.addEventListener('click',function(e){var b=document.getElementById('levromartHeaderSearchBackdrop');if(b&&e.target===b){e.preventDefault();close();}},true);
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.getElementById('levromartHeaderSearchDock')?.classList.contains('open'))close();},true);
-  setTimeout(function(){var b=document.getElementById('levromartHeaderSearchButton');if(b)b.removeAttribute('onclick');},0);
-  setTimeout(function(){var b=document.getElementById('levromartHeaderSearchButton');if(b)b.removeAttribute('onclick');},500);
-})();
-</script>
 
 </html>`);
   w.document.close();
@@ -28854,42 +28760,6 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       window.location.assign(data.authorization_url);return true;
     }catch(e){if(typeof showToast==='function')showToast(e.message||"Could not start the listing payment.","error");return false;}
   };
-  window.startNewListingMonthlyPayment=async function(kind,draft){
-    if(!(typeof session!=="undefined"&&session?.access_token)){if(typeof showLogin==='function')showLogin();return false;}
-    try{
-      sessionStorage.setItem("levromart-pending-listing-draft",JSON.stringify(draft));
-      const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({action:"prepare-listing-payment",kind,accessToken:session.access_token})});
-      const data=await r.json().catch(()=>({}));
-      if(!r.ok||!data.authorization_url)throw new Error(data.error||"Could not start the ₦1,000 listing payment.");
-      sessionStorage.setItem("levromart-pending-listing-reference",data.reference);
-      window.location.assign(data.authorization_url); return true;
-    }catch(e){sessionStorage.removeItem("levromart-pending-listing-draft");sessionStorage.removeItem("levromart-pending-listing-reference");if(typeof showToast==='function')showToast(e.message||"Could not start the listing payment.","error");return false;}
-  };
-  async function finalizePaidListingDraft(reference,expectedKind){
-    const raw=sessionStorage.getItem("levromart-pending-listing-draft");
-    if(!raw)return {ok:false,error:"Your paid listing draft is no longer available on this device. Please contact support before paying again."};
-    let draft; try{draft=JSON.parse(raw);}catch(_){return {ok:false,error:"The pending listing draft could not be read."};}
-    if(!draft||draft.kind!==expectedKind||!draft.fields)return {ok:false,error:"The pending listing draft does not match this payment."};
-    const vendorId=vendor?.id; if(!vendorId)return {ok:false,error:"Your vendor profile is unavailable. Please sign in again."};
-    if(String(draft.vendor_id)!==String(vendorId))return {ok:false,error:"This listing draft belongs to a different vendor account."};
-    const fields={...draft.fields,status:"active",billing_status:"active",billing_reference:reference,billing_paid_until:(()=>{const d=new Date();const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+1);const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return d.toISOString();})()};
-    let savedProductId=null;
-    const existing=await sb.from("products").select("id").eq("vendor_id",vendorId).eq("billing_reference",reference).maybeSingle();
-    if(existing.data?.id){savedProductId=existing.data.id;}
-    else{
-      const {data:created,error}=await sb.from("products").insert({...fields,vendor_id:vendorId,quantity_available:fields.quantity_total,photos:Array.isArray(draft.photos)?draft.photos:[]}).select("id").single();
-      if(error||!created?.id)return {ok:false,error:error?.message||"Payment succeeded, but the listing could not be saved yet. Your draft has been kept so you can retry."};
-      savedProductId=created.id;
-      try{await saveProductVariants(savedProductId,Array.isArray(draft.variantDrafts)?draft.variantDrafts:[]);}catch(e){return {ok:false,error:e.message||"The listing was saved, but its varieties could not be saved yet."};}
-    }
-    const claim=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({action:"consume-listing-payment",reference,listingId:savedProductId,accessToken:session.access_token})});
-    const claimData=await claim.json().catch(()=>({}));
-    if(!claim.ok&&!/already been used/i.test(String(claimData.error||"")))return {ok:false,error:claimData.error||"The payment was received, but the payment record could not be finalized. Your listing draft is safe; please retry."};
-    await sb.from("products").update({billing_reference:null}).eq("id",savedProductId).eq("vendor_id",vendorId);
-    sessionStorage.removeItem("levromart-pending-listing-draft");sessionStorage.removeItem("levromart-pending-listing-reference");
-    return {ok:true,id:savedProductId};
-  }
-
   window.syncListingBillingUI=function(){
     const service=byId("prodIsService")?.checked, select=byId("prodBillingModel"), hint=byId("prodBillingHint");
     if(!select)return;
@@ -28903,25 +28773,14 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     const s=byId("pkgBillingModel"),h=byId("pkgBillingHint");if(h)h.textContent=s?.value==="monthly"?"The package stays hidden until the ₦1,000 Paystack activation payment succeeds.":"Commission-based packages can go live without an activation payment.";
   };
 
-  async function finalPaymentReturn(){
-    const u=new URL(location.href);
-    const returnMode=u.searchParams.get("listingPayment");
-    const reference=u.searchParams.get("reference");
-    const kind=u.searchParams.get("kind")||"product";
-    if(returnMode!=="return"||!reference)return;
-    ["listingPayment","listingPaid","kind","id","reference","reason"].forEach(k=>u.searchParams.delete(k));
+  function finalPaymentReturn(){
+    const u=new URL(location.href);const paid=u.searchParams.get("listingPaid"),failed=u.searchParams.get("listingPayment");
+    if(!paid&&failed!=="failed")return;
+    const kind=u.searchParams.get("kind");
+    ["listingPaid","listingPayment","kind","id","reference","reason"].forEach(k=>u.searchParams.delete(k));
     history.replaceState(history.state,"",u.pathname+(u.searchParams.toString()?`?${u.searchParams}`:"")+u.hash);
-    if(!(typeof session!=="undefined"&&session?.access_token)){showToast?.("Payment returned successfully, but your session expired. Please sign in again to finish saving the listing.","error");return;}
-    showToast?.("Verifying your ₦1,000 Paystack payment…","info");
-    try{
-      const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({action:"verify-listing-payment",reference,accessToken:session.access_token})});
-      const data=await r.json().catch(()=>({}));
-      if(!r.ok||data.status!=="success")throw new Error(data.error||"The listing payment could not be verified.");
-      const done=await finalizePaidListingDraft(reference,kind);
-      if(!done.ok)throw new Error(done.error);
-      showToast?.("₦1,000 received. Your listing has been saved and is now live for one month.","success");
-      setTimeout(()=>navigate?.("vendorProducts",{},false),120);
-    }catch(e){showToast?.(e.message||"The listing payment could not be completed.","error");}
+    if(typeof showToast==='function')showToast(paid==="1"?"₦1,000 received. Your listing is live for one month.":"The listing payment was not completed. Your listing remains paused until payment succeeds.",paid==="1"?"success":"error");
+    setTimeout(()=>{if(typeof navigate==='function')navigate(kind==="package"?"vendorPackages":"vendorProducts",{},false);},100);
   }
 
   function run(){
@@ -29045,66 +28904,6 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   const run=()=>{bindFollow();bindTopSearch();repairSearchBackdrop();};
   run(); setTimeout(run,200); setTimeout(run,700);
   new MutationObserver(()=>{clearTimeout(window.__levroFollowRepairTimer);window.__levroFollowRepairTimer=setTimeout(run,60);}).observe(document.body,{childList:true,subtree:true});
-})();
-</script>
-
-
-<style id="levromart-discarded-bulk-css">
-.vendor-discarded-bulkbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin:0 0 .65rem;padding:.55rem .65rem;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--card) 92%,transparent);font-size:.75rem}
-.vendor-discarded-bulkbar label{display:inline-flex;align-items:center;gap:.4rem;font-weight:700;cursor:pointer}
-.vendor-discarded-bulkbar .btn{margin-left:auto!important}
-.vendor-discarded-card{position:relative!important;align-items:flex-start!important}
-.discarded-select{display:grid;place-items:center;flex:0 0 auto;padding-top:.2rem;cursor:pointer}
-.discarded-select input{width:18px;height:18px;accent-color:var(--primary)}
-</style>
-
-
-<style id="levromart-hard-top-search-css">
-#levromartHeaderSearchBackdrop{z-index:2147483000!important}
-#levromartHeaderSearchDock{z-index:2147483001!important}
-#levromartHeaderSearchButton{position:relative!important;z-index:2147483002!important;cursor:pointer!important}
-</style>
-<script id="levromart-hard-top-search-fix">
-(function(){
-  "use strict";
-  const KEY="levromart-search-history-v1",MAX=8;
-  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",""":"&quot;","'":"&#39;"}[c]));
-  function history(){try{const x=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(x)?x.map(String).map(x=>x.trim()).filter(Boolean).slice(0,MAX):[]}catch(_){return[]}}
-  function save(q){q=String(q||"").trim();if(!q)return;try{localStorage.setItem(KEY,JSON.stringify([q,...history().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,MAX)))}catch(_){} }
-  function remove(q){try{localStorage.setItem(KEY,JSON.stringify(history().filter(x=>x.toLowerCase()!==String(q).toLowerCase())))}catch(_){} }
-  function clear(){try{localStorage.removeItem(KEY)}catch(_){} }
-  function ui(){
-    let b=document.getElementById("levromartHeaderSearchBackdrop"),d=document.getElementById("levromartHeaderSearchDock");
-    if(!b){b=document.createElement("div");b.id="levromartHeaderSearchBackdrop";document.body.appendChild(b)}
-    if(!d){d=document.createElement("div");d.id="levromartHeaderSearchDock";document.body.appendChild(d)}
-    d.innerHTML=`<div class="header-search-space" role="dialog" aria-label="Search Levromart"><div class="header-search-bar"><i class="fa-solid fa-magnifying-glass"></i><input id="levromartHeaderSearchInput" type="search" autocomplete="off" placeholder="Search products, services, vendors…" aria-label="Search Levromart"><button type="button" class="header-search-close" id="levromartHeaderSearchClose" aria-label="Close search"><i class="fa-solid fa-xmark"></i></button></div><div id="levromartHeaderSearchSuggest" class="header-search-content"></div></div>`;
-    return {b,d,i:d.querySelector("#levromartHeaderSearchInput"),c:d.querySelector("#levromartHeaderSearchSuggest")};
-  }
-  function home(c){
-    const h=history();
-    c.innerHTML=`<section class="levro-search-section"><div class="levro-search-section-head"><strong>Recent searches</strong>${h.length?'<button type="button" class="levro-search-clear-all">Clear all</button>':''}</div>${h.length?`<div class="levro-search-history-list">${h.map(q=>`<div class="levro-search-history-row"><button type="button" class="levro-search-history-use" data-q="${esc(q)}"><i class="fa-solid fa-clock-rotate-left"></i><span>${esc(q)}</span></button><button type="button" class="levro-search-history-remove" data-q="${esc(q)}" aria-label="Remove ${esc(q)}"><i class="fa-solid fa-xmark"></i></button></div>`).join('')}</div>`:'<p class="levro-search-empty-history">Your recent searches will appear here.</p>'}</section><section class="levro-search-section"><div class="levro-search-section-head"><strong>Recommended</strong></div><div class="levro-search-recommendations"><button type="button" class="levro-search-recommendation" data-hard-rec="products"><i class="fa-solid fa-box"></i>Shop products</button><button type="button" class="levro-search-recommendation" data-hard-rec="services"><i class="fa-solid fa-hand-holding-heart"></i>Find a service</button><button type="button" class="levro-search-recommendation" data-hard-rec="vendors"><i class="fa-solid fa-store"></i>Explore vendors</button><button type="button" class="levro-search-recommendation" data-hard-rec="packages"><i class="fa-solid fa-box-open"></i>Browse packages</button></div></section>`;
-    c.querySelector('.levro-search-clear-all')?.addEventListener('click',()=>{clear();home(c)});
-    c.querySelectorAll('.levro-search-history-remove').forEach(x=>x.addEventListener('click',()=>{remove(x.dataset.q);home(c)}));
-    c.querySelectorAll('.levro-search-history-use').forEach(x=>x.addEventListener('click',()=>{const q=x.dataset.q||'';save(q);const i=document.getElementById('levromartHeaderSearchInput');if(i){i.value=q;i.dispatchEvent(new Event('input',{bubbles:true}));i.focus()}}));
-    c.querySelectorAll('[data-hard-rec]').forEach(x=>x.addEventListener('click',()=>{const a=x.dataset.hardRec;const map={products:'products',services:'services',vendors:'vendors',packages:'packages'};if(typeof window.navigate==='function'&&a==='vendors')window.navigate('vendors');else if(typeof window.switchHomeListingTab==='function'){window.navigate?.('home',{},false);setTimeout(()=>window.switchHomeListingTab(map[a]),120)}else window.navigate?.('home')}));
-  }
-  function bind(){
-    const b=document.getElementById('levromartHeaderSearchButton');if(!b)return;
-    b.removeAttribute('onclick');b.dataset.hardSearchButton='1';
-  }
-  function open(){
-    const x=ui();if(!x.i)return;x.b.classList.add('open');x.d.classList.add('open');document.body.classList.add('search-input-active');home(x.c);requestAnimationFrame(()=>x.i.focus({preventScroll:true}));
-    x.i.oninput=()=>{if(!x.i.value.trim()){home(x.c);return;}x.c.innerHTML=`<section class="levro-search-section"><div class="levro-search-section-head"><strong>Search</strong></div><p class="levro-search-no-results">Press Enter to search for “${esc(x.i.value.trim())}”.</p></section>`};
-    x.i.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();close()}if(e.key==='Enter'&&x.i.value.trim()){save(x.i.value.trim());close();if(typeof window.routeSearch==='function')window.routeSearch(x.i.value.trim());else{const q=x.i.value.trim();const s=document.getElementById('searchInput');if(s){s.value=q;s.dispatchEvent(new Event('input',{bubbles:true))}}}}};
-    x.b.onpointerdown=e=>{if(e.target===x.b){e.preventDefault();close()}};
-    x.d.querySelector('#levromartHeaderSearchClose').onclick=e=>{e.preventDefault();close()};
-  }
-  function close(){document.getElementById('levromartHeaderSearchBackdrop')?.classList.remove('open');document.getElementById('levromartHeaderSearchDock')?.classList.remove('open');document.body.classList.remove('search-input-active');document.getElementById('levromartHeaderSearchInput')?.blur()}
-  window.openLevromartHeaderSearch=open;window.closeLevromartHeaderSearch=close;
-  document.addEventListener('pointerdown',e=>{if(e.target.closest?.('#levromartHeaderSearchButton')){e.preventDefault();e.stopImmediatePropagation();open()}},true);
-  document.addEventListener('click',e=>{if(e.target.closest?.('#levromartHeaderSearchButton')){e.preventDefault();e.stopImmediatePropagation()}},true);
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('levromartHeaderSearchDock')?.classList.contains('open'))close()},true);
-  bind();setTimeout(bind,100);setTimeout(bind,500);setTimeout(bind,1500);
 })();
 </script>
 
