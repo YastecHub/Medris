@@ -8228,6 +8228,7 @@ function toggleAccordion(trigger) {
 
 // ---------- SLIDE-IN DRAWERS ----------
 function closeAllPanels() {
+  try { window.closeLevromartTransientFilters?.(); } catch (_) {}
   closeAllInfoPopovers();
   document.querySelectorAll(".side-drawer.open").forEach((d) => { d.classList.remove("open"); d.style.transform = ""; d.classList.remove("profile-page-reveal"); });
   byId("drawerBackdrop")?.classList.remove("open");
@@ -10224,6 +10225,7 @@ function navigationLoadingHtml(view) {
 }
 
 async function navigate(view, params = {}, pushHistory = true) {
+  try { window.closeLevromartTransientFilters?.(); } catch (_) {}
   const app = byId("app");
   // Accept both the historical boolean and the newer {replace:true} form so
   // every internal destination still uses one router without accidental
@@ -11241,6 +11243,7 @@ async function renderHome() {
 
   const activeSector = sectors.find((s) => s.id === currentSectorId) || null;
   const activeCategory = (categories || []).find((c) => String(c.id) === String(currentHomeCategoryId)) || null;
+  const subCats = (categories || []).filter(c => c.parent_category_id && (!activeSector || String(c.sector_id) === String(activeSector.id)));
 
   let vendorQuery = sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
@@ -11282,7 +11285,17 @@ async function renderHome() {
     packageQuery,
     browseCatalogQuery,
   ]);
-  window.__homeBrowseCatalog = Array.isArray(browseProducts) ? browseProducts : [];
+  // Never discard a previously good Browse Everything catalogue just because
+  // this refresh returned null/empty data for a moment. The homepage is
+  // cache-first: a successful catalogue already on this device remains the
+  // source of truth until a genuinely non-empty refresh replaces it.
+  const previousBrowseCatalog = Array.isArray(window.__homeBrowseCatalog) ? window.__homeBrowseCatalog : [];
+  const cachedBrowseCatalog = Array.isArray(cachedHome?.browseProducts) ? cachedHome.browseProducts : [];
+  const knownGoodBrowseCatalog = previousBrowseCatalog.length ? previousBrowseCatalog : cachedBrowseCatalog;
+  const stableBrowseProducts = Array.isArray(browseProducts) && browseProducts.length
+    ? browseProducts
+    : knownGoodBrowseCatalog;
+  window.__homeBrowseCatalog = stableBrowseProducts;
   const homepageCarouselSlides = await loadHomepageCarouselSlides();
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
@@ -11290,7 +11303,7 @@ async function renderHome() {
   const cachedTrending = (browseProducts || []).slice().sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0)).slice(0, 20);
   writeOfflineHomeCache({
     categories, sectors: sectors || sectorsData || [], trending: cachedTrending,
-    browseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
+    browseProducts: stableBrowseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
   });
 
   const allHomePackages = packages || [];
@@ -11656,10 +11669,10 @@ async function renderHomePackageTab() {
     ? shown.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")
     : `<div class="empty-state" style="grid-column:1/-1;"><i class="fa-solid fa-box-open" style="display:block;font-size:1.5rem;margin-bottom:.5rem;"></i>No packages${q ? ` match “${esc(q)}”` : " available"}.</div>`;
 }
-function toggleBrowseFilters(){
+function toggleBrowseFilters(force){
   const panel=byId("browseFilterPanel"), trigger=byId("browseFilterTrigger");
   if(!panel||!trigger)return;
-  const open=panel.classList.contains("hidden");
+  const open = typeof force === "boolean" ? force : panel.classList.contains("hidden");
   panel.classList.toggle("hidden",!open);
   trigger.setAttribute("aria-expanded",String(open));
   trigger.classList.toggle("active",open);
@@ -26604,6 +26617,168 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
    ordinary white surfaces. */
 #app .bottom-nav .nav-item.active,#app .bottom-nav .nav-plus,
 #app .nav-plus,#app .plus-button,#app .cart-fab,#app .ai-chat-fab{color:#fff !important;-webkit-text-fill-color:#fff !important;}
+</style>
+
+<script id="levromart-filter-outside-close">
+(function(){
+  "use strict";
+  function closeBrowse(){
+    const panel=document.getElementById("browseFilterPanel");
+    const trigger=document.getElementById("browseFilterTrigger");
+    if(!panel) return;
+    panel.classList.add("hidden");
+    trigger?.classList.remove("active");
+    trigger?.setAttribute("aria-expanded","false");
+    document.getElementById("browseListingSubmenu")?.classList.add("hidden");
+    document.getElementById("browseCategorySubmenu")?.classList.add("hidden");
+  }
+  function closeVendors(){
+    const panel=document.getElementById("vendorsFiltersPanel");
+    const trigger=document.getElementById("vendorsFiltersToggle");
+    if(!panel) return;
+    panel.classList.add("hidden");
+    trigger?.classList.remove("active");
+    trigger?.setAttribute("aria-expanded","false");
+  }
+  function closeOrders(){
+    document.querySelectorAll(".order-filters-wrap").forEach(w=>{
+      const panel=w.querySelector(".order-filters-panel");
+      const trigger=w.querySelector(".order-filters-trigger");
+      panel?.classList.add("hidden");
+      trigger?.classList.remove("active");
+      trigger?.setAttribute("aria-expanded","false");
+    });
+  }
+  document.addEventListener("pointerdown",function(e){
+    const t=e.target;
+    if(!t?.closest?.("#browseFilterPanel,#browseFilterTrigger")) closeBrowse();
+    if(!t?.closest?.("#vendorsFiltersPanel,#vendorsFiltersToggle")) closeVendors();
+    if(!t?.closest?.(".order-filters-panel,.order-filters-trigger")) closeOrders();
+  },true);
+  window.closeLevromartTransientFilters=function(){ closeBrowse(); closeVendors(); closeOrders(); };
+})();
+</script>
+
+<style id="levromart-filter-final-polish">
+/* Filters are controls, not hero buttons. Keep them quiet and app-native. */
+#app .browse-filter-trigger,
+#app .vendors-filters-toggle,
+#app .order-filters-trigger{
+  min-height:42px !important;
+  border-radius:999px !important;
+  box-shadow:none !important;
+  background-image:none !important;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease !important;
+}
+
+/* Light mode: soft tinted surface with a restrained green outline. */
+html:not([data-theme="dark"]):not([data-theme="black"]) #app .browse-filter-trigger,
+html:not([data-theme="dark"]):not([data-theme="black"]) #app .vendors-filters-toggle,
+html:not([data-theme="dark"]):not([data-theme="black"]) #app .order-filters-trigger{
+  background:color-mix(in srgb,#10b080 7%,var(--card)) !important;
+  border:1px solid color-mix(in srgb,#10b080 42%,var(--border)) !important;
+  color:#0b7f5f !important;
+  -webkit-text-fill-color:#0b7f5f !important;
+}
+html:not([data-theme="dark"]):not([data-theme="black"]) #app .browse-filter-trigger i,
+html:not([data-theme="dark"]):not([data-theme="black"]) #app .vendors-filters-toggle i,
+html:not([data-theme="dark"]):not([data-theme="black"]) #app .order-filters-trigger i,
+html:not([data-theme="dark"]):not([data-theme="black"]) #app .order-filters-trigger span,
+html:not([data-theme="dark"]):not([data-theme="black"]) #app .order-filters-trigger small{
+  color:#0b7f5f !important;-webkit-text-fill-color:#0b7f5f !important;
+}
+
+/* Dark/black mode: transparent glass with only the brand-green outline. */
+html[data-theme="dark"] #app .browse-filter-trigger,
+html[data-theme="black"] #app .browse-filter-trigger,
+html[data-theme="dark"] #app .vendors-filters-toggle,
+html[data-theme="black"] #app .vendors-filters-toggle,
+html[data-theme="dark"] #app .order-filters-trigger,
+html[data-theme="black"] #app .order-filters-trigger{
+  background:transparent !important;
+  border:1px solid rgba(16,176,128,.62) !important;
+  color:var(--text) !important;
+  -webkit-text-fill-color:var(--text) !important;
+}
+html[data-theme="dark"] #app .browse-filter-trigger i,
+html[data-theme="black"] #app .browse-filter-trigger i,
+html[data-theme="dark"] #app .vendors-filters-toggle i,
+html[data-theme="black"] #app .vendors-filters-toggle i,
+html[data-theme="dark"] #app .order-filters-trigger i,
+html[data-theme="black"] #app .order-filters-trigger i{
+  color:#35cfa1 !important;-webkit-text-fill-color:#35cfa1 !important;
+}
+html[data-theme="dark"] #app .order-filters-trigger span,
+html[data-theme="black"] #app .order-filters-trigger span{
+  color:var(--text) !important;-webkit-text-fill-color:var(--text) !important;
+}
+
+/* When a filter is open, strengthen the outline only — never flood the bar. */
+#app .browse-filter-trigger.active,
+#app .vendors-filters-toggle.active,
+#app .order-filters-trigger.active{
+  background:color-mix(in srgb,#10b080 7%,var(--card)) !important;
+  border-color:#10b080 !important;
+}
+html[data-theme="dark"] #app .browse-filter-trigger.active,
+html[data-theme="black"] #app .browse-filter-trigger.active,
+html[data-theme="dark"] #app .vendors-filters-toggle.active,
+html[data-theme="black"] #app .vendors-filters-toggle.active,
+html[data-theme="dark"] #app .order-filters-trigger.active,
+html[data-theme="black"] #app .order-filters-trigger.active{
+  background:rgba(16,176,128,.055) !important;
+}
+
+/* Filter panels: soft glass/card, never browser-grey. */
+#app .browse-filter-panel,
+#app .vendors-filters-panel,
+#app .order-filters-panel{
+  background:var(--card) !important;
+  color:var(--text) !important;
+  border:1px solid color-mix(in srgb,#10b080 18%,var(--border)) !important;
+  border-radius:18px !important;
+  box-shadow:0 16px 36px rgba(0,0,0,.12) !important;
+}
+html[data-theme="dark"] #app .browse-filter-panel,
+html[data-theme="black"] #app .browse-filter-panel,
+html[data-theme="dark"] #app .vendors-filters-panel,
+html[data-theme="black"] #app .vendors-filters-panel,
+html[data-theme="dark"] #app .order-filters-panel,
+html[data-theme="black"] #app .order-filters-panel{
+  background:color-mix(in srgb,var(--card) 92%,transparent) !important;
+  border-color:rgba(16,176,128,.28) !important;
+}
+
+/* Never let a filter's labels inherit a white-on-white/transparent color. */
+#app .browse-filter-subtrigger,
+#app .browse-filter-subtrigger strong,
+#app .browse-filter-submenu button,
+#app .vendors-filters-panel label,
+#app .vendors-filters-panel select,
+#app .order-filters-panel label,
+#app .order-filters-panel select{
+  color:var(--text) !important;
+  -webkit-text-fill-color:var(--text) !important;
+}
+#app .browse-filter-subtrigger span,
+#app .vendors-filters-panel label,
+#app .order-filters-panel label{color:var(--text-muted) !important;-webkit-text-fill-color:var(--text-muted) !important;}
+
+/* Vendor filter is full-width on narrow screens but remains a calm outline. */
+#app .vendors-directory-controls{position:relative !important;}
+#app .vendors-filters-toggle{width:auto !important;}
+@media(max-width:560px){#app .vendors-filters-toggle{width:100% !important;}}
+
+/* Orders: one polished pill, with the detail summary tucked inside it. */
+#app .order-filters-wrap{position:relative !important;z-index:30 !important;}
+#app .order-filters-trigger{width:100% !important;display:flex !important;align-items:center !important;gap:.5rem !important;padding:.65rem .8rem !important;}
+#app .order-filters-trigger>small{flex:1 1 auto !important;min-width:0 !important;text-align:left !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;color:var(--text-muted) !important;-webkit-text-fill-color:var(--text-muted) !important;}
+#app .order-filters-panel{position:absolute !important;left:0 !important;right:0 !important;top:calc(100% + .45rem) !important;z-index:500 !important;}
+
+/* No transitions on active filter state that could look like blinking. */
+#app .browse-filter-trigger,
+#app .vendors-filters-toggle,
+#app .order-filters-trigger{animation:none !important;}
 </style>
 
 </html>
