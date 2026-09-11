@@ -6106,6 +6106,9 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </nav>
   </div>
   <div class="header-right">
+    <div class="icon-wrap" id="headerSearchWrap">
+      <button type="button" class="icon-btn header-search-btn" id="levromartHeaderSearchButton" title="Search Levromart" aria-label="Search Levromart"><i class='fa-solid fa-magnifying-glass'></i></button>
+    </div>
     <div class="icon-wrap hidden" id="notifWrap">
       <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
     </div>
@@ -14328,9 +14331,11 @@ function renderVendorsDirectory() {
     <button type="button" class="vendor-listing-tab" data-filter="rent" onclick="setVendorsListingFilter('rent')">Rent</button>
     <button type="button" class="vendor-listing-tab" data-filter="both" onclick="setVendorsListingFilter('both')">Buy &amp; Rent</button>
   </div>
-  <div class="vendors-directory-toolbar">
-    <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" />
+  <div class="vendors-directory-toolbar vendors-directory-controls">
     <button type="button" class="btn btn-sm btn-outline vendors-filters-toggle" id="vendorsFiltersToggle" aria-expanded="false" onclick="toggleVendorsFilters()"><i class="fa-solid fa-sliders"></i> Filters <i class="fa-solid fa-chevron-down vendors-filters-chevron"></i></button>
+  </div>
+  <div class="vendors-directory-search">
+    <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" autocomplete="off" aria-label="Search vendors or products" />
   </div>
   <div class="vendors-filters-panel hidden" id="vendorsFiltersPanel">
     <div class="vendors-filter-grid">
@@ -23237,10 +23242,12 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       <button type="button" class="vendor-listing-tab" data-filter="both" onclick="setVendorsListingFilter('both')">Buy &amp; Rent</button>
     </div>
     <div class="vendors-directory-controls">
-      <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" autocomplete="off" />
       <button type="button" class="btn btn-sm btn-outline vendors-filters-toggle" id="vendorsFiltersToggle" aria-expanded="false" onclick="toggleVendorsFilters()">
         <i class="fa-solid fa-sliders"></i> Filters <i class="fa-solid fa-chevron-down vendors-filters-chevron"></i>
       </button>
+    </div>
+    <div class="vendors-directory-search">
+      <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" autocomplete="off" aria-label="Search vendors or products" />
     </div>
     <div class="vendors-filters-panel hidden" id="vendorsFiltersPanel">
       <div class="vendors-filter-grid">
@@ -27592,6 +27599,18 @@ body.product-detail-view #aiChatFab{display:flex !important;visibility:visible !
 body.product-detail-view #aiChatFab.scroll-faded{pointer-events:none !important;}
 </style>
 <style id="levromart-20260911-feature-pack-css">
+/* Final spacing / hierarchy pass: the promotional carousel is the first hero
+   surface, but it should never visually touch the fixed app header. */
+#app .levro-home-hero{margin-top:.9rem !important;}
+
+/* Vendor directory: filters are intentionally a full-width control row above
+   the search field on every breakpoint. This is structural, not a flex-order
+   trick, so Android/iOS and desktop keep the same reading order. */
+#app .vendors-directory-controls{display:block !important;margin:.75rem 0 .55rem !important;}
+#app .vendors-directory-controls .vendors-filters-toggle{width:100% !important;display:flex !important;align-items:center !important;justify-content:center !important;min-height:44px !important;}
+#app .vendors-directory-search{position:relative !important;width:100% !important;margin:0 0 .8rem !important;z-index:25 !important;}
+#app .vendors-directory-search input{width:100% !important;max-width:none !important;margin:0 !important;min-height:46px !important;border-radius:15px !important;}
+
 .listing-billing-choice{margin:.7rem 0;padding:.75rem;border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border));border-radius:14px;background:color-mix(in srgb,var(--primary) 5%,var(--card));}
 .listing-billing-choice label{font-size:.76rem;font-weight:750;margin:0 0 .35rem;display:block;}
 .listing-billing-choice select{margin:0;width:100%;}
@@ -27614,7 +27633,12 @@ body.product-detail-view #aiChatFab.scroll-faded{pointer-events:none !important;
 .order-search-wrap{margin:.65rem 0 .15rem;position:relative;}
 .order-search-wrap i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;}
 .order-search-wrap input{padding-left:2.55rem!important;}
-body.search-input-active .bottom-nav{transform:translateY(calc(100% + 1rem))!important;opacity:0!important;pointer-events:none!important;}
+/* While any marketplace search field owns focus, remove the fixed bottom
+   navigation from the layout entirely. display:none is intentional here: a
+   transform alone can be re-positioned by Android WebView/Chrome when the
+   visual viewport shrinks for the keyboard. */
+body.search-input-active .bottom-nav{display:none !important;}
+body.search-input-active{--levro-search-keyboard-active:1;}
 @media(max-width:720px){
   #levromartHeaderSearchDock{top:calc(56px + env(safe-area-inset-top,0px) + .35rem);}
   #app .levro-home-search-wrap{display:none!important;}
@@ -27623,7 +27647,14 @@ body.search-input-active .bottom-nav{transform:translateY(calc(100% + 1rem))!imp
   #app .browse-filter-toolbar>input{grid-column:auto!important;order:-1!important;}
 }
 @media(min-width:721px){#app .levro-home-search-wrap{display:none!important;}}
+
+/* Follow controls are compact but deliberately discoverable. */
+.storefront-follow-wrap{position:relative !important;display:inline-flex !important;align-items:center !important;gap:.35rem !important;}
+.storefront-follow-controls{display:inline-flex;align-items:center;gap:.35rem;}
 .follow-btn{min-width:98px;}
+.follow-settings-btn{min-width:42px !important;padding-inline:.65rem !important;}
+.follow-settings-btn[disabled]{opacity:.55;cursor:not-allowed;}
+.follow-menu{width:min(350px,calc(100vw - 1.25rem)) !important;max-height:min(70vh,540px);overflow:auto;}
 .follow-menu{position:absolute;right:0;top:calc(100% + .45rem);width:min(330px,calc(100vw - 2rem));background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 18px 46px rgba(0,0,0,.2);padding:.75rem;z-index:200;}
 .follow-menu.hidden{display:none;}
 .follow-pref-row{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.75rem;}
