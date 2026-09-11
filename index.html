@@ -10464,6 +10464,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   const preserveSameViewScroll = !pushHistory && previousView === view;
   const sameViewScrollY = preserveSameViewScroll ? window.scrollY : 0;
   app.innerHTML = html;
+  if (view === "home") setTimeout(() => { try { filterHomeProducts(); } catch (_) {} }, 0);
   syncLeviFabVisibility();
   hideLevromartSplash();
   clearAutoScrollTimers();
@@ -11726,31 +11727,47 @@ async function filterHomeProducts() {
   }
 
   renderHomePackageSearch(search).catch(() => {});
-  const localCatalog = window.__homeBrowseCatalog || getOfflineHomeCache()?.browseProducts || [];
-  if (localCatalog.length) {
-    const localFiltered = offlineFilterProducts(localCatalog, search, listing, catId, currentSectorId).filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
-    grid.innerHTML = localFiltered.length ? localFiltered.map(productCardHtml).join("") : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+
+  // Paint immediately from the last complete catalogue. This is the stable
+  // source of truth for the first frame and prevents a slow/failed network
+  // request from leaving Browse Everything empty.
+  const localCatalog = Array.isArray(window.__homeBrowseCatalog) && window.__homeBrowseCatalog.length
+    ? window.__homeBrowseCatalog
+    : (getOfflineHomeCache()?.browseProducts || []);
+  const localFiltered = offlineFilterProducts(localCatalog, search, listing, catId, currentSectorId)
+    .filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
+  const hasLocalCatalogue = localCatalog.length > 0;
+  if (hasLocalCatalogue) {
+    grid.innerHTML = localFiltered.length
+      ? localFiltered.map(productCardHtml).join("")
+      : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
   }
+
   if (browserLooksOffline()) {
-    const cache = getOfflineHomeCache();
-    const products = offlineFilterProducts(cache?.browseProducts || [], search, listing, catId, currentSectorId);
-    if (!products.length) {
+    if (!hasLocalCatalogue) {
       grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="fa-solid fa-wifi-slash" style="display:block;font-size:1.5rem;margin-bottom:.5rem;"></i>No saved products match these filters while you're offline.</div>`;
-    } else {
-      grid.innerHTML = products.map(productCardHtml).join("");
     }
     return;
   }
 
   let matchingIds = null;
   if (search) {
-    const { data: idRows } = await sb.rpc("search_product_ids", { p_query: search });
-    if (generation !== homeFilterGeneration || !byId("productGrid")) return;
-    matchingIds = (idRows || []).map((r) => r.id);
-    if (matchingIds.length === 0) {
-      const fallback = await fetchFallbackProducts();
-      if (generation !== homeFilterGeneration) return;
-      grid.innerHTML = noResultsWithFallbackHtml(`No product named "${search}" yet - but here's what's available:`, fallback);
+    try {
+      const { data: idRows, error: searchError } = await sb.rpc("search_product_ids", { p_query: search });
+      if (generation !== homeFilterGeneration || !byId("productGrid")) return;
+      if (searchError) throw searchError;
+      matchingIds = (idRows || []).map((r) => r.id);
+      if (matchingIds.length === 0) {
+        // If local data already contains a useful result for the requested
+        // filters, keep it. Otherwise show the normal fallback catalogue.
+        if (localFiltered.length) return;
+        const fallback = await fetchFallbackProducts();
+        if (generation !== homeFilterGeneration) return;
+        grid.innerHTML = noResultsWithFallbackHtml(`No product named "${search}" yet - but here's what's available:`, fallback);
+        return;
+      }
+    } catch (err) {
+      console.warn("[Levromart] Home product search lookup failed; preserving local browse data:", err);
       return;
     }
   }
@@ -11768,9 +11785,30 @@ async function filterHomeProducts() {
   if (catId) query = query.eq("category_id", catId);
   if (currentSectorId) query = query.eq("category.sector_id", currentSectorId);
 
-  const { data: products, error } = await query.order("created_at", { ascending: false });
+  let result;
+  try {
+    result = await query.order("created_at", { ascending: false });
+  } catch (err) {
+    console.warn("[Levromart] Home browse query failed; preserving local browse data:", err);
+    return;
+  }
+  const { data: products, error } = result || {};
   if (generation !== homeFilterGeneration) return;
-  if (error || !products || products.length === 0) {
+
+  // Never replace good local content with an empty/error response from a
+  // transient backend request. The next successful render will refresh it.
+  if (error || !products) {
+    console.warn("[Levromart] Home browse query returned an error; preserving local browse data:", error);
+    if (!hasLocalCatalogue) {
+      const fallback = await fetchFallbackProducts();
+      if (generation !== homeFilterGeneration) return;
+      grid.innerHTML = noResultsWithFallbackHtml("The marketplace is taking a moment to load - here's what's available:", fallback);
+    }
+    return;
+  }
+
+  if (products.length === 0) {
+    if (localFiltered.length) return;
     const fallback = await fetchFallbackProducts();
     if (generation !== homeFilterGeneration) return;
     const message = search
@@ -11779,11 +11817,13 @@ async function filterHomeProducts() {
     grid.innerHTML = noResultsWithFallbackHtml(message, fallback);
     return;
   }
-  if (matchingIds) products.sort((a, b) => matchingIds.indexOf(a.id) - matchingIds.indexOf(b.id));
-  const tabProducts = (products || []).filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
-  grid.innerHTML = tabProducts.length ? tabProducts.map(productCardHtml).join("") : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
-}
 
+  if (matchingIds) products.sort((a, b) => matchingIds.indexOf(a.id) - matchingIds.indexOf(b.id));
+  const tabProducts = products.filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
+  grid.innerHTML = tabProducts.length
+    ? tabProducts.map(productCardHtml).join("")
+    : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+}
 function productDeliverySummaryHtml(p) {
   const v = p?.vendor || {};
   const mode = String(v.delivery_fee_mode || "free").toLowerCase();
@@ -14242,8 +14282,8 @@ function renderVendorsDirectory() {
   let html = `<div class="flex" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
     <h2 style="margin:0;"><i class="fa-solid fa-store"></i> All vendors</h2>
     <div class="flex" style="gap:0.5rem;">
-      <button class="btn btn-sm btn-outline active" id="vendorsViewListBtn" onclick="switchVendorsView('list')" title="List view"><i class="fa-solid fa-grip"></i></button>
-      <button class="btn btn-sm btn-outline active" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view"><i class="fa-solid fa-map-location-dot"></i></button>
+      <button class="btn btn-sm btn-outline active" id="vendorsViewListBtn" onclick="switchVendorsView('list')" title="List view" aria-label="List view" aria-pressed="true"><i class="fa-solid fa-grip"></i></button>
+      <button class="btn btn-sm btn-outline" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view" aria-label="Map view" aria-pressed="false"><i class="fa-solid fa-map-location-dot"></i></button>
     </div>
   </div>`;
   html += `<div class="vendor-listing-tabs" id="vendorsListingTabs" role="tablist" aria-label="Vendor type">
@@ -14384,9 +14424,14 @@ let vendorsViewMode = "list";
 let vendorsMap = null;
 let vendorsMapMarkers = [];
 function switchVendorsView(mode) {
+  mode = mode === "map" ? "map" : "list";
   vendorsViewMode = mode;
-  byId("vendorsViewListBtn")?.classList.toggle("active", mode === "list");
-  byId("vendorsViewMapBtn")?.classList.toggle("active", mode === "map");
+  const listBtn = byId("vendorsViewListBtn");
+  const mapBtn = byId("vendorsViewMapBtn");
+  listBtn?.classList.toggle("active", mode === "list");
+  mapBtn?.classList.toggle("active", mode === "map");
+  listBtn?.setAttribute("aria-pressed", String(mode === "list"));
+  mapBtn?.setAttribute("aria-pressed", String(mode === "map"));
   byId("vendorsGrid")?.classList.toggle("hidden", mode !== "list");
   byId("vendorsMapWrap")?.classList.toggle("hidden", mode !== "map");
   if (mode === "map") renderVendorsMap();
@@ -25653,254 +25698,7 @@ body > footer.site-footer{display:none !important;}
 
 
 
-<style id="levromart-20260911-refinement-pass">
-:root{--levro-texture:url("/levromart-green-texture-tile.png");--levro-texture-size:150px 150px;--levro-green:#10b080;}
 
-/* One consistent tactile green — subtle, flat, never glossy/3D. */
-#app .btn:not(.btn-outline),#app .btn-sm:not(.btn-outline),#app .btn-primary,
-#app .browse-filter-trigger,#app .browse-filter-clear,#app .order-filter-done-btn,
-#app .order-filters-trigger.active,#app .vendor-request-tab.active,#app .vendor-listing-tab.active,
-#app .storefront-catalog-tab.active,#app .levro-quick-icon,#app #aiChatFab,#app #cartFab,
-#app .cart-fab,#app .home-promotional-dot.active,#app .action-button.active{
-  background-color:var(--levro-green)!important;background-image:var(--levro-texture)!important;
-  background-size:var(--levro-texture-size)!important;background-blend-mode:soft-light!important;
-}
-#app .btn:not(.btn-outline),#app .btn-sm:not(.btn-outline),#app .btn-primary,
-#app .browse-filter-trigger,#app .browse-filter-clear,#app .order-filter-done-btn,
-#app .order-filters-trigger.active,#app .vendor-request-tab.active,#app .vendor-listing-tab.active,
-#app .storefront-catalog-tab.active,#app .levro-quick-icon,#app #aiChatFab,#app #cartFab,#app .cart-fab{
-  color:#fff!important;-webkit-text-fill-color:#fff!important;text-shadow:none!important;
-}
-.levro-textured-accent-text{background-image:var(--levro-texture)!important;background-size:var(--levro-texture-size)!important;background-repeat:repeat!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;-webkit-text-fill-color:transparent!important;}
-.levro-textured-white-surface{position:relative!important;isolation:isolate!important;overflow:hidden!important;}
-.levro-textured-white-surface::before{content:""!important;position:absolute!important;inset:0!important;background-image:var(--levro-texture)!important;background-size:var(--levro-texture-size)!important;opacity:.045!important;mix-blend-mode:multiply!important;pointer-events:none!important;z-index:0!important;}
-.levro-textured-white-surface>*{position:relative;z-index:1;}
-
-/* Browse Everything is a real drop-down: always opens downward. */
-#app .browse-filter-toolbar{position:relative!important;overflow:visible!important;}
-#app .browse-filter-panel{position:absolute!important;top:calc(100% + .5rem)!important;bottom:auto!important;right:0!important;left:auto!important;width:min(390px,calc(100vw - 2rem))!important;max-height:min(70vh,560px)!important;overflow:auto!important;background:var(--card)!important;color:var(--text)!important;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border))!important;border-radius:18px!important;box-shadow:0 18px 42px rgba(15,23,42,.14)!important;backdrop-filter:blur(22px) saturate(145%)!important;-webkit-backdrop-filter:blur(22px) saturate(145%)!important;}
-#app .browse-filter-submenu{background:var(--card)!important;color:var(--text)!important;border-color:var(--border)!important;}
-#app .browse-filter-submenu button{background:transparent!important;color:var(--text)!important;}
-#app .browse-filter-submenu button:hover,#app .browse-filter-submenu button:focus-visible{background:color-mix(in srgb,var(--primary) 9%,var(--card))!important;color:var(--primary)!important;}
-@media(max-width:560px){#app .browse-filter-panel{left:0!important;right:0!important;width:100%!important;top:calc(100% + .5rem)!important;bottom:auto!important;max-height:min(66vh,520px)!important;}}
-
-/* All app menus/dropdowns use Levromart surfaces rather than browser-grey. */
-#app .vendors-filters-panel,#app .ms-list,#app .info-popover,#app .chat-menu-dropdown,#app .settings-more-menu,#app .media-action-sheet,#app .modal-content{background:var(--card)!important;color:var(--text)!important;border-color:color-mix(in srgb,var(--primary) 14%,var(--border))!important;box-shadow:0 18px 42px rgba(15,23,42,.13)!important;}
-
-/* Orders: status/type/payment/date are collapsed into one dropdown. */
-.order-filters-wrap{position:relative;width:100%;margin:.8rem 0 .95rem;z-index:120;}
-.order-filters-trigger{width:100%;min-height:46px;border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:14px;background:color-mix(in srgb,var(--primary) 4%,var(--card));color:var(--text);display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:.65rem;padding:.62rem .78rem;cursor:pointer;font:inherit;text-align:left;}
-.order-filters-trigger>span{display:inline-flex;align-items:center;gap:.42rem;font-weight:800;color:var(--primary);white-space:nowrap;}
-.order-filters-trigger>small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:.7rem;font-weight:650;}
-.order-filters-chevron{color:var(--text-muted);font-size:.72rem;transition:transform .18s ease;}.order-filters-trigger.active .order-filters-chevron{transform:rotate(180deg);}
-.order-filters-panel{position:absolute;top:calc(100% + .45rem);left:0;right:0;z-index:190;padding:.8rem;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border));border-radius:16px;background:var(--card);box-shadow:0 18px 42px rgba(15,23,42,.14);backdrop-filter:blur(22px) saturate(145%);-webkit-backdrop-filter:blur(22px) saturate(145%);}
-.order-filters-panel.hidden{display:none!important;}.order-filters-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;}.order-filters-grid label{display:grid;gap:.32rem;color:var(--text-muted);font-size:.7rem;font-weight:750;}.order-filters-grid select{width:100%;margin:0;min-width:0;}
-.order-filters-actions{display:flex;justify-content:flex-end;align-items:center;gap:.5rem;margin-top:.75rem;padding-top:.65rem;border-top:1px solid var(--border);}.order-filter-clear-btn,.order-filter-done-btn{border-radius:999px;border:1px solid var(--border);padding:.48rem .72rem;font:700 .72rem inherit;cursor:pointer;}.order-filter-clear-btn{background:transparent;color:var(--primary);}.order-filter-done-btn{border-color:var(--levro-green);min-width:64px;}
-@media(max-width:520px){.order-filters-grid{grid-template-columns:1fr;gap:.55rem;}.order-filters-panel{max-height:min(64vh,500px);overflow:auto;}}
-#app .browse-filter-clear,#app .order-clear-date-btn,#app .order-filter-clear-btn{border-radius:999px!important;min-height:36px!important;width:auto!important;max-width:max-content!important;padding:.48rem .8rem!important;}
-#app .browse-filter-clear{margin:.65rem auto .15rem!important;display:flex!important;}
-</style>
-
-
-<style id="levromart-20260911-texture-stability-final">
-/* FINAL BRAND SURFACE RULES — static texture, no accent switching, no flicker. */
-:root,html[data-theme="light"],html[data-theme="dark"],html[data-theme="black"]{
-  --primary:#10b080 !important;
-  --primary-light:#10b080 !important;
-  --primary-grad:#10b080 !important;
-  --brand-green:#10b080 !important;
-  --levro-texture:url("/levromart-green-texture-tile.png") !important;
-}
-
-/* Never animate/pulse buttons or text surfaces. */
-#app button,
-#app .btn,
-#app .btn-sm,
-#app .icon-btn,
-#app .fav-btn,
-#app .cat-chip,
-#app .vendor-listing-tab,
-#app .vendor-request-tab,
-#app .browse-filter-trigger,
-#app .browse-filter-clear,
-#app .order-filters-trigger,
-#app .order-filter-clear-btn,
-#app .order-filter-done-btn{
-  animation:none !important;
-}
-
-/* The green texture belongs to the brand surfaces, not the text itself. */
-#app .btn:not(.btn-outline),
-#app .btn-primary,
-#app .btn-sm:not(.btn-outline),
-#app .browse-filter-trigger,
-#app .browse-filter-clear,
-#app .order-filter-done-btn,
-#app .order-filters-trigger.active,
-#app .vendor-request-tab.active,
-#app .vendor-interest-btn.active,
-#app .storefront-catalog-tab.active,
-#app .levro-quick-icon,
-#app #aiChatFab,
-#app .ai-chat-fab,
-#app #cartFab,
-#app .cart-fab,
-#app .home-promotional-dot.active,
-#app .action-button.active{
-  background-color:#10b080 !important;
-  background-image:var(--levro-texture) !important;
-  background-size:180px 180px !important;
-  background-repeat:repeat !important;
-  background-blend-mode:soft-light !important;
-  color:#fff !important;
-  -webkit-text-fill-color:#fff !important;
-  text-shadow:none !important;
-}
-
-/* Vendor directory: readable pills. Only the selected type is green; the
-   other options stay neutral so the selected state is obvious. */
-#app .vendor-listing-tabs{display:flex !important;gap:.45rem !important;overflow-x:auto !important;scrollbar-width:none !important;}
-#app .vendor-listing-tab{
-  flex:0 0 auto !important;
-  border:1px solid var(--border) !important;
-  border-radius:999px !important;
-  background:var(--card) !important;
-  color:var(--text) !important;
-  -webkit-text-fill-color:var(--text) !important;
-  padding:.58rem .88rem !important;
-  font:700 .82rem inherit !important;
-  white-space:nowrap !important;
-  box-shadow:none !important;
-}
-#app .vendor-listing-tab.active{
-  background-color:#10b080 !important;
-  background-image:var(--levro-texture) !important;
-  background-size:180px 180px !important;
-  background-repeat:repeat !important;
-  background-blend-mode:soft-light !important;
-  color:#fff !important;
-  -webkit-text-fill-color:#fff !important;
-  border-color:#10b080 !important;
-}
-
-/* View controls: stable, legible, and never flashing. */
-#app .vendors-directory-view-buttons .btn{
-  min-width:40px !important;
-  min-height:40px !important;
-  border-radius:12px !important;
-  box-shadow:none !important;
-  transition:none !important;
-}
-#app .vendors-directory-view-buttons .btn.active,
-#app .vendors-directory-view-buttons .btn[aria-pressed="true"]{
-  background-color:#10b080 !important;
-  background-image:var(--levro-texture) !important;
-  background-size:180px 180px !important;
-  background-repeat:repeat !important;
-  background-blend-mode:soft-light !important;
-  color:#fff !important;
-  -webkit-text-fill-color:#fff !important;
-  border-color:#10b080 !important;
-}
-#app .vendors-directory-view-buttons .btn:not(.active):not([aria-pressed="true"]){
-  background:var(--card) !important;
-  color:var(--text-muted) !important;
-  -webkit-text-fill-color:var(--text-muted) !important;
-  border-color:var(--border) !important;
-}
-
-/* Vendor Filters control: no empty solid block. */
-#app .vendors-filters-toggle{
-  border:1px solid #10b080 !important;
-  border-radius:999px !important;
-  background-color:#10b080 !important;
-  background-image:var(--levro-texture) !important;
-  background-size:180px 180px !important;
-  background-repeat:repeat !important;
-  background-blend-mode:soft-light !important;
-  color:#fff !important;
-  -webkit-text-fill-color:#fff !important;
-  min-height:42px !important;
-  padding:.58rem .9rem !important;
-  box-shadow:none !important;
-}
-#app .vendors-filters-toggle .vendors-filters-chevron{color:#fff !important;}
-
-/* Vendor filters panel and all dropdown controls use the app's own surfaces. */
-#app .vendors-filters-panel,
-#app .browse-filter-panel,
-#app .order-filters-panel{
-  background:var(--card) !important;
-  color:var(--text) !important;
-}
-#app .vendors-filter-grid select,
-#app .vendors-filters-panel select,
-#app .browse-filter-panel select,
-#app .order-filters-panel select{
-  appearance:none !important;
-  -webkit-appearance:none !important;
-  color:var(--text) !important;
-  -webkit-text-fill-color:var(--text) !important;
-  background:var(--card) !important;
-  border:1px solid var(--border) !important;
-  border-radius:12px !important;
-  min-height:42px !important;
-  padding:.55rem 2rem .55rem .72rem !important;
-  font:600 .8rem inherit !important;
-  box-shadow:none !important;
-}
-
-/* Browse Everything: always drops downward and Clear stays compact. */
-#app .browse-filter-toolbar{position:relative !important;overflow:visible !important;}
-#app .browse-filter-panel{
-  position:absolute !important;
-  top:calc(100% + .5rem) !important;
-  bottom:auto !important;
-  right:0 !important;
-  left:auto !important;
-  width:min(390px,calc(100vw - 2rem)) !important;
-  z-index:220 !important;
-}
-#app .browse-filter-clear,
-#app .order-filter-clear-btn,
-#app .order-clear-date-btn{
-  width:auto !important;
-  max-width:max-content !important;
-  min-height:36px !important;
-  border-radius:999px !important;
-  padding:.45rem .78rem !important;
-}
-
-/* Green text stays ordinary readable text. No background-clip text texture. */
-#app .levro-textured-accent-text,
-#app .levro-textured-accent-text *{
-  background-image:none !important;
-  background-clip:border-box !important;
-  -webkit-background-clip:border-box !important;
-  color:#10b080 !important;
-  -webkit-text-fill-color:#10b080 !important;
-}
-
-/* Prices, ratings, stars and other brand-green text remain stable and readable. */
-#app .product-current-price,
-#app .product-price,
-#app .price,
-#app .rating,
-#app .stars,
-#app .fa-star,
-#app .fa-star-half-stroke,
-#app .fa-star-half-alt{
-  -webkit-text-fill-color:currentColor !important;
-  background-image:none !important;
-  animation:none !important;
-}
-
-@media(max-width:560px){
-  #app .browse-filter-panel{position:fixed !important;top:calc(var(--levro-search-dock-top,72px) + 3.2rem) !important;bottom:auto !important;left:.65rem !important;right:.65rem !important;width:auto !important;}
-}
-</style>
-
-</html>
 
 <style id="levromart-20260910-canonical-fixes">
 
@@ -26572,3 +26370,240 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 .accent-page-dropdown-trigger,#accentPaletteBody,#accentPalettePageBody,.accent-swatches,.accent-swatch,.settings-page-swatches{display:none!important;}
 </style>
 
+
+
+<style id="levromart-final-static-brand-and-filters">
+:root,html[data-theme="light"],html[data-theme="dark"],html[data-theme="black"]{
+  --primary:#10b080 !important;
+  --primary-light:#10b080 !important;
+  --primary-grad:#10b080 !important;
+  --brand-green:#10b080 !important;
+  --brand-green-2:#0d8f69 !important;
+  --brand-grad:#10b080 !important;
+  --levro-texture:url("/levromart-green-texture-tile.png") !important;
+}
+
+/* Static brand texture: the image is applied only to green surfaces. */
+#app .btn:not(.btn-outline),
+#app .btn-primary,
+#app .btn-sm:not(.btn-outline),
+#app .browse-filter-trigger,
+#app .browse-filter-clear,
+#app .order-filter-done-btn,
+#app .order-filters-trigger.active,
+#app .vendor-listing-tab.active,
+#app .vendor-request-tab.active,
+#app .vendor-interest-btn.active,
+#app .storefront-catalog-tab.active,
+#app .levro-quick-icon,
+#app #aiChatFab,
+#app .ai-chat-fab,
+#app #cartFab,
+#app .cart-fab,
+#app .home-promotional-dot.active,
+#app .action-button.active{
+  background-color:#10b080 !important;
+  background-image:var(--levro-texture) !important;
+  background-size:180px 180px !important;
+  background-repeat:repeat !important;
+  background-blend-mode:soft-light !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  text-shadow:none !important;
+}
+
+/* Never animate the controls or marketplace cards. The Levi FAB has its own
+   deliberate interaction animation only when explicitly directing; ordinary
+   idle state is completely still. */
+#app .btn,#app .btn-sm,#app button,#app .icon-btn,#app .fav-btn,
+#app .cat-chip,#app .vendor-listing-tab,#app .vendor-request-tab,
+#app .browse-filter-trigger,#app .browse-filter-clear,
+#app .order-filters-trigger,#app .order-filter-clear-btn,#app .order-filter-done-btn,
+#app .product-card-wrap,#app .vendor-card{
+  animation:none !important;
+}
+#app .ai-chat-fab:not(.directing),#app #aiChatFab:not(.directing){animation:none !important;}
+
+/* Do not texture/clip ordinary green text. This prevents prices, stars, ₦,
+   ratings and labels from appearing transparent or blinking. */
+#app .levro-textured-accent-text,
+#app .levro-textured-accent-text *{
+  background-image:none !important;
+  background-clip:border-box !important;
+  -webkit-background-clip:border-box !important;
+  color:#10b080 !important;
+  -webkit-text-fill-color:#10b080 !important;
+}
+#app .product-current-price,#app .product-price,#app .price,
+#app .rating,#app .stars,#app .star-display,
+#app .fa-star,#app .fa-star-half-stroke,#app .fa-star-half-alt{
+  background-image:none !important;
+  -webkit-text-fill-color:currentColor !important;
+  animation:none !important;
+}
+
+/* Vendor directory type tabs: one clear selected pill, readable inactive pills. */
+#app .vendor-listing-tabs{
+  display:flex !important;gap:.45rem !important;overflow-x:auto !important;
+  scrollbar-width:none !important;padding:.15rem .05rem .35rem !important;
+}
+#app .vendor-listing-tabs::-webkit-scrollbar{display:none !important;}
+#app .vendor-listing-tab{
+  flex:0 0 auto !important;border:1px solid var(--border) !important;
+  border-radius:999px !important;background:var(--card) !important;
+  color:var(--text) !important;-webkit-text-fill-color:var(--text) !important;
+  padding:.58rem .88rem !important;font:700 .82rem inherit !important;
+  white-space:nowrap !important;box-shadow:none !important;
+}
+#app .vendor-listing-tab.active{
+  background-color:#10b080 !important;background-image:var(--levro-texture) !important;
+  background-size:180px 180px !important;background-repeat:repeat !important;
+  background-blend-mode:soft-light !important;color:#fff !important;
+  -webkit-text-fill-color:#fff !important;border-color:#10b080 !important;
+}
+
+/* Vendor directory view controls: never change size or animate when selected. */
+#app .vendors-directory-view-buttons .btn,
+#app #vendorsViewListBtn,#app #vendorsViewMapBtn{
+  min-width:40px !important;min-height:40px !important;border-radius:12px !important;
+  box-shadow:none !important;transition:none !important;
+}
+#app .vendors-directory-view-buttons .btn.active,
+#app .vendors-directory-view-buttons .btn[aria-pressed="true"],
+#app #vendorsViewListBtn.active,#app #vendorsViewMapBtn.active{
+  background-color:#10b080 !important;background-image:var(--levro-texture) !important;
+  background-size:180px 180px !important;background-repeat:repeat !important;
+  background-blend-mode:soft-light !important;color:#fff !important;
+  -webkit-text-fill-color:#fff !important;border-color:#10b080 !important;
+}
+#app .vendors-directory-view-buttons .btn:not(.active):not([aria-pressed="true"]),
+#app #vendorsViewListBtn:not(.active),#app #vendorsViewMapBtn:not(.active){
+  background:var(--card) !important;color:var(--text-muted) !important;
+  -webkit-text-fill-color:var(--text-muted) !important;border-color:var(--border) !important;
+}
+
+/* Vendor Filters is a real compact button, not an empty green rectangle. */
+#app .vendors-filters-toggle{
+  display:inline-flex !important;align-items:center !important;justify-content:center !important;
+  gap:.38rem !important;flex:0 0 auto !important;white-space:nowrap !important;
+  min-height:42px !important;width:auto !important;padding:.58rem .9rem !important;
+  border:1px solid #10b080 !important;border-radius:999px !important;
+  background-color:#10b080 !important;background-image:var(--levro-texture) !important;
+  background-size:180px 180px !important;background-repeat:repeat !important;
+  background-blend-mode:soft-light !important;color:#fff !important;
+  -webkit-text-fill-color:#fff !important;box-shadow:none !important;
+}
+#app .vendors-filters-toggle .vendors-filters-chevron{color:#fff !important;-webkit-text-fill-color:#fff !important;}
+
+/* Vendor filter panel and its controls use app surfaces, not native grey. */
+#app .vendors-filters-panel{
+  background:var(--card) !important;color:var(--text) !important;
+  border:1px solid var(--border) !important;border-radius:16px !important;
+  box-shadow:0 8px 24px rgba(0,0,0,.06) !important;
+}
+#app .vendors-filters-panel select,
+#app .vendors-filter-grid select{
+  appearance:none !important;-webkit-appearance:none !important;
+  background:var(--card) !important;color:var(--text) !important;
+  -webkit-text-fill-color:var(--text) !important;border:1px solid var(--border) !important;
+  border-radius:12px !important;min-height:42px !important;padding:.55rem .72rem !important;
+  box-shadow:none !important;
+}
+
+/* Browse Everything — restore the polished custom dropdown. It opens directly
+   below the Filters control on every screen size; no fixed/upward popover. */
+#app .browse-filter-toolbar{
+  position:relative !important;display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  gap:.55rem !important;align-items:center !important;
+  overflow:visible !important;margin-bottom:1.2rem !important;
+}
+#app .browse-filter-toolbar>input{width:100% !important;min-width:0 !important;}
+#app .browse-filter-trigger{
+  min-width:118px !important;border:1px solid #10b080 !important;
+  border-radius:999px !important;padding:.72rem .95rem !important;
+  display:inline-flex !important;align-items:center !important;justify-content:center !important;
+  gap:.45rem !important;cursor:pointer !important;font:700 .82rem inherit !important;
+  box-shadow:none !important;transition:none !important;
+}
+#app .browse-filter-chevron{font-size:.68rem !important;transition:transform .18s ease !important;}
+#app .browse-filter-trigger.active .browse-filter-chevron{transform:rotate(180deg) !important;}
+#app .browse-filter-panel{
+  position:absolute !important;right:0 !important;left:auto !important;
+  top:calc(100% + .45rem) !important;bottom:auto !important;
+  width:min(390px,calc(100vw - 1.3rem)) !important;
+  max-height:min(72vh,560px) !important;overflow:auto !important;z-index:500 !important;
+  padding:.7rem !important;background:var(--card) !important;color:var(--text) !important;
+  border:1px solid color-mix(in srgb,#10b080 20%,var(--border)) !important;
+  border-radius:18px !important;box-shadow:0 18px 42px rgba(15,23,42,.14) !important;
+  backdrop-filter:blur(22px) saturate(145%) !important;
+  -webkit-backdrop-filter:blur(22px) saturate(145%) !important;
+}
+#app .browse-filter-panel.hidden{display:none !important;}
+#app .browse-filter-panel-head{
+  display:flex !important;align-items:center !important;justify-content:space-between !important;
+  gap:.6rem !important;padding:.15rem .15rem .5rem !important;
+  border-bottom:1px solid var(--border) !important;margin-bottom:.25rem !important;
+}
+#app .browse-filter-row-group{position:relative !important;border-bottom:1px solid var(--border) !important;}
+#app .browse-filter-row-group:last-of-type{border-bottom:0 !important;}
+#app .browse-filter-subtrigger{
+  width:100% !important;border:0 !important;background:transparent !important;color:var(--text) !important;
+  -webkit-text-fill-color:var(--text) !important;display:grid !important;
+  grid-template-columns:auto 1fr auto !important;align-items:center !important;gap:.6rem !important;
+  text-align:left !important;padding:.82rem .25rem !important;cursor:pointer !important;font:inherit !important;
+}
+#app .browse-filter-subtrigger span{color:var(--text-muted) !important;font-size:.75rem !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:.04em !important;}
+#app .browse-filter-subtrigger strong{font-size:.82rem !important;text-align:right !important;color:var(--text) !important;-webkit-text-fill-color:var(--text) !important;}
+#app .browse-filter-submenu{
+  position:relative !important;margin:0 0 .5rem !important;padding:.35rem !important;
+  border-radius:13px !important;background:color-mix(in srgb,#10b080 3%,var(--card)) !important;
+  border:1px solid var(--border) !important;
+}
+#app .browse-filter-submenu.hidden{display:none !important;}
+#app .browse-filter-submenu button{
+  width:100% !important;border:0 !important;background:transparent !important;
+  color:var(--text) !important;-webkit-text-fill-color:var(--text) !important;
+  text-align:left !important;padding:.62rem .7rem !important;border-radius:10px !important;
+  cursor:pointer !important;font:500 .82rem inherit !important;
+}
+#app .browse-filter-submenu button:hover,#app .browse-filter-submenu button:focus-visible{
+  background:color-mix(in srgb,#10b080 11%,transparent) !important;color:#10b080 !important;
+  -webkit-text-fill-color:#10b080 !important;outline:none !important;
+}
+#app .browse-category-submenu input{margin:0 0 .35rem !important;width:100% !important;}
+#app .browse-category-submenu #browseCategoryOptions{max-height:230px !important;overflow-y:auto !important;overscroll-behavior:contain !important;}
+#app .browse-filter-clear{
+  margin:.65rem auto .15rem !important;width:auto !important;max-width:max-content !important;
+  min-height:36px !important;justify-content:center !important;
+  border:1px solid #10b080 !important;border-radius:999px !important;
+  padding:.48rem .8rem !important;
+}
+#app .visually-hidden-select{position:absolute !important;width:1px !important;height:1px !important;opacity:0 !important;pointer-events:none !important;overflow:hidden !important;}
+@media(max-width:560px){
+  #app .browse-filter-toolbar{grid-template-columns:minmax(0,1fr) auto !important;}
+  #app .browse-filter-trigger{width:auto !important;min-width:112px !important;}
+  #app .browse-filter-panel{
+    position:absolute !important;top:calc(100% + .45rem) !important;bottom:auto !important;
+    left:0 !important;right:0 !important;width:100% !important;max-height:min(70vh,540px) !important;
+  }
+}
+
+/* Orders filter trigger remains a single dropdown and never uses browser-grey. */
+#app .order-filters-trigger{
+  background:var(--card) !important;color:var(--text) !important;
+  -webkit-text-fill-color:var(--text) !important;border-color:color-mix(in srgb,#10b080 30%,var(--border)) !important;
+  transition:none !important;
+}
+#app .order-filters-trigger>span{color:#10b080 !important;-webkit-text-fill-color:#10b080 !important;}
+#app .order-filters-panel{background:var(--card) !important;color:var(--text) !important;}
+#app .order-filters-panel select{appearance:none !important;-webkit-appearance:none !important;background:var(--card) !important;color:var(--text) !important;-webkit-text-fill-color:var(--text) !important;border:1px solid var(--border) !important;border-radius:12px !important;}
+#app .order-filter-clear-btn{background:transparent !important;color:#10b080 !important;-webkit-text-fill-color:#10b080 !important;}
+
+/* Keep the texture on the navigation plus/cart/Levi controls but never on
+   ordinary white surfaces. */
+#app .bottom-nav .nav-item.active,#app .bottom-nav .nav-plus,
+#app .nav-plus,#app .plus-button,#app .cart-fab,#app .ai-chat-fab{color:#fff !important;-webkit-text-fill-color:#fff !important;}
+</style>
+
+</html>
