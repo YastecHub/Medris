@@ -6246,6 +6246,177 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   border:0 !important;box-shadow:none !important;
 }
 </style>
+
+<style id="levromart-master-refinement-20260913">
+/* Notifications — smart categories, no archive/trash presentation. */
+.notifications-page-shell .notif-tabs,
+#notifPanel .notif-tabs{
+  display:flex!important;
+  justify-content:center!important;
+  align-items:center!important;
+  gap:.28rem!important;
+  flex-wrap:nowrap!important;
+  overflow:hidden!important;
+  width:100%!important;
+  margin:.25rem auto .65rem!important;
+  border:0!important;
+  background:transparent!important;
+}
+.notifications-page-shell .notif-tab,
+#notifPanel .notif-tab{
+  flex:0 1 auto!important;
+  min-width:0!important;
+  padding:.48rem .78rem!important;
+  border:0!important;
+  border-radius:999px!important;
+  background:transparent!important;
+  color:var(--muted)!important;
+  font-size:.78rem!important;
+  font-weight:750!important;
+  white-space:nowrap!important;
+}
+.notifications-page-shell .notif-tab.active,
+#notifPanel .notif-tab.active{
+  color:var(--primary)!important;
+  background:color-mix(in srgb,var(--primary) 11%,transparent)!important;
+}
+.notifications-page-shell .notif-list-scroll,
+#notifPanel .notif-list-scroll{padding:.1rem .15rem calc(5rem + env(safe-area-inset-bottom,0px))!important;}
+.notifications-page-shell .notif-item-wrap,
+#notifPanel .notif-item-wrap{border:0!important;margin:0!important;}
+.notifications-page-shell .notif-item,
+#notifPanel .notif-item{
+  width:100%!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:.7rem!important;
+  border:0!important;
+  border-radius:.85rem!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  padding:.72rem .55rem!important;
+  text-align:left!important;
+}
+.notifications-page-shell .notif-item.unread,
+#notifPanel .notif-item.unread{
+  background:color-mix(in srgb,var(--primary) 6%,transparent)!important;
+}
+.notifications-page-shell .notif-item.unread .notif-copy strong,
+#notifPanel .notif-item.unread .notif-copy strong{font-weight:850!important;}
+.notifications-page-shell .notif-item.unread::before,
+#notifPanel .notif-item.unread::before{
+  content:"";width:.42rem;height:.42rem;min-width:.42rem;border-radius:50%;
+  background:var(--primary);display:block;
+}
+.notifications-page-shell .notif-copy{min-width:0;flex:1;}
+.notifications-page-shell .notif-copy strong{font-size:.82rem!important;line-height:1.25!important;}
+.notifications-page-shell .notif-copy .muted{line-height:1.35!important;}
+.notifications-page-shell .notifications-page-tools{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:.7rem!important;padding:.15rem .2rem .35rem!important;
+}
+.notifications-page-shell .notif-header-actions{display:flex!important;align-items:center!important;gap:.35rem!important;}
+.notifications-page-shell .notif-mark-all-compact{
+  width:2rem!important;height:2rem!important;min-width:2rem!important;padding:0!important;
+  border:0!important;border-radius:50%!important;background:color-mix(in srgb,var(--primary) 10%,transparent)!important;
+  color:var(--primary)!important;display:grid!important;place-items:center!important;cursor:pointer!important;
+}
+.notifications-page-shell .notif-mark-all-compact:hover{background:color-mix(in srgb,var(--primary) 17%,transparent)!important;}
+.notifications-page-shell .notif-select-bar{border:0!important;box-shadow:none!important;background:transparent!important;}
+
+/* Product comments — compact interaction language. */
+#app .card-comment-btn{
+  width:auto!important;min-width:1.9rem!important;height:1.9rem!important;
+  padding:.2rem .28rem!important;border:0!important;border-radius:50%!important;
+  background:transparent!important;color:var(--muted)!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  gap:.2rem!important;font-size:.75rem!important;font-weight:750!important;
+}
+#app .card-comment-btn:hover{background:color-mix(in srgb,var(--primary) 9%,transparent)!important;color:var(--primary)!important;}
+#app .card-comment-btn .product-comment-count{font-size:.73rem!important;line-height:1!important;}
+#app .product-comments-toggle{
+  width:auto!important;min-width:3.25rem!important;margin:0 auto!important;
+  padding:.45rem .7rem!important;border:0!important;border-radius:999px!important;
+  background:color-mix(in srgb,var(--primary) 7%,transparent)!important;
+  color:var(--text)!important;display:flex!important;align-items:center!important;
+  justify-content:center!important;gap:.55rem!important;
+}
+#app .product-comments-toggle:hover{background:color-mix(in srgb,var(--primary) 12%,transparent)!important;color:var(--primary)!important;}
+#app .product-comments-toggle > span{display:inline-flex!important;align-items:center!important;gap:.3rem!important;}
+#app .product-comments-toggle strong{font-size:.78rem!important;}
+#app .product-comments-toggle > i:last-child{font-size:.68rem!important;color:var(--muted)!important;transition:transform .18s ease;}
+#app .product-comments-toggle[aria-expanded="true"] > i:last-child{transform:rotate(180deg);}
+
+/* Storefront fallback avatar — true 1:1 circle, no stretching or rings. */
+#app .storefront-profile .storefront-avatar,
+#app .storefront-profile .storefront-avatar-button,
+#app .storefront-profile .storefront-avatar-fallback-button{
+  width:82px!important;height:82px!important;min-width:82px!important;min-height:82px!important;
+  max-width:82px!important;max-height:82px!important;aspect-ratio:1 / 1!important;
+  border-radius:50%!important;overflow:hidden!important;display:grid!important;place-items:center!important;
+  padding:0!important;box-sizing:border-box!important;
+}
+#app .storefront-profile .storefront-avatar-fallback-button{background:transparent!important;border:0!important;box-shadow:none!important;}
+#app .storefront-profile .storefront-avatar-fallback-button > .avatar-fallback{
+  width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;
+  aspect-ratio:1 / 1!important;border-radius:50%!important;border:0!important;box-shadow:none!important;
+  display:grid!important;place-items:center!important;background-image:none!important;
+}
+#app .storefront-profile .storefront-avatar-fallback-button > .avatar-fallback > span{
+  background:transparent!important;color:#fff!important;border:0!important;box-shadow:none!important;
+}
+#app .storefront-profile .storefront-avatar img,
+#app .storefront-profile .storefront-avatar-button img{width:100%!important;height:100%!important;aspect-ratio:1/1!important;object-fit:cover!important;border-radius:50%!important;}
+@media(max-width:620px){
+  #app .storefront-profile .storefront-avatar,
+  #app .storefront-profile .storefront-avatar-button,
+  #app .storefront-profile .storefront-avatar-fallback-button{
+    width:74px!important;height:74px!important;min-width:74px!important;min-height:74px!important;max-width:74px!important;max-height:74px!important;
+  }
+}
+
+/* Authentication — integrated Sign In / Create Account switch. */
+#loginModal .auth-mode-tabs{
+  display:grid!important;grid-template-columns:1fr 1fr!important;
+  gap:.25rem!important;padding:.22rem!important;margin:.65rem 0 .8rem!important;
+  background:color-mix(in srgb,var(--primary) 6%,var(--card))!important;
+  border-radius:.8rem!important;
+}
+#loginModal .auth-mode-tab{
+  min-width:0!important;border:0!important;background:transparent!important;
+  color:var(--muted)!important;border-radius:.62rem!important;padding:.58rem .5rem!important;
+  font:inherit!important;font-size:.82rem!important;font-weight:800!important;cursor:pointer!important;
+}
+#loginModal .auth-mode-tab.active{
+  background:var(--card)!important;color:var(--primary)!important;
+  box-shadow:0 1px 5px rgba(0,0,0,.08)!important;
+}
+#loginModal .auth-mode-tab:focus-visible{outline:2px solid var(--primary)!important;outline-offset:1px!important;}
+
+/* Vendor directory — remove only the outer enclosure. */
+#app .vendor-listing-tabs{
+  border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;
+  border-radius:0!important;padding:.05rem 0!important;
+}
+#app .vendor-listing-tab{border:0!important;box-shadow:none!important;}
+
+/* Admin navigation + compact profile badges. */
+#app .admin-dash-tabs{
+  border:0!important;box-shadow:none!important;
+}
+#app .admin-dash-tabs .dash-tab{flex:0 0 auto!important;}
+#profilePanel .profile-nav-link{position:relative;}
+#profilePanel .profile-disputes-badge.hidden{display:none!important;}
+#profilePanel .profile-disputes-badge{
+  margin-left:auto!important;min-width:1.2rem!important;height:1.2rem!important;padding:0 .28rem!important;
+  border-radius:999px!important;font-size:.64rem!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+}
+@media(max-width:620px){
+  .notifications-page-shell .notif-tabs{gap:.1rem!important;}
+  .notifications-page-shell .notif-tab{padding:.45rem .62rem!important;font-size:.74rem!important;}
+  #loginModal .auth-mode-tab{font-size:.78rem!important;}
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -6442,6 +6613,10 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   <div class="modal-content">
     <img id="loginModalLogo" class="login-modal-logo" alt="Levromart" />
     <h3 id="authModalTitle"><i class='fa-solid fa-right-to-bracket'></i> Welcome to Levromart</h3>
+    <div class="auth-mode-tabs" id="authModeTabs" role="tablist" aria-label="Authentication mode">
+      <button type="button" class="auth-mode-tab active" id="authSignInTab" role="tab" aria-selected="true" onclick="setAuthMode('login')">Sign In</button>
+      <button type="button" class="auth-mode-tab" id="authCreateAccountTab" role="tab" aria-selected="false" onclick="setAuthMode('register')">Create Account</button>
+    </div>
     <div id="authError" class="error-text hidden"></div>
 
     <div id="googleAuthWrap">
@@ -8203,7 +8378,7 @@ function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
     const clickable = opts.lightbox ? ` role="button" tabindex="0" onclick="event.stopPropagation();openProfileImageLightbox('${esc(url)}','${esc(safeName)}',event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openProfileImageLightbox('${esc(url)}','${esc(safeName)}',event)}"` : "";
     return `<img src="${esc(url)}" class="avatar-circle ${opts.extraClass || ""}" style="width:${size};height:${size};object-fit:cover;" alt="${esc(safeName)}" draggable="false"${clickable} onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(safeName)}','${esc(size)}','${esc(opts.extraClass || "")}','${esc(safeName)}')))" />`;
   }
-  return avatarFallbackHtml(safeName, size, opts.extraClass || "", safeName);
+  return avatarFallbackHtml(safeName, size, opts.extraClass || "", safeName, opts.stableKey || safeName);
 }
 function toWhatsappDigits(raw) {
   let digits = (raw || "").replace(/\D/g, "");
@@ -8750,7 +8925,7 @@ function timeAgo(dateStr) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-let notifViewMode = "inbox"; // inbox | archived | trash
+let notifViewMode = "all"; // inbox | archived | trash
 let notifSelectMode = false;
 let notifSelectedIds = new Set();
 
@@ -8806,26 +8981,61 @@ async function renderNotifPanel() {
   const renderToken = ++notifRenderEpoch;
   const panel = getNotifHost();
   if (!panel) return;
-  let q = sb.from("notifications").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(30);
-  q = notifViewMode === "trash" ? q.not("deleted_at", "is", null) : q.is("deleted_at", null).eq("archived", notifViewMode === "archived");
-  const { data: items, error } = await q;
+  // The backend still retains archived/deleted fields for compatibility, but
+  // the user-facing notification experience is now a smart activity stream.
+  // We never mutate or destructively migrate those legacy fields here.
+  let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(60);
+  const { data: rawItems, error } = await q;
+  const currentVendorId = String(vendor?.id || "");
+  const notificationType = (n) => String(n?.type || n?.notification_type || n?.notification_category || "").toLowerCase();
+  const notificationText = (n) => `${notificationType(n)} ${String(n?.title || "")} ${String(n?.body || "")}`.toLowerCase();
+  const isVendorActivityNotification = (n) => {
+    const t = notificationText(n);
+    return !!(
+      n?.vendor_id && String(n.vendor_id) !== currentVendorId ||
+      /new[_ -]?listing|new[_ -]?variety|new[_ -]?package|new[_ -]?service|vendor[_ -]?(activity|update|follow)|followed[_ -]?vendor|price[_ -]?change/.test(t) ||
+      notificationType(n).includes("vendor")
+    );
+  };
+  const isMyListingNotification = (n) => {
+    if (!currentVendorId) return false;
+    if (n?.vendor_id && String(n.vendor_id) === currentVendorId) return true;
+    const t = notificationText(n);
+    return /product[_ -]?(comment|like|save|wishlist|interaction)|listing[_ -]?(comment|like|save|interaction)|new[_ -]?comment|comment[_ -]?like|variety[_ -]?activity|order[_ -]?(item|listing)/.test(t) &&
+      (!n?.vendor_id || String(n.vendor_id) === currentVendorId);
+  };
+  const classifyNotification = (n) => {
+    if (isMyListingNotification(n)) return "myListings";
+    if (isVendorActivityNotification(n)) return "vendors";
+    return "personal";
+  };
+  const items = (rawItems || []).filter((n) => {
+    if (notifViewMode === "vendors") return classifyNotification(n) === "vendors";
+    if (notifViewMode === "myListings") return classifyNotification(n) === "myListings";
+    if (notifViewMode === "personal") return classifyNotification(n) === "personal";
+    return true;
+  });
   if (renderToken !== notifRenderEpoch) return;
   if (error) {
     // Do not turn a temporary database/network error into a fake empty state.
     // Keep the drawer honest and let the user retry by reopening/switching tabs.
     window.__notifPanelIds = [];
-    panel.innerHTML = `<div class="drawer-header"><h4>${esc({ inbox: "Notifications", archived: "Archived", trash: "Recently deleted" }[notifViewMode] || "Notifications")}</h4><button type="button" class="drawer-close-btn" onclick="closeAllPanels()" aria-label="Close"><i class='fa-solid fa-xmark'></i></button></div><div class="notif-tabs"><button class="notif-tab ${notifViewMode === "inbox" ? "active" : ""}" onclick="switchNotifView('inbox')">Inbox</button><button class="notif-tab ${notifViewMode === "archived" ? "active" : ""}" onclick="switchNotifView('archived')">Archived</button><button class="notif-tab ${notifViewMode === "trash" ? "active" : ""}" onclick="switchNotifView('trash')">Trash</button></div><p class="muted" style="padding:1rem;text-align:center;">Couldn’t load notifications right now. Please try again.</p>`;
+    panel.innerHTML = `<div class="notifications-page-tools"><strong>Notifications</strong></div><div class="notif-tabs">${[
+      ["all","All"],["vendors","Vendors"],...(vendor?.id ? [["myListings","My Listings"]] : []),["personal","Personal"]
+    ].map(([key,label]) => `<button class="notif-tab ${notifViewMode === key ? "active" : ""}" onclick="switchNotifView('${key}')">${label}</button>`).join("")}</div><p class="muted" style="padding:1rem;text-align:center;">Couldn’t load notifications right now. Please try again.</p>`;
     panel.classList.toggle("selecting", false);
     return;
   }
   window.__notifPanelIds = (items || []).map((n) => n.id);
 
-  const modeLabel = { inbox: "Notifications", archived: "Archived", trash: "Recently deleted" }[notifViewMode];
-  const tabs = `<div class="notif-tabs">
-      <button class="notif-tab ${notifViewMode === "inbox" ? "active" : ""}" onclick="switchNotifView('inbox')">Inbox</button>
-      <button class="notif-tab ${notifViewMode === "archived" ? "active" : ""}" onclick="switchNotifView('archived')">Archived</button>
-      <button class="notif-tab ${notifViewMode === "trash" ? "active" : ""}" onclick="switchNotifView('trash')">Trash</button>
-    </div>`;
+  const modeLabel = ({ all: "Notifications", vendors: "Vendors", myListings: "My Listings", personal: "Personal" })[notifViewMode] || "Notifications";
+  const notificationTabs = [
+    ["all","All"],
+    ["vendors","Vendors"],
+    ...(vendor?.id ? [["myListings","My Listings"]] : []),
+    ["personal","Personal"]
+  ];
+  const tabs = `<div class="notif-tabs" role="tablist" aria-label="Notification categories">${notificationTabs.map(([key,label]) => `<button type="button" role="tab" aria-selected="${notifViewMode === key ? "true" : "false"}" class="notif-tab ${notifViewMode === key ? "active" : ""}" onclick="switchNotifView('${key}')">${label}</button>`).join("")}</div>`;
 
   const isNotificationsPage = currentView === "notifications";
   const topBar = notifSelectMode
@@ -8834,17 +9044,12 @@ async function renderNotifPanel() {
         <strong>${notifSelectedIds.size} selected</strong>
         <div class="notif-selection-actions">
           <button type="button" class="notif-action-btn" aria-label="${notifSelectedIds.size === (window.__notifPanelIds || []).length ? "Deselect all" : "Select all"}" title="${notifSelectedIds.size === (window.__notifPanelIds || []).length ? "Deselect all" : "Select all"}" onclick="toggleSelectAllNotifs()"><i class="fa-solid ${notifSelectedIds.size === (window.__notifPanelIds || []).length ? "fa-square-minus" : "fa-square-check"}"></i></button>
-          ${notifViewMode !== "trash" ? `<button type="button" class="notif-action-btn notif-selection-action" title="Mark read" onclick="batchMarkNotifsRead(true)" ${notifSelectedIds.size ? "" : "disabled"}><i class="fa-solid fa-envelope-open"></i></button>
-          <button type="button" class="notif-action-btn notif-selection-action" title="Mark unread" onclick="batchMarkNotifsRead(false)" ${notifSelectedIds.size ? "" : "disabled"}><i class="fa-solid fa-envelope"></i></button>` : ""}
-          ${notifViewMode === "trash"
-            ? `<button type="button" class="notif-action-btn notif-selection-action" title="Restore" onclick="batchRestoreSelected()" ${notifSelectedIds.size ? "" : "disabled"}><i class="fa-solid fa-trash-arrow-up"></i></button>
-               <button type="button" class="notif-action-btn danger notif-selection-action" title="Delete forever" onclick="batchPurgeSelected()" ${notifSelectedIds.size ? "" : "disabled"}><i class="fa-solid fa-trash-can"></i></button>`
-            : `<button type="button" class="notif-action-btn notif-selection-action" title="${notifViewMode === "archived" ? "Restore" : "Archive"}" onclick="batchArchiveOrRestoreSelected()" ${notifSelectedIds.size ? "" : "disabled"}><i class="fa-solid ${notifViewMode === "archived" ? "fa-box-open" : "fa-box-archive"}"></i></button>
-               <button type="button" class="notif-action-btn danger notif-selection-action" title="Move to trash" onclick="batchTrashSelected()" ${notifSelectedIds.size ? "" : "disabled"}><i class="fa-solid fa-trash"></i></button>`}
+          <button type="button" class="notif-action-btn notif-selection-action" title="Mark read" onclick="batchMarkNotifsRead(true)" ${notifSelectedIds.size ? "" : "disabled"}><i class="fa-solid fa-envelope-open"></i></button>
+          <button type="button" class="notif-action-btn notif-selection-action" title="Mark unread" onclick="batchMarkNotifsRead(false)" ${notifSelectedIds.size ? "" : "disabled"}><i class="fa-solid fa-envelope"></i></button>
         </div>
       </div>`
     : isNotificationsPage
-      ? `<div class="notifications-page-tools"><strong>${esc(modeLabel)}</strong><div class="notif-header-actions"><button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications"><i class="fa-solid fa-check-double"></i></button>${notifViewMode !== "trash" && (items || []).some((n) => !n.read) ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all as read" title="Mark all as read"><i class="fa-solid fa-check-double"></i></button>` : ""}</div></div>${tabs}`
+      ? `<div class="notifications-page-tools"><strong>${esc(modeLabel)}</strong><div class="notif-header-actions"><button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications"><i class="fa-solid fa-check-double"></i></button>${(items || []).some((n) => !n.read) ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all notifications as read" title="Mark all notifications as read"><i class="fa-solid fa-check-double"></i></button>` : ""}</div></div>${tabs}`
       : `<div class="drawer-header"><h4>${modeLabel}</h4>
         <div class="notif-header-actions">
           <button type="button" class="icon-btn" onclick="toggleInlineMenu('notifMoreMenu',event)" aria-label="Notification actions"><i class="fa-solid fa-ellipsis"></i></button>
@@ -8858,11 +9063,9 @@ async function renderNotifPanel() {
       </div>
       ${tabs}`;
 
-  const emptyMsg = { inbox: "You're all caught up.", archived: "No archived notifications.", trash: "Trash is empty." }[notifViewMode];
+  const emptyMsg = { all: "You're all caught up.", vendors: "No vendor activity yet.", myListings: "No activity on your listings yet.", personal: "No personal notifications yet." }[notifViewMode] || "You're all caught up.";
   const hasUnread = (items || []).some((n) => !n.read);
-  const markAllBar = !isNotificationsPage && !notifSelectMode && notifViewMode !== "trash" && hasUnread
-    ? `<button class="notif-mark-all-btn" onclick="markAllNotifsRead()"><i class="fa-solid fa-check-double"></i> Mark all as read</button>`
-    : "";
+  const markAllBar = "";
   const list = (items && items.length)
     ? items.map((n) => `<div class="notif-item-wrap" data-id="${n.id}">
         <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
@@ -8908,6 +9111,9 @@ async function handleNotifItemClick(event, id) {
 }
 
 function switchNotifView(mode) {
+  const allowed = new Set(["all","vendors","myListings","personal"]);
+  if (!allowed.has(mode)) mode = "all";
+  if (mode === "myListings" && !vendor?.id) mode = "personal";
   notifViewMode = mode;
   exitNotifSelectMode(false);
   renderNotifPanel();
@@ -9505,8 +9711,10 @@ function updateAuthUI() {
       links.push({ label: "Admin panel", action: "navigate('adminPanel')" });
       links.push({ label: "Manage admins", action: "navigate('adminUsers')" });
       links.push({ label: "Vendors &amp; transactions", action: "navigate('adminFinance')" });
+      links.push({ label: `Disputes <span class="badge danger profile-disputes-badge ${Number(window.__adminDisputeCount || 0) > 0 ? "" : "hidden"}">${Number(window.__adminDisputeCount || 0) > 9 ? "9+" : Number(window.__adminDisputeCount || 0)}</span>`, action: "navigate('adminDisputes')", profileKey: "disputes" });
       links.push({ label: `Support requests`, action: "navigate('adminSupportRequests')" });
-      links.push({ label: `Feedback${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('adminFeedback')" });
+      links.push({ label: `Suggestions${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('adminFeedback')", profileKey: "suggestions" });
+      links.push({ label: `Feedback`, action: "navigate('adminFeedback')" });
     }
     if (vendor) links.push({ label: `Suggestions${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('vendorSuggestionsInbox')" });
     if (profile.role !== "admin") links.push({ label: "Support request", action: "navigate('supportRequest')" });
@@ -9540,7 +9748,9 @@ function updateAuthUI() {
         ${links.map((l) => {
           const raw = String(l.label).replace(/<[^>]*>/g, '').trim().toLowerCase();
           const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('customer requests') || raw === 'requests' ? 'fa-hand' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') || raw.includes('support request') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('link library') ? 'fa-link' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
-          const profileLabelAttr = raw === "customer requests" || raw === "requests" ? ` data-profile-label="Requests"` : ""; return `<a class="profile-nav-link"${profileLabelAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
+          const profileLabelAttr = raw === "customer requests" || raw === "requests" ? ` data-profile-label="Requests"` : "";
+          const profileKeyAttr = l.profileKey ? ` data-profile-key="${esc(l.profileKey)}"` : "";
+          return `<a class="profile-nav-link"${profileLabelAttr}${profileKeyAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
         }).join("")}
         <a class="profile-nav-link profile-nav-link-danger" onclick="closeAllPanels();logout();"><span class="profile-item-icon"><i class="fa-solid fa-arrow-right-from-bracket"></i></span><span class="profile-nav-text">Log out</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>
       </div>
@@ -9970,6 +10180,15 @@ function setAuthMode(mode) { authMode = mode; applyAuthMode(); }
 function applyAuthMode() {
   const isRegister = authMode === "register";
   const isForgot = authMode === "forgot";
+  const signInTab = byId("authSignInTab");
+  const createTab = byId("authCreateAccountTab");
+  if (signInTab && createTab) {
+    const signInActive = !isRegister;
+    signInTab.classList.toggle("active", signInActive);
+    createTab.classList.toggle("active", isRegister);
+    signInTab.setAttribute("aria-selected", signInActive ? "true" : "false");
+    createTab.setAttribute("aria-selected", isRegister ? "true" : "false");
+  }
   byId("authModalTitle").innerHTML = isForgot
     ? "<i class='fa-solid fa-key'></i> Reset your password"
     : isRegister ? "<i class='fa-solid fa-user-plus'></i> Create your Levromart account" : "<i class='fa-solid fa-right-to-bracket'></i> Welcome back to Levromart";
@@ -9981,8 +10200,9 @@ function applyAuthMode() {
   byId("authAgreementMsg").classList.toggle("hidden", !isRegister);
   byId("forgotPasswordLinkWrap").classList.toggle("hidden", isRegister || isForgot);
   byId("authSubmitBtn").textContent = isForgot ? "Send reset link" : isRegister ? "Create account" : "Login";
-  byId("authToggleLink").textContent = isForgot ? "Back to login" : isRegister ? "Already have an account? Login" : "Need an account? Register";
+  byId("authToggleLink").textContent = "Back to login";
   byId("authToggleLink").onclick = (e) => { e.preventDefault(); isForgot ? setAuthMode("login") : toggleAuthMode(); };
+  byId("authToggleLink").parentElement?.classList.toggle("hidden", !isForgot);
   byId("authError").classList.add("hidden");
 }
 
@@ -12160,7 +12380,7 @@ function productCardHtml(p) {
       </div>
       ${p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`}
       <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
-      <div class="product-card-action-row">${actionHtml}<button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i> Comments <span class="product-comment-count">0</span></button></div>
+      <div class="product-card-action-row">${actionHtml}<button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button></div>
     </div>
   </div>`;
 }
@@ -12181,7 +12401,7 @@ function vendorCardHtml(v) {
   const sectorName = v?.sector_name || v?.sector?.name || (Array.isArray(sectors) ? sectors.find(sec => String(sec.id) === String(v?.sector_id))?.name : "") || "";
   const followerCount = Number(v?.follower_count || 0);
   return `<div class="vendor-card homepage-vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || "")}'});" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || "")}'});}">
-    ${avatar ? profileAvatarHtml(avatar, name, "3.05rem", { extraClass: "vendor-home-avatar", lightbox: false }) : avatarFallbackHtml(name, "3.05rem", "vendor-home-avatar vendor-home-avatar-fallback", name)}
+    ${avatar ? profileAvatarHtml(avatar, name, "3.05rem", { extraClass: "vendor-home-avatar", lightbox: false, stableKey: v?.id || name }) : avatarFallbackHtml(name, "3.05rem", "vendor-home-avatar vendor-home-avatar-fallback", name)}
     <div class="vendor-home-copy">
       <strong>${esc(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
       <span class="vendor-home-city"><i class="fa-solid fa-location-dot"></i> ${esc(v?.city || "Online")}</span>
@@ -14436,7 +14656,7 @@ async function renderProductDetail(productId) {
       ${product.variants?.length ? `<p class="muted owner-listing-variant-note"><i class="fa-solid fa-layer-group"></i> ${product.variants.length} variety${product.variants.length===1?"":"ies"} configured.</p>` : ""}</div>`;
   }
   html += `<div class="card product-comments-card" data-product-comments-id="${esc(product.id)}">
-    <button type="button" class="product-comments-toggle" onclick="toggleProductComments('${esc(product.id)}')" aria-expanded="false"><span><i class="fa-regular fa-comment"></i> Comments (<span id="productCommentsCount" data-product-id="${esc(product.id)}">0</span>)</span><i class="fa-solid fa-chevron-down"></i></button>
+    <button type="button" class="product-comments-toggle" onclick="toggleProductComments('${esc(product.id)}')" aria-expanded="false" aria-label="Show product comments"><span><i class="fa-regular fa-comment"></i><strong id="productCommentsCount" data-product-id="${esc(product.id)}">0</strong></span><i class="fa-solid fa-chevron-down"></i></button>
     <div id="productCommentsPanel" class="product-comments-panel hidden"></div>
   </div>`;
   const relatedNames = RELATED_EQUIPMENT[product.category?.name] || [];
@@ -19132,14 +19352,13 @@ async function fileDispute(orderId) {
 // ---------- ADMIN ----------
 function adminNavHtml(active) {
   const items = [
-    ["adminFinance", "fa-sack-dollar", "Finance"],
+    ["adminPeople", "fa-users", "People"],
+    ["adminPanel", "fa-user-check", "Vendor"],
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
     ["adminSupportRequests", "fa-headset", "Support"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],
-    ["adminUsers", "fa-user-shield", "Admins"],
-    ["adminPanel", "fa-user-check", "Vendors"],
-    ["adminPeople", "fa-users", "People"],
     ["adminLog", "fa-clock-rotate-left", "Log"],
+    ["adminUsers", "fa-user-shield", "Admins"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
   return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>`).join("")}</div>`;
@@ -25554,7 +25773,7 @@ window.renderVendorMapRail = function(){
     window.__levroNotifMultipleV4 = true;
     window.renderNotifPanel = async function(){
       const result = await oldRenderNotifications.apply(this, arguments);
-      const panel = byId('notifPanel');
+      const panel = typeof getNotifHost === 'function' ? getNotifHost() : byId('notifPanel');
       const list = panel?.querySelector('.notif-list-scroll');
       if(!list || typeof notifSelectMode !== 'undefined' && notifSelectMode) return result;
       const rows=[...list.querySelectorAll(':scope > .notif-item-wrap')];
@@ -29920,6 +30139,13 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
         sb.from('suggestions').select('id',{count:'exact',head:true}).eq('status','new')
       ]);
       const counts={adminPanel:Number(vendorsQ.count||0),adminSupportRequests:Number(supportQ.count||0),adminDisputes:Number(disputesQ.count||0),adminFeedback:Number(suggestionsQ.count||0)};
+      window.__adminDisputeCount = counts.adminDisputes;
+      const profileDisputeBadge = document.querySelector('#profilePanel [data-profile-key="disputes"] .profile-disputes-badge');
+      if(profileDisputeBadge){
+        const n=counts.adminDisputes;
+        profileDisputeBadge.textContent=n>9?'9+':String(n);
+        profileDisputeBadge.classList.toggle('hidden', n===0);
+      }
       document.querySelectorAll('.admin-dash-tabs [data-admin-view]').forEach(btn=>{
         const key=btn.dataset.adminView;
         let badge=btn.querySelector('.admin-unresolved-badge');
