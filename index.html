@@ -16551,76 +16551,35 @@ async function toggleVendorProductsView(v) {
 
 async function renderVendorProducts() {
   if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
-  /* Vendor lookup must be bounded too. If this request ever stalls, the old
-     router shell used to remain on-screen forever. Prefer the already-loaded
-     vendor object while the authoritative row is being fetched. */
-  const vendorLookup = vendor?.id
-    ? { data: { id: vendor.id, verification_status: vendor.verification_status || "verified" }, error: null }
-    : await withRouteTimeout(
-        sb.from("vendors").select("id, verification_status").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle(),
-        3500,
-        { data: null, error: { message: "Vendor lookup timed out" } }
-      );
-  const v = vendorLookup?.data || null;
-  if (!v) {
-    console.warn("[Levromart] My Shop vendor lookup failed:", vendorLookup?.error);
-    return `<div class="empty-state"><i class="fa-solid fa-store" style="display:block;font-size:1.7rem;margin-bottom:.55rem;color:var(--primary);"></i><strong>My Shop couldn't load</strong><p class="muted" style="margin:.35rem 0 .8rem;">Please try again. Your products have not been changed.</p><button type="button" class="btn" onclick="navigate('vendorProducts',{},false)"><i class="fa-solid fa-rotate-right"></i> Try again</button></div>`;
-  }
-  vendor = { ...(vendor || {}), ...v };
+  const { data: v } = await sb.from("vendors").select("id, verification_status").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
+  if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
+  vendor = v;
 
-  /* Load the catalogue first. Secondary analytics are deliberately bounded so a
-     slow/missing RPC can never leave My Shop stuck forever on “Updating…”. */
-  const { data: allVendorProducts, error: productsLoadError } = await withRouteTimeout(
-    /* Keep this first catalogue request deliberately simple. A relationship
-       expansion such as product_variants can fail/slow independently and must
-       never be allowed to hold the entire My Shop route hostage. */
-    sb.from("products").select("*").eq("vendor_id", v.id).order("created_at", { ascending: false }),
-    5000,
-    { data: [], error: { message: "Products timed out" } }
-  );
-  if (productsLoadError) console.warn("[Levromart] My Shop products load:", productsLoadError);
-
-  /* Do NOT block the Products screen on analytics/RPCs. Those were the
-     reason the router could sit on “Updating…” while the catalogue itself
-     was already available. Render the catalogue first; enrich metrics in the
-     background after the page is painted. */
+  const [{ data: allVendorProducts }, { data: orderItems }, { data: regionRows }] = await Promise.all([
+    sb.from("products").select("*, category:categories(name)").eq("vendor_id", v.id).order("created_at", { ascending: false }),
+    sb.from("order_items").select("product_id, quantity, unit_price, order:orders!inner(status, vendor_id)").eq("order.vendor_id", v.id),
+    sb.rpc("get_vendor_product_regions", { p_vendor_id: v.id }),
+  ]);
   const products = (allVendorProducts || []).filter((p) => p.status !== "removed");
   const removedProducts = (allVendorProducts || []).filter((p) => p.status === "removed");
+  // Already sorted order_count desc per product by the RPC -- [0] of each
+  // group is that product's single busiest region.
   const regionsByProduct = {};
+  (regionRows || []).forEach((r) => { (regionsByProduct[r.product_id] ||= []).push(r); });
+  window.__vendorProductRegions = regionsByProduct;
+  const { data: favCountRows } = (products || []).length
+    ? await sb.rpc("get_favorite_counts", { p_product_ids: products.map((p) => p.id) })
+    : { data: [] };
   const favCountByProduct = {};
+  (favCountRows || []).forEach((r) => { favCountByProduct[r.product_id] = r.count; });
   const revenueByProduct = {};
   const pendingProductIds = new Set();
-  window.__vendorProductRegions = regionsByProduct;
+  const PENDING_ORDER_STATUSES = new Set(["pending", "confirmed", "handed_over", "returned", "disputed"]);
+  (orderItems || []).forEach((oi) => {
+    if (oi.order?.status === "completed") revenueByProduct[oi.product_id] = (revenueByProduct[oi.product_id] || 0) + oi.quantity * oi.unit_price;
+    if (PENDING_ORDER_STATUSES.has(oi.order?.status)) pendingProductIds.add(oi.product_id);
+  });
   window.__vendorPendingProductIds = pendingProductIds;
-  const backgroundProductMetrics = async () => {
-    try {
-      const [ordersResult, regionsResult, favResult] = await Promise.all([
-        withRouteTimeout(
-          sb.from("order_items").select("product_id, quantity, unit_price, order:orders!inner(status, vendor_id)").eq("order.vendor_id", v.id),
-          3500, { data: [], error: null }
-        ),
-        withRouteTimeout(
-          sb.rpc("get_vendor_product_regions", { p_vendor_id: v.id }),
-          3500, { data: [], error: null }
-        ),
-        products.length
-          ? withRouteTimeout(sb.rpc("get_favorite_counts", { p_product_ids: products.map((p) => p.id) }), 3000, { data: [], error: null })
-          : Promise.resolve({ data: [] })
-      ]);
-      (regionsResult?.data || []).forEach((r) => { (regionsByProduct[r.product_id] ||= []).push(r); });
-      (favResult?.data || []).forEach((r) => { favCountByProduct[r.product_id] = r.count; });
-      const PENDING_ORDER_STATUSES = new Set(["pending", "confirmed", "handed_over", "returned", "disputed"]);
-      (ordersResult?.data || []).forEach((oi) => {
-        if (oi.order?.status === "completed") revenueByProduct[oi.product_id] = (revenueByProduct[oi.product_id] || 0) + oi.quantity * oi.unit_price;
-        if (PENDING_ORDER_STATUSES.has(oi.order?.status)) pendingProductIds.add(oi.product_id);
-      });
-      window.__vendorProductRegions = regionsByProduct;
-      window.__vendorPendingProductIds = pendingProductIds;
-      /* Metrics are supplementary. Never navigate or replace the page if one
-         of these background requests fails. */
-      if (typeof window.__refreshVendorProductMetrics === "function") window.__refreshVendorProductMetrics({regionsByProduct, favCountByProduct, revenueByProduct, pendingProductIds});
-    } catch (e) { console.warn("[Levromart] My Shop metrics skipped:", e); }
-  };
 
   let html = `<div class="vendor-products-heading">
     <h2>My Products</h2>
@@ -16649,7 +16608,7 @@ async function renderVendorProducts() {
     ${removedProducts.length ? `<div class="vendor-discarded-bulkbar"><label><input type="checkbox" id="discardedSelectAll" onchange="toggleAllDiscardedItems(this.checked)"> <span>Select all</span></label><span id="discardedSelectedCount" class="muted">0 selected</span><button type="button" class="btn btn-sm btn-danger" id="discardedBulkDeleteBtn" disabled onclick="deleteSelectedDiscardedItems()"><i class="fa-solid fa-trash-can"></i> Delete selected</button></div><div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-id="${esc(p.id)}" data-discarded-name="${esc((p.name||'').toLowerCase())}"><label class="discarded-select"><input type="checkbox" class="discarded-item-check" value="${esc(p.id)}" onchange="updateDiscardedSelection()" aria-label="Select ${esc(p.name)}"></label><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
   </div>`;
 
-  if (!products || products.length === 0) { html += `<div class="empty-state">No products yet.</div>`; backgroundProductMetrics(); return html; }
+  if (!products || products.length === 0) { html += `<div class="empty-state">No products yet.</div>`; return html; }
 
   html += `<div class="vendor-products-toolbar">
     <input type="text" id="vendorProductSearch" placeholder="Search your products…" oninput="filterVendorProducts()" />
@@ -16686,7 +16645,6 @@ async function renderVendorProducts() {
       </tr>`;
     });
     html += `</tbody></table></div>`;
-    backgroundProductMetrics();
     return html;
   }
 
@@ -16720,7 +16678,6 @@ async function renderVendorProducts() {
     </article>`;
   });
   html += `</div>`;
-  backgroundProductMetrics();
   return html;
 }
 
