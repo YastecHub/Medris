@@ -6344,10 +6344,10 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <div id="resetPasswordError" class="error-text hidden"></div>
     <div id="currentPasswordWrap" class="hidden">
       <label>Current password</label>
-      <input type="password" id="currentPasswordInput" placeholder="Your current password" autocomplete="current-password" />
+      <div class="password-field-wrap"><input type="password" id="currentPasswordInput" placeholder="Your current password" autocomplete="current-password" /><button type="button" class="password-visibility-toggle" data-password-target="currentPasswordInput" aria-label="Show current password" title="Show password"><i class="fa-solid fa-eye"></i></button></div>
     </div>
     <label>New password</label>
-    <input type="password" id="newPasswordInput" placeholder="New password" autocomplete="new-password" />
+    <div class="password-field-wrap"><input type="password" id="newPasswordInput" placeholder="New password" autocomplete="new-password" /><button type="button" class="password-visibility-toggle" data-password-target="newPasswordInput" aria-label="Show new password" title="Show password"><i class="fa-solid fa-eye"></i></button></div>
     <div class="flex" style="justify-content:flex-end;margin-top:0.8rem;">
       <button class="btn btn-sm btn-outline hidden" id="resetPasswordCancel" onclick="closeChangePasswordModal()">Cancel</button>
       <button class="btn btn-sm" id="resetPasswordSubmit" onclick="submitNewPassword()">Set password</button>
@@ -7201,6 +7201,7 @@ let editingProductId = null;
 let currentProductDetail = null; // whatever renderProductDetail last loaded, reused by buyNow/confirmRental for the confirmation dialog
 let authMode = "login"; // 'login' | 'register'
 let notifCount = 0;
+let requestOfferBadgeCount = 0;
 let vendorPendingOrderCount = 0;
 let buyerPendingOrderCount = 0;
 // Only orders still awaiting the vendor's own action (accept, then hand
@@ -7381,6 +7382,11 @@ document.addEventListener("click", (event) => {
       }
     }
   });
+  const pickerTarget = event.target?.closest?.(".chat-bubble[data-msg-id]");
+  if (pickerTarget) {
+    const openPicker = document.querySelector(`.reaction-picker[data-for="${CSS.escape(String(pickerTarget.dataset.msgId || ""))}"]`);
+    if (openPicker) return;
+  }
   document.querySelectorAll(".reaction-picker").forEach((p) => p.remove());
 });
 // Small "i" button + floating bubble, for swapping a paragraph of helper
@@ -8357,7 +8363,7 @@ async function setAiDataConsent(value) {
   }
   showToast(value ? "Thanks, your chats may now be reviewed to improve Levi." : "Turned off. Your chats stay private again.", "success");
 }
-function toggleNotifPanel() { notifViewMode = "inbox"; exitNotifSelectMode(false); openDrawer("notifPanel"); renderNotifPanel(); }
+function toggleNotifPanel() { requestOfferBadgeCount = 0; updateRequestOfferBadge(); try { sessionStorage.setItem("levromart-request-offers-seen-at", new Date().toISOString()); } catch (_) {} notifViewMode = "inbox"; exitNotifSelectMode(false); openDrawer("notifPanel"); renderNotifPanel(); }
 function toggleProfilePanel() { openDrawer("profilePanel"); }
 
 function setupDrawerSwipe(drawer, side) { return; }
@@ -8567,6 +8573,12 @@ let notifViewMode = "inbox"; // inbox | archived | trash
 let notifSelectMode = false;
 let notifSelectedIds = new Set();
 
+function updateRequestOfferBadge() {
+  document.querySelectorAll('[data-profile-label="Requests"] .profile-request-badge').forEach(el => {
+    if (requestOfferBadgeCount > 0) { el.textContent = requestOfferBadgeCount > 9 ? "9+" : String(requestOfferBadgeCount); el.classList.remove("hidden"); } else el.classList.add("hidden");
+  });
+}
+
 async function refreshNotifications(renderPanel = true) {
   if (!session || !profile) {
     notifCount = 0;
@@ -8583,9 +8595,11 @@ async function refreshNotifications(renderPanel = true) {
   const suggestionQ = profile?.role === "admin" ? sb.rpc("get_platform_suggestions") : vendor ? sb.rpc("get_vendor_suggestions") : Promise.resolve({ data: [] });
   const conversationsQ = sb.rpc("list_my_conversations");
   const cartQ = profile?.role !== "admin" ? sb.from("cart_items").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve({ count: 0 });
+  let requestSeenAt = ""; try { requestSeenAt = sessionStorage.getItem("levromart-request-offers-seen-at") || ""; } catch (_) {}
+  const requestOfferQ = profile?.role !== "admin" ? sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("type", "new_offer").eq("read", false).eq("archived", false).is("deleted_at", null).gt("created_at", requestSeenAt || "1970-01-01T00:00:00.000Z") : Promise.resolve({ count: 0 });
 
-  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes] = await Promise.all([
-    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ
+  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes] = await Promise.all([
+    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ
   ]);
 
   notifCount = (unreadRes?.data || []).length;
@@ -8599,6 +8613,8 @@ async function refreshNotifications(renderPanel = true) {
   unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => x.status === "new").length;
   unreadMessageCount = (conversationsRes?.data || []).reduce((sum, c) => sum + (c.unread_count > 0 ? 1 : 0), 0);
   buyerCartCount = profile?.role !== "admin" ? (cartRes?.count || 0) : 0;
+  requestOfferBadgeCount = Number(requestOfferRes?.count || 0);
+  updateRequestOfferBadge();
   updateCartFab();
 
   sb.from("messages").update({ delivered_at: new Date().toISOString() }).is("delivered_at", null).neq("sender_id", session.user.id).then(() => {}).catch(() => {});
@@ -8668,7 +8684,7 @@ async function renderNotifPanel() {
         <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
           ${notifSelectMode ? `<span class="notif-select-check"><i class="fa-solid fa-check"></i></span>` : ""}
           ${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;" />` : n.actor_name ? `<span class="avatar-circle" style="width:2.1rem;height:2.1rem;font-size:0.8rem;">${esc(initials(n.actor_name))}</span>` : `<i class='fa-solid fa-circle-info'></i>`}
-          <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
+          <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
         </button>
       </div>`).join("")
     : `<p class="muted" style="padding:0.4rem;">${emptyMsg}</p>`;
@@ -9291,7 +9307,7 @@ function updateAuthUI() {
     if (vendor && profile.role !== "admin") {
       links.push({ label: "My Shop", action: "navigate('vendorDashboard')" });
       links.push({ label: "Edit Business Profile", action: "navigate('vendorEditProfile')" });
-      links.push({ label: "Requests", action: "navigate('vendorRequests')" });
+      links.push({ label: `Requests${requestOfferBadgeCount > 0 ? ` <span class="badge danger profile-request-badge">${requestOfferBadgeCount > 9 ? "9+" : requestOfferBadgeCount}</span>` : ""}`, action: "navigate('vendorRequests')" });
     } else if (profile.role !== "admin") {
       links.push({ label: "My Orders", action: "navigate('buyerOrders')" });
       links.push({ label: "Request an item", action: "navigate('requestEquipment')" });
@@ -11952,8 +11968,8 @@ function productCardHtml(p) {
 // down a list of cards - matches the 1-5 star scale users already know.
 function ratingBadgeClass(rating) {
   const r = Number(rating);
-  if (r >= 4.5) return "success";
-  if (r >= 3.5) return "";
+  if (r >= 4.8) return "rating-five-star";
+  if (r >= 4.0) return "success";
   if (r >= 2.5) return "warning";
   return "danger";
 }
@@ -13255,15 +13271,20 @@ function setupMessageDoubleTap(root) {
     bubble.dataset.doubleTapBound = "1";
     if (isCoarsePointer()) {
       let lastTap = 0;
-      bubble.addEventListener("touchend", (e) => {
+      let lastX = 0, lastY = 0;
+      bubble.addEventListener("pointerup", (e) => {
         if (chatSelectionMode || bubble.classList.contains("deleted")) return;
+        if (e.pointerType === "mouse") return;
         const now = Date.now();
-        if (now - lastTap < 320) {
-          const isImage = !!e.target.closest?.('.chat-image-attachment');
-          if (isImage) { e.preventDefault(); e.stopPropagation(); }
-          openReactionPicker(e, bubble.dataset.msgId); lastTap = 0;
+        const moved = Math.hypot((e.clientX || 0) - lastX, (e.clientY || 0) - lastY);
+        if (now - lastTap < 380 && moved < 24) {
+          e.preventDefault();
+          e.stopPropagation();
+          openReactionPicker(e, bubble.dataset.msgId);
+          lastTap = 0;
+          return;
         }
-        else lastTap = now;
+        lastTap = now; lastX = e.clientX || 0; lastY = e.clientY || 0;
       }, { passive: false });
     } else {
       bubble.addEventListener("dblclick", (e) => { if (!chatSelectionMode) openReactionPicker(e, bubble.dataset.msgId); });
@@ -14863,6 +14884,7 @@ async function renderStorefront(vendorId) {
       <div class="storefront-avatar-row">
         ${logo}
         <div class="storefront-profile-actions storefront-top-actions">
+          ${isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-message-icon" type="button" aria-label="Messages" title="Messages" onclick="navigate('messages')"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
           ${!isOwnStorefront ? `<div class="storefront-follow-wrap" data-follow-vendor-id="${v.id}">
             <div class="storefront-follow-controls">
               <button type="button" class="btn btn-sm follow-btn ${followState?.[0]?.following ? "" : "btn-outline"}" aria-label="${followState?.[0]?.following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${followState?.[0]?.following ? "Unfollow vendor" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${followState?.[0]?.following ? "fa-check" : "fa-plus"}"></i> ${followState?.[0]?.following ? "Following" : "Follow"}</button>
@@ -14870,12 +14892,12 @@ async function renderStorefront(vendorId) {
             </div>
             <div class="follow-menu hidden" role="dialog" aria-label="Vendor notification preferences">
               <strong>Vendor notifications</strong>
-              <div class="follow-pref-row"><span>New listings</span><input type="checkbox" data-pref="notify_new_listing"></div>
-              <div class="follow-pref-row"><span>New services</span><input type="checkbox" data-pref="notify_new_service"></div>
-              <div class="follow-pref-row"><span>New packages</span><input type="checkbox" data-pref="notify_new_package"></div>
-              <div class="follow-pref-row"><span>New varieties</span><input type="checkbox" data-pref="notify_new_variety"></div>
-              <div class="follow-pref-row"><span>Price changes</span><input type="checkbox" data-pref="notify_price_change"></div>
-              <div class="follow-pref-row"><span>Discounts</span><input type="checkbox" data-pref="notify_discount"></div>
+              <div class="follow-pref-row"><span>New listings</span><input type="checkbox" data-pref="notify_new_listing" ${followState?.[0]?.notify_new_listing !== false ? "checked" : ""}></div>
+              <div class="follow-pref-row"><span>New services</span><input type="checkbox" data-pref="notify_new_service" ${followState?.[0]?.notify_new_service !== false ? "checked" : ""}></div>
+              <div class="follow-pref-row"><span>New packages</span><input type="checkbox" data-pref="notify_new_package" ${followState?.[0]?.notify_new_package !== false ? "checked" : ""}></div>
+              <div class="follow-pref-row"><span>New varieties</span><input type="checkbox" data-pref="notify_new_variety" ${followState?.[0]?.notify_new_variety !== false ? "checked" : ""}></div>
+              <div class="follow-pref-row"><span>Price changes</span><input type="checkbox" data-pref="notify_price_change" ${followState?.[0]?.notify_price_change !== false ? "checked" : ""}></div>
+              <div class="follow-pref-row"><span>Discounts</span><input type="checkbox" data-pref="notify_discount" ${followState?.[0]?.notify_discount !== false ? "checked" : ""}></div>
               <small class="muted">Mute this vendor</small>
               <div class="follow-mute-grid">
                 <button type="button" data-mute="none">On</button><button type="button" data-mute="1h">1 hour</button><button type="button" data-mute="8h">8 hours</button><button type="button" data-mute="always" style="grid-column:1/-1;">Always</button>
@@ -14888,9 +14910,9 @@ async function renderStorefront(vendorId) {
       <div class="storefront-name-row">
         <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
         <div class="storefront-name-actions">
-          ${profile?.role !== "admin" ? `<button class="btn btn-sm storefront-social-icon" type="button" aria-label="Message vendor" title="Message vendor" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button>` : ""}
-          ${profile?.role !== "admin" && v.whatsapp_visible && v.whatsapp_number ? `<a class="btn btn-sm btn-outline storefront-social-icon storefront-whatsapp-icon" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener" aria-label="WhatsApp vendor" title="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></a>` : ""}
-          ${v.phone ? `<a class="btn btn-sm btn-outline storefront-social-icon" href="${telLink(v.phone)}" aria-label="Call vendor" title="Call vendor" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i><span>Call</span></a>` : ""}
+          ${!isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm storefront-social-icon" type="button" aria-label="Message vendor" title="Message vendor" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button>` : ""}
+          ${!isOwnStorefront && profile?.role !== "admin" && v.whatsapp_visible && v.whatsapp_number ? `<a class="btn btn-sm btn-outline storefront-social-icon storefront-whatsapp-icon" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener" aria-label="WhatsApp vendor" title="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></a>` : ""}
+          ${!isOwnStorefront && v.phone ? `<a class="btn btn-sm btn-outline storefront-social-icon" href="${telLink(v.phone)}" aria-label="Call vendor" title="Call vendor" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i><span>Call</span></a>` : ""}
         </div>
       </div>
       <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
@@ -15270,12 +15292,12 @@ async function renderRequestEquipment() {
             <div class="flex">
               ${o.price != null ? `<strong>${naira(o.price)}</strong>` : ""}
               <span class="badge ${o.status === "accepted" ? "success" : o.status === "declined" ? "danger" : ""}">${esc(o.status)}</span>
-              ${r.status === "open" && o.status === "pending" ? `<button class="btn btn-sm" onclick="acceptOffer('${o.id}')">Accept</button><button class="btn btn-sm btn-outline" onclick="declineOffer('${o.id}')">Decline</button>` : ""}
-              ${o.status === "accepted" ? `<button class="btn btn-sm" onclick="startConversationWithVendor('${o.vendor_id}')" title="Message vendor"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
-              ${o.status === "accepted" && o.vendor?.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(o.vendor.phone)}" onclick="callVendorGated(event,'${esc(o.vendor.phone)}','${o.vendor_id}')"><i class='fa-solid fa-phone'></i></a>` : ""}
+              <button class="btn btn-sm btn-outline" type="button" onclick="startConversationWithVendor('${o.vendor_id}')" title="Message vendor" aria-label="Message vendor"><i class='fa-solid fa-comment-dots'></i></button>
+              ${r.status === "open" && o.status === "pending" ? `<button class="btn btn-sm" onclick="acceptOffer('${o.id}')">Accept</button><button class="btn btn-sm btn-danger" onclick="declineOffer('${o.id}')">Decline</button>` : ""}
+              ${o.status === "accepted" && o.vendor?.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(o.vendor.phone)}" onclick="callVendorGated(event,'${esc(o.vendor.phone)}','${o.vendor_id}')" title="Call vendor" aria-label="Call vendor"><i class='fa-solid fa-phone'></i></a>` : ""}
             </div>
           </div>
-          ${o.price != null ? `<p class="muted" style="font-size:0.78rem;margin:0.3rem 0 0;">Item: ${naira(o.price)}${delivery > 0 ? ` + ${naira(delivery)} delivery fee if you need it delivered` : " · free pickup or delivery"}</p>` : ""}
+          ${o.price != null ? `<p class="muted" style="font-size:0.78rem;margin:0.3rem 0 0;">Quoted total: ${naira(o.price)}${o.status === "accepted" ? " · Delivery details are handled from the listing/request." : ""}</p>` : ""}
         </div>`;
         }).join("")}
       </div>` : `<p class="muted" style="margin-top:0.5rem;">No offers yet.</p>`}
@@ -15792,8 +15814,9 @@ async function renderVendorDashboard() {
   let html = `<h2 style="display:flex;align-items:center;gap:0.5rem;"><i class='fa-solid fa-box'></i> ${esc(v.business_name)} ${verifiedTick}</h2>`;
   if (commissionOwed > 0) {
     html += `<div class="banner banner-warning" style="max-width:480px;margin:0 auto 1rem;">
-      <h3 style="margin:0;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)}</h3>
-      <p class="muted" style="margin-top:0.4rem;">Levromart's ${Number(v.commission_pct ?? 3)}% cut on offline sales. Pay within 1 week via Paystack. If it remains unpaid for 1 week, your storefront will be paused temporarily until the commission is paid.</p>
+      <h3 style="margin:0;display:flex;align-items:center;gap:.45rem;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)} <button type="button" class="vendor-commission-info" title="About commission" aria-label="About commission" onclick="levroCommissionInfo()"><i class="fa-solid fa-info"></i></button></h3>
+      <p class="muted" style="margin-top:0.35rem;">Pay anytime within 7 days.</p>
+      <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
       <div id="commissionError" class="error-text hidden"></div>
       <button class="btn btn-sm" id="payCommissionBtn" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
     </div>`;
@@ -16069,8 +16092,9 @@ async function renderVendorEditProfile() {
 
   return `${commissionOwed > 0 ? `
   <div class="banner banner-warning" style="max-width:480px;margin:0 auto 1rem;">
-    <h3 style="margin:0;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)}</h3>
-    <p class="muted" style="margin-top:0.4rem;">This is Levromart's ${Number(v.commission_pct ?? 3)}% cut on offline sales. Pay within 1 week via Paystack. If it remains unpaid for 1 week, your storefront will be paused temporarily until the commission is paid.</p>
+    <h3 style="margin:0;display:flex;align-items:center;gap:.45rem;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)} <button type="button" class="vendor-commission-info" title="About commission" aria-label="About commission" onclick="levroCommissionInfo()"><i class="fa-solid fa-info"></i></button></h3>
+    <p class="muted" style="margin-top:0.35rem;">Pay anytime within 7 days.</p>
+    <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
     <div id="commissionError" class="error-text hidden"></div>
     <button class="btn btn-sm" id="payCommissionBtn" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
   </div>` : ""}
@@ -16414,6 +16438,15 @@ function selectVendorLocationPreset(index){
   showToast((x.name||"Saved location")+" selected. Drag the pin to fine-tune or use the current-location action to update the active shop location.","info");
 }
 
+async function locateVendorMapOnly() {
+  try {
+    const loc = await getCurrentPositionOnce();
+    if (veMap) veMap.setView([loc.lat, loc.lng], Math.max(16, veMap.getZoom?.() || 16), { animate: true });
+    if (veMap && veMarker) veMarker.setLatLng([loc.lat, loc.lng]);
+    showToast("Map centered on your current location.", "info");
+  } catch (err) { showToast(err?.message || "Could not get your current location.", "error"); }
+}
+
 async function useMyLocationForVendor() {
   const btn = byId("veUseLocationBtn");
   if (!btn) return;
@@ -16500,6 +16533,12 @@ async function renderVendorProducts() {
   </div>`;
   if (v.verification_status !== "verified") html += `<p class="muted">Products won't appear publicly until your vendor account is verified.</p>`;
 
+  html += `<div class="vendor-products-unified-tabs" id="vendorProductsTypeTabs" aria-label="Listing type">
+    <button type="button" class="active" data-tab="products" onclick="switchVendorListingTab('products')"><i class="fa-solid fa-box"></i> Products</button>
+    <button type="button" data-tab="services" onclick="switchVendorListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button>
+    <button type="button" data-tab="packages" onclick="switchVendorListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button>
+  </div>`;
+
   html += `<div id="vendorDiscardedPanel" class="vendor-discarded-panel hidden">
     <div class="vendor-discarded-head"><div><strong>Discarded items</strong><span class="muted">Products removed from your live catalogue stay here when order history prevents permanent deletion.</span></div><button type="button" class="icon-btn" aria-label="Close discarded items" onclick="toggleVendorDiscarded(event,false)"><i class="fa-solid fa-xmark"></i></button></div>
     ${removedProducts.length ? `<div class="vendor-discarded-bulkbar"><label><input type="checkbox" id="discardedSelectAll" onchange="toggleAllDiscardedItems(this.checked)"> <span>Select all</span></label><span id="discardedSelectedCount" class="muted">0 selected</span><button type="button" class="btn btn-sm btn-danger" id="discardedBulkDeleteBtn" disabled onclick="deleteSelectedDiscardedItems()"><i class="fa-solid fa-trash-can"></i> Delete selected</button></div><div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-id="${esc(p.id)}" data-discarded-name="${esc((p.name||'').toLowerCase())}"><label class="discarded-select"><input type="checkbox" class="discarded-item-check" value="${esc(p.id)}" onchange="updateDiscardedSelection()" aria-label="Select ${esc(p.name)}"></label><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
@@ -16526,11 +16565,11 @@ async function renderVendorProducts() {
       </div>
     </div>`;
     html += `<div class="table-wrap" style="max-height:26rem;overflow-y:auto;"><table class="data-table"><thead><tr>
-      <th>Product</th><th>Category</th><th>Price</th><th>Qty avail / total</th><th>Views</th><th>Saved</th><th>Revenue</th><th>Top region</th><th>Status</th>
+      <th>Product</th><th>Category</th><th>Price</th><th>Qty avail / total</th><th>Views</th><th>Saved</th><th>Revenue</th><th>Status</th>
     </tr></thead><tbody>`;
     products.forEach((p, i) => {
       const topRegion = regionsByProduct[p.id]?.[0];
-      html += `<tr onclick="openEditProductModal('${p.id}')" style="cursor:pointer;" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc((p.category?.name || "").toLowerCase())}">
+      html += `<tr onclick="openEditProductModal('${p.id}')" style="cursor:pointer;" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc((p.category?.name || "").toLowerCase())}">
         <td>${esc(p.name)}</td>
         <td>${esc(p.category?.name || "Uncategorized")}</td>
         <td>${p.sale_price != null ? naira(p.sale_price) + servicePriceSuffix(p) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</td>
@@ -16538,7 +16577,6 @@ async function renderVendorProducts() {
         <td>${p.view_count || 0}</td>
         <td>${favCountByProduct[p.id] ?? 0}</td>
         <td>${naira(revenueByProduct[p.id] || 0)}</td>
-        <td>${topRegion ? `<a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count})</a>` : `<span class="muted">-</span>`}</td>
         <td><span class="badge ${p.status === "active" ? "success" : p.status === "paused" ? "warning" : "danger"}">${esc(p.status)}</span></td>
       </tr>`;
     });
@@ -16555,13 +16593,13 @@ async function renderVendorProducts() {
   [...groups.keys()].sort().forEach((catName) => {
     html += `<div data-vp-group>`;
     html += `<div class="category-group-header"><i class="fa-solid ${catName === "Uncategorized" ? "fa-box-open" : "fa-tag"}"></i> ${esc(catName)}</div>`;
-    html += `<div class="grid">`;
+    html += `<div class="grid vendor-product-card-grid">`;
     groups.get(catName).forEach((p) => {
       const img = p.photos?.[0];
       const favCount = favCountByProduct[p.id] ?? 0;
       const hasPendingOrder = pendingProductIds.has(p.id);
       const topRegion = regionsByProduct[p.id]?.[0];
-      html += `<div class="card" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}">
+      html += `<div class="card" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}">
         <div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
         <h4 style="margin:0.5rem 0 0.2rem;">${esc(p.name)}</h4>
         <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.quantity_available}/${p.quantity_total} available`} · ${p.status}${p.billing_model === "monthly" && p.billing_paid_until ? ` · ${new Date(p.billing_paid_until).getTime() > Date.now() ? `paid until ${new Date(p.billing_paid_until).toLocaleDateString("en-GB", {day:"numeric",month:"short",year:"numeric"})}` : "subscription expired"}` : ""}</p>
@@ -16569,8 +16607,8 @@ async function renderVendorProducts() {
         ${topRegion ? `<p class="muted" style="font-size:0.8rem;"><i class="fa-solid fa-map-location-dot"></i> Sells best in <a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count} order${topRegion.order_count === 1 ? "" : "s"})</a></p>` : ""}
         ${hasPendingOrder ? `<p class="muted" style="font-size:0.8rem;color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
         <div class="vendor-product-actions">
-          <button class="btn btn-sm" onclick="openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
-          ${p.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setProductStatus('${p.id}','paused')">Pause</button>` : ""}
+          <button class="btn btn-sm vendor-edit-action" onclick="openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
+          ${p.status === "active" ? `<button class="btn btn-sm vendor-pause-action" onclick="setProductStatus('${p.id}','paused')">Pause</button>` : ""}
           ${p.status === "paused" ? (p.billing_model === "monthly" ? (p.billing_status === "active" && p.billing_paid_until && new Date(p.billing_paid_until).getTime() > Date.now() ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Resume</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-credit-card"></i> ${p.billing_status === "pending_payment" ? "Pay ₦1,000 to activate" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
           <button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>
         </div>
@@ -16619,6 +16657,16 @@ function filterVendorProducts() {
   if (tbody && tbody.querySelector("[data-vp-name]")) {
     [...tbody.children].sort(compare).forEach(el => tbody.appendChild(el));
   }
+}
+
+function switchVendorListingTab(tab) {
+  tab = String(tab || "products");
+  document.querySelectorAll("#vendorProductsTypeTabs [data-listing-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.listingTab === tab));
+  if (tab === "packages") { navigate("vendorPackages"); return; }
+  document.querySelectorAll("#app [data-vp-kind]").forEach(el => el.classList.toggle("hidden", el.dataset.vpKind !== tab));
+  document.querySelectorAll("#app [data-vp-group]").forEach(group => group.classList.toggle("hidden", ![...group.querySelectorAll("[data-vp-kind]")].some(el => !el.classList.contains("hidden"))));
+  const table = document.querySelector("#app .data-table tbody");
+  if (table) [...table.children].forEach(row => row.classList.toggle("hidden", row.dataset.vpKind !== tab));
 }
 
 async function openAddProductModal() {
@@ -17055,23 +17103,30 @@ async function saveProduct() {
 
     if (!is_service) {
       variantDrafts = collectProductVariantDrafts(photos);
-      if (!isNewMonthlyListing) await saveProductVariants(savedProductId, variantDrafts);
     }
 
     if (isNewMonthlyListing) {
-      // Nothing has been inserted into public.products yet. The browser keeps
-      // the completed draft in sessionStorage while Paystack is open, and the
-      // row is created only after the server verifies the successful ₦1,000
-      // payment when the user returns.
-      const draft={kind:"product",vendor_id:vendor.id,fields:{...fields},photos,variantDrafts};
-      ["status","billing_status","billing_reference","billing_paid_until"].forEach(k=>delete draft.fields[k]);
-      const saved=await saveListingDraftServer(draft);
-      if(!saved?.id)throw new Error(saved?.error||"Could not save this listing draft.");
-      const pay=await payListingDraft(saved.id);
-      if(!pay)throw new Error("Monthly listing payment could not be started. Your draft has been saved under My Shop.");
-      closeProductModal();
+      // Create the listing immediately in a safe paused/pending-payment state.
+      // This is deliberately simpler than a browser-only draft: the listing
+      // now has a real database id before Paystack opens, so the payment
+      // callback/webhook can activate exactly this listing without relying on
+      // sessionStorage or a second client-side creation step.
+      const { data: pendingProduct, error: pendingError } = await sb.from("products").insert({
+        ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos,
+        status: "paused", billing_status: "pending_payment", billing_reference: null, billing_paid_until: null
+      }).select("id").single();
+      if (pendingError || !pendingProduct?.id) throw new Error(pendingError?.message || "Could not create the listing before payment.");
+      savedProductId = pendingProduct.id;
+      if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
+      const pay = await startListingMonthlyPayment("product", savedProductId);
+      if (!pay) {
+        showToast("Listing saved as paused. Pay ₦1,000 from My Shop to activate it.", "info");
+        closeProductModal();
+        navigate("vendorProducts", {}, false);
+      }
       return;
     }
+    if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
 
     closeProductModal();
     navigate("vendorProducts");
@@ -17093,7 +17148,13 @@ async function removeProduct(id) {
     showToast("This product has a pending order. It can't be removed until that order is cleared (completed, returned, or cancelled).", "error");
     return;
   }
-  if (await showConfirmDialog("Remove this listing? It will no longer be visible to buyers.", { title: "Remove listing", okLabel: "Remove", danger: true })) setProductStatus(id, "removed");
+  if (!(await showConfirmDialog("Remove this listing? It will no longer be visible to buyers.", { title: "Remove listing", okLabel: "Remove", danger: true }))) return;
+  const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  const { error } = await sb.from("products").update({ status: "removed" }).eq("id", id).eq("vendor_id", vendor.id);
+  if (error) { showToast(error.message, "error"); return; }
+  showToast("Product moved to Discarded items.", "success");
+  await navigate("vendorProducts", {}, false);
+  requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: Math.max(0, scrollY), left: 0, behavior: "auto" })));
 }
 function toggleVendorProductsMenu(event) {
   event?.stopPropagation?.();
@@ -18926,7 +18987,9 @@ async function renderAdminPeople() {
         sb.rpc("admin_get_pending_appeals"),
       ]);
       if (peopleError) throw peopleError;
-      window.__adminPeopleLoadedData = { people: people || [], appeals: appeals || [] };
+      // Deleted/anonymized accounts are intentionally not part of the live People directory.
+      const livePeople = (people || []).filter((p) => String(p.name || "").trim().toLowerCase() !== "deleted user" && !String(p.email || "").toLowerCase().startsWith("deleted-"));
+      window.__adminPeopleLoadedData = { people: livePeople, appeals: appeals || [] };
       const app = byId("app");
       if (app && currentView === "adminPeople") app.innerHTML = renderAdminPeopleFromData(people || [], appeals || []);
     } catch (err) {
@@ -18938,6 +19001,9 @@ async function renderAdminPeople() {
 }
 
 function renderAdminPeopleFromData(people, appeals) {
+  // Keep anonymized/deleted accounts out of the live People directory even
+  // when this renderer is called with cached data from an earlier navigation.
+  people = (people || []).filter((p) => String(p.name || "").trim().toLowerCase() !== "deleted user" && !String(p.email || "").toLowerCase().startsWith("deleted-"));
   const counts = { buyer: 0, vendor: 0, admin: 0 };
   (people || []).forEach((p) => { if (counts[p.role] != null) counts[p.role]++; });
   const appealByUser = {};
@@ -19486,220 +19552,23 @@ function exportFinanceCsv() {
 function exportFinancePdf() {
   const filtered = filterTxnsByRange(__adminFinanceData.txns, adminFinanceRange);
   const paid = filtered.filter((t) => t.status === "paid");
-  const commission = paid.reduce((s, t) => s + Number(t.platform_cut), 0);
-  const volume = paid.reduce((s, t) => s + Number(t.amount), 0);
+  const commission = paid.reduce((sum, t) => sum + Number(t.platform_cut || 0), 0);
+  const volume = paid.reduce((sum, t) => sum + Number(t.amount || 0), 0);
   const w = window.open("", "_blank");
-  w.document.write(`<!doctype html><html><head><title>Levromart Transactions (${rangeLabel(adminFinanceRange)})</title>
+  if (!w) {
+    showToast("Please allow pop-ups to export the PDF.", "error");
+    return;
+  }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Levromart Transactions (${rangeLabel(adminFinanceRange)})</title>
     <style>
-      body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#0d201c;padding:2rem;}
-      h1{color:#0e8f7f;margin-bottom:0.2rem;} .muted{color:#5c7269;margin-top:0;}
-      table{width:100%;border-collapse:collapse;margin-top:1.2rem;font-size:0.85rem;}
-      th,td{padding:0.5rem 0.6rem;text-align:left;border-bottom:1px solid #e2e8f0;}
+      body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#0d201c;padding:2rem;}
+      h1{color:#0e8f7f;margin:0 0 .2rem;} .muted{color:#5c7269;margin-top:0;}
+      table{width:100%;border-collapse:collapse;margin-top:1.2rem;font-size:.85rem;}
+      th,td{padding:.5rem .6rem;text-align:left;border-bottom:1px solid #e2e8f0;}
       th{background:#f3f8f7;} .stats{display:flex;gap:1.5rem;margin:1.2rem 0;}
-      .stat{border:1px solid #e2e8f0;border-radius:8px;padding:0.8rem 1.2rem;}
+      .stat{border:1px solid #e2e8f0;border-radius:8px;padding:.8rem 1.2rem;}
       .stat b{display:block;font-size:1.3rem;color:#0e8f7f;}
-    
-</style>
-<style id="2026-09-08-product-chat-polish">
-/* Product varieties: keep the full swipe gallery and restore the small
-   horizontally scrollable photo strip underneath it. */
-.product-gallery-thumbs{
-  display:flex !important; gap:.55rem !important; overflow-x:auto !important;
-  padding:.65rem .1rem .2rem !important; scrollbar-width:none !important;
-  -webkit-overflow-scrolling:touch !important; touch-action:pan-x !important;
-  overscroll-behavior-x:contain !important;
-}
-.product-gallery-thumbs::-webkit-scrollbar{display:none !important;}
-.product-gallery-thumb{
-  flex:0 0 4.5rem !important; width:4.5rem !important; height:4.5rem !important;
-  border:2px solid transparent !important; border-radius:.65rem !important;
-  padding:0 !important; overflow:hidden !important; background:var(--border) !important;
-  cursor:pointer !important; appearance:none !important; -webkit-appearance:none !important;
-}
-.product-gallery-thumb.active{border-color:var(--primary) !important;box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 18%,transparent) !important;}
-.product-gallery-thumb img{width:100% !important;height:100% !important;object-fit:cover !important;display:block !important;}
-.product-detail-top-actions{left:auto !important;right:1rem !important;justify-content:flex-end !important;width:auto !important;}
-.product-detail-title{padding-right:0 !important;max-width:calc(100% - 5rem) !important;}
-@media(max-width:720px){
-  .product-detail-top-actions{right:.75rem !important;top:.75rem !important;}
-  .product-detail-title{max-width:calc(100% - 4.2rem) !important;}
-}
-
-/* Levi response controls sit underneath the response rather than inside its
-   text. The controls are quiet and compact, like an AI assistant toolbar. */
-.ai-chat-action-row{display:flex;align-items:center;gap:.1rem;margin-top:.38rem;padding:0;}
-.ai-chat-action-btn{width:31px;height:29px;border:0;background:transparent;color:var(--text-muted);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
-.ai-chat-action-btn:hover,.ai-chat-action-btn:focus-visible{background:color-mix(in srgb,var(--primary) 9%,transparent);color:var(--primary);outline:none;}
-.ai-chat-action-btn.active{color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent);}
-.ai-chat-message-menu{position:absolute;left:0;top:calc(100% + .35rem);z-index:100;min-width:210px;max-width:min(250px,78vw);padding:.35rem;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);box-shadow:0 18px 44px rgba(0,0,0,.22);}
-.ai-chat-message-menu button{width:100%;display:flex;align-items:center;gap:.65rem;border:0;background:transparent;color:var(--text);padding:.62rem .68rem;border-radius:9px;font:inherit;font-size:.83rem;text-align:left;cursor:pointer;}
-.ai-chat-message-menu button:hover{background:color-mix(in srgb,var(--primary) 8%,transparent);}
-.ai-chat-message-menu button i{width:18px;text-align:center;color:var(--primary);}
-.ai-chat-msg.assistant{overflow:visible !important;}
-
-/* A dedicated DM must not rubber-band as a whole document. Only the message
-   list is scrollable; the fixed chat shell remains anchored to the viewport. */
-body.chat-full-page{position:fixed !important;inset:0 !important;width:100% !important;height:100% !important;overflow:hidden !important;overscroll-behavior:none !important;}
-body.chat-full-page > #app{height:100% !important;overflow:hidden !important;overscroll-behavior:none !important;}
-.chat-page-wrap{position:fixed !important;inset:0 !important;height:100dvh !important;min-height:100dvh !important;overflow:hidden !important;overscroll-behavior:none !important;touch-action:pan-y !important;}
-.chat-page-wrap .chat-thread{min-height:0 !important;height:auto !important;overflow:hidden !important;overscroll-behavior:none !important;}
-.chat-page-wrap .chat-messages{overscroll-behavior-y:contain !important;overscroll-behavior-x:none !important;touch-action:pan-y !important;-webkit-overflow-scrolling:touch !important;}
-.chat-page-wrap .chat-input-row{touch-action:manipulation !important;}
-
-/* Final Home catalogue tabs: three equal choices with comfortable spacing. */
-.home-catalog-type-tabs{gap:.35rem !important;padding:.28rem !important;margin:.85rem 0 1rem !important;}
-.home-catalog-type-tabs .catalog-type-tab{min-height:46px !important;padding:.7rem .85rem !important;display:flex !important;align-items:center !important;justify-content:center !important;gap:.45rem !important;white-space:nowrap !important;}
-@media(max-width:520px){.home-catalog-type-tabs .catalog-type-tab{font-size:.76rem !important;padding:.65rem .35rem !important;gap:.3rem !important;}}
-
-/* Product detail actions must remain together beside one another; the wishlist
-   heart must never float over the product title. */
-.product-detail-top-actions{display:flex !important;align-items:center !important;justify-content:flex-end !important;gap:.55rem !important;position:absolute !important;top:.75rem !important;left:auto !important;right:.75rem !important;width:auto !important;z-index:6 !important;}
-.product-detail-top-actions .fav-btn,
-.product-detail-top-actions .product-storefront-share-btn{position:static !important;inset:auto !important;float:none !important;margin:0 !important;width:2.55rem !important;height:2.55rem !important;flex:0 0 2.55rem !important;}
-.product-detail-title{padding-right:6rem !important;max-width:none !important;}
-
-/* Levi's message menu: roomier labels and intelligent up/down placement. */
-.ai-chat-action-row{gap:.32rem !important;margin-top:.55rem !important;}
-.ai-chat-action-btn{width:34px !important;height:32px !important;border-radius:9px !important;}
-.ai-chat-message-menu{left:0 !important;top:calc(100% + .55rem) !important;min-width:235px !important;max-width:min(290px,82vw) !important;padding:.45rem !important;border-radius:14px !important;}
-.ai-chat-message-menu.opens-up{top:auto !important;bottom:calc(100% + .55rem) !important;}
-.ai-chat-message-menu button{min-height:44px !important;padding:.72rem .82rem !important;gap:.78rem !important;border-radius:10px !important;font-size:.88rem !important;}
-.ai-chat-message-menu button i{width:20px !important;flex:0 0 20px !important;font-size:.95rem !important;}
-
-/* Jump-to-latest control for Levi. It only appears after the user scrolls up. */
-.ai-chat-bottom-btn{position:absolute !important;right:1rem !important;bottom:5.2rem !important;width:40px !important;height:40px !important;border-radius:50% !important;border:1px solid var(--border) !important;background:var(--card) !important;color:var(--primary) !important;box-shadow:0 8px 22px rgba(0,0,0,.22) !important;z-index:25 !important;display:flex !important;align-items:center !important;justify-content:center !important;cursor:pointer !important;}
-.ai-chat-bottom-btn.hidden{display:none !important;}
-.ai-chat-bottom-btn:not(.hidden){animation:aiBottomBtnPop .18s cubic-bezier(.22,1,.36,1) both;}
-@keyframes aiBottomBtnPop{from{opacity:0;transform:scale(.72)}to{opacity:1;transform:scale(1)}}
-@media (prefers-reduced-motion:reduce){.ai-chat-bottom-btn:not(.hidden){animation:none;}}
-<style id="levi-longpress-copy-final">
-/* Long-press Copy for both the user's messages and Levi's replies.
-   One compact glass menu replaces the old cramped multi-button strip. */
-/* Long-press Copy: render the menu at document level instead of inside the
-   message bubble. This guarantees the menu visually sits outside the message
-   surface and can open above/below it without being clipped by bubble bounds. */
-.ai-chat-message-menu.ai-chat-longpress-copy-menu{
-  display:block !important; position:fixed !important; left:0; top:0;
-  min-width:94px !important; width:max-content !important; max-width:calc(100vw - 20px) !important;
-  padding:.18rem !important; border-radius:15px !important;
-  background:color-mix(in srgb,var(--card) 72%,transparent) !important;
-  border:1px solid color-mix(in srgb,var(--text) 13%,transparent) !important;
-  backdrop-filter:blur(24px) saturate(175%) !important; -webkit-backdrop-filter:blur(24px) saturate(175%) !important;
-  box-shadow:0 12px 34px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.16) !important;
-  z-index:10050 !important; opacity:1 !important; transform:none !important;
-}
-.ai-chat-message-menu.ai-chat-longpress-copy-menu button{
-  width:auto !important; min-width:88px !important; min-height:36px !important; padding:.42rem .6rem !important;
-  border:0 !important; border-radius:10px !important; background:transparent !important; color:var(--text) !important;
-  display:flex !important; align-items:center !important; justify-content:center !important; gap:.42rem !important;
-  font:inherit !important; font-size:.80rem !important; font-weight:650 !important; cursor:pointer !important;
-  -webkit-user-select:none !important; user-select:none !important;
-}
-.ai-chat-message-menu.ai-chat-longpress-copy-menu button i{color:var(--primary) !important; width:auto !important; font-size:.78rem !important;}
-.ai-chat-message-menu.ai-chat-longpress-copy-menu button:hover,
-.ai-chat-message-menu.ai-chat-longpress-copy-menu button:active{background:color-mix(in srgb,var(--primary) 10%,transparent) !important;}
-</style>
-
-<style id="levromart-20260910-final-request-layout-fix">
-/* FINAL REQUEST / FOOTER / DIRECTORY PASS — scoped so existing marketplace
-   cards, colours and navigation remain unchanged outside these fixes. */
-
-/* Never manufacture a viewport-sized dead zone between page content and legal footer. */
-.container, #app { flex:0 0 auto !important; min-height:0 !important; }
-.site-footer { margin-top:.25rem !important; padding-top:.8rem !important; padding-bottom:.8rem !important; }
-
-/* Browse Everything packages: one wide, content-sized listing rather than a
-   narrow first column with an empty second column. This only affects package
-   cards in the main home catalogue, not the recommendation rail or storefront. */
-#app #productGrid:has(.package-listing-card) { grid-template-columns:minmax(0,1fr) !important; gap:.8rem !important; }
-#app #productGrid > .package-listing-card,
-#app #productGrid > .card.package-listing-card {
-  width:100% !important; min-width:0 !important; max-width:none !important;
-  padding:.85rem !important; margin:0 !important; height:auto !important; min-height:0 !important;
-}
-#app #productGrid > .package-listing-card .package-gallery,
-#app #productGrid > .card.package-listing-card .package-gallery {
-  width:100% !important; height:clamp(190px,34vw,300px) !important; min-height:190px !important;
-  border-radius:13px !important; overflow:hidden !important;
-}
-#app #productGrid > .package-listing-card .package-photo-main,
-#app #productGrid > .card.package-listing-card .package-photo-main,
-#app #productGrid > .package-listing-card .package-gallery-placeholder,
-#app #productGrid > .card.package-listing-card .package-gallery-placeholder {
-  width:100% !important; height:100% !important; min-height:0 !important; object-fit:cover !important;
-}
-#app #productGrid > .package-listing-card .package-card-title-row { margin:.65rem 0 .25rem !important; }
-#app #productGrid > .package-listing-card .package-card-title-row strong { font-size:1rem !important; line-height:1.2 !important; }
-#app #productGrid > .package-listing-card .package-card-title-row .badge { font-size:.78rem !important; padding:.3rem .6rem !important; }
-#app #productGrid > .package-listing-card .package-card-description,
-#app #productGrid > .package-listing-card .package-card-includes,
-#app #productGrid > .package-listing-card .package-card-vendor,
-#app #productGrid > .package-listing-card .package-card-delivery {
-  font-size:.78rem !important; line-height:1.35 !important; margin:.28rem 0 !important; white-space:normal !important;
-  overflow:visible !important; text-overflow:clip !important; display:block !important; -webkit-line-clamp:unset !important;
-}
-
-/* Admin People: allow the table wrapper to scroll both directions. */
-#app .admin-people-table-wrap {
-  overflow-x:auto !important; overflow-y:auto !important; max-height:min(62vh,520px) !important;
-  -webkit-overflow-scrolling:touch !important; touch-action:pan-x pan-y !important;
-  overscroll-behavior:contain !important;
-}
-
-/* Vendor directory controls stay compact: type tabs + a single Filters control,
-   with sector/city/category selectors only revealed on demand. */
-#app .vendor-listing-tabs { margin:.55rem 0 .55rem !important; }
-#app .vendors-filters-panel { max-height:320px !important; overflow-y:auto !important; }
-
-/* Vendor request workspace. */
-#app .vendor-requests-heading-row { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:.75rem; }
-#app .vendor-request-tabs { display:flex; gap:.45rem; overflow-x:auto; scrollbar-width:none; border-bottom:1px solid var(--border); margin:.35rem 0 .9rem; }
-#app .vendor-request-tabs::-webkit-scrollbar { display:none; }
-#app .vendor-request-tab { flex:0 0 auto; border:0; border-bottom:3px solid transparent; background:transparent; color:var(--text-muted); padding:.65rem .8rem; font:inherit; font-size:.82rem; font-weight:700; cursor:pointer; white-space:nowrap; }
-#app .vendor-request-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
-#app .vendor-request-tab span { display:inline-flex; align-items:center; justify-content:center; min-width:1.2rem; height:1.2rem; padding:0 .25rem; margin-left:.2rem; border-radius:999px; background:color-mix(in srgb,var(--primary) 12%,transparent); color:var(--primary); font-size:.68rem; }
-#app .vendor-request-card { margin-bottom:.75rem !important; padding:1rem !important; }
-#app .vendor-request-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:.7rem; }
-#app .vendor-request-person { display:flex; align-items:center; gap:.65rem; min-width:0; }
-#app .vendor-request-title { display:block; overflow-wrap:anywhere; }
-#app .vendor-request-description { margin:.55rem 0 0 !important; line-height:1.45 !important; }
-#app .vendor-request-meta { font-size:.78rem !important; margin:.3rem 0 0 !important; }
-#app .vendor-interest-row { display:flex; gap:.5rem; flex-wrap:wrap; margin:.7rem 0 .6rem; }
-#app .vendor-interest-btn.active { background:var(--primary) !important; color:#fff !important; border-color:var(--primary) !important; }
-#app .vendor-offer-compose { border-top:1px solid var(--border); padding-top:.7rem; margin-top:.2rem; }
-#app .vendor-offer-compose select { margin:0 0 .55rem !important; }
-#app .vendor-offer-fields { display:grid; grid-template-columns:minmax(110px,.38fr) minmax(0,1fr); gap:.55rem; align-items:stretch; }
-#app .vendor-offer-fields input, #app .vendor-offer-fields textarea { margin:0 !important; width:100% !important; min-width:0 !important; }
-#app .vendor-offer-fields textarea { resize:vertical; min-height:88px; line-height:1.4; }
-#app .vendor-send-offer-btn { width:100%; justify-content:center; margin-top:.55rem; }
-#app .vendor-offer-note { font-size:.72rem !important; margin:.45rem 0 0 !important; line-height:1.35 !important; }
-#app .vendor-offer-status { margin-top:.7rem; padding:.65rem .75rem; border-radius:12px; background:color-mix(in srgb,var(--primary) 7%,var(--card)); color:var(--text-muted); font-size:.78rem; }
-#app .vendor-my-request-card { margin-bottom:.75rem !important; padding:1rem !important; }
-#app .vendor-my-request-meta { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-top:.55rem; }
-#app .vendor-my-offers { margin-top:.7rem; border-top:1px solid var(--border); }
-#app .vendor-my-offer-row { display:flex; justify-content:space-between; gap:.8rem; padding:.65rem 0; border-bottom:1px solid var(--border); }
-#app .vendor-my-offer-row:last-child { border-bottom:0; }
-@media(max-width:560px){
-  #app .vendor-requests-heading-row { flex-direction:column; align-items:stretch; }
-  #app .vendor-requests-heading-row > .btn { width:100%; justify-content:center; }
-  #app .vendor-offer-fields { grid-template-columns:1fr; }
-}
-
-/* Login mark: preserve the white centre while adding a subtle green halo so it
-   remains visible against the white/light auth surface. */
-#loginModal .login-modal-logo {
-  background:radial-gradient(circle, rgba(16,185,129,.28) 0%, rgba(16,185,129,.12) 38%, transparent 72%) !important;
-  border-radius:50% !important;
-  padding:.12rem !important;
-  filter:drop-shadow(0 0 12px rgba(16,185,129,.48)) !important;
-  -webkit-filter:drop-shadow(0 0 12px rgba(16,185,129,.48)) !important;
-}
-
-/* The Levi/get-app mark uses white arcs, explicitly. */
-#installModalLogo { filter:brightness(0) invert(1) !important; -webkit-filter:brightness(0) invert(1) !important; }
-.brand-spinner-arc-1, .brand-spinner-arc-2 { stroke:#fff !important; }
-</style>
-</head><body>
+    </style></head><body>
     <h1>Levromart Transactions</h1>
     <p class="muted">Range: ${rangeLabel(adminFinanceRange)} · Generated ${new Date().toLocaleString()}</p>
     <div class="stats">
@@ -19708,160 +19577,9 @@ body.chat-full-page > #app{height:100% !important;overflow:hidden !important;ove
       <div class="stat"><b>${naira(commission)}</b>Commission earned</div>
     </div>
     <table><thead><tr><th>Date</th><th>Customer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th></tr></thead>
-    <tbody>${filtered.map((t) => `<tr><td>${new Date(t.created_at).toLocaleString()}</td><td>${esc(t.buyer_name || "")}</td><td>${esc(t.vendor_name || "")}</td><td>${esc((t.payment_type || "").replace("_", " "))}</td><td>${naira(t.amount)}</td><td>${esc(t.method)}</td><td>${esc(t.status)}</td><td>${naira(t.platform_cut)}</td></tr>`).join("")}</tbody></table>
-    <script>window.onload = () => window.print();<\/script>
-    
-
-
-
-/* Never let browser-native button/image chrome leak into the app's custom UI. */
-.product-message-wrap .ms-list button.ms-item,
-.product-message-wrap .ms-list a.ms-item,
-#storefrontMessageMenu .ms-item{
-  -webkit-tap-highlight-color:transparent;
-  text-transform:none !important;
-}
-.profile-avatar-lightbox-btn img{display:block;}
-#vendorProfileImageLightbox .vendor-profile-image-card{max-width:92vw;max-height:84vh;}
-#vendorProfileImageLightbox .vendor-profile-image-fallback i{font-size:35%;}
-
-/* Explicitly keep profile/notification drawers tap-open only. */
-#profilePanel,#notifPanel{touch-action:pan-y !important;}
-#profilePanel::after,#notifPanel::after{pointer-events:none;}
-</style>
-
-<style id="levromart-final-mobile-admin-and-carousel-fixes">
-/* Carousel: navigation is gesture-first. Any legacy arrow controls are hidden. */
-.home-promotional-carousel .home-promotional-arrow,
-.home-promotional-carousel .carousel-arrow,
-.home-promotional-carousel .carousel-prev,
-.home-promotional-carousel .carousel-next,
-.home-promotional-carousel [data-carousel-prev],
-.home-promotional-carousel [data-carousel-next]{display:none !important;}
-.home-promotional-viewport{touch-action:pan-y pinch-zoom !important;-webkit-user-select:none !important;user-select:none !important;}
-
-
-/* Link Library: URLs are genuine anchors, not pseudo-link text. Keep the
-   copy control easy to hit on phones. */
-#app .admin-link-row{grid-template-columns:minmax(0,1fr) auto !important;align-items:center !important;}
-#app .admin-link-url{display:block !important;color:var(--text-muted) !important;text-decoration:none !important;cursor:pointer !important;}
-#app .admin-link-url:hover{text-decoration:underline !important;color:var(--primary) !important;}
-@media(max-width:560px){#app .admin-link-row{grid-template-columns:1fr !important;}#app .admin-link-copy-btn{width:100% !important;}}
-
-/* Never expose old carousel arrow controls if a cached/legacy slide markup
-   happens to be present. Swipe/pointer navigation remains enabled. */
-.home-promotional-carousel button[aria-label*="previous" i],
-.home-promotional-carousel button[aria-label*="next" i]{display:none !important;}
-</style>
-
-<style id="levromart-canonical-vendor-cards-20260910">
-/* One canonical Top-rated Vendors card definition. */
-#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-city,
-@media(min-width:860px){
-}
-</style>
-<style id="levromart-canonical-admin-links-20260910">
-.admin-link-url-wrap{display:flex;align-items:center;gap:.35rem;min-width:0;}
-.admin-link-url{width:100%;min-width:0;border:1px solid var(--border);border-radius:.55rem;background:var(--input-bg);color:var(--text-muted);padding:.42rem .55rem;font:inherit;font-size:.74rem;line-height:1.3;}
-.admin-link-url:focus{outline:2px solid color-mix(in srgb,var(--primary) 40%,transparent);outline-offset:1px;}
-.admin-link-open{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:.5rem;color:var(--text-muted);}
-.admin-link-open:hover{color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent);text-decoration:none;}
-.ai-chat-nav-btn{margin-top:.55rem;border:1px solid color-mix(in srgb,var(--primary) 45%,var(--border));background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--primary);border-radius:999px;padding:.42rem .75rem;font:inherit;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;}
-.ai-chat-nav-btn:hover{background:color-mix(in srgb,var(--primary) 16%,var(--card));}
-.ai-chat-cart-action{margin-top:.55rem;display:inline-flex;align-items:center;gap:.35rem;color:var(--text-muted);font-size:.82rem;}
-</style>
-
-
-<style id="levromart-levi-tour-white-20260910">
-.tour-spotlight-hole{--levi-tour-white:#fff;}
-.tour-spotlight-hole + .tour-callout{}
-</style>
-<style id="levromart-final-link-nav-safety-20260910">
-.admin-link-url-wrap{display:flex;align-items:center;gap:.35rem;min-width:0;}
-.admin-link-url{width:100%;min-width:0;box-sizing:border-box;user-select:text;-webkit-user-select:text;}
-.ai-chat-nav-btn{appearance:none;-webkit-appearance:none;}
-</style>
-
-<style id="levromart-canonical-vendor-cards-20260910-final">
-/* Canonical Top-rated Vendors rail card: compact, vertical, centered. */
-#app .top-rated-vendors-scroll .homepage-vendor-card{
-  flex:0 0 8rem !important;width:8rem !important;min-width:8rem !important;max-width:8rem !important;
-  min-height:9.6rem !important;max-height:none !important;padding:.65rem .45rem !important;
-  display:flex !important;flex-direction:column !important;align-items:center !important;
-  justify-content:flex-start !important;text-align:center !important;gap:.35rem !important;overflow:hidden !important;
-}
-#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-avatar{
-  flex:0 0 2.7rem !important;width:2.7rem !important;height:2.7rem !important;
-  min-width:2.7rem !important;min-height:2.7rem !important;margin:0 auto !important;
-}
-#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-copy{
-  width:100% !important;min-width:0 !important;display:flex !important;flex-direction:column !important;
-  align-items:center !important;text-align:center !important;overflow:hidden !important;
-}
-#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-copy>strong{
-  width:100% !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;
-  overflow:hidden !important;white-space:normal !important;text-overflow:ellipsis !important;
-  text-align:center !important;font-size:.75rem !important;line-height:1.15 !important;
-}
-#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-city,
-#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-known{
-  width:100% !important;display:-webkit-box !important;-webkit-box-orient:vertical !important;-webkit-line-clamp:2 !important;
-  overflow:hidden !important;text-overflow:ellipsis !important;white-space:normal !important;
-  font-size:.58rem !important;line-height:1.12 !important;text-align:center !important;
-}
-#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-meta{
-  width:100% !important;display:flex !important;justify-content:center !important;align-items:center !important;
-  gap:.2rem !important;flex-wrap:wrap !important;
-}
-#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-meta .badge{
-  font-size:.48rem !important;padding:.12rem .22rem !important;line-height:1.1 !important;
-}
-@media(min-width:860px){
-  #app .top-rated-vendors-scroll .homepage-vendor-card{
-    flex-basis:8rem !important;width:8rem !important;min-width:8rem !important;max-width:8rem !important;
-  }
-}
-</style>
-
-<style id="levromart-user-final-20260910-request-vendor-pass">
-/* Vendor directory: clear Buy / Rent segmentation and one consolidated filter control. */
-#app #vendorsListingTabs{display:flex !important;align-items:center !important;gap:.3rem !important;flex-wrap:wrap !important;margin:.75rem 0 !important;padding:.28rem !important;border:1px solid color-mix(in srgb,var(--border) 90%,transparent) !important;border-radius:999px !important;background:color-mix(in srgb,var(--card) 86%,transparent) !important;box-shadow:var(--shadow) !important;}
-#app #vendorsListingTabs .vendor-listing-tab{border:0 !important;border-radius:999px !important;background:transparent !important;color:var(--text-muted) !important;padding:.58rem .82rem !important;font:inherit !important;font-size:.72rem !important;font-weight:750 !important;white-space:nowrap !important;cursor:pointer !important;}
-#app #vendorsListingTabs .vendor-listing-tab.active{background:var(--primary) !important;color:#fff !important;box-shadow:0 5px 14px color-mix(in srgb,var(--primary) 20%,transparent) !important;}
-#app .vendors-directory-controls{display:grid !important;grid-template-columns:minmax(0,1fr) auto !important;gap:.55rem !important;align-items:center !important;margin:.8rem 0 .45rem !important;}
-#app .vendors-directory-controls input{min-width:0 !important;}
-#app .vendors-filters-toggle{height:100% !important;min-height:46px !important;white-space:nowrap !important;}
-#app .vendors-filters-panel{margin:.25rem 0 .9rem !important;}
-@media(max-width:560px){#app #vendorsListingTabs{border-radius:18px !important;}#app #vendorsListingTabs .vendor-listing-tab{flex:1 1 calc(50% - .3rem) !important;text-align:center !important;}#app .vendors-directory-controls{grid-template-columns:minmax(0,1fr) !important;}#app .vendors-filters-toggle{width:100% !important;justify-content:center !important;}}
-
-/* A direct-message thread owns the entire viewport. The navigation lives inside #app, so body > .bottom-nav is not enough. */
-body.chat-full-page #bottomNav,
-body.chat-full-page #cartFab,
-body.chat-full-page #aiChatFab{display:none !important;visibility:hidden !important;pointer-events:none !important;}
-</style>
-
-
-</body>
-
-
-
-
-<style id="levromart-discarded-bulk-css">
-.vendor-discarded-bulkbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin:0 0 .65rem;padding:.55rem .65rem;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--card) 92%,transparent);font-size:.75rem}
-.vendor-discarded-bulkbar label{display:inline-flex;align-items:center;gap:.4rem;font-weight:700;cursor:pointer}
-.vendor-discarded-bulkbar .btn{margin-left:auto!important}
-.vendor-discarded-card{position:relative!important;align-items:flex-start!important}
-.discarded-select{display:grid;place-items:center;flex:0 0 auto;padding-top:.2rem;cursor:pointer}
-.discarded-select input{width:18px;height:18px;accent-color:var(--primary)}
-</style>
-
-
-<style id="levromart-hard-top-search-css">
-#levromartHeaderSearchBackdrop{z-index:2147483000!important}
-#levromartHeaderSearchDock{z-index:2147483001!important}
-#levromartHeaderSearchButton{position:relative!important;z-index:2147483002!important;cursor:pointer!important}
-</style>
-</html>`);
+    <tbody>${filtered.map((t) => `<tr><td>${new Date(t.created_at).toLocaleString()}</td><td>${esc(t.buyer_name || "")}</td><td>${esc(t.vendor_name || "")}</td><td>${esc((t.payment_type || "").replace("_", " "))}</td><td>${naira(t.amount)}</td><td>${esc(t.method || "")}</td><td>${esc(t.status || "")}</td><td>${naira(t.platform_cut)}</td></tr>`).join("")}</tbody></table>
+    ${"<scr"}ipt>window.onload = () => window.print();<\/script>
+  </body></html>`);
   w.document.close();
 }
 
@@ -26309,12 +26027,15 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 
   // Unified My Shop listings page: products, services and packages in one screen.
   window.switchVendorListingTab=function(tab){
-    document.querySelectorAll('[data-vendor-listing-section]').forEach(el=>el.classList.toggle('hidden',tab!=='all'&&el.dataset.vendorListingSection!==tab));
+    tab=String(tab||'products');
+    if(tab==='all')tab='products';
+    document.querySelectorAll('[data-vendor-listing-section]').forEach(el=>el.classList.toggle('hidden',tab==='packages'?el.dataset.vendorListingSection!=='packages':el.dataset.vendorListingSection==='packages'));
     document.querySelectorAll('.vendor-products-unified-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
-    document.querySelectorAll('[data-vendor-listing-section="products"] .card').forEach(card=>card.classList.toggle('hidden',tab==='services'));
-    document.querySelectorAll('[data-vendor-listing-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab==='products'));
-    document.querySelectorAll('[data-vendor-listing-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab==='services'));
-    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>{if(tab==='packages')g.classList.add('hidden');else g.classList.remove('hidden');});
+    document.querySelectorAll('[data-vendor-listing-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab!=='services'));
+    document.querySelectorAll('[data-vendor-listing-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab!=='products'));
+    document.querySelectorAll('[data-vp-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab!=='services'));
+    document.querySelectorAll('[data-vp-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab!=='products'));
+    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>{if(tab==='packages')g.classList.add('hidden');});
     try{localStorage.setItem('levromart-vendor-listing-tab',tab)}catch(_){}
   }
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
@@ -26356,12 +26077,12 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
         host.appendChild(section);
       }catch(_){ }
     }
-    const remembered=(()=>{try{return localStorage.getItem('levromart-vendor-listing-tab')||'all'}catch(_){return'all'}})();
+    const remembered=(()=>{try{return localStorage.getItem('levromart-vendor-listing-tab')||'products'}catch(_){return'all'}})();
     window.switchVendorListingTab(remembered);
     decorateCommissionBoxes();
   }
 
-  function patchVendorProductsMarkup(){const btn=byId('saveProductDraftBtn'),sel=byId('prodBillingModel'),service=byId('prodIsService');if(btn){const show=!service?.checked&&sel?.value==='monthly'&&!editingProductId;btn.classList.toggle('hidden',!show)} }
+  function patchVendorProductsMarkup(){const btn=byId('saveProductDraftBtn'),sel=byId('prodBillingModel'),service=byId('prodIsService');if(btn){const show=false;btn.classList.toggle('hidden',true)} }
   document.addEventListener('change',e=>{if(e.target?.id==='prodBillingModel'||e.target?.id==='prodIsService')patchVendorProductsMarkup()},true);
   const observer=new MutationObserver(()=>{clearTimeout(window.__levroFinalUxTimer2);window.__levroFinalUxTimer2=setTimeout(()=>{bindTopButton();patchVendorProductsMarkup();renderUnifiedEnhancements()},120)});observer.observe(document.body,{childList:true,subtree:true});
   setTimeout(()=>{bindTopButton();patchVendorProductsMarkup();renderUnifiedEnhancements()},350);
@@ -26373,8 +26094,34 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   setTimeout(autoWarmBuyerLocation,500);
 
   // Add a Locate Me button to the vendor profile map.
-  function addVendorMapLocate(){const map=byId('veLocationMap');if(!map||map.querySelector('.vendor-map-locate-control'))return;const b=document.createElement('button');b.type='button';b.className='vendor-map-locate-control';b.title='Use my current location';b.setAttribute('aria-label','Use my current location');b.innerHTML='<i class="fa-solid fa-location-crosshairs"></i>';b.onclick=()=>useMyLocationForVendor?.();map.appendChild(b)}
+  function addVendorMapLocate(){const map=byId('veLocationMap');if(!map||map.querySelector('.vendor-map-locate-control'))return;const b=document.createElement('button');b.type='button';b.className='vendor-map-locate-control';b.title='Use my current location';b.setAttribute('aria-label','Use my current location');b.innerHTML='<i class="fa-solid fa-location-crosshairs"></i>';b.onclick=()=>locateVendorMapOnly?.();map.appendChild(b)}
   new MutationObserver(addVendorMapLocate).observe(document.body,{childList:true,subtree:true});setTimeout(addVendorMapLocate,500);
+})();
+</script>
+<script id="levromart-phase1-commission-countdown-runtime">
+(function(){
+  let lastVendorId="", refreshTimer=0, countdownTimer=0, running=false;
+  function updateText(due){document.querySelectorAll('.levro-commission-deadline').forEach(el=>{if(!due){el.textContent='No active deadline';return;}const ms=new Date(due).getTime()-Date.now();if(ms<=0){el.textContent='Due now';return;}const days=Math.floor(ms/86400000),hours=Math.floor((ms%86400000)/3600000);el.textContent=days?days+'d '+hours+'h left':hours?hours+'h left':'Less than 1h left';});}
+  async function refresh(){
+    if(running||typeof sb==='undefined'||typeof vendor==='undefined'||!vendor?.id)return;
+    const els=[...document.querySelectorAll('.levro-commission-deadline')]; if(!els.length)return;
+    running=true; const id=String(vendor.id); lastVendorId=id;
+    try{
+      let data=null;
+      try{const r=await sb.rpc('get_vendor_commission_deadline',{p_vendor_id:vendor.id});if(!r.error&&r.data?.[0])data=r.data[0]}catch(_){}
+      if(!data?.earliest_due_at){
+        try{const r=await sb.from('commission_charges').select('due_at').eq('vendor_id',vendor.id).eq('status','owed').not('due_at','is',null).order('due_at',{ascending:true}).limit(1);if(!r.error&&r.data?.[0])data={earliest_due_at:r.data[0].due_at}}catch(_){}
+      }
+      updateText(data?.earliest_due_at||null);
+      clearInterval(countdownTimer); countdownTimer=setInterval(()=>updateText(data?.earliest_due_at||null),30000);
+    }finally{running=false}
+  }
+  function schedule(){clearTimeout(refreshTimer);refreshTimer=setTimeout(refresh,120);}
+  const app=document.getElementById('app');
+  if(app)new MutationObserver(records=>{if(records.some(r=>{const t=r.target;return !(t instanceof Element)||!t.closest?.('.levro-commission-deadline')}))schedule()}).observe(app,{childList:true,subtree:true});
+  window.addEventListener('popstate',schedule);
+  setTimeout(schedule,400);setTimeout(schedule,1200);setTimeout(schedule,2500);
+  window.__levroRefreshCommissionCountdowns=refresh;
 })();
 </script>
 </body>
@@ -28998,6 +28745,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     try{
       const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json","Cache-Control":"no-cache"},cache:"no-store",body:JSON.stringify({action:"pay-listing",kind,id,accessToken:session.access_token})});
       const data=await r.json().catch(()=>({}));
+      if(r.ok&&data.alreadyActive){showToast?.("This listing is already active and paid through "+new Date(data.paid_until||Date.now()).toLocaleDateString("en-GB")+".","success");navigate?.("vendorProducts",{},false);return true;}
       if(!r.ok||!data.authorization_url)throw new Error(data.error||"Could not start the ₦1,000 listing payment.");
       window.location.assign(data.authorization_url);return true;
     }catch(e){if(typeof showToast==='function')showToast(e.message||"Could not start the listing payment.","error");return false;}
@@ -29054,8 +28802,9 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   async function finalPaymentReturn(){
     const u=new URL(location.href);
     const returnMode=u.searchParams.get("listingPayment");
+    const listingPaid=u.searchParams.get("listingPaid");
     const reference=u.searchParams.get("reference");
-    if(returnMode!=="return"||!reference)return;
+    if((returnMode!=="return" && listingPaid!=="1")||!reference)return;
     ["listingPayment","listingPaid","kind","id","reference","reason"].forEach(k=>u.searchParams.delete(k));
     history.replaceState(history.state,"",u.pathname+(u.searchParams.toString()?`?${u.searchParams}`:"")+u.hash);
     if(!(typeof session!=="undefined"&&session?.access_token)){showToast?.("Payment returned successfully, but your session expired. Sign in again to finish your listing.","error");return;}
@@ -29123,4 +28872,117 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 #levromartHeaderSearchDock{z-index:2147483001!important}
 #levromartHeaderSearchButton{position:relative!important;z-index:2147483002!important;cursor:pointer!important}
 </style>
+
+<script id="levromart-phase1-final-repairs-20260911">
+(function(){
+  "use strict";
+  const SEARCH_KEY="levromart-search-history-v1";
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  const read=()=>{try{const a=JSON.parse(localStorage.getItem(SEARCH_KEY)||"[]");return Array.isArray(a)?a.map(String).map(x=>x.trim()).filter(Boolean).slice(0,8):[]}catch(_){return[]}};
+  const save=q=>{q=String(q||"").trim();if(!q)return;try{localStorage.setItem(SEARCH_KEY,JSON.stringify([q,...read().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,8)))}catch(_){}};
+  function installSearch(){
+    window.__levroPhase1SearchOwner=true;
+    let b=document.getElementById("levromartHeaderSearchButton");
+    if(!b)return false;
+    // Replace the button node to remove every historical event listener/inline handler.
+    if(b.dataset.phase1Owned!=="1"){const n=b.cloneNode(true);n.removeAttribute("onclick");n.dataset.phase1Owned="1";b.replaceWith(n);b=n;}
+    let oldD=document.getElementById("levromartHeaderSearchDock");
+    if(oldD && !oldD.querySelector(".phase1-search-shell")) oldD.remove();
+    let d=document.getElementById("levromartHeaderSearchDock");
+    let back=document.getElementById("levromartHeaderSearchBackdrop");
+    if(!back){back=document.createElement("div");back.id="levromartHeaderSearchBackdrop";document.body.appendChild(back);}
+    if(!d){d=document.createElement("div");d.id="levromartHeaderSearchDock";d.innerHTML='<div class="phase1-search-shell"><div class="phase1-search-bar"><i class="fa-solid fa-magnifying-glass"></i><input id="levromartHeaderSearchInput" type="search" autocomplete="off" placeholder="Search products, services, vendors…" aria-label="Search Levromart"><button type="button" id="levromartHeaderSearchClose" aria-label="Close search"><i class="fa-solid fa-xmark"></i></button></div><div id="levromartHeaderSearchSuggest"></div></div>';document.body.appendChild(d);}
+    const input=d.querySelector("#levromartHeaderSearchInput"), content=d.querySelector("#levromartHeaderSearchSuggest");
+    const render=()=>{const h=read();content.innerHTML='<div class="phase1-search-section"><div class="phase1-search-head"><strong>Recent searches</strong>'+(h.length?'<button type="button" id="phase1ClearSearchHistory">Clear all</button>':'')+'</div>'+(h.length?h.map(q=>'<div class="phase1-search-row"><button type="button" class="phase1-use" data-q="'+esc(q).replace(/"/g,'&quot;')+'"><i class="fa-solid fa-clock-rotate-left"></i><span>'+esc(q)+'</span></button><button type="button" class="phase1-remove" data-q="'+esc(q).replace(/"/g,'&quot;')+'" aria-label="Remove search"><i class="fa-solid fa-xmark"></i></button></div>').join(''):'<p class="phase1-empty">Your recent searches will appear here.</p>')+'</div><div class="phase1-search-section"><div class="phase1-search-head"><strong>Search Levromart</strong></div><p class="phase1-empty">Search products, services, vendors and packages.</p></div>';
+      content.querySelector("#phase1ClearSearchHistory")?.addEventListener("click",e=>{e.preventDefault();localStorage.removeItem(SEARCH_KEY);render()});
+      content.querySelectorAll(".phase1-remove").forEach(x=>x.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();try{localStorage.setItem(SEARCH_KEY,JSON.stringify(read().filter(q=>q.toLowerCase()!==x.dataset.q.toLowerCase())))}catch(_){}render()}));
+      content.querySelectorAll(".phase1-use").forEach(x=>x.addEventListener("click",()=>{input.value=x.dataset.q||"";input.focus();save(input.value);route(input.value)}));
+    };
+    const open=()=>{back.classList.add("open");d.classList.add("open");document.body.classList.add("search-input-active");render();requestAnimationFrame(()=>{try{input.focus({preventScroll:true})}catch(_){input.focus()}})};
+    const close=()=>{back.classList.remove("open");d.classList.remove("open");content.innerHTML="";input.value="";input.blur();document.body.classList.remove("search-input-active")};
+    const route=q=>{q=String(q||"").trim();if(!q)return;save(q);close();if(typeof window.routeSearch==="function")window.routeSearch(q);else if(typeof navigate==="function")navigate("home",{section:"products",search:q})};
+    window.openLevromartHeaderSearch=open;window.closeLevromartHeaderSearch=close;window.__levroTopSearch=e=>{e?.preventDefault?.();e?.stopPropagation?.();d.classList.contains("open")?close():open();return false};
+    if(b.dataset.phase1ClickBound!=="1"){b.dataset.phase1ClickBound="1";b.addEventListener("click",window.__levroTopSearch)}
+    if(back.dataset.phase1Bound!=="1"){back.dataset.phase1Bound="1";back.addEventListener("click",e=>{if(e.target===back)close()})}
+    if(d.dataset.phase1Bound!=="1"){d.dataset.phase1Bound="1";d.querySelector("#levromartHeaderSearchClose")?.addEventListener("click",close);input.addEventListener("input",()=>{if(!input.value.trim())render();});input.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();close()}else if(e.key==="Enter"){e.preventDefault();route(input.value)}})}
+    return true;
+  }
+  function bootSearch(){if(!installSearch())setTimeout(bootSearch,250)}
+  bootSearch();
+  // Permission nudges are one-time onboarding prompts, not recurring notifications.
+  const NUDGE_KEY="levromart-permission-nudge-seen-v2";
+  const seen=()=>{try{return localStorage.getItem(NUDGE_KEY)==="1"}catch(_){return false}};
+  const markSeen=()=>{try{localStorage.setItem(NUDGE_KEY,"1")}catch(_){}};
+  const patchNudge=()=>{
+    const fn=window.leviPermissionReminder;
+    if(typeof fn!=="function"||fn.__phase1)return;
+    const wrapped=async function(...args){if(seen())return false;return fn.apply(this,args)};wrapped.__phase1=true;window.leviPermissionReminder=wrapped;
+  };
+  setTimeout(patchNudge,0);setTimeout(patchNudge,500);setTimeout(patchNudge,2000);
+  document.addEventListener("click",e=>{if(e.target?.closest?.(".levi-permission-nudge-close,.levi-permission-nudge-action,#notifPromptModal button,#locationPromptModal button"))markSeen()},true);
+  // Stop any already-created nudge after it has been dismissed and prevent the 5-minute loop.
+  setInterval(()=>{if(seen())document.getElementById("leviPermissionNudge")?.remove()},1500);
+  // Make the vendor-owned follower count an actual social-style entry point.
+  function wireFollowerCount(){
+    if(typeof window.makeFollowerStatClickable==='function') { try{ window.makeFollowerStatClickable(); }catch(_){} }
+    const stat=document.querySelector('.storefront-profile[data-own-storefront="1"] [data-follow-count]');
+    const id=(typeof currentViewParams!="undefined"&&currentViewParams?.vendorId)||vendor?.id;
+    if(stat&&id){stat.classList.add('storefront-follow-count-button');stat.onclick=()=>window.showVendorFollowers?.(id);stat.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();window.showVendorFollowers?.(id)}};stat.setAttribute('role','button');stat.setAttribute('tabindex','0');stat.title='View your followers';}
+  }
+  setTimeout(wireFollowerCount,300);
+  new MutationObserver(()=>setTimeout(wireFollowerCount,60)).observe(document.body,{childList:true,subtree:true});
+
+  // Commission reminder clock for both My Shop and Edit business profile.
+  async function phase1CommissionDeadline(){
+    if(typeof sb==='undefined'||!vendor?.id)return;
+    try{
+      const r=await sb.rpc('get_vendor_commission_deadline',{p_vendor_id:vendor.id});
+      const due=r?.data?.[0]?.earliest_due_at;
+      if(!due)return;
+      const tick=()=>document.querySelectorAll('.levro-commission-deadline').forEach(el=>{const ms=new Date(due).getTime()-Date.now();if(ms<=0){el.textContent='Due now';return;}const d=Math.floor(ms/86400000),h=Math.floor(ms%86400000/3600000),m=Math.floor(ms%3600000/60000);el.textContent=d?`${d}d ${h}h left`:h?`${h}h ${m}m left`:`${m}m left`;});
+      tick();clearInterval(window.__phase1CommissionTimer);window.__phase1CommissionTimer=setInterval(tick,30000);
+    }catch(_){}
+  }
+  setTimeout(phase1CommissionDeadline,450);
+  new MutationObserver(()=>{clearTimeout(window.__phase1CommissionTimerBoot);window.__phase1CommissionTimerBoot=setTimeout(phase1CommissionDeadline,250)}).observe(document.body,{childList:true,subtree:true});
+
+  // Admin bottom navigation: compact, same footprint as the normal rail.
+  const style=document.createElement("style");style.textContent=`@media(max-width:720px){#bottomNav:not(.has-add):not(.buyer-no-add){height:68px!important;min-height:0!important;padding:.22rem .22rem!important;box-sizing:border-box!important;align-items:center!important}#bottomNav:not(.has-add):not(.buyer-no-add) .bottom-nav-item{height:54px!important;min-height:54px!important;padding:.28rem .08rem!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:.18rem!important}#bottomNav:not(.has-add):not(.buyer-no-add) .bottom-nav-item>span:last-child{font-size:.62rem!important;line-height:1!important}}@media(min-width:721px){#bottomNav{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(760px,calc(100vw - 2rem))!important}#bottomNav:not(.has-add) .bottom-nav-item{flex:1 1 0!important}}.vendor-commission-deadline-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:.15rem 0 .65rem;font-size:.76rem}.vendor-commission-deadline-row strong{font-variant-numeric:tabular-nums;color:var(--primary)}.phase1-search-shell{width:min(760px,100%);margin:0 auto;background:color-mix(in srgb,var(--card) 97%,transparent);border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border));border-radius:20px;box-shadow:0 24px 70px rgba(15,23,42,.22);overflow:hidden}.phase1-search-bar{display:flex;align-items:center;gap:.55rem;padding:.5rem .65rem;border-bottom:1px solid var(--border)}.phase1-search-bar>i{color:var(--primary)}#levromartHeaderSearchDock #levromartHeaderSearchInput{flex:1!important;min-width:0!important;border:0!important;background:transparent!important;box-shadow:none!important;margin:0!important;padding:.7rem .1rem!important}.phase1-search-bar>button{width:38px;height:38px;border:0;background:transparent;border-radius:50%;cursor:pointer}.phase1-search-section{padding:.7rem}.phase1-search-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem;font-size:.8rem;margin-bottom:.45rem}.phase1-search-head button{border:0;background:none;color:var(--primary);font-weight:700;cursor:pointer}.phase1-search-row{display:flex;align-items:center;border-radius:11px}.phase1-use{flex:1;display:flex;align-items:center;gap:.65rem;border:0;background:none;padding:.65rem;color:var(--text);text-align:left;cursor:pointer}.phase1-use i{color:var(--text-muted)}.phase1-use span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.phase1-remove{width:36px;height:36px;border:0;background:transparent;color:var(--text-muted);cursor:pointer}.phase1-empty{margin:.2rem 0;color:var(--text-muted);font-size:.75rem}.vendor-product-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.65rem!important}.vendor-product-card-grid .card{min-width:0!important;padding:.65rem!important}.vendor-product-card-grid .product-img{height:150px!important;border-radius:12px!important}.vendor-draft-actions button[aria-label*="Delete"],.ai-chat-history-delete{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.saved-location-delete{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.order-filters-wrap .filter-dropdown-menu,.order-filters-wrap .filters-panel,.vendor-notification-menu{max-width:min(360px,calc(100vw - 2rem))!important;width:min(360px,calc(100vw - 2rem))!important}.order-filters-wrap .filter-dropdown-menu,.order-filters-wrap .filters-panel{max-height:55vh!important;overflow:auto!important}@media(min-width:721px){#bottomNav{max-width:760px!important;margin-inline:auto!important}.admin-dash-tabs{max-width:1100px!important;margin-inline:auto!important;justify-content:center!important}.vendor-product-card-grid .product-img{height:180px!important}}@media(max-width:520px){.vendor-product-card-grid .product-img{height:118px!important}}`;document.head.appendChild(style);
+})();
+</script>
+<style id="levromart-phase1-urgent-final-css">
+#app .vendor-product-actions .btn-danger,#app .vendor-discarded-actions .btn-danger,#app button[data-status="delete"]{background:#dc2626!important;border-color:#dc2626!important;color:#fff!important}
+#app .vendor-admin-action[data-status="rejected"]{background:#d97706!important;border-color:#d97706!important;color:#fff!important}
+#app .vendor-admin-action[data-status="verified"]{background:#16a34a!important;border-color:#16a34a!important;color:#fff!important}
+#app .vendor-edit-action{background:#2563eb!important;border-color:#2563eb!important;color:#fff!important}
+#app .vendor-pause-action{background:var(--primary)!important;border-color:var(--primary)!important;color:#fff!important}
+#app button[onclick*="exportFinancePdf"]{background:transparent!important;border:1px solid var(--border)!important;color:var(--text-muted)!important}
+
+#app .vendor-products-heading-actions button[onclick*="toggleVendorProductsView"]{background:#2563eb!important;border-color:#2563eb!important;color:#fff!important}
+#app .vendor-products-heading-actions button[onclick*="toggleVendorProductsView"]:nth-child(2){background:#64748b!important;border-color:#64748b!important}
+#app .vendor-products-unified-tabs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.45rem!important;margin:.65rem 0 .9rem!important;overflow:visible!important}
+#app .vendor-products-unified-tabs button{min-height:42px!important;padding:.55rem .5rem!important;border:1px solid var(--border)!important;background:var(--card)!important;color:var(--text-muted)!important;border-radius:12px!important;font-size:.76rem!important;font-weight:750!important}
+#app .vendor-products-unified-tabs button.active{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important}
+#app .vendor-product-card-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%!important;gap:.65rem!important}
+#app .vendor-product-card-grid>.card{min-width:0!important;width:100%!important}
+#app .vendor-notification-menu,#app .follow-menu{width:min(300px,calc(100vw - 2rem))!important;max-width:min(300px,calc(100vw - 2rem))!important;max-height:58vh!important;overflow:auto!important;padding:.55rem!important}
+#app .follow-menu .follow-pref-row{min-height:42px!important;padding:.28rem .25rem!important}
+#app .follow-menu .follow-mute-grid{grid-template-columns:repeat(4,1fr)!important}
+#app .order-filters-panel{width:min(300px,calc(100vw - 2rem))!important;max-width:min(300px,calc(100vw - 2rem))!important;max-height:48vh!important;overflow:auto!important;padding:.7rem!important}
+#app .orders-filter-search-row{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;width:100%!important;gap:.45rem!important}
+#app .orders-filter-search-row>.order-filters-wrap{flex:1 1 auto!important;min-width:0!important}
+#app .orders-filter-search-row>.final-order-search-wrap{flex:0 0 42px!important;width:42px!important;min-width:42px!important}
+#levromartHeaderSearchBackdrop{background:rgba(15,23,42,.10)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;filter:none!important}
+#levromartHeaderSearchDock .phase1-search-shell{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--card)!important}
+#confirmModal,#textPromptModal,#notReceivedModal,#suggestionModal,#storefrontShareModal,#productRegionsModal{z-index:2147483600!important}
+#confirmModal .modal-content,#textPromptModal .modal-content,#notReceivedModal .modal-content,#suggestionModal .modal-content,#storefrontShareModal .modal-content,#productRegionsModal .modal-content{position:relative!important;z-index:2147483601!important}
+.profile-request-badge{margin-left:.4rem!important;font-size:.62rem!important;min-width:1.25rem!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}.profile-request-badge.hidden{display:none!important}
+.rating-five-star{background:#7c3aed!important;color:#fff!important;border-color:#7c3aed!important}
+.password-field-wrap{position:relative!important;width:100%!important}.password-field-wrap>input{width:100%!important;padding-right:3rem!important;box-sizing:border-box!important}.password-visibility-toggle{position:absolute!important;right:.45rem!important;top:50%!important;transform:translateY(-50%)!important;width:40px!important;height:40px!important;border:0!important;background:transparent!important;color:var(--text-muted)!important;border-radius:10px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important}.password-visibility-toggle:hover{color:var(--primary)!important;background:color-mix(in srgb,var(--primary) 7%,transparent)!important}
+.storefront-own-message-icon{width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;border-radius:50%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}
+@media(max-width:520px){#app .vendor-products-unified-tabs button{font-size:.7rem!important;padding:.5rem .3rem!important}#app .vendor-product-card-grid{gap:.5rem!important}}
+</style>
+<script id="levromart-phase1-password-runtime">
+(function(){document.addEventListener("click",function(e){const b=e.target?.closest?.(".password-visibility-toggle");if(!b)return;const i=document.getElementById(b.dataset.passwordTarget);if(!i)return;const showing=i.type==="text";i.type=showing?"password":"text";const icon=b.querySelector("i");if(icon)icon.className="fa-solid "+(showing?"fa-eye":"fa-eye-slash");b.setAttribute("aria-label",(showing?"Show ":"Hide ")+"password");b.title=showing?"Show password":"Hide password"},true)})();
+</script>
 </html>
