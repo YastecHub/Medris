@@ -919,6 +919,11 @@
   .chat-typing-dots i:nth-child(3){animation-delay:.3s;}
   @keyframes chatTypingDot { 0%,60%,100%{transform:translateY(0);opacity:.4;} 30%{transform:translateY(-3px);opacity:1;} }
   .reaction-picker.reaction-picker-below { bottom:auto !important; top:calc(100% + .3rem) !important; }
+/* Long-press surfaces: keep the emoji rail beside the compact action menu so
+   both are visible from the same gesture. */
+.chat-bubble-wrap.mine .reaction-picker-with-action-menu{right:calc(100% + .45rem)!important;left:auto!important;bottom:calc(100% + .3rem)!important;}
+.chat-bubble-wrap.theirs .reaction-picker-with-action-menu{left:calc(100% + .45rem)!important;right:auto!important;bottom:calc(100% + .3rem)!important;}
+@media(max-width:520px){.reaction-picker-with-action-menu{width:min(58vw,300px)!important;max-width:min(58vw,300px)!important;}.chat-bubble-wrap.mine .reaction-picker-with-action-menu{right:calc(100% + .35rem)!important;}.chat-bubble-wrap.theirs .reaction-picker-with-action-menu{left:calc(100% + .35rem)!important;}}
 .reaction-picker { flex-wrap:nowrap; width:min(92vw, 520px); max-width:min(92vw, 520px); overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; white-space:nowrap; border-radius:18px; gap:.18rem; padding:.38rem; }
   .reaction-picker::-webkit-scrollbar { display:none; }
   .reaction-picker button { flex:0 0 auto; min-width:2rem; min-height:2rem; }
@@ -4869,7 +4874,6 @@ body.product-detail-view #aiChatFab{right:.7rem !important;bottom:.65rem !import
 
 <style id="2026-09-08-user-ux-final">
 /* Keep the floating Levi control out of product/package detail content. */
-body.product-detail-view #aiChatFab{display:none !important;pointer-events:none !important;}
 /* Vendor cards: verified is a bottom-left status, not part of the location row. */
 .vendor-card .vendor-card-footer{display:flex;align-items:center;justify-content:flex-start;gap:.35rem;margin-top:.55rem;min-height:1.55rem;flex-wrap:wrap;}
 .vendor-card .vendor-card-footer .badge{margin-left:0 !important;}
@@ -10355,7 +10359,9 @@ async function navigate(view, params = {}, pushHistory = true) {
       ? `${location.pathname}?storefront=${encodeURIComponent(params.vendorId)}`
       : view === "packageDetail" && params?.packageId
         ? `${location.pathname}?package=${encodeURIComponent(params.packageId)}`
-        : location.pathname;
+        : view === "productDetail" && params?.productId
+          ? `${location.pathname}?product=${encodeURIComponent(params.productId)}`
+          : location.pathname;
     history.pushState({ view, params }, "", navUrl);
   }
   // Mobile browsers (and installed PWAs especially) routinely discard a
@@ -13251,7 +13257,7 @@ function jumpToPinnedMessage(messageId) {
 }
 
 function showMessageActionMenu(bubble) {
-  clearMessageActionOverlays();
+  document.querySelectorAll(".msg-action-menu").forEach((p) => p.remove());
   const msgId = bubble.dataset.msgId;
   const mine = bubble.classList.contains("mine");
   const createdAt = bubble.dataset.createdAt;
@@ -13272,6 +13278,12 @@ function showMessageActionMenu(bubble) {
   }
   menu.innerHTML = actions.join("");
   wrap.appendChild(menu);
+  // A single long press produces both WhatsApp-style surfaces: the emoji
+  // reaction row and the existing message action menu. Keep the two surfaces
+  // visually distinct instead of letting the menu cover the emoji row.
+  openReactionPicker({ target: bubble, stopPropagation(){} }, msgId);
+  const longPressPicker = wrap.querySelector(`.reaction-picker[data-for="${CSS.escape(String(msgId))}"]`);
+  if (longPressPicker) longPressPicker.classList.add("reaction-picker-with-action-menu");
 
   // Place the action menu where it is actually visible. If the message is
   // near the top of the viewport, the menu opens below it; otherwise it
@@ -13969,7 +13981,7 @@ async function openPackageShare(packageId) {
     const name = pkg.name || "this package";
     byId("storefrontShareTitle").textContent = `Share ${name}`;
     byId("storefrontShareText").textContent = `Share this package on Levromart.`;
-    box.dataset.vendorId = ""; box.dataset.url = url; box.dataset.name = name; box.dataset.whatsapp = ""; box.dataset.packageId = pkg.id;
+    box.dataset.vendorId = ""; box.dataset.url = url; box.dataset.name = name; box.dataset.whatsapp = ""; box.dataset.packageId = pkg.id; delete box.dataset.productId;
     box.classList.remove("hidden");
     trackModalOpened("storefrontShareModal");
   } catch (err) { showToast(err?.message || "Couldn't prepare package sharing.", "error"); }
@@ -14108,14 +14120,14 @@ async function renderProductDetail(productId) {
   let html = `<div class="card product-detail-card" data-product-detail-id="${esc(product.id)}" style="position:relative;">
     <div class="product-detail-top-actions" aria-label="Product actions">
       <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${product.id}')" title="Save to wishlist" aria-label="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
-      <button type="button" class="product-storefront-share-btn" onclick="shareStorefrontFromProduct(event,'${product.vendor.id}')" title="Share vendor storefront" aria-label="Share vendor storefront"><i class="fa-solid fa-share-nodes"></i></button>
+      <button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share product" aria-label="Share product"><i class="fa-solid fa-share-nodes"></i></button>
     </div>
     <h2 class="product-detail-title">${esc(product.name)}${product.is_service ? ` <span class="badge">Service</span>` : ""}</h2>
     <div class="product-detail-media">${photosHtml}</div>
     <div class="product-detail-actions">
       ${profile?.role !== "admin" ? (product.vendor.whatsapp_visible && product.vendor.whatsapp_number ? `<div class="ms-wrap product-message-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm" type="button" onclick="toggleInlineMenu('productMessageMenu-${product.id}',event)"><i class='fa-solid fa-comment-dots'></i> Message vendor</button><div class="ms-list hidden" id="productMessageMenu-${product.id}" style="left:0;right:auto;width:max-content;min-width:190px;"><button class="ms-item" type="button" onclick="startConversationWithVendor('${product.vendor.id}');closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(product.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm" onclick="startConversationWithVendor('${product.vendor.id}')"><i class='fa-solid fa-comment-dots'></i> Message vendor</button>`) : ""}
       ${product.vendor.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(product.vendor.phone)}" onclick="callVendorGated(event,'${esc(product.vendor.phone)}','${product.vendor.id}')"><i class='fa-solid fa-phone'></i> Call vendor</a>` : ""}
-      ${`<span class="badge">★ ${Number(st.avg_rating ?? 0).toFixed(1)} (${Number(st.review_count ?? 0)})</span>`}
+      ${`<span class="badge ${ratingBadgeClass(Number(st.avg_rating ?? 0))}">★ ${Number(st.avg_rating ?? 0).toFixed(1)} (${Number(st.review_count ?? 0)})</span>`}
     </div>
     <div class="product-detail-info">
       <p><strong>Vendor:</strong> <a href="#" onclick="navigate('storefront',{vendorId:'${product.vendor.id}'});return false;">${vendorNameWithFormerly(product.vendor)}</a></p>
@@ -14762,6 +14774,13 @@ function storefrontPublicUrl(vendorId) {
   url.searchParams.set("storefront", String(vendorId || ""));
   return url.toString();
 }
+function productPublicUrl(productId) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("product", String(productId || ""));
+  return url.toString();
+}
 function updateStorefrontSocialMeta(v) {
   if (!v) return;
   const name = String(v.business_name || "Levromart storefront");
@@ -14821,6 +14840,7 @@ async function openStorefrontShare(vendorId) {
     box.dataset.name = name;
     box.dataset.whatsapp = v.whatsapp_visible && v.whatsapp_number ? v.whatsapp_number : "";
     delete box.dataset.packageId;
+    delete box.dataset.productId;
     box.classList.remove("hidden");
     trackModalOpened("storefrontShareModal");
   } catch (err) {
@@ -14831,16 +14851,35 @@ async function shareStorefrontFromProduct(evt, vendorId) {
   evt?.stopPropagation();
   await openStorefrontShare(vendorId);
 }
+async function openProductShare(productId) {
+  try {
+    const { data: product, error } = await sb.from("products").select("id,name,status,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("id", productId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
+    if (error || !product) throw new Error("This product is no longer available.");
+    const box = byId("storefrontShareModal");
+    if (!box) return;
+    const name = product.name || "this product";
+    byId("storefrontShareTitle").textContent = `Share ${name}`;
+    byId("storefrontShareText").textContent = "Share this product on Levromart.";
+    box.dataset.vendorId = product.vendor?.id || "";
+    box.dataset.url = productPublicUrl(product.id);
+    box.dataset.name = name;
+    box.dataset.whatsapp = "";
+    box.dataset.productId = product.id;
+    delete box.dataset.packageId;
+    box.classList.remove("hidden");
+    trackModalOpened("storefrontShareModal");
+  } catch (err) { showToast(err?.message || "Couldn't prepare product sharing.", "error"); }
+}
 async function copyStorefrontShareLink() {
   const box = byId("storefrontShareModal");
   const url = box?.dataset.url;
   if (!url) return;
   try {
     await navigator.clipboard.writeText(url);
-    showToast(box?.dataset.packageId ? "Package link copied." : "Storefront link copied.", "success");
+    showToast(box?.dataset.productId ? "Product link copied." : box?.dataset.packageId ? "Package link copied." : "Storefront link copied.", "success");
     closeStorefrontShareModal(true);
   } catch (_) {
-    await showConfirmDialog(url, { title: box?.dataset.packageId ? "Package link" : "Storefront link", okLabel: "Close" });
+    await showConfirmDialog(url, { title: box?.dataset.productId ? "Product link" : box?.dataset.packageId ? "Package link" : "Storefront link", okLabel: "Close" });
   }
 }
 async function nativeShareStorefront() {
@@ -14849,7 +14888,8 @@ async function nativeShareStorefront() {
   const name = box?.dataset.name || "this store";
   if (!url) return;
   const isPackage = !!box?.dataset.packageId;
-  const payload = { title: `${name} | Levromart`, text: isPackage ? `Check out the ${name} package on Levromart.` : `Check out ${name}'s storefront on Levromart.`, url };
+  const isProduct = !!box?.dataset.productId;
+  const payload = { title: `${name} | Levromart`, text: isProduct ? `Check out ${name} on Levromart.` : isPackage ? `Check out the ${name} package on Levromart.` : `Check out ${name}'s storefront on Levromart.`, url };
   try {
     if (navigator.share) {
       await navigator.share(payload);
@@ -14857,10 +14897,10 @@ async function nativeShareStorefront() {
       return;
     }
     await navigator.clipboard.writeText(url);
-    showToast(`Native sharing isn't available here, so the ${isPackage ? "package" : "storefront"} link was copied.`, "success");
+    showToast(`Native sharing isn't available here, so the ${isProduct ? "product" : isPackage ? "package" : "storefront"} link was copied.`, "success");
     closeStorefrontShareModal(true);
   } catch (err) {
-    if (err?.name !== "AbortError") showToast(`Couldn't share the ${isPackage ? "package" : "storefront"}.`, "error");
+    if (err?.name !== "AbortError") showToast(`Couldn't share the ${isProduct ? "product" : isPackage ? "package" : "storefront"}.`, "error");
   }
 }
 function whatsappShareStorefront() {
@@ -16267,8 +16307,11 @@ async function renderVendorEditProfile() {
       </div>
       <p class="muted" style="font-size:.76rem;margin:.45rem 0 0;">This image is the header of your storefront. Your latest products no longer fill this area automatically.</p>
     </div>
-    <div class="avatar-edit-wrap" style="margin:0 auto 1rem;display:table;">
-      ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle" style="width:5rem;height:5rem;object-fit:cover;" alt="${esc(profile.name || v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(profile?.name || v.business_name || "Vendor", "5rem", "", profile?.name || v.business_name || "Vendor")}
+    <div class="vendor-edit-avatar-area">
+      <div class="avatar-edit-wrap vendor-edit-avatar-wrap">
+        ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle" style="width:5rem;height:5rem;object-fit:cover;" alt="${esc(profile.name || v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(profile?.name || v.business_name || "Vendor", "5rem", "", profile?.name || v.business_name || "Vendor")}
+        <button type="button" class="avatar-edit-badge" onclick="openAvatarActions(event)" title="Edit profile picture" aria-label="Edit profile picture"><i class="fa-solid fa-pen"></i></button>
+      </div>
       <p class="muted" style="margin:.45rem 0 0;font-size:.76rem;">Your account profile picture is used across your vendor cards and storefront.</p>
     </div>
     <label>Business name *</label><input id="veBusinessName" value="${esc(v.business_name || "")}" />
@@ -21809,6 +21852,37 @@ async function resolveLeviQuickDiscovery(text) {
   return null;
 }
 
+async function resolveLeviVendorInsights(text) {
+  if (!session?.user?.id || profile?.role !== "vendor") return null;
+  const q = leviNormaliseText(text);
+  const asksStore = /\b(my|our|the)\b.*\b(shop|store|storefront|listings?|products?|sales|revenue|performance)\b/.test(q) || /\b(shop|store|storefront)\b.*\b(doing|performance|sales|marketing|grow|growth)\b/.test(q);
+  const asksPerformance = /\b(how is|how's|doing|performance|performing|sales|sell|sells|selling|revenue|views|saves|best|worst|poorly|strong|weak)\b/.test(q);
+  const asksAdvice = /\b(improve|increase|boost|grow|growth|marketing|promote|promotion|sell more|what should i sell|what should i add|add next|next product|products should i add|complementary|cross[- ]sell|bundle|bundles|similar products|listing improvement|improve my listing|pricing)\b/.test(q);
+  if (!asksStore && !asksPerformance && !asksAdvice) return null;
+  const v = vendor || (await sb.from("vendors").select("id,business_name").eq("user_id",session.user.id).is("deleted_at",null).maybeSingle()).data;
+  if (!v?.id) return null;
+  try {
+    const [{data:products},{data:orderItems},{data:stats}] = await Promise.all([
+      sb.from("products").select("id,name,status,view_count,quantity_available,quantity_total,sale_price,discount_price,rental_rate,listing_type,is_service,category:categories(name)").eq("vendor_id",v.id).neq("status","removed").order("created_at",{ascending:false}),
+      sb.from("order_items").select("product_id,quantity,unit_price,order:orders!inner(status,vendor_id)").eq("order.vendor_id",v.id),
+      sb.rpc("get_vendor_stats",{p_vendor_id:v.id})
+    ]);
+    const rows=products||[];
+    const {data:favRows}=rows.length ? await sb.rpc("get_favorite_counts",{p_product_ids:rows.map(p=>p.id)}) : {data:[]};
+    if(!rows.length)return {handled:true,reply:`Your shop is set up, but you don't have any listings yet. Adding your first complete listing is the clearest next growth step.`};
+    const fav={};(favRows||[]).forEach(r=>fav[r.product_id]=Number(r.count||0));const perf={};rows.forEach(p=>perf[p.id]={units:0,revenue:0});
+    (orderItems||[]).forEach(oi=>{if(oi.order?.status!=="completed"||!perf[oi.product_id])return;perf[oi.product_id].units+=Number(oi.quantity||0);perf[oi.product_id].revenue+=Number(oi.quantity||0)*Number(oi.unit_price||0);});
+    const views=rows.reduce((n,p)=>n+Number(p.view_count||0),0),saves=rows.reduce((n,p)=>n+Number(fav[p.id]||0),0),sales=Object.values(perf).reduce((n,p)=>n+p.units,0),revenue=Object.values(perf).reduce((n,p)=>n+p.revenue,0),active=rows.filter(p=>p.status==="active").length;
+    if(/\b(?:what|which)\b.*\b(?:sells?|sold|selling|best|top)\b/.test(q)||/\b(best|top)\b.*\bproduct/.test(q)){const sorted=rows.slice().sort((a,b)=>perf[b.id].units-perf[a.id].units||perf[b.id].revenue-perf[a.id].revenue||Number(b.view_count||0)-Number(a.view_count||0));const top=sorted[0];if(perf[top.id].units>0)return {handled:true,reply:`Your strongest seller by completed units is ${top.name} with ${perf[top.id].units} sale${perf[top.id].units===1?"":"s"} and ${naira(perf[top.id].revenue)} in completed-item revenue. That's a known result from your order data.`};const e=rows.slice().sort((a,b)=>Number(b.view_count||0)-Number(a.view_count||0)||Number(fav[b.id]||0)-Number(fav[a.id]||0));return {handled:true,reply:`You don't have a completed sale yet, so I can't call a best seller. ${e[0].name} currently has the strongest visible engagement (${Number(e[0].view_count||0)} views, ${Number(fav[e[0].id]||0)} saves), so it's the best current signal to test from.`};}
+    if(/\b(?:poorly|worst|weak|not selling|isn't selling|isnt selling|underperform|under-performing)\b/.test(q)){const sorted=rows.slice().sort((a,b)=>perf[a.id].units-perf[b.id].units||Number(a.view_count||0)-Number(b.view_count||0)||Number(fav[a.id]||0)-Number(fav[b.id]||0));const p=sorted[0];return {handled:true,reply:`The clearest weak signal is ${p.name} (${perf[p.id].units} completed sales, ${Number(p.view_count||0)} views, ${Number(fav[p.id]||0)} saves). ${perf[p.id].units===0?"It has no completed sales yet, so test its title, photos, description and price before concluding demand is poor.":"Its completed sales trail your other listings, so improving its positioning or testing a different price is worth trying."}`};}
+    if(/\b(?:how is|how's)\b.*\b(?:shop|store)\b|\bhow.*\b(?:doing|performance)\b/.test(q)){const st=stats?.[0]||{};return {handled:true,reply:`Here’s the data I can see for ${v.business_name||"your shop"}: ${active} active listing${active===1?"":"s"}, ${views} product views, ${saves} saves, ${sales} completed units sold and ${naira(revenue)} completed-item revenue. ${st.sales_count!=null?`Vendor stats also report ${Number(st.sales_count||0)} completed sales. `:""}${sales>0?"Focus next on the listings already converting and improve listings with views but few saves or sales.":"You don't have enough completed sales yet to judge product-market fit; focus first on listing quality and qualified traffic."}`};}
+    if(/\b(?:what should i sell|what should i add|add next|next product|products should i add|similar products|complementary|cross[- ]sell|bundle)\b/.test(q)){const lead=rows.slice().sort((a,b)=>perf[b.id].units-perf[a.id].units||Number(b.view_count||0)-Number(a.view_count||0))[0],base=lead?.category?.name||"your current categories";return {handled:true,reply:`Based on your current catalogue, ${base} is a sensible area to extend. ${lead?.name?`${lead.name} is your current lead listing by the available sales/engagement signals. `:""}Worth testing a complementary product, a bundle with related listings, or another product in a category where you already have buyer interest. These are recommendations, not guarantees.`};}
+    if(asksAdvice){const p=rows.filter(p=>Number(p.view_count||0)>0&&Number(fav[p.id]||0)===0).sort((a,b)=>Number(b.view_count||0)-Number(a.view_count||0))[0];return {handled:true,reply:`For ${v.business_name||"your shop"}, use the data as the guide: ${p?`${p.name} has ${Number(p.view_count||0)} views but no saves, so its photo, title, description and price are worth testing.`:"promote listings that already show sales or strong engagement."} Also test complementary bundles and keep stock on stronger sellers. These are recommendations, not guarantees.`};}
+    if(/\b(?:what products|which products)\b.*\b(?:do i have|in my shop|in my store|listed)\b/.test(q))return {handled:true,reply:`Your current listings are: ${rows.slice(0,12).map((p,i)=>`${i+1}. ${p.name}${p.category?.name?` · ${p.category.name}`:""}${p.status!=="active"?` · ${p.status}`:""}`).join("; ")}.`};
+  }catch(e){console.warn("Levi vendor insights failed:",e)}
+  return null;
+}
+
 async function resolveLeviLocalAction(text) {
   const q = leviNormaliseText(text);
   if (leviPendingProductRequest && /^(no|nope|not that|not this|that'?s not it|none|neither|wrong|different|something else|not what i want|i don'?t want that|i need something else)\b/.test(q)) {
@@ -21816,6 +21890,9 @@ async function resolveLeviLocalAction(text) {
     return {handled:true,reply:`No problem — [[NAV:requestEquipment|prefill=${encodeURIComponent(target)}]]`};
   }
   if (!session) return null;
+
+  const vendorInsight = await resolveLeviVendorInsights(text);
+  if (vendorInsight?.handled) return vendorInsight;
 
   // Deterministic navigation. Levi describes the destination and exposes a
   // single "Take me there" action. The action performs the actual SPA route
@@ -22405,6 +22482,12 @@ window.addEventListener("popstate", (e) => {
   ]).catch(() => {});
 
   const urlParams = new URLSearchParams(location.search);
+  if (urlParams.get("product")) {
+    const productId = urlParams.get("product");
+    history.replaceState({ view: "productDetail", params: { productId } }, "", location.pathname + "?product=" + encodeURIComponent(productId));
+    await navigate("productDetail", { productId }, false);
+    return;
+  }
   if (urlParams.get("storefront")) {
     const vendorId = urlParams.get("storefront");
     history.replaceState({ view: "storefront", params: { vendorId } }, "", location.pathname + "?storefront=" + encodeURIComponent(vendorId));
@@ -22812,7 +22895,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 .avatar-fallback{border:0 !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;font-weight:600 !important;overflow:hidden !important;vertical-align:middle;}
 .avatar-fallback i{font-size:58% !important;color:#fff !important;line-height:1 !important;}
 .avatar-fallback.avatar-lg i{font-size:54% !important;}
-.profile-avatar-lightbox-btn{appearance:none;-webkit-appearance:none;border:0;background:transparent;padding:0;display:inline-flex;cursor:pointer;border-radius:50%;-webkit-tap-highlight-color:transparent;}
+.vendor-edit-avatar-area{display:flex;flex-direction:column;align-items:center;text-align:center;margin:0 auto 1rem;width:100%;}.vendor-edit-avatar-wrap{position:relative;display:inline-flex!important;width:5rem;height:5rem;align-items:center;justify-content:center;flex:0 0 5rem;}.vendor-edit-avatar-wrap .avatar-edit-badge{right:-.1rem;bottom:-.1rem;z-index:3;}.profile-avatar-lightbox-btn{appearance:none;-webkit-appearance:none;border:0;background:transparent;padding:0;display:inline-flex;cursor:pointer;border-radius:50%;-webkit-tap-highlight-color:transparent;}
 .profile-avatar-lightbox-btn:focus-visible{outline:2px solid var(--primary);outline-offset:3px;}
 .storefront-avatar-fallback-button{padding:0 !important;display:flex !important;align-items:center;justify-content:center;}
 .storefront-avatar-fallback-button .avatar-fallback{border-radius:50%;width:100% !important;height:100% !important;}
@@ -27886,10 +27969,6 @@ html[data-theme="black"] #app .order-filter-clear-btn{
 })();
 
 </script>
-<style id="levi-global-presence-vnext">
-body.product-detail-view #aiChatFab{display:flex !important;visibility:visible !important;pointer-events:auto !important;}
-body.product-detail-view #aiChatFab.scroll-faded{pointer-events:none !important;}
-</style>
 <style id="levromart-20260911-feature-pack-css">
 /* Final spacing / hierarchy pass: the promotional carousel is the first hero
    surface, but it should never visually touch the fixed app header. */
@@ -28238,7 +28317,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 .vendor-discarded-copy>span{font-size:.67rem;color:var(--text-muted);line-height:1.3;}
 .vendor-discarded-actions{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.35rem;}
 .vendor-discarded-actions .btn{margin:0!important;min-height:34px!important;padding:.42rem .58rem!important;font-size:.68rem!important;}
-.vendor-product-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin-top:.7rem!important;padding-top:.1rem;}
+.vendor-product-actions{display:flex;align-items:center;justify-content:center;gap:.55rem;flex-wrap:wrap;margin-top:.7rem!important;padding-top:.1rem;}
 .vendor-product-actions .btn{margin:0!important;}
 .vendor-products-toolbar{gap:.65rem!important;margin-top:1rem!important;}
 /* Search fields are hidden until their toolbar icon is tapped. No duplicate magnifying glass belongs inside these fields. */
@@ -29165,7 +29244,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   new MutationObserver(()=>{clearTimeout(window.__phase1CommissionTimerBoot);window.__phase1CommissionTimerBoot=setTimeout(phase1CommissionDeadline,250)}).observe(document.body,{childList:true,subtree:true});
 
   // Admin bottom navigation: compact, same footprint as the normal rail.
-  const style=document.createElement("style");style.textContent=`@media(max-width:720px){#bottomNav:not(.has-add):not(.buyer-no-add){height:68px!important;min-height:0!important;padding:.22rem .22rem!important;box-sizing:border-box!important;align-items:center!important}#bottomNav:not(.has-add):not(.buyer-no-add) .bottom-nav-item{height:54px!important;min-height:54px!important;padding:.28rem .08rem!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:.18rem!important}#bottomNav:not(.has-add):not(.buyer-no-add) .bottom-nav-item>span:last-child{font-size:.62rem!important;line-height:1!important}}@media(min-width:721px){#bottomNav{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(760px,calc(100vw - 2rem))!important}#bottomNav:not(.has-add) .bottom-nav-item{flex:1 1 0!important}}.vendor-commission-deadline-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:.15rem 0 .65rem;font-size:.76rem}.vendor-commission-deadline-row strong{font-variant-numeric:tabular-nums;color:var(--primary)}.phase1-search-shell{width:min(760px,100%);margin:0 auto;background:color-mix(in srgb,var(--card) 97%,transparent);border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border));border-radius:20px;box-shadow:0 24px 70px rgba(15,23,42,.22);overflow:hidden}.phase1-search-bar{display:flex;align-items:center;gap:.55rem;padding:.5rem .65rem;border-bottom:1px solid var(--border)}.phase1-search-bar>i{color:var(--primary)}#levromartHeaderSearchDock #levromartHeaderSearchInput{flex:1!important;min-width:0!important;border:0!important;background:transparent!important;box-shadow:none!important;margin:0!important;padding:.7rem .1rem!important}.phase1-search-bar>button{width:38px;height:38px;border:0;background:transparent;border-radius:50%;cursor:pointer}.phase1-search-section{padding:.7rem}.phase1-search-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem;font-size:.8rem;margin-bottom:.45rem}.phase1-search-head button{border:0;background:none;color:var(--primary);font-weight:700;cursor:pointer}.phase1-search-row{display:flex;align-items:center;border-radius:11px}.phase1-use{flex:1;display:flex;align-items:center;gap:.65rem;border:0;background:none;padding:.65rem;color:var(--text);text-align:left;cursor:pointer}.phase1-use i{color:var(--text-muted)}.phase1-use span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.phase1-remove{width:36px;height:36px;border:0;background:transparent;color:var(--text-muted);cursor:pointer}.phase1-empty{margin:.2rem 0;color:var(--text-muted);font-size:.75rem}.vendor-product-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.65rem!important}.vendor-product-card-grid .card{min-width:0!important;padding:.65rem!important}.vendor-product-card-grid .product-img{height:150px!important;border-radius:12px!important}.vendor-draft-actions button[aria-label*="Delete"],.ai-chat-history-delete{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.saved-location-delete{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.order-filters-wrap .filter-dropdown-menu,.order-filters-wrap .filters-panel,.vendor-notification-menu{max-width:min(360px,calc(100vw - 2rem))!important;width:min(360px,calc(100vw - 2rem))!important}.order-filters-wrap .filter-dropdown-menu,.order-filters-wrap .filters-panel{max-height:55vh!important;overflow:auto!important}@media(min-width:721px){#bottomNav{max-width:760px!important;margin-inline:auto!important}.admin-dash-tabs{max-width:1100px!important;margin-inline:auto!important;justify-content:center!important}.vendor-product-card-grid .product-img{height:180px!important}}@media(max-width:520px){.vendor-product-card-grid .product-img{height:118px!important}}`;document.head.appendChild(style);
+  const style=document.createElement("style");style.textContent=`@media(max-width:720px){#bottomNav:not(.has-add):not(.buyer-no-add){height:68px!important;min-height:0!important;padding:.22rem .22rem!important;box-sizing:border-box!important;align-items:center!important}#bottomNav:not(.has-add):not(.buyer-no-add) .bottom-nav-item{height:54px!important;min-height:54px!important;padding:.28rem .08rem!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:.18rem!important}#bottomNav:not(.has-add):not(.buyer-no-add) .bottom-nav-item>span:last-child{font-size:.62rem!important;line-height:1!important}}@media(min-width:721px){#bottomNav{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(760px,calc(100vw - 2rem))!important}#bottomNav:not(.has-add) .bottom-nav-item{flex:1 1 0!important}}.vendor-commission-deadline-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:.15rem 0 .65rem;font-size:.76rem}.vendor-commission-deadline-row strong{font-variant-numeric:tabular-nums;color:var(--primary)}.phase1-search-shell{width:min(760px,100%);margin:0 auto;background:color-mix(in srgb,var(--card) 97%,transparent);border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border));border-radius:20px;box-shadow:0 24px 70px rgba(15,23,42,.22);overflow:hidden}.phase1-search-bar{display:flex;align-items:center;gap:.55rem;padding:.5rem .65rem;border-bottom:1px solid var(--border)}.phase1-search-bar>i{color:var(--primary)}#levromartHeaderSearchDock #levromartHeaderSearchInput{flex:1!important;min-width:0!important;border:0!important;background:transparent!important;box-shadow:none!important;margin:0!important;padding:.7rem .1rem!important}.phase1-search-bar>button{width:38px;height:38px;border:0;background:transparent;border-radius:50%;cursor:pointer}.phase1-search-section{padding:.7rem}.phase1-search-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem;font-size:.8rem;margin-bottom:.45rem}.phase1-search-head button{border:0;background:none;color:var(--primary);font-weight:700;cursor:pointer}.phase1-search-row{display:flex;align-items:center;border-radius:11px}.phase1-use{flex:1;display:flex;align-items:center;gap:.65rem;border:0;background:none;padding:.65rem;color:var(--text);text-align:left;cursor:pointer}.phase1-use i{color:var(--text-muted)}.phase1-use span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.phase1-remove{width:36px;height:36px;border:0;background:transparent;color:var(--text-muted);cursor:pointer}.phase1-empty{margin:.2rem 0;color:var(--text-muted);font-size:.75rem}.vendor-product-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.65rem!important}.vendor-product-card-grid .card{min-width:0!important;padding:.65rem!important}.vendor-product-card-grid .product-img{height:150px!important;border-radius:12px!important}.vendor-draft-actions button[aria-label*="Delete"],.ai-chat-history-delete{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.saved-location-delete{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.order-filters-wrap .filter-dropdown-menu,.order-filters-wrap .filters-panel,.vendor-notification-menu{max-width:min(360px,calc(100vw - 2rem))!important;width:min(360px,calc(100vw - 2rem))!important}.order-filters-wrap .filter-dropdown-menu,.order-filters-wrap .filters-panel{max-height:55vh!important;overflow:auto!important}@media(min-width:721px){#bottomNav{max-width:760px!important;margin-inline:auto!important}.vendor-product-card-grid .product-img{height:180px!important}}@media(max-width:520px){.vendor-product-card-grid .product-img{height:118px!important}}`;document.head.appendChild(style);
 })();
 </script>
 <style id="levromart-phase1-urgent-final-css">
@@ -29216,15 +29295,15 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 /* Selected variety summary */
 .selected-variant-summary{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.55rem;margin:.55rem 0 .8rem;padding:.65rem .75rem;border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));background:color-mix(in srgb,var(--primary) 5%,var(--card));border-radius:13px}.selected-variant-summary span{font-size:.68rem}.selected-variant-summary strong{font-size:.8rem}.selected-variant-summary strong:last-child{color:var(--primary)}
 /* Owner listing details */
-.owner-listing-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem}.owner-listing-head h3{font-size:1rem}.owner-listing-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin:.85rem 0}.owner-listing-stats>div{padding:.6rem .45rem;border:1px solid var(--border);border-radius:11px;text-align:center}.owner-listing-stats span{display:block;color:var(--text-muted);font-size:.65rem}.owner-listing-stats strong{display:block;margin-top:.15rem;font-size:.82rem}.owner-listing-actions{display:flex;flex-wrap:wrap;gap:.45rem}.owner-listing-variant-note{font-size:.72rem;margin:.65rem 0 0}.owner-listing-variant-note i{color:var(--primary)}
+.owner-listing-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem}.owner-listing-head h3{font-size:1rem}.owner-listing-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin:.85rem 0}.owner-listing-stats>div{padding:.6rem .45rem;border:1px solid var(--border);border-radius:11px;text-align:center}.owner-listing-stats span{display:block;color:var(--text-muted);font-size:.65rem}.owner-listing-stats strong{display:block;margin-top:.15rem;font-size:.82rem}.owner-listing-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:.45rem}.owner-listing-variant-note{font-size:.72rem;margin:.65rem 0 0}.owner-listing-variant-note i{color:var(--primary)}
 /* Admin people */
 .admin-people-table-xscroll{overflow:auto;max-height:58vh;border:1px solid var(--border);border-radius:14px;background:var(--card)}.admin-people-table{min-width:900px}.admin-phone-btn{border:0;background:transparent;color:var(--primary);font:inherit;cursor:pointer;padding:.25rem .35rem;border-radius:8px}.admin-phone-btn:hover{background:color-mix(in srgb,var(--primary) 9%,transparent)}.admin-new-tag{background:color-mix(in srgb,var(--primary) 14%,transparent)!important;color:var(--primary)!important;border:1px solid color-mix(in srgb,var(--primary) 30%,transparent)}.admin-joined-cell{font-variant-numeric:tabular-nums}
 /* Search mode hides fixed UI but preserves deliberate internal scrollers */
 body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.search-input-active #cartFab{display:none!important;visibility:hidden!important;pointer-events:none!important}
 /* Neutral back actions */
-#app .settings-back-btn,#app .chat-header-back,#app button[onclick*="navigate('home')"].btn-sm,#app button[onclick*="navigate('vendorDashboard')"].btn-outline{background:#6b7280!important;border-color:#6b7280!important;color:#fff!important}
+#app .settings-back-btn,#app button[onclick*="navigate('home')"].btn-sm,#app button[onclick*="navigate('vendorDashboard')"].btn-outline{background:#6b7280!important;border-color:#6b7280!important;color:#fff!important}
 /* Levi icon: subtle green texture only on the icon */
-#aiChatFab .ai-chat-fab-logo{filter:drop-shadow(0 1px 1px rgba(16,185,129,.35))!important;background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.35),transparent 28%),radial-gradient(circle at 70% 75%,rgba(16,185,129,.65),transparent 52%)!important;border-radius:50%!important}
+#aiChatFab .ai-chat-fab-logo{filter:brightness(0) invert(1) drop-shadow(0 1px 2px rgba(0,0,0,.12))!important;-webkit-filter:brightness(0) invert(1) drop-shadow(0 1px 2px rgba(0,0,0,.12))!important;background:transparent!important;border-radius:0!important}
 /* Periodic route trace: trace, pause, trace */
 .levro-vendor-route-path{stroke-dasharray:16 12!important;animation:levroRouteTracePause 4.8s ease-in-out infinite!important}@keyframes levroRouteTracePause{0%{stroke-dashoffset:0;opacity:.76;stroke-width:4}45%{stroke-dashoffset:-180px;opacity:1;stroke-width:5}62%{stroke-dashoffset:-180px;opacity:.86;stroke-width:4}100%{stroke-dashoffset:-180px;opacity:.76;stroke-width:4}}@media(prefers-reduced-motion:reduce){.levro-vendor-route-path{animation:none!important}}
 @media(max-width:520px){.owner-listing-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.selected-variant-summary{grid-template-columns:1fr auto}.selected-variant-summary span{grid-column:1/-1}}
@@ -29328,7 +29407,7 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
 #bottomNav .bottom-nav-item{height:38px!important;min-height:38px!important;border-radius:999px!important;padding:.08rem .1rem!important}.nav-scroll-shrink{opacity:.72!important;transform:translateY(2px) scale(.97)!important}
 #bottomNav .bottom-nav-add{position:relative!important;margin:0!important;align-self:center!important;justify-self:center!important}
 @media(max-width:720px){#bottomNav{left:.7rem!important;right:.7rem!important;bottom:calc(.35rem + env(safe-area-inset-bottom,0px))!important}.bottom-nav-add{flex:0 0 40px!important}.bn-group{gap:.08rem!important}}
-.admin-dash-tabs{display:flex!important;flex:0 0 auto!important;width:100%!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important;justify-content:flex-start!important;align-items:stretch!important;gap:.35rem!important;padding-inline:.45rem!important;padding-right:2.2rem!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x!important;overscroll-behavior-x:contain!important;scroll-padding-inline:.45rem!important}.admin-dash-tabs::-webkit-scrollbar{display:none}
+.admin-dash-tabs{display:flex!important;flex:0 0 auto!important;width:100%!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important;justify-content:flex-start!important;align-items:stretch!important;gap:.35rem!important;padding-inline:.45rem!important;padding-right:2.75rem!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x!important;overscroll-behavior-x:contain!important;scroll-padding-inline:.45rem!important;overscroll-behavior-y:none!important}.admin-dash-tabs::-webkit-scrollbar{display:none}.admin-dash-tabs .dash-tab{flex:0 0 auto!important;min-width:max-content!important;white-space:nowrap!important}
 .levro-route-neon-core{filter:drop-shadow(0 0 3px rgba(34,197,94,.38)) drop-shadow(0 0 8px rgba(34,197,94,.14))!important}
 .req-category-picker,.req-sector-picker{margin-top:.3rem}.req-category-picker-wrap,.req-sector-picker{width:100%}.req-category-search input,.req-sector-search input{padding-left:2.75rem!important;padding-right:2.8rem!important}
 @media(prefers-reduced-motion:reduce){.chat-message-jump-highlight{animation:none!important;outline:2px solid var(--primary)}#bottomNav.nav-scroll-shrink{transform:none!important;opacity:1!important}}
@@ -29364,8 +29443,9 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
 <script id="levromart-refinement-20260912-runtime">
 (function(){'use strict';
   function markBackButtons(root=document){root.querySelectorAll?.('button,.btn,a').forEach(el=>{if(el.dataset.levroBackMarked==='1')return;const text=(el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(!text.startsWith('back'))return;const onclick=el.getAttribute('onclick')||'';if(!onclick.includes('navigate(')&&!el.classList.contains('settings-back-btn')&&!el.classList.contains('chat-header-back'))return;if(el.classList.contains('danger')||el.dataset.primaryAction==='1')return;el.dataset.levroBackMarked='1';el.dataset.levroBack='1';});} markBackButtons(); new MutationObserver(()=>markBackButtons()).observe(document.body,{childList:true,subtree:true});
+  document.addEventListener('click',e=>{const hit=e.target?.closest?.('#levromartHeaderSearchBackdrop,.search-backdrop,.compact-search-backdrop,.order-search-backdrop');if(!hit)return;try{window.closeLevromartHeaderSearch?.();}catch(_){document.body.classList.remove('search-input-active');document.querySelectorAll('.final-search-open,.final-order-open,.levro-compact-search-wrap.open,.final-order-search-wrap.open').forEach(el=>el.classList.remove('final-search-open','final-order-open','open'));document.querySelectorAll('input[type="search"]:focus').forEach(x=>{try{x.blur()}catch(_){}});try{renderBottomNav();updateCartFab();}catch(_){}}},true);
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('reqSectorPickerModal')?.remove();document.getElementById('reqCategoryPickerModal')?.remove();if(document.body.classList.contains('search-input-active')){try{window.__levroHardCloseSearch?.();}catch(_){}}}},true);
-  document.addEventListener('focusout',e=>{if(!e.target?.matches?.('#searchInput,#levromartHeaderSearchInput,.vendors-directory-search input,.orders-filter-search-row input'))return;setTimeout(()=>{if(!document.querySelector('.browse-filter-toolbar.final-search-open,.final-search-open,.levro-compact-search-wrap.open')&&!document.activeElement?.matches?.('input[type=search]')){try{window.__levroHardCloseSearch?.();}catch(_){document.body.classList.remove('search-input-active');try{renderBottomNav();updateCartFab();}catch(__){}}}},80);},true);
+  document.addEventListener('focusout',e=>{if(!e.target?.matches?.('#searchInput,#levromartHeaderSearchInput,.vendors-directory-search input,.orders-filter-search-row input'))return;setTimeout(()=>{if(!document.querySelector('.browse-filter-toolbar.final-search-open,.final-search-open,.levro-compact-search-wrap.open')&&!document.activeElement?.matches?.('input[type=search]')){document.body.classList.remove('search-input-active');try{renderBottomNav();updateCartFab();}catch(_){}}},80);},true);
   window.addEventListener('pagehide',()=>{try{commitBrowseSearchFromUi?.();}catch(_){}document.body.classList.remove('search-input-active');});
 
 
