@@ -5492,7 +5492,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 #app .admin-dash-tabs::-webkit-scrollbar{display:none !important;}
 #app .admin-dash-tabs .dash-tab{flex:0 0 auto !important;min-width:4.2rem !important;}
 @media(max-width:720px){
-  #app .admin-dash-tabs{flex-wrap:wrap !important;overflow-x:visible !important;overflow-y:visible !important;justify-content:center !important;gap:.35rem !important;padding:.25rem .1rem .7rem !important;}
+  #app .admin-dash-tabs{flex-wrap:nowrap !important;overflow-x:auto !important;overflow-y:hidden !important;justify-content:flex-start !important;gap:.35rem !important;padding:.25rem .1rem .7rem !important;scrollbar-width:none !important;}
   #app .admin-dash-tabs .dash-tab{min-width:4.7rem !important;}
 }
 
@@ -7382,12 +7382,13 @@ document.addEventListener("click", (event) => {
       }
     }
   });
-  const pickerTarget = event.target?.closest?.(".chat-bubble[data-msg-id]");
-  if (pickerTarget) {
-    const openPicker = document.querySelector(`.reaction-picker[data-for="${CSS.escape(String(pickerTarget.dataset.msgId || ""))}"]`);
-    if (openPicker) return;
+  const openReaction = document.querySelector('.reaction-picker');
+  if (openReaction && Date.now() >= (window.chatSuppressClickUntil || 0) && !event.target?.closest?.('.reaction-picker')) {
+    const insideAnchor = event.target?.closest?.('.chat-bubble[data-msg-id]');
+    if (!insideAnchor || !openReaction.contains(insideAnchor)) {
+      openReaction.remove();
+    }
   }
-  document.querySelectorAll(".reaction-picker").forEach((p) => p.remove());
 });
 // Small "i" button + floating bubble, for swapping a paragraph of helper
 // text out of the page flow and behind a tap - keeps cards short by
@@ -12859,6 +12860,7 @@ async function renderMessages(conversationId) {
         <div class="chat-menu-dropdown hidden" id="chatMenuDropdown">${chatMenuItems.join("")}</div>
       </div>
     </div>
+    <div id="chatPinnedStrip" class="chat-pinned-strip" aria-label="Pinned messages">${renderPinnedMessagesHtml(conversationId, messages, window.__chatPinsByConversation[conversationId])}</div>
     <div class="chat-thread">
       <div class="chat-messages" id="chatMessages">${chatMessagesWithDatesHtml(messages, chatBubbleHtml)}<div id="chatTypingIndicator" class="chat-typing-indicator hidden" aria-live="polite"><span class="chat-typing-dots"><i></i><i></i><i></i></span><span>Typing…</span></div></div>
       <div id="chatReplyPreview" class="chat-reply-preview hidden"></div>
@@ -12878,7 +12880,7 @@ async function renderMessages(conversationId) {
     </div>
   </div>`;
 
-  setTimeout(() => { scrollChatToBottom(); resolveVisibleAttachments(byId("chatMessages")); setupMessageInteractions(byId("chatMessages")); renderChatReplyPreview(); }, 0);
+  setTimeout(() => { scrollChatToBottom(); resolveVisibleAttachments(byId("chatMessages")); resolveVisibleAttachments(byId("chatPinnedStrip")); setupMessageInteractions(byId("chatMessages")); renderChatReplyPreview(); }, 0);
   subscribeToConversation(conversationId);
   return html;
 }
@@ -13130,6 +13132,7 @@ let chatReplyTarget = null;
 let chatLongPressTimer = null;
 let chatSwipeState = null;
 let chatSuppressClickUntil = 0;
+window.chatSuppressClickUntil = 0;
 
 function getChatMessageById(msgId) {
   const bubble = document.querySelector(`.chat-bubble[data-msg-id="${msgId}"]`);
@@ -13237,7 +13240,7 @@ function renderPinnedMessagesHtml(conversationId, messages, pins) {
   const byMessage = new Map((messages || []).map(m => [String(m.id), m]));
   const livePins = (pins || []).filter(p => !p.expires_at || new Date(p.expires_at).getTime() > Date.now()).slice(0,4);
   if (!livePins.length) return '';
-  return `<div class="chat-pinned-strip-inner"><span class="chat-pinned-label"><i class="fa-solid fa-thumbtack"></i> Pinned</span><div class="chat-pinned-items">${livePins.map(p => { const m=byMessage.get(String(p.message_id)); if(!m)return ''; const image=String(m.attachment_type||'').startsWith('image/') && m.attachment_url; const text=String(m.body||'').trim() || (image ? 'Photo' : 'Attachment'); return `<button type="button" class="chat-pinned-item" onclick="jumpToPinnedMessage('${esc(m.id)}')">${image ? `<img src="${esc(m.attachment_url)}" alt="" />` : `<span class="chat-pinned-item-icon"><i class="fa-solid ${m.body?'fa-message':'fa-paperclip'}"></i></span>`}<span><strong>${esc(text.slice(0,72))}${text.length>72?'…':''}</strong><small>${new Date(m.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</small></span></button>`; }).join('')}</div></div>`;
+  return `<div class="chat-pinned-strip-inner"><span class="chat-pinned-label"><i class="fa-solid fa-thumbtack"></i> Pinned</span><div class="chat-pinned-items">${livePins.map(p => { const m=byMessage.get(String(p.message_id)); if(!m)return ''; const image=String(m.attachment_type||'').startsWith('image/') && m.attachment_url; const text=String(m.body||'').trim() || (image ? 'Photo' : 'Attachment'); return `<button type="button" class="chat-pinned-item" onclick="jumpToPinnedMessage('${esc(m.id)}')">${image ? `<img data-attachment-path="${esc(m.attachment_url)}" src="" alt="" />` : `<span class="chat-pinned-item-icon"><i class="fa-solid ${m.body?'fa-message':'fa-paperclip'}"></i></span>`}<span><strong>${esc(text.slice(0,72))}${text.length>72?'…':''}</strong><small>${new Date(m.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</small></span></button>`; }).join('')}</div></div>`;
 }
 async function refreshChatPinnedStrip() {
   if (!activeConversationId || !session?.user?.id) return;
@@ -13265,8 +13268,15 @@ async function unpinChatMessage(messageId) {
 }
 function jumpToPinnedMessage(messageId) {
   const target = document.querySelector(`.chat-bubble[data-msg-id="${CSS.escape(String(messageId))}"]`);
-  if (!target) return;
-  target.scrollIntoView({behavior:'smooth',block:'center'}); target.classList.remove('chat-message-jump-highlight'); requestAnimationFrame(()=>target.classList.add('chat-message-jump-highlight')); setTimeout(()=>target.classList.remove('chat-message-jump-highlight'),1400);
+  const scroller = byId('chatMessages');
+  if (!target || !scroller) return;
+  const targetRect = target.getBoundingClientRect();
+  const scrollRect = scroller.getBoundingClientRect();
+  const desired = scroller.scrollTop + (targetRect.top - scrollRect.top) - (scrollRect.height - targetRect.height) / 2;
+  scroller.scrollTo({top:Math.max(0,desired),behavior:'smooth'});
+  target.classList.remove('chat-message-jump-highlight');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>target.classList.add('chat-message-jump-highlight')));
+  setTimeout(()=>target.classList.remove('chat-message-jump-highlight'),1500);
 }
 
 function showMessageActionMenu(bubble) {
@@ -13383,7 +13393,7 @@ function setupMessageLongPress(root) {
         if (moved) return;
         bubble.classList.remove("chat-long-pressing");
         if (navigator.vibrate) navigator.vibrate(12);
-        chatSuppressClickUntil = Date.now() + 700;
+        chatSuppressClickUntil = window.chatSuppressClickUntil = Date.now() + 900;
         const imageOnly = !!bubble.querySelector('.chat-image-attachment') && !bubble.querySelector('.chat-bubble-text');
         if (imageOnly) openReactionPicker({ target: bubble, stopPropagation(){} }, bubble.dataset.msgId);
         else if (chatSelectionMode) toggleChatMessageSelection(bubble.dataset.msgId);
@@ -14078,11 +14088,12 @@ async function renderPackageDetail(packageId) {
 async function renderProductDetail(productId) {
   const { data: product, error } = await sb
     .from("products")
-    .select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, verification_status, cac_number, created_at, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)")
+    .select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)")
     .eq("id", productId)
     .maybeSingle();
 
-  if (error || !product) return '<div class="empty-state">Product not found.</div>';
+  if (error) { console.error("[Levromart] Product detail load failed:", error); return `<div class="empty-state"><strong>Couldn\'t load this product.</strong><p class="muted" style="margin:.35rem 0 0;">Please try again. If the problem continues, the listing may be unavailable right now.</p></div>`; }
+  if (!product) return '<div class="empty-state">Product not found.</div>';
   const ownListing = isOwnVendorId(product.vendor?.id);
   if (!ownListing && (product.status !== "active" || product.vendor?.verification_status !== "verified" || !product.vendor?.is_active)) return '<div class="empty-state">Product not found.</div>';
   const { data: loadedProductVariants, error: variantsError } = await sb
@@ -14164,8 +14175,8 @@ async function renderProductDetail(productId) {
     const buyLabel = product.is_service ? "Book Now" : "Buy Now";
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
-      ${!product.is_service && productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" onclick="selectProductVariant('${esc(v.id)}')"><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
-      ${!product.is_service && productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="muted">Selected variety</span><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><strong id="selectedVariantPrice">${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
+      ${!product.is_service && productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
+      ${!product.is_service && productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="muted">Selected variety</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variant description")}</small></div><strong id="selectedVariantPrice">${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
       <div class="flex">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
@@ -14401,16 +14412,25 @@ function selectProductVariant(variantId) {
   if (!variant) return;
   const hidden = byId("selectedProductVariantId");
   if (hidden) hidden.value = variant.id;
-  document.querySelectorAll(".product-variant-choice").forEach(btn => btn.classList.toggle("active", btn.getAttribute("onclick")?.includes(String(variant.id))));
+  document.querySelectorAll(".product-variant-choice").forEach(btn => {
+    const selected = btn.getAttribute("onclick")?.includes(String(variant.id));
+    btn.classList.toggle("active", !!selected);
+    btn.setAttribute("aria-pressed", String(!!selected));
+  });
   const qty = parseInt(byId("buyQty")?.value || 1) || 1;
-  const unit = Number(variant.discount_price ?? variant.sale_price ?? 0);
+  const unit = Number(variant.discount_price ?? variant.sale_price ?? variant.rental_rate ?? 0);
   const preview = byId("serviceTotalPreview");
   if (preview && unit > 0) preview.textContent = `Total: ${naira(unit * qty)} (${qty} × ${naira(unit)})`;
-  const nameEl = byId("selectedVariantName"), priceEl = byId("selectedVariantPrice");
+  const nameEl = byId("selectedVariantName"), priceEl = byId("selectedVariantPrice"), descEl = byId("selectedVariantDescription");
   if (nameEl) nameEl.textContent = variant.name || "Selected variety";
   if (priceEl) priceEl.textContent = naira(unit);
-  const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => String(u) === String(variant.photo_url)) ?? -1);
-  if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex);
+  if (descEl) descEl.textContent = stripProductVariantMeta(currentProductDetail?.description || "") || "Product details for the selected variety.";
+  if (variant.photo_url) {
+    const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => String(u) === String(variant.photo_url)) ?? -1);
+    if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex);
+    const mainImg = document.querySelector("#productGalleryTrack .product-gallery-slide.active img") || document.querySelector("#productGalleryTrack .product-gallery-slide img");
+    if (mainImg && galleryIndex < 0) mainImg.src = variant.photo_url;
+  }
 }
 
 async function buyNow(vendorId, productId) {
@@ -18718,7 +18738,7 @@ function adminNavHtml(active) {
     ["adminLog", "fa-clock-rotate-left", "Log"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
-  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>`).join("")}</div>`;
+  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>`).join("")}</div>`;
 }
 
 async function renderAdminSupportRequests() {
@@ -24603,7 +24623,7 @@ window.renderVendorMapRail = function(){
     }catch(_){/* straight-line fallback */}
     const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
     const glowLine=window.L.polyline(coords, {color:'#39ff88',weight:9,opacity:0.20,lineCap:'round',lineJoin:'round'}).addTo(vendorsMap);
-    const finalLine=window.L.polyline([], {color:'#39ff88',weight:4,opacity:.98,lineCap:'round',lineJoin:'round',className:'levro-route-neon-core'}).addTo(vendorsMap);
+    const finalLine=window.L.polyline([], {color:'#22c55e',weight:4,opacity:.86,lineCap:'round',lineJoin:'round',className:'levro-route-neon-core'}).addTo(vendorsMap);
     finalLine.setStyle({dashArray:reducedMotion ? null : '12 9'});
     routeLayer={glow:glowLine,core:finalLine};
     routeEndpoints=[];
@@ -28570,7 +28590,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 (function(){
   "use strict";
   const HISTORY_KEY = "levromart-search-history-v1";
-  const MAX_HISTORY = 8;
+  const MAX_HISTORY = 5;
   let searchTimer = 0;
   let searchSeq = 0;
 
@@ -28702,7 +28722,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
         const header = document.querySelector("#appHeader, header.sticky-header, header.site-header, .app-header, .main-header") || document.querySelector("header");
         const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
         const rect = input.getBoundingClientRect();
-        const target = window.scrollY + rect.top - headerBottom - 10;
+        const target = window.scrollY + rect.top - headerBottom - 4;
         window.scrollTo({top:Math.max(0,target),behavior:"smooth"});
         input.focus({preventScroll:true});
       });
@@ -28710,10 +28730,17 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   }
   function bindHeaderSearch(){
     window.openLevromartHeaderSearch=openBrowseSearch;
-    window.closeLevromartHeaderSearch=()=>{};
+    window.closeLevromartHeaderSearch=()=>{
+      try { document.querySelectorAll(".final-search-open,.final-order-open,.levro-compact-search-wrap.open,.final-order-search-wrap.open").forEach(el=>el.classList.remove("final-search-open","final-order-open","open")); } catch(_) {}
+      document.body.classList.remove("search-input-active");
+      document.querySelectorAll('input[type="search"]:focus').forEach(x=>{try{x.blur();}catch(_){}});
+      try { renderBottomNav(); } catch(_) {}
+      try { updateCartFab(); } catch(_) {}
+    };
     window.__levroTopSearch=e=>{e?.preventDefault?.();e?.stopPropagation?.();openBrowseSearch();return false;};
     const button=byId("levromartHeaderSearchButton");
     if(button)button.onclick=window.__levroTopSearch;
+    document.getElementById("levromartHeaderSearchBackdrop")?.addEventListener("click",()=>window.closeLevromartHeaderSearch(),{capture:true});
   }
 
   function bindContentActions(ui){
@@ -28772,7 +28799,24 @@ body.search-input-active{--levro-search-keyboard-active:1;}
         const state=historyMenuFor(browseToolbar,input);
         toggle.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();const open=browseToolbar.classList.toggle("final-search-open");toggle.setAttribute("aria-expanded",String(open));if(open){state.render();input.focus({preventScroll:true});}else state.menu.classList.add("hidden");});
         input.addEventListener("focus",()=>{browseToolbar.classList.add("final-search-open");toggle.setAttribute("aria-expanded","true");if(!input.value.trim())state.render();});
-        input.addEventListener("keydown",e=>{if(e.key==="Enter"&&input.value.trim())saveHistory(input.value.trim());if(e.key==="Escape"){browseToolbar.classList.remove("final-search-open");state.menu.classList.add("hidden");input.blur();}});
+        input.addEventListener("keydown",e=>{
+          if(e.key==="Enter"&&input.value.trim()){
+            e.preventDefault();
+            const q=input.value.trim();
+            saveHistory(q);
+            state.menu.classList.add("hidden");
+            try{window.filterHomeProducts?.();}catch(_){}
+            input.dispatchEvent(new Event("input",{bubbles:true}));
+          }
+          if(e.key==="Escape"){
+            e.preventDefault();
+            browseToolbar.classList.remove("final-search-open");
+            state.menu.classList.add("hidden");
+            input.blur();
+            document.body.classList.remove("search-input-active");
+            try{renderBottomNav();updateCartFab();}catch(_){}
+          }
+        });
       }
     }
 
@@ -29205,19 +29249,83 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
 
 <style id="levromart-refinement-20260912">
 .req-category-search,.req-sector-search{position:relative;display:flex;align-items:center;gap:.45rem}.req-category-search>i,.req-sector-search>i{position:absolute;left:.85rem;z-index:2;color:var(--text-muted);pointer-events:none}.req-category-search input,.req-sector-search input{padding:.72rem 2.65rem .72rem 2.6rem!important;min-width:0!important;width:100%!important;box-sizing:border-box!important}.req-category-picker,.req-sector-picker{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.7rem .85rem;border:1px solid var(--border);background:color-mix(in srgb,var(--card) 92%,transparent);color:var(--text);border-radius:13px;font:inherit;text-align:left;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.08)}.req-category-picker>span,.req-sector-picker>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.req-category-picker-modal,.req-sector-picker-modal{position:fixed;inset:0;z-index:14000;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(2,6,23,.56);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:levroPickerIn .16s ease both}.req-category-picker-sheet,.req-sector-picker-sheet{width:min(520px,94vw);max-height:min(78vh,680px);overflow:hidden;background:color-mix(in srgb,var(--card) 95%,transparent);border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border));border-radius:22px;box-shadow:0 24px 80px rgba(0,0,0,.32);padding:.9rem}.req-category-results{max-height:54vh;overflow:auto;margin-top:.65rem;display:flex;flex-direction:column;gap:.25rem}.req-picker-row{min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.65rem .75rem;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;touch-action:manipulation}.req-picker-row:hover,.req-picker-row.selected{background:color-mix(in srgb,var(--primary) 9%,transparent);border-color:color-mix(in srgb,var(--primary) 26%,transparent)}.req-picker-row i{opacity:0;color:var(--primary)}.req-picker-row.selected i{opacity:1}.req-category-empty{padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem}@keyframes levroPickerIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-#bottomNav{min-height:52px!important;height:52px!important;padding:.16rem .22rem max(.16rem,env(safe-area-inset-bottom,0px))!important;border-radius:17px!important}#bottomNav .bottom-nav-item{min-height:40px!important;height:40px!important;padding:.12rem .08rem!important;font-size:.72rem!important}#bottomNav .bottom-nav-item i,#bottomNav .bottom-nav-item .bn-icon{font-size:.9rem!important}#bottomNav .bottom-nav-add{width:46px!important;height:46px!important;top:-.52rem!important}#bottomNav.nav-scroll-shrink{transform:translateY(2px) scale(.965)!important;opacity:.82!important}@media(max-width:720px){#bottomNav{left:.58rem!important;right:.58rem!important;bottom:calc(.42rem + env(safe-area-inset-bottom,0px))!important}#bottomNav .bottom-nav-item{min-height:40px!important;height:40px!important;font-size:.61rem!important}}
+#bottomNav{min-height:52px!important;height:52px!important;padding:.16rem .22rem max(.16rem,env(safe-area-inset-bottom,0px))!important;border-radius:17px!important}#bottomNav .bottom-nav-item{min-height:40px!important;height:40px!important;padding:.12rem .08rem!important;font-size:.72rem!important}#bottomNav .bottom-nav-item i,#bottomNav .bottom-nav-item .bn-icon{font-size:.9rem!important}#bottomNav .bottom-nav-add{width:40px!important;height:40px!important;top:0!important;border:0!important;box-shadow:none!important}#bottomNav.nav-scroll-shrink{transform:translateY(2px) scale(.965)!important;opacity:.82!important}@media(max-width:720px){#bottomNav{left:.58rem!important;right:.58rem!important;bottom:calc(.42rem + env(safe-area-inset-bottom,0px))!important}#bottomNav .bottom-nav-item{min-height:40px!important;height:40px!important;font-size:.61rem!important}}
 #aiChatFab .ai-chat-fab-logo{filter:none!important;-webkit-filter:none!important;position:relative!important;z-index:2!important}#aiChatFab{position:relative;isolation:isolate}#aiChatFab::before{content:"";position:absolute;inset:4px;border-radius:50%;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.18),transparent 28%),radial-gradient(circle at 72% 76%,rgba(0,0,0,.09),transparent 40%),repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 2px,rgba(0,0,0,.03) 2px 4px),color-mix(in srgb,var(--primary) 92%,#0a7f43);opacity:.96;z-index:1;pointer-events:none}
 body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.search-input-active #cartFab{display:none!important}
 #app [data-levro-back]{background:#6b7280!important;border-color:#6b7280!important;color:#fff!important}.ai-history-select-toolbar{display:flex;align-items:center;gap:.45rem;padding:.1rem 0 .55rem}.ai-history-select-toolbar>strong{flex:1;font-size:.76rem}.ai-history-batch-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:.38rem .62rem;font:inherit;font-size:.7rem}.ai-history-danger{color:var(--danger)!important}.ai-chat-history-item.selected{border-color:color-mix(in srgb,var(--primary) 42%,var(--border));background:color-mix(in srgb,var(--primary) 7%,var(--card))}.ai-history-check{width:1.55rem;height:1.55rem;border-radius:50%;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;color:transparent}.ai-history-check.active{background:var(--primary);border-color:var(--primary);color:#fff}
 #aiChatFab::after{content:none!important;display:none!important}
-.levro-route-neon-core{filter:drop-shadow(0 0 4px rgba(57,255,136,.9)) drop-shadow(0 0 11px rgba(57,255,136,.42))}
+.levro-route-neon-core{filter:drop-shadow(0 0 3px rgba(34,197,94,.45)) drop-shadow(0 0 7px rgba(34,197,94,.18))}
 @media(prefers-reduced-motion:reduce){.req-category-picker-modal,.req-sector-picker-modal{animation:none}#bottomNav{transition:none!important}#bottomNav.nav-scroll-shrink{transform:none!important;opacity:1!important}}
+</style>
+<style id="levromart-precision-refinement-v2">
+.chat-header-back{width:2.25rem!important;height:2.25rem!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;color:var(--text)!important}
+.chat-header-back:hover,.chat-header-back:focus-visible{background:transparent!important;box-shadow:none!important}
+.chat-pinned-strip{padding:.35rem .6rem;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:relative;z-index:3}
+.chat-pinned-strip:empty{display:none}
+.chat-pinned-strip-inner{display:flex;align-items:center;gap:.45rem;min-width:0}.chat-pinned-label{flex:0 0 auto;font-size:.68rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}.chat-pinned-items{display:flex;gap:.38rem;overflow-x:auto;scrollbar-width:none;min-width:0}.chat-pinned-items::-webkit-scrollbar{display:none}.chat-pinned-item{flex:0 0 auto;display:flex;align-items:center;gap:.42rem;max-width:210px;padding:.36rem .5rem;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:12px;text-align:left;cursor:pointer;min-height:44px}.chat-pinned-item img{width:34px;height:34px;border-radius:8px;object-fit:cover;background:var(--border);flex:0 0 34px}.chat-pinned-item-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--primary);flex:0 0 34px}.chat-pinned-item span:last-child{min-width:0}.chat-pinned-item strong{display:block;font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-pinned-item small{display:block;color:var(--text-muted);font-size:.62rem;margin-top:.08rem}.chat-message-jump-highlight{animation:levroMessageJump 1.5s ease both;outline:2px solid color-mix(in srgb,var(--primary) 60%,transparent);outline-offset:2px}@keyframes levroMessageJump{0%,100%{background-color:inherit}15%,55%{background:color-mix(in srgb,var(--primary) 18%,transparent)}}
+.product-variant-picker-list{display:flex;justify-content:center!important;flex-wrap:wrap;gap:.45rem}.product-variant-choice{min-width:120px}.selected-variant-summary{grid-template-columns:1fr auto!important}.selected-variant-summary>div{min-width:0}.selected-variant-summary strong:last-child{justify-self:end}
+@media(max-width:520px){.product-variant-choice{min-width:0;flex:1 1 120px}.selected-variant-summary{grid-template-columns:minmax(0,1fr) auto!important}}
+body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.search-input-active #cartFab{display:none!important}
+#bottomNav{height:50px!important;min-height:50px!important;border-radius:999px!important;background:color-mix(in srgb,var(--card) 72%,transparent)!important;backdrop-filter:blur(18px) saturate(150%)!important;-webkit-backdrop-filter:blur(18px) saturate(150%)!important;border:1px solid color-mix(in srgb,var(--text) 8%,transparent)!important;box-shadow:0 12px 30px rgba(0,0,0,.16)!important;padding:.12rem .18rem max(.12rem,env(safe-area-inset-bottom,0px))!important}
+#bottomNav .bottom-nav-item{height:38px!important;min-height:38px!important;border-radius:999px!important;padding:.08rem .1rem!important}.nav-scroll-shrink{opacity:.72!important;transform:translateY(2px) scale(.97)!important}
+#bottomNav .bottom-nav-add{position:relative!important;margin:0!important;align-self:center!important;justify-self:center!important}
+@media(max-width:720px){#bottomNav{left:.7rem!important;right:.7rem!important;bottom:calc(.35rem + env(safe-area-inset-bottom,0px))!important}.bottom-nav-add{flex:0 0 40px!important}.bn-group{gap:.08rem!important}}
+.admin-dash-tabs{flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important;justify-content:flex-start!important}.admin-dash-tabs::-webkit-scrollbar{display:none}
+.levro-route-neon-core{filter:drop-shadow(0 0 3px rgba(34,197,94,.38)) drop-shadow(0 0 8px rgba(34,197,94,.14))!important}
+.req-category-picker,.req-sector-picker{margin-top:.3rem}.req-category-picker-wrap,.req-sector-picker{width:100%}.req-category-search input,.req-sector-search input{padding-left:2.75rem!important;padding-right:2.8rem!important}
+@media(prefers-reduced-motion:reduce){.chat-message-jump-highlight{animation:none!important;outline:2px solid var(--primary)}#bottomNav.nav-scroll-shrink{transform:none!important;opacity:1!important}}
 </style>
 <script id="levromart-refinement-20260912-runtime">
 (function(){'use strict';
   function markBackButtons(root=document){root.querySelectorAll?.('button,.btn,a').forEach(el=>{if(el.dataset.levroBackMarked==='1')return;const text=(el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(!text.startsWith('back'))return;const onclick=el.getAttribute('onclick')||'';if(!onclick.includes('navigate(')&&!el.classList.contains('settings-back-btn')&&!el.classList.contains('chat-header-back'))return;if(el.classList.contains('danger')||el.dataset.primaryAction==='1')return;el.dataset.levroBackMarked='1';el.dataset.levroBack='1';});} markBackButtons(); new MutationObserver(()=>markBackButtons()).observe(document.body,{childList:true,subtree:true});
   document.addEventListener('click',e=>{const hit=e.target?.closest?.('#levromartHeaderSearchBackdrop,.search-backdrop,.compact-search-backdrop,.order-search-backdrop');if(!hit)return;document.body.classList.remove('search-input-active');document.querySelectorAll('.final-search-open,.final-order-open,.levro-compact-search-wrap.open,.final-order-search-wrap.open').forEach(el=>el.classList.remove('final-search-open','final-order-open','open'));document.querySelectorAll('input[type="search"]:focus').forEach(x=>{try{x.blur()}catch(_){}});if(typeof updateCartFab==='function')updateCartFab();try{renderBottomNav()}catch(_){}},true);
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('reqSectorPickerModal')?.remove();document.getElementById('reqCategoryPickerModal')?.remove();}},true);
+
+  async function hydrateAdminAttention(){
+    if(typeof session==='undefined' || profile?.role!=='admin' || typeof sb==='undefined') return;
+    try{
+      const [vendorsQ,supportQ,disputesQ,suggestionsQ]=await Promise.all([
+        sb.from('vendors').select('id',{count:'exact',head:true}).eq('verification_status','pending').is('deleted_at',null),
+        sb.from('support_requests').select('id',{count:'exact',head:true}).in('status',['open','in_progress']),
+        sb.from('disputes').select('id',{count:'exact',head:true}).not('status','in','(resolved,closed)'),
+        sb.from('suggestions').select('id',{count:'exact',head:true}).not('status','in','(resolved,closed)')
+      ]);
+      const counts={adminPanel:Number(vendorsQ.count||0),adminSupportRequests:Number(supportQ.count||0),adminDisputes:Number(disputesQ.count||0),adminFeedback:Number(suggestionsQ.count||0)};
+      document.querySelectorAll('.admin-dash-tabs [data-admin-view]').forEach(btn=>{
+        const key=btn.dataset.adminView;
+        let badge=btn.querySelector('.admin-unresolved-badge');
+        const n=Number(counts[key]||0);
+        if(n>0){ if(!badge){badge=document.createElement('span');badge.className='dash-tab-dot admin-unresolved-badge';btn.appendChild(badge);} badge.textContent=n>9?'9+':String(n); badge.setAttribute('aria-label',`${n} unresolved`); }
+        else badge?.remove();
+      });
+    }catch(e){ console.warn('[Levromart] Admin attention refresh failed:',e); }
+  }
+  window.hydrateAdminAttention=hydrateAdminAttention;
+  async function applyPushDeepLink(data){
+    if(!data) return false;
+    const view=String(data.target_view||data.targetView||data.view||data.route||'').trim();
+    let params=data.target_params||data.targetParams||data.params||{};
+    if(typeof params==='string'){try{params=JSON.parse(params||'{}')}catch(_){params={}}}
+    if(!view) return false;
+    if(view==='messages' && (params.conversationId||params.conversation_id)){ params={...params,conversationId:params.conversationId||params.conversation_id}; }
+    try{ await navigate(view,params); return true; }catch(_){ return false; }
+  }
+  window.applyPushDeepLink=applyPushDeepLink;
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.addEventListener('message',e=>{
+      const d=e.data?.notification||e.data?.push||e.data;
+      if(d?.type==='PUSH_NOTIFICATION_CLICK'||d?.event==='notificationclick'||d?.target_view||d?.targetView) setTimeout(()=>applyPushDeepLink(d),0);
+    });
+  }
+  const initialPush=(()=>{try{const q=new URLSearchParams(location.search);const view=q.get('target_view')||q.get('targetView')||q.get('view');if(!view)return null;let params={};const raw=q.get('target_params')||q.get('params');if(raw)try{params=JSON.parse(raw)}catch(_){}return {target_view:view,target_params:params}}catch(_){return null}})();
+  if(initialPush) window.__pendingPushDeepLink=initialPush;
+  new MutationObserver(()=>{if(currentView?.startsWith('admin') && document.querySelector('.admin-dash-tabs')) hydrateAdminAttention();}).observe(document.getElementById('mainContent')||document.body,{childList:true,subtree:true});
+  document.addEventListener('levromart:view-rendered',()=>{if(currentView?.startsWith('admin'))setTimeout(hydrateAdminAttention,50);});
+  setInterval(()=>{if(currentView?.startsWith('admin'))hydrateAdminAttention();},60000);
+  const applyPendingPush=()=>{if(window.__pendingPushDeepLink && session){const d=window.__pendingPushDeepLink;window.__pendingPushDeepLink=null;applyPushDeepLink(d);}};
+  setTimeout(applyPendingPush,1200);
+  document.addEventListener('levromart:auth-ready',applyPendingPush);
+
 })();
 </script>
 </html>
