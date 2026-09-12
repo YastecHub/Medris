@@ -5492,7 +5492,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 #app .admin-dash-tabs::-webkit-scrollbar{display:none !important;}
 #app .admin-dash-tabs .dash-tab{flex:0 0 auto !important;min-width:4.2rem !important;}
 @media(max-width:720px){
-  #app .admin-dash-tabs{flex-wrap:nowrap !important;overflow-x:auto !important;overflow-y:hidden !important;justify-content:flex-start !important;gap:.35rem !important;padding:.25rem .1rem .7rem !important;scrollbar-width:none !important;}
+  #app .admin-dash-tabs{flex-wrap:wrap !important;overflow-x:visible !important;overflow-y:visible !important;justify-content:center !important;gap:.35rem !important;padding:.25rem .1rem .7rem !important;}
   #app .admin-dash-tabs .dash-tab{min-width:4.7rem !important;}
 }
 
@@ -7382,13 +7382,12 @@ document.addEventListener("click", (event) => {
       }
     }
   });
-  const openReaction = document.querySelector('.reaction-picker');
-  if (openReaction && Date.now() >= (window.chatSuppressClickUntil || 0) && !event.target?.closest?.('.reaction-picker')) {
-    const insideAnchor = event.target?.closest?.('.chat-bubble[data-msg-id]');
-    if (!insideAnchor || !openReaction.contains(insideAnchor)) {
-      openReaction.remove();
-    }
+  const pickerTarget = event.target?.closest?.(".chat-bubble[data-msg-id]");
+  if (pickerTarget) {
+    const openPicker = document.querySelector(`.reaction-picker[data-for="${CSS.escape(String(pickerTarget.dataset.msgId || ""))}"]`);
+    if (openPicker) return;
   }
+  document.querySelectorAll(".reaction-picker").forEach((p) => p.remove());
 });
 // Small "i" button + floating bubble, for swapping a paragraph of helper
 // text out of the page flow and behind a tap - keeps cards short by
@@ -10373,7 +10372,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     const cachedConv = (window.__conversations || []).find((c) => c.conversation_id === params.conversationId);
     if (cachedConv) {
       const cachedMessages = lastSeenMessagesByConv.get(params.conversationId);
-      app.innerHTML = chatSkeletonHtml(params.conversationId, cachedConv, cachedMessages);
+      app.innerHTML = chatSkeletonHtml(cachedConv, cachedMessages);
       if (cachedMessages?.length) requestAnimationFrame(scrollChatToBottom);
     }
   }
@@ -11315,7 +11314,7 @@ async function renderHome() {
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
-  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, bio, sector_id").eq("verification_status", "verified");
+  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, bio, delivery_fee_mode, delivery_fee, delivery_fee_per_km").eq("verification_status", "verified");
   if (activeSector) topVendorsQuery = topVendorsQuery.eq("sector_id", activeSector.id);
   const recentPhotosQuery = sb.from("products")
     .select("id, name, photos, created_at, vendor:vendors!inner(verification_status, is_active)")
@@ -11977,16 +11976,15 @@ function ratingBadgeClass(rating) {
 function vendorCardHtml(v) {
   const name = v?.business_name || "Vendor";
   const avatar = v?.logo_url || v?.user_avatar_url || "";
-  const sectorName = v?.sector_name || v?.sector?.name || (Array.isArray(sectors) ? sectors.find(sec => String(sec.id) === String(v?.sector_id))?.name : "") || "";
-  const followerCount = Number(v?.follower_count || 0);
-  return `<div class="vendor-card homepage-vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || "")}'});" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || "")}'});}">
-    ${avatar ? `<img src="${esc(avatar)}" alt="" class="vendor-home-avatar" loading="lazy" draggable="false">` : `<span class="vendor-home-avatar vendor-home-avatar-fallback">${esc(initials(name))}</span>`}
+  const cats = Array.isArray(v?.categories) ? v.categories.filter(Boolean).slice(0, 2) : [];
+  return `<div class="vendor-card homepage-vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || "")}')}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || "")}'});}">
+    ${avatar ? `<img src="${esc(avatar)}" alt="" class="vendor-home-avatar" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name)}','3rem','vendor-home-avatar','${esc(name)}')))">` : `<span class="vendor-home-avatar vendor-home-avatar-fallback">${esc(initials(name))}</span>`}
     <div class="vendor-home-copy">
-      <strong>${esc(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
-      <span class="vendor-home-city"><i class="fa-solid fa-location-dot"></i> ${esc(v?.city || "Online")}</span>
+      <strong>${esc(name)}</strong>
+      <span class="vendor-home-city"><i class="fa-solid fa-location-dot"></i> ${esc(v?.city || "Lagos")}</span>
       <div class="vendor-home-meta"><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span><span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} · ${Number(v?.review_count ?? 0)} reviews</span></div>
-      <span class="vendor-home-known"><i class="fa-solid fa-layer-group"></i> ${esc(sectorName || "Sector not listed")}</span>
-      <div class="vendor-card-footer"><span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> <span class="vendor-follower-count">${followerCount.toLocaleString()}</span> follower${followerCount===1?'':'s'}</span><span class="vendor-home-storefront-label">View storefront <i class="fa-solid fa-arrow-right"></i></span></div>
+      <span class="vendor-home-known"><i class="fa-solid fa-truck"></i> ${String(v?.delivery_fee_mode || "flat").toLowerCase() === "distance" ? `Distance delivery · ${naira(Number(v?.delivery_fee_per_km || 0))}/km` : Number(v?.delivery_fee || 0) > 0 ? `Flat delivery · ${naira(Number(v?.delivery_fee))}` : "Free delivery"}</span>
+      ${String(v?.bio || "").trim() ? `<span class="vendor-home-known vendor-home-bio"><i class="fa-solid fa-circle-info"></i> ${esc(String(v.bio).trim())}</span>` : cats.length ? `<span class="vendor-home-known"><i class="fa-solid fa-tags"></i> ${cats.map(esc).join(" · ")}</span>` : `<span class="vendor-home-known"><i class="fa-solid fa-shop"></i> Open storefront</span>`}
     </div>
   </div>`;
 }
@@ -12687,7 +12685,7 @@ async function togglePinConversation(conversationId){
 // navigate(). Uses only what's already cached client-side (inbox list +
 // last-seen messages), so it can render before any network call for this
 // conversation has resolved.
-function chatSkeletonHtml(conversationId, cached, cachedMessages) {
+function chatSkeletonHtml(cached, cachedMessages) {
   const name = cached.other_name || "Chat";
   const avatar = cached.other_avatar;
   const messagesArea = cachedMessages && cachedMessages.length
@@ -12703,7 +12701,6 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
         <button class="chat-header-icon-btn" style="opacity:0.4;" disabled title="More options"><i class="fa-solid fa-ellipsis-vertical"></i></button>
       </div>
     </div>
-    <div id="chatPinnedStrip" class="chat-pinned-strip" aria-label="Pinned messages">${renderPinnedMessagesHtml(conversationId, cachedMessages || [], window.__chatPinsByConversation?.[conversationId] || [])}</div>
     <div class="chat-thread">
       <div class="chat-messages" id="chatMessages">${messagesArea}</div>
       <div class="chat-input-row">
@@ -12724,11 +12721,7 @@ async function enrichMessageReplies(messages) {
   return list;
 }
 async function renderMessages(conversationId) {
-  if (conversationId) conversationId=String(conversationId);
-  if (conversationId && !/^[a-zA-Z0-9-]+$/.test(conversationId)) return '<div class="empty-state">That conversation could not be opened.</div>';
   if (!session) return '<div class="empty-state">Log in to view your messages.</div>';
-  if (conversationId) conversationId = String(conversationId);
-  if (conversationId && !/^[a-zA-Z0-9-]+$/.test(conversationId)) return '<div class="empty-state">That conversation could not be opened.</div>';
   if (activeMsgChannel) {
     clearTimeout(typingStopTimer);
     clearTimeout(window.__levroTypingHideTimer);
@@ -12800,16 +12793,13 @@ async function renderMessages(conversationId) {
   // These three calls don't depend on each other, so run them together --
   // awaiting them one at a time was most of the multi-second wait before
   // the thread actually appeared.
-  const [{ data: other, error: otherErr }, { data: conv }, { data: messages }, { data: chatPins }] = await Promise.all([
+  const [{ data: other, error: otherErr }, { data: conv }, { data: messages }] = await Promise.all([
     sb.rpc("get_conversation_other_party", { p_conversation_id: conversationId }),
     sb.from("conversations").select("id, buyer_id, vendor:vendors(id, business_name, logo_url, user_id, phone, whatsapp_number, whatsapp_visible)").eq("id", conversationId).maybeSingle(),
     sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }),
-    sb.from("message_pins").select("id,conversation_id,message_id,pinned_at,expires_at").eq("conversation_id", conversationId).eq("user_id", session.user.id).order("pinned_at", { ascending: false }).limit(4),
   ]);
   if (!conv || otherErr) return '<div class="empty-state">Conversation not found.</div>';
   await enrichMessageReplies(messages || []);
-  window.__chatPinsByConversation = window.__chatPinsByConversation || {};
-  window.__chatPinsByConversation[conversationId] = (chatPins || []).filter(p => !p.expires_at || new Date(p.expires_at).getTime() > Date.now());
 
   const isVendorSide = conv.vendor?.user_id === session.user.id;
   const op = (other && other[0]) || {};
@@ -12860,7 +12850,6 @@ async function renderMessages(conversationId) {
         <div class="chat-menu-dropdown hidden" id="chatMenuDropdown">${chatMenuItems.join("")}</div>
       </div>
     </div>
-    <div id="chatPinnedStrip" class="chat-pinned-strip" aria-label="Pinned messages">${renderPinnedMessagesHtml(conversationId, messages, window.__chatPinsByConversation[conversationId])}</div>
     <div class="chat-thread">
       <div class="chat-messages" id="chatMessages">${chatMessagesWithDatesHtml(messages, chatBubbleHtml)}<div id="chatTypingIndicator" class="chat-typing-indicator hidden" aria-live="polite"><span class="chat-typing-dots"><i></i><i></i><i></i></span><span>Typing…</span></div></div>
       <div id="chatReplyPreview" class="chat-reply-preview hidden"></div>
@@ -12880,7 +12869,7 @@ async function renderMessages(conversationId) {
     </div>
   </div>`;
 
-  setTimeout(() => { scrollChatToBottom(); resolveVisibleAttachments(byId("chatMessages")); resolveVisibleAttachments(byId("chatPinnedStrip")); setupMessageInteractions(byId("chatMessages")); renderChatReplyPreview(); }, 0);
+  setTimeout(() => { scrollChatToBottom(); resolveVisibleAttachments(byId("chatMessages")); setupMessageInteractions(byId("chatMessages")); renderChatReplyPreview(); }, 0);
   subscribeToConversation(conversationId);
   return html;
 }
@@ -13132,7 +13121,6 @@ let chatReplyTarget = null;
 let chatLongPressTimer = null;
 let chatSwipeState = null;
 let chatSuppressClickUntil = 0;
-window.chatSuppressClickUntil = 0;
 
 function getChatMessageById(msgId) {
   const bubble = document.querySelector(`.chat-bubble[data-msg-id="${msgId}"]`);
@@ -13232,53 +13220,6 @@ function renderChatReplyPreview() {
   box.innerHTML = `<span class="reply-accent"></span><div class="reply-copy"><div class="reply-label">Replying to ${document.querySelector(`.chat-bubble[data-msg-id="${chatReplyTarget.id}"]`)?.classList.contains("mine") ? "yourself" : "message"}</div><div class="reply-text">${esc(text)}</div></div><button class="reply-close" type="button" aria-label="Cancel reply" onclick="clearChatReplyTarget()"><i class="fa-solid fa-xmark"></i></button>`;
   box.classList.remove("hidden");
 }
-function isChatMessagePinned(messageId) {
-  const pins = window.__chatPinsByConversation?.[activeConversationId] || [];
-  return pins.some(p => String(p.message_id) === String(messageId) && (!p.expires_at || new Date(p.expires_at).getTime() > Date.now()));
-}
-function renderPinnedMessagesHtml(conversationId, messages, pins) {
-  const byMessage = new Map((messages || []).map(m => [String(m.id), m]));
-  const livePins = (pins || []).filter(p => !p.expires_at || new Date(p.expires_at).getTime() > Date.now()).slice(0,4);
-  if (!livePins.length) return '';
-  return `<div class="chat-pinned-strip-inner"><span class="chat-pinned-label"><i class="fa-solid fa-thumbtack"></i> Pinned</span><div class="chat-pinned-items">${livePins.map(p => { const m=byMessage.get(String(p.message_id)); if(!m)return ''; const image=String(m.attachment_type||'').startsWith('image/') && m.attachment_url; const text=String(m.body||'').trim() || (image ? 'Photo' : 'Attachment'); return `<button type="button" class="chat-pinned-item" onclick="jumpToPinnedMessage('${esc(m.id)}')">${image ? `<img data-attachment-path="${esc(m.attachment_url)}" src="" alt="" />` : `<span class="chat-pinned-item-icon"><i class="fa-solid ${m.body?'fa-message':'fa-paperclip'}"></i></span>`}<span><strong>${esc(text.slice(0,72))}${text.length>72?'…':''}</strong><small>${new Date(m.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</small></span></button>`; }).join('')}</div></div>`;
-}
-async function refreshChatPinnedStrip() {
-  if (!activeConversationId || !session?.user?.id) return;
-  const { data } = await sb.from('message_pins').select('id,conversation_id,message_id,pinned_at,expires_at').eq('conversation_id',activeConversationId).eq('user_id',session.user.id).order('pinned_at',{ascending:false}).limit(4);
-  window.__chatPinsByConversation = window.__chatPinsByConversation || {};
-  window.__chatPinsByConversation[activeConversationId] = (data || []).filter(p => !p.expires_at || new Date(p.expires_at).getTime() > Date.now());
-  const messages = lastSeenMessagesByConv.get(activeConversationId) || [];
-  const strip = byId('chatPinnedStrip');
-  if (strip) strip.innerHTML = renderPinnedMessagesHtml(activeConversationId,messages,window.__chatPinsByConversation[activeConversationId]);
-}
-async function pinChatMessage(messageId) {
-  if (!session?.user?.id || !activeConversationId || !messageId) return;
-  if (isChatMessagePinned(messageId)) { clearMessageActionOverlays(); return; }
-  const existing = (window.__chatPinsByConversation?.[activeConversationId] || []).filter(p => !p.expires_at || new Date(p.expires_at).getTime() > Date.now());
-  if (existing.length >= 4) { showToast('You can pin a maximum of 4 messages in this chat.','info'); clearMessageActionOverlays(); return; }
-  const { error } = await sb.from('message_pins').insert({ user_id: session.user.id, conversation_id: activeConversationId, message_id: messageId });
-  if (error) { showToast(error.message || 'Could not pin this message.','error'); return; }
-  clearMessageActionOverlays(); await refreshChatPinnedStrip(); showToast('Message pinned.','success');
-}
-async function unpinChatMessage(messageId) {
-  if (!session?.user?.id || !activeConversationId || !messageId) return;
-  const { error } = await sb.from('message_pins').delete().eq('user_id',session.user.id).eq('conversation_id',activeConversationId).eq('message_id',messageId);
-  if (error) { showToast(error.message || 'Could not unpin this message.','error'); return; }
-  clearMessageActionOverlays(); await refreshChatPinnedStrip(); showToast('Message unpinned.','success');
-}
-function jumpToPinnedMessage(messageId) {
-  const target = document.querySelector(`.chat-bubble[data-msg-id="${CSS.escape(String(messageId))}"]`);
-  const scroller = byId('chatMessages');
-  if (!target || !scroller) return;
-  const targetRect = target.getBoundingClientRect();
-  const scrollRect = scroller.getBoundingClientRect();
-  const desired = scroller.scrollTop + (targetRect.top - scrollRect.top) - (scrollRect.height - targetRect.height) / 2;
-  scroller.scrollTo({top:Math.max(0,desired),behavior:'smooth'});
-  target.classList.remove('chat-message-jump-highlight');
-  requestAnimationFrame(()=>requestAnimationFrame(()=>target.classList.add('chat-message-jump-highlight')));
-  setTimeout(()=>target.classList.remove('chat-message-jump-highlight'),1500);
-}
-
 function showMessageActionMenu(bubble) {
   clearMessageActionOverlays();
   const msgId = bubble.dataset.msgId;
@@ -13292,8 +13233,7 @@ function showMessageActionMenu(bubble) {
   const actions = [
     `<button type="button" onclick="setChatReplyTarget('${msgId}')"><i class="fa-solid fa-reply"></i> Reply</button>`,
     `<button type="button" onclick="enterChatSelectionMode('${msgId}')"><i class="fa-regular fa-square-check"></i> Select</button>`,
-    `<button type="button" onclick="copySingleChatMessage('${msgId}')"><i class="fa-regular fa-copy"></i> Copy</button>`,
-    `${isChatMessagePinned(msgId) ? `<button type="button" onclick="unpinChatMessage('${msgId}')"><i class="fa-solid fa-thumbtack-slash"></i> Unpin</button>` : `<button type="button" onclick="pinChatMessage('${msgId}')"><i class="fa-solid fa-thumbtack"></i> Pin message</button>`}`
+    `<button type="button" onclick="copySingleChatMessage('${msgId}')"><i class="fa-regular fa-copy"></i> Copy</button>`
   ];
   if (mine && withinEditWindow) {
     actions.push(`<button type="button" onclick="startEditMessage('${msgId}')"><i class="fa-solid fa-pen"></i> Edit</button>`);
@@ -13393,7 +13333,7 @@ function setupMessageLongPress(root) {
         if (moved) return;
         bubble.classList.remove("chat-long-pressing");
         if (navigator.vibrate) navigator.vibrate(12);
-        chatSuppressClickUntil = window.chatSuppressClickUntil = Date.now() + 900;
+        chatSuppressClickUntil = Date.now() + 700;
         const imageOnly = !!bubble.querySelector('.chat-image-attachment') && !bubble.querySelector('.chat-bubble-text');
         if (imageOnly) openReactionPicker({ target: bubble, stopPropagation(){} }, bubble.dataset.msgId);
         else if (chatSelectionMode) toggleChatMessageSelection(bubble.dataset.msgId);
@@ -14088,14 +14028,14 @@ async function renderPackageDetail(packageId) {
 async function renderProductDetail(productId) {
   const { data: product, error } = await sb
     .from("products")
-    .select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)")
+    .select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, verification_status, cac_number, created_at, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)")
     .eq("id", productId)
+    .eq("status", "active")
+    .eq("vendor.verification_status", "verified")
+    .eq("vendor.is_active", true)
     .maybeSingle();
 
-  if (error) { console.error("[Levromart] Product detail load failed:", error); return `<div class="empty-state"><strong>Couldn\'t load this product.</strong><p class="muted" style="margin:.35rem 0 0;">Please try again. If the problem continues, the listing may be unavailable right now.</p></div>`; }
-  if (!product) return '<div class="empty-state">Product not found.</div>';
-  const ownListing = isOwnVendorId(product.vendor?.id);
-  if (!ownListing && (product.status !== "active" || product.vendor?.verification_status !== "verified" || !product.vendor?.is_active)) return '<div class="empty-state">Product not found.</div>';
+  if (error || !product) return '<div class="empty-state">Product not found.</div>';
   const { data: loadedProductVariants, error: variantsError } = await sb
     .from("product_variants")
     .select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order")
@@ -14110,6 +14050,7 @@ async function renderProductDetail(productId) {
   const { data: stats } = await sb.rpc("get_vendor_stats", { p_vendor_id: product.vendor.id });
   const st = (stats && stats[0]) || {};
 
+  const ownListing = isOwnVendorId(product.vendor?.id);
   const canRent = !ownListing && (product.listing_type === "rent" || product.listing_type === "both");
   const canBuy = !ownListing && (product.listing_type === "sale" || product.listing_type === "both");
   const productPhotos = Array.isArray(product.photos) ? product.photos.filter(Boolean) : [];
@@ -14175,8 +14116,7 @@ async function renderProductDetail(productId) {
     const buyLabel = product.is_service ? "Book Now" : "Buy Now";
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
-      ${!product.is_service && productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
-      ${!product.is_service && productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="muted">Selected variety</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variant description")}</small></div><strong id="selectedVariantPrice">${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
+      ${!product.is_service && productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" onclick="selectProductVariant('${esc(v.id)}')"><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
       <div class="flex">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
@@ -14196,11 +14136,7 @@ async function renderProductDetail(productId) {
     </div>`;
   }
   if (ownListing) {
-    const ownerPaid = product.billing_model !== "monthly" || listingActivationValid(product);
-    html += `<div class="card owner-listing-management"><div class="owner-listing-head"><div><span class="muted">Your listing</span><h3 style="margin:.15rem 0 0;">Manage this listing</h3></div><span class="badge ${product.status === "active" ? "success" : "warning"}">${esc(product.status || "paused")}</span></div>
-      <div class="owner-listing-stats"><div><span>Views</span><strong>${Number(product.view_count||0).toLocaleString()}</strong></div><div><span>Saved</span><strong>${Number(st.favorites_count ?? 0).toLocaleString()}</strong></div><div><span>Revenue</span><strong>${naira(Number(st.revenue ?? 0))}</strong></div><div><span>Sales</span><strong>${Number(st.sales_count ?? 0).toLocaleString()}</strong></div></div>
-      <div class="owner-listing-actions"><button type="button" class="btn btn-sm" onclick="openEditProductModal('${product.id}')"><i class="fa-solid fa-pen"></i> Edit</button>${product.status === "active" ? `<button type="button" class="btn btn-sm btn-outline" onclick="setProductStatus('${product.id}','paused')">Pause</button>` : ownerPaid ? `<button type="button" class="btn btn-sm" onclick="setProductStatus('${product.id}','active')">Activate</button>` : `<button type="button" class="btn btn-sm" onclick="startListingMonthlyPayment('product','${product.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000</button>`}<button type="button" class="btn btn-sm btn-danger" onclick="removeProduct('${product.id}')"><i class="fa-solid fa-trash"></i> Remove</button></div>
-      ${product.variants?.length ? `<p class="muted owner-listing-variant-note"><i class="fa-solid fa-layer-group"></i> ${product.variants.length} variety${product.variants.length===1?"":"ies"} configured.</p>` : ""}</div>`;
+    html += `<div class="card own-purchase-block"><p style="margin:0;"><i class="fa-solid fa-circle-info"></i> This is your own listing. You can manage it from your vendor dashboard, but you can't buy, book, or rent from your own shop.</p></div>`;
   }
   const relatedNames = RELATED_EQUIPMENT[product.category?.name] || [];
   if (relatedNames.length) {
@@ -14412,25 +14348,13 @@ function selectProductVariant(variantId) {
   if (!variant) return;
   const hidden = byId("selectedProductVariantId");
   if (hidden) hidden.value = variant.id;
-  document.querySelectorAll(".product-variant-choice").forEach(btn => {
-    const selected = btn.getAttribute("onclick")?.includes(String(variant.id));
-    btn.classList.toggle("active", !!selected);
-    btn.setAttribute("aria-pressed", String(!!selected));
-  });
+  document.querySelectorAll(".product-variant-choice").forEach(btn => btn.classList.toggle("active", btn.getAttribute("onclick")?.includes(String(variant.id))));
   const qty = parseInt(byId("buyQty")?.value || 1) || 1;
-  const unit = Number(variant.discount_price ?? variant.sale_price ?? variant.rental_rate ?? 0);
+  const unit = Number(variant.discount_price ?? variant.sale_price ?? 0);
   const preview = byId("serviceTotalPreview");
   if (preview && unit > 0) preview.textContent = `Total: ${naira(unit * qty)} (${qty} × ${naira(unit)})`;
-  const nameEl = byId("selectedVariantName"), priceEl = byId("selectedVariantPrice"), descEl = byId("selectedVariantDescription");
-  if (nameEl) nameEl.textContent = variant.name || "Selected variety";
-  if (priceEl) priceEl.textContent = naira(unit);
-  if (descEl) descEl.textContent = stripProductVariantMeta(currentProductDetail?.description || "") || "Product details for the selected variety.";
-  if (variant.photo_url) {
-    const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => String(u) === String(variant.photo_url)) ?? -1);
-    if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex);
-    const mainImg = document.querySelector("#productGalleryTrack .product-gallery-slide.active img") || document.querySelector("#productGalleryTrack .product-gallery-slide img");
-    if (mainImg && galleryIndex < 0) mainImg.src = variant.photo_url;
-  }
+  const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => u === variant.photo_url) ?? -1);
+  if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex);
 }
 
 async function buyNow(vendorId, productId) {
@@ -15233,111 +15157,6 @@ function updateRequestFormFields() {
   }
 }
 
-function requestSectorRows() {
-  const all = Array.isArray(sectors) ? sectors : [];
-  return all.filter(Boolean);
-}
-function closeRequestSectorPicker() {
-  document.getElementById("reqSectorPickerModal")?.remove();
-  byId("reqSectorPicker")?.setAttribute("aria-expanded", "false");
-}
-function openRequestSectorPicker(event) {
-  event?.preventDefault?.(); event?.stopPropagation?.();
-  const existing = document.getElementById("reqSectorPickerModal");
-  if (existing) { closeRequestSectorPicker(); return; }
-  const rows = requestSectorRows();
-  const selected = byId("reqSector")?.value || "";
-  const modal = document.createElement("div");
-  modal.id = "reqSectorPickerModal";
-  modal.className = "req-sector-picker-modal";
-  modal.innerHTML = `<div class="req-sector-picker-sheet" role="dialog" aria-modal="true" aria-label="Choose request sector">
-    <div class="req-category-picker-head"><div><strong>Choose a sector</strong><small>Search the sectors already available on Levromart.</small></div><button type="button" class="icon-btn" aria-label="Close" onclick="closeRequestSectorPicker()"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="req-category-search req-sector-search"><i class="fa-solid fa-magnifying-glass"></i><input id="reqSectorSearch" type="search" autocomplete="off" placeholder="Search sectors…" /></div>
-    <div id="reqSectorResults" class="req-category-results"></div>
-  </div>`;
-  document.body.appendChild(modal);
-  byId("reqSectorPicker")?.setAttribute("aria-expanded", "true");
-  const render = () => {
-    const q = String(byId("reqSectorSearch")?.value || "").trim().toLowerCase();
-    const filtered = rows.filter(r => !q || String(r.name || "").toLowerCase().includes(q));
-    const results = byId("reqSectorResults");
-    if (!results) return;
-    results.innerHTML = `<button type="button" class="req-picker-row ${!selected ? "selected" : ""}" data-value=""><span>Any</span><i class="fa-solid fa-check"></i></button>` + filtered.map(item => `<button type="button" class="req-picker-row ${String(item.id)===String(byId("reqSector")?.value||"")?"selected":""}" data-value="${esc(item.id)}"><span>${esc(item.name)}</span><i class="fa-solid fa-check"></i></button>`).join("") || `<div class="req-category-empty">No matching sectors.</div>`;
-    results.querySelectorAll(".req-picker-row").forEach(btn => btn.addEventListener("click", () => {
-      const value = btn.dataset.value || "";
-      if (byId("reqSector")) byId("reqSector").value = value;
-      const sector = rows.find(r => String(r.id) === String(value));
-      if (byId("reqSectorLabel")) byId("reqSectorLabel").textContent = sector?.name || "Any";
-      closeRequestSectorPicker();
-      updateRequestCategoryOptions();
-    }));
-  };
-  modal.addEventListener("click", e => { if (e.target === modal) closeRequestSectorPicker(); });
-  byId("reqSectorSearch")?.addEventListener("input", render);
-  setTimeout(() => { byId("reqSectorSearch")?.focus(); }, 30);
-  render();
-}
-function requestCategoryRows() {
-  const all = Array.isArray(window.__categories) ? window.__categories : [];
-  const sectorId = byId("reqSector")?.value || "";
-  return all.filter(c => c.parent_category_id && (!sectorId || String(c.sector_id || "") === String(sectorId)));
-}
-function updateRequestCategoryOptions() {
-  const current = byId("reqCategory")?.value || "";
-  const rows = requestCategoryRows();
-  const valid = rows.some(c => String(c.id) === String(current));
-  if (!valid) {
-    if (byId("reqCategory")) byId("reqCategory").value = "";
-    if (byId("reqCategoryLabel")) byId("reqCategoryLabel").textContent = "Choose one…";
-  } else {
-    const selected = rows.find(c => String(c.id) === String(current));
-    if (selected && byId("reqCategoryLabel")) byId("reqCategoryLabel").textContent = selected.name;
-  }
-}
-function closeRequestCategoryPicker() {
-  document.getElementById("reqCategoryPickerModal")?.remove();
-  byId("reqCategoryPicker")?.setAttribute("aria-expanded", "false");
-}
-function openRequestCategoryPicker(event) {
-  event?.preventDefault?.(); event?.stopPropagation?.();
-  const existing = document.getElementById("reqCategoryPickerModal");
-  if (existing) { closeRequestCategoryPicker(); return; }
-  const rows = requestCategoryRows();
-  const selected = byId("reqCategory")?.value || "";
-  const modal = document.createElement("div");
-  modal.id = "reqCategoryPickerModal";
-  modal.className = "req-category-picker-modal";
-  modal.innerHTML = `<div class="req-category-picker-sheet" role="dialog" aria-modal="true" aria-label="Choose request category">
-    <div class="req-category-picker-head"><div><strong>Choose a category</strong><small>Search the categories already available on Levromart.</small></div><button type="button" class="icon-btn" aria-label="Close" onclick="closeRequestCategoryPicker()"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="req-category-search"><i class="fa-solid fa-magnifying-glass"></i><input id="reqCategorySearch" type="search" autocomplete="off" placeholder="Search rice, phone, medical…" /></div>
-    <div id="reqCategoryResults" class="req-category-results"></div>
-  </div>`;
-  document.body.appendChild(modal);
-  byId("reqCategoryPicker")?.setAttribute("aria-expanded", "true");
-  const render = () => {
-    const q = String(byId("reqCategorySearch")?.value || "").trim().toLowerCase();
-    const filtered = rows.filter(c => {
-      const text = `${c.name || ""} ${c.description || ""}`.toLowerCase();
-      return !q || text.includes(q);
-    });
-    const results = byId("reqCategoryResults");
-    if (!results) return;
-    results.innerHTML = filtered.length ? filtered.map(c => `<button type="button" class="req-category-option ${String(c.id)===String(selected)?"selected":""}" data-category-id="${esc(c.id)}"><span><strong>${esc(c.name)}</strong>${c.description ? `<small>${esc(c.description)}</small>` : ""}</span><i class="fa-solid ${String(c.id)===String(selected)?"fa-circle-check":"fa-chevron-right"}"></i></button>`).join("") : `<div class="req-category-empty">No matching existing categories.</div>`;
-    results.querySelectorAll(".req-category-option").forEach(btn => btn.addEventListener("click", () => {
-      const id = btn.dataset.categoryId;
-      const item = rows.find(c => String(c.id) === String(id));
-      if (!item) return;
-      byId("reqCategory").value = item.id;
-      byId("reqCategoryLabel").textContent = item.name;
-      closeRequestCategoryPicker();
-    }));
-  };
-  byId("reqCategorySearch")?.addEventListener("input", render);
-  modal.addEventListener("click", e => { if (e.target === modal) closeRequestCategoryPicker(); });
-  render();
-  setTimeout(() => byId("reqCategorySearch")?.focus(), 30);
-}
-
 async function submitEquipmentRequest() {
   if (!session?.user?.id) {
     showToast("Please log in to post a request.", "error");
@@ -15439,8 +15258,8 @@ async function renderRequestEquipment() {
       </div>
       <label>More details</label><textarea id="reqDesc" rows="2" placeholder="Duration, specs, delivery preferences…"></textarea>
       <div class="flex">
-        <div style="flex:1;"><label>Sector</label><button type="button" class="req-sector-picker" id="reqSectorPicker" onclick="openRequestSectorPicker(event)" aria-haspopup="dialog" aria-expanded="false"><span id="reqSectorLabel">Any</span><i class="fa-solid fa-chevron-down"></i></button><input type="hidden" id="reqSector" value=""></div>
-        <div style="flex:1;"><label>Category *</label><div class="req-category-picker-wrap"><button type="button" class="req-category-picker" id="reqCategoryPicker" onclick="openRequestCategoryPicker(event)" aria-haspopup="dialog" aria-expanded="false"><span id="reqCategoryLabel">Choose one…</span><i class="fa-solid fa-chevron-down"></i></button><input type="hidden" id="reqCategory" value=""></div></div>
+        <div style="flex:1;"><label>Sector</label><select id="reqSector" onchange="updateRequestCategoryOptions()"><option value="">Any</option>${sectors.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select></div>
+        <div style="flex:1;"><label>Category *</label><select id="reqCategory"><option value="" disabled selected>Choose one…</option>${(window.__categories || []).filter((c) => c.parent_category_id).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></div>
       </div>
       <div class="flex">
         <div style="flex:1;"><label>City</label><input id="reqCity" value="Lagos" /></div>
@@ -16728,8 +16547,8 @@ async function renderVendorProducts() {
   if (!products || products.length === 0) { html += `<div class="empty-state">No products yet.</div>`; return html; }
 
   html += `<div class="vendor-products-toolbar">
+    <input type="text" id="vendorProductSearch" placeholder="Search your products…" oninput="filterVendorProducts()" />
     <label class="vendor-products-sort"><span>Sort</span><select id="vendorProductSort" onchange="filterVendorProducts()"><option value="newest">Newest first</option><option value="az">A–Z</option><option value="za">Z–A</option></select></label>
-    <div class="vendor-products-search-compact"><button type="button" class="icon-btn vendor-product-search-toggle" aria-expanded="false" aria-label="Search My Products" title="Search My Products"><i class="fa-solid fa-magnifying-glass"></i></button><div class="vendor-product-search-popover"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="vendorProductSearch" placeholder="Search your products…" oninput="filterVendorProducts()" /><button type="button" class="icon-btn vendor-product-search-close" aria-label="Close search"><i class="fa-solid fa-xmark"></i></button></div></div>
   </div>`;
 
   if (vendorProductsView === "table") {
@@ -18310,9 +18129,9 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
-  const orderBackView = isVendor ? "vendorDashboard" : "buyerOrders";
-  const orderBackParams = {};
-  html += `<button class="btn btn-sm" style="margin-top:1rem;background:#6b7280;" onclick='navigate("${orderBackView}",${orderBackParams})'><i class="fa-solid fa-arrow-left"></i> ${isVendor ? "Back to Dashboard" : "Back to Orders"}</button>`;
+  const orderBackView = (isVendor && sourcePerspective === "purchases") ? "vendorOrders" : (isVendor ? "vendorOrders" : "buyerOrders");
+  const orderBackParams = orderBackView === "vendorOrders" ? `{status:"all",type:"all",payment:"all",dateFrom:"",dateTo:"",perspective:"${sourcePerspective === "purchases" ? "purchases" : "sales"}"}` : `{status:"all"}`;
+  html += `<button class="btn btn-sm" style="margin-top:1rem;background:#6b7280;" onclick='navigate("${orderBackView}",${orderBackParams})'><i class="fa-solid fa-arrow-left"></i> Back to orders</button>`;
   return html;
 }
 
@@ -18738,7 +18557,7 @@ function adminNavHtml(active) {
     ["adminLog", "fa-clock-rotate-left", "Log"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
-  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>`).join("")}</div>`;
+  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>`).join("")}</div>`;
 }
 
 async function renderAdminSupportRequests() {
@@ -19157,7 +18976,7 @@ async function renderAdminPeople() {
   setTimeout(async () => {
     try {
       const [{ data: people, error: peopleError }, { data: appeals, error: appealsError }] = await Promise.all([
-        sb.from("users").select("id, name, email, phone, role, city, created_at, suspended_at, suspended_reason").order("created_at", { ascending: false }),
+        sb.from("users").select("id, name, email, role, city, created_at, suspended_at, suspended_reason").order("created_at", { ascending: false }),
         sb.rpc("admin_get_pending_appeals"),
       ]);
       if (peopleError) throw peopleError;
@@ -19184,7 +19003,7 @@ function renderAdminPeopleFromData(people, appeals) {
   (appeals || []).forEach((a) => { appealByUser[a.user_id] = a; });
   window.__adminPeopleAll = people || [];
   window.__adminPeopleRole = ["buyer", "vendor"].includes(window.__adminPeopleRole) ? window.__adminPeopleRole : "buyer";
-  window.__adminPeopleSort = ["newest","oldest","az","za"].includes(window.__adminPeopleSort) ? window.__adminPeopleSort : "newest";
+  window.__adminPeopleSort = window.__adminPeopleSort === "za" ? "za" : "az";
 
   let html = `<h2><i class='fa-solid fa-users'></i> People on Levromart</h2>`;
   html += adminNavHtml("adminPeople");
@@ -19200,7 +19019,7 @@ function renderAdminPeopleFromData(people, appeals) {
   </section>
   <div class="admin-people-controls">
     <div class="admin-people-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="adminPeopleSearch" placeholder="Search by name or email…" oninput="filterAdminPeople()" /></div>
-    <label class="admin-people-sort"><span>Sort</span><select id="adminPeopleSort" onchange="setAdminPeopleSort(this.value)"><option value="newest" ${window.__adminPeopleSort === "newest" ? "selected" : ""}>Newest signups</option><option value="oldest" ${window.__adminPeopleSort === "oldest" ? "selected" : ""}>Oldest signups</option><option value="az" ${window.__adminPeopleSort === "az" ? "selected" : ""}>A–Z</option><option value="za" ${window.__adminPeopleSort === "za" ? "selected" : ""}>Z–A</option></select></label>
+    <label class="admin-people-sort"><span>Sort</span><select id="adminPeopleSort" onchange="setAdminPeopleSort(this.value)"><option value="az" ${window.__adminPeopleSort === "az" ? "selected" : ""}>A–Z</option><option value="za" ${window.__adminPeopleSort === "za" ? "selected" : ""}>Z–A</option></select></label>
   </div>`;
   html += `<div class="accordion-section admin-people-summary" style="max-width:560px;margin:0 auto 1rem;">
     <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-chart-simple"></i> Summary</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
@@ -19209,7 +19028,7 @@ function renderAdminPeopleFromData(people, appeals) {
   if (appeals?.length) {
     html += `<div class="accordion-section open" id="appealsAccordion" style="max-width:600px;margin:0 auto 1rem;border-color:var(--warning);"><button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-flag"></i> Suspension appeals awaiting review (${appeals.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button><div class="accordion-body">${appeals.map((a) => `<div style="border-top:1px solid var(--border);padding:.6rem 0;"><strong>${esc(a.user_name || a.user_email)}</strong><p class="muted" style="margin:.2rem 0;font-size:.82rem;">Suspended for: ${esc(a.suspension_reason || "")}</p><p style="margin:.3rem 0;">${esc(a.message)}</p><div class="flex" style="gap:.5rem;"><button class="btn btn-sm" onclick="approveAppeal('${a.user_id}')"><i class="fa-solid fa-check"></i> Approve &amp; unsuspend</button><button class="btn btn-sm btn-outline" onclick="denyAppealPrompt('${a.id}')"><i class="fa-solid fa-xmark"></i> Deny</button></div></div>`).join("")}</div></div>`;
   }
-  html += `<div class="admin-people-table-xscroll"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Phone</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div>`;
+  html += `<div class="admin-people-table-xscroll"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div>`;
   html += `<p class="muted admin-people-hint"><i class="fa-solid fa-arrows-up-down-left-right"></i> Scroll the table vertically for more people and horizontally for wider columns.</p>`;
   setTimeout(() => renderAdminPeopleRows(), 0);
   return html;
@@ -19218,14 +19037,10 @@ function renderAdminPeopleFromData(people, appeals) {
 function getAdminPeopleFilteredRows() {
   const role = window.__adminPeopleRole || "buyer";
   const q = (byId("adminPeopleSearch")?.value || "").trim().toLowerCase();
-  const sort = window.__adminPeopleSort || "newest";
+  const sort = window.__adminPeopleSort || "az";
   let rows = (window.__adminPeopleAll || []).filter((p) => p.role === role);
   if (q) rows = rows.filter((p) => `${p.name || ""} ${p.email || ""} ${p.city || ""}`.toLowerCase().includes(q));
   rows.sort((a,b) => {
-    if (sort === "newest" || sort === "oldest") {
-      const at = new Date(a.created_at || 0).getTime(), bt = new Date(b.created_at || 0).getTime();
-      return sort === "newest" ? bt - at : at - bt;
-    }
     const aa = String(a.name || a.email || "").toLocaleLowerCase();
     const bb = String(b.name || b.email || "").toLocaleLowerCase();
     const cmp = aa.localeCompare(bb, undefined, { sensitivity: "base" });
@@ -19239,11 +19054,11 @@ function renderAdminPeopleRows() {
   if (!tbody) return;
   const rows = getAdminPeopleFilteredRows();
   tbody.innerHTML = rows.map((p, idx) => `<tr>
-    <td>${idx + 1}</td><td>${esc(p.name || "-")}</td><td>${esc(p.email || "-")}</td><td><span class="badge">${esc(p.role)}</span></td><td>${esc(p.city || "-")}</td><td>${p.phone ? `<button type="button" class="admin-phone-btn" onclick="openAdminPhoneActions(event,'${esc(p.phone)}','${esc(p.name || p.email || "User")}')"><i class="fa-solid fa-phone"></i> ${esc(p.phone)}</button>` : "-"}</td>
-    <td>${p.created_at ? `<span class="admin-joined-cell">${new Date(p.created_at).toLocaleString("en-GB", {day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</span>${Date.now()-new Date(p.created_at).getTime() <= 48*60*60*1000 ? ` <span class="badge admin-new-tag">NEW</span>` : ""}` : "-"}</td>
+    <td>${idx + 1}</td><td>${esc(p.name || "-")}</td><td>${esc(p.email || "-")}</td><td><span class="badge">${esc(p.role)}</span></td><td>${esc(p.city || "-")}</td>
+    <td>${p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB", {day:"numeric",month:"short",year:"numeric"}) : "-"}</td>
     <td>${p.suspended_at ? `<span class="badge danger" title="${esc(p.suspended_reason || "")}">Suspended</span>` : `<span class="badge success">Active</span>`}</td>
     <td>${p.role === "admin" ? "" : p.suspended_at ? `<button class="btn btn-sm btn-outline" onclick="unsuspendUser('${p.id}','${esc(p.name || p.email)}')">Unsuspend</button>` : `<button class="btn btn-sm btn-danger" onclick="suspendUserPrompt('${p.id}','${esc(p.name || p.email)}')">Suspend</button>`}</td>
-  </tr>`).join("") || `<tr><td colspan="9" class="muted" style="text-align:center;padding:1.2rem;">No ${window.__adminPeopleRole === "vendor" ? "vendors" : "buyers"} match your search.</td></tr>`;
+  </tr>`).join("") || `<tr><td colspan="8" class="muted" style="text-align:center;padding:1.2rem;">No ${window.__adminPeopleRole === "vendor" ? "vendors" : "buyers"} match your search.</td></tr>`;
 }
 
 function setAdminPeopleRole(role) {
@@ -19252,7 +19067,7 @@ function setAdminPeopleRole(role) {
   renderAdminPeopleRows();
 }
 function setAdminPeopleSort(sort) {
-  window.__adminPeopleSort = ["newest","oldest","az","za"].includes(sort) ? sort : "newest";
+  window.__adminPeopleSort = sort === "za" ? "za" : "az";
   renderAdminPeopleRows();
 }
 function filterAdminPeople() { renderAdminPeopleRows(); }
@@ -19323,6 +19138,13 @@ async function denyAppealPrompt(appealId) {
   showToast("Appeal denied.", "success");
   navigate("adminPeople");
 }
+function filterAdminPeople() {
+  const q = byId("adminPeopleSearch").value.trim().toLowerCase();
+  document.querySelectorAll("#adminPeopleTable tbody tr").forEach((row) => {
+    row.style.display = !q || row.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+}
+
 function suggestionRowHtml(s) {
   return `<div class="card" style="${s.status === "new" ? "border-color:var(--primary);" : ""}">
     <div class="flex" style="justify-content:space-between;align-items:flex-start;">
@@ -19750,11 +19572,7 @@ function exportFinancePdf() {
     <table><thead><tr><th>Date</th><th>Customer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th></tr></thead>
     <tbody>${filtered.map((t) => `<tr><td>${new Date(t.created_at).toLocaleString()}</td><td>${esc(t.buyer_name || "")}</td><td>${esc(t.vendor_name || "")}</td><td>${esc((t.payment_type || "").replace("_", " "))}</td><td>${naira(t.amount)}</td><td>${esc(t.method || "")}</td><td>${esc(t.status || "")}</td><td>${naira(t.platform_cut)}</td></tr>`).join("")}</tbody></table>
     ${"<scr"}ipt>window.onload = () => window.print();<\/script>
-  </body>
-
-
-
-</html>`);
+  </body></html>`);
   w.document.close();
 }
 
@@ -20178,17 +19996,16 @@ async function loadAiChatHistoryList() {
   if (error) { listEl.innerHTML = `<p class="muted" style="font-size:0.82rem;">Couldn't load your chats.</p>`; return; }
   renderAiChatHistoryList(data || []);
 }
-let aiHistorySelectMode=false;
-let aiHistorySelectedIds=new Set();
-function exitAiHistorySelectMode(){aiHistorySelectMode=false;aiHistorySelectedIds.clear();renderAiChatHistoryList(window.__aiHistoryRows||[]);}
-function toggleAiHistorySelection(id){id=String(id);if(aiHistorySelectedIds.has(id))aiHistorySelectedIds.delete(id);else aiHistorySelectedIds.add(id);if(!aiHistorySelectedIds.size)aiHistorySelectMode=false;renderAiChatHistoryList(window.__aiHistoryRows||[]);}
-function toggleAiHistorySelectAll(){const rows=window.__aiHistoryRows||[];aiHistorySelectedIds=(rows.length&&aiHistorySelectedIds.size===rows.length)?new Set():new Set(rows.map(x=>String(x.id)));aiHistorySelectMode=true;renderAiChatHistoryList(rows);}
-async function deleteSelectedAiConversations(){const ids=[...aiHistorySelectedIds];if(!ids.length)return;if(!(await showConfirmDialog(`Delete ${ids.length} selected chat${ids.length===1?'':'s'}? This can't be undone.`,{title:'Delete chats',okLabel:'Delete',danger:true})))return;const {error}=await sb.from('ai_conversations').delete().in('id',ids);if(error){showToast(error.message||"Couldn't delete chats.",'error');return;}if(ids.includes(String(currentAiConversationId))){currentAiConversationId=null;aiConversationCreatePromise=null;localStorage.removeItem('medris-ai-last-conversation');aiChatMessages=[];aiChatLastDateKey=null;byId('aiChatMessages')?.replaceChildren();}aiHistorySelectedIds.clear();aiHistorySelectMode=true;await loadAiChatHistoryList();showToast(`${ids.length} chat${ids.length===1?'':'s'} deleted.`,'success');}
 function renderAiChatHistoryList(convos) {
-  const listEl=byId("aiChatHistoryList");window.__aiHistoryRows=Array.isArray(convos)?convos:[];const rows=window.__aiHistoryRows;if(!listEl)return;
-  const toolbar=`<div class="ai-history-select-toolbar">${aiHistorySelectMode?`<button type="button" class="icon-btn" onclick="exitAiHistorySelectMode()" aria-label="Cancel selection"><i class="fa-solid fa-xmark"></i></button><strong>${aiHistorySelectedIds.size} selected</strong><button type="button" class="icon-btn" onclick="toggleAiHistorySelectAll()" aria-label="Select all"><i class="fa-solid ${aiHistorySelectedIds.size===rows.length&&rows.length?'fa-square-minus':'fa-square-check'}"></i></button><button type="button" class="icon-btn ai-history-danger" ${aiHistorySelectedIds.size?'':'disabled'} onclick="deleteSelectedAiConversations()" aria-label="Delete selected"><i class="fa-solid fa-trash"></i></button>`:`<span></span><button type="button" class="ai-history-batch-btn" onclick="aiHistorySelectMode=true;renderAiChatHistoryList(window.__aiHistoryRows||[])" title="Select chats"><i class="fa-solid fa-check-double"></i> Select</button>`}</div>`;
-  if(!rows.length){listEl.innerHTML=toolbar+`<p class="muted" style="font-size:0.82rem;">No past chats yet.</p>`;return;}
-  listEl.innerHTML=toolbar+rows.map(c=>{const selected=aiHistorySelectedIds.has(String(c.id));return `<div class="ai-chat-history-item ${selected?'selected':''}" data-id="${esc(c.id)}" onclick="${aiHistorySelectMode?`toggleAiHistorySelection('${esc(c.id)}')`:`openAiConversation('${esc(c.id)}')`}">${aiHistorySelectMode?`<span class="ai-history-check ${selected?'active':''}"><i class="fa-solid fa-check"></i></span>`:''}<div class="ai-chat-history-item-main"><div class="ai-chat-history-item-title">${esc(c.title||'Chat')}</div><div class="ai-chat-history-item-date">${new Date(c.updated_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div></div>${!aiHistorySelectMode?`<button class="ai-chat-history-delete" onclick="deleteAiConversation('${esc(c.id)}',event)" title="Delete"><i class="fa-solid fa-trash"></i></button>`:''}</div>`}).join('');
+  const listEl = byId("aiChatHistoryList");
+  if (!convos.length) { listEl.innerHTML = `<p class="muted" style="font-size:0.82rem;">No past chats yet.</p>`; return; }
+  listEl.innerHTML = convos.map((c) => `<div class="ai-chat-history-item" onclick="openAiConversation('${c.id}')">
+    <div class="ai-chat-history-item-main">
+      <div class="ai-chat-history-item-title">${esc(c.title || "Chat")}</div>
+      <div class="ai-chat-history-item-date">${new Date(c.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
+    </div>
+    <button class="ai-chat-history-delete" onclick="deleteAiConversation('${c.id}', event)" title="Delete"><i class="fa-solid fa-trash"></i></button>
+  </div>`).join("");
 }
 let aiChatSearchTimer = null;
 function searchAiChatHistory() {
@@ -20213,7 +20030,39 @@ async function openAiConversation(id) {
   msgs.forEach((m) => appendAiChatMessage(m.role, m.content, false, true, m.id, m.reaction, m.created_at));
   exitAiChatHistoryMode();
 }
-async function deleteAiConversation(id,evt){evt?.stopPropagation?.();if(!(await showConfirmDialog("Delete this chat? This can't be undone.",{title:"Delete chat",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("ai_conversations").delete().eq("id",id);if(error){showToast(error.message||"Couldn't delete this chat.","error");return;}const panel=byId("aiChatPanel"),wasHistory=!!panel&&panel.classList.contains("history-mode");if(currentAiConversationId===id){currentAiConversationId=null;aiConversationCreatePromise=null;localStorage.removeItem("medris-ai-last-conversation");aiChatMessages=[];aiChatLastDateKey=null;byId("aiChatMessages")?.replaceChildren();if(!wasHistory)showAiChatGreeting();}if(wasHistory){panel?.classList.add("history-mode");byId("aiChatHistoryToggleBtn")?.classList.add("active");await loadAiChatHistoryList();}showToast("Chat deleted.","success");}
+async function deleteAiConversation(id, evt) {
+  evt?.stopPropagation?.();
+  if (!(await showConfirmDialog("Delete this chat? This can't be undone.",{title:"Delete chat",okLabel:"Delete",danger:true}))) return;
+  const { error } = await sb.from("ai_conversations").delete().eq("id", id);
+  if (error) { showToast(error.message || "Couldn't delete this chat.", "error"); return; }
+
+  const panel = byId("aiChatPanel");
+  const wasHistory = !!panel && panel.classList.contains("history-mode");
+
+  // Deleting a chat must never close/collapse Levi. Keep the current surface
+  // exactly where the user is. In history mode, simply refresh the list; in
+  // normal mode, clear the deleted thread and show a fresh greeting.
+  if (wasHistory) {
+    panel?.classList.add("history-mode");
+    byId("aiChatHistoryToggleBtn")?.classList.add("active");
+  }
+  if (currentAiConversationId === id) {
+    currentAiConversationId = null;
+    aiConversationCreatePromise = null;
+    localStorage.removeItem("medris-ai-last-conversation");
+    aiChatMessages = [];
+    aiChatLastDateKey = null;
+    byId("aiChatMessages")?.replaceChildren();
+    if (wasHistory) {
+      await loadAiChatHistoryList();
+    } else {
+      showAiChatGreeting();
+    }
+  } else if (wasHistory) {
+    await loadAiChatHistoryList();
+  }
+  showToast("Chat deleted.", "success");
+}
 async function renderSharedAiChat(token) {
   const { data: rows, error } = await sb.rpc("get_shared_ai_conversation", { p_token: token });
   if (error || !rows || rows.length === 0) {
@@ -20692,7 +20541,6 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
           viewCartBtn.innerHTML = `<i class="fa-solid fa-arrow-right"></i> View cart`;
           viewCartBtn.onclick = () => goToAiChatNav({ view: "cart", params: {} });
           el.appendChild(viewCartBtn);
-          setTimeout(() => goToAiChatNav({ view: "cart", params: {} }), 260);
         }
       });
     }
@@ -24537,8 +24385,14 @@ window.renderVendorMapRail = function(){
     const avatarHtml = avatar
       ? `<img src="${esc(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name)}','3.1rem','vendor-directory-logo','${esc(name)}')))" />`
       : `<span class="avatar-circle vendor-directory-logo" aria-label="${esc(name)}">${esc(initials(name))}</span>`;
-    const sectorName = (Array.isArray(sectors) ? sectors : []).find(sec => String(sec.id) === String(v?.sector_id))?.name || "";
-    const knownLine = `<p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${esc(sectorName || "Sector not listed")}</p>`;
+    const cats = Array.isArray(v?.categories) ? v.categories.filter(Boolean).slice(0, 2) : [];
+    // This override previously dropped the categories/delivery line the base
+    // vendorCardHtml() had, which combined with a leftover fixed 92px card
+    // height (see .top-rated-vendors-scroll .vendor-card in CSS) made these
+    // cards look almost empty - just an avatar, name and city.
+    const knownLine = cats.length
+      ? `<p class="muted vendor-directory-categories"><i class="fa-solid fa-tags"></i> ${cats.map(esc).join(", ")}</p>`
+      : `<p class="muted vendor-directory-categories"><i class="fa-solid fa-truck"></i> ${String(v?.delivery_fee_mode || "flat").toLowerCase() === "distance" ? `Distance delivery · ${naira(Number(v?.delivery_fee_per_km || 0))}/km` : Number(v?.delivery_fee || 0) > 0 ? `Flat delivery · ${naira(Number(v?.delivery_fee))}` : "Free delivery"}</p>`;
     return `<div class="vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || '')}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || '')}'});}">
       ${avatarHtml}
       <div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
@@ -24548,7 +24402,6 @@ window.renderVendorMapRail = function(){
         <div class="vendor-card-footer">
           <span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} (${Number(v?.review_count ?? 0)})</span>
           <span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> ${Number(v?.follower_count || 0).toLocaleString()} follower${Number(v?.follower_count || 0) === 1 ? "" : "s"}</span>
-          <span class="badge" style="margin-left:auto;"><i class="fa-solid fa-store"></i> View storefront</span>
         </div>
       </div>
     </div>`;
@@ -24584,9 +24437,9 @@ window.renderVendorMapRail = function(){
   let routeTimer=null;
   let routeEndpoints=[];
   function clearVendorRoute(){
-    if(routeTimer){clearTimeout(routeTimer);routeTimer=null;}
+    if(routeTimer){clearInterval(routeTimer);routeTimer=null;}
     if(vendorsMap){
-      if(routeLayer){try{ if(routeLayer.glow) vendorsMap.removeLayer(routeLayer.glow); if(routeLayer.core) vendorsMap.removeLayer(routeLayer.core); else vendorsMap.removeLayer(routeLayer); }catch(_){} }
+      if(routeLayer){try{vendorsMap.removeLayer(routeLayer);}catch(_){} }
       routeEndpoints.forEach(m=>{try{vendorsMap.removeLayer(m);}catch(_){}});
     }
     routeLayer=null;
@@ -24621,34 +24474,19 @@ window.renderVendorMapRail = function(){
       const route=json?.routes?.[0]?.geometry?.coordinates;
       if(Array.isArray(route)&&route.length>1) coords=route.map(c=>[Number(c[1]),Number(c[0])]);
     }catch(_){/* straight-line fallback */}
-    const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-    const glowLine=window.L.polyline(coords, {color:'#39ff88',weight:9,opacity:0.20,lineCap:'round',lineJoin:'round'}).addTo(vendorsMap);
-    const finalLine=window.L.polyline([], {color:'#22c55e',weight:4,opacity:.86,lineCap:'round',lineJoin:'round',className:'levro-route-neon-core'}).addTo(vendorsMap);
-    finalLine.setStyle({dashArray:reducedMotion ? null : '12 9'});
-    routeLayer={glow:glowLine,core:finalLine};
+    const finalLine=window.L.polyline([], {color,weight:4,opacity:.96,lineCap:'round',lineJoin:'round'}).addTo(vendorsMap);
+    finalLine.setStyle({dashArray:'10 7'});
+    routeLayer=finalLine;
     routeEndpoints=[];
-    const start=window.L.circleMarker(coords[0],{radius:7,color:'#fff',weight:2,fillColor:'#39ff88',fillOpacity:1}).addTo(vendorsMap);
-    const end=window.L.circleMarker(coords[coords.length-1],{radius:8,color:'#fff',weight:2,fillColor:'#39ff88',fillOpacity:1}).addTo(vendorsMap);
+    const start=window.L.circleMarker(coords[0],{radius:7,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(vendorsMap);
+    const end=window.L.circleMarker(coords[coords.length-1],{radius:8,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(vendorsMap);
     routeEndpoints=[start,end];
-    if(reducedMotion){
-      finalLine.setLatLngs(coords);
-    }else{
-      let i=1;
-      let drawing=true;
-      const trace=()=>{
-        if(!routeLayer?.core) return;
-        if(drawing){
-          const n=Math.min(coords.length, i);
-          finalLine.setLatLngs(coords.slice(0,n));
-          i=Math.min(coords.length, i + Math.max(1,Math.ceil(coords.length/24)));
-          if(i>=coords.length){ drawing=false; routeTimer=setTimeout(trace,850); }
-          else routeTimer=setTimeout(trace,42);
-        }else{
-          drawing=true; i=1; routeTimer=setTimeout(trace,420);
-        }
-      };
-      trace();
-    }
+    let i=1;
+    routeTimer=setInterval(()=>{
+      const n=Math.min(coords.length,i=Math.max(i+Math.ceil(coords.length/22),i));
+      finalLine.setLatLngs(coords.slice(0,n));
+      if(n>=coords.length){clearInterval(routeTimer);routeTimer=null;}
+    },35);
     try{vendorsMap.fitBounds(window.L.latLngBounds(coords),{padding:[36,36],animate:true,duration:.6,maxZoom:16});}catch(_){}
   }
 
@@ -26129,12 +25967,10 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   // Follow/unfollow is instant; no confirmation dialog.
   async function followState(vendorId){try{const r=await sb.rpc('get_vendor_follow_state',{p_vendor_id:vendorId});return r.error?null:r.data?.[0]||null}catch(_){return null}}
   async function toggleFollow(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();if(!session){showLogin?.();return}const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const next=!st.following;const btn=wrap.querySelector('.follow-btn');if(btn)btn.disabled=true;try{const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});if(r.error)throw r.error;await refreshFollow(vendorId);if(typeof showToast==='function')showToast(next?'Following vendor.':'Unfollowed vendor.','success')}catch(e){showToast?.(e.message||'Could not update your following list.','error')}finally{if(btn)btn.disabled=false}}
-  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-plus')+'"></i> '+(following?'Following':'Follow');btn.title=following?'Unfollow vendor':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
+  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-plus')+'"></i> '+(following?'Following':'Follow');btn.title=following?'Unfollow vendor':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}const count=document.querySelector('[data-follow-count]');if(count){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
   async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const open=menu.classList.toggle('hidden')===false;bell.setAttribute('aria-expanded',String(open));if(open)await refreshFollow(vendorId)}
   window.toggleLevromartVendorFollow=toggleFollow;window.toggleLevromartFollowNotifications=toggleFollowBell;
-  async function saveFollowPrefsFromWrap(wrap,muteModeOverride){const id=wrap?.dataset.followVendorId;if(!id)return;const checked=k=>!!wrap.querySelector('[data-pref="'+k+'"]')?.checked;let muteMode=muteModeOverride;if(muteMode==null){const active=wrap.querySelector('.follow-mute-grid button.active');muteMode=active?.dataset.mute||'none';}try{const r=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:muteMode,p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')});if(r.error)throw r.error;wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===muteMode));showToast?.(muteMode==='none'?'Vendor notifications turned on.':muteMode==='always'?'Vendor notifications muted until you turn them back on.':`Vendor notifications muted for ${muteMode==='1h'?'1 hour':'8 hours'}.`,'success');}catch(e){showToast?.(e.message||'Could not update vendor notifications.','error')}}
-document.addEventListener('change',e=>{const cb=e.target?.closest?.('.follow-menu input[data-pref]');if(!cb)return;saveFollowPrefsFromWrap(cb.closest('.storefront-follow-wrap'));},true);
-document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-grid button[data-mute]');if(!b)return;e.preventDefault();e.stopPropagation();const wrap=b.closest('.storefront-follow-wrap');if(!wrap)return;saveFollowPrefsFromWrap(wrap,b.dataset.mute);},true);
+  document.addEventListener('change',e=>{const cb=e.target?.closest?.('.follow-menu input[data-pref]');if(!cb)return;const wrap=cb.closest('.storefront-follow-wrap'),id=wrap?.dataset.followVendorId;if(!id)return;const checked=k=>!!wrap.querySelector('[data-pref="'+k+'"]')?.checked;sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:'none',p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')}).then(()=>refreshFollow(id)).catch(()=>{})},true);
   document.addEventListener('click',e=>{if(!e.target.closest?.('.storefront-follow-wrap'))document.querySelectorAll('.follow-menu:not(.hidden)').forEach(m=>m.classList.add('hidden'))},true);
 
   // Follower list for the shop owner.
@@ -26748,12 +26584,9 @@ body.chat-full-page > #app{
         return;
       }
       if(action==='vendors'){
-        if(currentView === 'home' && byId('app .top-rated-vendors-scroll')){
-          byId('app .top-rated-vendors-scroll')?.scrollIntoView({behavior:'smooth',block:'center'});
-          return;
-        }
-        await navigate('home');
-        requestAnimationFrame(()=>setTimeout(()=>byId('app .top-rated-vendors-scroll')?.scrollIntoView({behavior:'smooth',block:'center'}),40));
+        if(typeof vendorsViewMode!=='undefined') vendorsViewMode='map';
+        if(typeof vendorsListingFilter!=='undefined') vendorsListingFilter='all';
+        await navigate('vendors');
         return;
       }
       if(action==='request'){ await navigate('requestEquipment'); return; }
@@ -28590,7 +28423,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 (function(){
   "use strict";
   const HISTORY_KEY = "levromart-search-history-v1";
-  const MAX_HISTORY = 5;
+  const MAX_HISTORY = 8;
   let searchTimer = 0;
   let searchSeq = 0;
 
@@ -28718,29 +28551,16 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       if(!input||!toolbar)return;
       toolbar.classList.add("final-search-open");
       toolbar.querySelector(".levro-final-search-toggle")?.setAttribute("aria-expanded","true");
-      requestAnimationFrame(()=>{
-        const header = document.querySelector("#appHeader, header.sticky-header, header.site-header, .app-header, .main-header") || document.querySelector("header");
-        const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
-        const rect = input.getBoundingClientRect();
-        const target = window.scrollY + rect.top - headerBottom - 4;
-        window.scrollTo({top:Math.max(0,target),behavior:"smooth"});
-        input.focus({preventScroll:true});
-      });
+      byId("browseSection")?.scrollIntoView({block:"start"});
+      input.focus({preventScroll:true});
     }finally{browseShortcutBusy=false;}
   }
   function bindHeaderSearch(){
     window.openLevromartHeaderSearch=openBrowseSearch;
-    window.closeLevromartHeaderSearch=()=>{
-      try { document.querySelectorAll(".final-search-open,.final-order-open,.levro-compact-search-wrap.open,.final-order-search-wrap.open").forEach(el=>el.classList.remove("final-search-open","final-order-open","open")); } catch(_) {}
-      document.body.classList.remove("search-input-active");
-      document.querySelectorAll('input[type="search"]:focus').forEach(x=>{try{x.blur();}catch(_){}});
-      try { renderBottomNav(); } catch(_) {}
-      try { updateCartFab(); } catch(_) {}
-    };
+    window.closeLevromartHeaderSearch=()=>{};
     window.__levroTopSearch=e=>{e?.preventDefault?.();e?.stopPropagation?.();openBrowseSearch();return false;};
     const button=byId("levromartHeaderSearchButton");
     if(button)button.onclick=window.__levroTopSearch;
-    document.getElementById("levromartHeaderSearchBackdrop")?.addEventListener("click",()=>window.closeLevromartHeaderSearch(),{capture:true});
   }
 
   function bindContentActions(ui){
@@ -28799,24 +28619,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
         const state=historyMenuFor(browseToolbar,input);
         toggle.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();const open=browseToolbar.classList.toggle("final-search-open");toggle.setAttribute("aria-expanded",String(open));if(open){state.render();input.focus({preventScroll:true});}else state.menu.classList.add("hidden");});
         input.addEventListener("focus",()=>{browseToolbar.classList.add("final-search-open");toggle.setAttribute("aria-expanded","true");if(!input.value.trim())state.render();});
-        input.addEventListener("keydown",e=>{
-          if(e.key==="Enter"&&input.value.trim()){
-            e.preventDefault();
-            const q=input.value.trim();
-            saveHistory(q);
-            state.menu.classList.add("hidden");
-            try{window.filterHomeProducts?.();}catch(_){}
-            input.dispatchEvent(new Event("input",{bubbles:true}));
-          }
-          if(e.key==="Escape"){
-            e.preventDefault();
-            browseToolbar.classList.remove("final-search-open");
-            state.menu.classList.add("hidden");
-            input.blur();
-            document.body.classList.remove("search-input-active");
-            try{renderBottomNav();updateCartFab();}catch(_){}
-          }
-        });
+        input.addEventListener("keydown",e=>{if(e.key==="Enter"&&input.value.trim())saveHistory(input.value.trim());if(e.key==="Escape"){browseToolbar.classList.remove("final-search-open");state.menu.classList.add("hidden");input.blur();}});
       }
     }
 
@@ -28883,14 +28686,15 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     window.vendorCardHtml=function(v){
       const name=v?.business_name||"Vendor";
       const avatar=v?.logo_url||v?.user_avatar_url||"";
-      const sectorName=v?.sector_name || (Array.isArray(sectors)?sectors.find(sec=>String(sec.id)===String(v?.sector_id))?.name:"") || "Sector not listed";
+      const cats=Array.isArray(v?.categories)?v.categories.filter(Boolean).slice(0,2):[];
       const count=Number(v?.follower_count||0).toLocaleString();
+      const delivery=String(v?.delivery_fee_mode||"flat").toLowerCase()==="distance"?`Distance delivery · ₦${Number(v?.delivery_fee_per_km||0).toLocaleString()}/km`:Number(v?.delivery_fee||0)>0?`Flat delivery · ₦${Number(v.delivery_fee).toLocaleString()}`:"Free delivery";
       const avatarHtml=avatar?`<img src="${escText(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false">`:`<span class="avatar-circle vendor-directory-logo">${escText(typeof initials==='function'?initials(name):name[0])}</span>`;
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
         ${avatarHtml}<div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
           <strong class="vendor-directory-name">${escText(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
           <p class="muted vendor-directory-city" style="margin:.15rem 0;">${escText(v?.city||"Online")}</p>
-          <p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${escText(sectorName)}</p>
+          <p class="muted vendor-directory-categories"><i class="fa-solid fa-truck"></i> ${escText(cats.length?cats.join(", "):delivery)}</p>
           <div class="vendor-card-footer"><span class="badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}">★ ${Number(v?.avg_rating||0).toFixed(1)} (${Number(v?.review_count||0)})</span><span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> <span class="vendor-follower-count">${count}</span> follower${Number(v?.follower_count||0)===1?'':'s'}</span></div>
         </div></div>`;
     };
@@ -29162,170 +28966,5 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 </style>
 <script id="levromart-phase1-password-runtime">
 (function(){document.addEventListener("click",function(e){const b=e.target?.closest?.(".password-visibility-toggle");if(!b)return;const i=document.getElementById(b.dataset.passwordTarget);if(!i)return;const showing=i.type==="text";i.type=showing?"password":"text";const icon=b.querySelector("i");if(icon)icon.className="fa-solid "+(showing?"fa-eye":"fa-eye-slash");b.setAttribute("aria-label",(showing?"Show ":"Hide ")+"password");b.title=showing?"Show password":"Hide password"},true)})();
-</script>
-
-<style id="levromart-astra-final-qa-css">
-/* Astra final QA: request picker */
-.req-category-picker-wrap{position:relative}.req-category-picker{width:100%;min-height:46px;padding:.7rem .8rem;border:1px solid var(--border);border-radius:.85rem;background:color-mix(in srgb,var(--primary) 3%,var(--input-bg));color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:.6rem;font:inherit;cursor:pointer;text-align:left}.req-category-picker:hover,.req-category-picker[aria-expanded="true"]{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 12%,transparent)}.req-category-picker i{color:var(--text-muted);font-size:.75rem}.req-category-picker-modal{position:fixed;inset:0;z-index:2147483605;background:rgba(2,8,23,.48);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:1rem}.req-category-picker-sheet{width:min(520px,100%);max-height:min(78vh,680px);overflow:hidden;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.35);display:flex;flex-direction:column;color:var(--text)}.req-category-picker-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:1rem 1rem .7rem}.req-category-picker-head strong{display:block;font-size:1rem}.req-category-picker-head small{display:block;color:var(--text-muted);font-size:.7rem;margin-top:.15rem}.req-category-search{margin:0 .8rem .65rem;position:relative}.req-category-search i{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--text-muted)}.req-category-search input{padding-left:2.4rem;margin:0;background:var(--input-bg);border-radius:13px}.req-category-results{overflow:auto;padding:.25rem .7rem .8rem}.req-category-option{width:100%;border:1px solid transparent;background:transparent;color:var(--text);padding:.72rem .7rem;border-radius:13px;display:flex;align-items:center;justify-content:space-between;gap:.7rem;text-align:left;cursor:pointer;font:inherit}.req-category-option:hover,.req-category-option.selected{background:color-mix(in srgb,var(--primary) 10%,transparent);border-color:color-mix(in srgb,var(--primary) 24%,var(--border))}.req-category-option strong{display:block;font-size:.84rem}.req-category-option small{display:block;color:var(--text-muted);font-size:.68rem;margin-top:.12rem}.req-category-option>i{color:var(--primary);font-size:.8rem}.req-category-empty{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.8rem}
-/* Compact vendor mute popup */
-#app .follow-menu .follow-mute-grid{grid-template-columns:repeat(4,1fr)!important}.follow-mute-grid button[data-mute]{min-height:36px}.follow-mute-grid button[data-mute="always"]{grid-column:auto!important}.follow-menu{width:min(320px,calc(100vw - 1.5rem))!important;max-height:52vh!important}
-/* Softer five-star rating */
-.rating-five-star{background:color-mix(in srgb,#8b5cf6 12%,transparent)!important;color:#8b5cf6!important;border:1px solid color-mix(in srgb,#8b5cf6 38%,transparent)!important;box-shadow:0 0 0 1px color-mix(in srgb,#8b5cf6 8%,transparent) inset!important}
-/* Listing forms stay inside viewport */
-#productModal .modal-content,#packageModal .modal-content{max-width:min(720px,calc(100vw - 1rem))!important;overflow-x:hidden!important}#productModal,#packageModal{overflow-x:hidden!important}#productModal input,#productModal select,#productModal textarea,#packageModal input,#packageModal select,#packageModal textarea{max-width:100%!important;min-width:0!important}.product-detail-card,.owner-listing-management{overflow-x:hidden!important}
-/* Selected variety summary */
-.selected-variant-summary{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.55rem;margin:.55rem 0 .8rem;padding:.65rem .75rem;border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));background:color-mix(in srgb,var(--primary) 5%,var(--card));border-radius:13px}.selected-variant-summary span{font-size:.68rem}.selected-variant-summary strong{font-size:.8rem}.selected-variant-summary strong:last-child{color:var(--primary)}
-/* Owner listing details */
-.owner-listing-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem}.owner-listing-head h3{font-size:1rem}.owner-listing-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin:.85rem 0}.owner-listing-stats>div{padding:.6rem .45rem;border:1px solid var(--border);border-radius:11px;text-align:center}.owner-listing-stats span{display:block;color:var(--text-muted);font-size:.65rem}.owner-listing-stats strong{display:block;margin-top:.15rem;font-size:.82rem}.owner-listing-actions{display:flex;flex-wrap:wrap;gap:.45rem}.owner-listing-variant-note{font-size:.72rem;margin:.65rem 0 0}.owner-listing-variant-note i{color:var(--primary)}
-/* Admin people */
-.admin-people-table-xscroll{overflow:auto;max-height:58vh;border:1px solid var(--border);border-radius:14px;background:var(--card)}.admin-people-table{min-width:900px}.admin-phone-btn{border:0;background:transparent;color:var(--primary);font:inherit;cursor:pointer;padding:.25rem .35rem;border-radius:8px}.admin-phone-btn:hover{background:color-mix(in srgb,var(--primary) 9%,transparent)}.admin-new-tag{background:color-mix(in srgb,var(--primary) 14%,transparent)!important;color:var(--primary)!important;border:1px solid color-mix(in srgb,var(--primary) 30%,transparent)}.admin-joined-cell{font-variant-numeric:tabular-nums}
-/* Search mode hides fixed UI but preserves deliberate internal scrollers */
-body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.search-input-active #cartFab{display:none!important;visibility:hidden!important;pointer-events:none!important}
-/* Neutral back actions */
-#app .settings-back-btn,#app .chat-header-back,#app button[onclick*="navigate('home')"].btn-sm,#app button[onclick*="navigate('vendorDashboard')"].btn-outline{background:#6b7280!important;border-color:#6b7280!important;color:#fff!important}
-/* Levi icon: subtle green texture only on the icon */
-#aiChatFab .ai-chat-fab-logo{filter:drop-shadow(0 1px 1px rgba(16,185,129,.35))!important;background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.35),transparent 28%),radial-gradient(circle at 70% 75%,rgba(16,185,129,.65),transparent 52%)!important;border-radius:50%!important}
-/* Periodic route trace: trace, pause, trace */
-.levro-vendor-route-path{stroke-dasharray:16 12!important;animation:levroRouteTracePause 4.8s ease-in-out infinite!important}@keyframes levroRouteTracePause{0%{stroke-dashoffset:0;opacity:.76;stroke-width:4}45%{stroke-dashoffset:-180px;opacity:1;stroke-width:5}62%{stroke-dashoffset:-180px;opacity:.86;stroke-width:4}100%{stroke-dashoffset:-180px;opacity:.76;stroke-width:4}}@media(prefers-reduced-motion:reduce){.levro-vendor-route-path{animation:none!important}}
-@media(max-width:520px){.owner-listing-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.selected-variant-summary{grid-template-columns:1fr auto}.selected-variant-summary span{grid-column:1/-1}}
-
-.vendor-products-toolbar{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.6rem!important}.vendor-products-search-compact{position:relative;flex:0 0 auto}.vendor-product-search-toggle{width:42px!important;height:42px!important;min-width:42px!important;border:1px solid var(--border)!important;border-radius:12px!important;color:var(--primary)!important;background:color-mix(in srgb,var(--primary) 5%,var(--card))!important}.vendor-product-search-popover{position:absolute;right:0;top:calc(100% + .4rem);z-index:300;width:min(340px,calc(100vw - 2rem));display:none;align-items:center;gap:.4rem;padding:.35rem;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-float)}.vendor-product-search-popover.open{display:flex}.vendor-product-search-popover>i{color:var(--text-muted);margin-left:.4rem}.vendor-product-search-popover input{margin:0!important;border:0!important;box-shadow:none!important;min-width:0}.vendor-product-search-close{flex:0 0 38px;width:38px;height:38px}
-</style>
-<script id="levromart-astra-final-qa-runtime">
-(function(){'use strict';
-  /* Search state: one delegated controller covers expandable searches across the SPA. */
-  const searchSelector='input[type="search"],#heroSearch,#searchInput,#vendorSearchInput,#orderHistorySearch,#vendorProductSearch,#storefrontPackageSearch,#adminPeopleSearch,#msgSearchInput,.messages-search';
-  function searchOpen(){document.body.classList.add('search-input-active');}
-  function searchClose(){document.body.classList.remove('search-input-active');document.querySelectorAll('.levro-compact-search-wrap.open,.final-order-search-wrap.open').forEach(x=>x.classList.remove('open'));}
-  document.addEventListener('focusin',e=>{if(e.target?.matches?.(searchSelector))searchOpen()},true);
-  document.addEventListener('click',e=>{
-    const backdrop=e.target?.closest?.('#levromartHeaderSearchBackdrop,.search-backdrop,.compact-search-backdrop,.order-search-backdrop');
-    if(backdrop){searchClose();return;}
-    if(e.target?.closest?.('[data-search-close],.header-search-close,.levro-search-close,.final-order-search-close')){setTimeout(searchClose,20);return;}
-    if(e.target?.closest?.('.levro-compact-search-toggle,.final-order-search-toggle,.vendor-search-toggle,.search-toggle'))setTimeout(searchOpen,20);
-  },true);
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('search-input-active'))searchClose()},true);
-  const observer=new MutationObserver(()=>{
-    if(document.querySelector('.levro-compact-search-wrap.open,.final-order-search-wrap.open,#levromartHeaderSearchDock.open')) searchOpen();
-  }); observer.observe(document.body,{childList:true,subtree:true});
-
-  /* Request notification badge: include both request offers and fresh customer requests. */
-  const oldRefreshNotifications=window.refreshNotifications;
-  if(typeof oldRefreshNotifications==='function'&&!window.__astraNotifWrap){window.__astraNotifWrap=true;window.refreshNotifications=async function(...args){const r=await oldRefreshNotifications.apply(this,args);try{if(profile?.role==='vendor'&&session?.user?.id){const q=await sb.from('notifications').select('id',{count:'exact',head:true}).eq('user_id',session.user.id).eq('type','new_request').eq('read',false).eq('archived',false).is('deleted_at',null);window.requestVendorNotificationCount=Number(q.count||0);const el=document.querySelector('[data-profile-label="Requests"] .profile-request-badge');if(el){const n=Number(window.requestVendorNotificationCount||0)+Number(requestOfferBadgeCount||0);el.textContent=n>9?'9+':String(n);el.classList.toggle('hidden',n===0)}}}catch(_){}return r}}
-
-  /* Request category: keep the picker synced after sector changes and support related lexical search without inventing values. */
-  document.addEventListener('change',e=>{if(e.target?.id==='reqSector')setTimeout(()=>window.updateRequestCategoryOptions?.(),0)},true);
-
-  /* Drafts: preserve listing form state until explicit cancel or successful save. */
-  const DRAFT_PREFIX='levromart-listing-form-draft-v3';
-  function draftKey(kind='product'){return `${DRAFT_PREFIX}:${session?.user?.id||'guest'}:${kind}`}
-  function listingModalKind(root){return root?.id==='packageModal'?'package':'product'}
-  function isNewListingModal(root){if(!root)return false;return root.id==='productModal' ? !editingProductId : root.id==='packageModal' ? !editingPackageId : false}
-  function isListingForm(el){const root=el?.closest?.('#productModal,#packageModal');return !!root && isNewListingModal(root)}
-  function captureListingDraft(){if(!session?.user?.id)return;const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(!isNewListingModal(root))return;const kind=listingModalKind(root);const controls=[...root.querySelectorAll('input:not([type=file]),select,textarea')];const values={};controls.forEach(c=>{if(!c.id)return;values[c.id]=c.type==='checkbox'?c.checked:c.value});try{localStorage.setItem(draftKey(kind),JSON.stringify({savedAt:Date.now(),values}))}catch(_){} }
-  function restoreListingDraft(){if(!session?.user?.id)return;const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(!isNewListingModal(root))return;const kind=listingModalKind(root);let raw;try{raw=localStorage.getItem(draftKey(kind))}catch(_){return}if(!raw)return;let d;try{d=JSON.parse(raw)}catch(_){return}if(!d?.values)return;Object.entries(d.values).forEach(([id,v])=>{const el=byId(id);if(!el||!root.contains(el))return;if(el.type==='checkbox')el.checked=!!v;else el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}))});if(byId('reqCategoryLabel')&&byId('reqCategory')?.value){const c=(window.__categories||[]).find(x=>String(x.id)===String(byId('reqCategory').value));if(c)byId('reqCategoryLabel').textContent=c.name}}
-  function clearNewListingDraft(kind){try{localStorage.removeItem(draftKey(kind))}catch(_){}
-  }
-  document.addEventListener('input',e=>{if(isListingForm(e.target)){clearTimeout(window.__astraDraftTimer);window.__astraDraftTimer=setTimeout(captureListingDraft,350)}},true);
-  document.addEventListener('change',e=>{if(isListingForm(e.target)){clearTimeout(window.__astraDraftTimer);window.__astraDraftTimer=setTimeout(captureListingDraft,150)}},true);
-  document.addEventListener('click',e=>{const b=e.target?.closest?.('#productModal button,#packageModal button');if(!b)return;const txt=(b.textContent||'').trim().toLowerCase();if(txt==='cancel'){const root=b.closest('#productModal,#packageModal');clearNewListingDraft(listingModalKind(root));searchClose()}},true);
-  const draftObserver=new MutationObserver(()=>{const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(isNewListingModal(root)){clearTimeout(window.__astraRestoreTimer);window.__astraRestoreTimer=setTimeout(restoreListingDraft,80)}});draftObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
-  document.addEventListener('click',e=>{const toggle=e.target?.closest?.('.vendor-product-search-toggle');if(!toggle)return;const wrap=toggle.closest('.vendor-products-search-compact');const pop=wrap?.querySelector('.vendor-product-search-popover');const open=!!pop&&!pop.classList.contains('open');document.querySelectorAll('.vendor-product-search-popover.open').forEach(x=>x.classList.remove('open'));pop?.classList.toggle('open',open);toggle.setAttribute('aria-expanded',String(open));if(open){searchOpen();setTimeout(()=>pop.querySelector('input')?.focus(),30)}else searchClose()},true);
-  document.addEventListener('click',e=>{const close=e.target?.closest?.('.vendor-product-search-close');if(!close)return;const wrap=close.closest('.vendor-products-search-compact');wrap?.querySelector('.vendor-product-search-popover')?.classList.remove('open');wrap?.querySelector('.vendor-product-search-toggle')?.setAttribute('aria-expanded','false');searchClose()},true);
-  document.addEventListener('click',e=>{const b=e.target?.closest?.('#saveProductBtn,#savePackageBtn');if(!b)return;const kind=b.id==='savePackageBtn'?'package':'product';setTimeout(()=>{const modal=document.getElementById(kind==='package'?'packageModal':'productModal');const error=document.getElementById(kind==='package'?'packageError':'productError');if(modal?.classList.contains('hidden')&&!error?.textContent?.trim())clearNewListingDraft(kind)},900)},true);
-
-  /* Own listing management: enrich active owner pages and make owner navigation obvious. */
-  document.addEventListener('click',e=>{const card=e.target?.closest?.('.vendor-product-card-grid>.card');if(!card)return;if(e.target.closest('button,a,input'))return;const edit=card.querySelector('.vendor-edit-action');if(edit)e.preventDefault();},true);
-
-  /* Admin phone actions */
-  window.openAdminPhoneActions=function(event,phone,name){event?.preventDefault?.();event?.stopPropagation?.();const existing=document.getElementById('adminPhoneActionModal');existing?.remove();const modal=document.createElement('div');modal.id='adminPhoneActionModal';modal.className='modal';const safe=String(phone).replace(/[^0-9+]/g,'');const wa=safe.replace(/^\+/,'');modal.innerHTML=`<div class="modal-content" style="max-width:340px"><div class="drawer-header"><h3 style="margin:0">${escHtml(name)}</h3><button type="button" class="drawer-close-btn" onclick="document.getElementById('adminPhoneActionModal')?.remove()"><i class="fa-solid fa-xmark"></i></button></div><p class="muted" style="margin:.3rem 0 .8rem">${escHtml(phone)}</p><div class="flex" style="gap:.5rem"><button type="button" class="btn" onclick="navigator.clipboard?.writeText('${escHtml(phone)}').then(()=>{showToast('Phone number copied.','success');document.getElementById('adminPhoneActionModal')?.remove()})"><i class="fa-regular fa-copy"></i> Copy</button><a class="btn btn-outline" href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="document.getElementById('adminPhoneActionModal')?.remove()"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a></div></div>`;document.body.appendChild(modal);modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()})};
-
-  /* Levi texture is cosmetic only. */
-  document.querySelectorAll('#aiChatFab .ai-chat-fab-logo').forEach(x=>x.classList.add('astra-levi-textured'));
-  setInterval(()=>{if(currentView==='adminPeople')renderAdminPeopleRows()},60*60*1000);
-})();
-</script>
-
-
-<style id="levromart-refinement-20260912">
-.req-category-search,.req-sector-search{position:relative;display:flex;align-items:center;gap:.45rem}.req-category-search>i,.req-sector-search>i{position:absolute;left:.85rem;z-index:2;color:var(--text-muted);pointer-events:none}.req-category-search input,.req-sector-search input{padding:.72rem 2.65rem .72rem 2.6rem!important;min-width:0!important;width:100%!important;box-sizing:border-box!important}.req-category-picker,.req-sector-picker{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.7rem .85rem;border:1px solid var(--border);background:color-mix(in srgb,var(--card) 92%,transparent);color:var(--text);border-radius:13px;font:inherit;text-align:left;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.08)}.req-category-picker>span,.req-sector-picker>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.req-category-picker-modal,.req-sector-picker-modal{position:fixed;inset:0;z-index:14000;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(2,6,23,.56);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:levroPickerIn .16s ease both}.req-category-picker-sheet,.req-sector-picker-sheet{width:min(520px,94vw);max-height:min(78vh,680px);overflow:hidden;background:color-mix(in srgb,var(--card) 95%,transparent);border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border));border-radius:22px;box-shadow:0 24px 80px rgba(0,0,0,.32);padding:.9rem}.req-category-results{max-height:54vh;overflow:auto;margin-top:.65rem;display:flex;flex-direction:column;gap:.25rem}.req-picker-row{min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.65rem .75rem;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;touch-action:manipulation}.req-picker-row:hover,.req-picker-row.selected{background:color-mix(in srgb,var(--primary) 9%,transparent);border-color:color-mix(in srgb,var(--primary) 26%,transparent)}.req-picker-row i{opacity:0;color:var(--primary)}.req-picker-row.selected i{opacity:1}.req-category-empty{padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem}@keyframes levroPickerIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-#bottomNav{min-height:52px!important;height:52px!important;padding:.16rem .22rem max(.16rem,env(safe-area-inset-bottom,0px))!important;border-radius:17px!important}#bottomNav .bottom-nav-item{min-height:40px!important;height:40px!important;padding:.12rem .08rem!important;font-size:.72rem!important}#bottomNav .bottom-nav-item i,#bottomNav .bottom-nav-item .bn-icon{font-size:.9rem!important}#bottomNav .bottom-nav-add{width:40px!important;height:40px!important;top:0!important;border:0!important;box-shadow:none!important}#bottomNav.nav-scroll-shrink{transform:translateY(2px) scale(.965)!important;opacity:.82!important}@media(max-width:720px){#bottomNav{left:.58rem!important;right:.58rem!important;bottom:calc(.42rem + env(safe-area-inset-bottom,0px))!important}#bottomNav .bottom-nav-item{min-height:40px!important;height:40px!important;font-size:.61rem!important}}
-#aiChatFab .ai-chat-fab-logo{filter:none!important;-webkit-filter:none!important;position:relative!important;z-index:2!important}#aiChatFab{position:relative;isolation:isolate}#aiChatFab::before{content:"";position:absolute;inset:4px;border-radius:50%;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.18),transparent 28%),radial-gradient(circle at 72% 76%,rgba(0,0,0,.09),transparent 40%),repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 2px,rgba(0,0,0,.03) 2px 4px),color-mix(in srgb,var(--primary) 92%,#0a7f43);opacity:.96;z-index:1;pointer-events:none}
-body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.search-input-active #cartFab{display:none!important}
-#app [data-levro-back]{background:#6b7280!important;border-color:#6b7280!important;color:#fff!important}.ai-history-select-toolbar{display:flex;align-items:center;gap:.45rem;padding:.1rem 0 .55rem}.ai-history-select-toolbar>strong{flex:1;font-size:.76rem}.ai-history-batch-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:.38rem .62rem;font:inherit;font-size:.7rem}.ai-history-danger{color:var(--danger)!important}.ai-chat-history-item.selected{border-color:color-mix(in srgb,var(--primary) 42%,var(--border));background:color-mix(in srgb,var(--primary) 7%,var(--card))}.ai-history-check{width:1.55rem;height:1.55rem;border-radius:50%;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;color:transparent}.ai-history-check.active{background:var(--primary);border-color:var(--primary);color:#fff}
-#aiChatFab::after{content:none!important;display:none!important}
-.levro-route-neon-core{filter:drop-shadow(0 0 3px rgba(34,197,94,.45)) drop-shadow(0 0 7px rgba(34,197,94,.18))}
-@media(prefers-reduced-motion:reduce){.req-category-picker-modal,.req-sector-picker-modal{animation:none}#bottomNav{transition:none!important}#bottomNav.nav-scroll-shrink{transform:none!important;opacity:1!important}}
-</style>
-<style id="levromart-precision-refinement-v2">
-.chat-header-back{width:2.25rem!important;height:2.25rem!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;color:var(--text)!important}
-.chat-header-back:hover,.chat-header-back:focus-visible{background:transparent!important;box-shadow:none!important}
-.chat-pinned-strip{padding:.35rem .6rem;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:relative;z-index:3}
-.chat-pinned-strip:empty{display:none}
-.chat-pinned-strip-inner{display:flex;align-items:center;gap:.45rem;min-width:0}.chat-pinned-label{flex:0 0 auto;font-size:.68rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}.chat-pinned-items{display:flex;gap:.38rem;overflow-x:auto;scrollbar-width:none;min-width:0}.chat-pinned-items::-webkit-scrollbar{display:none}.chat-pinned-item{flex:0 0 auto;display:flex;align-items:center;gap:.42rem;max-width:210px;padding:.36rem .5rem;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:12px;text-align:left;cursor:pointer;min-height:44px}.chat-pinned-item img{width:34px;height:34px;border-radius:8px;object-fit:cover;background:var(--border);flex:0 0 34px}.chat-pinned-item-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--primary);flex:0 0 34px}.chat-pinned-item span:last-child{min-width:0}.chat-pinned-item strong{display:block;font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chat-pinned-item small{display:block;color:var(--text-muted);font-size:.62rem;margin-top:.08rem}.chat-message-jump-highlight{animation:levroMessageJump 1.5s ease both;outline:2px solid color-mix(in srgb,var(--primary) 60%,transparent);outline-offset:2px}@keyframes levroMessageJump{0%,100%{background-color:inherit}15%,55%{background:color-mix(in srgb,var(--primary) 18%,transparent)}}
-.product-variant-picker-list{display:flex;justify-content:center!important;flex-wrap:wrap;gap:.45rem}.product-variant-choice{min-width:120px}.selected-variant-summary{grid-template-columns:1fr auto!important}.selected-variant-summary>div{min-width:0}.selected-variant-summary strong:last-child{justify-self:end}
-@media(max-width:520px){.product-variant-choice{min-width:0;flex:1 1 120px}.selected-variant-summary{grid-template-columns:minmax(0,1fr) auto!important}}
-body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.search-input-active #cartFab{display:none!important}
-#bottomNav{height:50px!important;min-height:50px!important;border-radius:999px!important;background:color-mix(in srgb,var(--card) 72%,transparent)!important;backdrop-filter:blur(18px) saturate(150%)!important;-webkit-backdrop-filter:blur(18px) saturate(150%)!important;border:1px solid color-mix(in srgb,var(--text) 8%,transparent)!important;box-shadow:0 12px 30px rgba(0,0,0,.16)!important;padding:.12rem .18rem max(.12rem,env(safe-area-inset-bottom,0px))!important}
-#bottomNav .bottom-nav-item{height:38px!important;min-height:38px!important;border-radius:999px!important;padding:.08rem .1rem!important}.nav-scroll-shrink{opacity:.72!important;transform:translateY(2px) scale(.97)!important}
-#bottomNav .bottom-nav-add{position:relative!important;margin:0!important;align-self:center!important;justify-self:center!important}
-@media(max-width:720px){#bottomNav{left:.7rem!important;right:.7rem!important;bottom:calc(.35rem + env(safe-area-inset-bottom,0px))!important}.bottom-nav-add{flex:0 0 40px!important}.bn-group{gap:.08rem!important}}
-.admin-dash-tabs{flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important;justify-content:flex-start!important}.admin-dash-tabs::-webkit-scrollbar{display:none}
-.levro-route-neon-core{filter:drop-shadow(0 0 3px rgba(34,197,94,.38)) drop-shadow(0 0 8px rgba(34,197,94,.14))!important}
-.req-category-picker,.req-sector-picker{margin-top:.3rem}.req-category-picker-wrap,.req-sector-picker{width:100%}.req-category-search input,.req-sector-search input{padding-left:2.75rem!important;padding-right:2.8rem!important}
-@media(prefers-reduced-motion:reduce){.chat-message-jump-highlight{animation:none!important;outline:2px solid var(--primary)}#bottomNav.nav-scroll-shrink{transform:none!important;opacity:1!important}}
-</style>
-<script id="levromart-refinement-20260912-runtime">
-(function(){'use strict';
-  function markBackButtons(root=document){root.querySelectorAll?.('button,.btn,a').forEach(el=>{if(el.dataset.levroBackMarked==='1')return;const text=(el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(!text.startsWith('back'))return;const onclick=el.getAttribute('onclick')||'';if(!onclick.includes('navigate(')&&!el.classList.contains('settings-back-btn')&&!el.classList.contains('chat-header-back'))return;if(el.classList.contains('danger')||el.dataset.primaryAction==='1')return;el.dataset.levroBackMarked='1';el.dataset.levroBack='1';});} markBackButtons(); new MutationObserver(()=>markBackButtons()).observe(document.body,{childList:true,subtree:true});
-  document.addEventListener('click',e=>{const hit=e.target?.closest?.('#levromartHeaderSearchBackdrop,.search-backdrop,.compact-search-backdrop,.order-search-backdrop');if(!hit)return;document.body.classList.remove('search-input-active');document.querySelectorAll('.final-search-open,.final-order-open,.levro-compact-search-wrap.open,.final-order-search-wrap.open').forEach(el=>el.classList.remove('final-search-open','final-order-open','open'));document.querySelectorAll('input[type="search"]:focus').forEach(x=>{try{x.blur()}catch(_){}});if(typeof updateCartFab==='function')updateCartFab();try{renderBottomNav()}catch(_){}},true);
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('reqSectorPickerModal')?.remove();document.getElementById('reqCategoryPickerModal')?.remove();}},true);
-
-  async function hydrateAdminAttention(){
-    if(typeof session==='undefined' || profile?.role!=='admin' || typeof sb==='undefined') return;
-    try{
-      const [vendorsQ,supportQ,disputesQ,suggestionsQ]=await Promise.all([
-        sb.from('vendors').select('id',{count:'exact',head:true}).eq('verification_status','pending').is('deleted_at',null),
-        sb.from('support_requests').select('id',{count:'exact',head:true}).in('status',['open','in_progress']),
-        sb.from('disputes').select('id',{count:'exact',head:true}).not('status','in','(resolved,closed)'),
-        sb.from('suggestions').select('id',{count:'exact',head:true}).not('status','in','(resolved,closed)')
-      ]);
-      const counts={adminPanel:Number(vendorsQ.count||0),adminSupportRequests:Number(supportQ.count||0),adminDisputes:Number(disputesQ.count||0),adminFeedback:Number(suggestionsQ.count||0)};
-      document.querySelectorAll('.admin-dash-tabs [data-admin-view]').forEach(btn=>{
-        const key=btn.dataset.adminView;
-        let badge=btn.querySelector('.admin-unresolved-badge');
-        const n=Number(counts[key]||0);
-        if(n>0){ if(!badge){badge=document.createElement('span');badge.className='dash-tab-dot admin-unresolved-badge';btn.appendChild(badge);} badge.textContent=n>9?'9+':String(n); badge.setAttribute('aria-label',`${n} unresolved`); }
-        else badge?.remove();
-      });
-    }catch(e){ console.warn('[Levromart] Admin attention refresh failed:',e); }
-  }
-  window.hydrateAdminAttention=hydrateAdminAttention;
-  async function applyPushDeepLink(data){
-    if(!data) return false;
-    const view=String(data.target_view||data.targetView||data.view||data.route||'').trim();
-    let params=data.target_params||data.targetParams||data.params||{};
-    if(typeof params==='string'){try{params=JSON.parse(params||'{}')}catch(_){params={}}}
-    if(!view) return false;
-    if(view==='messages' && (params.conversationId||params.conversation_id)){ params={...params,conversationId:params.conversationId||params.conversation_id}; }
-    try{ await navigate(view,params); return true; }catch(_){ return false; }
-  }
-  window.applyPushDeepLink=applyPushDeepLink;
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.addEventListener('message',e=>{
-      const d=e.data?.notification||e.data?.push||e.data;
-      if(d?.type==='PUSH_NOTIFICATION_CLICK'||d?.event==='notificationclick'||d?.target_view||d?.targetView) setTimeout(()=>applyPushDeepLink(d),0);
-    });
-  }
-  const initialPush=(()=>{try{const q=new URLSearchParams(location.search);const view=q.get('target_view')||q.get('targetView')||q.get('view');if(!view)return null;let params={};const raw=q.get('target_params')||q.get('params');if(raw)try{params=JSON.parse(raw)}catch(_){}return {target_view:view,target_params:params}}catch(_){return null}})();
-  if(initialPush) window.__pendingPushDeepLink=initialPush;
-  new MutationObserver(()=>{if(currentView?.startsWith('admin') && document.querySelector('.admin-dash-tabs')) hydrateAdminAttention();}).observe(document.getElementById('mainContent')||document.body,{childList:true,subtree:true});
-  document.addEventListener('levromart:view-rendered',()=>{if(currentView?.startsWith('admin'))setTimeout(hydrateAdminAttention,50);});
-  setInterval(()=>{if(currentView?.startsWith('admin'))hydrateAdminAttention();},60000);
-  const applyPendingPush=()=>{if(window.__pendingPushDeepLink && session){const d=window.__pendingPushDeepLink;window.__pendingPushDeepLink=null;applyPushDeepLink(d);}};
-  setTimeout(applyPendingPush,1200);
-  document.addEventListener('levromart:auth-ready',applyPendingPush);
-
-})();
 </script>
 </html>
