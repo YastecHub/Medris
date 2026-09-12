@@ -4457,7 +4457,8 @@ body.chat-full-page { overflow:hidden !important; padding-top:0 !important; }
 body.chat-full-page > header,
 body.chat-full-page > .site-footer,
 body.chat-full-page > #cartFab,
-body.chat-full-page > #aiChatFab { display:none !important; }
+body.chat-full-page > #aiChatFab,
+body.chat-full-page > #bottomNav { display:none !important; }
 body.chat-full-page > #app { margin:0 !important; padding:0 !important; max-width:none !important; width:100% !important; }
 body.chat-full-page #cartFab,
 body.chat-full-page #aiChatFab { display:none !important; }
@@ -6105,6 +6106,13 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 .avatar-fallback > span{display:block !important;line-height:1 !important;}
 .vendor-map-popup-avatar-fallback{color:#fff !important;}
 .product-vendor-initial.avatar-fallback{font-size:.46rem !important;}
+</style>
+<style id="levromart-final-three-adjustments-20260912">
+/* Final pass: hide only the outer bottom navigation while one individual chat is open. */
+body.chat-full-page > #bottomNav{display:none !important;}
+/* Vendor listing destructive action: solid red; Edit and Pause remain unchanged. */
+#app .owner-listing-management .owner-listing-actions .btn-danger{background:#dc2626 !important;border-color:#dc2626 !important;color:#fff !important;background-image:none !important;box-shadow:none !important;}
+#app .owner-listing-management .owner-listing-actions .btn-danger:hover{background:#b91c1c !important;border-color:#b91c1c !important;color:#fff !important;}
 </style>
 </head>
 <body>
@@ -8052,10 +8060,9 @@ function stableAvatarHue(value) {
 }
 function avatarFallbackHtml(name, size = "2.6rem", extraClass = "", label = "") {
   const safeName = String(name || "User").trim() || "User";
-  const hue = stableAvatarHue(safeName);
   const title = label || safeName;
   const initialsText = initials(safeName);
-  return `<span class="avatar-circle avatar-fallback ${extraClass}" title="${esc(title)}" aria-label="${esc(title)}" style="width:${size};height:${size};--avatar-bg:hsl(${hue} 58% 43%);color:#fff;"><span aria-hidden="true">${esc(initialsText)}</span></span>`;
+  return `<span class="avatar-circle avatar-fallback ${extraClass}" title="${esc(title)}" aria-label="${esc(title)}" style="width:${size};height:${size};--avatar-bg:#7c3aed;color:#fff;"><span aria-hidden="true">${esc(initialsText)}</span></span>`;
 }
 function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
   const safeName = String(name || "User").trim() || "User";
