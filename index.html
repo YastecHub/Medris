@@ -12359,7 +12359,6 @@ function convRowHtml(c) {
   const name = c.other_name || "User";
   const isUnread = c.unread_count > 0;
   const archived = isChatArchived(c.conversation_id);
-  const pinned = isConversationPinned(c);
   const selected = msgSelectMode && msgSelectedIds.has(c.conversation_id);
   return `<div class="conv-row-wrap ${selected ? "selected" : ""}">
     <div class="conv-list-item ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}" onclick="handleConvRowClick(event,'${c.conversation_id}')">
@@ -12373,7 +12372,6 @@ function convRowHtml(c) {
       ${!msgSelectMode ? `
         <button class="icon-btn" style="flex-shrink:0;" title="Add to a list" onclick="event.stopPropagation();openChatListPicker('${c.conversation_id}')"><i class="fa-solid fa-layer-group" style="${myChatLists.some((l) => l.conversation_ids.includes(c.conversation_id)) ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
         <button class="icon-btn" style="flex-shrink:0;" title="${archived ? "Restore chat" : "Archive chat"}" onclick="event.stopPropagation();toggleChatArchived('${c.conversation_id}')"><i class="fa-solid ${archived ? "fa-box-open" : "fa-box-archive"}" style="${archived ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
-        <button class="icon-btn" style="flex-shrink:0;" title="${pinned ? "Unpin chat" : "Pin chat"}" onclick="event.stopPropagation();togglePinConversation('${c.conversation_id}')"><i class="fa-solid fa-thumbtack" style="${pinned ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
       ` : ""}
     </div>
   </div>`;
@@ -12546,7 +12544,6 @@ function filterMsgList() {
   }
   if (msgListFilter === "all") shown = shown.filter((c) => !archivedIds.has(c.conversation_id));
   if (q) shown = shown.filter((c) => (c.other_name || "").toLowerCase().includes(q) || (c.last_message || "").toLowerCase().includes(q));
-  shown = [...shown].sort((a,b) => Number(isConversationPinned(b)) - Number(isConversationPinned(a)));
   wrap.innerHTML = shown.length ? shown.map(convRowHtml).join("") : `<div class="empty-state">${q ? "No conversations match that search." : emptyReason}</div>`;
 }
 
@@ -12777,10 +12774,11 @@ async function renderMessages(conversationId) {
   // These three calls don't depend on each other, so run them together --
   // awaiting them one at a time was most of the multi-second wait before
   // the thread actually appeared.
-  const [{ data: other, error: otherErr }, { data: conv }, { data: messages }] = await Promise.all([
+  const [{ data: other, error: otherErr }, { data: conv }, { data: messages }, { data: pinnedRows }] = await Promise.all([
     sb.rpc("get_conversation_other_party", { p_conversation_id: conversationId }),
     sb.from("conversations").select("id, buyer_id, vendor:vendors(id, business_name, logo_url, user_id, phone, whatsapp_number, whatsapp_visible)").eq("id", conversationId).maybeSingle(),
     sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }),
+    sb.from("message_pins").select("id,pinned_at,message:messages(id,body,sender_id,created_at,attachment_name,attachment_url,deleted_at)").eq("conversation_id", conversationId).order("pinned_at", { ascending: false }).limit(20),
   ]);
   if (!conv || otherErr) return '<div class="empty-state">Conversation not found.</div>';
   await enrichMessageReplies(messages || []);
@@ -12810,6 +12808,10 @@ async function renderMessages(conversationId) {
     ? (conv.vendor?.phone ? `callVendorGated(event,'${esc(conv.vendor.phone)}','${esc(conv.vendor.id)}')` : `chatNoCallNumber('vendor')`)
     : (otherPhone ? `callChatParty(event,'${esc(otherPhone)}')` : `chatNoCallNumber('buyer')`);
 
+  const safePinnedRows = Array.isArray(pinnedRows) ? pinnedRows.filter(r => r?.message?.id) : [];
+  window.__levroPinnedMessageIds = new Set(safePinnedRows.map(r => String(r.message.id)));
+  const pinnedStrip = safePinnedRows.length ? `<div class="chat-pinned-strip" aria-label="Pinned messages">${safePinnedRows.map(r => { const m=r.message||{}; const text=m.body || m.attachment_name || "Pinned message"; return `<button type="button" class="chat-pinned-item" onclick="scrollToPinnedMessage('${m.id}')" title="Jump to pinned message"><i class="fa-solid fa-thumbtack"></i><span>${esc(text)}</span></button>`; }).join("")}</div>` : "";
+
   let html = `<div class="chat-page-wrap">
     <div id="chatMessageSelectionBar" class="chat-message-selection-bar hidden">
       <button type="button" aria-label="Close selection" onclick="exitChatSelectionMode()"><i class="fa-solid fa-arrow-left"></i></button>
@@ -12835,6 +12837,7 @@ async function renderMessages(conversationId) {
       </div>
     </div>
     <div class="chat-thread">
+      ${pinnedStrip}
       <div class="chat-messages" id="chatMessages">${chatMessagesWithDatesHtml(messages, chatBubbleHtml)}<div id="chatTypingIndicator" class="chat-typing-indicator hidden" aria-live="polite"><span class="chat-typing-dots"><i></i><i></i><i></i></span><span>Typing…</span></div></div>
       <div id="chatReplyPreview" class="chat-reply-preview hidden"></div>
       <div id="msgVoiceStatus" class="voice-recording-status hidden" aria-live="polite">
@@ -13030,8 +13033,9 @@ function chatBubbleHtml(m) {
     </div>`;
   }
   const editedTag = m.edited_at ? `<span class="muted" style="font-size:0.7rem;">(edited)</span>` : "";
+  const pinnedMark = window.__levroPinnedMessageIds?.has(String(m.id)) ? `<span class="chat-message-pinned-mark"><i class="fa-solid fa-thumbtack"></i> Pinned</span>` : "";
   return `<div class="chat-bubble-wrap ${mine ? "mine" : "theirs"}" data-msg-wrap-id="${m.id}">
-    <div class="chat-bubble ${mine ? "mine" : "theirs"}${m.attachment_url && String(m.attachment_type || "").startsWith("image/") && !m.body ? " photo-only" : ""}" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}">${replyQuoteHtml(m)}${attachmentHtml(m)}${m.body ? `<span class="chat-bubble-text">${linkifyChatText(m.body)}</span>` : ""}<span class="chat-time">${editedTag}<span class="chat-time-text">${time}${mine ? messageTicksHtml(m) : ""}</span></span></div>
+    <div class="chat-bubble ${mine ? "mine" : "theirs"}${m.attachment_url && String(m.attachment_type || "").startsWith("image/") && !m.body ? " photo-only" : ""}" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}">${replyQuoteHtml(m)}${attachmentHtml(m)}${m.body ? `<span class="chat-bubble-text">${pinnedMark}${linkifyChatText(m.body)}</span>` : pinnedMark}<span class="chat-time">${editedTag}<span class="chat-time-text">${time}${mine ? messageTicksHtml(m) : ""}</span></span></div>
     <div class="msg-reactions-row" data-reactions-for="${m.id}">${reactionsRowHtml(m)}</div>
   </div>`;
 }
@@ -13204,6 +13208,34 @@ function renderChatReplyPreview() {
   box.innerHTML = `<span class="reply-accent"></span><div class="reply-copy"><div class="reply-label">Replying to ${document.querySelector(`.chat-bubble[data-msg-id="${chatReplyTarget.id}"]`)?.classList.contains("mine") ? "yourself" : "message"}</div><div class="reply-text">${esc(text)}</div></div><button class="reply-close" type="button" aria-label="Cancel reply" onclick="clearChatReplyTarget()"><i class="fa-solid fa-xmark"></i></button>`;
   box.classList.remove("hidden");
 }
+async function togglePinnedMessage(messageId, conversationId){
+  if(!session?.user?.id || !messageId || !conversationId)return;
+  try{
+    const {data:existing,error:readError}=await sb.from("message_pins").select("id").eq("user_id",session.user.id).eq("message_id",messageId).eq("conversation_id",conversationId).maybeSingle();
+    if(readError)throw readError;
+    if(existing?.id){
+      const {error}=await sb.from("message_pins").delete().eq("id",existing.id).eq("user_id",session.user.id);
+      if(error)throw error;
+      showToast("Message unpinned.","success");
+    }else{
+      const {error}=await sb.from("message_pins").insert({user_id:session.user.id,message_id:messageId,conversation_id:conversationId});
+      if(error)throw error;
+      showToast("Message pinned.","success");
+    }
+    clearMessageActionOverlays();
+    navigate("messages",{conversationId},false);
+  }catch(e){
+    showToast(e?.message||"Couldn’t update the pinned message.","error");
+  }
+}
+function scrollToPinnedMessage(messageId){
+  const el=document.querySelector(`.chat-bubble[data-msg-id="${messageId}"]`);
+  if(!el)return;
+  el.scrollIntoView({behavior:"smooth",block:"center"});
+  el.classList.add("pinned-message-focus");
+  setTimeout(()=>el.classList.remove("pinned-message-focus"),1100);
+}
+
 function showMessageActionMenu(bubble) {
   clearMessageActionOverlays();
   const msgId = bubble.dataset.msgId;
@@ -13214,10 +13246,12 @@ function showMessageActionMenu(bubble) {
   if (!wrap) return;
   const menu = document.createElement("div");
   menu.className = `msg-action-menu ${mine ? "msg-action-menu-mine" : "msg-action-menu-theirs"}`;
+  const pinned = !!window.__levroPinnedMessageIds?.has(String(msgId));
   const actions = [
     `<button type="button" onclick="setChatReplyTarget('${msgId}')"><i class="fa-solid fa-reply"></i> Reply</button>`,
     `<button type="button" onclick="enterChatSelectionMode('${msgId}')"><i class="fa-regular fa-square-check"></i> Select</button>`,
-    `<button type="button" onclick="copySingleChatMessage('${msgId}')"><i class="fa-regular fa-copy"></i> Copy</button>`
+    `<button type="button" onclick="copySingleChatMessage('${msgId}')"><i class="fa-regular fa-copy"></i> Copy</button>`,
+    `<button type="button" onclick="togglePinnedMessage('${msgId}','${activeConversationId || ''}')"><i class="fa-solid fa-thumbtack"></i> ${pinned ? "Unpin message" : "Pin message"}</button>`
   ];
   if (mine && withinEditWindow) {
     actions.push(`<button type="button" onclick="startEditMessage('${msgId}')"><i class="fa-solid fa-pen"></i> Edit</button>`);
@@ -14053,7 +14087,29 @@ async function renderProductDetail(productId) {
   window.__productGalleryIndex = 0;
   const isFav = favoriteIds.has(product.id);
 
-  const statItems = [
+  let ownManagement = { saved: 0, revenue: 0, topCity: "—" };
+  if (ownListing) {
+    try {
+      const [{ data: ownFavRows }, { data: ownOrderRows }, { data: ownRegionRows }] = await Promise.all([
+        sb.rpc("get_favorite_counts", { p_product_ids: [product.id] }),
+        sb.from("order_items").select("quantity,unit_price,order:orders!inner(status,vendor_id)").eq("product_id", product.id).eq("order.vendor_id", product.vendor.id),
+        sb.rpc("get_vendor_product_regions", { p_vendor_id: product.vendor.id })
+      ]);
+      ownManagement.saved = Number(ownFavRows?.[0]?.count || 0);
+      ownManagement.revenue = (ownOrderRows || []).filter(x => x.order?.status === "completed").reduce((n,x) => n + Number(x.quantity || 0) * Number(x.unit_price || 0), 0);
+      const top = (ownRegionRows || []).filter(r => String(r.product_id) === String(product.id)).sort((a,b) => Number(b.order_count || 0) - Number(a.order_count || 0))[0];
+      if (top) ownManagement.topCity = top.city || "—";
+    } catch (_) {}
+  }
+
+  const statItems = ownListing ? [
+    !product.is_service ? { label: "Sale remaining", value: `${Number(product.quantity_available ?? 0)} / ${Number(product.quantity_total ?? 0)}` } : null,
+    { label: "Status", value: String(product.status || "—") },
+    { label: "Views", value: Number(product.view_count || 0).toLocaleString() },
+    { label: "Saved", value: ownManagement.saved.toLocaleString() },
+    { label: "Revenue", value: naira(ownManagement.revenue) },
+    { label: "Sells best in", value: ownManagement.topCity }
+  ].filter(Boolean) : [
     !product.is_service ? { label: "Available", value: `${product.quantity_available} / ${product.quantity_total}` } : null,
     product.sale_price != null ? { label: product.is_service ? "Price" : "Buy price", value: naira(product.sale_price) + servicePriceSuffix(product) } : null,
     product.rental_rate != null ? { label: "Rent", value: `${naira(product.rental_rate)} per ${product.rental_rate_unit}` } : null,
@@ -14120,7 +14176,14 @@ async function renderProductDetail(productId) {
     </div>`;
   }
   if (ownListing) {
-    html += `<div class="card own-purchase-block"><p style="margin:0;"><i class="fa-solid fa-circle-info"></i> This is your own listing. You can manage it from your vendor dashboard, but you can't buy, book, or rent from your own shop.</p></div>`;
+    html += `<div class="card own-listing-management-card">
+      <div class="own-listing-management-head"><div><h3 style="margin:0;"><i class="fa-solid fa-store"></i> Your listing</h3><p class="muted" style="margin:.2rem 0 0;">Manage this listing directly from here.</p></div><span class="badge ${product.status === "active" ? "success" : "warning"}">${esc(product.status || "—")}</span></div>
+      <div class="vendor-detail-actions own-listing-management-actions">
+        <button class="btn vendor-edit-action" onclick="openEditProductModal('${product.id}')"><i class="fa-solid fa-pen"></i> Edit</button>
+        ${product.status === "active" ? `<button class="btn vendor-pause-action" onclick="setProductStatus('${product.id}','paused')"><i class="fa-solid fa-pause"></i> Pause</button>` : `<button class="btn" onclick="setProductStatus('${product.id}','active')"><i class="fa-solid fa-play"></i> Activate</button>`}
+        <button class="btn btn-danger" onclick="removeProduct('${product.id}')"><i class="fa-solid fa-trash"></i> Remove</button>
+      </div>
+    </div>`;
   }
   const relatedNames = RELATED_EQUIPMENT[product.category?.name] || [];
   if (relatedNames.length) {
@@ -26770,9 +26833,12 @@ body.chat-full-page > #app{
         return;
       }
       if(action==='vendors'){
-        if(typeof vendorsViewMode!=='undefined') vendorsViewMode='map';
-        if(typeof vendorsListingFilter!=='undefined') vendorsListingFilter='all';
-        await navigate('vendors');
+        if(currentView === 'home'){
+          requestAnimationFrame(()=>document.querySelector('#app .top-rated-vendors-scroll')?.scrollIntoView({behavior:'smooth',block:'start'}));
+          return;
+        }
+        await navigate('home',{},false);
+        setTimeout(()=>document.querySelector('#app .top-rated-vendors-scroll')?.scrollIntoView({behavior:'smooth',block:'start'}),80);
         return;
       }
       if(action==='request'){ await navigate('requestEquipment'); return; }
@@ -29276,4 +29342,24 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   },true);
 })();
 </script>
+<style id="levromart-20260912-final-request-fixes">
+#brandLogoCircle{background:#fff!important;border-radius:50%!important;filter:none!important}
+#cartFab{background:#fff!important;color:var(--primary)!important;border:1px solid color-mix(in srgb,var(--primary) 14%,var(--border))!important;box-shadow:0 8px 24px rgba(0,0,0,.18)!important}
+#cartFab i{color:var(--primary)!important;-webkit-text-fill-color:var(--primary)!important}
+#app .vendor-product-card-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;overflow:visible!important;touch-action:pan-y!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-y:auto!important}
+#app .vendor-product-card-grid>.vendor-listing-card{touch-action:pan-y!important;user-select:none!important;-webkit-user-select:none!important;-webkit-user-drag:none!important;cursor:pointer!important}
+#app .vendor-product-card-grid>.vendor-listing-card img{touch-action:pan-y!important;-webkit-user-drag:none!important}
+.vendor-products-sort{position:relative!important;display:flex!important;align-items:center!important;gap:.45rem!important}
+.vendor-products-sort select{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important}
+.levro-product-sort-ui{position:relative!important}.levro-product-sort-trigger{min-height:42px!important;display:inline-flex!important;align-items:center!important;justify-content:space-between!important;gap:.55rem!important;padding:.62rem .78rem!important;border:1px solid var(--ui-border)!important;border-radius:12px!important;background:var(--ui-surface)!important;color:var(--text)!important;font:700 .78rem inherit!important;box-shadow:var(--ui-shadow)!important;cursor:pointer!important;min-width:150px!important}.levro-product-sort-trigger i{color:var(--primary)!important}.levro-product-sort-menu{position:absolute!important;right:0!important;top:calc(100% + .35rem)!important;width:min(220px,calc(100vw - 2rem))!important;padding:.35rem!important;border:1px solid var(--ui-border)!important;border-radius:14px!important;background:var(--card)!important;box-shadow:0 18px 50px rgba(0,0,0,.25)!important;z-index:200000!important}.levro-product-sort-menu.hidden{display:none!important}.levro-product-sort-menu button{display:flex!important;width:100%!important;align-items:center!important;justify-content:space-between!important;gap:.5rem!important;padding:.65rem .7rem!important;border:0!important;border-radius:10px!important;background:transparent!important;color:var(--text)!important;font:650 .76rem inherit!important;text-align:left!important;cursor:pointer!important}.levro-product-sort-menu button:hover,.levro-product-sort-menu button.active{background:color-mix(in srgb,var(--primary) 9%,transparent)!important;color:var(--primary)!important}
+#levromartHeaderSearchDock{overflow:visible!important}#levromartHeaderSearchDock .header-search-space,#levromartHeaderSearchDock .phase1-search-shell{overflow:visible!important}#levromartHeaderSearchDock .header-search-content,#levromartHeaderSearchDock #levromartHeaderSearchSuggest{max-height:min(64dvh,560px)!important;overflow-y:auto!important;overflow-x:hidden!important}#levromartHeaderSearchDock .levro-search-section{overflow:visible!important}#levromartHeaderSearchDock .levro-search-history-list{max-height:none!important;overflow:visible!important}#levromartHeaderSearchDock .levro-search-history-row{min-height:42px!important}
+#notifPanel{width:min(280px,82vw)!important;max-width:min(280px,82vw)!important}#notifPanel>.notif-list-scroll{max-height:38vh!important}#notifPanel .notif-item-wrap .notif-item{padding:.42rem .38rem!important}#notifPanel .notif-item-wrap .notif-item strong{font-size:.72rem!important}#notifPanel .notif-item-wrap .notif-item .muted{font-size:.63rem!important}.vendor-notification-menu{width:min(250px,calc(100vw - 1.5rem))!important;max-width:min(250px,calc(100vw - 1.5rem))!important;max-height:34vh!important;padding:.42rem!important}
+.chat-pinned-strip{display:flex!important;align-items:center!important;gap:.45rem!important;padding:.42rem .55rem!important;border-bottom:1px solid var(--border)!important;background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;overflow-x:auto!important;scrollbar-width:none!important}.chat-pinned-strip::-webkit-scrollbar{display:none!important}.chat-pinned-item{flex:0 0 auto!important;display:flex!important;align-items:center!important;gap:.42rem!important;max-width:min(78vw,320px)!important;padding:.42rem .55rem!important;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border))!important;border-radius:11px!important;background:var(--card)!important;color:var(--text)!important;text-align:left!important;cursor:pointer!important}.chat-pinned-item i{color:var(--primary)!important}.chat-pinned-item span{font-size:.68rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}.chat-message-pinned-mark{display:inline-flex!important;align-items:center!important;gap:.18rem!important;color:var(--primary)!important;font-size:.62rem!important;margin-right:.25rem!important}.own-listing-management-card{border-color:color-mix(in srgb,var(--primary) 20%,var(--border))!important}.own-listing-management-head{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:.65rem!important}.own-listing-management-actions{justify-content:flex-start!important;margin-top:.75rem!important}@media(max-width:520px){.levro-product-sort-trigger{min-width:132px!important}.vendor-products-sort>span{font-size:.72rem!important}.own-listing-management-actions>*{flex:1 1 30%!important}.vendor-notification-menu{width:min(240px,calc(100vw - 1rem))!important}}
+</style>
+<script id="levromart-20260912-request-runtime">
+(function(){"use strict";
+function installTopSearch(){const button=document.getElementById("levromartHeaderSearchButton"),dock=document.getElementById("levromartHeaderSearchDock"),input=document.getElementById("levromartHeaderSearchInput"),backdrop=document.getElementById("levromartHeaderSearchBackdrop");if(!button||!dock||!input||!backdrop){setTimeout(installTopSearch,180);return;}const renderHistory=()=>{const content=document.getElementById("levromartHeaderSearchSuggest");if(!content)return;let h=[];try{h=JSON.parse(localStorage.getItem("levromart-search-history-v1")||"[]")}catch(_){}h=Array.isArray(h)?h.map(String).filter(Boolean).slice(0,8):[];const escQ=v=>String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");content.innerHTML='<section class="levro-search-section"><div class="levro-search-section-head"><strong>Recent searches</strong>'+(h.length?'<button type="button" class="levro-request-clear-history">Clear all</button>':'')+'</div>'+(h.length?'<div class="levro-search-history-list">'+h.map(q=>'<div class="levro-search-history-row"><button type="button" class="levro-request-history-use" data-q="'+escQ(q)+'"><i class="fa-solid fa-clock-rotate-left"></i><span>'+escQ(q)+'</span></button><button type="button" class="levro-request-history-remove" data-q="'+escQ(q)+'" aria-label="Remove search"><i class="fa-solid fa-xmark"></i></button></div>').join('')+'</div>':'<p class="levro-search-empty-history">Searches you make will appear here.</p>')+'</section>';content.querySelectorAll('.levro-request-history-use').forEach(b=>b.addEventListener('click',()=>{input.value=b.dataset.q||"";input.dispatchEvent(new Event('input',{bubbles:true}));input.focus({preventScroll:true})}));content.querySelectorAll('.levro-request-history-remove').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const q=b.dataset.q||"";try{const a=JSON.parse(localStorage.getItem('levromart-search-history-v1')||'[]');localStorage.setItem('levromart-search-history-v1',JSON.stringify((Array.isArray(a)?a:[]).filter(x=>String(x).toLowerCase()!==q.toLowerCase())))}catch(_){}renderHistory()}));content.querySelector('.levro-request-clear-history')?.addEventListener('click',()=>{try{localStorage.removeItem('levromart-search-history-v1')}catch(_){}renderHistory()})};const open=async()=>{try{if(typeof currentView!=="undefined"&&currentView!=="home"&&typeof window.navigate==="function")await window.navigate("home",{},false)}catch(_){}requestAnimationFrame(()=>{backdrop.classList.add("open");dock.classList.add("open");document.body.classList.add("search-input-active");if(!input.value.trim())renderHistory();try{input.focus({preventScroll:true})}catch(_){input.focus()}})};const close=()=>{backdrop.classList.remove("open");dock.classList.remove("open");input.blur();document.body.classList.remove("search-input-active")};window.openLevromartHeaderSearch=open;window.closeLevromartHeaderSearch=close;window.__levroTopSearch=e=>{e?.preventDefault?.();e?.stopPropagation?.();open();return false};button.onclick=window.__levroTopSearch;if(backdrop.dataset.requestBound!=="1"){backdrop.dataset.requestBound="1";backdrop.addEventListener("click",e=>{if(e.target===backdrop)close()})}document.getElementById("levromartHeaderSearchClose")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();close()},{once:true})}installTopSearch();
+const labels={az:"A–Z",za:"Z–A",newest:"Last added (newest)",oldest:"Last added (oldest)"};function setupProductSort(){const select=document.getElementById("vendorProductSort");if(!select||select.dataset.levroSortReady==="1")return;select.dataset.levroSortReady="1";const host=select.closest(".vendor-products-sort");if(!host)return;select.style.display="none";const ui=document.createElement("div");ui.className="levro-product-sort-ui";const optionHtml=Object.entries(labels).map(([v,l])=>'<button type="button" data-value="'+v+'" class="'+(select.value===v?'active':'')+'"><span>'+l+'</span>'+(select.value===v?'<i class="fa-solid fa-check"></i>':'')+'</button>').join('');ui.innerHTML='<button type="button" class="levro-product-sort-trigger" aria-expanded="false"><span>'+(labels[select.value]||"Sort")+'</span><i class="fa-solid fa-chevron-down"></i></button><div class="levro-product-sort-menu hidden">'+optionHtml+'</div>';host.appendChild(ui);const trigger=ui.querySelector('.levro-product-sort-trigger'),menu=ui.querySelector('.levro-product-sort-menu');trigger.onclick=e=>{e.preventDefault();e.stopPropagation();const o=menu.classList.toggle('hidden');trigger.setAttribute('aria-expanded',String(!o))};menu.querySelectorAll('button[data-value]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();select.value=btn.dataset.value;select.dispatchEvent(new Event('change',{bubbles:true}));trigger.querySelector('span').textContent=labels[select.value];menu.querySelectorAll('button').forEach(x=>{x.classList.toggle('active',x===btn);const i=x.querySelector('i');if(i)i.remove();if(x===btn)x.insertAdjacentHTML('beforeend','<i class="fa-solid fa-check"></i>')});menu.classList.add('hidden');trigger.setAttribute('aria-expanded','false')}))}const observer=new MutationObserver(setupProductSort);observer.observe(document.body,{childList:true,subtree:true});setupProductSort();document.addEventListener('touchstart',e=>{if(e.target?.closest?.('.vendor-product-card-grid'))document.body.style.setProperty('overscroll-behavior-y','auto')},{passive:true})})();
+</script>
+<style id="levromart-20260912-pinned-focus">.pinned-message-focus{box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 38%,transparent),0 8px 26px color-mix(in srgb,var(--primary) 16%,transparent)!important;transition:box-shadow .2s ease!important}</style>
 </html>
