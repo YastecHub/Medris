@@ -6107,9 +6107,24 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 .vendor-map-popup-avatar-fallback{color:#fff !important;}
 .product-vendor-initial.avatar-fallback{font-size:.46rem !important;}
 </style>
+<style id="levromart-vendor-chat-final-20260912">
+/* Vendor defaults: one circle, one solid deterministic colour, centered initials. */
+.avatar-fallback{
+  border:0 !important;
+  outline:0 !important;
+  background-image:none !important;
+  box-shadow:none !important;
+  border-radius:50% !important;
+  color:#fff !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+  overflow:hidden !important;
+}
+.avatar-fallback > span{display:block !important;position:static !important;inset:auto !important;transform:none !important;}
+</style>
 <style id="levromart-final-three-adjustments-20260912">
-/* Final pass: hide only the outer bottom navigation while one individual chat is open. */
-body.chat-full-page > #bottomNav{display:none !important;}
 /* Vendor listing destructive action: solid red; Edit and Pause remain unchanged. */
 #app .owner-listing-management .owner-listing-actions .btn-danger{background:#dc2626 !important;border-color:#dc2626 !important;color:#fff !important;background-image:none !important;box-shadow:none !important;}
 #app .owner-listing-management .owner-listing-actions .btn-danger:hover{background:#b91c1c !important;border-color:#b91c1c !important;color:#fff !important;}
@@ -8062,7 +8077,8 @@ function avatarFallbackHtml(name, size = "2.6rem", extraClass = "", label = "") 
   const safeName = String(name || "User").trim() || "User";
   const title = label || safeName;
   const initialsText = initials(safeName);
-  return `<span class="avatar-circle avatar-fallback ${extraClass}" title="${esc(title)}" aria-label="${esc(title)}" style="width:${size};height:${size};--avatar-bg:#7c3aed;color:#fff;"><span aria-hidden="true">${esc(initialsText)}</span></span>`;
+  const hue = stableAvatarHue(safeName);
+  return `<span class="avatar-circle avatar-fallback ${extraClass}" title="${esc(title)}" aria-label="${esc(title)}" style="width:${size};height:${size};background:hsl(${hue} 58% 43%) !important;color:#fff;"><span aria-hidden="true">${esc(initialsText)}</span></span>`;
 }
 function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
   const safeName = String(name || "User").trim() || "User";
@@ -9751,6 +9767,8 @@ function initBottomNavScrollMotion(){
   const apply=()=>{
     raf=0;
     const {y,maxY}=getMetrics(), delta=y-lastY;
+    const chatOpen=document.body.classList.contains("chat-full-page");
+    if(chatOpen){ restore(); return; }
     const special=document.body.classList.contains("profile-reveal-open")||document.body.classList.contains("profile-reveal-dragging")||nav.classList.contains("nav-hidden")||document.body.classList.contains("search-input-active");
     if(special||reduced()){restore();lastY=y;return;}
     if(Math.abs(delta)<3)return;
@@ -9944,7 +9962,10 @@ async function submitAuth() {
       }
 
       // The account is already confirmed by the server, so sign in immediately.
-      try { sessionStorage.setItem("levromart-just-registered", "1"); } catch (_) {}
+      try {
+        sessionStorage.setItem("levromart-just-registered", "1");
+        if (String(role).toLowerCase() === "vendor") sessionStorage.setItem("levromart-new-vendor-applicant", "1");
+      } catch (_) {}
       const loginEmail = email || authAliasFromPhone(phone);
       const { error: loginError } = await sb.auth.signInWithPassword({
         email: loginEmail,
@@ -10006,7 +10027,17 @@ async function finishLoginSuccess(view) {
     scheduleAutomaticLocationRefresh();
   }
   hideLogin();
-  navigate(view);
+  // Vendor applicants go directly into the existing application route after
+  // the authenticated account is established; the renderer itself checks for
+  // an existing vendor/application row and redirects to the dashboard instead.
+  let postSignupView = view;
+  try {
+    if (sessionStorage.getItem("levromart-new-vendor-applicant") === "1") {
+      postSignupView = "vendorApply";
+      sessionStorage.removeItem("levromart-new-vendor-applicant");
+    }
+  } catch (_) {}
+  navigate(postSignupView);
   awaitingInstallPromptForLogin = true;
   setTimeout(maybeShowInstallPrompt, 800);
   setTimeout(maybeShowNotifPrompt, 1600);
@@ -10536,6 +10567,16 @@ async function navigate(view, params = {}, pushHistory = true) {
       lastRenderError = null;
     } else if (view === "home" || view === "storefront") {
       html = app?.innerHTML?.trim() ? app.innerHTML : '<div class="empty-state">Please try again.</div>';
+    } else if (view === "vendorApply") {
+      html = `<div class="card" style="max-width:480px;margin:0 auto;text-align:center;">
+        <i class="fa-solid fa-store" style="font-size:2rem;color:var(--primary);margin-bottom:.65rem;"></i>
+        <h2 style="margin:.1rem 0 .45rem;">Vendor application unavailable</h2>
+        <p class="muted" style="margin:0 auto 1rem;">We couldn't open the existing vendor application form right now. Your account is still signed in.</p>
+        <div class="flex" style="justify-content:center;gap:.5rem;flex-wrap:wrap;">
+          <button type="button" class="btn" onclick="navigate('vendorApply')"><i class="fa-solid fa-rotate-right"></i> Try again</button>
+          <button type="button" class="btn btn-outline" onclick="navigate('home')">Go to marketplace</button>
+        </div>
+      </div>`;
     } else {
       html = navigationShellHtml(view) || '<div class="empty-state">This page is temporarily unavailable. Please try again.</div>';
     }
@@ -14069,7 +14110,7 @@ async function renderPackageDetail(packageId) {
   const v = pkg.vendor || {};
   window.__packageDetailVendorId = v.id || null;
   const items = pkg.items || [];
-  const vendorLogo = v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;" />` : `<span class="avatar-circle" style="width:2.2rem;height:2.2rem;">${esc((v.business_name || "V").slice(0,1).toUpperCase())}</span>`;
+  const vendorLogo = v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;" />` : avatarFallbackHtml(v.business_name || "Vendor", "2.2rem", "", v.business_name || "Vendor");
   const gallery = photos.length
     ? `<div class="package-detail-gallery">
         <div class="package-detail-gallery-track product-gallery-main" id="packageDetailGalleryTrack" aria-label="Package photos">
@@ -22941,9 +22982,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 </style>
 <style id="levromart-master-fix-ui">
 /* Professional no-photo avatars: person glyph, deterministic colour, never raw initials. */
-.avatar-fallback{border:0 !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;font-weight:600 !important;overflow:hidden !important;vertical-align:middle;}
-.avatar-fallback i{font-size:58% !important;color:#fff !important;line-height:1 !important;}
-.avatar-fallback.avatar-lg i{font-size:54% !important;}
+.avatar-fallback{border:0 !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;font-weight:800 !important;overflow:hidden !important;vertical-align:middle !important;background-image:none !important;}
+.avatar-fallback i{display:none !important;}
 .vendor-edit-avatar-area{display:flex;flex-direction:column;align-items:center;text-align:center;margin:0 auto 1rem;width:100%;}.vendor-edit-avatar-wrap{position:relative;display:inline-flex!important;width:5rem;height:5rem;align-items:center;justify-content:center;flex:0 0 5rem;}.vendor-edit-avatar-wrap .avatar-edit-badge{right:-.1rem;bottom:-.1rem;z-index:3;}.profile-avatar-lightbox-btn{appearance:none;-webkit-appearance:none;border:0;background:transparent;padding:0;display:inline-flex;cursor:pointer;border-radius:50%;-webkit-tap-highlight-color:transparent;}
 .profile-avatar-lightbox-btn:focus-visible{outline:2px solid var(--primary);outline-offset:3px;}
 .storefront-avatar-fallback-button{padding:0 !important;display:flex !important;align-items:center;justify-content:center;}
@@ -23537,7 +23577,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   window.vendorCardHtml = function (v) {
     const logo = v.logo_url
       ? `<img src="${esc(v.logo_url)}" alt="" class="avatar-circle vendor-directory-logo" />`
-      : `<div class="avatar-circle vendor-directory-logo" aria-label="${esc(v.business_name || "Vendor")} profile picture">${esc((v.business_name || "?")[0].toUpperCase())}</div>`;
+      : avatarFallbackHtml(v.business_name || "Vendor", "3.1rem", "vendor-directory-logo", v.business_name || "Vendor");
     const distance = (typeof buyerLocation !== "undefined" && buyerLocation && v.lat != null && v.lng != null)
       ? `<span class="badge"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>`
       : "";
@@ -24307,7 +24347,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     if(!all.length) return '<div class="vendors-map-vendor-rail-head"><strong>Vendors</strong></div><div class="muted" style="padding:.2rem 0 .7rem;font-size:.8rem;">No vendors match these filters.</div>';
     const visible=all.slice(0,6);
     const chips=visible.map(v=>{
-      const logo=v.logo_url?`<img src="${esc(v.logo_url)}" alt="" loading="lazy" />`:`<span class="avatar-circle">${esc((v.business_name||'?')[0].toUpperCase())}</span>`;
+      const logo=v.logo_url?`<img src="${esc(v.logo_url)}" alt="" loading="lazy" />`:avatarFallbackHtml(v.business_name||'Vendor','2.8rem','',v.business_name||'Vendor');
       const dist=(buyerLocation&&v.lat!=null&&v.lng!=null)?formatDistanceKm(haversineKm(buyerLocation.lat,buyerLocation.lng,v.lat,v.lng)):'';
       return `<button type="button" class="vendors-map-vendor-chip" onclick="focusVendorOnMap('${esc(v.id)}')">${logo}<span class="vendors-map-vendor-chip-copy"><strong>${esc(v.business_name||'Vendor')}</strong><small>${esc(v.city||'Online')}${dist?' · '+esc(dist):''}</small></span><span class="vendors-map-vendor-chip-action">View on map</span></button>`;
     }).join('');
@@ -24665,7 +24705,7 @@ window.renderVendorMapRail = function(){
     const name = v?.business_name || "Vendor";
     const avatarHtml = avatar
       ? `<img src="${esc(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name)}','3.1rem','vendor-directory-logo','${esc(name)}')))" />`
-      : `<span class="avatar-circle vendor-directory-logo" aria-label="${esc(name)}">${esc(initials(name))}</span>`;
+      : avatarFallbackHtml(name, '3.1rem', 'vendor-directory-logo', name);
     const sectorName = (Array.isArray(sectors) ? sectors : []).find(sec => String(sec.id) === String(v?.sector_id))?.name || "";
     const knownLine = `<p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${esc(sectorName || "Sector not listed")}</p>`;
     return `<div class="vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || '')}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || '')}'});}">
@@ -24693,7 +24733,7 @@ window.renderVendorMapRail = function(){
     const chips=all.slice(0,6).map(v=>{
       const avatar=v?.logo_url
         ? `<img class="vendor-directory-logo" src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(v.business_name||'Vendor')}','2.9rem','vendor-directory-logo','${esc(v.business_name||'Vendor')}')))" />`
-        : `<span class="avatar-circle vendor-directory-logo">${esc(initials(v.business_name||'Vendor'))}</span>`;
+        : avatarFallbackHtml(v.business_name || 'Vendor', '2.9rem', 'vendor-directory-logo', v.business_name || 'Vendor');
       const dist=(buyerLocation&&v.lat!=null&&v.lng!=null)?formatDistanceKm(haversineKm(buyerLocation.lat,buyerLocation.lng,v.lat,v.lng)):'';
       return `<div class="vendors-map-vendor-chip" role="button" tabindex="0" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v.id)}'});}">
         ${avatar}
@@ -25400,14 +25440,6 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 .chat-page-wrap .chat-thread{flex:1 1 auto !important;min-height:0 !important;overflow:hidden !important;display:flex !important;flex-direction:column !important;}
 .chat-page-wrap .chat-messages{flex:1 1 auto !important;min-height:0 !important;overflow-y:auto !important;overflow-x:hidden !important;-webkit-overflow-scrolling:touch !important;overscroll-behavior:contain !important;}
 .chat-page-wrap .chat-input-row{flex:0 0 auto !important;}
-/* Messages keeps the same global bottom navigation as every other app route.
-   The dedicated chat shell reserves its height so the composer/messages never
-   sit underneath the nav on narrow touch screens. */
-@media(max-width:720px){
-  body.chat-full-page #bottomNav{display:flex !important;visibility:visible !important;pointer-events:auto !important;z-index:3200 !important;}
-  .chat-page-wrap{padding-bottom:calc(58px + env(safe-area-inset-bottom,0px)) !important;}
-  .chat-page-wrap .chat-messages{padding-bottom:.75rem !important;}
-}
 
 /* The service marker is no longer allowed to sit on top of delivery text. */
 .product-card-action-row .card-service-btn,.product-card-action-row .card-cart-btn{position:static !important;}
@@ -29061,7 +29093,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       const avatar=v?.logo_url||v?.user_avatar_url||"";
       const sectorName=v?.sector_name || (Array.isArray(sectors)?sectors.find(sec=>String(sec.id)===String(v?.sector_id))?.name:"") || "Sector not listed";
       const count=Number(v?.follower_count||0).toLocaleString();
-      const avatarHtml=avatar?`<img src="${escText(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false">`:`<span class="avatar-circle vendor-directory-logo">${escText(typeof initials==='function'?initials(name):name[0])}</span>`;
+      const avatarHtml=avatar?`<img src="${escText(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false">`:avatarFallbackHtml(name,'3.1rem','vendor-directory-logo',name);
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
         ${avatarHtml}<div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
           <strong class="vendor-directory-name">${escText(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
