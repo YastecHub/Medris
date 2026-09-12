@@ -29597,4 +29597,287 @@ body.search-input-active{overflow:hidden!important}
   setTimeout(()=>{sortPinnedConversationRows();classifyBackButtons()},300);
 })();
 </script>
+
+<style id="levromart-20260912-myshop-polish">
+/* My Shop: compact controls, two-row card actions, and a clean search/sort rail. */
+#app .vendor-products-heading{position:relative!important;min-height:48px!important;padding-right:0!important}
+#app .vendor-products-heading-actions{position:absolute!important;right:0!important;top:0!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:.28rem!important;flex-wrap:nowrap!important}
+#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"]{width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;border-radius:12px!important;background:var(--card)!important;border:1px solid var(--border)!important;color:var(--text)!important;box-shadow:0 4px 14px rgba(0,0,0,.08)!important;font-size:0!important}
+#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"] i{font-size:1rem!important;color:var(--primary)!important}
+#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"].btn-outline{background:var(--card)!important;color:var(--text)!important}
+#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"]:not(.btn-outline){background:color-mix(in srgb,var(--primary) 10%,var(--card))!important;border-color:color-mix(in srgb,var(--primary) 28%,var(--border))!important}
+#app .vendor-products-heading-actions .vendor-products-menu-wrap{margin-left:.1rem!important}
+#app .vendor-products-heading-actions .vendor-products-menu-btn{width:40px!important;height:40px!important;min-width:40px!important;border-radius:12px!important}
+#app .vendor-products-heading-actions>button[onclick="openAddProductModal()"]{position:absolute!important;left:50%!important;top:calc(100% + 1.15rem)!important;transform:translate(-50%,-50%)!important;width:50px!important;height:50px!important;min-width:50px!important;padding:0!important;border-radius:50%!important;border:3px solid var(--bg)!important;background:var(--primary)!important;color:#fff!important;box-shadow:0 10px 28px color-mix(in srgb,var(--primary) 28%,transparent)!important;font-size:0!important;z-index:20!important;display:grid!important;place-items:center!important}
+#app .vendor-products-heading-actions>button[onclick="openAddProductModal()"] i{font-size:1.1rem!important;margin:0!important}
+#app .vendor-products-unified-tabs{position:relative!important;margin-top:1.65rem!important}
+#app .vendor-products-toolbar{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:.45rem!important;margin:.75rem 0!important;position:relative!important;min-height:42px!important}
+#app .vendor-products-toolbar>input{display:none!important}
+#app .vendor-products-search-wrap{position:relative!important;display:flex!important;align-items:center!important}
+#app .vendor-products-search-btn{width:42px!important;height:42px!important;min-width:42px!important;border-radius:12px!important;border:1px solid var(--border)!important;background:var(--card)!important;color:var(--primary)!important;display:grid!important;place-items:center!important;box-shadow:0 4px 14px rgba(0,0,0,.08)!important;cursor:pointer!important}
+#app .vendor-products-search-btn.active{background:color-mix(in srgb,var(--primary) 9%,var(--card))!important;border-color:color-mix(in srgb,var(--primary) 28%,var(--border))!important}
+#app .vendor-products-search-panel{position:absolute!important;right:0!important;top:calc(100% + .45rem)!important;width:min(360px,calc(100vw - 2rem))!important;background:var(--card)!important;border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border))!important;border-radius:16px!important;box-shadow:0 18px 50px rgba(0,0,0,.2)!important;padding:.55rem!important;z-index:50000!important}
+#app .vendor-products-search-panel.hidden{display:none!important}
+#app .vendor-products-search-input{width:100%!important;margin:0!important;height:42px!important;border-radius:12px!important}
+#app .vendor-products-search-history{margin-top:.45rem!important;max-height:220px!important;overflow:auto!important}
+#app .vendor-products-search-history-head{display:flex!important;align-items:center!important;justify-content:space-between!important;padding:.25rem .2rem .35rem!important;font-size:.7rem!important;color:var(--text-muted)!important;font-weight:750!important}
+#app .vendor-products-search-history-head button{border:0!important;background:transparent!important;color:var(--primary)!important;font-size:.68rem!important;font-weight:750!important;cursor:pointer!important}
+#app .vendor-products-search-history-row{display:flex!important;align-items:center!important;gap:.2rem!important;min-height:38px!important;border-radius:10px!important;background:color-mix(in srgb,var(--primary) 4%,var(--card))!important;margin:.16rem 0!important}
+#app .vendor-products-search-history-row button:first-child{flex:1!important;min-width:0!important;border:0!important;background:transparent!important;color:var(--text)!important;text-align:left!important;padding:.48rem .55rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font-size:.72rem!important;cursor:pointer!important}
+#app .vendor-products-search-history-row button:last-child{width:34px!important;height:34px!important;border:0!important;background:transparent!important;color:var(--text-muted)!important;border-radius:8px!important;cursor:pointer!important}
+#app .vendor-products-search-history-row button:last-child:hover{background:rgba(220,38,38,.08)!important;color:#dc2626!important}
+#app .vendor-products-sort{margin-left:auto!important;position:relative!important;display:flex!important;align-items:center!important;gap:.35rem!important}
+#app .vendor-products-sort>span{font-size:.7rem!important;color:var(--text-muted)!important}
+#app .levro-product-sort-trigger{min-width:138px!important;height:42px!important}
+#app .levro-product-sort-menu{position:fixed!important;width:220px!important;max-width:calc(100vw - 1rem)!important;right:auto!important;left:auto!important;top:auto!important}
+#app .vendor-product-card-grid{touch-action:auto!important;overflow:visible!important;-webkit-overflow-scrolling:auto!important}
+#app .vendor-product-card-grid>.vendor-listing-card{touch-action:auto!important;user-select:none!important;-webkit-user-select:none!important;-webkit-user-drag:none!important}
+#app .vendor-product-card-grid>.vendor-listing-card .product-img,
+#app .vendor-product-card-grid>.vendor-listing-card img{touch-action:auto!important}
+#app .vendor-product-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.45rem!important;align-items:center!important;justify-items:stretch!important;margin-top:.7rem!important}
+#app .vendor-product-actions button{width:100%!important;min-width:0!important;height:44px!important;padding:0!important;border-radius:12px!important;font-size:0!important;display:grid!important;place-items:center!important}
+#app .vendor-product-actions button i{font-size:1rem!important;margin:0!important}
+#app .vendor-product-actions button:nth-child(3):last-child,
+#app .vendor-product-actions button:last-child:only-child{grid-column:1 / -1!important;justify-self:center!important;width:62%!important}
+#app .vendor-product-actions button:nth-child(2):last-child{grid-column:2!important}
+#app .vendor-product-actions button.btn-danger:last-child:nth-child(2){grid-column:1 / -1!important;justify-self:center!important;width:62%!important}
+#app .vendor-product-actions button:nth-child(2) .fa-play{color:#fff!important}
+#app .vendor-product-actions button[onclick*="setProductStatus"][onclick*="'active'"]{background:var(--primary)!important;border-color:var(--primary)!important;color:#fff!important}
+#app .vendor-product-actions button[onclick*="setProductStatus"][onclick*="'paused'"]{background:#d97706!important;border-color:#d97706!important;color:#fff!important}
+#app .vendor-product-actions .btn-danger{background:#dc2626!important;border-color:#dc2626!important;color:#fff!important}
+@media(max-width:520px){
+  #app .vendor-products-heading h2{font-size:1rem!important;padding-right:132px!important}
+  #app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"],#app .vendor-products-heading-actions .vendor-products-menu-btn{width:36px!important;height:36px!important;min-width:36px!important}
+  #app .vendor-products-heading-actions>button[onclick="openAddProductModal()"]{width:48px!important;height:48px!important;min-width:48px!important}
+  #app .levro-product-sort-trigger{min-width:128px!important;font-size:.7rem!important}
+}
+</style>
+<script id="levromart-20260912-myshop-polish-runtime">
+(function(){'use strict';
+  const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+  const HIST='levromart-vendor-product-search-history-v1';
+  const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  function getHist(){try{const a=JSON.parse(localStorage.getItem(HIST)||'[]');return Array.isArray(a)?a.map(String).filter(Boolean).slice(0,8):[]}catch(_){return[]}}
+  function saveHist(q){q=String(q||'').trim();if(!q)return;try{localStorage.setItem(HIST,JSON.stringify([q,...getHist().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,8)))}catch(_){} }
+  function buildSearchUI(){
+    const toolbar=$('#app .vendor-products-toolbar');if(!toolbar||toolbar.dataset.polished==='1')return;
+    toolbar.dataset.polished='1';
+    const oldInput=toolbar.querySelector('#vendorProductSearch');
+    const sort=toolbar.querySelector('.vendor-products-sort');
+    if(!sort)return;
+    const wrap=document.createElement('div');wrap.className='vendor-products-search-wrap';
+    wrap.innerHTML='<button type="button" class="vendor-products-search-btn" aria-expanded="false" aria-label="Search products" title="Search products"><i class="fa-solid fa-magnifying-glass"></i></button><div class="vendor-products-search-panel hidden"><input type="search" class="vendor-products-search-input" placeholder="Search your products…" autocomplete="off"><div class="vendor-products-search-history"></div></div>';
+    toolbar.appendChild(wrap);
+    const btn=wrap.querySelector('.vendor-products-search-btn'),panel=wrap.querySelector('.vendor-products-search-panel'),input=wrap.querySelector('.vendor-products-search-input'),history=wrap.querySelector('.vendor-products-search-history');
+    const sync=()=>{if(oldInput)oldInput.value=input.value; if(typeof window.filterVendorProducts==='function')window.filterVendorProducts()};
+    const renderHistory=()=>{const h=getHist();history.innerHTML=h.length?'<div class="vendor-products-search-history-head"><span>Recent searches</span><button type="button" class="vp-clear-history">Clear all</button></div>'+h.map(q=>'<div class="vendor-products-search-history-row"><button type="button" data-q="'+esc(q)+'"><i class="fa-solid fa-clock-rotate-left"></i> '+esc(q)+'</button><button type="button" data-remove="'+esc(q)+'" aria-label="Remove search"><i class="fa-solid fa-xmark"></i></button></div>').join(''):'<div class="muted" style="font-size:.7rem;padding:.45rem .2rem">Your recent product searches will appear here.</div>';
+      history.querySelector('.vp-clear-history')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();try{localStorage.removeItem(HIST)}catch(_){}renderHistory()});
+      history.querySelectorAll('[data-q]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();input.value=b.dataset.q||'';sync();saveHist(input.value);panel.classList.add('hidden');btn.classList.remove('active');btn.setAttribute('aria-expanded','false')}));
+      history.querySelectorAll('[data-remove]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const q=b.dataset.remove||'';try{localStorage.setItem(HIST,JSON.stringify(getHist().filter(x=>x.toLowerCase()!==q.toLowerCase())))}catch(_){}renderHistory()}));
+    };
+    input.addEventListener('input',sync);
+    input.addEventListener('keydown',e=>{if(e.key==='Enter'){saveHist(input.value);sync();panel.classList.add('hidden');btn.classList.remove('active');btn.setAttribute('aria-expanded','false')}});
+    input.addEventListener('blur',()=>{if(input.value.trim())saveHist(input.value)});
+    btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const open=panel.classList.toggle('hidden')===false;btn.classList.toggle('active',open);btn.setAttribute('aria-expanded',String(open));if(open){renderHistory();requestAnimationFrame(()=>input.focus({preventScroll:true}))}});
+    document.addEventListener('click',e=>{if(!wrap.contains(e.target)){panel.classList.add('hidden');btn.classList.remove('active');btn.setAttribute('aria-expanded','false')}} ,true);
+  }
+  function polishActions(){
+    $$('#app .vendor-product-actions').forEach(actions=>{
+      const bs=[...actions.querySelectorAll('button')];
+      bs.forEach(b=>{
+        const txt=(b.textContent||'').trim().toLowerCase();
+        if(txt.includes('edit'))b.innerHTML='<i class="fa-solid fa-pen"></i>'; 
+        else if(txt.includes('pause'))b.innerHTML='<i class="fa-solid fa-pause"></i>'; 
+        else if(txt.includes('activate'))b.innerHTML='<i class="fa-solid fa-play"></i>'; 
+        else if(txt.includes('remove'))b.innerHTML='<i class="fa-solid fa-trash"></i>';
+      });
+    });
+  }
+  function polishHeader(){
+    const heading=$('#app .vendor-products-heading'), actions=heading?.querySelector('.vendor-products-heading-actions'), tabs=$('#app .vendor-products-unified-tabs');
+    if(!heading||!actions||!tabs)return;
+    const add=actions.querySelector('button[onclick="openAddProductModal()"]');
+    if(add){add.setAttribute('aria-label','Add product');add.title='Add product';}
+    actions.querySelectorAll('button[onclick*="toggleVendorProductsView"]').forEach(b=>{b.title=(b.textContent||'').includes('Inventory')?'Inventory view':'Grid view';b.setAttribute('aria-label',b.title)});
+  }
+  function positionSortMenu(){const trigger=$('#app .levro-product-sort-trigger'),menu=$('#app .levro-product-sort-menu');if(!trigger||!menu||menu.classList.contains('hidden'))return;const r=trigger.getBoundingClientRect(),mw=Math.min(220,window.innerWidth-16);let left=r.right-mw;left=Math.max(8,Math.min(left,window.innerWidth-mw-8));let top=r.bottom+6;if(top+menu.offsetHeight>window.innerHeight-8)top=Math.max(8,r.top-menu.offsetHeight-6);menu.style.left=left+'px';menu.style.top=top+'px';menu.style.right='auto'}
+  document.addEventListener('click',e=>{const t=e.target?.closest?.('.levro-product-sort-trigger');if(t){requestAnimationFrame(positionSortMenu)}} ,true);
+  window.addEventListener('resize',positionSortMenu,{passive:true});window.addEventListener('scroll',positionSortMenu,{passive:true,capture:true});
+  function pass(){buildSearchUI();polishActions();polishHeader();positionSortMenu()}
+  pass();setTimeout(pass,150);setTimeout(pass,500);setTimeout(pass,1200);
+  const app=$('#app');if(app)new MutationObserver(()=>{clearTimeout(window.__levroMyShopPolishTimer);window.__levroMyShopPolishTimer=setTimeout(pass,40)}).observe(app,{childList:true,subtree:true});
+})();
+</script>
+
+<style id="levromart-20260912-final-search-logo-fix">
+/* === FINAL HEADER BRAND + SEARCH PASS === */
+#brandLogoCircle{
+  background:transparent!important;
+  border-radius:0!important;
+  filter:none!important;
+  box-shadow:none!important;
+  transform:none!important;
+  animation:none!important;
+  -webkit-filter:none!important;
+}
+.brand-logo-circle{background:transparent!important;border-radius:0!important;filter:none!important;box-shadow:none!important;transform:none!important;animation:none!important;-webkit-filter:none!important;}
+.brand-logo-stack{overflow:visible!important;}
+
+/* Search-history remove actions: small, quiet, branded green controls. */
+#app .levro-compact-history .compact-remove,
+#app .levro-search-history-remove,
+#app .vendor-products-search-history-row button[data-remove]{
+  width:26px!important;height:26px!important;min-width:26px!important;padding:0!important;margin:0 .18rem 0 0!important;
+  border-radius:7px!important;border:0!important;background:transparent!important;color:var(--primary)!important;
+  display:grid!important;place-items:center!important;font-size:.72rem!important;box-shadow:none!important;
+}
+#app .levro-compact-history .compact-remove:hover,
+#app .levro-search-history-remove:hover,
+#app .vendor-products-search-history-row button[data-remove]:hover{
+  background:color-mix(in srgb,var(--primary) 10%,transparent)!important;color:var(--primary)!important;
+}
+#app .levro-compact-history-row,
+#app .levro-search-history-row,
+#app .vendor-products-search-history-row{min-height:38px!important;}
+#app .levro-compact-history-head button,
+#app .levro-search-clear-all,
+#app .vendor-products-search-history-head button{color:var(--primary)!important;}
+
+/* Header search is navigation, not a full-screen overlay. */
+#levromartHeaderSearchBackdrop,#levromartHeaderSearchDock{display:none!important;pointer-events:none!important;visibility:hidden!important;}
+</style>
+<script id="levromart-20260912-final-search-logo-runtime">
+(function(){
+  'use strict';
+  const BROWSE_KEY='levromart-browse-search-history-v1';
+  const VENDOR_KEY='levromart-vendor-search-history-v1';
+  const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  function read(k){try{const a=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(a)?a.map(String).map(x=>x.trim()).filter(Boolean).slice(0,8):[]}catch(_){return[]}}
+  function write(k,q){q=String(q||'').trim();if(!q)return;try{localStorage.setItem(k,JSON.stringify([q,...read(k).filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,8)))}catch(_){} }
+  function remove(k,q){try{localStorage.setItem(k,JSON.stringify(read(k).filter(x=>x.toLowerCase()!==String(q||'').trim().toLowerCase())))}catch(_){} }
+  function clear(k){try{localStorage.removeItem(k)}catch(_){} }
+
+  function renderHistory(host,input,key){
+    if(!host||!input)return;
+    let menu=host.querySelector(':scope > .levro-compact-history');
+    if(!menu){menu=document.createElement('div');menu.className='levro-compact-history hidden';host.appendChild(menu)}
+    const h=read(key);
+    menu.innerHTML=h.length
+      ? '<div class="levro-compact-history-head"><strong>Recent searches</strong><button type="button" class="final-history-clear">Clear all</button></div>'+h.map(q=>
+          '<div class="levro-compact-history-row"><button type="button" class="compact-use" data-q="'+esc(q)+'"><i class="fa-solid fa-clock-rotate-left"></i>'+esc(q)+'</button><button type="button" class="compact-remove" data-q="'+esc(q)+'" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>'
+        ).join('')
+      : '<div class="levro-compact-history-head"><strong>Recent searches</strong></div><p class="levro-compact-history-empty">No recent searches on this page yet.</p>';
+    menu.classList.remove('hidden');
+    menu.querySelector('.final-history-clear')?.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();clear(key);renderHistory(host,input,key)},true);
+    menu.querySelectorAll('.compact-remove').forEach(btn=>btn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();remove(key,btn.dataset.q||'');renderHistory(host,input,key)},true));
+    menu.querySelectorAll('.compact-use').forEach(btn=>btn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();input.value=btn.dataset.q||'';input.dispatchEvent(new Event('input',{bubbles:true}));input.focus({preventScroll:true})},true));
+  }
+
+  async function openBrowseSearch(){
+    try{
+      if(typeof window.closeLevromartHeaderSearch==='function') window.closeLevromartHeaderSearch();
+    }catch(_){}
+    try{
+      if(typeof currentView!=='undefined' && currentView!=='home' && typeof window.navigate==='function'){
+        await window.navigate('home',{},false);
+        await new Promise(r=>setTimeout(r,180));
+      }
+    }catch(_){}
+    let toolbar=document.querySelector('#app .browse-filter-toolbar');
+    let toggle=toolbar?.querySelector('.levro-final-search-toggle');
+    if(!toolbar){
+      await new Promise(r=>setTimeout(r,220));
+      toolbar=document.querySelector('#app .browse-filter-toolbar');
+      toggle=toolbar?.querySelector('.levro-final-search-toggle');
+    }
+    if(toggle){
+      try{toggle.click()}catch(_){ }
+    }
+    const input=document.getElementById('searchInput');
+    if(input){
+      toolbar?.classList.add('final-search-open');
+      input.focus({preventScroll:true});
+      const host=toolbar;
+      renderHistory(host,input,BROWSE_KEY);
+    }
+  }
+  window.openBrowseSearchFromHeader=openBrowseSearch;
+
+  /* Capture the header search click before any legacy listener can open the
+     old blurred overlay. */
+  if(!window.__levroHeaderSearchRedirectBound){
+    window.__levroHeaderSearchRedirectBound=true;
+    document.addEventListener('click',function(e){
+      const b=e.target?.closest?.('#levromartHeaderSearchButton');
+      if(!b)return;
+      e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+      openBrowseSearch();
+    },true);
+  }
+
+  function patchBrowseAndVendorHistory(){
+    const browse=document.querySelector('#app .browse-filter-toolbar');
+    const bi=document.getElementById('searchInput');
+    if(browse&&bi&&!bi.dataset.finalHistoryIsolated){
+      bi.dataset.finalHistoryIsolated='1';
+      const observer=new MutationObserver(()=>{const m=browse.querySelector(':scope > .levro-compact-history');if(m&&!m.dataset.isolated){m.dataset.isolated='1';renderHistory(browse,bi,BROWSE_KEY)}});
+      observer.observe(browse,{childList:true,subtree:true});
+      document.addEventListener('click',e=>{
+        const t=e.target?.closest?.('.browse-filter-toolbar .levro-final-search-toggle');
+        if(t){setTimeout(()=>renderHistory(browse,bi,BROWSE_KEY),0)}
+      },true);
+      bi.addEventListener('keydown',e=>{if(e.key==='Enter'&&bi.value.trim())write(BROWSE_KEY,bi.value)},true);
+    }
+    const vendorHost=document.querySelector('#app .vendors-directory-search');
+    const vi=document.getElementById('vendorSearchInput');
+    if(vendorHost&&vi&&!vi.dataset.finalHistoryIsolated){
+      vi.dataset.finalHistoryIsolated='1';
+      const render=()=>renderHistory(vendorHost,vi,VENDOR_KEY);
+      const observer=new MutationObserver(()=>{const m=vendorHost.querySelector(':scope > .levro-compact-history');if(m&&!m.dataset.isolated){m.dataset.isolated='1';render()}});
+      observer.observe(vendorHost,{childList:true,subtree:true});
+      document.addEventListener('click',e=>{const t=e.target?.closest?.('.vendors-directory-controls .levro-final-search-toggle');if(t)setTimeout(render,0)},true);
+      vi.addEventListener('keydown',e=>{if(e.key==='Enter'&&vi.value.trim())write(VENDOR_KEY,vi.value)},true);
+      vi.addEventListener('focus',()=>setTimeout(render,0),true);
+    }
+  }
+  patchBrowseAndVendorHistory();
+  const app=document.getElementById('app');
+  if(app){new MutationObserver(()=>{clearTimeout(window.__levroSearchIsoTimer);window.__levroSearchIsoTimer=setTimeout(patchBrowseAndVendorHistory,60)}).observe(app,{childList:true,subtree:true})}
+})();
+</script>
+
+<style id="LEVROMART_NOTIFICATION_RESTORE_20260912">
+/* RESTORE ONLY: Main notifications drawer returns to its original full-height sheet.
+   Do not change vendor notification menus or any unrelated UI here. */
+#notifPanel{
+  width:min(320px,86vw)!important;
+  max-width:320px!important;
+  min-width:0!important;
+  display:block!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  padding:calc(1.1rem + env(safe-area-inset-top,0px)) 1rem calc(1.1rem + env(safe-area-inset-bottom,0px))!important;
+}
+#notifPanel>.notif-list-scroll{
+  display:block!important;
+  height:auto!important;
+  max-height:none!important;
+  min-height:0!important;
+  flex:none!important;
+  overflow:visible!important;
+  overflow-y:visible!important;
+}
+#notifPanel .notif-item-wrap{
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+}
+#notifPanel .notif-item-wrap .notif-item{
+  height:auto!important;
+  max-height:none!important;
+}
+@media(max-width:720px){
+  #notifPanel{width:min(320px,86vw)!important;max-width:320px!important;}
+}
+</style>
 </html>
