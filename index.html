@@ -11588,7 +11588,7 @@ async function fetchSearchSuggestions(term) {
 }
 function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hidden"); }
 
-const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
+const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, variants:product_variants(id,name,photo_url,sale_price,discount_price,sort_order), vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
 
 // Used whenever a search/filter comes up empty - instead of a dead end,
 // show what IS available so the customer isn't stuck looking at nothing.
@@ -14084,7 +14084,7 @@ async function renderProductDetail(productId) {
           ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
           ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
-        ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => { const vv=productVariants.find(x=>String(x.photo_url||"")===String(u)); const vp=vv ? (Number(vv.discount_price)>0 && Number(vv.discount_price)<Number(vv.sale_price||0) ? `<span class="product-gallery-thumb-price"><s>${naira(vv.sale_price)}</s> ${naira(vv.discount_price)}</span>` : `<span class="product-gallery-thumb-price">${naira(vv.sale_price ?? 0)}</span>`) : ""; return `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" data-variant-id="${esc(vv?.id||"")}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}${vv?.name ? `, ${esc(vv.name)}` : ""}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /><span class="product-gallery-thumb-meta">${vv?.name ? `<b>${esc(vv.name)}</b>${vp}` : `<span>Photo ${i+1}</span>`}</span></button>`; }).join("")}</div>` : ""}
+        ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => { const vv=productVariants.find(x=>String(x.photo_url||"")===String(u)); const vp=vv ? (Number(vv.discount_price)>0 && Number(vv.discount_price)<Number(vv.sale_price||0) ? `<span class="product-gallery-thumb-price"><s>${naira(vv.sale_price)}</s> ${naira(vv.discount_price)}</span>` : `<span class="product-gallery-thumb-price">${naira(vv.sale_price ?? 0)}</span>`) : ""; return `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" data-variant-id="${esc(vv?.id||"")}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}${vv?.name ? `, ${esc(vv.name)}` : ""}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" />${vv?.name ? `<span class="product-gallery-thumb-meta"><b>${esc(vv.name)}</b>${vp}</span>` : ""}</button>`; }).join("")}</div>` : ""}
       </div>`
     : `<div class="product-img" style="height:220px;"><i class='fa-solid fa-camera'></i> No image</div>`;
   window.__productGalleryPhotos = productPhotos;
@@ -16555,11 +16555,27 @@ async function renderVendorProducts() {
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   vendor = v;
 
-  const [{ data: allVendorProducts }, { data: orderItems }, { data: regionRows }] = await Promise.all([
-    sb.from("products").select("*, category:categories(name)").eq("vendor_id", v.id).order("created_at", { ascending: false }),
-    sb.from("order_items").select("product_id, quantity, unit_price, order:orders!inner(status, vendor_id)").eq("order.vendor_id", v.id),
-    sb.rpc("get_vendor_product_regions", { p_vendor_id: v.id }),
+  /* Load the catalogue first. Secondary analytics are deliberately bounded so a
+     slow/missing RPC can never leave My Shop stuck forever on “Updating…”. */
+  const { data: allVendorProducts, error: productsLoadError } = await withRouteTimeout(
+    sb.from("products").select("*, category:categories(name), variants:product_variants(id,name,photo_url,sale_price,discount_price,sort_order)").eq("vendor_id", v.id).order("created_at", { ascending: false }),
+    8000,
+    { data: [], error: { message: "Products timed out" } }
+  );
+  if (productsLoadError) console.warn("[Levromart] My Shop products load:", productsLoadError);
+
+  const [ordersResult, regionsResult] = await Promise.all([
+    withRouteTimeout(
+      sb.from("order_items").select("product_id, quantity, unit_price, order:orders!inner(status, vendor_id)").eq("order.vendor_id", v.id),
+      4500, { data: [], error: null }
+    ),
+    withRouteTimeout(
+      sb.rpc("get_vendor_product_regions", { p_vendor_id: v.id }),
+      4500, { data: [], error: null }
+    )
   ]);
+  const orderItems = ordersResult?.data || [];
+  const regionRows = regionsResult?.data || [];
   const products = (allVendorProducts || []).filter((p) => p.status !== "removed");
   const removedProducts = (allVendorProducts || []).filter((p) => p.status === "removed");
   // Already sorted order_count desc per product by the RPC -- [0] of each
@@ -16567,9 +16583,10 @@ async function renderVendorProducts() {
   const regionsByProduct = {};
   (regionRows || []).forEach((r) => { (regionsByProduct[r.product_id] ||= []).push(r); });
   window.__vendorProductRegions = regionsByProduct;
-  const { data: favCountRows } = (products || []).length
-    ? await sb.rpc("get_favorite_counts", { p_product_ids: products.map((p) => p.id) })
+  const favResult = (products || []).length
+    ? await withRouteTimeout(sb.rpc("get_favorite_counts", { p_product_ids: products.map((p) => p.id) }), 3500, { data: [], error: null })
     : { data: [] };
+  const favCountRows = favResult?.data || [];
   const favCountByProduct = {};
   (favCountRows || []).forEach((r) => { favCountByProduct[r.product_id] = r.count; });
   const revenueByProduct = {};
@@ -30347,6 +30364,114 @@ body.search-input-active{overflow:hidden!important}
   const bodyObserver=new MutationObserver(()=>{decoratePins();enhanceProductGallery();normalizeGridIcons();classifyBacks()});
   bodyObserver.observe(document.body,{childList:true,subtree:true});
   decoratePins();
+})();
+</script>
+
+<style id="levromart-20260912-user-final-corrections">
+/* Header is always the visual top layer. Browse controls must never paint over it. */
+header{position:sticky!important;top:0!important;z-index:10000!important;isolation:isolate!important}
+#app .browse-filter-toolbar{z-index:10!important}
+#app .browse-filter-toolbar.final-search-open{z-index:20!important}
+#levroBrowseSearchBackdrop{z-index:5!important}
+#app .browse-filter-toolbar.final-search-open .levro-compact-history{z-index:21!important}
+
+/* Browse search has no persistent history. */
+#app .browse-filter-toolbar > .levro-compact-history{display:none!important}
+
+/* Product-detail thumbnails: show only the image; variety/price belongs in the active variety card. */
+#app .product-gallery-thumb-meta{display:none!important}
+#app .product-active-variant{min-height:54px!important;margin:.55rem 0 .8rem!important}
+
+/* My Shop sort: keep it inside the viewport and anchor its menu to the trigger. */
+#app .vendor-products-toolbar{justify-content:flex-start!important;gap:.55rem!important;overflow:visible!important;padding-left:.15rem!important}
+#app .vendor-products-sort{margin-left:0!important}
+#app .levro-product-sort-ui{position:relative!important;overflow:visible!important}
+#app .levro-product-sort-menu{position:absolute!important;left:0!important;right:auto!important;top:calc(100% + .45rem)!important;width:220px!important;max-width:calc(100vw - 1rem)!important;z-index:999!important;box-sizing:border-box!important}
+#app .vendor-products-search-wrap{margin-left:auto!important;z-index:40!important}
+
+/* Product cards remain directly scrollable; never let an action wrapper cancel vertical gestures. */
+#app .vendor-product-card-grid{touch-action:pan-y!important;overflow:visible!important}
+#app .vendor-product-card-grid .vendor-listing-card{touch-action:pan-y!important}
+#app .vendor-product-card-grid .vendor-listing-card .product-img,
+#app .vendor-product-card-grid .vendor-listing-card img{touch-action:pan-y!important;-webkit-user-drag:none!important}
+
+/* Stable square view controls. */
+#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"]{width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;border-radius:10px!important;display:grid!important;place-items:center!important;font-size:0!important}
+#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"] i{display:block!important;font-size:1rem!important}
+
+/* Product action row: edit/pause together, remove centered underneath. */
+#app .vendor-product-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important;align-items:center!important}
+#app .vendor-product-actions .btn-danger:last-child{grid-column:1/-1!important;justify-self:center!important;width:60%!important}
+
+/* Profile-launched dialogs always sit above the profile sheet. */
+body>.modal,body>[role="dialog"]{z-index:150000!important}
+#profilePanel~.modal,#profilePanel~[role="dialog"]{z-index:150001!important}
+
+/* Pinned strip is deliberately substantial enough to read, but still compact. */
+#app .chat-pinned-strip{min-height:76px!important;padding:.65rem .75rem!important}
+#app .chat-pinned-item{min-height:56px!important}
+</style>
+<script id="levromart-20260912-user-final-corrections-js">
+(function(){
+  'use strict';
+  const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+
+  /* Remove the Browse Everything history widget completely. Vendor search history remains independent. */
+  function killBrowseHistory(){
+    const tb=$('#app .browse-filter-toolbar');
+    if(!tb)return;
+    tb.querySelectorAll(':scope > .levro-compact-history').forEach(n=>n.remove());
+    const input=$('#searchInput');
+    if(input){
+      input.removeAttribute('data-finalHistoryIsolated');
+      input.dataset.noBrowseHistory='1';
+    }
+  }
+
+  /* The browser/header search always lands on Browse Everything with its search field open. */
+  function bindBrowseSearchClose(){
+    const tb=$('#app .browse-filter-toolbar');
+    if(!tb||tb.dataset.userFinalSearch==='1')return;
+    tb.dataset.userFinalSearch='1';
+    const input=$('#searchInput');
+    const backdrop=$('#levroBrowseSearchBackdrop');
+    const close=()=>{
+      tb.classList.remove('final-search-open');
+      tb.querySelector('.levro-final-search-toggle')?.classList.remove('active');
+      tb.querySelector('.levro-final-search-toggle')?.setAttribute('aria-expanded','false');
+      input?.blur();
+      backdrop?.classList.remove('open');
+    };
+    if(backdrop&&!backdrop.dataset.userFinalBound){backdrop.dataset.userFinalBound='1';backdrop.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();close()},true)}
+    tb.addEventListener('click',e=>{
+      const use=e.target?.closest?.('.levro-compact-history');
+      if(use){e.preventDefault();e.stopPropagation()}
+    },true);
+    input?.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();close()}},true);
+  }
+
+  /* Keep the product-view controls semantic and motion-free. */
+  function normalizeViewButtons(){
+    $$('#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"]').forEach(b=>{
+      const oc=b.getAttribute('onclick')||'';
+      const table=/toggleVendorProductsView\(['"]table['"]\)/.test(oc);
+      b.innerHTML=table?'<i class="fa-solid fa-list-ul"></i>':'<i class="fa-solid fa-grip"></i>';
+      b.title=table?'Inventory list view':'Grid view';
+      b.setAttribute('aria-label',b.title);
+    });
+  }
+
+  /* Re-anchor the sort menu after the legacy fixed-position code runs. */
+  function fixSortMenu(){
+    const trigger=$('#app .levro-product-sort-trigger'),menu=$('#app .levro-product-sort-menu');
+    if(!trigger||!menu||menu.classList.contains('hidden'))return;
+    menu.style.position='absolute';menu.style.left='0px';menu.style.right='auto';menu.style.top='calc(100% + .45rem)';
+  }
+
+  killBrowseHistory();bindBrowseSearchClose();normalizeViewButtons();fixSortMenu();
+  const app=$('#app');
+  if(app)new MutationObserver(()=>{clearTimeout(window.__levroUserFinalTimer);window.__levroUserFinalTimer=setTimeout(()=>{killBrowseHistory();bindBrowseSearchClose();normalizeViewButtons();fixSortMenu()},30)}).observe(app,{childList:true,subtree:true});
+  document.addEventListener('click',e=>{if(e.target?.closest?.('.levro-product-sort-trigger'))requestAnimationFrame(fixSortMenu)},true);
 })();
 </script>
 </html>
