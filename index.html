@@ -19181,7 +19181,7 @@ function renderAdminPeopleFromData(people, appeals) {
   if (appeals?.length) {
     html += `<div class="accordion-section open" id="appealsAccordion" style="max-width:600px;margin:0 auto 1rem;border-color:var(--warning);"><button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-flag"></i> Suspension appeals awaiting review (${appeals.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button><div class="accordion-body">${appeals.map((a) => `<div style="border-top:1px solid var(--border);padding:.6rem 0;"><strong>${esc(a.user_name || a.user_email)}</strong><p class="muted" style="margin:.2rem 0;font-size:.82rem;">Suspended for: ${esc(a.suspension_reason || "")}</p><p style="margin:.3rem 0;">${esc(a.message)}</p><div class="flex" style="gap:.5rem;"><button class="btn btn-sm" onclick="approveAppeal('${a.user_id}')"><i class="fa-solid fa-check"></i> Approve &amp; unsuspend</button><button class="btn btn-sm btn-outline" onclick="denyAppealPrompt('${a.id}')"><i class="fa-solid fa-xmark"></i> Deny</button></div></div>`).join("")}</div></div>`;
   }
-  html += `<div class="admin-people-table-xscroll"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Phone</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div>`;
+  html += `<div class="admin-people-table-xscroll"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>City</th><th>Phone</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div>`;
   html += `<p class="muted admin-people-hint"><i class="fa-solid fa-arrows-up-down-left-right"></i> Scroll the table vertically for more people and horizontally for wider columns.</p>`;
   setTimeout(() => renderAdminPeopleRows(), 0);
   return html;
@@ -19211,11 +19211,11 @@ function renderAdminPeopleRows() {
   if (!tbody) return;
   const rows = getAdminPeopleFilteredRows();
   tbody.innerHTML = rows.map((p, idx) => `<tr>
-    <td>${idx + 1}</td><td>${esc(p.name || "-")}</td><td>${esc(p.email || "-")}</td><td><span class="badge">${esc(p.role)}</span></td><td>${esc(p.city || "-")}</td><td>${p.phone ? `<button type="button" class="admin-phone-btn" onclick="openAdminPhoneActions(event,'${esc(p.phone)}','${esc(p.name || p.email || "User")}')"><i class="fa-solid fa-phone"></i> ${esc(p.phone)}</button>` : "-"}</td>
+    <td>${idx + 1}</td><td>${esc(p.name || "-")}</td><td>${esc(p.email || "-")}</td><td>${esc(p.city || "-")}</td><td>${p.phone ? `<button type="button" class="admin-phone-btn" onclick="openAdminPhoneActions(event,'${esc(p.phone)}','${esc(p.name || p.email || "User")}')"><i class="fa-solid fa-phone"></i> ${esc(p.phone)}</button>` : "-"}</td>
     <td>${p.created_at ? `<span class="admin-joined-cell">${new Date(p.created_at).toLocaleString("en-GB", {day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</span>${Date.now()-new Date(p.created_at).getTime() <= 48*60*60*1000 ? ` <span class="badge admin-new-tag">NEW</span>` : ""}` : "-"}</td>
     <td>${p.suspended_at ? `<span class="badge danger" title="${esc(p.suspended_reason || "")}">Suspended</span>` : `<span class="badge success">Active</span>`}</td>
     <td>${p.role === "admin" ? "" : p.suspended_at ? `<button class="btn btn-sm btn-outline" onclick="unsuspendUser('${p.id}','${esc(p.name || p.email)}')">Unsuspend</button>` : `<button class="btn btn-sm btn-danger" onclick="suspendUserPrompt('${p.id}','${esc(p.name || p.email)}')">Suspend</button>`}</td>
-  </tr>`).join("") || `<tr><td colspan="9" class="muted" style="text-align:center;padding:1.2rem;">No ${window.__adminPeopleRole === "vendor" ? "vendors" : "buyers"} match your search.</td></tr>`;
+  </tr>`).join("") || `<tr><td colspan="8" class="muted" style="text-align:center;padding:1.2rem;">No ${window.__adminPeopleRole === "vendor" ? "vendors" : "buyers"} match your search.</td></tr>`;
 }
 
 function setAdminPeopleRole(role) {
@@ -20031,7 +20031,6 @@ function toggleAiChat() {
   panel.style.removeProperty("pointer-events");
   panel.classList.toggle("hidden");
   const isOpen = !panel.classList.contains("hidden");
-  if (!isOpen) resetFloatingFabPositions();
   // The FAB follows the panel state, while still respecting the user's Levi visibility preference.
   syncLeviFabVisibility();
   updateCartFab();
@@ -20223,7 +20222,6 @@ document.addEventListener("click", (e) => {
   if (!panel || panel.classList.contains("hidden")) return;
   if (e.target.closest("#aiChatPanel, #aiChatFab")) return;
   panel.classList.add("hidden");
-  resetFloatingFabPositions();
   syncLeviFabVisibility();
 });
 // Tapping the empty space around an open conversation (not the chat thread,
@@ -22213,27 +22211,24 @@ async function resolveLeviLocalAction(text) {
 // Draggable floating action button - tap to fire onTap, drag to reposition
 // (and it remembers where you leave it). Shared by the Levi FAB and the
 // cart FAB, which each just pass their own element/storage key/tap action.
-function resetFloatingFabPositions() {
-  const levi = byId("aiChatFab");
-  const cart = byId("cartFab");
-  const reset = (fab) => {
+function resetFloatingFabPositions(target = "all") {
+  const resetOne = (fab, storageKey) => {
     if (!fab) return;
     fab.style.removeProperty("left");
     fab.style.removeProperty("top");
     fab.style.removeProperty("right");
     fab.style.removeProperty("bottom");
     fab.classList.remove("dragging");
+    try { localStorage.removeItem(storageKey); } catch (_) {}
   };
-  reset(levi);
-  reset(cart);
-  try {
-    localStorage.removeItem("levromart_ai_fab_pos");
-    localStorage.removeItem("levromart_cart_fab_pos");
-  } catch (_) {}
+  if (target === "levi" || target === "all") resetOne(byId("aiChatFab"), "levromart_ai_fab_pos");
+  if (target === "cart" || target === "all") resetOne(byId("cartFab"), "levromart_cart_fab_pos");
 }
 
 function setupDraggableFab(fab, storageKey, onTap) {
-  if (!fab) return;
+  if (!fab || fab.dataset.dragControllerReady === "1") return;
+  fab.dataset.dragControllerReady = "1";
+
   const MOVE_THRESHOLD = 6;
   let dragging = false, moved = false, pointerId = null;
   let startClientX = 0, startClientY = 0, startLeft = 0, startTop = 0;
@@ -22244,63 +22239,94 @@ function setupDraggableFab(fab, storageKey, onTap) {
     const minY = Math.max(margin, (header?.getBoundingClientRect().bottom || 0) + margin);
     const maxX = Math.max(margin, window.innerWidth - fab.offsetWidth - margin);
     const maxY = Math.max(minY, window.innerHeight - fab.offsetHeight - margin);
-    return { x: Math.min(Math.max(x, margin), maxX), y: Math.min(Math.max(y, minY), maxY) };
+    return {
+      x: Math.min(Math.max(Number.isFinite(x) ? x : maxX, margin), maxX),
+      y: Math.min(Math.max(Number.isFinite(y) ? y : maxY, minY), maxY)
+    };
   }
-  function applyPosition(x, y) {
-    fab.style.setProperty("left", `${x}px`, "important");
-    fab.style.setProperty("top", `${y}px`, "important");
+
+  function applyPosition(x, y, persist = true) {
+    const pos = clamp(x, y);
+    fab.style.setProperty("left", `${pos.x}px`, "important");
+    fab.style.setProperty("top", `${pos.y}px`, "important");
     fab.style.setProperty("right", "auto", "important");
     fab.style.setProperty("bottom", "auto", "important");
+    if (persist) {
+      try { localStorage.setItem(storageKey, JSON.stringify({ x: pos.x, y: pos.y })); } catch (_) {}
+    }
   }
-  function clearOldSavedPosition() {
-    try { localStorage.removeItem(storageKey); } catch (_) {}
+
+  function restoreSavedPosition() {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved || !Number.isFinite(Number(saved.x)) || !Number.isFinite(Number(saved.y))) {
+        localStorage.removeItem(storageKey);
+        return;
+      }
+      applyPosition(Number(saved.x), Number(saved.y), false);
+    } catch (_) {
+      try { localStorage.removeItem(storageKey); } catch (_) {}
+    }
   }
-  clearOldSavedPosition();
-  fab.style.removeProperty("left");
-  fab.style.removeProperty("top");
 
   fab.addEventListener("pointerdown", (e) => {
     if (e.button !== undefined && e.button !== 0) return;
-    dragging = true; moved = false; pointerId = e.pointerId;
-    startClientX = e.clientX; startClientY = e.clientY;
+    if (fab.classList.contains("hidden")) return;
+    dragging = true;
+    moved = false;
+    pointerId = e.pointerId;
+    startClientX = e.clientX;
+    startClientY = e.clientY;
     const rect = fab.getBoundingClientRect();
-    startLeft = rect.left; startTop = rect.top;
+    startLeft = rect.left;
+    startTop = rect.top;
     try { fab.setPointerCapture(e.pointerId); } catch (_) {}
   }, { passive: true });
 
   fab.addEventListener("pointermove", (e) => {
     if (!dragging || e.pointerId !== pointerId) return;
-    const dx = e.clientX - startClientX, dy = e.clientY - startClientY;
-    if (!moved && Math.hypot(dx, dy) > MOVE_THRESHOLD) { moved = true; fab.classList.add("dragging"); }
+    const dx = e.clientX - startClientX;
+    const dy = e.clientY - startClientY;
+    if (!moved && Math.hypot(dx, dy) > MOVE_THRESHOLD) {
+      moved = true;
+      fab.classList.add("dragging");
+    }
     if (!moved) return;
     const pos = clamp(startLeft + dx, startTop + dy);
-    applyPosition(pos.x, pos.y);
+    applyPosition(pos.x, pos.y, true);
   }, { passive: true });
 
   function endDrag(e) {
     if (!dragging || (e && e.pointerId !== pointerId)) return;
     dragging = false;
     fab.classList.remove("dragging");
-    if (!moved) onTap();
+    if (!moved) onTap?.();
     pointerId = null;
   }
+
   fab.addEventListener("pointerup", endDrag, { passive: true });
   fab.addEventListener("pointercancel", endDrag, { passive: true });
+
   window.addEventListener("resize", () => {
-    const rect = fab.getBoundingClientRect();
-    const pos = clamp(rect.left, rect.top);
-    if (fab.style.left || fab.style.top) applyPosition(pos.x, pos.y);
+    if (!fab.isConnected || fab.classList.contains("hidden")) return;
+    if (fab.style.left || fab.style.top) {
+      const rect = fab.getBoundingClientRect();
+      applyPosition(rect.left, rect.top, true);
+    }
   }, { passive: true });
+
+  requestAnimationFrame(restoreSavedPosition);
 }
 
 (function setupLeviFab() {
   const fab = byId("aiChatFab");
   if (!fab) return;
-  setupDraggableFab(fab, "levromart_ai_fab_pos", () => { resetFloatingFabPositions(); toggleAiChat(); });
+  setupDraggableFab(fab, "levromart_ai_fab_pos", () => { toggleAiChat(); });
   applyLeviFabSize();
 })();
-setupDraggableFab(byId("cartFab"), "levromart_cart_fab_pos", () => { resetFloatingFabPositions(); navigate("cart"); });
-resetFloatingFabPositions();
+setupDraggableFab(byId("cartFab"), "levromart_cart_fab_pos", () => { navigate("cart"); });
 
 // Levi's chat panel stays centered; only the FAB itself is draggable.
 // Levi chat panel is intentionally NOT draggable. It always opens centered.
@@ -22308,7 +22334,6 @@ try { localStorage.removeItem('levromart_ai_panel_pos'); } catch (_) {}
 function closeLeviAfterCartAction(){
   const panel=byId("aiChatPanel");
   if(panel) panel.classList.add("hidden");
-  resetFloatingFabPositions();
   syncLeviFabVisibility();
   updateCartFab();
 }
@@ -29294,20 +29319,29 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
 #bottomNav{left:0!important;right:0!important;bottom:0!important;width:100%!important;max-width:none!important;margin:0!important;height:58px!important;min-height:58px!important;border-radius:0!important;padding:4px 8px max(4px,env(safe-area-inset-bottom,0px))!important;box-sizing:border-box!important;background:color-mix(in srgb,var(--card) 94%,transparent)!important;backdrop-filter:blur(16px) saturate(125%)!important;-webkit-backdrop-filter:blur(16px) saturate(125%)!important;border:0!important;border-top:1px solid color-mix(in srgb,var(--text) 12%,transparent)!important;box-shadow:0 -5px 18px rgba(0,0,0,.10)!important;transform:translate3d(0,0,0)!important;transition:transform .24s cubic-bezier(.2,.8,.2,1)!important;will-change:transform}
 #bottomNav.nav-scroll-hide{transform:translate3d(0,calc(100% - 8px),0)!important}
 #bottomNav .bottom-nav-item{height:48px!important;min-height:48px!important;max-width:124px!important;border-radius:0!important;background:transparent!important;border:0!important;padding:3px 6px!important;font-size:.65rem!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important;color:var(--text-muted)!important}
-#bottomNav .bottom-nav-item .bn-icon{width:32px!important;height:28px!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;color:currentColor!important}
-#bottomNav .bottom-nav-item.active .bn-icon{background:color-mix(in srgb,var(--primary) 16%,transparent)!important;color:var(--primary)!important}
-#bottomNav .bottom-nav-item.active>span:last-child{color:var(--text)!important;font-weight:700!important}
+#bottomNav .bottom-nav-item .bn-icon{width:32px!important;height:28px!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;color:currentColor!important;position:relative!important}
+#bottomNav .bottom-nav-item.active{background:transparent!important;color:var(--primary)!important}
+#bottomNav .bottom-nav-item.active .bn-icon{background:transparent!important;color:var(--primary)!important}
+#bottomNav .bottom-nav-item.active>span:last-child{color:var(--text-muted)!important;font-weight:600!important}
+#bottomNav .bn-badge{position:absolute!important;top:-.28rem!important;right:-.38rem!important;min-width:1.1rem!important;width:1.1rem!important;height:1.1rem!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;border-radius:50%!important;line-height:1!important;font-size:.58rem!important;background:var(--danger)!important;color:#fff!important;box-shadow:0 0 0 2px var(--card)!important}
 #bottomNav .bottom-nav-add{position:relative!important;inset:auto!important;width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;flex:0 0 42px!important;margin:0!important;border-radius:50%!important;border:1px solid color-mix(in srgb,var(--primary) 42%,transparent)!important;background:var(--primary)!important;color:#fff!important;box-shadow:0 3px 10px rgba(0,0,0,.18)!important;display:flex!important;align-items:center!important;justify-content:center!important}
 #bottomNav .bn-group{display:flex!important;align-items:center!important;justify-content:center!important;gap:.1rem!important;min-width:0!important;flex:1 1 0!important}
-body.search-input-active #bottomNav{display:flex!important;visibility:visible!important;pointer-events:none!important;transform:translate3d(0,calc(100% - 8px),0)!important}
+body.search-input-active #bottomNav{display:flex!important;visibility:visible!important;pointer-events:none!important;transform:translate3d(0,100%,0)!important}
 body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-#aiChatFab .ai-chat-fab-logo{opacity:0!important}
-#aiChatFab{position:relative!important;isolation:isolate!important}
-#aiChatFab::after{content:""!important;display:block!important;position:absolute!important;inset:14%!important;z-index:3!important;pointer-events:none!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='11' fill='white'/%3E%3Cpath d='M28 30 C15 38 15 62 28 70' fill='none' stroke='white' stroke-width='10' stroke-linecap='round'/%3E%3Cpath d='M72 30 C85 38 85 62 72 70' fill='none' stroke='white' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat!important}
+
+/* Levi: fixed, bounded, draggable and persistent. The actual mark is rendered
+   as a white SVG so the textured green background cannot recolour its arcs. */
+#aiChatFab{position:fixed!important;isolation:isolate!important;left:auto!important;top:auto!important;right:18px!important;bottom:calc(88px + env(safe-area-inset-bottom,0px))!important;width:74px!important;height:74px!important;min-width:74px!important;min-height:74px!important;z-index:470!important;touch-action:none!important;cursor:grab!important;user-select:none!important;-webkit-user-select:none!important}
+#aiChatFab.hidden{display:none!important}
+#aiChatFab.dragging{cursor:grabbing!important}
+#aiChatFab .ai-chat-fab-logo{opacity:0!important;pointer-events:none!important}
+#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.18),transparent 28%),radial-gradient(circle at 72% 76%,rgba(0,0,0,.09),transparent 40%),repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 2px,rgba(0,0,0,.03) 2px 4px),color-mix(in srgb,var(--primary) 92%,#0a7f43)!important;opacity:.96!important;z-index:1!important;pointer-events:none!important}
+#aiChatFab::after{content:""!important;position:absolute!important;inset:14%!important;z-index:10!important;pointer-events:none!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='11' fill='white'/%3E%3Cpath d='M28 30 C15 38 15 62 28 70' fill='none' stroke='white' stroke-width='10' stroke-linecap='round'/%3E%3Cpath d='M72 30 C85 38 85 62 72 70' fill='none' stroke='white' stroke-width='10' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat!important}
+
 .levro-route-neon-core{filter:drop-shadow(0 0 2px rgba(34,197,94,.24)) drop-shadow(0 0 5px rgba(34,197,94,.07))!important}
 .chat-header-back{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;width:2.35rem!important;height:2.35rem!important;padding:0!important}
 @media(max-width:520px){#bottomNav{height:54px!important;min-height:54px!important;padding-top:3px!important}#bottomNav .bottom-nav-item{height:44px!important;min-height:44px!important;font-size:.61rem!important}#bottomNav .bottom-nav-add{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;flex-basis:40px!important}}
-@media(prefers-reduced-motion:reduce){#bottomNav{transition:none!important}.chat-message-jump-highlight{animation:none!important;outline:2px solid var(--primary)!important}}
+@media(prefers-reduced-motion:reduce){#bottomNav{transition:none!important}.chat-message-jump-highlight{animation:none!important;outline:2px solid var(--primary)!important}.ai-chat-fab{transition:none!important}}
 </style>
 <script id="levromart-refinement-20260912-runtime">
 (function(){'use strict';
