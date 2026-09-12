@@ -16548,7 +16548,7 @@ async function renderVendorProducts() {
 
   html += `<div class="vendor-products-toolbar">
     <input type="text" id="vendorProductSearch" placeholder="Search your products…" oninput="filterVendorProducts()" />
-    <label class="vendor-products-sort"><span>Sort</span><select id="vendorProductSort" onchange="filterVendorProducts()"><option value="az">A–Z</option><option value="za">Z–A</option></select></label>
+    <label class="vendor-products-sort"><span>Sort</span><select id="vendorProductSort" onchange="filterVendorProducts()"><option value="newest">Newest first</option><option value="az">A–Z</option><option value="za">Z–A</option></select></label>
   </div>`;
 
   if (vendorProductsView === "table") {
@@ -16569,7 +16569,7 @@ async function renderVendorProducts() {
     </tr></thead><tbody>`;
     products.forEach((p, i) => {
       const topRegion = regionsByProduct[p.id]?.[0];
-      html += `<tr onclick="openEditProductModal('${p.id}')" style="cursor:pointer;" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc((p.category?.name || "").toLowerCase())}">
+      html += `<tr onclick="openEditProductModal('${p.id}')" style="cursor:pointer;" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc((p.category?.name || "").toLowerCase())}">
         <td>${esc(p.name)}</td>
         <td>${esc(p.category?.name || "Uncategorized")}</td>
         <td>${p.sale_price != null ? naira(p.sale_price) + servicePriceSuffix(p) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</td>
@@ -16584,22 +16584,14 @@ async function renderVendorProducts() {
     return html;
   }
 
-  const groups = new Map();
+  html += `<div class="grid vendor-product-card-grid">`;
   products.forEach((p) => {
-    const key = p.category?.name || "Uncategorized";
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(p);
-  });
-  [...groups.keys()].sort().forEach((catName) => {
-    html += `<div data-vp-group>`;
-    html += `<div class="category-group-header"><i class="fa-solid ${catName === "Uncategorized" ? "fa-box-open" : "fa-tag"}"></i> ${esc(catName)}</div>`;
-    html += `<div class="grid vendor-product-card-grid">`;
-    groups.get(catName).forEach((p) => {
+      const catName = p.category?.name || "Uncategorized";
       const img = p.photos?.[0];
       const favCount = favCountByProduct[p.id] ?? 0;
       const hasPendingOrder = pendingProductIds.has(p.id);
       const topRegion = regionsByProduct[p.id]?.[0];
-      html += `<div class="card" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}">
+      html += `<div class="card" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}">
         <div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
         <h4 style="margin:0.5rem 0 0.2rem;">${esc(p.name)}</h4>
         <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.quantity_available}/${p.quantity_total} available`} · ${p.status}${p.billing_model === "monthly" && p.billing_paid_until ? ` · ${new Date(p.billing_paid_until).getTime() > Date.now() ? `paid until ${new Date(p.billing_paid_until).toLocaleDateString("en-GB", {day:"numeric",month:"short",year:"numeric"})}` : "subscription expired"}` : ""}</p>
@@ -16609,13 +16601,12 @@ async function renderVendorProducts() {
         <div class="vendor-product-actions">
           <button class="btn btn-sm vendor-edit-action" onclick="openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
           ${p.status === "active" ? `<button class="btn btn-sm vendor-pause-action" onclick="setProductStatus('${p.id}','paused')">Pause</button>` : ""}
-          ${p.status === "paused" ? (p.billing_model === "monthly" ? (p.billing_status === "active" && p.billing_paid_until && new Date(p.billing_paid_until).getTime() > Date.now() ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Resume</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-credit-card"></i> ${p.billing_status === "pending_payment" ? "Pay ₦1,000 to activate" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
+          ${p.status === "paused" ? (p.billing_model === "monthly" ? (listingActivationValid(p) ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Resume</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-credit-card"></i> ${p.billing_status === "pending_payment" ? "Pay ₦1,000 to activate" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
           <button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>
         </div>
       </div>`;
     });
-    html += `</div></div>`;
-  });
+  html += `</div>`;
   return html;
 }
 
@@ -16633,8 +16624,9 @@ function showProductRegions(productId, productName) {
 }
 function filterVendorProducts() {
   const q = (byId("vendorProductSearch")?.value || "").trim().toLowerCase();
-  const sort = byId("vendorProductSort")?.value || "az";
+  const sort = byId("vendorProductSort")?.value || "newest";
   const compare = (a,b) => {
+    if (sort === "newest") return (Date.parse(b.dataset.vpCreated) || 0) - (Date.parse(a.dataset.vpCreated) || 0);
     const an = String(a?.dataset?.vpName || "").trim();
     const bn = String(b?.dataset?.vpName || "").trim();
     return (sort === "za" ? -1 : 1) * an.localeCompare(bn, undefined, { sensitivity: "base", numeric: true });
@@ -16645,12 +16637,8 @@ function filterVendorProducts() {
   });
 
   // Reorder within the existing DOM containers rather than rebuilding the page.
-  document.querySelectorAll("[data-vp-group]").forEach((group) => {
-    const grid = group.querySelector(":scope > .grid");
-    if (!grid) return;
+  document.querySelectorAll("#app .vendor-product-card-grid").forEach(grid => {
     [...grid.children].sort(compare).forEach(el => grid.appendChild(el));
-    const anyVisible = [...grid.querySelectorAll("[data-vp-name]")].some((el) => !el.classList.contains("hidden"));
-    group.classList.toggle("hidden", !anyVisible);
   });
 
   const tbody = document.querySelector("#app .data-table tbody");
@@ -17138,7 +17126,12 @@ async function saveProduct() {
   }
 }
 
+function listingActivationValid(p) {
+  return p?.billing_model === "monthly" && Number.isFinite(Date.parse(p.billing_paid_until)) && Date.parse(p.billing_paid_until) > Date.now();
+}
 async function setProductStatus(id, status) {
+  if(status === "active")return startListingMonthlyPayment("product",id);
+
   const { error } = await sb.from("products").update({ status }).eq("id", id).eq("vendor_id", vendor.id);
   if (error) { showToast(error.message, "error"); return; }
   navigate("vendorProducts");
@@ -25966,33 +25959,10 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   const writeHistory=q=>{q=String(q||'').trim();if(!q)return;try{localStorage.setItem(SEARCH_KEY,JSON.stringify([q,...readHistory().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,MAX_SEARCHES)))}catch(_){} };
   const removeHistory=q=>{try{localStorage.setItem(SEARCH_KEY,JSON.stringify(readHistory().filter(x=>x.toLowerCase()!==String(q).toLowerCase())))}catch(_){} };
   const clearHistory=()=>{try{localStorage.removeItem(SEARCH_KEY)}catch(_){} };
-  function ensureSearchUI(){
-    let b=document.getElementById('levromartHeaderSearchBackdrop');
-    if(!b){b=document.createElement('div');b.id='levromartHeaderSearchBackdrop';document.body.appendChild(b)}
-    let d=document.getElementById('levromartHeaderSearchDock');
-    if(!d){d=document.createElement('div');d.id='levromartHeaderSearchDock';d.innerHTML='<div class="header-search-space" role="dialog" aria-label="Search Levromart"><div class="header-search-bar"><i class="fa-solid fa-magnifying-glass"></i><input id="levromartHeaderSearchInput" type="search" autocomplete="off" placeholder="Search products, services, vendors…" aria-label="Search Levromart"><button type="button" class="header-search-close" id="levromartHeaderSearchClose" aria-label="Close search"><i class="fa-solid fa-xmark"></i></button></div><div id="levromartHeaderSearchSuggest" class="header-search-content"></div></div>';document.body.appendChild(d)}
-    return {b,d,i:d.querySelector('#levromartHeaderSearchInput'),c:d.querySelector('#levromartHeaderSearchSuggest')};
+  function bindTopButton(){
+    const b=document.getElementById('levromartHeaderSearchButton');
+    if(b) b.onclick=window.__levroTopSearch;
   }
-  function historyMarkup(){
-    const h=readHistory();
-    const recent='<section class="levro-search-section"><div class="levro-search-section-head"><strong>Recent searches</strong>'+ (h.length?'<button type="button" class="levro-search-clear-all">Clear all</button>':'')+'</div>'+(h.length?'<div class="levro-search-history-list">'+h.map(q=>'<div class="levro-search-history-row"><button type="button" class="levro-search-history-use" data-q="'+escHtml(q)+'"><i class="fa-solid fa-clock-rotate-left"></i><span>'+escHtml(q)+'</span></button><button type="button" class="levro-search-history-remove" data-q="'+escHtml(q)+'" aria-label="Remove '+escHtml(q)+'"><i class="fa-solid fa-xmark"></i></button></div>').join('')+'</div>':'<p class="levro-search-empty-history">Your recent searches will appear here.</p>')+'</section>';
-    const recs=[['products','Shop products','fa-box'],['services','Find a service','fa-hand-holding-heart'],['vendors','Explore vendors','fa-store'],['packages','Browse packages','fa-box-open']];
-    return recent+'<section class="levro-search-section"><div class="levro-search-section-head"><strong>Recommended</strong></div><div class="levro-search-recommendations">'+recs.map(x=>'<button type="button" class="levro-search-recommendation" data-rec="'+x[0]+'"><i class="fa-solid '+x[2]+'"></i>'+x[1]+'</button>').join('')+'</div></section>';
-  }
-  function bindSearchContent(ui){
-    ui.c.querySelector('.levro-search-clear-all')?.addEventListener('click',()=>{clearHistory();ui.c.innerHTML=historyMarkup();bindSearchContent(ui)});
-    ui.c.querySelectorAll('.levro-search-history-remove').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();removeHistory(btn.dataset.q);ui.c.innerHTML=historyMarkup();bindSearchContent(ui)}));
-    ui.c.querySelectorAll('.levro-search-history-use').forEach(btn=>btn.addEventListener('click',()=>{const q=btn.dataset.q||'';ui.i.value=q;ui.i.focus();runSearch(q)}));
-    ui.c.querySelectorAll('[data-rec]').forEach(btn=>btn.addEventListener('click',()=>{const a=btn.dataset.rec;closeSearch();if(a==='vendors')navigate('vendors');else if(a==='services')navigate('home',{section:'services'});else if(a==='packages')navigate('home',{section:'packages'});else navigate('home',{section:'products'})}));
-  }
-  function closeSearch(){const ui=ensureSearchUI();ui.b.classList.remove('open');ui.d.classList.remove('open');document.body.classList.remove('search-input-active');ui.i?.blur()}
-  function runSearch(q){q=String(q||'').trim();if(!q)return;writeHistory(q);closeSearch();if(typeof window.routeSearch==='function')window.routeSearch(q);else if(typeof navigate==='function')navigate('home',{section:'products',search:q});}
-  function openSearch(){const ui=ensureSearchUI();ui.b.classList.add('open');ui.d.classList.add('open');document.body.classList.add('search-input-active');ui.c.innerHTML=historyMarkup();bindSearchContent(ui);requestAnimationFrame(()=>{try{ui.i?.focus({preventScroll:true})}catch(_){ui.i?.focus()}})}
-  window.openLevromartHeaderSearch=openSearch;window.closeLevromartHeaderSearch=closeSearch;window.__levroTopSearch=function(e){e?.preventDefault?.();e?.stopPropagation?.();const d=document.getElementById('levromartHeaderSearchDock');if(d?.classList.contains('open'))closeSearch();else openSearch();return false};
-  function bindTopButton(){const b=document.getElementById('levromartHeaderSearchButton');if(!b)return;b.onclick=window.__levroTopSearch;b.setAttribute('aria-label','Search Levromart');b.title='Search Levromart'}
-  function bindSearchEvents(){const ui=ensureSearchUI();bindTopButton();if(ui.b.dataset.finalBound!=='1'){ui.b.dataset.finalBound='1';ui.b.addEventListener('pointerdown',e=>{if(e.target===ui.b){e.preventDefault();closeSearch()}});ui.d.querySelector('#levromartHeaderSearchClose')?.addEventListener('click',closeSearch);ui.i?.addEventListener('input',()=>{const q=ui.i.value.trim();if(!q){ui.c.innerHTML=historyMarkup();bindSearchContent(ui);return}ui.c.innerHTML='<section class="levro-search-section"><div class="levro-search-section-head"><strong>Search</strong></div><p class="levro-search-no-results">Press Enter to search for “'+escHtml(q)+'”.</p></section>'});ui.i?.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeSearch()}else if(e.key==='Enter'){e.preventDefault();runSearch(ui.i.value)}})}}
-  window.addEventListener('load',bindSearchEvents);bindSearchEvents();setTimeout(bindSearchEvents,250);setTimeout(bindSearchEvents,1000);
-  new MutationObserver(()=>{clearTimeout(window.__levroSearchBindTimer);window.__levroSearchBindTimer=setTimeout(bindSearchEvents,80)}).observe(document.body,{childList:true,subtree:true});
 
   // Follow/unfollow is instant; no confirmation dialog.
   async function followState(vendorId){try{const r=await sb.rpc('get_vendor_follow_state',{p_vendor_id:vendorId});return r.error?null:r.data?.[0]||null}catch(_){return null}}
@@ -28253,6 +28223,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 #profilePanel,#notifPanel,#settingsPanel{z-index:100000 !important;position:fixed !important;isolation:isolate !important;}
 .drawer-backdrop{z-index:99990 !important;}
 .modal,.confirm-dialog,.dialog-overlay{z-index:130000 !important;}
+#avatarCropModal,#vendorProfileImageLightbox,#mediaActionSheet{position:fixed!important;z-index:2147483500!important;}
 
 /* Storefront: one clean action row at the top-right and message/call circles
    beside the vendor name. */
@@ -28568,37 +28539,28 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     }else apply();
   }
 
+  let browseShortcutBusy=false;
+  async function openBrowseSearch(){
+    if(browseShortcutBusy)return;
+    browseShortcutBusy=true;
+    try{
+      closeAllPanels();
+      if(currentView!=="home")await navigate("home",{},false);
+      setupCompactSearches();
+      const input=byId("searchInput"), toolbar=input?.closest(".browse-filter-toolbar");
+      if(!input||!toolbar)return;
+      toolbar.classList.add("final-search-open");
+      toolbar.querySelector(".levro-final-search-toggle")?.setAttribute("aria-expanded","true");
+      byId("browseSection")?.scrollIntoView({block:"start"});
+      input.focus({preventScroll:true});
+    }finally{browseShortcutBusy=false;}
+  }
   function bindHeaderSearch(){
+    window.openLevromartHeaderSearch=openBrowseSearch;
+    window.closeLevromartHeaderSearch=()=>{};
+    window.__levroTopSearch=e=>{e?.preventDefault?.();e?.stopPropagation?.();openBrowseSearch();return false;};
     const button=byId("levromartHeaderSearchButton");
-    const ui=makeSearchPanel();
-    if(!ui.input||!ui.content)return;
-    const renderHome=()=>{ ui.content.innerHTML=historyMarkup(); bindContentActions(ui); };
-    const open=()=>{
-      if(document.querySelector("#profilePanel.open,#notifPanel.open,#settingsPanel.open"))return;
-      ui.backdrop.classList.add("open"); ui.dock.classList.add("open"); document.body.classList.add("search-input-active");
-      renderHome(); requestAnimationFrame(()=>ui.input.focus({preventScroll:true}));
-    };
-    const close=()=>{
-      ui.backdrop.classList.remove("open"); ui.dock.classList.remove("open"); ui.content.innerHTML=""; ui.input.value=""; ui.input.blur(); document.body.classList.remove("search-input-active");
-    };
-    window.openLevromartHeaderSearch=open; window.closeLevromartHeaderSearch=close;
-    if(button && button.dataset.finalBound!=="1"){
-      button.dataset.finalBound="1"; button.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();ui.dock.classList.contains("open")?close():open();});
-    }
-    if(ui.backdrop.dataset.finalBound!=="1"){
-      ui.backdrop.dataset.finalBound="1"; ui.backdrop.addEventListener("click",e=>{if(e.target===ui.backdrop)close();});
-      byId("levromartHeaderSearchClose")?.addEventListener("click",close);
-      ui.input.addEventListener("keydown",e=>{
-        if(e.key==="Escape"){e.preventDefault();close();return;}
-        if(e.key==="Enter"){e.preventDefault();const q=ui.input.value.trim();if(q){saveHistory(q);close();routeSearch(q);}}
-      });
-      ui.input.addEventListener("input",()=>{
-        clearTimeout(searchTimer); const q=ui.input.value.trim(); const seq=++searchSeq;
-        if(!q){renderHome();return;}
-        searchTimer=setTimeout(async()=>{const html=await smartResults(q);if(seq!==searchSeq||ui.input.value.trim()!==q)return;ui.content.innerHTML=`<section class="levro-search-section"><div class="levro-search-section-head"><strong>Results</strong></div>${html}</section>`;bindContentActions(ui);},160);
-      });
-    }
-    return ui;
+    if(button)button.onclick=window.__levroTopSearch;
   }
 
   function bindContentActions(ui){
@@ -28740,15 +28702,56 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 
   // Listing activation now uses the already-existing vendor-payments function,
   // keeping Vercel at 12 serverless functions instead of creating a new one.
+  const listingPaymentBusy=new Set();
+  const pendingListingKey=(kind,id)=>"levromart-listing-payment:"+vendor.id+":"+kind+":"+id;
+  async function readOwnedListing(kind,id){
+    if(!vendor?.id || !["product","package"].includes(kind))throw new Error("Listing or vendor is unavailable.");
+    const result=await sb.from(kind==="product"?"products":"vendor_packages").select("*").eq("id",id).eq("vendor_id",vendor.id).single();
+    if(result.error||!result.data)throw new Error(result.error?.message||"Listing not found for this vendor.");
+    return result.data;
+  }
+  async function verifyListingReference(reference){
+    const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({action:"verify-listing-payment",reference,accessToken:session.access_token})});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok||data.status!=="success")throw new Error(data.error||"Payment is not verified yet. Retry verification before paying again.");
+    return data;
+  }
   window.startListingMonthlyPayment=async function(kind,id){
-    if(!(typeof session!=="undefined"&&session?.access_token)){if(typeof showLogin==='function')showLogin();return false;}
+    if(!session?.access_token){showLogin();return false;}
+    const lock=kind+":"+id;
+    if(listingPaymentBusy.has(lock))return false;
+    listingPaymentBusy.add(lock);
     try{
+      let listing=await readOwnedListing(kind,id);
+      const key=pendingListingKey(kind,id), pending=localStorage.getItem(key);
+      if(!listingActivationValid(listing)&&pending){
+        await verifyListingReference(pending);
+        listing=await readOwnedListing(kind,id);
+        if(!listingActivationValid(listing))throw new Error("Payment verified, but activation has not been saved by the server. Please contact support before paying again.");
+      }
+      if(listing.billing_model!=="monthly"||listingActivationValid(listing)){
+        if(listing.status!=="active"){
+          const result=await sb.from(kind==="product"?"products":"vendor_packages").update({status:"active"}).eq("id",id).eq("vendor_id",vendor.id);
+          if(result.error)throw result.error;
+        }
+        localStorage.removeItem(key);
+        await navigate(kind==="product"?"vendorProducts":"vendorPackages",{},false);
+        return true;
+      }
       const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json","Cache-Control":"no-cache"},cache:"no-store",body:JSON.stringify({action:"pay-listing",kind,id,accessToken:session.access_token})});
       const data=await r.json().catch(()=>({}));
-      if(r.ok&&data.alreadyActive){showToast?.("This listing is already active and paid through "+new Date(data.paid_until||Date.now()).toLocaleDateString("en-GB")+".","success");navigate?.("vendorProducts",{},false);return true;}
+      if(r.ok&&data.alreadyActive){
+        listing=await readOwnedListing(kind,id);
+        if(!listingActivationValid(listing))throw new Error("The server reports a payment, but listing activation is not yet available. Please do not pay again.");
+        await navigate(kind==="product"?"vendorProducts":"vendorPackages",{},false);return true;
+      }
       if(!r.ok||!data.authorization_url)throw new Error(data.error||"Could not start the ₦1,000 listing payment.");
+      const reference=data.reference||new URL(data.authorization_url).searchParams.get("reference");
+      if(reference)localStorage.setItem(key,reference);
+      sessionStorage.setItem("levromart-listing-payment-target",JSON.stringify({kind,id,vendorId:vendor.id,reference:reference||null}));
       window.location.assign(data.authorization_url);return true;
-    }catch(e){if(typeof showToast==='function')showToast(e.message||"Could not start the listing payment.","error");return false;}
+    }catch(e){showToast(e.message||"Could not start the listing payment.","error");return false;}
+    finally{listingPaymentBusy.delete(lock);}
   };
   window.startNewListingMonthlyPayment=async function(kind,draft){
     if(!(typeof session!=="undefined"&&session?.access_token)){if(typeof showLogin==='function')showLogin();return false;}
@@ -28805,14 +28808,22 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     const listingPaid=u.searchParams.get("listingPaid");
     const reference=u.searchParams.get("reference");
     if((returnMode!=="return" && listingPaid!=="1")||!reference)return;
-    ["listingPayment","listingPaid","kind","id","reference","reason"].forEach(k=>u.searchParams.delete(k));
-    history.replaceState(history.state,"",u.pathname+(u.searchParams.toString()?`?${u.searchParams}`:"")+u.hash);
     if(!(typeof session!=="undefined"&&session?.access_token)){showToast?.("Payment returned successfully, but your session expired. Sign in again to finish your listing.","error");return;}
     showToast?.("Verifying your ₦1,000 Paystack payment…","info");
     try{
-      const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({action:"verify-listing-payment",reference,accessToken:session.access_token})});
-      const data=await r.json().catch(()=>({}));
-      if(!r.ok||data.status!=="success")throw new Error(data.error||"The listing payment could not be verified.");
+      const target=JSON.parse(sessionStorage.getItem("levromart-listing-payment-target")||"null");
+      const kind=target?.kind||u.searchParams.get("kind"), id=target?.id||u.searchParams.get("id");
+      if(target && (target.vendorId!==vendor?.id || (target.reference && target.reference!==reference)))throw new Error("This payment does not match the pending vendor/listing.");
+      if(!kind||!id)throw new Error("Payment listing details are unavailable. Contact support before paying again.");
+      await readOwnedListing(kind,id);
+      localStorage.setItem(pendingListingKey(kind,id),reference);
+      await verifyListingReference(reference);
+      const listing=await readOwnedListing(kind,id);
+      if(!listingActivationValid(listing)||listing.status!=="active")throw new Error("Payment verified, but the server has not activated this listing yet. Retry verification or contact support; do not pay again.");
+      localStorage.removeItem(pendingListingKey(kind,id));
+      sessionStorage.removeItem("levromart-listing-payment-target");
+    ["listingPayment","listingPaid","kind","id","reference","reason"].forEach(k=>u.searchParams.delete(k));
+    history.replaceState(history.state,"",u.pathname+(u.searchParams.toString()?`?${u.searchParams}`:"")+u.hash);
       showToast?.("₦1,000 received. Your listing has been saved and is now live for one month.","success");
       setTimeout(()=>navigate?.("vendorProducts",{},false),120);
     }catch(e){showToast?.(e.message||"The listing payment could not be completed.","error");}
@@ -28880,35 +28891,6 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const read=()=>{try{const a=JSON.parse(localStorage.getItem(SEARCH_KEY)||"[]");return Array.isArray(a)?a.map(String).map(x=>x.trim()).filter(Boolean).slice(0,8):[]}catch(_){return[]}};
   const save=q=>{q=String(q||"").trim();if(!q)return;try{localStorage.setItem(SEARCH_KEY,JSON.stringify([q,...read().filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,8)))}catch(_){}};
-  function installSearch(){
-    window.__levroPhase1SearchOwner=true;
-    let b=document.getElementById("levromartHeaderSearchButton");
-    if(!b)return false;
-    // Replace the button node to remove every historical event listener/inline handler.
-    if(b.dataset.phase1Owned!=="1"){const n=b.cloneNode(true);n.removeAttribute("onclick");n.dataset.phase1Owned="1";b.replaceWith(n);b=n;}
-    let oldD=document.getElementById("levromartHeaderSearchDock");
-    if(oldD && !oldD.querySelector(".phase1-search-shell")) oldD.remove();
-    let d=document.getElementById("levromartHeaderSearchDock");
-    let back=document.getElementById("levromartHeaderSearchBackdrop");
-    if(!back){back=document.createElement("div");back.id="levromartHeaderSearchBackdrop";document.body.appendChild(back);}
-    if(!d){d=document.createElement("div");d.id="levromartHeaderSearchDock";d.innerHTML='<div class="phase1-search-shell"><div class="phase1-search-bar"><i class="fa-solid fa-magnifying-glass"></i><input id="levromartHeaderSearchInput" type="search" autocomplete="off" placeholder="Search products, services, vendors…" aria-label="Search Levromart"><button type="button" id="levromartHeaderSearchClose" aria-label="Close search"><i class="fa-solid fa-xmark"></i></button></div><div id="levromartHeaderSearchSuggest"></div></div>';document.body.appendChild(d);}
-    const input=d.querySelector("#levromartHeaderSearchInput"), content=d.querySelector("#levromartHeaderSearchSuggest");
-    const render=()=>{const h=read();content.innerHTML='<div class="phase1-search-section"><div class="phase1-search-head"><strong>Recent searches</strong>'+(h.length?'<button type="button" id="phase1ClearSearchHistory">Clear all</button>':'')+'</div>'+(h.length?h.map(q=>'<div class="phase1-search-row"><button type="button" class="phase1-use" data-q="'+esc(q).replace(/"/g,'&quot;')+'"><i class="fa-solid fa-clock-rotate-left"></i><span>'+esc(q)+'</span></button><button type="button" class="phase1-remove" data-q="'+esc(q).replace(/"/g,'&quot;')+'" aria-label="Remove search"><i class="fa-solid fa-xmark"></i></button></div>').join(''):'<p class="phase1-empty">Your recent searches will appear here.</p>')+'</div><div class="phase1-search-section"><div class="phase1-search-head"><strong>Search Levromart</strong></div><p class="phase1-empty">Search products, services, vendors and packages.</p></div>';
-      content.querySelector("#phase1ClearSearchHistory")?.addEventListener("click",e=>{e.preventDefault();localStorage.removeItem(SEARCH_KEY);render()});
-      content.querySelectorAll(".phase1-remove").forEach(x=>x.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();try{localStorage.setItem(SEARCH_KEY,JSON.stringify(read().filter(q=>q.toLowerCase()!==x.dataset.q.toLowerCase())))}catch(_){}render()}));
-      content.querySelectorAll(".phase1-use").forEach(x=>x.addEventListener("click",()=>{input.value=x.dataset.q||"";input.focus();save(input.value);route(input.value)}));
-    };
-    const open=()=>{back.classList.add("open");d.classList.add("open");document.body.classList.add("search-input-active");render();requestAnimationFrame(()=>{try{input.focus({preventScroll:true})}catch(_){input.focus()}})};
-    const close=()=>{back.classList.remove("open");d.classList.remove("open");content.innerHTML="";input.value="";input.blur();document.body.classList.remove("search-input-active")};
-    const route=q=>{q=String(q||"").trim();if(!q)return;save(q);close();if(typeof window.routeSearch==="function")window.routeSearch(q);else if(typeof navigate==="function")navigate("home",{section:"products",search:q})};
-    window.openLevromartHeaderSearch=open;window.closeLevromartHeaderSearch=close;window.__levroTopSearch=e=>{e?.preventDefault?.();e?.stopPropagation?.();d.classList.contains("open")?close():open();return false};
-    if(b.dataset.phase1ClickBound!=="1"){b.dataset.phase1ClickBound="1";b.addEventListener("click",window.__levroTopSearch)}
-    if(back.dataset.phase1Bound!=="1"){back.dataset.phase1Bound="1";back.addEventListener("click",e=>{if(e.target===back)close()})}
-    if(d.dataset.phase1Bound!=="1"){d.dataset.phase1Bound="1";d.querySelector("#levromartHeaderSearchClose")?.addEventListener("click",close);input.addEventListener("input",()=>{if(!input.value.trim())render();});input.addEventListener("keydown",e=>{if(e.key==="Escape"){e.preventDefault();close()}else if(e.key==="Enter"){e.preventDefault();route(input.value)}})}
-    return true;
-  }
-  function bootSearch(){if(!installSearch())setTimeout(bootSearch,250)}
-  bootSearch();
   // Permission nudges are one-time onboarding prompts, not recurring notifications.
   const NUDGE_KEY="levromart-permission-nudge-seen-v2";
   const seen=()=>{try{return localStorage.getItem(NUDGE_KEY)==="1"}catch(_){return false}};
