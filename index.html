@@ -12701,6 +12701,7 @@ function chatSkeletonHtml(cached, cachedMessages) {
         <button class="chat-header-icon-btn" style="opacity:0.4;" disabled title="More options"><i class="fa-solid fa-ellipsis-vertical"></i></button>
       </div>
     </div>
+    <div id="chatPinnedStrip" class="chat-pinned-strip" aria-label="Pinned messages">${renderPinnedMessagesHtml(conversationId, messages || [], window.__chatPinsByConversation[conversationId] || [])}</div>
     <div class="chat-thread">
       <div class="chat-messages" id="chatMessages">${messagesArea}</div>
       <div class="chat-input-row">
@@ -12793,13 +12794,16 @@ async function renderMessages(conversationId) {
   // These three calls don't depend on each other, so run them together --
   // awaiting them one at a time was most of the multi-second wait before
   // the thread actually appeared.
-  const [{ data: other, error: otherErr }, { data: conv }, { data: messages }] = await Promise.all([
+  const [{ data: other, error: otherErr }, { data: conv }, { data: messages }, { data: chatPins }] = await Promise.all([
     sb.rpc("get_conversation_other_party", { p_conversation_id: conversationId }),
     sb.from("conversations").select("id, buyer_id, vendor:vendors(id, business_name, logo_url, user_id, phone, whatsapp_number, whatsapp_visible)").eq("id", conversationId).maybeSingle(),
     sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }),
+    sb.from("message_pins").select("id,conversation_id,message_id,pinned_at,expires_at").eq("conversation_id", conversationId).eq("user_id", session.user.id).order("pinned_at", { ascending: false }).limit(4),
   ]);
   if (!conv || otherErr) return '<div class="empty-state">Conversation not found.</div>';
   await enrichMessageReplies(messages || []);
+  window.__chatPinsByConversation = window.__chatPinsByConversation || {};
+  window.__chatPinsByConversation[conversationId] = (chatPins || []).filter(p => !p.expires_at || new Date(p.expires_at).getTime() > Date.now());
 
   const isVendorSide = conv.vendor?.user_id === session.user.id;
   const op = (other && other[0]) || {};
@@ -13220,6 +13224,46 @@ function renderChatReplyPreview() {
   box.innerHTML = `<span class="reply-accent"></span><div class="reply-copy"><div class="reply-label">Replying to ${document.querySelector(`.chat-bubble[data-msg-id="${chatReplyTarget.id}"]`)?.classList.contains("mine") ? "yourself" : "message"}</div><div class="reply-text">${esc(text)}</div></div><button class="reply-close" type="button" aria-label="Cancel reply" onclick="clearChatReplyTarget()"><i class="fa-solid fa-xmark"></i></button>`;
   box.classList.remove("hidden");
 }
+function isChatMessagePinned(messageId) {
+  const pins = window.__chatPinsByConversation?.[activeConversationId] || [];
+  return pins.some(p => String(p.message_id) === String(messageId) && (!p.expires_at || new Date(p.expires_at).getTime() > Date.now()));
+}
+function renderPinnedMessagesHtml(conversationId, messages, pins) {
+  const byMessage = new Map((messages || []).map(m => [String(m.id), m]));
+  const livePins = (pins || []).filter(p => !p.expires_at || new Date(p.expires_at).getTime() > Date.now()).slice(0,4);
+  if (!livePins.length) return '';
+  return `<div class="chat-pinned-strip-inner"><span class="chat-pinned-label"><i class="fa-solid fa-thumbtack"></i> Pinned</span><div class="chat-pinned-items">${livePins.map(p => { const m=byMessage.get(String(p.message_id)); if(!m)return ''; const image=String(m.attachment_type||'').startsWith('image/') && m.attachment_url; const text=String(m.body||'').trim() || (image ? 'Photo' : 'Attachment'); return `<button type="button" class="chat-pinned-item" onclick="jumpToPinnedMessage('${esc(m.id)}')">${image ? `<img src="${esc(m.attachment_url)}" alt="" />` : `<span class="chat-pinned-item-icon"><i class="fa-solid ${m.body?'fa-message':'fa-paperclip'}"></i></span>`}<span><strong>${esc(text.slice(0,72))}${text.length>72?'…':''}</strong><small>${new Date(m.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</small></span></button>`; }).join('')}</div></div>`;
+}
+async function refreshChatPinnedStrip() {
+  if (!activeConversationId || !session?.user?.id) return;
+  const { data } = await sb.from('message_pins').select('id,conversation_id,message_id,pinned_at,expires_at').eq('conversation_id',activeConversationId).eq('user_id',session.user.id).order('pinned_at',{ascending:false}).limit(4);
+  window.__chatPinsByConversation = window.__chatPinsByConversation || {};
+  window.__chatPinsByConversation[activeConversationId] = (data || []).filter(p => !p.expires_at || new Date(p.expires_at).getTime() > Date.now());
+  const messages = lastSeenMessagesByConv.get(activeConversationId) || [];
+  const strip = byId('chatPinnedStrip');
+  if (strip) strip.innerHTML = renderPinnedMessagesHtml(activeConversationId,messages,window.__chatPinsByConversation[activeConversationId]);
+}
+async function pinChatMessage(messageId) {
+  if (!session?.user?.id || !activeConversationId || !messageId) return;
+  if (isChatMessagePinned(messageId)) { clearMessageActionOverlays(); return; }
+  const existing = (window.__chatPinsByConversation?.[activeConversationId] || []).filter(p => !p.expires_at || new Date(p.expires_at).getTime() > Date.now());
+  if (existing.length >= 4) { showToast('You can pin a maximum of 4 messages in this chat.','info'); clearMessageActionOverlays(); return; }
+  const { error } = await sb.from('message_pins').insert({ user_id: session.user.id, conversation_id: activeConversationId, message_id: messageId });
+  if (error) { showToast(error.message || 'Could not pin this message.','error'); return; }
+  clearMessageActionOverlays(); await refreshChatPinnedStrip(); showToast('Message pinned.','success');
+}
+async function unpinChatMessage(messageId) {
+  if (!session?.user?.id || !activeConversationId || !messageId) return;
+  const { error } = await sb.from('message_pins').delete().eq('user_id',session.user.id).eq('conversation_id',activeConversationId).eq('message_id',messageId);
+  if (error) { showToast(error.message || 'Could not unpin this message.','error'); return; }
+  clearMessageActionOverlays(); await refreshChatPinnedStrip(); showToast('Message unpinned.','success');
+}
+function jumpToPinnedMessage(messageId) {
+  const target = document.querySelector(`.chat-bubble[data-msg-id="${CSS.escape(String(messageId))}"]`);
+  if (!target) return;
+  target.scrollIntoView({behavior:'smooth',block:'center'}); target.classList.remove('chat-message-jump-highlight'); requestAnimationFrame(()=>target.classList.add('chat-message-jump-highlight')); setTimeout(()=>target.classList.remove('chat-message-jump-highlight'),1400);
+}
+
 function showMessageActionMenu(bubble) {
   clearMessageActionOverlays();
   const msgId = bubble.dataset.msgId;
@@ -13233,7 +13277,8 @@ function showMessageActionMenu(bubble) {
   const actions = [
     `<button type="button" onclick="setChatReplyTarget('${msgId}')"><i class="fa-solid fa-reply"></i> Reply</button>`,
     `<button type="button" onclick="enterChatSelectionMode('${msgId}')"><i class="fa-regular fa-square-check"></i> Select</button>`,
-    `<button type="button" onclick="copySingleChatMessage('${msgId}')"><i class="fa-regular fa-copy"></i> Copy</button>`
+    `<button type="button" onclick="copySingleChatMessage('${msgId}')"><i class="fa-regular fa-copy"></i> Copy</button>`,
+    `${isChatMessagePinned(msgId) ? `<button type="button" onclick="unpinChatMessage('${msgId}')"><i class="fa-solid fa-thumbtack-slash"></i> Unpin</button>` : `<button type="button" onclick="pinChatMessage('${msgId}')"><i class="fa-solid fa-thumbtack"></i> Pin message</button>`}`
   ];
   if (mine && withinEditWindow) {
     actions.push(`<button type="button" onclick="startEditMessage('${msgId}')"><i class="fa-solid fa-pen"></i> Edit</button>`);
@@ -14030,12 +14075,11 @@ async function renderProductDetail(productId) {
     .from("products")
     .select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, verification_status, cac_number, created_at, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)")
     .eq("id", productId)
-    .eq("status", "active")
-    .eq("vendor.verification_status", "verified")
-    .eq("vendor.is_active", true)
     .maybeSingle();
 
   if (error || !product) return '<div class="empty-state">Product not found.</div>';
+  const ownListing = isOwnVendorId(product.vendor?.id);
+  if (!ownListing && (product.status !== "active" || product.vendor?.verification_status !== "verified" || !product.vendor?.is_active)) return '<div class="empty-state">Product not found.</div>';
   const { data: loadedProductVariants, error: variantsError } = await sb
     .from("product_variants")
     .select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order")
@@ -14050,7 +14094,6 @@ async function renderProductDetail(productId) {
   const { data: stats } = await sb.rpc("get_vendor_stats", { p_vendor_id: product.vendor.id });
   const st = (stats && stats[0]) || {};
 
-  const ownListing = isOwnVendorId(product.vendor?.id);
   const canRent = !ownListing && (product.listing_type === "rent" || product.listing_type === "both");
   const canBuy = !ownListing && (product.listing_type === "sale" || product.listing_type === "both");
   const productPhotos = Array.isArray(product.photos) ? product.photos.filter(Boolean) : [];
@@ -14117,6 +14160,7 @@ async function renderProductDetail(productId) {
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
       ${!product.is_service && productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" onclick="selectProductVariant('${esc(v.id)}')"><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
+      ${!product.is_service && productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="muted">Selected variety</span><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><strong id="selectedVariantPrice">${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
       <div class="flex">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
@@ -14136,7 +14180,11 @@ async function renderProductDetail(productId) {
     </div>`;
   }
   if (ownListing) {
-    html += `<div class="card own-purchase-block"><p style="margin:0;"><i class="fa-solid fa-circle-info"></i> This is your own listing. You can manage it from your vendor dashboard, but you can't buy, book, or rent from your own shop.</p></div>`;
+    const ownerPaid = product.billing_model !== "monthly" || listingActivationValid(product);
+    html += `<div class="card owner-listing-management"><div class="owner-listing-head"><div><span class="muted">Your listing</span><h3 style="margin:.15rem 0 0;">Manage this listing</h3></div><span class="badge ${product.status === "active" ? "success" : "warning"}">${esc(product.status || "paused")}</span></div>
+      <div class="owner-listing-stats"><div><span>Views</span><strong>${Number(product.view_count||0).toLocaleString()}</strong></div><div><span>Saved</span><strong>${Number(st.favorites_count ?? 0).toLocaleString()}</strong></div><div><span>Revenue</span><strong>${naira(Number(st.revenue ?? 0))}</strong></div><div><span>Sales</span><strong>${Number(st.sales_count ?? 0).toLocaleString()}</strong></div></div>
+      <div class="owner-listing-actions"><button type="button" class="btn btn-sm" onclick="openEditProductModal('${product.id}')"><i class="fa-solid fa-pen"></i> Edit</button>${product.status === "active" ? `<button type="button" class="btn btn-sm btn-outline" onclick="setProductStatus('${product.id}','paused')">Pause</button>` : ownerPaid ? `<button type="button" class="btn btn-sm" onclick="setProductStatus('${product.id}','active')">Activate</button>` : `<button type="button" class="btn btn-sm" onclick="startListingMonthlyPayment('product','${product.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000</button>`}<button type="button" class="btn btn-sm btn-danger" onclick="removeProduct('${product.id}')"><i class="fa-solid fa-trash"></i> Remove</button></div>
+      ${product.variants?.length ? `<p class="muted owner-listing-variant-note"><i class="fa-solid fa-layer-group"></i> ${product.variants.length} variety${product.variants.length===1?"":"ies"} configured.</p>` : ""}</div>`;
   }
   const relatedNames = RELATED_EQUIPMENT[product.category?.name] || [];
   if (relatedNames.length) {
@@ -14353,7 +14401,10 @@ function selectProductVariant(variantId) {
   const unit = Number(variant.discount_price ?? variant.sale_price ?? 0);
   const preview = byId("serviceTotalPreview");
   if (preview && unit > 0) preview.textContent = `Total: ${naira(unit * qty)} (${qty} × ${naira(unit)})`;
-  const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => u === variant.photo_url) ?? -1);
+  const nameEl = byId("selectedVariantName"), priceEl = byId("selectedVariantPrice");
+  if (nameEl) nameEl.textContent = variant.name || "Selected variety";
+  if (priceEl) priceEl.textContent = naira(unit);
+  const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => String(u) === String(variant.photo_url)) ?? -1);
   if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex);
 }
 
@@ -15157,6 +15208,67 @@ function updateRequestFormFields() {
   }
 }
 
+function requestCategoryRows() {
+  const all = Array.isArray(window.__categories) ? window.__categories : [];
+  const sectorId = byId("reqSector")?.value || "";
+  return all.filter(c => c.parent_category_id && (!sectorId || String(c.sector_id || "") === String(sectorId)));
+}
+function updateRequestCategoryOptions() {
+  const current = byId("reqCategory")?.value || "";
+  const rows = requestCategoryRows();
+  const valid = rows.some(c => String(c.id) === String(current));
+  if (!valid) {
+    if (byId("reqCategory")) byId("reqCategory").value = "";
+    if (byId("reqCategoryLabel")) byId("reqCategoryLabel").textContent = "Choose one…";
+  } else {
+    const selected = rows.find(c => String(c.id) === String(current));
+    if (selected && byId("reqCategoryLabel")) byId("reqCategoryLabel").textContent = selected.name;
+  }
+}
+function closeRequestCategoryPicker() {
+  document.getElementById("reqCategoryPickerModal")?.remove();
+  byId("reqCategoryPicker")?.setAttribute("aria-expanded", "false");
+}
+function openRequestCategoryPicker(event) {
+  event?.preventDefault?.(); event?.stopPropagation?.();
+  const existing = document.getElementById("reqCategoryPickerModal");
+  if (existing) { closeRequestCategoryPicker(); return; }
+  const rows = requestCategoryRows();
+  const selected = byId("reqCategory")?.value || "";
+  const modal = document.createElement("div");
+  modal.id = "reqCategoryPickerModal";
+  modal.className = "req-category-picker-modal";
+  modal.innerHTML = `<div class="req-category-picker-sheet" role="dialog" aria-modal="true" aria-label="Choose request category">
+    <div class="req-category-picker-head"><div><strong>Choose a category</strong><small>Search the categories already available on Levromart.</small></div><button type="button" class="icon-btn" aria-label="Close" onclick="closeRequestCategoryPicker()"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="req-category-search"><i class="fa-solid fa-magnifying-glass"></i><input id="reqCategorySearch" type="search" autocomplete="off" placeholder="Search rice, phone, medical…" /></div>
+    <div id="reqCategoryResults" class="req-category-results"></div>
+  </div>`;
+  document.body.appendChild(modal);
+  byId("reqCategoryPicker")?.setAttribute("aria-expanded", "true");
+  const render = () => {
+    const q = String(byId("reqCategorySearch")?.value || "").trim().toLowerCase();
+    const filtered = rows.filter(c => {
+      const text = `${c.name || ""} ${c.description || ""}`.toLowerCase();
+      return !q || text.includes(q);
+    });
+    const results = byId("reqCategoryResults");
+    if (!results) return;
+    results.innerHTML = filtered.length ? filtered.map(c => `<button type="button" class="req-category-option ${String(c.id)===String(selected)?"selected":""}" data-category-id="${esc(c.id)}"><span><strong>${esc(c.name)}</strong>${c.description ? `<small>${esc(c.description)}</small>` : ""}</span><i class="fa-solid ${String(c.id)===String(selected)?"fa-circle-check":"fa-chevron-right"}"></i></button>`).join("") : `<div class="req-category-empty">No matching existing categories.</div>`;
+    results.querySelectorAll(".req-category-option").forEach(btn => btn.addEventListener("click", () => {
+      const id = btn.dataset.categoryId;
+      const item = rows.find(c => String(c.id) === String(id));
+      if (!item) return;
+      byId("reqCategory").value = item.id;
+      byId("reqCategoryLabel").textContent = item.name;
+      closeRequestCategoryPicker();
+    }));
+  };
+  byId("reqCategorySearch")?.addEventListener("input", render);
+  modal.addEventListener("click", e => { if (e.target === modal) closeRequestCategoryPicker(); });
+  render();
+  setTimeout(() => byId("reqCategorySearch")?.focus(), 30);
+}
+
 async function submitEquipmentRequest() {
   if (!session?.user?.id) {
     showToast("Please log in to post a request.", "error");
@@ -15259,7 +15371,7 @@ async function renderRequestEquipment() {
       <label>More details</label><textarea id="reqDesc" rows="2" placeholder="Duration, specs, delivery preferences…"></textarea>
       <div class="flex">
         <div style="flex:1;"><label>Sector</label><select id="reqSector" onchange="updateRequestCategoryOptions()"><option value="">Any</option>${sectors.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select></div>
-        <div style="flex:1;"><label>Category *</label><select id="reqCategory"><option value="" disabled selected>Choose one…</option>${(window.__categories || []).filter((c) => c.parent_category_id).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></div>
+        <div style="flex:1;"><label>Category *</label><div class="req-category-picker-wrap"><button type="button" class="req-category-picker" id="reqCategoryPicker" onclick="openRequestCategoryPicker(event)" aria-haspopup="dialog" aria-expanded="false"><span id="reqCategoryLabel">Choose one…</span><i class="fa-solid fa-chevron-down"></i></button><input type="hidden" id="reqCategory" value=""></div></div>
       </div>
       <div class="flex">
         <div style="flex:1;"><label>City</label><input id="reqCity" value="Lagos" /></div>
@@ -16547,8 +16659,8 @@ async function renderVendorProducts() {
   if (!products || products.length === 0) { html += `<div class="empty-state">No products yet.</div>`; return html; }
 
   html += `<div class="vendor-products-toolbar">
-    <input type="text" id="vendorProductSearch" placeholder="Search your products…" oninput="filterVendorProducts()" />
     <label class="vendor-products-sort"><span>Sort</span><select id="vendorProductSort" onchange="filterVendorProducts()"><option value="newest">Newest first</option><option value="az">A–Z</option><option value="za">Z–A</option></select></label>
+    <div class="vendor-products-search-compact"><button type="button" class="icon-btn vendor-product-search-toggle" aria-expanded="false" aria-label="Search My Products" title="Search My Products"><i class="fa-solid fa-magnifying-glass"></i></button><div class="vendor-product-search-popover"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="vendorProductSearch" placeholder="Search your products…" oninput="filterVendorProducts()" /><button type="button" class="icon-btn vendor-product-search-close" aria-label="Close search"><i class="fa-solid fa-xmark"></i></button></div></div>
   </div>`;
 
   if (vendorProductsView === "table") {
@@ -18976,7 +19088,7 @@ async function renderAdminPeople() {
   setTimeout(async () => {
     try {
       const [{ data: people, error: peopleError }, { data: appeals, error: appealsError }] = await Promise.all([
-        sb.from("users").select("id, name, email, role, city, created_at, suspended_at, suspended_reason").order("created_at", { ascending: false }),
+        sb.from("users").select("id, name, email, phone, role, city, created_at, suspended_at, suspended_reason").order("created_at", { ascending: false }),
         sb.rpc("admin_get_pending_appeals"),
       ]);
       if (peopleError) throw peopleError;
@@ -19003,7 +19115,7 @@ function renderAdminPeopleFromData(people, appeals) {
   (appeals || []).forEach((a) => { appealByUser[a.user_id] = a; });
   window.__adminPeopleAll = people || [];
   window.__adminPeopleRole = ["buyer", "vendor"].includes(window.__adminPeopleRole) ? window.__adminPeopleRole : "buyer";
-  window.__adminPeopleSort = window.__adminPeopleSort === "za" ? "za" : "az";
+  window.__adminPeopleSort = ["newest","oldest","az","za"].includes(window.__adminPeopleSort) ? window.__adminPeopleSort : "newest";
 
   let html = `<h2><i class='fa-solid fa-users'></i> People on Levromart</h2>`;
   html += adminNavHtml("adminPeople");
@@ -19019,7 +19131,7 @@ function renderAdminPeopleFromData(people, appeals) {
   </section>
   <div class="admin-people-controls">
     <div class="admin-people-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="adminPeopleSearch" placeholder="Search by name or email…" oninput="filterAdminPeople()" /></div>
-    <label class="admin-people-sort"><span>Sort</span><select id="adminPeopleSort" onchange="setAdminPeopleSort(this.value)"><option value="az" ${window.__adminPeopleSort === "az" ? "selected" : ""}>A–Z</option><option value="za" ${window.__adminPeopleSort === "za" ? "selected" : ""}>Z–A</option></select></label>
+    <label class="admin-people-sort"><span>Sort</span><select id="adminPeopleSort" onchange="setAdminPeopleSort(this.value)"><option value="newest" ${window.__adminPeopleSort === "newest" ? "selected" : ""}>Newest signups</option><option value="oldest" ${window.__adminPeopleSort === "oldest" ? "selected" : ""}>Oldest signups</option><option value="az" ${window.__adminPeopleSort === "az" ? "selected" : ""}>A–Z</option><option value="za" ${window.__adminPeopleSort === "za" ? "selected" : ""}>Z–A</option></select></label>
   </div>`;
   html += `<div class="accordion-section admin-people-summary" style="max-width:560px;margin:0 auto 1rem;">
     <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-chart-simple"></i> Summary</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
@@ -19028,7 +19140,7 @@ function renderAdminPeopleFromData(people, appeals) {
   if (appeals?.length) {
     html += `<div class="accordion-section open" id="appealsAccordion" style="max-width:600px;margin:0 auto 1rem;border-color:var(--warning);"><button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-flag"></i> Suspension appeals awaiting review (${appeals.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button><div class="accordion-body">${appeals.map((a) => `<div style="border-top:1px solid var(--border);padding:.6rem 0;"><strong>${esc(a.user_name || a.user_email)}</strong><p class="muted" style="margin:.2rem 0;font-size:.82rem;">Suspended for: ${esc(a.suspension_reason || "")}</p><p style="margin:.3rem 0;">${esc(a.message)}</p><div class="flex" style="gap:.5rem;"><button class="btn btn-sm" onclick="approveAppeal('${a.user_id}')"><i class="fa-solid fa-check"></i> Approve &amp; unsuspend</button><button class="btn btn-sm btn-outline" onclick="denyAppealPrompt('${a.id}')"><i class="fa-solid fa-xmark"></i> Deny</button></div></div>`).join("")}</div></div>`;
   }
-  html += `<div class="admin-people-table-xscroll"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div>`;
+  html += `<div class="admin-people-table-xscroll"><table class="data-table admin-people-table" id="adminPeopleTable"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>Phone</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table></div>`;
   html += `<p class="muted admin-people-hint"><i class="fa-solid fa-arrows-up-down-left-right"></i> Scroll the table vertically for more people and horizontally for wider columns.</p>`;
   setTimeout(() => renderAdminPeopleRows(), 0);
   return html;
@@ -19037,10 +19149,14 @@ function renderAdminPeopleFromData(people, appeals) {
 function getAdminPeopleFilteredRows() {
   const role = window.__adminPeopleRole || "buyer";
   const q = (byId("adminPeopleSearch")?.value || "").trim().toLowerCase();
-  const sort = window.__adminPeopleSort || "az";
+  const sort = window.__adminPeopleSort || "newest";
   let rows = (window.__adminPeopleAll || []).filter((p) => p.role === role);
   if (q) rows = rows.filter((p) => `${p.name || ""} ${p.email || ""} ${p.city || ""}`.toLowerCase().includes(q));
   rows.sort((a,b) => {
+    if (sort === "newest" || sort === "oldest") {
+      const at = new Date(a.created_at || 0).getTime(), bt = new Date(b.created_at || 0).getTime();
+      return sort === "newest" ? bt - at : at - bt;
+    }
     const aa = String(a.name || a.email || "").toLocaleLowerCase();
     const bb = String(b.name || b.email || "").toLocaleLowerCase();
     const cmp = aa.localeCompare(bb, undefined, { sensitivity: "base" });
@@ -19054,11 +19170,11 @@ function renderAdminPeopleRows() {
   if (!tbody) return;
   const rows = getAdminPeopleFilteredRows();
   tbody.innerHTML = rows.map((p, idx) => `<tr>
-    <td>${idx + 1}</td><td>${esc(p.name || "-")}</td><td>${esc(p.email || "-")}</td><td><span class="badge">${esc(p.role)}</span></td><td>${esc(p.city || "-")}</td>
-    <td>${p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB", {day:"numeric",month:"short",year:"numeric"}) : "-"}</td>
+    <td>${idx + 1}</td><td>${esc(p.name || "-")}</td><td>${esc(p.email || "-")}</td><td><span class="badge">${esc(p.role)}</span></td><td>${esc(p.city || "-")}</td><td>${p.phone ? `<button type="button" class="admin-phone-btn" onclick="openAdminPhoneActions(event,'${esc(p.phone)}','${esc(p.name || p.email || "User")}')"><i class="fa-solid fa-phone"></i> ${esc(p.phone)}</button>` : "-"}</td>
+    <td>${p.created_at ? `<span class="admin-joined-cell">${new Date(p.created_at).toLocaleString("en-GB", {day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</span>${Date.now()-new Date(p.created_at).getTime() <= 48*60*60*1000 ? ` <span class="badge admin-new-tag">NEW</span>` : ""}` : "-"}</td>
     <td>${p.suspended_at ? `<span class="badge danger" title="${esc(p.suspended_reason || "")}">Suspended</span>` : `<span class="badge success">Active</span>`}</td>
     <td>${p.role === "admin" ? "" : p.suspended_at ? `<button class="btn btn-sm btn-outline" onclick="unsuspendUser('${p.id}','${esc(p.name || p.email)}')">Unsuspend</button>` : `<button class="btn btn-sm btn-danger" onclick="suspendUserPrompt('${p.id}','${esc(p.name || p.email)}')">Suspend</button>`}</td>
-  </tr>`).join("") || `<tr><td colspan="8" class="muted" style="text-align:center;padding:1.2rem;">No ${window.__adminPeopleRole === "vendor" ? "vendors" : "buyers"} match your search.</td></tr>`;
+  </tr>`).join("") || `<tr><td colspan="9" class="muted" style="text-align:center;padding:1.2rem;">No ${window.__adminPeopleRole === "vendor" ? "vendors" : "buyers"} match your search.</td></tr>`;
 }
 
 function setAdminPeopleRole(role) {
@@ -19067,7 +19183,7 @@ function setAdminPeopleRole(role) {
   renderAdminPeopleRows();
 }
 function setAdminPeopleSort(sort) {
-  window.__adminPeopleSort = sort === "za" ? "za" : "az";
+  window.__adminPeopleSort = ["newest","oldest","az","za"].includes(sort) ? sort : "newest";
   renderAdminPeopleRows();
 }
 function filterAdminPeople() { renderAdminPeopleRows(); }
@@ -19138,13 +19254,6 @@ async function denyAppealPrompt(appealId) {
   showToast("Appeal denied.", "success");
   navigate("adminPeople");
 }
-function filterAdminPeople() {
-  const q = byId("adminPeopleSearch").value.trim().toLowerCase();
-  document.querySelectorAll("#adminPeopleTable tbody tr").forEach((row) => {
-    row.style.display = !q || row.textContent.toLowerCase().includes(q) ? "" : "none";
-  });
-}
-
 function suggestionRowHtml(s) {
   return `<div class="card" style="${s.status === "new" ? "border-color:var(--primary);" : ""}">
     <div class="flex" style="justify-content:space-between;align-items:flex-start;">
@@ -25967,10 +26076,12 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   // Follow/unfollow is instant; no confirmation dialog.
   async function followState(vendorId){try{const r=await sb.rpc('get_vendor_follow_state',{p_vendor_id:vendorId});return r.error?null:r.data?.[0]||null}catch(_){return null}}
   async function toggleFollow(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();if(!session){showLogin?.();return}const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const next=!st.following;const btn=wrap.querySelector('.follow-btn');if(btn)btn.disabled=true;try{const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});if(r.error)throw r.error;await refreshFollow(vendorId);if(typeof showToast==='function')showToast(next?'Following vendor.':'Unfollowed vendor.','success')}catch(e){showToast?.(e.message||'Could not update your following list.','error')}finally{if(btn)btn.disabled=false}}
-  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-plus')+'"></i> '+(following?'Following':'Follow');btn.title=following?'Unfollow vendor':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}const count=document.querySelector('[data-follow-count]');if(count){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
+  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-plus')+'"></i> '+(following?'Following':'Follow');btn.title=following?'Unfollow vendor':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
   async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const open=menu.classList.toggle('hidden')===false;bell.setAttribute('aria-expanded',String(open));if(open)await refreshFollow(vendorId)}
   window.toggleLevromartVendorFollow=toggleFollow;window.toggleLevromartFollowNotifications=toggleFollowBell;
-  document.addEventListener('change',e=>{const cb=e.target?.closest?.('.follow-menu input[data-pref]');if(!cb)return;const wrap=cb.closest('.storefront-follow-wrap'),id=wrap?.dataset.followVendorId;if(!id)return;const checked=k=>!!wrap.querySelector('[data-pref="'+k+'"]')?.checked;sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:'none',p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')}).then(()=>refreshFollow(id)).catch(()=>{})},true);
+  async function saveFollowPrefsFromWrap(wrap,muteModeOverride){const id=wrap?.dataset.followVendorId;if(!id)return;const checked=k=>!!wrap.querySelector('[data-pref="'+k+'"]')?.checked;let muteMode=muteModeOverride;if(muteMode==null){const active=wrap.querySelector('.follow-mute-grid button.active');muteMode=active?.dataset.mute||'none';}try{const r=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:muteMode,p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')});if(r.error)throw r.error;wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===muteMode));showToast?.(muteMode==='none'?'Vendor notifications turned on.':muteMode==='always'?'Vendor notifications muted until you turn them back on.':`Vendor notifications muted for ${muteMode==='1h'?'1 hour':'8 hours'}.`,'success');}catch(e){showToast?.(e.message||'Could not update vendor notifications.','error')}}
+document.addEventListener('change',e=>{const cb=e.target?.closest?.('.follow-menu input[data-pref]');if(!cb)return;saveFollowPrefsFromWrap(cb.closest('.storefront-follow-wrap'));},true);
+document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-grid button[data-mute]');if(!b)return;e.preventDefault();e.stopPropagation();const wrap=b.closest('.storefront-follow-wrap');if(!wrap)return;saveFollowPrefsFromWrap(wrap,b.dataset.mute);},true);
   document.addEventListener('click',e=>{if(!e.target.closest?.('.storefront-follow-wrap'))document.querySelectorAll('.follow-menu:not(.hidden)').forEach(m=>m.classList.add('hidden'))},true);
 
   // Follower list for the shop owner.
@@ -26584,9 +26695,12 @@ body.chat-full-page > #app{
         return;
       }
       if(action==='vendors'){
-        if(typeof vendorsViewMode!=='undefined') vendorsViewMode='map';
-        if(typeof vendorsListingFilter!=='undefined') vendorsListingFilter='all';
-        await navigate('vendors');
+        if(currentView === 'home' && byId('app .top-rated-vendors-scroll')){
+          byId('app .top-rated-vendors-scroll')?.scrollIntoView({behavior:'smooth',block:'center'});
+          return;
+        }
+        await navigate('home');
+        requestAnimationFrame(()=>setTimeout(()=>byId('app .top-rated-vendors-scroll')?.scrollIntoView({behavior:'smooth',block:'center'}),40));
         return;
       }
       if(action==='request'){ await navigate('requestEquipment'); return; }
@@ -28966,5 +29080,87 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 </style>
 <script id="levromart-phase1-password-runtime">
 (function(){document.addEventListener("click",function(e){const b=e.target?.closest?.(".password-visibility-toggle");if(!b)return;const i=document.getElementById(b.dataset.passwordTarget);if(!i)return;const showing=i.type==="text";i.type=showing?"password":"text";const icon=b.querySelector("i");if(icon)icon.className="fa-solid "+(showing?"fa-eye":"fa-eye-slash");b.setAttribute("aria-label",(showing?"Show ":"Hide ")+"password");b.title=showing?"Show password":"Hide password"},true)})();
+</script>
+
+<style id="levromart-astra-final-qa-css">
+/* Astra final QA: request picker */
+.req-category-picker-wrap{position:relative}.req-category-picker{width:100%;min-height:46px;padding:.7rem .8rem;border:1px solid var(--border);border-radius:.85rem;background:color-mix(in srgb,var(--primary) 3%,var(--input-bg));color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:.6rem;font:inherit;cursor:pointer;text-align:left}.req-category-picker:hover,.req-category-picker[aria-expanded="true"]{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 12%,transparent)}.req-category-picker i{color:var(--text-muted);font-size:.75rem}.req-category-picker-modal{position:fixed;inset:0;z-index:2147483605;background:rgba(2,8,23,.48);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:1rem}.req-category-picker-sheet{width:min(520px,100%);max-height:min(78vh,680px);overflow:hidden;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:20px;box-shadow:0 24px 70px rgba(0,0,0,.35);display:flex;flex-direction:column;color:var(--text)}.req-category-picker-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:1rem 1rem .7rem}.req-category-picker-head strong{display:block;font-size:1rem}.req-category-picker-head small{display:block;color:var(--text-muted);font-size:.7rem;margin-top:.15rem}.req-category-search{margin:0 .8rem .65rem;position:relative}.req-category-search i{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--text-muted)}.req-category-search input{padding-left:2.4rem;margin:0;background:var(--input-bg);border-radius:13px}.req-category-results{overflow:auto;padding:.25rem .7rem .8rem}.req-category-option{width:100%;border:1px solid transparent;background:transparent;color:var(--text);padding:.72rem .7rem;border-radius:13px;display:flex;align-items:center;justify-content:space-between;gap:.7rem;text-align:left;cursor:pointer;font:inherit}.req-category-option:hover,.req-category-option.selected{background:color-mix(in srgb,var(--primary) 10%,transparent);border-color:color-mix(in srgb,var(--primary) 24%,var(--border))}.req-category-option strong{display:block;font-size:.84rem}.req-category-option small{display:block;color:var(--text-muted);font-size:.68rem;margin-top:.12rem}.req-category-option>i{color:var(--primary);font-size:.8rem}.req-category-empty{padding:1.5rem;text-align:center;color:var(--text-muted);font-size:.8rem}
+/* Compact vendor mute popup */
+#app .follow-menu .follow-mute-grid{grid-template-columns:repeat(4,1fr)!important}.follow-mute-grid button[data-mute]{min-height:36px}.follow-mute-grid button[data-mute="always"]{grid-column:auto!important}.follow-menu{width:min(320px,calc(100vw - 1.5rem))!important;max-height:52vh!important}
+/* Softer five-star rating */
+.rating-five-star{background:color-mix(in srgb,#8b5cf6 12%,transparent)!important;color:#8b5cf6!important;border:1px solid color-mix(in srgb,#8b5cf6 38%,transparent)!important;box-shadow:0 0 0 1px color-mix(in srgb,#8b5cf6 8%,transparent) inset!important}
+/* Listing forms stay inside viewport */
+#productModal .modal-content,#packageModal .modal-content{max-width:min(720px,calc(100vw - 1rem))!important;overflow-x:hidden!important}#productModal,#packageModal{overflow-x:hidden!important}#productModal input,#productModal select,#productModal textarea,#packageModal input,#packageModal select,#packageModal textarea{max-width:100%!important;min-width:0!important}.product-detail-card,.owner-listing-management{overflow-x:hidden!important}
+/* Selected variety summary */
+.selected-variant-summary{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.55rem;margin:.55rem 0 .8rem;padding:.65rem .75rem;border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));background:color-mix(in srgb,var(--primary) 5%,var(--card));border-radius:13px}.selected-variant-summary span{font-size:.68rem}.selected-variant-summary strong{font-size:.8rem}.selected-variant-summary strong:last-child{color:var(--primary)}
+/* Owner listing details */
+.owner-listing-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem}.owner-listing-head h3{font-size:1rem}.owner-listing-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin:.85rem 0}.owner-listing-stats>div{padding:.6rem .45rem;border:1px solid var(--border);border-radius:11px;text-align:center}.owner-listing-stats span{display:block;color:var(--text-muted);font-size:.65rem}.owner-listing-stats strong{display:block;margin-top:.15rem;font-size:.82rem}.owner-listing-actions{display:flex;flex-wrap:wrap;gap:.45rem}.owner-listing-variant-note{font-size:.72rem;margin:.65rem 0 0}.owner-listing-variant-note i{color:var(--primary)}
+/* Admin people */
+.admin-people-table-xscroll{overflow:auto;max-height:58vh;border:1px solid var(--border);border-radius:14px;background:var(--card)}.admin-people-table{min-width:900px}.admin-phone-btn{border:0;background:transparent;color:var(--primary);font:inherit;cursor:pointer;padding:.25rem .35rem;border-radius:8px}.admin-phone-btn:hover{background:color-mix(in srgb,var(--primary) 9%,transparent)}.admin-new-tag{background:color-mix(in srgb,var(--primary) 14%,transparent)!important;color:var(--primary)!important;border:1px solid color-mix(in srgb,var(--primary) 30%,transparent)}.admin-joined-cell{font-variant-numeric:tabular-nums}
+/* Search mode hides fixed UI but preserves deliberate internal scrollers */
+body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.search-input-active #cartFab{display:none!important;visibility:hidden!important;pointer-events:none!important}
+/* Neutral back actions */
+#app .settings-back-btn,#app .chat-header-back,#app button[onclick*="navigate('home')"].btn-sm,#app button[onclick*="navigate('vendorDashboard')"].btn-outline{background:#6b7280!important;border-color:#6b7280!important;color:#fff!important}
+/* Levi icon: subtle green texture only on the icon */
+#aiChatFab .ai-chat-fab-logo{filter:drop-shadow(0 1px 1px rgba(16,185,129,.35))!important;background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.35),transparent 28%),radial-gradient(circle at 70% 75%,rgba(16,185,129,.65),transparent 52%)!important;border-radius:50%!important}
+/* Periodic route trace: trace, pause, trace */
+.levro-vendor-route-path{stroke-dasharray:16 12!important;animation:levroRouteTracePause 4.8s ease-in-out infinite!important}@keyframes levroRouteTracePause{0%{stroke-dashoffset:0;opacity:.76;stroke-width:4}45%{stroke-dashoffset:-180px;opacity:1;stroke-width:5}62%{stroke-dashoffset:-180px;opacity:.86;stroke-width:4}100%{stroke-dashoffset:-180px;opacity:.76;stroke-width:4}}@media(prefers-reduced-motion:reduce){.levro-vendor-route-path{animation:none!important}}
+@media(max-width:520px){.owner-listing-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.selected-variant-summary{grid-template-columns:1fr auto}.selected-variant-summary span{grid-column:1/-1}}
+
+.vendor-products-toolbar{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.6rem!important}.vendor-products-search-compact{position:relative;flex:0 0 auto}.vendor-product-search-toggle{width:42px!important;height:42px!important;min-width:42px!important;border:1px solid var(--border)!important;border-radius:12px!important;color:var(--primary)!important;background:color-mix(in srgb,var(--primary) 5%,var(--card))!important}.vendor-product-search-popover{position:absolute;right:0;top:calc(100% + .4rem);z-index:300;width:min(340px,calc(100vw - 2rem));display:none;align-items:center;gap:.4rem;padding:.35rem;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-float)}.vendor-product-search-popover.open{display:flex}.vendor-product-search-popover>i{color:var(--text-muted);margin-left:.4rem}.vendor-product-search-popover input{margin:0!important;border:0!important;box-shadow:none!important;min-width:0}.vendor-product-search-close{flex:0 0 38px;width:38px;height:38px}
+</style>
+<script id="levromart-astra-final-qa-runtime">
+(function(){'use strict';
+  /* Search state: one delegated controller covers expandable searches across the SPA. */
+  const searchSelector='input[type="search"],#heroSearch,#searchInput,#vendorSearchInput,#orderHistorySearch,#vendorProductSearch,#storefrontPackageSearch,#adminPeopleSearch,#msgSearchInput,.messages-search';
+  function searchOpen(){document.body.classList.add('search-input-active');}
+  function searchClose(){document.body.classList.remove('search-input-active');document.querySelectorAll('.levro-compact-search-wrap.open,.final-order-search-wrap.open').forEach(x=>x.classList.remove('open'));}
+  document.addEventListener('focusin',e=>{if(e.target?.matches?.(searchSelector))searchOpen()},true);
+  document.addEventListener('click',e=>{
+    const backdrop=e.target?.closest?.('#levromartHeaderSearchBackdrop,.search-backdrop,.compact-search-backdrop,.order-search-backdrop');
+    if(backdrop){searchClose();return;}
+    if(e.target?.closest?.('[data-search-close],.header-search-close,.levro-search-close,.final-order-search-close')){setTimeout(searchClose,20);return;}
+    if(e.target?.closest?.('.levro-compact-search-toggle,.final-order-search-toggle,.vendor-search-toggle,.search-toggle'))setTimeout(searchOpen,20);
+  },true);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('search-input-active'))searchClose()},true);
+  const observer=new MutationObserver(()=>{
+    if(document.querySelector('.levro-compact-search-wrap.open,.final-order-search-wrap.open,#levromartHeaderSearchDock.open')) searchOpen();
+  }); observer.observe(document.body,{childList:true,subtree:true});
+
+  /* Request notification badge: include both request offers and fresh customer requests. */
+  const oldRefreshNotifications=window.refreshNotifications;
+  if(typeof oldRefreshNotifications==='function'&&!window.__astraNotifWrap){window.__astraNotifWrap=true;window.refreshNotifications=async function(...args){const r=await oldRefreshNotifications.apply(this,args);try{if(profile?.role==='vendor'&&session?.user?.id){const q=await sb.from('notifications').select('id',{count:'exact',head:true}).eq('user_id',session.user.id).eq('type','new_request').eq('read',false).eq('archived',false).is('deleted_at',null);window.requestVendorNotificationCount=Number(q.count||0);const el=document.querySelector('[data-profile-label="Requests"] .profile-request-badge');if(el){const n=Number(window.requestVendorNotificationCount||0)+Number(requestOfferBadgeCount||0);el.textContent=n>9?'9+':String(n);el.classList.toggle('hidden',n===0)}}}catch(_){}return r}}
+
+  /* Request category: keep the picker synced after sector changes and support related lexical search without inventing values. */
+  document.addEventListener('change',e=>{if(e.target?.id==='reqSector')setTimeout(()=>window.updateRequestCategoryOptions?.(),0)},true);
+
+  /* Drafts: preserve listing form state until explicit cancel or successful save. */
+  const DRAFT_PREFIX='levromart-listing-form-draft-v3';
+  function draftKey(kind='product'){return `${DRAFT_PREFIX}:${session?.user?.id||'guest'}:${kind}`}
+  function listingModalKind(root){return root?.id==='packageModal'?'package':'product'}
+  function isNewListingModal(root){if(!root)return false;return root.id==='productModal' ? !editingProductId : root.id==='packageModal' ? !editingPackageId : false}
+  function isListingForm(el){const root=el?.closest?.('#productModal,#packageModal');return !!root && isNewListingModal(root)}
+  function captureListingDraft(){if(!session?.user?.id)return;const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(!isNewListingModal(root))return;const kind=listingModalKind(root);const controls=[...root.querySelectorAll('input:not([type=file]),select,textarea')];const values={};controls.forEach(c=>{if(!c.id)return;values[c.id]=c.type==='checkbox'?c.checked:c.value});try{localStorage.setItem(draftKey(kind),JSON.stringify({savedAt:Date.now(),values}))}catch(_){} }
+  function restoreListingDraft(){if(!session?.user?.id)return;const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(!isNewListingModal(root))return;const kind=listingModalKind(root);let raw;try{raw=localStorage.getItem(draftKey(kind))}catch(_){return}if(!raw)return;let d;try{d=JSON.parse(raw)}catch(_){return}if(!d?.values)return;Object.entries(d.values).forEach(([id,v])=>{const el=byId(id);if(!el||!root.contains(el))return;if(el.type==='checkbox')el.checked=!!v;else el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}))});if(byId('reqCategoryLabel')&&byId('reqCategory')?.value){const c=(window.__categories||[]).find(x=>String(x.id)===String(byId('reqCategory').value));if(c)byId('reqCategoryLabel').textContent=c.name}}
+  function clearNewListingDraft(kind){try{localStorage.removeItem(draftKey(kind))}catch(_){}
+  }
+  document.addEventListener('input',e=>{if(isListingForm(e.target)){clearTimeout(window.__astraDraftTimer);window.__astraDraftTimer=setTimeout(captureListingDraft,350)}},true);
+  document.addEventListener('change',e=>{if(isListingForm(e.target)){clearTimeout(window.__astraDraftTimer);window.__astraDraftTimer=setTimeout(captureListingDraft,150)}},true);
+  document.addEventListener('click',e=>{const b=e.target?.closest?.('#productModal button,#packageModal button');if(!b)return;const txt=(b.textContent||'').trim().toLowerCase();if(txt==='cancel'){const root=b.closest('#productModal,#packageModal');clearNewListingDraft(listingModalKind(root));searchClose()}},true);
+  const draftObserver=new MutationObserver(()=>{const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(isNewListingModal(root)){clearTimeout(window.__astraRestoreTimer);window.__astraRestoreTimer=setTimeout(restoreListingDraft,80)}});draftObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+  document.addEventListener('click',e=>{const toggle=e.target?.closest?.('.vendor-product-search-toggle');if(!toggle)return;const wrap=toggle.closest('.vendor-products-search-compact');const pop=wrap?.querySelector('.vendor-product-search-popover');const open=!!pop&&!pop.classList.contains('open');document.querySelectorAll('.vendor-product-search-popover.open').forEach(x=>x.classList.remove('open'));pop?.classList.toggle('open',open);toggle.setAttribute('aria-expanded',String(open));if(open){searchOpen();setTimeout(()=>pop.querySelector('input')?.focus(),30)}else searchClose()},true);
+  document.addEventListener('click',e=>{const close=e.target?.closest?.('.vendor-product-search-close');if(!close)return;const wrap=close.closest('.vendor-products-search-compact');wrap?.querySelector('.vendor-product-search-popover')?.classList.remove('open');wrap?.querySelector('.vendor-product-search-toggle')?.setAttribute('aria-expanded','false');searchClose()},true);
+  document.addEventListener('click',e=>{const b=e.target?.closest?.('#saveProductBtn,#savePackageBtn');if(!b)return;const kind=b.id==='savePackageBtn'?'package':'product';setTimeout(()=>{const modal=document.getElementById(kind==='package'?'packageModal':'productModal');const error=document.getElementById(kind==='package'?'packageError':'productError');if(modal?.classList.contains('hidden')&&!error?.textContent?.trim())clearNewListingDraft(kind)},900)},true);
+
+  /* Own listing management: enrich active owner pages and make owner navigation obvious. */
+  document.addEventListener('click',e=>{const card=e.target?.closest?.('.vendor-product-card-grid>.card');if(!card)return;if(e.target.closest('button,a,input'))return;const edit=card.querySelector('.vendor-edit-action');if(edit)e.preventDefault();},true);
+
+  /* Admin phone actions */
+  window.openAdminPhoneActions=function(event,phone,name){event?.preventDefault?.();event?.stopPropagation?.();const existing=document.getElementById('adminPhoneActionModal');existing?.remove();const modal=document.createElement('div');modal.id='adminPhoneActionModal';modal.className='modal';const safe=String(phone).replace(/[^0-9+]/g,'');const wa=safe.replace(/^\+/,'');modal.innerHTML=`<div class="modal-content" style="max-width:340px"><div class="drawer-header"><h3 style="margin:0">${escHtml(name)}</h3><button type="button" class="drawer-close-btn" onclick="document.getElementById('adminPhoneActionModal')?.remove()"><i class="fa-solid fa-xmark"></i></button></div><p class="muted" style="margin:.3rem 0 .8rem">${escHtml(phone)}</p><div class="flex" style="gap:.5rem"><button type="button" class="btn" onclick="navigator.clipboard?.writeText('${escHtml(phone)}').then(()=>{showToast('Phone number copied.','success');document.getElementById('adminPhoneActionModal')?.remove()})"><i class="fa-regular fa-copy"></i> Copy</button><a class="btn btn-outline" href="https://wa.me/${wa}" target="_blank" rel="noopener" onclick="document.getElementById('adminPhoneActionModal')?.remove()"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a></div></div>`;document.body.appendChild(modal);modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()})};
+
+  /* Levi texture is cosmetic only. */
+  document.querySelectorAll('#aiChatFab .ai-chat-fab-logo').forEach(x=>x.classList.add('astra-levi-textured'));
+  setInterval(()=>{if(currentView==='adminPeople')renderAdminPeopleRows()},60*60*1000);
+})();
 </script>
 </html>
