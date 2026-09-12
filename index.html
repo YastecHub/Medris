@@ -2,6 +2,49 @@
 <html lang="en">
 <head>
   <!-- LEVROMART REAL FIX BUILD: orders-live-2026-09-05T10:54+01 -->
+<!-- TEMPORARY DIAGNOSTIC — safe to remove once the Products-page hang is
+     root-caused. Shows any uncaught error or unhandled promise rejection
+     directly on screen (bottom banner) so it's visible without needing
+     desktop dev tools/remote debugging on a phone. Registered first, before
+     any other script, so it can catch errors that happen very early too. -->
+<script id="levromart-temp-error-banner">
+(function(){
+  function showDebugError(message, isRejection){
+    try{
+      var el = document.getElementById('levromartDebugErrorBanner');
+      if(!el){
+        el = document.createElement('div');
+        el.id = 'levromartDebugErrorBanner';
+        el.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483647;background:#7f1d1d;color:#fff;padding:10px 14px;font:12px/1.4 -apple-system,monospace;max-height:42vh;overflow:auto;white-space:pre-wrap;box-shadow:0 -4px 20px rgba(0,0,0,.4);';
+        (document.body || document.documentElement).appendChild(el);
+      }
+      var time = new Date().toLocaleTimeString();
+      var line = document.createElement('div');
+      line.style.cssText = 'border-top:1px solid rgba(255,255,255,.25);padding-top:6px;margin-top:6px;';
+      line.textContent = '[' + time + '] ' + (isRejection ? 'Unhandled promise rejection: ' : 'Error: ') + message;
+      el.appendChild(line);
+      var oldBtn = el.querySelector('button');
+      if (oldBtn) oldBtn.remove();
+      var closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Dismiss all';
+      closeBtn.style.cssText = 'display:block;margin-top:8px;background:#fff;color:#7f1d1d;border:none;border-radius:6px;padding:6px 10px;font-weight:700;';
+      closeBtn.onclick = function(){ el.remove(); };
+      el.appendChild(closeBtn);
+    }catch(_){}
+  }
+  window.addEventListener('error', function(e){
+    var msg = (e && (e.message || String(e))) || 'unknown error';
+    if (e && e.filename) msg += ' @ ' + e.filename.split('/').pop() + ':' + e.lineno + ':' + e.colno;
+    showDebugError(msg, false);
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    var msg;
+    try { msg = (e.reason && (e.reason.message || String(e.reason))) || 'unknown rejection'; }
+    catch(_) { msg = 'unknown rejection'; }
+    showDebugError(msg, true);
+  });
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Levromart</title>
