@@ -12781,7 +12781,7 @@ async function renderMessages(conversationId) {
     sb.rpc("get_conversation_other_party", { p_conversation_id: conversationId }),
     sb.from("conversations").select("id, buyer_id, vendor:vendors(id, business_name, logo_url, user_id, phone, whatsapp_number, whatsapp_visible)").eq("id", conversationId).maybeSingle(),
     sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }),
-    sb.from("message_pins").select("id,pinned_at,expires_at,message:messages(id,body,sender_id,created_at,attachment_name,attachment_url,attachment_type,deleted_at)").eq("conversation_id", conversationId).or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).order("pinned_at", { ascending: false }).limit(4),
+    sb.from("message_pins").select("id,pinned_at,expires_at,message:messages(id,body,sender_id,created_at,attachment_name,attachment_url,attachment_type,deleted_at)").eq("user_id", session.user.id).eq("conversation_id", conversationId).or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).order("pinned_at", { ascending: false }).limit(4),
   ]);
   if (!conv || otherErr) return '<div class="empty-state">Conversation not found.</div>';
   await enrichMessageReplies(messages || []);
@@ -14084,7 +14084,7 @@ async function renderProductDetail(productId) {
           ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
           ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
-        ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
+        ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => { const vv=productVariants.find(x=>String(x.photo_url||"")===String(u)); const vp=vv ? (Number(vv.discount_price)>0 && Number(vv.discount_price)<Number(vv.sale_price||0) ? `<span class="product-gallery-thumb-price"><s>${naira(vv.sale_price)}</s> ${naira(vv.discount_price)}</span>` : `<span class="product-gallery-thumb-price">${naira(vv.sale_price ?? 0)}</span>`) : ""; return `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" data-variant-id="${esc(vv?.id||"")}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}${vv?.name ? `, ${esc(vv.name)}` : ""}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /><span class="product-gallery-thumb-meta">${vv?.name ? `<b>${esc(vv.name)}</b>${vp}` : `<span>Photo ${i+1}</span>`}</span></button>`; }).join("")}</div>` : ""}
       </div>`
     : `<div class="product-img" style="height:220px;"><i class='fa-solid fa-camera'></i> No image</div>`;
   window.__productGalleryPhotos = productPhotos;
@@ -14127,6 +14127,7 @@ async function renderProductDetail(productId) {
     </div>
     <h2 class="product-detail-title">${esc(product.name)}${product.is_service ? ` <span class="badge">Service</span>` : ""}</h2>
     <div class="product-detail-media">${photosHtml}</div>
+    ${!product.is_service && productVariants.length ? `<div class="product-active-variant" id="productActiveVariant" aria-live="polite"></div>` : ""}
     <div class="product-detail-actions">
       ${profile?.role !== "admin" ? (product.vendor.whatsapp_visible && product.vendor.whatsapp_number ? `<div class="ms-wrap product-message-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm" type="button" onclick="toggleInlineMenu('productMessageMenu-${product.id}',event)"><i class='fa-solid fa-comment-dots'></i> Message vendor</button><div class="ms-list hidden" id="productMessageMenu-${product.id}" style="left:0;right:auto;width:max-content;min-width:190px;"><button class="ms-item" type="button" onclick="startConversationWithVendor('${product.vendor.id}');closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(product.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm" onclick="startConversationWithVendor('${product.vendor.id}')"><i class='fa-solid fa-comment-dots'></i> Message vendor</button>`) : ""}
       ${product.vendor.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(product.vendor.phone)}" onclick="callVendorGated(event,'${esc(product.vendor.phone)}','${product.vendor.id}')"><i class='fa-solid fa-phone'></i> Call vendor</a>` : ""}
@@ -16540,7 +16541,13 @@ async function saveVendorLocation() {
 
 // ---------- VENDOR PRODUCTS ----------
 let vendorProductsView = "grid"; // 'grid' | 'table'
-function toggleVendorProductsView(v) { vendorProductsView = v; navigate("vendorProducts"); }
+async function toggleVendorProductsView(v) {
+  const next = v === "table" ? "table" : "grid";
+  const previousY = window.scrollY || 0;
+  vendorProductsView = next;
+  await navigate("vendorProducts", {}, false);
+  requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: previousY, behavior: "auto" })));
+}
 
 async function renderVendorProducts() {
   if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
@@ -30155,6 +30162,191 @@ body.search-input-active{overflow:hidden!important}
   }
   const panelObserver=new MutationObserver(()=>decorateVendorNotifications());
   const panel=byId('notifPanel'); if(panel)panelObserver.observe(panel,{childList:true,subtree:true});
+})();
+</script>
+
+<style id="levromart-20260912-ui-final-pass">
+/* My Shop: square, stable view controls with genuinely different icons. */
+#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"]{
+  width:44px!important;height:44px!important;min-width:44px!important;max-width:44px!important;
+  padding:0!important;border-radius:11px!important;display:grid!important;place-items:center!important;
+  flex:0 0 44px!important;transform:none!important;line-height:1!important;font-size:0!important;
+}
+#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"] i{font-size:1rem!important;line-height:1!important}
+#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"]:nth-child(1) i{font-size:1.02rem!important}
+#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"]:nth-child(2) i{font-size:.98rem!important}
+/* Keep the add button physically stable while switching inventory/grid. */
+#app .levro-myshop-add-slot{height:62px!important;min-height:62px!important;overflow:visible!important}
+#app .levro-myshop-add-slot .levro-myshop-add-button{transform:none!important}
+
+/* Followers sheet: the card fills the usable screen and the list scrolls inside it. */
+#vendorFollowersModal{position:fixed!important;inset:0!important;padding:1rem!important;overflow:hidden!important;align-items:center!important;justify-content:center!important}
+#vendorFollowersModal:not(.hidden){display:flex!important}
+#vendorFollowersModal>.modal-content{width:min(480px,94vw)!important;max-width:480px!important;height:min(88vh,760px)!important;max-height:calc(100vh - 2rem)!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;margin:0!important}
+#vendorFollowersModal .followers-modal-list{flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important;padding:.35rem .05rem .1rem!important;-webkit-overflow-scrolling:touch!important}
+
+/* Product detail variety rail: image + name + individual price, synced with the large gallery. */
+#app .product-gallery-thumbs{display:flex!important;gap:.5rem!important;overflow-x:auto!important;overflow-y:hidden!important;padding:.55rem .1rem .7rem!important;scroll-snap-type:x proximity!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}
+#app .product-gallery-thumbs::-webkit-scrollbar{display:none!important}
+#app .product-gallery-thumb{flex:0 0 92px!important;width:92px!important;height:100px!important;padding:.28rem!important;display:flex!important;flex-direction:column!important;gap:.22rem!important;justify-content:flex-start!important;align-items:stretch!important;border:1px solid var(--border)!important;border-radius:12px!important;background:var(--card)!important;overflow:hidden!important;scroll-snap-align:center!important;box-sizing:border-box!important}
+#app .product-gallery-thumb.active{border-color:var(--primary)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 22%,transparent)!important;background:color-mix(in srgb,var(--primary) 7%,var(--card))!important}
+#app .product-gallery-thumb>img{width:100%!important;height:55px!important;min-height:55px!important;object-fit:cover!important;border-radius:8px!important;display:block!important}
+#app .product-gallery-thumb-meta{display:flex!important;flex-direction:column!important;min-width:0!important;line-height:1.08!important;text-align:left!important;overflow:hidden!important}
+#app .product-gallery-thumb-meta b,#app .product-gallery-thumb-meta>span{font-size:.57rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:var(--text)!important}
+#app .product-gallery-thumb-price{font-size:.54rem!important;color:var(--primary)!important;font-weight:800!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#app .product-gallery-thumb-price s{color:var(--text-muted)!important;font-weight:600!important;margin-right:.12rem!important}
+#app .product-active-variant{margin:.1rem 0 .75rem!important;padding:.65rem .75rem!important;border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border))!important;border-radius:12px!important;background:color-mix(in srgb,var(--primary) 6%,var(--card))!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.7rem!important;min-height:48px!important}
+#app .product-active-variant .pav-copy{min-width:0!important;display:flex!important;flex-direction:column!important;gap:.1rem!important}
+#app .product-active-variant .pav-name{font-weight:800!important;font-size:.82rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#app .product-active-variant .pav-label{font-size:.62rem!important;color:var(--text-muted)!important}
+#app .product-active-variant .pav-price{font-weight:900!important;color:var(--primary)!important;white-space:nowrap!important;font-size:.82rem!important}
+
+/* Notification cards are directly clickable; no redundant green destination buttons. */
+#notifPanel .notif-vendor-destination,#notifPanel .notif-update-action,#notifPanel .notif-update-detail{display:none!important}
+#notifPanel .notif-item[data-vendor-update="1"]{cursor:pointer!important}
+
+/* All navigation/back actions use the neutral gray treatment. */
+#app .levro-back-action,
+#app button[aria-label*="Back"],#app button[title*="Back"],
+#app a[aria-label*="Back"],#app a[title*="Back"]{
+  background:#64748b!important;border-color:#64748b!important;color:#fff!important;
+}
+#app .levro-back-action:hover{background:#475569!important;border-color:#475569!important}
+</style>
+<script id="levromart-20260912-ui-final-pass-js">
+(function(){
+  'use strict';
+  const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+  const money=v=>typeof naira==='function'?naira(v):('₦'+Number(v||0).toLocaleString());
+  const escL=s=>typeof esc==='function'?esc(String(s??'')):String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  /* Prevent a full navigation/scroll jump when switching My Shop view. */
+  window.toggleVendorProductsView=async function(mode){
+    vendorProductsView=mode==='table'?'table':'grid';
+    const y=window.scrollY||0;
+    try{await navigate('vendorProducts',{},false);}catch(_){return;}
+    requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'auto'})));
+  };
+
+  function variantForPhoto(index){
+    const p=window.currentProductDetail||window.__currentProductDetail||currentProductDetail;
+    const photos=window.__productGalleryPhotos||[];
+    const variants=Array.isArray(p?.variants)?p.variants:[];
+    const u=photos[index];
+    return variants.find(v=>String(v.photo_url||'')===String(u||''))||null;
+  }
+  function renderActiveVariant(index){
+    const box=$('#productActiveVariant');
+    if(!box)return;
+    const v=variantForPhoto(index);
+    if(!v){box.innerHTML='<span class="pav-copy"><span class="pav-label">Selected photo</span></span>';return;}
+    const sale=Number(v.sale_price||0), disc=Number(v.discount_price||0), hasDisc=disc>0&&sale>0&&disc<sale;
+    box.innerHTML=`<span class="pav-copy"><span class="pav-label">Current variety</span><span class="pav-name">${escL(v.name||'Variety')}</span></span><span class="pav-price">${hasDisc?`<s style="color:var(--text-muted);font-size:.65rem;font-weight:600;margin-right:.18rem;">${money(sale)}</s> ${money(disc)}`:money(sale)}</span>`;
+  }
+  function syncVariantRail(index,scrollThumb=true){
+    const thumbs=$$('#productGalleryTrack ~ .product-gallery-thumbs .product-gallery-thumb, .product-gallery-thumbs .product-gallery-thumb');
+    thumbs.forEach(t=>t.classList.toggle('active',Number(t.dataset.galleryIndex)===Number(index)));
+    const active=thumbs.find(t=>Number(t.dataset.galleryIndex)===Number(index));
+    if(scrollThumb&&active)active.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
+    renderActiveVariant(index);
+  }
+  function enhanceProductGallery(){
+    const track=$('#productGalleryTrack');
+    const p=window.currentProductDetail||window.__currentProductDetail||currentProductDetail;
+    if(!track||!p||p.is_service)return;
+    const variants=Array.isArray(p.variants)?p.variants:[];
+    if(!variants.length)return;
+    const photos=window.__productGalleryPhotos||[];
+    if(!track.dataset.variantSyncBound){
+      track.dataset.variantSyncBound='1';
+      let raf=0;
+      const sync=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{
+        const slides=[...track.querySelectorAll('.product-gallery-slide')];if(!slides.length)return;
+        const center=track.scrollLeft+track.clientWidth/2;let best=0,dist=Infinity;
+        slides.forEach((sl,i)=>{const d=Math.abs((sl.offsetLeft+sl.offsetWidth/2)-center);if(d<dist){dist=d;best=i;}});
+        productGalleryIndex=Number(slides[best].dataset.galleryIndex)||0;
+        const count=$('#productGalleryCount');if(count)count.textContent=String(productGalleryIndex+1);
+        syncVariantRail(productGalleryIndex,true);
+      });};
+      track.addEventListener('scroll',sync,{passive:true});
+      track.addEventListener('touchend',sync,{passive:true});
+    }
+    syncVariantRail(Number(window.__productGalleryIndex||0),false);
+  }
+  const oldSelect=window.selectProductVariant;
+  if(typeof oldSelect==='function'&&!oldSelect.__levroWrapped){
+    const wrapped=function(id){const r=oldSelect.apply(this,arguments);setTimeout(()=>{
+      const v=(currentProductDetail?.variants||[]).find(x=>String(x.id)===String(id));
+      const idx=(window.__productGalleryPhotos||[]).findIndex(u=>String(u)===String(v?.photo_url||''));
+      if(idx>=0)syncVariantRail(idx,true); else renderActiveVariant(Number(window.__productGalleryIndex||0));
+    },60);return r;};wrapped.__levroWrapped=true;window.selectProductVariant=wrapped;
+  }
+  function normalizeGridIcons(){
+    $$('#app .vendor-products-heading-actions>button[onclick*="toggleVendorProductsView"]').forEach(b=>{
+      const oc=b.getAttribute('onclick')||'';
+      const isTable=/toggleVendorProductsView\(['"]table['"]\)/.test(oc);
+      b.innerHTML=isTable?'<i class="fa-solid fa-list-ul"></i>':'<i class="fa-solid fa-grip"></i>';
+      b.title=isTable?'Inventory list view':'Grid view';b.setAttribute('aria-label',b.title);
+    });
+  }
+  function classifyBacks(){
+    $$('button,a').forEach(el=>{const t=(el.textContent||'').replace(/\s+/g,' ').trim();if(/^(Back|Back to|Return to|Go back)\b/i.test(t))el.classList.add('levro-back-action');});
+  }
+  normalizeGridIcons();classifyBacks();enhanceProductGallery();
+  const app=$('#app');
+  if(app)new MutationObserver(()=>{clearTimeout(window.__levroFinalUiTimer);window.__levroFinalUiTimer=setTimeout(()=>{normalizeGridIcons();classifyBacks();enhanceProductGallery()},40)}).observe(app,{childList:true,subtree:true});
+
+  /* Notification clicks: vendor-follow updates always open that vendor's store. */
+  document.addEventListener('click',function(e){
+    const item=e.target?.closest?.('#notifPanel .notif-item');if(!item)return;
+    const vendorId=item.dataset.vendorId;
+    const cat=item.dataset.notificationCategory||'';
+    if(!vendorId||!['new_listing','new_service','new_package','new_variety','price_change','discount','listing_update'].includes(cat))return;
+    e.preventDefault();e.stopImmediatePropagation();
+    const id=item.dataset.id;
+    (async()=>{try{await markSingleNotifRead(id);}catch(_){}closeAllPanels();navigate('storefront',{vendorId});})();
+  },true);
+
+  /* Pin immediately: one tap on Pin message creates the persistent pin.
+     Keep a maximum of four active pins per chat; no second duration popup. */
+  window.togglePinnedMessage=async function(messageId,conversationId){
+    if(!window.session?.user?.id||!messageId||!conversationId)return;
+    try{
+      const existing=await sb.from('message_pins').select('id').eq('user_id',session.user.id).eq('message_id',messageId).eq('conversation_id',conversationId).maybeSingle();
+      if(existing.error)throw existing.error;
+      if(existing.data?.id){
+        const r=await sb.from('message_pins').delete().eq('id',existing.data.id).eq('user_id',session.user.id);
+        if(r.error)throw r.error;
+        showToast?.('Message unpinned.','success');
+      }else{
+        const c=await sb.from('message_pins').select('id',{count:'exact',head:true}).eq('user_id',session.user.id).eq('conversation_id',conversationId).or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+        if(c.error)throw c.error;
+        if(Number(c.count||0)>=4){showToast?.('You can pin up to 4 messages in this chat.','error');return;}
+        const r=await sb.from('message_pins').insert({user_id:session.user.id,message_id:messageId,conversation_id:conversationId,expires_at:null});
+        if(r.error)throw r.error;
+        showToast?.('Message pinned.','success');
+      }
+      clearMessageActionOverlays?.();
+      const conv=String(conversationId);
+      const y=window.scrollY||0;
+      const html=await renderMessages(conv);
+      const main=byId('mainContent');
+      if(main&&typeof html==='string'){main.innerHTML=html;requestAnimationFrame(()=>{window.scrollTo({top:y,behavior:'auto'});resolveVisibleAttachments?.(byId('chatMessages'));setupMessageInteractions?.(byId('chatMessages'));});}
+    }catch(err){showToast?.(err?.message||'Couldn’t pin that message.','error')}
+  };
+
+  /* Compact image/attachment representation for pinned messages. */
+  function decoratePins(){
+    $$('.chat-pinned-item').forEach(btn=>{
+      if(btn.dataset.visualDone==='1')return;btn.dataset.visualDone='1';
+      const text=btn.querySelector('span')?.textContent||'Pinned message';
+      const isPhoto=/photo|\.jpe?g|\.png|\.webp|\.gif/i.test(text);
+      if(isPhoto){const icon=document.createElement('span');icon.className='chat-pinned-visual';icon.innerHTML='<i class="fa-solid fa-image"></i>';btn.insertBefore(icon,btn.firstChild);}
+    });
+  }
+  const bodyObserver=new MutationObserver(()=>{decoratePins();enhanceProductGallery();normalizeGridIcons();classifyBacks()});
+  bodyObserver.observe(document.body,{childList:true,subtree:true});
+  decoratePins();
 })();
 </script>
 </html>
