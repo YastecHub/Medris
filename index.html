@@ -29362,4 +29362,239 @@ function installTopSearch(){const button=document.getElementById("levromartHeade
 const labels={az:"A–Z",za:"Z–A",newest:"Last added (newest)",oldest:"Last added (oldest)"};function setupProductSort(){const select=document.getElementById("vendorProductSort");if(!select||select.dataset.levroSortReady==="1")return;select.dataset.levroSortReady="1";const host=select.closest(".vendor-products-sort");if(!host)return;select.style.display="none";const ui=document.createElement("div");ui.className="levro-product-sort-ui";const optionHtml=Object.entries(labels).map(([v,l])=>'<button type="button" data-value="'+v+'" class="'+(select.value===v?'active':'')+'"><span>'+l+'</span>'+(select.value===v?'<i class="fa-solid fa-check"></i>':'')+'</button>').join('');ui.innerHTML='<button type="button" class="levro-product-sort-trigger" aria-expanded="false"><span>'+(labels[select.value]||"Sort")+'</span><i class="fa-solid fa-chevron-down"></i></button><div class="levro-product-sort-menu hidden">'+optionHtml+'</div>';host.appendChild(ui);const trigger=ui.querySelector('.levro-product-sort-trigger'),menu=ui.querySelector('.levro-product-sort-menu');trigger.onclick=e=>{e.preventDefault();e.stopPropagation();const o=menu.classList.toggle('hidden');trigger.setAttribute('aria-expanded',String(!o))};menu.querySelectorAll('button[data-value]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();select.value=btn.dataset.value;select.dispatchEvent(new Event('change',{bubbles:true}));trigger.querySelector('span').textContent=labels[select.value];menu.querySelectorAll('button').forEach(x=>{x.classList.toggle('active',x===btn);const i=x.querySelector('i');if(i)i.remove();if(x===btn)x.insertAdjacentHTML('beforeend','<i class="fa-solid fa-check"></i>')});menu.classList.add('hidden');trigger.setAttribute('aria-expanded','false')}))}const observer=new MutationObserver(setupProductSort);observer.observe(document.body,{childList:true,subtree:true});setupProductSort();document.addEventListener('touchstart',e=>{if(e.target?.closest?.('.vendor-product-card-grid'))document.body.style.setProperty('overscroll-behavior-y','auto')},{passive:true})})();
 </script>
 <style id="levromart-20260912-pinned-focus">.pinned-message-focus{box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 38%,transparent),0 8px 26px color-mix(in srgb,var(--primary) 16%,transparent)!important;transition:box-shadow .2s ease!important}</style>
+
+<style id="levromart-20260912-real-ux-final">
+/* ===== Levromart UX final pass ===== */
+/* Search: browser-like, polished, stable, and never toggled closed by tapping the search icon again. */
+#levromartHeaderSearchBackdrop{position:fixed!important;inset:0!important;background:rgba(15,23,42,.18)!important;backdrop-filter:blur(2px)!important;-webkit-backdrop-filter:blur(2px)!important;z-index:2147483000!important}
+#levromartHeaderSearchDock{position:fixed!important;left:50%!important;right:auto!important;top:calc(72px + env(safe-area-inset-top,0px))!important;transform:translateX(-50%)!important;width:min(760px,calc(100vw - 1rem))!important;z-index:2147483001!important;pointer-events:none!important}
+#levromartHeaderSearchDock.open{pointer-events:auto!important}
+#levromartHeaderSearchDock .phase1-search-shell,#levromartHeaderSearchDock .header-search-space{width:100%!important;max-height:min(78vh,680px)!important;overflow:hidden!important;background:var(--card)!important;border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border))!important;border-radius:18px!important;box-shadow:0 24px 70px rgba(0,0,0,.28)!important}
+#levromartHeaderSearchDock .phase1-search-bar,#levromartHeaderSearchDock .header-search-bar{min-height:54px!important;padding:.42rem .55rem!important;background:var(--card)!important;border-bottom:1px solid color-mix(in srgb,var(--primary) 10%,var(--border))!important}
+#levromartHeaderSearchDock .phase1-search-bar>i,#levromartHeaderSearchDock .header-search-bar>i{width:36px!important;height:36px!important;display:grid!important;place-items:center!important;border-radius:10px!important;background:color-mix(in srgb,var(--primary) 10%,transparent)!important;color:var(--primary)!important;flex:0 0 36px!important}
+#levromartHeaderSearchDock #levromartHeaderSearchInput{font-size:.92rem!important;font-weight:550!important;color:var(--text)!important}
+#levromartHeaderSearchDock #levromartHeaderSearchInput::placeholder{color:var(--text-muted)!important;opacity:.85!important}
+#levromartHeaderSearchDock #levromartHeaderSearchClose{width:38px!important;height:38px!important;border:0!important;border-radius:11px!important;background:transparent!important;color:var(--text-muted)!important;display:grid!important;place-items:center!important;cursor:pointer!important;flex:0 0 38px!important}
+#levromartHeaderSearchDock #levromartHeaderSearchClose:hover{background:color-mix(in srgb,var(--primary) 9%,transparent)!important;color:var(--primary)!important}
+#levromartHeaderSearchDock #levromartHeaderSearchSuggest{max-height:min(66vh,600px)!important;overflow-y:auto!important;overflow-x:hidden!important;padding:.35rem!important;scrollbar-width:thin!important}
+#levromartHeaderSearchDock .phase1-search-section,#levromartHeaderSearchDock .levro-search-section{padding:.7rem!important;background:transparent!important}
+#levromartHeaderSearchDock .phase1-search-head,#levromartHeaderSearchDock .levro-search-section-head{font-size:.76rem!important;color:var(--text-muted)!important;margin:0 0 .45rem!important;padding:0 .15rem!important}
+#levromartHeaderSearchDock .phase1-search-head strong,#levromartHeaderSearchDock .levro-search-section-head strong{font-size:.78rem!important;color:var(--text)!important}
+#levromartHeaderSearchDock .phase1-search-head button,#levromartHeaderSearchDock .levro-search-section-head button{padding:.3rem .55rem!important;border:0!important;border-radius:8px!important;background:color-mix(in srgb,var(--primary) 9%,transparent)!important;color:var(--primary)!important;font-weight:750!important;font-size:.68rem!important;cursor:pointer!important}
+#levromartHeaderSearchDock .phase1-search-row,#levromartHeaderSearchDock .levro-search-history-row{min-height:46px!important;margin:.18rem 0!important;border:1px solid transparent!important;border-radius:12px!important;background:color-mix(in srgb,var(--primary) 3%,var(--card))!important;overflow:hidden!important}
+#levromartHeaderSearchDock .phase1-search-row:hover,#levromartHeaderSearchDock .levro-search-history-row:hover{border-color:color-mix(in srgb,var(--primary) 14%,var(--border))!important;background:color-mix(in srgb,var(--primary) 7%,var(--card))!important}
+#levromartHeaderSearchDock .phase1-use,#levromartHeaderSearchDock .levro-search-history-use{min-height:44px!important;padding:.5rem .65rem!important;color:var(--text)!important;font-size:.78rem!important;font-weight:600!important;background:transparent!important}
+#levromartHeaderSearchDock .phase1-use i,#levromartHeaderSearchDock .levro-search-history-use i{width:28px!important;height:28px!important;display:grid!important;place-items:center!important;border-radius:8px!important;background:color-mix(in srgb,var(--primary) 9%,transparent)!important;color:var(--primary)!important}
+#levromartHeaderSearchDock .phase1-remove,#levromartHeaderSearchDock .levro-search-history-remove{width:38px!important;height:38px!important;margin-right:.2rem!important;border:0!important;border-radius:9px!important;background:transparent!important;color:var(--text-muted)!important;cursor:pointer!important}
+#levromartHeaderSearchDock .phase1-remove:hover,#levromartHeaderSearchDock .levro-search-history-remove:hover{background:rgba(220,38,38,.08)!important;color:#dc2626!important}
+#levromartHeaderSearchDock .phase1-empty,#levromartHeaderSearchDock .levro-search-empty-history{padding:.35rem .15rem!important;font-size:.73rem!important;color:var(--text-muted)!important}
+body.search-input-active{overflow:hidden!important}
+/* Sort: never clip at the left/right edge. */
+#app .vendor-products-sort{position:relative!important;display:flex!important;align-items:center!important;gap:.35rem!important;min-width:0!important;overflow:visible!important;z-index:40!important}
+#app .vendor-products-heading,#app .vendor-products-heading-actions,#app .vendor-products-sort{overflow:visible!important}#app .vendor-products-sort .levro-product-sort-ui{position:relative!important;display:block!important;min-width:0!important;overflow:visible!important;z-index:41!important}
+#app .levro-product-sort-trigger{width:auto!important;min-width:148px!important;max-width:calc(100vw - 2rem)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;box-sizing:border-box!important;padding:.62rem .75rem!important}
+#app .levro-product-sort-menu{left:auto!important;right:0!important;width:220px!important;max-width:calc(100vw - 1rem)!important;box-sizing:border-box!important}
+#app .vendor-products-sort,#app .vendor-products-sort *{overflow:visible}
+@media(max-width:520px){#app .levro-product-sort-trigger{min-width:136px!important;font-size:.72rem!important}.vendor-products-sort{max-width:100%!important}}
+/* Message inbox: clean by default; actions appear only after long press/selection. */
+#app .messages-conversation-list .conv-row-wrap{position:relative!important;border-bottom:1px solid var(--border)!important;background:var(--card)!important}
+#app .messages-conversation-list .conv-row-wrap.selected{background:color-mix(in srgb,var(--primary) 9%,var(--card))!important}
+#app .messages-conversation-list .conv-list-item{width:100%!important;box-sizing:border-box!important;border-radius:0!important;background:transparent!important}
+#app .messages-conversation-list .conv-list-item.selected{background:color-mix(in srgb,var(--primary) 13%,var(--card))!important;box-shadow:inset 3px 0 0 var(--primary)!important}
+#app .messages-conversation-list .conv-select-check{width:28px!important;height:28px!important;min-width:28px!important;border:2px solid var(--border)!important;border-radius:50%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:var(--card)!important}
+#app .messages-conversation-list .conv-select-check.active{border-color:var(--primary)!important;background:var(--primary)!important;color:#fff!important}
+#app .messages-selection-toolbar{min-height:58px!important;padding:.45rem .55rem!important;gap:.3rem!important;background:var(--card)!important;border-bottom:1px solid var(--border)!important;box-shadow:0 5px 20px rgba(0,0,0,.08)!important}
+#app .messages-selection-toolbar .icon-btn{width:40px!important;height:40px!important;border-radius:11px!important}
+#app .messages-selection-toolbar .levro-selection-action{background:color-mix(in srgb,var(--primary) 8%,var(--card))!important;border:1px solid color-mix(in srgb,var(--primary) 16%,var(--border))!important;color:var(--primary)!important}
+/* Pin strip: give it real breathing room and a professional compact card. */
+#app .chat-pinned-strip{min-height:64px!important;height:auto!important;padding:.55rem .65rem!important;gap:.5rem!important;background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;border-bottom:1px solid color-mix(in srgb,var(--primary) 12%,var(--border))!important}
+#app .chat-pinned-item{min-height:48px!important;padding:.55rem .7rem!important;border-radius:12px!important;background:var(--card)!important;box-shadow:0 3px 12px rgba(0,0,0,.06)!important}
+#app .chat-pinned-item i{width:28px!important;height:28px!important;display:grid!important;place-items:center!important;border-radius:8px!important;background:color-mix(in srgb,var(--primary) 10%,transparent)!important;color:var(--primary)!important;flex:0 0 28px!important}
+#app .chat-pinned-item span{font-size:.72rem!important;font-weight:650!important}
+/* Action semantics. */
+#app .vendor-edit-action{background:var(--primary)!important;border-color:var(--primary)!important;color:#fff!important}
+#app .vendor-pause-action{background:#d97706!important;border-color:#d97706!important;color:#fff!important}
+#app .btn-danger,#app [class*="delete"],#app [class*="remove"],#app button[onclick*="remove"],#app button[onclick*="delete"]{background:#dc2626!important;border-color:#dc2626!important;color:#fff!important}
+#app .levro-back-action{background:#64748b!important;border-color:#64748b!important;color:#fff!important}
+/* Follow/vendor notification dropdown: smaller and mutually exclusive with other menus. */
+#app .storefront-follow-wrap{position:relative!important;z-index:12000!important}
+#app .storefront-follow-wrap .follow-menu{width:min(260px,calc(100vw - 1rem))!important;max-width:min(260px,calc(100vw - 1rem))!important;max-height:min(42vh,360px)!important;padding:.5rem!important;border-radius:14px!important;overflow:auto!important;box-shadow:0 18px 46px rgba(0,0,0,.2)!important}
+#app .storefront-follow-wrap .follow-menu .follow-pref-row{min-height:36px!important;padding:.2rem .25rem!important;font-size:.7rem!important}
+#app .storefront-follow-wrap .follow-menu .follow-pref-row span{font-size:.7rem!important}
+#app .storefront-follow-wrap .follow-menu .follow-mute-grid{gap:.25rem!important}
+#app .storefront-follow-wrap .follow-menu .follow-mute-grid button{min-height:31px!important;padding:.25rem .35rem!important;font-size:.62rem!important}
+#app .vendor-notification-menu{width:min(260px,calc(100vw - 1rem))!important;max-width:min(260px,calc(100vw - 1rem))!important;max-height:42vh!important}
+/* White brand/cart treatment: plain white, no texture/gradient. */
+#brandLogoCircle{background:#fff!important;border-radius:50%!important;filter:none!important;box-shadow:0 2px 8px rgba(0,0,0,.12)!important}
+#cartFab{background:#fff!important;color:var(--primary)!important;border:1px solid color-mix(in srgb,var(--primary) 16%,var(--border))!important;box-shadow:0 8px 24px rgba(0,0,0,.16)!important}
+#cartFab i{color:var(--primary)!important;-webkit-text-fill-color:var(--primary)!important}
+/* Keep all catalog cards vertically scrollable. */
+#app .vendor-product-card-grid{touch-action:pan-y!important;overscroll-behavior-y:auto!important;overflow:visible!important}
+#app .vendor-product-card-grid>.vendor-listing-card{touch-action:pan-y!important;overscroll-behavior-y:auto!important}
+</style>
+<script id="levromart-20260912-real-ux-runtime">
+(function(){
+  'use strict';
+  const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+
+  /* ---------- Conversation pinning + long-press actions ---------- */
+  window.batchPinChats=async function(){
+    const ids=[...(window.msgSelectedIds||msgSelectedIds||[])];
+    if(!ids.length)return;
+    const convs=window.__conversations||[];
+    let changed=0;
+    for(const id of ids){
+      const c=convs.find(x=>String(x.conversation_id)===String(id));
+      if(isConversationPinned(c)) continue;
+      const r=await sb.rpc('toggle_conversation_pin',{p_conversation_id:id});
+      if(!r.error){const map=getChatPinMap();map[id]={expiresAt:0};setChatPinMap(map);if(c)c.pinned=true;changed++;}
+    }
+    msgSelectMode=false;msgSelectedIds.clear();filterMsgList();updateMsgSelectionBar();
+    showToast(changed?`${changed} chat${changed===1?'':'s'} pinned.`:'Selected chats are already pinned.','success');
+  };
+  window.toggleSelectedChatPins=async function(){
+    const ids=[...(window.msgSelectedIds||msgSelectedIds||[])];
+    if(!ids.length)return;
+    const convs=window.__conversations||[];
+    const allPinned=ids.every(id=>isConversationPinned(convs.find(x=>String(x.conversation_id)===String(id))));
+    for(const id of ids){
+      const c=convs.find(x=>String(x.conversation_id)===String(id));
+      const pinned=isConversationPinned(c);
+      if((allPinned&&pinned)||(!allPinned&&!pinned)){
+        const r=await sb.rpc('toggle_conversation_pin',{p_conversation_id:id});
+        if(!r.error){const map=getChatPinMap();if(pinned){delete map[id];if(c)c.pinned=false}else{map[id]={expiresAt:0};if(c)c.pinned=true}setChatPinMap(map);}
+      }
+    }
+    msgSelectMode=false;msgSelectedIds.clear();filterMsgList();updateMsgSelectionBar();
+    showToast(allPinned?'Chats unpinned.':'Chats pinned.','success');
+  };
+
+  const originalConvRowHtml=window.convRowHtml;
+  window.convRowHtml=function(c){
+    const name=c?.other_name||'User';
+    const isUnread=Number(c?.unread_count||0)>0;
+    const selected=!!(msgSelectMode&&msgSelectedIds.has(c.conversation_id));
+    const pinned=isConversationPinned(c);
+    return `<div class="conv-row-wrap ${selected?'selected':''}" data-conversation-wrap="${c.conversation_id}">
+      <div class="conv-list-item ${selected?'selected':''}" data-conversation-id="${c.conversation_id}" onclick="handleConvRowClick(event,'${c.conversation_id}')" aria-label="${esc(name)}">
+        ${msgSelectMode?`<span class="conv-select-check ${selected?'active':''}" aria-hidden="true"><i class="fa-solid fa-check"></i></span>`:''}
+        ${profileAvatarHtml(c.other_avatar,name,'2.6rem',{lightbox:!!c.other_avatar&&!msgSelectMode})}
+        <div class="conv-meta"><strong>${esc(name)}</strong><div class="conv-preview">${c.last_message?esc(c.last_message):'No messages yet'}</div></div>
+        ${pinned?`<i class="fa-solid fa-thumbtack" title="Pinned" aria-label="Pinned" style="color:var(--primary);font-size:.7rem;"></i>`:''}
+        ${isUnread?`<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count>99?'99+':c.unread_count}</span>`:''}
+      </div>
+    </div>`;
+  };
+
+  window.msgSelectionHeaderHtml=function(){
+    if(!msgSelectMode){
+      return `<div class="messages-toolbar"><div class="messages-toolbar-title"><button type="button" class="messages-inbox-back levro-back-action" onclick="backFromMessagesInbox()" aria-label="Back" title="Back"><i class="fa-solid fa-arrow-left"></i></button><h2><i class="fa-solid fa-comments"></i> Messages</h2></div><button type="button" class="icon-btn messages-more-btn" onclick="toggleInlineMenu('messagesMoreMenu',event)" aria-label="Message actions"><i class="fa-solid fa-ellipsis"></i></button><div class="ms-list hidden messages-more-menu" id="messagesMoreMenu"><button type="button" class="ms-item" onclick="enterMsgSelectMode();toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-check-double"></i> Select chats</button><button type="button" class="ms-item" onclick="enterMsgSelectMode();toggleSelectAllChats();toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-square-check"></i> Select all chats</button><button type="button" class="ms-item" onclick="batchMarkChatsRead(true);toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-envelope-open"></i> Mark all as read</button><button type="button" class="ms-item" onclick="batchMarkChatsRead(false);toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-envelope"></i> Mark all as unread</button></div></div>`;
+    }
+    const visibleIds=getVisibleChatIds();
+    const allVisible=visibleIds.length>0&&visibleIds.every(id=>msgSelectedIds.has(id));
+    const selected=[...msgSelectedIds];
+    const allPinned=selected.length>0&&selected.every(id=>isConversationPinned((window.__conversations||[]).find(x=>String(x.conversation_id)===String(id))));
+    const allRead=selected.length>0&&selected.every(id=>Number((window.__conversations||[]).find(x=>String(x.conversation_id)===String(id))?.unread_count||0)===0);
+    return `<div class="messages-selection-toolbar"><button type="button" class="icon-btn levro-back-action" onclick="exitMsgSelectMode()" aria-label="Cancel selection"><i class="fa-solid fa-xmark"></i></button><strong>${selected.length} selected</strong><button type="button" class="icon-btn" onclick="toggleSelectAllChats()" aria-label="Select all"><i class="fa-solid ${allVisible?'fa-square-minus':'fa-square-check'}"></i></button><button type="button" class="icon-btn levro-selection-action" onclick="toggleSelectedChatPins()" ${selected.length?'':'disabled'} aria-label="${allPinned?'Unpin':'Pin'} chat${selected.length===1?'':'s'}"><i class="fa-solid fa-thumbtack"></i></button><button type="button" class="icon-btn levro-selection-action" onclick="batchArchiveChats()" ${selected.length?'':'disabled'} aria-label="Archive"><i class="fa-solid fa-box-archive"></i></button><button type="button" class="icon-btn levro-selection-action" onclick="batchMarkChatsRead(${!allRead})" ${selected.length?'':'disabled'} aria-label="${allRead?'Mark unread':'Mark read'}"><i class="fa-solid ${allRead?'fa-envelope':'fa-envelope-open'}"></i></button></div>`;
+  };
+  window.updateMsgSelectionBar=function(){const el=byId('messagesSelectionBar');if(el)el.innerHTML=window.msgSelectionHeaderHtml()};
+  if(typeof filterMsgList==='function'&&!filterMsgList.__levroPinnedSort){
+    const oldFilter=filterMsgList;
+    const wrappedFilter=function(){oldFilter();setTimeout(()=>sortPinnedConversationRows(),0)};
+    wrappedFilter.__levroPinnedSort=true;
+    window.filterMsgList=wrappedFilter;
+  }
+  function sortPinnedConversationRows(){
+    const wrap=$('#convListWrap');if(!wrap)return;
+    const convs=window.__conversations||[];
+    const rank=id=>{const c=convs.find(x=>String(x.conversation_id)===String(id));return isConversationPinned(c)?0:1};
+    const rows=$$('.conv-row-wrap[data-conversation-wrap]',wrap);
+    rows.sort((a,b)=>rank(a.dataset.conversationWrap)-rank(b.dataset.conversationWrap)).forEach(x=>wrap.appendChild(x));
+  }
+
+  /* Make long-press action mode explicitly available and keep normal taps as taps. */
+  document.addEventListener('contextmenu',e=>{
+    if(e.target?.closest?.('.messages-conversation-list .conv-list-item')){e.preventDefault();e.stopPropagation();}
+    if(e.target?.closest?.('#levromartHeaderSearchDock .phase1-search-row,#levromartHeaderSearchDock .levro-search-history-row')){e.preventDefault();e.stopPropagation();}
+  },true);
+
+  /* ---------- Search ---------- */
+  function closeSearchNow(){
+    try{window.closeLevromartHeaderSearch?.()}catch(_){
+      $('#levromartHeaderSearchBackdrop')?.classList.remove('open');$('#levromartHeaderSearchDock')?.classList.remove('open');
+    }
+  }
+  function patchSearchRoute(){
+    const fn=window.routeSearch;
+    if(typeof fn!=='function'||fn.__levroAutoClose)return;
+    const wrapped=function(...args){closeSearchNow();return fn.apply(this,args)};
+    wrapped.__levroAutoClose=true;window.routeSearch=wrapped;
+  }
+  patchSearchRoute();setTimeout(patchSearchRoute,250);setTimeout(patchSearchRoute,1000);
+  document.addEventListener('click',e=>{
+    const dock=$('#levromartHeaderSearchDock');if(!dock?.classList.contains('open'))return;
+    if(e.target?.closest?.('#levromartHeaderSearchDock,#levromartHeaderSearchButton'))return;
+    closeSearchNow();
+  },true);
+  document.addEventListener('pointerdown',e=>{
+    if(e.target?.closest?.('.storefront-follow-wrap .follow-settings-btn')){
+      $('#storefrontMoreMenu')?.classList.add('hidden');
+      $$('.follow-menu:not(.hidden)').forEach(m=>{if(!m.closest('.storefront-follow-wrap')||m!==e.target.closest('.storefront-follow-wrap')?.querySelector('.follow-menu'))m.classList.add('hidden')});
+    }
+    if(e.target?.closest?.('.storefront-more-icon,#storefrontMoreMenu')){
+      $$('.follow-menu:not(.hidden)').forEach(m=>m.classList.add('hidden'));
+    }
+  },true);
+
+  document.addEventListener('click',e=>{
+    const dock=$('#levromartHeaderSearchDock');if(!dock?.classList.contains('open'))return;
+    const t=e.target;
+    if(t?.closest?.('#levromartHeaderSearchDock,#levromartHeaderSearchButton'))return;
+    if(t?.closest?.('.product-card,.product-card-link,.listing-card,.browse-product-card,.vendor-card,[data-product-id],[data-service-id],[data-package-id]')) closeSearchNow();
+  },true);
+
+  /* Vendor notification bell and three-dot menu are mutually exclusive. */
+  const origFollowBell=window.toggleLevromartFollowNotifications;
+  if(typeof origFollowBell==='function'&&!origFollowBell.__levroExclusive){
+    const wrapped=async function(id,ev){
+      $$('.ms-list:not(.hidden),.messages-more-menu').forEach(m=>m.classList.add('hidden'));
+      $('#storefrontMoreMenu')?.classList.add('hidden');
+      const result=await origFollowBell.call(this,id,ev);
+      const own=ev?.target?.closest?.('.storefront-follow-wrap');
+      if(own){
+        const menu=own.querySelector('.follow-menu');
+        $$('.storefront-follow-wrap .follow-menu').forEach(m=>{if(m!==menu)m.classList.add('hidden')});
+      }
+      return result;
+    };
+    wrapped.__levroExclusive=true;window.toggleLevromartFollowNotifications=wrapped;
+  }
+
+  /* Search icon is an opener, never a toggle. */
+  function forceTopSearchOpener(){
+    const b=$('#levromartHeaderSearchButton');
+    if(!b)return;
+    b.onclick=function(e){e?.preventDefault?.();e?.stopPropagation?.();try{window.openLevromartHeaderSearch?.()}catch(_){}return false;};
+    b.setAttribute('aria-label','Search Levromart');
+    b.title='Search Levromart';
+  }
+  forceTopSearchOpener();setTimeout(forceTopSearchOpener,250);setTimeout(forceTopSearchOpener,1000);
+
+  /* ---------- Button semantics ---------- */
+  function classifyBackButtons(){
+    $$('button,a').forEach(el=>{
+      if(el.matches('#levromartHeaderSearchClose,.btn-danger,.vendor-edit-action,.vendor-pause-action'))return;
+      const t=(el.textContent||'').replace(/\s+/g,' ').trim();
+      if(/^(Back|Back to|Return to|Go back)\b/i.test(t))el.classList.add('levro-back-action');
+    });
+  }
+  classifyBackButtons();
+  new MutationObserver(()=>{clearTimeout(window.__levroButtonClassify);window.__levroButtonClassify=setTimeout(classifyBackButtons,120)}).observe(document.body,{childList:true,subtree:true});
+
+  /* Re-apply the visual state after any app render. */
+  const app=$('#app');
+  if(app)new MutationObserver(()=>{setTimeout(()=>{sortPinnedConversationRows();classifyBackButtons()},30)}).observe(app,{childList:true,subtree:true});
+  setTimeout(()=>{sortPinnedConversationRows();classifyBackButtons()},300);
+})();
+</script>
 </html>
