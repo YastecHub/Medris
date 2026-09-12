@@ -8073,12 +8073,12 @@ function stableAvatarHue(value) {
   for (let i = 0; i < text.length; i++) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
   return Math.abs(hash) % 360;
 }
-function avatarFallbackHtml(name, size = "2.6rem", extraClass = "", label = "") {
+function avatarFallbackHtml(name, size = "2.6rem", extraClass = "", label = "", stableKey = "") {
   const safeName = String(name || "User").trim() || "User";
   const title = label || safeName;
   const initialsText = initials(safeName);
-  const hue = stableAvatarHue(safeName);
-  return `<span class="avatar-circle avatar-fallback ${extraClass}" title="${esc(title)}" aria-label="${esc(title)}" style="width:${size};height:${size};background:hsl(${hue} 58% 43%) !important;color:#fff;"><span aria-hidden="true">${esc(initialsText)}</span></span>`;
+  const hue = stableAvatarHue(stableKey || safeName);
+  return `<span class="avatar-circle avatar-fallback ${extraClass}" title="${esc(title)}" aria-label="${esc(title)}" style="width:${size};height:${size};background-color:hsl(${hue} 58% 43%) !important;background-image:none !important;color:#fff !important;"><span aria-hidden="true">${esc(initialsText)}</span></span>`;
 }
 function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
   const safeName = String(name || "User").trim() || "User";
@@ -8419,7 +8419,15 @@ async function setAiDataConsent(value) {
   }
   showToast(value ? "Thanks, your chats may now be reviewed to improve Levi." : "Turned off. Your chats stay private again.", "success");
 }
-function toggleNotifPanel() { requestOfferBadgeCount = 0; updateRequestOfferBadge(); try { sessionStorage.setItem("levromart-request-offers-seen-at", new Date().toISOString()); } catch (_) {} notifViewMode = "inbox"; exitNotifSelectMode(false); openDrawer("notifPanel"); renderNotifPanel(); }
+let lastNotificationReturnView = "home";
+function getNotifHost() { return currentView === "notifications" ? byId("notificationsPage") : byId("notifPanel"); }
+function toggleNotifPanel() {
+  requestOfferBadgeCount = 0; updateRequestOfferBadge();
+  try { sessionStorage.setItem("levromart-request-offers-seen-at", new Date().toISOString()); } catch (_) {}
+  notifViewMode = "inbox"; exitNotifSelectMode(false);
+  if (currentView !== "notifications") lastNotificationReturnView = currentView || "home";
+  navigate("notifications");
+}
 function toggleProfilePanel() { openDrawer("profilePanel"); }
 
 function setupDrawerSwipe(drawer, side) { return; }
@@ -8675,11 +8683,11 @@ async function refreshNotifications(renderPanel = true) {
 
   sb.from("messages").update({ delivered_at: new Date().toISOString() }).is("delivered_at", null).neq("sender_id", session.user.id).then(() => {}).catch(() => {});
   renderBottomNav();
-  if (renderPanel && byId("notifPanel")) await renderNotifPanel();
+  if (renderPanel && getNotifHost()) await renderNotifPanel();
 }
 async function renderNotifPanel() {
   const renderToken = ++notifRenderEpoch;
-  const panel = byId("notifPanel");
+  const panel = getNotifHost();
   if (!panel) return;
   let q = sb.from("notifications").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(30);
   q = notifViewMode === "trash" ? q.not("deleted_at", "is", null) : q.is("deleted_at", null).eq("archived", notifViewMode === "archived");
@@ -8702,6 +8710,7 @@ async function renderNotifPanel() {
       <button class="notif-tab ${notifViewMode === "trash" ? "active" : ""}" onclick="switchNotifView('trash')">Trash</button>
     </div>`;
 
+  const isNotificationsPage = currentView === "notifications";
   const topBar = notifSelectMode
     ? `<div class="notif-select-bar">
         <button type="button" class="icon-btn" onclick="exitNotifSelectMode()" aria-label="Cancel selection"><i class="fa-solid fa-xmark"></i></button>
@@ -8717,7 +8726,9 @@ async function renderNotifPanel() {
                <button type="button" class="notif-action-btn danger notif-selection-action" title="Move to trash" onclick="batchTrashSelected()" ${notifSelectedIds.size ? "" : "disabled"}><i class="fa-solid fa-trash"></i></button>`}
         </div>
       </div>`
-    : `<div class="drawer-header"><h4>${modeLabel}</h4>
+    : isNotificationsPage
+      ? `<div class="notifications-page-tools"><strong>${esc(modeLabel)}</strong><div class="notif-header-actions"><button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications"><i class="fa-solid fa-check-double"></i></button>${notifViewMode !== "trash" && (items || []).some((n) => !n.read) ? `<button type="button" class="btn btn-sm btn-outline" onclick="markAllNotifsRead()"><i class="fa-solid fa-envelope-open"></i> Mark all as read</button>` : ""}</div></div>${tabs}`
+      : `<div class="drawer-header"><h4>${modeLabel}</h4>
         <div class="notif-header-actions">
           <button type="button" class="icon-btn" onclick="toggleInlineMenu('notifMoreMenu',event)" aria-label="Notification actions"><i class="fa-solid fa-ellipsis"></i></button>
           <button type="button" class="drawer-close-btn" onclick="closeAllPanels()" aria-label="Close"><i class='fa-solid fa-xmark'></i></button>
@@ -8739,7 +8750,7 @@ async function renderNotifPanel() {
     ? items.map((n) => `<div class="notif-item-wrap" data-id="${n.id}">
         <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
           ${notifSelectMode ? `<span class="notif-select-check"><i class="fa-solid fa-check"></i></span>` : ""}
-          ${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;" />` : n.actor_name ? `<span class="avatar-circle" style="width:2.1rem;height:2.1rem;font-size:0.8rem;">${esc(initials(n.actor_name))}</span>` : `<i class='fa-solid fa-circle-info'></i>`}
+          ${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.1rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<i class='fa-solid fa-circle-info'></i>`}
           <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
         </button>
       </div>`).join("")
@@ -8757,7 +8768,7 @@ async function handleNotifItemClick(event, id) {
     toggleNotifSelect(String(id));
     return;
   }
-  const item = event?.currentTarget || document.querySelector(`#notifPanel .notif-item[data-id="${CSS.escape(String(id))}"]`);
+  const item = event?.currentTarget || getNotifHost()?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`);
   if (!item) return;
   let params = {};
   try { params = JSON.parse(item.dataset.params || "{}"); } catch (_) {}
@@ -8800,7 +8811,7 @@ function toggleNotifSelect(id) {
     exitNotifSelectMode();
     return;
   }
-  const panel = byId("notifPanel");
+  const panel = getNotifHost();
   panel?.querySelectorAll(".notif-item").forEach((row) => {
     const selected = notifSelectedIds.has(String(row.dataset.id));
     row.classList.toggle("selected", selected);
@@ -8834,7 +8845,7 @@ function clearBatchSelectionOnOutsideTap(e) {
 document.addEventListener("click", clearBatchSelectionOnOutsideTap);
 
 function updateNotifSelectionActions() {
-  const bar = byId("notifPanel")?.querySelector(".notif-select-bar");
+  const bar = getNotifHost()?.querySelector(".notif-select-bar");
   if (!bar) return;
   const hasSelection = notifSelectedIds.size > 0;
   bar.querySelectorAll(".notif-selection-action").forEach((btn) => {
@@ -8868,7 +8879,7 @@ async function batchMarkNotifsRead(read) {
   const ids = [...notifSelectedIds].map(String);
   if (!ids.length) { showToast("Select at least one notification first.", "info"); return; }
   notifRenderEpoch++;
-  const panel = byId("notifPanel");
+  const panel = getNotifHost();
   const rows = ids.map((id) => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)).filter(Boolean);
   const oldUnread = new Map(rows.map((row) => [String(row.dataset.id), row.classList.contains("unread")]));
   rows.forEach((row) => { row.classList.toggle("unread", !read); row.classList.remove("selected"); row.setAttribute("aria-selected", "false"); });
@@ -8898,7 +8909,7 @@ async function batchArchiveOrRestoreSelected() {
   const verb = restoring ? "Restore" : "Archive";
   const { error } = await sb.from("notifications").update({ archived: !restoring }).in("id", ids);
   if (error) { showToast(error.message || `Couldn't ${verb.toLowerCase()} notifications.`, "error"); return; }
-  const panel = byId("notifPanel");
+  const panel = getNotifHost();
   ids.forEach(id => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)?.closest(".notif-item-wrap")?.remove());
   window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
   const count = ids.length;
@@ -8939,7 +8950,7 @@ async function batchTrashSelected() {
   const now = new Date().toISOString();
   const { error } = await sb.from("notifications").update({ deleted_at: now }).in("id", ids);
   if (error) { showToast(error.message || "Couldn't move notifications to trash.", "error"); return; }
-  const panel = byId("notifPanel");
+  const panel = getNotifHost();
   ids.forEach(id => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)?.closest(".notif-item-wrap")?.remove());
   window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
   const count = ids.length;
@@ -8970,7 +8981,7 @@ async function batchRestoreSelected() {
   notifRenderEpoch++;
   const { error } = await sb.from("notifications").update({ deleted_at: null }).in("id", ids);
   if (error) { showToast(error.message || "Couldn't restore notifications.", "error"); return; }
-  const panel = byId("notifPanel");
+  const panel = getNotifHost();
   ids.forEach(id => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)?.closest(".notif-item-wrap")?.remove());
   window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
   const count = ids.length;
@@ -9001,7 +9012,7 @@ async function batchPurgeSelected() {
   notifRenderEpoch++;
   const { error } = await sb.from("notifications").delete().in("id", ids);
   if (error) { showToast(error.message || "Couldn't delete notifications.", "error"); return; }
-  const panel = byId("notifPanel");
+  const panel = getNotifHost();
   ids.forEach(id => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)?.closest(".notif-item-wrap")?.remove());
   window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
   const count = ids.length;
@@ -9041,7 +9052,7 @@ async function markAllNotifsRead() {
   if (!session) return;
   if (!(await showConfirmDialog("Mark every notification as read?", { title: "Mark all as read", okLabel: "Mark all read" }))) return;
   notifCount = 0; byId("notifDot")?.classList.add("hidden");
-  byId("notifPanel")?.querySelectorAll(".notif-item.unread").forEach(row => row.classList.remove("unread"));
+  getNotifHost()?.querySelectorAll(".notif-item.unread").forEach(row => row.classList.remove("unread"));
   showToast("All marked as read.", "success");
   const { error } = await sb.from("notifications").update({ read: true }).eq("user_id", session.user.id).eq("read", false).eq("archived", notifViewMode === "archived").is("deleted_at", null);
   if (error) { renderNotifPanel(); showToast(error.message || "Couldn't mark notifications as read.", "error"); return; }
@@ -10251,6 +10262,11 @@ document.addEventListener("click", (e) => {
   if (menu && !menu.classList.contains("hidden") && !e.target.closest("#settingsMoreMenu, #settingsMoreBtn")) menu.classList.add("hidden");
 });
 
+// ---------- DEDICATED NOTIFICATIONS PAGE ----------
+function renderNotificationsPage() {
+  return `<div class="notifications-page-shell"><div class="notifications-page-heading"><button type="button" class="icon-btn" onclick="navigate(lastNotificationReturnView || 'home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><h2><i class="fa-solid fa-bell"></i> Notifications</h2><p class="muted">Stay up to date with activity on Levromart.</p></div></div><div id="notificationsPage" class="notifications-page-host" aria-live="polite"></div></div>`;
+}
+
 // ---------- NAVIGATION ----------
 let currentView = "home";
 let currentViewParams = {};
@@ -10291,7 +10307,7 @@ function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
 function navigationShellHtml(view) {
-  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors"};
+  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications"};
   const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
@@ -10368,7 +10384,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "settings","supportRequest","wishlist","buyerOrders","orderDetail",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
     "adminSupportRequests","adminPeople","adminFeedback","adminUsers",
-    "adminFinance","adminLog","vendorSuggestionsInbox","requestEquipment"
+    "adminFinance","adminLog","vendorSuggestionsInbox","requestEquipment","notifications"
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
     try {
@@ -10430,7 +10446,9 @@ async function navigate(view, params = {}, pushHistory = true) {
         ? `${location.pathname}?package=${encodeURIComponent(params.packageId)}`
         : view === "productDetail" && params?.productId
           ? `${location.pathname}?product=${encodeURIComponent(params.productId)}`
-          : location.pathname;
+          : view === "notifications"
+            ? `${location.pathname}?levro=notifications`
+            : location.pathname;
     history.pushState({ view, params }, "", navUrl);
   }
   // Mobile browsers (and installed PWAs especially) routinely discard a
@@ -10493,6 +10511,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "wishlist": html = await renderWishlist(); break;
       case "cart": html = await renderCart(); break;
       case "messages": html = await renderMessages(params.conversationId); break;
+      case "notifications": html = renderNotificationsPage(); break;
       case "requestEquipment": html = await renderRequestEquipment(); break;
       case "supportRequest": html = await renderSupportRequest(); break;
       case "vendorRequests": html = await renderVendorRequests(); break;
@@ -10599,6 +10618,12 @@ async function navigate(view, params = {}, pushHistory = true) {
   initHomepageCarousel();
   initGallerySwipeSurfaces();
   initDeliveryFieldsOnPage();
+  setTimeout(() => {
+    try { hydrateProductCommentCountsInView(); } catch (_) {}
+    if (view === "notifications") { try { renderNotifPanel(); } catch (_) {} }
+    if (view === "productDetail" && params?.openComments) { try { toggleProductComments(params.productId); } catch (_) {} }
+  }, 0);
+  if (view !== "productDetail") stopProductCommentRealtime();
   if (view === "settings") setTimeout(hydrateSettingsPage, 0);
   // A same-view, non-history refresh (notably live order updates) must keep
   // the user's scroll position. Real navigation still starts at the top.
@@ -10962,7 +10987,8 @@ function handleHomeCarouselSlideClick(event, index) {
       const section = target.searchParams.get("section") || "";
       if (deepView === "notifications" || deepView === "profile") {
         if (!session) { showLogin(); return; }
-        navigate("home", {}, true).then(() => setTimeout(() => deepView === "notifications" ? toggleNotifPanel() : toggleProfilePanel(), 60));
+        if (deepView === "notifications") { lastNotificationReturnView = "home"; navigate("notifications", {}, true); }
+        else navigate("home", {}, true).then(() => setTimeout(() => toggleProfilePanel(), 60));
         return;
       }
       if (deepView === "orders") {
@@ -10978,8 +11004,8 @@ function handleHomeCarouselSlideClick(event, index) {
         }, 80));
         return;
       }
-      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox"].includes(deepView)) {
-        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox"];
+      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox","notifications"];
         if (!session && authViews.includes(deepView)) { showLogin(); return; }
         navigate(deepView, {}, true);
         return;
@@ -11140,7 +11166,7 @@ function handleAdminDeepLinkClick(event, href) {
     const params = {};
     u.searchParams.forEach((value,key)=>{ if(key!=="levro" && key!=="section") params[key]=value; });
     if (deepView === "profile") { closeAllPanels(); toggleProfilePanel(); return false; }
-    if (deepView === "notifications") { closeAllPanels(); if (typeof openNotifications === "function") openNotifications(); return false; }
+    if (deepView === "notifications") { closeAllPanels(); lastNotificationReturnView = currentView || "home"; navigate("notifications", {}, true); return false; }
     if (deepView === "home") {
       Promise.resolve(navigate("home", {}, true)).then(()=>{
         requestAnimationFrame(()=>{
@@ -12014,7 +12040,7 @@ function productCardHtml(p) {
       </div>
       ${p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`}
       <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
-      <div class="product-card-action-row">${actionHtml}</div>
+      <div class="product-card-action-row">${actionHtml}<button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i> Comments <span class="product-comment-count">0</span></button></div>
     </div>
   </div>`;
 }
@@ -13945,7 +13971,7 @@ function stripProductVariantMeta(description) {
   return String(description || "").replace(/\s*<!--LEVROMART_VARIANTS:[\s\S]*?-->/, "").trim();
 }
 let productGalleryIndex = 0;
-function setProductGalleryPhoto(index, smooth = true) {
+function setProductGalleryPhoto(index, smooth = true, syncVariant = true) {
   const photos = window.__productGalleryPhotos || [];
   const track = byId("productGalleryTrack");
   if (!photos.length || !track) return;
@@ -13955,8 +13981,17 @@ function setProductGalleryPhoto(index, smooth = true) {
   const count = byId("productGalleryCount");
   if (count) count.textContent = String(productGalleryIndex + 1);
   document.querySelectorAll(".product-gallery-thumb").forEach((el) => el.classList.toggle("active", Number(el.dataset.galleryIndex) === productGalleryIndex));
+  if (syncVariant) syncProductVariantToGalleryIndex(productGalleryIndex);
 }
 function changeProductGalleryPhoto(delta) { setProductGalleryPhoto(productGalleryIndex + delta); }
+function syncProductVariantToGalleryIndex(index) {
+  const variants = Array.isArray(currentProductDetail?.variants) ? currentProductDetail.variants : [];
+  const photos = Array.isArray(currentProductDetail?.photos) ? currentProductDetail.photos : [];
+  const photoUrl = photos[index];
+  if (!variants.length || !photoUrl) return;
+  const matched = variants.find((variant) => variant.photo_url && String(variant.photo_url) === String(photoUrl));
+  if (matched) selectProductVariant(matched.id, false, false);
+}
 function syncProductGalleryIndex(track) {
   if (!track) return;
   const slides = [...track.querySelectorAll('.product-gallery-slide')];
@@ -13968,9 +14003,7 @@ function syncProductGalleryIndex(track) {
     const d = Math.abs(c - center);
     if (d < bestDist) { bestDist = d; best = i; }
   });
-  productGalleryIndex = Number(slides[best].dataset.galleryIndex) || 0;
-  const count = byId('productGalleryCount');
-  if (count) count.textContent = String(productGalleryIndex + 1);
+  setProductGalleryPhoto(Number(slides[best].dataset.galleryIndex) || 0, false, true);
 }
 
 
@@ -14198,6 +14231,8 @@ async function renderProductDetail(productId) {
     product.deposit_amount ? { label: "Refundable deposit", value: naira(product.deposit_amount) } : null,
   ].filter(Boolean);
 
+  const productGalleryVariantMetaHtml = productVariants.length ? `<div class="product-gallery-variant-meta" id="productGalleryVariantMeta"><span class="muted">Selected variety</span><strong id="productGalleryVariantName">${esc(productVariants[0].name || "Selected variety")}</strong><strong id="productGalleryVariantPrice">${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? productVariants[0].rental_rate ?? 0))}</strong></div>` : "";
+
   let html = `<div class="card product-detail-card" data-product-detail-id="${esc(product.id)}" style="position:relative;">
     <div class="product-detail-top-actions" aria-label="Product actions">
       <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${product.id}')" title="Save to wishlist" aria-label="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
@@ -14205,6 +14240,7 @@ async function renderProductDetail(productId) {
     </div>
     <h2 class="product-detail-title">${esc(product.name)}${product.is_service ? ` <span class="badge">Service</span>` : ""}</h2>
     <div class="product-detail-media">${photosHtml}</div>
+    ${productGalleryVariantMetaHtml}
     <div class="product-detail-actions">
       ${profile?.role !== "admin" ? (product.vendor.whatsapp_visible && product.vendor.whatsapp_number ? `<div class="ms-wrap product-message-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm" type="button" onclick="toggleInlineMenu('productMessageMenu-${product.id}',event)"><i class='fa-solid fa-comment-dots'></i> Message vendor</button><div class="ms-list hidden" id="productMessageMenu-${product.id}" style="left:0;right:auto;width:max-content;min-width:190px;"><button class="ms-item" type="button" onclick="startConversationWithVendor('${product.vendor.id}');closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(product.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm" onclick="startConversationWithVendor('${product.vendor.id}')"><i class='fa-solid fa-comment-dots'></i> Message vendor</button>`) : ""}
       ${product.vendor.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(product.vendor.phone)}" onclick="callVendorGated(event,'${esc(product.vendor.phone)}','${product.vendor.id}')"><i class='fa-solid fa-phone'></i> Call vendor</a>` : ""}
@@ -14265,6 +14301,10 @@ async function renderProductDetail(productId) {
       <div class="owner-listing-actions"><button type="button" class="btn btn-sm" onclick="openEditProductModal('${product.id}')"><i class="fa-solid fa-pen"></i> Edit</button>${product.status === "active" ? `<button type="button" class="btn btn-sm btn-outline" onclick="setProductStatus('${product.id}','paused')">Pause</button>` : ownerPaid ? `<button type="button" class="btn btn-sm" onclick="setProductStatus('${product.id}','active')">Activate</button>` : `<button type="button" class="btn btn-sm" onclick="startListingMonthlyPayment('product','${product.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000</button>`}<button type="button" class="btn btn-sm btn-danger" onclick="removeProduct('${product.id}')"><i class="fa-solid fa-trash"></i> Remove</button></div>
       ${product.variants?.length ? `<p class="muted owner-listing-variant-note"><i class="fa-solid fa-layer-group"></i> ${product.variants.length} variety${product.variants.length===1?"":"ies"} configured.</p>` : ""}</div>`;
   }
+  html += `<div class="card product-comments-card" data-product-comments-id="${esc(product.id)}">
+    <button type="button" class="product-comments-toggle" onclick="toggleProductComments('${esc(product.id)}')" aria-expanded="false"><span><i class="fa-regular fa-comment"></i> Comments (<span id="productCommentsCount" data-product-id="${esc(product.id)}">0</span>)</span><i class="fa-solid fa-chevron-down"></i></button>
+    <div id="productCommentsPanel" class="product-comments-panel hidden"></div>
+  </div>`;
   const relatedNames = RELATED_EQUIPMENT[product.category?.name] || [];
   if (relatedNames.length) {
     const { data: related } = await sb.from("products")
@@ -14469,7 +14509,7 @@ function updateRentTotalPreview(rate, unit) {
   el.textContent = `Total: ${naira(rate * units * qty)} (${qty} × ${units} ${unit}${units === 1 ? "" : "s"} × ${naira(rate)}/${unit})`;
 }
 
-function selectProductVariant(variantId) {
+function selectProductVariant(variantId, scrollGallery = true, syncGallery = true) {
   const variants = Array.isArray(currentProductDetail?.variants) ? currentProductDetail.variants : [];
   const variant = variants.find(v => String(v.id) === String(variantId));
   if (!variant) return;
@@ -14488,10 +14528,13 @@ function selectProductVariant(variantId) {
   if (nameEl) nameEl.textContent = variant.name || "Selected variety";
   if (priceEl) priceEl.textContent = naira(unit);
   if (descEl) descEl.textContent = stripProductVariantMeta(variant.description || currentProductDetail?.description || "") || "No variety-specific description is stored.";
+  const galleryNameEl = byId("productGalleryVariantName"), galleryPriceEl = byId("productGalleryVariantPrice");
+  if (galleryNameEl) galleryNameEl.textContent = variant.name || "Selected variety";
+  if (galleryPriceEl) galleryPriceEl.textContent = naira(unit);
   const stockEl=byId("selectedVariantStock"); if(stockEl) stockEl.textContent=Number(currentProductDetail?.quantity_available ?? 0).toLocaleString();
-  if (variant.photo_url) {
+  if (scrollGallery && variant.photo_url) {
     const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => String(u) === String(variant.photo_url)) ?? -1);
-    if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex);
+    if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex, false, syncGallery);
     const mainImg = document.querySelector("#productGalleryTrack .product-gallery-slide.active img") || document.querySelector("#productGalleryTrack .product-gallery-slide img");
     if (mainImg && galleryIndex < 0) mainImg.src = variant.photo_url;
   }
@@ -15032,7 +15075,7 @@ async function renderStorefront(vendorId) {
   const isOwnStorefront = !!session?.user?.id && String(session.user.id) === String(v.user_id);
   const logo = v.logo_url
     ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${esc(v.logo_url)}','${esc(v.business_name || "Vendor")}',event)"><img src="${esc(v.logo_url)}" alt="${esc(v.business_name || "Vendor")}" loading="eager" draggable="false" /></button>`
-    : `<button type="button" class="storefront-avatar storefront-avatar-button storefront-avatar-fallback-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('','${esc(v.business_name || "Vendor")}',event)">${avatarFallbackHtml(v.business_name || "Vendor", "100%", "", v.business_name || "Vendor")}</button>`;
+    : `<button type="button" class="storefront-avatar storefront-avatar-button storefront-avatar-fallback-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('','${esc(v.business_name || "Vendor")}',event)">${avatarFallbackHtml(v.business_name || "Vendor", "100%", "", v.business_name || "Vendor", v.id)}</button>`;
   const location = [v.address, v.city].filter(Boolean).map(esc).join(", ") || "Online business";
 
   const storefrontMoreItems = [
@@ -15984,21 +16027,133 @@ async function buyPackage(packageId) {
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
   navigate("orderDetail", { orderId });
 }
+// ---------- PRODUCT SOCIAL INTERACTIONS ----------
+window.__productCommentCounts = window.__productCommentCounts || new Map();
+let productCommentRealtimeChannel = null;
+let productCommentRealtimeProductId = null;
+let productCommentRefreshTimer = null;
+let activeProductCommentReplyId = null;
+
+async function hydrateProductCommentCountsInView() {
+  const nodes = [...document.querySelectorAll(".card-comment-btn[data-product-id], #productCommentsCount[data-product-id]")];
+  const ids = [...new Set(nodes.map((node) => node.dataset.productId).filter(Boolean))];
+  if (!ids.length) return;
+  try {
+    const { data, error } = await sb.rpc("get_product_comment_counts", { p_product_ids: ids });
+    if (!error) {
+      const counts = new Map((data || []).map((row) => [String(row.product_id), Number(row.comment_count || 0)]));
+      ids.forEach((id) => window.__productCommentCounts.set(String(id), counts.get(String(id)) || 0));
+    }
+  } catch (_) {}
+  document.querySelectorAll(".card-comment-btn[data-product-id]").forEach((button) => {
+    const count = window.__productCommentCounts.get(String(button.dataset.productId)) || 0;
+    const span = button.querySelector(".product-comment-count"); if (span) span.textContent = String(count);
+  });
+  const pageCount = byId("productCommentsCount");
+  if (pageCount && currentProductDetail?.id) pageCount.textContent = String(window.__productCommentCounts.get(String(currentProductDetail.id)) || 0);
+}
+function openProductCommentsFromCard(productId) { navigate("productDetail", { productId, openComments: true }); }
+
+async function fetchProductComments(productId) {
+  const { data, error } = await sb.from("product_comments").select("id,product_id,user_id,parent_comment_id,content,author_name,author_avatar_url,created_at,updated_at").eq("product_id", productId).order("created_at", { ascending: false }).limit(80);
+  if (error) throw error;
+  const rows = data || [];
+  let likes = [];
+  if (rows.length) { const response = await sb.from("product_comment_likes").select("id,comment_id,user_id").in("comment_id", rows.map(r => r.id)); if (!response.error) likes = response.data || []; }
+  const likeMap = new Map(), myLiked = new Set();
+  likes.forEach((like) => { const id=String(like.comment_id); likeMap.set(id,(likeMap.get(id)||0)+1); if(session?.user?.id && String(like.user_id)===String(session.user.id)) myLiked.add(id); });
+  return {rows,likeMap,myLiked};
+}
+function productCommentRowHtml(comment, likeMap, myLiked, depth=0) {
+  const liked=myLiked.has(String(comment.id)), own=String(session?.user?.id||"")===String(comment.user_id||"");
+  return `<div class="product-comment-row" data-comment-id="${esc(comment.id)}" style="${depth ? "margin-left:1.1rem;" : ""}">${comment.author_avatar_url ? `<img src="${esc(comment.author_avatar_url)}" class="avatar-circle" style="width:2rem;height:2rem;object-fit:cover;flex:none;" alt="${esc(comment.author_name||"User")}">` : avatarFallbackHtml(comment.author_name||"User","2rem","product-comment-avatar",comment.author_name||"User",comment.user_id||comment.author_name)}<div class="product-comment-main"><div class="product-comment-head"><strong>${esc(comment.author_name||"Levromart user")}</strong><span class="muted">${timeAgo(comment.created_at)}</span></div><div class="product-comment-body">${esc(comment.content)}</div><div class="product-comment-actions"><button type="button" class="product-comment-action ${liked ? "active" : ""}" onclick="toggleProductCommentLike('${esc(comment.id)}')"><i class="fa-solid fa-heart"></i> <span>${Number(likeMap.get(String(comment.id))||0)}</span></button><button type="button" class="product-comment-action" onclick="replyToProductComment('${esc(comment.id)}','${esc(comment.author_name||"Levromart user")}')"><i class="fa-solid fa-reply"></i> Reply</button>${own ? `<button type="button" class="product-comment-action danger" onclick="deleteProductComment('${esc(comment.id)}')"><i class="fa-solid fa-trash"></i> Delete</button>` : ""}</div></div></div>`;
+}
+function productCommentsTreeHtml(rows,likeMap,myLiked) {
+  const roots=rows.filter(r=>!r.parent_comment_id), child=new Map();
+  rows.filter(r=>r.parent_comment_id).forEach(r=>{const k=String(r.parent_comment_id); if(!child.has(k)) child.set(k,[]); child.get(k).push(r);});
+  return roots.map(root=>`${productCommentRowHtml(root,likeMap,myLiked)}${(child.get(String(root.id))||[]).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(r=>productCommentRowHtml(r,likeMap,myLiked,1)).join("")}`).join("");
+}
+async function loadProductComments(productId,{preserveDraft=true}={}) {
+  const panel=byId("productCommentsPanel"); if(!panel)return;
+  const draft=preserveDraft ? (byId("productCommentInput")?.value||"") : "";
+  panel.innerHTML=`<div class="product-comments-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading comments…</div>`;
+  try {
+    const {rows,likeMap,myLiked}=await fetchProductComments(productId);
+    window.__productCommentCounts.set(String(productId),rows.length);
+    byId("productCommentsCount")?.replaceChildren(document.createTextNode(String(rows.length)));
+    const thread=rows.length?productCommentsTreeHtml(rows,likeMap,myLiked):`<div class="product-comments-empty">No comments yet. Be the first to ask a question.</div>`;
+    panel.innerHTML=`${thread}<div class="product-comment-composer">${activeProductCommentReplyId?`<div class="product-comment-replying">Replying to a comment <button type="button" class="icon-btn" onclick="cancelProductCommentReply()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button></div>`:""}<div class="product-comment-compose-row"><textarea id="productCommentInput" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}>${esc(draft)}</textarea><button type="button" class="btn btn-sm" onclick="submitProductComment('${esc(productId)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":`<small class="muted">Log in to join the discussion.</small>`}</div>`;
+  } catch (_) { panel.innerHTML=`<div class="product-comments-empty">Couldn’t load comments right now. Please try again.</div>`; }
+}
+function ensureProductCommentRealtime(productId) {
+  if(!productId||!sb)return;
+  if(productCommentRealtimeChannel && productCommentRealtimeProductId===String(productId))return;
+  stopProductCommentRealtime(); productCommentRealtimeProductId=String(productId);
+  productCommentRealtimeChannel=sb.channel(`product-comments-${productId}`).on("postgres_changes",{event:"*",schema:"public",table:"product_comments",filter:`product_id=eq.${productId}`},()=>{loadProductComments(productId);hydrateProductCommentCountsInView();}).subscribe();
+  productCommentRefreshTimer=setInterval(()=>{if(currentView==="productDetail"&&productCommentRealtimeProductId===String(productId))loadProductComments(productId);},20000);
+}
+function stopProductCommentRealtime() { if(productCommentRealtimeChannel){try{sb.removeChannel(productCommentRealtimeChannel);}catch(_){} } productCommentRealtimeChannel=null;productCommentRealtimeProductId=null;clearInterval(productCommentRefreshTimer);productCommentRefreshTimer=null; }
+async function toggleProductComments(productId) { const panel=byId("productCommentsPanel"),toggle=document.querySelector(".product-comments-toggle"); if(!panel)return; const opening=panel.classList.contains("hidden"); panel.classList.toggle("hidden",!opening);toggle?.setAttribute("aria-expanded",opening?"true":"false");if(opening){activeProductCommentReplyId=null;await loadProductComments(productId);ensureProductCommentRealtime(productId);}else stopProductCommentRealtime(); }
+function replyToProductComment(commentId,authorName){activeProductCommentReplyId=String(commentId);const input=byId("productCommentInput");if(input)input.focus();}
+function cancelProductCommentReply(){activeProductCommentReplyId=null;if(currentProductDetail?.id&&!byId("productCommentsPanel")?.classList.contains("hidden"))loadProductComments(currentProductDetail.id);}
+async function submitProductComment(productId){
+  if(!session){showLogin();return;}
+  const content=String(byId("productCommentInput")?.value||"").trim();if(!content){showToast("Write a comment first.","error");return;}
+  const {error}=await sb.from("product_comments").insert({product_id:productId,user_id:session.user.id,parent_comment_id:activeProductCommentReplyId||null,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null});
+  if(error){showToast(error.message||"Could not post that comment.","error");return;}
+  activeProductCommentReplyId=null;await loadProductComments(productId,{preserveDraft:false});hydrateProductCommentCountsInView();
+}
+async function toggleProductCommentLike(commentId){
+  if(!session){showLogin();return;}
+  const {data:existing}=await sb.from("product_comment_likes").select("id").eq("comment_id",commentId).eq("user_id",session.user.id).maybeSingle();
+  const result=existing?.id?await sb.from("product_comment_likes").delete().eq("id",existing.id).eq("user_id",session.user.id):await sb.from("product_comment_likes").insert({comment_id:commentId,user_id:session.user.id});
+  if(result.error&&!/duplicate/i.test(result.error.message||"")){showToast(result.error.message||"Could not update comment like.","error");return;}
+  if(currentProductDetail?.id)loadProductComments(currentProductDetail.id);
+}
+async function deleteProductComment(commentId){if(!session)return;if(!(await showConfirmDialog("Delete your comment?",{title:"Delete comment",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("product_comments").delete().eq("id",commentId).eq("user_id",session.user.id);if(error){showToast(error.message||"Could not delete comment.","error");return;}if(currentProductDetail?.id){await loadProductComments(currentProductDetail.id);hydrateProductCommentCountsInView();}}
+
 // ---------- VENDOR APPLICATION ----------
+function filterVendorApplySectors() {
+  const select = byId("vaSector");
+  const q = String(byId("vaSectorSearch")?.value || "").trim().toLowerCase();
+  if (!select) return;
+  const current = select.value;
+  const options = Array.isArray(window.__vendorApplySectorOptions) ? window.__vendorApplySectorOptions : [];
+  const filtered = q ? options.filter((sector) => String(sector.name || "").toLowerCase().includes(q)) : options;
+  select.innerHTML = `<option value="">Select a sector</option>${filtered.map((sector) => `<option value="${sector.id}">${esc(sector.name)}</option>`).join("")}<option value="__other__">Other +</option>`;
+  if ([...select.options].some((option) => option.value === current)) select.value = current;
+  if (select.value === "__other__") toggleVendorOtherSector();
+}
+function toggleVendorOtherSector() {
+  const other = byId("vaSector")?.value === "__other__";
+  byId("vaOtherSectorWrap")?.classList.toggle("hidden", !other);
+  if (other) setTimeout(() => byId("vaOtherSector")?.focus(), 0);
+  else if (byId("vaOtherSector")) byId("vaOtherSector").value = "";
+}
 async function renderVendorApply() {
   if (!session) return '<div class="empty-state">Please log in to apply as a vendor.</div>';
   if (profile?.role === "admin") return '<div class="empty-state">Admin accounts can\'t own a vendor store on Levromart.</div>';
   const { data: existing } = await sb.from("vendors").select("id").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
   if (existing) { navigate("vendorDashboard"); return '<p class="muted">Redirecting…</p>'; }
 
-  if (!sectors.length) { const { data } = await sb.from("sectors").select("*").order("sort_order"); sectors = data || []; }
-
-  return `<div class="card" style="max-width:480px;margin:0 auto;">
+  if (!sectors.length) { const { data } = await sb.from("sectors").select("*").order("name"); sectors = data || []; }
+  const normalSectorMap = new Map();
+  (sectors || []).forEach((sector) => {
+    const name = String(sector?.name || "").trim();
+    const slug = String(sector?.slug || "").trim().toLowerCase();
+    if (!name || name.toLowerCase() === "other" || slug === "other") return;
+    if (!normalSectorMap.has(name.toLowerCase())) normalSectorMap.set(name.toLowerCase(), sector);
+  });
+  const vendorApplySectorOptions = [...normalSectorMap.values()].sort((a,b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity: "base" }));
+  window.__vendorApplySectorOptions = vendorApplySectorOptions;
+  return `<div class="card vendor-application-form" style="max-width:480px;margin:0 auto;">
     <h2>Apply as a vendor</h2>
     <p class="muted">Tell us about your business. An admin will review this manually.</p>
     <div id="vendorApplyError" class="error-text hidden"></div>
     <label>Which sector is your business in? *</label>
-    <select id="vaSector">${sectors.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>
+    <input id="vaSectorSearch" type="search" placeholder="Search business sectors..." autocomplete="off" oninput="filterVendorApplySectors()" />
+    <select id="vaSector" onchange="toggleVendorOtherSector()"><option value="">Select a sector</option>${vendorApplySectorOptions.map((sec) => `<option value="${sec.id}">${esc(sec.name)}</option>`).join("")}<option value="__other__">Other +</option></select>
+    <div id="vaOtherSectorWrap" class="hidden" style="margin-top:.45rem;"><input id="vaOtherSector" type="text" placeholder="Enter your business sector..." autocomplete="off" /></div>
     <label>Business name *</label><input id="vaBusinessName" />
     <label>Address (leave blank if you're an online-only business)</label><input id="vaAddress" />
     <label>City</label><input id="vaCity" value="Lagos" />
@@ -16017,14 +16172,33 @@ async function submitVendorApply() {
   const business_name = byId("vaBusinessName").value.trim();
   const address = byId("vaAddress").value.trim();
   const phone = byId("vaPhone").value.trim();
+  const sectorSelection = byId("vaSector")?.value || "";
+  const customSector = byId("vaOtherSector")?.value.trim() || "";
   if (!business_name || !phone) {
     errorEl.textContent = "Business name and phone are required.";
+    errorEl.classList.remove("hidden");
+    return;
+  }
+  if (!sectorSelection) {
+    errorEl.textContent = "Please select your business sector.";
+    errorEl.classList.remove("hidden");
+    return;
+  }
+  if (sectorSelection === "__other__" && !customSector) {
+    errorEl.textContent = "Enter your business sector to continue.";
     errorEl.classList.remove("hidden");
     return;
   }
 
   try {
     let verification_docs = [];
+    let sectorId = sectorSelection;
+    if (sectorSelection === "__other__") {
+      const { data: customSectorId, error: customSectorError } = await sb.rpc("get_or_create_custom_sector", { p_name: customSector });
+      if (customSectorError) throw new Error(customSectorError.message);
+      sectorId = customSectorId;
+      if (!sectorId) throw new Error("We couldn't save that custom business sector. Please try again.");
+    }
     const file = byId("vaDoc").files[0];
     if (file) {
       const ext = file.name.split(".").pop() || "bin";
@@ -16036,7 +16210,7 @@ async function submitVendorApply() {
 
     const { error } = await sb.from("vendors").insert({
       user_id: session.user.id,
-      sector_id: byId("vaSector").value,
+      sector_id: sectorId,
       business_name,
       address: address || null,
       city: byId("vaCity").value.trim() || null,
@@ -19855,10 +20029,69 @@ function exportFinancePdf() {
     <table><thead><tr><th>Date</th><th>Customer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th></tr></thead>
     <tbody>${filtered.map((t) => `<tr><td>${new Date(t.created_at).toLocaleString()}</td><td>${esc(t.buyer_name || "")}</td><td>${esc(t.vendor_name || "")}</td><td>${esc((t.payment_type || "").replace("_", " "))}</td><td>${naira(t.amount)}</td><td>${esc(t.method || "")}</td><td>${esc(t.status || "")}</td><td>${naira(t.platform_cut)}</td></tr>`).join("")}</tbody></table>
     ${"<scr"}ipt>window.onload = () => window.print();<\/script>
-  </body>
+  <style id="levromart-storefront-sector-social-notification-fix">
+.storefront-avatar-fallback-button{background:transparent!important;background-image:none!important;border:0!important;box-shadow:none!important;padding:0!important;}
+.storefront-avatar-fallback-button .avatar-fallback{width:100%!important;height:100%!important;border:0!important;box-shadow:none!important;background-image:none!important;}
+.vendor-application-form #vaSectorSearch{margin:.35rem 0 .45rem;}
+.vendor-application-form #vaSector{width:100%;}
+.product-gallery-variant-meta{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.2rem .7rem;align-items:center;margin:.55rem 0 .9rem;padding:.72rem .82rem;border:1px solid var(--border);border-radius:.75rem;background:var(--card);}
+.product-gallery-variant-meta .muted{grid-column:1/-1;font-size:.72rem;}
+.product-gallery-variant-meta strong:last-child{white-space:nowrap;}
+.product-card-action-row{display:flex!important;gap:.45rem;align-items:center;flex-wrap:wrap;}
+.card-comment-btn{border:0;background:transparent;color:var(--muted);font:inherit;font-size:.76rem;font-weight:700;display:inline-flex;align-items:center;gap:.24rem;padding:.2rem 0;cursor:pointer;}
+.card-comment-btn:hover{color:var(--primary);}
+.product-comments-card{margin-top:.8rem;}
+.product-comments-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;gap:.6rem;border:0;background:transparent;color:var(--text);font:inherit;font-weight:800;padding:.1rem 0;cursor:pointer;text-align:left;}
+.product-comments-panel{margin-top:.75rem;display:flex;flex-direction:column;gap:.55rem;max-height:30rem;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+.product-comments-panel.hidden{display:none;}
+.product-comment-row{display:flex;gap:.55rem;align-items:flex-start;padding:.55rem 0;border-top:1px solid var(--border);}
+.product-comment-main{min-width:0;flex:1;}
+.product-comment-head{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;font-size:.82rem;}
+.product-comment-head .muted{font-size:.7rem;}
+.product-comment-body{margin-top:.2rem;line-height:1.45;overflow-wrap:anywhere;}
+.product-comment-actions{display:flex;gap:.55rem;align-items:center;margin-top:.28rem;flex-wrap:wrap;}
+.product-comment-action{border:0;background:transparent;color:var(--muted);padding:.08rem 0;font:inherit;font-size:.72rem;cursor:pointer;display:inline-flex;align-items:center;gap:.22rem;}
+.product-comment-action.active{color:#ef4444!important;}
+.product-comment-action.danger{color:var(--danger)!important;}
+.product-comment-composer{border-top:1px solid var(--border);padding-top:.65rem;position:sticky;bottom:0;background:var(--card);}
+.product-comment-compose-row{display:flex;gap:.45rem;align-items:flex-end;}
+.product-comment-compose-row textarea{flex:1;min-height:2.75rem;resize:vertical;margin:0;}
+.product-comments-empty,.product-comments-loading{text-align:center;padding:.7rem 0;color:var(--muted);font-size:.82rem;}
+.notifications-page-shell{max-width:760px;margin:0 auto;padding:1rem .9rem calc(1.25rem + env(safe-area-inset-bottom,0px));}
+.notifications-page-heading{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:.75rem;}
+.notifications-page-heading h2{margin:0;}.notifications-page-heading p{margin:.15rem 0 0;font-size:.82rem;}
+.notifications-page-host{display:flex;flex-direction:column;min-height:20rem;}
+.notifications-page-host .notif-tabs{display:flex;gap:.35rem;overflow-x:auto;padding:.15rem 0 .65rem;scrollbar-width:none;}
+.notifications-page-host .notif-tabs::-webkit-scrollbar{display:none;}
+.notifications-page-tools{display:flex;justify-content:space-between;gap:.75rem;align-items:center;padding:.25rem 0 .65rem;}
+.notifications-page-tools .notif-header-actions{display:flex;align-items:center;gap:.4rem;}
+.notifications-page-host .notif-list-scroll{display:flex;flex-direction:column;gap:.42rem;max-height:none!important;overflow:visible!important;}
+.notifications-page-host .notif-item-wrap{margin:0!important;}
+.notifications-page-host .notif-item{border-radius:.8rem;background:var(--card);border:1px solid var(--border);}
+.notifications-page-host .notif-item.unread{background:color-mix(in srgb,var(--primary) 8%,var(--card));}
+.notifications-page-host .notification-avatar-fallback{flex:none;}
+@media(max-width:720px){.notifications-page-shell{padding-left:.75rem;padding-right:.75rem;}.notifications-page-tools{align-items:flex-start;}}
+</style>
+</body>
 
 
 
+<style id="levromart-final-scope-overrides">
+/* Final specificity override for the public vendor storefront fallback only. */
+.storefront-profile .storefront-avatar-fallback-button{
+  background:transparent!important;
+  background-image:none!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+}
+.storefront-profile .storefront-avatar-fallback-button .avatar-fallback{
+  width:100%!important;height:100%!important;
+  background-image:none!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+</style>
 </html>`);
   w.document.close();
 }
@@ -22596,10 +22829,15 @@ window.addEventListener("popstate", (e) => {
     const deepView = urlParams.get("levro");
     const section = urlParams.get("section") || "";
     if (deepView === "notifications" || deepView === "profile") {
-      history.replaceState({ view: "home", params: {} }, "", location.pathname);
       if (!session) { showLogin(); return; }
-      await navigate("home", {}, false);
-      setTimeout(() => deepView === "notifications" ? toggleNotifPanel() : toggleProfilePanel(), 60);
+      if (deepView === "notifications") {
+        lastNotificationReturnView = "home";
+        await navigate("notifications", {}, false);
+      } else {
+        history.replaceState({ view: "home", params: {} }, "", location.pathname);
+        await navigate("home", {}, false);
+        setTimeout(() => toggleProfilePanel(), 60);
+      }
       return;
     }
     if (deepView === "orders") {
@@ -22608,9 +22846,9 @@ window.addEventListener("popstate", (e) => {
       await navigate(profile?.role === "admin" ? "adminFinance" : (vendor ? "vendorOrders" : "buyerOrders"), vendor ? {status:"all",perspective:"sales"} : {}, false);
       return;
     }
-    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox"].includes(deepView)) {
+    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox","notifications"].includes(deepView)) {
       history.replaceState({ view: "home", params: {} }, "", location.pathname);
-      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox"];
+      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox","notifications"];
       if (!session && authViews.includes(deepView)) { showLogin(); return; }
       await navigate(deepView, {}, false);
       if (deepView === "vendors" && urlParams.get("map") === "1") {
