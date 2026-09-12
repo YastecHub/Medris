@@ -4301,8 +4301,13 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
    ================================================================ */
 html, body, body * { scrollbar-width:none; -ms-overflow-style:none; }
 html::-webkit-scrollbar, body::-webkit-scrollbar, body *::-webkit-scrollbar { display:none; width:0 !important; height:0 !important; }
-body { padding-top:calc(64px + env(safe-area-inset-top,0px)); }
-header { position:fixed !important; top:0 !important; left:0 !important; right:0 !important; width:100% !important; z-index:200 !important; }
+/* NOTE: header used to be position:fixed here (removed from normal flow),
+   which is why body carried a matching padding-top spacer below it. A later
+   patch (see #levromart-20260912-user-final-corrections near the end of this
+   file) put the header back to position:sticky for z-index/overlay reasons,
+   but the body padding-top spacer was never removed - a sticky header
+   already reserves its own space in normal document flow, so that leftover
+   padding was pure dead space sitting above the header. Removed. */
 .container > h2, .container > .page-title { margin-bottom:1rem !important; }
 .container > h2 + .card, .container > .page-title + .card { margin-top:.9rem !important; }
 .container > h2 + section.card, .container > .page-title + section.card { margin-top:.9rem !important; }
@@ -4327,9 +4332,10 @@ html { font-size:calc(16px * var(--levro-font-scale, 1)); }
 html, body { scrollbar-width:none !important; -ms-overflow-style:none !important; }
 html::-webkit-scrollbar, body::-webkit-scrollbar { width:0 !important; height:0 !important; display:none !important; }
 body { overflow-x:hidden !important; }
-header { position:fixed !important; inset:0 0 auto 0 !important; width:100% !important; }
-body { padding-top:calc(64px + env(safe-area-inset-top,0px)) !important; }
-@media (max-width:720px){ body{padding-top:calc(58px + env(safe-area-inset-top,0px)) !important;} }
+/* Same dead-weight fixed-header spacer as above - see the note near the top
+   of this style block. Removed rather than left stacked on top of the
+   sticky header that actually wins the cascade (see the final
+   #levromart-20260912-user-final-corrections style block). */
 
 </style>
 
@@ -10400,7 +10406,15 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   let html;
   try {
-    switch (view) {
+    // Safety net: a route render must never be able to hang indefinitely and
+    // leave the "Updating…" shell on screen forever with no way out. This
+    // races the real render against a generous timeout; it only fires if a
+    // render genuinely never resolves (a real Supabase/network stall), and
+    // does not change timing for any normal, successfully-resolving render.
+    const renderTimedOut = Symbol("renderTimedOut");
+    const renderResult = await Promise.race([
+      (async () => {
+        switch (view) {
       case "home": html = await renderHome(); break;
       case "productDetail": html = await renderProductDetail(params.productId); break;
       case "packageDetail": html = await renderPackageDetail(params.packageId); break;
@@ -10439,8 +10453,16 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "refundPolicy": html = renderRefundPolicy(); break;
       case "sharedAiChat": html = await renderSharedAiChat(params.token); break;
       case "suspended": html = await renderSuspendedScreen(); break;
-      default: html = await renderHome();
+          default: html = await renderHome();
+        }
+        return html;
+      })(),
+      new Promise((resolve) => setTimeout(() => resolve(renderTimedOut), 20000)),
+    ]);
+    if (renderResult === renderTimedOut) {
+      throw new Error("Levromart route render timed out");
     }
+    html = renderResult;
     lastRenderError = null;
     /* A restored Supabase session can briefly exist before the role/vendor row
        has finished resolving. If a protected renderer nevertheless returned
@@ -10506,7 +10528,17 @@ async function navigate(view, params = {}, pushHistory = true) {
     } else if (view === "home" || view === "storefront") {
       html = app?.innerHTML?.trim() ? app.innerHTML : '<div class="empty-state">Please try again.</div>';
     } else {
-      html = navigationShellHtml(view) || '<div class="empty-state">This page is temporarily unavailable. Please try again.</div>';
+      /* BUG FIX: this used to fall back to navigationShellHtml(view), which is
+         the SAME "Updating…" markup shown while the page is still loading (see
+         navigationShellHtml() above). That made a genuine failure or a render
+         that never resolves in time visually indistinguishable from normal
+         loading - the page looked "stuck on Updating…" forever with no way to
+         tell it had actually failed, and no way to retry. Show a real,
+         distinguishable error state with a working retry action instead. */
+      const { icon, text } = friendlyErrorText(err);
+      const retryView = String(view).replace(/'/g, "\\'");
+      const retryParams = JSON.stringify(params || {}).replace(/'/g, "\\'");
+      html = `<div class="instant-page-shell"><div class="empty-state"><i class="fa-solid ${icon}" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>${text}<div style="margin-top:0.9rem;"><button class="btn btn-sm" onclick="navigate('${retryView}', ${retryParams}, false)"><i class="fa-solid fa-arrows-rotate"></i> Retry</button></div></div></div>`;
     }
   }
   // Ignore an older request if the user has already navigated somewhere else.
