@@ -9,12 +9,16 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Levromart">
 <meta property="og:description" content="Rent or buy from verified vendors across Lagos: healthcare equipment, food, electronics, and more.">
-<meta property="og:url" content="">
-<meta property="og:image" content="">
+<meta property="og:url" content="https://levromart.vercel.app/">
+<meta property="og:image" content="https://ovklnoroyxobijgvsyfp.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Levromart — Support Local Businesses">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Levromart">
 <meta name="twitter:description" content="Rent or buy from verified vendors across Lagos: healthcare equipment, food, electronics, and more.">
-<meta name="twitter:image" content="">
+<meta name="twitter:image" content="https://ovklnoroyxobijgvsyfp.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png">
+<meta name="twitter:image:alt" content="Levromart — Support Local Businesses">
 
 <link id="faviconLink" rel="icon" type="image/webp" href="">
 <link rel="manifest" href="/manifest.json">
@@ -816,6 +820,8 @@
   @media (prefers-reduced-motion: reduce) { .product-card-wrap, .vendor-card { animation: none; } }
   .fav-btn { position: absolute; top: 0.6rem; right: 0.6rem; z-index: 2; width: 2rem; height: 2rem; border-radius: 50%; border: none; background: rgba(255,255,255,0.85); cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.15s; }
   .fav-btn:hover { transform: scale(1.12); }
+  .fav-btn.active { color:#ef4444 !important; }
+  .fav-btn.active i { color:#ef4444 !important; }
   .card-cart-btn { position: absolute; top: 0.6rem; left: 0.6rem; z-index: 2; width: 2rem; height: 2rem; border-radius: 50%; border: none; background: var(--primary); color: #fff; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.15s; }
   .card-cart-btn:hover { transform: scale(1.12); }
   .card-cart-btn.added { background: var(--success); }
@@ -4449,12 +4455,10 @@ body.levro-static-rails .storefront-product-strip > *{flex:0 0 126px !important;
    screen, with its own header (back arrow, photo, name, call, menu). */
 body.chat-full-page { overflow:hidden !important; padding-top:0 !important; }
 body.chat-full-page > header,
-body.chat-full-page > .bottom-nav,
 body.chat-full-page > .site-footer,
 body.chat-full-page > #cartFab,
 body.chat-full-page > #aiChatFab { display:none !important; }
 body.chat-full-page > #app { margin:0 !important; padding:0 !important; max-width:none !important; width:100% !important; }
-body.chat-full-page #bottomNav,
 body.chat-full-page #cartFab,
 body.chat-full-page #aiChatFab { display:none !important; }
 
@@ -5480,25 +5484,20 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 }
 </style>
 <style id="levromart-user-final-20260910-precision-pass">
-/* Messages route: the inbox and chat are dedicated pages and must not carry the global bottom navigation. */
-@media (max-width:720px){
-  #bottomNav.messages-route-hidden{display:none !important;visibility:hidden !important;pointer-events:none !important;transform:translateY(150%) !important;}
-}
-
 /* Admin navigation: keep Vendors + People visible and make the entire rail usable on narrow screens. */
 #app .admin-dash-tabs{
-  display:flex !important;align-items:center !important;justify-content:flex-start !important;
-  gap:.15rem !important;overflow-x:auto !important;overflow-y:hidden !important;
+  display:block !important;position:relative !important;box-sizing:border-box !important;
+  width:100% !important;max-width:100% !important;min-width:0 !important;
+  overflow-x:auto !important;overflow-y:hidden !important;
   -webkit-overflow-scrolling:touch !important;scrollbar-width:none !important;
-  width:100% !important;max-width:100% !important;padding:.2rem .25rem .55rem !important;
-  scroll-padding-inline:.5rem !important;
+  white-space:nowrap !important;text-align:left !important;
+  padding:.2rem .25rem .55rem !important;scroll-padding-inline:.5rem !important;
+  touch-action:pan-x !important;overscroll-behavior-x:auto !important;
+  overscroll-behavior-y:none !important;pointer-events:auto !important;
 }
 #app .admin-dash-tabs::-webkit-scrollbar{display:none !important;}
-#app .admin-dash-tabs .dash-tab{flex:0 0 auto !important;min-width:4.2rem !important;}
-@media(max-width:720px){
-  #app .admin-dash-tabs{flex-wrap:nowrap !important;overflow-x:auto !important;overflow-y:hidden !important;justify-content:flex-start !important;gap:.35rem !important;padding:.25rem .1rem .7rem !important;scrollbar-width:none !important;}
-  #app .admin-dash-tabs .dash-tab{min-width:4.7rem !important;}
-}
+#app .admin-dash-tabs .dash-tab{display:inline-flex !important;vertical-align:middle !important;flex:0 0 auto !important;width:max-content !important;min-width:4.7rem !important;white-space:nowrap !important;margin-right:.35rem !important;}
+#app .admin-dash-tabs .dash-tab:last-child{margin-right:1.5rem !important;}
 
 /* My Requests: use the whole card deliberately instead of leaving a large empty right side. */
 #app .vendor-my-request-card{padding:1rem !important;}
@@ -6093,6 +6092,19 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   .chat-media-group .chat-media-group-item .chat-image-attachment{height:120px!important}
   .chat-media-group .chat-media-group-item:nth-child(3):last-child .chat-image-attachment{height:150px!important}
 }
+</style>
+<style id="levromart-followup-avatar-nav-final">
+/* Default vendor avatars are initials only; their deterministic inline colour
+   is preserved even where existing avatar sizing rules use !important. */
+.avatar-fallback{
+  display:inline-flex !important;align-items:center !important;justify-content:center !important;
+  border-radius:50% !important;overflow:hidden !important;color:#fff !important;
+  background:var(--avatar-bg,#64748b) !important;
+  font-weight:800 !important;line-height:1 !important;text-align:center !important;
+}
+.avatar-fallback > span{display:block !important;line-height:1 !important;}
+.vendor-map-popup-avatar-fallback{color:#fff !important;}
+.product-vendor-initial.avatar-fallback{font-size:.46rem !important;}
 </style>
 </head>
 <body>
@@ -8006,6 +8018,21 @@ function showTextPromptDialog(title, message, opts = {}) {
     cancelBtn.addEventListener("click", onCancel);
   });
 }
+function syncLevromartLinkPreviewMeta(view = currentView, params = currentViewParams || {}) {
+  const setMeta = (selector, content) => { const el=document.querySelector(selector); if(el && content) el.setAttribute('content', content); };
+  const origin = location.origin || 'https://levromart.vercel.app';
+  const productId = params?.productId || params?.product_id;
+  const product = window.__lastRenderedProductPreview;
+  const isProduct = view === 'productDetail' && productId && product?.id === productId;
+  const title = isProduct ? `${product.name} | Levromart` : 'Levromart';
+  const description = isProduct ? (String(product.description || '').trim().slice(0, 180) || 'Shop this product on Levromart.') : 'Rent or buy from verified vendors across Lagos: healthcare equipment, food, electronics, and more.';
+  const image = isProduct && product.photos?.[0] ? product.photos[0] : 'https://ovklnoroyxobijgvsyfp.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png';
+  const url = isProduct ? `${origin}${location.pathname}?product=${encodeURIComponent(productId)}` : `${origin}${location.pathname}`;
+  setMeta('meta[property="og:title"]', title); setMeta('meta[property="og:description"]', description); setMeta('meta[property="og:url"]', url); setMeta('meta[property="og:image"]', image);
+  setMeta('meta[name="twitter:title"]', title); setMeta('meta[name="twitter:description"]', description); setMeta('meta[name="twitter:image"]', image);
+}
+window.syncLevromartLinkPreviewMeta = syncLevromartLinkPreviewMeta;
+
 function greetingWord() {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
@@ -8027,7 +8054,8 @@ function avatarFallbackHtml(name, size = "2.6rem", extraClass = "", label = "") 
   const safeName = String(name || "User").trim() || "User";
   const hue = stableAvatarHue(safeName);
   const title = label || safeName;
-  return `<span class="avatar-circle avatar-fallback ${extraClass}" title="${esc(title)}" aria-label="${esc(title)}" style="width:${size};height:${size};background:hsl(${hue} 58% 43%);color:#fff;"><i class="fa-solid fa-user" aria-hidden="true"></i></span>`;
+  const initialsText = initials(safeName);
+  return `<span class="avatar-circle avatar-fallback ${extraClass}" title="${esc(title)}" aria-label="${esc(title)}" style="width:${size};height:${size};--avatar-bg:hsl(${hue} 58% 43%);color:#fff;"><span aria-hidden="true">${esc(initialsText)}</span></span>`;
 }
 function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
   const safeName = String(name || "User").trim() || "User";
@@ -8615,7 +8643,7 @@ async function refreshNotifications(renderPanel = true) {
   }
   vendorPendingOrderCount = vendor ? (vendorRes?.count || 0) : 0;
   buyerPendingOrderCount = buyerRes?.count || 0;
-  unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => x.status === "new").length;
+  unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => String(x.status || "").toLowerCase() === "new").length;
   unreadMessageCount = (conversationsRes?.data || []).reduce((sum, c) => sum + (c.unread_count > 0 ? 1 : 0), 0);
   buyerCartCount = profile?.role !== "admin" ? (cartRes?.count || 0) : 0;
   requestOfferBadgeCount = Number(requestOfferRes?.count || 0);
@@ -9645,10 +9673,6 @@ function renderBottomNav() {
   const nav = byId("bottomNav");
   if (!nav) return;
 
-  // The Messages section owns its own navigation/header chrome. Keep the
-  // global bottom navigation out of both the inbox and an individual chat.
-  nav.classList.toggle("messages-route-hidden", currentView === "messages");
-
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
   const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors')", view: "vendors" };
   const messagesTab = { icon: "<i class='fa-solid fa-comment-dots'></i>", label: "Messages", action: "navigate('messages')", view: "messages", badge: unreadMessageCount };
@@ -9707,16 +9731,20 @@ function initBottomNavScrollMotion(){
   const nav = byId("bottomNav");
   if (!nav || nav.dataset.scrollMotionReady === "1") return;
   nav.dataset.scrollMotionReady = "1";
-  let lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
-  let raf = 0, idleTimer = 0;
+  const getMetrics=()=>{
+    const chat=document.body.classList.contains("chat-full-page") ? document.querySelector(".chat-messages") : null;
+    if(chat) return {y:Math.max(0,chat.scrollTop||0),maxY:Math.max(0,chat.scrollHeight-chat.clientHeight)};
+    return {y:Math.max(0,window.scrollY||document.documentElement.scrollTop||0),maxY:Math.max(0,document.documentElement.scrollHeight-window.innerHeight)};
+  };
+  let lastY=getMetrics().y;
+  let raf=0, idleTimer=0;
   const reduced=()=>window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
   const restore=()=>{nav.classList.remove("nav-scroll-hide","nav-scroll-shrink");nav.style.removeProperty("--bn-translate");};
   const hide=()=>{if(reduced())return restore();nav.classList.remove("nav-scroll-shrink");nav.classList.add("nav-scroll-hide");};
   const apply=()=>{
     raf=0;
-    const y=Math.max(0,window.scrollY||document.documentElement.scrollTop||0), delta=y-lastY;
-    const maxY=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
-    const special=document.body.classList.contains("chat-full-page")||document.body.classList.contains("profile-reveal-open")||document.body.classList.contains("profile-reveal-dragging")||nav.classList.contains("nav-hidden")||document.body.classList.contains("search-input-active");
+    const {y,maxY}=getMetrics(), delta=y-lastY;
+    const special=document.body.classList.contains("profile-reveal-open")||document.body.classList.contains("profile-reveal-dragging")||nav.classList.contains("nav-hidden")||document.body.classList.contains("search-input-active");
     if(special||reduced()){restore();lastY=y;return;}
     if(Math.abs(delta)<3)return;
     lastY=y;
@@ -9726,8 +9754,9 @@ function initBottomNavScrollMotion(){
   };
   const onScroll=()=>{if(!raf)raf=requestAnimationFrame(apply);};
   window.addEventListener("scroll",onScroll,{passive:true});
-  window.addEventListener("resize",()=>{lastY=Math.max(0,window.scrollY||document.documentElement.scrollTop||0);restore();},{passive:true});
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden){lastY=Math.max(0,window.scrollY||document.documentElement.scrollTop||0);restore();}});
+  document.addEventListener("scroll",onScroll,{passive:true,capture:true});
+  window.addEventListener("resize",()=>{lastY=getMetrics().y;restore();},{passive:true});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden){lastY=getMetrics().y;restore();}});
 }
 
 // A floating cart button, docked near Levi's FAB, is easier to notice
@@ -10332,11 +10361,13 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   currentView = view;
   currentViewParams = params || {};
+  try { syncLevromartLinkPreviewMeta(view, currentViewParams); } catch (_) {}
   // A single open DM thread gets the dedicated, chrome-free full-page
   // treatment (see #dedicated-chat-page-fix); the conversation list and
   // the admin's read-only viewer keep the normal in-app layout.
   document.body.classList.toggle("chat-full-page", view === "messages" && !!(params && params.conversationId) && profile?.role !== "admin");
   document.body.classList.toggle("product-detail-view", view === "productDetail" || view === "packageDetail");
+  if (view !== "productDetail") window.__lastRenderedProductPreview = null;
   // Instant paint: if we already have this conversation's name/photo from
   // the inbox list, show the real header + a spinner right away instead of
   // leaving the old screen sitting there while the network calls below
@@ -11923,7 +11954,7 @@ function productCardHtml(p) {
       <div class="product-card-vendor-row">
         <span class="badge">${p.is_service ? "service" : p.listing_type}</span>
         <span class="product-card-vendor" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${p.vendor?.id || ""}'})">
-          ${p.vendor?.logo_url ? `<img src="${esc(p.vendor.logo_url)}" alt="" loading="lazy">` : `<span class="product-vendor-initial">${esc(initials(p.vendor?.business_name || "Vendor"))}</span>`}
+          ${p.vendor?.logo_url ? profileAvatarHtml(p.vendor.logo_url, p.vendor?.business_name || "Vendor", "1rem", { extraClass: "product-vendor-initial" }) : avatarFallbackHtml(p.vendor?.business_name || "Vendor", "1rem", "product-vendor-initial", p.vendor?.business_name || "Vendor")}
           <span>${esc(p.vendor?.business_name || "")}</span>
         </span>
       </div>
@@ -11956,7 +11987,7 @@ function vendorCardHtml(v) {
   const sectorName = v?.sector_name || v?.sector?.name || (Array.isArray(sectors) ? sectors.find(sec => String(sec.id) === String(v?.sector_id))?.name : "") || "";
   const followerCount = Number(v?.follower_count || 0);
   return `<div class="vendor-card homepage-vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || "")}'});" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || "")}'});}">
-    ${avatar ? `<img src="${esc(avatar)}" alt="" class="vendor-home-avatar" loading="lazy" draggable="false">` : `<span class="vendor-home-avatar vendor-home-avatar-fallback">${esc(initials(name))}</span>`}
+    ${avatar ? profileAvatarHtml(avatar, name, "3.05rem", { extraClass: "vendor-home-avatar", lightbox: false }) : avatarFallbackHtml(name, "3.05rem", "vendor-home-avatar vendor-home-avatar-fallback", name)}
     <div class="vendor-home-copy">
       <strong>${esc(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
       <span class="vendor-home-city"><i class="fa-solid fa-location-dot"></i> ${esc(v?.city || "Online")}</span>
@@ -14109,6 +14140,8 @@ async function renderProductDetail(productId) {
   window.__productGalleryPhotos = productPhotos;
   window.__productGalleryIndex = 0;
   const isFav = favoriteIds.has(product.id);
+  window.__lastRenderedProductPreview = product;
+  try { syncLevromartLinkPreviewMeta('productDetail', { productId: product.id }); } catch (_) {}
 
   const statItems = [
     !product.is_service ? { label: "Available", value: `${product.quantity_available} / ${product.quantity_total}` } : null,
@@ -14732,7 +14765,7 @@ async function renderVendorsMap() {
     const vendorName = esc(v.business_name || "Vendor");
     const vendorLogo = v.logo_url
       ? `<img class="vendor-map-popup-avatar" src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" onerror="this.classList.add('is-broken');this.style.display='none';" />`
-      : `<span class="vendor-map-popup-avatar vendor-map-popup-avatar-fallback" aria-label="${esc(v.business_name || "Vendor")}">${'<i class="fa-solid fa-user" aria-hidden="true"></i>'}</span>`;
+      : avatarFallbackHtml(v.business_name || "Vendor", "38px", "vendor-map-popup-avatar vendor-map-popup-avatar-fallback", v.business_name || "Vendor");
     const popupMeta = `${`★ ${Number(v.avg_rating ?? 0).toFixed(1)} (${Number(v.review_count ?? 0)})`}${dist ? ` · ${dist}` : ""}`;
     marker.bindPopup(`<div class="vendor-map-popup"><div class="vendor-map-popup-head">${vendorLogo}<div class="vendor-map-popup-copy"><strong>${vendorName}</strong>${popupMeta ? `<span>${esc(popupMeta)}</span>` : ""}</div></div><a class="vendor-map-popup-link" href="#" onclick="navigate('storefront',{vendorId:'${v.id}'});return false;">View storefront</a></div>`);
     vendorsMapMarkers.push(marker);
@@ -18743,13 +18776,13 @@ async function fileDispute(orderId) {
 // ---------- ADMIN ----------
 function adminNavHtml(active) {
   const items = [
-    ["adminPanel", "fa-user-check", "Vendors"],
-    ["adminPeople", "fa-users", "People"],
     ["adminFinance", "fa-sack-dollar", "Finance"],
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
     ["adminSupportRequests", "fa-headset", "Support"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],
     ["adminUsers", "fa-user-shield", "Admins"],
+    ["adminPanel", "fa-user-check", "Vendors"],
+    ["adminPeople", "fa-users", "People"],
     ["adminLog", "fa-clock-rotate-left", "Log"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
@@ -19356,6 +19389,15 @@ async function markSuggestionRead(id, btn) {
   if (error) { showToast(error.message, "error"); btn.disabled = false; return; }
   btn.closest(".card").style.borderColor = "";
   btn.outerHTML = `<span class="badge">read</span>`;
+  unreadSuggestionCount = Math.max(0, Number(unreadSuggestionCount || 0) - 1);
+  document.querySelectorAll('.admin-dash-tabs [data-admin-view="adminFeedback"]').forEach(tab => {
+    const badge = tab.querySelector('.dash-tab-dot');
+    if (unreadSuggestionCount > 0) {
+      if (badge) badge.textContent = unreadSuggestionCount > 9 ? '9+' : String(unreadSuggestionCount);
+      else { const b=document.createElement('span'); b.className='dash-tab-dot'; b.textContent=unreadSuggestionCount>9?'9+':String(unreadSuggestionCount); tab.appendChild(b); }
+    } else badge?.remove();
+  });
+  if (typeof hydrateAdminAttention === 'function') hydrateAdminAttention();
 }
 
 async function renderAdminFeedback() {
@@ -25351,6 +25393,14 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 .chat-page-wrap .chat-thread{flex:1 1 auto !important;min-height:0 !important;overflow:hidden !important;display:flex !important;flex-direction:column !important;}
 .chat-page-wrap .chat-messages{flex:1 1 auto !important;min-height:0 !important;overflow-y:auto !important;overflow-x:hidden !important;-webkit-overflow-scrolling:touch !important;overscroll-behavior:contain !important;}
 .chat-page-wrap .chat-input-row{flex:0 0 auto !important;}
+/* Messages keeps the same global bottom navigation as every other app route.
+   The dedicated chat shell reserves its height so the composer/messages never
+   sit underneath the nav on narrow touch screens. */
+@media(max-width:720px){
+  body.chat-full-page #bottomNav{display:flex !important;visibility:visible !important;pointer-events:auto !important;z-index:3200 !important;}
+  .chat-page-wrap{padding-bottom:calc(58px + env(safe-area-inset-bottom,0px)) !important;}
+  .chat-page-wrap .chat-messages{padding-bottom:.75rem !important;}
+}
 
 /* The service marker is no longer allowed to sit on top of delivery text. */
 .product-card-action-row .card-service-btn,.product-card-action-row .card-cart-btn{position:static !important;}
@@ -29456,7 +29506,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
         sb.from('vendors').select('id',{count:'exact',head:true}).eq('verification_status','pending').is('deleted_at',null),
         sb.from('support_requests').select('id',{count:'exact',head:true}).in('status',['open','in_progress']),
         sb.from('disputes').select('id',{count:'exact',head:true}).not('status','in','(resolved,closed)'),
-        sb.from('suggestions').select('id',{count:'exact',head:true}).not('status','in','(resolved,closed)')
+        sb.from('suggestions').select('id',{count:'exact',head:true}).eq('status','new')
       ]);
       const counts={adminPanel:Number(vendorsQ.count||0),adminSupportRequests:Number(supportQ.count||0),adminDisputes:Number(disputesQ.count||0),adminFeedback:Number(suggestionsQ.count||0)};
       document.querySelectorAll('.admin-dash-tabs [data-admin-view]').forEach(btn=>{
