@@ -9059,11 +9059,13 @@ async function renderNotifPanel() {
     const orderType=/(^|[_-])(order|request|offer|payment|checkout|handover|handed_over|returned|completed|cancelled|dispute)([_-]|$)/;
     if(orderId||requestId||orderType.test(type)||orderType.test(kind)||/order|request|offer|payment/.test(target))return "orders";
     const ownListing=!!currentVendorId&&vendorId===currentVendorId;
-    if(vendor?.id&&(ownListing||/product|listing|package|variant|variety|comment|save|like|wishlist|engagement/.test(kind)||/product|package|listing|variant|variety/.test(target)))return "myListings";
+    const otherVendorActivity=/new_listing|new_service|new_package|new_variety|price_change|discount|followed_vendor|vendor_update|vendor_post|vendor_activity/.test(kind)||/new_listing|new_service|new_package|new_variety|price_change|discount|followed_vendor/.test(type);
+    if(otherVendorActivity && (!currentVendorId || vendorId!==currentVendorId))return "vendors";
+    if(vendor?.id&&(ownListing||(/product|listing|package|variant|variety|comment|save|like|wishlist|engagement/.test(kind)&&(!vendorId||ownListing))||(/product|package|listing|variant|variety/.test(target)&&(!vendorId||ownListing))))return "myListings";
     if(/vendor|new_listing|new_service|new_package|new_variety|price_change|discount|followed_vendor/.test(kind)||/vendor|new_listing|new_service|new_package|new_variety|price_change|discount/.test(type)||(vendorId&&vendorId!==currentVendorId))return "vendors";
     const text=notificationText(n);if(/order|request|offer|payment|handover|completed|cancelled|dispute/.test(text))return "orders";if(vendor?.id&&ownListing&&/product|package|listing|comment|like|save|variety/.test(text))return "myListings";if(/vendor|followed vendor|new listing|new variety|price change|discount/.test(text))return "vendors";return "personal";
   };
-  const notificationTabs=[["all","All"],["personal","Personal"],["orders",vendor?.id?"Orders & Requests":"Orders"],...(vendor?.id?[["myListings","My Listings"]]:[]),["vendors","Vendors"]];
+  const notificationTabs=profile?.role==="admin" ? [["all","All"],["personal","Personal"],["vendors","Vendors"]] : [["all","All"],["personal","Personal"],["orders","Orders & Requests"],["myListings","My Listings"],["vendors","Vendors"]];
   const unreadByCategory={personal:0,orders:0,myListings:0,vendors:0};(rawItems||[]).forEach(n=>{if(!n.read){const c=classifyNotification(n);if(c in unreadByCategory)unreadByCategory[c]++;}});
   const tabHtml=(key,label)=>{const count=key==="all"?(rawItems||[]).filter(n=>!n.read).length:Number(unreadByCategory[key]||0);return `<button type="button" role="tab" aria-selected="${notifViewMode===key?"true":"false"}" class="notif-tab ${notifViewMode===key?"active":""}" onclick="switchNotifView('${key}')">${label}${count?`<span class="notif-tab-badge">${count>9?"9+":count}</span>`:""}</button>`};
   const items = (rawItems || []).filter((n) => {
@@ -9086,7 +9088,7 @@ async function renderNotifPanel() {
   }
   window.__notifPanelIds = (items || []).map((n) => n.id);
 
-  const modeLabel = ({ all: "Notifications", personal: "Personal", orders: vendor?.id ? "Orders & Requests" : "Orders", myListings: "My Listings", vendors: "Vendors" })[notifViewMode] || "Notifications";
+  const modeLabel = ({ all: "Notifications", personal: "Personal", orders: "Orders & Requests", myListings: "My Listings", vendors: "Vendors" })[notifViewMode] || "Notifications";
   const tabs = `<div class="notif-tabs" role="tablist" aria-label="Notification categories">${notificationTabs.map(([key,label])=>tabHtml(key,label)).join("")}</div>`;
 
   const isNotificationsPage = currentView === "notifications";
@@ -9167,9 +9169,10 @@ async function handleNotifItemClick(event, id) {
 }
 
 function switchNotifView(mode) {
-  const allowed = new Set(["all","personal","orders","myListings","vendors"]);
+  const allowed = new Set(profile?.role==="admin" ? ["all","personal","vendors"] : ["all","personal","orders","myListings","vendors"]);
   if (!allowed.has(mode)) mode = "all";
   if (mode === "myListings" && !vendor?.id) mode = "personal";
+  if (mode === "orders" && profile?.role === "admin") mode = "all";
   notifViewMode = mode;
   exitNotifSelectMode(false);
   renderNotifPanel();
@@ -9752,6 +9755,7 @@ function updateAuthUI() {
     const links = [];
     if (vendor && profile.role !== "admin") {
       links.push({ label: "My Shop", action: "navigate('vendorDashboard')" });
+      links.push({ label: `Monthly listings${Number(window.__vendorMonthlyListingCount || 0) > 0 ? ` <span class="badge danger profile-monthly-listings-badge">${Number(window.__vendorMonthlyListingCount || 0) > 9 ? "9+" : Number(window.__vendorMonthlyListingCount || 0)}</span>` : ""}`, action: "navigate('vendorMonthlyListings')", profileKey: "monthlyListings" });
       links.push({ label: "Edit Business Profile", action: "navigate('vendorEditProfile')" });
       links.push({ label: `Requests${requestOfferBadgeCount > 0 ? ` <span class="badge danger profile-request-badge">${requestOfferBadgeCount > 9 ? "9+" : requestOfferBadgeCount}</span>` : ""}`, action: "navigate('vendorRequests')" });
     } else if (profile.role !== "admin") {
@@ -9767,6 +9771,7 @@ function updateAuthUI() {
       links.push({ label: "Admin panel", action: "navigate('adminPanel')" });
       links.push({ label: "Manage admins", action: "navigate('adminUsers')" });
       links.push({ label: "Vendors &amp; transactions", action: "navigate('adminFinance')" });
+      links.push({ label: `Monthly listings${Number(window.__monthlyPendingCount || 0) > 0 ? ` <span class="badge danger profile-monthly-listings-badge">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : ""}`, action: "navigate('adminMonthlyListings')", profileKey: "monthlyListings" });
       links.push({ label: `Disputes <span class="badge danger profile-disputes-badge ${Number(window.__adminDisputeCount || 0) > 0 ? "" : "hidden"}">${Number(window.__adminDisputeCount || 0) > 9 ? "9+" : Number(window.__adminDisputeCount || 0)}</span>`, action: "navigate('adminDisputes')", profileKey: "disputes" });
       links.push({ label: `Support requests`, action: "navigate('adminSupportRequests')" });
       links.push({ label: `Suggestions${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('adminFeedback')", profileKey: "suggestions" });
@@ -10887,6 +10892,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "editProfile": html = renderEditProfile(); break;
       case "settings": html = renderSettingsPage(); break;
       case "vendorProducts": html = await renderVendorProducts(); break;
+      case "vendorMonthlyListings": html = await renderVendorMonthlyListings(); break;
       case "vendorPackages": html = await renderVendorPackages(); break;
       case "vendorEarnings": html = await renderVendorEarnings(); break;
       case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
@@ -11486,8 +11492,8 @@ function handleHomeCarouselSlideClick(event, index) {
         }, 80));
         return;
       }
-      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
-        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
+      if (["cart","messages","vendorDashboard","vendorProducts","vendorMonthlyListings","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorMonthlyListings","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
         if (!session && authViews.includes(deepView)) { showLogin(); return; }
         navigate(deepView, {}, true);
         return;
@@ -14715,7 +14721,7 @@ async function renderPackageDetail(packageId) {
 // ---------- PRODUCT DETAIL ----------
 async function renderProductDetail(productId) {
   const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)").eq("id", productId).maybeSingle();
-  const variantsQuery = sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
+  const variantsQuery = sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,quantity_available,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
   const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = await Promise.all([productQuery,variantsQuery,engagementQuery]);
   if(error){console.error("[Levromart] Product detail load failed:",error);return `<div class="empty-state"><strong>Couldn\'t load this product.</strong><p class="muted" style="margin:.35rem 0 0;">Please try again. If the problem continues, the listing may be unavailable right now.</p></div>`;}
@@ -14723,7 +14729,7 @@ async function renderProductDetail(productId) {
   const ownListing=isOwnVendorId(product.vendor?.id);
   if(!ownListing && (product.status!=="active" || product.vendor?.verification_status!=="verified" || !product.vendor?.is_active)) return '<div class="empty-state">This product is not currently available.</div>';
   if(variantsError)console.warn("[Levromart] Product varieties could not be loaded:",variantsError);
-  product.variants=loadedProductVariants||[]; currentProductDetail=product;
+  product.variants=loadedProductVariants||[]; currentProductDetail=product; window.__productGalleryVariants=product.variants.slice();
   sb.rpc("increment_product_view",{p_product_id:productId}).then(()=>{}).catch(()=>{});
   const st={avg_rating:product.vendor?.avg_rating??0,review_count:product.vendor?.review_count??0};
   setTimeout(async()=>{try{const {data:stats}=await sb.rpc("get_vendor_stats",{p_vendor_id:product.vendor.id});const row=(stats&&stats[0])||{};const root=document.querySelector(`.product-detail-card[data-product-detail-id="${CSS.escape(String(productId))}"]`);if(!root)return;root.querySelector("[data-owner-stat=saved]")?.replaceChildren(document.createTextNode(Number(row.favorites_count??0).toLocaleString()));root.querySelector("[data-owner-stat=revenue]")?.replaceChildren(document.createTextNode(naira(Number(row.revenue??0))));root.querySelector("[data-owner-stat=sales]")?.replaceChildren(document.createTextNode(Number(row.sales_count??0).toLocaleString()));}catch(_){}},0);
@@ -15167,7 +15173,7 @@ function renderVendorsDirectory() {
 
 async function loadVendorsDirectory() {
   const [{ data: vendors }, { data: products }, { data: vendorPackages }, { data: sectorsData }] = await Promise.all([
-    sb.from("vendors").select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, lat, lng").eq("verification_status", "verified").eq("is_active", true).order("business_name"),
+    sb.from("vendors").select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, lat, lng, created_at").eq("verification_status", "verified").eq("is_active", true).order("business_name"),
     sb.from("products").select("vendor_id, name, description, listing_type, is_service, category:categories(name)").eq("status", "active"),
     sb.from("vendor_packages").select("vendor_id, name, description").eq("status", "active"),
     sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
@@ -17629,7 +17635,7 @@ async function showProductModal() {
   if (editingProductId) {
     const { data: p } = await sb.from("products").select("*").eq("id", editingProductId).single();
     const { data: engagement } = await sb.from("product_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("product_id",editingProductId).maybeSingle();
-    const { data: productVariants } = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
+    const { data: productVariants } = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,quantity_available,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
     window.__productVariants = productVariants || [];
     byId("productModalTitle").textContent = "Edit Product";
     byId("prodName").value = p.name;
@@ -17860,11 +17866,11 @@ function renderProductVariantPricing() {
 
   existing.forEach((url, idx) => {
     const v = variants.find(x => String(x.photo_url || "") === String(url)) || {};
-    rows.push({ source: "existing", key: `existing-${idx}`, photo: url, name: v.name || "", sale: v.sale_price ?? "", discount: v.discount_price ?? "" });
+    rows.push({ source: "existing", key: `existing-${idx}`, photo: url, name: v.name || "", sale: v.sale_price ?? "", discount: v.discount_price ?? "", quantity: v.quantity_available ?? "" });
   });
   pending.forEach((file, idx) => {
     const v = variants.find(x => x.temp_index === idx) || {};
-    rows.push({ source: "new", key: `new-${idx}`, photo: URL.createObjectURL(file), name: v.name || "", sale: v.sale_price ?? "", discount: v.discount_price ?? "" });
+    rows.push({ source: "new", key: `new-${idx}`, photo: URL.createObjectURL(file), name: v.name || "", sale: v.sale_price ?? "", discount: v.discount_price ?? "", quantity: v.quantity_available ?? "" });
   });
 
   if (!rows.length) {
@@ -17877,6 +17883,7 @@ function renderProductVariantPricing() {
       <input class="variant-name" type="text" maxlength="120" placeholder="Variety name e.g. Black" value="${esc(r.name)}" />
       <input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="Sale price" value="${r.sale === "" ? "" : esc(String(r.sale))}" />
       <input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="Discount price" value="${r.discount === "" ? "" : esc(String(r.discount))}" />
+      <input class="variant-quantity" type="number" min="0" step="1" inputmode="numeric" placeholder="Qty" value="${r.quantity === "" ? "" : esc(String(r.quantity))}" />
       <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Clear this variety price" title="Clear variety price"><i class="fa-solid fa-xmark"></i></button>
     </div>`).join("")}`;
 }
@@ -17892,18 +17899,22 @@ function collectProductVariantDrafts(photoUrls) {
     const name = String(row.querySelector(".variant-name")?.value || "").trim();
     const saleRaw = row.querySelector(".variant-sale-price")?.value;
     const discountRaw = row.querySelector(".variant-discount-price")?.value;
+    const quantityRaw = row.querySelector(".variant-quantity")?.value;
     const sale = saleRaw === "" ? null : Number(saleRaw);
     const discount = discountRaw === "" ? null : Number(discountRaw);
-    if (!name && sale == null && discount == null) return;
+    const fallbackQty = Number(byId("prodQtyTotal")?.value || 0);
+    const quantity = quantityRaw === "" || quantityRaw == null ? fallbackQty : Number(quantityRaw);
+    if (!name && sale == null && discount == null && (quantityRaw === "" || quantityRaw == null)) return;
     if (!name) throw new Error("Every individual variety price needs a variety name.");
     if (!Number.isFinite(sale) || sale <= 0) throw new Error(`Enter a valid sale price for ${name}.`);
     if (discount != null && (!Number.isFinite(discount) || discount <= 0 || discount >= sale)) throw new Error(`Discount price for ${name} must be lower than its regular price.`);
+    if (!Number.isInteger(quantity) || quantity < 0) throw new Error(`Enter a valid quantity for ${name}.`);
     let photoUrl = row.dataset.photoUrl || "";
     if (row.dataset.variantSource === "new") {
       const idx = Number(String(row.dataset.variantKey || "").split("-").pop());
       photoUrl = photoUrls[idx] || "";
     }
-    drafts.push({ name, photo_url: photoUrl || null, sale_price: sale, discount_price: discount, sort_order: drafts.length });
+    drafts.push({ name, photo_url: photoUrl || null, sale_price: sale, discount_price: discount, quantity_available: quantity, sort_order: drafts.length });
   });
   return drafts;
 }
@@ -19494,12 +19505,12 @@ function adminNavHtml(active) {
   const items = [
     ["adminPeople", "fa-users", "People"],
     ["adminPanel", "fa-user-check", "Vendor"],
+    ["adminMonthlyListings", "fa-receipt", "Monthly listings"],
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
     ["adminSupportRequests", "fa-headset", "Support"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],
     ["adminLog", "fa-clock-rotate-left", "Log"],
     ["adminUsers", "fa-user-shield", "Admins"],
-    ["adminMonthlyListings", "fa-receipt", "Monthly listings"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
   return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" && Number(window.__monthlyPendingCount || 0) > 0 ? `<span class="dash-tab-dot monthly-listings-admin-badge">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : ""}</button>`).join("")}</div>`;
@@ -23328,7 +23339,7 @@ window.addEventListener("popstate", (e) => {
   // the browser still knows exactly which Levromart screen was open.
   const persistedUrlView = urlParams.get("appView");
   if (persistedUrlView) {
-    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","supportRequest","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
+    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","messages","settings","vendorDashboard","vendorProducts","vendorMonthlyListings","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","supportRequest","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
     let persistedParams = {};
     try { persistedParams = JSON.parse(urlParams.get("appParams") || "{}"); } catch (_) {}
     if (allowedPersistedViews.has(persistedUrlView)) {
@@ -23378,9 +23389,9 @@ window.addEventListener("popstate", (e) => {
       await navigate(profile?.role === "admin" ? "adminFinance" : (vendor ? "vendorOrders" : "buyerOrders"), vendor ? {status:"all",perspective:"sales"} : {}, false);
       return;
     }
-    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+    if (["cart","messages","vendorDashboard","vendorProducts","vendorMonthlyListings","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
       history.replaceState({ view: "home", params: {} }, "", location.pathname);
-      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
+      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorMonthlyListings","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
       if (!session && authViews.includes(deepView)) { showLogin(); return; }
       await navigate(deepView, {}, false);
       if (deepView === "vendors" && urlParams.get("map") === "1") {
@@ -24167,6 +24178,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 
   function vendorDirectorySortList(list) {
     const out = [...(list || [])];
+    if (vendorDirectorySort === "last-listed") return out.sort((a,b) => (Date.parse(b.created_at||"")||0) - (Date.parse(a.created_at||"")||0));
     if (vendorDirectorySort === "closest" && typeof buyerLocation !== "undefined" && buyerLocation) {
       return out.sort((a, b) => {
         const da = a.lat != null && a.lng != null
@@ -24244,7 +24256,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   };
 
   window.setVendorDirectorySort = function (mode) {
-    vendorDirectorySort = mode === "closest" ? "closest" : "alphabetical";
+    vendorDirectorySort = mode === "closest" ? "closest" : mode === "last-listed" ? "last-listed" : "alphabetical";
     vendorDirectoryExpanded = false;
     renderVendorDirectoryCards();
   };
@@ -24285,6 +24297,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         <label>Category<select id="vendorCategoryFilter" onchange="filterVendorsDirectory()"><option value="">Known for: anything</option></select></label>
         <label>Arrange<select id="vendorSortFilter" onchange="setVendorDirectorySort(this.value)">
           <option value="alphabetical">A–Z</option>
+          <option value="last-listed">Last listed</option>
           <option value="closest">Closest first</option>
         </select></label>
       </div>
@@ -25249,7 +25262,7 @@ window.renderVendorMapRail = function(){
   window.__levroFastVendorLoader=true;
   window.loadVendorsDirectory=async function(){
     const started=performance.now();
-    const vendorPromise=sb.from('vendors').select('id,business_name,city,avg_rating,review_count,sector_id,logo_url,lat,lng').eq('verification_status','verified').eq('is_active',true).order('business_name').limit(300);
+    const vendorPromise=sb.from('vendors').select('id,business_name,city,avg_rating,review_count,sector_id,logo_url,lat,lng,created_at').eq('verification_status','verified').eq('is_active',true).order('business_name').limit(300);
     const sectorPromise=sectors.length?Promise.resolve({data:sectors}):sb.from('sectors').select('*').order('sort_order');
     const [{data:vendors,error:vendorErr},{data:sectorsData}]=await Promise.all([vendorPromise,sectorPromise]);
     if(vendorErr)throw vendorErr;
@@ -30859,5 +30872,525 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       if(last?.view&&last.view!=='home'&&session&&currentView==='home')setTimeout(()=>{if(currentView==='home')navigate(last.view,last.params||{},false)},120);
     }catch(_){}
   });
+})();
+</script>
+
+
+<style id="levromart-v2-final-precision-20260913">
+/* Comment composer: compact circular send button, visually centred with the field. */
+#app .product-comment-compose-row,
+#app .package-comment-compose-row{grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:.5rem!important;}
+#app .product-comment-compose-row .product-comment-input,
+#app .package-comment-compose-row .product-comment-input{min-height:42px!important;}
+#app .product-comment-compose-row>.icon-btn,
+#app .package-comment-compose-row>.icon-btn,
+#app .product-comment-compose-row .product-comment-send-btn,
+#app .package-comment-compose-row .product-comment-send-btn{
+  width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;
+  max-width:42px!important;padding:0!important;border-radius:50%!important;margin:0!important;
+  align-self:center!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  background:var(--primary)!important;color:#fff!important;border:0!important;box-shadow:0 4px 12px color-mix(in srgb,var(--primary) 18%,transparent)!important;
+}
+#app .product-comment-compose-row>.icon-btn i,#app .package-comment-compose-row>.icon-btn i{font-size:.92rem!important;}
+
+/* Variety indicators stay readable in both themes. */
+#app .product-variety-indicator{background:var(--text)!important;color:var(--card)!important;border:1px solid color-mix(in srgb,var(--text) 18%,var(--border))!important;}
+[data-theme="light"] #app .product-variety-indicator, html.light #app .product-variety-indicator{background:#17211e!important;color:#fff!important;}
+
+/* Requests: compact horizontal bars, not tall cards. */
+#app .vendor-my-request-card{max-width:100%!important;padding:.45rem .6rem!important;margin:.35rem 0!important;border-radius:12px!important;}
+#app .vendor-my-request-layout{grid-template-columns:auto minmax(0,1fr) auto!important;grid-template-areas:"identity details actions"!important;gap:.55rem!important;align-items:center!important;}
+#app .vendor-my-request-identity{grid-area:identity!important;justify-content:flex-start!important;text-align:left!important;gap:.42rem!important;}
+#app .vendor-my-request-identity .avatar-circle{width:2.15rem!important;height:2.15rem!important;flex:0 0 2.15rem!important;}
+#app .vendor-my-request-title{ text-align:left!important;gap:.05rem!important;}
+#app .vendor-my-request-title strong{font-size:.76rem!important;line-height:1.1!important;max-width:9rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+#app .vendor-my-request-title .muted{font-size:.59rem!important;white-space:nowrap!important;}
+#app .vendor-my-request-details{grid-area:details!important;justify-content:flex-start!important;text-align:left!important;gap:.3rem!important;min-width:0!important;}
+#app .vendor-my-request-details .badge{font-size:.58rem!important;padding:.14rem .32rem!important;}
+#app .vendor-my-request-details .muted{font-size:.58rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+#app .vendor-my-request-details p{display:none!important;}
+#app .vendor-my-request-actions{grid-area:actions!important;flex-direction:row!important;justify-content:flex-end!important;gap:.3rem!important;}
+#app .vendor-my-request-actions .badge{font-size:.57rem!important;padding:.14rem .32rem!important;}
+#app .vendor-my-request-actions .btn{height:30px!important;min-height:30px!important;padding:.25rem .45rem!important;font-size:.6rem!important;}
+#app .vendor-my-offers{display:none!important;margin:.45rem 0 0!important;padding:.45rem!important;}
+#app .vendor-my-request-card.levro-request-expanded .vendor-my-offers{display:block!important;}
+@media(max-width:620px){
+  #app .vendor-my-request-layout{grid-template-columns:auto minmax(0,1fr) auto!important;grid-template-areas:"identity details actions"!important;gap:.42rem!important;}
+  #app .vendor-my-request-title strong{max-width:7.2rem!important;}
+  #app .vendor-my-request-details{padding-left:0!important;margin:0!important;}
+}
+
+/* Admin vendor application cards: search/filter + compact dropdown bars. */
+#app .admin-vendor-tools{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:.5rem!important;margin:.55rem 0 .7rem!important;}
+#app .admin-vendor-search{position:relative!important;min-width:0!important;}
+#app .admin-vendor-search input{width:100%!important;margin:0!important;padding-left:2.25rem!important;}
+#app .admin-vendor-search i{position:absolute!important;left:.75rem!important;top:50%!important;transform:translateY(-50%)!important;color:var(--text-muted)!important;pointer-events:none!important;}
+#app .admin-vendor-tools select{margin:0!important;min-width:8.8rem!important;}
+#app .admin-vendor-card{padding:.58rem .72rem!important;margin:.4rem 0!important;border-radius:13px!important;cursor:pointer!important;}
+#app .admin-vendor-card .admin-vendor-summary{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;align-items:center!important;gap:.45rem!important;}
+#app .admin-vendor-card .admin-vendor-summary strong{font-size:.82rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+#app .admin-vendor-card .admin-vendor-summary .muted{font-size:.6rem!important;white-space:nowrap!important;}
+#app .admin-vendor-card .admin-vendor-chevron{transition:transform .18s ease!important;font-size:.68rem!important;color:var(--text-muted)!important;}
+#app .admin-vendor-card.levro-admin-vendor-expanded .admin-vendor-chevron{transform:rotate(180deg)!important;}
+#app .admin-vendor-card .admin-vendor-body{display:none!important;margin-top:.55rem!important;padding-top:.55rem!important;border-top:1px solid var(--border)!important;}
+#app .admin-vendor-card.levro-admin-vendor-expanded .admin-vendor-body{display:block!important;}
+@media(max-width:620px){#app .admin-vendor-tools{grid-template-columns:1fr!important;}#app .admin-vendor-tools select{width:100%!important;}}
+
+/* Admin monthly listings: small horizontal dropdown bars. */
+#app .monthly-listing-admin-intro{padding:.6rem .75rem!important;margin:.55rem 0!important;border-radius:13px!important;}
+#app .monthly-submission-card{padding:.55rem .7rem!important;margin:.4rem 0!important;border-radius:13px!important;cursor:pointer!important;}
+#app .monthly-submission-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;align-items:center!important;gap:.5rem!important;}
+#app .monthly-submission-head h3{font-size:.78rem!important;margin:.15rem 0 .05rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+#app .monthly-submission-head p{font-size:.58rem!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+#app .monthly-submission-thumb{width:2.5rem!important;height:2.5rem!important;border-radius:8px!important;object-fit:cover!important;}
+#app .monthly-submission-chevron{font-size:.68rem!important;color:var(--text-muted)!important;transition:transform .18s ease!important;}
+#app .monthly-submission-card.levro-monthly-expanded .monthly-submission-chevron{transform:rotate(180deg)!important;}
+#app .monthly-submission-card .monthly-submission-grid,
+#app .monthly-submission-card .monthly-submission-receipt,
+#app .monthly-submission-card .monthly-review-note,
+#app .monthly-submission-card .monthly-submission-actions{display:none!important;}
+#app .monthly-submission-card.levro-monthly-expanded .monthly-submission-grid,
+#app .monthly-submission-card.levro-monthly-expanded .monthly-submission-receipt,
+#app .monthly-submission-card.levro-monthly-expanded .monthly-review-note,
+#app .monthly-submission-card.levro-monthly-expanded .monthly-submission-actions{display:flex!important;}
+#app .monthly-submission-card.levro-monthly-expanded .monthly-submission-grid{display:grid!important;}
+#app .monthly-submission-card.levro-monthly-expanded .monthly-submission-receipt{display:flex!important;}
+#app .monthly-submission-card.levro-monthly-expanded .monthly-review-note{display:block!important;}
+#app .monthly-submission-card.levro-monthly-expanded .monthly-submission-actions{display:flex!important;}
+#app .monthly-submission-grid{margin-top:.55rem!important;gap:.4rem!important;}
+#app .monthly-submission-grid>div{padding:.42rem!important;border-radius:9px!important;}
+#app .monthly-submission-grid span,#app .monthly-submission-grid small{font-size:.57rem!important;}
+#app .monthly-submission-grid strong{font-size:.68rem!important;display:block!important;}
+#app .monthly-submission-receipt{justify-content:space-between!important;align-items:center!important;gap:.4rem!important;margin-top:.45rem!important;padding-top:.45rem!important;border-top:1px solid var(--border)!important;}
+#app .monthly-submission-receipt strong{font-size:.67rem!important;display:block!important;}
+#app .monthly-submission-receipt .muted{font-size:.56rem!important;}
+#app .monthly-submission-actions{gap:.35rem!important;margin-top:.45rem!important;flex-wrap:wrap!important;}
+#app .monthly-submission-actions .btn{height:32px!important;min-height:32px!important;padding:.25rem .5rem!important;font-size:.62rem!important;}
+
+/* Vendor monthly profile page. */
+#app .vendor-monthly-summary{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.45rem!important;margin:.65rem 0!important;}
+#app .vendor-monthly-stat{padding:.6rem!important;border:1px solid var(--border)!important;border-radius:12px!important;background:var(--card)!important;text-align:center!important;}
+#app .vendor-monthly-stat strong{display:block!important;font-size:1rem!important;}
+#app .vendor-monthly-stat small{font-size:.58rem!important;color:var(--text-muted)!important;}
+#app .vendor-monthly-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:.5rem!important;align-items:center!important;padding:.55rem .65rem!important;border:1px solid var(--border)!important;border-radius:12px!important;margin:.35rem 0!important;background:var(--card)!important;}
+#app .vendor-monthly-row strong{font-size:.75rem!important;}
+#app .vendor-monthly-row small{display:block!important;font-size:.58rem!important;color:var(--text-muted)!important;margin-top:.1rem!important;}
+#app .vendor-monthly-row .btn{height:30px!important;min-height:30px!important;font-size:.6rem!important;padding:.25rem .48rem!important;}
+
+/* Profile monthly badge and admin dispute icon. */
+#profilePanel .profile-monthly-listings-badge{display:inline-flex!important;min-width:1.05rem!important;height:1.05rem!important;padding:0 .28rem!important;align-items:center!important;justify-content:center!important;font-size:.56rem!important;border-radius:999px!important;background:var(--danger)!important;color:#fff!important;margin-left:.25rem!important;}
+#profilePanel .profile-nav-link[data-profile-key="disputes"] .profile-item-icon i{font-family:"Font Awesome 6 Free"!important;font-weight:900!important;}
+
+/* Profile is now a push/split surface rather than a sliding overlay. */
+body.levro-profile-split{overflow-x:hidden!important;}
+body.levro-profile-split #profilePanel{position:fixed!important;left:0!important;right:auto!important;top:0!important;bottom:0!important;width:min(390px,42vw)!important;max-width:none!important;transform:none!important;z-index:1200!important;border-radius:0!important;box-shadow:18px 0 40px rgba(0,0,0,.22)!important;}
+body.levro-profile-split #profilePanel:not(.open){transform:translateX(-102%)!important;}
+body.levro-profile-split #app{transform:translateX(min(390px,42vw))!important;transition:transform .22s cubic-bezier(.2,.8,.2,1)!important;will-change:transform!important;}
+body.levro-profile-split #drawerBackdrop{display:none!important;}
+body.levro-profile-split.profile-reveal-dragging #app{transition:none!important;}
+@media(max-width:700px){
+  body.levro-profile-split #profilePanel{width:78vw!important;}
+  body.levro-profile-split #app{transform:translateX(78vw)!important;}
+}
+
+/* Vendor distance pills. */
+#app .vendor-distance-pill{display:inline-flex!important;align-items:center!important;gap:.18rem!important;font-size:.58rem!important;padding:.15rem .35rem!important;border-radius:999px!important;background:color-mix(in srgb,var(--primary) 9%,var(--card))!important;color:var(--primary)!important;white-space:nowrap!important;}
+#app .top-rated-vendors-scroll .vendor-distance-pill{font-size:.52rem!important;padding:.12rem .28rem!important;}
+
+/* Product gallery: each photo gets its own 1/N marker, plus selected-variety quantity. */
+#app .product-gallery-slide .product-gallery-per-photo-count{position:absolute!important;right:.55rem!important;bottom:.55rem!important;z-index:4!important;padding:.22rem .42rem!important;border-radius:999px!important;background:rgba(0,0,0,.58)!important;color:#fff!important;font-size:.62rem!important;font-weight:800!important;pointer-events:none!important;}
+#app .product-gallery-slide .product-gallery-variant-stock{position:absolute!important;left:.55rem!important;bottom:.55rem!important;z-index:4!important;padding:.22rem .42rem!important;border-radius:999px!important;background:rgba(0,0,0,.58)!important;color:#fff!important;font-size:.58rem!important;font-weight:700!important;pointer-events:none!important;}
+
+/* Notification tabs: more breathing room; only one mark-all action when needed. */
+#app .notifications-page-host .notif-tabs{display:flex!important;align-items:center!important;gap:.7rem!important;overflow-x:auto!important;padding:.25rem .15rem .55rem!important;scrollbar-width:none!important;}
+#app .notifications-page-host .notif-tabs::-webkit-scrollbar{display:none!important;}
+#app .notifications-page-host .notif-tab{flex:0 0 auto!important;padding:.52rem .72rem!important;border-radius:999px!important;}
+#app .notifications-page-heading-actions{display:flex!important;align-items:center!important;gap:.4rem!important;}
+#app .notifications-page-heading-actions .notif-select-only{display:none!important;}
+
+/* Stop search/home mutations from moving floating controls. */
+#aiChatFab,#cartFab{position:fixed!important;left:auto!important;right:18px!important;transform:none!important;}
+</style>
+<script id="levromart-v2-final-logic-20260913">
+(function(){
+  'use strict';
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+  /* ------------------------------------------------------------
+     Phone validation: require a plausible Nigerian mobile number.
+     This validates format, not ownership; no client can honestly prove
+     ownership without a verification code.
+  ------------------------------------------------------------ */
+  function normaliseNgPhone(v){
+    let x=String(v||'').trim().replace(/[\s().-]/g,'');
+    if(/^\+234/.test(x)) x='0'+x.slice(4);
+    else if(/^234/.test(x)) x='0'+x.slice(3);
+    return x;
+  }
+  function validNgMobile(v){
+    const x=normaliseNgPhone(v);
+    if(!/^0(?:70|71|80|81|90|91)\d{8}$/.test(x))return false;
+    if(/^(\d)\1{10}$/.test(x))return false;
+    return true;
+  }
+  function attachPhoneRules(){
+    ['vaPhone','vaWhatsapp'].forEach(id=>{const el=document.getElementById(id);if(!el)return;el.setAttribute('inputmode','tel');el.setAttribute('autocomplete','tel');el.setAttribute('maxlength','16');el.setAttribute('placeholder','e.g. 08012345678');});
+  }
+  const originalVendorApplySubmit=window.submitVendorApply;
+  if(typeof originalVendorApplySubmit==='function'&&!window.__levroNgPhoneValidation){
+    window.__levroNgPhoneValidation=true;
+    window.submitVendorApply=async function(){
+      attachPhoneRules();
+      const err=document.getElementById('vendorApplyError');
+      const phone=normaliseNgPhone(document.getElementById('vaPhone')?.value);
+      const wa=normaliseNgPhone(document.getElementById('vaWhatsapp')?.value);
+      if(!validNgMobile(phone)||!validNgMobile(wa)){
+        if(err){err.textContent='Enter a real Nigerian mobile number for both Phone and WhatsApp (for example 08012345678).';err.classList.remove('hidden');}
+        document.getElementById('vaPhone')?.focus();
+        return;
+      }
+      const p=document.getElementById('vaPhone'),w=document.getElementById('vaWhatsapp');if(p)p.value=phone;if(w)w.value=wa;
+      return originalVendorApplySubmit.apply(this,arguments);
+    };
+  }
+  new MutationObserver(attachPhoneRules).observe(document.body,{childList:true,subtree:true});
+  attachPhoneRules();
+
+  /* ------------------------------------------------------------
+     Vendor distance badges. Uses the app's existing buyerLocation only;
+     no location is requested by this patch.
+  ------------------------------------------------------------ */
+  function vendorIdFromCard(card){
+    const s=card?.getAttribute('onclick')||'';
+    const m=s.match(/vendorId:\s*['"]([^'"]+)['"]/);return m?.[1]||card?.dataset?.vendorId||'';
+  }
+  function distanceText(v){
+    if(!v||typeof buyerLocation==='undefined'||!buyerLocation||v.lat==null||v.lng==null)return '';
+    const d=Number(haversineKm(buyerLocation.lat,buyerLocation.lng,Number(v.lat),Number(v.lng)));
+    return Number.isFinite(d)?(d<1?`${Math.round(d*1000)} m away`:`${d.toFixed(1)} km away`):'';
+  }
+  async function hydrateVendorDistances(){
+    if(typeof sb==='undefined')return;
+    const cards=[...document.querySelectorAll('#app .vendor-card')];if(!cards.length)return;
+    const ids=[...new Set(cards.map(vendorIdFromCard).filter(Boolean))];if(!ids.length)return;
+    try{
+      const {data}=await sb.from('vendors').select('id,lat,lng').in('id',ids);const map=new Map((data||[]).map(v=>[String(v.id),v]));
+      cards.forEach(card=>{const id=vendorIdFromCard(card);if(!id)return;const v=map.get(String(id));let pill=card.querySelector('.vendor-distance-pill');const text=distanceText(v);if(!text){pill?.remove();return;}if(!pill){pill=document.createElement('span');pill.className='vendor-distance-pill';(card.querySelector('.vendor-home-meta')||card.querySelector('.vendor-card-footer')||card).appendChild(pill);}pill.innerHTML='<i class="fa-solid fa-location-dot"></i> '+text;});
+    }catch(_){ }
+  }
+  window.__levroHydrateVendorDistances=hydrateVendorDistances;
+  document.addEventListener('levromart:vendor-directory-rendered',()=>setTimeout(hydrateVendorDistances,30));
+
+  /* Top-rated "See all" always goes to the grid, never the map. */
+  function patchTopRated(){
+    const heading=[...document.querySelectorAll('#app .section-title')].find(x=>/top-rated vendors/i.test(x.textContent||''));
+    if(!heading)return;
+    let a=heading.querySelector('.levro-top-rated-see-all');
+    if(!a){a=document.createElement('button');a.type='button';a.className='levro-top-rated-see-all';a.innerHTML='View more <i class="fa-solid fa-arrow-right"></i>';a.onclick=async e=>{e.stopPropagation();await navigate('vendors',{},true);setTimeout(()=>{try{switchVendorsView('grid')}catch(_){}},120)};heading.appendChild(a);}
+    const old=heading.querySelector('.section-title-link');if(old)old.remove();
+  }
+  const topObs=new MutationObserver(()=>{patchTopRated();hydrateVendorDistances();});topObs.observe(document.body,{childList:true,subtree:true});setTimeout(patchTopRated,250);
+
+  /* ------------------------------------------------------------
+     Vendor admin cards: search/filter + collapsible details.
+  ------------------------------------------------------------ */
+  function setupAdminVendorUI(){
+    if(currentView!=='adminPanel')return;
+    const host=document.getElementById('app');if(!host)return;
+    const tabs=host.querySelector('.admin-dash-tabs');if(!tabs)return;
+    if(!host.querySelector('.admin-vendor-tools')){
+      const tools=document.createElement('div');tools.className='admin-vendor-tools';tools.innerHTML='<div class="admin-vendor-search"><i class="fa-solid fa-magnifying-glass"></i><input id="adminVendorSearch" type="search" placeholder="Search vendor, applicant or email…" autocomplete="off"></div><select id="adminVendorSort"><option value="newest">Newest applications</option><option value="oldest">Oldest applications</option><option value="az">A–Z</option><option value="za">Z–A</option></select>';
+      tabs.insertAdjacentElement('afterend',tools);
+      const apply=()=>{const q=(document.getElementById('adminVendorSearch')?.value||'').toLowerCase().trim(),sort=document.getElementById('adminVendorSort')?.value||'newest';const cards=[...host.querySelectorAll('.card[id^="adminVendor-"]')];cards.forEach(c=>{const ok=!q||(c.textContent||'').toLowerCase().includes(q);c.classList.toggle('levro-admin-vendor-search-hidden',!ok);c.style.display=ok?'':'none';});const parent=cards[0]?.parentElement;if(parent){const visible=cards.filter(c=>c.style.display!=='none');visible.sort((a,b)=>{const da=Date.parse(a.dataset.createdAt||'')||0,db=Date.parse(b.dataset.createdAt||'')||0;const na=(a.querySelector('strong')?.textContent||'').toLowerCase(),nb=(b.querySelector('strong')?.textContent||'').toLowerCase();return sort==='az'?na.localeCompare(nb):sort==='za'?nb.localeCompare(na):sort==='oldest'?da-db:db-da;}).forEach(c=>parent.appendChild(c));}};
+      document.getElementById('adminVendorSearch').oninput=apply;document.getElementById('adminVendorSort').onchange=apply;
+    }
+    host.querySelectorAll('.card[id^="adminVendor-"]').forEach(card=>{
+      if(card.dataset.levroAdminCollapsible==='1')return;
+      card.dataset.levroAdminCollapsible='1';
+      const strong=card.querySelector('.flex strong');
+      const status=card.querySelector('.flex .badge');
+      const children=[...card.children];
+      const head=document.createElement('div');head.className='admin-vendor-summary';
+      head.innerHTML=`<strong>${strong?.textContent||'Vendor'}</strong><span class="muted">${status?.textContent||''}</span><i class="fa-solid fa-chevron-down admin-vendor-chevron"></i>`;
+      const body=document.createElement('div');body.className='admin-vendor-body';
+      children.forEach(c=>{if(c!==children[0])body.appendChild(c);});
+      if(children[0]){children[0].remove();}
+      card.innerHTML='';card.append(head,body);
+      head.addEventListener('click',()=>card.classList.toggle('levro-admin-vendor-expanded'));
+      body.addEventListener('click',e=>e.stopPropagation());
+    });
+  }
+  const adminObs=new MutationObserver(()=>{if(currentView==='adminPanel')setupAdminVendorUI();});adminObs.observe(document.body,{childList:true,subtree:true});
+  setTimeout(setupAdminVendorUI,300);
+
+  /* ------------------------------------------------------------
+     Admin monthly listing cards: horizontal dropdowns.
+  ------------------------------------------------------------ */
+  function setupMonthlyCards(){
+    if(currentView!=='adminMonthlyListings')return;
+    document.querySelectorAll('#app .monthly-submission-card').forEach(card=>{
+      if(card.dataset.levroMonthlyCollapsible==='1')return;
+      card.dataset.levroMonthlyCollapsible='1';
+      const head=card.querySelector('.monthly-submission-head');if(!head)return;
+      const chev=document.createElement('i');chev.className='fa-solid fa-chevron-down monthly-submission-chevron';head.appendChild(chev);
+      head.addEventListener('click',e=>{e.stopPropagation();card.classList.toggle('levro-monthly-expanded');});
+      card.querySelectorAll('button,a,input,select,textarea').forEach(el=>el.addEventListener('click',e=>e.stopPropagation()));
+    });
+  }
+  const monthObs=new MutationObserver(setupMonthlyCards);monthObs.observe(document.body,{childList:true,subtree:true});setTimeout(setupMonthlyCards,300);
+
+  /* ------------------------------------------------------------
+     Vendor monthly profile page and badge.
+  ------------------------------------------------------------ */
+  window.renderVendorMonthlyListings=async function(){
+    if(!session||profile?.role==='admin'||!vendor?.id)return '<div class="empty-state">Access denied.</div>';
+    const [{data:products},{data:packages},{data:subs}]=await Promise.all([
+      sb.from('products').select('id,name,status,billing_model,billing_status,billing_paid_until,quantity_available,quantity_total,photos').eq('vendor_id',vendor.id).eq('billing_model','monthly').neq('status','removed').order('created_at',{ascending:false}),
+      sb.from('vendor_packages').select('id,name,status,billing_model,billing_status,billing_paid_until,price,photos').eq('vendor_id',vendor.id).eq('billing_model','monthly').neq('status','removed').order('created_at',{ascending:false}),
+      sb.from('monthly_listing_submissions').select('id,kind,listing_id,status,payer_name,submitted_at,reviewed_at,review_note').eq('vendor_id',vendor.id).order('submitted_at',{ascending:false}).limit(100)
+    ]);
+    const rows=[...(products||[]).map(p=>({...p,_kind:p.status==='removed'?'product':'product'})),...(packages||[]).map(p=>({...p,_kind:'package'}))];
+    const active=rows.filter(r=>r.billing_status==='active'&&r.billing_paid_until&&Date.parse(r.billing_paid_until)>Date.now()).length;
+    const pending=(subs||[]).filter(s=>s.status==='pending').length;
+    const expired=rows.filter(r=>r.billing_paid_until&&Date.parse(r.billing_paid_until)<=Date.now()).length;
+    let html='<div class="flex" style="justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap"><div><h2 style="margin:0"><i class="fa-solid fa-receipt"></i> Monthly listings</h2><p class="muted" style="margin:.2rem 0 0;font-size:.72rem">Manage your ₦1,000 monthly listing activations and renewals.</p></div><button type="button" class="btn btn-sm btn-outline" onclick="navigate(\'vendorDashboard\')"><i class="fa-solid fa-arrow-left"></i> My Shop</button></div>';
+    html+=`<div class="vendor-monthly-summary"><div class="vendor-monthly-stat"><strong>${rows.length}</strong><small>Monthly listings</small></div><div class="vendor-monthly-stat"><strong>${active}</strong><small>Active</small></div><div class="vendor-monthly-stat"><strong>${pending}</strong><small>Pending review</small></div></div>`;
+    if(!rows.length)return html+'<div class="empty-state">You have no monthly listings yet.</div>';
+    const subMap=new Map((subs||[]).map(s=>[`${s.kind}:${s.listing_id}`,s]));
+    html+=rows.map(r=>{const sub=subMap.get(`${r._kind}:${r.id}`);const paid=Date.parse(r.billing_paid_until||'');const isActive=r.billing_status==='active'&&paid>Date.now();const isPending=sub?.status==='pending'||r.billing_status==='pending_payment';const isExpired=!isActive&&paid>0&&paid<=Date.now();const label=r._kind==='package'?'Package':'Product';const action=isActive?`<span class="badge success">Active · ${new Date(r.billing_paid_until).toLocaleDateString('en-GB')}</span>`:isPending?`<span class="badge warning">Pending admin review</span>`:`<button type="button" class="btn btn-sm" onclick="event.stopPropagation();startListingMonthlyPayment('${r._kind}','${r.id}')"><i class="fa-solid fa-receipt"></i> Renew ₦1,000</button>`;return `<div class="vendor-monthly-row"><div><strong>${esc(r.name)}</strong><small>${label} · ${isExpired?'Expired':isPending?'Awaiting receipt review':isActive?'Live until '+new Date(r.billing_paid_until).toLocaleDateString('en-GB'):'Needs payment'}${sub?.payer_name?' · Payer: '+esc(sub.payer_name):''}</small></div><div>${action}</div></div>`;}).join('');
+    return html;
+  };
+
+  async function refreshVendorMonthlyBadge(){
+    if(!session||profile?.role==='admin'||!vendor?.id){window.__vendorMonthlyListingCount=0;return;}
+    try{const [{count:a},{count:b}]=await Promise.all([sb.from('products').select('id',{count:'exact',head:true}).eq('vendor_id',vendor.id).eq('billing_model','monthly').neq('status','removed'),sb.from('vendor_packages').select('id',{count:'exact',head:true}).eq('vendor_id',vendor.id).eq('billing_model','monthly').neq('status','removed')]);window.__vendorMonthlyListingCount=Number(a||0)+Number(b||0);updateAuthUI();}catch(_){}
+  }
+  window.__levroRefreshVendorMonthlyBadge=refreshVendorMonthlyBadge;
+  setTimeout(refreshVendorMonthlyBadge,500);
+
+  /* ------------------------------------------------------------
+     Admin monthly pending badge mirrors profile and updates immediately.
+  ------------------------------------------------------------ */
+  async function refreshAdminMonthlyBadge(){try{if(!session||profile?.role!=='admin')return;const {count}=await sb.from('monthly_listing_submissions').select('id',{count:'exact',head:true}).eq('status','pending');window.__monthlyPendingCount=Number(count||0);updateAuthUI();document.querySelectorAll('.monthly-listings-admin-badge').forEach(el=>{el.textContent=window.__monthlyPendingCount>9?'9+':String(window.__monthlyPendingCount);el.classList.toggle('hidden',window.__monthlyPendingCount===0);});}catch(_){}
+  }
+  setTimeout(refreshAdminMonthlyBadge,650);
+
+  /* ------------------------------------------------------------
+     Profile split/push interaction: edge swipe drags the page right; profile
+     occupies the revealed left side. The normal profile button still works.
+  ------------------------------------------------------------ */
+  let splitDrag=null;
+  function setSplitX(x){const panel=document.getElementById('profilePanel');if(!panel)return;const max=window.innerWidth<=700?window.innerWidth*.78:Math.min(390,window.innerWidth*.42);const clamped=Math.max(0,Math.min(max,x));document.body.style.setProperty('--levro-profile-split-x',clamped+'px');document.getElementById('app')?.style.setProperty('transform',`translateX(${clamped}px)`);panel.style.setProperty('transform',clamped>0?'translateX(0)':'translateX(-102%)');}
+  function openProfileSplit(){document.body.classList.add('levro-profile-split');const p=document.getElementById('profilePanel');if(!p)return;p.classList.add('open');byId('drawerBackdrop')?.classList.remove('open');setSplitX(window.innerWidth<=700?window.innerWidth*.78:Math.min(390,window.innerWidth*.42));}
+  const baseToggleProfile=window.toggleProfilePanel;
+  if(typeof baseToggleProfile==='function'&&!window.__levroProfileSplitWrapped){
+    window.__levroProfileSplitWrapped=true;
+    window.toggleProfilePanel=function(){const p=document.getElementById('profilePanel');if(p?.classList.contains('open')){p.classList.remove('open');document.body.classList.remove('levro-profile-split');document.getElementById('app')?.style.removeProperty('transform');document.body.style.removeProperty('--levro-profile-split-x');}else{updateAuthUI();openProfileSplit();}};
+  }
+  const origCloseAll=window.closeAllPanels;
+  if(typeof origCloseAll==='function'&&!window.__levroCloseSplitWrapped){
+    window.__levroCloseSplitWrapped=true;window.closeAllPanels=function(){document.body.classList.remove('levro-profile-split');document.getElementById('app')?.style.removeProperty('transform');document.body.style.removeProperty('--levro-profile-split-x');return origCloseAll.apply(this,arguments);};
+  }
+  document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;const p=document.getElementById('profilePanel');if(p?.classList.contains('open'))return;if((e.clientX||0)>34)return;splitDrag={id:e.pointerId,x:e.clientX,y:e.clientY};},{passive:true});
+  document.addEventListener('pointermove',e=>{if(!splitDrag||e.pointerId!==splitDrag.id)return;const dx=e.clientX-splitDrag.x,dy=e.clientY-splitDrag.y;if(Math.abs(dy)>Math.abs(dx)*1.15){splitDrag=null;return;}if(dx>8){e.preventDefault();document.body.classList.add('profile-reveal-dragging');document.getElementById('profilePanel')?.classList.add('open');setSplitX(dx);}}, {passive:false});
+  document.addEventListener('pointerup',e=>{if(!splitDrag||e.pointerId!==splitDrag.id)return;const dx=e.clientX-splitDrag.x;splitDrag=null;document.body.classList.remove('profile-reveal-dragging');if(dx>70)openProfileSplit();else{document.getElementById('profilePanel')?.classList.remove('open');document.getElementById('app')?.style.removeProperty('transform');document.body.classList.remove('levro-profile-split');}}, {passive:true});
+
+  /* ------------------------------------------------------------
+     Product variety quantity + per-photo 1/N markers.
+  ------------------------------------------------------------ */
+  function paintGalleryMeta(){
+    const track=document.getElementById('productGalleryTrack');if(!track)return;
+    const slides=[...track.querySelectorAll('.product-gallery-slide')];const total=slides.length;const variants=Array.isArray(window.__productGalleryVariants)?window.__productGalleryVariants:((window.currentProductDetail?.variants)||[]);
+    slides.forEach((slide,i)=>{slide.querySelector('.product-gallery-per-photo-count')?.remove();slide.querySelector('.product-gallery-variant-stock')?.remove();if(total>1){const c=document.createElement('span');c.className='product-gallery-per-photo-count';c.textContent=`${i+1}/${total}`;slide.appendChild(c);}const url=slide.querySelector('img')?.src||'';const v=variants.find(x=>String(x.photo_url||'')===String(url));if(v&&v.quantity_available!=null){const st=document.createElement('span');st.className='product-gallery-variant-stock';st.textContent=`Available: ${Number(v.quantity_available).toLocaleString()}`;slide.appendChild(st);}});
+  }
+  function wrapVariantSelection(){
+    const fn=window.syncProductVariantSelection;if(typeof fn!=='function'||fn.__levroV2)return;const original=fn;function wrapped(variant){const r=original.apply(this,arguments);const stock=document.getElementById('selectedVariantStock');if(stock&&variant?.quantity_available!=null)stock.textContent=Number(variant.quantity_available).toLocaleString();const gm=document.getElementById('productGalleryVariantName'),gp=document.getElementById('productGalleryVariantPrice');const root=document.getElementById('productGalleryVariantMeta');if(root&&variant?.quantity_available!=null){let q=root.querySelector('.product-gallery-variant-stock-inline');if(!q){q=document.createElement('strong');q.className='product-gallery-variant-stock-inline';root.appendChild(q);}q.textContent=`Available: ${Number(variant.quantity_available).toLocaleString()}`;}paintGalleryMeta();return r;}wrapped.__levroV2=true;window.syncProductVariantSelection=wrapped;
+  }
+  const galleryObs=new MutationObserver(()=>{if(currentView==='productDetail'){wrapVariantSelection();paintGalleryMeta();}});galleryObs.observe(document.body,{childList:true,subtree:true});
+  setTimeout(()=>{wrapVariantSelection();paintGalleryMeta();},350);
+
+  /* ------------------------------------------------------------
+     Product realtime / all major marketplace realtime. No full home repaint;
+     targeted hydrators preserve the user's scroll position.
+  ------------------------------------------------------------ */
+  let live=null;
+  function startMarketplaceRealtime(){
+    if(typeof sb==='undefined'||!session)return;
+    try{if(live)sb.removeChannel(live);}catch(_){}
+    live=sb.channel(`levro-marketplace-live-${session.user.id}-${Date.now()}`)
+      .on('postgres_changes',{event:'*',schema:'public',table:'favorites'},()=>{try{hydrateProductLikeCountsInView();hydratePackageCommentCountsInView();}catch(_){} })
+      .on('postgres_changes',{event:'*',schema:'public',table:'product_comment_likes'},()=>{try{if(currentProductDetail?.id)loadInlineComments('product',currentProductDetail.id,{showLoading:false});}catch(_){} })
+      .on('postgres_changes',{event:'*',schema:'public',table:'package_comment_likes'},()=>{try{if(currentViewParams?.packageId)loadInlineComments('package',currentViewParams.packageId,{showLoading:false});}catch(_){} })
+      .on('postgres_changes',{event:'*',schema:'public',table:'products'},()=>{try{hydrateProductLikeCountsInView();hydrateProductVariantIndicatorsInView();}catch(_){} })
+      .on('postgres_changes',{event:'*',schema:'public',table:'product_variants'},()=>{try{paintGalleryMeta();}catch(_){} })
+      .on('postgres_changes',{event:'*',schema:'public',table:'vendor_packages'},()=>{try{hydratePackageCommentCountsInView();}catch(_){} })
+      .on('postgres_changes',{event:'*',schema:'public',table:'vendor_follows'},()=>{try{hydrateFollowerCounts();hydrateVendorDistances();}catch(_){} })
+      .on('postgres_changes',{event:'*',schema:'public',table:'monthly_listing_submissions'},()=>{refreshVendorMonthlyBadge();refreshAdminMonthlyBadge();if(currentView==='adminMonthlyListings')navigate('adminMonthlyListings',{},false);if(currentView==='vendorMonthlyListings')navigate('vendorMonthlyListings',{},false);})
+      .on('postgres_changes',{event:'*',schema:'public',table:'vendors'},()=>{try{hydrateVendorDistances();}catch(_){} })
+      .subscribe();
+  }
+  setTimeout(startMarketplaceRealtime,900);
+  window.addEventListener('beforeunload',()=>{try{if(live)sb.removeChannel(live);}catch(_){}},{once:true});
+
+  /* ------------------------------------------------------------
+     Home scroll stability: a background mutation must not yank the viewport.
+  ------------------------------------------------------------ */
+  let lastUserScroll=0,lastUserY=0,restoring=false;
+  window.addEventListener('scroll',()=>{lastUserScroll=Date.now();lastUserY=window.scrollY||document.documentElement.scrollTop||0;},{passive:true});
+  const appObserver=new MutationObserver(()=>{
+    if(restoring||currentView!=='home')return;
+    if(Date.now()-lastUserScroll>700)return;
+    requestAnimationFrame(()=>{const y=window.scrollY||document.documentElement.scrollTop||0;if(Math.abs(y-lastUserY)>40){restoring=true;window.scrollTo({top:lastUserY,left:0,behavior:'auto'});requestAnimationFrame(()=>{restoring=false;});}});
+  });
+  const app=document.getElementById('app');if(app)appObserver.observe(app,{childList:true,subtree:false});
+
+  /* Floating controls remain anchored while search renders/reflows. */
+  const floatObs=new MutationObserver(()=>{const a=document.getElementById('aiChatFab'),c=document.getElementById('cartFab');if(a){a.style.left='auto';a.style.right='18px';a.style.transform='none';}if(c){c.style.left='auto';c.style.right='18px';c.style.transform='none';}});floatObs.observe(document.body,{childList:true,subtree:true});
+
+  /* Fix admin profile dispute icon if the profile was rendered before the
+     final role-specific map ran. */
+  function patchProfileIcons(){document.querySelectorAll('#profilePanel .profile-nav-link').forEach(link=>{const t=(link.querySelector('.profile-nav-text')?.textContent||'').toLowerCase();const i=link.querySelector('.profile-item-icon i');if(!i)return;if(t.includes('disputes'))i.className='fa-solid fa-scale-balanced';if(t.includes('monthly listings'))i.className='fa-solid fa-receipt';});}
+  const piObs=new MutationObserver(patchProfileIcons);piObs.observe(document.body,{childList:true,subtree:true});setTimeout(patchProfileIcons,250);
+
+  /* Remove the extra admin notification header action: one functional mark-all
+     button, and only while there are unread notifications. */
+  function patchNotifHeader(){const h=document.getElementById('notificationsPageHeaderActions');if(!h)return;const unread=Number(window.__notifUnreadCount||0)||document.querySelectorAll('#notificationsPage .notif-item.unread').length;const buttons=[...h.querySelectorAll('button')];buttons.forEach((b,i)=>{if(i>0)b.remove();});const b=h.querySelector('button');if(!b)return;if(unread<=0){b.remove();return;}b.className='notif-mark-all-compact';b.setAttribute('aria-label','Mark all notifications as read');b.title='Mark all notifications as read';b.innerHTML='<i class="fa-solid fa-check-double"></i>';b.onclick=()=>markAllNotifsRead();}
+  const nhObs=new MutationObserver(patchNotifHeader);nhObs.observe(document.body,{childList:true,subtree:true});setTimeout(patchNotifHeader,250);
+
+  /* Keep the live unread number available to the header patch. */
+  const originalRefreshNotifications=window.refreshNotifications;
+  if(typeof originalRefreshNotifications==='function'&&!window.__levroUnreadMirror){window.__levroUnreadMirror=true;window.refreshNotifications=async function(){const r=await originalRefreshNotifications.apply(this,arguments);try{window.__notifUnreadCount=Number(notifCount||0);}catch(_){}patchNotifHeader();return r;};}
+
+  /* Sharing: use server-rendered preview URLs so WhatsApp can see the vendor
+     profile photo. */
+  window.sharePreviewUrl=function(kind,id){const u=new URL('/api/share-preview',location.origin);u.searchParams.set('type',kind);u.searchParams.set('id',String(id||''));return u.toString();};
+  const oldStorefrontPublic=window.storefrontPublicUrl,oldProductPublic=window.productPublicUrl;
+  if(typeof oldStorefrontPublic==='function')window.storefrontPublicUrl=function(id){return window.sharePreviewUrl('storefront',id);};
+  if(typeof oldProductPublic==='function')window.productPublicUrl=function(id){return window.sharePreviewUrl('product',id);};
+
+  /* Vendor directory default is the grid for normal visits; map remains a
+     deliberate user choice. */
+  const oldRenderVendors=window.renderVendorsDirectory;
+  if(typeof oldRenderVendors==='function'&&!window.__levroVendorGridDefault){
+    window.__levroVendorGridDefault=true;
+    window.renderVendorsDirectory=function(){const html=oldRenderVendors.apply(this,arguments);setTimeout(()=>{try{switchVendorsView('grid')}catch(_){}},80);return html;};
+  }
+})();
+</script>
+
+
+<script id="levromart-v2-router-and-directory-final-20260913">
+(function(){
+  'use strict';
+  /* Normal navigation to Vendors opens the grid. The map is still available
+     through the explicit Map button or a map deep-link. */
+  const nav=window.navigate;
+  if(typeof nav==='function'&&!window.__levroV2NavigateWrap){
+    window.__levroV2NavigateWrap=true;
+    window.navigate=async function(view,params={},push=true){
+      const result=await nav.apply(this,arguments);
+      if(view==='vendors' && !(params&&String(params.map||'')==='1' || String(params.map||'').toLowerCase()==='true')){
+        setTimeout(()=>{try{switchVendorsView('grid')}catch(_){}},40);
+      }
+      if(view==='vendorMonthlyListings')setTimeout(()=>{try{window.__levroRefreshVendorMonthlyBadge?.()}catch(_){}},80);
+      return result;
+    };
+  }
+  /* Emit a stable event for distance hydration after vendor directory loads. */
+  const oldLoad=window.loadVendorsDirectory;
+  if(typeof oldLoad==='function'&&!window.__levroV2LoadVendorsWrap){
+    window.__levroV2LoadVendorsWrap=true;
+    window.loadVendorsDirectory=async function(){const r=await oldLoad.apply(this,arguments);document.dispatchEvent(new Event('levromart:vendor-directory-rendered'));setTimeout(()=>window.__levroHydrateVendorDistances?.(),20);return r;};
+  }
+})();
+</script>
+
+<style id="levromart-v3-variant-quantity-css">
+#app .variant-price-row{grid-template-columns:64px minmax(110px,1fr) 112px 112px 78px 34px!important;gap:.42rem!important;}
+#app .variant-price-row input{font-size:.72rem!important;padding:.5rem .55rem!important;}
+#app .variant-price-row .variant-quantity{min-width:0!important;}
+@media(max-width:720px){#app .variant-price-row{grid-template-columns:58px minmax(0,1fr) 1fr 1fr 72px 34px!important;}}
+@media(max-width:520px){#app .variant-price-row{grid-template-columns:58px minmax(0,1fr) 34px!important;}#app .variant-price-row .variant-sale-price,#app .variant-price-row .variant-discount-price,#app .variant-price-row .variant-quantity{grid-column:2 / 3!important;}#app .variant-price-row .variant-price-remove{grid-column:3!important;grid-row:1 / span 4!important;}#app .variant-price-row:after{grid-column:2 / 3!important;}}
+</style>
+
+<script id="levromart-v3-levi-realtime-final-20260913">
+(function(){
+  'use strict';
+  const clean=t=>String(t||'').toLowerCase().replace(/[^a-z0-9\s₦]/g,' ').replace(/\s+/g,' ').trim();
+  const money=v=>{const n=Number(v);return Number.isFinite(n)&&n>0?`₦${n.toLocaleString('en-NG',{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2})}`:'price on request';};
+  const priceOf=p=>{if(p.discount_price!=null&&p.sale_price!=null&&Number(p.discount_price)>0&&Number(p.discount_price)<Number(p.sale_price))return `${money(p.discount_price)} (was ${money(p.sale_price)})`;if(p.sale_price!=null)return money(p.sale_price);if(p.rental_rate!=null)return `${money(p.rental_rate)}/${p.rental_rate_unit||'day'}`;return 'price on request';};
+  const dist=(v)=>{if(!v||typeof buyerLocation==='undefined'||!buyerLocation||v.lat==null||v.lng==null)return null;const d=Number(haversineKm(buyerLocation.lat,buyerLocation.lng,Number(v.lat),Number(v.lng)));return Number.isFinite(d)?d:null;};
+  const vagueIntent=q=>{const x=clean(q);if(/\b(something to eat|want to eat|food to eat|what can i eat|hungry|meal)\b/.test(x))return 'eat';if(/\b(snack|snack on|something to snack)\b/.test(x))return 'snack';if(/\b(something to drink|want to drink|drink|thirsty)\b/.test(x))return 'drink';return null;};
+  const vendorNameFromHistory=(messages,vendors)=>{const all=(messages||[]).map(m=>String(m?.content||'')).join(' ');let best=null,bestLen=0;for(const v of vendors||[]){const n=clean(v.business_name);if(n&&all.includes(n)&&n.length>bestLen){best=v;bestLen=n.length;}}return best;};
+  async function loadMarketplace(){
+    const {data}=await sb.from('products').select('id,name,description,sale_price,discount_price,rental_rate,rental_rate_unit,quantity_available,is_service,listing_type,photos,vendor:vendors!inner(id,business_name,avg_rating,review_count,city,lat,lng,verification_status,is_active),category:categories(name,sector_id)').eq('status','active').eq('vendor.verification_status','verified').eq('vendor.is_active',true).limit(500);
+    return data||[];
+  }
+  async function smartLocalLevi(payload){
+    const messages=Array.isArray(payload?.messages)?payload.messages:[];const latest=[...messages].reverse().find(m=>m?.role==='user')?.content||'';const q=clean(latest);if(!q)return null;
+    const intent=vagueIntent(q);
+    // Ask clarifying questions only when the request is genuinely underspecified.
+    if(intent){
+      if(intent==='eat')return {reply:'Absolutely. What would you like to eat — rice, shawarma, noodles, plantain, something light, or something else?'};
+      if(intent==='snack')return {reply:'Sure. What kind of snack are you in the mood for — plantain chips, pastries, biscuits, nuts, something sweet, or something else?'};
+      return {reply:'Of course. What would you like to drink — water, juice, soft drink, smoothie, energy drink, or something else?'};
+    }
+    try{
+      const products=await loadMarketplace();const vendors=[...new Map(products.map(p=>[String(p.vendor?.id),p.vendor]).filter(x=>x[1])).values()];
+      const vendor=vendorNameFromHistory(messages,vendors);
+      const asksList=/\b(list|show|give me|what .*sell|what .*has|products|items|prices|price list|how much|cost)\b/.test(q);
+      const vendorWords=/\b(vendor|store|seller|she sells|he sells|they sell|their products|from .*vendor)\b/.test(q);
+      if((vendor&&asksList)||vendorWords&&/\bproducts|items|prices|sell|sells\b/.test(q)){
+        const target=vendor||vendors.find(v=>q.includes(clean(v.business_name))) ;
+        if(target){
+          const rows=products.filter(p=>String(p.vendor?.id)===String(target.id));
+          if(rows.length){
+            const shown=rows.slice(0,25);const lines=shown.map(p=>`${p.name} — ${priceOf(p)}${p.quantity_available!=null?` · ${Number(p.quantity_available).toLocaleString()} available`:''}`);
+            return {reply:`${target.business_name} currently has ${rows.length} active listing${rows.length===1?'':'s'}.\n\n${lines.join('\n')}${rows.length>25?'\n\nI found more listings too — ask me for the rest.':''}`};
+          }
+        }
+      }
+      // Keyword-aware product search: name + description + category + sector.
+      const stop=new Set(['what','where','which','closest','nearest','vendor','vendors','can','get','from','please','show','me','find','some','something','for','the','and','with','want','need','would','like','recommend','recommendation','price','prices','how','much','is','are','sell','sells']);
+      const tokens=q.split(/\s+/).filter(w=>w.length>2&&!stop.has(w));
+      const scored=products.map(p=>{const text=clean([p.name,p.description,p.category?.name,p.vendor?.business_name].join(' '));let score=tokens.reduce((n,t)=>n+(text.includes(t)?(clean(p.name).includes(t)?5:2):0),0);return {p,score,d:dist(p.vendor)};}).filter(x=>x.score>0).sort((a,b)=>(b.score-a.score)||(a.d??Infinity)-(b.d??Infinity)||Number(b.p.vendor?.avg_rating||0)-Number(a.p.vendor?.avg_rating||0));
+      const asksClosest=/\b(closest|nearest|near me|close to me|around me|nearby)\b/.test(q);
+      if(scored.length && (tokens.length||asksClosest)){
+        const top=scored.slice(0,6);const lines=top.map(x=>`${x.p.name} — ${priceOf(x.p)} · ${x.p.vendor?.business_name||'Vendor'}${x.d!=null?` · ${x.d<1?Math.round(x.d*1000)+' m':x.d.toFixed(1)+' km'} away`:''}${x.p.vendor?.avg_rating!=null?` · ${Number(x.p.vendor.avg_rating).toFixed(1)}★`:''}`);
+        const vendorNames=[...new Set(top.map(x=>x.p.vendor?.business_name).filter(Boolean))];
+        return {reply:`I found ${top.length} good match${top.length===1?'':'es'}${asksClosest&&typeof buyerLocation!=='undefined'&&buyerLocation?' near you':''}:\n\n${lines.join('\n')}\n\n${vendorNames.length>1?'If you tell me your preferred budget or whether you want delivery or pickup, I can narrow this down further.':'Would you like delivery or pickup?'}`};
+      }
+      // Explicit vendor-name query even if no product keyword matched.
+      const target=vendors.find(v=>q.includes(clean(v.business_name)));
+      if(target){
+        const rows=products.filter(p=>String(p.vendor?.id)===String(target.id));
+        if(rows.length)return {reply:`${target.business_name} is rated ${Number(target.avg_rating||0).toFixed(1)}★ (${Number(target.review_count||0)} reviews) and currently has ${rows.length} active listing${rows.length===1?'':'s'}. Ask me “what products and prices does ${target.business_name} have?” and I’ll list them.`};
+      }
+    }catch(e){console.warn('[Levi v3 local intelligence]',e)}
+    return null;
+  }
+  const prev=window.fetchLeviReply;
+  if(typeof prev==='function'&&!window.__levroV3SmartLevi){
+    window.__levroV3SmartLevi=true;
+    window.fetchLeviReply=async function(payload){
+      try{const local=await smartLocalLevi(payload);if(local)return local;}catch(_){}
+      return prev.apply(this,arguments);
+    };
+  }
+
+  // Per-photo gallery markers and stock refresh.
+  function refreshGallery(){try{const slides=[...document.querySelectorAll('#productGalleryTrack .product-gallery-slide')];const variants=window.__productGalleryVariants||[];slides.forEach((s,i)=>{const old=s.querySelector('.product-gallery-per-photo-count');old?.remove();const c=document.createElement('span');c.className='product-gallery-per-photo-count';c.textContent=`${i+1}/${slides.length}`;s.appendChild(c);const src=s.querySelector('img')?.src||'';const v=variants.find(x=>String(x.photo_url||'')===String(src));const stock=s.querySelector('.product-gallery-variant-stock');stock?.remove();if(v&&v.quantity_available!=null){const b=document.createElement('span');b.className='product-gallery-variant-stock';b.textContent=`Available: ${Number(v.quantity_available).toLocaleString()}`;s.appendChild(b);}})}catch(_){}
+  }
+  setInterval(()=>{if(currentView==='productDetail')refreshGallery()},1200);setTimeout(refreshGallery,300);
+
+  // Short realtime fallback for public counts when Realtime RLS doesn't expose
+  // another user's change event. This is targeted and preserves scroll.
+  let lastCountRefresh=0;
+  setInterval(()=>{if(document.visibilityState!=='visible')return;if(!['home','vendors','productDetail','packageDetail'].includes(currentView))return;if(Date.now()-lastCountRefresh<4000)return;lastCountRefresh=Date.now();try{hydrateProductLikeCountsInView();hydratePackageCommentCountsInView();hydrateFollowerCounts();window.__levroHydrateVendorDistances?.()}catch(_){}},5000);
+
+  // Fix profile split edge gesture so it can start from a closed panel.
+  document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;const p=document.getElementById('profilePanel');if(p?.classList.contains('open'))return;if((e.clientX||0)>38)return;window.__levroProfileDrag={id:e.pointerId,x:e.clientX,y:e.clientY};},{passive:true});
+  document.addEventListener('pointermove',e=>{const d=window.__levroProfileDrag;if(!d||d.id!==e.pointerId)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(Math.abs(dy)>Math.abs(dx)*1.1){window.__levroProfileDrag=null;return;}if(dx<8)return;e.preventDefault();document.body.classList.add('levro-profile-split','profile-reveal-dragging');document.getElementById('profilePanel')?.classList.add('open');const max=window.innerWidth<=700?window.innerWidth*.78:Math.min(390,window.innerWidth*.42);const x=Math.min(max,Math.max(0,dx));document.getElementById('app')?.style.setProperty('transform',`translateX(${x}px)`);document.getElementById('profilePanel')?.style.setProperty('transform','translateX(0)');},{passive:false});
+  document.addEventListener('pointerup',e=>{const d=window.__levroProfileDrag;if(!d||d.id!==e.pointerId)return;const dx=e.clientX-d.x;window.__levroProfileDrag=null;document.body.classList.remove('profile-reveal-dragging');const max=window.innerWidth<=700?window.innerWidth*.78:Math.min(390,window.innerWidth*.42);if(dx>max*.3){document.body.classList.add('levro-profile-split');document.getElementById('app')?.style.setProperty('transform',`translateX(${max}px)`);document.getElementById('profilePanel')?.classList.add('open');}else{document.getElementById('profilePanel')?.classList.remove('open');document.body.classList.remove('levro-profile-split');document.getElementById('app')?.style.removeProperty('transform');}},{passive:true});
 })();
 </script>
