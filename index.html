@@ -6417,6 +6417,65 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #loginModal .auth-mode-tab{font-size:.78rem!important;}
 }
 </style>
+
+<style id="levromart-master-refinement-v2">
+/* Notification category chips: every activity row identifies its domain at a glance. */
+.notifications-page-host .notif-item{display:grid!important;grid-template-columns:.42rem auto auto minmax(0,1fr)!important;align-items:center!important;gap:.55rem!important;}
+.notifications-page-host .notif-item::before{content:""!important;width:.42rem!important;height:.42rem!important;min-width:.42rem!important;border-radius:50%!important;background:transparent!important;display:block!important;}
+.notifications-page-host .notif-item.unread::before{background:var(--primary)!important;}
+.notifications-page-host .notif-category-badge{display:inline-flex!important;align-items:center!important;gap:.24rem!important;max-width:7.2rem!important;padding:.22rem .42rem!important;border-radius:999px!important;background:color-mix(in srgb,var(--danger) 12%,transparent)!important;color:var(--danger)!important;font-size:.58rem!important;font-weight:850!important;line-height:1.1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+.notifications-page-host .notif-category-badge i{font-size:.58rem!important;flex:0 0 auto!important;}
+.notifications-page-host .notif-category-badge span{overflow:hidden!important;text-overflow:ellipsis!important;}
+.notifications-page-host .notif-item.unread .notif-category-badge{background:var(--danger)!important;color:#fff!important;}
+.notifications-page-heading{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:.65rem!important;margin-bottom:.45rem!important;}
+.notifications-page-heading-copy{min-width:0!important;}
+.notifications-page-heading-copy h2{margin:0!important;line-height:1.1!important;font-size:1.18rem!important;}
+.notifications-page-heading-copy p{margin:.18rem 0 0!important;font-size:.76rem!important;line-height:1.25!important;}
+.notifications-page-heading-actions{display:flex!important;align-items:center!important;gap:.3rem!important;}
+.notifications-page-heading-actions .icon-btn{width:34px!important;height:34px!important;min-width:34px!important;}
+.notifications-page-heading-actions .notif-mark-all-compact{width:34px!important;height:34px!important;min-width:34px!important;}
+.notifications-page-back{width:36px!important;height:36px!important;min-width:36px!important;}
+.notifications-page-host .notif-tabs{justify-content:center!important;align-items:center!important;gap:.18rem!important;}
+.notifications-page-host .notif-tab{min-width:0!important;flex:0 1 auto!important;padding:.42rem .62rem!important;}
+@media(max-width:520px){
+  .notifications-page-heading{gap:.45rem!important;}
+  .notifications-page-heading-copy h2{font-size:1.05rem!important;}
+  .notifications-page-heading-copy p{font-size:.7rem!important;}
+  .notifications-page-heading-actions .icon-btn,.notifications-page-heading-actions .notif-mark-all-compact{width:32px!important;height:32px!important;min-width:32px!important;}
+  .notifications-page-host .notif-tab{font-size:.68rem!important;padding:.42rem .45rem!important;}
+  .notifications-page-host .notif-category-badge{max-width:5.7rem!important;font-size:.53rem!important;}
+}
+/* Product/package card footer: actions occupy real layout space, never collide. */
+#app .product-card-action-row{width:100%!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.65rem!important;margin-top:auto!important;padding-top:.4rem!important;min-width:0!important;}
+#app .product-card-action-left{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:.4rem!important;min-width:0!important;flex:1 1 auto!important;}
+#app .product-card-action-left .card-cart-btn{position:static!important;inset:auto!important;flex:0 0 auto!important;}
+#app .product-card-action-left .own-listing-badge{white-space:nowrap!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+#app .product-card-action-row .card-comment-btn{position:static!important;flex:0 0 auto!important;margin-left:auto!important;}
+#app .product-card-action-row .card-service-btn{position:static!important;flex:0 0 auto!important;}
+#app .product-card-wrap .card{min-width:0!important;}
+/* Compact, icon-only social comment actions. */
+#app .product-comment-actions{gap:.72rem!important;}
+#app .product-comment-action{width:34px!important;height:34px!important;min-width:34px!important;border-radius:50%!important;padding:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:0!important;font-size:.82rem!important;}
+#app .product-comment-action:hover{background:color-mix(in srgb,var(--primary) 8%,transparent)!important;color:var(--primary)!important;}
+#app .product-comment-action .comment-like-count{font-size:.65rem!important;margin-left:.18rem!important;}
+#app .product-comments-empty{font-size:.76rem!important;text-align:left!important;padding:.75rem 0!important;color:var(--muted)!important;line-height:1.4!important;}
+#app .product-comments-toggle{font-size:.75rem!important;min-height:34px!important;}
+#app .product-gallery-variant-meta{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.9rem!important;margin-top:.55rem!important;padding:.55rem .7rem!important;border-radius:.75rem!important;background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;}
+#app .product-gallery-variant-meta>span{min-width:0!important;overflow-wrap:anywhere!important;}
+#app .product-gallery-variant-label{color:var(--muted)!important;font-size:.72rem!important;font-weight:650!important;}
+#app .product-gallery-variant-meta strong{font-size:.78rem!important;}
+#app .product-gallery-variant-price{white-space:nowrap!important;color:var(--primary)!important;}
+/* Variety indicator added to card metadata without creating a large badge. */
+#app .product-variety-indicator{display:inline-flex!important;align-items:center!important;gap:.2rem!important;color:var(--muted)!important;font-size:.65rem!important;font-weight:750!important;white-space:nowrap!important;}
+/* Vendor storefront avatars are geometrically locked to a true circle. */
+#app .storefront-profile .storefront-avatar,
+#app .storefront-profile .storefront-avatar-button,
+#app .storefront-profile .storefront-avatar-fallback-button,
+#app .storefront-profile .storefront-avatar img,
+#app .storefront-profile .storefront-avatar-button img,
+#app .storefront-profile .storefront-avatar-fallback-button .avatar-fallback{width:82px!important;height:82px!important;min-width:82px!important;min-height:82px!important;max-width:82px!important;max-height:82px!important;aspect-ratio:1 / 1!important;border-radius:50%!important;overflow:hidden!important;box-sizing:border-box!important;}
+#app .storefront-profile .storefront-avatar img,#app .storefront-profile .storefront-avatar-button img{object-fit:cover!important;display:block!important;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -8716,7 +8775,7 @@ function getNotifHost() { return currentView === "notifications" ? byId("notific
 function toggleNotifPanel() {
   requestOfferBadgeCount = 0; updateRequestOfferBadge();
   try { sessionStorage.setItem("levromart-request-offers-seen-at", new Date().toISOString()); } catch (_) {}
-  notifViewMode = "inbox"; exitNotifSelectMode(false);
+  notifViewMode = "all"; exitNotifSelectMode(false);
   if (currentView !== "notifications") lastNotificationReturnView = currentView || "home";
   navigate("notifications");
 }
@@ -8988,30 +9047,38 @@ async function renderNotifPanel() {
   const { data: rawItems, error } = await q;
   const currentVendorId = String(vendor?.id || "");
   const notificationType = (n) => String(n?.type || n?.notification_type || n?.notification_category || "").toLowerCase();
-  const notificationText = (n) => `${notificationType(n)} ${String(n?.title || "")} ${String(n?.body || "")}`.toLowerCase();
-  const isVendorActivityNotification = (n) => {
-    const t = notificationText(n);
-    return !!(
-      n?.vendor_id && String(n.vendor_id) !== currentVendorId ||
-      /new[_ -]?listing|new[_ -]?variety|new[_ -]?package|new[_ -]?service|vendor[_ -]?(activity|update|follow)|followed[_ -]?vendor|price[_ -]?change/.test(t) ||
-      notificationType(n).includes("vendor")
-    );
-  };
-  const isMyListingNotification = (n) => {
-    if (!currentVendorId) return false;
-    if (n?.vendor_id && String(n.vendor_id) === currentVendorId) return true;
-    const t = notificationText(n);
-    return /product[_ -]?(comment|like|save|wishlist|interaction)|listing[_ -]?(comment|like|save|interaction)|new[_ -]?comment|comment[_ -]?like|variety[_ -]?activity|order[_ -]?(item|listing)/.test(t) &&
-      (!n?.vendor_id || String(n.vendor_id) === currentVendorId);
-  };
+  const notificationText = (n) => `${notificationType(n)} ${String(n?.title || "")} ${String(n?.body || "")} ${JSON.stringify(n?.target_params || {})} ${JSON.stringify(n?.metadata || {})}`.toLowerCase();
   const classifyNotification = (n) => {
-    if (isMyListingNotification(n)) return "myListings";
-    if (isVendorActivityNotification(n)) return "vendors";
+    const t = notificationText(n);
+    const type = notificationType(n);
+    const target = String(n?.target_view || "").toLowerCase();
+    const vendorId = String(n?.vendor_id || "");
+    const meta = n?.metadata || {};
+    const metaKind = String(meta?.kind || meta?.entity_type || meta?.entityType || "").toLowerCase();
+    const isOrder = /order|request|offer|payment|checkout|handover|handed[_ -]?over|returned|completed|cancelled|dispute/.test(type) || /order|request|offer|payment|handover|handed[_ -]?over|returned|completed|cancelled|dispute/.test(t) || /order|request/.test(target) || !!meta?.order_id || !!meta?.request_id || !!meta?.offer_id;
+    if (isOrder) return "orders";
+    const isOwnListing = !!currentVendorId && vendorId === currentVendorId;
+    const isListingActivity = isOwnListing || /product[_ -]?(comment|like|save|wishlist|interaction)|listing[_ -]?(comment|like|save|wishlist|interaction)|new[_ -]?comment|comment[_ -]?like|variety[_ -]?activity|package[_ -]?(comment|like|save|interaction)/.test(t) || /product|package|listing|variant|variety/.test(metaKind);
+    if (vendor?.id && isListingActivity) return "myListings";
+    const isOtherVendorActivity = (vendorId && vendorId !== currentVendorId) || /new[_ -]?(listing|variety|package|service)|followed[_ -]?vendor|vendor[_ -]?(activity|update|follow)|price[_ -]?change|discount/.test(t) || type.includes("vendor");
+    if (isOtherVendorActivity) return "vendors";
     return "personal";
+  };
+  const categoryLabelForNotification = (n) => {
+    const c = classifyNotification(n);
+    if (c === "orders") return vendor?.id ? "Orders & Requests" : "Orders";
+    if (c === "myListings") return "My Listings";
+    if (c === "vendors") return "Vendors";
+    return "Personal";
+  };
+  const categoryIconForNotification = (n) => {
+    const c = classifyNotification(n);
+    return c === "orders" ? "fa-receipt" : c === "myListings" ? "fa-box" : c === "vendors" ? "fa-store" : "fa-user";
   };
   const items = (rawItems || []).filter((n) => {
     if (notifViewMode === "vendors") return classifyNotification(n) === "vendors";
     if (notifViewMode === "myListings") return classifyNotification(n) === "myListings";
+    if (notifViewMode === "orders") return classifyNotification(n) === "orders";
     if (notifViewMode === "personal") return classifyNotification(n) === "personal";
     return true;
   });
@@ -9021,19 +9088,20 @@ async function renderNotifPanel() {
     // Keep the drawer honest and let the user retry by reopening/switching tabs.
     window.__notifPanelIds = [];
     panel.innerHTML = `<div class="notifications-page-tools"><strong>Notifications</strong></div><div class="notif-tabs">${[
-      ["all","All"],["vendors","Vendors"],...(vendor?.id ? [["myListings","My Listings"]] : []),["personal","Personal"]
+      ["all","All"],["personal","Personal"],["orders",vendor?.id ? "Orders & Requests" : "Orders"],...(vendor?.id ? [["myListings","My Listings"]] : []),["vendors","Vendors"]
     ].map(([key,label]) => `<button class="notif-tab ${notifViewMode === key ? "active" : ""}" onclick="switchNotifView('${key}')">${label}</button>`).join("")}</div><p class="muted" style="padding:1rem;text-align:center;">Couldn’t load notifications right now. Please try again.</p>`;
     panel.classList.toggle("selecting", false);
     return;
   }
   window.__notifPanelIds = (items || []).map((n) => n.id);
 
-  const modeLabel = ({ all: "Notifications", vendors: "Vendors", myListings: "My Listings", personal: "Personal" })[notifViewMode] || "Notifications";
+  const modeLabel = ({ all: "Notifications", personal: "Personal", orders: vendor?.id ? "Orders & Requests" : "Orders", myListings: "My Listings", vendors: "Vendors" })[notifViewMode] || "Notifications";
   const notificationTabs = [
     ["all","All"],
-    ["vendors","Vendors"],
+    ["personal","Personal"],
+    ["orders",vendor?.id ? "Orders & Requests" : "Orders"],
     ...(vendor?.id ? [["myListings","My Listings"]] : []),
-    ["personal","Personal"]
+    ["vendors","Vendors"]
   ];
   const tabs = `<div class="notif-tabs" role="tablist" aria-label="Notification categories">${notificationTabs.map(([key,label]) => `<button type="button" role="tab" aria-selected="${notifViewMode === key ? "true" : "false"}" class="notif-tab ${notifViewMode === key ? "active" : ""}" onclick="switchNotifView('${key}')">${label}</button>`).join("")}</div>`;
 
@@ -9049,7 +9117,7 @@ async function renderNotifPanel() {
         </div>
       </div>`
     : isNotificationsPage
-      ? `<div class="notifications-page-tools"><strong>${esc(modeLabel)}</strong><div class="notif-header-actions"><button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications"><i class="fa-solid fa-check-double"></i></button>${(items || []).some((n) => !n.read) ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all notifications as read" title="Mark all notifications as read"><i class="fa-solid fa-check-double"></i></button>` : ""}</div></div>${tabs}`
+      ? `${tabs}`
       : `<div class="drawer-header"><h4>${modeLabel}</h4>
         <div class="notif-header-actions">
           <button type="button" class="icon-btn" onclick="toggleInlineMenu('notifMoreMenu',event)" aria-label="Notification actions"><i class="fa-solid fa-ellipsis"></i></button>
@@ -9063,14 +9131,15 @@ async function renderNotifPanel() {
       </div>
       ${tabs}`;
 
-  const emptyMsg = { all: "You're all caught up.", vendors: "No vendor activity yet.", myListings: "No activity on your listings yet.", personal: "No personal notifications yet." }[notifViewMode] || "You're all caught up.";
+  const emptyMsg = { all: "You're all caught up.", personal: "No personal notifications yet.", orders: vendor?.id ? "No order or request activity yet." : "No order activity yet.", myListings: "No activity on your listings yet.", vendors: "No vendor activity yet." }[notifViewMode] || "You're all caught up.";
   const hasUnread = (items || []).some((n) => !n.read);
   const markAllBar = "";
   const list = (items && items.length)
     ? items.map((n) => `<div class="notif-item-wrap" data-id="${n.id}">
         <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
           ${notifSelectMode ? `<span class="notif-select-check"><i class="fa-solid fa-check"></i></span>` : ""}
-          ${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.1rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<i class='fa-solid fa-circle-info'></i>`}
+          ${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;flex:none;" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.1rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<span class="notification-system-icon"><i class='fa-solid fa-circle-info'></i></span>`}
+          <span class="notif-category-badge" title="${esc(categoryLabelForNotification(n))}"><i class="fa-solid ${categoryIconForNotification(n)}"></i><span>${esc(categoryLabelForNotification(n))}</span></span>
           <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
         </button>
       </div>`).join("")
@@ -9078,6 +9147,10 @@ async function renderNotifPanel() {
 
   panel.innerHTML = `${topBar}${markAllBar}<div class="notif-list-scroll">${list}</div>`;
   panel.classList.toggle("selecting", notifSelectMode);
+  if (isNotificationsPage) {
+    const actions = byId("notificationsPageHeaderActions");
+    if (actions) actions.innerHTML = `<button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications" title="Select notifications"><i class="fa-solid fa-check-double"></i></button>${hasUnread ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all notifications as read" title="Mark all notifications as read"><i class="fa-solid fa-check-double"></i></button>` : ""}`;
+  }
 }
 
 async function handleNotifItemClick(event, id) {
@@ -9111,7 +9184,7 @@ async function handleNotifItemClick(event, id) {
 }
 
 function switchNotifView(mode) {
-  const allowed = new Set(["all","vendors","myListings","personal"]);
+  const allowed = new Set(["all","personal","orders","myListings","vendors"]);
   if (!allowed.has(mode)) mode = "all";
   if (mode === "myListings" && !vendor?.id) mode = "personal";
   notifViewMode = mode;
@@ -10601,7 +10674,7 @@ document.addEventListener("click", (e) => {
 
 // ---------- DEDICATED NOTIFICATIONS PAGE ----------
 function renderNotificationsPage() {
-  return `<div class="notifications-page-shell"><div class="notifications-page-heading"><button type="button" class="icon-btn" onclick="navigate(lastNotificationReturnView || 'home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><h2><i class="fa-solid fa-bell"></i> Notifications</h2><p class="muted">Stay up to date with activity on Levromart.</p></div></div><div id="notificationsPage" class="notifications-page-host" aria-live="polite"></div></div>`;
+  return `<div class="notifications-page-shell"><div class="notifications-page-heading"><button type="button" class="icon-btn notifications-page-back" onclick="navigate(lastNotificationReturnView || 'home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="notifications-page-heading-copy"><h2><i class="fa-solid fa-bell"></i> Notifications</h2><p class="muted">Stay up to date with activity on Levromart.</p></div><div id="notificationsPageHeaderActions" class="notifications-page-heading-actions"></div></div><div id="notificationsPage" class="notifications-page-host" aria-live="polite"></div></div>`;
 }
 
 // ---------- NAVIGATION ----------
@@ -10961,6 +11034,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     if (view === "productDetail" && params?.openComments) { try { toggleProductComments(params.productId); } catch (_) {} }
   }, 0);
   if (view !== "productDetail") stopProductCommentRealtime();
+  setTimeout(hydrateProductVariantIndicatorsInView, 0);
   if (view === "settings") setTimeout(hydrateSettingsPage, 0);
   // A same-view, non-history refresh (notably live order updates) must keep
   // the user's scroll position. Real navigation still starts at the top.
@@ -12348,6 +12422,24 @@ function productDeliverySummaryHtml(p) {
   return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Free delivery</p>`;
 }
 
+async function hydrateProductVariantIndicatorsInView(){
+  const nodes=[...document.querySelectorAll('.product-card-wrap[data-product-id]')];
+  const ids=[...new Set(nodes.map(n=>n.dataset.productId).filter(Boolean))];
+  if(!ids.length||!sb)return;
+  try{
+    const {data,error}=await sb.from('product_variants').select('product_id').in('product_id',ids);
+    if(error)return;
+    const counts=new Map();(data||[]).forEach(r=>{const k=String(r.product_id);counts.set(k,(counts.get(k)||0)+1);});
+    nodes.forEach(node=>{
+      const id=String(node.dataset.productId),n=Number(counts.get(id)||0);
+      const row=node.querySelector('.product-card-vendor-row'); if(!row)return;
+      let el=row.querySelector('.product-variety-indicator');
+      if(n>0){if(!el){el=document.createElement('span');el.className='product-variety-indicator';row.appendChild(el);}el.innerHTML=`<i class="fa-solid fa-layer-group"></i> ${n>1?'Varieties':'Variety'}`;}
+      else el?.remove();
+    });
+  }catch(_){}
+}
+
 function productCardHtml(p) {
   const img = p.photos?.[0];
   const isFav = favoriteIds.has(p.id);
@@ -12360,7 +12452,7 @@ function productCardHtml(p) {
       : ownListing
         ? `<span class="badge own-listing-badge" title="You can't buy your own listing"><i class="fa-solid fa-store"></i> Your listing</span>`
         : "";
-  return `<div class="product-card-wrap">
+  return `<div class="product-card-wrap" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
@@ -12380,7 +12472,7 @@ function productCardHtml(p) {
       </div>
       ${p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`}
       <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
-      <div class="product-card-action-row">${actionHtml}<button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button></div>
+      <div class="product-card-action-row"><div class="product-card-action-left">${actionHtml}</div><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button></div>
     </div>
   </div>`;
 }
@@ -16385,8 +16477,9 @@ async function buyPackage(packageId) {
 window.__productCommentCounts = window.__productCommentCounts || new Map();
 let productCommentRealtimeChannel = null;
 let productCommentRealtimeProductId = null;
-let productCommentRefreshTimer = null;
 let activeProductCommentReplyId = null;
+const productCommentsLoaded = new Map();
+const productCommentsFetches = new Map();
 
 async function hydrateProductCommentCountsInView() {
   const nodes = [...document.querySelectorAll(".card-comment-btn[data-product-id], #productCommentsCount[data-product-id]")];
@@ -16405,6 +16498,7 @@ async function hydrateProductCommentCountsInView() {
   });
   const pageCount = byId("productCommentsCount");
   if (pageCount && currentProductDetail?.id) pageCount.textContent = String(window.__productCommentCounts.get(String(currentProductDetail.id)) || 0);
+  hydrateProductVariantIndicatorsInView();
 }
 function openProductCommentsFromCard(productId) { navigate("productDetail", { productId, openComments: true }); }
 
@@ -16420,33 +16514,46 @@ async function fetchProductComments(productId) {
 }
 function productCommentRowHtml(comment, likeMap, myLiked, depth=0) {
   const liked=myLiked.has(String(comment.id)), own=String(session?.user?.id||"")===String(comment.user_id||"");
-  return `<div class="product-comment-row" data-comment-id="${esc(comment.id)}" style="${depth ? "margin-left:1.1rem;" : ""}">${comment.author_avatar_url ? `<img src="${esc(comment.author_avatar_url)}" class="avatar-circle" style="width:2rem;height:2rem;object-fit:cover;flex:none;" alt="${esc(comment.author_name||"User")}">` : avatarFallbackHtml(comment.author_name||"User","2rem","product-comment-avatar",comment.author_name||"User",comment.user_id||comment.author_name)}<div class="product-comment-main"><div class="product-comment-head"><strong>${esc(comment.author_name||"Levromart user")}</strong><span class="muted">${timeAgo(comment.created_at)}</span></div><div class="product-comment-body">${esc(comment.content)}</div><div class="product-comment-actions"><button type="button" class="product-comment-action ${liked ? "active" : ""}" onclick="toggleProductCommentLike('${esc(comment.id)}')"><i class="fa-solid fa-heart"></i> <span>${Number(likeMap.get(String(comment.id))||0)}</span></button><button type="button" class="product-comment-action" onclick="replyToProductComment('${esc(comment.id)}','${esc(comment.author_name||"Levromart user")}')"><i class="fa-solid fa-reply"></i> Reply</button>${own ? `<button type="button" class="product-comment-action danger" onclick="deleteProductComment('${esc(comment.id)}')"><i class="fa-solid fa-trash"></i> Delete</button>` : ""}</div></div></div>`;
+  return `<div class="product-comment-row" data-comment-id="${esc(comment.id)}" style="${depth ? "margin-left:1.1rem;" : ""}">${comment.author_avatar_url ? `<img src="${esc(comment.author_avatar_url)}" class="avatar-circle" style="width:2rem;height:2rem;object-fit:cover;flex:none;" alt="${esc(comment.author_name||"User")}">` : avatarFallbackHtml(comment.author_name||"User","2rem","product-comment-avatar",comment.author_name||"User",comment.user_id||comment.author_name)}<div class="product-comment-main"><div class="product-comment-head"><strong>${esc(comment.author_name||"Levromart user")}</strong><span class="muted">${timeAgo(comment.created_at)}</span></div><div class="product-comment-body">${esc(comment.content)}</div><div class="product-comment-actions"><button type="button" class="product-comment-action ${liked ? "active" : ""}" onclick="toggleProductCommentLike('${esc(comment.id)}')" aria-label="Like comment" title="Like comment"><i class="fa-${liked ? "solid" : "regular"} fa-heart"></i><span class="comment-like-count">${Number(likeMap.get(String(comment.id))||0)}</span></button><button type="button" class="product-comment-action" onclick="replyToProductComment('${esc(comment.id)}','${esc(comment.author_name||"Levromart user")}')" aria-label="Reply to comment" title="Reply"><i class="fa-solid fa-reply"></i></button>${own ? `<button type="button" class="product-comment-action danger" onclick="deleteProductComment('${esc(comment.id)}')" aria-label="Delete your comment" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ""}</div></div></div>`;
 }
 function productCommentsTreeHtml(rows,likeMap,myLiked) {
   const roots=rows.filter(r=>!r.parent_comment_id), child=new Map();
   rows.filter(r=>r.parent_comment_id).forEach(r=>{const k=String(r.parent_comment_id); if(!child.has(k)) child.set(k,[]); child.get(k).push(r);});
   return roots.map(root=>`${productCommentRowHtml(root,likeMap,myLiked)}${(child.get(String(root.id))||[]).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(r=>productCommentRowHtml(r,likeMap,myLiked,1)).join("")}`).join("");
 }
-async function loadProductComments(productId,{preserveDraft=true}={}) {
+async function loadProductComments(productId,{preserveDraft=true,showLoading=true,force=false}={}) {
   const panel=byId("productCommentsPanel"); if(!panel)return;
   const draft=preserveDraft ? (byId("productCommentInput")?.value||"") : "";
-  panel.innerHTML=`<div class="product-comments-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading comments…</div>`;
-  try {
-    const {rows,likeMap,myLiked}=await fetchProductComments(productId);
-    window.__productCommentCounts.set(String(productId),rows.length);
-    byId("productCommentsCount")?.replaceChildren(document.createTextNode(String(rows.length)));
-    const thread=rows.length?productCommentsTreeHtml(rows,likeMap,myLiked):`<div class="product-comments-empty">No comments yet. Be the first to ask a question.</div>`;
-    panel.innerHTML=`${thread}<div class="product-comment-composer">${activeProductCommentReplyId?`<div class="product-comment-replying">Replying to a comment <button type="button" class="icon-btn" onclick="cancelProductCommentReply()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button></div>`:""}<div class="product-comment-compose-row"><textarea id="productCommentInput" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}>${esc(draft)}</textarea><button type="button" class="btn btn-sm" onclick="submitProductComment('${esc(productId)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":`<small class="muted">Log in to join the discussion.</small>`}</div>`;
-  } catch (_) { panel.innerHTML=`<div class="product-comments-empty">Couldn’t load comments right now. Please try again.</div>`; }
+  const key=String(productId);
+  if(!force && productCommentsLoaded.has(key) && !productCommentsFetches.has(key)) return renderLoadedProductComments(productId,productCommentsLoaded.get(key),draft);
+  if(productCommentsFetches.has(key)) return productCommentsFetches.get(key);
+  if(showLoading && !productCommentsLoaded.has(key)) panel.innerHTML=`<div class="product-comments-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading comments…</div>`;
+  const request=(async()=>{
+    try {
+      const result=await fetchProductComments(productId);
+      productCommentsLoaded.set(key,result);
+      renderLoadedProductComments(productId,result,draft);
+    } catch (_) { if(!productCommentsLoaded.has(key)) panel.innerHTML=`<div class="product-comments-empty">Couldn’t load comments right now. Please try again.</div>`; }
+    finally { productCommentsFetches.delete(key); }
+  })();
+  productCommentsFetches.set(key,request);
+  return request;
+}
+function renderLoadedProductComments(productId,result,draft="") {
+  const panel=byId("productCommentsPanel"); if(!panel)return;
+  const {rows,likeMap,myLiked}=result;
+  window.__productCommentCounts.set(String(productId),rows.length);
+  byId("productCommentsCount")?.replaceChildren(document.createTextNode(String(rows.length)));
+  const thread=rows.length?productCommentsTreeHtml(rows,likeMap,myLiked):`<div class="product-comments-empty">No comments yet. Be the first to ask a question.</div>`;
+  panel.innerHTML=`${thread}<div class="product-comment-composer">${activeProductCommentReplyId?`<div class="product-comment-replying">Replying to a comment <button type="button" class="icon-btn" onclick="cancelProductCommentReply()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button></div>`:""}<div class="product-comment-compose-row"><textarea id="productCommentInput" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}>${esc(draft)}</textarea><button type="button" class="btn btn-sm" onclick="submitProductComment('${esc(productId)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":`<small class="muted">Log in to join the discussion.</small>`}</div>`;
 }
 function ensureProductCommentRealtime(productId) {
   if(!productId||!sb)return;
   if(productCommentRealtimeChannel && productCommentRealtimeProductId===String(productId))return;
   stopProductCommentRealtime(); productCommentRealtimeProductId=String(productId);
-  productCommentRealtimeChannel=sb.channel(`product-comments-${productId}`).on("postgres_changes",{event:"*",schema:"public",table:"product_comments",filter:`product_id=eq.${productId}`},()=>{loadProductComments(productId);hydrateProductCommentCountsInView();}).subscribe();
-  productCommentRefreshTimer=setInterval(()=>{if(currentView==="productDetail"&&productCommentRealtimeProductId===String(productId))loadProductComments(productId);},20000);
+  productCommentRealtimeChannel=sb.channel(`product-comments-${productId}`).on("postgres_changes",{event:"*",schema:"public",table:"product_comments",filter:`product_id=eq.${productId}`},async()=>{ try { const result=await fetchProductComments(productId); productCommentsLoaded.set(String(productId),result); renderLoadedProductComments(productId,result,byId("productCommentInput")?.value||""); hydrateProductCommentCountsInView(); } catch (_) {} }).subscribe();
 }
-function stopProductCommentRealtime() { if(productCommentRealtimeChannel){try{sb.removeChannel(productCommentRealtimeChannel);}catch(_){} } productCommentRealtimeChannel=null;productCommentRealtimeProductId=null;clearInterval(productCommentRefreshTimer);productCommentRefreshTimer=null; }
+function stopProductCommentRealtime() { if(productCommentRealtimeChannel){try{sb.removeChannel(productCommentRealtimeChannel);}catch(_){} } productCommentRealtimeChannel=null;productCommentRealtimeProductId=null; }
 async function toggleProductComments(productId) { const panel=byId("productCommentsPanel"),toggle=document.querySelector(".product-comments-toggle"); if(!panel)return; const opening=panel.classList.contains("hidden"); panel.classList.toggle("hidden",!opening);toggle?.setAttribute("aria-expanded",opening?"true":"false");if(opening){activeProductCommentReplyId=null;await loadProductComments(productId);ensureProductCommentRealtime(productId);}else stopProductCommentRealtime(); }
 function replyToProductComment(commentId,authorName){activeProductCommentReplyId=String(commentId);const input=byId("productCommentInput");if(input)input.focus();}
 function cancelProductCommentReply(){activeProductCommentReplyId=null;if(currentProductDetail?.id&&!byId("productCommentsPanel")?.classList.contains("hidden"))loadProductComments(currentProductDetail.id);}
@@ -16462,7 +16569,7 @@ async function toggleProductCommentLike(commentId){
   const {data:existing}=await sb.from("product_comment_likes").select("id").eq("comment_id",commentId).eq("user_id",session.user.id).maybeSingle();
   const result=existing?.id?await sb.from("product_comment_likes").delete().eq("id",existing.id).eq("user_id",session.user.id):await sb.from("product_comment_likes").insert({comment_id:commentId,user_id:session.user.id});
   if(result.error&&!/duplicate/i.test(result.error.message||"")){showToast(result.error.message||"Could not update comment like.","error");return;}
-  if(currentProductDetail?.id)loadProductComments(currentProductDetail.id);
+  if(currentProductDetail?.id)loadProductComments(currentProductDetail.id,{showLoading:false,force:true});
 }
 async function deleteProductComment(commentId){if(!session)return;if(!(await showConfirmDialog("Delete your comment?",{title:"Delete comment",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("product_comments").delete().eq("id",commentId).eq("user_id",session.user.id);if(error){showToast(error.message||"Could not delete comment.","error");return;}if(currentProductDetail?.id){await loadProductComments(currentProductDetail.id);hydrateProductCommentCountsInView();}}
 
