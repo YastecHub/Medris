@@ -75,9 +75,12 @@ module.exports = async function handler(req, res) {
     // a payment with no listing to bind it to; require the current create-first
     // flow instead.
     if (body.action === "prepare-listing-payment") {
-      return res.status(400).json({
-        error: "Create the listing first, then use its ₦1,000 activation payment."
-      });
+      if (!body.listingId) {
+        return res.status(400).json({
+          error: "Create the listing first, then provide its listingId for the ₦1,000 activation payment."
+        });
+      }
+      return startListingPayment(req, res, { ...body, id: body.listingId });
     }
 
     res.status(400).json({
