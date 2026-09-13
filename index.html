@@ -6833,6 +6833,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       </div>
       <p id="prodDeliveryHint" class="muted" style="font-size:.76rem;margin:.45rem 0 0;"></p>
     </div>
+    <div class="listing-engagement-settings" id="prodEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="prodLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="prodAllowComments" checked onchange="syncProductEngagementSettingsUI()"></label><div id="prodCommentAudienceWrap"><label>Who can comment</label><select id="prodCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div>
     <div id="prodQtyWrap">
       <label>Quantity available</label>
       <input type="number" id="prodQtyTotal" value="1" min="1" />
@@ -6870,6 +6871,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <textarea id="pkgDesc" rows="2" placeholder="What's included, who it's for…"></textarea>
     <label>Package price (₦)</label>
     <input type="number" id="pkgPrice" step="0.01" placeholder="e.g. 5000" />
+    <div class="listing-engagement-settings" id="pkgEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="pkgLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="pkgAllowComments" checked onchange="syncPackageEngagementSettingsUI()"></label><div id="pkgCommentAudienceWrap"><label>Who can comment</label><select id="pkgCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div>
     <div class="listing-billing-choice">
       <label>How do you want to pay Levromart for this package?</label>
       <select id="pkgBillingModel" onchange="syncPackageBillingUI()">
@@ -8770,13 +8772,13 @@ async function setAiDataConsent(value) {
   }
   showToast(value ? "Thanks, your chats may now be reviewed to improve Levi." : "Turned off. Your chats stay private again.", "success");
 }
-let lastNotificationReturnView = "home";
+let lastNotificationReturnView="home"; let lastNotificationReturnParams={};
 function getNotifHost() { return currentView === "notifications" ? byId("notificationsPage") : byId("notifPanel"); }
 function toggleNotifPanel() {
   requestOfferBadgeCount = 0; updateRequestOfferBadge();
   try { sessionStorage.setItem("levromart-request-offers-seen-at", new Date().toISOString()); } catch (_) {}
   notifViewMode = "all"; exitNotifSelectMode(false);
-  if (currentView !== "notifications") lastNotificationReturnView = currentView || "home";
+  if(currentView!=="notifications"){lastNotificationReturnView=currentView||"home";lastNotificationReturnParams={...(currentViewParams||{})};}
   navigate("notifications");
 }
 function toggleProfilePanel() { openDrawer("profilePanel"); }
@@ -9049,32 +9051,21 @@ async function renderNotifPanel() {
   const notificationType = (n) => String(n?.type || n?.notification_type || n?.notification_category || "").toLowerCase();
   const notificationText = (n) => `${notificationType(n)} ${String(n?.title || "")} ${String(n?.body || "")} ${JSON.stringify(n?.target_params || {})} ${JSON.stringify(n?.metadata || {})}`.toLowerCase();
   const classifyNotification = (n) => {
-    const t = notificationText(n);
-    const type = notificationType(n);
-    const target = String(n?.target_view || "").toLowerCase();
-    const vendorId = String(n?.vendor_id || "");
-    const meta = n?.metadata || {};
-    const metaKind = String(meta?.kind || meta?.entity_type || meta?.entityType || "").toLowerCase();
-    const isOrder = /order|request|offer|payment|checkout|handover|handed[_ -]?over|returned|completed|cancelled|dispute/.test(type) || /order|request|offer|payment|handover|handed[_ -]?over|returned|completed|cancelled|dispute/.test(t) || /order|request/.test(target) || !!meta?.order_id || !!meta?.request_id || !!meta?.offer_id;
-    if (isOrder) return "orders";
-    const isOwnListing = !!currentVendorId && vendorId === currentVendorId;
-    const isListingActivity = isOwnListing || /product[_ -]?(comment|like|save|wishlist|interaction)|listing[_ -]?(comment|like|save|wishlist|interaction)|new[_ -]?comment|comment[_ -]?like|variety[_ -]?activity|package[_ -]?(comment|like|save|interaction)/.test(t) || /product|package|listing|variant|variety/.test(metaKind);
-    if (vendor?.id && isListingActivity) return "myListings";
-    const isOtherVendorActivity = (vendorId && vendorId !== currentVendorId) || /new[_ -]?(listing|variety|package|service)|followed[_ -]?vendor|vendor[_ -]?(activity|update|follow)|price[_ -]?change|discount/.test(t) || type.includes("vendor");
-    if (isOtherVendorActivity) return "vendors";
-    return "personal";
+    const type=notificationType(n), target=String(n?.target_view||"").toLowerCase();
+    const meta=n?.metadata&&typeof n.metadata==="object"?n.metadata:{}; const params=n?.target_params&&typeof n.target_params==="object"?n.target_params:{};
+    const vendorId=String(n?.vendor_id||meta.vendor_id||params.vendorId||params.vendor_id||"");
+    const kind=String(meta.kind||meta.entity_type||meta.entityType||meta.activity_type||meta.activityType||n?.notification_category||"").toLowerCase();
+    const orderId=meta.order_id||meta.orderId||params.orderId||params.order_id, requestId=meta.request_id||meta.requestId||params.requestId||params.request_id;
+    const orderType=/(^|[_-])(order|request|offer|payment|checkout|handover|handed_over|returned|completed|cancelled|dispute)([_-]|$)/;
+    if(orderId||requestId||orderType.test(type)||orderType.test(kind)||/order|request|offer|payment/.test(target))return "orders";
+    const ownListing=!!currentVendorId&&vendorId===currentVendorId;
+    if(vendor?.id&&(ownListing||/product|listing|package|variant|variety|comment|save|like|wishlist|engagement/.test(kind)||/product|package|listing|variant|variety/.test(target)))return "myListings";
+    if(/vendor|new_listing|new_service|new_package|new_variety|price_change|discount|followed_vendor/.test(kind)||/vendor|new_listing|new_service|new_package|new_variety|price_change|discount/.test(type)||(vendorId&&vendorId!==currentVendorId))return "vendors";
+    const text=notificationText(n);if(/order|request|offer|payment|handover|completed|cancelled|dispute/.test(text))return "orders";if(vendor?.id&&ownListing&&/product|package|listing|comment|like|save|variety/.test(text))return "myListings";if(/vendor|followed vendor|new listing|new variety|price change|discount/.test(text))return "vendors";return "personal";
   };
-  const categoryLabelForNotification = (n) => {
-    const c = classifyNotification(n);
-    if (c === "orders") return vendor?.id ? "Orders & Requests" : "Orders";
-    if (c === "myListings") return "My Listings";
-    if (c === "vendors") return "Vendors";
-    return "Personal";
-  };
-  const categoryIconForNotification = (n) => {
-    const c = classifyNotification(n);
-    return c === "orders" ? "fa-receipt" : c === "myListings" ? "fa-box" : c === "vendors" ? "fa-store" : "fa-user";
-  };
+  const notificationTabs=[["all","All"],["personal","Personal"],["orders",vendor?.id?"Orders & Requests":"Orders"],...(vendor?.id?[["myListings","My Listings"]]:[]),["vendors","Vendors"]];
+  const unreadByCategory={personal:0,orders:0,myListings:0,vendors:0};(rawItems||[]).forEach(n=>{if(!n.read){const c=classifyNotification(n);if(c in unreadByCategory)unreadByCategory[c]++;}});
+  const tabHtml=(key,label)=>{const count=key==="all"?(rawItems||[]).filter(n=>!n.read).length:Number(unreadByCategory[key]||0);return `<button type="button" role="tab" aria-selected="${notifViewMode===key?"true":"false"}" class="notif-tab ${notifViewMode===key?"active":""}" onclick="switchNotifView('${key}')">${label}${count?`<span class="notif-tab-badge">${count>9?"9+":count}</span>`:""}</button>`};
   const items = (rawItems || []).filter((n) => {
     if (notifViewMode === "vendors") return classifyNotification(n) === "vendors";
     if (notifViewMode === "myListings") return classifyNotification(n) === "myListings";
@@ -9096,14 +9087,7 @@ async function renderNotifPanel() {
   window.__notifPanelIds = (items || []).map((n) => n.id);
 
   const modeLabel = ({ all: "Notifications", personal: "Personal", orders: vendor?.id ? "Orders & Requests" : "Orders", myListings: "My Listings", vendors: "Vendors" })[notifViewMode] || "Notifications";
-  const notificationTabs = [
-    ["all","All"],
-    ["personal","Personal"],
-    ["orders",vendor?.id ? "Orders & Requests" : "Orders"],
-    ...(vendor?.id ? [["myListings","My Listings"]] : []),
-    ["vendors","Vendors"]
-  ];
-  const tabs = `<div class="notif-tabs" role="tablist" aria-label="Notification categories">${notificationTabs.map(([key,label]) => `<button type="button" role="tab" aria-selected="${notifViewMode === key ? "true" : "false"}" class="notif-tab ${notifViewMode === key ? "active" : ""}" onclick="switchNotifView('${key}')">${label}</button>`).join("")}</div>`;
+  const tabs = `<div class="notif-tabs" role="tablist" aria-label="Notification categories">${notificationTabs.map(([key,label])=>tabHtml(key,label)).join("")}</div>`;
 
   const isNotificationsPage = currentView === "notifications";
   const topBar = notifSelectMode
@@ -9139,7 +9123,6 @@ async function renderNotifPanel() {
         <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
           ${notifSelectMode ? `<span class="notif-select-check"><i class="fa-solid fa-check"></i></span>` : ""}
           ${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;flex:none;" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.1rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<span class="notification-system-icon"><i class='fa-solid fa-circle-info'></i></span>`}
-          <span class="notif-category-badge" title="${esc(categoryLabelForNotification(n))}"><i class="fa-solid ${categoryIconForNotification(n)}"></i><span>${esc(categoryLabelForNotification(n))}</span></span>
           <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
         </button>
       </div>`).join("")
@@ -10674,7 +10657,7 @@ document.addEventListener("click", (e) => {
 
 // ---------- DEDICATED NOTIFICATIONS PAGE ----------
 function renderNotificationsPage() {
-  return `<div class="notifications-page-shell"><div class="notifications-page-heading"><button type="button" class="icon-btn notifications-page-back" onclick="navigate(lastNotificationReturnView || 'home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="notifications-page-heading-copy"><h2><i class="fa-solid fa-bell"></i> Notifications</h2><p class="muted">Stay up to date with activity on Levromart.</p></div><div id="notificationsPageHeaderActions" class="notifications-page-heading-actions"></div></div><div id="notificationsPage" class="notifications-page-host" aria-live="polite"></div></div>`;
+  return `<div class="notifications-page-shell"><div class="notifications-page-heading"><button type="button" class="icon-btn notifications-page-back" onclick="navigate(lastNotificationReturnView || 'home', lastNotificationReturnParams || {})" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="notifications-page-heading-copy"><h2><i class="fa-solid fa-bell"></i> Notifications</h2><p class="muted">Stay up to date with activity on Levromart.</p></div><div id="notificationsPageHeaderActions" class="notifications-page-heading-actions"></div></div><div id="notificationsPage" class="notifications-page-host" aria-live="polite"></div></div>`;
 }
 
 // ---------- NAVIGATION ----------
@@ -11031,10 +11014,11 @@ async function navigate(view, params = {}, pushHistory = true) {
   setTimeout(() => {
     try { hydrateProductCommentCountsInView(); } catch (_) {}
     if (view === "notifications") { try { renderNotifPanel(); } catch (_) {} }
-    if (view === "productDetail" && params?.openComments) { try { toggleProductComments(params.productId); } catch (_) {} }
+    if(view==="productDetail"&&params?.openComments){try{openSocialCommentSheet("product",params.productId,currentProductDetail?.name?`${currentProductDetail.name} · Comments`:"Comments")}catch(_){}}
+    if(view==="packageDetail"&&params?.openComments){try{openSocialCommentSheet("package",params.packageId,"Package · Comments")}catch(_){}}
   }, 0);
   if (view !== "productDetail") stopProductCommentRealtime();
-  setTimeout(hydrateProductVariantIndicatorsInView, 0);
+  setTimeout(()=>{hydrateProductVariantIndicatorsInView();hydrateProductLikeCountsInView();hydratePackageCommentCountsInView()},0);
   if (view === "settings") setTimeout(hydrateSettingsPage, 0);
   // A same-view, non-history refresh (notably live order updates) must keep
   // the user's scroll position. Real navigation still starts at the top.
@@ -11219,12 +11203,12 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   </section>`;
   const trendingProducts = (trending || []).filter(p => !p.is_service);
   const trendingServices = (trending || []).filter(p => p.is_service);
-  if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(productCardHtml).join("")}</div>`;
-  if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(productCardHtml).join("")}</div>`;
+  if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+  if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${topVendors.map(vendorCardHtml).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
-  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" /><button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><span>Filters</span><i class="fa-solid fa-chevron-down browse-filter-chevron"></i></button><div class="browse-filter-panel hidden" id="browseFilterPanel"><div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('listing')"><span>Type</span><strong id="browseListingLabel">${esc("All types")}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu hidden" id="browseListingSubmenu"><button type="button" onclick="chooseBrowseListing('', 'All types')">All types</button><button type="button" onclick="chooseBrowseListing('rent', 'Rent')">Rent</button><button type="button" onclick="chooseBrowseListing('sale', 'Buy')">Buy</button></div></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || 'All categories')}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><div id="browseCategoryOptions">${subCats.map(c => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace("'","&#39;")}')">${esc(c.name)}</button>`).join("")}</div><button type="button" onclick="chooseBrowseCategory('','All categories')">All categories</button></div></div><button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button></div><select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
+  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" /><button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button><div class="browse-filter-panel hidden" id="browseFilterPanel"><div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('listing')"><span>Type</span><strong id="browseListingLabel">${esc("All types")}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu hidden" id="browseListingSubmenu"><button type="button" onclick="chooseBrowseListing('', 'All types')">All types</button><button type="button" onclick="chooseBrowseListing('rent', 'Rent')">Rent</button><button type="button" onclick="chooseBrowseListing('sale', 'Buy')">Buy</button></div></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || 'All categories')}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><div id="browseCategoryOptions">${subCats.map(c => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace("'","&#39;")}')">${esc(c.name)}</button>`).join("")}</div><button type="button" onclick="chooseBrowseCategory('','All categories')">All categories</button></div></div><button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button></div><select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
   return html;
 }
@@ -11904,8 +11888,8 @@ async function renderHome() {
   if (trending && trending.length) {
     const trendingProducts = trending.filter(p => !p.is_service);
     const trendingServices = trending.filter(p => p.is_service);
-    if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(productCardHtml).join("")}</div>`;
-    if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(productCardHtml).join("")}</div>`;
+    if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+    if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   }
 
   if (recommendedPackages.length) {
@@ -11919,7 +11903,7 @@ async function renderHome() {
   html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
   html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" data-tab="products" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-box"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" data-tab="services" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" data-tab="packages" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button></div>`;
   html += `<div class="browse-filter-toolbar">
-    <button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><span>Filters</span><i class="fa-solid fa-chevron-down browse-filter-chevron"></i></button>
+    <button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button>
     <input type="search" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" autocomplete="off" aria-label="Search products, packages, or services" />
     <div class="browse-filter-panel hidden" id="browseFilterPanel">
       <div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div>
@@ -12090,7 +12074,7 @@ async function fetchSearchSuggestions(term) {
   if (byId("heroSearch")?.value.trim() !== term) return;
 
   const items = [
-    ...(prods || []).map((p) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('productDetail',{productId:'${p.id}'})"><i class='fa-solid fa-magnifying-glass'></i><span class="ss-name">${esc(p.name)}</span><span class="ss-meta">${esc(p.vendor?.business_name || "")}</span></div>`),
+    ...(prods || []).map((p) => `<div class="search-suggest-item" onmousedown="event.preventDefault();saveHistory('${esc(p.name).replace("'","&#39;")}');navigate('productDetail',{productId:'${p.id}'})"><i class='fa-solid fa-magnifying-glass'></i><span class="ss-name">${esc(p.name)}</span><span class="ss-meta">${esc(p.vendor?.business_name || "")}</span></div>`),
     ...(packageRows || []).map((pkg) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('packageDetail',{packageId:'${pkg.id}'})"><i class='fa-solid fa-box-open'></i><span class="ss-name">${esc(pkg.name)}</span><span class="ss-meta">Package · ${naira(pkg.price)}</span></div>`),
     ...(vends || []).map((v) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('storefront',{vendorId:'${v.id}'})"><i class='fa-solid fa-store'></i><span class="ss-name">${esc(v.business_name)}</span><span class="ss-meta">Vendor</span></div>`),
   ];
@@ -12464,6 +12448,7 @@ function productCardHtml(p) {
           <span>${esc(p.vendor?.business_name || "")}</span>
         </span>
       </div>
+      <div class="product-card-like-row" data-product-like-id="${esc(p.id)}"><span class="product-like-indicator hidden"><i class="fa-regular fa-heart"></i> <span>0</span></span></div>
       <div class="product-card-price-block">
         ${p.sale_price != null ? (p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price)
           ? `<span><strong>${p.is_service ? "Price" : "Buy"}:</strong> <span class="product-old-price">${naira(p.sale_price)}</span> <span class="product-current-price">${naira(p.discount_price)}</span>${servicePriceSuffix(p)}</span>`
@@ -12472,7 +12457,7 @@ function productCardHtml(p) {
       </div>
       ${p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`}
       <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
-      <div class="product-card-action-row"><div class="product-card-action-left">${actionHtml}</div><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button></div>
+      <div class="product-card-action-row ${String(p._cardContext||"").toLowerCase()==="trending"?"trending-card-action-row":""}"><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button><div class="product-card-action-left">${actionHtml}</div></div>
     </div>
   </div>`;
 }
@@ -14578,10 +14563,12 @@ async function buyPackageFromDetail(packageId) {
   navigate("orderDetail", { orderId });
 }
 async function renderPackageDetail(packageId) {
+  const engagementPromise=sb.from("package_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("package_id",packageId).maybeSingle();
   const { data: pkg, error } = await sb.from("vendor_packages")
     .select("id, vendor_id, name, description, price, photos, created_at, status, vendor:vendors!inner(id,business_name,previous_business_name,name_changed_at,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng), items:package_items(quantity, product:products(id,name,sale_price,rental_rate,rental_rate_unit,photos,quantity_available,condition,listing_type,is_service,service_price_unit,category:categories(name)))")
     .eq("id", packageId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
   if (error || !pkg) return '<div class="empty-state"><i class="fa-solid fa-box-open" style="font-size:1.6rem;display:block;margin-bottom:.6rem;"></i>Package not found or no longer available.</div>';
+  const {data:packageEngagement}=await engagementPromise;
 
   const photos = Array.isArray(pkg.photos) ? pkg.photos.filter(Boolean) : [];
   window.__packageDetailPhotos = photos;
@@ -14625,6 +14612,7 @@ async function renderPackageDetail(packageId) {
     </div>`;
   }
 
+  html += `<div class="card package-comments-card" data-package-comments-id="${esc(pkg.id)}"><button type="button" class="product-comments-toggle package-comments-toggle ${packageEngagement?.allow_comments===false?"disabled":""}" onclick="${packageEngagement?.allow_comments===false?"":"togglePackageComments('"+esc(pkg.id)+"')"}" aria-expanded="false" aria-label="${packageEngagement?.allow_comments===false?"Comments disabled":"Show package comments"}"><span><i class="fa-regular fa-comment"></i><strong id="packageCommentsCount" data-package-id="${esc(pkg.id)}">0</strong></span><i class="fa-solid fa-chevron-down"></i></button><div id="packageCommentsPanel" class="product-comments-panel hidden"></div></div>`;
   html += `<div class="card"><div class="flex" style="justify-content:space-between;align-items:center;"><div><h3 style="margin:0;">About the vendor</h3><p class="muted" style="margin:.25rem 0 0;">${`★ ${Number(v.avg_rating ?? 0).toFixed(1)} · ${Number(v.review_count ?? 0)} reviews`}</p></div><button class="btn btn-sm btn-outline" onclick="navigate('storefront',{vendorId:'${v.id}'})">View storefront</button></div></div>`;
 
   const { data: morePackages } = await sb.from("vendor_packages")
@@ -14641,7 +14629,8 @@ async function renderPackageDetail(packageId) {
 async function renderProductDetail(productId) {
   const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)").eq("id", productId).maybeSingle();
   const variantsQuery = sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
-  const [{data:product,error},{data:loadedProductVariants,error:variantsError}] = await Promise.all([productQuery,variantsQuery]);
+  const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
+  const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = await Promise.all([productQuery,variantsQuery,engagementQuery]);
   if(error){console.error("[Levromart] Product detail load failed:",error);return `<div class="empty-state"><strong>Couldn\'t load this product.</strong><p class="muted" style="margin:.35rem 0 0;">Please try again. If the problem continues, the listing may be unavailable right now.</p></div>`;}
   if(!product)return '<div class="empty-state">Product not found.</div>';
   const ownListing=isOwnVendorId(product.vendor?.id);
@@ -14677,7 +14666,7 @@ async function renderProductDetail(productId) {
     product.deposit_amount ? { label: "Refundable deposit", value: naira(product.deposit_amount) } : null,
   ].filter(Boolean);
 
-  const productGalleryVariantMetaHtml = productVariants.length ? `<div class="product-gallery-variant-meta" id="productGalleryVariantMeta"><span class="muted">Selected variety</span><strong id="productGalleryVariantName">${esc(productVariants[0].name || "Selected variety")}</strong><strong id="productGalleryVariantPrice">${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? productVariants[0].rental_rate ?? 0))}</strong></div>` : "";
+  const productGalleryVariantMetaHtml = productVariants.length ? `<div class="product-gallery-variant-meta" id="productGalleryVariantMeta"><span class="product-gallery-variant-label">Selected variety:</span><strong id="productGalleryVariantName">${esc(productVariants[0].name || "Selected variety")}</strong><strong id="productGalleryVariantPrice">Price: ${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? productVariants[0].rental_rate ?? 0))}</strong></div>` : "";
 
   let html = `<div class="card product-detail-card" data-product-detail-id="${esc(product.id)}" style="position:relative;">
     <div class="product-detail-top-actions" aria-label="Product actions">
@@ -14721,7 +14710,7 @@ async function renderProductDetail(productId) {
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
       ${!product.is_service && productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
-      ${!product.is_service && productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="muted">Selected variety</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</small><small class="muted" style="display:block;margin-top:.16rem;">Available: <span id="selectedVariantStock">${Number(product.quantity_available ?? 0).toLocaleString()}</span></small></div><strong id="selectedVariantPrice">${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
+      ${!product.is_service && productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="product-gallery-variant-label">Selected variety:</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</small><small class="muted" style="display:block;margin-top:.16rem;">Available: <span id="selectedVariantStock">${Number(product.quantity_available ?? 0).toLocaleString()}</span></small></div><strong id="selectedVariantPrice">Price: ${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
       <div class="flex">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
@@ -14747,10 +14736,7 @@ async function renderProductDetail(productId) {
       <div class="owner-listing-actions"><button type="button" class="btn btn-sm" onclick="openEditProductModal('${product.id}')"><i class="fa-solid fa-pen"></i> Edit</button>${product.status === "active" ? `<button type="button" class="btn btn-sm btn-outline" onclick="setProductStatus('${product.id}','paused')">Pause</button>` : ownerPaid ? `<button type="button" class="btn btn-sm" onclick="setProductStatus('${product.id}','active')">Activate</button>` : `<button type="button" class="btn btn-sm" onclick="startListingMonthlyPayment('product','${product.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000</button>`}<button type="button" class="btn btn-sm btn-danger" onclick="removeProduct('${product.id}')"><i class="fa-solid fa-trash"></i> Remove</button></div>
       ${product.variants?.length ? `<p class="muted owner-listing-variant-note"><i class="fa-solid fa-layer-group"></i> ${product.variants.length} variety${product.variants.length===1?"":"ies"} configured.</p>` : ""}</div>`;
   }
-  html += `<div class="card product-comments-card" data-product-comments-id="${esc(product.id)}">
-    <button type="button" class="product-comments-toggle" onclick="toggleProductComments('${esc(product.id)}')" aria-expanded="false" aria-label="Show product comments"><span><i class="fa-regular fa-comment"></i><strong id="productCommentsCount" data-product-id="${esc(product.id)}">0</strong></span><i class="fa-solid fa-chevron-down"></i></button>
-    <div id="productCommentsPanel" class="product-comments-panel hidden"></div>
-  </div>`;
+  html += `<div class="card product-comments-card" data-product-comments-id="${esc(product.id)}"><button type="button" class="product-comments-toggle ${productEngagement?.allow_comments===false?"disabled":""}" onclick="${productEngagement?.allow_comments===false?"":"toggleProductComments('"+esc(product.id)+"')"}" aria-expanded="false" aria-label="${productEngagement?.allow_comments===false?"Comments disabled":"Show product comments"}"><span><i class="fa-regular fa-comment"></i><strong id="productCommentsCount" data-product-id="${esc(product.id)}">0</strong></span><i class="fa-solid fa-chevron-down"></i></button><div id="productCommentsPanel" class="product-comments-panel hidden"></div></div>`;
   const relatedNames = RELATED_EQUIPMENT[product.category?.name] || [];
   if (relatedNames.length) {
     const { data: related } = await sb.from("products")
@@ -16422,7 +16408,7 @@ function packageCardHtml(pkg, vendorDeliveryFee, compact = false) {
     : `<div class="package-gallery-placeholder" onclick="event.stopPropagation();"><i class="fa-solid fa-box-open"></i>&nbsp; No package photo</div>`;
   const itemsText = (pkg.items || []).map((it) => `${it.quantity}× ${esc(it.product?.name || "")}`).join(", ") || "No items listed";
   const vendorName = pkg.vendor?.business_name || "Vendor";
-  return `<div class="card package-listing-card" onclick="navigate('packageDetail',{packageId:'${pkg.id}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('packageDetail',{packageId:'${pkg.id}'})}">
+  return `<div class="card package-listing-card" data-package-id="${esc(pkg.id)}" onclick="navigate('packageDetail',{packageId:'${pkg.id}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('packageDetail',{packageId:'${pkg.id}'})}">
     ${galleryHtml}
     <div class="package-card-title-row"><strong>${esc(pkg.name)}</strong><span class="badge">${naira(pkg.price)}</span></div>
     ${pkg.description ? `<p class="package-card-description muted">${esc(pkg.description)}</p>` : ""}
@@ -16430,6 +16416,7 @@ function packageCardHtml(pkg, vendorDeliveryFee, compact = false) {
     <div class="package-card-vendor"><i class="fa-solid fa-store"></i> ${esc(vendorName)}</div>
     ${pkg.vendor?.delivery_fee_mode === "distance" ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Distance delivery · ${naira(pkg.vendor.delivery_fee_per_km || 0)}/km</div>` : Number(pkg.vendor?.delivery_fee || 0) > 0 ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Delivery · ${naira(pkg.vendor.delivery_fee)}</div>` : `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Free delivery</div>`}
     ${profile?.role === "admin" ? `<span class="badge package-card-owner-badge">Admin</span>` : isOwnVendorId(pkg.vendor?.id) ? `<span class="badge own-listing-badge package-card-owner-badge"><i class="fa-solid fa-store"></i> Your package</span>` : ""}
+    <div class="package-card-comment-row"><span class="package-card-engagement-count muted"><i class="fa-regular fa-heart"></i> <span class="package-like-count">0</span></span><button type="button" class="package-card-comment-btn" data-package-id="${esc(pkg.id)}" onclick="event.stopPropagation();openPackageCommentsFromCard('${esc(pkg.id)}')" aria-label="Comments on ${esc(pkg.name)}"><i class="fa-regular fa-comment"></i> <span class="package-comment-count">0</span></button></div>
   </div>`;
 }
 
@@ -16473,106 +16460,40 @@ async function buyPackage(packageId) {
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
   navigate("orderDetail", { orderId });
 }
-// ---------- PRODUCT SOCIAL INTERACTIONS ----------
-window.__productCommentCounts = window.__productCommentCounts || new Map();
-let productCommentRealtimeChannel = null;
-let productCommentRealtimeProductId = null;
-let activeProductCommentReplyId = null;
-const productCommentsLoaded = new Map();
-const productCommentsFetches = new Map();
-
-async function hydrateProductCommentCountsInView() {
-  const nodes = [...document.querySelectorAll(".card-comment-btn[data-product-id], #productCommentsCount[data-product-id]")];
-  const ids = [...new Set(nodes.map((node) => node.dataset.productId).filter(Boolean))];
-  if (!ids.length) return;
-  try {
-    const { data, error } = await sb.rpc("get_product_comment_counts", { p_product_ids: ids });
-    if (!error) {
-      const counts = new Map((data || []).map((row) => [String(row.product_id), Number(row.comment_count || 0)]));
-      ids.forEach((id) => window.__productCommentCounts.set(String(id), counts.get(String(id)) || 0));
-    }
-  } catch (_) {}
-  document.querySelectorAll(".card-comment-btn[data-product-id]").forEach((button) => {
-    const count = window.__productCommentCounts.get(String(button.dataset.productId)) || 0;
-    const span = button.querySelector(".product-comment-count"); if (span) span.textContent = String(count);
-  });
-  const pageCount = byId("productCommentsCount");
-  if (pageCount && currentProductDetail?.id) pageCount.textContent = String(window.__productCommentCounts.get(String(currentProductDetail.id)) || 0);
-  hydrateProductVariantIndicatorsInView();
+// ---------- PRODUCT + PACKAGE SOCIAL INTERACTIONS ----------
+window.__productCommentCounts=window.__productCommentCounts||new Map();window.__packageCommentCounts=window.__packageCommentCounts||new Map();
+let productCommentRealtimeChannel=null,productCommentRealtimeProductId=null,packageCommentRealtimeChannel=null,packageCommentRealtimePackageId=null,activeProductCommentReplyId=null,activePackageCommentReplyId=null;
+const productCommentsLoaded=new Map(),productCommentsFetches=new Map(),packageCommentsLoaded=new Map(),packageCommentsFetches=new Map();
+function activeSocialCommentPanel(kind="product"){return window.__commentSheetPanel||byId(kind==="package"?"packageCommentsPanel":"productCommentsPanel")}function activeSocialCommentInput(kind="product"){return window.__commentSheetInput||byId(kind==="package"?"packageCommentInput":"productCommentInput")}
+async function hydrateProductCommentCountsInView(){const ids=[...new Set([...document.querySelectorAll(".card-comment-btn[data-product-id],#productCommentsCount[data-product-id]")].map(n=>n.dataset.productId).filter(Boolean))];if(!ids.length)return;try{const {data,error}=await sb.rpc("get_product_comment_counts",{p_product_ids:ids});if(!error)(data||[]).forEach(r=>window.__productCommentCounts.set(String(r.product_id),Number(r.comment_count||0)))}catch(_){}document.querySelectorAll(".card-comment-btn[data-product-id]").forEach(b=>{const e=b.querySelector(".product-comment-count");if(e)e.textContent=String(window.__productCommentCounts.get(String(b.dataset.productId))||0)});hydrateProductVariantIndicatorsInView()}
+async function hydratePackageCommentCountsInView(){const ids=[...new Set([...document.querySelectorAll(".package-card-comment-btn[data-package-id],#packageCommentsCount[data-package-id],.package-listing-card[data-package-id]")].map(n=>n.dataset.packageId).filter(Boolean))];if(!ids.length)return;try{const [{data:cc,error},{data:fc},{data:settings}]=await Promise.all([sb.rpc("get_package_comment_counts",{p_package_ids:ids}),sb.rpc("get_package_favorite_counts",{p_package_ids:ids}),sb.from("package_engagement_settings").select("package_id,vendor_id,like_visibility").in("package_id",ids)]);if(!error)(cc||[]).forEach(r=>window.__packageCommentCounts.set(String(r.package_id),Number(r.comment_count||0)));const fm=new Map((fc||[]).map(r=>[String(r.package_id),Number(r.favorite_count||0)]));const sm=new Map((settings||[]).map(r=>[String(r.package_id),r]));document.querySelectorAll(".package-listing-card[data-package-id]").forEach(card=>{const id=String(card.dataset.packageId),st=sm.get(id)||{},e=card.querySelector(".package-like-count"),wrap=e?.closest(".package-card-engagement-count"),visible=st.like_visibility!=="no_one";if(e)e.textContent=String(fm.get(id)||0);wrap?.classList.toggle("hidden",!visible)});}catch(_){}document.querySelectorAll(".package-card-comment-btn[data-package-id]").forEach(b=>{const e=b.querySelector(".package-comment-count");if(e)e.textContent=String(window.__packageCommentCounts.get(String(b.dataset.packageId))||0)})}
+async function hydrateProductLikeCountsInView(){const ids=[...new Set([...document.querySelectorAll("[data-product-like-id]")].map(n=>n.dataset.productLikeId).filter(Boolean))];if(!ids.length)return;try{const [{data:counts},{data:settings}]=await Promise.all([sb.rpc("get_favorite_counts",{p_product_ids:ids}),sb.from("product_engagement_settings").select("product_id,vendor_id,like_visibility").in("product_id",ids)]);const cm=new Map((counts||[]).map(r=>[String(r.product_id),Number(r.favorite_count??r.count??0)]));const sm=new Map((settings||[]).map(r=>[String(r.product_id),r]));const followed=new Set();const vids=[...(settings||[]).map(r=>r.vendor_id).filter(Boolean)];if(session?.user?.id&&vids.length){const {data:fs}=await sb.from("vendor_follows").select("vendor_id").eq("follower_id",session.user.id).in("vendor_id",[...new Set(vids)]);(fs||[]).forEach(r=>followed.add(String(r.vendor_id)));}document.querySelectorAll("[data-product-like-id]").forEach(n=>{const id=String(n.dataset.productLikeId),st=sm.get(id)||{},visible=st.like_visibility!=="no_one"&&(st.like_visibility!=="followers"||followed.has(String(st.vendor_id))||isOwnVendorId(st.vendor_id));const e=n.querySelector(".product-like-indicator");if(!e)return;if(visible){e.classList.remove("hidden");e.querySelector("span").textContent=String(cm.get(id)||0)}else e.classList.add("hidden")})}catch(_){}
 }
-function openProductCommentsFromCard(productId) { navigate("productDetail", { productId, openComments: true }); }
-
-async function fetchProductComments(productId) {
-  const { data, error } = await sb.from("product_comments").select("id,product_id,user_id,parent_comment_id,content,author_name,author_avatar_url,created_at,updated_at").eq("product_id", productId).order("created_at", { ascending: false }).limit(80);
-  if (error) throw error;
-  const rows = data || [];
-  let likes = [];
-  if (rows.length) { const response = await sb.from("product_comment_likes").select("id,comment_id,user_id").in("comment_id", rows.map(r => r.id)); if (!response.error) likes = response.data || []; }
-  const likeMap = new Map(), myLiked = new Set();
-  likes.forEach((like) => { const id=String(like.comment_id); likeMap.set(id,(likeMap.get(id)||0)+1); if(session?.user?.id && String(like.user_id)===String(session.user.id)) myLiked.add(id); });
-  return {rows,likeMap,myLiked};
+function openProductCommentsFromCard(id){navigate("productDetail",{productId:id,openComments:true})}function openPackageCommentsFromCard(id){navigate("packageDetail",{packageId:id,openComments:true})}
+async function fetchProductComments(id){const {data,error}=await sb.from("product_comments").select("id,product_id,user_id,parent_comment_id,content,author_name,author_avatar_url,created_at,updated_at").eq("product_id",id).order("created_at",{ascending:false}).limit(120);if(error)throw error;const rows=data||[];let likes=[];if(rows.length){const r=await sb.from("product_comment_likes").select("id,comment_id,user_id").in("comment_id",rows.map(x=>x.id));if(!r.error)likes=r.data||[]}const lm=new Map(),ml=new Set();likes.forEach(l=>{const k=String(l.comment_id);lm.set(k,(lm.get(k)||0)+1);if(session?.user?.id&&String(l.user_id)===String(session.user.id))ml.add(k)});return{rows,likeMap:lm,myLiked:ml}}
+function socialCommentRow(c,lm,ml,d=0,kind="product"){const liked=ml.has(String(c.id)),own=String(session?.user?.id||"")===String(c.user_id||"");const lf=kind==="package"?"togglePackageCommentLike":"toggleProductCommentLike",rf=kind==="package"?"replyToPackageComment":"replyToProductComment",df=kind==="package"?"deletePackageComment":"deleteProductComment";return `<div class="product-comment-row" data-comment-id="${esc(c.id)}" data-depth="${d}">${c.author_avatar_url?`<img src="${esc(c.author_avatar_url)}" class="product-comment-avatar" alt="${esc(c.author_name||"User")}">`:avatarFallbackHtml(c.author_name||"User","2rem","product-comment-avatar",c.author_name||"User",c.user_id||c.author_name)}<div class="product-comment-main"><div class="product-comment-head"><strong>${esc(c.author_name||"Levromart user")}</strong><span class="muted">${timeAgo(c.created_at)}</span></div><div class="product-comment-body">${esc(c.content)}</div><div class="product-comment-actions"><button type="button" class="product-comment-action ${liked?"active":""}" onclick="${lf}('${esc(c.id)}')" aria-label="Like comment" title="Like comment"><i class="fa-${liked?"solid":"regular"} fa-heart"></i><span class="comment-like-count">${Number(lm.get(String(c.id))||0)}</span></button><button type="button" class="product-comment-action" onclick="${rf}('${esc(c.id)}')" aria-label="Reply to comment" title="Reply"><i class="fa-solid fa-reply"></i></button>${own?`<button type="button" class="product-comment-action danger" onclick="${df}('${esc(c.id)}')" aria-label="Delete your comment" title="Delete"><i class="fa-solid fa-trash"></i></button>`:""}</div></div></div>`}
+function socialThread(rows,lm,ml,kind){const roots=rows.filter(r=>!r.parent_comment_id),ch=new Map();rows.filter(r=>r.parent_comment_id).forEach(r=>{const k=String(r.parent_comment_id);if(!ch.has(k))ch.set(k,[]);ch.get(k).push(r)});const render=(p,d=1)=>{const kids=(ch.get(String(p.id))||[]).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));if(!kids.length)return"";const first=kids[0],rest=kids.slice(1),pre=kind==="package"?"packageReplies":"commentReplies";return socialCommentRow(first,lm,ml,d,kind)+(rest.length?`<div class="comment-more-replies"><button type="button" class="comment-view-more" onclick="toggleCommentReplies('${esc(p.id)}','${kind}')"><i class="fa-solid fa-chevron-down"></i> See ${rest.length} more repl${rest.length===1?"y":"ies"}</button><div class="comment-hidden-replies hidden" id="${pre}-${esc(p.id)}">${rest.map(r=>socialCommentRow(r,lm,ml,d,kind)).join("")}</div></div>`:"")+render(first,d+1)+rest.map(r=>render(r,d+1)).join("")};return roots.map(r=>socialCommentRow(r,lm,ml,0,kind)+render(r,1)).join("")}
+function toggleCommentReplies(id,kind="product"){const e=byId(`${kind==="package"?"packageReplies":"commentReplies"}-${id}`);if(!e)return;e.classList.toggle("hidden");const b=e.parentElement?.querySelector(".comment-view-more");if(b)b.innerHTML=e.classList.contains("hidden")?`<i class="fa-solid fa-chevron-down"></i> See more replies`:`<i class="fa-solid fa-chevron-up"></i> Hide replies`}
+async function loadProductComments(id,{preserveDraft=true,showLoading=true,force=false}={}){const p=activeSocialCommentPanel("product");if(!p)return;const d=preserveDraft?(activeSocialCommentInput("product")?.value||""):"",k=String(id);if(!force&&productCommentsLoaded.has(k)&&!productCommentsFetches.has(k)){renderLoadedProductComments(id,productCommentsLoaded.get(k),d);return}if(productCommentsFetches.has(k))return productCommentsFetches.get(k);if(showLoading&&!productCommentsLoaded.has(k))p.innerHTML=`<div class="product-comments-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading comments…</div>`;const req=(async()=>{try{const r=await fetchProductComments(id);productCommentsLoaded.set(k,r);renderLoadedProductComments(id,r,d)}catch(_){if(!productCommentsLoaded.has(k))p.innerHTML=`<div class="product-comments-empty">Couldn’t load comments right now. Please try again.</div>`}finally{productCommentsFetches.delete(k)}})();productCommentsFetches.set(k,req);return req}
+function renderLoadedProductComments(id,r,d=""){const p=activeSocialCommentPanel("product");if(!p)return;window.__productCommentCounts.set(String(id),r.rows.length);byId("productCommentsCount")?.replaceChildren(document.createTextNode(String(r.rows.length)));const thread=r.rows.length?socialThread(r.rows,r.likeMap,r.myLiked,"product"):"<div class=\"product-comments-empty\">No comments yet. Be the first to ask a question.</div>";const av=session?profileAvatarHtml(profile?.avatar_url||"",profile?.name||"You","2rem",{stableKey:session.user.id}):avatarFallbackHtml("You","2rem","product-comment-avatar","You","guest");const composer='<div class="product-comment-composer">'+(activeProductCommentReplyId?'<div class="product-comment-replying">Replying to a comment <button type="button" class="icon-btn" onclick="cancelProductCommentReply()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button></div>':'')+'<div class="product-comment-compose-row">'+av+'<textarea id="productCommentInput" rows="1" placeholder="Add a comment…" '+(session?'':'disabled')+'>'+esc(d)+'</textarea><button type="button" class="icon-btn" onclick="submitProductComment(\''+esc(id)+'\')" '+(session?'':'disabled')+' aria-label="Send comment"><i class="fa-solid fa-paper-plane"></i></button></div></div>';p.innerHTML='<div class="levro-engagement-strip" id="productEngagementStrip-'+esc(id)+'"><span class="levro-engagement-empty">Loading engagement…</span></div>'+thread+composer;loadCommentEngagementStrip("product",id)}
+function ensureProductCommentRealtime(id){if(!id||!sb)return;if(productCommentRealtimeChannel&&productCommentRealtimeProductId===String(id))return;stopProductCommentRealtime();productCommentRealtimeProductId=String(id);productCommentRealtimeChannel=sb.channel(`product-comments-${id}`).on("postgres_changes",{event:"*",schema:"public",table:"product_comments",filter:`product_id=eq.${id}`},async()=>{try{const r=await fetchProductComments(id);productCommentsLoaded.set(String(id),r);renderLoadedProductComments(id,r,activeSocialCommentInput("product")?.value||"");hydrateProductCommentCountsInView()}catch(_){}}).subscribe()}function stopProductCommentRealtime(){if(productCommentRealtimeChannel){try{sb.removeChannel(productCommentRealtimeChannel)}catch(_){}}productCommentRealtimeChannel=null;productCommentRealtimeProductId=null}
+function replyToProductComment(id){activeProductCommentReplyId=String(id);activeSocialCommentInput("product")?.focus()}function cancelProductCommentReply(){activeProductCommentReplyId=null;if(currentProductDetail?.id)loadProductComments(currentProductDetail.id,{showLoading:false})}
+async function submitProductComment(id){if(!session){showLogin();return}const content=String(activeSocialCommentInput("product")?.value||"").trim();if(!content){showToast("Write a comment first.","error");return}const {data:st}=await sb.from("product_engagement_settings").select("allow_comments,comment_audience,vendor_id").eq("product_id",id).maybeSingle();if(st?.allow_comments===false){showToast("Comments are disabled for this listing.","error");return}if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await sb.from("vendor_follows").select("id").eq("vendor_id",st.vendor_id).eq("follower_id",session.user.id).maybeSingle();if(!f){showToast("Only followers can comment on this listing.","error");return}}const {error}=await sb.from("product_comments").insert({product_id:id,user_id:session.user.id,parent_comment_id:activeProductCommentReplyId||null,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null});if(error){showToast(error.message||"Could not post that comment.","error");return}activeProductCommentReplyId=null;await loadProductComments(id,{preserveDraft:false,showLoading:false,force:true})}
+async function toggleProductCommentLike(id){if(!session){showLogin();return}const {data:x}=await sb.from("product_comment_likes").select("id").eq("comment_id",id).eq("user_id",session.user.id).maybeSingle();const r=x?.id?await sb.from("product_comment_likes").delete().eq("id",x.id).eq("user_id",session.user.id):await sb.from("product_comment_likes").insert({comment_id:id,user_id:session.user.id});if(r.error&&!/duplicate/i.test(r.error.message||"")){showToast(r.error.message||"Could not update comment like.","error");return}if(currentProductDetail?.id)loadProductComments(currentProductDetail.id,{showLoading:false,force:true})}
+async function deleteProductComment(id){if(!session)return;if(!(await showConfirmDialog("Delete your comment?",{title:"Delete comment",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("product_comments").delete().eq("id",id).eq("user_id",session.user.id);if(error){showToast(error.message||"Could not delete comment.","error");return}if(currentProductDetail?.id)loadProductComments(currentProductDetail.id,{showLoading:false,force:true})}
+async function fetchPackageComments(id){const {data,error}=await sb.from("package_comments").select("id,package_id,user_id,parent_comment_id,content,author_name,author_avatar_url,created_at,updated_at").eq("package_id",id).order("created_at",{ascending:false}).limit(120);if(error)throw error;const rows=data||[];let likes=[];if(rows.length){const r=await sb.from("package_comment_likes").select("id,comment_id,user_id").in("comment_id",rows.map(x=>x.id));if(!r.error)likes=r.data||[]}const lm=new Map(),ml=new Set();likes.forEach(l=>{const k=String(l.comment_id);lm.set(k,(lm.get(k)||0)+1);if(session?.user?.id&&String(l.user_id)===String(session.user.id))ml.add(k)});return{rows,likeMap:lm,myLiked:ml}}
+async function loadPackageComments(id,{preserveDraft=true,showLoading=true,force=false}={}){const p=activeSocialCommentPanel("package");if(!p)return;const d=preserveDraft?(activeSocialCommentInput("package")?.value||""):"",k=String(id);if(!force&&packageCommentsLoaded.has(k)&&!packageCommentsFetches.has(k)){renderLoadedPackageComments(id,packageCommentsLoaded.get(k),d);return}if(packageCommentsFetches.has(k))return packageCommentsFetches.get(k);if(showLoading&&!packageCommentsLoaded.has(k))p.innerHTML=`<div class="product-comments-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading comments…</div>`;const req=(async()=>{try{const r=await fetchPackageComments(id);packageCommentsLoaded.set(k,r);renderLoadedPackageComments(id,r,d)}catch(_){if(!packageCommentsLoaded.has(k))p.innerHTML=`<div class="product-comments-empty">Couldn’t load comments right now. Please try again.</div>`}finally{packageCommentsFetches.delete(k)}})();packageCommentsFetches.set(k,req);return req}
+function renderLoadedPackageComments(id,r,d=""){const p=activeSocialCommentPanel("package");if(!p)return;window.__packageCommentCounts.set(String(id),r.rows.length);byId("packageCommentsCount")?.replaceChildren(document.createTextNode(String(r.rows.length)));const thread=r.rows.length?socialThread(r.rows,r.likeMap,r.myLiked,"package"):"<div class=\"product-comments-empty\">No comments yet. Be the first to ask a question.</div>";const av=session?profileAvatarHtml(profile?.avatar_url||"",profile?.name||"You","2rem",{stableKey:session.user.id}):avatarFallbackHtml("You","2rem","product-comment-avatar","You","guest");const composer='<div class="product-comment-composer">'+(activePackageCommentReplyId?'<div class="product-comment-replying">Replying to a comment <button type="button" class="icon-btn" onclick="cancelPackageCommentReply()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button></div>':'')+'<div class="product-comment-compose-row">'+av+'<textarea id="packageCommentInput" rows="1" placeholder="Add a comment…" '+(session?'':'disabled')+'>'+esc(d)+'</textarea><button type="button" class="icon-btn" onclick="submitPackageComment(\''+esc(id)+'\')" '+(session?'':'disabled')+' aria-label="Send comment"><i class="fa-solid fa-paper-plane"></i></button></div></div>';p.innerHTML='<div class="levro-engagement-strip" id="packageEngagementStrip-'+esc(id)+'"><span class="levro-engagement-empty">Loading engagement…</span></div>'+thread+composer;loadCommentEngagementStrip("package",id)}
+function ensurePackageCommentRealtime(id){if(!id||!sb)return;if(packageCommentRealtimeChannel&&packageCommentRealtimePackageId===String(id))return;stopPackageCommentRealtime();packageCommentRealtimePackageId=String(id);packageCommentRealtimeChannel=sb.channel(`package-comments-${id}`).on("postgres_changes",{event:"*",schema:"public",table:"package_comments",filter:`package_id=eq.${id}`},async()=>{try{const r=await fetchPackageComments(id);packageCommentsLoaded.set(String(id),r);renderLoadedPackageComments(id,r,activeSocialCommentInput("package")?.value||"");hydratePackageCommentCountsInView()}catch(_){}}).subscribe()}function stopPackageCommentRealtime(){if(packageCommentRealtimeChannel){try{sb.removeChannel(packageCommentRealtimeChannel)}catch(_){}}packageCommentRealtimeChannel=null;packageCommentRealtimePackageId=null}
+function replyToPackageComment(id){activePackageCommentReplyId=String(id);activeSocialCommentInput("package")?.focus()}function cancelPackageCommentReply(){activePackageCommentReplyId=null;if(currentViewParams?.packageId)loadPackageComments(currentViewParams.packageId,{showLoading:false})}
+async function submitPackageComment(id){if(!session){showLogin();return}const content=String(activeSocialCommentInput("package")?.value||"").trim();if(!content){showToast("Write a comment first.","error");return}const {data:st}=await sb.from("package_engagement_settings").select("allow_comments,comment_audience,vendor_id").eq("package_id",id).maybeSingle();if(st?.allow_comments===false){showToast("Comments are disabled for this package.","error");return}if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await sb.from("vendor_follows").select("id").eq("vendor_id",st.vendor_id).eq("follower_id",session.user.id).maybeSingle();if(!f){showToast("Only followers can comment on this package.","error");return}}const {error}=await sb.from("package_comments").insert({package_id:id,user_id:session.user.id,parent_comment_id:activePackageCommentReplyId||null,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null});if(error){showToast(error.message||"Could not post that comment.","error");return}activePackageCommentReplyId=null;await loadPackageComments(id,{preserveDraft:false,showLoading:false,force:true})}
+async function togglePackageCommentLike(id){if(!session){showLogin();return}const {data:x}=await sb.from("package_comment_likes").select("id").eq("comment_id",id).eq("user_id",session.user.id).maybeSingle();const r=x?.id?await sb.from("package_comment_likes").delete().eq("id",x.id).eq("user_id",session.user.id):await sb.from("package_comment_likes").insert({comment_id:id,user_id:session.user.id});if(r.error&&!/duplicate/i.test(r.error.message||""))showToast(r.error.message||"Could not update comment like.","error");if(currentViewParams?.packageId)loadPackageComments(currentViewParams.packageId,{showLoading:false,force:true})}
+async function deletePackageComment(id){if(!session)return;if(!(await showConfirmDialog("Delete your comment?",{title:"Delete comment",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("package_comments").delete().eq("id",id).eq("user_id",session.user.id);if(error){showToast(error.message||"Could not delete comment.","error");return}if(currentViewParams?.packageId)loadPackageComments(currentViewParams.packageId,{showLoading:false,force:true})}
+async function loadCommentEngagementStrip(kind,id){const h=byId(`${kind}EngagementStrip-${id}`);if(!h)return;try{const table=kind==="product"?"product_comments":"package_comments",fk=kind==="product"?"product_id":"package_id";const {data:rows}=await sb.from(table).select("user_id,author_name,author_avatar_url").eq(fk,id).order("created_at",{ascending:false}).limit(30);const seen=new Set(),people=(rows||[]).filter(r=>{const k=String(r.user_id||r.author_name||"");if(seen.has(k))return false;seen.add(k);return true});if(!people.length){h.innerHTML=`<span class="levro-engagement-empty">No engagement yet.</span>`;return}h.innerHTML=people.slice(0,20).map(u=>u.author_avatar_url?`<img class="levro-eng-avatar" src="${esc(u.author_avatar_url)}" alt="${esc(u.author_name||"User")}" title="${esc(u.author_name||"User")}">`:avatarFallbackHtml(u.author_name||"User","1.75rem","levro-eng-avatar",u.author_name||"User",u.user_id)).join("")+`<button type="button" class="levro-eng-view" onclick="showCommentEngagementView('${kind}','${esc(id)}')">View</button>`}catch(_){h.innerHTML=`<span class="levro-engagement-empty">Engagement details unavailable.</span>`}}
+async function showCommentEngagementView(kind,id){try{const table=kind==="product"?"product_comments":"package_comments",fk=kind==="product"?"product_id":"package_id";const {data:rows}=await sb.from(table).select("user_id,author_name,author_avatar_url").eq(fk,id).order("created_at",{ascending:false}).limit(100);const seen=new Set(),html=(rows||[]).filter(r=>{const k=String(r.user_id||r.author_name||"");if(seen.has(k))return false;seen.add(k);return true}).map(u=>`<div style="display:flex;align-items:center;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--border);">${u.author_avatar_url?`<img src="${esc(u.author_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;">`:avatarFallbackHtml(u.author_name||"User","2.1rem","product-comment-avatar",u.author_name||"User",u.user_id)}<strong>${esc(u.author_name||"User")}</strong><span class="muted" style="margin-left:auto;font-size:.68rem;">Commented</span></div>`).join("");const m=document.createElement("div");m.className="modal";m.id="commentEngagementViewModal";m.onclick=e=>{if(e.target===m)m.remove()};m.innerHTML='<div class="modal-content" style="max-width:420px;"><div class="flex" style="justify-content:space-between;align-items:center;"><h3 style="margin:0;">Commenters</h3><button type="button" class="icon-btn" onclick="document.getElementById(\'commentEngagementViewModal\')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div style="max-height:60vh;overflow:auto;margin-top:.7rem;">'+(html||'<p class="muted">No commenters yet.</p>')+'</div></div>';document.body.appendChild(m)}catch(_){}
 }
-function productCommentRowHtml(comment, likeMap, myLiked, depth=0) {
-  const liked=myLiked.has(String(comment.id)), own=String(session?.user?.id||"")===String(comment.user_id||"");
-  return `<div class="product-comment-row" data-comment-id="${esc(comment.id)}" style="${depth ? "margin-left:1.1rem;" : ""}">${comment.author_avatar_url ? `<img src="${esc(comment.author_avatar_url)}" class="avatar-circle" style="width:2rem;height:2rem;object-fit:cover;flex:none;" alt="${esc(comment.author_name||"User")}">` : avatarFallbackHtml(comment.author_name||"User","2rem","product-comment-avatar",comment.author_name||"User",comment.user_id||comment.author_name)}<div class="product-comment-main"><div class="product-comment-head"><strong>${esc(comment.author_name||"Levromart user")}</strong><span class="muted">${timeAgo(comment.created_at)}</span></div><div class="product-comment-body">${esc(comment.content)}</div><div class="product-comment-actions"><button type="button" class="product-comment-action ${liked ? "active" : ""}" onclick="toggleProductCommentLike('${esc(comment.id)}')" aria-label="Like comment" title="Like comment"><i class="fa-${liked ? "solid" : "regular"} fa-heart"></i><span class="comment-like-count">${Number(likeMap.get(String(comment.id))||0)}</span></button><button type="button" class="product-comment-action" onclick="replyToProductComment('${esc(comment.id)}','${esc(comment.author_name||"Levromart user")}')" aria-label="Reply to comment" title="Reply"><i class="fa-solid fa-reply"></i></button>${own ? `<button type="button" class="product-comment-action danger" onclick="deleteProductComment('${esc(comment.id)}')" aria-label="Delete your comment" title="Delete"><i class="fa-solid fa-trash"></i></button>` : ""}</div></div></div>`;
-}
-function productCommentsTreeHtml(rows,likeMap,myLiked) {
-  const roots=rows.filter(r=>!r.parent_comment_id), child=new Map();
-  rows.filter(r=>r.parent_comment_id).forEach(r=>{const k=String(r.parent_comment_id); if(!child.has(k)) child.set(k,[]); child.get(k).push(r);});
-  return roots.map(root=>`${productCommentRowHtml(root,likeMap,myLiked)}${(child.get(String(root.id))||[]).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(r=>productCommentRowHtml(r,likeMap,myLiked,1)).join("")}`).join("");
-}
-async function loadProductComments(productId,{preserveDraft=true,showLoading=true,force=false}={}) {
-  const panel=byId("productCommentsPanel"); if(!panel)return;
-  const draft=preserveDraft ? (byId("productCommentInput")?.value||"") : "";
-  const key=String(productId);
-  if(!force && productCommentsLoaded.has(key) && !productCommentsFetches.has(key)) return renderLoadedProductComments(productId,productCommentsLoaded.get(key),draft);
-  if(productCommentsFetches.has(key)) return productCommentsFetches.get(key);
-  if(showLoading && !productCommentsLoaded.has(key)) panel.innerHTML=`<div class="product-comments-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading comments…</div>`;
-  const request=(async()=>{
-    try {
-      const result=await fetchProductComments(productId);
-      productCommentsLoaded.set(key,result);
-      renderLoadedProductComments(productId,result,draft);
-    } catch (_) { if(!productCommentsLoaded.has(key)) panel.innerHTML=`<div class="product-comments-empty">Couldn’t load comments right now. Please try again.</div>`; }
-    finally { productCommentsFetches.delete(key); }
-  })();
-  productCommentsFetches.set(key,request);
-  return request;
-}
-function renderLoadedProductComments(productId,result,draft="") {
-  const panel=byId("productCommentsPanel"); if(!panel)return;
-  const {rows,likeMap,myLiked}=result;
-  window.__productCommentCounts.set(String(productId),rows.length);
-  byId("productCommentsCount")?.replaceChildren(document.createTextNode(String(rows.length)));
-  const thread=rows.length?productCommentsTreeHtml(rows,likeMap,myLiked):`<div class="product-comments-empty">No comments yet. Be the first to ask a question.</div>`;
-  panel.innerHTML=`${thread}<div class="product-comment-composer">${activeProductCommentReplyId?`<div class="product-comment-replying">Replying to a comment <button type="button" class="icon-btn" onclick="cancelProductCommentReply()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button></div>`:""}<div class="product-comment-compose-row"><textarea id="productCommentInput" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}>${esc(draft)}</textarea><button type="button" class="btn btn-sm" onclick="submitProductComment('${esc(productId)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":`<small class="muted">Log in to join the discussion.</small>`}</div>`;
-}
-function ensureProductCommentRealtime(productId) {
-  if(!productId||!sb)return;
-  if(productCommentRealtimeChannel && productCommentRealtimeProductId===String(productId))return;
-  stopProductCommentRealtime(); productCommentRealtimeProductId=String(productId);
-  productCommentRealtimeChannel=sb.channel(`product-comments-${productId}`).on("postgres_changes",{event:"*",schema:"public",table:"product_comments",filter:`product_id=eq.${productId}`},async()=>{ try { const result=await fetchProductComments(productId); productCommentsLoaded.set(String(productId),result); renderLoadedProductComments(productId,result,byId("productCommentInput")?.value||""); hydrateProductCommentCountsInView(); } catch (_) {} }).subscribe();
-}
-function stopProductCommentRealtime() { if(productCommentRealtimeChannel){try{sb.removeChannel(productCommentRealtimeChannel);}catch(_){} } productCommentRealtimeChannel=null;productCommentRealtimeProductId=null; }
-async function toggleProductComments(productId) { const panel=byId("productCommentsPanel"),toggle=document.querySelector(".product-comments-toggle"); if(!panel)return; const opening=panel.classList.contains("hidden"); panel.classList.toggle("hidden",!opening);toggle?.setAttribute("aria-expanded",opening?"true":"false");if(opening){activeProductCommentReplyId=null;await loadProductComments(productId);ensureProductCommentRealtime(productId);}else stopProductCommentRealtime(); }
-function replyToProductComment(commentId,authorName){activeProductCommentReplyId=String(commentId);const input=byId("productCommentInput");if(input)input.focus();}
-function cancelProductCommentReply(){activeProductCommentReplyId=null;if(currentProductDetail?.id&&!byId("productCommentsPanel")?.classList.contains("hidden"))loadProductComments(currentProductDetail.id);}
-async function submitProductComment(productId){
-  if(!session){showLogin();return;}
-  const content=String(byId("productCommentInput")?.value||"").trim();if(!content){showToast("Write a comment first.","error");return;}
-  const {error}=await sb.from("product_comments").insert({product_id:productId,user_id:session.user.id,parent_comment_id:activeProductCommentReplyId||null,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null});
-  if(error){showToast(error.message||"Could not post that comment.","error");return;}
-  activeProductCommentReplyId=null;await loadProductComments(productId,{preserveDraft:false});hydrateProductCommentCountsInView();
-}
-async function toggleProductCommentLike(commentId){
-  if(!session){showLogin();return;}
-  const {data:existing}=await sb.from("product_comment_likes").select("id").eq("comment_id",commentId).eq("user_id",session.user.id).maybeSingle();
-  const result=existing?.id?await sb.from("product_comment_likes").delete().eq("id",existing.id).eq("user_id",session.user.id):await sb.from("product_comment_likes").insert({comment_id:commentId,user_id:session.user.id});
-  if(result.error&&!/duplicate/i.test(result.error.message||"")){showToast(result.error.message||"Could not update comment like.","error");return;}
-  if(currentProductDetail?.id)loadProductComments(currentProductDetail.id,{showLoading:false,force:true});
-}
-async function deleteProductComment(commentId){if(!session)return;if(!(await showConfirmDialog("Delete your comment?",{title:"Delete comment",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("product_comments").delete().eq("id",commentId).eq("user_id",session.user.id);if(error){showToast(error.message||"Could not delete comment.","error");return;}if(currentProductDetail?.id){await loadProductComments(currentProductDetail.id);hydrateProductCommentCountsInView();}}
-
+function ensureCommentSheet(){let r=byId("levromartCommentSheet");if(r)return r;r=document.createElement("div");r.id="levromartCommentSheet";r.innerHTML=`<div class="levromart-comment-backdrop" onclick="closeSocialCommentSheet()"></div><div class="levromart-comment-sheet-card" role="dialog" aria-modal="true"><div class="levromart-comment-sheet-handle"></div><div class="levromart-comment-sheet-head"><strong id="levroCommentSheetTitle">Comments</strong><button type="button" class="icon-btn" onclick="closeSocialCommentSheet()" aria-label="Close comments"><i class="fa-solid fa-xmark"></i></button></div><div class="levromart-comment-sheet-body" id="levroCommentSheetBody"></div></div>`;document.body.appendChild(r);return r}
+async function openSocialCommentSheet(kind,id,title){ensureCommentSheet();const body=byId("levroCommentSheetBody");body.innerHTML='<div class="product-comments-panel" id="commentSheetPanel"></div>';window.__commentSheetPanel=byId("commentSheetPanel");byId("levroCommentSheetTitle").textContent=title||"Comments";document.body.classList.add("levromart-comment-sheet-open");if(kind==="product"){await loadProductComments(id);ensureProductCommentRealtime(id)}else{await loadPackageComments(id);ensurePackageCommentRealtime(id)}}function closeSocialCommentSheet(){document.body.classList.remove("levromart-comment-sheet-open");stopProductCommentRealtime();stopPackageCommentRealtime();window.__commentSheetPanel=null;window.__commentSheetInput=null}function toggleProductComments(id){if(document.body.classList.contains("levromart-comment-sheet-open")){closeSocialCommentSheet();return}openSocialCommentSheet("product",id,currentProductDetail?.name?`${currentProductDetail.name} · Comments`:"Comments")}function togglePackageComments(id){if(document.body.classList.contains("levromart-comment-sheet-open")){closeSocialCommentSheet();return}openSocialCommentSheet("package",id,"Package · Comments")}
 // ---------- VENDOR APPLICATION ----------
 function filterVendorApplySectors() {
   const select = byId("vaSector");
@@ -17617,6 +17538,7 @@ async function showProductModal() {
   let presetCategoryId = "";
   if (editingProductId) {
     const { data: p } = await sb.from("products").select("*").eq("id", editingProductId).single();
+    const { data: engagement } = await sb.from("product_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("product_id",editingProductId).maybeSingle();
     const { data: productVariants } = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
     window.__productVariants = productVariants || [];
     byId("productModalTitle").textContent = "Edit Product";
@@ -17636,6 +17558,7 @@ async function showProductModal() {
     byId("prodIsService").checked = !!p.is_service;
     byId("prodServiceUnit").value = p.service_price_unit || "flat";
     if (byId("prodBillingModel")) byId("prodBillingModel").value = p.billing_model || (p.is_service ? "commission" : "commission");
+    byId("prodLikeVisibility").value=engagement?.like_visibility||"everyone";byId("prodAllowComments").checked=engagement?.allow_comments!==false;byId("prodCommentAudience").value=engagement?.comment_audience||"everyone";
     window.__existingPhotos = p.photos || [];
     renderExistingPhotos();
     renderProductVariantPricing();
@@ -17652,6 +17575,7 @@ async function showProductModal() {
     byId("prodCondition").value = "new";
     byId("prodListingType").value = "sale";
     if (byId("prodBillingModel")) byId("prodBillingModel").value = "commission";
+    byId("prodLikeVisibility").value="everyone";byId("prodAllowComments").checked=true;byId("prodCommentAudience").value="everyone";
     byId("prodIsService").checked = false;
     byId("prodServiceUnit").value = "flat";
     sectorSelect.value = vendor.sector_id || productModalSectors[0]?.id || "";
@@ -17665,6 +17589,7 @@ async function showProductModal() {
   updateProductFormFields();
   updateProductSaveButtonLabel();
   updateProductDeliveryFields();
+  syncProductEngagementSettingsUI();
   byId("productModal").classList.remove("hidden");
   trackModalOpened("productModal");
   enhanceSelectsIn(byId("productModal"));
@@ -17902,6 +17827,8 @@ async function saveProductVariants(productId, drafts) {
   if (error) throw error;
 }
 
+function syncProductEngagementSettingsUI(){byId("prodCommentAudienceWrap")?.classList.toggle("hidden",!byId("prodAllowComments")?.checked);}
+async function saveProductEngagementSettings(id){if(!id||!vendor?.id)return;const {error}=await sb.from("product_engagement_settings").upsert({product_id:id,vendor_id:vendor.id,like_visibility:byId("prodLikeVisibility")?.value||"everyone",allow_comments:!!byId("prodAllowComments")?.checked,comment_audience:byId("prodCommentAudience")?.value||"everyone"},{onConflict:"product_id"});if(error)throw error;}
 async function saveProduct() {
   const errorEl = byId("productError");
   errorEl.classList.add("hidden");
@@ -18018,6 +17945,7 @@ async function saveProduct() {
       if (pendingError || !pendingProduct?.id) throw new Error(pendingError?.message || "Could not create the listing before payment.");
       savedProductId = pendingProduct.id;
       if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
+      await saveProductEngagementSettings(savedProductId);
       const pay = await startListingMonthlyPayment("product", savedProductId);
       if (!pay) {
         showToast("Listing saved as paused. Pay ₦1,000 from My Shop to activate it.", "info");
@@ -18027,6 +17955,7 @@ async function saveProduct() {
       return;
     }
     if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
+    await saveProductEngagementSettings(savedProductId);
 
     closeProductModal();
     navigate("vendorProducts");
@@ -18194,18 +18123,21 @@ async function showPackageModal() {
   let selectedQty = {};
   if (editingPackageId) {
     const { data: pkg, error } = await sb.from("vendor_packages").select("*, items:package_items(product_id, quantity)").eq("id", editingPackageId).single();
+    const { data: engagement } = await sb.from("package_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("package_id",editingPackageId).maybeSingle();
     if (error || !pkg) { showToast(error?.message || "Package not found.", "error"); return; }
     byId("packageModalTitle").textContent = "Edit Package";
     byId("pkgName").value = pkg.name || "";
     byId("pkgDesc").value = pkg.description || "";
     byId("pkgPrice").value = pkg.price ?? "";
     if (byId("pkgBillingModel")) byId("pkgBillingModel").value = pkg.billing_model || "commission";
+    byId("pkgLikeVisibility").value=engagement?.like_visibility||"everyone";byId("pkgAllowComments").checked=engagement?.allow_comments!==false;byId("pkgCommentAudience").value=engagement?.comment_audience||"everyone";
     window.__existingPackagePhotos = Array.isArray(pkg.photos) ? pkg.photos.filter(Boolean) : [];
     renderExistingPackagePhotos();
     (pkg.items || []).forEach((it) => { selectedQty[it.product_id] = it.quantity; });
   } else {
     byId("packageModalTitle").textContent = "Add New Package";
     if (byId("pkgBillingModel")) byId("pkgBillingModel").value = "commission";
+    byId("pkgLikeVisibility").value="everyone";byId("pkgAllowComments").checked=true;byId("pkgCommentAudience").value="everyone";
     byId("pkgName").value = "";
     byId("pkgDesc").value = "";
     byId("pkgPrice").value = "";
@@ -18219,6 +18151,7 @@ async function showPackageModal() {
       </div>`).join("")
     : `<p class="muted" style="margin:0;">You don't have any sellable products yet. Add one first from My Products.</p>`;
 
+  syncPackageEngagementSettingsUI();
   byId("packageModal").classList.remove("hidden");
   trackModalOpened("packageModal");
 }
@@ -18299,6 +18232,8 @@ function closePackageModal() {
   if (dismissibleModalId === "packageModal") dismissibleModalId = null;
 }
 
+function syncPackageEngagementSettingsUI(){byId("pkgCommentAudienceWrap")?.classList.toggle("hidden",!byId("pkgAllowComments")?.checked);}
+async function savePackageEngagementSettings(id){if(!id||!vendor?.id)return;const {error}=await sb.from("package_engagement_settings").upsert({package_id:id,vendor_id:vendor.id,like_visibility:byId("pkgLikeVisibility")?.value||"everyone",allow_comments:!!byId("pkgAllowComments")?.checked,comment_audience:byId("pkgCommentAudience")?.value||"everyone"},{onConflict:"package_id"});if(error)throw error;}
 async function savePackage() {
   const errorEl = byId("packageError");
   errorEl.classList.add("hidden");
@@ -18348,6 +18283,7 @@ async function savePackage() {
     }
     const { error: itemsError } = await sb.from("package_items").insert(items.map((it) => ({ ...it, package_id: packageId })));
     if (itemsError) throw itemsError;
+    await savePackageEngagementSettings(packageId);
 
     if (isNewPackage && billing_model === "monthly") {
       const pay = await startListingMonthlyPayment("package", packageId);
@@ -23121,11 +23057,8 @@ function setupDraggableFab(fab, storageKey, onTap) {
       const raw = localStorage.getItem(storageKey);
       if (!raw) return;
       const saved = JSON.parse(raw);
-      if (!saved || !Number.isFinite(Number(saved.x)) || !Number.isFinite(Number(saved.y))) {
-        localStorage.removeItem(storageKey);
-        return;
-      }
-      applyPosition(Number(saved.x), Number(saved.y), false);
+      if(!saved||saved.explicit!==true||!Number.isFinite(Number(saved.x))||!Number.isFinite(Number(saved.y))){localStorage.removeItem(storageKey);return;}
+      const x=Number(saved.x),y=Number(saved.y);if(x<8||y<8||x>window.innerWidth-fab.offsetWidth-8||y>window.innerHeight-fab.offsetHeight-8){localStorage.removeItem(storageKey);return;}applyPosition(x,y,false);
     } catch (_) {
       try { localStorage.removeItem(storageKey); } catch (_) {}
     }
@@ -23155,7 +23088,7 @@ function setupDraggableFab(fab, storageKey, onTap) {
     }
     if (!moved) return;
     const pos = clamp(startLeft + dx, startTop + dy);
-    applyPosition(pos.x, pos.y, true);
+    applyPosition(pos.x,pos.y,false);try{localStorage.setItem(storageKey,JSON.stringify({x:pos.x,y:pos.y,explicit:true}));}catch(_){}
   }, { passive: true });
 
   function endDrag(e) {
@@ -23173,7 +23106,7 @@ function setupDraggableFab(fab, storageKey, onTap) {
     if (!fab.isConnected || fab.classList.contains("hidden")) return;
     if (fab.style.left || fab.style.top) {
       const rect = fab.getBoundingClientRect();
-      applyPosition(rect.left, rect.top, true);
+      applyPosition(rect.left, rect.top, false);
     }
   }, { passive: true });
 
@@ -30295,4 +30228,6 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
 
 })();
 </script>
+<style id="levromart-astra-final-20260913">.listing-engagement-settings{margin:.8rem 0;padding:.8rem;border:1px solid color-mix(in srgb,var(--primary) 16%,var(--border));border-radius:14px;background:color-mix(in srgb,var(--primary) 3%,var(--card))}.listing-engagement-head{display:flex;flex-direction:column;gap:.15rem;margin-bottom:.5rem}.listing-engagement-head strong{font-size:.82rem}.listing-engagement-head .muted{font-size:.68rem}.inline-toggle-row{display:flex!important;justify-content:space-between;align-items:center;gap:.7rem}.inline-toggle-row input{width:18px!important;height:18px!important;accent-color:var(--primary)}.notifications-page-host .notif-category-badge{display:none!important}.notifications-page-host .notif-tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:1rem;height:1rem;padding:0 .25rem;margin-left:.28rem;border-radius:999px;background:var(--danger);color:#fff;font-size:.56rem;font-weight:850}.notifications-page-host .notif-message-summary{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}.product-card-like-row{min-height:0}.product-like-indicator{font-size:.64rem;color:var(--muted)}.product-like-indicator.hidden,.package-card-engagement-count.hidden{display:none!important}.trending-card-action-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:.55rem!important}.trending-card-action-row>.card-comment-btn{grid-column:1;justify-self:start!important}.trending-card-action-row>.product-card-action-left{grid-column:2;justify-self:end!important;display:flex!important;align-items:center!important;gap:.35rem!important}.product-comments-toggle.disabled,.card-comment-btn.disabled{opacity:.42!important;pointer-events:none!important}.product-comment-row[data-depth]{position:relative!important;border-left:1px solid color-mix(in srgb,var(--muted) 32%,transparent)!important;padding-left:.65rem!important}.product-comment-row[data-depth]:before{content:"";position:absolute;left:-1px;top:0;width:10px;height:16px;border-left:1px solid color-mix(in srgb,var(--muted) 32%,transparent);border-bottom:1px solid color-mix(in srgb,var(--muted) 32%,transparent);border-bottom-left-radius:8px}.product-comment-action{width:34px!important;height:34px!important;min-width:34px!important;border-radius:50%!important;padding:0!important;justify-content:center!important}.product-comments-empty{font-size:.74rem!important;color:var(--text-muted)!important;text-align:left!important;padding:.45rem 0 .7rem!important}.comment-view-more{border:0;background:transparent;color:var(--primary);font-size:.72rem;font-weight:750;padding:.25rem 0 .25rem 2.65rem;cursor:pointer}.comment-hidden-replies.hidden{display:none}.product-comment-compose-row{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:end!important;gap:.45rem!important}.package-card-comment-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent);padding-top:.45rem;margin-top:.5rem}.package-card-comment-btn{border:0;background:transparent;color:var(--muted);display:inline-flex;align-items:center;gap:.25rem;padding:.25rem;border-radius:999px;font:inherit;font-size:.7rem}.browse-filter-trigger{width:42px!important;min-width:42px!important;padding:0!important;justify-content:center!important}.browse-filter-trigger .browse-filter-chevron{font-size:.58rem!important}#aiChatFab,#cartFab{right:18px!important;left:auto!important;transform:none!important}.ai-chat-fab{bottom:calc(88px + env(safe-area-inset-bottom,0px))!important}.cart-fab{bottom:calc(160px + env(safe-area-inset-bottom,0px))!important}@media(max-width:520px){.browse-filter-trigger{width:40px!important;min-width:40px!important}.notifications-page-host .notif-item{grid-template-columns:.4rem 2rem minmax(0,1fr)!important}.product-gallery-variant-meta{flex-wrap:wrap!important}.product-gallery-variant-meta #productGalleryVariantPrice{margin-left:0!important;width:100%!important}.levromart-comment-sheet-card{max-height:90vh!important}}</style>
+<script id="levromart-comment-sheet-gesture-20260913">(function(){let y=0,drag=false;document.addEventListener("pointerdown",e=>{const c=e.target?.closest?.(".levromart-comment-sheet-card");if(!c||e.target.closest("button,textarea,input"))return;y=e.clientY;drag=true},{passive:true});document.addEventListener("pointermove",e=>{if(!drag)return;const c=document.querySelector(".levromart-comment-sheet-card");if(!c)return;const dy=Math.max(0,e.clientY-y);if(dy)c.style.transform=`translateY(${dy}px)`},{passive:true});document.addEventListener("pointerup",e=>{if(!drag)return;drag=false;const c=document.querySelector(".levromart-comment-sheet-card");if(!c)return;const dy=Math.max(0,e.clientY-y);c.style.transform="";if(dy>90)closeSocialCommentSheet()},{passive:true});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.body.classList.contains("levromart-comment-sheet-open"))closeSocialCommentSheet()})})();</script>
 </html>
