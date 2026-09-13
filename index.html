@@ -12396,6 +12396,7 @@ async function filterHomeProducts() {
     grid.innerHTML = localFiltered.length
       ? localFiltered.map(productCardHtml).join("")
       : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+    hydrateVisibleProductDeliverySettings().catch(() => {});
   }
 
   if (browserLooksOffline()) {
@@ -12478,21 +12479,23 @@ async function filterHomeProducts() {
   grid.innerHTML = tabProducts.length
     ? tabProducts.map(productCardHtml).join("")
     : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+  hydrateVisibleProductDeliverySettings().catch(() => {});
 }
 function productDeliverySummaryHtml(p) {
-  const v = p?.vendor || {};
-  // Delivery settings belong to the individual listing. Fall back to the
-  // vendor defaults only for legacy records that do not have product-level
-  // delivery fields yet. The previous renderer always read the vendor fields,
-  // which made an edited product appear unchanged even when the database had
-  // successfully saved the new delivery mode.
-  // Product-level delivery fields are authoritative whenever present; vendor delivery is only a legacy fallback.
-  const hasProductDeliveryMode = p && Object.prototype.hasOwnProperty.call(p, "delivery_fee_mode") && p.delivery_fee_mode != null;
-  const mode = String(hasProductDeliveryMode ? p.delivery_fee_mode : (v.delivery_fee_mode || "free")).toLowerCase();
-  const flat = Number(hasProductDeliveryMode ? p.delivery_fee : v.delivery_fee) || 0;
-  const perKm = Number(hasProductDeliveryMode ? p.delivery_fee_per_km : v.delivery_fee_per_km) || 0;
-  const lat = hasProductDeliveryMode ? p.lat : v.lat;
-  const lng = hasProductDeliveryMode ? p.lng : v.lng;
+  // Product listings own their delivery configuration. The vendor-level
+  // delivery setting is a legacy/default setting and must NEVER override an
+  // explicitly saved product setting. Some older catalogue projections omit
+  // these product columns; those cards are marked for async hydration rather
+  // than silently displaying the vendor's old setting.
+  const hasProductDeliveryMode = !!(p && Object.prototype.hasOwnProperty.call(p, "delivery_fee_mode") && p.delivery_fee_mode != null);
+  if (!hasProductDeliveryMode) {
+    return `<p class="product-delivery-summary product-delivery-loading" data-delivery-fields-missing="1"><i class="fa-solid fa-truck"></i> Delivery details</p>`;
+  }
+  const mode = String(p.delivery_fee_mode || "free").toLowerCase();
+  const flat = Number(p.delivery_fee) || 0;
+  const perKm = Number(p.delivery_fee_per_km) || 0;
+  const lat = p.lat;
+  const lng = p.lng;
   if (mode === "distance" && perKm > 0) {
     if (buyerLocation && lat != null && lng != null) {
       const km = haversineKm(buyerLocation.lat, buyerLocation.lng, lat, lng);
@@ -12501,8 +12504,49 @@ function productDeliverySummaryHtml(p) {
     }
     return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: distance-based · ${naira(perKm)}/km</p>`;
   }
-  if (flat > 0) return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: flat fee · ${naira(flat)}</p>`;
+  if (mode === "flat" && flat > 0) return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: flat fee · ${naira(flat)}</p>`;
   return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Free delivery</p>`;
+}
+
+// Any card created from a projection that forgot the product delivery columns
+// gets its canonical delivery fields fetched by id. This makes the card
+// immune to the old vendor-wide delivery setting leaking back into the UI.
+let __productDeliveryHydrationGeneration = 0;
+async function hydrateVisibleProductDeliverySettings() {
+  const nodes = [...document.querySelectorAll('.product-card-wrap[data-product-id]')];
+  const ids = [...new Set(nodes.filter(n => n.querySelector('[data-delivery-fields-missing="1"]')).map(n => n.dataset.productId).filter(Boolean))];
+  if (!ids.length || !sb) return;
+  const generation = ++__productDeliveryHydrationGeneration;
+  try {
+    const { data, error } = await sb.from('products')
+      .select('id,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng')
+      .in('id', ids);
+    if (generation !== __productDeliveryHydrationGeneration || error) return;
+    const byIdMap = new Map((data || []).map(row => [String(row.id), row]));
+    nodes.forEach(node => {
+      const row = byIdMap.get(String(node.dataset.productId));
+      if (!row) return;
+      const wrap = node.querySelector('.product-card-delivery-wrap');
+      if (wrap) wrap.innerHTML = productDeliverySummaryHtml(row);
+      const cache = window.__homeBrowseCatalog || [];
+      const cached = cache.find(p => String(p?.id) === String(row.id));
+      if (cached) Object.assign(cached, row);
+      if (window.__storefrontProducts) {
+        const sp = window.__storefrontProducts.find(p => String(p?.id) === String(row.id));
+        if (sp) Object.assign(sp, row);
+      }
+    });
+    const offline = getOfflineHomeCache?.();
+    if (offline?.browseProducts?.length) {
+      offline.browseProducts.forEach(p => {
+        const row = byIdMap.get(String(p?.id));
+        if (row) Object.assign(p, row);
+      });
+      writeOfflineHomeCache(offline);
+    }
+  } catch (e) {
+    console.warn('[Levromart] Product delivery hydration failed:', e);
+  }
 }
 
 async function hydrateProductVariantIndicatorsInView(){
@@ -12612,7 +12656,7 @@ async function toggleFavorite(evt, productId) {
 async function renderWishlist() {
   if (!session) return '<div class="empty-state">Log in to save items to your wishlist.</div>';
   const [{ data: favs }, { data: packageFavs }] = await Promise.all([
-    sb.from("favorites").select("product:products(id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, status, vendor:vendors(id, business_name, verification_status, is_active, logo_url))").eq("buyer_id", session.user.id).order("created_at", { ascending: false }),
+    sb.from("favorites").select("product:products(id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, status, vendor:vendors(id, business_name, verification_status, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng))").eq("buyer_id", session.user.id).order("created_at", { ascending: false }),
     sb.from("package_favorites").select("package:vendor_packages(id, vendor_id, name, description, price, photos, created_at, status, vendor:vendors!inner(id,business_name,logo_url,delivery_fee,verification_status,is_active), items:package_items(quantity, product:products(id,name,photos))").eq("buyer_id", session.user.id).order("created_at", { ascending: false })
   ]);
   const products = (favs || []).map((f) => f.product).filter((p) => p && p.status === "active" && p.vendor?.verification_status === "verified" && p.vendor?.is_active);
@@ -14842,7 +14886,7 @@ async function renderProductDetail(productId) {
   const relatedNames = RELATED_EQUIPMENT[product.category?.name] || [];
   if (relatedNames.length) {
     const { data: related } = await sb.from("products")
-      .select("id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, category:categories!inner(name), vendor:vendors!inner(id, business_name, verification_status, logo_url)")
+      .select("id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, category:categories!inner(name), vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng)")
       .neq("id", product.id).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
       .in("category.name", relatedNames).limit(6);
     if (related && related.length) {
@@ -15592,7 +15636,7 @@ async function renderStorefront(vendorId) {
   updateStorefrontSocialMeta(v);
 
   const [{ data: products }, { data: stats }, { data: reviews }, { data: packages }, { data: followState }] = await Promise.all([
-    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
+    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
     sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
     sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
@@ -16462,7 +16506,10 @@ function filterStorefrontProducts() {
   const expanded = Boolean(window.__storefrontExpanded) || Boolean(q);
   const visible = expanded ? filtered : filtered.slice(0, 6);
   const gridEl = byId("storefrontGrid");
-  if (gridEl) gridEl.innerHTML = visible.length ? visible.map(productCardHtml).join("") : `<div class="empty-state">No ${storefrontCatalogTab} found${q ? ` for “${esc(q)}”` : ""}.</div>`;
+  if (gridEl) {
+    gridEl.innerHTML = visible.length ? visible.map(productCardHtml).join("") : `<div class="empty-state">No ${storefrontCatalogTab} found${q ? ` for “${esc(q)}”` : ""}.</div>`;
+    hydrateVisibleProductDeliverySettings().catch(() => {});
+  }
   const tableEl = byId("storefrontTable");
   if (tableEl) tableEl.innerHTML = visible.length ? storefrontTableHtml(visible) : `<div class="empty-state">No ${storefrontCatalogTab} found.</div>`;
   const pCount = byId("storefrontProductsCount"), sCount = byId("storefrontServicesCount");
@@ -17957,6 +18004,7 @@ async function syncEditedProductIntoCatalogueCaches(productId) {
       const idx = list.findIndex(x => String(x?.id) === String(productId));
       if (isVisible) {
         if (idx >= 0) list[idx] = fresh;
+        else list.unshift(fresh);
       } else if (idx >= 0) {
         list.splice(idx, 1);
       }
