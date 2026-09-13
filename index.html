@@ -30274,7 +30274,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
 }
 /* The old experimental comments sheet is intentionally disabled. Comments are
    back in the original inline product/package detail flow. */
-#levromartCommentSheet{display:none!important;}
+ #levromartCommentSheet{display:none!important;} #app .product-comments-loading{display:none!important;}
 body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 <script id="levromart-inline-comments-repair-20260913">
@@ -30295,9 +30295,9 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
         <div class="product-comment-head"><strong>${escSafe(nameSafe(c.author_name))}</strong><span class="muted">${timeAgo(c.created_at)}</span></div>
         <div class="product-comment-body">${escSafe(c.content)}</div>
         <div class="product-comment-actions">
-          <button type="button" class="product-comment-action ${liked?"active":""}" onclick="${likeFn}('${escSafe(c.id)}')" aria-label="Like comment" title="Like"><i class="fa-solid fa-heart"></i> <span>${Number(likeMap?.get(String(c.id))||0)}</span></button>
-          <button type="button" class="product-comment-action" onclick="${replyFn}('${escSafe(c.id)}')" aria-label="Reply to comment" title="Reply"><i class="fa-solid fa-reply"></i> Reply</button>
-          ${own?`<button type="button" class="product-comment-action danger" onclick="${deleteFn}('${escSafe(c.id)}')" aria-label="Delete your comment" title="Delete"><i class="fa-solid fa-trash"></i> Delete</button>`:""}
+          <button type="button" class="product-comment-action ${liked?"active":""}" onclick="${likeFn}('${escSafe(c.id)}')" aria-label="Like comment" title="Like"><i class="fa-${liked?"solid":"regular"} fa-heart"></i><span class="comment-like-count">${Number(likeMap?.get(String(c.id))||0)}</span></button>
+          <button type="button" class="product-comment-action" onclick="${replyFn}('${escSafe(c.id)}')" aria-label="Reply to comment" title="Reply"><i class="fa-solid fa-reply"></i></button>
+          ${own?`<button type="button" class="product-comment-action danger" onclick="${deleteFn}('${escSafe(c.id)}')" aria-label="Delete your comment" title="Delete"><i class="fa-solid fa-trash"></i></button>`:""}
         </div>
       </div>
     </div>`;
@@ -30336,7 +30336,13 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     if(!panel)return;
     const inputId=kind==="package"?"packageCommentInput":"productCommentInput";
     const draft=preserveDraft?($(inputId)?.value||""):"";
-    if(showLoading&&!panel.dataset.loaded)panel.innerHTML='<div class="product-comments-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading comments…</div>';
+    // Never replace the visible comment area with a loading banner. Render the
+    // composer/empty shell immediately, then hydrate comments when the request
+    // returns. Realtime/background refreshes remain completely silent.
+    if(!panel.dataset.loaded){
+      const composer=`<div class="product-comment-composer"><div class="product-comment-compose-row"><textarea id="${inputId}" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}></textarea><button type="button" class="btn btn-sm" onclick="${kind==="package"?"submitPackageComment":"submitProductComment"}('${escSafe(id)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":'<small class="muted">Log in to join the discussion.</small>'}</div>`;
+      panel.innerHTML="<div class=\"comment-fetch-placeholder\"></div>"+composer;
+    }
     try{
       const result=kind==="package"?await fetchPackageComments(id):await fetchProductComments(id);
       panel.dataset.loaded="1";
@@ -30426,7 +30432,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     const opening=panel.classList.contains("hidden");
     panel.classList.toggle("hidden",!opening);
     toggle?.setAttribute("aria-expanded",String(opening));
-    if(opening){window.__levroActiveProductReply=null;panel.dataset.loaded="";loadInlineComments("product",id);startChannel("product",id);setTimeout(()=>panel.scrollIntoView({behavior:"smooth",block:"nearest"}),80)}
+    if(opening){window.__levroActiveProductReply=null;panel.dataset.loaded="";loadInlineComments("product",id,{showLoading:false});startChannel("product",id)}
     else stopChannel("__levroProductCommentChannel");
   };
   window.togglePackageComments=function(id){
@@ -30435,7 +30441,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     const opening=panel.classList.contains("hidden");
     panel.classList.toggle("hidden",!opening);
     toggle?.setAttribute("aria-expanded",String(opening));
-    if(opening){window.__levroActivePackageReply=null;panel.dataset.loaded="";loadInlineComments("package",id);startChannel("package",id);setTimeout(()=>panel.scrollIntoView({behavior:"smooth",block:"nearest"}),80)}
+    if(opening){window.__levroActivePackageReply=null;panel.dataset.loaded="";loadInlineComments("package",id,{showLoading:false});startChannel("package",id)}
     else stopChannel("__levroPackageCommentChannel");
   };
   window.openProductCommentsFromCard=function(id){navigate("productDetail",{productId:id,openComments:true})};
@@ -30443,6 +30449,9 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   window.openSocialCommentSheet=function(kind,id,title){ if(kind==="package")return window.togglePackageComments(id); return window.toggleProductComments(id); };
   window.closeSocialCommentSheet=function(){ document.body.classList.remove("levromart-comment-sheet-open"); $("levromartCommentSheet")?.remove(); stopChannel("__levroProductCommentChannel"); stopChannel("__levroPackageCommentChannel"); };
   try{$("levromartCommentSheet")?.remove();document.body.classList.remove("levromart-comment-sheet-open")}catch(_){}
+  // Defensive cleanup for any legacy renderer that may still attempt to inject
+  // the old loading banner. Never expose it to the user.
+  new MutationObserver(()=>{document.querySelectorAll(".product-comments-loading").forEach(el=>el.remove())}).observe(document.body,{childList:true,subtree:true});
 })();
 </script>
 <script id="levromart-listing-expiry-ui-20260913">
