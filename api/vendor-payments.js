@@ -58,15 +58,26 @@ module.exports = async function handler(req, res) {
       return startListingPayment(req, res, body);
     }
 
+    // Browser recovery path after Paystack redirects back. This is deliberately
+    // server-side and idempotent: the browser never gets to declare a payment
+    // successful by itself.
     if (body.action === "verify-listing-payment") {
-      return verifyListingPayment(body, res);
+      return verifyListingPayment(res, body);
     }
 
-    // Compatibility actions used by older listing-draft flows. They are kept
-    // server-side so an old client never falls into the generic "Unknown
-    // payment action" error after a successful Paystack checkout.
+    // Legacy paid-draft flow: keep it compatible, but only consume a payment
+    // after Paystack itself has returned a successful transaction.
+    if (body.action === "consume-listing-payment") {
+      return consumeListingPayment(res, body);
+    }
+
+    // Older clients may still call this before a listing exists. Do not create
+    // a payment with no listing to bind it to; require the current create-first
+    // flow instead.
     if (body.action === "prepare-listing-payment") {
-      return prepareListingPayment(body, res, origin);
+      return res.status(400).json({
+        error: "Create the listing first, then use its ₦1,000 activation payment."
+      });
     }
 
     res.status(400).json({
@@ -999,37 +1010,25 @@ async function startListingPayment(
     });
   }
 
+  // If this listing is already waiting on a reference, verify that exact
+  // transaction before creating another one. A successful existing payment is
+  // activated immediately; a still-pending transaction is never replaced,
+  // preventing a second charge while Paystack/webhook delivery catches up.
+  if (listing.billing_status === "pending_payment" && listing.billing_reference) {
+    const existingCheck = await paystackVerify(listing.billing_reference);
+    if (existingCheck.ok) {
+      const settled = await verifyAndActivateListing(listing.billing_reference, me.id, { expectedListingId: listing.id });
+      if (settled.ok) return res.status(200).json({ alreadyActive: true, paidUntil: settled.paidUntil });
+    } else if (existingCheck.paystackStatus === "pending" || existingCheck.paystackStatus === "ongoing" || existingCheck.paystackStatus === "queued") {
+      return res.status(409).json({ error: "This listing already has a Paystack payment being processed. Please wait a moment and try again; you will not be charged twice.", reference: listing.billing_reference });
+    }
+    // Failed/abandoned/unknown old references may be replaced safely.
+  }
+
   const reference =
     `levro_listing_${Date.now()}_${Math.random()
       .toString(36)
       .slice(2, 10)}`;
-
-  // Keep a durable payment-intent record as a second source of truth. The
-  // listing's billing_reference remains the activation lock, while this row
-  // lets the webhook/browser recovery path find the exact listing later.
-  try {
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/listing_payment_intents`,
-      {
-        method: "POST",
-        headers: {
-          apikey: SERVICE_KEY,
-          Authorization: `Bearer ${SERVICE_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "return=minimal"
-        },
-        body: JSON.stringify({
-          reference,
-          user_id: me.id,
-          vendor_id: listing.vendor_id,
-          kind: body.kind,
-          amount_naira: MONTHLY_LISTING_NAIRA,
-          status: "pending",
-          listing_id: listing.id
-        })
-      }
-    );
-  } catch (_) {}
 
   const patchUrl =
     `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(
@@ -1082,6 +1081,20 @@ async function startListingPayment(
         "Could not prepare the listing for payment."
     });
   }
+
+  // Keep a server-side intent record for reconciliation and idempotency.
+  // The table is optional for backwards compatibility; the listing itself and
+  // Paystack transaction remain the authoritative binding.
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/listing_payment_intents`, {
+      method: "POST",
+      headers: { ...patchHeaders, Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({
+        reference, listing_id: listing.id, vendor_id: listing.vendor_id,
+        kind: body.kind, amount_naira: MONTHLY_LISTING_NAIRA, status: "pending"
+      })
+    });
+  } catch (_) {}
 
   const origin =
     req.headers.origin ||
@@ -1201,456 +1214,196 @@ async function startListingPayment(
    FINISH / VERIFY ₦1,000 LISTING PAYMENT
    ========================================================= */
 
-async function finishListingPayment(
-  req,
-  res,
-  reference
-) {
-  const SUPABASE_URL =
-    env("SUPABASE_URL");
-
-  const SERVICE_KEY =
-    env("SUPABASE_SERVICE_ROLE_KEY");
-
-  const PAYSTACK_SECRET_KEY =
-    env("PAYSTACK_SECRET_KEY");
-
-  const base =
-    req.headers.origin ||
-    `https://${req.headers.host}`;
-
-  const fail = (
-    reason = "payment"
-  ) =>
-    res
-      .writeHead(
-        302,
-        {
-          Location:
-            `${base}/?listingPayment=failed&reference=${encodeURIComponent(
-              reference
-            )}&reason=${encodeURIComponent(
-              reason
-            )}`
-        }
-      )
-      .end();
-
-  if (
-    !SUPABASE_URL ||
-    !SERVICE_KEY ||
-    !PAYSTACK_SECRET_KEY
-  ) {
-    return fail(
-      "configuration"
-    );
+async function finishListingPayment(req, res, reference) {
+  const base = req.headers.origin || `https://${req.headers.host}`;
+  try {
+    const result = await verifyAndActivateListing(reference, null, { requireAuth: false });
+    if (!result.ok) {
+      return res.writeHead(302, {
+        Location: `${base}/?listingPayment=failed&reference=${encodeURIComponent(reference)}&reason=${encodeURIComponent(result.reason || "verification")}`
+      }).end();
+    }
+    return res.writeHead(302, {
+      Location: `${base}/?listingPayment=return&listingPaid=1&reference=${encodeURIComponent(reference)}&kind=${encodeURIComponent(result.kind)}&id=${encodeURIComponent(result.listingId)}`
+    }).end();
+  } catch (err) {
+    console.error("[vendor-payments callback]", err);
+    return res.writeHead(302, {
+      Location: `${base}/?listingPayment=failed&reference=${encodeURIComponent(reference)}&reason=server`
+    }).end();
   }
-
-  // Verify directly with Paystack.
-  const verifyRes =
-    await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(
-        reference
-      )}`,
-      {
-        headers: {
-          Authorization:
-            `Bearer ${PAYSTACK_SECRET_KEY}`
-        }
-      }
-    );
-
-  const verifyJson =
-    await verifyRes
-      .json()
-      .catch(() => ({}));
-
-  const tx =
-    verifyJson?.data;
-
-  const metadata =
-    tx?.metadata || {};
-
-  const kind =
-    metadata.kind;
-
-  const listingId =
-    metadata.listing_id;
-
-  const vendorId =
-    metadata.vendor_id;
-
-  const table =
-    kind === "product"
-      ? "products"
-      : kind === "package"
-      ? "vendor_packages"
-      : null;
-
-  // Do not activate anything unless:
-  //
-  // 1. Paystack verification succeeds
-  // 2. Transaction status is success
-  // 3. Amount is exactly ₦1,000
-  // 4. Metadata identifies a valid listing
-  if (
-    !verifyRes.ok ||
-    !verifyJson.status ||
-    tx?.status !==
-      "success" ||
-    Number(tx.amount) !==
-      MONTHLY_LISTING_KOBO ||
-    !table ||
-    !listingId ||
-    !vendorId
-  ) {
-    return fail(
-      "verification"
-    );
-  }
-
-  const listingRes =
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(
-        listingId
-      )}&vendor_id=eq.${encodeURIComponent(
-        vendorId
-      )}&select=id,vendor_id,status,billing_model,billing_status,billing_reference,billing_paid_until&limit=1`,
-      {
-        headers: {
-          apikey:
-            SERVICE_KEY,
-
-          Authorization:
-            `Bearer ${SERVICE_KEY}`
-        }
-      }
-    );
-
-  const [listing] =
-    await listingRes
-      .json()
-      .catch(() => []);
-
-  if (
-    !listing ||
-    listing.billing_model !==
-      "monthly" ||
-    listing.billing_reference !==
-      reference
-  ) {
-    return fail(
-      "listing"
-    );
-  }
-
-  // Extend an existing active billing period rather
-  // than throwing away any remaining paid time.
-  const now =
-    new Date();
-
-  const baseDate =
-    listing.billing_paid_until &&
-    new Date(
-      listing.billing_paid_until
-    ).getTime() >
-      now.getTime()
-      ? new Date(
-          listing.billing_paid_until
-        )
-      : now;
-
-  const paidUntil =
-    addOneCalendarMonth(
-      baseDate
-    );
-
-  // IMPORTANT:
-  // billing_reference must match the payment being
-  // verified. This prevents the same payment from
-  // accidentally activating a different listing.
-  const updateRes =
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(
-        listingId
-      )}&vendor_id=eq.${encodeURIComponent(
-        vendorId
-      )}&billing_reference=eq.${encodeURIComponent(
-        reference
-      )}`,
-      {
-        method: "PATCH",
-
-        headers: {
-          apikey:
-            SERVICE_KEY,
-
-          Authorization:
-            `Bearer ${SERVICE_KEY}`,
-
-          "Content-Type":
-            "application/json",
-
-          Prefer:
-            "return=minimal"
-        },
-
-        body: JSON.stringify({
-          status:
-            "active",
-
-          billing_status:
-            "active",
-
-          billing_paid_until:
-            paidUntil.toISOString(),
-
-          // Clear the one-time payment reference
-          // after successful activation.
-          billing_reference:
-            null
-        })
-      }
-    );
-
-  if (!updateRes.ok) {
-    return fail(
-      "activation"
-    );
-  }
-
-  await markListingIntentPaid(
-    SUPABASE_URL,
-    SERVICE_KEY,
-    reference,
-    paidUntil.toISOString()
-  );
-
-  // Send the vendor back to Levromart with enough
-  // information for the frontend to refresh the
-  // listing immediately.
-  return res
-    .writeHead(
-      302,
-      {
-        Location:
-          `${base}/?listingPaid=1&kind=${encodeURIComponent(
-            kind
-          )}&id=${encodeURIComponent(
-            listingId
-          )}&reference=${encodeURIComponent(
-            reference
-          )}`
-      }
-    )
-    .end();
 }
 
+async function verifyListingPayment(res, body) {
+  if (!body?.reference || !body?.accessToken) {
+    return res.status(400).json({ error: "reference and accessToken are required" });
+  }
 
+  const me = await getAuthUser(body.accessToken);
+  if (!me?.id) return res.status(401).json({ error: "Invalid session" });
 
-/* =========================================================
-   BROWSER RECOVERY / MISSED-CALLBACK VERIFICATION
-   ========================================================= */
-
-async function verifyListingPayment(
-  { accessToken, reference },
-  res
-) {
-  const SUPABASE_URL = env("SUPABASE_URL");
-  const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
-  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-  const PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY");
-
-  if (!accessToken || !reference) {
-    return res.status(400).json({
-      error: "A payment reference and signed-in session are required."
+  const result = await verifyAndActivateListing(body.reference, me.id, { requireAuth: true });
+  if (!result.ok) {
+    return res.status(result.httpStatus || 400).json({
+      error: result.message || "Paystack has not confirmed this ₦1,000 listing payment yet.",
+      status: result.paystackStatus || "pending"
     });
   }
-
-  const meRes = await fetch(
-    `${SUPABASE_URL}/auth/v1/user`,
-    {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${accessToken}`
-      }
-    }
-  );
-  const me = await meRes.json().catch(() => null);
-  if (!meRes.ok || !me?.id) {
-    return res.status(401).json({ error: "Your session expired. Please log in again." });
-  }
-
-  const verifyRes = await fetch(
-    `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
-    { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` } }
-  );
-  const verifyJson = await verifyRes.json().catch(() => ({}));
-  const tx = verifyJson?.data;
-  const metadata = tx?.metadata || {};
-  const kind = metadata.kind;
-  const listingId = metadata.listing_id;
-  const vendorId = metadata.vendor_id;
-  const table =
-    kind === "product" ? "products" :
-    kind === "package" ? "vendor_packages" : null;
-
-  if (
-    !verifyRes.ok ||
-    !verifyJson.status ||
-    tx?.status !== "success" ||
-    Number(tx.amount) !== MONTHLY_LISTING_KOBO ||
-    !table ||
-    !listingId ||
-    !vendorId
-  ) {
-    return res.status(400).json({
-      error: "Paystack has not confirmed this ₦1,000 listing payment yet."
-    });
-  }
-
-  const vendorRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/vendors?id=eq.${encodeURIComponent(vendorId)}&select=id,user_id&limit=1`,
-    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
-  );
-  const [vendorRow] = await vendorRes.json().catch(() => []);
-  if (!vendorRow || String(vendorRow.user_id) !== String(me.id)) {
-    return res.status(403).json({ error: "This payment does not belong to your vendor account." });
-  }
-
-  const listingRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(listingId)}&vendor_id=eq.${encodeURIComponent(vendorId)}&select=id,status,billing_model,billing_status,billing_reference,billing_paid_until&limit=1`,
-    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
-  );
-  const [listing] = await listingRes.json().catch(() => []);
-
-  if (!listing || listing.billing_model !== "monthly") {
-    return res.status(404).json({ error: "The monthly listing could not be found." });
-  }
-
-  // If the webhook/callback already won the race, simply report success.
-  if (
-    listing.billing_status === "active" &&
-    listing.billing_paid_until &&
-    new Date(listing.billing_paid_until).getTime() > Date.now()
-  ) {
-    await markListingIntentPaid(SUPABASE_URL, SERVICE_KEY, reference, listing.billing_paid_until);
-    return res.status(200).json({
-      status: "success",
-      alreadyActive: true,
-      listingId
-    });
-  }
-
-  // The reference must still be attached to this exact listing. This prevents
-  // a paid transaction from being used to activate another listing.
-  if (String(listing.billing_reference || "") !== String(reference)) {
-    const intentRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/listing_payment_intents?reference=eq.${encodeURIComponent(reference)}&listing_id=eq.${encodeURIComponent(listingId)}&vendor_id=eq.${encodeURIComponent(vendorId)}&select=id,status&limit=1`,
-      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
-    );
-    const [intent] = await intentRes.json().catch(() => []);
-    if (!intent) {
-      return res.status(409).json({
-        error: "This payment reference is not attached to the requested listing."
-      });
-    }
-  }
-
-  const now = new Date();
-  const baseDate =
-    listing.billing_paid_until &&
-    new Date(listing.billing_paid_until).getTime() > now.getTime()
-      ? new Date(listing.billing_paid_until)
-      : now;
-  const paidUntil = addOneCalendarMonth(baseDate);
-
-  const updateRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(listingId)}&vendor_id=eq.${encodeURIComponent(vendorId)}&billing_reference=eq.${encodeURIComponent(reference)}`,
-    {
-      method: "PATCH",
-      headers: {
-        apikey: SERVICE_KEY,
-        Authorization: `Bearer ${SERVICE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal"
-      },
-      body: JSON.stringify({
-        status: "active",
-        billing_status: "active",
-        billing_paid_until: paidUntil.toISOString(),
-        billing_reference: null
-      })
-    }
-  );
-
-  if (!updateRes.ok) {
-    return res.status(500).json({
-      error: "Payment was confirmed, but the listing could not be activated yet. Please retry verification."
-    });
-  }
-
-  await markListingIntentPaid(
-    SUPABASE_URL,
-    SERVICE_KEY,
-    reference,
-    paidUntil.toISOString()
-  );
 
   return res.status(200).json({
     status: "success",
-    listingId,
-    kind,
-    billing_paid_until: paidUntil.toISOString()
+    kind: result.kind,
+    listingId: result.listingId,
+    paidUntil: result.paidUntil
   });
 }
 
-async function prepareListingPayment(
-  { accessToken, kind },
-  res,
-  origin
-) {
-  // This compatibility path is intentionally conservative. New listings in
-  // the current UI are created first and then use pay-listing, which binds the
-  // payment to a real listing ID before Paystack is opened.
-  if (!accessToken || !kind) {
-    return res.status(400).json({ error: "A signed-in session and listing type are required." });
+async function consumeListingPayment(res, body) {
+  if (!body?.reference || !body?.listingId || !body?.accessToken) {
+    return res.status(400).json({ error: "reference, listingId and accessToken are required" });
   }
-  return res.status(400).json({
-    error: "Create the monthly listing first, then use its ₦1,000 activation payment."
+  const me = await getAuthUser(body.accessToken);
+  if (!me?.id) return res.status(401).json({ error: "Invalid session" });
+
+  const result = await verifyAndActivateListing(body.reference, me.id, {
+    requireAuth: true,
+    expectedListingId: body.listingId
   });
+  if (!result.ok) {
+    return res.status(result.httpStatus || 400).json({ error: result.message || "Payment could not be verified." });
+  }
+  return res.status(200).json({ status: "success", listingId: result.listingId, paidUntil: result.paidUntil });
 }
 
-async function markListingIntentPaid(
-  SUPABASE_URL,
-  SERVICE_KEY,
-  reference,
-  paidUntil
-) {
+async function getAuthUser(accessToken) {
+  const SUPABASE_URL = env("SUPABASE_URL");
+  const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !accessToken) return null;
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` }
+  });
+  if (!r.ok) return null;
+  return r.json().catch(() => null);
+}
+
+async function paystackVerify(reference) {
+  const PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY");
+  if (!PAYSTACK_SECRET_KEY) return { ok: false, reason: "configuration", message: "Paystack server configuration is missing." };
+  const r = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }
+  });
+  const json = await r.json().catch(() => ({}));
+  const tx = json?.data;
+  if (!r.ok || !json?.status) {
+    return { ok: false, reason: "verification", message: json?.message || "Paystack verification failed.", paystackStatus: tx?.status || "unknown" };
+  }
+  if (tx?.status !== "success") {
+    return { ok: false, reason: "pending", message: "Paystack has not confirmed this ₦1,000 listing payment yet.", paystackStatus: tx?.status || "pending" };
+  }
+  if (Number(tx.amount) !== MONTHLY_LISTING_KOBO) {
+    return { ok: false, reason: "amount", message: "The verified Paystack amount is not ₦1,000.", paystackStatus: tx.status };
+  }
+  return { ok: true, tx };
+}
+
+async function findListingForReference(reference, tx, expectedListingId) {
+  const SUPABASE_URL = env("SUPABASE_URL");
+  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+  const headers = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+  const metadata = tx?.metadata || {};
+  let kind = metadata?.kind === "package" ? "package" : metadata?.kind === "product" ? "product" : null;
+  let listingId = metadata?.listing_id ? String(metadata.listing_id) : null;
+  let vendorId = metadata?.vendor_id ? String(metadata.vendor_id) : null;
+
+  if (expectedListingId) listingId = String(expectedListingId);
+
+  const tables = kind ? [kind === "product" ? "products" : "vendor_packages"] : ["products", "vendor_packages"];
+  for (const table of tables) {
+    const tableRows = listingId
+      ? await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(listingId)}&select=id,vendor_id,status,billing_model,billing_status,billing_reference,billing_paid_until&limit=1`, { headers }).then(r => r.json()).catch(() => [])
+      : await fetch(`${SUPABASE_URL}/rest/v1/${table}?billing_reference=eq.${encodeURIComponent(reference)}&select=id,vendor_id,status,billing_model,billing_status,billing_reference,billing_paid_until&limit=1`, { headers }).then(r => r.json()).catch(() => []);
+    const listing = Array.isArray(tableRows) ? tableRows[0] : null;
+    if (listing) {
+      const inferredKind = table === "products" ? "product" : "package";
+      if (metadata?.kind && metadata.kind !== inferredKind) continue;
+      if (vendorId && String(listing.vendor_id) !== vendorId) continue;
+      return { table, kind: inferredKind, listing, vendorId: String(listing.vendor_id) };
+    }
+  }
+  return null;
+}
+
+async function verifyAndActivateListing(reference, authUserId, options = {}) {
+  const verified = await paystackVerify(reference);
+  if (!verified.ok) return verified;
+
+  const tx = verified.tx;
+  const found = await findListingForReference(reference, tx, options.expectedListingId);
+  if (!found) return { ok: false, reason: "listing", message: "The successful Paystack payment is not linked to a pending monthly listing." };
+
+  const { table, kind, listing, vendorId } = found;
+  const metadata = tx?.metadata || {};
+  const SUPABASE_URL = env("SUPABASE_URL");
+  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+  const serviceHeaders = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+
+  if (authUserId) {
+    const vendorRes = await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${encodeURIComponent(vendorId)}&select=user_id&limit=1`, { headers: serviceHeaders });
+    const [vendor] = await vendorRes.json().catch(() => []);
+    if (!vendor || String(vendor.user_id) !== String(authUserId)) {
+      return { ok: false, reason: "owner", httpStatus: 403, message: "This payment does not belong to your vendor listing." };
+    }
+  }
+
+  if (metadata?.listing_id && String(metadata.listing_id) !== String(listing.id)) {
+    return { ok: false, reason: "listing", message: "The Paystack payment is linked to a different listing." };
+  }
+  if (metadata?.vendor_id && String(metadata.vendor_id) !== String(vendorId)) {
+    return { ok: false, reason: "vendor", message: "The Paystack payment is linked to a different vendor." };
+  }
+  if (listing.billing_model !== "monthly") {
+    return { ok: false, reason: "billing", message: "This listing is not configured for monthly activation." };
+  }
+
+  // Idempotent: a webhook/callback/browser retry can safely confirm the same payment.
+  if (listing.billing_status === "active" && listing.billing_paid_until && new Date(listing.billing_paid_until).getTime() > Date.now()) {
+    return { ok: true, kind, listingId: listing.id, paidUntil: listing.billing_paid_until, alreadyActive: true };
+  }
+
+  // For a pending payment, the reference must still belong to this listing.
+  // The reference may already have been cleared only if another confirmation
+  // path activated it, which is covered by the idempotent branch above.
+  if (String(listing.billing_reference || "") !== String(reference)) {
+    return { ok: false, reason: "reference", message: "The Paystack payment was successful, but its listing reference no longer matches. No new charge was made." };
+  }
+
+  const now = new Date();
+  const currentPaid = listing.billing_paid_until ? new Date(listing.billing_paid_until) : null;
+  const base = currentPaid && currentPaid.getTime() > now.getTime() ? currentPaid : now;
+  const paidUntil = addOneCalendarMonth(base).toISOString();
+
+  const update = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(listing.id)}&vendor_id=eq.${encodeURIComponent(vendorId)}&billing_reference=eq.${encodeURIComponent(reference)}`, {
+    method: "PATCH",
+    headers: { ...serviceHeaders, "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ status: "active", billing_status: "active", billing_paid_until: paidUntil, billing_reference: null })
+  });
+  if (!update.ok) {
+    const text = await update.text().catch(() => "");
+    console.error("[vendor-payments] listing activation update failed", text);
+    return { ok: false, reason: "activation", message: "Paystack confirmed the payment, but the listing could not be activated yet. Do not pay again." };
+  }
+
+  // If the optional payment-intents table exists, mark the exact reference paid.
   try {
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/listing_payment_intents?reference=eq.${encodeURIComponent(reference)}`,
-      {
-        method: "PATCH",
-        headers: {
-          apikey: SERVICE_KEY,
-          Authorization: `Bearer ${SERVICE_KEY}`,
-          "Content-Type": "application/json",
-          Prefer: "return=minimal"
-        },
-        body: JSON.stringify({
-          status: "paid",
-          paid_at: new Date().toISOString()
-        })
-      }
-    );
+    await fetch(`${SUPABASE_URL}/rest/v1/listing_payment_intents?reference=eq.${encodeURIComponent(reference)}`, {
+      method: "PATCH",
+      headers: { ...serviceHeaders, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ status: "paid", paid_at: new Date().toISOString() })
+    });
   } catch (_) {}
+
+  return { ok: true, kind, listingId: listing.id, paidUntil };
 }
-
-
-/* =========================================================
-   CALENDAR MONTH HELPER
-   ========================================================= */
 
 function addOneCalendarMonth(
   date
