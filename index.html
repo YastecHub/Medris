@@ -12486,6 +12486,7 @@ function productDeliverySummaryHtml(p) {
   // delivery fields yet. The previous renderer always read the vendor fields,
   // which made an edited product appear unchanged even when the database had
   // successfully saved the new delivery mode.
+  // Product-level delivery fields are authoritative whenever present; vendor delivery is only a legacy fallback.
   const hasProductDeliveryMode = p && Object.prototype.hasOwnProperty.call(p, "delivery_fee_mode") && p.delivery_fee_mode != null;
   const mode = String(hasProductDeliveryMode ? p.delivery_fee_mode : (v.delivery_fee_mode || "free")).toLowerCase();
   const flat = Number(hasProductDeliveryMode ? p.delivery_fee : v.delivery_fee) || 0;
@@ -17938,6 +17939,51 @@ async function saveProductVariants(productId, drafts) {
 
 function syncProductEngagementSettingsUI(){byId("prodCommentAudienceWrap")?.classList.toggle("hidden",!byId("prodAllowComments")?.checked);}
 async function saveProductEngagementSettings(id){if(!id||!vendor?.id)return;const {error}=await sb.from("product_engagement_settings").upsert({product_id:id,vendor_id:vendor.id,like_visibility:byId("prodLikeVisibility")?.value||"everyone",allow_comments:!!byId("prodAllowComments")?.checked,comment_audience:byId("prodCommentAudience")?.value||"everyone"},{onConflict:"product_id"});if(error)throw error;}
+// Keep every client-side catalogue/cache copy in sync immediately after a product edit.
+// The marketplace is intentionally cache-first, so updating Supabase alone is not enough:
+// an older cached card can otherwise repaint with the vendor's previous delivery settings.
+async function syncEditedProductIntoCatalogueCaches(productId) {
+  if (!productId || !sb) return;
+  try {
+    const { data: fresh } = await sb.from("products")
+      .select(PRODUCT_LIST_SELECT)
+      .eq("id", productId)
+      .maybeSingle();
+    if (!fresh) return;
+
+    const isVisible = fresh.status === "active" && fresh.vendor?.verification_status === "verified" && fresh.vendor?.is_active !== false;
+    const replaceIn = (arr) => {
+      const list = Array.isArray(arr) ? arr.slice() : [];
+      const idx = list.findIndex(x => String(x?.id) === String(productId));
+      if (isVisible) {
+        if (idx >= 0) list[idx] = fresh;
+      } else if (idx >= 0) {
+        list.splice(idx, 1);
+      }
+      return list;
+    };
+
+    window.__homeBrowseCatalog = replaceIn(window.__homeBrowseCatalog || []);
+    if (window.__storefrontProducts) window.__storefrontProducts = replaceIn(window.__storefrontProducts);
+
+    const cache = getOfflineHomeCache() || {
+      categories: window.__categories || [], sectors: sectors || [], trending: [],
+      browseProducts: [], topVendors: [], recentProducts: [], packages: [], carouselSlides: []
+    };
+    const nextBrowse = replaceIn(cache.browseProducts || []);
+    const nextTrending = replaceIn(cache.trending || []);
+    const nextRecent = replaceIn(cache.recentProducts || []);
+    writeOfflineHomeCache({
+      ...cache,
+      browseProducts: nextBrowse,
+      trending: nextTrending,
+      recentProducts: nextRecent
+    });
+  } catch (e) {
+    console.warn("[Levromart] Could not refresh the local product catalogue after edit:", e);
+  }
+}
+
 async function saveProduct() {
   const errorEl = byId("productError");
   errorEl.classList.add("hidden");
@@ -18060,6 +18106,11 @@ async function saveProduct() {
     }
     if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
     await saveProductEngagementSettings(savedProductId);
+
+    // Re-read the canonical product row and update the homepage/storefront caches
+    // before leaving the editor. This makes delivery/price/quantity/photo edits
+    // appear immediately instead of waiting for a cache refresh or app restart.
+    await syncEditedProductIntoCatalogueCaches(savedProductId);
 
     closeProductModal();
     showToast(editingProductId ? "Product updated successfully." : "Product saved successfully.", "success");
@@ -31230,7 +31281,13 @@ body.levro-profile-split.profile-reveal-dragging #app{transition:none!important;
       .on('postgres_changes',{event:'*',schema:'public',table:'favorites'},()=>{try{hydrateProductLikeCountsInView();hydratePackageCommentCountsInView();}catch(_){} })
       .on('postgres_changes',{event:'*',schema:'public',table:'product_comment_likes'},()=>{try{if(currentProductDetail?.id)loadInlineComments('product',currentProductDetail.id,{showLoading:false});}catch(_){} })
       .on('postgres_changes',{event:'*',schema:'public',table:'package_comment_likes'},()=>{try{if(currentViewParams?.packageId)loadInlineComments('package',currentViewParams.packageId,{showLoading:false});}catch(_){} })
-      .on('postgres_changes',{event:'*',schema:'public',table:'products'},()=>{try{hydrateProductLikeCountsInView();hydrateProductVariantIndicatorsInView();}catch(_){} })
+      .on('postgres_changes',{event:'*',schema:'public',table:'products'},async(payload)=>{try{
+        hydrateProductLikeCountsInView();
+        hydrateProductVariantIndicatorsInView();
+        const changedId=payload?.new?.id||payload?.old?.id;
+        if(changedId) await syncEditedProductIntoCatalogueCaches(changedId);
+        if(currentView==='home') setTimeout(()=>{try{filterHomeProducts();}catch(_){ }},40);
+      }catch(_){} })
       .on('postgres_changes',{event:'*',schema:'public',table:'product_variants'},()=>{try{paintGalleryMeta();}catch(_){} })
       .on('postgres_changes',{event:'*',schema:'public',table:'vendor_packages'},()=>{try{hydratePackageCommentCountsInView();}catch(_){} })
       .on('postgres_changes',{event:'*',schema:'public',table:'vendor_follows'},()=>{try{hydrateFollowerCounts();hydrateVendorDistances();}catch(_){} })
