@@ -10778,7 +10778,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "settings","supportRequest","wishlist","buyerOrders","orderDetail",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
     "adminSupportRequests","adminPeople","adminFeedback","adminUsers",
-    "adminFinance","adminLog","vendorSuggestionsInbox","requestEquipment","notifications"
+    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications"
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
     try {
@@ -10842,7 +10842,7 @@ async function navigate(view, params = {}, pushHistory = true) {
           ? `${location.pathname}?product=${encodeURIComponent(params.productId)}`
           : view === "notifications"
             ? `${location.pathname}?levro=notifications`
-            : location.pathname;
+            : `${location.pathname}?appView=${encodeURIComponent(view)}&appParams=${encodeURIComponent(JSON.stringify(params || {}))}`;
     history.pushState({ view, params }, "", navUrl);
   }
   // Mobile browsers (and installed PWAs especially) routinely discard a
@@ -10903,6 +10903,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminUsers": html = await renderAdminUsers(); break;
       case "adminFinance": html = await renderAdminFinance(); break;
       case "adminLog": html = await renderAdminLog(); break;
+      case "adminMonthlyListings": html = await renderAdminMonthlyListings(); break;
       case "wishlist": html = await renderWishlist(); break;
       case "cart": html = await renderCart(); break;
       case "messages": html = await renderMessages(params.conversationId); break;
@@ -11485,8 +11486,8 @@ function handleHomeCarouselSlideClick(event, index) {
         }, 80));
         return;
       }
-      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox","notifications"].includes(deepView)) {
-        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox","notifications"];
+      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
         if (!session && authViews.includes(deepView)) { showLogin(); return; }
         navigate(deepView, {}, true);
         return;
@@ -17410,11 +17411,13 @@ async function renderVendorProducts() {
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   vendor = v;
 
-  const [{ data: allVendorProducts }, { data: orderItems }, { data: regionRows }] = await Promise.all([
+  const [{ data: allVendorProducts }, { data: orderItems }, { data: regionRows }, { data: monthlyProductSubmissions }] = await Promise.all([
     sb.from("products").select("*, category:categories(name)").eq("vendor_id", v.id).order("created_at", { ascending: false }),
     sb.from("order_items").select("product_id, quantity, unit_price, order:orders!inner(status, vendor_id)").eq("order.vendor_id", v.id),
     sb.rpc("get_vendor_product_regions", { p_vendor_id: v.id }),
+    sb.from("monthly_listing_submissions").select("listing_id,status,submitted_at,review_note").eq("vendor_id", v.id).order("submitted_at", { ascending: false }).limit(100),
   ]);
+  const pendingMonthlyProductIds = new Set((monthlyProductSubmissions || []).filter(x => x.status === "pending").map(x => String(x.listing_id)));
   const products = (allVendorProducts || []).filter((p) => p.status !== "removed");
   const removedProducts = (allVendorProducts || []).filter((p) => p.status === "removed");
   // Already sorted order_count desc per product by the RPC -- [0] of each
@@ -17514,13 +17517,14 @@ async function renderVendorProducts() {
         <div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
         <h4 style="margin:0.5rem 0 0.2rem;">${esc(p.name)}</h4>
         <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.quantity_available}/${p.quantity_total} available`} · ${p.status}${p.billing_model === "monthly" && p.billing_paid_until ? listingExpiryMarkup(p) : ""}</p>
+        ${p.billing_model === "monthly" && pendingMonthlyProductIds.has(String(p.id)) ? `<p class="muted monthly-vendor-pending-note"><i class="fa-solid fa-clock"></i> Receipt submitted · awaiting admin approval</p>` : p.billing_model === "monthly" && p.billing_status === "cancelled" ? `<p class="muted monthly-vendor-rejected-note"><i class="fa-solid fa-circle-exclamation"></i> Monthly listing deactivated. Submit a new ₦1,000 receipt to restore it.</p>` : ""}
         <p class="muted" style="font-size:0.8rem;"><i class='fa-solid fa-eye'></i> ${p.view_count || 0} views · <i class='fa-solid fa-heart'></i> ${favCount} saved · <i class="fa-solid fa-sack-dollar"></i> ${naira(revenueByProduct[p.id] || 0)}</p>
         ${topRegion ? `<p class="muted" style="font-size:0.8rem;"><i class="fa-solid fa-map-location-dot"></i> Sells best in <a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count} order${topRegion.order_count === 1 ? "" : "s"})</a></p>` : ""}
         ${hasPendingOrder ? `<p class="muted" style="font-size:0.8rem;color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
         <div class="vendor-product-actions">
           <button class="btn btn-sm vendor-edit-action" onclick="openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
           ${p.status === "active" ? `<button class="btn btn-sm vendor-pause-action" onclick="setProductStatus('${p.id}','paused')">Pause</button>` : ""}
-          ${p.status === "paused" ? (p.billing_model === "monthly" ? (listingActivationValid(p) ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Resume</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-credit-card"></i> ${p.billing_status === "pending_payment" ? "Pay ₦1,000 to activate" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
+          ${p.status === "paused" ? (p.billing_model === "monthly" ? (listingActivationValid(p) ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Resume</button>` : pendingMonthlyProductIds.has(String(p.id)) ? `<button class="btn btn-sm btn-outline" disabled><i class="fa-solid fa-clock"></i> Receipt submitted</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-receipt"></i> ${p.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
           <button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>
         </div>
       </div>`;
@@ -17924,7 +17928,7 @@ async function saveProduct() {
   try {
     const is_service = byId("prodIsService").checked;
     const listing_type = is_service ? "sale" : byId("prodListingType").value;
-    const billing_model = is_service ? "commission" : (byId("prodBillingModel")?.value || "commission");
+    const billing_model = byId("prodBillingModel")?.value || "commission";
     const name = byId("prodName").value.trim();
     const quantity_total = is_service ? 999 : parseInt(byId("prodQtyTotal").value) || 1;
     const sale_price = byId("prodSalePrice").value ? Number(byId("prodSalePrice").value) : null;
@@ -17936,7 +17940,7 @@ async function saveProduct() {
     const rental_rate_unit = byId("prodRateUnit").value;
     const service_price_unit = is_service ? (byId("prodServiceUnit").value || "flat") : null;
     if (!name) throw new Error("Product name is required.");
-    if (!is_service && !["commission","monthly"].includes(billing_model)) throw new Error("Choose how you want to pay Levromart for this listing.");
+    if (!["commission","monthly"].includes(billing_model)) throw new Error("Choose how you want to pay Levromart for this listing.");
     if (!is_service && listing_type !== "rent" && !sale_price) throw new Error("Price is required for a sale listing.");
     if (is_service && !sale_price) throw new Error("Enter a price for this service.");
     if (discount_price != null && (sale_price == null || discount_price <= 0 || discount_price >= sale_price)) throw new Error("Discount price must be lower than the regular price.");
@@ -18019,25 +18023,20 @@ async function saveProduct() {
     }
 
     if (isNewMonthlyListing) {
-      // Create the listing immediately in a safe paused/pending-payment state.
-      // This is deliberately simpler than a browser-only draft: the listing
-      // now has a real database id before Paystack opens, so the payment
-      // callback/webhook can activate exactly this listing without relying on
-      // sessionStorage or a second client-side creation step.
-      const { data: pendingProduct, error: pendingError } = await sb.from("products").insert({
-        ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos,
-        status: "paused", billing_status: "pending_payment", billing_reference: null, billing_paid_until: null
-      }).select("id").single();
-      if (pendingError || !pendingProduct?.id) throw new Error(pendingError?.message || "Could not create the listing before payment.");
-      savedProductId = pendingProduct.id;
-      if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
-      await saveProductEngagementSettings(savedProductId);
-      const pay = await startListingMonthlyPayment("product", savedProductId);
-      if (!pay) {
-        showToast("Listing saved as paused. Pay ₦1,000 from My Shop to activate it.", "info");
-        closeProductModal();
-        navigate("vendorProducts", {}, false);
-      }
+      // Manual monthly payment: do not create/activate the listing until the
+      // vendor has uploaded a receipt. Admin approval is the only activation path.
+      window.__manualMonthlyNewDraft = {
+        kind: "product", vendor_id: vendor.id,
+        fields: { ...fields, status: "paused", billing_status: "pending_payment", billing_reference: null, billing_paid_until: null },
+        photos, variantDrafts,
+        engagement: {
+          like_visibility: byId("prodLikeVisibility")?.value || "everyone",
+          allow_comments: !!byId("prodAllowComments")?.checked,
+          comment_audience: byId("prodCommentAudience")?.value || "everyone"
+        }
+      };
+      closeProductModal();
+      await openManualMonthlyPayment("product", null, { isNew: true, draft: window.__manualMonthlyNewDraft });
       return;
     }
     if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
@@ -18159,9 +18158,11 @@ async function renderVendorPackages() {
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   vendor = v;
 
-  const { data: packages } = await sb.from("vendor_packages")
-    .select("*, items:package_items(quantity, product:products(name))")
-    .eq("vendor_id", v.id).order("created_at", { ascending: false });
+  const [{ data: packages }, { data: monthlyPackageSubmissions }] = await Promise.all([
+    sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).order("created_at", { ascending: false }),
+    sb.from("monthly_listing_submissions").select("listing_id,status,submitted_at,review_note").eq("vendor_id", v.id).eq("kind","package").order("submitted_at", { ascending: false }).limit(100)
+  ]);
+  const pendingMonthlyPackageIds = new Set((monthlyPackageSubmissions || []).filter(x => x.status === "pending").map(x => String(x.listing_id)));
 
   let html = `<div class="flex" style="justify-content:space-between;">
     <div><h2>Packages</h2><p class="muted" style="margin:0;">Bundle a few products into one fixed-price deal, like an outreach kit.</p></div>
@@ -18176,10 +18177,11 @@ async function renderVendorPackages() {
     <div class="flex" style="justify-content:space-between;"><strong>${esc(pkg.name)}</strong><span class="badge ${pkg.status === "active" ? "success" : "warning"}">${esc(pkg.status)}</span></div>
     ${pkg.description ? `<p class="muted" style="margin:0.3rem 0;">${esc(pkg.description)}</p>` : ""}
     <p class="muted" style="font-size:0.85rem;">${(pkg.items || []).map((it) => `${it.quantity}× ${esc(it.product?.name || "")}`).join(", ") || "No items yet"}</p>
+    ${pkg.billing_model === "monthly" && pendingMonthlyPackageIds.has(String(pkg.id)) ? `<p class="muted monthly-vendor-pending-note"><i class="fa-solid fa-clock"></i> Receipt submitted · awaiting admin approval</p>` : pkg.billing_model === "monthly" && pkg.billing_status === "cancelled" ? `<p class="muted monthly-vendor-rejected-note"><i class="fa-solid fa-circle-exclamation"></i> Monthly listing deactivated. Submit a new ₦1,000 receipt to restore it.</p>` : ""}
     <p style="margin:0.4rem 0;"><strong>${naira(pkg.price)}</strong></p>
     <div class="flex">
       <button class="btn btn-sm" onclick="openEditPackageModal('${pkg.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
-      ${pkg.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setPackageStatus('${pkg.id}','paused')">Pause</button>` : (pkg.billing_status === "pending_payment" && pkg.billing_model === "monthly" ? `<button class="btn btn-sm" onclick="startListingMonthlyPayment('package','${pkg.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000 to activate</button>` : `<button class="btn btn-sm" onclick="setPackageStatus('${pkg.id}','active')">Activate</button>`)}
+      ${pkg.status === "active" ? `<button class="btn btn-sm" style="background:#6b7280;" onclick="setPackageStatus('${pkg.id}','paused')">Pause</button>` : (pkg.billing_model === "monthly" ? (pendingMonthlyPackageIds.has(String(pkg.id)) ? `<button class="btn btn-sm btn-outline" disabled><i class="fa-solid fa-clock"></i> Receipt submitted</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('package','${pkg.id}')"><i class="fa-solid fa-receipt"></i> ${pkg.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setPackageStatus('${pkg.id}','active')">Activate</button>`)}
       <button class="btn btn-sm btn-danger" onclick="deletePackage('${pkg.id}')"><i class='fa-solid fa-trash'></i> Delete</button>
     </div>
   </div>`).join("")}</div>`;
@@ -18357,6 +18359,22 @@ async function savePackage() {
       payload.billing_status = billing_model === "monthly" ? "pending_payment" : "active";
       if (billing_model === "monthly") payload.status = "paused";
     }
+    if (isNewPackage && billing_model === "monthly") {
+      window.__manualMonthlyNewDraft = {
+        kind: "package", vendor_id: vendor.id,
+        fields: { ...payload, status: "paused", billing_status: "pending_payment", billing_reference: null, billing_paid_until: null },
+        items: items.map((it) => ({ ...it })), photos,
+        engagement: {
+          like_visibility: byId("pkgLikeVisibility")?.value || "everyone",
+          allow_comments: !!byId("pkgAllowComments")?.checked,
+          comment_audience: byId("pkgCommentAudience")?.value || "everyone"
+        }
+      };
+      closePackageModal();
+      await openManualMonthlyPayment("package", null, { isNew: true, draft: window.__manualMonthlyNewDraft });
+      return;
+    }
+
     let packageId = editingPackageId;
     if (packageId) {
       const { error } = await sb.from("vendor_packages").update(payload).eq("id", packageId);
@@ -18370,13 +18388,6 @@ async function savePackage() {
     const { error: itemsError } = await sb.from("package_items").insert(items.map((it) => ({ ...it, package_id: packageId })));
     if (itemsError) throw itemsError;
     await savePackageEngagementSettings(packageId);
-
-    if (isNewPackage && billing_model === "monthly") {
-      const pay = await startListingMonthlyPayment("package", packageId);
-      if (!pay) throw new Error("Monthly package payment could not be started.");
-      closePackageModal();
-      return;
-    }
 
     closePackageModal();
     navigate("vendorPackages");
@@ -19488,11 +19499,39 @@ function adminNavHtml(active) {
     ["adminFeedback", "fa-comment-medical", "Feedback"],
     ["adminLog", "fa-clock-rotate-left", "Log"],
     ["adminUsers", "fa-user-shield", "Admins"],
+    ["adminMonthlyListings", "fa-receipt", "Monthly listings"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
-  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>`).join("")}</div>`;
+  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" && Number(window.__monthlyPendingCount || 0) > 0 ? `<span class="dash-tab-dot monthly-listings-admin-badge">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : ""}</button>`).join("")}</div>`;
 }
 
+async function refreshMonthlyPendingCount(){
+  if(!session||profile?.role!=="admin")return 0;
+  try{const {count,error}=await sb.from("monthly_listing_submissions").select("id",{count:"exact",head:true}).eq("status","pending");if(error)throw error;window.__monthlyPendingCount=Number(count||0);document.querySelectorAll(".monthly-listings-admin-badge").forEach(el=>{const n=Number(window.__monthlyPendingCount||0);el.textContent=n>9?"9+":String(n);el.classList.toggle("hidden",n===0)});return window.__monthlyPendingCount}catch(_){return Number(window.__monthlyPendingCount||0)}}
+function monthlySubmissionKindLabel(kind,listing){return kind==="product"?(listing?.is_service?"Service":"Product"):"Package"}
+function monthlySubmissionListingTable(kind){return kind==="product"?"products":"vendor_packages"}
+async function renderAdminMonthlyListings(){
+  if(!session||profile?.role!=="admin")return '<div class="empty-state">Access denied.</div>';
+  const {data:subs,error}=await sb.from("monthly_listing_submissions").select("id,kind,listing_id,vendor_id,user_id,payer_name,receipt_path,status,submitted_at,reviewed_at,review_note").order("submitted_at",{ascending:false}).limit(100);
+  let html=`<h2><i class="fa-solid fa-receipt"></i> Monthly listings</h2>${adminNavHtml("adminMonthlyListings")}`;
+  if(error)return html+errorStateHtml(error);
+  const grouped={products:[],services:[],packages:[]};
+  const vendorIds=[...new Set((subs||[]).map(x=>x.vendor_id).filter(Boolean))], userIds=[...new Set((subs||[]).map(x=>x.user_id).filter(Boolean))];
+  const [vr,ur]=await Promise.all([vendorIds.length?sb.from("vendors").select("id,business_name,phone,city,user_id").in("id",vendorIds):Promise.resolve({data:[]}),userIds.length?sb.from("users").select("id,name,email,phone").in("id",userIds):Promise.resolve({data:[]})]);
+  const vendorsById=Object.fromEntries((vr.data||[]).map(v=>[v.id,v])),usersById=Object.fromEntries((ur.data||[]).map(u=>[u.id,u]));
+  for(const sub of (subs||[])){let listing=null;try{const {data}=await sb.from(monthlySubmissionListingTable(sub.kind)).select("*").eq("id",sub.listing_id).eq("vendor_id",sub.vendor_id).maybeSingle();listing=data||null}catch(_){}sub.__listing=listing;sub.__vendor=vendorsById[sub.vendor_id]||{};sub.__user=usersById[sub.user_id]||{};const key=sub.kind==='package'?'packages':listing?.is_service?'services':'products';grouped[key].push(sub)}
+  const pending=(subs||[]).filter(x=>x.status==='pending');window.__monthlyPendingCount=pending.length;
+  html+=`<div class="monthly-listing-admin-intro"><div><strong>Manual ₦1,000 monthly activation</strong><p class="muted">Vendors transfer ₦1,000 to the Levromart account, upload their receipt and payer name, then wait here for approval. The one-month clock starts only when you approve.</p></div><span class="monthly-admin-total-badge">${pending.length} pending</span></div>`;
+  const pendingCount=k=>grouped[k].filter(x=>x.status==='pending').length;
+  html+=`<div class="tabs monthly-listing-kind-tabs"><button class="active" data-monthly-kind-tab="products" onclick="switchMonthlyAdminKind('products')"><i class="fa-solid fa-box"></i> Products <span class="monthly-kind-badge ${pendingCount('products')?'':'hidden'}">${pendingCount('products')}</span></button><button data-monthly-kind-tab="services" onclick="switchMonthlyAdminKind('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services <span class="monthly-kind-badge ${pendingCount('services')?'':'hidden'}">${pendingCount('services')}</span></button><button data-monthly-kind-tab="packages" onclick="switchMonthlyAdminKind('packages')"><i class="fa-solid fa-box-open"></i> Packages <span class="monthly-kind-badge ${pendingCount('packages')?'':'hidden'}">${pendingCount('packages')}</span></button></div>`;
+  const renderGroup=key=>{const rows=grouped[key];if(!rows.length)return `<div class="monthly-kind-panel" data-monthly-kind="${key}"><div class="empty-state">No ${key} monthly listing submissions yet.</div></div>`;return `<div class="monthly-kind-panel ${key==='products'?'':'hidden'}" data-monthly-kind="${key}">${rows.map(sub=>{const l=sub.__listing||{},v=sub.__vendor||{},u=sub.__user||{},img=Array.isArray(l.photos)?l.photos[0]:null,isPending=sub.status==='pending',isActive=l.status==='active'&&l.billing_status==='active';return `<article class="card monthly-submission-card ${isPending?'monthly-submission-pending':''}"><div class="monthly-submission-head"><div><span class="badge ${isPending?'danger':sub.status==='approved'?'success':sub.status==='deactivated'?'danger':'warning'}">${esc(sub.status)}</span><h3 style="margin:.35rem 0 .1rem;">${esc(l.name||'Listing unavailable')}</h3><p class="muted" style="margin:0;">${esc(monthlySubmissionKindLabel(sub.kind,l))} · Submitted ${new Date(sub.submitted_at).toLocaleString('en-GB')}</p></div>${img?`<img class="monthly-submission-thumb" src="${esc(img)}" alt="" loading="lazy">`:''}</div><div class="monthly-submission-grid"><div><span>Vendor</span><strong>${esc(v.business_name||'Vendor')}</strong><small>${esc(v.city||'')}${v.phone?' · '+esc(v.phone):''}</small></div><div><span>Applicant</span><strong>${esc(u.name||'User')}</strong><small>${esc(u.email||'')}${u.phone?' · '+esc(u.phone):''}</small></div><div><span>Payer account</span><strong>${esc(sub.payer_name)}</strong><small>₦1,000 manual transfer</small></div><div><span>Listing</span><strong>${esc(l.name||'Unavailable')}</strong><small>${l.description?esc(String(l.description).slice(0,130)):'No description'}</small></div></div><div class="monthly-submission-receipt"><div><strong>Payment receipt</strong><span class="muted">Uploaded by vendor · ${new Date(sub.submitted_at).toLocaleString('en-GB')}</span></div><button type="button" class="btn btn-sm btn-outline" onclick="viewMonthlyReceipt('${esc(sub.receipt_path)}')"><i class="fa-regular fa-image"></i> View receipt</button></div>${sub.review_note?`<p class="muted monthly-review-note"><strong>Admin note:</strong> ${esc(sub.review_note)}</p>`:''}<div class="monthly-submission-actions">${isPending?`<button type="button" class="btn" onclick="approveMonthlyListing('${sub.id}')"><i class="fa-solid fa-circle-check"></i> Activate</button><button type="button" class="btn btn-outline" onclick="rejectMonthlyListing('${sub.id}')"><i class="fa-solid fa-xmark"></i> Reject receipt</button><button type="button" class="btn btn-danger" onclick="deactivateMonthlyListing('${sub.id}')"><i class="fa-solid fa-ban"></i> Deactivate</button>`:''}${isActive?`<button type="button" class="btn btn-danger" onclick="deactivateMonthlyListing('${sub.id}')"><i class="fa-solid fa-ban"></i> Deactivate</button>`:''}</div></article>`}).join('')}</div>`};
+  html+=renderGroup('products')+renderGroup('services')+renderGroup('packages');setTimeout(refreshMonthlyPendingCount,0);return html;
+}
+window.switchMonthlyAdminKind=function(kind){document.querySelectorAll('[data-monthly-kind-tab]').forEach(b=>b.classList.toggle('active',b.dataset.monthlyKindTab===kind));document.querySelectorAll('[data-monthly-kind]').forEach(p=>p.classList.toggle('hidden',p.dataset.monthlyKind!==kind))};
+window.viewMonthlyReceipt=async function(path){try{const {data,error}=await sb.storage.from('listing-payment-receipts').createSignedUrl(path,3600);if(error||!data?.signedUrl)throw error||new Error('Receipt could not be opened.');const pdf=/\.pdf$/i.test(path),m=document.createElement('div');m.className='modal';m.id='monthlyReceiptViewer';m.innerHTML=`<div class="modal-content" style="max-width:760px;max-height:90vh;overflow:auto"><div class="flex" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Payment receipt</h3><button class="icon-btn" onclick="document.getElementById('monthlyReceiptViewer')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>${pdf?`<iframe src="${esc(data.signedUrl)}" title="Payment receipt" style="width:100%;height:70vh;border:0;border-radius:12px;margin-top:.7rem"></iframe>`:`<img src="${esc(data.signedUrl)}" alt="Payment receipt" style="display:block;max-width:100%;max-height:70vh;margin:.7rem auto 0;border-radius:12px;object-fit:contain">`}</div>`;document.body.appendChild(m)}catch(e){showToast(e.message||'Could not open receipt.','error')}};
+window.approveMonthlyListing=async function(id){if(!(await showConfirmDialog('Activate this listing for one month? The one-month clock starts now.',{title:'Activate monthly listing',okLabel:'Activate'})))return;try{const {error}=await sb.rpc('admin_approve_monthly_listing',{p_submission_id:id});if(error)throw error;showToast('Monthly listing activated for one month.','success');await navigate('adminMonthlyListings',{},false)}catch(e){showToast(e.message||'Could not activate listing.','error')}};
+window.rejectMonthlyListing=async function(id){const note=prompt('Optional reason for rejecting this receipt:','Receipt could not be verified.');if(note===null)return;try{const {error}=await sb.rpc('admin_reject_monthly_listing',{p_submission_id:id,p_note:note});if(error)throw error;showToast('Receipt rejected.','success');await navigate('adminMonthlyListings',{},false)}catch(e){showToast(e.message||'Could not reject receipt.','error')}};
+window.deactivateMonthlyListing=async function(id){if(!(await showConfirmDialog('Deactivate this monthly listing? It will be paused immediately and its active period will be cancelled.',{title:'Deactivate listing',okLabel:'Deactivate',danger:true})))return;const note=prompt('Optional reason for deactivation:','Receipt/payment could not be verified.');if(note===null)return;try{const {error}=await sb.rpc('admin_deactivate_monthly_listing',{p_submission_id:id,p_note:note});if(error)throw error;showToast('Monthly listing deactivated.','success');await navigate('adminMonthlyListings',{},false)}catch(e){showToast(e.message||'Could not deactivate listing.','error')}};
 async function renderAdminSupportRequests() {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
   // Do not depend on a fragile nested users relationship here. A broken or
@@ -23284,6 +23323,20 @@ window.addEventListener("popstate", (e) => {
   ]).catch(() => {});
 
   const urlParams = new URLSearchParams(location.search);
+  // The SPA route is also encoded in the browser URL for every ordinary view.
+  // This is the hard-reload backstop: even if Safari/PWA storage is discarded,
+  // the browser still knows exactly which Levromart screen was open.
+  const persistedUrlView = urlParams.get("appView");
+  if (persistedUrlView) {
+    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","supportRequest","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
+    let persistedParams = {};
+    try { persistedParams = JSON.parse(urlParams.get("appParams") || "{}"); } catch (_) {}
+    if (allowedPersistedViews.has(persistedUrlView)) {
+      history.replaceState({ view: persistedUrlView, params: persistedParams }, "", `${location.pathname}?appView=${encodeURIComponent(persistedUrlView)}&appParams=${encodeURIComponent(JSON.stringify(persistedParams))}`);
+      await navigate(persistedUrlView, persistedParams, false);
+      return;
+    }
+  }
   if (urlParams.get("product")) {
     const productId = urlParams.get("product");
     history.replaceState({ view: "productDetail", params: { productId } }, "", location.pathname + "?product=" + encodeURIComponent(productId));
@@ -23325,9 +23378,9 @@ window.addEventListener("popstate", (e) => {
       await navigate(profile?.role === "admin" ? "adminFinance" : (vendor ? "vendorOrders" : "buyerOrders"), vendor ? {status:"all",perspective:"sales"} : {}, false);
       return;
     }
-    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
       history.replaceState({ view: "home", params: {} }, "", location.pathname);
-      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","vendorSuggestionsInbox","notifications"];
+      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
       if (!session && authViews.includes(deepView)) { showLogin(); return; }
       await navigate(deepView, {}, false);
       if (deepView === "vendors" && urlParams.get("map") === "1") {
@@ -27159,6 +27212,23 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.addEventListener('load',queue,{once:true});
 })();
 </script>
+
+<style id="levromart-manual-monthly-payment-css">
+.manual-monthly-payment-modal-content{border-radius:22px!important}
+.manual-monthly-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.9rem}
+.manual-monthly-account-card{border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));background:color-mix(in srgb,var(--primary) 6%,var(--card));border-radius:16px;padding:.75rem .85rem;margin:.65rem 0}
+.manual-monthly-account-row{display:grid;grid-template-columns:105px minmax(0,1fr) auto;align-items:center;gap:.5rem;padding:.58rem 0;border-bottom:1px solid color-mix(in srgb,var(--border) 75%,transparent);font-size:.82rem}
+.manual-monthly-account-row:last-child{border-bottom:0}.manual-monthly-account-row>span{color:var(--text-muted);font-size:.76rem}.manual-monthly-account-row strong{overflow-wrap:anywhere}.manual-monthly-account-row .btn{white-space:nowrap}
+.manual-monthly-amount strong{font-size:1.05rem;color:var(--primary)}
+.manual-monthly-instruction{line-height:1.55;font-size:.8rem}.manual-monthly-payment-modal-content label{display:block;margin:.7rem 0 .3rem;font-weight:700;font-size:.78rem}
+.manual-monthly-payment-modal-content input[type=file]{width:100%;padding:.7rem;border:1px dashed var(--border);border-radius:12px;background:transparent;color:inherit}
+.manual-monthly-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem}.manual-monthly-receipt-preview{margin-top:.55rem;border:1px solid var(--border);border-radius:12px;overflow:hidden;padding:.4rem}.manual-monthly-receipt-preview img{display:block;width:100%;max-height:220px;object-fit:contain;border-radius:9px}.manual-monthly-existing-note{margin:.65rem 0;padding:.65rem .75rem;border-radius:12px;background:color-mix(in srgb,var(--primary) 8%,transparent);font-size:.76rem;color:var(--text-muted)}
+.monthly-listing-admin-intro{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:.75rem 0 1rem;padding:1rem;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--card) 92%,transparent)}
+.monthly-listing-admin-intro p{margin:.3rem 0 0;font-size:.78rem;max-width:680px}.monthly-admin-total-badge,.monthly-kind-badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 .42rem;border-radius:999px;background:#ef4444;color:#fff;font-size:.68rem;font-weight:800}.monthly-kind-badge.hidden{display:none}
+.monthly-listing-kind-tabs{display:flex;gap:.35rem;overflow-x:auto;white-space:nowrap;padding-bottom:.2rem}.monthly-listing-kind-tabs button{border:1px solid var(--border);background:transparent;color:inherit;border-radius:12px;padding:.55rem .75rem;display:inline-flex;align-items:center;gap:.38rem;cursor:pointer}.monthly-listing-kind-tabs button.active{border-color:var(--primary);color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,transparent)}
+.monthly-submission-card{margin:.7rem 0;padding:1rem}.monthly-submission-pending{border-color:color-mix(in srgb,#ef4444 42%,var(--border))}.monthly-submission-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start}.monthly-submission-thumb{width:76px;height:76px;border-radius:12px;object-fit:cover;border:1px solid var(--border);flex:0 0 76px}.monthly-submission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;margin:.8rem 0}.monthly-submission-grid>div{border:1px solid var(--border);border-radius:12px;padding:.62rem;min-width:0}.monthly-submission-grid span,.monthly-submission-grid small{display:block;color:var(--text-muted);font-size:.68rem}.monthly-submission-grid strong{display:block;margin:.16rem 0;font-size:.8rem;overflow-wrap:anywhere}.monthly-submission-receipt{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.65rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}.monthly-submission-receipt span{display:block;font-size:.68rem;margin-top:.12rem}.monthly-submission-actions{display:flex;justify-content:flex-end;gap:.45rem;flex-wrap:wrap;margin-top:.7rem}.monthly-review-note{font-size:.74rem}.monthly-vendor-pending-note{color:#d97706!important;font-size:.74rem!important}.monthly-vendor-rejected-note{color:#ef4444!important;font-size:.74rem!important}
+@media(max-width:620px){.monthly-submission-grid{grid-template-columns:1fr}.monthly-listing-admin-intro{align-items:flex-start;flex-direction:column}.monthly-submission-head h3{font-size:1rem}.manual-monthly-account-row{grid-template-columns:82px minmax(0,1fr) auto}.manual-monthly-account-row .btn{padding:.38rem .48rem;font-size:.68rem}}
+</style>
 </body>
 <style id="levromart-20260910-final-polish">
 /* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
@@ -29852,54 +29922,147 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     if(!r.ok||data.status!=="success")throw new Error(data.error||"Payment is not verified yet. Retry verification before paying again.");
     return data;
   }
-  window.startListingMonthlyPayment=async function(kind,id){
+  const MANUAL_MONTHLY_ACCOUNT={number:"8063227669",bank:"OPay",name:"Kennis Kalu Dede"};
+  const manualMonthlyBusy=new Set();
+  function manualMonthlyTable(kind){return kind==="product"?"products":"vendor_packages";}
+  function manualMonthlyLabel(kind,listing){return kind==="product"?(listing?.is_service?"service":"product"):"package";}
+  function ensureManualMonthlyModal(){
+    let m=byId("manualMonthlyPaymentModal");
+    if(m)return m;
+    m=document.createElement("div");m.id="manualMonthlyPaymentModal";m.className="modal hidden";m.innerHTML=`
+      <div class="modal-content manual-monthly-payment-modal-content" style="max-width:520px;">
+        <div class="manual-monthly-head"><div><span class="muted">Monthly listing</span><h3 id="manualMonthlyTitle" style="margin:.12rem 0 0;">Pay ₦1,000 to submit</h3></div><button type="button" class="icon-btn" onclick="closeManualMonthlyPayment()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+        <div id="manualMonthlyError" class="error-text hidden"></div>
+        <div id="manualMonthlyExistingNote"></div>
+        <div class="manual-monthly-account-card">
+          <div class="manual-monthly-account-row"><span>Bank</span><strong>${esc(MANUAL_MONTHLY_ACCOUNT.bank)}</strong><button type="button" class="btn btn-sm btn-outline" onclick="copyManualMonthlyValue('${MANUAL_MONTHLY_ACCOUNT.bank}','Bank copied.')"><i class="fa-regular fa-copy"></i> Copy</button></div>
+          <div class="manual-monthly-account-row"><span>Account number</span><strong>${esc(MANUAL_MONTHLY_ACCOUNT.number)}</strong><button type="button" class="btn btn-sm btn-outline" onclick="copyManualMonthlyValue('${MANUAL_MONTHLY_ACCOUNT.number}','Account number copied.')"><i class="fa-regular fa-copy"></i> Copy</button></div>
+          <div class="manual-monthly-account-row"><span>Account name</span><strong>${esc(MANUAL_MONTHLY_ACCOUNT.name)}</strong><button type="button" class="btn btn-sm btn-outline" onclick="copyManualMonthlyValue('${esc(MANUAL_MONTHLY_ACCOUNT.name)}','Account name copied.')"><i class="fa-regular fa-copy"></i> Copy</button></div>
+          <div class="manual-monthly-account-row manual-monthly-amount"><span>Amount</span><strong>₦1,000</strong><button type="button" class="btn btn-sm btn-outline" onclick="copyManualMonthlyValue('1000','Amount copied.')"><i class="fa-regular fa-copy"></i> Copy</button></div>
+        </div>
+        <p class="muted manual-monthly-instruction">Transfer exactly <strong>₦1,000</strong> to the account above. Then enter the <strong>name of the account that made the payment</strong> and upload the receipt. Your listing remains pending until an administrator verifies the receipt.</p>
+        <label>Name on payer account *</label>
+        <input id="manualMonthlyPayerName" type="text" maxlength="120" placeholder="Name shown on the account that paid" autocomplete="name" />
+        <label>Payment receipt *</label>
+        <input id="manualMonthlyReceipt" type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+        <div id="manualMonthlyReceiptPreview" class="manual-monthly-receipt-preview hidden"></div>
+        <div class="manual-monthly-actions"><button type="button" class="btn btn-outline" onclick="closeManualMonthlyPayment()">Cancel</button><button type="button" class="btn" id="manualMonthlySubmitBtn" onclick="submitManualMonthlyPayment()"><i class="fa-solid fa-paper-plane"></i> Submit receipt</button></div>
+      </div>`;
+    document.body.appendChild(m);
+    byId("manualMonthlyReceipt")?.addEventListener("change",()=>previewManualMonthlyReceipt());
+    return m;
+  }
+  window.copyManualMonthlyValue=async function(value,message){
+    try{await navigator.clipboard.writeText(String(value));showToast(message||"Copied.","success");}
+    catch(_){const ta=document.createElement("textarea");ta.value=String(value);ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");showToast(message||"Copied.","success")}catch(__){showToast("Copy is unavailable on this device.","info")}ta.remove();}
+  };
+  window.closeManualMonthlyPayment=function(){
+    const m=byId("manualMonthlyPaymentModal");if(m)m.classList.add("hidden");
+    const b=byId("manualMonthlySubmitBtn");if(b){b.disabled=false;b.innerHTML='<i class="fa-solid fa-paper-plane"></i> Submit receipt';}
+    const note=byId("manualMonthlyExistingNote");if(note)note.innerHTML="";
+    window.__manualMonthlyTarget=null;window.__manualMonthlyNewDraft=null;
+  };
+  function previewManualMonthlyReceipt(){
+    const input=byId("manualMonthlyReceipt"),preview=byId("manualMonthlyReceiptPreview");if(!input||!preview)return;
+    const file=input.files?.[0];if(!file){preview.classList.add("hidden");preview.innerHTML="";return;}
+    if(file.size>10*1024*1024){input.value="";preview.classList.add("hidden");preview.innerHTML="";showToast("Receipt must be 10 MB or smaller.","error");return;}
+    preview.classList.remove("hidden");preview.innerHTML=file.type==="application/pdf"?`<div><i class="fa-solid fa-file-pdf"></i> ${esc(file.name)} · ${(file.size/1024/1024).toFixed(2)} MB</div>`:`<img src="${URL.createObjectURL(file)}" alt="Receipt preview" />`;
+  }
+  async function findPendingManualSubmission(kind,id){
+    if(!id)return null;
+    const {data,error}=await sb.from("monthly_listing_submissions").select("id,kind,listing_id,payer_name,receipt_path,status,submitted_at,review_note").eq("kind",kind).eq("listing_id",id).eq("status","pending").order("submitted_at",{ascending:false}).limit(1).maybeSingle();
+    if(error)return null;return data||null;
+  }
+  async function openManualMonthlyPayment(kind,id,options={}){
     if(!session?.access_token){showLogin();return false;}
-    const lock=kind+":"+id;
-    if(listingPaymentBusy.has(lock))return false;
-    listingPaymentBusy.add(lock);
+    const lock=kind+":"+(id||"new");if(manualMonthlyBusy.has(lock))return false;manualMonthlyBusy.add(lock);
     try{
-      let listing=await readOwnedListing(kind,id);
-      const key=pendingListingKey(kind,id), pending=localStorage.getItem(key);
-      if(!listingActivationValid(listing)&&pending){
-        await verifyListingReference(pending);
-        listing=await readOwnedListing(kind,id);
-        if(!listingActivationValid(listing))throw new Error("Payment verified, but activation has not been saved by the server. Please contact support before paying again.");
-      }
-      if(listing.billing_model!=="monthly"||listingActivationValid(listing)){
-        if(listing.status!=="active"){
-          const result=await sb.from(kind==="product"?"products":"vendor_packages").update({status:"active"}).eq("id",id).eq("vendor_id",vendor.id);
-          if(result.error)throw result.error;
-        }
-        localStorage.removeItem(key);
-        await navigate(kind==="product"?"vendorProducts":"vendorPackages",{},false);
-        return true;
-      }
-      const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json","Cache-Control":"no-cache"},cache:"no-store",body:JSON.stringify({action:"pay-listing",kind,id,accessToken:session.access_token})});
-      const data=await r.json().catch(()=>({}));
-      if(r.ok&&data.alreadyActive){
-        listing=await readOwnedListing(kind,id);
-        if(!listingActivationValid(listing))throw new Error("The server reports a payment, but listing activation is not yet available. Please do not pay again.");
+      const isNew=!!options.isNew;
+      let listing=options.draft||null;
+      if(!isNew)listing=await readOwnedListing(kind,id);
+      if(!isNew&&listing.billing_model!=="monthly")return false;
+      if(!isNew&&listingActivationValid(listing)){
+        if(listing.status!=="active")await sb.from(manualMonthlyTable(kind)).update({status:"active",billing_status:"active"}).eq("id",id).eq("vendor_id",vendor.id);
         await navigate(kind==="product"?"vendorProducts":"vendorPackages",{},false);return true;
       }
-      if(!r.ok||!data.authorization_url)throw new Error(data.error||"Could not start the ₦1,000 listing payment.");
-      const reference=data.reference||new URL(data.authorization_url).searchParams.get("reference");
-      if(reference)localStorage.setItem(key,reference);
-      sessionStorage.setItem("levromart-listing-payment-target",JSON.stringify({kind,id,vendorId:vendor.id,reference:reference||null}));
-      window.location.assign(data.authorization_url);return true;
-    }catch(e){showToast(e.message||"Could not start the listing payment.","error");return false;}
-    finally{listingPaymentBusy.delete(lock);}
-  };
-  window.startNewListingMonthlyPayment=async function(kind,draft){
-    if(!(typeof session!=="undefined"&&session?.access_token)){if(typeof showLogin==='function')showLogin();return false;}
+      const pending=await findPendingManualSubmission(kind,id);
+      const m=ensureManualMonthlyModal();
+      window.__manualMonthlyTarget=isNew?{kind,id:null,newDraft:options.draft}:{kind,id,listing};
+      byId("manualMonthlyTitle").textContent=isNew?`Pay ₦1,000 to submit ${manualMonthlyLabel(kind,listing)}`:`Pay ₦1,000 to renew ${manualMonthlyLabel(kind,listing)}`;
+      byId("manualMonthlyPayerName").value=pending?.payer_name||"";
+      byId("manualMonthlyReceipt").value="";
+      byId("manualMonthlyReceiptPreview").classList.add("hidden");byId("manualMonthlyReceiptPreview").innerHTML="";
+      const errorEl=byId("manualMonthlyError");errorEl.classList.add("hidden");errorEl.textContent="";
+      const note=byId("manualMonthlyExistingNote");if(note)note.innerHTML="";
+      const submitBtn=byId("manualMonthlySubmitBtn");
+      if(pending&&!isNew){
+        if(note)note.innerHTML='<div class="manual-monthly-existing-note">A receipt is already awaiting admin review for this listing. Please wait for the administrator to approve or reject it.</div>';
+        if(submitBtn){submitBtn.disabled=true;submitBtn.innerHTML='<i class="fa-solid fa-clock"></i> Awaiting review';}
+      }else if(submitBtn){submitBtn.disabled=false;submitBtn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Submit receipt';}
+      m.classList.remove("hidden");
+      if(kind==="product")closeProductModal?.();else closePackageModal?.();
+      return true;
+    }catch(e){showToast(e.message||"Could not open monthly payment.","error");return false;}finally{manualMonthlyBusy.delete(lock);}
+  }
+  async function createManualMonthlyListing(target,payer,receiptPath){
+    const draft=target?.newDraft;if(!draft?.kind||!draft?.fields||!vendor?.id)throw new Error("Your vendor profile is unavailable.");
+    if(String(draft.vendor_id)!==String(vendor.id))throw new Error("This listing draft belongs to a different vendor account.");
+    let listingId=null;
+    if(draft.kind==="product"){
+      const {data,error}=await sb.from("products").insert({...draft.fields,vendor_id:vendor.id,quantity_available:Number(draft.fields.quantity_total)||1,photos:Array.isArray(draft.photos)?draft.photos:[],status:"paused",billing_model:"monthly",billing_status:"pending_payment",billing_paid_until:null,billing_reference:null}).select("id").single();
+      if(error||!data?.id)throw new Error(error?.message||"Could not save the product for admin review.");
+      listingId=data.id;
+      try{
+        await saveProductVariants(listingId,Array.isArray(draft.variantDrafts)?draft.variantDrafts:[]);
+        const {error:ee}=await sb.from("product_engagement_settings").upsert({product_id:listingId,vendor_id:vendor.id,...(draft.engagement||{})},{onConflict:"product_id"});if(ee)throw ee;
+      }catch(e){await sb.from("products").delete().eq("id",listingId).eq("vendor_id",vendor.id);throw e;}
+    }else{
+      const {data,error}=await sb.from("vendor_packages").insert({...draft.fields,vendor_id:vendor.id,status:"paused",billing_model:"monthly",billing_status:"pending_payment",billing_paid_until:null,billing_reference:null}).select("id").single();
+      if(error||!data?.id)throw new Error(error?.message||"Could not save the package for admin review.");
+      listingId=data.id;
+      try{
+        const {error:ie}=await sb.from("package_items").insert((draft.items||[]).map(it=>({...it,package_id:listingId})));if(ie)throw ie;
+        const {error:ee}=await sb.from("package_engagement_settings").upsert({package_id:listingId,vendor_id:vendor.id,...(draft.engagement||{})},{onConflict:"package_id"});if(ee)throw ee;
+      }catch(e){await sb.from("vendor_packages").delete().eq("id",listingId).eq("vendor_id",vendor.id);throw e;}
+    }
+    const {data:submissionId,error:subErr}=await sb.rpc("submit_monthly_listing_payment",{p_kind:draft.kind,p_listing_id:listingId,p_payer_name:payer,p_receipt_path:receiptPath});
+    if(subErr||!submissionId){
+      if(draft.kind==="product")await sb.from("products").delete().eq("id",listingId).eq("vendor_id",vendor.id);else await sb.from("vendor_packages").delete().eq("id",listingId).eq("vendor_id",vendor.id);
+      throw new Error(subErr?.message||"Could not submit the monthly listing application.");
+    }
+    return listingId;
+  }
+  window.submitManualMonthlyPayment=async function(){
+    const target=window.__manualMonthlyTarget;if(!target)return;
+    const btn=byId("manualMonthlySubmitBtn"),errorEl=byId("manualMonthlyError");
+    const payer=String(byId("manualMonthlyPayerName")?.value||"").trim(),file=byId("manualMonthlyReceipt")?.files?.[0];
+    errorEl.classList.add("hidden");errorEl.textContent="";
+    if(payer.length<2){errorEl.textContent="Enter the name on the account that made the transfer.";errorEl.classList.remove("hidden");return;}
+    if(!file){errorEl.textContent="Upload the ₦1,000 payment receipt.";errorEl.classList.remove("hidden");return;}
+    if(file.size>10*1024*1024){errorEl.textContent="Receipt must be 10 MB or smaller.";errorEl.classList.remove("hidden");return;}
+    btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Uploading…';
+    let path=null;
     try{
-      sessionStorage.setItem("levromart-pending-listing-draft",JSON.stringify(draft));
-      const r=await fetch("/api/vendor-payments",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",body:JSON.stringify({action:"prepare-listing-payment",kind,accessToken:session.access_token})});
-      const data=await r.json().catch(()=>({}));
-      if(!r.ok||!data.authorization_url)throw new Error(data.error||"Could not start the ₦1,000 listing payment.");
-      sessionStorage.setItem("levromart-pending-listing-reference",data.reference);
-      window.location.assign(data.authorization_url); return true;
-    }catch(e){sessionStorage.removeItem("levromart-pending-listing-draft");sessionStorage.removeItem("levromart-pending-listing-reference");if(typeof showToast==='function')showToast(e.message||"Could not start the listing payment.","error");return false;}
+      path=`${session.user.id}/${target.kind}/${target.id||"new"}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;
+      const {error:upErr}=await sb.storage.from("listing-payment-receipts").upload(path,file,{contentType:file.type,upsert:false});
+      if(upErr)throw new Error(`Receipt upload failed: ${upErr.message}`);
+      btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Submitting…';
+      let listingId=target.id||null;
+      if(target.newDraft)listingId=await createManualMonthlyListing(target,payer,path);
+      else{
+        const {data:submissionId,error}=await sb.rpc("submit_monthly_listing_payment",{p_kind:target.kind,p_listing_id:listingId,p_payer_name:payer,p_receipt_path:path});
+        if(error||!submissionId)throw new Error(error?.message||"Could not submit the payment receipt.");
+      }
+      closeManualMonthlyPayment();
+      showToast("Receipt submitted. Your listing is waiting for admin approval.","success");
+      await navigate(target.kind==="product"?"vendorProducts":"vendorPackages",{},false);
+    }catch(e){
+      if(path){try{await sb.storage.from("listing-payment-receipts").remove([path])}catch(_){}}
+      errorEl.textContent=e.message||"Could not submit the receipt.";errorEl.classList.remove("hidden");
+    }finally{btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Submit receipt';}
   };
+  window.startListingMonthlyPayment=async function(kind,id){return openManualMonthlyPayment(kind,id);};
+  window.startNewListingMonthlyPayment=async function(kind,draft){if(!session?.access_token){showLogin();return false;}window.__manualMonthlyNewDraft=draft;return openManualMonthlyPayment(kind,null,{isNew:true,draft});};
   async function finalizePaidListingDraft(reference,expectedKind){
     const raw=sessionStorage.getItem("levromart-pending-listing-draft");
     if(!raw)return {ok:false,error:"Your paid listing draft is no longer available on this device. Please contact support before paying again."};
@@ -29926,44 +30089,19 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   }
 
   window.syncListingBillingUI=function(){
-    const service=byId("prodIsService")?.checked, select=byId("prodBillingModel"), hint=byId("prodBillingHint");
+    const service=byId("prodIsService")?.checked, select=byId("prodBillingModel"), hint=byId("prodBillingHint"), saveBtn=byId("saveProductBtn");
     if(!select)return;
     // Services use commission, not an upfront monthly fee. Physical listings
     // can choose between commission and ₦1,000/month.
     select.disabled=false;
-    if(service)select.value="commission";
-    if(hint)hint.textContent=service?"Services are commission-based. Levromart earns its commission when a customer completes a service booking/payment.":select.value==="monthly"?"This listing stays paused until the ₦1,000 Paystack activation payment succeeds and remains paid for one month.":"Commission-based listings can go live without a listing activation payment.";
+    if(hint)hint.textContent=select.value==="monthly"?(service?"Monthly service listing: transfer ₦1,000, upload your receipt, then wait for admin approval.":"Monthly listing: transfer ₦1,000, upload your receipt, then wait for admin approval."):"Commission-based listings can go live without an upfront activation payment.";
+    if(saveBtn&&!editingProductId)saveBtn.innerHTML=select.value==="monthly"?'<i class="fa-solid fa-receipt"></i> Submit ₦1,000 payment': 'Save to Product';
   };
   window.syncPackageBillingUI=function(){
-    const s=byId("pkgBillingModel"),h=byId("pkgBillingHint");if(h)h.textContent=s?.value==="monthly"?"The package stays hidden until the ₦1,000 Paystack activation payment succeeds.":"Commission-based packages can go live without an activation payment.";
+    const s=byId("pkgBillingModel"),h=byId("pkgBillingHint");if(h)h.textContent=s?.value==="monthly"?"Monthly package: transfer ₦1,000, upload your receipt, then wait for admin approval.":"Commission-based packages can go live without an activation payment.";
   };
 
-  async function finalPaymentReturn(){
-    const u=new URL(location.href);
-    const returnMode=u.searchParams.get("listingPayment");
-    const listingPaid=u.searchParams.get("listingPaid");
-    const reference=u.searchParams.get("reference");
-    if((returnMode!=="return" && listingPaid!=="1")||!reference)return;
-    if(!(typeof session!=="undefined"&&session?.access_token)){showToast?.("Payment returned successfully, but your session expired. Sign in again to finish your listing.","error");return;}
-    showToast?.("Verifying your ₦1,000 Paystack payment…","info");
-    try{
-      const target=JSON.parse(sessionStorage.getItem("levromart-listing-payment-target")||"null");
-      const kind=target?.kind||u.searchParams.get("kind"), id=target?.id||u.searchParams.get("id");
-      if(target && (target.vendorId!==vendor?.id || (target.reference && target.reference!==reference)))throw new Error("This payment does not match the pending vendor/listing.");
-      if(!kind||!id)throw new Error("Payment listing details are unavailable. Contact support before paying again.");
-      await readOwnedListing(kind,id);
-      localStorage.setItem(pendingListingKey(kind,id),reference);
-      await verifyListingReference(reference);
-      const listing=await readOwnedListing(kind,id);
-      if(!listingActivationValid(listing)||listing.status!=="active")throw new Error("Payment verified, but the server has not activated this listing yet. Retry verification or contact support; do not pay again.");
-      localStorage.removeItem(pendingListingKey(kind,id));
-      sessionStorage.removeItem("levromart-listing-payment-target");
-    ["listingPayment","listingPaid","kind","id","reference","reason"].forEach(k=>u.searchParams.delete(k));
-    history.replaceState(history.state,"",u.pathname+(u.searchParams.toString()?`?${u.searchParams}`:"")+u.hash);
-      showToast?.("₦1,000 received. Your listing has been saved and is now live for one month.","success");
-      setTimeout(()=>navigate?.("vendorProducts",{},false),120);
-    }catch(e){showToast?.(e.message||"The listing payment could not be completed.","error");}
-  }
+  async function finalPaymentReturn(){ return; }
 
   function run(){
     bindHeaderSearch();
@@ -30615,3 +30753,111 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   window.__levroPaymentRepairReady=true;
 })();
 </script></html>
+<style id="levromart-final-manual-monthly-ui-20260913">
+.manual-monthly-payment-modal-content{max-height:min(90vh,760px);overflow:auto}
+.manual-monthly-account-row{grid-template-columns:96px minmax(0,1fr) auto!important}
+.product-comment-compose-row>.icon-btn,
+.package-comment-compose-row>.icon-btn,
+.product-comment-composer .product-comment-send-btn,
+.package-comment-composer .product-comment-send-btn{
+ width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;
+ padding:0!important;border-radius:50%!important;display:inline-flex!important;
+ align-items:center!important;justify-content:center!important;align-self:end!important;
+ margin:0 0 .15rem 0!important;background:var(--primary)!important;color:#fff!important;border:0!important;
+}
+.product-comment-compose-row>.icon-btn i,.package-comment-compose-row>.icon-btn i{font-size:.95rem!important}
+.product-comment-row{margin-left:-.55rem!important;margin-right:0!important}
+.product-comment-row[data-depth]{margin-left:.05rem!important;padding-left:.5rem!important}
+.product-comment-avatar{margin-left:0!important}
+.product-comment-action.active,.product-comment-action.active i{color:#ef4444!important}
+.admin-phone-copy-btn{border:0!important;background:transparent!important;color:var(--primary)!important;padding:.18rem!important;margin-left:.12rem!important;cursor:pointer}
+.admin-phone-copy-btn i{font-size:.72rem!important}
+@media(max-width:620px){
+ .manual-monthly-account-row{grid-template-columns:76px minmax(0,1fr) auto!important}
+ .product-comment-compose-row>.icon-btn,.package-comment-compose-row>.icon-btn{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important}
+ .product-comment-row{margin-left:-.7rem!important}
+ .product-comment-row[data-depth]{margin-left:0!important}
+}
+</style>
+<script>
+(function(){
+  const applySendStyle=()=>document.querySelectorAll('.product-comment-compose-row>.icon-btn,.package-comment-compose-row>.icon-btn').forEach(b=>{b.classList.add('product-comment-send-btn');b.setAttribute('aria-label','Send comment');});
+  const obs=new MutationObserver(()=>applySendStyle());obs.observe(document.body,{childList:true,subtree:true});applySendStyle();
+
+  async function optimisticLike(kind,id){
+    if(!session){showLogin();return}
+    const root=document.querySelector(`[data-comment-id="${CSS.escape(String(id))}"]`);
+    const btn=root?.querySelector('.product-comment-action');if(!btn)return;
+    if(btn.dataset.likeBusy==="1")return;
+    const icon=btn.querySelector('i'),count=btn.querySelector('.comment-like-count'),wasLiked=btn.classList.contains('active');
+    const oldCount=Math.max(0,Number(count?.textContent||0)),nextLiked=!wasLiked,nextCount=Math.max(0,oldCount+(nextLiked?1:-1));
+    btn.classList.toggle('active',nextLiked);if(icon)icon.className=`fa-${nextLiked?'solid':'regular'} fa-heart`;
+    if(nextLiked){btn.style.color='#ef4444';if(icon)icon.style.color='#ef4444'}else{btn.style.removeProperty('color');icon?.style.removeProperty('color')}
+    if(count)count.textContent=String(nextCount);else if(nextCount>0){const n=document.createElement('span');n.className='comment-like-count';n.textContent=String(nextCount);btn.appendChild(n)}
+    btn.dataset.likeBusy='1';
+    try{
+      const table=kind==='package'?'package_comment_likes':'product_comment_likes';
+      const existing=await sb.from(table).select('id').eq('comment_id',id).eq('user_id',session.user.id).maybeSingle();
+      const r=existing.data?.id?await sb.from(table).delete().eq('id',existing.data.id).eq('user_id',session.user.id):await sb.from(table).insert({comment_id:id,user_id:session.user.id});
+      if(r.error&&!/duplicate/i.test(r.error.message||''))throw r.error;
+      if(kind==='package'&&currentViewParams?.packageId)loadInlineComments('package',currentViewParams.packageId,{showLoading:false});
+      if(kind==='product'&&currentProductDetail?.id)loadInlineComments('product',currentProductDetail.id,{showLoading:false});
+    }catch(e){
+      btn.classList.toggle('active',wasLiked);if(icon)icon.className=`fa-${wasLiked?'solid':'regular'} fa-heart`;
+      if(wasLiked){btn.style.color='#ef4444';if(icon)icon.style.color='#ef4444'}else{btn.style.removeProperty('color');icon?.style.removeProperty('color')}
+      if(count)count.textContent=String(oldCount);else btn.querySelector('.comment-like-count')?.remove();
+      showToast(e.message||'Could not update comment like.','error');
+    }finally{delete btn.dataset.likeBusy}
+  }
+  window.toggleProductCommentLike=id=>optimisticLike('product',id);
+  window.togglePackageCommentLike=id=>optimisticLike('package',id);
+
+  window.copyAdminPhone=async function(phone){
+    const value=String(phone||'').trim();if(!value)return;
+    try{await navigator.clipboard.writeText(value);showToast('Phone number copied.','success')}
+    catch(_){const ta=document.createElement('textarea');ta.value=value;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');showToast('Phone number copied.','success')}catch(__){showToast('Copy is unavailable on this device.','info')}ta.remove()}
+  };
+  const oldRows=window.renderAdminPeopleRows;
+  if(typeof oldRows==='function'&&!window.__adminPeoplePhoneCopyWrapped){
+    window.__adminPeoplePhoneCopyWrapped=true;
+    window.renderAdminPeopleRows=function(){
+      oldRows.apply(this,arguments);
+      document.querySelectorAll('#adminPeopleTable tbody tr').forEach(tr=>{
+        const phone=tr.querySelector('.admin-phone-btn');if(!phone||tr.querySelector('.admin-phone-copy-btn'))return;
+        const raw=phone.textContent.replace(/[^\d+]/g,'');
+        const b=document.createElement('button');b.type='button';b.className='admin-phone-copy-btn';b.title='Copy phone number';b.setAttribute('aria-label','Copy phone number');b.innerHTML='<i class="fa-regular fa-copy"></i>';b.onclick=e=>{e.stopPropagation();copyAdminPhone(raw)};phone.insertAdjacentElement('afterend',b);
+      });
+    };
+  }
+
+  const oldChoose=window.chooseAccountRole;
+  if(typeof oldChoose==='function'&&!window.__vendorRoleRouteWrapped){
+    window.__vendorRoleRouteWrapped=true;
+    window.chooseAccountRole=async function(role){
+      if(role==='vendor')try{sessionStorage.setItem('levromart-force-vendor-application','1')}catch(_){}
+      const result=await oldChoose.apply(this,arguments);
+      if(role==='vendor')setTimeout(()=>{if(session&&profile?.role!=='admin'&&!vendor)navigate('vendorApply',{},false)},80);
+      return result;
+    };
+  }
+
+  /* If a Google/new-vendor account returns through an auth callback, force the
+     application route after the shared auth bootstrap has settled. */
+  setTimeout(()=>{
+    try{
+      if(session&&profile?.role!=='admin'&&!vendor&&sessionStorage.getItem('levromart-force-vendor-application')==='1'){
+        sessionStorage.removeItem('levromart-force-vendor-application');navigate('vendorApply',{},false);
+      }
+    }catch(_){}
+  },1200);
+
+  /* Hard-reload route guard: if the URL/storage remembers a non-home page,
+     don't leave a freshly booted Home screen in place. */
+  window.addEventListener('pageshow',()=>{
+    try{
+      const last=window.__levromartReadPersistedRoute?.();
+      if(last?.view&&last.view!=='home'&&session&&currentView==='home')setTimeout(()=>{if(currentView==='home')navigate(last.view,last.params||{},false)},120);
+    }catch(_){}
+  });
+})();
+</script>
