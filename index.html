@@ -17966,6 +17966,14 @@ async function syncEditedProductIntoCatalogueCaches(productId) {
     window.__homeBrowseCatalog = replaceIn(window.__homeBrowseCatalog || []);
     if (window.__storefrontProducts) window.__storefrontProducts = replaceIn(window.__storefrontProducts);
 
+    // Repaint any already-visible product cards too. Cache replacement is
+    // asynchronous data work; an existing card will otherwise keep its old
+    // delivery line until the next full render.
+    try {
+      document.querySelectorAll(`.product-card-wrap[data-product-id="${CSS.escape(String(productId))}"] .product-card-delivery-wrap`)
+        .forEach(el => { el.innerHTML = productDeliverySummaryHtml(fresh); });
+    } catch (_) {}
+
     const cache = getOfflineHomeCache() || {
       categories: window.__categories || [], sectors: sectors || [], trending: [],
       browseProducts: [], topVendors: [], recentProducts: [], packages: [], carouselSlides: []
@@ -18107,10 +18115,32 @@ async function saveProduct() {
     if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
     await saveProductEngagementSettings(savedProductId);
 
-    // Re-read the canonical product row and update the homepage/storefront caches
+    // Re-read the canonical product row and update every catalogue/cache copy
     // before leaving the editor. This makes delivery/price/quantity/photo edits
     // appear immediately instead of waiting for a cache refresh or app restart.
     await syncEditedProductIntoCatalogueCaches(savedProductId);
+
+    // IMPORTANT: the editor can be opened on top of an already-rendered
+    // marketplace card. Updating localStorage/cache alone does NOT repaint
+    // that existing DOM node. Repaint every visible card for this exact
+    // product immediately from the canonical Supabase row. This fixes the
+    // specific bug where the editor showed "Free delivery" while the card
+    // underneath still showed the previous distance-based setting.
+    try {
+      const { data: canonicalEditedProduct } = await sb.from("products")
+        .select(PRODUCT_LIST_SELECT)
+        .eq("id", savedProductId)
+        .maybeSingle();
+      if (canonicalEditedProduct) {
+        document.querySelectorAll(`.product-card-wrap[data-product-id="${CSS.escape(String(savedProductId))}"] .product-card-delivery-wrap`)
+          .forEach(el => { el.innerHTML = productDeliverySummaryHtml(canonicalEditedProduct); });
+        document.querySelectorAll(`[data-product-id="${CSS.escape(String(savedProductId))}"]`).forEach(el => {
+          try { el.__levroCanonicalProduct = canonicalEditedProduct; } catch (_) {}
+        });
+      }
+    } catch (repaintErr) {
+      console.warn("[Levromart] Could not repaint the edited product card immediately:", repaintErr);
+    }
 
     closeProductModal();
     showToast(editingProductId ? "Product updated successfully." : "Product saved successfully.", "success");
