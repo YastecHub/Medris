@@ -10547,6 +10547,7 @@ async function resendLoginOtp() {
 async function logout() {
   if (!(await showConfirmDialog("Log out of Levromart?", { title: "Log out", okLabel: "Log out" }))) return;
   manualLogout = true;
+  try { window.__levromartClearPersistedRoute?.(); } catch (_) {}
   await sb.auth.signOut();
   await refreshAuthStateOnce();
   navigate("home");
@@ -11037,53 +11038,77 @@ async function navigate(view, params = {}, pushHistory = true) {
 }
 
 // ---------- PERSISTENT ROUTE + SCROLL STATE ----------
-// A browser/PWA reload destroys the in-memory SPA, so "cache" alone cannot
-// preserve the screen. Persist the current route and viewport position in the
-// current tab session, then restore them after the destination has rendered.
+// A browser/PWA reload destroys the in-memory SPA. Persist the exact route and
+// viewport in localStorage so a hard reload does not restart the application
+// at Home. sessionStorage remains as a same-tab fallback for older sessions.
 (function initPersistentAppState(){
-  const ROUTE_KEY = "levromart_persisted_route_v3";
-  const SCROLL_KEY = "levromart_persisted_scroll_v3";
+  const ROUTE_KEY = "levromart_persisted_route_v4";
+  const SCROLL_KEY = "levromart_persisted_scroll_v4";
+  const LEGACY_ROUTE_KEY = "levromart_persisted_route_v3";
+  const LEGACY_SCROLL_KEY = "levromart_persisted_scroll_v3";
   let saveRaf = 0;
   let lastRoute = null;
 
-  function safeRead(key){ try { return JSON.parse(sessionStorage.getItem(key) || "null"); } catch (_) { return null; } }
-  function safeWrite(key, value){ try { sessionStorage.setItem(key, JSON.stringify(value)); } catch (_) {} }
+  function readStore(store,key){try{return JSON.parse(store.getItem(key)||"null")}catch(_){return null}}
+  function safeRead(key){
+    try { const v=readStore(localStorage,key); if(v)return v; } catch(_) {}
+    try { const v=readStore(sessionStorage,key); if(v)return v; } catch(_) {}
+    return null;
+  }
+  function safeWrite(key,value){
+    try { localStorage.setItem(key,JSON.stringify(value)); } catch(_) {}
+    try { sessionStorage.setItem(key,JSON.stringify(value)); } catch(_) {}
+  }
 
-  window.__levromartPersistedRoute = function(view, params){
-    lastRoute = { view: String(view || "home"), params: params && typeof params === "object" ? params : {} };
-    safeWrite(ROUTE_KEY, lastRoute);
-    safeWrite(SCROLL_KEY, { x: Number(window.scrollX || 0), y: Number(window.scrollY || 0), view: lastRoute.view });
+  window.__levromartPersistedRoute=function(view,params){
+    lastRoute={view:String(view||"home"),params:params&&typeof params==="object"?params:{}};
+    safeWrite(ROUTE_KEY,lastRoute);
+    // Keep the older key in sync so an already-open tab can still resume if it
+    // was created by the previous precision-fix build.
+    safeWrite(LEGACY_ROUTE_KEY,lastRoute);
+    safeWrite(SCROLL_KEY,{x:Number(window.scrollX||0),y:Number(window.scrollY||0),view:lastRoute.view});
   };
 
   function saveScroll(){
-    saveRaf = 0;
-    if (!lastRoute) return;
-    safeWrite(ROUTE_KEY, lastRoute);
-    safeWrite(SCROLL_KEY, { x: Number(window.scrollX || 0), y: Number(window.scrollY || 0), view: lastRoute.view });
+    saveRaf=0;
+    if(!lastRoute)return;
+    safeWrite(ROUTE_KEY,lastRoute);
+    safeWrite(LEGACY_ROUTE_KEY,lastRoute);
+    const state={x:Number(window.scrollX||0),y:Number(window.scrollY||0),view:lastRoute.view};
+    safeWrite(SCROLL_KEY,state);
+    safeWrite(LEGACY_SCROLL_KEY,state);
   }
 
-  window.addEventListener("scroll", () => {
-    if (saveRaf) return;
-    saveRaf = requestAnimationFrame(saveScroll);
-  }, { passive: true });
+  window.addEventListener("scroll",()=>{
+    if(saveRaf)return;
+    saveRaf=requestAnimationFrame(saveScroll);
+  },{passive:true});
+  window.addEventListener("pagehide",saveScroll,{passive:true});
+  window.addEventListener("beforeunload",saveScroll,{passive:true});
 
-  window.addEventListener("pagehide", saveScroll, { passive: true });
-  window.addEventListener("beforeunload", saveScroll, { passive: true });
-
-  window.__levromartRestoreScroll = function(view){
-    const saved = safeRead(SCROLL_KEY);
-    if (!saved || String(saved.view || "") !== String(view || "")) return false;
-    const x = Number.isFinite(Number(saved.x)) ? Number(saved.x) : 0;
-    const y = Number.isFinite(Number(saved.y)) ? Number(saved.y) : 0;
-    const restore = () => window.scrollTo({ left: x, top: y, behavior: "auto" });
+  window.__levromartRestoreScroll=function(view){
+    const saved=safeRead(SCROLL_KEY)||safeRead(LEGACY_SCROLL_KEY);
+    if(!saved||String(saved.view||"")!==String(view||""))return false;
+    const x=Number.isFinite(Number(saved.x))?Number(saved.x):0;
+    const y=Number.isFinite(Number(saved.y))?Number(saved.y):0;
+    const restore=()=>window.scrollTo({left:x,top:y,behavior:"auto"});
     requestAnimationFrame(restore);
-    setTimeout(restore, 0);
-    setTimeout(restore, 80);
+    [0,80,220,500,900].forEach(ms=>setTimeout(restore,ms));
     return true;
   };
 
-  window.__levromartReadPersistedRoute = function(){
-    return safeRead(ROUTE_KEY) || safeRead("medris_last_view");
+  window.__levromartReadPersistedRoute=function(){
+    return safeRead(ROUTE_KEY)||safeRead(LEGACY_ROUTE_KEY)||safeRead("medris_last_view");
+  };
+
+  // Used by logout/account reset so a protected page can never be resurrected
+  // for the next signed-out session.
+  window.__levromartClearPersistedRoute=function(){
+    [ROUTE_KEY,SCROLL_KEY,LEGACY_ROUTE_KEY,LEGACY_SCROLL_KEY,"medris_last_view"].forEach(k=>{
+      try{localStorage.removeItem(k)}catch(_){}
+      try{sessionStorage.removeItem(k)}catch(_){}
+    });
+    lastRoute=null;
   };
 })();
 
@@ -27120,6 +27145,20 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.__levroRefreshCommissionCountdowns=refresh;
 })();
 </script>
+<script id="levromart-variety-indicator-browse-sync-20260913">
+(function(){
+  let queued=false;
+  function sync(){
+    queued=false;
+    try{ if(typeof hydrateProductVariantIndicatorsInView==='function') hydrateProductVariantIndicatorsInView(); }catch(_){}
+  }
+  function queue(){if(queued)return;queued=true;requestAnimationFrame(sync)}
+  document.addEventListener('levromart:view-rendered',queue);
+  const root=document.getElementById('app');
+  if(root)new MutationObserver(queue).observe(root,{childList:true,subtree:true});
+  window.addEventListener('load',queue,{once:true});
+})();
+</script>
 </body>
 <style id="levromart-20260910-final-polish">
 /* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
@@ -30290,7 +30329,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
 
 })();
 </script>
-<style id="levromart-astra-final-20260913">.listing-engagement-settings{margin:.8rem 0;padding:.8rem;border:1px solid color-mix(in srgb,var(--primary) 16%,var(--border));border-radius:14px;background:color-mix(in srgb,var(--primary) 3%,var(--card))}.listing-engagement-head{display:flex;flex-direction:column;gap:.15rem;margin-bottom:.5rem}.listing-engagement-head strong{font-size:.82rem}.listing-engagement-head .muted{font-size:.68rem}.inline-toggle-row{display:flex!important;justify-content:space-between;align-items:center;gap:.7rem}.inline-toggle-row input{width:18px!important;height:18px!important;accent-color:var(--primary)}.notifications-page-host .notif-category-badge{display:none!important}.notifications-page-host .notif-tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:1rem;height:1rem;padding:0 .25rem;margin-left:.28rem;border-radius:999px;background:var(--danger);color:#fff;font-size:.56rem;font-weight:850}.notifications-page-host .notif-message-summary{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}.product-card-like-row{min-height:0}.product-like-indicator{font-size:.64rem;color:var(--muted)}.product-like-indicator.hidden,.package-card-engagement-count.hidden{display:none!important}.trending-card-action-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:.55rem!important}.trending-card-action-row>.card-comment-btn{grid-column:1;justify-self:start!important}.trending-card-action-row>.product-card-action-left{grid-column:2;justify-self:end!important;display:flex!important;align-items:center!important;gap:.35rem!important}.product-comments-toggle.disabled,.card-comment-btn.disabled{opacity:.42!important;pointer-events:none!important}.product-comment-row[data-depth]{position:relative!important;border-left:1px solid color-mix(in srgb,var(--muted) 28%,transparent)!important;padding-left:.62rem!important;margin-left:1rem!important}.product-comment-row[data-depth]:before{content:"";position:absolute;left:-1px;top:0;width:9px;height:15px;border-left:1px solid color-mix(in srgb,var(--muted) 28%,transparent);border-bottom:1px solid color-mix(in srgb,var(--muted) 28%,transparent);border-bottom-left-radius:7px}.product-comment-row{display:grid!important;grid-template-columns:2rem minmax(0,1fr)!important;column-gap:.55rem!important;align-items:start!important}.product-comment-main{min-width:0!important}.product-comment-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:.5rem!important;width:100%!important;min-width:0!important}.product-comment-head strong{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}.product-comment-head .muted{font-size:.62rem!important;white-space:nowrap!important;text-align:right!important;justify-self:end!important;color:var(--text-muted)!important}.product-comment-body-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:start!important;gap:.55rem!important;margin-top:.12rem!important}.product-comment-body{min-width:0!important;font-size:.78rem!important;line-height:1.42!important;overflow-wrap:anywhere!important}.product-comment-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:.48rem!important;margin:0!important;padding:.02rem 0 0!important;flex:none!important;flex-wrap:nowrap!important}.product-comment-action{width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;border:0!important;border-radius:50%!important;padding:0!important;background:transparent!important;color:var(--muted)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:.67rem!important;line-height:1!important;box-shadow:none!important}.product-comment-action i{font-size:.68rem!important}.product-comment-action .comment-like-count{font-size:.55rem!important;margin-left:.12rem!important}.product-comment-action.active{color:var(--primary)!important}.product-comment-action.danger{color:var(--danger)!important}.product-comment-action:active{transform:scale(.92)!important;background:color-mix(in srgb,var(--primary) 8%,transparent)!important}.product-comments-empty{font-size:.74rem!important;color:var(--text-muted)!important;text-align:left!important;padding:.45rem 0 .7rem!important}.comment-view-more{border:0;background:transparent;color:var(--primary);font-size:.72rem;font-weight:750;padding:.25rem 0 .25rem 2.65rem;cursor:pointer}.comment-hidden-replies.hidden{display:none}.product-comment-compose-row{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:end!important;gap:.45rem!important}.package-card-comment-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent);padding-top:.45rem;margin-top:.5rem}.package-card-comment-btn{border:0;background:transparent;color:var(--muted);display:inline-flex;align-items:center;gap:.25rem;padding:.25rem;border-radius:999px;font:inherit;font-size:.7rem}.browse-filter-trigger{width:42px!important;min-width:42px!important;padding:0!important;justify-content:center!important}.browse-filter-trigger .browse-filter-chevron{font-size:.58rem!important}#aiChatFab,#cartFab{right:18px!important;left:auto!important;transform:none!important}.ai-chat-fab{bottom:calc(88px + env(safe-area-inset-bottom,0px))!important}.cart-fab{bottom:calc(160px + env(safe-area-inset-bottom,0px))!important}@media(max-width:520px){.browse-filter-trigger{width:40px!important;min-width:40px!important}.notifications-page-host .notif-item{grid-template-columns:.4rem 2rem minmax(0,1fr)!important}.product-gallery-variant-meta{flex-wrap:wrap!important}.product-gallery-variant-meta #productGalleryVariantPrice{margin-left:0!important;width:100%!important}.levromart-comment-sheet-card{max-height:90vh!important}.product-comment-row{column-gap:.48rem!important}.product-comment-actions{gap:.38rem!important}.product-comment-action{width:22px!important;height:22px!important;min-width:22px!important;font-size:.62rem!important}.product-comment-action i{font-size:.63rem!important}.product-comment-head{gap:.35rem!important}.product-comment-head .muted{font-size:.59rem!important}}</style>
+<style id="levromart-astra-final-20260913">.listing-engagement-settings{margin:.8rem 0;padding:.8rem;border:1px solid color-mix(in srgb,var(--primary) 16%,var(--border));border-radius:14px;background:color-mix(in srgb,var(--primary) 3%,var(--card))}.listing-engagement-head{display:flex;flex-direction:column;gap:.15rem;margin-bottom:.5rem}.listing-engagement-head strong{font-size:.82rem}.listing-engagement-head .muted{font-size:.68rem}.inline-toggle-row{display:flex!important;justify-content:space-between;align-items:center;gap:.7rem}.inline-toggle-row input{width:18px!important;height:18px!important;accent-color:var(--primary)}.notifications-page-host .notif-category-badge{display:none!important}.notifications-page-host .notif-tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:1rem;height:1rem;padding:0 .25rem;margin-left:.28rem;border-radius:999px;background:var(--danger);color:#fff;font-size:.56rem;font-weight:850}.notifications-page-host .notif-message-summary{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}.product-card-like-row{min-height:0}.product-like-indicator{font-size:.64rem;color:var(--muted)}.product-like-indicator.hidden,.package-card-engagement-count.hidden{display:none!important}.trending-card-action-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:.55rem!important}.trending-card-action-row>.card-comment-btn{grid-column:1;justify-self:start!important}.trending-card-action-row>.product-card-action-left{grid-column:2;justify-self:end!important;display:flex!important;align-items:center!important;gap:.35rem!important}.product-comments-toggle.disabled,.card-comment-btn.disabled{opacity:.42!important;pointer-events:none!important}.product-comment-row[data-depth]{position:relative!important;border-left:1px solid color-mix(in srgb,var(--muted) 28%,transparent)!important;padding-left:.62rem!important;margin-left:1rem!important}.product-comment-row[data-depth]:before{content:"";position:absolute;left:-1px;top:0;width:9px;height:15px;border-left:1px solid color-mix(in srgb,var(--muted) 28%,transparent);border-bottom:1px solid color-mix(in srgb,var(--muted) 28%,transparent);border-bottom-left-radius:7px}.product-comment-row{display:grid!important;grid-template-columns:2rem minmax(0,1fr)!important;column-gap:.55rem!important;align-items:start!important}.product-comment-main{min-width:0!important}.product-comment-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:.5rem!important;width:100%!important;min-width:0!important}.product-comment-head strong{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}.product-comment-head .muted{font-size:.62rem!important;white-space:nowrap!important;text-align:right!important;justify-self:end!important;color:var(--text-muted)!important}.product-comment-body-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:start!important;gap:.55rem!important;margin-top:.12rem!important}.product-comment-body{min-width:0!important;font-size:.78rem!important;line-height:1.42!important;overflow-wrap:anywhere!important}.product-comment-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:.48rem!important;margin:0!important;padding:.02rem 0 0!important;flex:none!important;flex-wrap:nowrap!important}.product-comment-action{width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;border:0!important;border-radius:50%!important;padding:0!important;background:transparent!important;color:var(--muted)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:.67rem!important;line-height:1!important;box-shadow:none!important}.product-comment-action i{font-size:.68rem!important}.product-comment-action .comment-like-count{font-size:.55rem!important;margin-left:.12rem!important}.product-comment-action.active{color:var(--primary)!important}.product-comment-action.danger{color:var(--danger)!important}.product-comment-action:active{transform:scale(.92)!important;background:color-mix(in srgb,var(--primary) 8%,transparent)!important}.product-comments-empty{font-size:.74rem!important;color:var(--text-muted)!important;text-align:left!important;padding:.45rem 0 .7rem!important}.comment-view-more{border:0;background:transparent;color:var(--primary);font-size:.72rem;font-weight:750;padding:.25rem 0 .25rem 2.65rem;cursor:pointer}.comment-hidden-replies.hidden{display:none}.product-comment-compose-row{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:end!important;gap:.45rem!important}.package-card-comment-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent);padding-top:.45rem;margin-top:.5rem}.package-card-comment-btn{border:0;background:transparent;color:var(--muted);display:inline-flex;align-items:center;gap:.25rem;padding:.25rem;border-radius:999px;font:inherit;font-size:.7rem}.browse-filter-trigger{width:42px!important;min-width:42px!important;padding:0!important;justify-content:center!important}.browse-filter-trigger .browse-filter-chevron{font-size:.58rem!important}#aiChatFab,#cartFab{right:18px!important;left:auto!important;transform:none!important}.ai-chat-fab{bottom:calc(88px + env(safe-area-inset-bottom,0px))!important}.cart-fab{bottom:calc(160px + env(safe-area-inset-bottom,0px))!important}@media(max-width:520px){.product-comment-row{margin-left:-.32rem!important}.browse-filter-trigger{width:40px!important;min-width:40px!important}.notifications-page-host .notif-item{grid-template-columns:.4rem 2rem minmax(0,1fr)!important}.product-gallery-variant-meta{flex-wrap:wrap!important}.product-gallery-variant-meta #productGalleryVariantPrice{margin-left:0!important;width:100%!important}.levromart-comment-sheet-card{max-height:90vh!important}.product-comment-row{column-gap:.48rem!important}.product-comment-actions{gap:.38rem!important}.product-comment-action{width:22px!important;height:22px!important;min-width:22px!important;font-size:.62rem!important}.product-comment-action i{font-size:.63rem!important}.product-comment-head{gap:.35rem!important}.product-comment-head .muted{font-size:.59rem!important}}</style>
 <script id="levromart-comment-sheet-gesture-20260913">(function(){let y=0,drag=false;document.addEventListener("pointerdown",e=>{const c=e.target?.closest?.(".levromart-comment-sheet-card");if(!c||e.target.closest("button,textarea,input"))return;y=e.clientY;drag=true},{passive:true});document.addEventListener("pointermove",e=>{if(!drag)return;const c=document.querySelector(".levromart-comment-sheet-card");if(!c)return;const dy=Math.max(0,e.clientY-y);if(dy)c.style.transform=`translateY(${dy}px)`},{passive:true});document.addEventListener("pointerup",e=>{if(!drag)return;drag=false;const c=document.querySelector(".levromart-comment-sheet-card");if(!c)return;const dy=Math.max(0,e.clientY-y);c.style.transform="";if(dy>90)closeSocialCommentSheet()},{passive:true});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.body.classList.contains("levromart-comment-sheet-open"))closeSocialCommentSheet()})})();</script>
 
 <style id="levromart-final-20260913-payment-comments-timer">
@@ -30318,7 +30357,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
   display:inline-flex!important;
   align-items:center!important;
   gap:.22rem!important;
-  color:var(--primary)!important;
+  color:#fff!important;
   font-size:.64rem!important;
   font-weight:800!important;
   line-height:1.2!important;
