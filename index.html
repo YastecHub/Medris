@@ -11880,7 +11880,7 @@ async function renderHome() {
   const activeCategory = (categories || []).find((c) => String(c.id) === String(currentHomeCategoryId)) || null;
   const subCats = (categories || []).filter(c => c.parent_category_id && (!activeSector || String(c.sector_id) === String(activeSector.id)));
 
-  let vendorQuery = sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
+  let vendorQuery = sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
@@ -12174,7 +12174,7 @@ async function fetchSearchSuggestions(term) {
 }
 function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hidden"); }
 
-const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
+const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
 
 // Used whenever a search/filter comes up empty - instead of a dead end,
 // show what IS available so the customer isn't stuck looking at nothing.
@@ -12481,12 +12481,20 @@ async function filterHomeProducts() {
 }
 function productDeliverySummaryHtml(p) {
   const v = p?.vendor || {};
-  const mode = String(v.delivery_fee_mode || "free").toLowerCase();
-  const flat = Number(v.delivery_fee) || 0;
-  const perKm = Number(v.delivery_fee_per_km) || 0;
+  // Delivery settings belong to the individual listing. Fall back to the
+  // vendor defaults only for legacy records that do not have product-level
+  // delivery fields yet. The previous renderer always read the vendor fields,
+  // which made an edited product appear unchanged even when the database had
+  // successfully saved the new delivery mode.
+  const hasProductDeliveryMode = p && Object.prototype.hasOwnProperty.call(p, "delivery_fee_mode") && p.delivery_fee_mode != null;
+  const mode = String(hasProductDeliveryMode ? p.delivery_fee_mode : (v.delivery_fee_mode || "free")).toLowerCase();
+  const flat = Number(hasProductDeliveryMode ? p.delivery_fee : v.delivery_fee) || 0;
+  const perKm = Number(hasProductDeliveryMode ? p.delivery_fee_per_km : v.delivery_fee_per_km) || 0;
+  const lat = hasProductDeliveryMode ? p.lat : v.lat;
+  const lng = hasProductDeliveryMode ? p.lng : v.lng;
   if (mode === "distance" && perKm > 0) {
-    if (buyerLocation && v.lat != null && v.lng != null) {
-      const km = haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng);
+    if (buyerLocation && lat != null && lng != null) {
+      const km = haversineKm(buyerLocation.lat, buyerLocation.lng, lat, lng);
       const fee = Math.round((perKm * km) / 50) * 50;
       return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: distance-based · ${naira(perKm)}/km · est. ${naira(fee)} · ${formatDistanceKm(km)}</p>`;
     }
@@ -18054,6 +18062,7 @@ async function saveProduct() {
     await saveProductEngagementSettings(savedProductId);
 
     closeProductModal();
+    showToast(editingProductId ? "Product updated successfully." : "Product saved successfully.", "success");
     navigate("vendorProducts");
   } catch (err) {
     errorEl.textContent = err.message;
@@ -31393,4 +31402,251 @@ body.levro-profile-split.profile-reveal-dragging #app{transition:none!important;
   document.addEventListener('pointermove',e=>{const d=window.__levroProfileDrag;if(!d||d.id!==e.pointerId)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(Math.abs(dy)>Math.abs(dx)*1.1){window.__levroProfileDrag=null;return;}if(dx<8)return;e.preventDefault();document.body.classList.add('levro-profile-split','profile-reveal-dragging');document.getElementById('profilePanel')?.classList.add('open');const max=window.innerWidth<=700?window.innerWidth*.78:Math.min(390,window.innerWidth*.42);const x=Math.min(max,Math.max(0,dx));document.getElementById('app')?.style.setProperty('transform',`translateX(${x}px)`);document.getElementById('profilePanel')?.style.setProperty('transform','translateX(0)');},{passive:false});
   document.addEventListener('pointerup',e=>{const d=window.__levroProfileDrag;if(!d||d.id!==e.pointerId)return;const dx=e.clientX-d.x;window.__levroProfileDrag=null;document.body.classList.remove('profile-reveal-dragging');const max=window.innerWidth<=700?window.innerWidth*.78:Math.min(390,window.innerWidth*.42);if(dx>max*.3){document.body.classList.add('levro-profile-split');document.getElementById('app')?.style.setProperty('transform',`translateX(${max}px)`);document.getElementById('profilePanel')?.classList.add('open');}else{document.getElementById('profilePanel')?.classList.remove('open');document.body.classList.remove('levro-profile-split');document.getElementById('app')?.style.removeProperty('transform');}},{passive:true});
 })();
+</script>
+
+<style id="levro-final-gesture-and-ux-pass-20260913">
+/* PROFILE PANEL — restore the original overlay drawer, with a smoother ChatGPT-like drag. */
+body.levro-profile-split{overflow-x:visible!important;}
+body.levro-profile-split #app{transform:none!important;will-change:auto!important;transition:none!important;}
+body.levro-profile-split #drawerBackdrop{display:block!important;}
+#profilePanel{
+  position:fixed!important;
+  left:0!important;right:auto!important;top:0!important;bottom:0!important;
+  width:min(380px,91vw)!important;max-width:min(380px,91vw)!important;
+  transform:translateX(-103%)!important;
+  transition:transform .34s cubic-bezier(.22,.86,.25,1)!important;
+  will-change:transform!important;
+  z-index:100001!important;
+  border-radius:0 22px 22px 0!important;
+  box-shadow:20px 0 48px rgba(0,0,0,.34)!important;
+  touch-action:pan-y!important;
+}
+#profilePanel.open{transform:translateX(0)!important;}
+#profilePanel.profile-dragging{transition:none!important;}
+#drawerBackdrop.open{z-index:100000!important;}
+@media(max-width:700px){
+  #profilePanel{width:min(84vw,380px)!important;max-width:min(84vw,380px)!important;border-radius:0 20px 20px 0!important;}
+}
+
+/* Top-rated View more: clean text/button treatment, no grey browser-looking box. */
+#app .levro-top-rated-see-all{
+  appearance:none!important;-webkit-appearance:none!important;
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  color:var(--text)!important;padding:.2rem 0!important;margin-left:auto!important;
+  font:inherit!important;font-size:.82rem!important;font-weight:800!important;
+  display:inline-flex!important;align-items:center!important;gap:.3rem!important;
+  border-radius:0!important;white-space:nowrap!important;cursor:pointer!important;
+}
+#app .levro-top-rated-see-all i{color:var(--primary)!important;font-size:.8rem!important;}
+#app .levro-top-rated-see-all:hover{color:var(--primary)!important;background:transparent!important;}
+
+/* Variety — green in both themes. */
+#app .product-variety-indicator{
+  background:color-mix(in srgb,var(--primary) 10%,var(--card))!important;
+  color:var(--primary)!important;
+  border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border))!important;
+  box-shadow:none!important;
+}
+[data-theme="light"] #app .product-variety-indicator,
+html.light #app .product-variety-indicator,
+body.light #app .product-variety-indicator{
+  background:color-mix(in srgb,var(--primary) 10%,#fff)!important;
+  color:var(--primary)!important;
+  border-color:color-mix(in srgb,var(--primary) 35%,#fff)!important;
+}
+
+/* Network error state — compact, centered, professional. */
+#app .levro-network-error{
+  width:100%!important;max-width:320px!important;margin:2.2rem auto!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;
+  justify-content:center!important;text-align:center!important;
+  color:var(--text-muted)!important;padding:1rem .75rem!important;
+}
+#app .levro-network-error i{font-size:2rem!important;color:var(--text-muted)!important;margin:0 0 .55rem!important;}
+#app .levro-network-error strong{display:block!important;color:var(--text)!important;font-size:.95rem!important;line-height:1.2!important;}
+
+/* Admin vendor sort control — make it a proper dropdown trigger. */
+#app .admin-vendor-tools .admin-vendor-sort-wrap{position:relative!important;min-width:0!important;}
+#app .admin-vendor-tools .admin-vendor-sort-button{
+  width:100%!important;min-height:48px!important;height:48px!important;
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:.6rem!important;padding:.65rem .85rem!important;
+  border:1px solid var(--border)!important;border-radius:14px!important;
+  background:var(--card)!important;color:var(--text)!important;
+  font:inherit!important;font-size:.83rem!important;font-weight:700!important;
+  cursor:pointer!important;text-align:left!important;
+}
+#app .admin-vendor-tools .admin-vendor-sort-button i{color:var(--primary)!important;font-size:.75rem!important;transition:transform .18s ease!important;}
+#app .admin-vendor-tools .admin-vendor-sort-wrap.open .admin-vendor-sort-button i{transform:rotate(180deg)!important;}
+#app .admin-vendor-tools .admin-vendor-sort-menu{
+  position:absolute!important;left:0!important;right:0!important;top:calc(100% + .35rem)!important;
+  z-index:12050!important;display:none!important;padding:.35rem!important;
+  background:var(--card)!important;border:1px solid var(--border)!important;border-radius:14px!important;
+  box-shadow:0 16px 34px rgba(0,0,0,.24)!important;
+}
+#app .admin-vendor-tools .admin-vendor-sort-wrap.open .admin-vendor-sort-menu{display:block!important;}
+#app .admin-vendor-tools .admin-vendor-sort-option{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  width:100%!important;border:0!important;background:transparent!important;color:var(--text)!important;
+  padding:.65rem .7rem!important;border-radius:10px!important;font:inherit!important;font-size:.78rem!important;
+  cursor:pointer!important;text-align:left!important;
+}
+#app .admin-vendor-tools .admin-vendor-sort-option:hover,
+#app .admin-vendor-tools .admin-vendor-sort-option.active{background:color-mix(in srgb,var(--primary) 10%,var(--card))!important;color:var(--primary)!important;}
+#adminVendorSort{display:none!important;}
+</style>
+
+<script id="levro-final-gesture-and-ux-pass-js-20260913">
+(function(){
+  'use strict';
+
+  /* --- Network error copy + centered state --- */
+  const originalFriendlyError = window.friendlyErrorText;
+  window.friendlyErrorText = function(err){
+    const out = typeof originalFriendlyError==='function' ? originalFriendlyError(err) : null;
+    const raw = String(err?.message || err || '');
+    if(/fetch|network|offline|websocket|realtime|socket|timeout|NetworkError/i.test(raw)){
+      return {icon:'fa-wifi', text:'Network issue'};
+    }
+    return out || {icon:'fa-triangle-exclamation', text:'Something went wrong. Please try again in a moment.'};
+  };
+  const originalErrorStateHtml = window.errorStateHtml;
+  window.errorStateHtml = function(err){
+    const out = (typeof originalErrorStateHtml==='function') ? originalErrorStateHtml(err) : '';
+    if(/fetch|network|offline|websocket|realtime|socket|timeout|NetworkError/i.test(String(err?.message||err||''))){
+      return '<div class="empty-state levro-network-error"><i class="fa-solid fa-wifi" aria-hidden="true"></i><strong>Network issue</strong></div>';
+    }
+    return out;
+  };
+
+  /* --- Admin vendor applications sort: replace the static native select with a proper dropdown. --- */
+  function setupAdminVendorSortDropdown(){
+    const tools=document.querySelector('#app .admin-vendor-tools');
+    const select=document.getElementById('adminVendorSort');
+    if(!tools||!select||tools.querySelector('.admin-vendor-sort-wrap'))return;
+    const wrap=document.createElement('div');wrap.className='admin-vendor-sort-wrap';
+    const button=document.createElement('button');button.type='button';button.className='admin-vendor-sort-button';
+    const menu=document.createElement('div');menu.className='admin-vendor-sort-menu';
+    const options=[...select.options].map(o=>({value:o.value,label:o.textContent||o.value}));
+    const renderButton=()=>{
+      const cur=options.find(o=>o.value===select.value)||options[0];
+      button.innerHTML='<span>'+escapeHtml(cur.label)+'</span><i class="fa-solid fa-chevron-down"></i>';
+      menu.querySelectorAll('.admin-vendor-sort-option').forEach(x=>x.classList.toggle('active',x.dataset.value===cur.value));
+    };
+    menu.innerHTML=options.map(o=>'<button type="button" class="admin-vendor-sort-option" data-value="'+escapeHtml(o.value)+'"><span>'+escapeHtml(o.label)+'</span></button>').join('');
+    const apply=()=>{select.dispatchEvent(new Event('change',{bubbles:true}));};
+    button.addEventListener('click',e=>{e.stopPropagation();wrap.classList.toggle('open');renderButton();});
+    menu.querySelectorAll('.admin-vendor-sort-option').forEach(opt=>opt.addEventListener('click',e=>{
+      e.stopPropagation();select.value=opt.dataset.value;renderButton();wrap.classList.remove('open');apply();
+    }));
+    wrap.append(button,menu);
+    select.insertAdjacentElement('afterend',wrap);
+    renderButton();
+    document.addEventListener('click',e=>{if(!wrap.contains(e.target))wrap.classList.remove('open');},{passive:true});
+  }
+  const sortObs=new MutationObserver(()=>setupAdminVendorSortDropdown());sortObs.observe(document.body,{childList:true,subtree:true});
+  setTimeout(setupAdminVendorSortDropdown,500);
+
+  /* --- Profile drawer: original overlay + edge swipe, with smooth finger tracking. --- */
+  let profileDrag=null;
+  const panel=()=>document.getElementById('profilePanel');
+  const backdrop=()=>document.getElementById('drawerBackdrop');
+  const maxWidth=()=>{const w=panel()?.getBoundingClientRect().width||Math.min(380,window.innerWidth*.84);return w;};
+  const setPanelProgress=(progress)=>{
+    const p=panel();if(!p)return;
+    const w=maxWidth();
+    const cl=Math.max(0,Math.min(1,progress));
+    p.classList.add('profile-dragging');
+    p.classList.add('open');
+    p.style.setProperty('transform',`translateX(${(-w+(w*cl))}px)`,'important');
+    backdrop()?.classList.add('open');
+    backdrop()?.style.setProperty('opacity',String(.52*cl));
+  };
+  const settleProfile=(open)=>{
+    const p=panel();if(!p)return;
+    p.classList.remove('profile-dragging');p.style.removeProperty('transform');
+    const b=backdrop();
+    if(open){p.classList.add('open');b?.classList.add('open');b?.style.removeProperty('opacity');document.body.classList.remove('levro-profile-split');document.getElementById('app')?.style.removeProperty('transform');}
+    else{p.classList.remove('open');b?.classList.remove('open');b?.style.removeProperty('opacity');document.body.classList.remove('levro-profile-split');document.getElementById('app')?.style.removeProperty('transform');}
+  };
+  window.toggleProfilePanel=function(){
+    const p=panel();if(!p)return;
+    if(p.classList.contains('open')){settleProfile(false);}
+    else{updateAuthUI?.();settleProfile(true);}
+  };
+  window.openProfileSplit=undefined;
+
+  /* Capture before the old split listeners so only this recognizer handles profile swipes. */
+  if(!window.__levroFinalProfileSwipe){
+    window.__levroFinalProfileSwipe=true;
+    const isInteractive=t=>!!t?.closest?.('button,a,input,textarea,select,label,[contenteditable="true"],.profile-nav-link');
+    document.addEventListener('pointerdown',e=>{
+      if(e.pointerType==='mouse'||e.pointerType==='pen'||!e.isPrimary)return;
+      const p=panel(); if(!p)return;
+      const open=p.classList.contains('open');
+      const fromEdge=e.clientX<=28;
+      if(!open&&!fromEdge)return;
+      if(open && isInteractive(e.target))return;
+      profileDrag={id:e.pointerId,x:e.clientX,y:e.clientY,open,startedAt:performance.now(),active:false};
+      try{p.setPointerCapture?.(e.pointerId);}catch(_){ }
+      e.stopImmediatePropagation();
+    },{capture:true,passive:true});
+    document.addEventListener('pointermove',e=>{
+      const d=profileDrag;if(!d||e.pointerId!==d.id)return;
+      e.stopImmediatePropagation();
+      const dx=e.clientX-d.x,dy=e.clientY-d.y;
+      if(!d.active){
+        if(Math.hypot(dx,dy)<5)return;
+        if(Math.abs(dy)>Math.abs(dx)*1.15){profileDrag=null;return;}
+        const correct=d.open?dx<0:dx>0;
+        if(!correct){profileDrag=null;return;}
+        d.active=true;
+      }
+      const w=maxWidth();
+      if(!d.open){
+        const cl=Math.max(0,Math.min(1,(dx/w)));
+        const eased=cl<.82?cl:(.82+(cl-.82)*.55);
+        setPanelProgress(eased);
+      }else{
+        const cl=Math.max(0,Math.min(1,1+(dx/w)));
+        setPanelProgress(cl);
+      }
+      e.preventDefault();
+    },{capture:true,passive:false});
+    const finish=(e,cancelled)=>{
+      const d=profileDrag;if(!d||e.pointerId!==d.id)return;
+      e.stopImmediatePropagation();
+      const p=panel();const w=maxWidth();const dx=e.clientX-d.x;const elapsed=Math.max(1,performance.now()-d.startedAt);const velocity=Math.abs(dx)/elapsed;
+      const openProgress=d.open?Math.max(0,Math.min(1,1+(dx/w))):Math.max(0,Math.min(1,dx/w));
+      const shouldOpen=!d.open && !cancelled && (openProgress>.28||velocity>.55);
+      const shouldClose=d.open && !cancelled && ((1-openProgress)>.28||velocity>.55);
+      profileDrag=null;
+      if(shouldOpen){
+        p?.classList.remove('profile-dragging');p?.style.setProperty('transition','transform .34s cubic-bezier(.22,.86,.25,1)');settleProfile(true);setTimeout(()=>p?.style.removeProperty('transition'),360);
+      }else if(shouldClose){
+        p?.classList.remove('profile-dragging');p?.style.setProperty('transition','transform .3s cubic-bezier(.22,.86,.25,1)');settleProfile(false);setTimeout(()=>p?.style.removeProperty('transition'),330);
+      }else{
+        p?.classList.remove('profile-dragging');p?.style.setProperty('transition','transform .28s cubic-bezier(.22,.86,.25,1)');settleProfile(d.open);setTimeout(()=>p?.style.removeProperty('transition'),310);
+      }
+    };
+    document.addEventListener('pointerup',e=>finish(e,false),{capture:true,passive:true});
+    document.addEventListener('pointercancel',e=>finish(e,true),{capture:true,passive:true});
+  }
+
+  /* Keep the old split class harmless if an older handler manages to set it. */
+  const cleanSplit=()=>{document.body.classList.remove('levro-profile-split','profile-reveal-dragging');document.getElementById('app')?.style.removeProperty('transform');};
+  setInterval(()=>{if(panel()?.classList.contains('open'))cleanSplit();},300);
+
+  /* Improve the top-rated button after every home rerender. */
+  function patchSeeAll(){
+    document.querySelectorAll('#app .levro-top-rated-see-all').forEach(b=>{
+      b.style.removeProperty('background');b.style.removeProperty('box-shadow');
+      if(!/View more/i.test(b.textContent||''))b.innerHTML='View more <i class="fa-solid fa-arrow-right"></i>';
+    });
+  }
+  new MutationObserver(patchSeeAll).observe(document.body,{childList:true,subtree:true});
+  setTimeout(patchSeeAll,250);
+})();
+
+function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 </script>
