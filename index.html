@@ -12168,7 +12168,7 @@ async function fetchSearchSuggestions(term) {
 }
 function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hidden"); }
 
-const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
+const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
 
 // Used whenever a search/filter comes up empty - instead of a dead end,
 // show what IS available so the customer isn't stuck looking at nothing.
@@ -12475,9 +12475,9 @@ async function filterHomeProducts() {
 }
 function productDeliverySummaryHtml(p) {
   const v = p?.vendor || {};
-  const mode = String(v.delivery_fee_mode || "free").toLowerCase();
-  const flat = Number(v.delivery_fee) || 0;
-  const perKm = Number(v.delivery_fee_per_km) || 0;
+  const mode = String(p?.delivery_fee_mode ?? v.delivery_fee_mode ?? "free").toLowerCase();
+  const flat = Number(p?.delivery_fee ?? v.delivery_fee ?? 0) || 0;
+  const perKm = Number(p?.delivery_fee_per_km ?? v.delivery_fee_per_km ?? 0) || 0;
   if (mode === "distance" && perKm > 0) {
     if (buyerLocation && v.lat != null && v.lng != null) {
       const km = haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng);
@@ -17919,6 +17919,84 @@ async function saveProductVariants(productId, drafts) {
 
 function syncProductEngagementSettingsUI(){byId("prodCommentAudienceWrap")?.classList.toggle("hidden",!byId("prodAllowComments")?.checked);}
 async function saveProductEngagementSettings(id){if(!id||!vendor?.id)return;const {error}=await sb.from("product_engagement_settings").upsert({product_id:id,vendor_id:vendor.id,like_visibility:byId("prodLikeVisibility")?.value||"everyone",allow_comments:!!byId("prodAllowComments")?.checked,comment_audience:byId("prodCommentAudience")?.value||"everyone"},{onConflict:"product_id"});if(error)throw error;}
+async function refreshSavedProductState(productId) {
+  if (!productId) return null;
+
+  const [{ data: savedProduct, error: productError }, { data: savedVariants, error: variantsError }] = await Promise.all([
+    sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name, sector_id)").eq("id", productId).maybeSingle(),
+    sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true})
+  ]);
+
+  if (productError) throw productError;
+  if (!savedProduct) throw new Error("The product was saved, but the latest saved product could not be loaded.");
+
+  if (variantsError) {
+    console.warn("[Levromart] Saved product loaded, but its varieties could not be refreshed:", variantsError);
+  }
+  savedProduct.variants = savedVariants || [];
+
+  const replaceById = (list) => {
+    if (!Array.isArray(list)) return list;
+    let changed = false;
+    const next = list.map((p) => {
+      if (!p || String(p.id) !== String(productId)) return p;
+      changed = true;
+      return { ...p, ...savedProduct };
+    });
+    return changed ? next : list;
+  };
+
+  window.__homeBrowseCatalog = replaceById(window.__homeBrowseCatalog);
+  try {
+    const cache = getOfflineHomeCache();
+    if (cache) {
+      writeOfflineHomeCache({
+        ...cache,
+        browseProducts: replaceById(cache.browseProducts),
+        trending: replaceById(cache.trending),
+        recentProducts: replaceById(cache.recentProducts)
+      });
+    }
+  } catch (_) {}
+
+  if (currentProductDetail && String(currentProductDetail.id) === String(productId)) {
+    currentProductDetail = savedProduct;
+  }
+
+  try {
+    window.__productPhotoCache ||= {};
+    window.__productPhotoCache[productId] = Array.isArray(savedProduct.photos) ? savedProduct.photos : [];
+  } catch (_) {}
+
+  return savedProduct;
+}
+
+async function refreshVisibleProductAfterSave(productId) {
+  const savedProduct = await refreshSavedProductState(productId);
+  const view = currentView;
+  const params = currentViewParams || {};
+
+  // Re-render only the SPA view that was already open. Never force Home or
+  // reload the entire document; the saved product remains the single source
+  // of truth for the refreshed representation.
+  if (view === "productDetail" && String(params.productId) === String(productId)) {
+    await navigate("productDetail", { productId }, false);
+  } else if (view === "vendorProducts") {
+    await navigate("vendorProducts", {}, false);
+  } else {
+    document.querySelectorAll(`.product-card-wrap[data-product-id="${CSS.escape(String(productId))}"]`).forEach((node) => {
+      const context = node.querySelector(".product-card-action-row")?.classList.contains("trending-card-action-row") ? "trending" : "";
+      const nextProduct = { ...savedProduct, _cardContext: context };
+      const template = document.createElement("template");
+      template.innerHTML = productCardHtml(nextProduct).trim();
+      const nextNode = template.content.firstElementChild;
+      if (nextNode) node.replaceWith(nextNode);
+    });
+  }
+
+  return savedProduct;
+}
+
 async function saveProduct() {
   const errorEl = byId("productError");
   errorEl.classList.add("hidden");
@@ -18043,7 +18121,7 @@ async function saveProduct() {
     await saveProductEngagementSettings(savedProductId);
 
     closeProductModal();
-    navigate("vendorProducts");
+    await refreshVisibleProductAfterSave(savedProductId);
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove("hidden");
