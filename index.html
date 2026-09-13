@@ -4908,8 +4908,6 @@ body.product-detail-view #aiChatFab{right:.7rem !important;bottom:.65rem !import
 /* Image long-press/reaction surfaces: suppress browser image selection/menus. */
 .chat-image-attachment,.chat-image-attachment img{user-select:none !important;-webkit-user-select:none !important;-webkit-touch-callout:none !important;-webkit-user-drag:none !important;}
 .image-lightbox img{user-select:auto !important;-webkit-user-select:auto !important;-webkit-touch-callout:default !important;-webkit-user-drag:auto !important;}
-/* Drawer swipe feedback. */
-#profilePanel,#notifPanel{will-change:transform;}
 </style>
 
 
@@ -8785,121 +8783,8 @@ function toggleProfilePanel() { openDrawer("profilePanel"); }
 
 function setupDrawerSwipe(drawer, side) { return; }
 
-// Backdrop/centre swipe gestures for the two right-hand drawers. Opening:
-// swipe right -> profile, swipe left -> notifications. Closing an open drawer:
-// swipe right. We deliberately ignore cards, maps, tables, horizontal rails,
-// form controls and other interactive surfaces so their own gestures remain intact.
-(function setupDrawerDragGestures(){
-  if (window.__drawerDragGesturesReady) return;
-  window.__drawerDragGesturesReady = true;
-  const MIN_DRAG = 42;
-  const AXIS_RATIO = 1.15;
-  const START_ZONE = 0.50;
-  const isBlocked = (target) => {
-    if (!target?.closest) return false;
-    return !!target.closest([
-      '#aiChatPanel','#aiChatFab','#cartFab','#vendorsMap','#vendorsMapWrap','#veMap',
-      'header','.bottom-nav','.site-footer',
-      'button','a','input','textarea','select','label',
-      '.card','.product-card-wrap','.vendor-card','.package-card',
-      '.grid','.hscroll','.cat-row','.storefront-product-strip','.table-wrap','table',
-      '.leaflet','.modal','.modal-content',
-      '.chat-page-wrap','.chat-messages','.chat-input-wrap',
-      '[contenteditable="true"]','.swiper','.carousel','.gallery',
-      '[data-no-drawer-gesture]'
-    ].join(','));
-  };
-  const getOpen = () => ({
-    profile: byId('profilePanel')?.classList.contains('open') || false,
-    notif: byId('notifPanel')?.classList.contains('open') || false
-  });
-  let drag = null;
-  const begin = (e) => {
-    if (e.pointerType === 'mouse' || e.pointerType === 'pen') return;
-    const open = getOpen();
-    const target = e.target;
-
-    if (open.profile || open.notif) {
-      const side = open.profile ? 'left' : 'right';
-      const panel = open.profile ? byId('profilePanel') : byId('notifPanel');
-      // While a drawer is open, only the drawer's non-interactive/background
-      // surface can start the close drag. Product rows, buttons, maps, etc.
-      // keep their normal touch behaviour.
-      if (!panel || !panel.contains(target) || isBlocked(target)) return;
-      drag = { id:e.pointerId, x:e.clientX, y:e.clientY, side, mode:'close', panel, active:false };
-      try { panel.setPointerCapture?.(e.pointerId); } catch (_) {}
-      return;
-    }
-
-    // Opening: choose the drawer by which half of the background the drag
-    // starts in. This intentionally avoids the extreme screen edge so Android
-    // back gestures do not compete with Levromart's drawer gesture.
-    if (isBlocked(target)) return;
-    const startLeft = e.clientX < window.innerWidth * START_ZONE;
-    const side = startLeft ? 'left' : 'right';
-    const panel = side === 'left' ? byId('profilePanel') : byId('notifPanel');
-    if (!panel) return;
-    drag = { id:e.pointerId, x:e.clientX, y:e.clientY, side, mode:'open', panel, active:false };
-  };
-  const move = (e) => {
-    if (!drag || e.pointerId !== drag.id || e.pointerType === 'mouse' || e.pointerType === 'pen') return;
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-    if (!drag.active) {
-      if (Math.hypot(dx,dy) < 6) return;
-      if (Math.abs(dx) < Math.abs(dy) * AXIS_RATIO) { drag = null; return; }
-      const correctDirection = drag.mode === 'open'
-        ? (drag.side === 'left' ? dx > 0 : dx < 0)
-        : (drag.side === 'left' ? dx < 0 : dx > 0);
-      if (!correctDirection) { drag = null; return; }
-      drag.active = true;
-      drag.panel.style.transition = 'none';
-      drag.panel.style.willChange = 'transform';
-      try { drag.panel.setPointerCapture?.(e.pointerId); } catch (_) {}
-    }
-    const w = drag.panel.getBoundingClientRect().width || Math.min(380, window.innerWidth * .91);
-    let tx;
-    if (drag.mode === 'open') {
-      const distance = drag.side === 'left' ? Math.max(0, dx) : Math.min(0, dx);
-      const progress = Math.min(1, Math.abs(distance) / w);
-      tx = drag.side === 'left' ? -w + (w * progress) : w - (w * progress);
-    } else {
-      const distance = drag.side === 'left' ? Math.min(0, dx) : Math.max(0, dx);
-      tx = distance;
-    }
-    drag.panel.style.transform = `translateX(${tx}px)`;
-    e.preventDefault?.();
-  };
-  const end = (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const d = drag;
-    const dx = e.clientX - d.x, dy = e.clientY - d.y;
-    const w = d.panel?.getBoundingClientRect().width || Math.min(380, window.innerWidth * .91);
-    const progress = Math.min(1, Math.abs(dx) / Math.max(w,1));
-    const velocityEnough = Math.abs(dx) >= 22 && Math.abs(dx) / Math.max(1, (performance.now() - (d.startedAt || performance.now()))) > .25;
-    const enough = Math.abs(dx) >= MIN_DRAG || progress >= .22 || velocityEnough;
-    const correct = d.mode === 'open'
-      ? (d.side === 'left' ? dx > 0 : dx < 0)
-      : (d.side === 'left' ? dx < 0 : dx > 0);
-    d.panel.style.transition = 'transform .24s cubic-bezier(.22,.8,.2,1)';
-    d.panel.style.willChange = '';
-    d.panel.style.transform = '';
-    if (d.active && enough && correct && Math.abs(dx) > Math.abs(dy) * AXIS_RATIO) {
-      if (d.mode === 'open') d.side === 'left' ? toggleProfilePanel() : toggleNotifPanel();
-      else closeAllPanels();
-    }
-    drag = null;
-  };
-  document.addEventListener('pointerdown', (e) => { if (e.isPrimary !== false) { begin(e); if (drag) drag.startedAt = performance.now(); } }, {passive:true});
-  document.addEventListener('pointermove', move, {passive:false});
-  document.addEventListener('pointerup', end, {passive:true});
-  document.addEventListener('pointercancel', (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    drag.panel.style.transition = '';
-    drag.panel.style.willChange = '';
-    drag.panel.style.transform = '';
-    drag = null;
-  }, {passive:true});
-})();
+// Drawer panels open/close from their explicit buttons only.
+// No swipe gesture is attached to the profile or notification panels.
 
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllPanels(); });
 
@@ -18191,8 +18076,12 @@ async function saveProduct() {
     }
 
     closeProductModal();
+    // The vendor-products route is cache-first for fast navigation. Clear its
+    // rendered HTML after a successful edit so an older card can never win a
+    // race against the freshly saved Supabase row.
+    try { routeHtmlCache.delete(routeCacheKey("vendorProducts", {})); } catch (_) {}
     showToast(editingProductId ? "Product updated successfully." : "Product saved successfully.", "success");
-    navigate("vendorProducts");
+    await navigate("vendorProducts", {}, false);
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove("hidden");
@@ -18205,11 +18094,44 @@ function listingActivationValid(p) {
   return p?.billing_model === "monthly" && Number.isFinite(Date.parse(p.billing_paid_until)) && Date.parse(p.billing_paid_until) > Date.now();
 }
 async function setProductStatus(id, status) {
-  if(status === "active")return startListingMonthlyPayment("product",id);
+  const nextStatus = String(status || "").trim();
+  if (!id || !["active", "paused"].includes(nextStatus)) {
+    showToast("Invalid product status.", "error");
+    return;
+  }
 
-  const { error } = await sb.from("products").update({ status }).eq("id", id).eq("vendor_id", vendor.id);
-  if (error) { showToast(error.message, "error"); return; }
-  navigate("vendorProducts");
+  // Commission listings can be resumed directly. Monthly listings may only
+  // be reactivated through the payment/approval flow when their paid period
+  // is no longer valid. Pausing is always a direct product-status update.
+  if (nextStatus === "active") {
+    const { data: product, error: readError } = await sb.from("products")
+      .select("id,billing_model,billing_paid_until,status")
+      .eq("id", id)
+      .eq("vendor_id", vendor.id)
+      .maybeSingle();
+    if (readError) { showToast(readError.message, "error"); return; }
+    if (!product) { showToast("That product could not be found.", "error"); return; }
+    if (product.billing_model === "monthly") {
+      if (listingActivationValid(product)) {
+        const { error } = await sb.from("products").update({ status: "active", billing_status: "active" }).eq("id", id).eq("vendor_id", vendor.id);
+        if (error) { showToast(error.message, "error"); return; }
+      } else {
+        return startListingMonthlyPayment("product", id);
+      }
+    } else {
+      const { error } = await sb.from("products").update({ status: "active" }).eq("id", id).eq("vendor_id", vendor.id);
+      if (error) { showToast(error.message, "error"); return; }
+    }
+  } else {
+    const { error } = await sb.from("products").update({ status: "paused" }).eq("id", id).eq("vendor_id", vendor.id);
+    if (error) { showToast(error.message, "error"); return; }
+  }
+
+  // Never let the cached vendor-products HTML briefly overwrite the fresh
+  // status after a pause/resume action. The next render reads Supabase again.
+  try { routeHtmlCache.delete(routeCacheKey("vendorProducts", {})); } catch (_) {}
+  showToast(nextStatus === "paused" ? "Product paused." : "Product activated.", "success");
+  await navigate("vendorProducts", {}, false);
 }
 async function removeProduct(id) {
   if ((window.__vendorPendingProductIds || new Set()).has(id)) {
