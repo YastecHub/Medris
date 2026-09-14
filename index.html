@@ -6485,7 +6485,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 .product-display-picture-menu button:hover{background:color-mix(in srgb,var(--primary) 10%,transparent);}
 .variant-dnd-handle{cursor:grab;color:var(--text-muted);touch-action:none;padding:.35rem;}
 .variant-dnd-handle:active{cursor:grabbing;}
-.variant-price-row.dragging{opacity:.55;}
+.variant-price-row.dragging{opacity:.55;}.variant-dnd-handle{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}
 .product-variant-pricing .variant-extra-fields{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;}
 .product-variety-add-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.45rem;margin-top:.5rem;}
 @media(max-width:520px){.product-variety-add-row{grid-template-columns:1fr}.product-display-picture-editor{min-height:125px}}
@@ -12537,25 +12537,39 @@ function productDeliverySummaryHtml(p) {
 }
 
 async function hydrateProductVariantIndicatorsInView(){
-  // A variety indicator is intentionally tied to multiple listing photos.
-  // It belongs under the delivery line, not beside the vendor name.
+  // The indicator is based only on real customer-facing product_variants.
+  // Product photo count is deliberately NOT used as a proxy for varieties.
   const nodes=[...document.querySelectorAll('.product-card-wrap[data-product-id]')];
-  if(!nodes.length)return;
+  if(!nodes.length || !sb) return;
+  const ids=[...new Set(nodes.map(n=>String(n.dataset.productId||'')).filter(Boolean))];
+  window.__productVariantIndicatorCache ||= {};
+  window.__productVariantIndicatorGeneration = (window.__productVariantIndicatorGeneration||0)+1;
+  const generation=window.__productVariantIndicatorGeneration;
+  const missing=ids.filter(id=>window.__productVariantIndicatorCache[id]===undefined);
+  if(missing.length){
+    try{
+      const {data,error}=await sb.from('product_variants').select('product_id').in('product_id',missing);
+      if(!error){
+        const counts={};
+        (data||[]).forEach(v=>{const id=String(v.product_id||'');if(id)counts[id]=(counts[id]||0)+1;});
+        missing.forEach(id=>{window.__productVariantIndicatorCache[id]=Number(counts[id]||0);});
+      }
+    }catch(_){ return; }
+  }
+  if(generation!==window.__productVariantIndicatorGeneration)return;
   nodes.forEach(node=>{
-    const photos=Array.isArray((window.__productPhotoCache||{})[node.dataset.productId])
-      ? (window.__productPhotoCache||{})[node.dataset.productId]
-      : null;
-    const img=node.querySelector('.product-img');
-    const photoCount=photos ? photos.length : Number(img?.querySelectorAll('img').length||0);
+    const id=String(node.dataset.productId||'');
+    const hasVarieties=Number(window.__productVariantIndicatorCache[id]||0)>0;
     const wrap=node.querySelector('.product-card-delivery-wrap');
     if(!wrap)return;
     let el=wrap.querySelector('.product-variety-indicator');
-    if(photoCount>1){
+    if(hasVarieties){
       if(!el){el=document.createElement('span');el.className='product-variety-indicator';wrap.appendChild(el);}
       el.innerHTML='<i class="fa-solid fa-layer-group"></i> Variety';
     }else if(el)el.remove();
   });
 }
+
 function productCardHtml(p) {
   const img = p.photos?.[0];
   try { (window.__productPhotoCache ||= {})[p.id] = Array.isArray(p.photos) ? p.photos : []; } catch (_) {}
@@ -17940,8 +17954,7 @@ function renderProductVariantPricing() {
   const pending = Array.isArray(window.__newProductPhotoFiles) ? window.__newProductPhotoFiles : [];
   const rows = [];
   variants.forEach((v, index) => rows.push({ ...v, _localKey: String(v.id || `variant-${index}`), _source: v.photo_url ? "existing" : "none" }));
-  if (!rows.length && existing.length) existing.forEach((url, idx)=>rows.push({ _localKey:`photo-${idx}`, photo_url:url, name:"", sale_price:"", discount_price:"", sort_order:idx }));
-  if (!rows.length && pending.length) pending.forEach((f, idx)=>rows.push({ _localKey:`new-${idx}`, photo_url:"", name:"", sale_price:"", discount_price:"", sort_order:idx, temp_index:idx }));
+
   if (!rows.length) { wrap.innerHTML='<div class="product-variant-pricing-head"><strong>Varieties</strong><div class="variant-price-note">Use “Add variety” to create customer-facing varieties. A product without varieties works normally.</div></div>'; renderProductDisplayPicture(); return; }
   wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Drag to reorder. Size and Color may be left blank.</div></div></div>${rows.map((r,i)=>{
     const image = r.photo_url || (r.temp_index != null ? pending[r.temp_index] && URL.createObjectURL(pending[r.temp_index]) : "") || "";
@@ -17961,7 +17974,7 @@ function renderProductVariantPricing() {
 }
 function addProductVarietyDraft() {
   const variants = Array.isArray(window.__productVariants) ? window.__productVariants : (window.__productVariants=[]);
-  variants.push({ id:null, _localKey:`local-${crypto.randomUUID()}`, name:"", sale_price:"", discount_price:"", photo_url:(window.__existingPhotos||[])[0]||"", sort_order:variants.length });
+  variants.push({ id:null, _localKey:`local-${crypto.randomUUID()}`, name:"", sale_price:"", discount_price:"", photo_url:"", size:"", color:"", sort_order:variants.length });
   window.__productVariants = variants;
   renderProductVariantPricing();
   const rows=document.querySelectorAll('#productVariantPricing .variant-price-row');
@@ -17987,7 +18000,7 @@ function bindProductVariantDnd(){
 function persistVisibleVariantOrder(){
   const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
   const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||""),v]));
-  window.__productVariants=rows.map((r,i)=>{const v=byKey.get(String(r.dataset.variantKey||""))||{};return {...v, name:r.querySelector('.variant-name')?.value?.trim()||v.name||"", sale_price:r.querySelector('.variant-sale-price')?.value||v.sale_price||"", discount_price:r.querySelector('.variant-discount-price')?.value||v.discount_price||"", size:r.querySelector('.variant-size')?.value||v.size||"", color:r.querySelector('.variant-color')?.value||v.color||"", photo_url:r.querySelector('.variant-image')?.value || r.dataset.photoUrl || v.photo_url || "", sort_order:i};});
+  window.__productVariants=rows.map((r,i)=>{const v=byKey.get(String(r.dataset.variantKey||""))||{};const imageControl=r.querySelector('.variant-image');return {...v, name:r.querySelector('.variant-name')?.value?.trim()||v.name||"", sale_price:r.querySelector('.variant-sale-price')?.value||v.sale_price||"", discount_price:r.querySelector('.variant-discount-price')?.value||v.discount_price||"", size:r.querySelector('.variant-size')?.value||v.size||"", color:r.querySelector('.variant-color')?.value||v.color||"", photo_url:imageControl ? (imageControl.value || "") : (r.dataset.photoUrl || v.photo_url || ""), sort_order:i};});
 }
 function collectProductVariantDrafts(photoUrls) {
   persistVisibleVariantOrder();
@@ -18002,14 +18015,16 @@ function collectProductVariantDrafts(photoUrls) {
     if(!name)throw new Error('Every variety needs a variety name.');
     if(!Number.isFinite(sale)||sale<=0)throw new Error(`Enter a valid sale price for ${name}.`);
     if(discount!=null&&(!Number.isFinite(discount)||discount<=0||discount>=sale))throw new Error(`Discount price for ${name} must be lower than its regular price.`);
-    let photoUrl=row.querySelector('.variant-image')?.value || row.dataset.photoUrl || '';
+    const imageControl=row.querySelector('.variant-image');
+    let photoUrl=imageControl ? (imageControl.value || '') : (row.dataset.photoUrl || '');
     if(row.dataset.tempIndex!=='')photoUrl=photoUrls[Number(row.dataset.tempIndex)]||photoUrl;
     drafts.push({name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,sort_order:index});
   });
   return drafts;
 }
 async function saveProductVariants(productId,drafts){
-  if(!productId)return; const {error:delErr}=await sb.from('product_variants').delete().eq('product_id',productId); if(delErr)throw delErr; if(!drafts.length)return;
+  if(!productId)return;
+  try { window.__productVariantIndicatorCache ||= {}; delete window.__productVariantIndicatorCache[String(productId)]; } catch (_) {} const {error:delErr}=await sb.from('product_variants').delete().eq('product_id',productId); if(delErr)throw delErr; if(!drafts.length)return;
   const payload=drafts.map(d=>({product_id:productId,...d}));
   let {error}=await sb.from('product_variants').insert(payload);
   if(error && /column|schema cache|does not exist|unknown/i.test(String(error.message||''))){
@@ -18042,6 +18057,10 @@ async function refreshSavedProductState(productId) {
     console.warn("[Levromart] Saved product loaded, but its varieties could not be refreshed:", variantsError);
   }
   savedProduct.variants = savedVariants || [];
+  try {
+    window.__productVariantIndicatorCache ||= {};
+    window.__productVariantIndicatorCache[String(productId)] = savedProduct.variants.length;
+  } catch (_) {}
 
   const replaceById = (list) => {
     if (!Array.isArray(list)) return list;
