@@ -9050,8 +9050,12 @@ async function renderNotifPanel() {
     return;
   }
   let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(60);
-  const timeout = new Promise(resolve => setTimeout(() => resolve({ data: null, error: new Error("Notification request timed out") }), 8000));
-  const { data: rawItems, error } = await Promise.race([q, timeout]);
+  // Never leave the Notifications page on its static loading shell. Supabase
+  // query builders are thenables rather than native Promises, so normalize the
+  // request before racing it against the watchdog.
+  const queryPromise = Promise.resolve(q);
+  const timeout = new Promise(resolve => setTimeout(() => resolve({ data: null, error: new Error("Notification request timed out") }), 5000));
+  const { data: rawItems, error } = await Promise.race([queryPromise, timeout]);
   const currentVendorId = String(vendor?.id || "");
   const notificationType = (n) => String(n?.type || n?.notification_type || n?.notification_category || "").toLowerCase();
   const notificationText = (n) => `${notificationType(n)} ${String(n?.title || "")} ${String(n?.body || "")} ${JSON.stringify(n?.target_params || {})} ${JSON.stringify(n?.metadata || {})}`.toLowerCase();
@@ -26072,10 +26076,26 @@ window.renderVendorMapRail = function(){
   const oldRenderNotifications = window.renderNotifPanel;
   if(typeof oldRenderNotifications === 'function' && !window.__levroNotifMultipleV4){
     window.__levroNotifMultipleV4 = true;
-    window.renderNotifPanel = async function(){
-      const result = await oldRenderNotifications.apply(this, arguments);
-      const panel = typeof getNotifHost === 'function' ? getNotifHost() : byId('notifPanel');
-      const list = panel?.querySelector('.notif-list-scroll');
+    window.renderNotifPanel = function(){
+      const args = arguments;
+      const panelAtStart = typeof getNotifHost === 'function' ? getNotifHost() : byId('notifPanel');
+      let finished = false;
+      // A renderer failure must never strand the page on the static loading
+      // shell. The underlying renderer has its own 5s database watchdog; this
+      // outer watchdog also covers unexpected runtime hangs before it returns.
+      const watchdog = setTimeout(() => {
+        if (finished) return;
+        const panel = typeof getNotifHost === 'function' ? getNotifHost() : byId('notifPanel');
+        if (panel && currentView === 'notifications' && panel.querySelector('.page-loading-shell')) {
+          panel.innerHTML = `<div class="empty-state" role="alert"><i class="fa-solid fa-triangle-exclamation" style="font-size:1.5rem;display:block;margin-bottom:.55rem;"></i><strong>Couldn't load notifications</strong><p class="muted" style="margin:.35rem 0 .8rem;">The notification service did not respond. Please try again.</p><button type="button" class="btn btn-outline" onclick="renderNotifPanel()"><i class="fa-solid fa-rotate-right"></i> Try again</button></div>`;
+        }
+      }, 6500);
+      const resultPromise = Promise.resolve().then(() => oldRenderNotifications.apply(this, args));
+      return resultPromise.then(result => {
+        finished = true;
+        clearTimeout(watchdog);
+        const panel = typeof getNotifHost === 'function' ? getNotifHost() : byId('notifPanel');
+        const list = panel?.querySelector('.notif-list-scroll');
       if(!list || typeof notifSelectMode !== 'undefined' && notifSelectMode) return result;
       const rows=[...list.querySelectorAll(':scope > .notif-item-wrap')];
       const groups=new Map();
@@ -26114,7 +26134,17 @@ window.renderVendorMapRail = function(){
         groupRows[0].replaceWith(wrap);
         groupRows.slice(1).forEach(r=>r.remove());
       }
-      return result;
+        return result;
+      }).catch(err => {
+        finished = true;
+        clearTimeout(watchdog);
+        const panel = typeof getNotifHost === 'function' ? getNotifHost() : byId('notifPanel');
+        if (panel && currentView === 'notifications' && panel.querySelector('.page-loading-shell')) {
+          panel.innerHTML = `<div class="empty-state" role="alert"><i class="fa-solid fa-triangle-exclamation" style="font-size:1.5rem;display:block;margin-bottom:.55rem;"></i><strong>Couldn't load notifications</strong><p class="muted" style="margin:.35rem 0 .8rem;">Please try again.</p><button type="button" class="btn btn-outline" onclick="renderNotifPanel()"><i class="fa-solid fa-rotate-right"></i> Try again</button></div>`;
+        }
+        console.error('[Levromart] Notifications wrapper failed:', err);
+        throw err;
+      });
     };
   }
 
