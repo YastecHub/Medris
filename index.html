@@ -11915,7 +11915,7 @@ async function renderHome() {
   // rather than causing a second visible page refresh.
   const [{ data: trending }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
     vendorQuery.order("view_count", { ascending: false }).limit(10),
-    topVendorsQuery.order("avg_rating", { ascending: false }).limit(6),
+    topVendorsQuery.order("avg_rating", { ascending: false }),
     recentPhotosQuery.order("created_at", { ascending: false }).limit(3),
     packageQuery,
     browseCatalogQuery,
@@ -11976,8 +11976,16 @@ async function renderHome() {
   </section>`;
 
   if (trending && trending.length) {
-    const trendingProducts = trending.filter(p => !p.is_service);
+    let trendingProducts = trending.filter(p => !p.is_service);
     const trendingServices = trending.filter(p => p.is_service);
+    if (!trendingProducts.length && Array.isArray(browseProducts) && browseProducts.length) {
+      trendingProducts = browseProducts
+        .filter(p => !p.is_service
+          && (!activeSector || String(p.category?.sector_id) === String(activeSector.id))
+          && (!activeCategory || String(p.category_id) === String(activeCategory.id)))
+        .sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0))
+        .slice(0, 10);
+    }
     if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
     if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   }
@@ -12793,6 +12801,7 @@ async function checkoutCartVendor(vendorId) {
     p_buyer_note: byId(`cartNote-${vendorId}`)?.value.trim() || null,
     p_buyer_lat: buyerLocation?.lat ?? null,
     p_buyer_lng: buyerLocation?.lng ?? null,
+    ...(selectedVariantId ? { p_variant_id: selectedVariantId } : {}),
   });
   if (error) {
     if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); }
@@ -30567,7 +30576,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
   display:inline-flex!important;
   align-items:center!important;
   gap:.22rem!important;
-  color:var(--primary)!important;
+  color:#fff!important;
   font-size:.64rem!important;
   font-weight:800!important;
   line-height:1.2!important;
