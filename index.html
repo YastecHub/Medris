@@ -6466,7 +6466,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 #app .product-gallery-variant-meta strong{font-size:.78rem!important;}
 #app .product-gallery-variant-price{white-space:nowrap!important;color:var(--primary)!important;}
 /* Variety indicator added to card metadata without creating a large badge. */
-#app .product-variety-indicator{color:var(--primary)!important;display:inline-flex!important;align-items:center!important;gap:.2rem!important;color:var(--muted)!important;font-size:.65rem!important;font-weight:750!important;white-space:nowrap!important;}
+#app .product-variety-indicator{color:var(--primary)!important;display:inline-flex!important;align-items:center!important;gap:.2rem!important;font-size:.65rem!important;font-weight:750!important;white-space:nowrap!important;}
 /* Vendor storefront avatars are geometrically locked to a true circle. */
 #app .storefront-profile .storefront-avatar,
 #app .storefront-profile .storefront-avatar-button,
@@ -14761,7 +14761,7 @@ async function renderPackageDetail(packageId) {
 // ---------- PRODUCT DETAIL ----------
 async function renderProductDetail(productId) {
   const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)").eq("id", productId).maybeSingle();
-  const variantsQuery = sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
+  const variantsQuery = sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,size,color,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
   const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = await Promise.all([productQuery,variantsQuery,engagementQuery]);
   if(error){console.error("[Levromart] Product detail load failed:",error);return `<div class="empty-state"><strong>Couldn\'t load this product.</strong><p class="muted" style="margin:.35rem 0 0;">Please try again. If the problem continues, the listing may be unavailable right now.</p></div>`;}
@@ -17675,7 +17675,11 @@ async function showProductModal() {
   if (editingProductId) {
     const { data: p } = await sb.from("products").select("*").eq("id", editingProductId).single();
     const { data: engagement } = await sb.from("product_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("product_id",editingProductId).maybeSingle();
-    const { data: productVariants } = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
+    let { data: productVariants, error: productVariantsError } = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,size,color,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
+    if (productVariantsError && /column|schema cache|does not exist|unknown/i.test(String(productVariantsError.message || ""))) {
+      const legacy = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
+      productVariants = legacy.data || [];
+    }
     window.__productVariants = productVariants || [];
     byId("productModalTitle").textContent = "Edit Product";
     byId("prodName").value = p.name;
@@ -17901,7 +17905,10 @@ function updateProductFormFields() {
   byId("prodDepositWrap").classList.toggle("hidden", type === "sale");
 }
 
-function closeProductModal() {
+function closeProductModal(options = {}) {
+  if (!options.skipDraft && typeof window.__captureListingDraftForModal === "function") {
+    try { window.__captureListingDraftForModal("product"); } catch (_) {}
+  }
   byId("productModal").classList.add("hidden");
   if (dismissibleModalId === "productModal") dismissibleModalId = null;
 }
@@ -18013,10 +18020,16 @@ async function saveProductEngagementSettings(id){if(!id||!vendor?.id)return;cons
 async function refreshSavedProductState(productId) {
   if (!productId) return null;
 
-  const [{ data: savedProduct, error: productError }, { data: savedVariants, error: variantsError }] = await Promise.all([
+  const [{ data: savedProduct, error: productError }, variantResult] = await Promise.all([
     sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name, sector_id)").eq("id", productId).maybeSingle(),
-    sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true})
+    sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,size,color,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true})
   ]);
+  let savedVariants = variantResult.data || [], variantsError = variantResult.error;
+  if (variantsError && /column|schema cache|does not exist|unknown/i.test(String(variantsError.message || ""))) {
+    const legacy = await sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
+    savedVariants = legacy.data || [];
+    variantsError = legacy.error;
+  }
 
   if (productError) throw productError;
   if (!savedProduct) throw new Error("The product was saved, but the latest saved product could not be loaded.");
@@ -18182,12 +18195,14 @@ async function saveProduct() {
       const sold = existing ? existing.quantity_total - existing.quantity_available : 0;
       soldUnits = Math.max(Number(sold) || 0, 0);
       const quantity_available = Math.max(quantity_total - soldUnits, 0);
-      const { error } = await sb.from("products").update({ ...fields, quantity_available, photos }).eq("id", editingProductId);
+      const { data: updatedRow, error } = await sb.from("products").update({ ...fields, quantity_available, photos }).eq("id", editingProductId).select("*").single();
       if (error) throw new Error(error.message);
+      window.__lastSavedProductRow = updatedRow || null;
     } else if (!isNewMonthlyListing) {
-      const { data: createdProduct, error } = await sb.from("products").insert({ ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos }).select("id").single();
+      const { data: createdProduct, error } = await sb.from("products").insert({ ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos }).select("*").single();
       if (error) throw new Error(error.message);
       savedProductId = createdProduct?.id;
+      window.__lastSavedProductRow = createdProduct || null;
     }
 
     if (!is_service) {
@@ -18215,10 +18230,12 @@ async function saveProduct() {
     // Primary row is now durably saved. Give the vendor the completed UI response
     // immediately; variants/engagement reconciliation can safely finish in background.
     const primarySavedProduct = {
+      ...(window.__lastSavedProductRow || {}),
       id: savedProductId, ...fields, vendor_id: vendor.id, photos,
-      quantity_available: Math.max(quantity_total - soldUnits, 0)
+      quantity_available: Number(window.__lastSavedProductRow?.quantity_available ?? Math.max(quantity_total - soldUnits, 0))
     };
-    closeProductModal();
+    window.__lastSavedProductRow = null;
+    closeProductModal({ skipDraft: true });
     window.__homeBrowseCatalog = Array.isArray(window.__homeBrowseCatalog)
       ? window.__homeBrowseCatalog.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p) : window.__homeBrowseCatalog;
     if (currentProductDetail && String(currentProductDetail.id) === String(savedProductId)) currentProductDetail = { ...currentProductDetail, ...primarySavedProduct };
@@ -18511,7 +18528,10 @@ function togglePkgItemQty(productId) {
   byId(`pkgQty-${productId}`)?.classList.toggle("hidden", !checked);
 }
 
-function closePackageModal() {
+function closePackageModal(options = {}) {
+  if (!options.skipDraft && typeof window.__captureListingDraftForModal === "function") {
+    try { window.__captureListingDraftForModal("package"); } catch (_) {}
+  }
   byId("packageModal").classList.add("hidden");
   if (dismissibleModalId === "packageModal") dismissibleModalId = null;
 }
@@ -18570,19 +18590,23 @@ async function savePackage() {
     }
 
     let packageId = editingPackageId;
+    let savedPackageRow = null;
     if (packageId) {
-      const { error } = await sb.from("vendor_packages").update(payload).eq("id", packageId);
+      const { data: updatedPackage, error } = await sb.from("vendor_packages").update(payload).eq("id", packageId).select("*").single();
       if (error) throw error;
+      savedPackageRow = updatedPackage || null;
       await sb.from("package_items").delete().eq("package_id", packageId);
     } else {
-      const { data, error } = await sb.from("vendor_packages").insert(payload).select("id").single();
+      const { data, error } = await sb.from("vendor_packages").insert(payload).select("*").single();
       if (error) throw error;
       packageId = data.id;
+      savedPackageRow = data || null;
     }
+    window.__lastSavedPackageRow = savedPackageRow;
     window.clearListingDraft?.("package", editingPackageId || "new");
     // The package row is the primary save. Surface it immediately; package items
     // and engagement settings reconcile immediately after without freezing the modal.
-    closePackageModal();
+    closePackageModal({ skipDraft: true });
     await navigate("vendorPackages", {}, false);
     Promise.allSettled([
       (async () => {
@@ -18592,7 +18616,12 @@ async function savePackage() {
       savePackageEngagementSettings(packageId)
     ]).then(results => {
       const failed = results.filter(r => r.status === "rejected");
-      if (failed.length) { showToast("Package saved, but a secondary setting could not be synchronized. Refreshing its listing data.", "info"); navigate("vendorPackages", {}, false).catch(()=>{}); }
+      if (failed.length) {
+        showToast("Package saved, but a secondary setting could not be synchronized. Refreshing its listing data.", "info");
+      }
+      // Re-render after secondary persistence so package items/quantities and
+      // engagement state cannot remain stale after the immediate primary-row UI.
+      navigate("vendorPackages", {}, false).catch(()=>{});
     });
   } catch (err) {
     errorEl.textContent = err.message;
@@ -19835,7 +19864,7 @@ async function renderAdminPanel(status) {
       <div class="flex" style="margin-top:0.5rem;">
         ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}">Approve</button>` : ""}
         ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
-        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
+        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
       </div>
     </div>`;
   });
@@ -30515,36 +30544,72 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
   /* Request category: keep the picker synced after sector changes and support related lexical search without inventing values. */
   document.addEventListener('change',e=>{if(e.target?.id==='reqSector')setTimeout(()=>window.updateRequestCategoryOptions?.(),0)},true);
 
-  /* Drafts: debounced, user-scoped and identity-scoped. Backdrop/X keeps the draft; explicit Cancel clears it. */
-  const DRAFT_PREFIX='levromart-listing-form-draft-v4';
+  /* Drafts: debounced, user-scoped and identity-scoped. Backdrop/X keeps the
+     draft; explicit Cancel clears it. Each modal identity has its own timer
+     and monotonically increasing revision so a stale callback cannot write
+     an older snapshot after a newer edit. */
+  const DRAFT_PREFIX='levromart-listing-form-draft-v5';
+  const draftTimers=new Map();
+  const draftRevisions=new Map();
   function draftKey(kind='product', id){return `${DRAFT_PREFIX}:${session?.user?.id||'guest'}:${kind}:${id||'new'}`}
   function listingModalKind(root){return root?.id==='packageModal'?'package':'product'}
   function listingModalIdentity(root){if(!root)return 'new'; const kind=listingModalKind(root); return kind==='product'?(editingProductId||'new'):(editingPackageId||'new')}
   function isListingForm(el){return !!el?.closest?.('#productModal,#packageModal') && !!document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)')}
-  function isCurrentDraftableModal(root){return !!root && !root.classList.contains('hidden')}
-  function captureListingDraft(){
-    if(!session?.user?.id)return; const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)'); if(!isCurrentDraftableModal(root))return;
-    const kind=listingModalKind(root), id=listingModalIdentity(root); const controls=[...root.querySelectorAll('input:not([type=file]),select,textarea')]; const values={};
+  function nextDraftRevision(key){const n=(draftRevisions.get(key)||0)+1;draftRevisions.set(key,n);return n}
+  function cancelDraftTimer(key){const t=draftTimers.get(key);if(t){clearTimeout(t);draftTimers.delete(key)}}
+  function captureListingDraft(rootOrKind){
+    if(!session?.user?.id)return;
+    const root=typeof rootOrKind==='string'?byId(rootOrKind==='package'?'packageModal':'productModal'):rootOrKind;
+    if(!root||root.classList.contains('hidden'))return;
+    const kind=listingModalKind(root), id=listingModalIdentity(root), key=draftKey(kind,id), revision=nextDraftRevision(key);
+    cancelDraftTimer(key);
+    const controls=[...root.querySelectorAll('input:not([type=file]),select,textarea')], values={};
     controls.forEach(c=>{if(!c.id)return;values[c.id]=c.type==='checkbox'?c.checked:c.value});
-    const snapshot={savedAt:Date.now(),kind,id,values,existingPhotos:kind==='product'?[...(window.__existingPhotos||[])]:[...(window.__existingPackagePhotos||[])],variants:kind==='product'?(window.__productVariants||[]).map(v=>({...v})):null};
-    try{localStorage.setItem(draftKey(kind,id),JSON.stringify(snapshot));}catch(_){}
+    const snapshot={version:5,savedAt:Date.now(),revision,kind,id,values,existingPhotos:kind==='product'?[...(window.__existingPhotos||[])]:[...(window.__existingPackagePhotos||[])],variants:kind==='product'?(window.__productVariants||[]).map(v=>({...v})):null};
+    try{localStorage.setItem(key,JSON.stringify(snapshot));}catch(_){}
     window.__listingDraftSession={kind,id,existingPhotos:snapshot.existingPhotos,variants:snapshot.variants,newProductPhotoFiles:kind==='product'?[...(window.__newProductPhotoFiles||[])]:[],newPackagePhotoFiles:kind==='package'?[...(window.__newPackagePhotoFiles||[])]:[]};
+    return snapshot;
+  }
+  function scheduleListingDraft(root){
+    if(!session?.user?.id||!root||root.classList.contains('hidden'))return;
+    const kind=listingModalKind(root), id=listingModalIdentity(root), key=draftKey(kind,id);
+    cancelDraftTimer(key);
+    draftTimers.set(key,setTimeout(()=>{draftTimers.delete(key);captureListingDraft(root)},420));
   }
   function restoreListingDraft(){
-    if(!session?.user?.id)return; const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)'); if(!isCurrentDraftableModal(root))return;
-    const kind=listingModalKind(root), id=listingModalIdentity(root); let raw; try{raw=localStorage.getItem(draftKey(kind,id))}catch(_){return} if(!raw)return; let d; try{d=JSON.parse(raw)}catch(_){return} if(!d?.values)return;
+    if(!session?.user?.id)return;
+    const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');
+    if(!root)return;
+    const kind=listingModalKind(root), id=listingModalIdentity(root), key=draftKey(kind,id);
+    let raw;try{raw=localStorage.getItem(key)}catch(_){return}
+    if(!raw)return;
+    let d;try{d=JSON.parse(raw)}catch(_){return}
+    if(!d?.values||d.kind!==kind||String(d.id||'new')!==String(id||'new'))return;
+    draftRevisions.set(key,Math.max(Number(d.revision)||0,draftRevisions.get(key)||0));
     Object.entries(d.values).forEach(([fieldId,v])=>{const el=byId(fieldId);if(!el||!root.contains(el))return;if(el.type==='checkbox')el.checked=!!v;else el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}))});
-    if(kind==='product'){window.__existingPhotos=Array.isArray(d.existingPhotos)?d.existingPhotos:window.__existingPhotos||[];window.__productVariants=Array.isArray(d.variants)?d.variants:window.__productVariants||[];window.__newProductPhotoFiles=window.__listingDraftSession?.kind==='product'&&window.__listingDraftSession?.id===id?[...(window.__listingDraftSession.newProductPhotoFiles||[])]:window.__newProductPhotoFiles||[];renderExistingPhotos();renderProductDisplayPicture();renderProductVariantPricing();syncNewProductPhotoInput?.();renderNewProductPhotos?.();}
-    if(kind==='package'){window.__existingPackagePhotos=Array.isArray(d.existingPhotos)?d.existingPhotos:window.__existingPackagePhotos||[];window.__newPackagePhotoFiles=window.__listingDraftSession?.kind==='package'&&window.__listingDraftSession?.id===id?[...(window.__listingDraftSession.newPackagePhotoFiles||[])]:window.__newPackagePhotoFiles||[];renderExistingPackagePhotos();syncNewPackagePhotoInput?.();renderNewPackagePhotos?.();}
+    if(kind==='product'){
+      window.__existingPhotos=Array.isArray(d.existingPhotos)?d.existingPhotos:window.__existingPhotos||[];
+      window.__productVariants=Array.isArray(d.variants)?d.variants:window.__productVariants||[];
+      window.__newProductPhotoFiles=window.__listingDraftSession?.kind==='product'&&window.__listingDraftSession?.id===id?[...(window.__listingDraftSession.newProductPhotoFiles||[])]:window.__newProductPhotoFiles||[];
+      renderExistingPhotos();renderProductDisplayPicture();renderProductVariantPricing();syncNewProductPhotoInput?.();renderNewProductPhotos?.();
+      updateProductFormFields?.();updateProductSaveButtonLabel?.();updateProductDeliveryFields?.();
+    }
+    if(kind==='package'){
+      window.__existingPackagePhotos=Array.isArray(d.existingPhotos)?d.existingPhotos:window.__existingPackagePhotos||[];
+      window.__newPackagePhotoFiles=window.__listingDraftSession?.kind==='package'&&window.__listingDraftSession?.id===id?[...(window.__listingDraftSession.newPackagePhotoFiles||[])]:window.__newPackagePhotoFiles||[];
+      renderExistingPackagePhotos();syncNewPackagePhotoInput?.();renderNewPackagePhotos?.();
+    }
   }
-  function clearListingDraft(kind,id){try{localStorage.removeItem(draftKey(kind,id));}catch(_){} if(window.__listingDraftSession?.kind===kind&&window.__listingDraftSession?.id===id)window.__listingDraftSession=null;}
-  function clearNewListingDraft(kind){clearListingDraft(kind,kind==='product'?(editingProductId||'new'):(editingPackageId||'new'));}
+  function clearListingDraft(kind,id){const key=draftKey(kind,id);cancelDraftTimer(key);nextDraftRevision(key);try{localStorage.removeItem(key)}catch(_){} if(window.__listingDraftSession?.kind===kind&&window.__listingDraftSession?.id===id)window.__listingDraftSession=null;}
+  function clearNewListingDraft(kind){clearListingDraft(kind,kind==='product'?(editingProductId||'new'):(editingPackageId||'new'))}
   window.clearListingDraft=clearListingDraft;
   window.clearNewListingDraft=clearNewListingDraft;
-  document.addEventListener('input',e=>{if(isListingForm(e.target)){clearTimeout(window.__astraDraftTimer);window.__astraDraftTimer=setTimeout(captureListingDraft,500)}},true);
-  document.addEventListener('change',e=>{if(isListingForm(e.target)){clearTimeout(window.__astraDraftTimer);window.__astraDraftTimer=setTimeout(captureListingDraft,180)}},true);
+  window.__captureListingDraftForModal=kind=>captureListingDraft(kind);
+  document.addEventListener('input',e=>{if(isListingForm(e.target))scheduleListingDraft(e.target.closest('#productModal,#packageModal'))},true);
+  document.addEventListener('change',e=>{if(isListingForm(e.target))scheduleListingDraft(e.target.closest('#productModal,#packageModal'))},true);
   document.addEventListener('click',e=>{const b=e.target?.closest?.('#productModal button,#packageModal button');if(!b)return;const txt=(b.textContent||'').trim().toLowerCase();if(txt==='cancel'){const root=b.closest('#productModal,#packageModal');clearNewListingDraft(listingModalKind(root));searchClose?.()}},true);
-  const draftObserver=new MutationObserver(()=>{const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(root){clearTimeout(window.__astraRestoreTimer);window.__astraRestoreTimer=setTimeout(restoreListingDraft,80)}}); draftObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+  const draftObserver=new MutationObserver(()=>{const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(root){clearTimeout(window.__astraRestoreTimer);window.__astraRestoreTimer=setTimeout(()=>restoreListingDraft(),80)}});
+  draftObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
   document.addEventListener('click',e=>{const b=e.target?.closest?.('#saveProductBtn,#savePackageBtn');if(!b)return;const kind=b.id==='savePackageBtn'?'package':'product';setTimeout(()=>{const root=document.getElementById(kind==='package'?'packageModal':'productModal');const error=document.getElementById(kind==='package'?'packageError':'productError');const id=kind==='product'?(editingProductId||'new'):(editingPackageId||'new');if(root?.classList.contains('hidden')&&!error?.textContent?.trim())clearListingDraft(kind,id)},1200)},true);
 
   /* Own listing management: enrich active owner pages and make owner navigation obvious. */
