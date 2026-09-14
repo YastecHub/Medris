@@ -5306,37 +5306,23 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 .product-variant-pricing{margin-top:.85rem;padding:.8rem;border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--primary) 3%,var(--card));}
 .product-variant-pricing-head{display:flex;justify-content:space-between;align-items:flex-start;gap:.7rem;margin-bottom:.7rem;}
 .product-variant-pricing-head strong{display:block;}
-.product-variant-actions{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:.55rem 0 .15rem;}
-.product-variant-add-btn{border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border));background:color-mix(in srgb,var(--primary) 8%,var(--card));color:var(--primary);border-radius:999px;padding:.48rem .75rem;font:600 .78rem inherit;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;}
-.product-variant-add-btn:active{transform:scale(.98);}
-.variant-price-row{display:grid;grid-template-columns:34px 64px minmax(150px,1fr) 112px 112px 86px 110px 110px 38px;gap:.42rem;align-items:center;padding:.6rem 0;border-top:1px solid var(--border);touch-action:pan-y;}
-.variant-price-row:first-of-type{border-top:0;}
-.variant-drag-handle{width:30px;height:36px;border:0;background:transparent;color:var(--text-muted);cursor:grab;display:inline-flex;align-items:center;justify-content:center;touch-action:none;}
-.variant-drag-handle:active{cursor:grabbing;}
-.variant-price-thumb{width:64px;height:56px;border-radius:9px;overflow:hidden;border:1px solid var(--border);background:var(--input-bg);position:relative;display:flex;align-items:center;justify-content:center;}
+.variant-price-row{display:grid;grid-template-columns:74px minmax(0,1fr) 130px 130px 38px;gap:.5rem;align-items:center;padding:.55rem 0;border-top:1px solid var(--border);}
+.variant-price-row:first-child{border-top:0;}
+.variant-price-thumb{width:74px;height:56px;border-radius:9px;overflow:hidden;border:1px solid var(--border);background:var(--input-bg);}
 .variant-price-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-.variant-price-thumb .variant-thumb-placeholder{color:var(--text-muted);font-size:.8rem;}
-.variant-image-btn{position:absolute;inset:auto .18rem .18rem;z-index:2;border:0;border-radius:999px;background:rgba(0,0,0,.58);color:#fff;font-size:.58rem;font-weight:700;padding:.18rem .34rem;cursor:pointer;backdrop-filter:blur(4px);}
 .variant-price-row input{margin:0;min-width:0;}
 .variant-price-remove{width:38px;height:38px;border:0;border-radius:10px;background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger);cursor:pointer;}
 .variant-price-note{font-size:.72rem;color:var(--text-muted);line-height:1.35;margin:.15rem 0 0;}
-.variant-row-file{display:none!important;}
-.variant-sort-ghost{opacity:.45;}
-.variant-sort-dragging{outline:2px solid var(--primary);outline-offset:2px;border-radius:10px;background:color-mix(in srgb,var(--primary) 5%,var(--card));}
-@media(max-width:900px){.variant-price-row{grid-template-columns:30px 58px minmax(120px,1fr) 1fr 1fr 72px 90px 90px 34px;}.variant-price-thumb{width:58px;height:52px;}}
-@media(max-width:720px){.variant-price-row{grid-template-columns:30px 58px minmax(120px,1fr) 1fr 1fr 72px 90px 90px 34px;overflow:visible;}.variant-price-row input{font-size:.72rem;padding:.5rem .55rem;}}
-@media(max-width:560px){.variant-price-row{grid-template-columns:30px 58px minmax(0,1fr) 34px;align-items:start;}.variant-price-row .variant-sale-price,.variant-price-row .variant-discount-price,.variant-price-row .variant-size,.variant-price-row .variant-color,.variant-price-row .variant-quantity{grid-column:3 / 4;}.variant-price-row .variant-sale-price{grid-row:2;}.variant-price-row .variant-discount-price{grid-row:3;}.variant-price-row .variant-size{grid-row:4;}.variant-price-row .variant-color{grid-row:5;}.variant-price-row .variant-quantity{grid-row:6;}.variant-price-row .variant-price-remove{grid-column:4;grid-row:1 / span 6;}.variant-price-row .variant-name{grid-column:3 / 4;grid-row:1;}.variant-drag-handle{grid-column:1;grid-row:1 / span 6;}.variant-price-thumb{grid-column:2;grid-row:1 / span 6;width:58px;height:58px;}}
-.product-display-picture{margin:.7rem 0 .85rem;padding:.75rem;border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--primary) 3%,var(--card));}
-.product-display-picture-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.55rem;}
-.product-display-picture-head strong{font-size:.82rem;}
-.product-display-picture-preview{display:grid;grid-template-columns:82px minmax(0,1fr) auto;gap:.7rem;align-items:center;}
-.product-display-picture-preview img{width:82px;height:70px;object-fit:cover;border-radius:10px;border:1px solid var(--border);background:var(--input-bg);}
-.product-display-picture-actions{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:flex-end;}
-.product-display-picture-actions button{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:.42rem .65rem;font:600 .72rem inherit;cursor:pointer;}
-.product-display-picture-actions .danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 28%,var(--border));}
-.product-photo-item{position:relative;}
-.product-photo-display-btn{position:absolute;left:.25rem;bottom:.25rem;border:0;border-radius:999px;padding:.16rem .36rem;background:rgba(0,0,0,.62);color:#fff;font-size:.58rem;font-weight:700;cursor:pointer;backdrop-filter:blur(4px);}
-.product-photo-item.is-display .product-photo-display-btn{background:var(--primary);}
+@media(max-width:720px){.variant-price-row{grid-template-columns:64px minmax(0,1fr) 1fr 1fr 36px;}.variant-price-thumb{width:64px;height:50px;}}
+@media(max-width:520px){.variant-price-row{grid-template-columns:58px minmax(0,1fr) 36px;}.variant-price-row .variant-sale-price,.variant-price-row .variant-discount-price{grid-column:2 / 3;}.variant-price-remove{grid-column:3;grid-row:1 / span 2;}.variant-price-thumb{width:58px;height:46px;}.variant-price-row:after{content:"Use individual prices only where this photo represents a different variety.";grid-column:2 / 3;font-size:.66rem;color:var(--text-muted);}}
+.product-variant-picker{margin-top:.7rem;padding:.75rem;border:1px solid var(--border);border-radius:13px;background:color-mix(in srgb,var(--primary) 3%,var(--card));}
+.product-variant-picker-head{display:flex;align-items:center;justify-content:space-between;gap:.65rem;margin-bottom:.5rem;}
+.product-variant-picker-list{display:flex;gap:.45rem;overflow-x:auto;padding:.1rem 0 .15rem;scrollbar-width:none;}
+.product-variant-picker-list::-webkit-scrollbar{display:none;}
+.product-variant-choice{flex:0 0 auto;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:11px;padding:.45rem .6rem;cursor:pointer;display:flex;flex-direction:column;gap:.1rem;align-items:flex-start;min-width:110px;}
+.product-variant-choice.active{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 9%,var(--card));box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 10%,transparent);}
+.product-variant-choice strong{font-size:.78rem;line-height:1.15;}
+.product-variant-choice small{font-size:.7rem;color:var(--text-muted);}
 </style>
 <style id="levromart-home-carousel-admin">
   /* Promotional homepage carousel */
@@ -6852,7 +6838,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <label>Quantity available</label>
       <input type="number" id="prodQtyTotal" value="1" min="1" />
     </div>
-    <div class="product-display-picture" id="productDisplayPictureControl"></div>
     <label>Photos</label>
     <div class="photo-grid" id="prodExistingPhotos"></div>
     <label class="photo-dropzone" id="photoDropzone" for="prodPhotoFiles">
@@ -12521,29 +12506,24 @@ function productDeliverySummaryHtml(p) {
 }
 
 async function hydrateProductVariantIndicatorsInView(){
-  // Customer-facing Variety is based only on real saved product_variants rows.
-  // Product photo count is deliberately ignored.
+  // A variety indicator is intentionally tied to multiple listing photos.
+  // It belongs under the delivery line, not beside the vendor name.
   const nodes=[...document.querySelectorAll('.product-card-wrap[data-product-id]')];
-  if(!nodes.length || typeof sb==='undefined') return;
-  const ids=[...new Set(nodes.map(n=>n.dataset.productId).filter(Boolean))];
-  try{
-    const {data,error}=await sb.from('product_variants').select('product_id,id').in('product_id',ids);
-    if(error) throw error;
-    const counts=new Map();
-    (data||[]).forEach(v=>counts.set(String(v.product_id),(counts.get(String(v.product_id))||0)+1));
-    nodes.forEach(node=>{
-      const wrap=node.querySelector('.product-card-delivery-wrap');
-      if(!wrap)return;
-      let el=wrap.querySelector('.product-variety-indicator');
-      const hasVarieties=(counts.get(String(node.dataset.productId))||0)>0;
-      if(hasVarieties){
-        if(!el){el=document.createElement('span');el.className='product-variety-indicator';wrap.appendChild(el);}
-        el.innerHTML='<i class="fa-solid fa-layer-group"></i> Variety';
-      }else if(el)el.remove();
-    });
-  }catch(err){
-    console.warn('[Levromart] Variety indicator hydration failed:',err);
-  }
+  if(!nodes.length)return;
+  nodes.forEach(node=>{
+    const photos=Array.isArray((window.__productPhotoCache||{})[node.dataset.productId])
+      ? (window.__productPhotoCache||{})[node.dataset.productId]
+      : null;
+    const img=node.querySelector('.product-img');
+    const photoCount=photos ? photos.length : Number(img?.querySelectorAll('img').length||0);
+    const wrap=node.querySelector('.product-card-delivery-wrap');
+    if(!wrap)return;
+    let el=wrap.querySelector('.product-variety-indicator');
+    if(photoCount>1){
+      if(!el){el=document.createElement('span');el.className='product-variety-indicator';wrap.appendChild(el);}
+      el.innerHTML='<i class="fa-solid fa-layer-group"></i> Variety';
+    }else if(el)el.remove();
+  });
 }
 function productCardHtml(p) {
   const img = p.photos?.[0];
@@ -14750,7 +14730,7 @@ async function renderPackageDetail(packageId) {
 // ---------- PRODUCT DETAIL ----------
 async function renderProductDetail(productId) {
   const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)").eq("id", productId).maybeSingle();
-  const variantsQuery = sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
+  const variantsQuery = sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,quantity_available,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
   const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = await Promise.all([productQuery,variantsQuery,engagementQuery]);
   if(error){console.error("[Levromart] Product detail load failed:",error);return `<div class="empty-state"><strong>Couldn\'t load this product.</strong><p class="muted" style="margin:.35rem 0 0;">Please try again. If the problem continues, the listing may be unavailable right now.</p></div>`;}
@@ -17658,19 +17638,14 @@ async function showProductModal() {
   byId("prodSectorOther").classList.add("hidden");
   window.__existingPhotos = [];
   window.__productVariants = [];
-  window.__productVariantDrafts = [];
-  window.__displayPictureRef = null;
-  renderProductDisplayPicture();
   renderProductVariantPricing();
 
   let presetCategoryId = "";
   if (editingProductId) {
     const { data: p } = await sb.from("products").select("*").eq("id", editingProductId).single();
     const { data: engagement } = await sb.from("product_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("product_id",editingProductId).maybeSingle();
-    const { data: productVariants } = await sb.from("product_variants").select("*").eq("product_id", editingProductId).order("sort_order").order("created_at");
+    const { data: productVariants } = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,quantity_available,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
     window.__productVariants = productVariants || [];
-    window.__productVariantDrafts = (productVariants || []).map((v,i)=>({id:v.id,key:v.id,name:v.name||"",photo_url:v.photo_url||"",imageFile:null,sale_price:v.sale_price??"",discount_price:v.discount_price??"",quantity_available:v.quantity_available??"",size:v.size||"",color:v.color||"",description:v.description||"",sort_order:Number(v.sort_order??i)}));
-    window.__displayPictureRef = p.photos?.[0] ? {source:"existing",url:p.photos[0]} : null;
     byId("productModalTitle").textContent = "Edit Product";
     byId("prodName").value = p.name;
     byId("prodDesc").value = stripProductVariantMeta(p.description || "");
@@ -17690,9 +17665,7 @@ async function showProductModal() {
     if (byId("prodBillingModel")) byId("prodBillingModel").value = p.billing_model || (p.is_service ? "commission" : "commission");
     byId("prodLikeVisibility").value=engagement?.like_visibility||"everyone";byId("prodAllowComments").checked=engagement?.allow_comments!==false;byId("prodCommentAudience").value=engagement?.comment_audience||"everyone";
     window.__existingPhotos = p.photos || [];
-    window.__displayPictureRef = window.__existingPhotos.length ? {source:"existing",url:window.__existingPhotos[0]} : null;
     renderExistingPhotos();
-    renderProductDisplayPicture();
     renderProductVariantPricing();
     const currentCat = productModalCategories.find((c) => c.id === p.category_id);
     sectorSelect.value = currentCat?.sector_id || vendor.sector_id || productModalSectors[0]?.id || "";
@@ -17710,7 +17683,6 @@ async function showProductModal() {
     byId("prodLikeVisibility").value="everyone";byId("prodAllowComments").checked=true;byId("prodCommentAudience").value="everyone";
     byId("prodIsService").checked = false;
     byId("prodServiceUnit").value = "flat";
-    window.__displayPictureRef = null;
     sectorSelect.value = vendor.sector_id || productModalSectors[0]?.id || "";
     renderProductVariantPricing();
   }
@@ -17758,261 +17730,211 @@ function loadProdCategoriesForSector(presetCategoryId) {
   select.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-function getProductDisplayPictureRef(){
-  const ref=window.__displayPictureRef;
-  if(ref && (ref.source==='existing' || ref.source==='new')) return ref;
-  const existing=window.__existingPhotos||[];
-  if(existing.length) return {source:'existing',url:existing[0]};
-  const pending=window.__newProductPhotoFiles||[];
-  if(pending.length) return {source:'new',index:0};
-  return null;
-}
-function getProductDisplayPicturePreviewUrl(){
-  const ref=getProductDisplayPictureRef();
-  if(!ref)return '';
-  if(ref.source==='existing')return String(ref.url||'');
-  const file=(window.__newProductPhotoFiles||[])[Number(ref.index)];
-  return file ? URL.createObjectURL(file) : '';
-}
-function renderProductDisplayPicture(){
-  const host=byId('productDisplayPictureControl');
-  if(!host)return;
-  const url=getProductDisplayPicturePreviewUrl();
-  if(!url){
-    host.innerHTML='<div class="product-display-picture-head"><strong><i class="fa-regular fa-image"></i> Display picture</strong></div><p class="muted" style="font-size:.74rem;margin:0;">No display picture selected. Add a photo below to use one on the product card.</p>';
-    return;
-  }
-  host.innerHTML=`<div class="product-display-picture-head"><strong><i class="fa-regular fa-image"></i> Display picture</strong><span class="badge success">Used on product card</span></div>
-    <div class="product-display-picture-preview"><img src="${esc(url)}" alt="Product display picture" />
-      <div><strong style="display:block;font-size:.78rem;">Main product image</strong><span class="muted" style="font-size:.68rem;">Variety images remain separate.</span></div>
-      <div class="product-display-picture-actions"><button type="button" onclick="openProductDisplayPictureActions()">Replace</button><button type="button" class="danger" onclick="clearProductDisplayPicture()">Delete</button></div>
-    </div>`;
-}
-function openProductDisplayPictureActions(){
-  const input=byId('prodDisplayPictureFiles');
-  if(input) input.click();
-  else{
-    const i=document.createElement('input');i.type='file';i.accept='image/*';i.id='prodDisplayPictureFiles';i.className='hidden';
-    i.onchange=()=>{const f=i.files?.[0];if(!f)return;window.__newProductPhotoFiles=[...(window.__newProductPhotoFiles||[]),f];window.__displayPictureRef={source:'new',index:window.__newProductPhotoFiles.length-1};syncNewProductPhotoInput();renderNewProductPhotos();renderProductDisplayPicture();renderProductVariantPricing();};
-    document.body.appendChild(i);i.click();
-  }
-}
-function clearProductDisplayPicture(){
-  const ref=getProductDisplayPictureRef();
-  if(!ref)return;
-  if(ref.source==='existing'){
-    window.__existingPhotos=(window.__existingPhotos||[]).filter(u=>String(u)!==String(ref.url));
-  }else{
-    removeNewProductPhoto(Number(ref.index),true);return;
-  }
-  const next=(window.__existingPhotos||[]);
-  window.__displayPictureRef=next.length?{source:'existing',url:next[0]}:((window.__newProductPhotoFiles||[]).length?{source:'new',index:0}:null);
-  renderExistingPhotos();renderNewProductPhotos();renderProductDisplayPicture();renderProductVariantPricing();
-}
-function setProductDisplayPicture(source,value){
-  if(source==='existing')window.__displayPictureRef={source:'existing',url:String(value||'')};
-  else window.__displayPictureRef={source:'new',index:Number(value)};
-  renderExistingPhotos();renderNewProductPhotos();renderProductDisplayPicture();
-}
 function renderExistingPhotos() {
-  const ref=getProductDisplayPictureRef();
-  byId('prodExistingPhotos').innerHTML=(window.__existingPhotos||[]).map((url)=>{
-    const active=ref?.source==='existing' && String(ref.url)===String(url);
-    return `<div class="photo-thumb product-photo-item ${active?'is-display':''}"><img src="${esc(url)}" alt="" /><button type="button" class="photo-remove" onclick="removeExistingPhoto('${esc(url)}')" title="Remove"><i class="fa-solid fa-xmark"></i></button><button type="button" class="product-photo-display-btn" onclick="setProductDisplayPicture('existing','${esc(url)}');event.stopPropagation();">${active?'Display':'Use display'}</button></div>`;
-  }).join('');
-  renderProductDisplayPicture();
+  byId("prodExistingPhotos").innerHTML = (window.__existingPhotos || [])
+    .map((url) => `<div class="photo-thumb"><img src="${esc(url)}" alt="" /><button type="button" class="photo-remove" onclick="removeExistingPhoto('${esc(url)}')" title="Remove"><i class="fa-solid fa-xmark"></i></button></div>`)
+    .join("");
 }
 function removeExistingPhoto(url) {
-  const ref=getProductDisplayPictureRef();
-  window.__existingPhotos=(window.__existingPhotos||[]).filter((u)=>u!==url);
-  if(ref?.source==='existing' && String(ref.url)===String(url)){
-    const next=window.__existingPhotos||[];
-    window.__displayPictureRef=next.length?{source:'existing',url:next[0]}:((window.__newProductPhotoFiles||[]).length?{source:'new',index:0}:null);
-  }
-  renderExistingPhotos();renderProductVariantPricing();
+  window.__existingPhotos = (window.__existingPhotos || []).filter((u) => u !== url);
+  renderExistingPhotos();
+  renderProductVariantPricing();
 }
+
+// Live thumbnails for photos just picked but not yet uploaded - so "Add
+// photos" actually shows what you chose instead of staying blank until
+// after Save.
 function syncNewProductPhotoInput() {
-  const input=byId('prodPhotoFiles'); const files=window.__newProductPhotoFiles||[]; if(!input)return;
-  try{const dt=new DataTransfer();files.forEach(f=>dt.items.add(f));input.files=dt.files;}catch(e){}
+  const input = byId("prodPhotoFiles");
+  const files = window.__newProductPhotoFiles || [];
+  if (!input) return;
+  try {
+    const dt = new DataTransfer();
+    files.forEach((file) => dt.items.add(file));
+    input.files = dt.files;
+  } catch (e) {
+    // Safari/iOS may not expose a writable FileList. The app's own array remains
+    // the source of truth, so removing a thumbnail still works there.
+  }
 }
 function renderNewProductPhotos() {
-  const wrap=byId('prodNewPhotoPreviews'); if(!wrap)return; wrap.innerHTML='';
-  const ref=getProductDisplayPictureRef();
-  (window.__newProductPhotoFiles||[]).forEach((f,index)=>{
-    const url=URL.createObjectURL(f), safeName=esc(f.name||'Image'), active=ref?.source==='new' && Number(ref.index)===index;
-    const node=document.createElement('div'); node.className=`photo-thumb product-photo-item ${active?'is-display':''}`;
-    node.innerHTML=`<img src="${url}" alt="${safeName}" /><button type="button" class="photo-remove" onclick="removeNewProductPhoto(${index})" title="Remove photo" aria-label="Remove photo"><i class="fa-solid fa-xmark"></i></button><span class="photo-pending-badge">new</span><button type="button" class="product-photo-display-btn" onclick="setProductDisplayPicture('new',${index});event.stopPropagation();">${active?'Display':'Use display'}</button>`;
+  const wrap = byId("prodNewPhotoPreviews");
+  if (!wrap) return;
+  (window.__newProductPhotoFiles || []).forEach((f, index) => {
+    const url = URL.createObjectURL(f);
+    const safeName = esc(f.name || "Image");
+    const node = document.createElement("div");
+    node.className = "photo-thumb";
+    node.innerHTML = `<img src="${url}" alt="${safeName}" /><button type="button" class="photo-remove" onclick="removeNewProductPhoto(${index})" title="Remove photo" aria-label="Remove photo"><i class="fa-solid fa-xmark"></i></button><span class="photo-pending-badge">new</span>`;
     wrap.appendChild(node);
   });
-  renderProductDisplayPicture();
 }
 function previewNewProductPhotos() {
-  const files=[...(byId('prodPhotoFiles')?.files||[])];
-  window.__newProductPhotoFiles=[...(window.__newProductPhotoFiles||[]),...files];
-  if(!getProductDisplayPictureRef())window.__displayPictureRef={source:'new',index:0};
-  renderNewProductPhotos();renderProductVariantPricing();
+  window.__newProductPhotoFiles = [...(byId("prodPhotoFiles").files || [])];
+  renderNewProductPhotos();
+  renderProductVariantPricing();
 }
-function removeNewProductPhoto(index,fromDisplay=false) {
-  const files=window.__newProductPhotoFiles||[]; if(index<0||index>=files.length)return;
-  window.__newProductPhotoFiles=files.filter((_,i)=>i!==index);syncNewProductPhotoInput();
-  const ref=getProductDisplayPictureRef();
-  if(ref?.source==='new'){
-    if(Number(ref.index)===index) window.__displayPictureRef=(window.__existingPhotos||[]).length?{source:'existing',url:(window.__existingPhotos||[])[0]}:(window.__newProductPhotoFiles.length?{source:'new',index:0}:null);
-    else if(Number(ref.index)>index) window.__displayPictureRef={source:'new',index:Number(ref.index)-1};
-  }
-  renderNewProductPhotos();renderProductVariantPricing();
+function removeNewProductPhoto(index) {
+  const files = window.__newProductPhotoFiles || [];
+  if (index < 0 || index >= files.length) return;
+  window.__newProductPhotoFiles = files.filter((_, i) => i !== index);
+  syncNewProductPhotoInput();
+  const wrap = byId("prodNewPhotoPreviews");
+  if (wrap) wrap.innerHTML = "";
+  renderNewProductPhotos();
+  renderProductVariantPricing();
 }
-(function setupPhotoDropzone(){
-  document.addEventListener('dragover',(e)=>{const zone=e.target.closest&&e.target.closest('#photoDropzone');if(zone){e.preventDefault();zone.classList.add('drag-over');}});
-  document.addEventListener('dragleave',(e)=>{const zone=e.target.closest&&e.target.closest('#photoDropzone');if(zone)zone.classList.remove('drag-over');});
-  document.addEventListener('drop',(e)=>{const zone=e.target.closest&&e.target.closest('#photoDropzone');if(!zone)return;e.preventDefault();zone.classList.remove('drag-over');const input=byId('prodPhotoFiles');if(input&&e.dataTransfer?.files?.length){window.__newProductPhotoFiles=[...(window.__newProductPhotoFiles||[]),...Array.from(e.dataTransfer.files)];syncNewProductPhotoInput();if(!getProductDisplayPictureRef())window.__displayPictureRef={source:'new',index:0};renderNewProductPhotos();renderProductVariantPricing();}});
+(function setupPhotoDropzone() {
+  document.addEventListener("dragover", (e) => {
+    const zone = e.target.closest && e.target.closest("#photoDropzone");
+    if (zone) { e.preventDefault(); zone.classList.add("drag-over"); }
+  });
+  document.addEventListener("dragleave", (e) => {
+    const zone = e.target.closest && e.target.closest("#photoDropzone");
+    if (zone) zone.classList.remove("drag-over");
+  });
+  document.addEventListener("drop", (e) => {
+    const zone = e.target.closest && e.target.closest("#photoDropzone");
+    if (!zone) return;
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    const input = byId("prodPhotoFiles");
+    if (input && e.dataTransfer?.files?.length) {
+      window.__newProductPhotoFiles = [...(window.__newProductPhotoFiles || []), ...[...e.dataTransfer.files]];
+      syncNewProductPhotoInput();
+      const wrap = byId("prodNewPhotoPreviews");
+      if (wrap) wrap.innerHTML = "";
+      renderNewProductPhotos();
+      renderProductVariantPricing();
+    }
+  });
 })();
 
-function newVariantDraft(){return {id:null,key:'draft-'+crypto.randomUUID(),name:'',photo_url:'',imageFile:null,sale_price:'',discount_price:'',quantity_available:'',size:'',color:'',sort_order:0};}
-function normalizeProductVariantDrafts(){
-  if(!Array.isArray(window.__productVariantDrafts)){
-    const saved=Array.isArray(window.__productVariants)?window.__productVariants:[];
-    window.__productVariantDrafts=saved.map((v,i)=>({id:v.id||null,key:v.id||('draft-'+crypto.randomUUID()),name:v.name||'',photo_url:v.photo_url||'',imageFile:null,sale_price:v.sale_price??'',discount_price:v.discount_price??'',quantity_available:v.quantity_available??'',size:v.size||'',color:v.color||'',description:v.description||'',sort_order:Number.isFinite(Number(v.sort_order))?Number(v.sort_order):i}));
+function toggleProdCategoryOther() {
+  byId("prodCategoryOther").classList.toggle("hidden", byId("prodCategory").value !== "__other__");
+}
+
+function updateProductDeliveryFields() {
+  const mode = byId("prodDeliveryMode")?.value || "free";
+  const isService = byId("prodIsService")?.checked;
+  byId("prodDeliverySettings")?.classList.toggle("hidden", !!isService);
+  byId("prodDeliveryFlatRow")?.classList.toggle("hidden", mode !== "flat");
+  byId("prodDeliveryDistanceRow")?.classList.toggle("hidden", mode !== "distance");
+  const hint = byId("prodDeliveryHint");
+  if (hint) hint.textContent = mode === "free" ? "Customers will not be charged a delivery fee for this product." : mode === "flat" ? "Every delivery order for this product uses this flat fee." : "The delivery fee is calculated from the customer's distance from your shop.";
+}
+
+function updateProductSaveButtonLabel(){
+  const btn=byId("saveProductBtn"); if(!btn) return;
+  const isService=!!byId("prodIsService")?.checked;
+  const type=isService ? "Service" : ((byId("prodListingType")?.value||"sale")==="rent" ? "Product" : "Product");
+  btn.textContent = `Save to ${type}`;
+}
+
+function updateProductFormFields() {
+  const isService = byId("prodIsService").checked;
+  byId("prodConditionWrap").classList.toggle("hidden", isService);
+  byId("prodListingTypeWrap").classList.toggle("hidden", isService);
+  byId("prodQtyWrap").classList.toggle("hidden", isService);
+  byId("prodServiceUnitWrap").classList.toggle("hidden", !isService);
+
+  if (isService) {
+    const unit = byId("prodServiceUnit").value;
+    byId("prodSalePriceLabel").textContent = unit === "flat" ? "Price (₦)" : `Rate (₦ per ${unit})`;
+    byId("prodSalePriceWrap").classList.remove("hidden");
+    byId("prodDiscountPriceWrap").classList.remove("hidden");
+    byId("prodDeliverySettings").classList.add("hidden");
+    byId("prodRentalRateWrap").classList.add("hidden");
+    byId("prodRateUnitWrap").classList.add("hidden");
+    byId("prodDepositWrap").classList.add("hidden");
+    return;
   }
-  window.__productVariantDrafts.forEach((v,i)=>v.sort_order=i);
-  return window.__productVariantDrafts;
+  byId("prodSalePriceLabel").textContent = "Price (₦)";
+  byId("prodDiscountPriceWrap").classList.remove("hidden");
+  updateProductDeliveryFields();
+  const type = byId("prodListingType").value;
+  byId("prodDiscountPriceWrap").classList.toggle("hidden", type === "rent");
+  byId("prodSalePriceWrap").classList.toggle("hidden", type === "rent");
+  byId("prodRentalRateWrap").classList.toggle("hidden", type === "sale");
+  byId("prodRateUnitWrap").classList.toggle("hidden", type === "sale");
+  byId("prodDepositWrap").classList.toggle("hidden", type === "sale");
 }
-function variantImagePreview(v){return v?.imageFile?URL.createObjectURL(v.imageFile):(v?.photo_url||'');}
-function renderProductVariantPricing(){
-  const wrap=byId('productVariantPricing');if(!wrap)return;
-  const drafts=normalizeProductVariantDrafts();
-  wrap.innerHTML=`<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Add customer-facing varieties with their own image, price and stock. Size and Color can be left blank.</div></div></div>
-    <div class="product-variant-actions"><span class="muted" style="font-size:.68rem;">Drag <i class="fa-solid fa-grip-vertical"></i> to reorder.</span><button type="button" class="product-variant-add-btn" onclick="addProductVarietyDraft(event)"><i class="fa-solid fa-plus"></i> Add variety</button></div>
-    <div id="productVariantRows">${drafts.map((v,i)=>`<div class="variant-price-row" data-variant-id="${esc(v.id||'')}" data-variant-key="${esc(v.key||v.id||'')}" data-variant-index="${i}" draggable="false">
-      <button type="button" class="variant-drag-handle" title="Drag to reorder" aria-label="Drag variety to reorder"><i class="fa-solid fa-grip-vertical"></i></button>
-      <div class="variant-price-thumb">${variantImagePreview(v)?`<img src="${esc(variantImagePreview(v))}" alt="" />`:`<span class="variant-thumb-placeholder"><i class="fa-regular fa-image"></i></span>`}<input class="variant-row-file" type="file" accept="image/*" data-variant-image-file="${i}" onchange="handleProductVariantImageChange(this)"><button type="button" class="variant-image-btn" onclick="this.previousElementSibling.click()">${variantImagePreview(v)?'Replace':'Add image'}</button></div>
-      <input class="variant-name" type="text" maxlength="120" placeholder="Variety name e.g. Black" value="${esc(v.name)}" />
-      <input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="Sale price" value="${v.sale_price===''?'':esc(String(v.sale_price))}" />
-      <input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="Discount price" value="${v.discount_price===''?'':esc(String(v.discount_price))}" />
-      <input class="variant-quantity" type="number" min="0" step="1" inputmode="numeric" placeholder="Qty" value="${v.quantity_available===''?'':esc(String(v.quantity_available))}" />
-      <input class="variant-size" type="text" maxlength="80" placeholder="Size" value="${esc(v.size||'')}" />
-      <input class="variant-color" type="text" maxlength="80" placeholder="Color" value="${esc(v.color||'')}" />
-      <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this,event)" aria-label="Delete this variety" title="Delete variety"><i class="fa-solid fa-xmark"></i></button>
-    </div>`).join('')}</div>`;
-  bindProductVariantDnd();
+
+function closeProductModal() {
+  byId("productModal").classList.add("hidden");
+  if (dismissibleModalId === "productModal") dismissibleModalId = null;
 }
-function addProductVarietyDraft(evt){
-  evt?.preventDefault?.();evt?.stopPropagation?.();
-  const drafts=collectProductVariantDraftsFromUi({allowEmpty:true,preserveState:true});
-  drafts.push(newVariantDraft());drafts.forEach((v,i)=>v.sort_order=i);window.__productVariantDrafts=drafts;renderProductVariantPricing();
-  const rows=document.querySelectorAll('#productVariantRows .variant-price-row');rows[rows.length-1]?.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-function clearProductVariantRow(btn,evt){
-  evt?.preventDefault?.();evt?.stopPropagation?.();
-  const row=btn?.closest?.('.variant-price-row');if(!row)return;
-  const drafts=collectProductVariantDraftsFromUi({allowEmpty:true,preserveState:true});const index=Number(row.dataset.variantIndex);
-  if(Number.isInteger(index))drafts.splice(index,1);drafts.forEach((v,i)=>v.sort_order=i);window.__productVariantDrafts=drafts;renderProductVariantPricing();
-}
-function collectProductVariantDraftsFromUi(opts={}){
-  const current=normalizeProductVariantDrafts();
-  const byKey=new Map(current.map((d,i)=>[String(d.key||d.id||`draft-${i}`),d]));
-  const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
-  if(!rows.length)return current.slice();
-  const out=[];
-  rows.forEach((row,i)=>{
-    const key=String(row.dataset.variantKey||row.dataset.variantId||'');
-    const base=byKey.get(key)||current[i]||newVariantDraft();
-    base.key=key||base.key||('draft-'+crypto.randomUUID());
-    base.id=row.dataset.variantId||base.id||null;
-    base.name=String(row.querySelector('.variant-name')?.value||'').trim();
-    base.sale_price=row.querySelector('.variant-sale-price')?.value??'';
-    base.discount_price=row.querySelector('.variant-discount-price')?.value??'';
-    base.quantity_available=row.querySelector('.variant-quantity')?.value??'';
-    base.size=String(row.querySelector('.variant-size')?.value||'').trim();
-    base.color=String(row.querySelector('.variant-color')?.value||'').trim();
-    base.sort_order=i;
-    out.push(base);
+
+function renderProductVariantPricing() {
+  const wrap = byId("productVariantPricing");
+  if (!wrap) return;
+  const existing = Array.isArray(window.__existingPhotos) ? window.__existingPhotos : [];
+  const pending = Array.isArray(window.__newProductPhotoFiles) ? window.__newProductPhotoFiles : [];
+  const rows = [];
+  const variants = Array.isArray(window.__productVariants) ? window.__productVariants : [];
+
+  existing.forEach((url, idx) => {
+    const v = variants.find(x => String(x.photo_url || "") === String(url)) || {};
+    rows.push({ source: "existing", key: `existing-${idx}`, photo: url, name: v.name || "", sale: v.sale_price ?? "", discount: v.discount_price ?? "", quantity: v.quantity_available ?? "" });
   });
-  return out;
-}
-function collectProductVariantDrafts(photoUrls){
-  const drafts=collectProductVariantDraftsFromUi({allowEmpty:true,preserveState:true});
-  const valid=[];
-  drafts.forEach((d,i)=>{
-    const hasAny=d.name||d.sale_price!==''||d.discount_price!==''||d.quantity_available!==''||d.size||d.color||d.photo_url||d.imageFile;
-    if(!hasAny)return;
-    if(!d.name)throw new Error('Every variety needs a variety name.');
-    const sale=d.sale_price===''?null:Number(d.sale_price);const discount=d.discount_price===''?null:Number(d.discount_price);
-    const fallbackQty=Number(byId('prodQtyTotal')?.value||0);const quantity=d.quantity_available===''?fallbackQty:Number(d.quantity_available);
-    if(!Number.isFinite(sale)||sale<=0)throw new Error(`Enter a valid sale price for ${d.name}.`);
-    if(discount!=null&&(!Number.isFinite(discount)||discount<=0||discount>=sale))throw new Error(`Discount price for ${d.name} must be lower than its regular price.`);
-    if(!Number.isInteger(quantity)||quantity<0)throw new Error(`Enter a valid quantity for ${d.name}.`);
-    valid.push({...d,sale_price:sale,discount_price:discount,quantity_available:quantity,sort_order:valid.length});
+  pending.forEach((file, idx) => {
+    const v = variants.find(x => x.temp_index === idx) || {};
+    rows.push({ source: "new", key: `new-${idx}`, photo: URL.createObjectURL(file), name: v.name || "", sale: v.sale_price ?? "", discount: v.discount_price ?? "", quantity: v.quantity_available ?? "" });
   });
-  window.__productVariantDrafts=drafts;return valid;
+
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties &amp; individual prices</strong><div class="variant-price-note">Add photos above first. Each photo can optionally represent a different variety with its own price.</div></div></div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties &amp; individual prices</strong><div class="variant-price-note">Optional. Give a photo a variety name and its own sale price when different varieties cost different amounts. Leave the fields blank for normal product photos.</div></div></div>
+    ${rows.map(r => `<div class="variant-price-row" data-variant-source="${r.source}" data-variant-key="${r.key}" data-photo-url="${r.source === "existing" ? esc(r.photo) : ""}">
+      <div class="variant-price-thumb"><img src="${esc(r.photo)}" alt="" /></div>
+      <input class="variant-name" type="text" maxlength="120" placeholder="Variety name e.g. Black" value="${esc(r.name)}" />
+      <input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="Sale price" value="${r.sale === "" ? "" : esc(String(r.sale))}" />
+      <input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="Discount price" value="${r.discount === "" ? "" : esc(String(r.discount))}" />
+      <input class="variant-quantity" type="number" min="0" step="1" inputmode="numeric" placeholder="Qty" value="${r.quantity === "" ? "" : esc(String(r.quantity))}" />
+      <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Clear this variety price" title="Clear variety price"><i class="fa-solid fa-xmark"></i></button>
+    </div>`).join("")}`;
 }
-function handleProductVariantImageChange(input){
-  const index=Number(input?.dataset?.variantImageFile);if(!Number.isInteger(index))return;
-  const file=input.files?.[0];if(!file)return;
-  const drafts=collectProductVariantDraftsFromUi({allowEmpty:true,preserveState:true});if(!drafts[index])return;
-  drafts[index].imageFile=file;window.__productVariantDrafts=drafts;renderProductVariantPricing();
+function clearProductVariantRow(btn) {
+  const row = btn?.closest?.(".variant-price-row");
+  if (!row) return;
+  row.querySelectorAll("input").forEach(i => i.value = "");
 }
-function bindProductVariantDnd(){
-  const host=byId('productVariantRows');if(!host)return;
-  let dragIndex=null;
-  const rows=()=>[...host.querySelectorAll('.variant-price-row')];
-  rows().forEach((row,index)=>{
-    const handle=row.querySelector('.variant-drag-handle');
-    if(!handle)return;
-    let pointerId=null,startY=0,moved=false;
-    const onMove=e=>{if(pointerId===null)return;const dy=Math.abs(e.clientY-startY);if(dy>5)moved=true;if(!moved)return; e.preventDefault(); const all=rows(); const current=all.indexOf(row); let target=current; all.forEach((other,j)=>{if(other===row)return;const r=other.getBoundingClientRect();if(e.clientY<r.top+r.height/2 && j<current)target=Math.min(target,j);if(e.clientY>r.top+r.height/2 && j>current)target=Math.max(target,j);});if(target!==current){if(target>current)host.insertBefore(row,all[target].nextSibling);else host.insertBefore(row,all[target]);row.classList.add('variant-sort-dragging');}}
-    const onUp=e=>{if(pointerId===null)return;try{handle.releasePointerCapture?.(pointerId)}catch(_){}document.removeEventListener('pointermove',onMove,true);document.removeEventListener('pointerup',onUp,true);document.removeEventListener('pointercancel',onUp,true);row.classList.remove('variant-sort-dragging');if(moved){e.preventDefault();e.stopPropagation();persistVisibleVariantOrder();}pointerId=null;};
-    handle.addEventListener('pointerdown',e=>{if(e.button!==undefined&&e.button!==0)return;pointerId=e.pointerId;startY=e.clientY;moved=false;try{handle.setPointerCapture?.(pointerId)}catch(_){}document.addEventListener('pointermove',onMove,{capture:true,passive:false});document.addEventListener('pointerup',onUp,{capture:true});document.addEventListener('pointercancel',onUp,{capture:true});});
-  });
-}
-function persistVisibleVariantOrder(){
-  const ordered=collectProductVariantDraftsFromUi({allowEmpty:true,preserveState:true});
-  ordered.forEach((d,i)=>d.sort_order=i);
-  window.__productVariantDrafts=ordered;
-  document.querySelectorAll('#productVariantRows .variant-price-row').forEach((row,i)=>row.dataset.variantIndex=String(i));
-  return ordered;
-}
-async function uploadVariantImage(file){
-  if(!file)return null;
-  const ext=(file.name.split('.').pop()||'jpg').toLowerCase();const path=`${vendor.id}/variants/${crypto.randomUUID()}.${ext}`;
-  const {error}=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type||'image/jpeg'});if(error)throw new Error(`Variety image upload failed: ${error.message}`);
-  return sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl;
-}
-async function saveProductVariants(productId,drafts){
-  if(!productId)return;
-  const {data:existing,error:loadErr}=await sb.from('product_variants').select('*').eq('product_id',productId);
-  if(loadErr)throw loadErr;
-  const existingMap=new Map((existing||[]).map(v=>[String(v.id),v]));
-  const keepIds=new Set();
-  for(let i=0;i<drafts.length;i++){
-    const d=drafts[i];let photoUrl=d.photo_url||null;
-    if(d.imageFile)photoUrl=await uploadVariantImage(d.imageFile);
-    const payload={product_id:productId,name:d.name,photo_url:photoUrl,sale_price:d.sale_price,discount_price:d.discount_price,quantity_available:d.quantity_available,sort_order:i};
-    if(d.size!==undefined)payload.size=d.size||null;
-    if(d.color!==undefined)payload.color=d.color||null;
-    if(d.description!==undefined)payload.description=d.description||null;
-    if(d.id && existingMap.has(String(d.id))){
-      let result=await sb.from('product_variants').update(payload).eq('id',d.id).eq('product_id',productId);
-      // Older deployments may not have the optional size/color/description columns.
-      // If so, retry once with the fields the current schema definitely supports.
-      if(result.error && /column .* (size|color|description).* does not exist|could not find the .* column/i.test(String(result.error.message||''))){
-        const basePayload={product_id:productId,name:d.name,photo_url:photoUrl,sale_price:d.sale_price,discount_price:d.discount_price,quantity_available:d.quantity_available,sort_order:i};
-        result=await sb.from('product_variants').update(basePayload).eq('id',d.id).eq('product_id',productId);
-      }
-      if(result.error)throw result.error;keepIds.add(String(d.id));
-    }else{
-      let result=await sb.from('product_variants').insert(payload).select('*').single();
-      if(result.error && /column .* (size|color|description).* does not exist|could not find the .* column/i.test(String(result.error.message||''))){
-        const basePayload={product_id:productId,name:d.name,photo_url:photoUrl,sale_price:d.sale_price,discount_price:d.discount_price,quantity_available:d.quantity_available,sort_order:i};
-        result=await sb.from('product_variants').insert(basePayload).select('*').single();
-      }
-      if(result.error)throw result.error;if(result.data?.id)keepIds.add(String(result.data.id));
+function collectProductVariantDrafts(photoUrls) {
+  const rows = [...document.querySelectorAll("#productVariantPricing .variant-price-row")];
+  const drafts = [];
+  rows.forEach((row) => {
+    const name = String(row.querySelector(".variant-name")?.value || "").trim();
+    const saleRaw = row.querySelector(".variant-sale-price")?.value;
+    const discountRaw = row.querySelector(".variant-discount-price")?.value;
+    const quantityRaw = row.querySelector(".variant-quantity")?.value;
+    const sale = saleRaw === "" ? null : Number(saleRaw);
+    const discount = discountRaw === "" ? null : Number(discountRaw);
+    const fallbackQty = Number(byId("prodQtyTotal")?.value || 0);
+    const quantity = quantityRaw === "" || quantityRaw == null ? fallbackQty : Number(quantityRaw);
+    if (!name && sale == null && discount == null && (quantityRaw === "" || quantityRaw == null)) return;
+    if (!name) throw new Error("Every individual variety price needs a variety name.");
+    if (!Number.isFinite(sale) || sale <= 0) throw new Error(`Enter a valid sale price for ${name}.`);
+    if (discount != null && (!Number.isFinite(discount) || discount <= 0 || discount >= sale)) throw new Error(`Discount price for ${name} must be lower than its regular price.`);
+    if (!Number.isInteger(quantity) || quantity < 0) throw new Error(`Enter a valid quantity for ${name}.`);
+    let photoUrl = row.dataset.photoUrl || "";
+    if (row.dataset.variantSource === "new") {
+      const idx = Number(String(row.dataset.variantKey || "").split("-").pop());
+      photoUrl = photoUrls[idx] || "";
     }
-  }
-  const removeIds=(existing||[]).map(v=>v.id).filter(id=>!keepIds.has(String(id)));
-  if(removeIds.length){const {error}=await sb.from('product_variants').delete().in('id',removeIds).eq('product_id',productId);if(error)throw error;}
-  const {data:reloaded}=await sb.from('product_variants').select('*').eq('product_id',productId).order('sort_order',{ascending:true}).order('created_at',{ascending:true});
-  window.__productVariants=reloaded||[];window.__productVariantDrafts=(reloaded||[]).map((v,i)=>({id:v.id,key:v.id,name:v.name||'',photo_url:v.photo_url||'',imageFile:null,sale_price:v.sale_price??'',discount_price:v.discount_price??'',quantity_available:v.quantity_available??'',size:v.size||'',color:v.color||'',description:v.description||'',sort_order:i}));
+    drafts.push({ name, photo_url: photoUrl || null, sale_price: sale, discount_price: discount, quantity_available: quantity, sort_order: drafts.length });
+  });
+  return drafts;
+}
+async function saveProductVariants(productId, drafts) {
+  if (!productId) return;
+  const { error: delErr } = await sb.from("product_variants").delete().eq("product_id", productId);
+  if (delErr) throw delErr;
+  if (!drafts.length) return;
+  const payload = drafts.map(d => ({ product_id: productId, ...d }));
+  const { error } = await sb.from("product_variants").insert(payload);
+  if (error) throw error;
 }
 
 function syncProductEngagementSettingsUI(){byId("prodCommentAudienceWrap")?.classList.toggle("hidden",!byId("prodAllowComments")?.checked);}
@@ -18144,18 +18066,7 @@ async function saveProduct() {
       const { data } = sb.storage.from("product-photos").getPublicUrl(path);
       newPhotoUrls.push(data.publicUrl);
     }
-    let photos = [...(window.__existingPhotos || []), ...newPhotoUrls];
-    // The display picture is the first product photo for the existing schema.
-    // Variety images are stored only on product_variants.photo_url.
-    const displayRef=getProductDisplayPictureRef();
-    if(displayRef?.source==='existing'){
-      const chosen=String(displayRef.url||'');
-      if(chosen && photos.includes(chosen)) photos=[chosen,...photos.filter(u=>String(u)!==chosen)];
-    }else if(displayRef?.source==='new'){
-      const idx=Number(displayRef.index);
-      const chosen=newPhotoUrls[idx];
-      if(chosen) photos=[chosen,...photos.filter(u=>String(u)!==chosen)];
-    }
+    const photos = [...(window.__existingPhotos || []), ...newPhotoUrls];
 
     let savedProductId = editingProductId;
     let variantDrafts = [];
@@ -18193,7 +18104,7 @@ async function saveProduct() {
       await openManualMonthlyPayment("product", null, { isNew: true, draft: window.__manualMonthlyNewDraft });
       return;
     }
-    if (!is_service) { await saveProductVariants(savedProductId, variantDrafts); document.dispatchEvent(new Event('levromart:product-variants-saved')); }
+    if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
     await saveProductEngagementSettings(savedProductId);
 
     // Re-read the canonical product row and update the homepage/storefront caches
@@ -27391,25 +27302,6 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 .monthly-submission-card{margin:.7rem 0;padding:1rem}.monthly-submission-pending{border-color:color-mix(in srgb,#ef4444 42%,var(--border))}.monthly-submission-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start}.monthly-submission-thumb{width:76px;height:76px;border-radius:12px;object-fit:cover;border:1px solid var(--border);flex:0 0 76px}.monthly-submission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;margin:.8rem 0}.monthly-submission-grid>div{border:1px solid var(--border);border-radius:12px;padding:.62rem;min-width:0}.monthly-submission-grid span,.monthly-submission-grid small{display:block;color:var(--text-muted);font-size:.68rem}.monthly-submission-grid strong{display:block;margin:.16rem 0;font-size:.8rem;overflow-wrap:anywhere}.monthly-submission-receipt{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.65rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}.monthly-submission-receipt span{display:block;font-size:.68rem;margin-top:.12rem}.monthly-submission-actions{display:flex;justify-content:flex-end;gap:.45rem;flex-wrap:wrap;margin-top:.7rem}.monthly-review-note{font-size:.74rem}.monthly-vendor-pending-note{color:#d97706!important;font-size:.74rem!important}.monthly-vendor-rejected-note{color:#ef4444!important;font-size:.74rem!important}
 @media(max-width:620px){.monthly-submission-grid{grid-template-columns:1fr}.monthly-listing-admin-intro{align-items:flex-start;flex-direction:column}.monthly-submission-head h3{font-size:1rem}.manual-monthly-account-row{grid-template-columns:82px minmax(0,1fr) auto}.manual-monthly-account-row .btn{padding:.38rem .48rem;font-size:.68rem}}
 </style>
-<script id="levromart-astra-phase1-varieties-final-20260914">
-(function(){
-  'use strict';
-  function syncVariantUi(){try{if(typeof renderProductVariantPricing==='function')renderProductVariantPricing();}catch(e){console.warn('[Levromart] variety UI sync failed',e)}}
-  document.addEventListener('click',function(e){
-    const b=e.target?.closest?.('.product-variant-add-btn,.variant-price-remove,.product-photo-display-btn');
-    if(b)e.stopPropagation();
-  },true);
-  // Rehydrate indicators after any view render and after realtime variant changes.
-  try{
-    if(typeof sb!=='undefined' && sb?.channel){
-      sb.channel('levromart-phase1-product-variants')
-        .on('postgres_changes',{event:'*',schema:'public',table:'product_variants'},()=>{try{hydrateProductVariantIndicatorsInView()}catch(_){};try{if(typeof currentProductDetail!=='undefined'&&currentProductDetail?.id)window.__productGalleryVariants=null}catch(_){} })
-        .subscribe();
-    }
-  }catch(_){}
-  document.addEventListener('levromart:product-variants-saved',()=>{try{hydrateProductVariantIndicatorsInView()}catch(_){}});
-})();
-</script>
 </body>
 <style id="levromart-20260910-final-polish">
 /* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
@@ -31062,7 +30954,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 #app .product-comment-compose-row>.icon-btn i,#app .package-comment-compose-row>.icon-btn i{font-size:.92rem!important;}
 
 /* Variety indicators stay readable in both themes. */
-#app .product-variety-indicator{background:color-mix(in srgb,var(--primary) 10%,var(--card))!important;color:var(--primary)!important;border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border))!important;}
+#app .product-variety-indicator{background:var(--text)!important;color:var(--card)!important;border:1px solid color-mix(in srgb,var(--text) 18%,var(--border))!important;}
+[data-theme="light"] #app .product-variety-indicator, html.light #app .product-variety-indicator{background:#17211e!important;color:#fff!important;}
 
 /* Requests: compact horizontal bars, not tall cards. */
 #app .vendor-my-request-card{max-width:100%!important;padding:.45rem .6rem!important;margin:.35rem 0!important;border-radius:12px!important;}
@@ -31479,10 +31372,11 @@ body.levro-profile-split.profile-reveal-dragging #app{transition:none!important;
 </script>
 
 <style id="levromart-v3-variant-quantity-css">
-#app .variant-price-row{grid-template-columns:34px 64px minmax(150px,1fr) 112px 112px 86px 110px 110px 38px!important;gap:.42rem!important;}
+#app .variant-price-row{grid-template-columns:64px minmax(110px,1fr) 112px 112px 78px 34px!important;gap:.42rem!important;}
 #app .variant-price-row input{font-size:.72rem!important;padding:.5rem .55rem!important;}
-@media(max-width:900px){#app .variant-price-row{grid-template-columns:30px 58px minmax(120px,1fr) 1fr 1fr 72px 90px 90px 34px!important;}}
-@media(max-width:560px){#app .variant-price-row{grid-template-columns:30px 58px minmax(0,1fr) 34px!important;}#app .variant-price-row .variant-sale-price,#app .variant-price-row .variant-discount-price,#app .variant-price-row .variant-size,#app .variant-price-row .variant-color,#app .variant-price-row .variant-quantity{grid-column:3 / 4!important;}#app .variant-price-row .variant-sale-price{grid-row:2!important;}#app .variant-price-row .variant-discount-price{grid-row:3!important;}#app .variant-price-row .variant-size{grid-row:4!important;}#app .variant-price-row .variant-color{grid-row:5!important;}#app .variant-price-row .variant-quantity{grid-row:6!important;}#app .variant-price-row .variant-price-remove{grid-column:4!important;grid-row:1 / span 6!important;}#app .variant-price-row .variant-name{grid-column:3 / 4!important;grid-row:1!important;}}
+#app .variant-price-row .variant-quantity{min-width:0!important;}
+@media(max-width:720px){#app .variant-price-row{grid-template-columns:58px minmax(0,1fr) 1fr 1fr 72px 34px!important;}}
+@media(max-width:520px){#app .variant-price-row{grid-template-columns:58px minmax(0,1fr) 34px!important;}#app .variant-price-row .variant-sale-price,#app .variant-price-row .variant-discount-price,#app .variant-price-row .variant-quantity{grid-column:2 / 3!important;}#app .variant-price-row .variant-price-remove{grid-column:3!important;grid-row:1 / span 4!important;}#app .variant-price-row:after{grid-column:2 / 3!important;}}
 </style>
 
 <script id="levromart-v3-levi-realtime-final-20260913">
