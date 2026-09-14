@@ -9045,8 +9045,13 @@ async function renderNotifPanel() {
   // The backend still retains archived/deleted fields for compatibility, but
   // the user-facing notification experience is now a smart activity stream.
   // We never mutate or destructively migrate those legacy fields here.
+  if (!session?.user?.id) {
+    panel.innerHTML = `<div class="empty-state" role="status"><i class="fa-solid fa-user-lock" style="font-size:1.5rem;display:block;margin-bottom:.55rem;"></i><strong>Sign-in required</strong><p class="muted" style="margin:.35rem 0;">Your session is still being restored.</p></div>`;
+    return;
+  }
   let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(60);
-  const { data: rawItems, error } = await q;
+  const timeout = new Promise(resolve => setTimeout(() => resolve({ data: null, error: new Error("Notification request timed out") }), 8000));
+  const { data: rawItems, error } = await Promise.race([q, timeout]);
   const currentVendorId = String(vendor?.id || "");
   const notificationType = (n) => String(n?.type || n?.notification_type || n?.notification_category || "").toLowerCase();
   const notificationText = (n) => `${notificationType(n)} ${String(n?.title || "")} ${String(n?.body || "")} ${JSON.stringify(n?.target_params || {})} ${JSON.stringify(n?.metadata || {})}`.toLowerCase();
@@ -9082,7 +9087,7 @@ async function renderNotifPanel() {
     window.__notifPanelIds = [];
     panel.innerHTML = `<div class="notifications-page-tools"><strong>Notifications</strong></div><div class="notif-tabs">${[
       ["all","All"],["personal","Personal"],["orders",vendor?.id ? "Orders & Requests" : "Orders"],...(vendor?.id ? [["myListings","My Listings"]] : []),["vendors","Vendors"]
-    ].map(([key,label]) => `<button class="notif-tab ${notifViewMode === key ? "active" : ""}" onclick="switchNotifView('${key}')">${label}</button>`).join("")}</div><p class="muted" style="padding:1rem;text-align:center;">Couldn’t load notifications right now. Please try again.</p>`;
+    ].map(([key,label]) => `<button class="notif-tab ${notifViewMode === key ? "active" : ""}" onclick="switchNotifView('${key}')">${label}</button>`).join("")}</div><div class="empty-state" role="alert" style="padding:1rem;text-align:center;"><p class="muted" style="margin:0 0 .7rem;">Couldn’t load notifications right now.</p><button type="button" class="btn btn-outline" onclick="renderNotifPanel()"><i class="fa-solid fa-rotate-right"></i> Try again</button></div>`;
     panel.classList.toggle("selecting", false);
     return;
   }
@@ -10662,8 +10667,19 @@ document.addEventListener("click", (e) => {
 });
 
 // ---------- DEDICATED NOTIFICATIONS PAGE ----------
+function goBackFromNotifications() {
+  const targetView = (lastNotificationReturnView && lastNotificationReturnView !== "notifications") ? lastNotificationReturnView : "home";
+  const targetParams = (targetView === lastNotificationReturnView && lastNotificationReturnParams && typeof lastNotificationReturnParams === "object")
+    ? lastNotificationReturnParams
+    : {};
+  // Replace the notification route instead of pushing another history entry.
+  // This prevents the notification page from trapping the user in a
+  // notifications -> notifications -> notifications history loop.
+  navigate(targetView, targetParams, { replace: true });
+}
+
 function renderNotificationsPage() {
-  return `<div class="notifications-page-shell"><div class="notifications-page-heading"><button type="button" class="icon-btn notifications-page-back" onclick="navigate(lastNotificationReturnView || 'home', lastNotificationReturnParams || {})" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="notifications-page-heading-copy"><h2><i class="fa-solid fa-bell"></i> Notifications</h2><p class="muted">Stay up to date with activity on Levromart.</p></div><div id="notificationsPageHeaderActions" class="notifications-page-heading-actions"></div></div><div id="notificationsPage" class="notifications-page-host" aria-live="polite"></div></div>`;
+  return `<div class="notifications-page-shell"><div class="notifications-page-heading"><button type="button" class="icon-btn notifications-page-back" onclick="goBackFromNotifications()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="notifications-page-heading-copy"><h2><i class="fa-solid fa-bell"></i> Notifications</h2><p class="muted">Stay up to date with activity on Levromart.</p></div><div id="notificationsPageHeaderActions" class="notifications-page-heading-actions"></div></div><div id="notificationsPage" class="notifications-page-host" aria-live="polite"><div class="page-loading-shell" style="min-height:8rem;"><span class="page-loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i></span><span>Loading notifications…</span></div></div></div>`;
 }
 
 // ---------- NAVIGATION ----------
@@ -10783,7 +10799,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "settings","supportRequest","wishlist","buyerOrders","orderDetail",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
     "adminSupportRequests","adminPeople","adminFeedback","adminUsers",
-    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications"
+    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment"
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
     try {
@@ -11022,7 +11038,15 @@ async function navigate(view, params = {}, pushHistory = true) {
   initDeliveryFieldsOnPage();
   setTimeout(() => {
     try { hydrateProductCommentCountsInView(); } catch (_) {}
-    if (view === "notifications") { try { renderNotifPanel(); } catch (_) {} }
+    if (view === "notifications") {
+      Promise.resolve(renderNotifPanel()).catch((err) => {
+        console.error("[Levromart] Notifications render failed:", err);
+        const host = byId("notificationsPage");
+        if (host && currentView === "notifications") {
+          host.innerHTML = `<div class="empty-state" role="alert"><i class="fa-solid fa-triangle-exclamation" style="font-size:1.5rem;display:block;margin-bottom:.55rem;"></i><strong>Couldn't load notifications</strong><p class="muted" style="margin:.35rem 0 .8rem;">Please try again.</p><button type="button" class="btn btn-outline" onclick="renderNotifPanel()"><i class="fa-solid fa-rotate-right"></i> Try again</button></div>`;
+        }
+      });
+    }
     if(view==="productDetail"&&params?.openComments){try{openSocialCommentSheet("product",params.productId,currentProductDetail?.name?`${currentProductDetail.name} · Comments`:"Comments")}catch(_){}}
     if(view==="packageDetail"&&params?.openComments){try{openSocialCommentSheet("package",params.packageId,"Package · Comments")}catch(_){}}
   }, 0);
