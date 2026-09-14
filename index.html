@@ -5227,7 +5227,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 /* TRENDING NOW + TRENDING SERVICES — same moderate card size, and no
    fixed/short card height that could crop off price, availability or
    delivery info on a fuller listing. */
-#app .hscroll.trending-scroll{ align-items:stretch !important; gap:.7rem !important; }
+#app .hscroll.trending-scroll{ display:flex !important; flex-wrap:nowrap !important; overflow-x:auto !important; align-items:stretch !important; gap:.7rem !important; }
 #app .hscroll.trending-scroll > .product-card-wrap{
   flex:0 0 200px !important; width:200px !important; max-width:200px !important; min-width:200px !important;
   height:auto !important; min-height:0 !important; max-height:none !important;
@@ -9080,6 +9080,12 @@ async function renderNotifPanel() {
   const renderToken = ++notifRenderEpoch;
   const panel = getNotifHost();
   if (!panel) return;
+  try {
+  if (!session?.user?.id) {
+    panel.innerHTML = '<p class="muted">Sign in to view your notifications.</p>';
+    return;
+  }
+  panel.innerHTML = '<p class="muted" role="status">Loading notifications…</p>';
   // The backend still retains archived/deleted fields for compatibility, but
   // the user-facing notification experience is now a smart activity stream.
   // We never mutate or destructively migrate those legacy fields here.
@@ -9111,7 +9117,7 @@ async function renderNotifPanel() {
     if (notifViewMode === "personal") return classifyNotification(n) === "personal";
     return true;
   });
-  if (renderToken !== notifRenderEpoch) return;
+  if (renderToken !== notifRenderEpoch || panel !== getNotifHost()) return;
   if (error) {
     // Do not turn a temporary database/network error into a fake empty state.
     // Keep the drawer honest and let the user retry by reopening/switching tabs.
@@ -9171,6 +9177,12 @@ async function renderNotifPanel() {
   if (isNotificationsPage) {
     const actions = byId("notificationsPageHeaderActions");
     if (actions) actions.innerHTML = `<button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications" title="Select notifications"><i class="fa-solid fa-check-double"></i></button>${hasUnread ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all notifications as read" title="Mark all notifications as read"><i class="fa-solid fa-check-double"></i></button>` : ""}`;
+  }
+  } catch (err) {
+    console.error("Notification rendering failed", err);
+    if (renderToken !== notifRenderEpoch || panel !== getNotifHost()) return;
+    window.__notifPanelIds = [];
+    panel.innerHTML = '<p class="muted">Couldn’t load notifications right now. <button type="button" class="btn btn-outline" onclick="renderNotifPanel()">Try again</button></p>';
   }
 }
 
@@ -11040,6 +11052,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   const preserveSameViewScroll = !pushHistory && previousView === view;
   const sameViewScrollY = preserveSameViewScroll ? window.scrollY : 0;
   app.innerHTML = html;
+  if (view === "notifications") void renderNotifPanel();
   if (view === "home") setTimeout(() => { try { filterHomeProducts(); } catch (_) {} }, 0);
   syncLeviFabVisibility();
   hideLevromartSplash();
@@ -11054,7 +11067,6 @@ async function navigate(view, params = {}, pushHistory = true) {
   initDeliveryFieldsOnPage();
   setTimeout(() => {
     try { hydrateProductCommentCountsInView(); } catch (_) {}
-    if (view === "notifications") { try { renderNotifPanel(); } catch (_) {} }
     if(view==="productDetail"&&params?.openComments){try{openSocialCommentSheet("product",params.productId,currentProductDetail?.name?`${currentProductDetail.name} · Comments`:"Comments")}catch(_){}}
     if(view==="packageDetail"&&params?.openComments){try{openSocialCommentSheet("package",params.packageId,"Package · Comments")}catch(_){}}
   }, 0);
@@ -11207,6 +11219,7 @@ function clearAutoScrollTimers() {
 }
 function setupAutoScroll(container, { interval = 30, pauseAfterInteraction = 6500 } = {}) {
   if (!container || !horizontalBrowseEnabled) return;
+  if (container.matches(".trending-scroll, .top-rated-vendors-scroll")) return;
   if (container.__levroAutoScrollTimer) return;
   let paused = false;
   let pauseTimeout = null;
@@ -11300,7 +11313,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   const activeCategory = categories.find(c => String(c.id) === String(currentHomeCategoryId)) || null;
   const subCats = categories.filter(c => c.parent_category_id && (!activeSector || String(c.sector_id) === String(activeSector.id)));
   const inScope = p => { const cat = categories.find(c => String(c.id) === String(p.category_id)); return (!activeSector || String(cat?.sector_id) === String(activeSector.id)) && (!activeCategory || String(p.category_id) === String(activeCategory.id)); };
-  const trending = (cache.trending || []).filter(inScope).slice(0, 10);
+  const trending = (cache.trending || []).filter(inScope);
   const packages = (cache.packages || []).filter(pkg => (!activeSector || (pkg.items || []).some(it => String((categories.find(c => String(c.id) === String(it.product?.category_id)) || {}).sector_id) === String(activeSector.id))) && (!activeCategory || (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))).slice(0, 8);
   const topVendors = cache.topVendors || [];
   window.__allHomePackages = cache.packages || [];
@@ -11323,12 +11336,12 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span>Request an item</span></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
   </section>`;
-  const trendingProducts = (trending || []).filter(p => !p.is_service);
-  const trendingServices = (trending || []).filter(p => p.is_service);
+  const trendingProducts = (trending || []).filter(p => !p.is_service).slice(0, 10);
+  const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
   if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+  if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${topVendors.map(vendorCardHtml).join("")}</div>`;
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
-  if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${topVendors.map(vendorCardHtml).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
   html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" /><button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button><div class="browse-filter-panel hidden" id="browseFilterPanel"><div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('listing')"><span>Type</span><strong id="browseListingLabel">${esc("All types")}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu hidden" id="browseListingSubmenu"><button type="button" onclick="chooseBrowseListing('', 'All types')">All types</button><button type="button" onclick="chooseBrowseListing('rent', 'Rent')">Rent</button><button type="button" onclick="chooseBrowseListing('sale', 'Buy')">Buy</button></div></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || 'All categories')}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><div id="browseCategoryOptions">${subCats.map(c => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace("'","&#39;")}')">${esc(c.name)}</button>`).join("")}</div><button type="button" onclick="chooseBrowseCategory('','All categories')">All categories</button></div></div><button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button></div><select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
@@ -11912,7 +11925,7 @@ async function renderHome() {
   const activeCategory = (categories || []).find((c) => String(c.id) === String(currentHomeCategoryId)) || null;
   const subCats = (categories || []).filter(c => c.parent_category_id && (!activeSector || String(c.sector_id) === String(activeSector.id)));
 
-  let vendorQuery = sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
+  let vendorQuery = sb.from("products").select("id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
@@ -11945,9 +11958,21 @@ async function renderHome() {
   // Keep the initial marketplace paint to one parallel batch. Packages are
   // first-class marketplace listings now, so they load alongside products
   // rather than causing a second visible page refresh.
-  const [{ data: trending }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
-    vendorQuery.order("view_count", { ascending: false }).limit(10),
-    topVendorsQuery.order("avg_rating", { ascending: false }).limit(6),
+  const loadTopVendors = async () => {
+    const rows = [];
+    const pageSize = 500;
+    const orderedQuery = topVendorsQuery.order("avg_rating", { ascending: false }).order("id");
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await orderedQuery.range(offset, offset + pageSize - 1);
+      if (error) return { data: null, error };
+      rows.push(...(data || []));
+      if (!data || data.length < pageSize) break;
+    }
+    return { data: [...new Map(rows.map(v => [String(v.id), v])).values()] };
+  };
+  const [{ data: trending, error: trendingError }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
+    vendorQuery.order("view_count", { ascending: false }),
+    loadTopVendors(),
     recentPhotosQuery.order("created_at", { ascending: false }).limit(3),
     packageQuery,
     browseCatalogQuery,
@@ -11968,8 +11993,12 @@ async function renderHome() {
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
   // must not be overwritten with only the currently selected category.
-  const trendingBase = (browseProducts || []).slice().sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0)).slice(0, 20);
-  const cachedTrending = deterministicHourlyShuffle(trendingBase, "trending");
+  const cachedTrending = trendingError ? (cachedHome?.trending || [])
+    : [...new Map([...(cachedHome?.trending || []).filter(p =>
+        (activeSector && String(p.category?.sector_id) !== String(activeSector.id)) ||
+        (activeCategory && String(p.category_id) !== String(activeCategory.id))),
+        ...(trending || [])].map(p => [String(p.id), p])).values()]
+      .sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0));
   writeOfflineHomeCache({
     categories, sectors: sectors || sectorsData || [], trending: cachedTrending,
     browseProducts: hourlyBrowseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
@@ -12009,19 +12038,21 @@ async function renderHome() {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
   </section>`;
 
+  if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
   if (trending && trending.length) {
-    const trendingProducts = trending.filter(p => !p.is_service);
-    const trendingServices = trending.filter(p => p.is_service);
+    const trendingProducts = trending.filter(p => !p.is_service).slice(0, 10);
     if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
-    if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
-  }
 
-  if (recommendedPackages.length) {
-    html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   }
 
   if (topVendors && topVendors.length) {
     html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${topVendors.map(vendorCardHtml).join("")}</div>`;
+  }
+  const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
+  if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+
+  if (recommendedPackages.length) {
+    html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   }
 
   html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
@@ -12716,8 +12747,8 @@ async function renderCart() {
   const stale = items.filter((it) => !purchasable.includes(it));
 
   const byVendor = new Map();
-  valid.forEach((it) => {
-    const vId = it.product.vendor.id;
+  purchasable.forEach((it) => {
+    const vId = String(it.product.vendor.id);
     if (!byVendor.has(vId)) byVendor.set(vId, { vendor: it.product.vendor, items: [] });
     byVendor.get(vId).items.push(it);
   });
@@ -12803,10 +12834,12 @@ async function clearStaleCartItems() {
   navigate("cart", {}, false);
 }
 async function checkoutCartVendor(vendorId) {
+  vendorId = String(vendorId);
   if (blockOwnVendorPurchase(vendorId, "buy")) return;
   const group = window.__cartByVendor?.get(vendorId);
   const errorEl = byId(`cartError-${vendorId}`);
-  if (!group) return;
+  if (!group) { showToast("Your cart has changed. Reopen the cart and try again.", "error"); return; }
+  try {
   errorEl?.classList.add("hidden");
   const delivery = readDeliveryFields(`cart-${vendorId}`, errorEl);
   if (!delivery) return;
@@ -12824,7 +12857,6 @@ async function checkoutCartVendor(vendorId) {
     p_buyer_note: byId(`cartNote-${vendorId}`)?.value.trim() || null,
     p_buyer_lat: buyerLocation?.lat ?? null,
     p_buyer_lng: buyerLocation?.lng ?? null,
-    ...(selectedVariantId ? { p_variant_id: selectedVariantId } : {}),
   });
   if (error) {
     if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); }
@@ -12833,6 +12865,11 @@ async function checkoutCartVendor(vendorId) {
   await sb.from("cart_items").delete().in("id", group.items.map((it) => it.id));
   refreshNotifications();
   navigate("orderDetail", { orderId });
+  } catch (err) {
+    console.error("Cart checkout failed", err);
+    if (errorEl) { errorEl.textContent = "Checkout couldn’t complete. Please try again."; errorEl.classList.remove("hidden"); }
+    else showToast("Checkout couldn’t complete. Please try again.", "error");
+  }
 }
 
 // ---------- IN-APP MESSAGING ----------
@@ -30336,9 +30373,6 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     // follower-count hooks are present on an already-rendered home/vendor page.
     try {
       if (typeof currentView !== "undefined" && currentView === "vendors" && typeof renderVendorDirectoryCards === "function") renderVendorDirectoryCards();
-      if (typeof currentView !== "undefined" && currentView === "home" && typeof renderHome === "function") {
-        Promise.resolve(renderHome()).then(html => { const app=byId("app"); if(app && typeof html === "string") app.innerHTML=html; setupCompactSearches(); hydrateFollowerCounts(); });
-      }
     } catch(_) {}
     hydrateFollowerCounts();
     syncListingBillingUI();syncPackageBillingUI();
@@ -30770,7 +30804,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
   display:inline-flex!important;
   align-items:center!important;
   gap:.22rem!important;
-  color:#fff!important;
+  color:var(--primary)!important;
   font-size:.64rem!important;
   font-weight:800!important;
   line-height:1.2!important;
