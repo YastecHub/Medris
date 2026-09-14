@@ -17528,7 +17528,8 @@ async function renderVendorProducts() {
   if (v.verification_status !== "verified") html += `<p class="muted">Products won't appear publicly until your vendor account is verified.</p>`;
 
   html += `<div class="vendor-products-unified-tabs" id="vendorProductsTypeTabs" aria-label="Listing type">
-    <button type="button" class="active" data-tab="products" onclick="switchVendorListingTab('products')"><i class="fa-solid fa-box"></i> Products</button>
+    <button type="button" data-tab="all" onclick="switchVendorListingTab('all')"><i class="fa-solid fa-layer-group"></i> All listings</button>
+    <button type="button" data-tab="products" onclick="switchVendorListingTab('products')"><i class="fa-solid fa-box"></i> Products</button>
     <button type="button" data-tab="services" onclick="switchVendorListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button>
     <button type="button" data-tab="packages" onclick="switchVendorListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button>
   </div>`;
@@ -17643,36 +17644,34 @@ function filterVendorProducts() {
 }
 
 function switchVendorListingTab(tab) {
-  tab = String(tab || "products");
-  document.querySelectorAll("#vendorProductsTypeTabs [data-listing-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.listingTab === tab));
-  if (tab === "packages") { navigate("vendorPackages"); return; }
-  document.querySelectorAll("#app [data-vp-kind]").forEach(el => el.classList.toggle("hidden", el.dataset.vpKind !== tab));
-  document.querySelectorAll("#app [data-vp-group]").forEach(group => group.classList.toggle("hidden", ![...group.querySelectorAll("[data-vp-kind]")].some(el => !el.classList.contains("hidden"))));
+  tab = ["all","products","services","packages"].includes(String(tab)) ? String(tab) : "all";
+  try { localStorage.setItem("levromart-vendor-listing-tab", tab); } catch (_) {}
+
+  document.querySelectorAll("#vendorProductsTypeTabs [data-tab]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.tab === tab);
+  });
+
+  const matches = kind => tab === "all" || kind === tab;
+  document.querySelectorAll("#app [data-vp-kind]").forEach(el => {
+    el.classList.toggle("hidden", !matches(el.dataset.vpKind));
+  });
+
+  document.querySelectorAll("#app [data-vp-group]").forEach(group => {
+    const visible = [...group.querySelectorAll("[data-vp-kind]")].some(el => !el.classList.contains("hidden"));
+    group.classList.toggle("hidden", !visible);
+  });
+
+  document.querySelectorAll("#app [data-vendor-listing-section]").forEach(section => {
+    if (section.dataset.vendorListingSection === "packages") {
+      section.classList.toggle("hidden", tab !== "all" && tab !== "packages");
+    }
+  });
+
   const table = document.querySelector("#app .data-table tbody");
-  if (table) [...table.children].forEach(row => row.classList.toggle("hidden", row.dataset.vpKind !== tab));
+  if (table) [...table.children].forEach(row => {
+    row.classList.toggle("hidden", !matches(row.dataset.vpKind));
+  });
 }
-
-async function openAddProductModal() {
-  editingProductId = null;
-  await showProductModal();
-}
-async function openEditProductModal(productId) {
-  editingProductId = productId;
-  await showProductModal();
-}
-
-// A vendor can list products under any sector, not just the one they
-// registered under (e.g. a mostly-healthcare vendor who also sells
-// clothing) - so the modal offers every sector's category tree, not just
-// vendor.sector_id's. The product's own category_id is all that's stored;
-// its "sector" is just whatever sector that category belongs to.
-let productModalCategories = [];
-let productModalSectors = [];
-async function showProductModal() {
-  if (vendor?.id && (vendor.delivery_fee_mode === undefined || vendor.delivery_fee === undefined)) {
-    const { data: vendorDefaults } = await sb.from("vendors").select("id, sector_id, delivery_fee, delivery_fee_mode, delivery_fee_per_km").eq("id", vendor.id).maybeSingle();
-    if (vendorDefaults) vendor = { ...vendor, ...vendorDefaults };
-  }
   const [{ data: categories }, { data: sectorsData }] = await Promise.all([
     sb.from("categories").select("*").order("name"),
     sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
@@ -18670,7 +18669,7 @@ async function savePackage() {
     await savePackageEngagementSettings(packageId);
 
     closePackageModal();
-    navigate("vendorPackages");
+    navigate(currentView === "vendorProducts" ? "vendorProducts" : "vendorPackages");
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove("hidden");
@@ -18682,13 +18681,13 @@ async function savePackage() {
 async function setPackageStatus(id, status) {
   const { error } = await sb.from("vendor_packages").update({ status }).eq("id", id).eq("vendor_id", vendor.id);
   if (error) { showToast(error.message, "error"); return; }
-  navigate("vendorPackages");
+  navigate(currentView === "vendorProducts" ? "vendorProducts" : "vendorPackages");
 }
 async function deletePackage(id) {
   if (!(await showConfirmDialog("Delete this package permanently? This can't be undone.", { title: "Delete package", okLabel: "Delete", danger: true }))) return;
   const { error } = await sb.from("vendor_packages").delete().eq("id", id).eq("vendor_id", vendor.id);
   if (error) { showToast(error.message, "error"); return; }
-  navigate("vendorPackages");
+  navigate(currentView === "vendorProducts" ? "vendorProducts" : "vendorPackages");
 }
 
 // ---------- VENDOR / BUYER ORDERS ----------
@@ -20819,7 +20818,27 @@ function exportFinancePdf() {
       th{background:#f3f8f7;} .stats{display:flex;gap:1.5rem;margin:1.2rem 0;}
       .stat{border:1px solid #e2e8f0;border-radius:8px;padding:.8rem 1.2rem;}
       .stat b{display:block;font-size:1.3rem;color:#0e8f7f;}
-    </style></head><body>
+    </style>
+<style id="levromart-trending-now-preservation">
+/* PRESERVE EXISTING HOMEPAGE TRENDING NOW RAIL — Phase 2 must not remove or hide it. */
+#app .trending-scroll{display:flex!important;overflow-x:auto!important;visibility:visible!important}
+#app .trending-scroll:not(:empty){min-height:1px}
+</style>
+
+<style id="levromart-phase2-packages-unified-final">
+/* PHASE 2 FINAL: My Shop is a four-type unified listing surface. */
+#app .vendor-products-unified-tabs{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:.45rem!important;margin:.65rem 0 .9rem!important;overflow:visible!important}
+#app .vendor-products-unified-tabs button{min-width:0!important;min-height:42px!important;padding:.55rem .45rem!important;white-space:nowrap!important}
+#app .vendor-unified-packages{margin-top:1rem!important}
+#app .vendor-unified-packages .vendor-product-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.65rem!important;margin-top:.6rem!important}
+#app .vendor-unified-packages .package-card{min-width:0!important;padding:.65rem!important;border-radius:16px!important}
+#app .vendor-unified-packages .product-img{height:145px!important;border-radius:12px!important}
+#app .vendor-unified-packages .package-card-title-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.45rem!important;min-width:0!important}
+#app .vendor-unified-packages .package-card-title-row h4{margin:.5rem 0 .2rem!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+#app .vendor-unified-packages .vendor-product-actions{display:flex!important;flex-wrap:wrap!important;gap:.35rem!important}
+@media(max-width:520px){#app .vendor-products-unified-tabs{grid-template-columns:repeat(2,minmax(0,1fr))!important}#app .vendor-unified-packages .vendor-product-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.5rem!important}#app .vendor-unified-packages .product-img{height:125px!important}}
+</style>
+</head><body>
     <h1>Levromart Transactions</h1>
     <p class="muted">Range: ${rangeLabel(adminFinanceRange)} · Generated ${new Date().toLocaleString()}</p>
     <div class="stats">
@@ -27401,12 +27420,25 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   async function renderUnifiedEnhancements(){
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading)return;
-    if(!document.querySelector('.vendor-products-unified-tabs')){
-      const rail=document.createElement('div');rail.className='vendor-products-unified-tabs';
-      rail.innerHTML='<button data-tab="all" onclick="switchVendorListingTab(\'all\')">All listings</button><button data-tab="products" onclick="switchVendorListingTab(\'products\')">Products</button><button data-tab="services" onclick="switchVendorListingTab(\'services\')">Services</button><button data-tab="packages" onclick="switchVendorListingTab(\'packages\')">Packages</button>';
-      heading.insertAdjacentElement('afterend',rail);
-    }
     const host=heading.parentElement;
+    if(!host)return;
+
+    // The four-tab rail is the single source of truth for My Shop.
+    let rail=document.querySelector('#vendorProductsTypeTabs');
+    if(!rail){
+      rail=document.createElement('div');
+      rail.className='vendor-products-unified-tabs';
+      rail.id='vendorProductsTypeTabs';
+      rail.setAttribute('aria-label','Listing type');
+      rail.innerHTML='<button type="button" data-tab="all" onclick="switchVendorListingTab(\'all\')"><i class="fa-solid fa-layer-group"></i> All listings</button><button type="button" data-tab="products" onclick="switchVendorListingTab(\'products\')"><i class="fa-solid fa-box"></i> Products</button><button type="button" data-tab="services" onclick="switchVendorListingTab(\'services\')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button><button type="button" data-tab="packages" onclick="switchVendorListingTab(\'packages\')"><i class="fa-solid fa-box-open"></i> Packages</button>';
+      heading.insertAdjacentElement('afterend',rail);
+    }else{
+      // Upgrade any legacy three-tab rail in-place; never leave Packages as a separate route.
+      if(!rail.querySelector('[data-tab="all"]')){
+        rail.innerHTML='<button type="button" data-tab="all" onclick="switchVendorListingTab(\'all\')"><i class="fa-solid fa-layer-group"></i> All listings</button><button type="button" data-tab="products" onclick="switchVendorListingTab(\'products\')"><i class="fa-solid fa-box"></i> Products</button><button type="button" data-tab="services" onclick="switchVendorListingTab(\'services\')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button><button type="button" data-tab="packages" onclick="switchVendorListingTab(\'packages\')"><i class="fa-solid fa-box-open"></i> Packages</button>';
+      }
+    }
+
     if(host&&!document.querySelector('.vendor-drafts-panel')&&session?.access_token){
       try{
         const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'list-listing-drafts',accessToken:session.access_token})});
@@ -27418,22 +27450,63 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
         }
       }catch(_){ }
     }
-    // Tag every product/service card and its grid so the unified rail can filter cleanly.
-    document.querySelectorAll('.vendor-products-heading ~ .grid .card').forEach(card=>{
-      if(card.dataset.vendorListingKind)return;
-      const text=card.textContent||'';card.dataset.vendorListingKind=/\bService\b/i.test(text)?'services':'products';
+
+    // Product/service classification is explicit from the render path/data attribute.
+    // Do not infer listing kind from visible text (a package can legitimately contain
+    // the words "product" or "service").
+    document.querySelectorAll('.vendor-products-heading ~ .grid .card[data-vp-kind]').forEach(card=>{
+      card.dataset.vendorListingKind=card.dataset.vpKind;
     });
-    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>g.dataset.vendorListingSection='products');
-    // Packages live in the same My Shop screen; they are loaded once and rendered as compact cards.
-    if(!host.querySelector('[data-vendor-listing-section="packages"]')){
-      try{
-        const r=await sb.from('vendor_packages').select('id,name,description,price,photos,status,billing_model,billing_paid_until,created_at').eq('vendor_id',vendor.id).neq('status','removed').order('created_at',{ascending:false});
-        const packs=r.data||[];const section=document.createElement('section');section.dataset.vendorListingSection='packages';section.className='vendor-unified-packages';
-        section.innerHTML='<div class="category-group-header"><i class="fa-solid fa-boxes-packing"></i> Packages</div>'+(packs.length?'<div class="vendor-product-card-grid">'+packs.map(x=>'<article class="card" data-package-id="'+escHtml(x.id)+'"><div class="product-img">'+(x.photos?.[0]?'<img src="'+escHtml(x.photos[0])+'" alt="" loading="lazy">':'<i class="fa-solid fa-box-open"></i>')+'</div><h4>'+escHtml(x.name)+'</h4><p class="muted">'+escHtml(x.description||'Package')+(x.billing_paid_until ? ' · '+listingExpiryMarkup(x) : '')+'</p><strong>'+naira(x.price)+'</strong><div style="margin-top:.5rem;display:flex;gap:.35rem"><button class="btn btn-sm btn-outline" onclick="navigate(\'vendorPackages\')">Manage</button></div></article>').join('')+'</div>':'<div class="empty-state">No packages yet.</div>');
+    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>{
+      if(!g.querySelector('[data-vp-kind]'))return;
+      g.dataset.vendorListingSection='products';
+      g.dataset.vpGroup='products';
+    });
+
+    // Packages are rendered into the same My Shop DOM and filtered by the same four-tab rail.
+    // Query current state every enhancement pass so create/edit/delete/pause/activate is reflected.
+    try{
+      const [{data:packs,error:packsError},{data:monthlySubs}] = await Promise.all([
+        sb.from('vendor_packages').select('id,name,description,price,photos,status,billing_model,billing_status,billing_paid_until,created_at,items:package_items(quantity,product:products(id,name))').eq('vendor_id',vendor.id).neq('status','removed').order('created_at',{ascending:false}),
+        sb.from('monthly_listing_submissions').select('listing_id,status').eq('vendor_id',vendor.id).eq('kind','package').order('submitted_at',{ascending:false}).limit(100)
+      ]);
+      if(packsError) throw packsError;
+      const pending=new Set((monthlySubs||[]).filter(x=>x.status==='pending').map(x=>String(x.listing_id)));
+      let section=host.querySelector('[data-vendor-listing-section="packages"]');
+      if(!section){
+        section=document.createElement('section');
+        section.dataset.vendorListingSection='packages';
+        section.className='vendor-unified-packages';
         host.appendChild(section);
-      }catch(_){ }
+      }
+      const cards=(packs||[]).map(x=>{
+        const status=x.status||'active';
+        const expiry=x.billing_paid_until ? listingExpiryMarkup(x) : '';
+        const monthlyPending=x.billing_model==='monthly' && pending.has(String(x.id));
+        const monthlyCancelled=x.billing_model==='monthly' && x.billing_status==='cancelled';
+        let action='';
+        if(status==='active'){
+          action='<button type="button" class="btn btn-sm" style="background:#6b7280;" onclick="setPackageStatus(\''+escHtml(x.id)+'\',\'paused\')">Pause</button>';
+        }else if(x.billing_model==='monthly'){
+          action=monthlyPending
+            ? '<button type="button" class="btn btn-sm btn-outline" disabled><i class="fa-solid fa-clock"></i> Receipt submitted</button>'
+            : '<button type="button" class="btn btn-sm" onclick="startListingMonthlyPayment(\'package\',\''+escHtml(x.id)+'\')"><i class="fa-solid fa-receipt"></i> '+(x.billing_status==='pending_payment'?'Submit ₦1,000 receipt':'Renew ₦1,000')+'</button>';
+        }else{
+          action='<button type="button" class="btn btn-sm" onclick="setPackageStatus(\''+escHtml(x.id)+'\',\'active\')">Activate</button>';
+        }
+        const itemText=(x.items||[]).map(it=>(it.quantity||1)+'× '+escHtml(it.product?.name||'')).join(', ')||'No items yet';
+        return '<article class="card package-card" data-vp-kind="packages" data-package-id="'+escHtml(x.id)+'" data-vp-name="'+escHtml((x.name||'').toLowerCase())+'"><div class="product-img">'+(x.photos?.[0]?'<img src="'+escHtml(x.photos[0])+'" alt="'+escHtml(x.name)+'" loading="lazy">':'<i class="fa-solid fa-box-open"></i>')+'</div><div class="package-card-title-row"><h4>'+escHtml(x.name)+'</h4><span class="badge '+(status==='active'?'success':'warning')+'">'+escHtml(status)+'</span></div>'+(x.description?'<p class="muted">'+escHtml(x.description)+'</p>':'')+'<p class="muted" style="font-size:.78rem;">'+itemText+'</p>'+(monthlyPending?'<p class="muted monthly-vendor-pending-note"><i class="fa-solid fa-clock"></i> Receipt submitted · awaiting admin approval</p>':(monthlyCancelled?'<p class="muted monthly-vendor-rejected-note"><i class="fa-solid fa-circle-exclamation"></i> Monthly listing deactivated. Submit a new ₦1,000 receipt to restore it.</p>':''))+'<p><strong>'+naira(x.price)+'</strong> '+expiry+'</p><div class="vendor-product-actions"><button type="button" class="btn btn-sm vendor-edit-action" onclick="openEditPackageModal(\''+escHtml(x.id)+'\')"><i class="fa-solid fa-pen"></i> Edit</button>'+action+'<button type="button" class="btn btn-sm btn-danger" onclick="deletePackage(\''+escHtml(x.id)+'\')"><i class="fa-solid fa-trash"></i> Delete</button></div></article>';
+      }).join('');
+      section.innerHTML='<div class="category-group-header"><i class="fa-solid fa-boxes-packing"></i> Packages</div>'+(packs?.length?'<div class="vendor-product-card-grid" data-vp-group="packages">'+cards+'</div>':'<div class="empty-state">No packages yet.</div>');
+    }catch(err){
+      console.warn('[Levromart] My Shop package reflection failed:',err);
+      let section=host.querySelector('[data-vendor-listing-section="packages"]');
+      if(section && !section.querySelector('.vendor-package-load-error')) {
+        section.innerHTML='<div class="category-group-header"><i class="fa-solid fa-boxes-packing"></i> Packages</div><div class="vendor-package-load-error banner banner-warning"><i class="fa-solid fa-triangle-exclamation"></i> Packages could not be refreshed right now. Your existing package data has not been changed.</div>';
+      }
     }
-    const remembered=(()=>{try{return localStorage.getItem('levromart-vendor-listing-tab')||'products'}catch(_){return'all'}})();
+
+    const remembered=(()=>{try{return localStorage.getItem('levromart-vendor-listing-tab')||'all'}catch(_){return'all'}})();
     window.switchVendorListingTab(remembered);
     decorateCommissionBoxes();
   }
