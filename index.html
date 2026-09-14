@@ -17512,14 +17512,16 @@ async function renderVendorProducts() {
     ${removedProducts.length ? `<div class="vendor-discarded-bulkbar"><label><input type="checkbox" id="discardedSelectAll" onchange="toggleAllDiscardedItems(this.checked)"> <span>Select all</span></label><span id="discardedSelectedCount" class="muted">0 selected</span><button type="button" class="btn btn-sm btn-danger" id="discardedBulkDeleteBtn" disabled onclick="deleteSelectedDiscardedItems()"><i class="fa-solid fa-trash-can"></i> Delete selected</button></div><div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-id="${esc(p.id)}" data-discarded-name="${esc((p.name||'').toLowerCase())}"><label class="discarded-select"><input type="checkbox" class="discarded-item-check" value="${esc(p.id)}" onchange="updateDiscardedSelection()" aria-label="Select ${esc(p.name)}"></label><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
   </div>`;
 
-  if (!products || products.length === 0) { html += `<div class="empty-state">No products yet.</div>`; return html; }
+  if (!products || products.length === 0) {
+    html += `<div class="empty-state vendor-products-empty-state" data-vendor-listing-section="products">No products yet.</div>`;
+  }
 
   html += `<div class="vendor-products-toolbar">
     <label class="vendor-products-sort"><span>Sort</span><select id="vendorProductSort" onchange="filterVendorProducts()"><option value="newest">Newest first</option><option value="az">A–Z</option><option value="za">Z–A</option></select></label>
     <div class="vendor-products-search-compact"><button type="button" class="icon-btn vendor-product-search-toggle" aria-expanded="false" aria-label="Search My Products" title="Search My Products"><i class="fa-solid fa-magnifying-glass"></i></button><div class="vendor-product-search-popover"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="vendorProductSearch" placeholder="Search your products…" oninput="filterVendorProducts()" /><button type="button" class="icon-btn vendor-product-search-close" aria-label="Close search"><i class="fa-solid fa-xmark"></i></button></div></div>
   </div>`;
 
-  if (vendorProductsView === "table") {
+  if (vendorProductsView === "table" && products && products.length > 0) {
     const totalRevenue = Object.values(revenueByProduct).reduce((s, n) => s + n, 0);
     const totalUnits = products.reduce((s, p) => s + p.quantity_total, 0);
     html += `<div class="accordion-section" style="max-width:600px;margin-bottom:1rem;">
@@ -17618,12 +17620,14 @@ function filterVendorProducts() {
 
 function switchVendorListingTab(tab) {
   tab = String(tab || "products");
-  document.querySelectorAll("#vendorProductsTypeTabs [data-listing-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.listingTab === tab));
-  if (tab === "packages") { navigate("vendorPackages"); return; }
+  if (!["products", "services", "packages"].includes(tab)) tab = "products";
+  document.querySelectorAll("#vendorProductsTypeTabs [data-tab], .vendor-products-unified-tabs button[data-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
   document.querySelectorAll("#app [data-vp-kind]").forEach(el => el.classList.toggle("hidden", el.dataset.vpKind !== tab));
   document.querySelectorAll("#app [data-vp-group]").forEach(group => group.classList.toggle("hidden", ![...group.querySelectorAll("[data-vp-kind]")].some(el => !el.classList.contains("hidden"))));
+  document.querySelectorAll("#app [data-vendor-listing-section]").forEach(section => section.classList.toggle("hidden", section.dataset.vendorListingSection !== tab));
   const table = document.querySelector("#app .data-table tbody");
-  if (table) [...table.children].forEach(row => row.classList.toggle("hidden", row.dataset.vpKind !== tab));
+  if (table && tab !== "packages") [...table.children].forEach(row => row.classList.toggle("hidden", row.dataset.vpKind !== tab));
+  try { localStorage.setItem("levromart-vendor-listing-tab", tab); } catch (_) {}
 }
 
 async function openAddProductModal() {
@@ -18607,7 +18611,7 @@ async function savePackage() {
     // The package row is the primary save. Surface it immediately; package items
     // and engagement settings reconcile immediately after without freezing the modal.
     closePackageModal({ skipDraft: true });
-    await navigate("vendorPackages", {}, false);
+    await navigate("vendorProducts", {}, false);
     Promise.allSettled([
       (async () => {
         const { error: itemsError } = await sb.from("package_items").insert(items.map((it) => ({ ...it, package_id: packageId })));
@@ -18621,7 +18625,7 @@ async function savePackage() {
       }
       // Re-render after secondary persistence so package items/quantities and
       // engagement state cannot remain stale after the immediate primary-row UI.
-      navigate("vendorPackages", {}, false).catch(()=>{});
+      navigate("vendorProducts", {}, false).catch(()=>{});
     });
   } catch (err) {
     errorEl.textContent = err.message;
@@ -20098,8 +20102,9 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
     `Permanently delete "${businessName}"? Their storefront and all listings are pulled immediately, they're demoted back to an ordinary buyer account, and this stops showing on your dashboard. Past orders and reviews stay on record for buyers.`,
     { title: "Delete vendor", okLabel: "Delete vendor", danger: true }
   ))) return;
-  if (!(await promptAdminPassword(`permanently delete "${businessName}"`))) return;
-
+  // Vendor deletion is protected by the super-admin gate above, the
+  // confirmation dialog, and the server-side admin_delete_vendor RPC.
+  // Do not invoke the shared admin-password modal for this flow.
   adminVendorActionBusy.add(vendorId);
   let mutationSucceeded = false;
 
@@ -27332,18 +27337,6 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.levroCommissionInfo=function(){showToast?.('Commission is charged only on commission-based listings and is due within 7 days of the offline sale. You can pay it at any time before the deadline.','info')}
 
   // Unified My Shop listings page: products, services and packages in one screen.
-  window.switchVendorListingTab=function(tab){
-    tab=String(tab||'products');
-    if(tab==='all')tab='products';
-    document.querySelectorAll('[data-vendor-listing-section]').forEach(el=>el.classList.toggle('hidden',tab==='packages'?el.dataset.vendorListingSection!=='packages':el.dataset.vendorListingSection==='packages'));
-    document.querySelectorAll('.vendor-products-unified-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
-    document.querySelectorAll('[data-vendor-listing-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab!=='services'));
-    document.querySelectorAll('[data-vendor-listing-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab!=='products'));
-    document.querySelectorAll('[data-vp-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab!=='services'));
-    document.querySelectorAll('[data-vp-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab!=='products'));
-    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>{if(tab==='packages')g.classList.add('hidden');});
-    try{localStorage.setItem('levromart-vendor-listing-tab',tab)}catch(_){}
-  }
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
   window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
@@ -27377,9 +27370,9 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
     // Packages live in the same My Shop screen; they are loaded once and rendered as compact cards.
     if(!host.querySelector('[data-vendor-listing-section="packages"]')){
       try{
-        const r=await sb.from('vendor_packages').select('id,name,description,price,photos,status,billing_model,billing_paid_until,created_at').eq('vendor_id',vendor.id).neq('status','removed').order('created_at',{ascending:false});
+        const r=await sb.from('vendor_packages').select('id,name,description,price,photos,status,billing_model,billing_status,billing_paid_until,created_at,items:package_items(quantity,product:products(name))').eq('vendor_id',vendor.id).neq('status','removed').order('created_at',{ascending:false});
         const packs=r.data||[];const section=document.createElement('section');section.dataset.vendorListingSection='packages';section.className='vendor-unified-packages';
-        section.innerHTML='<div class="category-group-header"><i class="fa-solid fa-boxes-packing"></i> Packages</div>'+(packs.length?'<div class="vendor-product-card-grid">'+packs.map(x=>'<article class="card" data-package-id="'+escHtml(x.id)+'"><div class="product-img">'+(x.photos?.[0]?'<img src="'+escHtml(x.photos[0])+'" alt="" loading="lazy">':'<i class="fa-solid fa-box-open"></i>')+'</div><h4>'+escHtml(x.name)+'</h4><p class="muted">'+escHtml(x.description||'Package')+(x.billing_paid_until ? ' · '+listingExpiryMarkup(x) : '')+'</p><strong>'+naira(x.price)+'</strong><div style="margin-top:.5rem;display:flex;gap:.35rem"><button class="btn btn-sm btn-outline" onclick="navigate(\'vendorPackages\')">Manage</button></div></article>').join('')+'</div>':'<div class="empty-state">No packages yet.</div>');
+        section.innerHTML='<div class="category-group-header"><i class="fa-solid fa-boxes-packing"></i> Packages</div>'+(packs.length?'<div class="vendor-product-card-grid">'+packs.map(x=>'<article class="card" data-package-id="'+escHtml(x.id)+'"><div class="product-img">'+(x.photos?.[0]?'<img src="'+escHtml(x.photos[0])+'" alt="" loading="lazy">':'<i class="fa-solid fa-box-open"></i>')+'</div><div class="flex" style="justify-content:space-between;gap:.4rem;"><h4 style="margin:0;">'+escHtml(x.name)+'</h4><span class="badge '+(x.status==='active'?'success':'warning')+'">'+escHtml(x.status||'paused')+'</span></div><p class="muted">'+escHtml(x.description||'Package')+'</p><p class="muted" style="font-size:.78rem;">'+(x.items||[]).map(it=>`${Number(it.quantity)||1}× ${escHtml(it.product?.name||'')}`).join(', ')+'</p>'+(x.billing_model==='monthly'&&x.billing_status==='pending_payment'?'<p class="muted"><i class="fa-solid fa-clock"></i> Monthly activation pending</p>':'')+(x.billing_paid_until?' · '+listingExpiryMarkup(x):'')+'<p style="margin:.35rem 0;"><strong>'+naira(x.price)+'</strong></p><div style="margin-top:.5rem;display:flex;gap:.35rem;"><button type="button" class="btn btn-sm btn-outline" onclick="navigate(\'vendorPackages\')">Manage</button></div></article>').join('')+'</div>':'<div class="empty-state">No packages yet.</div>');
         host.appendChild(section);
       }catch(_){ }
     }
