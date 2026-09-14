@@ -17485,8 +17485,6 @@ async function renderVendorProducts() {
   html += `<div class="vendor-products-unified-tabs" id="vendorProductsTypeTabs" aria-label="Listing type">
     <button type="button" class="active" data-tab="all" onclick="switchVendorListingTab('all')"><i class="fa-solid fa-layer-group"></i> All listings</button>
     <button type="button" data-tab="products" onclick="switchVendorListingTab('products')"><i class="fa-solid fa-box"></i> Products</button>
-    <button type="button" data-tab="services" onclick="switchVendorListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button>
-    <button type="button" data-tab="packages" onclick="switchVendorListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button>
   </div>`;
 
   html += `<div id="vendorDiscardedPanel" class="vendor-discarded-panel hidden">
@@ -17600,14 +17598,16 @@ function filterVendorProducts() {
 
 function switchVendorListingTab(tab) {
   tab = String(tab || "all").toLowerCase();
-  if (!["all","products","services","packages"].includes(tab)) tab = "all";
+  if (!["all","products"].includes(tab)) tab = "all";
   document.querySelectorAll("#vendorProductsTypeTabs [data-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
   document.querySelectorAll("#app [data-vp-kind]").forEach(el => {
     const kind = el.dataset.vpKind;
-    el.classList.toggle("hidden", tab !== "all" && kind !== tab);
+    el.classList.toggle("hidden", tab === "products" && kind !== "products");
   });
   document.querySelectorAll("#app [data-vendor-listing-section]").forEach(section => {
-    section.classList.toggle("hidden", tab !== "all" && section.dataset.vendorListingSection !== tab);
+    // All listings intentionally shows every listing type, including services
+    // and packages. There are no separate Services/Packages tabs anymore.
+    section.classList.toggle("hidden", tab === "products" && section.dataset.vendorListingSection !== "products");
   });
 }
 
@@ -27216,15 +27216,15 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 
   // Unified My Shop listings page: products, services and packages in one screen.
   window.switchVendorListingTab=function(tab){
-    tab=String(tab||'products');
-    if(tab==='all')tab='products';
-    document.querySelectorAll('[data-vendor-listing-section]').forEach(el=>el.classList.toggle('hidden',tab==='packages'?el.dataset.vendorListingSection!=='packages':el.dataset.vendorListingSection==='packages'));
+    tab=String(tab||'all').toLowerCase();
+    if(tab!=='products'&&tab!=='all')tab='all';
     document.querySelectorAll('.vendor-products-unified-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
-    document.querySelectorAll('[data-vendor-listing-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab!=='services'));
-    document.querySelectorAll('[data-vendor-listing-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab!=='products'));
-    document.querySelectorAll('[data-vp-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab!=='services'));
-    document.querySelectorAll('[data-vp-kind="products"]').forEach(card=>card.classList.toggle('hidden',tab!=='products'));
-    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>{if(tab==='packages')g.classList.add('hidden');});
+    document.querySelectorAll('[data-vendor-listing-section]').forEach(el=>el.classList.toggle('hidden',tab==='products'&&el.dataset.vendorListingSection!=='products'));
+    document.querySelectorAll('[data-vendor-listing-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab==='products'));
+    document.querySelectorAll('[data-vendor-listing-kind="products"]').forEach(card=>card.classList.toggle('hidden',false));
+    document.querySelectorAll('[data-vp-kind="services"]').forEach(card=>card.classList.toggle('hidden',tab==='products'));
+    document.querySelectorAll('[data-vp-kind="products"]').forEach(card=>card.classList.toggle('hidden',false));
+    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>g.classList.toggle('hidden',tab==='products'&&g.dataset.vendorListingSection!=='products'));
     try{localStorage.setItem('levromart-vendor-listing-tab',tab)}catch(_){}
   }
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
@@ -27235,9 +27235,9 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading || !vendor?.id)return;
 
-    // The base vendor-products renderer owns the four-tab rail. This enhancer
-    // only hydrates the package side of that rail; it never creates a second
-    // tab row.
+    // The base vendor-products renderer owns the two-tab rail. This enhancer
+    // only hydrates package data into All listings; it never creates a
+    // Services/Packages tab or a second tab row.
     const rail=document.querySelector('#vendorProductsTypeTabs');
     if(rail){
       const expected=[
