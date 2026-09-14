@@ -6466,7 +6466,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 #app .product-gallery-variant-meta strong{font-size:.78rem!important;}
 #app .product-gallery-variant-price{white-space:nowrap!important;color:var(--primary)!important;}
 /* Variety indicator added to card metadata without creating a large badge. */
-#app .product-variety-indicator{display:inline-flex!important;align-items:center!important;gap:.2rem!important;color:var(--muted)!important;font-size:.65rem!important;font-weight:750!important;white-space:nowrap!important;}
+#app .product-variety-indicator{color:var(--primary)!important;display:inline-flex!important;align-items:center!important;gap:.2rem!important;color:var(--muted)!important;font-size:.65rem!important;font-weight:750!important;white-space:nowrap!important;}
 /* Vendor storefront avatars are geometrically locked to a true circle. */
 #app .storefront-profile .storefront-avatar,
 #app .storefront-profile .storefront-avatar-button,
@@ -6475,6 +6475,20 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 #app .storefront-profile .storefront-avatar-button img,
 #app .storefront-profile .storefront-avatar-fallback-button .avatar-fallback{width:82px!important;height:82px!important;min-width:82px!important;min-height:82px!important;max-width:82px!important;max-height:82px!important;aspect-ratio:1 / 1!important;border-radius:50%!important;overflow:hidden!important;box-sizing:border-box!important;}
 #app .storefront-profile .storefront-avatar img,#app .storefront-profile .storefront-avatar-button img{object-fit:cover!important;display:block!important;}
+</style>
+<style id="levromart-astra-vendor-listing-precision">
+.product-display-picture-editor{min-height:150px;border:1px solid var(--border);border-radius:14px;background:var(--input-bg);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;position:relative;margin:.25rem 0 .7rem;}
+.product-display-picture-editor img{display:block;width:100%;height:100%;max-height:230px;object-fit:cover;}
+.product-display-picture-editor .display-picture-empty{display:flex;flex-direction:column;align-items:center;gap:.35rem;color:var(--text-muted);font-size:.78rem;}
+.product-display-picture-menu{position:fixed;z-index:2147483602;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:13px;box-shadow:var(--shadow-float);padding:.3rem;min-width:160px;}
+.product-display-picture-menu button{width:100%;border:0;background:transparent;color:var(--text);padding:.65rem .75rem;text-align:left;border-radius:9px;cursor:pointer;font:inherit;font-size:.8rem;}
+.product-display-picture-menu button:hover{background:color-mix(in srgb,var(--primary) 10%,transparent);}
+.variant-dnd-handle{cursor:grab;color:var(--text-muted);touch-action:none;padding:.35rem;}
+.variant-dnd-handle:active{cursor:grabbing;}
+.variant-price-row.dragging{opacity:.55;}
+.product-variant-pricing .variant-extra-fields{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;}
+.product-variety-add-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.45rem;margin-top:.5rem;}
+@media(max-width:520px){.product-variety-add-row{grid-template-columns:1fr}.product-display-picture-editor{min-height:125px}}
 </style>
 </head>
 <body>
@@ -6838,18 +6852,21 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <label>Quantity available</label>
       <input type="number" id="prodQtyTotal" value="1" min="1" />
     </div>
-    <label>Photos</label>
-    <div class="photo-grid" id="prodExistingPhotos"></div>
+    <label>Display picture</label>
+    <div id="prodDisplayPicture" class="product-display-picture-editor" role="button" tabindex="0" onclick="openProductDisplayPictureActions(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProductDisplayPictureActions(event)}"></div>
+    <label>Additional photos</label>
     <label class="photo-dropzone" id="photoDropzone" for="prodPhotoFiles">
       <i class="fa-solid fa-cloud-arrow-up"></i>
       <strong>Add photos</strong>
       <span class="muted">Tap to choose, or drag images here</span>
     </label>
     <input type="file" id="prodPhotoFiles" accept="image/*" multiple class="hidden" onchange="previewNewProductPhotos()" />
+    <div class="photo-grid" id="prodExistingPhotos"></div>
     <div class="photo-grid" id="prodNewPhotoPreviews"></div>
     <div class="product-variant-pricing" id="productVariantPricing"></div>
+    <button type="button" class="btn btn-outline btn-sm" style="margin-top:.7rem;" onclick="addProductVarietyDraft()"><i class="fa-solid fa-plus"></i> Add variety</button>
     <div class="flex" style="justify-content: flex-end; margin-top:0.8rem;">
-      <button class="btn btn-sm" style="background:#6b7280;" onclick="closeProductModal()">Cancel</button>
+      <button type="button" class="btn btn-sm" style="background:#6b7280;" onclick="clearNewListingDraft('product');closeProductModal()">Cancel</button>
       <button class="btn btn-outline hidden" id="saveProductDraftBtn" onclick="saveProductAsDraft()"><i class="fa-solid fa-file-lines"></i> Save draft</button>
       <button class="btn" id="saveProductBtn" onclick="saveProduct()">Save to Product</button>
     </div>
@@ -6895,7 +6912,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <div id="pkgItemsList" class="pkg-items-list"></div>
     <p class="muted" style="font-size:0.8rem;">Only your products listed for sale can go in a package. The photos above are the package/gallery images customers see.</p>
     <div class="flex" style="justify-content: flex-end; margin-top:0.8rem;">
-      <button class="btn btn-sm" style="background:#6b7280;" onclick="closePackageModal()">Cancel</button>
+      <button type="button" class="btn btn-sm" style="background:#6b7280;" onclick="clearNewListingDraft('package');closePackageModal()">Cancel</button>
       <button class="btn" id="savePackageBtn" onclick="savePackage()">Save Package</button>
     </div>
   </div>
@@ -7268,14 +7285,33 @@ function pushSupported() {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 function maybeShowNotifPrompt() {
-  if (!session) return;
-  if (!pushSupported()) return;
-  if (Notification.permission !== "default") return; // already granted or denied - nothing to ask
-  if (localStorage.getItem("medris-notif-dismissed")) return;
+  if (!session || !pushSupported()) return;
+  if (Notification.permission === "granted") { byId("notifPromptModal")?.classList.add("hidden"); return; }
+  const cooldownKey = "levromart-notif-prompt-v2";
+  let state = {}; try { state = JSON.parse(localStorage.getItem(cooldownKey) || "{}"); } catch (_) {}
+  if (Notification.permission === "denied") {
+    const deniedUntil = Number(state.deniedUntil || 0);
+    if (Date.now() < deniedUntil) return;
+    const installModal = byId("installPromptModal");
+    if (installModal && !installModal.classList.contains("hidden")) return;
+    const prompt = byId("notifPromptModal");
+    if (!prompt) return;
+    const btn = prompt.querySelector("button[onclick*='enablePushNotifications']");
+    const body = prompt.querySelector("p");
+    if (body) body.textContent = "Notifications are blocked for Levromart. Open your browser/site settings to allow them.";
+    if (btn) { btn.textContent = "Open notification settings"; btn.onclick = () => { showToast("Open your browser's site settings and allow notifications for Levromart, then try again.", "info"); }; }
+    prompt.classList.remove("hidden"); trackModalOpened("notifPromptModal");
+    try { localStorage.setItem(cooldownKey, JSON.stringify({ ...state, deniedUntil: Date.now() + 24*60*60*1000 })); } catch (_) {}
+    return;
+  }
+  if (Number(state.dismissedUntil || 0) > Date.now()) return;
   const installModal = byId("installPromptModal");
-  if (installModal && !installModal.classList.contains("hidden")) return; // don't stack two popups
-  byId("notifPromptModal")?.classList.remove("hidden");
+  if (installModal && !installModal.classList.contains("hidden")) return;
+  const prompt = byId("notifPromptModal");
+  if (!prompt) return;
+  prompt.classList.remove("hidden");
   trackModalOpened("notifPromptModal");
+  try { localStorage.setItem(cooldownKey, JSON.stringify({ ...state, shownAt: Date.now(), dismissedUntil: Date.now() + 6*60*60*1000 })); } catch (_) {}
 }
 function dismissNotifPrompt() {
   byId("notifPromptModal")?.classList.add("hidden");
@@ -7311,28 +7347,30 @@ async function refreshPushSubscription() {
   }
 }
 async function enablePushNotifications() {
+  if (!pushSupported()) { showToast("Push notifications are not supported on this browser.", "error"); return; }
   try {
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") { dismissNotifPrompt(); return; }
-    if (!pushSupported()) throw new Error("Push notifications are not supported on this browser.");
+    if (permission !== "granted") {
+      byId("notifPromptModal")?.classList.add("hidden");
+      try { localStorage.setItem("levromart-notif-prompt-v2", JSON.stringify({ deniedUntil: Date.now() + 24*60*60*1000 })); } catch (_) {}
+      if (permission === "denied") showToast("Notifications are blocked. Allow them from your browser/site settings when ready.", "info");
+      return;
+    }
     if (isIos() && !isStandalone()) {
       showToast("On iPhone, add Levromart to your Home Screen first, then turn notifications on.", "info");
       return;
     }
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-    }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
     await syncPushSubscription(reg);
+    try { localStorage.removeItem("levromart-notif-prompt-v2"); localStorage.removeItem("medris-notif-dismissed"); } catch (_) {}
+    byId("notifPromptModal")?.classList.add("hidden");
+    if (dismissibleModalId === "notifPromptModal") dismissibleModalId = null;
     showToast("Notifications turned on.", "success");
   } catch (err) {
-    showToast("Couldn't turn on notifications on this device.", "error");
+    showToast(err?.message || "Couldn't turn on notifications on this device.", "error");
   }
-  dismissNotifPrompt();
 }
 
 // ---------- FIRST-VISIT APP TOUR (live - walks the real pages, spotlights real elements) ----------
@@ -11924,15 +11962,17 @@ async function renderHome() {
   const stableBrowseProducts = Array.isArray(browseProducts) && browseProducts.length
     ? browseProducts
     : knownGoodBrowseCatalog;
-  window.__homeBrowseCatalog = stableBrowseProducts;
+  const hourlyBrowseProducts = deterministicHourlyShuffle(stableBrowseProducts, `browse:${activeSector?.id||"all"}`);
+  window.__homeBrowseCatalog = hourlyBrowseProducts;
   const homepageCarouselSlides = await loadHomepageCarouselSlides();
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
   // must not be overwritten with only the currently selected category.
-  const cachedTrending = (browseProducts || []).slice().sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0)).slice(0, 20);
+  const trendingBase = (browseProducts || []).slice().sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0)).slice(0, 20);
+  const cachedTrending = deterministicHourlyShuffle(trendingBase, "trending");
   writeOfflineHomeCache({
     categories, sectors: sectors || sectorsData || [], trending: cachedTrending,
-    browseProducts: stableBrowseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
+    browseProducts: hourlyBrowseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
   });
 
   const allHomePackages = packages || [];
@@ -12097,6 +12137,12 @@ function switchSector(sectorId) {
   const painted = paintHomeFromLocalCatalog(false);
   if (!painted) navigate("home", {}, false);
   else refreshHomeCategorySelection();
+}
+
+function deterministicHourlyShuffle(list, seedSource){
+  const arr=Array.isArray(list)?list.slice():[]; const hour=Math.floor(Date.now()/3600000); const seed=String(seedSource||'levromart')+':'+hour;
+  let h=2166136261; for(let i=0;i<seed.length;i++){h^=seed.charCodeAt(i); h=Math.imul(h,16777619);} const rand=()=>{h+=0x6D2B79F5; let t=h; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296;};
+  for(let i=arr.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr;
 }
 
 function scrollToBrowse(listingType) {
@@ -17045,7 +17091,7 @@ async function renderVendorEditProfile() {
     <label>WhatsApp number</label><input id="veWhatsapp" type="tel" value="${esc(v.whatsapp_number || "")}" oninput="const w=byId('veWhatsappVisible'); if(w) w.disabled=!this.value.trim();" />
     <div class="switch-row" style="margin-top:.45rem;">
       <span class="switch-label-text">Show WhatsApp number to buyers</span>
-      <label class="switch-toggle"><input type="checkbox" id="veWhatsappVisible" ${v.whatsapp_visible === true ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappVisibility()" /><span class="switch-toggle-track"></span></label>
+      <label class="switch-toggle"><input type="checkbox" id="veWhatsappVisible" ${v.whatsapp_visible !== false ? "checked" : ""} ${v.whatsapp_number ? "" : "disabled"} onchange="toggleVendorWhatsappVisibility()" /><span class="switch-toggle-track"></span></label>
     </div>
     <p class="muted vendor-profile-setting-note">Delivery is configured separately for each product or service listing.</p>
     <label>About your business</label><textarea id="veBio" rows="3">${esc(v.bio || "")}</textarea>
@@ -17651,6 +17697,7 @@ async function showProductModal() {
     byId("prodLikeVisibility").value=engagement?.like_visibility||"everyone";byId("prodAllowComments").checked=engagement?.allow_comments!==false;byId("prodCommentAudience").value=engagement?.comment_audience||"everyone";
     window.__existingPhotos = p.photos || [];
     renderExistingPhotos();
+    renderProductDisplayPicture();
     renderProductVariantPricing();
     const currentCat = productModalCategories.find((c) => c.id === p.category_id);
     sectorSelect.value = currentCat?.sector_id || vendor.sector_id || productModalSectors[0]?.id || "";
@@ -17745,6 +17792,7 @@ function syncNewProductPhotoInput() {
 function renderNewProductPhotos() {
   const wrap = byId("prodNewPhotoPreviews");
   if (!wrap) return;
+  wrap.innerHTML = "";
   (window.__newProductPhotoFiles || []).forEach((f, index) => {
     const url = URL.createObjectURL(f);
     const safeName = esc(f.name || "Image");
@@ -17755,8 +17803,16 @@ function renderNewProductPhotos() {
   });
 }
 function previewNewProductPhotos() {
-  window.__newProductPhotoFiles = [...(byId("prodPhotoFiles").files || [])];
+  const files=[...(byId("prodPhotoFiles").files || [])].filter(f=>f.type?.startsWith("image/"));
+  if(window.__replaceDisplayPicture && files.length){
+    window.__existingPhotos=(window.__existingPhotos||[]).slice(1);
+    window.__newProductPhotoFiles=files;
+  }else{
+    window.__newProductPhotoFiles=files;
+  }
+  syncNewProductPhotoInput();
   renderNewProductPhotos();
+  renderProductDisplayPicture();
   renderProductVariantPricing();
 }
 function removeNewProductPhoto(index) {
@@ -17850,71 +17906,106 @@ function closeProductModal() {
   if (dismissibleModalId === "productModal") dismissibleModalId = null;
 }
 
+function renderProductDisplayPicture(){
+  const wrap=byId('prodDisplayPicture'); if(!wrap)return;
+  const url=(window.__newProductPhotoFiles?.[0] && (!(window.__existingPhotos||[]).length || window.__replaceDisplayPicture)) ? URL.createObjectURL(window.__newProductPhotoFiles[0]) : ((window.__existingPhotos||[])[0] || '');
+  wrap.innerHTML=url?`<img src="${esc(url)}" alt="Display picture"><span style="position:absolute;left:.55rem;bottom:.55rem;padding:.25rem .45rem;border-radius:999px;background:rgba(0,0,0,.58);color:#fff;font-size:.62rem;font-weight:700;">Main card image · tap to edit</span>`:`<div class="display-picture-empty"><i class="fa-regular fa-image"></i><strong>No display picture</strong><span>Tap to choose an image</span></div>`;
+}
+function openProductDisplayPictureActions(event){
+  event?.preventDefault?.(); event?.stopPropagation?.(); document.getElementById('productDisplayPictureMenu')?.remove();
+  const menu=document.createElement('div'); menu.id='productDisplayPictureMenu'; menu.className='product-display-picture-menu';
+  menu.innerHTML='<button type="button" data-action="replace"><i class="fa-solid fa-rotate"></i> Replace</button><button type="button" data-action="delete"><i class="fa-solid fa-trash"></i> Delete</button>';
+  document.body.appendChild(menu); const r=byId('prodDisplayPicture').getBoundingClientRect(); menu.style.left=`${Math.min(r.left,window.innerWidth-180)}px`; menu.style.top=`${Math.min(r.bottom+6,window.innerHeight-90)}px`;
+  menu.addEventListener('click',e=>{const action=e.target.closest?.('button')?.dataset.action; if(action==='replace'){window.__replaceDisplayPicture=true;byId('prodPhotoFiles')?.click();} else if(action==='delete'){window.__existingPhotos=(window.__existingPhotos||[]).slice(1);renderExistingPhotos();renderProductDisplayPicture();} menu.remove();});
+  setTimeout(()=>document.addEventListener('pointerdown',function close(ev){if(!menu.contains(ev.target)){menu.remove();document.removeEventListener('pointerdown',close)}},{once:true}),0);
+}
+function clearProductDisplayPicture(){window.__existingPhotos=(window.__existingPhotos||[]).slice(1);renderExistingPhotos();renderProductDisplayPicture();}
+
 function renderProductVariantPricing() {
   const wrap = byId("productVariantPricing");
   if (!wrap) return;
+  const variants = Array.isArray(window.__productVariants) ? window.__productVariants : [];
   const existing = Array.isArray(window.__existingPhotos) ? window.__existingPhotos : [];
   const pending = Array.isArray(window.__newProductPhotoFiles) ? window.__newProductPhotoFiles : [];
   const rows = [];
-  const variants = Array.isArray(window.__productVariants) ? window.__productVariants : [];
-
-  existing.forEach((url, idx) => {
-    const v = variants.find(x => String(x.photo_url || "") === String(url)) || {};
-    rows.push({ source: "existing", key: `existing-${idx}`, photo: url, name: v.name || "", sale: v.sale_price ?? "", discount: v.discount_price ?? "" });
-  });
-  pending.forEach((file, idx) => {
-    const v = variants.find(x => x.temp_index === idx) || {};
-    rows.push({ source: "new", key: `new-${idx}`, photo: URL.createObjectURL(file), name: v.name || "", sale: v.sale_price ?? "", discount: v.discount_price ?? "" });
-  });
-
-  if (!rows.length) {
-    wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties &amp; individual prices</strong><div class="variant-price-note">Add photos above first. Each photo can optionally represent a different variety with its own price.</div></div></div>`;
-    return;
-  }
-  wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties &amp; individual prices</strong><div class="variant-price-note">Optional. Give a photo a variety name and its own sale price when different varieties cost different amounts. Leave the fields blank for normal product photos.</div></div></div>
-    ${rows.map(r => `<div class="variant-price-row" data-variant-source="${r.source}" data-variant-key="${r.key}" data-photo-url="${r.source === "existing" ? esc(r.photo) : ""}">
-      <div class="variant-price-thumb"><img src="${esc(r.photo)}" alt="" /></div>
-      <input class="variant-name" type="text" maxlength="120" placeholder="Variety name e.g. Black" value="${esc(r.name)}" />
-      <input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="Sale price" value="${r.sale === "" ? "" : esc(String(r.sale))}" />
-      <input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="Discount price" value="${r.discount === "" ? "" : esc(String(r.discount))}" />
-      <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Clear this variety price" title="Clear variety price"><i class="fa-solid fa-xmark"></i></button>
-    </div>`).join("")}`;
+  variants.forEach((v, index) => rows.push({ ...v, _localKey: String(v.id || `variant-${index}`), _source: v.photo_url ? "existing" : "none" }));
+  if (!rows.length && existing.length) existing.forEach((url, idx)=>rows.push({ _localKey:`photo-${idx}`, photo_url:url, name:"", sale_price:"", discount_price:"", sort_order:idx }));
+  if (!rows.length && pending.length) pending.forEach((f, idx)=>rows.push({ _localKey:`new-${idx}`, photo_url:"", name:"", sale_price:"", discount_price:"", sort_order:idx, temp_index:idx }));
+  if (!rows.length) { wrap.innerHTML='<div class="product-variant-pricing-head"><strong>Varieties</strong><div class="variant-price-note">Use “Add variety” to create customer-facing varieties. A product without varieties works normally.</div></div>'; renderProductDisplayPicture(); return; }
+  wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Drag to reorder. Size and Color may be left blank.</div></div></div>${rows.map((r,i)=>{
+    const image = r.photo_url || (r.temp_index != null ? pending[r.temp_index] && URL.createObjectURL(pending[r.temp_index]) : "") || "";
+    return `<div class="variant-price-row" draggable="true" data-variant-key="${esc(String(r.id || r._localKey))}" data-photo-url="${esc(r.photo_url||"")}" data-temp-index="${r.temp_index ?? ""}">
+      <button type="button" class="variant-dnd-handle" aria-label="Drag to reorder" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></button>
+      <div class="variant-price-thumb">${image?`<img src="${esc(image)}" alt="">`:`<i class="fa-regular fa-image"></i>`}</div>
+      <input class="variant-name" type="text" maxlength="120" placeholder="Variety name" value="${esc(r.name||"")}">
+      <input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="Price" value="${r.sale_price==null?"":esc(String(r.sale_price))}">
+      <input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="Discount price" value="${r.discount_price==null?"":esc(String(r.discount_price))}">
+      <select class="variant-image" aria-label="Variety image">${existing.map((u,j)=>`<option value="${esc(u)}" ${String(r.photo_url||"")===String(u)?"selected":""}>Image ${j+1}${j===0?" (display)":""}</option>`).join("")}<option value="" ${!r.photo_url?"selected":""}>No image</option></select>
+      <div class="variant-extra-fields"><input class="variant-size" type="text" maxlength="80" placeholder="Size" value="${esc(r.size||"")}"><input class="variant-color" type="text" maxlength="80" placeholder="Color" value="${esc(r.color||"")}"></div>
+      <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Clear this variety" title="Clear this variety"><i class="fa-solid fa-xmark"></i></button>
+    </div>`;
+  }).join("")}`;
+  bindProductVariantDnd();
+  renderProductDisplayPicture();
+}
+function addProductVarietyDraft() {
+  const variants = Array.isArray(window.__productVariants) ? window.__productVariants : (window.__productVariants=[]);
+  variants.push({ id:null, _localKey:`local-${crypto.randomUUID()}`, name:"", sale_price:"", discount_price:"", photo_url:(window.__existingPhotos||[])[0]||"", sort_order:variants.length });
+  window.__productVariants = variants;
+  renderProductVariantPricing();
+  const rows=document.querySelectorAll('#productVariantPricing .variant-price-row');
+  rows[rows.length-1]?.querySelector('.variant-name')?.focus();
 }
 function clearProductVariantRow(btn) {
-  const row = btn?.closest?.(".variant-price-row");
-  if (!row) return;
-  row.querySelectorAll("input").forEach(i => i.value = "");
+  const row=btn?.closest?.('.variant-price-row'); if(!row)return;
+  const key=String(row.dataset.variantKey||"");
+  window.__productVariants=(window.__productVariants||[]).filter(v=>String(v.id||v._localKey||"")!==key);
+  renderProductVariantPricing();
+}
+function bindProductVariantDnd(){
+  const wrap=byId('productVariantPricing'); if(!wrap||wrap.dataset.dndBound==='1')return; wrap.dataset.dndBound='1';
+  let dragged=null;
+  wrap.addEventListener('dragstart',e=>{const row=e.target.closest?.('.variant-price-row');if(!row)return;dragged=row;row.classList.add('dragging');try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',row.dataset.variantKey||'')}catch(_){}},true);
+  wrap.addEventListener('dragend',()=>{dragged?.classList.remove('dragging');dragged=null;persistVisibleVariantOrder();},true);
+  wrap.addEventListener('dragover',e=>{if(!dragged)return;e.preventDefault();const row=e.target.closest?.('.variant-price-row');if(!row||row===dragged)return;const rect=row.getBoundingClientRect();const before=e.clientY<rect.top+rect.height/2;row.parentNode.insertBefore(dragged,before?row:row.nextSibling);},true);
+  let touchY=null, touchRow=null;
+  wrap.addEventListener('pointerdown',e=>{const h=e.target.closest?.('.variant-dnd-handle');if(!h)return;touchRow=h.closest('.variant-price-row');touchY=e.clientY;try{h.setPointerCapture(e.pointerId)}catch(_){}},true);
+  wrap.addEventListener('pointermove',e=>{if(!touchRow)return; if(Math.abs(e.clientY-(touchY||e.clientY))<10)return; const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.variant-price-row'); if(!target||target===touchRow||!wrap.contains(target))return; const before=e.clientY<target.getBoundingClientRect().top+target.getBoundingClientRect().height/2; target.parentNode.insertBefore(touchRow,before?target:target.nextSibling);},true);
+  wrap.addEventListener('pointerup',()=>{if(touchRow){persistVisibleVariantOrder();touchRow=null;}},true);
+}
+function persistVisibleVariantOrder(){
+  const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
+  const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||""),v]));
+  window.__productVariants=rows.map((r,i)=>{const v=byKey.get(String(r.dataset.variantKey||""))||{};return {...v, name:r.querySelector('.variant-name')?.value?.trim()||v.name||"", sale_price:r.querySelector('.variant-sale-price')?.value||v.sale_price||"", discount_price:r.querySelector('.variant-discount-price')?.value||v.discount_price||"", size:r.querySelector('.variant-size')?.value||v.size||"", color:r.querySelector('.variant-color')?.value||v.color||"", photo_url:r.querySelector('.variant-image')?.value || r.dataset.photoUrl || v.photo_url || "", sort_order:i};});
 }
 function collectProductVariantDrafts(photoUrls) {
-  const rows = [...document.querySelectorAll("#productVariantPricing .variant-price-row")];
-  const drafts = [];
-  rows.forEach((row) => {
-    const name = String(row.querySelector(".variant-name")?.value || "").trim();
-    const saleRaw = row.querySelector(".variant-sale-price")?.value;
-    const discountRaw = row.querySelector(".variant-discount-price")?.value;
-    const sale = saleRaw === "" ? null : Number(saleRaw);
-    const discount = discountRaw === "" ? null : Number(discountRaw);
-    if (!name && sale == null && discount == null) return;
-    if (!name) throw new Error("Every individual variety price needs a variety name.");
-    if (!Number.isFinite(sale) || sale <= 0) throw new Error(`Enter a valid sale price for ${name}.`);
-    if (discount != null && (!Number.isFinite(discount) || discount <= 0 || discount >= sale)) throw new Error(`Discount price for ${name} must be lower than its regular price.`);
-    let photoUrl = row.dataset.photoUrl || "";
-    if (row.dataset.variantSource === "new") {
-      const idx = Number(String(row.dataset.variantKey || "").split("-").pop());
-      photoUrl = photoUrls[idx] || "";
-    }
-    drafts.push({ name, photo_url: photoUrl || null, sale_price: sale, discount_price: discount, sort_order: drafts.length });
+  persistVisibleVariantOrder();
+  const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
+  const drafts=[];
+  rows.forEach((row,index)=>{
+    const name=String(row.querySelector('.variant-name')?.value||'').trim();
+    const saleRaw=row.querySelector('.variant-sale-price')?.value; const discountRaw=row.querySelector('.variant-discount-price')?.value;
+    const sale=saleRaw===''?null:Number(saleRaw); const discount=discountRaw===''?null:Number(discountRaw);
+    const size=String(row.querySelector('.variant-size')?.value||'').trim()||null; const color=String(row.querySelector('.variant-color')?.value||'').trim()||null;
+    if(!name&&!sale&&!discount&&!size&&!color)return;
+    if(!name)throw new Error('Every variety needs a variety name.');
+    if(!Number.isFinite(sale)||sale<=0)throw new Error(`Enter a valid sale price for ${name}.`);
+    if(discount!=null&&(!Number.isFinite(discount)||discount<=0||discount>=sale))throw new Error(`Discount price for ${name} must be lower than its regular price.`);
+    let photoUrl=row.querySelector('.variant-image')?.value || row.dataset.photoUrl || '';
+    if(row.dataset.tempIndex!=='')photoUrl=photoUrls[Number(row.dataset.tempIndex)]||photoUrl;
+    drafts.push({name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,sort_order:index});
   });
   return drafts;
 }
-async function saveProductVariants(productId, drafts) {
-  if (!productId) return;
-  const { error: delErr } = await sb.from("product_variants").delete().eq("product_id", productId);
-  if (delErr) throw delErr;
-  if (!drafts.length) return;
-  const payload = drafts.map(d => ({ product_id: productId, ...d }));
-  const { error } = await sb.from("product_variants").insert(payload);
-  if (error) throw error;
+async function saveProductVariants(productId,drafts){
+  if(!productId)return; const {error:delErr}=await sb.from('product_variants').delete().eq('product_id',productId); if(delErr)throw delErr; if(!drafts.length)return;
+  const payload=drafts.map(d=>({product_id:productId,...d}));
+  let {error}=await sb.from('product_variants').insert(payload);
+  if(error && /column|schema cache|does not exist|unknown/i.test(String(error.message||''))){
+    const legacyPayload=payload.map(({size,color,...rest})=>rest);
+    const retry=await sb.from('product_variants').insert(legacyPayload); error=retry.error;
+  }
+  if(error)throw error;
 }
 
 function syncProductEngagementSettingsUI(){byId("prodCommentAudienceWrap")?.classList.toggle("hidden",!byId("prodAllowComments")?.checked);}
@@ -18069,25 +18160,28 @@ async function saveProduct() {
     };
     if (editingProductId) { delete fields.billing_model; delete fields.billing_status; delete fields.billing_paid_until; } else if (billing_model === "monthly") { fields.status = "paused"; }
 
+    window.__displayPictureWasReplaced = !!window.__replaceDisplayPicture || (!((window.__existingPhotos || []).length) && !!(window.__newProductPhotoFiles || []).length);
     const newFiles = [...(window.__newProductPhotoFiles || byId("prodPhotoFiles").files || [])];
-    const newPhotoUrls = [];
-    for (const file of newFiles) {
-      const ext = file.name.split(".").pop() || "jpg";
+    const newPhotoUrls = await Promise.all(newFiles.map(async (file) => {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${vendor.id}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await sb.storage.from("product-photos").upload(path, file, { contentType: file.type });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
-      const { data } = sb.storage.from("product-photos").getPublicUrl(path);
-      newPhotoUrls.push(data.publicUrl);
-    }
-    const photos = [...(window.__existingPhotos || []), ...newPhotoUrls];
+      return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
+    }));
+    const photos = window.__displayPictureWasReplaced && newPhotoUrls.length
+      ? [newPhotoUrls[0], ...(window.__existingPhotos || []), ...newPhotoUrls.slice(1)]
+      : [...(window.__existingPhotos || []), ...newPhotoUrls];
 
     let savedProductId = editingProductId;
     let variantDrafts = [];
+    let soldUnits = 0;
     const isNewMonthlyListing = !editingProductId && billing_model === "monthly";
     if (editingProductId) {
       const { data: existing } = await sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single();
       const sold = existing ? existing.quantity_total - existing.quantity_available : 0;
-      const quantity_available = Math.max(quantity_total - sold, 0);
+      soldUnits = Math.max(Number(sold) || 0, 0);
+      const quantity_available = Math.max(quantity_total - soldUnits, 0);
       const { error } = await sb.from("products").update({ ...fields, quantity_available, photos }).eq("id", editingProductId);
       if (error) throw new Error(error.message);
     } else if (!isNewMonthlyListing) {
@@ -18117,11 +18211,35 @@ async function saveProduct() {
       await openManualMonthlyPayment("product", null, { isNew: true, draft: window.__manualMonthlyNewDraft });
       return;
     }
-    if (!is_service) await saveProductVariants(savedProductId, variantDrafts);
-    await saveProductEngagementSettings(savedProductId);
-
+    window.clearListingDraft?.("product", editingProductId || "new");
+    // Primary row is now durably saved. Give the vendor the completed UI response
+    // immediately; variants/engagement reconciliation can safely finish in background.
+    const primarySavedProduct = {
+      id: savedProductId, ...fields, vendor_id: vendor.id, photos,
+      quantity_available: Math.max(quantity_total - soldUnits, 0)
+    };
     closeProductModal();
-    await refreshVisibleProductAfterSave(savedProductId);
+    window.__homeBrowseCatalog = Array.isArray(window.__homeBrowseCatalog)
+      ? window.__homeBrowseCatalog.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p) : window.__homeBrowseCatalog;
+    if (currentProductDetail && String(currentProductDetail.id) === String(savedProductId)) currentProductDetail = { ...currentProductDetail, ...primarySavedProduct };
+    document.querySelectorAll(`.product-card-wrap[data-product-id="${CSS.escape(String(savedProductId))}"]`).forEach(node => {
+      const context = node.querySelector(".product-card-action-row")?.classList.contains("trending-card-action-row") ? "trending" : "";
+      const tpl = document.createElement("template"); tpl.innerHTML = productCardHtml({ ...primarySavedProduct, _cardContext: context }).trim();
+      if (tpl.content.firstElementChild) node.replaceWith(tpl.content.firstElementChild);
+    });
+    window.__replaceDisplayPicture = false;
+    window.__displayPictureWasReplaced = false;
+    if (currentView === "vendorProducts") await navigate("vendorProducts", {}, false);
+    else if (currentView === "productDetail" && String(currentViewParams?.productId) === String(savedProductId)) await navigate("productDetail", { productId: savedProductId }, false);
+
+    Promise.allSettled([
+      !is_service ? saveProductVariants(savedProductId, variantDrafts) : Promise.resolve(),
+      saveProductEngagementSettings(savedProductId)
+    ]).then(async results => {
+      const failed = results.filter(r => r.status === "rejected");
+      if (failed.length) showToast("Listing saved, but one secondary setting could not be synchronized. It has been queued for refresh.", "info");
+      try { await refreshVisibleProductAfterSave(savedProductId); } catch (e) { console.warn("[Levromart] Post-save product reconciliation failed:", e); }
+    });
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove("hidden");
@@ -18419,15 +18537,13 @@ async function savePackage() {
     if (items.length === 0) throw new Error("Pick at least one product for this package.");
 
     const newFiles = [...(window.__newPackagePhotoFiles || byId("pkgPhotoFiles")?.files || [])];
-    const newPhotoUrls = [];
-    for (const file of newFiles) {
+    const newPhotoUrls = await Promise.all(newFiles.map(async (file) => {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${vendor.id}/packages/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await sb.storage.from("product-photos").upload(path, file, { contentType: file.type });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
-      const { data } = sb.storage.from("product-photos").getPublicUrl(path);
-      newPhotoUrls.push(data.publicUrl);
-    }
+      return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
+    }));
     const photos = [...(window.__existingPackagePhotos || []), ...newPhotoUrls];
     const billing_model = byId("pkgBillingModel")?.value || "commission";
     const isNewPackage = !editingPackageId;
@@ -18463,12 +18579,21 @@ async function savePackage() {
       if (error) throw error;
       packageId = data.id;
     }
-    const { error: itemsError } = await sb.from("package_items").insert(items.map((it) => ({ ...it, package_id: packageId })));
-    if (itemsError) throw itemsError;
-    await savePackageEngagementSettings(packageId);
-
+    window.clearListingDraft?.("package", editingPackageId || "new");
+    // The package row is the primary save. Surface it immediately; package items
+    // and engagement settings reconcile immediately after without freezing the modal.
     closePackageModal();
-    navigate("vendorPackages");
+    await navigate("vendorPackages", {}, false);
+    Promise.allSettled([
+      (async () => {
+        const { error: itemsError } = await sb.from("package_items").insert(items.map((it) => ({ ...it, package_id: packageId })));
+        if (itemsError) throw itemsError;
+      })(),
+      savePackageEngagementSettings(packageId)
+    ]).then(results => {
+      const failed = results.filter(r => r.status === "rejected");
+      if (failed.length) { showToast("Package saved, but a secondary setting could not be synchronized. Refreshing its listing data.", "info"); navigate("vendorPackages", {}, false).catch(()=>{}); }
+    });
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove("hidden");
@@ -19710,7 +19835,7 @@ async function renderAdminPanel(status) {
       <div class="flex" style="margin-top:0.5rem;">
         ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}">Approve</button>` : ""}
         ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
-        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
+        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
       </div>
     </div>`;
   });
@@ -30390,23 +30515,37 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
   /* Request category: keep the picker synced after sector changes and support related lexical search without inventing values. */
   document.addEventListener('change',e=>{if(e.target?.id==='reqSector')setTimeout(()=>window.updateRequestCategoryOptions?.(),0)},true);
 
-  /* Drafts: preserve listing form state until explicit cancel or successful save. */
-  const DRAFT_PREFIX='levromart-listing-form-draft-v3';
-  function draftKey(kind='product'){return `${DRAFT_PREFIX}:${session?.user?.id||'guest'}:${kind}`}
+  /* Drafts: debounced, user-scoped and identity-scoped. Backdrop/X keeps the draft; explicit Cancel clears it. */
+  const DRAFT_PREFIX='levromart-listing-form-draft-v4';
+  function draftKey(kind='product', id){return `${DRAFT_PREFIX}:${session?.user?.id||'guest'}:${kind}:${id||'new'}`}
   function listingModalKind(root){return root?.id==='packageModal'?'package':'product'}
-  function isNewListingModal(root){if(!root)return false;return root.id==='productModal' ? !editingProductId : root.id==='packageModal' ? !editingPackageId : false}
-  function isListingForm(el){const root=el?.closest?.('#productModal,#packageModal');return !!root && isNewListingModal(root)}
-  function captureListingDraft(){if(!session?.user?.id)return;const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(!isNewListingModal(root))return;const kind=listingModalKind(root);const controls=[...root.querySelectorAll('input:not([type=file]),select,textarea')];const values={};controls.forEach(c=>{if(!c.id)return;values[c.id]=c.type==='checkbox'?c.checked:c.value});try{localStorage.setItem(draftKey(kind),JSON.stringify({savedAt:Date.now(),values}))}catch(_){} }
-  function restoreListingDraft(){if(!session?.user?.id)return;const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(!isNewListingModal(root))return;const kind=listingModalKind(root);let raw;try{raw=localStorage.getItem(draftKey(kind))}catch(_){return}if(!raw)return;let d;try{d=JSON.parse(raw)}catch(_){return}if(!d?.values)return;Object.entries(d.values).forEach(([id,v])=>{const el=byId(id);if(!el||!root.contains(el))return;if(el.type==='checkbox')el.checked=!!v;else el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}))});if(byId('reqCategoryLabel')&&byId('reqCategory')?.value){const c=(window.__categories||[]).find(x=>String(x.id)===String(byId('reqCategory').value));if(c)byId('reqCategoryLabel').textContent=c.name}}
-  function clearNewListingDraft(kind){try{localStorage.removeItem(draftKey(kind))}catch(_){}
+  function listingModalIdentity(root){if(!root)return 'new'; const kind=listingModalKind(root); return kind==='product'?(editingProductId||'new'):(editingPackageId||'new')}
+  function isListingForm(el){return !!el?.closest?.('#productModal,#packageModal') && !!document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)')}
+  function isCurrentDraftableModal(root){return !!root && !root.classList.contains('hidden')}
+  function captureListingDraft(){
+    if(!session?.user?.id)return; const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)'); if(!isCurrentDraftableModal(root))return;
+    const kind=listingModalKind(root), id=listingModalIdentity(root); const controls=[...root.querySelectorAll('input:not([type=file]),select,textarea')]; const values={};
+    controls.forEach(c=>{if(!c.id)return;values[c.id]=c.type==='checkbox'?c.checked:c.value});
+    const snapshot={savedAt:Date.now(),kind,id,values,existingPhotos:kind==='product'?[...(window.__existingPhotos||[])]:[...(window.__existingPackagePhotos||[])],variants:kind==='product'?(window.__productVariants||[]).map(v=>({...v})):null};
+    try{localStorage.setItem(draftKey(kind,id),JSON.stringify(snapshot));}catch(_){}
+    window.__listingDraftSession={kind,id,existingPhotos:snapshot.existingPhotos,variants:snapshot.variants,newProductPhotoFiles:kind==='product'?[...(window.__newProductPhotoFiles||[])]:[],newPackagePhotoFiles:kind==='package'?[...(window.__newPackagePhotoFiles||[])]:[]};
   }
-  document.addEventListener('input',e=>{if(isListingForm(e.target)){clearTimeout(window.__astraDraftTimer);window.__astraDraftTimer=setTimeout(captureListingDraft,350)}},true);
-  document.addEventListener('change',e=>{if(isListingForm(e.target)){clearTimeout(window.__astraDraftTimer);window.__astraDraftTimer=setTimeout(captureListingDraft,150)}},true);
-  document.addEventListener('click',e=>{const b=e.target?.closest?.('#productModal button,#packageModal button');if(!b)return;const txt=(b.textContent||'').trim().toLowerCase();if(txt==='cancel'){const root=b.closest('#productModal,#packageModal');clearNewListingDraft(listingModalKind(root));searchClose()}},true);
-  const draftObserver=new MutationObserver(()=>{const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(isNewListingModal(root)){clearTimeout(window.__astraRestoreTimer);window.__astraRestoreTimer=setTimeout(restoreListingDraft,80)}});draftObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
-  document.addEventListener('click',e=>{const toggle=e.target?.closest?.('.vendor-product-search-toggle');if(!toggle)return;const wrap=toggle.closest('.vendor-products-search-compact');const pop=wrap?.querySelector('.vendor-product-search-popover');const open=!!pop&&!pop.classList.contains('open');document.querySelectorAll('.vendor-product-search-popover.open').forEach(x=>x.classList.remove('open'));pop?.classList.toggle('open',open);toggle.setAttribute('aria-expanded',String(open));if(open){searchOpen();setTimeout(()=>pop.querySelector('input')?.focus(),30)}else searchClose()},true);
-  document.addEventListener('click',e=>{const close=e.target?.closest?.('.vendor-product-search-close');if(!close)return;const wrap=close.closest('.vendor-products-search-compact');wrap?.querySelector('.vendor-product-search-popover')?.classList.remove('open');wrap?.querySelector('.vendor-product-search-toggle')?.setAttribute('aria-expanded','false');searchClose()},true);
-  document.addEventListener('click',e=>{const b=e.target?.closest?.('#saveProductBtn,#savePackageBtn');if(!b)return;const kind=b.id==='savePackageBtn'?'package':'product';setTimeout(()=>{const modal=document.getElementById(kind==='package'?'packageModal':'productModal');const error=document.getElementById(kind==='package'?'packageError':'productError');if(modal?.classList.contains('hidden')&&!error?.textContent?.trim())clearNewListingDraft(kind)},900)},true);
+  function restoreListingDraft(){
+    if(!session?.user?.id)return; const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)'); if(!isCurrentDraftableModal(root))return;
+    const kind=listingModalKind(root), id=listingModalIdentity(root); let raw; try{raw=localStorage.getItem(draftKey(kind,id))}catch(_){return} if(!raw)return; let d; try{d=JSON.parse(raw)}catch(_){return} if(!d?.values)return;
+    Object.entries(d.values).forEach(([fieldId,v])=>{const el=byId(fieldId);if(!el||!root.contains(el))return;if(el.type==='checkbox')el.checked=!!v;else el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}))});
+    if(kind==='product'){window.__existingPhotos=Array.isArray(d.existingPhotos)?d.existingPhotos:window.__existingPhotos||[];window.__productVariants=Array.isArray(d.variants)?d.variants:window.__productVariants||[];window.__newProductPhotoFiles=window.__listingDraftSession?.kind==='product'&&window.__listingDraftSession?.id===id?[...(window.__listingDraftSession.newProductPhotoFiles||[])]:window.__newProductPhotoFiles||[];renderExistingPhotos();renderProductDisplayPicture();renderProductVariantPricing();syncNewProductPhotoInput?.();renderNewProductPhotos?.();}
+    if(kind==='package'){window.__existingPackagePhotos=Array.isArray(d.existingPhotos)?d.existingPhotos:window.__existingPackagePhotos||[];window.__newPackagePhotoFiles=window.__listingDraftSession?.kind==='package'&&window.__listingDraftSession?.id===id?[...(window.__listingDraftSession.newPackagePhotoFiles||[])]:window.__newPackagePhotoFiles||[];renderExistingPackagePhotos();syncNewPackagePhotoInput?.();renderNewPackagePhotos?.();}
+  }
+  function clearListingDraft(kind,id){try{localStorage.removeItem(draftKey(kind,id));}catch(_){} if(window.__listingDraftSession?.kind===kind&&window.__listingDraftSession?.id===id)window.__listingDraftSession=null;}
+  function clearNewListingDraft(kind){clearListingDraft(kind,kind==='product'?(editingProductId||'new'):(editingPackageId||'new'));}
+  window.clearListingDraft=clearListingDraft;
+  window.clearNewListingDraft=clearNewListingDraft;
+  document.addEventListener('input',e=>{if(isListingForm(e.target)){clearTimeout(window.__astraDraftTimer);window.__astraDraftTimer=setTimeout(captureListingDraft,500)}},true);
+  document.addEventListener('change',e=>{if(isListingForm(e.target)){clearTimeout(window.__astraDraftTimer);window.__astraDraftTimer=setTimeout(captureListingDraft,180)}},true);
+  document.addEventListener('click',e=>{const b=e.target?.closest?.('#productModal button,#packageModal button');if(!b)return;const txt=(b.textContent||'').trim().toLowerCase();if(txt==='cancel'){const root=b.closest('#productModal,#packageModal');clearNewListingDraft(listingModalKind(root));searchClose?.()}},true);
+  const draftObserver=new MutationObserver(()=>{const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(root){clearTimeout(window.__astraRestoreTimer);window.__astraRestoreTimer=setTimeout(restoreListingDraft,80)}}); draftObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+  document.addEventListener('click',e=>{const b=e.target?.closest?.('#saveProductBtn,#savePackageBtn');if(!b)return;const kind=b.id==='savePackageBtn'?'package':'product';setTimeout(()=>{const root=document.getElementById(kind==='package'?'packageModal':'productModal');const error=document.getElementById(kind==='package'?'packageError':'productError');const id=kind==='product'?(editingProductId||'new'):(editingPackageId||'new');if(root?.classList.contains('hidden')&&!error?.textContent?.trim())clearListingDraft(kind,id)},1200)},true);
 
   /* Own listing management: enrich active owner pages and make owner navigation obvious. */
   document.addEventListener('click',e=>{const card=e.target?.closest?.('.vendor-product-card-grid>.card');if(!card)return;if(e.target.closest('button,a,input'))return;const edit=card.querySelector('.vendor-edit-action');if(edit)e.preventDefault();},true);
