@@ -11929,7 +11929,7 @@ async function renderHome() {
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
-  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, bio, sector_id").eq("verification_status", "verified").eq("is_active", true).is("deleted_at", null);
+  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, bio, sector_id").eq("verification_status", "verified");
   if (activeSector) topVendorsQuery = topVendorsQuery.eq("sector_id", activeSector.id);
   const recentPhotosQuery = sb.from("products")
     .select("id, name, photos, created_at, vendor:vendors!inner(verification_status, is_active)")
@@ -15654,7 +15654,7 @@ function closeStorefrontShareModal(goBack = false) {
  * ready. Successful HTML is cached in memory for instant revisits.
  */
 async function renderStorefront(vendorId) {
-  const { data: v, error } = await sb.from("vendors").select("*, sector:sectors(name, icon)").eq("id", vendorId).eq("verification_status", "verified").eq("is_active", true).is("deleted_at", null).maybeSingle();
+  const { data: v, error } = await sb.from("vendors").select("*, sector:sectors(name, icon)").eq("id", vendorId).eq("verification_status", "verified").maybeSingle();
   if (error || !v) return '<div class="empty-state">Storefront not found.</div>';
   if (!v.is_active) return '<div class="empty-state"><i class="fa-solid fa-store-slash" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>This shop is currently paused. Check back later.</div>';
   updateStorefrontSocialMeta(v);
@@ -19872,18 +19872,13 @@ async function saveSupportRequest(id) {
 
 async function renderAdminPanel(status) {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
-  status = ["all", "pending", "verified", "rejected", "deleted"].includes(status) ? status : "pending";
+  status = ["all", "pending", "verified", "rejected"].includes(status) ? status : "pending";
   let q = sb.from("vendors")
-    .select("id, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, avg_rating, review_count, created_at, deleted_at, is_active, applicant:users(name, email)")
-    .order(status === "deleted" ? "deleted_at" : "created_at", { ascending: status !== "deleted" });
-  if (status === "deleted") {
-    q = q.gt("deleted_at", "1970-01-01T00:00:00Z");
-  } else {
-    q = q.is("deleted_at", null);
-    if (status !== "all") q = q.eq("verification_status", status);
-  }
-  const { data: vendors, error: vendorListError } = await q;
-  if (vendorListError) console.warn("[Levromart] Admin vendor list load failed:", vendorListError);
+    .select("id, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, avg_rating, review_count, created_at, applicant:users(name, email)")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+  if (status !== "all") q = q.eq("verification_status", status);
+  const { data: vendors } = await q;
 
   let html = `<h2><i class='fa-solid fa-gear'></i> Admin: Vendor applications</h2>`;
   html += adminNavHtml("adminPanel");
@@ -19892,31 +19887,25 @@ async function renderAdminPanel(status) {
       <a class="${status === "pending" ? "active" : ""}" onclick="navigate('adminPanel',{status:'pending'})">pending</a>
       <a class="${status === "verified" ? "active" : ""}" onclick="navigate('adminPanel',{status:'verified'})">verified</a>
       <a class="${status === "rejected" ? "active" : ""}" onclick="navigate('adminPanel',{status:'rejected'})">rejected</a>
-      <a class="${status === "deleted" ? "active" : ""}" onclick="navigate('adminPanel',{status:'deleted'})"><i class='fa-solid fa-trash-can'></i> Recycle bin</a>
     </div>`;
 
-  if (!vendors || vendors.length === 0) {
-    html += `<div class="empty-state">${status === "deleted" ? "Recycle bin is empty." : `No ${status === "all" ? "" : status + " "}vendors.`}</div>`;
-  }
+  if (!vendors || vendors.length === 0) html += `<p class="muted">No ${status === "all" ? "" : status + " "}vendors.</p>`;
   (vendors || []).forEach((v) => {
     const doc = (v.verification_docs || [])[0];
-    const deleted = status === "deleted" || !!v.deleted_at;
-    html += `<div id="adminVendor-${esc(v.id)}" class="card admin-vendor-card${deleted ? " admin-vendor-deleted-card" : ""}">
+    html += `<div id="adminVendor-${esc(v.id)}" class="card">
       <div class="flex" style="justify-content:space-between;">
         <strong>${esc(v.business_name)}</strong>
-        <span class="badge${deleted ? " danger" : ""}">${deleted ? "Deleted" : esc(v.verification_status)}</span>
+        <span class="badge">${esc(v.verification_status)}</span>
       </div>
       <p class="muted" style="margin:0.3rem 0;">Applicant: ${esc(v.applicant?.name || "")} (${esc(v.applicant?.email || "")})</p>
       <p class="muted" style="margin:0.3rem 0;">${[v.address, v.city].filter(Boolean).map(esc).join(", ") || "No address given (online-only)"}</p>
       <p class="muted" style="margin:0.3rem 0;"><i class='fa-solid fa-phone'></i> ${esc(v.phone || "-")}${v.whatsapp_number ? " · WhatsApp " + esc(v.whatsapp_number) : ""}${v.cac_number ? " · CAC " + esc(v.cac_number) : ""}</p>
       ${v.bio ? `<p style="margin:0.3rem 0;">${esc(v.bio)}</p>` : ""}
-      <p class="muted" style="margin:0.3rem 0;">${doc ? `<a href="#" onclick="viewVendorDoc('${doc}');return false;"><i class='fa-solid fa-file-lines'></i> View submitted document</a>` : "No document uploaded"}${deleted && v.deleted_at ? ` · deleted ${new Date(v.deleted_at).toLocaleDateString()}` : ` · applied ${new Date(v.created_at).toLocaleDateString()}`}</p>
+      <p class="muted" style="margin:0.3rem 0;">${doc ? `<a href="#" onclick="viewVendorDoc('${doc}');return false;"><i class='fa-solid fa-file-lines'></i> View submitted document</a>` : "No document uploaded"} · applied ${new Date(v.created_at).toLocaleDateString()}</p>
       <div class="flex" style="margin-top:0.5rem;">
-        ${!deleted && v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}">Approve</button>` : ""}
-        ${!deleted && v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
-        ${deleted
-          ? `<button type="button" class="btn btn-sm vendor-admin-action vendor-restore-action" data-vendor-id="${esc(v.id)}" data-status="restore" data-filter-status="${esc(status)}"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="delete_permanent" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash-can"></i> Delete permanently</button>`
-          : `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>`}
+        ${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}">Approve</button>` : ""}
+        ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
+        ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
       </div>
     </div>`;
   });
@@ -19929,9 +19918,12 @@ async function viewVendorDoc(path) {
   window.open(data.signedUrl, "_blank");
 }
 
-// Vendor deletion is available to authenticated admin accounts. Delete moves
-// the vendor into the recycle bin, Restore reverses that operation, and
-// Delete permanently invokes the dedicated irreversible server-side action.
+// Deleting a vendor is restricted to this one super-admin account, even
+// though other admins can be promoted later. The client-side check here is
+// just so the button doesn't render for anyone else - the real enforcement
+// is server-side, in admin_delete_vendor(), which checks the caller's email
+// itself and can't be bypassed from the browser.
+const SUPER_ADMIN_EMAIL = "kenniskalu18@gmail.com";
 
 // Client-side password prompt for the two "hurts a vendor" admin actions
 // (reject, pause). This is a fat-finger guard, not real security - anyone
@@ -19997,11 +19989,10 @@ async function logAdminAction(action, targetType, targetId, targetLabel) {
 // functions are defined — do not add another window.setVendorStatus /
 // window.adminDeleteVendor override anywhere else in this file. Both
 // actions call the SECURITY DEFINER RPCs (admin_set_vendor_status /
-// admin_trash_vendor / admin_restore_vendor / admin_permanently_delete_vendor
-// rather than writing sensitive role state directly from the browser,
+// admin_delete_vendor) rather than writing to vendors/users directly,
 // so they don't depend on the admin's session having raw table-write
-// RLS access — only on being allowed to call the RPC through the server-side
-// admin permission checks.
+// RLS access — only on being allowed to call the RPC, which is what
+// public.is_admin() / the SUPER_ADMIN_EMAIL check already gate.
 //
 // Every action is split into two independent phases:
 //   1) the database mutation (RPC call + response validation)
@@ -20138,22 +20129,22 @@ async function setVendorStatus(id, status, filterStatus, businessName) {
 
 async function adminDeleteVendor(vendorId, filterStatus, businessName) {
   if (adminVendorActionBusy.has(vendorId)) return;
-  if (!session?.user?.id || profile?.role !== "admin") {
-    showToast("Admin access is required.", "error");
-    return;
-  }
+  if (profile?.email !== SUPER_ADMIN_EMAIL) return;
 
   if (!businessName) {
     const { data: target } = await sb.from("vendors").select("business_name").eq("id", vendorId).maybeSingle();
     businessName = target?.business_name || "this vendor";
   }
   if (!(await showConfirmDialog(
-    `Move "${businessName}" to the recycle bin? Their storefront and listings will be hidden until restored.`,
-    { title: "Delete vendor", okLabel: "Move to recycle bin", danger: true }
+    `Permanently delete "${businessName}"? Their storefront and all listings are pulled immediately, they're demoted back to an ordinary buyer account, and this stops showing on your dashboard. Past orders and reviews stay on record for buyers.`,
+    { title: "Delete vendor", okLabel: "Delete vendor", danger: true }
   ))) return;
-
+  // Vendor deletion is protected by the super-admin gate above, the
+  // confirmation dialog, and the server-side admin_delete_vendor RPC.
+  // Do not invoke the shared admin-password modal for this flow.
   adminVendorActionBusy.add(vendorId);
   let mutationSucceeded = false;
+
   try {
     const { data: { session: liveSession } = {} } = await sb.auth.getSession();
     if (!liveSession?.user?.id) {
@@ -20162,20 +20153,25 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
       return;
     }
 
-    const { data, error } = await sb.rpc("admin_trash_vendor", { p_vendor_id: vendorId });
+    vendorActionLog("delete", vendorId, { stage: "rpc:start" });
+    const { data, error } = await sb.rpc("admin_delete_vendor", { p_vendor_id: vendorId });
 
     if (error) {
-      vendorActionLog("delete", vendorId, { stage: "trash-rpc:error", message: error.message, code: error.code, details: error.details, hint: error.hint });
-      showToast(error.message || "Could not move this vendor to the recycle bin.", "error");
-      return;
-    }
-    if (!data || data.deleted !== true) {
-      vendorActionLog("delete", vendorId, { stage: "trash-rpc:unexpected-response", rpcData: data });
-      showToast("The delete request completed but returned an unexpected result. Please check the vendor list.", "error");
+      vendorActionLog("delete", vendorId, {
+        stage: "rpc:error",
+        message: error.message, code: error.code, details: error.details, hint: error.hint,
+      });
+      showToast(error.message || "Could not delete this vendor.", "error");
       return;
     }
 
-    vendorActionLog("delete", vendorId, { stage: "trash-rpc:success", rpcData: data });
+    if (!data || data.deleted !== true) {
+      vendorActionLog("delete", vendorId, { stage: "rpc:unexpected-response", rpcData: data });
+      showToast("The delete request completed but returned an unexpected result. Please check this vendor before retrying.", "error");
+      return;
+    }
+
+    vendorActionLog("delete", vendorId, { stage: "rpc:success", rpcData: data });
     mutationSucceeded = true;
     try { await logAdminAction("delete_vendor", "vendor", vendorId, businessName); }
     catch (e) { console.warn("Admin action log failed:", e); }
@@ -20184,123 +20180,15 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
   }
 
   if (!mutationSucceeded) return;
-  showToast(`${businessName} moved to the recycle bin.`, "success");
+
+  showToast("Vendor deleted and demoted to a customer.", "success");
   try {
-    await navigate("adminPanel", { status: filterStatus === "deleted" ? "deleted" : (filterStatus || "pending") }, { replace: true });
+    vendorActionLog("delete", vendorId, { stage: "ui-refresh:start" });
+    await navigate("adminPanel", { status: filterStatus });
+    vendorActionLog("delete", vendorId, { stage: "ui-refresh:done" });
   } catch (uiError) {
-    console.error("[Levromart] Vendor list refresh failed after soft delete:", uiError);
-    showToast("Vendor moved to the recycle bin, but the list could not refresh automatically.", "info");
-  }
-}
-
-async function adminRestoreVendor(vendorId, filterStatus, businessName) {
-  if (adminVendorActionBusy.has(vendorId)) return;
-  if (!session?.user?.id || profile?.role !== "admin") {
-    showToast("Admin access is required.", "error");
-    return;
-  }
-
-  if (!businessName) {
-    const { data: target } = await sb.from("vendors").select("business_name").eq("id", vendorId).maybeSingle();
-    businessName = target?.business_name || "this vendor";
-  }
-  if (!(await showConfirmDialog(
-    `Restore "${businessName}" from the recycle bin? The vendor account and its existing storefront data will become available again.`,
-    { title: "Restore vendor", okLabel: "Restore", danger: false }
-  ))) return;
-
-  adminVendorActionBusy.add(vendorId);
-  let mutationSucceeded = false;
-  try {
-    const { data: { session: liveSession } = {} } = await sb.auth.getSession();
-    if (!liveSession?.user?.id) {
-      showToast("Your admin session has expired. Please sign in again and retry.", "error");
-      return;
-    }
-
-    const { data, error } = await sb.rpc("admin_restore_vendor", { p_vendor_id: vendorId });
-
-    if (error) {
-      vendorActionLog("restore", vendorId, { stage: "restore-rpc:error", message: error.message, code: error.code, details: error.details, hint: error.hint });
-      showToast(error.message || "Could not restore this vendor.", "error");
-      return;
-    }
-    if (!data || data.restored !== true) {
-      vendorActionLog("restore", vendorId, { stage: "restore-rpc:unexpected-response", rpcData: data });
-      showToast("The restore request completed but returned an unexpected result.", "error");
-      return;
-    }
-
-    vendorActionLog("restore", vendorId, { stage: "restore-rpc:success", rpcData: data });
-    mutationSucceeded = true;
-    try { await logAdminAction("restore_vendor", "vendor", vendorId, businessName); }
-    catch (e) { console.warn("Admin action log failed:", e); }
-  } finally {
-    adminVendorActionBusy.delete(vendorId);
-  }
-
-  if (!mutationSucceeded) return;
-  showToast(`${businessName} restored successfully.`, "success");
-  try {
-    await navigate("adminPanel", { status: filterStatus === "deleted" ? "deleted" : (filterStatus || "pending") }, { replace: true });
-  } catch (uiError) {
-    console.error("[Levromart] Vendor list refresh failed after restore:", uiError);
-    showToast("Vendor restored, but the recycle bin could not refresh automatically.", "info");
-  }
-}
-
-async function adminDeleteVendorPermanently(vendorId, filterStatus, businessName) {
-  if (adminVendorActionBusy.has(vendorId)) return;
-  if (!session?.user?.id || profile?.role !== "admin") {
-    showToast("Admin access is required.", "error");
-    return;
-  }
-
-  if (!businessName) {
-    const { data: target } = await sb.from("vendors").select("business_name").eq("id", vendorId).maybeSingle();
-    businessName = target?.business_name || "this vendor";
-  }
-  if (!(await showConfirmDialog(
-    `Permanently delete "${businessName}"? This removes the vendor from the recycle bin and cannot be restored.`,
-    { title: "Delete permanently", okLabel: "Delete permanently", danger: true }
-  ))) return;
-
-  adminVendorActionBusy.add(vendorId);
-  let mutationSucceeded = false;
-  try {
-    const { data: { session: liveSession } = {} } = await sb.auth.getSession();
-    if (!liveSession?.user?.id) {
-      showToast("Your admin session has expired. Please sign in again and retry.", "error");
-      return;
-    }
-
-    vendorActionLog("delete_permanent", vendorId, { stage: "permanent-rpc:start" });
-    const { data, error } = await sb.rpc("admin_permanently_delete_vendor", { p_vendor_id: vendorId });
-    if (error) {
-      vendorActionLog("delete_permanent", vendorId, { stage: "permanent-rpc:error", message: error.message, code: error.code, details: error.details, hint: error.hint });
-      showToast(error.message || "Could not permanently delete this vendor.", "error");
-      return;
-    }
-    if (!data || data.deleted !== true || data.permanent !== true) {
-      vendorActionLog("delete_permanent", vendorId, { stage: "permanent-rpc:unexpected-response", rpcData: data });
-      showToast("The permanent delete request returned an unexpected result. Please check the recycle bin before retrying.", "error");
-      return;
-    }
-    vendorActionLog("delete_permanent", vendorId, { stage: "permanent-rpc:success", rpcData: data });
-    mutationSucceeded = true;
-    try { await logAdminAction("delete_vendor_permanently", "vendor", vendorId, businessName); }
-    catch (e) { console.warn("Admin action log failed:", e); }
-  } finally {
-    adminVendorActionBusy.delete(vendorId);
-  }
-
-  if (!mutationSucceeded) return;
-  showToast(`${businessName} permanently deleted.`, "success");
-  try {
-    await navigate("adminPanel", { status: "deleted" }, { replace: true });
-  } catch (uiError) {
-    console.error("[Levromart] Recycle bin refresh failed after permanent delete:", uiError);
-    showToast("Vendor was permanently deleted, but the recycle bin could not refresh automatically.", "info");
+    console.error("[Levromart] Vendor list refresh failed after a successful delete:", uiError);
+    showToast(`${businessName} was deleted, but the list could not refresh automatically. Pull to refresh.`, "info");
   }
 }
 
@@ -25215,12 +25103,6 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 #vendorsMap, #vendorsMapWrap, #veMap, .leaflet, .leaflet-container, .hscroll, .cat-row, .storefront-product-strip { touch-action:pan-x pan-y !important; }
 </style>
 
-<style id="levromart-admin-vendor-recycle-bin-style">
-#app .admin-vendor-deleted-card{border-color:color-mix(in srgb,var(--danger) 28%,var(--border));}
-#app .admin-vendor-deleted-card .vendor-restore-action{background:var(--primary);border-color:var(--primary);color:#fff;}
-#app .admin-vendor-deleted-card .vendor-restore-action:hover{filter:brightness(1.08);}
-</style>
-
 <style id="levromart-admin-vendor-action-touch-style">
 #app .vendor-admin-action{
   pointer-events:auto!important;
@@ -25256,10 +25138,6 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     try {
       if(status === "delete") {
         if(typeof window.adminDeleteVendor === "function") await window.adminDeleteVendor(id, filter);
-      } else if(status === "restore") {
-        if(typeof window.adminRestoreVendor === "function") await window.adminRestoreVendor(id, filter);
-      } else if(status === "delete_permanent") {
-        if(typeof window.adminDeleteVendorPermanently === "function") await window.adminDeleteVendorPermanently(id, filter);
       } else if(typeof window.setVendorStatus === "function") {
         await window.setVendorStatus(id, status, filter);
       }
