@@ -11929,7 +11929,7 @@ async function renderHome() {
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
-  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, bio, sector_id").eq("verification_status", "verified");
+  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, bio, sector_id").eq("verification_status", "verified").eq("is_active", true).is("deleted_at", null);
   if (activeSector) topVendorsQuery = topVendorsQuery.eq("sector_id", activeSector.id);
   const recentPhotosQuery = sb.from("products")
     .select("id, name, photos, created_at, vendor:vendors!inner(verification_status, is_active)")
@@ -15654,7 +15654,7 @@ function closeStorefrontShareModal(goBack = false) {
  * ready. Successful HTML is cached in memory for instant revisits.
  */
 async function renderStorefront(vendorId) {
-  const { data: v, error } = await sb.from("vendors").select("*, sector:sectors(name, icon)").eq("id", vendorId).eq("verification_status", "verified").maybeSingle();
+  const { data: v, error } = await sb.from("vendors").select("*, sector:sectors(name, icon)").eq("id", vendorId).eq("verification_status", "verified").eq("is_active", true).is("deleted_at", null).maybeSingle();
   if (error || !v) return '<div class="empty-state">Storefront not found.</div>';
   if (!v.is_active) return '<div class="empty-state"><i class="fa-solid fa-store-slash" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>This shop is currently paused. Check back later.</div>';
   updateStorefrontSocialMeta(v);
@@ -19877,7 +19877,7 @@ async function renderAdminPanel(status) {
     .select("id, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, avg_rating, review_count, created_at, deleted_at, is_active, applicant:users(name, email)")
     .order(status === "deleted" ? "deleted_at" : "created_at", { ascending: status !== "deleted" });
   if (status === "deleted") {
-    q = q.not("deleted_at", "is", null);
+    q = q.gt("deleted_at", "1970-01-01T00:00:00Z");
   } else {
     q = q.is("deleted_at", null);
     if (status !== "all") q = q.eq("verification_status", status);
@@ -19929,9 +19929,9 @@ async function viewVendorDoc(path) {
   window.open(data.signedUrl, "_blank");
 }
 
-// Vendor deletion is available to authenticated admin accounts. The normal
-// delete action is a reversible soft-delete into the recycle bin; permanent
-// deletion remains behind the existing server-side admin_delete_vendor RPC.
+// Vendor deletion is available to authenticated admin accounts. Delete moves
+// the vendor into the recycle bin, Restore reverses that operation, and
+// Delete permanently invokes the dedicated irreversible server-side action.
 
 // Client-side password prompt for the two "hurts a vendor" admin actions
 // (reject, pause). This is a fat-finger guard, not real security - anyone
@@ -19997,7 +19997,8 @@ async function logAdminAction(action, targetType, targetId, targetLabel) {
 // functions are defined — do not add another window.setVendorStatus /
 // window.adminDeleteVendor override anywhere else in this file. Both
 // actions call the SECURITY DEFINER RPCs (admin_set_vendor_status /
-// admin_delete_vendor) rather than writing to vendors/users directly,
+// admin_trash_vendor / admin_restore_vendor / admin_permanently_delete_vendor
+// rather than writing sensitive role state directly from the browser,
 // so they don't depend on the admin's session having raw table-write
 // RLS access — only on being allowed to call the RPC through the server-side
 // admin permission checks.
@@ -20161,18 +20162,20 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
       return;
     }
 
-    const { error } = await sb.from("vendors")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", vendorId)
-      .is("deleted_at", null);
+    const { data, error } = await sb.rpc("admin_trash_vendor", { p_vendor_id: vendorId });
 
     if (error) {
-      vendorActionLog("delete", vendorId, { stage: "soft-delete:error", message: error.message, code: error.code, details: error.details, hint: error.hint });
+      vendorActionLog("delete", vendorId, { stage: "trash-rpc:error", message: error.message, code: error.code, details: error.details, hint: error.hint });
       showToast(error.message || "Could not move this vendor to the recycle bin.", "error");
       return;
     }
+    if (!data || data.deleted !== true) {
+      vendorActionLog("delete", vendorId, { stage: "trash-rpc:unexpected-response", rpcData: data });
+      showToast("The delete request completed but returned an unexpected result. Please check the vendor list.", "error");
+      return;
+    }
 
-    vendorActionLog("delete", vendorId, { stage: "soft-delete:success" });
+    vendorActionLog("delete", vendorId, { stage: "trash-rpc:success", rpcData: data });
     mutationSucceeded = true;
     try { await logAdminAction("delete_vendor", "vendor", vendorId, businessName); }
     catch (e) { console.warn("Admin action log failed:", e); }
@@ -20215,18 +20218,20 @@ async function adminRestoreVendor(vendorId, filterStatus, businessName) {
       return;
     }
 
-    const { error } = await sb.from("vendors")
-      .update({ deleted_at: null })
-      .eq("id", vendorId)
-      .not("deleted_at", "is", null);
+    const { data, error } = await sb.rpc("admin_restore_vendor", { p_vendor_id: vendorId });
 
     if (error) {
-      vendorActionLog("restore", vendorId, { stage: "restore:error", message: error.message, code: error.code, details: error.details, hint: error.hint });
+      vendorActionLog("restore", vendorId, { stage: "restore-rpc:error", message: error.message, code: error.code, details: error.details, hint: error.hint });
       showToast(error.message || "Could not restore this vendor.", "error");
       return;
     }
+    if (!data || data.restored !== true) {
+      vendorActionLog("restore", vendorId, { stage: "restore-rpc:unexpected-response", rpcData: data });
+      showToast("The restore request completed but returned an unexpected result.", "error");
+      return;
+    }
 
-    vendorActionLog("restore", vendorId, { stage: "restore:success" });
+    vendorActionLog("restore", vendorId, { stage: "restore-rpc:success", rpcData: data });
     mutationSucceeded = true;
     try { await logAdminAction("restore_vendor", "vendor", vendorId, businessName); }
     catch (e) { console.warn("Admin action log failed:", e); }
@@ -20269,19 +20274,19 @@ async function adminDeleteVendorPermanently(vendorId, filterStatus, businessName
       return;
     }
 
-    vendorActionLog("delete_permanent", vendorId, { stage: "rpc:start" });
-    const { data, error } = await sb.rpc("admin_delete_vendor", { p_vendor_id: vendorId });
+    vendorActionLog("delete_permanent", vendorId, { stage: "permanent-rpc:start" });
+    const { data, error } = await sb.rpc("admin_permanently_delete_vendor", { p_vendor_id: vendorId });
     if (error) {
-      vendorActionLog("delete_permanent", vendorId, { stage: "rpc:error", message: error.message, code: error.code, details: error.details, hint: error.hint });
+      vendorActionLog("delete_permanent", vendorId, { stage: "permanent-rpc:error", message: error.message, code: error.code, details: error.details, hint: error.hint });
       showToast(error.message || "Could not permanently delete this vendor.", "error");
       return;
     }
-    if (!data || data.deleted !== true) {
-      vendorActionLog("delete_permanent", vendorId, { stage: "rpc:unexpected-response", rpcData: data });
+    if (!data || data.deleted !== true || data.permanent !== true) {
+      vendorActionLog("delete_permanent", vendorId, { stage: "permanent-rpc:unexpected-response", rpcData: data });
       showToast("The permanent delete request returned an unexpected result. Please check the recycle bin before retrying.", "error");
       return;
     }
-    vendorActionLog("delete_permanent", vendorId, { stage: "rpc:success", rpcData: data });
+    vendorActionLog("delete_permanent", vendorId, { stage: "permanent-rpc:success", rpcData: data });
     mutationSucceeded = true;
     try { await logAdminAction("delete_vendor_permanently", "vendor", vendorId, businessName); }
     catch (e) { console.warn("Admin action log failed:", e); }
