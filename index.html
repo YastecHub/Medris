@@ -11892,7 +11892,7 @@ async function renderHome() {
     .eq("vendor.verification_status", "verified")
     .eq("vendor.is_active", true);
   const browseCatalogQuery = sb.from("products")
-    .select(PRODUCT_LIST_SELECT)
+    .select(PRODUCT_LIST_SELECT + ",view_count")
     .eq("status", "active")
     .eq("vendor.verification_status", "verified")
     .eq("vendor.is_active", true)
@@ -11975,20 +11975,37 @@ async function renderHome() {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
   </section>`;
 
-  if (trending && trending.length) {
-    let trendingProducts = trending.filter(p => !p.is_service);
-    const trendingServices = trending.filter(p => p.is_service);
-    if (!trendingProducts.length && Array.isArray(browseProducts) && browseProducts.length) {
-      trendingProducts = browseProducts
-        .filter(p => !p.is_service
-          && (!activeSector || String(p.category?.sector_id) === String(activeSector.id))
-          && (!activeCategory || String(p.category_id) === String(activeCategory.id)))
-        .sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0))
-        .slice(0, 10);
-    }
-    if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
-    if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+  // TRENDING NOW — build the product rail from the existing view-count-ranked
+  // marketplace data, but do not let the separate service rows or a transient
+  // trending-query empty result suppress the product section. The browse query
+  // is the same real catalogue, already ordered by view_count; the cached copy
+  // is only a last-resort source when Supabase returns no trending products.
+  const trendingProductPool = [];
+  const trendingProductIds = new Set();
+  const addTrendingProducts = (items) => {
+    if (!Array.isArray(items)) return;
+    items.forEach((p) => {
+      if (!p || p.is_service || !p.id || trendingProductIds.has(String(p.id))) return;
+      if (activeSector && String(p.category?.sector_id) !== String(activeSector.id)) return;
+      if (activeCategory && String(p.category_id) !== String(activeCategory.id)) return;
+      trendingProductIds.add(String(p.id));
+      trendingProductPool.push(p);
+    });
+  };
+  addTrendingProducts(trending);
+  // If the top-10 mixed trending query contains only services, continue with
+  // the real view-count-ranked product catalogue rather than rendering nothing.
+  addTrendingProducts(stableBrowseProducts);
+  addTrendingProducts(cachedHome?.trending);
+  const trendingProducts = trendingProductPool
+    .sort((a, b) => Number(b.view_count || 0) - Number(a.view_count || 0))
+    .slice(0, 10);
+  const trendingServices = (Array.isArray(trending) ? trending : []).filter(p => p && p.is_service);
+
+  if (trendingProducts.length) {
+    html += `<section class="levro-home-trending" id="trendingNowSection"><h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll" id="trendingNowProducts">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div></section>`;
   }
+  if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
 
   if (recommendedPackages.length) {
     html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
