@@ -11008,6 +11008,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   const preserveSameViewScroll = !pushHistory && previousView === view;
   const sameViewScrollY = preserveSameViewScroll ? window.scrollY : 0;
   app.innerHTML = html;
+  if (view === "notifications") await renderNotifPanel();
   if (view === "home") setTimeout(() => { try { filterHomeProducts(); } catch (_) {} }, 0);
   syncLeviFabVisibility();
   hideLevromartSplash();
@@ -11022,7 +11023,6 @@ async function navigate(view, params = {}, pushHistory = true) {
   initDeliveryFieldsOnPage();
   setTimeout(() => {
     try { hydrateProductCommentCountsInView(); } catch (_) {}
-    if (view === "notifications") { try { renderNotifPanel(); } catch (_) {} }
     if(view==="productDetail"&&params?.openComments){try{openSocialCommentSheet("product",params.productId,currentProductDetail?.name?`${currentProductDetail.name} · Comments`:"Comments")}catch(_){}}
     if(view==="packageDetail"&&params?.openComments){try{openSocialCommentSheet("package",params.packageId,"Package · Comments")}catch(_){}}
   }, 0);
@@ -11913,13 +11913,31 @@ async function renderHome() {
   // Keep the initial marketplace paint to one parallel batch. Packages are
   // first-class marketplace listings now, so they load alongside products
   // rather than causing a second visible page refresh.
-  const [{ data: trending }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
-    vendorQuery.order("view_count", { ascending: false }).limit(10),
+  // IMPORTANT: Supabase PostgREST builders are stateful. Do not derive the
+  // product and service trending queries from the same mutable builder, because
+  // adding is_service=false and then is_service=true to that shared builder can
+  // leave both filters on the request and return no trending rows. Build each
+  // trending query independently while preserving the exact homepage filters.
+  const trendingProductQuery = sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
+    .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).eq("is_service", false);
+  if (activeSector) trendingProductQuery.eq("category.sector_id", activeSector.id);
+  if (activeCategory) trendingProductQuery.eq("category_id", activeCategory.id);
+  trendingProductQuery.order("view_count", { ascending: false }).limit(10);
+
+  const trendingServiceQuery = sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
+    .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).eq("is_service", true);
+  if (activeSector) trendingServiceQuery.eq("category.sector_id", activeSector.id);
+  if (activeCategory) trendingServiceQuery.eq("category_id", activeCategory.id);
+  trendingServiceQuery.order("view_count", { ascending: false }).limit(10);
+  const [{ data: trendingProductsData }, { data: trendingServicesData }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
+    trendingProductQuery,
+    trendingServiceQuery,
     topVendorsQuery.order("avg_rating", { ascending: false }).limit(6),
     recentPhotosQuery.order("created_at", { ascending: false }).limit(3),
     packageQuery,
     browseCatalogQuery,
   ]);
+  const trending = [...(trendingProductsData || []), ...(trendingServicesData || [])];
   // Never discard a previously good Browse Everything catalogue just because
   // this refresh returned null/empty data for a moment. The homepage is
   // cache-first: a successful catalogue already on this device remains the
@@ -11975,12 +11993,10 @@ async function renderHome() {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
   </section>`;
 
-  if (trending && trending.length) {
-    const trendingProducts = trending.filter(p => !p.is_service);
-    const trendingServices = trending.filter(p => p.is_service);
-    if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
-    if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
-  }
+  const trendingProducts = (trendingProductsData || []).filter(p => p && !p.is_service);
+  const trendingServices = (trendingServicesData || []).filter(p => p && p.is_service);
+  if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+  if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
 
   if (recommendedPackages.length) {
     html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
@@ -12793,7 +12809,6 @@ async function checkoutCartVendor(vendorId) {
     p_buyer_note: byId(`cartNote-${vendorId}`)?.value.trim() || null,
     p_buyer_lat: buyerLocation?.lat ?? null,
     p_buyer_lng: buyerLocation?.lng ?? null,
-    ...(selectedVariantId ? { p_variant_id: selectedVariantId } : {}),
   });
   if (error) {
     if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); }
@@ -30568,7 +30583,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
   display:inline-flex!important;
   align-items:center!important;
   gap:.22rem!important;
-  color:#fff!important;
+  color:var(--primary)!important;
   font-size:.64rem!important;
   font-weight:800!important;
   line-height:1.2!important;
