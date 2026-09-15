@@ -399,6 +399,8 @@
   .divider { border: 0; border-top: 1px solid var(--border); margin: 1rem 0; }
   .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }
   .error-text { color: var(--danger); font-size: 0.85rem; margin: 0.3rem 0; }
+  /* Product-save validation is delivered as a compact app toast; never leave a red error block at the top of the long editor. */
+  #productError { display:none !important; }
   .muted { color: var(--text-muted); font-size: 0.9rem; }
   .tabs { display: flex; gap: 1rem; border-bottom: 1px solid var(--border); margin: 1rem 0; flex-wrap: wrap; }
   .tabs a { padding-bottom: 0.5rem; color: var(--text-muted); text-decoration: none; border-bottom: 2px solid transparent; font-size: 0.9rem; cursor: pointer; text-transform: capitalize; }
@@ -6934,13 +6936,10 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
           <span><strong>Pay after delivery</strong><small>Choose the buyer deposit percentage</small></span>
         </button>
       </div>
-      <select id="prodPaymentTiming" class="hidden" aria-hidden="true" tabindex="-1">
-        <option value="pay_before">Pay before delivery</option>
-        <option value="pay_after">Pay after delivery</option>
-      </select>
+      <input type="hidden" id="prodPaymentTiming" value="pay_before" />
       <div id="prodPaymentDepositPercentWrap" class="payment-deposit-percent-wrap hidden">
         <label>Buyer deposit before delivery (%)</label>
-        <input type="number" id="prodPaymentDepositPercent" min="1" max="99" step="1" value="20" inputmode="numeric" oninput="updateProductPaymentTimingHint()" />
+        <input type="number" id="prodPaymentDepositPercent" min="1" max="99" step="1" value="20" inputmode="numeric" oninput="updateProductPaymentTimingHint()" onblur="normalizeProductPaymentDepositPercent()" />
         <p class="muted payment-deposit-percent-note">The remaining <strong id="prodPaymentRemainingPercent">80%</strong> is due after delivery.</p>
       </div>
       <p id="prodPaymentTimingHint" class="muted payment-timing-hint"></p>
@@ -10670,8 +10669,9 @@ async function submitAuth() {
       await finishLoginSuccess("home");
     }
   } catch (err) {
-    errorEl.textContent = err.message;
-    errorEl.classList.remove("hidden");
+    errorEl.textContent = err?.message || "Please check the highlighted listing fields.";
+    errorEl.classList.add("hidden");
+    showToast(err?.message || "Please check the listing details and try again.", "error");
   } finally {
     btn.disabled = false;
   }
@@ -18572,19 +18572,33 @@ function setProductPaymentTiming(mode){
 function updateProductPaymentTimingHint(){
   const el=byId("prodPaymentTimingHint"); const sel=byId("prodPaymentTiming"); if(!el||!sel)return;
   const isAfter=sel.value==="pay_after";
-  const pct=Math.max(1,Math.min(99,Number(byId("prodPaymentDepositPercent")?.value||20)));
-  const remaining=100-pct;
   const pctInput=byId("prodPaymentDepositPercent");
-  if(pctInput && String(pctInput.value)!==String(pct)) pctInput.value=String(pct);
-  byId("prodPaymentRemainingPercent")?.replaceChildren(document.createTextNode(`${remaining}%`));
+  const raw=String(pctInput?.value ?? "").trim();
+  const pct=raw==="" ? null : Number(raw);
+  const validPct=Number.isFinite(pct) ? Math.max(1,Math.min(99,pct)) : null;
+  const remaining=validPct==null ? null : 100-validPct;
+  if (isAfter) {
+    byId("prodPaymentRemainingPercent")?.replaceChildren(document.createTextNode(remaining==null ? "—" : `${remaining}%`));
+    el.innerHTML=validPct==null
+      ? "<strong>Pay after delivery:</strong> enter the buyer's deposit percentage before saving."
+      : `<strong>Pay after delivery:</strong> the buyer pays ${validPct}% before delivery; the remaining ${remaining}% is due after delivery.`;
+  } else {
+    el.innerHTML="<strong>Pay before delivery:</strong> the buyer pays the full item amount before dispatch. If they need a different arrangement, they should contact the vendor.";
+  }
   byId("prodPaymentDepositPercentWrap")?.classList.toggle("hidden",!isAfter);
-  el.innerHTML=isAfter
-    ? `<strong>Pay after delivery:</strong> the buyer pays ${pct}% before delivery; the remaining ${remaining}% is due after delivery.`
-    : "<strong>Pay before delivery:</strong> the buyer pays the full item amount before dispatch. If they need a different arrangement, they should contact the vendor.";
   document.querySelectorAll(".payment-timing-option").forEach(btn=>{
     btn.classList.toggle("selected",btn.dataset.paymentTiming===sel.value);
     btn.setAttribute("aria-pressed",btn.dataset.paymentTiming===sel.value ? "true" : "false");
   });
+}
+function normalizeProductPaymentDepositPercent(){
+  const input=byId("prodPaymentDepositPercent");
+  if(!input)return;
+  const raw=String(input.value||"").trim();
+  if(raw==="") { updateProductPaymentTimingHint(); return; }
+  const pct=Math.max(1,Math.min(99,Math.round(Number(raw))));
+  if(Number.isFinite(pct)) input.value=String(pct);
+  updateProductPaymentTimingHint();
 }
 function updateProductDeliveryFields() {
   const mode = byId("prodDeliveryMode")?.value || "free";
@@ -18857,7 +18871,8 @@ async function saveProduct() {
     const delivery_fee = is_service || delivery_fee_mode !== "flat" ? 0 : Math.max(0, Number(byId("prodDeliveryFee").value) || 0);
     const delivery_fee_per_km = is_service || delivery_fee_mode !== "distance" ? 0 : Math.max(0, Number(byId("prodDeliveryPerKm").value) || 0);
     const payment_timing = is_service ? "pay_before" : (byId("prodPaymentTiming")?.value === "pay_after" ? "pay_after" : "pay_before");
-    const payment_deposit_percent = Math.max(1, Math.min(99, Number(byId("prodPaymentDepositPercent")?.value || 20)));
+    const paymentDepositRaw = String(byId("prodPaymentDepositPercent")?.value ?? "").trim();
+    const payment_deposit_percent = paymentDepositRaw === "" ? null : Math.max(1, Math.min(99, Number(paymentDepositRaw)));
     const rental_rate_unit = byId("prodRateUnit").value;
     const service_price_unit = is_service ? (byId("prodServiceUnit").value || "flat") : null;
     if (!name) throw new Error("Product name is required.");
@@ -18866,7 +18881,7 @@ async function saveProduct() {
     if (is_service && !sale_price) throw new Error("Enter a price for this service.");
     if (discount_price != null && (sale_price == null || discount_price <= 0 || discount_price >= sale_price)) throw new Error("Discount price must be lower than the regular price.");
     if (delivery_fee_mode === "distance" && delivery_fee_per_km <= 0) throw new Error("Enter a fee per kilometre for distance-based delivery.");
-    if (payment_timing === "pay_after" && (payment_deposit_percent < 1 || payment_deposit_percent > 99)) throw new Error("Buyer deposit must be between 1% and 99%.");
+    if (payment_timing === "pay_after" && (!Number.isFinite(payment_deposit_percent) || payment_deposit_percent < 1 || payment_deposit_percent > 99)) throw new Error("Enter a buyer deposit percentage between 1% and 99%.");
     if (listing_type !== "sale" && !rental_rate) throw new Error("Rental rate is required for a rental listing.");
 
     let chosenSectorId = byId("prodSector").value || null;
