@@ -17171,16 +17171,20 @@ async function renderVendorEditProfile() {
     <div class="vendor-location-presets" id="veLocationPresets"></div>
   </div>
 
-  <div class="card" style="max-width:480px;margin:1.2rem auto 0;">
+  <div class="card payout-details-card" style="max-width:520px;margin:1.2rem auto 0;">
     <h2><i class="fa-solid fa-money-bill-transfer"></i> Payout details ${infoPopoverHtml("payoutInfo", `Set your bank account once. Levromart then pays you directly through Paystack on every order (minus the ${Number(v.commission_pct ?? 3)}% platform commission), no manual transfers needed. Funds typically land in your account the next business day after a sale.`)}</h2>
     <div id="bankError" class="error-text hidden"></div>
     ${v.paystack_subaccount_code
-      ? `<div class="banner banner-success" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-check"></i> Payouts active.</strong> ${esc(v.account_name || "")} · ${esc(v.bank_name || "")} ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</div>
+      ? `<div class="banner banner-success payout-active-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-check"></i> Payouts active.</strong> ${esc(v.account_name || "")} · ${esc(getBankDisplayName(v.bank_code, v.bank_name))} ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</div>
        <button class="btn btn-sm btn-outline" onclick="byId('bankFormWrap').classList.toggle('hidden')">Change bank account</button>`
       : `<div class="banner banner-warning" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-triangle-exclamation"></i> Not set up yet.</strong> Until you add your bank, order payments go to Levromart and you'll be paid out manually.</div>`}
     <div id="bankFormWrap" class="${v.paystack_subaccount_code ? "hidden" : ""}" style="margin-top:0.8rem;">
       <label>Bank</label>
-      <select id="veBankCode" data-current-bank="${esc(v.bank_code || "")}">${NIGERIAN_BANKS.map((b) => `<option value="${b.code}" ${b.code === v.bank_code ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>
+      <button type="button" id="veBankPickerBtn" class="bank-picker-trigger" onclick="openVendorBankPicker()" aria-haspopup="dialog" aria-expanded="false">
+        <span id="veBankPickerLabel">${esc(getBankDisplayName(v.bank_code, v.bank_name) || "Select a bank")}</span>
+        <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+      </button>
+      <select id="veBankCode" data-current-bank="${esc(v.bank_code || "")}" class="hidden" aria-hidden="true" tabindex="-1">${NIGERIAN_BANKS.map((b) => `<option value="${esc(b.code)}" ${String(b.code) === String(v.bank_code || "") ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>
       <label>Account number</label>
       <input id="veAccountNumber" inputmode="numeric" maxlength="10" placeholder="10-digit account number" value="${esc(v.account_number || "")}" />
       <button class="btn btn-sm" style="margin-top:0.6rem;" id="saveBankBtn" onclick="saveVendorBankDetails()">Save payout details</button>
@@ -17194,41 +17198,278 @@ async function renderVendorEditProfile() {
 // current list (every bank, microfinance bank and fintech they support)
 // on every render of this page, so vendors aren't limited to this subset.
 const NIGERIAN_BANKS = [
-  { name: "Access Bank", code: "044" }, { name: "Citibank Nigeria", code: "023" }, { name: "Ecobank Nigeria", code: "050" },
-  { name: "Fidelity Bank", code: "070" }, { name: "First Bank of Nigeria", code: "011" }, { name: "First City Monument Bank", code: "214" },
-  { name: "Globus Bank", code: "00103" }, { name: "Guaranty Trust Bank", code: "058" }, { name: "Heritage Bank", code: "030" },
-  { name: "Jaiz Bank", code: "301" }, { name: "Keystone Bank", code: "082" }, { name: "Kuda Bank", code: "50211" },
-  { name: "Moniepoint MFB", code: "50515" }, { name: "Opay", code: "999992" }, { name: "PalmPay", code: "999991" },
-  { name: "Polaris Bank", code: "076" }, { name: "Providus Bank", code: "101" }, { name: "Stanbic IBTC Bank", code: "221" },
-  { name: "Standard Chartered Bank", code: "068" }, { name: "Sterling Bank", code: "232" }, { name: "Suntrust Bank", code: "100" },
-  { name: "Union Bank of Nigeria", code: "032" }, { name: "United Bank For Africa", code: "033" }, { name: "Unity Bank", code: "215" },
-  { name: "Wema Bank", code: "035" }, { name: "Zenith Bank", code: "057" },
+  { name: "9mobile 9Payment Service Bank", code: "120001" },
+  { name: "Abbey Mortgage Bank", code: "801" },
+  { name: "Above Only MFB", code: "51204" },
+  { name: "Abulesoro MFB", code: "51312" },
+  { name: "Access Bank", code: "044" },
+  { name: "Access Bank (Diamond)", code: "063" },
+  { name: "Accion Microfinance Bank", code: "602" },
+  { name: "AG Mortgage Bank", code: "90077" },
+  { name: "Ahmadu Bello University Microfinance Bank", code: "50036" },
+  { name: "Airtel Smartcash PSB", code: "120004" },
+  { name: "AKU Microfinance Bank", code: "51336" },
+  { name: "ALAT by WEMA", code: "035" },
+  { name: "Amju Unique MFB", code: "50926" },
+  { name: "Aramoko MFB", code: "50083" },
+  { name: "ASO Savings and Loans", code: "401" },
+  { name: "Astrapolaris MFB LTD", code: "50094" },
+  { name: "Bowen Microfinance Bank", code: "50931" },
+  { name: "Carbon", code: "565" },
+  { name: "CEMCS Microfinance Bank", code: "50823" },
+  { name: "Chanelle Microfinance Bank Limited", code: "50171" },
+  { name: "Citibank Nigeria", code: "023" },
+  { name: "Corestep MFB", code: "50204" },
+  { name: "Coronation Merchant Bank", code: "559" },
+  { name: "Crescent MFB", code: "51297" },
+  { name: "Ecobank Nigeria", code: "050" },
+  { name: "Ekimogun MFB", code: "50263" },
+  { name: "Ekondo Microfinance Bank", code: "562" },
+  { name: "Eyowo", code: "50126" },
+  { name: "FairMoney Microfinance Bank", code: "51318" },
+  { name: "Fidelity Bank", code: "070" },
+  { name: "Firmus MFB", code: "51314" },
+  { name: "First Bank of Nigeria", code: "011" },
+  { name: "First City Monument Bank", code: "214" },
+  { name: "FirstTrust Mortgage Bank Nigeria", code: "413" },
+  { name: "FSDH Merchant Bank Limited", code: "501" },
+  { name: "Gateway Mortgage Bank LTD", code: "812" },
+  { name: "Globus Bank", code: "00103" },
+  { name: "GoMoney", code: "100022" },
+  { name: "Guaranty Trust Bank", code: "058" },
+  { name: "Hackman Microfinance Bank", code: "51251" },
+  { name: "Hasal Microfinance Bank", code: "50383" },
+  { name: "Heritage Bank", code: "030" },
+  { name: "HopePSB", code: "120002" },
+  { name: "Ibile Microfinance Bank", code: "51244" },
+  { name: "Infinity MFB", code: "50457" },
+  { name: "Jaiz Bank", code: "301" },
+  { name: "Kadpoly MFB", code: "50502" },
+  { name: "Keystone Bank", code: "082" },
+  { name: "Kredi Money MFB LTD", code: "50200" },
+  { name: "Kuda Bank", code: "50211" },
+  { name: "Lagos Building Investment Company Plc.", code: "90052" },
+  { name: "Links MFB", code: "50549" },
+  { name: "Living Trust Mortgage Bank", code: "031" },
+  { name: "Lotus Bank", code: "303" },
+  { name: "MAINSTREET MICROFINANCE BANK", code: "090171" },
+  { name: "Mayfair MFB", code: "50563" },
+  { name: "Mint MFB", code: "50304" },
+  { name: "Money Master PSB", code: "946" },
+  { name: "Moniepoint MFB", code: "50515" },
+  { name: "MTN Momo PSB", code: "120003" },
+  { name: "MUTUAL BENEFITS MICROFINANCE BANK", code: "090190" },
+  { name: "NDCC MICROFINANCE BANK", code: "090679" },
+  { name: "NET MICROFINANCE BANK", code: "51361" },
+  { name: "Nigerian Navy Microfinance Bank Limited", code: "51142" },
+  { name: "NPF MICROFINANCE BANK", code: "50629" },
+  { name: "OPay Digital Services Limited (OPay)", code: "999992" },
+  { name: "Optimus Bank Limited", code: "107" },
+  { name: "Paga", code: "100002" },
+  { name: "PalmPay", code: "999991" },
+  { name: "Parallex Bank", code: "104" },
+  { name: "Parkway - ReadyCash", code: "311" },
+  { name: "PATHFINDER MICROFINANCE BANK LIMITED", code: "090680" },
+  { name: "Paystack-Titan", code: "100039" },
+  { name: "Peace Microfinance Bank", code: "50743" },
+  { name: "PECANTRUST MICROFINANCE BANK LIMITED", code: "51226" },
+  { name: "Personal Trust MFB", code: "51146" },
+  { name: "Petra Mircofinance Bank Plc", code: "50746" },
+  { name: "Polaris Bank", code: "076" },
+  { name: "PremiumTrust Bank", code: "105" },
+  { name: "Providus Bank", code: "101" },
+  { name: "QuickFund MFB", code: "51293" },
+  { name: "Rand Merchant Bank", code: "502" },
+  { name: "Refuge Mortgage Bank", code: "90067" },
+  { name: "Rubies MFB", code: "125" },
+  { name: "Safe Haven MFB", code: "51113" },
+  { name: "Signature Bank Ltd", code: "106" },
+  { name: "Solid Rock MFB", code: "50800" },
+  { name: "Sparkle Microfinance Bank", code: "51310" },
+  { name: "Stanbic IBTC Bank", code: "221" },
+  { name: "Standard Chartered Bank", code: "068" },
+  { name: "Sterling Bank", code: "232" },
+  { name: "Suntrust Bank", code: "100" },
+  { name: "TAJ Bank", code: "302" },
+  { name: "Tangerine Money", code: "51269" },
+  { name: "TCF MFB", code: "51211" },
+  { name: "Titan Bank", code: "102" },
+  { name: "U&C Microfinance Bank Ltd", code: "50840" },
+  { name: "Uhuru MFB", code: "51322" },
+  { name: "Unaab Microfinance Bank Limited", code: "50870" },
+  { name: "Unical MFB", code: "50871" },
+  { name: "Unilag Microfinance Bank", code: "51316" },
+  { name: "Union Bank of Nigeria", code: "032" },
+  { name: "United Bank For Africa", code: "033" },
+  { name: "Unity Bank", code: "215" },
+  { name: "VFD Microfinance Bank Limited", code: "566" },
+  { name: "Wema Bank", code: "035" },
+  { name: "Zenith Bank", code: "057" },
 ];
+window.__levroBankOptions = Array.isArray(window.__levroBankOptions) && window.__levroBankOptions.length
+  ? window.__levroBankOptions
+  : NIGERIAN_BANKS.slice();
+
+function getBankDisplayName(bankCode, storedBankName) {
+  const code = String(bankCode || "").trim();
+  const source = Array.isArray(window.__levroBankOptions) && window.__levroBankOptions.length
+    ? window.__levroBankOptions
+    : NIGERIAN_BANKS;
+  const mapped = code
+    ? source.find((b) => String(b.code) === code)?.name
+    : "";
+  // IMPORTANT: bank_code is authoritative. A stale bank_name must never
+  // override the bank selected/saved by the vendor.
+  return mapped || String(storedBankName || "").trim() || (code ? `Bank code ${code}` : "Not provided");
+}
+
+function normaliseBankList(list) {
+  const seen = new Set();
+  return (Array.isArray(list) ? list : [])
+    .map((b) => ({ name: String(b?.name || "").trim(), code: String(b?.code || "").trim() }))
+    .filter((b) => b.name && b.code)
+    .filter((b) => {
+      const key = `${b.code}::${b.name.toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+function renderVendorBankPicker() {
+  const select = byId("veBankCode");
+  const label = byId("veBankPickerLabel");
+  if (!select || !label) return;
+  const selected = select.options[select.selectedIndex];
+  label.textContent = selected?.textContent?.trim() || getBankDisplayName(select.value, "");
+}
+
+function closeVendorBankPicker() {
+  const modal = byId("vendorBankPickerModal");
+  if (modal) modal.remove();
+  const trigger = byId("veBankPickerBtn");
+  if (trigger) trigger.setAttribute("aria-expanded", "false");
+}
+
+function selectVendorBank(code, name) {
+  const select = byId("veBankCode");
+  if (!select) return;
+  const option = Array.from(select.options).find((o) => String(o.value) === String(code));
+  if (!option) return;
+  select.value = String(code);
+  select.dataset.currentBank = String(code);
+  const label = byId("veBankPickerLabel");
+  if (label) label.textContent = name || option.textContent.trim();
+  closeVendorBankPicker();
+}
+
+function openVendorBankPicker() {
+  const select = byId("veBankCode");
+  if (!select) return;
+  closeVendorBankPicker();
+
+  const banks = Array.from(select.options)
+    .map((o) => ({ code: o.value, name: o.textContent.trim() }))
+    .filter((b) => b.code && b.name)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+
+  const modal = document.createElement("div");
+  modal.id = "vendorBankPickerModal";
+  modal.className = "modal vendor-bank-picker-modal";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.innerHTML = `
+    <div class="modal-content vendor-bank-picker-content">
+      <div class="vendor-bank-picker-head">
+        <div>
+          <div class="vendor-bank-picker-title"><i class="fa-solid fa-building-columns"></i><span>Select payout bank</span></div>
+          <div class="muted" style="font-size:.76rem;margin-top:.2rem;">${banks.length} supported banks and financial institutions</div>
+        </div>
+        <button type="button" class="drawer-close-btn" onclick="closeVendorBankPicker()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="vendor-bank-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input id="vendorBankSearch" class="vendor-bank-search" type="search" autocomplete="off" placeholder="Search bank..." aria-label="Search banks" />
+      </div>
+      <div id="vendorBankPickerList" class="vendor-bank-picker-list"></div>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  const listEl = byId("vendorBankPickerList");
+  const searchEl = byId("vendorBankSearch");
+  const selectedCode = String(select.value || "");
+
+  const paint = () => {
+    const q = String(searchEl?.value || "").trim().toLowerCase();
+    const filtered = banks.filter((b) => !q || b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q));
+    listEl.innerHTML = filtered.length
+      ? filtered.map((b) => `<button type="button" class="vendor-bank-option ${String(b.code) === selectedCode ? "selected" : ""}" onclick="selectVendorBank('${esc(b.code)}','${esc(b.name)}')"><span class="vendor-bank-option-icon"><i class="fa-solid fa-building-columns"></i></span><span class="vendor-bank-option-main"><strong>${esc(b.name)}</strong><small>${esc(b.code)}</small></span>${String(b.code) === selectedCode ? '<i class="fa-solid fa-circle-check vendor-bank-option-check"></i>' : '<i class="fa-solid fa-chevron-right vendor-bank-option-arrow"></i>'}</button>`).join("")
+      : `<div class="empty-state" style="padding:2rem 1rem;">No bank matches your search.</div>`;
+  };
+
+  searchEl?.addEventListener("input", paint);
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeVendorBankPicker(); });
+  paint();
+  requestAnimationFrame(() => {
+    byId("veBankPickerBtn")?.setAttribute("aria-expanded", "true");
+    searchEl?.focus();
+  });
+}
+
 async function loadBankOptions() {
   const select = byId("veBankCode");
   if (!select) return;
-  const currentBank = select.dataset.currentBank || "";
+  const currentBank = String(select.dataset.currentBank || select.value || "");
   try {
-    const res = await fetch("/api/vendor-payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "list-banks" }) });
+    const res = await fetch("/api/vendor-payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "list-banks", country: "nigeria", currency: "NGN", perPage: 100 }),
+    });
     const json = await res.json();
-    if (!res.ok || !json.banks?.length) return;
-    select.innerHTML = json.banks.map((b) => `<option value="${esc(b.code)}" ${b.code === currentBank ? "selected" : ""}>${esc(b.name)}</option>`).join("");
-    if (select.dataset.msEnhanced) select.dispatchEvent(new Event("change", { bubbles: true }));
+    if (!res.ok || !Array.isArray(json.banks) || !json.banks.length) throw new Error("Bank list unavailable");
+
+    const banks = normaliseBankList(json.banks);
+    if (!banks.length) throw new Error("Bank list unavailable");
+    window.__levroBankOptions = banks;
+
+    // Keep the live Paystack-backed list authoritative and alphabetically ordered.
+    select.innerHTML = banks.map((b) => `<option value="${esc(b.code)}" ${String(b.code) === currentBank ? "selected" : ""}>${esc(b.name)}</option>`).join("");
+    if (currentBank && !Array.from(select.options).some((o) => String(o.value) === currentBank)) {
+      select.value = currentBank;
+      select.dataset.currentBank = currentBank;
+    }
+    renderVendorBankPicker();
   } catch (e) {
-    // Fine - the hardcoded NIGERIAN_BANKS list already rendered as a fallback.
+    // The complete fallback is already rendered in the HTML. Never default
+    // to Access Bank: preserve the saved bank code if one exists.
+    if (currentBank) {
+      select.value = currentBank;
+      select.dataset.currentBank = currentBank;
+    }
+    renderVendorBankPicker();
   }
 }
 
 async function saveVendorBankDetails() {
   const errorEl = byId("bankError");
   errorEl.classList.add("hidden");
-  const bankCode = byId("veBankCode").value;
+  const bankCode = String(byId("veBankCode")?.value || "").trim();
   const accountNumber = byId("veAccountNumber").value.trim();
+
+  if (!bankCode) {
+    errorEl.textContent = "Please select a bank.";
+    errorEl.classList.remove("hidden");
+    return;
+  }
   if (!/^\d{10}$/.test(accountNumber)) {
     errorEl.textContent = "Enter a valid 10-digit account number.";
     errorEl.classList.remove("hidden");
     return;
   }
+
   const btn = byId("saveBankBtn");
   btn.disabled = true;
   try {
@@ -17239,8 +17480,21 @@ async function saveVendorBankDetails() {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Could not save payout details.");
+
+    // Refresh the authoritative vendor row before rendering the summary. The
+    // display name is always resolved from the saved bank_code, so a stale
+    // bank_name can never make Opay (or another selected bank) appear as Access.
+    if (vendor?.id) {
+      const { data: freshVendor } = await sb.from("vendors")
+        .select("id,bank_code,bank_name,account_number,account_name,paystack_subaccount_code")
+        .eq("id", vendor.id)
+        .maybeSingle();
+      if (freshVendor) vendor = { ...vendor, ...freshVendor };
+    }
+
     const keepScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-    showToast(`Payouts set up for ${json.account_name}.`, "success");
+    const savedBankName = getBankDisplayName(bankCode, json.bank_name);
+    showToast(`Payout bank saved as ${savedBankName}.`, "success");
     await navigate("vendorEditProfile", {}, false);
     requestAnimationFrame(() => window.scrollTo({ top: keepScrollY, left: 0, behavior: "auto" }));
   } catch (err) {
@@ -25579,6 +25833,41 @@ window.renderVendorMapRail = function(){
 /* legacy Top-rated Vendor row layout removed */
 .vendors-map-vendor-chip{flex-basis:196px !important;min-width:196px !important;padding:.55rem .62rem !important;}
 .vendors-map-vendor-chip img,.vendors-map-vendor-chip .avatar-circle{width:2.8rem !important;height:2.8rem !important;flex-basis:2.8rem !important;font-size:1rem !important;font-weight:800 !important;display:flex !important;align-items:center !important;justify-content:center !important;border-radius:50% !important;}
+
+/* Payout bank picker: searchable, alphabetical, mobile-friendly and consistent
+   with Levromart's existing glass/card visual language. */
+.bank-picker-trigger{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+  padding:.78rem .9rem;margin:.3rem 0 .5rem;border:1px solid var(--border);
+  border-radius:.85rem;background:color-mix(in srgb,var(--primary) 3%,var(--input-bg));
+  color:var(--text);font:inherit;text-align:left;cursor:pointer;
+}
+.bank-picker-trigger:hover{border-color:color-mix(in srgb,var(--primary) 45%,var(--border));box-shadow:0 2px 10px color-mix(in srgb,var(--primary) 10%,transparent);}
+.bank-picker-trigger > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bank-picker-trigger > i{color:var(--text-muted);flex:0 0 auto;}
+.vendor-bank-picker-modal{z-index:310;padding:1rem;}
+.vendor-bank-picker-content{width:min(520px,100%);max-height:min(82vh,720px);padding:1rem;overflow:hidden;display:flex;flex-direction:column;}
+.vendor-bank-picker-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.8rem;}
+.vendor-bank-picker-title{display:flex;align-items:center;gap:.55rem;font-size:1.05rem;font-weight:800;}
+.vendor-bank-picker-title i{color:var(--primary);}
+.vendor-bank-search-wrap{position:relative;margin-bottom:.65rem;}
+.vendor-bank-search-wrap > i{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;}
+.vendor-bank-search{width:100%;margin:0;padding:.72rem .8rem .72rem 2.25rem;border-radius:.8rem;background:var(--input-bg);}
+.vendor-bank-picker-list{overflow-y:auto;min-height:0;padding-right:.1rem;}
+.vendor-bank-option{width:100%;display:flex;align-items:center;gap:.7rem;padding:.72rem .65rem;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);text-align:left;cursor:pointer;}
+.vendor-bank-option:hover,.vendor-bank-option.selected{background:color-mix(in srgb,var(--primary) 9%,transparent);}
+.vendor-bank-option-icon{width:2rem;height:2rem;flex:0 0 2rem;border-radius:.65rem;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);}
+.vendor-bank-option-main{min-width:0;display:flex;flex-direction:column;gap:.1rem;flex:1;}
+.vendor-bank-option-main strong{font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vendor-bank-option-main small{font-size:.7rem;color:var(--text-muted);}
+.vendor-bank-option-check{color:var(--primary);flex:0 0 auto;}
+.vendor-bank-option-arrow{color:var(--text-muted);font-size:.7rem;flex:0 0 auto;}
+.payout-active-banner{line-height:1.45;}
+@media(max-width:560px){
+  .vendor-bank-picker-content{max-height:86vh;border-radius:1.1rem;padding:.85rem;}
+  .vendor-bank-option{padding:.78rem .5rem;}
+}
+
 </style>
 
 <script id="levromart-final-2026-09-09">
@@ -25605,7 +25894,7 @@ window.renderVendorMapRail = function(){
     else {showToast("There is no outstanding payment on this order.","info");return;}
     byId("manualVendorPaymentModal")?.remove();
     const modal=document.createElement("div"); modal.id="manualVendorPaymentModal"; modal.className="modal manual-payment-modal";
-    const bankName = order.vendor?.bank_name || (typeof NIGERIAN_BANKS!=="undefined" ? NIGERIAN_BANKS.find(b=>String(b.code)===String(order.vendor?.bank_code||""))?.name : null) || (order.vendor?.bank_code ? `Bank code ${order.vendor.bank_code}` : "Not provided");
+    const bankName = getBankDisplayName(order.vendor?.bank_code, order.vendor?.bank_name);
     const hasAccount = !!(order.vendor?.account_name || order.vendor?.account_number || order.vendor?.bank_code || order.vendor?.bank_name);
     modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> for the <strong>${esc(paymentLabel)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
