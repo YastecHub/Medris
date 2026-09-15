@@ -11120,16 +11120,41 @@ const ORDER_ROUTE_SNAPSHOT_PREFIX = "levromart-order-route-v1:";
 function orderRouteSnapshotKey(view, params = {}) {
   return `${ORDER_ROUTE_SNAPSHOT_PREFIX}${routeCacheKey(view, params)}`;
 }
-function getPersistedOrderRouteHtml(view, params = {}) {
-  if (view !== "buyerOrders" && view !== "vendorOrders") return null;
+// Persist the last REAL rendered page, not a loading shell. This makes navigation
+// cache-first across reloads so users see the page they asked for immediately
+// while the live renderer silently reconciles fresh Supabase data underneath.
+const ROUTE_HTML_SNAPSHOT_PREFIX = "levromart-route-html-v2:";
+const ROUTE_HTML_SNAPSHOT_MAX = 500000;
+function persistedRouteHtmlKey(view, params = {}) {
+  return `${ROUTE_HTML_SNAPSHOT_PREFIX}${routeCacheKey(view, params)}`;
+}
+function isUsableRouteSnapshot(raw) {
+  return !!(raw && raw.length > 100 && !/Your latest orders will refresh in the background\.|Refreshing in the background\.|Your latest shop data will refresh in the background\.|Opening…|Loading…/i.test(raw));
+}
+function getPersistedRouteHtml(view, params = {}) {
   try {
-    const raw = sessionStorage.getItem(orderRouteSnapshotKey(view, params));
-    return raw && raw.length > 100 ? raw : null;
+    const key = persistedRouteHtmlKey(view, params);
+    const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
+    return isUsableRouteSnapshot(raw) ? raw : null;
   } catch (_) { return null; }
 }
+function persistRouteHtml(view, params = {}, html) {
+  if (!html || !isUsableRouteSnapshot(String(html))) return;
+  const value = String(html);
+  if (value.length > ROUTE_HTML_SNAPSHOT_MAX) return;
+  try {
+    const key = persistedRouteHtmlKey(view, params);
+    sessionStorage.setItem(key, value);
+    localStorage.setItem(key, value);
+  } catch (_) {
+    // Quota pressure should never block navigation. Keep the in-memory cache.
+  }
+}
+function getPersistedOrderRouteHtml(view, params = {}) {
+  return getPersistedRouteHtml(view, params);
+}
 function persistOrderRouteHtml(view, params = {}, html) {
-  if (view !== "buyerOrders" && view !== "vendorOrders" || !html) return;
-  try { sessionStorage.setItem(orderRouteSnapshotKey(view, params), String(html)); } catch (_) {}
+  persistRouteHtml(view, params, html);
 }
 function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
@@ -11139,9 +11164,10 @@ function navigationShellHtml(view) {
   const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
-  if(view==='vendorDashboard') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> My Shop</h2><div class="dash-tabs shop-tabs-rail"><button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button><button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button><button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button><button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions</button></div><div class="instant-nav-status">Your latest shop data will refresh in the background.</div></div>`;
-  if(view==='vendorOrders'||view==='buyerOrders') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status">Your latest orders will refresh in the background.</div></div>`;
-  return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status">Refreshing in the background.</div></div>`;
+  // Never expose a background-refresh message as the page itself. If no real
+  // snapshot exists yet, use a tiny neutral skeleton; the live renderer replaces
+  // it as soon as its data arrives.
+  return `<div class="instant-page-shell instant-route-opening" aria-hidden="true"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-route-skeleton"><span></span><span></span><span></span></div></div>`;
 }
 
 function isOwnVendorId(vendorId) {
@@ -11233,18 +11259,15 @@ async function navigate(view, params = {}, pushHistory = true) {
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
     try {
-      /* Mobile Safari can restore the cached session after the route tap.
-         Never let the protected renderer mistake that short gap for a real
-         permission failure. Wait for the shared auth/profile refresh first. */
-      await Promise.race([
-        refreshAuthStateOnce(),
-        new Promise(resolve => setTimeout(resolve, 8000))
-      ]);
-      if (session && !profile) {
-        const authGraceUntil = Date.now() + 3000;
-        while (Date.now() < authGraceUntil && session && !profile) {
-          await new Promise(resolve => setTimeout(resolve, 120));
-        }
+      // Navigation is never held hostage by profile hydration. A live session
+      // is enough to start rendering; role/vendor hydration continues through
+      // the existing auth listener and bounded renderer checks. Only a truly
+      // missing session gets a short recovery window.
+      if (!session) {
+        await Promise.race([
+          refreshAuthStateOnce(),
+          new Promise(resolve => setTimeout(resolve, 1200))
+        ]);
       }
     } catch (_) {}
   }
@@ -11314,8 +11337,8 @@ async function navigate(view, params = {}, pushHistory = true) {
   const hasChatFastPath = view === "messages" && !!params?.conversationId && profile?.role !== "admin";
   const cacheKey = routeCacheKey(view, params);
   const cachedRouteHtml = routeHtmlCache.get(cacheKey);
-  const persistedOrderRouteHtml = getPersistedOrderRouteHtml(view, params);
-  const instantRouteHtml = cachedRouteHtml || persistedOrderRouteHtml;
+  const persistedRouteHtml = getPersistedRouteHtml(view, params);
+  const instantRouteHtml = cachedRouteHtml || persistedRouteHtml;
   if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && view !== "storefront") {
     app.innerHTML = instantRouteHtml || navigationShellHtml(view);
     syncLeviFabVisibility();
@@ -11467,7 +11490,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (navToken !== navigationGeneration) return;
   if (html && !lastRenderError) {
     routeHtmlCache.set(cacheKey, html);
-    persistOrderRouteHtml(view, params, html);
+    persistRouteHtml(view, params, html);
   }
   const preserveSameViewScroll = !pushHistory && previousView === view;
   const sameViewScrollY = preserveSameViewScroll ? window.scrollY : 0;
@@ -19805,23 +19828,51 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // status/type/payment/date filters the list below happens to be set to
   // -- run both queries together instead of one after the other.
   const [{ data: allOrders, error: allOrdersError }, { data: statsOrders, error: statsError }] = await Promise.all([
-    query.order("created_at", { ascending: false }),
-    sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, updated_at").eq("vendor_id", vendor.id),
+    withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") }),
+    withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, updated_at").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") }),
   ]);
   // If the timestamp migration has not been run yet, fall back to the base
   // order query instead of rendering an empty page.
   let safeAllOrders = allOrders;
   if (allOrdersError) {
     console.warn("Rich vendor order query failed; using compatibility query", allOrdersError);
-    let fallback = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(id,is_service,name)), payments(payment_type,status)").eq("vendor_id", vendor.id);
+    let fallback = sb.from("orders").select("*").eq("vendor_id", vendor.id);
     if (status !== "all") fallback = fallback.eq("status", status);
     if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
     if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
-    const r = await fallback.order("created_at", { ascending: false });
+    const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: [], error: null });
     safeAllOrders = r.data || [];
   }
+  // Hydrate item summaries separately from the base order query. This keeps a
+  // restrictive nested relationship from blocking the whole Orders page.
+  try {
+    const orderIds = (safeAllOrders || []).map(o => o.id).filter(Boolean);
+    if (orderIds.length) {
+      const { data: orderItems } = await withRouteTimeout(
+        sb.from("order_items").select("order_id,product_id,quantity,unit_price,product:products(id,is_service,name)").in("order_id", orderIds),
+        2500, { data: [], error: null }
+      );
+      const byOrder = new Map();
+      (orderItems || []).forEach(it => { if (!byOrder.has(it.order_id)) byOrder.set(it.order_id, []); byOrder.get(it.order_id).push(it); });
+      (safeAllOrders || []).forEach(o => { if (!Array.isArray(o.items) || !o.items.length) o.items = byOrder.get(o.id) || []; });
+    }
+  } catch (_) {}
+
   let orders = type === "all" ? safeAllOrders : (safeAllOrders || []).filter((o) => orderCategory(o) === type);
   if (payment !== "all") orders = (orders || []).filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
+
+  // The orders relation can return the order while hiding the nested users row
+  // under RLS. Resolve the customer's display name through the existing secure
+  // buyer-contact RPC so every vendor card can identify the customer.
+  try {
+    await Promise.all((safeAllOrders || []).map(async (o) => {
+      if (o.buyer?.name || !o.id) return;
+      const r = await withRouteTimeout(sb.rpc("get_order_buyer_contact", { p_order_id: o.id }), 2200, { data: [] });
+      const c = Array.isArray(r?.data) ? r.data[0] : null;
+      if (c?.name) o.buyer = { ...(o.buyer || {}), name: c.name };
+    }));
+  } catch (_) {}
+
   let safeStatsOrders = statsOrders || [];
   if (statsError) {
     const { data: fallbackStats } = await sb.from("orders").select("status, created_at").eq("vendor_id", vendor.id);
@@ -19879,19 +19930,38 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
-  const { data: allOrders, error: allOrdersError } = await query.order("created_at", { ascending: false });
+  const { data: allOrders, error: allOrdersError } = await withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") });
   let safeAllOrders = allOrders;
   if (allOrdersError) {
     console.warn("Rich buyer order query failed; using compatibility query", allOrdersError);
-    let fallback = sb.from("orders").select("*, vendor:vendors(business_name), items:order_items(*,product:products(id,is_service,name)), payments(payment_type,status)").eq("buyer_id", session.user.id);
+    let fallback = sb.from("orders").select("*").eq("buyer_id", session.user.id);
     if (status !== "all") fallback = fallback.eq("status", status);
     if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
     if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
-    const r = await fallback.order("created_at", { ascending: false });
+    const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: [], error: null });
     safeAllOrders = r.data || [];
   }
-  let orders = type === "all" ? safeAllOrders : (safeAllOrders || []).filter((o) => orderCategory(o) === type);
+  try {
+    const orderIds = (safeAllOrders || []).map(o => o.id).filter(Boolean);
+    if (orderIds.length) {
+      const { data: orderItems } = await withRouteTimeout(
+        sb.from("order_items").select("order_id,product_id,quantity,unit_price,product:products(id,is_service,name)").in("order_id", orderIds),
+        2500, { data: [], error: null }
+      );
+      const byOrder = new Map();
+      (orderItems || []).forEach(it => { if (!byOrder.has(it.order_id)) byOrder.set(it.order_id, []); byOrder.get(it.order_id).push(it); });
+      (safeAllOrders || []).forEach(o => { if (!Array.isArray(o.items) || !o.items.length) o.items = byOrder.get(o.id) || []; });
+    }
+  } catch (_) {}
   if (payment !== "all") orders = (orders || []).filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
+  try {
+    const vendorIds = [...new Set((safeAllOrders || []).map(o => o.vendor_id).filter(Boolean))];
+    if (vendorIds.length) {
+      const { data: vendorRows } = await withRouteTimeout(sb.from("vendors").select("id,business_name").in("id", vendorIds), 2200, { data: [], error: null });
+      const byId = new Map((vendorRows || []).map(v => [String(v.id), v]));
+      (safeAllOrders || []).forEach(o => { if (!o.vendor && byId.has(String(o.vendor_id))) o.vendor = byId.get(String(o.vendor_id)); });
+    }
+  } catch (_) {}
 
   let html = embeddedVendorOrders ? `<h2><i class='fa-solid fa-clipboard-list'></i> Orders</h2>` : `<h2><i class='fa-solid fa-clipboard-list'></i> My Orders</h2>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
@@ -20004,7 +20074,7 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
     inner += `<div class="order-history-day">${dayOrders.map((o) => {
       const itemNames = (o.items || []).map((it) => `${it.product?.name || "Item"}${Number(it.quantity || 0) > 1 ? ` ×${it.quantity}` : ""}`).join(", ");
       const productIds = [...new Set((o.items || []).map((it) => it.product?.id || it.product_id).filter(Boolean))].join(", ");
-      const partyName = isCustomerView ? (o.vendor?.business_name || "") : (o.buyer?.name || "");
+      const partyName = isCustomerView ? (o.vendor?.business_name || "Vendor") : (o.buyer?.name || "Customer");
       return `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-history-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span class="order-history-meta"><span>Order: ${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span>${!isCustomerView && itemNames ? `<span class="order-history-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-history-product-id">Product ID: ${esc(productIds)}</small>` : ""}<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${orderStatusBadgeClass(o.status)} order-history-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`;
     }).join("")}</div>`;
   });
@@ -20061,7 +20131,7 @@ function orderListHtml(orders, isCustomerView, sourcePerspective = null) {
   return shown.map((o) => {
     const itemNames = (o.items || []).map((it) => `${it.product?.name || "Item"}${Number(it.quantity || 0) > 1 ? ` ×${it.quantity}` : ""}`).join(", ");
     const productIds = [...new Set((o.items || []).map((it) => it.product?.id || it.product_id).filter(Boolean))].join(", ");
-    const partyName = isCustomerView ? (o.vendor?.business_name || "") : (o.buyer?.name || "");
+    const partyName = isCustomerView ? (o.vendor?.business_name || "Vendor") : (o.buyer?.name || "Customer");
     return `<button type="button" class="order-list-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-list-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span>Order: ${esc(o.order_type)} · ${naira(o.total_amount)}</span>${!isCustomerView && itemNames ? `<span class="order-list-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-list-product-id">Product ID: ${esc(productIds)}</small>` : ""}${orderActivityIso(o) ? `<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small>` : ""}</span><span class="badge ${orderStatusBadgeClass(o.status)} order-list-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`;
   }).join("") + moreBtn;
 }
@@ -20812,9 +20882,21 @@ function backToPaymentFromReview(orderId) {
 async function renderLeaveReview(orderId) {
   if (!session?.user?.id || !orderId) return '<div class="empty-state">Access denied.</div>';
   const { data: order, error } = await sb.from("orders")
-    .select("id,status,buyer_id,vendor_id,delivery_method,vendor:vendors(id,business_name)")
+    .select("id,status,buyer_id,vendor_id,order_type,delivery_method,payment_timing,vendor:vendors(id,business_name),payments:payments(payment_type,amount,status,created_at)")
     .eq("id", orderId).eq("buyer_id", session.user.id).maybeSingle();
   if (error || !order) return `<div class="empty-state">${esc(error?.message || "Order not found.")}</div>`;
+
+  // A delivery deposit is NOT a completed payment. Never allow the review
+  // route to appear while only the first payment stage is pending.
+  const reviewRows = Array.isArray(order.payments) ? order.payments : [];
+  const reviewFeeType = order.order_type === "rental" ? "rental_fee" : "sale_price";
+  const reviewIsDelivery = order.delivery_method === "delivery";
+  const reviewIsPayAfter = reviewIsDelivery && order.payment_timing === "pay_after";
+  const reviewFinalReported = order.status === "completed" || reviewRows.some(p => String(p.payment_type || "").toLowerCase() === reviewFeeType && (p.status === "pending" || p.status === "paid") && (p.status === "paid" || p.provider_reference === "buyer_report"));
+  const reviewDepositPendingOnly = !reviewFinalReported;
+  if (reviewDepositPendingOnly) {
+    return `<div class="card" style="max-width:620px;margin:1rem auto;text-align:center;"><h2 style="margin-top:0;">Complete your payment first</h2><p class="muted">Your payment is not complete yet. Finish the remaining payment before leaving a review.</p><button type="button" class="btn btn-sm btn-outline" onclick="backToPaymentFromReview('${order.id}')"><i class="fa-solid fa-arrow-left"></i> Back to payment</button></div>`;
+  }
 
   const { data: existingReview } = await sb.from("reviews")
     .select("id").eq("order_id", order.id).eq("buyer_id", session.user.id).maybeSingle();
@@ -20828,6 +20910,7 @@ async function renderLeaveReview(orderId) {
 
   const vendorName = esc(order.vendor?.business_name || "this vendor");
   return `<div class="card leave-review-page" style="max-width:620px;margin:1rem auto;">
+    <div class="banner banner-success" style="margin-bottom:.85rem;text-align:center;"><strong><i class="fa-solid fa-circle-check"></i> Payment completed.</strong></div>
     <div style="text-align:center;">
       <h2 style="margin:0;">Leave a review</h2>
       <p class="muted" style="margin:.35rem 0 1rem;">How was your experience with ${vendorName}?</p>
@@ -22035,6 +22118,106 @@ function exportFinancePdf() {
 .notifications-page-host .notification-avatar-fallback{flex:none;}
 @media(max-width:720px){.notifications-page-shell{padding-left:.75rem;padding-right:.75rem;}.notifications-page-tools{align-items:flex-start;}}
 </style>
+
+
+<style id="levromart-instant-route-skeleton-fix">
+.instant-route-opening{min-height:22rem;}
+.instant-route-skeleton{display:flex;flex-direction:column;gap:.7rem;max-width:680px;margin:1.2rem auto 0;opacity:.65;}
+.instant-route-skeleton span{display:block;height:3.4rem;border-radius:1rem;background:color-mix(in srgb,var(--card) 88%,var(--border));border:1px solid var(--border);animation:levroRoutePulse 1.15s ease-in-out infinite;}
+.instant-route-skeleton span:nth-child(2){width:88%;}
+.instant-route-skeleton span:nth-child(3){width:72%;}
+@keyframes levroRoutePulse{0%,100%{opacity:.48}50%{opacity:.85}}
+</style>
+
+<style id="levromart-payment-timing-contrast-fix-20260916">
+/* Requested payment-timing visual cleanup only.
+   Pay-after uses the Levromart light-orange treatment.
+   The product payment-timing panel follows the active dark theme instead
+   of rendering as an isolated white block. */
+.payment-timing-option.pay-after{
+  color:#c2410c !important;
+  border-color:#fdba74 !important;
+}
+.payment-timing-option.pay-after.selected{
+  background:#ffedd5 !important;
+  color:#c2410c !important;
+  border-color:#fb923c !important;
+  box-shadow:0 0 0 2px rgba(251,146,60,.16) !important;
+}
+.payment-timing-option.pay-after.selected .payment-timing-option-dot{
+  background:currentColor !important;
+  box-shadow:inset 0 0 0 2px #fff7ed !important;
+}
+
+/* Keep the checkout/payment-plan treatment consistent with the orange PAD
+   language rather than blue. */
+.product-payment-plan-notice.pay-after{
+  background:#ffedd5 !important;
+  color:#c2410c !important;
+  border-color:#fdba74 !important;
+}
+.product-card-payment-plan.pay-after{
+  background:#ffedd5 !important;
+  color:#c2410c !important;
+  border-color:#fdba74 !important;
+}
+
+/* Dark/black theme: the seller's payment-timing editor must be a dark card
+   with clear contrast against the surrounding editor. */
+html[data-theme="dark"] .listing-payment-timing-settings,
+html[data-theme="black"] .listing-payment-timing-settings{
+  background:#101513 !important;
+  color:var(--text) !important;
+  border-color:rgba(16,176,128,.34) !important;
+  box-shadow:0 10px 28px rgba(0,0,0,.22) !important;
+}
+html[data-theme="dark"] .payment-timing-option,
+html[data-theme="black"] .payment-timing-option{
+  background:#0b0f0e !important;
+  color:var(--text) !important;
+  border-color:rgba(255,255,255,.14) !important;
+}
+html[data-theme="dark"] .payment-timing-option.pay-before,
+html[data-theme="black"] .payment-timing-option.pay-before{
+  color:#86efac !important;
+}
+html[data-theme="dark"] .payment-timing-option.pay-before.selected,
+html[data-theme="black"] .payment-timing-option.pay-before.selected{
+  background:#10261b !important;
+  color:#86efac !important;
+  border-color:#22c55e !important;
+  box-shadow:0 0 0 2px rgba(34,197,94,.13) !important;
+}
+html[data-theme="dark"] .payment-timing-option.pay-after,
+html[data-theme="black"] .payment-timing-option.pay-after{
+  color:#fdba74 !important;
+}
+html[data-theme="dark"] .payment-timing-option.pay-after.selected,
+html[data-theme="black"] .payment-timing-option.pay-after.selected{
+  background:#2a190d !important;
+  color:#fdba74 !important;
+  border-color:#fb923c !important;
+  box-shadow:0 0 0 2px rgba(251,146,60,.16) !important;
+}
+html[data-theme="dark"] .payment-timing-option.selected .payment-timing-option-dot,
+html[data-theme="black"] .payment-timing-option.selected .payment-timing-option-dot{
+  box-shadow:inset 0 0 0 2px #101513 !important;
+}
+html[data-theme="dark"] .payment-deposit-percent-wrap,
+html[data-theme="black"] .payment-deposit-percent-wrap{
+  background:#1b140e !important;
+  border-color:rgba(251,146,60,.38) !important;
+}
+html[data-theme="dark"] .payment-deposit-percent-wrap label,
+html[data-theme="black"] .payment-deposit-percent-wrap label{
+  color:#fdba74 !important;
+}
+html[data-theme="dark"] .payment-deposit-percent-note,
+html[data-theme="black"] .payment-deposit-percent-note{
+  color:#cbd5e1 !important;
+}
+</style>
+
 </body>
 
 
@@ -26943,12 +27126,31 @@ window.renderVendorMapRail = function(){
       </div>
       ${!hasAccount ? `<div class="banner banner-warning" style="margin-top:.7rem;"><strong>Vendor payment details are not saved yet.</strong> Please contact the vendor before transferring.</div>` : ""}
       <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
-      <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount})"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
+      <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount},'${esc(paymentLabel)}')"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
     document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
   };
-  window.reportDirectVendorPayment = async function(orderId,amount){
+  window.reportDirectVendorPayment = async function(orderId,amount,paymentStage=""){
     const err=byId("directPaymentError"),btn=byId("directPaymentReportedBtn"); if(!err||!btn)return; err.classList.add("hidden"); btn.disabled=true;
-    try{const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});if(error)throw error;byId("manualVendorPaymentModal")?.remove();if(data?.order_completed){showToast("Payment marked as paid. Order completed.","success");await navigate("leaveReview",{orderId});}else{showToast(data?.message||"Payment reported to the vendor. Complete the remaining payment before leaving a review.","success");await navigate("orderDetail",{orderId});}}
+    try{
+      const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});
+      if(error)throw error;
+      byId("manualVendorPaymentModal")?.remove();
+
+      // The stage selected by the payment modal is authoritative for the UI:
+      // the first delivery deposit can NEVER open the review screen. Only the
+      // final sale/rental balance (or a completed full payment) can do that.
+      const stage=String(paymentStage||"").trim().toLowerCase();
+      const isDepositStage=stage.includes("deposit") || stage.includes("20%") && stage.includes("delivery");
+      const isFinalStage=!isDepositStage && (stage.includes("sale price") || stage.includes("rental fee") || stage.includes("remaining balance") || stage.includes("full payment"));
+
+      if(isFinalStage){
+        showToast("Payment completed.","success");
+        await navigate("leaveReview",{orderId});
+      }else{
+        showToast(data?.message||"20% payment reported. Complete the remaining payment before leaving a review.","success");
+        await navigate("orderDetail",{orderId});
+      }
+    }
     catch(e){err.textContent=e?.message||"Could not report the payment.";err.classList.remove("hidden");btn.disabled=false;}
   };
   /* Final vendor application form: make WhatsApp and bank details mandatory. */
@@ -28822,6 +29024,8 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 .product-payment-plan-notice.pay-before{background:#f0fdf4;border-color:#86efac;color:#166534;}
 .product-payment-plan-notice.pay-after{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;}
 </style>
+
+
 </body>
 <style id="levromart-20260910-final-polish">
 /* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
