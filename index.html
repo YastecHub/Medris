@@ -10519,8 +10519,10 @@ function renderBottomNav() {
       { icon: "<i class='fa-solid fa-shield-halved'></i>", label: "Admin", action: "navigate('adminPanel')", view: "adminPanel" },
       { icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
   } else if (isVendorUser) {
-    // Vendor navigation: Vendors, Orders | + | Messages, My Shop.
-    items = [vendorsTab, ordersTab, messagesTab, myShopTab];
+    // Vendor navigation: Vendors, Messages | + | Orders, My Shop.
+    // Keep Orders and Messages in the positions established for the vendor
+    // navigation; buyer navigation remains unchanged.
+    items = [vendorsTab, messagesTab, ordersTab, myShopTab];
   } else if (session) {
     // Buyer navigation: Vendors → Request → Home → Orders → Messages.
     // Messages stays at the extreme right; Orders sits immediately beside Home.
@@ -19973,7 +19975,12 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
       (safeAllOrders || []).forEach(o => { if (!Array.isArray(o.items) || !o.items.length) o.items = byOrder.get(o.id) || []; });
     }
   } catch (_) {}
-  if (payment !== "all") orders = (orders || []).filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
+  // Build the buyer's order list before applying the payment filter.
+  // A previous precision patch accidentally referenced `orders` before it was
+  // declared, which made the buyer My Orders renderer throw and the router
+  // fall back to the bare "Order" shell.
+  let orders = type === "all" ? (safeAllOrders || []) : (safeAllOrders || []).filter((o) => orderCategory(o) === type);
+  if (payment !== "all") orders = orders.filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
   try {
     const vendorIds = [...new Set((safeAllOrders || []).map(o => o.vendor_id).filter(Boolean))];
     if (vendorIds.length) {
