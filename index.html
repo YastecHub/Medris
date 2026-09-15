@@ -12187,7 +12187,7 @@ async function renderHome() {
   const activeCategory = (categories || []).find((c) => String(c.id) === String(currentHomeCategoryId)) || null;
   const subCats = (categories || []).filter(c => c.parent_category_id && (!activeSector || String(c.sector_id) === String(activeSector.id)));
 
-  let vendorQuery = sb.from("products").select("id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
+  let vendorQuery = sb.from("products").select("id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
@@ -12582,7 +12582,7 @@ async function fetchSearchSuggestions(term) {
 }
 function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hidden"); }
 
-const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
+const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
 
 // Used whenever a search/filter comes up empty - instead of a dead end,
 // show what IS available so the customer isn't stuck looking at nothing.
@@ -12909,10 +12909,15 @@ function productDeliverySummaryHtml(p) {
     return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: distance-based · ${naira(perKm)}/km</p>`;
   }
   if (flat > 0) return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: flat fee · ${naira(flat)}</p>`;
-  return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Free delivery</p>`;
+  return `<p class="product-delivery-summary free-delivery-highlight"><i class="fa-solid fa-truck"></i> Free delivery</p>`;
 }
 
-async function hydrateProductVariantIndicatorsInView(){
+function productPaymentPlanBadgeHtml(p){
+  if (!p || p.is_service) return "";
+  const timing = p.payment_timing === "pay_after" ? "pay_after" : "pay_before";
+  return `<div class="product-card-payment-plan ${timing === "pay_after" ? "pay-after" : "pay-before"}"><i class="fa-solid fa-wallet"></i> ${timing === "pay_after" ? "Pay after delivery · 20% + 80%" : "Pay before delivery · Full payment"}</div>`;
+}
+function hydrateProductVariantIndicatorsInView(){
   // A variety indicator is intentionally tied to multiple listing photos.
   // It belongs under the delivery line, not beside the vendor name.
   const nodes=[...document.querySelectorAll('.product-card-wrap[data-product-id]')];
@@ -12966,7 +12971,7 @@ function productCardHtml(p) {
       </div>
       ${p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`}
       <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
-      ${!p.is_service ? `<div class="product-card-payment-plan ${p.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><i class="fa-solid fa-wallet"></i> ${p.payment_timing === "pay_after" ? "Pay after delivery · 20% + 80%" : "Pay before delivery · Full payment"}</div>` : ""}
+      ${productPaymentPlanBadgeHtml(p)}
       <div class="product-card-action-row ${String(p._cardContext||"").toLowerCase()==="trending"?"trending-card-action-row":""}"><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button><div class="product-card-action-left">${actionHtml}</div></div>
     </div>
   </div>`;
@@ -16040,7 +16045,7 @@ async function renderStorefront(vendorId) {
   updateStorefrontSocialMeta(v);
 
   const [{ data: products }, { data: stats }, { data: reviews }, { data: packages }, { data: followState }] = await Promise.all([
-    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
+    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, delivery_fee, delivery_fee_mode, delivery_fee_per_km, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
     sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
     sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
@@ -16964,7 +16969,7 @@ function packageCardHtml(pkg, vendorDeliveryFee, compact = false) {
     ${pkg.description ? `<p class="package-card-description muted">${esc(pkg.description)}</p>` : ""}
     <p class="package-card-includes muted"><i class="fa-solid fa-box-open"></i> Includes: ${itemsText}</p>
     <div class="package-card-vendor"><i class="fa-solid fa-store"></i> ${esc(vendorName)}</div>
-    ${pkg.vendor?.delivery_fee_mode === "distance" ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Distance delivery · ${naira(pkg.vendor.delivery_fee_per_km || 0)}/km</div>` : Number(pkg.vendor?.delivery_fee || 0) > 0 ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Delivery · ${naira(pkg.vendor.delivery_fee)}</div>` : `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Free delivery</div>`}
+    ${pkg.vendor?.delivery_fee_mode === "distance" ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Distance delivery · ${naira(pkg.vendor.delivery_fee_per_km || 0)}/km</div>` : Number(pkg.vendor?.delivery_fee || 0) > 0 ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Delivery · ${naira(pkg.vendor.delivery_fee)}</div>` : `<div class="package-card-delivery muted free-delivery-highlight"><i class="fa-solid fa-truck"></i> Free delivery</div>`}
     ${profile?.role === "admin" ? `<span class="badge package-card-owner-badge">Admin</span>` : isOwnVendorId(pkg.vendor?.id) ? `<span class="badge own-listing-badge package-card-owner-badge"><i class="fa-solid fa-store"></i> Your package</span>` : ""}
     <div class="package-card-comment-row"><span class="package-card-engagement-count muted"><i class="fa-regular fa-heart"></i> <span class="package-like-count">0</span></span><button type="button" class="package-card-comment-btn" data-package-id="${esc(pkg.id)}" onclick="event.stopPropagation();openPackageCommentsFromCard('${esc(pkg.id)}')" aria-label="Comments on ${esc(pkg.name)}"><i class="fa-regular fa-comment"></i> <span class="package-comment-count">0</span></button></div>
   </div>`;
@@ -18754,6 +18759,7 @@ async function refreshSavedProductState(productId) {
   };
 
   window.__homeBrowseCatalog = replaceById(window.__homeBrowseCatalog);
+  window.__storefrontProducts = replaceById(window.__storefrontProducts);
   try {
     const cache = getOfflineHomeCache();
     if (cache) {
@@ -18945,6 +18951,8 @@ async function saveProduct() {
     closeProductModal({ skipDraft: true });
     window.__homeBrowseCatalog = Array.isArray(window.__homeBrowseCatalog)
       ? window.__homeBrowseCatalog.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p) : window.__homeBrowseCatalog;
+    window.__storefrontProducts = Array.isArray(window.__storefrontProducts)
+      ? window.__storefrontProducts.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p) : window.__storefrontProducts;
     if (currentProductDetail && String(currentProductDetail.id) === String(savedProductId)) currentProductDetail = { ...currentProductDetail, ...primarySavedProduct };
     document.querySelectorAll(`.product-card-wrap[data-product-id="${CSS.escape(String(savedProductId))}"]`).forEach(node => {
       const context = node.querySelector(".product-card-action-row")?.classList.contains("trending-card-action-row") ? "trending" : "";
@@ -32364,6 +32372,12 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .payment-timing-option.selected .payment-timing-option-dot{background:currentColor;box-shadow:inset 0 0 0 2px #fff;}
 .payment-timing-hint{font-size:.76rem;margin:.55rem 0 0;}
 @media(max-width:520px){.payment-timing-choice{grid-template-columns:1fr;}}
+
+/* Card payment/delivery status cues. */
+.product-card-payment-plan.pay-before{background:#dcfce7!important;color:#166534!important;border-color:#86efac!important;}
+.product-card-payment-plan.pay-after{background:#dbeafe!important;color:#1d4ed8!important;border-color:#93c5fd!important;}
+.free-delivery-highlight{display:inline-flex!important;align-items:center!important;gap:.3rem!important;width:max-content!important;max-width:100%!important;padding:.18rem .42rem!important;border-radius:999px!important;background:#fef9c3!important;color:#854d0e!important;border:1px solid #fde68a!important;font-weight:750!important;}
+.package-card-delivery.free-delivery-highlight{display:inline-flex!important;}
 </style>
 <script>
 (function(){
