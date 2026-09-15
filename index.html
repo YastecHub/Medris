@@ -1,3 +1,9 @@
+
+<style id="pickup-payment-message-polish">
+  #app .pickup-message-vendor-wrap{display:flex;flex-direction:column;align-items:center;width:100%;margin:.7rem 0 0;}
+  #app .pickup-message-vendor-wrap .order-message-vendor-btn{min-width:min(290px,100%);justify-content:center;}
+  #app .pickup-pay-vendor-btn{justify-content:center;}
+</style>
 <style id="order-vendor-message-contact-ui">
   /* Customer order-detail contact action: keep the vendor messaging control
      directly beneath the visible phone line, centered, with the same compact
@@ -399,8 +405,20 @@
   .divider { border: 0; border-top: 1px solid var(--border); margin: 1rem 0; }
   .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }
   .error-text { color: var(--danger); font-size: 0.85rem; margin: 0.3rem 0; }
-  /* Product-save validation is delivered as a compact app toast; never leave a red error block at the top of the long editor. */
+  /* Product-save validation stays with the field that needs attention. */
   #productError { display:none !important; }
+  .product-validation-focus {
+    border-color: var(--danger, #dc2626) !important;
+    box-shadow: 0 0 0 3px rgba(220,38,38,.14) !important;
+    outline: none !important;
+  }
+  .product-field-validation-message {
+    color: var(--danger, #dc2626);
+    font-size: .84rem;
+    font-weight: 600;
+    margin: .28rem 0 .5rem;
+    line-height: 1.35;
+  }
   .muted { color: var(--text-muted); font-size: 0.9rem; }
   .tabs { display: flex; gap: 1rem; border-bottom: 1px solid var(--border); margin: 1rem 0; flex-wrap: wrap; }
   .tabs a { padding-bottom: 0.5rem; color: var(--text-muted); text-decoration: none; border-bottom: 2px solid transparent; font-size: 0.9rem; cursor: pointer; text-transform: capitalize; }
@@ -6566,6 +6584,13 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 .vendor-commission-pay-now{width:100%;justify-content:center;margin-top:.65rem!important}
 @media(max-width:720px){.vendor-commission-breakdown-list{max-height:45vh}.vendor-commission-item-top{align-items:center}}
 </style>
+<style>
+/* Product/package comment composer — balanced mobile proportions. */
+.product-comment-composer{width:100%;box-sizing:border-box;}
+.product-comment-compose-row{width:min(100%,680px);margin:.35rem auto 0;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:end!important;gap:.65rem!important;}
+.product-comment-compose-row textarea{width:100%!important;min-width:0!important;box-sizing:border-box!important;margin:0!important;}
+.product-comment-compose-row > button{flex:0 0 auto!important;justify-self:end!important;margin:0!important;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--primary,#10b981)" stroke-width="5"/><path d="M19 34c5-1 8-4 10-9 1-3 3-5 6-5 4 0 6 3 6 7 0 5-4 8-8 8h-5c-5 0-9 3-9 7 0 3 2 5 5 5 4 0 6-2 7-5" fill="none" stroke="var(--primary,#10b981)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
@@ -9753,7 +9778,7 @@ function refreshVisibleOrderView() {
       } catch (err) {
         console.warn("[Levromart] Live order-detail refresh failed:", err);
       }
-    }, 60);
+    }, 0);
     return;
   }
 
@@ -15208,6 +15233,10 @@ async function renderProductDetail(productId) {
   const canRent=!ownListing&&(product.listing_type==="rent"||product.listing_type==="both"), canBuy=!ownListing&&(product.listing_type==="sale"||product.listing_type==="both");
   const productPhotos=Array.isArray(product.photos)?product.photos.filter(Boolean):[];
   const productVariants=Array.isArray(product.variants)?product.variants.slice().sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)):[];
+  // Keep payment-plan percentages as real JavaScript values. These are reused by the
+  // customer-facing notices below; do not nest a template literal inside a quoted string.
+  const paymentDepositPercent=Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20));
+  const paymentRemainingPercent=100-paymentDepositPercent;
   const cleanDescription=stripProductVariantMeta(product.description||"");
   const photosHtml = productPhotos.length
     ? `<div class="product-gallery product-gallery-carousel">
@@ -15265,7 +15294,7 @@ async function renderProductDetail(productId) {
         <input type="number" id="rentQty" value="1" min="1" max="${product.quantity_total}" placeholder="Qty" oninput="updateRentTotalPreview(${product.rental_rate},'${product.rental_rate_unit}')" style="width:90px;" />
       </div>
       <p class="muted" id="rentTotalPreview">Pick your dates to see the total.</p>
-      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? "Pay ${Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20))}% first; the remaining ${100-Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20))}% is due after delivery." : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
+      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% first; the remaining ${paymentRemainingPercent}% is due after delivery.` : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       ${deliveryFieldsHtml("rent", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km)}
       <button class="btn" onclick="confirmRental('${product.vendor.id}','${product.id}')">Reserve</button>
       <p id="rentError" class="error-text hidden"></p>
@@ -15283,7 +15312,7 @@ async function renderProductDetail(productId) {
           : `<input type="number" id="buyQty" value="1" min="1" max="${product.quantity_available}" placeholder="Qty" oninput="updateBuyTotalPreview(${product.sale_price ?? 0})" style="width:90px;" />`}
       </div>
       ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview">Total: ${naira(productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price)}</p>` : ""}
-      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? "Pay ${Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20))}% first; the remaining ${100-Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20))}% is due after delivery." : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
+      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% first; the remaining ${paymentRemainingPercent}% is due after delivery.` : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
       ${!product.is_service ? `<div style="margin-top:0.7rem;">
         <label style="margin:0;">Note for the vendor <span class="muted" style="font-weight:400;">(optional)</span></label>
@@ -18851,6 +18880,72 @@ async function refreshVisibleProductAfterSave(productId) {
   return savedProduct;
 }
 
+function clearProductValidationState() {
+  document.querySelectorAll(".product-field-validation-message").forEach(el => el.remove());
+  document.querySelectorAll(".product-validation-focus").forEach(el => el.classList.remove("product-validation-focus"));
+  document.querySelectorAll('[aria-invalid="true"]').forEach(el => el.removeAttribute("aria-invalid"));
+}
+
+function focusProductValidationField(message) {
+  clearProductValidationState();
+  const text = String(message || "Please complete this field before saving.");
+  const rules = [
+    [/^Product name is required/i, "prodName"],
+    [/^Choose how you want to pay Levromart/i, "prodBillingModel"],
+    [/^Price is required|^Enter a price for this service/i, "prodSalePrice"],
+    [/^Discount price must be lower/i, "prodDiscountPrice"],
+    [/^Enter a fee per kilometre/i, "prodDeliveryPerKm"],
+    [/^Enter a buyer deposit percentage/i, "prodPaymentDepositPercent"],
+    [/^Rental rate is required/i, "prodRentalRate"],
+    [/^Type a name for the new sector/i, "prodSectorOther"],
+    [/^Type a name for the new category/i, "prodCategoryOther"],
+    [/^Couldn't create that sector/i, "prodSectorOther"],
+    [/^Couldn't create that category/i, "prodCategoryOther"],
+    [/^This sector does not have an Other category/i, "prodCategory"]
+  ];
+  let fieldId = null;
+  for (const [pattern, id] of rules) { if (pattern.test(text)) { fieldId = id; break; } }
+  const field = fieldId ? byId(fieldId) : null;
+  if (!field) return;
+
+  field.classList.add("product-validation-focus");
+  field.setAttribute("aria-invalid", "true");
+  const msg = document.createElement("div");
+  msg.className = "product-field-validation-message";
+  msg.setAttribute("role", "alert");
+  msg.textContent = text;
+  field.insertAdjacentElement("afterend", msg);
+
+  requestAnimationFrame(() => {
+    try { field.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_) { field.scrollIntoView(); }
+    setTimeout(() => {
+      try { field.focus({ preventScroll: true }); } catch (_) { try { field.focus(); } catch (_) {} }
+    }, 180);
+  });
+}
+
+function bindProductValidationClearers() {
+  if (window.__levromartProductValidationClearersBound) return;
+  window.__levromartProductValidationClearersBound = true;
+  document.addEventListener("input", e => {
+    if (e.target?.closest?.("#productModal") && (e.target.matches?.("#prodName,#prodSalePrice,#prodDiscountPrice,#prodRentalRate,#prodDeliveryPerKm,#prodPaymentDepositPercent,#prodSectorOther,#prodCategoryOther"))) {
+      e.target.classList.remove("product-validation-focus");
+      e.target.removeAttribute("aria-invalid");
+      e.target.parentElement?.querySelector?.(":scope > .product-field-validation-message")?.remove();
+      e.target.nextElementSibling?.classList?.contains("product-field-validation-message") && e.target.nextElementSibling.remove();
+    }
+  }, true);
+  document.addEventListener("change", e => {
+    if (e.target?.closest?.("#productModal") && e.target.matches?.("#prodBillingModel,#prodCategory,#prodSector")) {
+      e.target.classList.remove("product-validation-focus");
+      e.target.removeAttribute("aria-invalid");
+      e.target.nextElementSibling?.classList?.contains("product-field-validation-message") && e.target.nextElementSibling.remove();
+    }
+  }, true);
+}
+
+bindProductValidationClearers();
+
 async function saveProduct() {
   const errorEl = byId("productError");
   errorEl.classList.add("hidden");
@@ -19016,8 +19111,7 @@ async function saveProduct() {
       try { await refreshVisibleProductAfterSave(savedProductId); } catch (e) { console.warn("[Levromart] Post-save product reconciliation failed:", e); }
     });
   } catch (err) {
-    errorEl.textContent = err.message;
-    errorEl.classList.remove("hidden");
+    focusProductValidationField(err?.message || "Please complete the required field before saving.");
   } finally {
     btn.disabled = false;
   }
@@ -19951,15 +20045,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <div><p class="muted" style="margin:0;">Total</p><strong>${naira(order.total_amount)}</strong></div>
       ${order.deposit_amount > 0 ? `<div><p class="muted" style="margin:0;">Refundable deposit</p><strong>${naira(order.deposit_amount)}</strong></div>` : ""}
       <div><p class="muted" style="margin:0;">Delivery</p><strong style="text-transform:capitalize;">${order.delivery_method}${order.delivery_address ? " · " + esc(order.delivery_address) : ""}</strong>${order.delivery_phone ? `<p class="muted" style="margin:0.2rem 0 0;"><i class="fa-solid fa-phone"></i> <a href="${telLink(order.delivery_phone)}">${esc(order.delivery_phone)}</a></p>` : ""}
-        ${isCustomer && order.vendor?.id ? `<div class="order-vendor-message-wrap">
-          <button class="btn btn-sm order-message-vendor-btn" type="button" onclick="toggleInlineMenu('orderVendorMessageMenu-${order.id}',event)" aria-label="Message vendor" title="Message vendor">
-            <i class="fa-solid fa-comment-dots"></i> Message vendor <i class="fa-solid fa-chevron-down" style="font-size:.68em;margin-left:.15rem;"></i>
-          </button>
-          <div class="ms-list hidden order-vendor-message-menu" id="orderVendorMessageMenu-${order.id}">
-            <button class="ms-item" type="button" onclick="startConversationWithVendor('${order.vendor.id}');closeInlineMenu('orderVendorMessageMenu-${order.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button>
-            ${order.vendor.whatsapp_visible && order.vendor.whatsapp_number ? `<a class="ms-item" href="${waLink(order.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('orderVendorMessageMenu-${order.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a>` : ""}
-          </div>
-        </div>` : ""}</div>
+      </div>
     </div>
     ${order.delivery_method === "delivery" && order.vendor?.lat != null && order.vendor?.lng != null ? `<p class="muted" id="orderEtaLine" style="font-size:0.8rem;margin-top:0.6rem;"></p>` : ""}
   </div>`;
@@ -19985,7 +20071,15 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     html += `<div class="card"><h3><i class="fa-solid fa-location-dot"></i> Pickup location</h3>
       ${addr ? `<p>${addr}</p>` : `<p class="muted">This vendor hasn't listed a pickup address yet. Message them to confirm where to collect your order.</p>`}
       ${order.vendor?.opening_hours ? `<p class="muted" style="font-size:0.85rem;"><i class="fa-solid fa-clock"></i> ${esc(order.vendor.opening_hours)}</p>` : ""}
-      <button class="btn btn-sm" data-draft="${esc(pickupMessageDraft(order))}" onclick="startConversationWithVendor('${order.vendor.id}', this.dataset.draft)"><i class="fa-solid fa-comment-dots"></i> Message vendor to confirm pickup</button>
+      <div class="order-vendor-message-wrap pickup-message-vendor-wrap">
+        <button class="btn btn-sm order-message-vendor-btn" type="button" onclick="toggleInlineMenu('pickupVendorMessageMenu-${order.id}',event)" aria-label="Message vendor to confirm pickup" title="Message vendor to confirm pickup">
+          <i class="fa-solid fa-comment-dots"></i> Message vendor to confirm pickup <i class="fa-solid fa-chevron-down" style="font-size:.68em;margin-left:.15rem;"></i>
+        </button>
+        <div class="ms-list hidden order-vendor-message-menu" id="pickupVendorMessageMenu-${order.id}">
+          <button class="ms-item" type="button" data-draft="${esc(pickupMessageDraft(order))}" onclick="startConversationWithVendor('${order.vendor.id}', this.dataset.draft);closeInlineMenu('pickupVendorMessageMenu-${order.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button>
+          ${order.vendor.whatsapp_visible && order.vendor.whatsapp_number ? `<a class="ms-item" href="${waLink(order.vendor.whatsapp_number, pickupMessageDraft(order))}" target="_blank" rel="noopener" onclick="closeInlineMenu('pickupVendorMessageMenu-${order.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a>` : ""}
+        </div>
+      </div>
     </div>`;
   }
 
@@ -20124,6 +20218,10 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
   if (isCustomer && order.status === "confirmed") {
     const paidRow = payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
+    if (!isDeliveryOrder && !paidRow) {
+      const pickupPayAmount = Number(order.total_amount || 0);
+      buttons.push(`<button class="btn btn-sm order-action-neutral pickup-pay-vendor-btn" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-building-columns"></i> Pay vendor · ${naira(pickupPayAmount)}</button>`);
+    }
     const hoursSincePaid = paidRow ? (Date.now() - new Date(paidRow.paid_at || paidRow.created_at).getTime()) / 3600000 : 0;
     if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
     else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
@@ -26702,7 +26800,7 @@ window.renderVendorMapRail = function(){
   };
   window.reportDirectVendorPayment = async function(orderId,amount){
     const err=byId("directPaymentError"),btn=byId("directPaymentReportedBtn"); if(!err||!btn)return; err.classList.add("hidden"); btn.disabled=true;
-    try{const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});if(error)throw error;byId("manualVendorPaymentModal")?.remove();showToast(data?.message||"Payment reported to the vendor.","success");await navigate("leaveReview",{orderId});}
+    try{const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});if(error)throw error;byId("manualVendorPaymentModal")?.remove();if(data?.order_completed){showToast("Payment marked as paid. Order completed.","success");await navigate("orderDetail",{orderId});}else{showToast(data?.message||"Payment reported to the vendor.","success");await navigate("leaveReview",{orderId});}}
     catch(e){err.textContent=e?.message||"Could not report the payment.";err.classList.remove("hidden");btn.disabled=false;}
   };
   /* Final vendor application form: make WhatsApp and bank details mandatory. */
