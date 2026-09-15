@@ -6490,47 +6490,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 .product-variety-add-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.45rem;margin-top:.5rem;}
 @media(max-width:520px){.product-variety-add-row{grid-template-columns:1fr}.product-display-picture-editor{min-height:125px}}
 </style>
-
-<style id="levromart-variety-editor-precision">
-/* Variety editor — intentionally scoped only to the product variety section. */
-#productVariantPricing{padding:.95rem;background:color-mix(in srgb,var(--primary) 3%,var(--card));border:1px solid var(--border);border-radius:16px;}
-#productVariantPricing .product-variant-pricing-head{margin-bottom:.85rem;}
-#productVariantPricing .product-variant-pricing-head strong{font-size:1rem;}
-#productVariantPricing .variant-price-row{display:block;padding:0;margin:.75rem 0 0;border:1px solid var(--border);border-radius:14px;background:var(--card);overflow:hidden;box-shadow:0 2px 8px color-mix(in srgb,var(--text) 5%,transparent);}
-#productVariantPricing .variant-price-row:first-of-type{border-top:1px solid var(--border);}
-#productVariantPricing .variant-row-topbar{display:flex;align-items:center;gap:.55rem;padding:.55rem .65rem;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--primary) 5%,var(--card));}
-#productVariantPricing .variant-dnd-handle{width:38px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border));border-radius:9px;background:color-mix(in srgb,var(--primary) 8%,var(--card));color:var(--primary);font-size:.82rem;cursor:grab;touch-action:none;}
-#productVariantPricing .variant-dnd-handle:active{cursor:grabbing;background:color-mix(in srgb,var(--primary) 14%,var(--card));}
-#productVariantPricing .variant-row-title{flex:1;font-size:.82rem;color:var(--text);}
-#productVariantPricing .variant-price-remove{width:34px;height:34px;border-radius:9px;}
-#productVariantPricing .variant-photo-section{padding:.8rem;display:grid;grid-template-columns:minmax(0,1fr);gap:.65rem;border-bottom:1px solid var(--border);}
-#productVariantPricing .variant-photo-picker{width:100%;min-height:82px;display:flex;align-items:center;gap:.75rem;padding:.65rem;border:1px dashed color-mix(in srgb,var(--primary) 48%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--primary) 4%,var(--input-bg));color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:border-color .18s ease,background .18s ease,transform .18s ease;}
-#productVariantPricing .variant-photo-picker:hover{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 7%,var(--input-bg));}
-#productVariantPricing .variant-photo-picker:active{transform:scale(.995);}
-#productVariantPricing .variant-photo-preview{width:64px;height:64px;flex:0 0 64px;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:color-mix(in srgb,var(--primary) 9%,var(--input-bg));border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border));color:var(--primary);font-size:1.15rem;}
-#productVariantPricing .variant-photo-preview img{display:block;width:100%;height:100%;object-fit:cover;}
-#productVariantPricing .variant-photo-copy{min-width:0;display:flex;flex-direction:column;gap:.18rem;flex:1;}
-#productVariantPricing .variant-photo-copy strong{font-size:.8rem;}
-#productVariantPricing .variant-photo-copy small{font-size:.68rem;color:var(--text-muted);line-height:1.3;}
-#productVariantPricing .variant-photo-camera{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);flex:0 0 32px;}
-#productVariantPricing .variant-existing-photo-wrap{display:grid;gap:.25rem;}
-#productVariantPricing .variant-existing-photo-wrap label{font-size:.68rem;color:var(--text-muted);margin:0;}
-#productVariantPricing .variant-existing-photo-wrap select{margin:0;}
-#productVariantPricing .variant-fields-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;padding:.8rem;}
-#productVariantPricing .variant-field{min-width:0;}
-#productVariantPricing .variant-field-wide{grid-column:1 / -1;}
-#productVariantPricing .variant-field label{display:block;margin:0 0 .28rem;font-size:.7rem;font-weight:750;color:var(--text);}
-#productVariantPricing .variant-field label span{font-weight:500;color:var(--text-muted);}
-#productVariantPricing .variant-field input{width:100%;min-width:0;margin:0;}
-#productVariantPricing .variant-price-row.dragging{opacity:.62;box-shadow:0 8px 24px color-mix(in srgb,var(--primary) 15%,transparent);}
-@media(max-width:520px){
-  #productVariantPricing{padding:.75rem;border-radius:14px;}
-  #productVariantPricing .variant-fields-grid{grid-template-columns:1fr;gap:.62rem;}
-  #productVariantPricing .variant-field-wide{grid-column:auto;}
-  #productVariantPricing .variant-photo-preview{width:58px;height:58px;flex-basis:58px;}
-  #productVariantPricing .variant-photo-picker{min-height:76px;}
-}
-</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -6901,7 +6860,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <strong>Add photos</strong>
       <span class="muted">Tap to choose, or drag images here</span>
     </label>
-    <input type="file" id="prodPhotoFiles" accept="image/*" multiple class="hidden" onchange="previewNewProductPhotos()" />
+    <input type="file" id="prodPhotoFiles" accept="image/*" class="hidden" onchange="previewNewProductPhotos()" />
     <div class="photo-grid" id="prodExistingPhotos"></div>
     <div class="photo-grid" id="prodNewPhotoPreviews"></div>
     <div class="product-variant-pricing" id="productVariantPricing"></div>
@@ -8321,12 +8280,25 @@ document.addEventListener("visibilitychange", () => {
 // Levromart UI sounds are disabled. Levi read-aloud voice remains separate.
 let soundEnabled = false;
 let audioCtx = null;
+const heardNotifications=new Set();let notificationSoundUntil=0;
+function unlockNotificationAudio(){
+  const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return;
+  if(!audioCtx)audioCtx=new Ctx();if(audioCtx.state==='suspended')audioCtx.resume().catch(err=>console.warn('Notification audio unavailable',err));
+}
+function playNotificationSound(n){
+  if(!n?.id||!session?.user?.id)return;const key=`${session.user.id}:${n.id}`;
+  if(heardNotifications.has(key))return;heardNotifications.add(key);
+  if(document.hidden||!audioCtx||audioCtx.state!=='running')return;
+  const now=audioCtx.currentTime;if(now<notificationSoundUntil)return;notificationSoundUntil=now+1.8;
+  [523.25,659.25,783.99].forEach((hz,i)=>{const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),at=now+i*.22;osc.type='sine';osc.frequency.value=hz;gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.09,at+.025);gain.gain.exponentialRampToValueAtTime(.0001,at+1.25);osc.connect(gain);gain.connect(audioCtx.destination);osc.start(at);osc.stop(at+1.3);});
+}
 function playSound() {}
 function toggleSound() {}
 function renderSoundToggle() {}
 function setSoundStyle() {}
 function renderSoundStyleOptions() {}
 function initSound() {
+  if(!window.__notificationAudioBound){window.__notificationAudioBound=true;document.addEventListener("pointerdown",unlockNotificationAudio,{passive:true});document.addEventListener("keydown",unlockNotificationAudio);}
   soundEnabled = false;
   try {
     localStorage.removeItem('medris-sound');
@@ -9132,23 +9104,24 @@ async function renderNotifPanel() {
   // We never mutate or destructively migrate those legacy fields here.
   let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(60);
   const { data: rawItems, error } = await q;
-  const currentVendorId = String(vendor?.id || "");
-  const notificationType = (n) => String(n?.type || n?.notification_type || n?.notification_category || "").toLowerCase();
-  const notificationText = (n) => `${notificationType(n)} ${String(n?.title || "")} ${String(n?.body || "")} ${JSON.stringify(n?.target_params || {})} ${JSON.stringify(n?.metadata || {})}`.toLowerCase();
-  const classifyNotification = (n) => {
-    const type=notificationType(n), target=String(n?.target_view||"").toLowerCase();
-    const meta=n?.metadata&&typeof n.metadata==="object"?n.metadata:{}; const params=n?.target_params&&typeof n.target_params==="object"?n.target_params:{};
-    const vendorId=String(n?.vendor_id||meta.vendor_id||params.vendorId||params.vendor_id||"");
-    const kind=String(meta.kind||meta.entity_type||meta.entityType||meta.activity_type||meta.activityType||n?.notification_category||"").toLowerCase();
-    const orderId=meta.order_id||meta.orderId||params.orderId||params.order_id, requestId=meta.request_id||meta.requestId||params.requestId||params.request_id;
-    const orderType=/(^|[_-])(order|request|offer|payment|checkout|handover|handed_over|returned|completed|cancelled|dispute)([_-]|$)/;
-    if(orderId||requestId||orderType.test(type)||orderType.test(kind)||/order|request|offer|payment/.test(target))return "orders";
-    const ownListing=!!currentVendorId&&vendorId===currentVendorId;
-    if(vendor?.id&&(ownListing||/product|listing|package|variant|variety|comment|save|like|wishlist|engagement/.test(kind)||/product|package|listing|variant|variety/.test(target)))return "myListings";
-    if(/vendor|new_listing|new_service|new_package|new_variety|price_change|discount|followed_vendor/.test(kind)||/vendor|new_listing|new_service|new_package|new_variety|price_change|discount/.test(type)||(vendorId&&vendorId!==currentVendorId))return "vendors";
-    const text=notificationText(n);if(/order|request|offer|payment|handover|completed|cancelled|dispute/.test(text))return "orders";if(vendor?.id&&ownListing&&/product|package|listing|comment|like|save|variety/.test(text))return "myListings";if(/vendor|followed vendor|new listing|new variety|price change|discount/.test(text))return "vendors";return "personal";
+  const currentVendorId=String(vendor?.id||'');
+  const owners=new Map();
+  for(const [kind,table] of [['product','products'],['package','vendor_packages']]){
+    const ids=[...new Set((rawItems||[]).map(n=>{const p=n.target_params||{},m=n.metadata||{};return kind==='product'?(p.productId||p.product_id||m.product_id):(p.packageId||p.package_id||m.package_id)}).filter(Boolean))];
+    if(ids.length){const {data,error:ownerError}=await sb.from(table).select('id,vendor_id').in('id',ids);if(ownerError)console.warn('Notification ownership lookup failed',ownerError);(data||[]).forEach(r=>owners.set(`${kind}:${r.id}`,String(r.vendor_id)));}
+  }
+  const classifyNotification=n=>{
+    const p=n.target_params||{},m=n.metadata||{},type=String(n.type||n.notification_type||n.notification_category||'').toLowerCase();
+    const kind=String(m.kind||m.entity_type||n.notification_category||type).toLowerCase();
+    const owner=String(n.vendor_id||m.vendor_id||p.vendorId||p.vendor_id||owners.get(`product:${p.productId||p.product_id||m.product_id}`)||owners.get(`package:${p.packageId||p.package_id||m.package_id}`)||'');
+    if(m.order_id||p.orderId||p.order_id||/^(order|payment|request|offer)(_|$)/.test(type)||['orderDetail','buyerOrders','vendorOrders'].includes(n.target_view))return 'orders';
+    const listing=/product|listing|package|service|variant|variety|comment|like|save|wishlist/.test(kind)||!!p.productId||!!p.packageId;
+    if(listing&&owner&&owner===currentVendorId)return 'myListings';
+    if(owner&&owner!==currentVendorId&&(listing||/vendor/.test(kind)))return 'vendors';
+    return 'personal';
   };
-  const notificationTabs=[["all","All"],["personal","Personal"],["orders",vendor?.id?"Orders & Requests":"Orders"],...(vendor?.id?[["myListings","My Listings"]]:[]),["vendors","Vendors"]];
+  const notificationTabs=[['all','All'],['personal','Personal'],...(profile?.role!=='admin'?[['orders',vendor?.id?'Orders & Requests':'Orders']]:[]),...(vendor?.id?[['myListings','My Listings']]:[]),['vendors','Vendors']];
+  if(!notificationTabs.some(([key])=>key===notifViewMode))notifViewMode='all';
   const unreadByCategory={personal:0,orders:0,myListings:0,vendors:0};(rawItems||[]).forEach(n=>{if(!n.read){const c=classifyNotification(n);if(c in unreadByCategory)unreadByCategory[c]++;}});
   const tabHtml=(key,label)=>{const count=key==="all"?(rawItems||[]).filter(n=>!n.read).length:Number(unreadByCategory[key]||0);return `<button type="button" role="tab" aria-selected="${notifViewMode===key?"true":"false"}" class="notif-tab ${notifViewMode===key?"active":""}" onclick="switchNotifView('${key}')">${label}${count?`<span class="notif-tab-badge">${count>9?"9+":count}</span>`:""}</button>`};
   const items = (rawItems || []).filter((n) => {
@@ -9163,9 +9136,7 @@ async function renderNotifPanel() {
     // Do not turn a temporary database/network error into a fake empty state.
     // Keep the drawer honest and let the user retry by reopening/switching tabs.
     window.__notifPanelIds = [];
-    panel.innerHTML = `<div class="notifications-page-tools"><strong>Notifications</strong></div><div class="notif-tabs">${[
-      ["all","All"],["personal","Personal"],["orders",vendor?.id ? "Orders & Requests" : "Orders"],...(vendor?.id ? [["myListings","My Listings"]] : []),["vendors","Vendors"]
-    ].map(([key,label]) => `<button class="notif-tab ${notifViewMode === key ? "active" : ""}" onclick="switchNotifView('${key}')">${label}</button>`).join("")}</div><p class="muted" style="padding:1rem;text-align:center;">Couldn’t load notifications right now. Please try again.</p>`;
+    panel.innerHTML = `<div class="notifications-page-tools"><strong>Notifications</strong></div><div class="notif-tabs">${notificationTabs.map(([key,label]) => `<button class="notif-tab ${notifViewMode === key ? "active" : ""}" onclick="switchNotifView('${key}')">${label}</button>`).join("")}</div><p class="muted" style="padding:1rem;text-align:center;">Couldn’t load notifications right now. Please try again.</p>`;
     panel.classList.toggle("selecting", false);
     return;
   }
@@ -9201,7 +9172,7 @@ async function renderNotifPanel() {
       ${tabs}`;
 
   const emptyMsg = { all: "You're all caught up.", personal: "No personal notifications yet.", orders: vendor?.id ? "No order or request activity yet." : "No order activity yet.", myListings: "No activity on your listings yet.", vendors: "No vendor activity yet." }[notifViewMode] || "You're all caught up.";
-  const hasUnread = (items || []).some((n) => !n.read);
+  const hasUnread = (rawItems || []).some((n) => !n.read);
   const markAllBar = "";
   const list = (items && items.length)
     ? items.map((n) => `<div class="notif-item-wrap" data-id="${n.id}">
@@ -9217,7 +9188,7 @@ async function renderNotifPanel() {
   panel.classList.toggle("selecting", notifSelectMode);
   if (isNotificationsPage) {
     const actions = byId("notificationsPageHeaderActions");
-    if (actions) actions.innerHTML = `<button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications" title="Select notifications"><i class="fa-solid fa-check-double"></i></button>${hasUnread ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all notifications as read" title="Mark all notifications as read"><i class="fa-solid fa-check-double"></i></button>` : ""}`;
+    if (actions) actions.innerHTML = `<button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications" title="Select notifications"><i class="fa-regular fa-square-check"></i></button>${hasUnread ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all notifications as read" title="Mark all notifications as read"><i class="fa-solid fa-check-double"></i></button>` : ""}`;
   }
   } catch (err) {
     console.error("Notification rendering failed", err);
@@ -9518,15 +9489,15 @@ function showUndoToast(message, undoFn) {
   window.__activeToastTimer = setTimeout(dismiss, 5000);
 }
 
-async function markAllNotifsRead() {
-  if (!session) return;
-  if (!(await showConfirmDialog("Mark every notification as read?", { title: "Mark all as read", okLabel: "Mark all read" }))) return;
-  notifCount = 0; byId("notifDot")?.classList.add("hidden");
-  getNotifHost()?.querySelectorAll(".notif-item.unread").forEach(row => row.classList.remove("unread"));
-  showToast("All marked as read.", "success");
-  const { error } = await sb.from("notifications").update({ read: true }).eq("user_id", session.user.id).eq("read", false).eq("archived", notifViewMode === "archived").is("deleted_at", null);
-  if (error) { renderNotifPanel(); showToast(error.message || "Couldn't mark notifications as read.", "error"); return; }
-  refreshNotifications(false).catch(() => {});
+let markAllNotifsBusy=false;
+async function markAllNotifsRead(){
+  if(!session||markAllNotifsBusy)return;markAllNotifsBusy=true;
+  try{
+    if(!(await showConfirmDialog('Mark every notification as read?',{title:'Mark all as read',okLabel:'Mark all read'})))return;
+    const {error}=await sb.from('notifications').update({read:true}).eq('user_id',session.user.id).eq('read',false).is('deleted_at',null);if(error)throw error;
+    await refreshNotifications();showToast('All marked as read.','success');
+  }catch(err){showToast(err.message||'Could not mark notifications as read.','error');}
+  finally{markAllNotifsBusy=false;}
 }
 async function markSingleNotifRead(id) {
   if (!session) return;
@@ -9542,12 +9513,14 @@ async function markSingleNotifRead(id) {
   }
 }
 
+let notifChannelUserId=null;
 function subscribeNotifications() {
+  const userId=session?.user?.id||null;if(notifChannel&&notifChannelUserId===userId)return;notifChannelUserId=userId;
   if (notifChannel) { sb.removeChannel(notifChannel); notifChannel = null; }
   if (!session) return;
   notifChannel = sb.channel(`notifications-${session.user.id}`)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` }, (payload) => {
-      playSound("notify");
+      playNotificationSound(payload.new);
       showToast(payload.new.title, "info");
       refreshNotifications();
       // Vendor approval/rejection and admin promotion/demotion change the
@@ -9562,9 +9535,42 @@ function subscribeNotifications() {
         }).catch((e) => console.warn("[Levromart] Role-change refresh failed:", e));
       }
     })
-    .subscribe();
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'notifications',filter:`user_id=eq.${session.user.id}`},()=>refreshNotifications().catch(err=>console.warn('Notification refresh failed',err)))
+    .subscribe(status=>{window.__notificationRealtimeStatus=status;if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Notification realtime unavailable',status);});
 }
 
+function invalidateMarketplaceState(){
+  routeHtmlCache.clear();window.__homeBrowseCatalog=[];window.__allHomePackages=[];window.__homePackages=[];
+  try{localStorage.removeItem(OFFLINE_HOME_CACHE_KEY);}catch(err){console.warn('Marketplace cache invalidation failed',err);}
+}
+let marketplaceLiveChannel=null,marketplaceLiveUser=null,marketplaceRefreshBusy=false,marketplaceRefreshAgain=false;
+async function refreshMarketplaceRegions(){
+  if(marketplaceRefreshBusy){marketplaceRefreshAgain=true;return;}marketplaceRefreshBusy=true;
+  try{do{marketplaceRefreshAgain=false;const view=currentView;
+    if(view==='home')await filterHomeProducts();
+    if(view==='adminMonthlyListings'){
+      const html=await renderAdminMonthlyListings();if(currentView===view){const tpl=document.createElement('template');tpl.innerHTML=html;
+        document.querySelectorAll('#app [data-monthly-kind]').forEach(old=>{const next=tpl.content.querySelector(`[data-monthly-kind="${old.dataset.monthlyKind}"]`);if(next){next.classList.toggle('hidden',old.classList.contains('hidden'));old.replaceWith(next)}});
+      }
+    }
+    if(view==='vendorProducts'){
+      const host=document.querySelector('[data-vendor-listing-section="packages"]');if(host){const html=await renderVendorPackages(true);if(host.isConnected&&currentView===view)host.innerHTML=html;}
+    }
+    await refreshMonthlyPendingCount();
+  }while(marketplaceRefreshAgain);}catch(err){console.warn('Marketplace realtime refresh failed',err);}finally{marketplaceRefreshBusy=false;}
+}
+function subscribeMarketplaceUpdates(){
+  const user=session?.user?.id||null;if(marketplaceLiveChannel&&marketplaceLiveUser===user)return;
+  if(marketplaceLiveChannel){sb.removeChannel(marketplaceLiveChannel);marketplaceLiveChannel=null;}marketplaceLiveUser=user;if(!user)return;
+  let channel=sb.channel(`marketplace-${user}`);
+  for(const table of ['favorites','products','product_variants','vendor_packages','vendors','monthly_listing_submissions'])channel=channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
+    if(table==='favorites'){void hydrateProductLikeCountsInView();return;}
+    invalidateMarketplaceState();
+    if(table==='vendors'){const v=payload.new?.id?payload.new:payload.old;if(payload.eventType==='DELETE'||v.deleted_at||v.is_active===false)document.querySelectorAll(`[data-vendor-id="${CSS.escape(String(v.id))}"]`).forEach(el=>{if(el.classList.contains('vendor-card'))el.remove()});if(v.id===vendor?.id)refreshAuthState().catch(err=>console.warn('Vendor role refresh failed',err));}
+    if(table==='product_variants')void hydrateProductVariantIndicatorsInView();void refreshMarketplaceRegions();
+  });
+  marketplaceLiveChannel=channel.subscribe(status=>{window.__marketplaceRealtimeStatus=status;if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Marketplace realtime unavailable: check publication and RLS',status);});
+}
 // ---------- LIVE ORDERS ----------
 let ordersLiveChannel = null;
 let ordersLiveTimer = null;
@@ -9723,6 +9729,8 @@ async function refreshAuthState() {
   refreshNotifications(false).catch(() => {});
   subscribeNotifications();
   subscribeOrderUpdates();
+  subscribeMarketplaceUpdates();
+  window.__monthlyPendingCount=0;void refreshMonthlyPendingCount();
   loadAiVoices();
   // Google sign-in creates the account straight away with no chance to
   // pick buyer vs vendor first (unlike the manual signup form, which asks
@@ -9843,6 +9851,7 @@ function updateAuthUI() {
     const links = [];
     if (vendor && profile.role !== "admin") {
       links.push({ label: "My Shop", action: "navigate('vendorDashboard')" });
+      links.push({label:`Monthly Listing <span class="badge danger monthly-profile-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount||0)}</span>`,action:"navigate('vendorProducts')"});
       links.push({ label: "Edit Business Profile", action: "navigate('vendorEditProfile')" });
       links.push({ label: `Requests${requestOfferBadgeCount > 0 ? ` <span class="badge danger profile-request-badge">${requestOfferBadgeCount > 9 ? "9+" : requestOfferBadgeCount}</span>` : ""}`, action: "navigate('vendorRequests')" });
     } else if (profile.role !== "admin") {
@@ -9856,6 +9865,7 @@ function updateAuthUI() {
     }
     if (profile.role === "admin") {
       links.push({ label: "Admin panel", action: "navigate('adminPanel')" });
+      links.push({label:`Monthly Listing <span class="badge danger monthly-profile-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount||0)}</span>`,action:"navigate('adminMonthlyListings')"});
       links.push({ label: "Manage admins", action: "navigate('adminUsers')" });
       links.push({ label: "Vendors &amp; transactions", action: "navigate('adminFinance')" });
       links.push({ label: `Disputes <span class="badge danger profile-disputes-badge ${Number(window.__adminDisputeCount || 0) > 0 ? "" : "hidden"}">${Number(window.__adminDisputeCount || 0) > 9 ? "9+" : Number(window.__adminDisputeCount || 0)}</span>`, action: "navigate('adminDisputes')", profileKey: "disputes" });
@@ -9894,7 +9904,7 @@ function updateAuthUI() {
       <div class="profile-panel-scroll">
         ${links.map((l) => {
           const raw = String(l.label).replace(/<[^>]*>/g, '').trim().toLowerCase();
-          const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('customer requests') || raw === 'requests' ? 'fa-hand' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') || raw.includes('support request') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('link library') ? 'fa-link' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
+          const icon = raw.includes('my orders') ? 'fa-receipt' : raw.includes('customer requests') || raw === 'requests' ? 'fa-hand' : raw.includes('request an item') ? 'fa-hand' : raw.includes('my shop') ? 'fa-store' : raw.includes('packages') ? 'fa-box-open' : raw.includes('buyer requests') ? 'fa-clipboard-list' : raw.includes('business profile') ? 'fa-shop' : raw.includes('my details') ? 'fa-id-card' : raw.includes('messages') ? 'fa-message' : raw.includes('wishlist') ? 'fa-heart' : raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') || raw.includes('support request') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('tour') ? 'fa-compass' : raw.includes('link library') ? 'fa-link' : raw.includes('disputes') ? 'fa-scale-balanced' : raw.includes('monthly listing') ? 'fa-receipt' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
           const profileLabelAttr = raw === "customer requests" || raw === "requests" ? ` data-profile-label="Requests"` : "";
           const profileKeyAttr = l.profileKey ? ` data-profile-key="${esc(l.profileKey)}"` : "";
           return `<a class="profile-nav-link"${profileLabelAttr}${profileKeyAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
@@ -10857,6 +10867,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (profile?.suspended_at && view !== "suspended") view = "suspended";
   const navToken = ++navigationGeneration;
   const previousView = currentView;
+  const homeStartScroll = view === "home" ? window.scrollY : null;
 
   // Protected routes must never render their access guard while Supabase is
   // still restoring the cached session/profile in the background. This is the
@@ -11122,10 +11133,10 @@ async function navigate(view, params = {}, pushHistory = true) {
     // Real in-app navigation starts at the top. A browser/PWA reload is
     // different: init() calls navigate(..., false), and the persisted route
     // state below restores the exact viewport position for that page.
-    window.scrollTo(0, 0);
+    if(view !== "home" || window.scrollY === homeStartScroll) window.scrollTo(0, 0);
   }
-  if (!pushHistory) {
-    try { window.__levromartRestoreScroll?.(view); } catch (_) {}
+  if (!pushHistory && !preserveSameViewScroll) {
+    try { window.__levromartRestoreScroll?.(view); } catch (err) {console.warn("Scroll restoration failed",err);} 
   }
 }
 
@@ -11178,14 +11189,17 @@ async function navigate(view, params = {}, pushHistory = true) {
   window.addEventListener("pagehide",saveScroll,{passive:true});
   window.addEventListener("beforeunload",saveScroll,{passive:true});
 
+  let initialScrollRestored=false;
   window.__levromartRestoreScroll=function(view){
+    if(initialScrollRestored)return false;
+    initialScrollRestored=true;
     const saved=safeRead(SCROLL_KEY)||safeRead(LEGACY_SCROLL_KEY);
     if(!saved||String(saved.view||"")!==String(view||""))return false;
     const x=Number.isFinite(Number(saved.x))?Number(saved.x):0;
     const y=Number.isFinite(Number(saved.y))?Number(saved.y):0;
     const restore=()=>window.scrollTo({left:x,top:y,behavior:"auto"});
     requestAnimationFrame(restore);
-    [0,80,220,500,900].forEach(ms=>setTimeout(restore,ms));
+
     return true;
   };
 
@@ -11377,7 +11391,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span>Request an item</span></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
   </section>`;
-  const trendingProducts = (trending || []).filter(p => !p.is_service).slice(0, 10);
+  const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service).slice(0, 10),"trending-products");
   const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
   if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${topVendors.map(vendorCardHtml).join("")}</div>`;
@@ -11970,7 +11984,7 @@ async function renderHome() {
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
-  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, bio, sector_id").eq("verification_status", "verified");
+  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, bio, sector_id, lat, lng").eq("verification_status", "verified").eq("is_active",true).is("deleted_at",null);
   if (activeSector) topVendorsQuery = topVendorsQuery.eq("sector_id", activeSector.id);
   const recentPhotosQuery = sb.from("products")
     .select("id, name, photos, created_at, vendor:vendors!inner(verification_status, is_active)")
@@ -12081,7 +12095,7 @@ async function renderHome() {
 
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
   if (trending && trending.length) {
-    const trendingProducts = trending.filter(p => !p.is_service).slice(0, 10);
+    const trendingProducts = deterministicHourlyShuffle(trending.filter(p => !p.is_service).slice(0, 10),"trending-products");
     if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
 
   }
@@ -12677,6 +12691,12 @@ function ratingBadgeClass(rating) {
   if (r >= 2.5) return "warning";
   return "danger";
 }
+function vendorDistanceKm(v){
+  const values=[buyerLocation?.lat,buyerLocation?.lng,v?.lat,v?.lng];if(values.some(x=>x==null||x===''||!Number.isFinite(Number(x))))return null;
+  const [a,b,c,d]=values.map(Number);if(Math.abs(a)>90||Math.abs(c)>90||Math.abs(b)>180||Math.abs(d)>180)return null;
+  return haversineKm(a,b,c,d);
+}
+function vendorDistanceHtml(v){const km=vendorDistanceKm(v);return km==null?'':`<span class="vendor-distance"><i class="fa-solid fa-location-dot"></i> ${km<1?Math.round(km*1000)+' m':km.toFixed(1)+' km'} away</span>`;}
 function vendorCardHtml(v) {
   const name = v?.business_name || "Vendor";
   const avatar = v?.logo_url || v?.user_avatar_url || "";
@@ -12686,7 +12706,7 @@ function vendorCardHtml(v) {
     ${avatar ? profileAvatarHtml(avatar, name, "3.05rem", { extraClass: "vendor-home-avatar", lightbox: false, stableKey: v?.id || name }) : avatarFallbackHtml(name, "3.05rem", "vendor-home-avatar vendor-home-avatar-fallback", name)}
     <div class="vendor-home-copy">
       <strong>${esc(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
-      <span class="vendor-home-city"><i class="fa-solid fa-location-dot"></i> ${esc(v?.city || "Online")}</span>
+      <span class="vendor-home-city"><i class="fa-solid fa-location-dot"></i> ${esc(v?.city || "Online")}</span>${vendorDistanceHtml(v)}
       <div class="vendor-home-meta"><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span><span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} · ${Number(v?.review_count ?? 0)} reviews</span></div>
       <span class="vendor-home-known"><i class="fa-solid fa-layer-group"></i> ${esc(sectorName || "Sector not listed")}</span>
       <div class="vendor-card-footer"><span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> <span class="vendor-follower-count">${followerCount.toLocaleString()}</span> follower${followerCount===1?'':'s'}</span><span class="vendor-home-storefront-label">View storefront <i class="fa-solid fa-arrow-right"></i></span></div>
@@ -12694,23 +12714,15 @@ function vendorCardHtml(v) {
   </div>`;
 }
 
-async function toggleFavorite(evt, productId) {
-  evt.stopPropagation();
-  if (!session) { showLogin(); return; }
-  const btn = evt.currentTarget;
-  const isFav = favoriteIds.has(productId);
-  if (isFav) {
-    await sb.from("favorites").delete().eq("buyer_id", session.user.id).eq("product_id", productId);
-    favoriteIds.delete(productId);
-    btn.innerHTML = "<i class='fa-regular fa-heart'></i>"; btn.classList.remove("active");
-  } else {
-    const { error } = await sb.from("favorites").insert({ buyer_id: session.user.id, product_id: productId });
-    if (error) return;
-    favoriteIds.add(productId);
-    btn.innerHTML = "<i class='fa-solid fa-heart'></i>"; btn.classList.add("active");
-  }
+const favoriteMutations=new Set();
+async function toggleFavorite(evt,productId){
+  evt.stopPropagation();if(!session){showLogin();return;}if(favoriteMutations.has(productId))return;
+  favoriteMutations.add(productId);const btn=evt.currentTarget;btn.disabled=true;
+  try{const old=favoriteIds.has(productId),{error}=old?await sb.from('favorites').delete().eq('buyer_id',session.user.id).eq('product_id',productId):await sb.from('favorites').insert({buyer_id:session.user.id,product_id:productId});if(error)throw error;
+    if(old)favoriteIds.delete(productId);else favoriteIds.add(productId);
+    btn.innerHTML=old?"<i class='fa-regular fa-heart'></i>":"<i class='fa-solid fa-heart'></i>";btn.classList.toggle('active',!old);await hydrateProductLikeCountsInView();
+  }catch(err){showToast(err.message||'Could not update like.','error');}finally{favoriteMutations.delete(productId);btn.disabled=false;}
 }
-
 // ---------- WISHLIST ----------
 async function renderWishlist() {
   if (!session) return '<div class="empty-state">Log in to save items to your wishlist.</div>';
@@ -12761,7 +12773,7 @@ async function renderCart() {
 
   const cartResult = await withRouteTimeout(
     sb.from("cart_items")
-      .select("id, variant_id, quantity, created_at, variant:product_variants(id,name,photo_url,sale_price,discount_price), product:products(id, name, sale_price, discount_price, photos, quantity_available, status, vendor:vendors(id, business_name, previous_business_name, name_changed_at, is_active, verification_status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng))")
+      .select("id, variant_id, quantity, created_at, variant:product_variants(*), product:products(id, name, sale_price, discount_price, photos, quantity_available, status, vendor:vendors(id, business_name, previous_business_name, name_changed_at, is_active, verification_status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng))")
       .eq("buyer_id", session.user.id)
       .order("created_at", { ascending: true }),
     8000,
@@ -12828,6 +12840,7 @@ async function addToCart(productId, qty, variantId = null) {
   if (blockOwnVendorPurchase(currentProductDetail?.vendor?.id, "buy")) return;
   const amount = Math.max(1, Number(qty) || 1);
   const chosenVariantId = variantId || byId("selectedProductVariantId")?.value || null;
+  if(chosenVariantId){const {data:v,error}=await sb.from('product_variants').select('*').eq('id',chosenVariantId).eq('product_id',productId).single();if(error){showToast('Could not verify variety availability.','error');return;}if(variantStock(v)!=null&&amount>variantStock(v)){showToast('Requested quantity exceeds this variety’s availability.','error');return;}}
   const { error } = await sb.rpc("add_to_cart", { p_product_id: productId, p_quantity: amount, p_variant_id: chosenVariantId });
   if (error) { showToast(error.message, "error"); return; }
   showToast("Added to cart.", "success");
@@ -12857,6 +12870,8 @@ async function quickAddToCart(evt, productId, btn, vendorId = "") {
 }
 async function updateCartQty(cartItemId, newQty) {
   if (newQty < 1) return;
+  const item=[...(window.__cartByVendor?.values()||[])].flatMap(g=>g.items).find(it=>String(it.id)===String(cartItemId));
+  if(item?.variant&&variantStock(item.variant)!=null&&newQty>variantStock(item.variant)){showToast('Requested quantity exceeds this variety’s availability.','error');return;}
   const { error } = await sb.from("cart_items").update({ quantity: newQty }).eq("id", cartItemId);
   if (error) { showToast(error.message, "error"); return; }
   navigate("cart", {}, false);
@@ -14839,7 +14854,7 @@ async function renderPackageDetail(packageId) {
 // ---------- PRODUCT DETAIL ----------
 async function renderProductDetail(productId) {
   const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)").eq("id", productId).maybeSingle();
-  const variantsQuery = sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,size,color,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
+  const variantsQuery = sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
   const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = await Promise.all([productQuery,variantsQuery,engagementQuery]);
   if(error){console.error("[Levromart] Product detail load failed:",error);return `<div class="empty-state"><strong>Couldn\'t load this product.</strong><p class="muted" style="margin:.35rem 0 0;">Please try again. If the problem continues, the listing may be unavailable right now.</p></div>`;}
@@ -14920,8 +14935,8 @@ async function renderProductDetail(productId) {
     const buyLabel = product.is_service ? "Book Now" : "Buy Now";
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
-      ${!product.is_service && productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
-      ${!product.is_service && productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="product-gallery-variant-label">Selected variety:</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</small><small class="muted" style="display:block;margin-top:.16rem;">Available: <span id="selectedVariantStock">${Number(product.quantity_available ?? 0).toLocaleString()}</span></small></div><strong id="selectedVariantPrice">Price: ${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
+      ${!product.is_service && productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><span class="variety-choice-image">${v.photo_url?`<img src="${esc(v.photo_url)}" alt="${esc(v.name)}"><span class="variety-image-position">${productVariants.filter(x=>x.photo_url).findIndex(x=>x.id===v.id)+1}/${productVariants.filter(x=>x.photo_url).length}</span>`:""}</span><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
+      ${!product.is_service && productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="product-gallery-variant-label">Selected variety:</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</small><small class="muted" style="display:block;margin-top:.16rem;">Available: <span id="selectedVariantStock">${variantStockLabel(productVariants[0])}</span></small></div><strong id="selectedVariantPrice">Price: ${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
       <div class="flex">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
@@ -15152,6 +15167,8 @@ function updateRentTotalPreview(rate, unit) {
   el.textContent = `Total: ${naira(rate * units * qty)} (${qty} × ${units} ${unit}${units === 1 ? "" : "s"} × ${naira(rate)}/${unit})`;
 }
 
+function variantStock(v){const x=v?.quantity_available;if(x==null||x==='')return null;const n=Number(x);return Number.isFinite(n)&&n>=0?n:null;}
+function variantStockLabel(v){const n=variantStock(v);return n==null?'Availability not provided':n.toLocaleString();}
 function selectProductVariant(variantId, scrollGallery = true, syncGallery = true) {
   const variants = Array.isArray(currentProductDetail?.variants) ? currentProductDetail.variants : [];
   const variant = variants.find(v => String(v.id) === String(variantId));
@@ -15174,7 +15191,8 @@ function selectProductVariant(variantId, scrollGallery = true, syncGallery = tru
   const galleryNameEl = byId("productGalleryVariantName"), galleryPriceEl = byId("productGalleryVariantPrice");
   if (galleryNameEl) galleryNameEl.textContent = variant.name || "Selected variety";
   if (galleryPriceEl) galleryPriceEl.textContent = naira(unit);
-  const stockEl=byId("selectedVariantStock"); if(stockEl) stockEl.textContent=Number(currentProductDetail?.quantity_available ?? 0).toLocaleString();
+  const stockEl=byId("selectedVariantStock"); if(stockEl) stockEl.textContent=variantStockLabel(variant);
+  const q=byId("buyQty");if(q){const stock=variantStock(variant);if(stock==null)q.removeAttribute("max");else q.max=String(stock);}
   if (scrollGallery && variant.photo_url) {
     const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => String(u) === String(variant.photo_url)) ?? -1);
     if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex, false, syncGallery);
@@ -15197,6 +15215,7 @@ async function buyNow(vendorId, productId) {
   const verb = currentProductDetail?.is_service ? "Book" : "Buy";
   const selectedVariantId = byId("selectedProductVariantId")?.value || null;
   const selectedVariant = (currentProductDetail?.variants || []).find(v => String(v.id) === String(selectedVariantId));
+  if(selectedVariant&&variantStock(selectedVariant)!=null&&qty>variantStock(selectedVariant)){errorEl.textContent="Requested quantity exceeds this variety’s availability.";errorEl.classList.remove("hidden");return;}
 
   const previewEl = byId("serviceTotalPreview");
   const totalText = previewEl ? previewEl.textContent.replace(/^Total:\s*/, "") : (currentProductDetail?.sale_price != null ? naira(currentProductDetail.sale_price * qty) : "");
@@ -16678,7 +16697,7 @@ const productCommentsLoaded=new Map(),productCommentsFetches=new Map(),packageCo
 function activeSocialCommentPanel(kind="product"){return window.__commentSheetPanel||byId(kind==="package"?"packageCommentsPanel":"productCommentsPanel")}function activeSocialCommentInput(kind="product"){return window.__commentSheetInput||byId(kind==="package"?"packageCommentInput":"productCommentInput")}
 async function hydrateProductCommentCountsInView(){const ids=[...new Set([...document.querySelectorAll(".card-comment-btn[data-product-id],#productCommentsCount[data-product-id]")].map(n=>n.dataset.productId).filter(Boolean))];if(!ids.length)return;try{const {data,error}=await sb.rpc("get_product_comment_counts",{p_product_ids:ids});if(!error)(data||[]).forEach(r=>window.__productCommentCounts.set(String(r.product_id),Number(r.comment_count||0)))}catch(_){}document.querySelectorAll(".card-comment-btn[data-product-id]").forEach(b=>{const e=b.querySelector(".product-comment-count");if(e)e.textContent=String(window.__productCommentCounts.get(String(b.dataset.productId))||0)});hydrateProductVariantIndicatorsInView()}
 async function hydratePackageCommentCountsInView(){const ids=[...new Set([...document.querySelectorAll(".package-card-comment-btn[data-package-id],#packageCommentsCount[data-package-id],.package-listing-card[data-package-id]")].map(n=>n.dataset.packageId).filter(Boolean))];if(!ids.length)return;try{const [{data:cc,error},{data:fc},{data:settings}]=await Promise.all([sb.rpc("get_package_comment_counts",{p_package_ids:ids}),sb.rpc("get_package_favorite_counts",{p_package_ids:ids}),sb.from("package_engagement_settings").select("package_id,vendor_id,like_visibility").in("package_id",ids)]);if(!error)(cc||[]).forEach(r=>window.__packageCommentCounts.set(String(r.package_id),Number(r.comment_count||0)));const fm=new Map((fc||[]).map(r=>[String(r.package_id),Number(r.favorite_count||0)]));const sm=new Map((settings||[]).map(r=>[String(r.package_id),r]));document.querySelectorAll(".package-listing-card[data-package-id]").forEach(card=>{const id=String(card.dataset.packageId),st=sm.get(id)||{},e=card.querySelector(".package-like-count"),wrap=e?.closest(".package-card-engagement-count"),visible=st.like_visibility!=="no_one";if(e)e.textContent=String(fm.get(id)||0);wrap?.classList.toggle("hidden",!visible)});}catch(_){}document.querySelectorAll(".package-card-comment-btn[data-package-id]").forEach(b=>{const e=b.querySelector(".package-comment-count");if(e)e.textContent=String(window.__packageCommentCounts.get(String(b.dataset.packageId))||0)})}
-async function hydrateProductLikeCountsInView(){const ids=[...new Set([...document.querySelectorAll("[data-product-like-id]")].map(n=>n.dataset.productLikeId).filter(Boolean))];if(!ids.length)return;try{const [{data:counts},{data:settings}]=await Promise.all([sb.rpc("get_favorite_counts",{p_product_ids:ids}),sb.from("product_engagement_settings").select("product_id,vendor_id,like_visibility").in("product_id",ids)]);const cm=new Map((counts||[]).map(r=>[String(r.product_id),Number(r.favorite_count??r.count??0)]));const sm=new Map((settings||[]).map(r=>[String(r.product_id),r]));const followed=new Set();const vids=[...(settings||[]).map(r=>r.vendor_id).filter(Boolean)];if(session?.user?.id&&vids.length){const {data:fs}=await sb.from("vendor_follows").select("vendor_id").eq("follower_id",session.user.id).in("vendor_id",[...new Set(vids)]);(fs||[]).forEach(r=>followed.add(String(r.vendor_id)));}document.querySelectorAll("[data-product-like-id]").forEach(n=>{const id=String(n.dataset.productLikeId),st=sm.get(id)||{},visible=st.like_visibility!=="no_one"&&(st.like_visibility!=="followers"||followed.has(String(st.vendor_id))||isOwnVendorId(st.vendor_id));const e=n.querySelector(".product-like-indicator");if(!e)return;if(visible){e.classList.remove("hidden");e.querySelector("span").textContent=String(cm.get(id)||0)}else e.classList.add("hidden")})}catch(_){}
+async function hydrateProductLikeCountsInView(){const ids=[...new Set([...document.querySelectorAll("[data-product-like-id]")].map(n=>n.dataset.productLikeId).filter(Boolean))];if(!ids.length)return;try{const [{data:counts,error:countError},{data:settings,error:settingsError}]=await Promise.all([sb.rpc("get_favorite_counts",{p_product_ids:ids}),sb.from("product_engagement_settings").select("product_id,vendor_id,like_visibility").in("product_id",ids)]);if(countError||settingsError)throw countError||settingsError;const cm=new Map((counts||[]).map(r=>[String(r.product_id),Number(r.favorite_count??r.count??0)]));const sm=new Map((settings||[]).map(r=>[String(r.product_id),r]));const followed=new Set();const vids=[...(settings||[]).map(r=>r.vendor_id).filter(Boolean)];if(session?.user?.id&&vids.length){const {data:fs}=await sb.from("vendor_follows").select("vendor_id").eq("follower_id",session.user.id).in("vendor_id",[...new Set(vids)]);(fs||[]).forEach(r=>followed.add(String(r.vendor_id)));}document.querySelectorAll("[data-product-like-id]").forEach(n=>{const id=String(n.dataset.productLikeId),st=sm.get(id)||{},visible=st.like_visibility!=="no_one"&&(st.like_visibility!=="followers"||followed.has(String(st.vendor_id))||isOwnVendorId(st.vendor_id));const e=n.querySelector(".product-like-indicator");if(!e)return;if(visible){e.classList.remove("hidden");e.querySelector("span").textContent=String(cm.get(id)||0)}else e.classList.add("hidden")})}catch(error){console.warn("[Levromart] Like counts refresh failed:",error)}
 }
 function openProductCommentsFromCard(id){navigate("productDetail",{productId:id,openComments:true})}function openPackageCommentsFromCard(id){navigate("packageDetail",{packageId:id,openComments:true})}
 async function fetchProductComments(id){const {data,error}=await sb.from("product_comments").select("id,product_id,user_id,parent_comment_id,content,author_name,author_avatar_url,created_at,updated_at").eq("product_id",id).order("created_at",{ascending:false}).limit(120);if(error)throw error;const rows=data||[];let likes=[];if(rows.length){const r=await sb.from("product_comment_likes").select("id,comment_id,user_id").in("comment_id",rows.map(x=>x.id));if(!r.error)likes=r.data||[]}const lm=new Map(),ml=new Set();likes.forEach(l=>{const k=String(l.comment_id);lm.set(k,(lm.get(k)||0)+1);if(session?.user?.id&&String(l.user_id)===String(session.user.id))ml.add(k)});return{rows,likeMap:lm,myLiked:ml}}
@@ -17212,20 +17231,16 @@ async function renderVendorEditProfile() {
     <div class="vendor-location-presets" id="veLocationPresets"></div>
   </div>
 
-  <div class="card payout-details-card" style="max-width:520px;margin:1.2rem auto 0;">
+  <div class="card" style="max-width:480px;margin:1.2rem auto 0;">
     <h2><i class="fa-solid fa-money-bill-transfer"></i> Payout details ${infoPopoverHtml("payoutInfo", `Set your bank account once. Levromart then pays you directly through Paystack on every order (minus the ${Number(v.commission_pct ?? 3)}% platform commission), no manual transfers needed. Funds typically land in your account the next business day after a sale.`)}</h2>
     <div id="bankError" class="error-text hidden"></div>
     ${v.paystack_subaccount_code
-      ? `<div class="banner banner-success payout-active-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-check"></i> Payouts active.</strong> ${esc(v.account_name || "")} · ${esc(getBankDisplayName(v.bank_code, v.bank_name))} ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</div>
+      ? `<div class="banner banner-success" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-check"></i> Payouts active.</strong> ${esc(v.account_name || "")} · <span id="payoutBankName">${esc(payoutBankName(v))}</span> ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</div>
        <button class="btn btn-sm btn-outline" onclick="byId('bankFormWrap').classList.toggle('hidden')">Change bank account</button>`
       : `<div class="banner banner-warning" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-triangle-exclamation"></i> Not set up yet.</strong> Until you add your bank, order payments go to Levromart and you'll be paid out manually.</div>`}
     <div id="bankFormWrap" class="${v.paystack_subaccount_code ? "hidden" : ""}" style="margin-top:0.8rem;">
       <label>Bank</label>
-      <button type="button" id="veBankPickerBtn" class="bank-picker-trigger" onclick="openVendorBankPicker()" aria-haspopup="dialog" aria-expanded="false">
-        <span id="veBankPickerLabel">${esc(getBankDisplayName(v.bank_code, v.bank_name) || "Select a bank")}</span>
-        <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
-      </button>
-      <select id="veBankCode" data-current-bank="${esc(v.bank_code || "")}" class="hidden" aria-hidden="true" tabindex="-1">${NIGERIAN_BANKS.map((b) => `<option value="${esc(b.code)}" ${String(b.code) === String(v.bank_code || "") ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>
+      <select id="veBankCode" data-current-bank="${esc(v.bank_code || "")}">${`<option value="" ${!v.bank_code?"selected":""}>Choose a bank</option>`}${NIGERIAN_BANKS.map((b) => `<option value="${b.code}" ${b.code === String(v.bank_code) ? "selected" : ""}>${esc(b.name)}</option>`).join("")}${v.bank_code&&!NIGERIAN_BANKS.some(b=>b.code===String(v.bank_code))?`<option value="${esc(v.bank_code)}" selected>${esc(v.bank_name||`Bank ${v.bank_code}`)}</option>`:""}</select>
       <label>Account number</label>
       <input id="veAccountNumber" inputmode="numeric" maxlength="10" placeholder="10-digit account number" value="${esc(v.account_number || "")}" />
       <button class="btn btn-sm" style="margin-top:0.6rem;" id="saveBankBtn" onclick="saveVendorBankDetails()">Save payout details</button>
@@ -17239,279 +17254,56 @@ async function renderVendorEditProfile() {
 // current list (every bank, microfinance bank and fintech they support)
 // on every render of this page, so vendors aren't limited to this subset.
 const NIGERIAN_BANKS = [
-  { name: "9mobile 9Payment Service Bank", code: "120001" },
-  { name: "Abbey Mortgage Bank", code: "801" },
-  { name: "Above Only MFB", code: "51204" },
-  { name: "Abulesoro MFB", code: "51312" },
-  { name: "Access Bank", code: "044" },
-  { name: "Access Bank (Diamond)", code: "063" },
-  { name: "Accion Microfinance Bank", code: "602" },
-  { name: "AG Mortgage Bank", code: "90077" },
-  { name: "Ahmadu Bello University Microfinance Bank", code: "50036" },
-  { name: "Airtel Smartcash PSB", code: "120004" },
-  { name: "AKU Microfinance Bank", code: "51336" },
-  { name: "ALAT by WEMA", code: "035" },
-  { name: "Amju Unique MFB", code: "50926" },
-  { name: "Aramoko MFB", code: "50083" },
-  { name: "ASO Savings and Loans", code: "401" },
-  { name: "Astrapolaris MFB LTD", code: "50094" },
-  { name: "Bowen Microfinance Bank", code: "50931" },
-  { name: "Carbon", code: "565" },
-  { name: "CEMCS Microfinance Bank", code: "50823" },
-  { name: "Chanelle Microfinance Bank Limited", code: "50171" },
-  { name: "Citibank Nigeria", code: "023" },
-  { name: "Corestep MFB", code: "50204" },
-  { name: "Coronation Merchant Bank", code: "559" },
-  { name: "Crescent MFB", code: "51297" },
-  { name: "Ecobank Nigeria", code: "050" },
-  { name: "Ekimogun MFB", code: "50263" },
-  { name: "Ekondo Microfinance Bank", code: "562" },
-  { name: "Eyowo", code: "50126" },
-  { name: "FairMoney Microfinance Bank", code: "51318" },
-  { name: "Fidelity Bank", code: "070" },
-  { name: "Firmus MFB", code: "51314" },
-  { name: "First Bank of Nigeria", code: "011" },
-  { name: "First City Monument Bank", code: "214" },
-  { name: "FirstTrust Mortgage Bank Nigeria", code: "413" },
-  { name: "FSDH Merchant Bank Limited", code: "501" },
-  { name: "Gateway Mortgage Bank LTD", code: "812" },
-  { name: "Globus Bank", code: "00103" },
-  { name: "GoMoney", code: "100022" },
-  { name: "Guaranty Trust Bank", code: "058" },
-  { name: "Hackman Microfinance Bank", code: "51251" },
-  { name: "Hasal Microfinance Bank", code: "50383" },
-  { name: "Heritage Bank", code: "030" },
-  { name: "HopePSB", code: "120002" },
-  { name: "Ibile Microfinance Bank", code: "51244" },
-  { name: "Infinity MFB", code: "50457" },
-  { name: "Jaiz Bank", code: "301" },
-  { name: "Kadpoly MFB", code: "50502" },
-  { name: "Keystone Bank", code: "082" },
-  { name: "Kredi Money MFB LTD", code: "50200" },
-  { name: "Kuda Bank", code: "50211" },
-  { name: "Lagos Building Investment Company Plc.", code: "90052" },
-  { name: "Links MFB", code: "50549" },
-  { name: "Living Trust Mortgage Bank", code: "031" },
-  { name: "Lotus Bank", code: "303" },
-  { name: "MAINSTREET MICROFINANCE BANK", code: "090171" },
-  { name: "Mayfair MFB", code: "50563" },
-  { name: "Mint MFB", code: "50304" },
-  { name: "Money Master PSB", code: "946" },
-  { name: "Moniepoint MFB", code: "50515" },
-  { name: "MTN Momo PSB", code: "120003" },
-  { name: "MUTUAL BENEFITS MICROFINANCE BANK", code: "090190" },
-  { name: "NDCC MICROFINANCE BANK", code: "090679" },
-  { name: "NET MICROFINANCE BANK", code: "51361" },
-  { name: "Nigerian Navy Microfinance Bank Limited", code: "51142" },
-  { name: "NPF MICROFINANCE BANK", code: "50629" },
-  { name: "OPay Digital Services Limited (OPay)", code: "999992" },
-  { name: "Optimus Bank Limited", code: "107" },
-  { name: "Paga", code: "100002" },
-  { name: "PalmPay", code: "999991" },
-  { name: "Parallex Bank", code: "104" },
-  { name: "Parkway - ReadyCash", code: "311" },
-  { name: "PATHFINDER MICROFINANCE BANK LIMITED", code: "090680" },
-  { name: "Paystack-Titan", code: "100039" },
-  { name: "Peace Microfinance Bank", code: "50743" },
-  { name: "PECANTRUST MICROFINANCE BANK LIMITED", code: "51226" },
-  { name: "Personal Trust MFB", code: "51146" },
-  { name: "Petra Mircofinance Bank Plc", code: "50746" },
-  { name: "Polaris Bank", code: "076" },
-  { name: "PremiumTrust Bank", code: "105" },
-  { name: "Providus Bank", code: "101" },
-  { name: "QuickFund MFB", code: "51293" },
-  { name: "Rand Merchant Bank", code: "502" },
-  { name: "Refuge Mortgage Bank", code: "90067" },
-  { name: "Rubies MFB", code: "125" },
-  { name: "Safe Haven MFB", code: "51113" },
-  { name: "Signature Bank Ltd", code: "106" },
-  { name: "Solid Rock MFB", code: "50800" },
-  { name: "Sparkle Microfinance Bank", code: "51310" },
-  { name: "Stanbic IBTC Bank", code: "221" },
-  { name: "Standard Chartered Bank", code: "068" },
-  { name: "Sterling Bank", code: "232" },
-  { name: "Suntrust Bank", code: "100" },
-  { name: "TAJ Bank", code: "302" },
-  { name: "Tangerine Money", code: "51269" },
-  { name: "TCF MFB", code: "51211" },
-  { name: "Titan Bank", code: "102" },
-  { name: "U&C Microfinance Bank Ltd", code: "50840" },
-  { name: "Uhuru MFB", code: "51322" },
-  { name: "Unaab Microfinance Bank Limited", code: "50870" },
-  { name: "Unical MFB", code: "50871" },
-  { name: "Unilag Microfinance Bank", code: "51316" },
-  { name: "Union Bank of Nigeria", code: "032" },
-  { name: "United Bank For Africa", code: "033" },
-  { name: "Unity Bank", code: "215" },
-  { name: "VFD Microfinance Bank Limited", code: "566" },
-  { name: "Wema Bank", code: "035" },
-  { name: "Zenith Bank", code: "057" },
+  { name: "Access Bank", code: "044" }, { name: "Citibank Nigeria", code: "023" }, { name: "Ecobank Nigeria", code: "050" },
+  { name: "Fidelity Bank", code: "070" }, { name: "First Bank of Nigeria", code: "011" }, { name: "First City Monument Bank", code: "214" },
+  { name: "Globus Bank", code: "00103" }, { name: "Guaranty Trust Bank", code: "058" }, { name: "Heritage Bank", code: "030" },
+  { name: "Jaiz Bank", code: "301" }, { name: "Keystone Bank", code: "082" }, { name: "Kuda Bank", code: "50211" },
+  { name: "Moniepoint MFB", code: "50515" }, { name: "Opay", code: "999992" }, { name: "PalmPay", code: "999991" },
+  { name: "Polaris Bank", code: "076" }, { name: "Providus Bank", code: "101" }, { name: "Stanbic IBTC Bank", code: "221" },
+  { name: "Standard Chartered Bank", code: "068" }, { name: "Sterling Bank", code: "232" }, { name: "Suntrust Bank", code: "100" },
+  { name: "Union Bank of Nigeria", code: "032" }, { name: "United Bank For Africa", code: "033" }, { name: "Unity Bank", code: "215" },
+  { name: "Wema Bank", code: "035" }, { name: "Zenith Bank", code: "057" },
 ];
-window.__levroBankOptions = Array.isArray(window.__levroBankOptions) && window.__levroBankOptions.length
-  ? window.__levroBankOptions
-  : NIGERIAN_BANKS.slice();
-
-function getBankDisplayName(bankCode, storedBankName) {
-  const code = String(bankCode || "").trim();
-  const source = Array.isArray(window.__levroBankOptions) && window.__levroBankOptions.length
-    ? window.__levroBankOptions
-    : NIGERIAN_BANKS;
-  const mapped = code
-    ? source.find((b) => String(b.code) === code)?.name
-    : "";
-  // IMPORTANT: bank_code is authoritative. A stale bank_name must never
-  // override the bank selected/saved by the vendor.
-  return mapped || String(storedBankName || "").trim() || (code ? `Bank code ${code}` : "Not provided");
+function payoutBankName(v){
+  const code=String(v?.bank_code||'');
+  return [...(window.__payoutBanks||[]),...NIGERIAN_BANKS].find(b=>String(b.code)===code)?.name||v?.bank_name||(code?`Bank ${code}`:'Bank not set');
 }
-
-function normaliseBankList(list) {
-  const seen = new Set();
-  return (Array.isArray(list) ? list : [])
-    .map((b) => ({ name: String(b?.name || "").trim(), code: String(b?.code || "").trim() }))
-    .filter((b) => b.name && b.code)
-    .filter((b) => {
-      const key = `${b.code}::${b.name.toLowerCase()}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
-}
-
-function renderVendorBankPicker() {
-  const select = byId("veBankCode");
-  const label = byId("veBankPickerLabel");
-  if (!select || !label) return;
-  const selected = select.options[select.selectedIndex];
-  label.textContent = selected?.textContent?.trim() || getBankDisplayName(select.value, "");
-}
-
-function closeVendorBankPicker() {
-  const modal = byId("vendorBankPickerModal");
-  if (modal) modal.remove();
-  const trigger = byId("veBankPickerBtn");
-  if (trigger) trigger.setAttribute("aria-expanded", "false");
-}
-
-function selectVendorBank(code, name) {
-  const select = byId("veBankCode");
-  if (!select) return;
-  const option = Array.from(select.options).find((o) => String(o.value) === String(code));
-  if (!option) return;
-  select.value = String(code);
-  select.dataset.currentBank = String(code);
-  const label = byId("veBankPickerLabel");
-  if (label) label.textContent = name || option.textContent.trim();
-  closeVendorBankPicker();
-}
-
-function openVendorBankPicker() {
-  const select = byId("veBankCode");
-  if (!select) return;
-  closeVendorBankPicker();
-
-  const banks = Array.from(select.options)
-    .map((o) => ({ code: o.value, name: o.textContent.trim() }))
-    .filter((b) => b.code && b.name)
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
-
-  const modal = document.createElement("div");
-  modal.id = "vendorBankPickerModal";
-  modal.className = "modal vendor-bank-picker-modal";
-  modal.setAttribute("role", "dialog");
-  modal.setAttribute("aria-modal", "true");
-  modal.innerHTML = `
-    <div class="modal-content vendor-bank-picker-content">
-      <div class="vendor-bank-picker-head">
-        <div>
-          <div class="vendor-bank-picker-title"><i class="fa-solid fa-building-columns"></i><span>Select payout bank</span></div>
-          <div class="muted" style="font-size:.76rem;margin-top:.2rem;">${banks.length} supported banks and financial institutions</div>
-        </div>
-        <button type="button" class="drawer-close-btn" onclick="closeVendorBankPicker()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="vendor-bank-search-wrap">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input id="vendorBankSearch" class="vendor-bank-search" type="search" autocomplete="off" placeholder="Search bank..." aria-label="Search banks" />
-      </div>
-      <div id="vendorBankPickerList" class="vendor-bank-picker-list"></div>
-    </div>`;
-
-  document.body.appendChild(modal);
-
-  const listEl = byId("vendorBankPickerList");
-  const searchEl = byId("vendorBankSearch");
-  const selectedCode = String(select.value || "");
-
-  const paint = () => {
-    const q = String(searchEl?.value || "").trim().toLowerCase();
-    const filtered = banks.filter((b) => !q || b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q));
-    listEl.innerHTML = filtered.length
-      ? filtered.map((b) => `<button type="button" class="vendor-bank-option ${String(b.code) === selectedCode ? "selected" : ""}" onclick="selectVendorBank('${esc(b.code)}','${esc(b.name)}')"><span class="vendor-bank-option-icon"><i class="fa-solid fa-building-columns"></i></span><span class="vendor-bank-option-main"><strong>${esc(b.name)}</strong><small>${esc(b.code)}</small></span>${String(b.code) === selectedCode ? '<i class="fa-solid fa-circle-check vendor-bank-option-check"></i>' : '<i class="fa-solid fa-chevron-right vendor-bank-option-arrow"></i>'}</button>`).join("")
-      : `<div class="empty-state" style="padding:2rem 1rem;">No bank matches your search.</div>`;
-  };
-
-  searchEl?.addEventListener("input", paint);
-  modal.addEventListener("click", (e) => { if (e.target === modal) closeVendorBankPicker(); });
-  paint();
-  requestAnimationFrame(() => {
-    byId("veBankPickerBtn")?.setAttribute("aria-expanded", "true");
-    searchEl?.focus();
-  });
-}
-
 async function loadBankOptions() {
   const select = byId("veBankCode");
   if (!select) return;
-  const currentBank = String(select.dataset.currentBank || select.value || "");
+  const owner=vendor?.id;
   try {
-    const res = await fetch("/api/vendor-payments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "list-banks", country: "nigeria", currency: "NGN", perPage: 100 }),
-    });
+    const res = await fetch("/api/vendor-payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "list-banks" }) });
     const json = await res.json();
-    if (!res.ok || !Array.isArray(json.banks) || !json.banks.length) throw new Error("Bank list unavailable");
-
-    const banks = normaliseBankList(json.banks);
-    if (!banks.length) throw new Error("Bank list unavailable");
-    window.__levroBankOptions = banks;
-
-    // Keep the live Paystack-backed list authoritative and alphabetically ordered.
-    select.innerHTML = banks.map((b) => `<option value="${esc(b.code)}" ${String(b.code) === currentBank ? "selected" : ""}>${esc(b.name)}</option>`).join("");
-    if (currentBank && !Array.from(select.options).some((o) => String(o.value) === currentBank)) {
-      select.value = currentBank;
-      select.dataset.currentBank = currentBank;
-    }
-    renderVendorBankPicker();
+    if (!res.ok || !json.banks?.length) return;
+    if(byId('veBankCode')!==select||vendor?.id!==owner)return;
+    const currentBank=String(select.value||'');
+    window.__payoutBanks=json.banks.map(b=>({name:String(b.name),code:String(b.code)}));
+    const banks=[...window.__payoutBanks];
+    if(currentBank&&!banks.some(b=>b.code===currentBank))banks.push({code:currentBank,name:select.selectedOptions[0]?.textContent||`Bank ${currentBank}`});
+    select.innerHTML='<option value="">Choose a bank</option>'+banks.map(b=>`<option value="${esc(b.code)}">${esc(b.name)}</option>`).join('');
+    select.value=currentBank;
+    const summary=byId('payoutBankName');if(summary)summary.textContent=payoutBankName(vendor);
+    if (select.dataset.msEnhanced) select.dispatchEvent(new Event("change", { bubbles: true }));
   } catch (e) {
-    // The complete fallback is already rendered in the HTML. Never default
-    // to Access Bank: preserve the saved bank code if one exists.
-    if (currentBank) {
-      select.value = currentBank;
-      select.dataset.currentBank = currentBank;
-    }
-    renderVendorBankPicker();
+    // Fine - the hardcoded NIGERIAN_BANKS list already rendered as a fallback.
   }
 }
 
 async function saveVendorBankDetails() {
   const errorEl = byId("bankError");
   errorEl.classList.add("hidden");
-  const bankCode = String(byId("veBankCode")?.value || "").trim();
+  const bankCode = byId("veBankCode").value;
   const accountNumber = byId("veAccountNumber").value.trim();
-
-  if (!bankCode) {
-    errorEl.textContent = "Please select a bank.";
-    errorEl.classList.remove("hidden");
-    return;
-  }
   if (!/^\d{10}$/.test(accountNumber)) {
     errorEl.textContent = "Enter a valid 10-digit account number.";
     errorEl.classList.remove("hidden");
     return;
   }
-
   const btn = byId("saveBankBtn");
+  if(btn.disabled)return;
+  if(!bankCode){errorEl.textContent="Choose a bank.";errorEl.classList.remove("hidden");return;}
+  const owner=vendor.id;
   btn.disabled = true;
   try {
     const res = await fetch("/api/vendor-payments", {
@@ -17521,21 +17313,13 @@ async function saveVendorBankDetails() {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Could not save payout details.");
-
-    // Refresh the authoritative vendor row before rendering the summary. The
-    // display name is always resolved from the saved bank_code, so a stale
-    // bank_name can never make Opay (or another selected bank) appear as Access.
-    if (vendor?.id) {
-      const { data: freshVendor } = await sb.from("vendors")
-        .select("id,bank_code,bank_name,account_number,account_name,paystack_subaccount_code")
-        .eq("id", vendor.id)
-        .maybeSingle();
-      if (freshVendor) vendor = { ...vendor, ...freshVendor };
-    }
-
     const keepScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-    const savedBankName = getBankDisplayName(bankCode, json.bank_name);
-    showToast(`Payout bank saved as ${savedBankName}.`, "success");
+    const {data:saved,error:readError}=await sb.from('vendors').select('*').eq('id',owner).eq('user_id',session.user.id).single();
+    if(readError)throw new Error('Payout request completed, but saved details could not be verified. Reopen Payout details before retrying.');
+    if(String(saved.bank_code)!==String(bankCode)||String(saved.account_number)!==accountNumber)throw new Error('The saved payout account does not match your selection. Please contact support before accepting payouts.');
+    if(vendor?.id===owner)vendor=saved;
+    if(currentView!=='vendorEditProfile')return;
+    showToast(`Payouts set up for ${saved.account_name||json.account_name}.`, "success");
     await navigate("vendorEditProfile", {}, false);
     requestAnimationFrame(() => window.scrollTo({ top: keepScrollY, left: 0, behavior: "auto" }));
   } catch (err) {
@@ -17785,7 +17569,7 @@ function toggleVendorProductsView(v) { vendorProductsView = v; navigate("vendorP
 
 async function renderVendorProducts() {
   if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
-  const { data: v } = await sb.from("vendors").select("id, verification_status").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
+  const { data: v } = await sb.from("vendors").select("*").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   vendor = v;
 
@@ -17834,6 +17618,7 @@ async function renderVendorProducts() {
   if (v.verification_status !== "verified") html += `<p class="muted">Products won't appear publicly until your vendor account is verified.</p>`;
 
   html += `<div class="vendor-products-unified-tabs" id="vendorProductsTypeTabs" aria-label="Listing type">
+    <button type="button" data-tab="all" onclick="switchVendorListingTab('all')">All listings</button>
     <button type="button" class="active" data-tab="products" onclick="switchVendorListingTab('products')"><i class="fa-solid fa-box"></i> Products</button>
     <button type="button" data-tab="services" onclick="switchVendorListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button>
     <button type="button" data-tab="packages" onclick="switchVendorListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button>
@@ -17844,6 +17629,7 @@ async function renderVendorProducts() {
     ${removedProducts.length ? `<div class="vendor-discarded-bulkbar"><label><input type="checkbox" id="discardedSelectAll" onchange="toggleAllDiscardedItems(this.checked)"> <span>Select all</span></label><span id="discardedSelectedCount" class="muted">0 selected</span><button type="button" class="btn btn-sm btn-danger" id="discardedBulkDeleteBtn" disabled onclick="deleteSelectedDiscardedItems()"><i class="fa-solid fa-trash-can"></i> Delete selected</button></div><div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-id="${esc(p.id)}" data-discarded-name="${esc((p.name||'').toLowerCase())}"><label class="discarded-select"><input type="checkbox" class="discarded-item-check" value="${esc(p.id)}" onchange="updateDiscardedSelection()" aria-label="Select ${esc(p.name)}"></label><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
   </div>`;
 
+  const packageSection = `<section data-vendor-listing-section="packages" class="vendor-unified-packages hidden">${await renderVendorPackages(true)}</section>`;
   if (!products || products.length === 0) {
     html += `<div class="empty-state vendor-products-empty-state" data-vendor-listing-section="products">No products yet.</div>`;
   }
@@ -17883,7 +17669,7 @@ async function renderVendorProducts() {
       </tr>`;
     });
     html += `</tbody></table></div>`;
-    return html;
+    return html + packageSection;
   }
 
   html += `<div class="grid vendor-product-card-grid">`;
@@ -17910,7 +17696,7 @@ async function renderVendorProducts() {
       </div>`;
     });
   html += `</div>`;
-  return html;
+  return html + packageSection;
 }
 
 function showProductRegions(productId, productName) {
@@ -17952,13 +17738,13 @@ function filterVendorProducts() {
 
 function switchVendorListingTab(tab) {
   tab = String(tab || "products");
-  if (!["products", "services", "packages"].includes(tab)) tab = "products";
+  if (!["all", "products", "services", "packages"].includes(tab)) tab = "products";
   document.querySelectorAll("#vendorProductsTypeTabs [data-tab], .vendor-products-unified-tabs button[data-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
-  document.querySelectorAll("#app [data-vp-kind]").forEach(el => el.classList.toggle("hidden", el.dataset.vpKind !== tab));
+  document.querySelectorAll("#app [data-vp-kind]").forEach(el => el.classList.toggle("hidden", tab !== "all" && el.dataset.vpKind !== tab));
   document.querySelectorAll("#app [data-vp-group]").forEach(group => group.classList.toggle("hidden", ![...group.querySelectorAll("[data-vp-kind]")].some(el => !el.classList.contains("hidden"))));
-  document.querySelectorAll("#app [data-vendor-listing-section]").forEach(section => section.classList.toggle("hidden", section.dataset.vendorListingSection !== tab));
+  document.querySelectorAll("#app [data-vendor-listing-section]").forEach(section => section.classList.toggle("hidden", tab !== "all" && (section.dataset.vendorListingSection === "packages" ? tab !== "packages" : tab === "packages")));
   const table = document.querySelector("#app .data-table tbody");
-  if (table && tab !== "packages") [...table.children].forEach(row => row.classList.toggle("hidden", row.dataset.vpKind !== tab));
+  if (table && tab !== "packages") [...table.children].forEach(row => row.classList.toggle("hidden", tab !== "all" && row.dataset.vpKind !== tab));
   try { localStorage.setItem("levromart-vendor-listing-tab", tab); } catch (_) {}
 }
 
@@ -18005,14 +17791,13 @@ async function showProductModal() {
   byId("prodSectorOther").classList.add("hidden");
   window.__existingPhotos = [];
   window.__productVariants = [];
-  window.__productVariantPhotoFiles = {};
   renderProductVariantPricing();
 
   let presetCategoryId = "";
   if (editingProductId) {
     const { data: p } = await sb.from("products").select("*").eq("id", editingProductId).single();
     const { data: engagement } = await sb.from("product_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("product_id",editingProductId).maybeSingle();
-    let { data: productVariants, error: productVariantsError } = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,size,color,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
+    let { data: productVariants, error: productVariantsError } = await sb.from("product_variants").select("*").eq("product_id", editingProductId).order("sort_order").order("created_at");
     if (productVariantsError && /column|schema cache|does not exist|unknown/i.test(String(productVariantsError.message || ""))) {
       const legacy = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
       productVariants = legacy.data || [];
@@ -18144,7 +17929,8 @@ function renderNewProductPhotos() {
   });
 }
 function previewNewProductPhotos() {
-  const files=[...(byId("prodPhotoFiles").files || [])].filter(f=>f.type?.startsWith("image/"));
+  persistVisibleVariantOrder();
+  const files=[...(byId("prodPhotoFiles").files || [])].filter(f=>f.type?.startsWith("image/")).slice(0,1);
   if(window.__replaceDisplayPicture && files.length){
     window.__existingPhotos=(window.__existingPhotos||[]).slice(1);
     window.__newProductPhotoFiles=files;
@@ -18243,6 +18029,8 @@ function updateProductFormFields() {
 }
 
 function closeProductModal(options = {}) {
+  if(byId('productModal')?.dataset.discardDraft==='1'){options.skipDraft=true;delete byId('productModal').dataset.discardDraft;}
+  delete byId('productModal').dataset.draftRestored;
   if (!options.skipDraft && typeof window.__captureListingDraftForModal === "function") {
     try { window.__captureListingDraftForModal("product"); } catch (_) {}
   }
@@ -18273,75 +18061,55 @@ function renderProductVariantPricing() {
   const pending = Array.isArray(window.__newProductPhotoFiles) ? window.__newProductPhotoFiles : [];
   const rows = [];
   variants.forEach((v, index) => rows.push({ ...v, _localKey: String(v.id || v._localKey || `variant-${index}`), _source: v.photo_url ? "existing" : "none" }));
-  if (!rows.length && existing.length) existing.forEach((url, idx)=>rows.push({ _localKey:`photo-${idx}`, photo_url:url, name:"", sale_price:"", discount_price:"", sort_order:idx }));
-  if (!rows.length && pending.length) pending.forEach((f, idx)=>rows.push({ _localKey:`new-${idx}`, photo_url:"", name:"", sale_price:"", discount_price:"", sort_order:idx, temp_index:idx }));
-  if (!rows.length) {
-    wrap.innerHTML='<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Add optional variety details such as an image, name, color, size, price or discount price.</div></div></div>';
-    renderProductDisplayPicture();
-    return;
-  }
-  const photoFiles = window.__productVariantPhotoFiles || {};
-  wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Each variety is optional. Add only the details that apply. Drag the handle to reorder.</div></div></div>${rows.map((r,i)=>{
-    const key=String(r.id || r._localKey);
-    const uploadedFile=photoFiles[key];
-    const image = uploadedFile ? URL.createObjectURL(uploadedFile) : (r.photo_url || (r.temp_index != null ? pending[r.temp_index] && URL.createObjectURL(pending[r.temp_index]) : "") || "");
-    const imageOptions = existing.map((u,j)=>`<option value="${esc(u)}" ${String(r.photo_url||"")===String(u)?"selected":""}>Product photo ${j+1}${j===0?" (display)":""}</option>`).join("");
-    return `<div class="variant-price-row" draggable="true" data-variant-key="${esc(key)}" data-photo-url="${esc(r.photo_url||"")}" data-temp-index="${r.temp_index ?? ""}">
-      <div class="variant-row-topbar">
-        <button type="button" class="variant-dnd-handle" aria-label="Drag to reorder" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></button>
-        <strong class="variant-row-title">Variety ${i+1}</strong>
-        <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Remove this variety" title="Remove this variety"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="variant-photo-section">
-        <button type="button" class="variant-photo-picker" onclick="openProductVariantPhotoPicker('${esc(key)}')" aria-label="Add variety photo">
-          <span class="variant-photo-preview">${image?`<img src="${esc(image)}" alt="Variety photo">`:`<i class="fa-regular fa-image"></i>`}</span>
-          <span class="variant-photo-copy"><strong>${image?'Change variety photo':'Add variety photo'}</strong><small>Optional · tap to choose an image</small></span>
-          <i class="fa-solid fa-camera variant-photo-camera"></i>
-        </button>
-        <input type="file" class="variant-photo-file" data-variant-photo-key="${esc(key)}" accept="image/*" onchange="handleProductVariantPhotoChange(this)" hidden>
-        ${existing.length?`<div class="variant-existing-photo-wrap"><label>Or use a product photo</label><select class="variant-image" aria-label="Use an existing product photo" onchange="clearProductVariantUploadedPhoto(this)"><option value="" ${!r.photo_url?"selected":""}>No existing photo</option>${imageOptions}</select></div>`:''}
-      </div>
-      <div class="variant-fields-grid">
-        <div class="variant-field"><label>Variety name <span>(optional)</span></label><input class="variant-name" type="text" maxlength="120" placeholder="e.g. Large / Black / 500ml" value="${esc(r.name||"")}"></div>
-        <div class="variant-field"><label>Color <span>(optional)</span></label><input class="variant-color" type="text" maxlength="80" placeholder="e.g. Black" value="${esc(r.color||"")}"></div>
-        <div class="variant-field"><label>Size <span>(optional)</span></label><input class="variant-size" type="text" maxlength="80" placeholder="e.g. XL" value="${esc(r.size||"")}"></div>
-        <div class="variant-field"><label>Price (₦) <span>(optional)</span></label><input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="e.g. 15000" value="${r.sale_price==null?"":esc(String(r.sale_price))}"></div>
-        <div class="variant-field variant-field-wide"><label>Discount price (₦) <span>(optional)</span></label><input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="e.g. 13500" value="${r.discount_price==null?"":esc(String(r.discount_price))}"></div>
-      </div>
+  if (!rows.length) { wrap.innerHTML='<div class="product-variant-pricing-head"><strong>Varieties</strong><div class="variant-price-note">Use “Add variety” to create customer-facing varieties. A product without varieties works normally.</div></div>'; renderProductDisplayPicture(); return; }
+  wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Drag to reorder. Size and Color may be left blank.</div></div></div>${rows.map((r,i)=>{
+    const image = r._previewUrl || r.photo_url || (r.temp_index != null ? pending[r.temp_index] && URL.createObjectURL(pending[r.temp_index]) : "") || "";
+    return `<div class="variant-price-row" draggable="true" data-variant-key="${esc(String(r.id || r._localKey))}" data-photo-url="${esc(r.photo_url||"")}" data-temp-index="${r.temp_index ?? ""}">
+      <button type="button" class="variant-dnd-handle" aria-label="Drag to reorder" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></button>
+      <div class="variant-price-thumb">${image?`<img src="${esc(image)}" alt="">`:`<i class="fa-regular fa-image"></i>`}</div>
+      <input class="variant-name" type="text" maxlength="120" placeholder="Variety name" value="${esc(r.name||"")}">
+      <input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="Price" value="${r.sale_price==null?"":esc(String(r.sale_price))}">
+      <input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="Discount price" value="${r.discount_price==null?"":esc(String(r.discount_price))}">
+      <input type="hidden" class="variant-image" value="${esc(r.photo_url||'')}">
+      <label class="variant-upload-label">Variety image<input type="file" accept="image/*" onchange="selectVarietyImage(this)"></label>
+      <textarea class="variant-description" aria-label="Variety description" placeholder="Description">${esc(r.description||'')}</textarea>
+      <input class="variant-quantity" type="number" min="0" step="1" aria-label="Variety quantity available" placeholder="Quantity available" value="${r.quantity_available==null?'':esc(r.quantity_available)}">
+
+      <div class="variant-extra-fields"><input class="variant-size" type="text" maxlength="80" placeholder="Size" value="${esc(r.size||"")}"><input class="variant-color" type="text" maxlength="80" placeholder="Color" value="${esc(r.color||"")}"></div>
+      <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Clear this variety" title="Clear this variety"><i class="fa-solid fa-xmark"></i></button>
     </div>`;
   }).join("")}`;
   bindProductVariantDnd();
   renderProductDisplayPicture();
 }
-function openProductVariantPhotoPicker(key) {
-  const input=[...document.querySelectorAll('#productVariantPricing .variant-photo-file')].find(el=>String(el.dataset.variantPhotoKey||'')===String(key));
-  input?.click();
+async function selectVarietyImage(input){
+  const file=input.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){showToast('Choose an image.','error');return;}
+  persistVisibleVariantOrder();const row=input.closest('.variant-price-row'),key=row.dataset.variantKey;
+  const v=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===key);if(!v)return;
+  v._imageFile=file;if(v._previewUrl)URL.revokeObjectURL(v._previewUrl);v._previewUrl=URL.createObjectURL(file);
+  row.querySelector('.variant-price-thumb').innerHTML=`<img src="${esc(v._previewUrl)}" alt="Variety image">`;
+  window.__captureListingDraftForModal?.('product');
 }
-function handleProductVariantPhotoChange(input) {
-  const key=String(input?.dataset.variantPhotoKey||'');
-  const file=input?.files?.[0];
-  if(!key || !file || !file.type?.startsWith('image/')) return;
-  window.__productVariantPhotoFiles ||= {};
+async function uploadVarietyImages(){
   persistVisibleVariantOrder();
-  window.__productVariantPhotoFiles[key]=file;
-  renderProductVariantPricing();
+  await Promise.all((window.__productVariants||[]).map(async v=>{
+    if(!v._imageFile)return;const file=v._imageFile,path=`${vendor.id}/variants/${crypto.randomUUID()}.${(file.name.split('.').pop()||'jpg').toLowerCase()}`;
+    const {error}=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(error)throw error;
+    v.photo_url=sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl;
+    const row=[...document.querySelectorAll('#productVariantPricing .variant-price-row')].find(r=>r.dataset.variantKey===String(v.id||v._localKey));
+    if(row){row.dataset.photoUrl=v.photo_url;row.querySelector('.variant-image').value=v.photo_url;}delete v._imageFile;
+  }));
 }
-function clearProductVariantUploadedPhoto(select) {
-  const key=String(select?.closest?.('.variant-price-row')?.dataset.variantKey||'');
-  if(window.__productVariantPhotoFiles && key) delete window.__productVariantPhotoFiles[key];
-}
-function addProductVarietyDraft() {
-  const variants = Array.isArray(window.__productVariants) ? window.__productVariants : (window.__productVariants=[]);
-  variants.push({ id:null, _localKey:`local-${crypto.randomUUID()}`, name:"", sale_price:"", discount_price:"", photo_url:"", sort_order:variants.length });
-  window.__productVariants = variants;
-  renderProductVariantPricing();
-  const rows=document.querySelectorAll('#productVariantPricing .variant-price-row');
-  rows[rows.length-1]?.querySelector('.variant-name')?.focus();
+function addProductVarietyDraft(){
+  persistVisibleVariantOrder();const variants=window.__productVariants||[];
+  variants.push({_localKey:`local-${crypto.randomUUID()}`,name:'',sale_price:'',discount_price:'',photo_url:'',description:'',quantity_available:null,sort_order:variants.length});
+  window.__productVariants=variants;renderProductVariantPricing();
+  const rows=document.querySelectorAll('#productVariantPricing .variant-price-row');rows[rows.length-1]?.querySelector('.variant-name')?.focus({preventScroll:true});
 }
 function clearProductVariantRow(btn) {
   const row=btn?.closest?.('.variant-price-row'); if(!row)return;
+  persistVisibleVariantOrder();
   const key=String(row.dataset.variantKey||"");
-  if(window.__productVariantPhotoFiles) delete window.__productVariantPhotoFiles[key];
   window.__productVariants=(window.__productVariants||[]).filter(v=>String(v.id||v._localKey||"")!==key);
   renderProductVariantPricing();
 }
@@ -18358,52 +18126,53 @@ function bindProductVariantDnd(){
 }
 function persistVisibleVariantOrder(){
   const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
-  const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||""),v]));
-  window.__productVariants=rows.map((r,i)=>{const titleEl=r.querySelector('.variant-row-title');if(titleEl) titleEl.textContent=`Variety ${i+1}`;const v=byKey.get(String(r.dataset.variantKey||""))||{};return {...v, name:r.querySelector('.variant-name')?.value?.trim()??v.name??"", sale_price:r.querySelector('.variant-sale-price')?.value??v.sale_price??"", discount_price:r.querySelector('.variant-discount-price')?.value??v.discount_price??"", size:r.querySelector('.variant-size')?.value?.trim()??v.size??"", color:r.querySelector('.variant-color')?.value?.trim()??v.color??"", photo_url:r.querySelector('.variant-image')?.value || r.dataset.photoUrl || v.photo_url || "", sort_order:i};});
+  const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||''),v]));
+  window.__productVariants=rows.map((r,i)=>{
+    const v=byKey.get(r.dataset.variantKey)||{_localKey:r.dataset.variantKey},value=c=>r.querySelector(c)?.value??'';
+    return {...v,name:value('.variant-name'),sale_price:value('.variant-sale-price'),discount_price:value('.variant-discount-price'),size:value('.variant-size'),color:value('.variant-color'),description:value('.variant-description'),quantity_available:value('.variant-quantity')===''?null:Number(value('.variant-quantity')),photo_url:value('.variant-image'),sort_order:i};
+  });
 }
-async function uploadProductVariantPhotoFiles() {
-  const files=window.__productVariantPhotoFiles||{};
-  const urls={};
-  for(const [key,file] of Object.entries(files)){
-    if(!file) continue;
-    const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-    const path=`${vendor.id}/${crypto.randomUUID()}.${ext}`;
-    const {error}=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});
-    if(error) throw new Error(`Variety photo upload failed: ${error.message}`);
-    urls[key]=sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl;
-  }
-  return urls;
-}
-function collectProductVariantDrafts(photoUrls, uploadedVariantPhotoUrls={}) {
+function collectProductVariantDrafts(photoUrls) {
   persistVisibleVariantOrder();
   const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
   const drafts=[];
   rows.forEach((row,index)=>{
-    const key=String(row.dataset.variantKey||'');
-    const name=String(row.querySelector('.variant-name')?.value||'').trim()||null;
+    const name=String(row.querySelector('.variant-name')?.value||'').trim();
     const saleRaw=row.querySelector('.variant-sale-price')?.value; const discountRaw=row.querySelector('.variant-discount-price')?.value;
     const sale=saleRaw===''?null:Number(saleRaw); const discount=discountRaw===''?null:Number(discountRaw);
     const size=String(row.querySelector('.variant-size')?.value||'').trim()||null; const color=String(row.querySelector('.variant-color')?.value||'').trim()||null;
-    if(name==null&&sale==null&&discount==null&&size==null&&color==null&&!uploadedVariantPhotoUrls[key]&&!row.querySelector('.variant-image')?.value&&!row.dataset.photoUrl) return;
-    if(discount!=null&&(!Number.isFinite(discount)||discount<=0||(sale!=null&&discount>=sale)))throw new Error(`Discount price${name?` for ${name}`:''} must be lower than the regular price.`);
-    if(sale!=null&&(!Number.isFinite(sale)||sale<=0))throw new Error(`Enter a valid price${name?` for ${name}`:''}.`);
-    let photoUrl=uploadedVariantPhotoUrls[key] || row.querySelector('.variant-image')?.value || row.dataset.photoUrl || '';
+    if(!name&&!sale&&!discount&&!size&&!color)return;
+    if(!name)throw new Error('Every variety needs a variety name.');
+    if(!Number.isFinite(sale)||sale<=0)throw new Error(`Enter a valid sale price for ${name}.`);
+    if(discount!=null&&(!Number.isFinite(discount)||discount<=0||discount>=sale))throw new Error(`Discount price for ${name} must be lower than its regular price.`);
+    let photoUrl=row.querySelector('.variant-image')?.value || row.dataset.photoUrl || '';
     if(row.dataset.tempIndex!=='')photoUrl=photoUrls[Number(row.dataset.tempIndex)]||photoUrl;
-    drafts.push({name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,sort_order:index});
+    const raw=row.querySelector('.variant-quantity')?.value??'',quantity_available=raw===''?null:Number(raw);
+    if(quantity_available!=null&&(!Number.isInteger(quantity_available)||quantity_available<0))throw new Error(`Enter a whole-number quantity for ${name}.`);
+    const saved=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===row.dataset.variantKey);
+    drafts.push({...(saved?.id?{id:saved.id}:{}),name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,description:row.querySelector('.variant-description')?.value.trim()||null,quantity_available,sort_order:index});
   });
   return drafts;
 }
 async function saveProductVariants(productId,drafts){
-  if(!productId)return; const {error:delErr}=await sb.from('product_variants').delete().eq('product_id',productId); if(delErr)throw delErr; if(!drafts.length)return;
-  const payload=drafts.map(d=>({product_id:productId,...d}));
-  let {error}=await sb.from('product_variants').insert(payload);
-  if(error && /column|schema cache|does not exist|unknown/i.test(String(error.message||''))){
-    const legacyPayload=payload.map(({size,color,...rest})=>rest);
-    const retry=await sb.from('product_variants').insert(legacyPayload); error=retry.error;
+  if(!productId)return;
+  const {data:existing,error:readError}=await sb.from('product_variants').select('*').eq('product_id',productId);if(readError)throw readError;
+  const payload=drafts.map(d=>{d.id=d.id||crypto.randomUUID();return {product_id:productId,...d}});
+  if(payload.length){
+    let pending=payload.map(v=>({...v}));
+    for(let attempt=0;attempt<5;attempt++){
+      const {error}=await sb.from('product_variants').upsert(pending,{onConflict:'id'});
+      if(!error){window.__productVariants=payload.map(v=>({...v}));break;}
+      // Compatibility for absent optional fields only: never discard entered data.
+      const missing=['description','quantity_available','size','color'].find(k=>new RegExp(`['".]${k}['" ]`).test(error.message||'')&&/column|schema cache/i.test(error.message||''));
+      if(!missing||pending.some(v=>v[missing]!=null&&v[missing]!==''))throw error;
+      pending=pending.map(v=>{const copy={...v};delete copy[missing];return copy;});
+      if(attempt===4)throw error;
+    }
   }
-  if(error)throw error;
+  const ids=new Set(payload.map(v=>v.id)),removed=(existing||[]).filter(v=>!ids.has(v.id)).map(v=>v.id);
+  if(removed.length){const {error}=await sb.from('product_variants').delete().eq('product_id',productId).in('id',removed);if(error)throw error;}
 }
-
 function syncProductEngagementSettingsUI(){byId("prodCommentAudienceWrap")?.classList.toggle("hidden",!byId("prodAllowComments")?.checked);}
 async function saveProductEngagementSettings(id){if(!id||!vendor?.id)return;const {error}=await sb.from("product_engagement_settings").upsert({product_id:id,vendor_id:vendor.id,like_visibility:byId("prodLikeVisibility")?.value||"everyone",allow_comments:!!byId("prodAllowComments")?.checked,comment_audience:byId("prodCommentAudience")?.value||"everyone"},{onConflict:"product_id"});if(error)throw error;}
 async function refreshSavedProductState(productId) {
@@ -18411,7 +18180,7 @@ async function refreshSavedProductState(productId) {
 
   const [{ data: savedProduct, error: productError }, variantResult] = await Promise.all([
     sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name, sector_id)").eq("id", productId).maybeSingle(),
-    sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,size,color,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true})
+    sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true})
   ]);
   let savedVariants = variantResult.data || [], variantsError = variantResult.error;
   if (variantsError && /column|schema cache|does not exist|unknown/i.test(String(variantsError.message || ""))) {
@@ -18494,6 +18263,7 @@ async function saveProduct() {
   const errorEl = byId("productError");
   errorEl.classList.add("hidden");
   const btn = byId("saveProductBtn");
+  if(btn.disabled)return;
   btn.disabled = true;
 
   try {
@@ -18578,6 +18348,7 @@ async function saveProduct() {
     let savedProductId = editingProductId;
     let variantDrafts = [];
     let soldUnits = 0;
+    if(!is_service){await uploadVarietyImages();variantDrafts=collectProductVariantDrafts(photos);}
     const isNewMonthlyListing = !editingProductId && billing_model === "monthly";
     if (editingProductId) {
       const { data: existing } = await sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single();
@@ -18594,10 +18365,7 @@ async function saveProduct() {
       window.__lastSavedProductRow = createdProduct || null;
     }
 
-    if (!is_service) {
-      const uploadedVariantPhotoUrls = await uploadProductVariantPhotoFiles();
-      variantDrafts = collectProductVariantDrafts(photos, uploadedVariantPhotoUrls);
-    }
+
 
     if (isNewMonthlyListing) {
       // Manual monthly payment: do not create/activate the listing until the
@@ -18616,9 +18384,12 @@ async function saveProduct() {
       await openManualMonthlyPayment("product", null, { isNew: true, draft: window.__manualMonthlyNewDraft });
       return;
     }
-    window.clearListingDraft?.("product", editingProductId || "new");
-    // Primary row is now durably saved. Give the vendor the completed UI response
-    // immediately; variants/engagement reconciliation can safely finish in background.
+    const savedDraftIdentity=editingProductId||"new";
+    editingProductId=savedProductId;
+    if(!is_service)await saveProductVariants(savedProductId,variantDrafts);
+    const engagementSave=Promise.allSettled([saveProductEngagementSettings(savedProductId)]);
+    window.clearListingDraft?.("product", savedDraftIdentity);
+    // Required product and variety writes have completed; engagement settings finish separately.
     const primarySavedProduct = {
       ...(window.__lastSavedProductRow || {}),
       id: savedProductId, ...fields, vendor_id: vendor.id, photos,
@@ -18639,12 +18410,9 @@ async function saveProduct() {
     if (currentView === "vendorProducts") await navigate("vendorProducts", {}, false);
     else if (currentView === "productDetail" && String(currentViewParams?.productId) === String(savedProductId)) await navigate("productDetail", { productId: savedProductId }, false);
 
-    Promise.allSettled([
-      !is_service ? saveProductVariants(savedProductId, variantDrafts) : Promise.resolve(),
-      saveProductEngagementSettings(savedProductId)
-    ]).then(async results => {
+    engagementSave.then(async results => {
       const failed = results.filter(r => r.status === "rejected");
-      if (failed.length) showToast("Listing saved, but one secondary setting could not be synchronized. It has been queued for refresh.", "info");
+      if (failed.length) showToast("Listing saved, but one secondary setting could not be synchronized. Please reopen the listing to retry that setting.", "info");
       try { await refreshVisibleProductAfterSave(savedProductId); } catch (e) { console.warn("[Levromart] Post-save product reconciliation failed:", e); }
     });
   } catch (err) {
@@ -18674,6 +18442,7 @@ async function removeProduct(id) {
   const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
   const { error } = await sb.from("products").update({ status: "removed" }).eq("id", id).eq("vendor_id", vendor.id);
   if (error) { showToast(error.message, "error"); return; }
+  invalidateMarketplaceState();
   showToast("Product moved to Discarded items.", "success");
   await navigate("vendorProducts", {}, false);
   requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: Math.max(0, scrollY), left: 0, behavior: "auto" })));
@@ -18755,13 +18524,13 @@ async function deleteSelectedDiscardedItems(){
 // ---------- VENDOR PACKAGES (bundle deals, e.g. an "Outreach Kit") ----------
 let editingPackageId = null;
 
-async function renderVendorPackages() {
+async function renderVendorPackages(embedded = false) {
   if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
-  const { data: v } = await sb.from("vendors").select("id, verification_status").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
+  const { data: v } = await sb.from("vendors").select("*").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   vendor = v;
 
-  const [{ data: packages }, { data: monthlyPackageSubmissions }] = await Promise.all([
+  const [{ data: packages, error:packageError }, { data: monthlyPackageSubmissions }] = await Promise.all([
     sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).order("created_at", { ascending: false }),
     sb.from("monthly_listing_submissions").select("listing_id,status,submitted_at,review_note").eq("vendor_id", v.id).eq("kind","package").order("submitted_at", { ascending: false }).limit(100)
   ]);
@@ -18773,6 +18542,7 @@ async function renderVendorPackages() {
   </div>`;
   if (v.verification_status !== "verified") html += `<p class="muted">Packages won't appear publicly until your vendor account is verified.</p>`;
 
+  if(packageError)return html+errorStateHtml(packageError);
   if (!packages || packages.length === 0) { html += `<div class="empty-state">No packages yet. Bundle products you already sell into one fixed-price deal to stand out.</div>`; return html; }
 
     html += `<div class="grid">${packages.map((pkg) => `<div class="card package-card">
@@ -18919,6 +18689,8 @@ function togglePkgItemQty(productId) {
 }
 
 function closePackageModal(options = {}) {
+  if(byId('packageModal')?.dataset.discardDraft==='1'){options.skipDraft=true;delete byId('packageModal').dataset.discardDraft;}
+  delete byId('packageModal').dataset.draftRestored;
   if (!options.skipDraft && typeof window.__captureListingDraftForModal === "function") {
     try { window.__captureListingDraftForModal("package"); } catch (_) {}
   }
@@ -18932,6 +18704,7 @@ async function savePackage() {
   const errorEl = byId("packageError");
   errorEl.classList.add("hidden");
   const btn = byId("savePackageBtn");
+  if(btn.disabled)return;
   btn.disabled = true;
 
   try {
@@ -18985,34 +18758,21 @@ async function savePackage() {
       const { data: updatedPackage, error } = await sb.from("vendor_packages").update(payload).eq("id", packageId).select("*").single();
       if (error) throw error;
       savedPackageRow = updatedPackage || null;
-      await sb.from("package_items").delete().eq("package_id", packageId);
+      const {error:removeError}=await sb.from("package_items").delete().eq("package_id", packageId);if(removeError)throw removeError;
     } else {
       const { data, error } = await sb.from("vendor_packages").insert(payload).select("*").single();
       if (error) throw error;
       packageId = data.id;
       savedPackageRow = data || null;
     }
-    window.__lastSavedPackageRow = savedPackageRow;
-    window.clearListingDraft?.("package", editingPackageId || "new");
-    // The package row is the primary save. Surface it immediately; package items
-    // and engagement settings reconcile immediately after without freezing the modal.
-    closePackageModal({ skipDraft: true });
-    await navigate("vendorProducts", {}, false);
-    Promise.allSettled([
-      (async () => {
-        const { error: itemsError } = await sb.from("package_items").insert(items.map((it) => ({ ...it, package_id: packageId })));
-        if (itemsError) throw itemsError;
-      })(),
-      savePackageEngagementSettings(packageId)
-    ]).then(results => {
-      const failed = results.filter(r => r.status === "rejected");
-      if (failed.length) {
-        showToast("Package saved, but a secondary setting could not be synchronized. Refreshing its listing data.", "info");
-      }
-      // Re-render after secondary persistence so package items/quantities and
-      // engagement state cannot remain stale after the immediate primary-row UI.
-      navigate("vendorProducts", {}, false).catch(()=>{});
-    });
+    const savedDraftIdentity=editingPackageId||'new';editingPackageId=packageId;
+    const {error:itemsError}=await sb.from('package_items').insert(items.map(it=>({...it,package_id:packageId})));
+    if(itemsError)throw new Error(`Package saved, but its items could not be saved: ${itemsError.message}. Your draft is retained; retry Save.`);
+    savePackageEngagementSettings(packageId).catch(err=>showToast(`Package saved; engagement settings need retry: ${err.message}`,'info'));
+    window.__lastSavedPackageRow=savedPackageRow;window.clearListingDraft?.('package',savedDraftIdentity);invalidateMarketplaceState();
+    closePackageModal({skipDraft:true});
+    if(['vendorProducts','vendorPackages'].includes(currentView))await navigate(currentView,{},false);
+    showToast('Package saved.','success');
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove("hidden");
@@ -19024,13 +18784,15 @@ async function savePackage() {
 async function setPackageStatus(id, status) {
   const { error } = await sb.from("vendor_packages").update({ status }).eq("id", id).eq("vendor_id", vendor.id);
   if (error) { showToast(error.message, "error"); return; }
-  navigate("vendorPackages");
+  invalidateMarketplaceState();
+  navigate(currentView === "vendorProducts" ? "vendorProducts" : "vendorPackages", {}, false);
 }
 async function deletePackage(id) {
   if (!(await showConfirmDialog("Delete this package permanently? This can't be undone.", { title: "Delete package", okLabel: "Delete", danger: true }))) return;
   const { error } = await sb.from("vendor_packages").delete().eq("id", id).eq("vendor_id", vendor.id);
   if (error) { showToast(error.message, "error"); return; }
-  navigate("vendorPackages");
+  invalidateMarketplaceState();
+  navigate(currentView === "vendorProducts" ? "vendorProducts" : "vendorPackages", {}, false);
 }
 
 // ---------- VENDOR / BUYER ORDERS ----------
@@ -19545,6 +19307,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <span class="badge ${orderStatusBadgeClass(order.status)}" style="text-transform:capitalize;flex-shrink:0;">${order.status.replace("_", " ")}</span>
     </div>
     ${order.created_at ? `<p class="muted" style="font-size:0.8rem;margin-top:0.7rem;"><i class="fa-solid fa-calendar-days"></i> Placed ${orderDateTimeStr(order.created_at)}</p>` : ""}
+    ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted">If the payout button does not appear within 20–30 minutes, please contact the vendor by message or call.</p><button type="button" class="btn btn-sm" onclick="remindOrderVendor('${esc(order.id)}',this)">Remind Vendor</button><button type="button" class="btn btn-sm btn-outline" onclick="startConversationWithVendor('${esc(order.vendor_id)}')">Message vendor</button>${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}">Call vendor</a>`:''}</div>`:''}
     ${(order.status === "completed" || order.status === "cancelled") && orderActivityIso(order) ? `<p class="muted" style="font-size:0.8rem;margin-top:0.25rem;"><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(order))}</p>` : ""}
     ${ORDER_STATUS_HELP[order.status]
       ? order.status === "pending"
@@ -19766,7 +19529,7 @@ function notReceivedButtonHtml(order) {
 }
 
 const ORDER_STATUS_HELP = {
-  pending: "Waiting for the vendor to confirm your order. You haven't been charged yet, and you'll be able to pay once they accept.",
+  pending: "Your order has been placed. You haven't been charged yet. Payment becomes available when the vendor accepts.",
   confirmed: "The vendor has accepted. Next, they'll hand over the equipment.",
   handed_over: "The equipment has physically been handed to the customer (picked up or delivered). For rentals, either side can mark it \"returned\" once it's back with the vendor. For sales, the customer confirms receipt to complete the order and release payment.",
   returned: "The rented equipment is back with the vendor. The buyer confirms to complete the order and release payment.",
@@ -19779,7 +19542,7 @@ const ORDER_STATUS_HELP = {
 // page as a paragraph. Statuses not listed here are already short enough
 // to just show in full.
 const ORDER_STATUS_SHORT_LABEL = {
-  pending: "Waiting for vendor confirmation",
+  pending: "Your order has been placed.",
   handed_over: "Item handed over",
   returned: "Equipment back with vendor",
 };
@@ -19793,6 +19556,18 @@ const PAYOUT_STATUS_SHORT_LABEL = {
   held: "Payment held by Levromart",
 };
 
+const orderReminderBusy=new Set();
+async function remindOrderVendor(orderId,button){
+  if(!session?.user?.id||orderReminderBusy.has(orderId))return;
+  orderReminderBusy.add(orderId);if(button)button.disabled=true;
+  try{
+    const {data:order,error}=await sb.from('orders').select('id,buyer_id,status,vendor_id,vendor:vendors(user_id)').eq('id',orderId).eq('buyer_id',session.user.id).single();if(error)throw error;
+    if(order.status!=='pending'||!order.vendor?.user_id)throw new Error('This order no longer needs a reminder.');
+    const {error:sendError}=await sb.from('notifications').insert({user_id:order.vendor.user_id,type:'order_reminder',title:'Order reminder',body:`${profile?.name||'Your customer'} is asking you to review their order.`,target_view:'orderDetail',target_params:{orderId:order.id,vendorId:order.vendor_id,buyer_id:session.user.id},read:false});if(sendError)throw sendError;
+    showToast('Reminder sent to vendor.','success');
+  }catch(err){showToast(err.message||'Could not send reminder. Please message the vendor.','error');}
+  finally{orderReminderBusy.delete(orderId);if(button)button.disabled=false;}
+}
 async function updateOrderStatus(orderId, newStatus) {
   if (newStatus === "cancelled") {
     const confirmed = await showConfirmDialog(
@@ -20116,20 +19891,25 @@ function adminNavHtml(active) {
   const items = [
     ["adminPeople", "fa-users", "People"],
     ["adminPanel", "fa-user-check", "Vendor"],
+    ["adminMonthlyListings", "fa-receipt", "Monthly listings"],
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
     ["adminSupportRequests", "fa-headset", "Support"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],
     ["adminLog", "fa-clock-rotate-left", "Log"],
     ["adminUsers", "fa-user-shield", "Admins"],
-    ["adminMonthlyListings", "fa-receipt", "Monthly listings"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
-  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" && Number(window.__monthlyPendingCount || 0) > 0 ? `<span class="dash-tab-dot monthly-listings-admin-badge">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : ""}</button>`).join("")}</div>`;
+  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : ""}</button>`).join("")}</div>`;
 }
 
 async function refreshMonthlyPendingCount(){
-  if(!session||profile?.role!=="admin")return 0;
-  try{const {count,error}=await sb.from("monthly_listing_submissions").select("id",{count:"exact",head:true}).eq("status","pending");if(error)throw error;window.__monthlyPendingCount=Number(count||0);document.querySelectorAll(".monthly-listings-admin-badge").forEach(el=>{const n=Number(window.__monthlyPendingCount||0);el.textContent=n>9?"9+":String(n);el.classList.toggle("hidden",n===0)});return window.__monthlyPendingCount}catch(_){return Number(window.__monthlyPendingCount||0)}}
+  if(!session||(!vendor&&profile?.role!=='admin'))return 0;
+  try{let q=sb.from('monthly_listing_submissions').select('id,kind,listing_id,vendor_id').eq('status','pending');if(profile.role!=='admin')q=q.eq('vendor_id',vendor.id);
+    const {data:subs,error}=await q;if(error)throw error;
+    const alive=await Promise.all((subs||[]).map(async sub=>{const {data,error}=await sb.from(monthlySubmissionListingTable(sub.kind)).select('id,status').eq('id',sub.listing_id).eq('vendor_id',sub.vendor_id).maybeSingle();if(error)throw error;return data&&data.status!=='removed'}));
+    const n=alive.filter(Boolean).length;window.__monthlyPendingCount=n;document.querySelectorAll('.monthly-listings-admin-badge,.monthly-profile-badge').forEach(el=>{el.textContent=n>9?'9+':String(n);el.classList.toggle('hidden',!n)});return n;
+  }catch(err){console.warn('Monthly listing badge refresh failed',err);return Number(window.__monthlyPendingCount||0);}
+}
 function monthlySubmissionKindLabel(kind,listing){return kind==="product"?(listing?.is_service?"Service":"Product"):"Package"}
 function monthlySubmissionListingTable(kind){return kind==="product"?"products":"vendor_packages"}
 async function renderAdminMonthlyListings(){
@@ -20141,12 +19921,12 @@ async function renderAdminMonthlyListings(){
   const vendorIds=[...new Set((subs||[]).map(x=>x.vendor_id).filter(Boolean))], userIds=[...new Set((subs||[]).map(x=>x.user_id).filter(Boolean))];
   const [vr,ur]=await Promise.all([vendorIds.length?sb.from("vendors").select("id,business_name,phone,city,user_id").in("id",vendorIds):Promise.resolve({data:[]}),userIds.length?sb.from("users").select("id,name,email,phone").in("id",userIds):Promise.resolve({data:[]})]);
   const vendorsById=Object.fromEntries((vr.data||[]).map(v=>[v.id,v])),usersById=Object.fromEntries((ur.data||[]).map(u=>[u.id,u]));
-  for(const sub of (subs||[])){let listing=null;try{const {data}=await sb.from(monthlySubmissionListingTable(sub.kind)).select("*").eq("id",sub.listing_id).eq("vendor_id",sub.vendor_id).maybeSingle();listing=data||null}catch(_){}sub.__listing=listing;sub.__vendor=vendorsById[sub.vendor_id]||{};sub.__user=usersById[sub.user_id]||{};const key=sub.kind==='package'?'packages':listing?.is_service?'services':'products';grouped[key].push(sub)}
-  const pending=(subs||[]).filter(x=>x.status==='pending');window.__monthlyPendingCount=pending.length;
+  for(const sub of (subs||[])){let listing=null;try{const {data,error:listingError}=await sb.from(monthlySubmissionListingTable(sub.kind)).select("*").eq("id",sub.listing_id).eq("vendor_id",sub.vendor_id).maybeSingle();if(listingError)throw listingError;listing=data||null}catch(err){throw err}if(!listing||listing.status==="removed")continue;sub.__listing=listing;sub.__vendor=vendorsById[sub.vendor_id]||{};sub.__user=usersById[sub.user_id]||{};const key=sub.kind==='package'?'packages':listing?.is_service?'services':'products';grouped[key].push(sub)}
+  const pending=Object.values(grouped).flat().filter(x=>x.status==='pending');window.__monthlyPendingCount=pending.length;
   html+=`<div class="monthly-listing-admin-intro"><div><strong>Manual ₦1,000 monthly activation</strong><p class="muted">Vendors transfer ₦1,000 to the Levromart account, upload their receipt and payer name, then wait here for approval. The one-month clock starts only when you approve.</p></div><span class="monthly-admin-total-badge">${pending.length} pending</span></div>`;
   const pendingCount=k=>grouped[k].filter(x=>x.status==='pending').length;
   html+=`<div class="tabs monthly-listing-kind-tabs"><button class="active" data-monthly-kind-tab="products" onclick="switchMonthlyAdminKind('products')"><i class="fa-solid fa-box"></i> Products <span class="monthly-kind-badge ${pendingCount('products')?'':'hidden'}">${pendingCount('products')}</span></button><button data-monthly-kind-tab="services" onclick="switchMonthlyAdminKind('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services <span class="monthly-kind-badge ${pendingCount('services')?'':'hidden'}">${pendingCount('services')}</span></button><button data-monthly-kind-tab="packages" onclick="switchMonthlyAdminKind('packages')"><i class="fa-solid fa-box-open"></i> Packages <span class="monthly-kind-badge ${pendingCount('packages')?'':'hidden'}">${pendingCount('packages')}</span></button></div>`;
-  const renderGroup=key=>{const rows=grouped[key];if(!rows.length)return `<div class="monthly-kind-panel" data-monthly-kind="${key}"><div class="empty-state">No ${key} monthly listing submissions yet.</div></div>`;return `<div class="monthly-kind-panel ${key==='products'?'':'hidden'}" data-monthly-kind="${key}">${rows.map(sub=>{const l=sub.__listing||{},v=sub.__vendor||{},u=sub.__user||{},img=Array.isArray(l.photos)?l.photos[0]:null,isPending=sub.status==='pending',isActive=l.status==='active'&&l.billing_status==='active';return `<article class="card monthly-submission-card ${isPending?'monthly-submission-pending':''}"><div class="monthly-submission-head"><div><span class="badge ${isPending?'danger':sub.status==='approved'?'success':sub.status==='deactivated'?'danger':'warning'}">${esc(sub.status)}</span><h3 style="margin:.35rem 0 .1rem;">${esc(l.name||'Listing unavailable')}</h3><p class="muted" style="margin:0;">${esc(monthlySubmissionKindLabel(sub.kind,l))} · Submitted ${new Date(sub.submitted_at).toLocaleString('en-GB')}</p></div>${img?`<img class="monthly-submission-thumb" src="${esc(img)}" alt="" loading="lazy">`:''}</div><div class="monthly-submission-grid"><div><span>Vendor</span><strong>${esc(v.business_name||'Vendor')}</strong><small>${esc(v.city||'')}${v.phone?' · '+esc(v.phone):''}</small></div><div><span>Applicant</span><strong>${esc(u.name||'User')}</strong><small>${esc(u.email||'')}${u.phone?' · '+esc(u.phone):''}</small></div><div><span>Payer account</span><strong>${esc(sub.payer_name)}</strong><small>₦1,000 manual transfer</small></div><div><span>Listing</span><strong>${esc(l.name||'Unavailable')}</strong><small>${l.description?esc(String(l.description).slice(0,130)):'No description'}</small></div></div><div class="monthly-submission-receipt"><div><strong>Payment receipt</strong><span class="muted">Uploaded by vendor · ${new Date(sub.submitted_at).toLocaleString('en-GB')}</span></div><button type="button" class="btn btn-sm btn-outline" onclick="viewMonthlyReceipt('${esc(sub.receipt_path)}')"><i class="fa-regular fa-image"></i> View receipt</button></div>${sub.review_note?`<p class="muted monthly-review-note"><strong>Admin note:</strong> ${esc(sub.review_note)}</p>`:''}<div class="monthly-submission-actions">${isPending?`<button type="button" class="btn" onclick="approveMonthlyListing('${sub.id}')"><i class="fa-solid fa-circle-check"></i> Activate</button><button type="button" class="btn btn-outline" onclick="rejectMonthlyListing('${sub.id}')"><i class="fa-solid fa-xmark"></i> Reject receipt</button><button type="button" class="btn btn-danger" onclick="deactivateMonthlyListing('${sub.id}')"><i class="fa-solid fa-ban"></i> Deactivate</button>`:''}${isActive?`<button type="button" class="btn btn-danger" onclick="deactivateMonthlyListing('${sub.id}')"><i class="fa-solid fa-ban"></i> Deactivate</button>`:''}</div></article>`}).join('')}</div>`};
+  const renderGroup=key=>{const rows=grouped[key];if(!rows.length)return `<div class="monthly-kind-panel ${key==='products'?'':'hidden'}" data-monthly-kind="${key}"><div class="empty-state">No ${key} monthly listing submissions yet.</div></div>`;return `<div class="monthly-kind-panel ${key==='products'?'':'hidden'}" data-monthly-kind="${key}">${rows.map(sub=>{const l=sub.__listing||{},v=sub.__vendor||{},u=sub.__user||{},img=Array.isArray(l.photos)?l.photos[0]:null,isPending=sub.status==='pending',isActive=l.status==='active'&&l.billing_status==='active';return `<details class="card monthly-submission-card ${isPending?'monthly-submission-pending':''}"><summary class="monthly-submission-head"><div><span class="badge ${isPending?'danger':sub.status==='approved'?'success':sub.status==='deactivated'?'danger':'warning'}">${esc(sub.status)}</span><h3 style="margin:.35rem 0 .1rem;">${esc(l.name||'Listing unavailable')}</h3><p class="muted" style="margin:0;">${esc(monthlySubmissionKindLabel(sub.kind,l))} · Submitted ${new Date(sub.submitted_at).toLocaleString('en-GB')}</p></div>${img?`<img class="monthly-submission-thumb" src="${esc(img)}" alt="" loading="lazy">`:''}</summary><div class="monthly-submission-grid"><div><span>Vendor</span><strong>${esc(v.business_name||'Vendor')}</strong><small>${esc(v.city||'')}${v.phone?' · '+esc(v.phone):''}</small></div><div><span>Applicant</span><strong>${esc(u.name||'User')}</strong><small>${esc(u.email||'')}${u.phone?' · '+esc(u.phone):''}</small></div><div><span>Payer account</span><strong>${esc(sub.payer_name)}</strong><small>₦1,000 manual transfer</small></div><div><span>Listing</span><strong>${esc(l.name||'Unavailable')}</strong><small>${l.description?esc(String(l.description).slice(0,130)):'No description'}</small></div></div><div class="monthly-submission-receipt"><div><strong>Payment receipt</strong><span class="muted">Uploaded by vendor · ${new Date(sub.submitted_at).toLocaleString('en-GB')}</span></div><button type="button" class="btn btn-sm btn-outline" onclick="viewMonthlyReceipt('${esc(sub.receipt_path)}')"><i class="fa-regular fa-image"></i> View receipt</button></div>${sub.review_note?`<p class="muted monthly-review-note"><strong>Admin note:</strong> ${esc(sub.review_note)}</p>`:''}<div class="monthly-submission-actions">${isPending?`<button type="button" class="btn" onclick="approveMonthlyListing('${sub.id}')"><i class="fa-solid fa-circle-check"></i> Activate</button><button type="button" class="btn btn-outline" onclick="rejectMonthlyListing('${sub.id}')"><i class="fa-solid fa-xmark"></i> Reject receipt</button><button type="button" class="btn btn-danger" onclick="deactivateMonthlyListing('${sub.id}')"><i class="fa-solid fa-ban"></i> Deactivate</button>`:''}${isActive?`<button type="button" class="btn btn-danger" onclick="deactivateMonthlyListing('${sub.id}')"><i class="fa-solid fa-ban"></i> Deactivate</button>`:''}</div></details>`}).join('')}</div>`};
   html+=renderGroup('products')+renderGroup('services')+renderGroup('packages');setTimeout(refreshMonthlyPendingCount,0);return html;
 }
 window.switchMonthlyAdminKind=function(kind){document.querySelectorAll('[data-monthly-kind-tab]').forEach(b=>b.classList.toggle('active',b.dataset.monthlyKindTab===kind));document.querySelectorAll('[data-monthly-kind]').forEach(p=>p.classList.toggle('hidden',p.dataset.monthlyKind!==kind))};
@@ -20225,9 +20005,9 @@ async function renderAdminPanel(status) {
   let q = sb.from("vendors")
     .select("id, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, avg_rating, review_count, created_at, applicant:users(name, email)")
     .is("deleted_at", null)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
   if (status !== "all") q = q.eq("verification_status", status);
-  const { data: vendors } = await q;
+  const { data: vendors, error:vendorError } = await q;
 
   let html = `<h2><i class='fa-solid fa-gear'></i> Admin: Vendor applications</h2>`;
   html += adminNavHtml("adminPanel");
@@ -20238,14 +20018,16 @@ async function renderAdminPanel(status) {
       <a class="${status === "rejected" ? "active" : ""}" onclick="navigate('adminPanel',{status:'rejected'})">rejected</a>
     </div>`;
 
+  if(vendorError)return html+errorStateHtml(vendorError);
+  html += `<div class="admin-vendor-filters"><input type="search" id="adminVendorSearch" placeholder="Search name, email or phone" oninput="filterAdminVendorCards()"><select id="adminVendorSort" onchange="filterAdminVendorCards()"><option value="latest">Last listed</option><option value="alpha">Alphabetical</option></select></div><div id="adminVendorCards">`;
   if (!vendors || vendors.length === 0) html += `<p class="muted">No ${status === "all" ? "" : status + " "}vendors.</p>`;
   (vendors || []).forEach((v) => {
     const doc = (v.verification_docs || [])[0];
-    html += `<div id="adminVendor-${esc(v.id)}" class="card">
-      <div class="flex" style="justify-content:space-between;">
+    html += `<details id="adminVendor-${esc(v.id)}" class="card admin-vendor-card" data-name="${esc(v.business_name)}" data-created="${esc(v.created_at)}" data-search="${esc([v.business_name,v.applicant?.name,v.applicant?.email,v.phone,v.id].filter(Boolean).join(' ').toLowerCase())}">
+      <summary class="flex" style="justify-content:space-between;">
         <strong>${esc(v.business_name)}</strong>
         <span class="badge">${esc(v.verification_status)}</span>
-      </div>
+      </summary>
       <p class="muted" style="margin:0.3rem 0;">Applicant: ${esc(v.applicant?.name || "")} (${esc(v.applicant?.email || "")})</p>
       <p class="muted" style="margin:0.3rem 0;">${[v.address, v.city].filter(Boolean).map(esc).join(", ") || "No address given (online-only)"}</p>
       <p class="muted" style="margin:0.3rem 0;"><i class='fa-solid fa-phone'></i> ${esc(v.phone || "-")}${v.whatsapp_number ? " · WhatsApp " + esc(v.whatsapp_number) : ""}${v.cac_number ? " · CAC " + esc(v.cac_number) : ""}</p>
@@ -20256,11 +20038,16 @@ async function renderAdminPanel(status) {
         ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
         ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}
       </div>
-    </div>`;
+    </details>`;
   });
-  return html;
+  return html+"</div>";
 }
 
+function filterAdminVendorCards(){
+  const host=byId('adminVendorCards');if(!host)return;
+  const q=(byId('adminVendorSearch')?.value||'').toLowerCase(),alpha=byId('adminVendorSort')?.value==='alpha';
+  [...host.querySelectorAll('.admin-vendor-card')].sort((a,b)=>alpha?a.dataset.name.localeCompare(b.dataset.name):Date.parse(b.dataset.created)-Date.parse(a.dataset.created)).forEach(card=>{card.classList.toggle('hidden',!card.dataset.search.includes(q));host.appendChild(card)});
+}
 async function viewVendorDoc(path) {
   const { data, error } = await sb.storage.from("vendor-docs").createSignedUrl(path, 300);
   if (error) { showToast(error.message, "error"); return; }
@@ -20312,7 +20099,7 @@ function promptPasswordConfirm(actionLabel, verify) {
       else { errorEl.classList.remove("hidden"); input.value = ""; input.focus(); }
     };
     const onCancel = () => cleanup(false);
-    const onKey = (e) => { if (e.key === "Enter") onOk(); };
+    const onKey = (e) => {if(e.key==="Enter"){e.preventDefault();e.stopPropagation();if(!okBtn.disabled)onOk();}};
     okBtn.addEventListener("click", onOk);
     cancelBtn.addEventListener("click", onCancel);
     input.addEventListener("keydown", onKey);
@@ -20479,6 +20266,8 @@ async function setVendorStatus(id, status, filterStatus, businessName) {
 async function adminDeleteVendor(vendorId, filterStatus, businessName) {
   if (adminVendorActionBusy.has(vendorId)) return;
   if (profile?.email !== SUPER_ADMIN_EMAIL) return;
+  adminVendorActionBusy.add(vendorId);
+  try {
 
   if (!businessName) {
     const { data: target } = await sb.from("vendors").select("business_name").eq("id", vendorId).maybeSingle();
@@ -20488,10 +20277,10 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
     `Permanently delete "${businessName}"? Their storefront and all listings are pulled immediately, they're demoted back to an ordinary buyer account, and this stops showing on your dashboard. Past orders and reviews stay on record for buyers.`,
     { title: "Delete vendor", okLabel: "Delete vendor", danger: true }
   ))) return;
-  // Vendor deletion is protected by the super-admin gate above, the
-  // confirmation dialog, and the server-side admin_delete_vendor RPC.
-  // Do not invoke the shared admin-password modal for this flow.
-  adminVendorActionBusy.add(vendorId);
+  const confirmation=prompt('Enter 11 digits to confirm vendor deletion:','');
+  if(confirmation===null)return;
+  if(!/^\d{11}$/.test(confirmation)){showToast('Enter exactly 11 digits.','error');return;}
+  if(!(await promptAdminPassword('delete this vendor')))return;
   let mutationSucceeded = false;
 
   try {
@@ -20524,12 +20313,11 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
     mutationSucceeded = true;
     try { await logAdminAction("delete_vendor", "vendor", vendorId, businessName); }
     catch (e) { console.warn("Admin action log failed:", e); }
-  } finally {
-    adminVendorActionBusy.delete(vendorId);
-  }
+  } catch(err){showToast(err.message||"Could not delete this vendor.","error");}
 
   if (!mutationSucceeded) return;
 
+  invalidateMarketplaceState();
   showToast("Vendor deleted and demoted to a customer.", "success");
   try {
     vendorActionLog("delete", vendorId, { stage: "ui-refresh:start" });
@@ -20539,6 +20327,8 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
     console.error("[Levromart] Vendor list refresh failed after a successful delete:", uiError);
     showToast(`${businessName} was deleted, but the list could not refresh automatically. Pull to refresh.`, "info");
   }
+  } finally {adminVendorActionBusy.delete(vendorId);}
+
 }
 
 async function adminToggleVendorActive(vendorId, currentlyActive, businessName) {
@@ -23232,6 +23022,50 @@ async function resolveLeviProductSuggestions(target) {
 function leviProductSuggestionTag(products){return products?.length?`[[PRODUCTS:${products.map(p=>p.id).join(",")}]]`:"";}
 
 
+function leviCatalogueTerms(text){
+  const q=leviNormaliseText(text);
+  const groups={drink:['drink','beverage','juice','water','smoothie','coffee','tea','soda'],snack:['snack','pastry','chicken','sandwich','cake','biscuit','chips'],eat:['food','meal','rice','pasta','noodles','chicken','snack']};
+  const words=q.replace(/\b(i|want|would|like|something|some|to|a|an|the|please|recommend|find|me|cheap|affordable|near|nearby|eat|drink)\b/g,' ').split(/\s+/).filter(Boolean);
+  for(const [key,terms] of Object.entries(groups))if(new RegExp(`\\b${key}\\b`).test(q))words.push(...terms);
+  return [...new Set(words)];
+}
+async function resolveLeviCatalogueRequest(text){
+  const q=leviNormaliseText(text);
+  const named=q.match(/(?:catalogue|catalog|products|services|packages|listings)\s+(?:from|of|for|at)\s+(.+?)[?.!]*$/)||q.match(/what\s+(?:does|do)\s+(.+?)\s+(?:sell|offer|have)[?.!]*$/);
+  const food=/\b(eat|food|snack|drink|beverage|spicy|chicken)\b/.test(q);
+  const currentVendor=(currentView==='storefront'&&/\b(this|their|the)\b.*\b(vendor|shop|store|catalogue|products)\b/.test(q))?currentViewParams.vendorId:null;
+  if(!named&&!food&&!currentVendor)return null;
+  try{
+    let vendorId=currentVendor;
+    if(named){const found=await resolveLeviVendor(named[1].trim());if(found.matches?.length>1)return {handled:true,reply:`Which vendor do you mean: ${found.matches.map(v=>v.business_name).join(', ')}?`};vendorId=found.vendor?.id;if(!vendorId)return {handled:true,reply:'I couldn’t find a matching active vendor. What is the shop’s name?'};}
+    const vf='id,business_name,bio,city,avg_rating,review_count,lat,lng,verification_status,is_active';
+    let pq=sb.from('products').select(`*,vendor:vendors!inner(${vf}),category:categories(name,sector_id),variants:product_variants(*)`).eq('status','active').eq('vendor.verification_status','verified').eq('vendor.is_active',true).order('created_at',{ascending:false}).limit(200);
+    let kq=sb.from('vendor_packages').select(`*,vendor:vendors!inner(${vf}),items:package_items(quantity,product:products(name))`).eq('status','active').eq('vendor.verification_status','verified').eq('vendor.is_active',true).order('created_at',{ascending:false}).limit(100);
+    if(vendorId){pq=pq.eq('vendor_id',vendorId);kq=kq.eq('vendor_id',vendorId);}
+    const [pr,kr]=await Promise.all([pq,kq]);if(pr.error)throw pr.error;if(kr.error)throw kr.error;
+    const rows=[...(pr.data||[]).map(p=>({...p,_kind:p.is_service?'Service':'Product',_price:p.discount_price??p.sale_price??p.rental_rate})),...(kr.data||[]).map(p=>({...p,_kind:'Package',_price:p.price}))];
+    const terms=leviCatalogueTerms(text);
+    const ranked=rows.map(p=>{
+      const category=p.category||{},sector=(sectors||[]).find(x=>String(x.id)===String(category.sector_id));
+      const hay=leviNormaliseText([p.name,p.description,category.name,sector?.name,p.vendor?.business_name,String(p.tags||''),(p.variants||[]).map(v=>[v.name,v.description,v.size,v.color].join(' ')).join(' '),(p.items||[]).map(x=>x.product?.name).join(' ')].join(' '));
+      return {p,score:terms.reduce((n,t)=>n+(hay.includes(t)?1:0),0),distance:vendorDistanceKm(p.vendor)};
+    }).filter(x=>vendorId||x.score>0).sort((a,b)=>{
+      if(/\b(cheap|affordable|budget)\b/.test(q))return (a.p._price==null?Infinity:Number(a.p._price))-(b.p._price==null?Infinity:Number(b.p._price))||b.score-a.score;
+      if(/\b(near|nearby|closest)\b/.test(q))return (a.distance??Infinity)-(b.distance??Infinity)||b.score-a.score;
+      return b.score-a.score;
+    });
+    if(!ranked.length)return {handled:true,reply:vendorId?'This vendor has no active matching listings available right now.':'I couldn’t find a matching listing in the current catalogue results. What specific food or drink would you like?'};
+    const chosen=ranked.slice(0,vendorId?20:5);
+    const lines=chosen.map(({p,distance})=>{
+      const price=p._price==null?'price not provided':naira(Number(p._price));
+      const rating=p.vendor?.review_count>0?` · ${Number(p.vendor.avg_rating).toFixed(1)}★ (${p.vendor.review_count} reviews)`:'';
+      const stock=p.quantity_available==null?'':` · ${p.quantity_available} available`;
+      const variants=(p.variants||[]).map(v=>`${v.name}: ${v.sale_price==null?'price not provided':naira(Number(v.discount_price??v.sale_price))}${variantStock(v)==null?'':` (${variantStock(v)} available)`}`).join('; ');
+      return `${p.name} — ${price} (${p._kind}) from ${p.vendor.business_name}${rating}${distance==null?'':` · ${distance.toFixed(1)} km away`}${stock}.${p.description?' '+String(p.description).slice(0,160):''}${variants?' Varieties: '+variants+'.':''} [[NAV:${p._kind==='Package'?'packageDetail|packageId':'productDetail|productId'}=${p.id}]]`;
+    });
+    return {handled:true,reply:`${vendorId?'Here are this vendor’s current listings':'These current listings match your request'}:\n${lines.join('\n')}\n${ranked.length>chosen.length?'Showing '+chosen.length+' of '+ranked.length+' matches in these results. ':''}${/\bnear\b/.test(q)&&!buyerLocation?'Distance is unavailable until you enable location.':''}`};
+  }catch(err){console.warn('Levi catalogue lookup failed',err);return {handled:true,reply:'I couldn’t refresh the catalogue just now. Please try again; I won’t guess prices or availability.'};}
+}
 async function resolveLeviQuickDiscovery(text) {
   const q=leviNormaliseText(text);
   if(!session) return null;
@@ -23358,6 +23192,8 @@ async function resolveLeviLocalAction(text) {
   }
   if (!session) return null;
 
+  const catalogueAnswer=await resolveLeviCatalogueRequest(text);
+  if(catalogueAnswer?.handled)return catalogueAnswer;
   const vendorInsight = await resolveLeviVendorInsights(text);
   if (vendorInsight?.handled) return vendorInsight;
 
@@ -25928,41 +25764,6 @@ window.renderVendorMapRail = function(){
 /* legacy Top-rated Vendor row layout removed */
 .vendors-map-vendor-chip{flex-basis:196px !important;min-width:196px !important;padding:.55rem .62rem !important;}
 .vendors-map-vendor-chip img,.vendors-map-vendor-chip .avatar-circle{width:2.8rem !important;height:2.8rem !important;flex-basis:2.8rem !important;font-size:1rem !important;font-weight:800 !important;display:flex !important;align-items:center !important;justify-content:center !important;border-radius:50% !important;}
-
-/* Payout bank picker: searchable, alphabetical, mobile-friendly and consistent
-   with Levromart's existing glass/card visual language. */
-.bank-picker-trigger{
-  width:100%;display:flex;align-items:center;justify-content:space-between;gap:.75rem;
-  padding:.78rem .9rem;margin:.3rem 0 .5rem;border:1px solid var(--border);
-  border-radius:.85rem;background:color-mix(in srgb,var(--primary) 3%,var(--input-bg));
-  color:var(--text);font:inherit;text-align:left;cursor:pointer;
-}
-.bank-picker-trigger:hover{border-color:color-mix(in srgb,var(--primary) 45%,var(--border));box-shadow:0 2px 10px color-mix(in srgb,var(--primary) 10%,transparent);}
-.bank-picker-trigger > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.bank-picker-trigger > i{color:var(--text-muted);flex:0 0 auto;}
-.vendor-bank-picker-modal{z-index:310;padding:1rem;}
-.vendor-bank-picker-content{width:min(520px,100%);max-height:min(82vh,720px);padding:1rem;overflow:hidden;display:flex;flex-direction:column;}
-.vendor-bank-picker-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.8rem;}
-.vendor-bank-picker-title{display:flex;align-items:center;gap:.55rem;font-size:1.05rem;font-weight:800;}
-.vendor-bank-picker-title i{color:var(--primary);}
-.vendor-bank-search-wrap{position:relative;margin-bottom:.65rem;}
-.vendor-bank-search-wrap > i{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;}
-.vendor-bank-search{width:100%;margin:0;padding:.72rem .8rem .72rem 3.05rem!important;border-radius:.8rem;background:var(--input-bg);}
-.vendor-bank-picker-list{overflow-y:auto;min-height:0;padding-right:.1rem;}
-.vendor-bank-option{width:100%;display:flex;align-items:center;gap:.7rem;padding:.72rem .65rem;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);text-align:left;cursor:pointer;}
-.vendor-bank-option:hover,.vendor-bank-option.selected{background:color-mix(in srgb,var(--primary) 9%,transparent);}
-.vendor-bank-option-icon{width:2rem;height:2rem;flex:0 0 2rem;border-radius:.65rem;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);}
-.vendor-bank-option-main{min-width:0;display:flex;flex-direction:column;gap:.1rem;flex:1;}
-.vendor-bank-option-main strong{font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.vendor-bank-option-main small{font-size:.7rem;color:var(--text-muted);}
-.vendor-bank-option-check{color:var(--primary);flex:0 0 auto;}
-.vendor-bank-option-arrow{color:var(--text-muted);font-size:.7rem;flex:0 0 auto;}
-.payout-active-banner{line-height:1.45;}
-@media(max-width:560px){
-  .vendor-bank-picker-content{max-height:86vh;border-radius:1.1rem;padding:.85rem;}
-  .vendor-bank-option{padding:.78rem .5rem;}
-}
-
 </style>
 
 <script id="levromart-final-2026-09-09">
@@ -25989,7 +25790,7 @@ window.renderVendorMapRail = function(){
     else {showToast("There is no outstanding payment on this order.","info");return;}
     byId("manualVendorPaymentModal")?.remove();
     const modal=document.createElement("div"); modal.id="manualVendorPaymentModal"; modal.className="modal manual-payment-modal";
-    const bankName = getBankDisplayName(order.vendor?.bank_code, order.vendor?.bank_name);
+    const bankName = order.vendor?.bank_name || (typeof NIGERIAN_BANKS!=="undefined" ? NIGERIAN_BANKS.find(b=>String(b.code)===String(order.vendor?.bank_code||""))?.name : null) || (order.vendor?.bank_code ? `Bank code ${order.vendor.bank_code}` : "Not provided");
     const hasAccount = !!(order.vendor?.account_name || order.vendor?.account_number || order.vendor?.bank_code || order.vendor?.bank_name);
     modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> for the <strong>${esc(paymentLabel)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
@@ -27761,7 +27562,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
   window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
-  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls],await uploadProductVariantPhotoFiles())};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
+  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
   async function renderUnifiedEnhancements(){
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading)return;
@@ -27785,18 +27586,10 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
     // Tag every product/service card and its grid so the unified rail can filter cleanly.
     document.querySelectorAll('.vendor-products-heading ~ .grid .card').forEach(card=>{
       if(card.dataset.vendorListingKind)return;
-      const text=card.textContent||'';card.dataset.vendorListingKind=/\bService\b/i.test(text)?'services':'products';
+      card.dataset.vendorListingKind=card.dataset.vpKind||'products';
     });
-    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>g.dataset.vendorListingSection='products');
-    // Packages live in the same My Shop screen; they are loaded once and rendered as compact cards.
-    if(!host.querySelector('[data-vendor-listing-section="packages"]')){
-      try{
-        const r=await sb.from('vendor_packages').select('id,name,description,price,photos,status,billing_model,billing_status,billing_paid_until,created_at,items:package_items(quantity,product:products(name))').eq('vendor_id',vendor.id).neq('status','removed').order('created_at',{ascending:false});
-        const packs=r.data||[];const section=document.createElement('section');section.dataset.vendorListingSection='packages';section.className='vendor-unified-packages';
-        section.innerHTML='<div class="category-group-header"><i class="fa-solid fa-boxes-packing"></i> Packages</div>'+(packs.length?'<div class="vendor-product-card-grid">'+packs.map(x=>'<article class="card" data-package-id="'+escHtml(x.id)+'"><div class="product-img">'+(x.photos?.[0]?'<img src="'+escHtml(x.photos[0])+'" alt="" loading="lazy">':'<i class="fa-solid fa-box-open"></i>')+'</div><div class="flex" style="justify-content:space-between;gap:.4rem;"><h4 style="margin:0;">'+escHtml(x.name)+'</h4><span class="badge '+(x.status==='active'?'success':'warning')+'">'+escHtml(x.status||'paused')+'</span></div><p class="muted">'+escHtml(x.description||'Package')+'</p><p class="muted" style="font-size:.78rem;">'+(x.items||[]).map(it=>`${Number(it.quantity)||1}× ${escHtml(it.product?.name||'')}`).join(', ')+'</p>'+(x.billing_model==='monthly'&&x.billing_status==='pending_payment'?'<p class="muted"><i class="fa-solid fa-clock"></i> Monthly activation pending</p>':'')+(x.billing_paid_until?' · '+listingExpiryMarkup(x):'')+'<p style="margin:.35rem 0;"><strong>'+naira(x.price)+'</strong></p><div style="margin-top:.5rem;display:flex;gap:.35rem;"><button type="button" class="btn btn-sm btn-outline" onclick="navigate(\'vendorPackages\')">Manage</button></div></article>').join('')+'</div>':'<div class="empty-state">No packages yet.</div>');
-        host.appendChild(section);
-      }catch(_){ }
-    }
+    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>{delete g.dataset.vendorListingSection;});
+    // Package state is loaded by the route renderer.
     const remembered=(()=>{try{return localStorage.getItem('levromart-vendor-listing-tab')||'products'}catch(_){return'all'}})();
     window.switchVendorListingTab(remembered);
     decorateCommissionBoxes();
@@ -30545,7 +30338,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
         ${avatarHtml}<div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
           <strong class="vendor-directory-name">${escText(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
-          <p class="muted vendor-directory-city" style="margin:.15rem 0;">${escText(v?.city||"Online")}</p>
+          <p class="muted vendor-directory-city" style="margin:.15rem 0;">${escText(v?.city||"Online")}</p>${vendorDistanceHtml(v)}
           <p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${escText(sectorName)}</p>
           <div class="vendor-card-footer"><span class="badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}">★ ${Number(v?.avg_rating||0).toFixed(1)} (${Number(v?.review_count||0)})</span><span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> <span class="vendor-follower-count">${count}</span> follower${Number(v?.follower_count||0)===1?'':'s'}</span></div>
         </div></div>`;
@@ -30976,9 +30769,10 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
     cancelDraftTimer(key);
     const controls=[...root.querySelectorAll('input:not([type=file]),select,textarea')], values={};
     controls.forEach(c=>{if(!c.id)return;values[c.id]=c.type==='checkbox'?c.checked:c.value});
-    const snapshot={version:5,savedAt:Date.now(),revision,kind,id,values,existingPhotos:kind==='product'?[...(window.__existingPhotos||[])]:[...(window.__existingPackagePhotos||[])],variants:kind==='product'?(window.__productVariants||[]).map(v=>({...v})):null};
+    if(kind==='product')persistVisibleVariantOrder();
+    const snapshot={version:5,savedAt:Date.now(),revision,kind,id,values,existingPhotos:kind==='product'?[...(window.__existingPhotos||[])]:[...(window.__existingPackagePhotos||[])],variants:kind==='product'?(window.__productVariants||[]).map(({_imageFile,_previewUrl,...v})=>v):null};
     try{localStorage.setItem(key,JSON.stringify(snapshot));}catch(_){}
-    window.__listingDraftSession={kind,id,existingPhotos:snapshot.existingPhotos,variants:snapshot.variants,newProductPhotoFiles:kind==='product'?[...(window.__newProductPhotoFiles||[])]:[],newPackagePhotoFiles:kind==='package'?[...(window.__newPackagePhotoFiles||[])]:[]};
+    window.__listingDraftSession={userId:session.user.id,kind,id,existingPhotos:snapshot.existingPhotos,variants:kind==='product'?(window.__productVariants||[]).map(v=>({...v})):null,newProductPhotoFiles:kind==='product'?[...(window.__newProductPhotoFiles||[])]:[],newPackagePhotoFiles:kind==='package'?[...(window.__newPackagePhotoFiles||[])]:[]};
     return snapshot;
   }
   function scheduleListingDraft(root){
@@ -30990,7 +30784,8 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
   function restoreListingDraft(){
     if(!session?.user?.id)return;
     const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');
-    if(!root)return;
+    if(!root||root.dataset.draftRestored==='1')return;
+    root.dataset.draftRestored='1';
     const kind=listingModalKind(root), id=listingModalIdentity(root), key=draftKey(kind,id);
     let raw;try{raw=localStorage.getItem(key)}catch(_){return}
     if(!raw)return;
@@ -31000,14 +30795,14 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
     Object.entries(d.values).forEach(([fieldId,v])=>{const el=byId(fieldId);if(!el||!root.contains(el))return;if(el.type==='checkbox')el.checked=!!v;else el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}))});
     if(kind==='product'){
       window.__existingPhotos=Array.isArray(d.existingPhotos)?d.existingPhotos:window.__existingPhotos||[];
-      window.__productVariants=Array.isArray(d.variants)?d.variants:window.__productVariants||[];
-      window.__newProductPhotoFiles=window.__listingDraftSession?.kind==='product'&&window.__listingDraftSession?.id===id?[...(window.__listingDraftSession.newProductPhotoFiles||[])]:window.__newProductPhotoFiles||[];
+      window.__productVariants=window.__listingDraftSession?.userId===session.user.id&&window.__listingDraftSession?.kind===kind&&window.__listingDraftSession?.id===id?window.__listingDraftSession.variants||[]:Array.isArray(d.variants)?d.variants:window.__productVariants||[];
+      window.__newProductPhotoFiles=window.__listingDraftSession?.userId===session.user.id&&window.__listingDraftSession?.kind==='product'&&window.__listingDraftSession?.id===id?[...(window.__listingDraftSession.newProductPhotoFiles||[])]:window.__newProductPhotoFiles||[];
       renderExistingPhotos();renderProductDisplayPicture();renderProductVariantPricing();syncNewProductPhotoInput?.();renderNewProductPhotos?.();
       updateProductFormFields?.();updateProductSaveButtonLabel?.();updateProductDeliveryFields?.();
     }
     if(kind==='package'){
       window.__existingPackagePhotos=Array.isArray(d.existingPhotos)?d.existingPhotos:window.__existingPackagePhotos||[];
-      window.__newPackagePhotoFiles=window.__listingDraftSession?.kind==='package'&&window.__listingDraftSession?.id===id?[...(window.__listingDraftSession.newPackagePhotoFiles||[])]:window.__newPackagePhotoFiles||[];
+      window.__newPackagePhotoFiles=window.__listingDraftSession?.userId===session.user.id&&window.__listingDraftSession?.kind==='package'&&window.__listingDraftSession?.id===id?[...(window.__listingDraftSession.newPackagePhotoFiles||[])]:window.__newPackagePhotoFiles||[];
       renderExistingPackagePhotos();syncNewPackagePhotoInput?.();renderNewPackagePhotos?.();
     }
   }
@@ -31018,10 +30813,9 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
   window.__captureListingDraftForModal=kind=>captureListingDraft(kind);
   document.addEventListener('input',e=>{if(isListingForm(e.target))scheduleListingDraft(e.target.closest('#productModal,#packageModal'))},true);
   document.addEventListener('change',e=>{if(isListingForm(e.target))scheduleListingDraft(e.target.closest('#productModal,#packageModal'))},true);
-  document.addEventListener('click',e=>{const b=e.target?.closest?.('#productModal button,#packageModal button');if(!b)return;const txt=(b.textContent||'').trim().toLowerCase();if(txt==='cancel'){const root=b.closest('#productModal,#packageModal');clearNewListingDraft(listingModalKind(root));searchClose?.()}},true);
+  document.addEventListener('click',e=>{const b=e.target?.closest?.('#productModal button,#packageModal button');if(!b)return;const txt=(b.textContent||'').trim().toLowerCase();if(txt==='cancel'){const root=b.closest('#productModal,#packageModal');root.dataset.discardDraft='1';clearNewListingDraft(listingModalKind(root));searchClose?.()}},true);
   const draftObserver=new MutationObserver(()=>{const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(root){clearTimeout(window.__astraRestoreTimer);window.__astraRestoreTimer=setTimeout(()=>restoreListingDraft(),80)}});
   draftObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
-  document.addEventListener('click',e=>{const b=e.target?.closest?.('#saveProductBtn,#savePackageBtn');if(!b)return;const kind=b.id==='savePackageBtn'?'package':'product';setTimeout(()=>{const root=document.getElementById(kind==='package'?'packageModal':'productModal');const error=document.getElementById(kind==='package'?'packageError':'productError');const id=kind==='product'?(editingProductId||'new'):(editingPackageId||'new');if(root?.classList.contains('hidden')&&!error?.textContent?.trim())clearListingDraft(kind,id)},1200)},true);
 
   /* Own listing management: enrich active owner pages and make owner navigation obvious. */
   document.addEventListener('click',e=>{const card=e.target?.closest?.('.vendor-product-card-grid>.card');if(!card)return;if(e.target.closest('button,a,input'))return;const edit=card.querySelector('.vendor-edit-action');if(edit)e.preventDefault();},true);
@@ -31271,7 +31065,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     // composer/empty shell immediately, then hydrate comments when the request
     // returns. Realtime/background refreshes remain completely silent.
     if(!panel.dataset.loaded){
-      const composer=`<div class="product-comment-composer"><div class="product-comment-compose-row"><textarea id="${inputId}" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}></textarea><button type="button" class="btn btn-sm" onclick="${kind==="package"?"submitPackageComment":"submitProductComment"}('${escSafe(id)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":'<small class="muted">Log in to join the discussion.</small>'}</div>`;
+      const composer=`<div class="product-comment-composer"><div class="product-comment-compose-row"><textarea id="${inputId}" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}></textarea><button type="button" class="btn btn-sm" aria-label="Send comment" onclick="${kind==="package"?"submitPackageComment":"submitProductComment"}('${escSafe(id)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":'<small class="muted">Log in to join the discussion.</small>'}</div>`;
       panel.innerHTML="<div class=\"comment-fetch-placeholder\"></div>"+composer;
     }
     try{
@@ -31287,7 +31081,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       }
       const thread=rows.length?simpleThread(rows,result.likeMap,result.myLiked,kind):'<div class="product-comments-empty">No comments yet. Be the first to ask a question.</div>';
       const replyActive=kind==="package"?window.__levroActivePackageReply:window.__levroActiveProductReply;
-      const composer=`<div class="product-comment-composer">${replyActive?`<div class="product-comment-replying">Replying to a comment <button type="button" class="icon-btn" onclick="${kind==="package"?"cancelPackageCommentReply":"cancelProductCommentReply"}()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button></div>`:""}<div class="product-comment-compose-row"><textarea id="${inputId}" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}>${escSafe(draft)}</textarea><button type="button" class="btn btn-sm" onclick="${kind==="package"?"submitPackageComment":"submitProductComment"}('${escSafe(id)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":'<small class="muted">Log in to join the discussion.</small>'}</div>`;
+      const composer=`<div class="product-comment-composer">${replyActive?`<div class="product-comment-replying">Replying to a comment <button type="button" class="icon-btn" onclick="${kind==="package"?"cancelPackageCommentReply":"cancelProductCommentReply"}()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button></div>`:""}<div class="product-comment-compose-row"><textarea id="${inputId}" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}>${escSafe(draft)}</textarea><button type="button" class="btn btn-sm" aria-label="Send comment" onclick="${kind==="package"?"submitPackageComment":"submitProductComment"}('${escSafe(id)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":'<small class="muted">Log in to join the discussion.</small>'}</div>`;
       panel.innerHTML=thread+composer;
     }catch(_){
       if(!panel.dataset.loaded)panel.innerHTML='<div class="product-comments-empty">Couldn’t load comments right now. Please try again.</div>';
@@ -31471,6 +31265,25 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
  .product-comment-row{margin-left:-.7rem!important}
  .product-comment-row[data-depth]{margin-left:0!important}
 }
+
+/* Scoped integration corrections. */
+#app .product-comment-compose-row > button{width:40px!important;min-width:40px!important;max-width:40px!important;height:40px!important;min-height:40px!important;border-radius:50%!important;padding:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 40px!important;}
+#app .notifications-page-host .notif-tabs{gap:.45rem!important;justify-content:flex-start!important;overflow-x:auto!important;flex-wrap:nowrap!important;padding:.35rem .15rem!important;}
+#app .notifications-page-host .notif-tab{flex:0 0 auto!important;padding:.5rem .7rem!important;}
+#app .vendor-products-unified-tabs{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;}
+.admin-vendor-filters{display:flex;gap:.6rem;margin:.75rem 0}.admin-vendor-filters input{flex:1;min-width:0}.admin-vendor-filters select{width:auto}
+#app details.admin-vendor-card,#app details.monthly-submission-card{padding:.65rem!important;margin-bottom:.55rem!important;}
+#app details>summary{cursor:pointer;list-style:none;gap:.6rem;align-items:center;}
+#app details.monthly-submission-card>summary{display:flex!important;flex-direction:row!important;justify-content:space-between;}
+#app .monthly-submission-head h3{font-size:.9rem!important}#app .monthly-submission-thumb{width:44px!important;height:44px!important;object-fit:cover}
+.variety-choice-image{position:relative;display:block}.variety-choice-image img{width:76px;height:76px;object-fit:cover;border-radius:8px}.variety-image-position{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.7);color:white;padding:2px 5px;border-radius:5px;font-size:.65rem}
+.vendor-distance{display:block;text-align:center;font-size:.7rem;color:var(--text-muted);margin:.2rem 0;}
+#productVariantPricing .variant-price-row{grid-template-columns:28px 64px minmax(0,1fr) minmax(0,1fr) 28px;align-items:start}
+#productVariantPricing .variant-price-row:after{content:none}#productVariantPricing .variant-dnd-handle{touch-action:none!important}
+#productVariantPricing .variant-name{grid-column:3/5}#productVariantPricing .variant-price-remove{grid-column:5;grid-row:1}
+#productVariantPricing .variant-sale-price{grid-column:3}#productVariantPricing .variant-discount-price{grid-column:4}
+#productVariantPricing .variant-upload-label,#productVariantPricing .variant-description,#productVariantPricing .variant-extra-fields,#productVariantPricing .variant-quantity{grid-column:2/5;width:100%;min-width:0;box-sizing:border-box}
+#productVariantPricing .variant-extra-fields{display:flex;gap:.4rem}#productVariantPricing .variant-extra-fields input{min-width:0;width:50%}
 </style>
 <script>
 (function(){
