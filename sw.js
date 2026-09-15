@@ -221,9 +221,11 @@ self.addEventListener('push', event => {
 
           tag: data.tag
             ? String(data.tag)
-            : 'levromart-notification',
+            : `levromart-${Date.now()}`,
 
           renotify: true,
+
+          silent: data.silent === true,
 
           vibrate: [
             100,

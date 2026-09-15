@@ -8351,6 +8351,21 @@ function playNotificationSound(n){
     osc.start(at);osc.stop(at+1.3);
   });
 }
+function playReminderChime(){
+  if(!soundEnabled||!audioCtx||audioCtx.state!=='running')return;
+  const now=audioCtx.currentTime;
+  if(now<notificationSoundUntil)return;
+  notificationSoundUntil=now+1.8;
+  [523.25,659.25,783.99].forEach((hz,i)=>{
+    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),at=now+i*.22;
+    osc.type='sine';osc.frequency.setValueAtTime(hz,at);
+    gain.gain.setValueAtTime(0,at);
+    gain.gain.linearRampToValueAtTime(.09,at+.025);
+    gain.gain.exponentialRampToValueAtTime(.0001,at+1.25);
+    osc.connect(gain);gain.connect(audioCtx.destination);
+    osc.start(at);osc.stop(at+1.3);
+  });
+}
 function playSound() {}
 function toggleSound() {}
 function renderSoundToggle() {}
@@ -19819,6 +19834,9 @@ async function remindOrderVendor(orderId,button){
     const {data:order,error}=await sb.from('orders').select('id,buyer_id,status,vendor_id,vendor:vendors(user_id)').eq('id',orderId).eq('buyer_id',session.user.id).single();if(error)throw error;
     if(order.status!=='pending'||!order.vendor?.user_id)throw new Error('This order no longer needs a reminder.');
     const {error:sendError}=await sb.rpc('send_order_reminder',{p_order_id:order.id});if(sendError)throw sendError;
+    unlockNotificationAudio();
+    if(audioCtx?.state==='running')playReminderChime();
+    else if(audioCtx)audioCtx.resume().then(()=>playReminderChime()).catch(()=>{});
     showToast('Reminder sent to vendor. Push notification sent if the vendor has notifications enabled on this device.','success');
   }catch(err){showToast(err.message||'Could not send reminder. Please message the vendor.','error');}
   finally{orderReminderBusy.delete(orderId);if(button)button.disabled=false;}
