@@ -120,12 +120,12 @@
      logo masks, or empty navigation while the first route is being prepared.
      The user sees only the real Levromart mark on the normal app surface;
      the splash disappears as soon as init() has a route ready. */
-  #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.9rem;background:var(--bg);opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease;}
+  #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:var(--bg);opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease;}
   #levromartSplash.is-hidden{opacity:0;visibility:hidden;pointer-events:none;}
-  .levromart-splash-logo{display:block;width:92px;height:92px;object-fit:contain;border:0;outline:none;border-radius:24px;animation:levroSplashLogoIn .28s ease-out both;filter:drop-shadow(0 8px 18px rgba(15,23,42,.10));}
-  .levromart-splash-logo-fallback{width:92px;height:92px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:var(--card,#fff);box-shadow:0 8px 24px rgba(15,23,42,.10);color:var(--primary,#10b981);font-size:2.7rem;font-weight:900;}
-  @keyframes levroSplashLogoIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
-  @media(prefers-reduced-motion:reduce){#levromartSplash{transition:none}.levromart-splash-logo{animation:none;opacity:1;transform:none;}}
+  .levromart-splash-mark{width:88px;height:88px;display:flex;align-items:center;justify-content:center;border-radius:26px;background:var(--card,#fff);box-shadow:0 12px 34px rgba(15,23,42,.10);animation:levroSplashMark 1.5s ease-in-out infinite;}
+  .levromart-splash-mark svg{width:54px;height:54px;display:block;}
+  @keyframes levroSplashMark{0%,100%{transform:scale(1);opacity:.88}50%{transform:scale(1.035);opacity:1}}
+  @media(prefers-reduced-motion:reduce){#levromartSplash{transition:none}.levromart-splash-mark{animation:none;opacity:1;}}
   /* Android/PWA system-bar area: keep the top chrome on the same dark
      surface as Levromart instead of exposing a bright device accent. */
   :root { --safe-top: 8px; --safe-bottom: 8px; }
@@ -6566,7 +6566,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 </style>
 </head>
 <body>
-<div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none';var f=document.getElementById('levromartSplashFallback');if(f)f.style.display='flex'" /><div id="levromartSplashFallback" class="levromart-splash-logo-fallback" style="display:none" aria-hidden="true">L</div></div>
+<div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--primary,#10b981)" stroke-width="5"/><path d="M19 34c5-1 8-4 10-9 1-3 3-5 6-5 4 0 6 3 6 7 0 5-4 8-8 8h-5c-5 0-9 3-9 7 0 3 2 5 5 5 4 0 6-2 7-5" fill="none" stroke="var(--primary,#10b981)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
 <script id="levromart-splash-watchdog">
 (function(){
   // This watchdog intentionally lives before the large application bundle.
@@ -6583,7 +6583,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   // app may still be preparing its first route; exposing the raw header at
   // that point produces the ugly green logo rectangles/empty controls.
   // init() hides this surface in its finally block once routing is ready.
-  setTimeout(hide,8000);
+
 })();
 </script>
 <header>
@@ -6921,6 +6921,14 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
         <div><label style="margin:0;">Fee per km (₦)</label><input type="number" id="prodDeliveryPerKm" min="0" step="10" placeholder="e.g. 200" /></div>
       </div>
       <p id="prodDeliveryHint" class="muted" style="font-size:.76rem;margin:.45rem 0 0;"></p>
+    </div>
+    <div class="listing-payment-timing-settings" style="margin-top:.8rem;padding:.8rem;border:1px solid var(--border);border-radius:14px;background:var(--card-bg,#fff);">
+      <label style="margin:0 0 .35rem;font-weight:700;"><i class="fa-solid fa-wallet"></i> Delivery payment plan</label>
+      <select id="prodPaymentTiming" onchange="updateProductPaymentTimingHint()">
+        <option value="pay_before">Pay before delivery — full payment before dispatch</option>
+        <option value="pay_after">Pay after delivery — 20% deposit, 80% after delivery</option>
+      </select>
+      <p id="prodPaymentTimingHint" class="muted" style="font-size:.76rem;margin:.45rem 0 0;"></p>
     </div>
     <div class="listing-engagement-settings" id="prodEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="prodLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="prodAllowComments" checked onchange="syncProductEngagementSettingsUI()"></label><div id="prodCommentAudienceWrap"><label>Who can comment</label><select id="prodCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div>
     <div id="prodQtyWrap">
@@ -9212,7 +9220,10 @@ async function renderNotifPanel() {
   let cachedNotifItems = [];
   try { cachedNotifItems = JSON.parse(localStorage.getItem(notifCacheKey) || '[]'); } catch (_) { cachedNotifItems = []; }
   if (Array.isArray(cachedNotifItems) && cachedNotifItems.length) {
-    panel.innerHTML = cachedNotifItems.map(n => `<button type="button" class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}" onclick="handleNotifItemClick(event,'${esc(n.id)}')"><span class="notif-copy"><strong>${esc(n.title || 'Notification')}</strong><span>${esc(n.body || '')}</span><br/><span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span></button>`).join('');
+    panel.innerHTML = cachedNotifItems.map(n => {
+      const avatar = n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.15rem;height:2.15rem;object-fit:cover;flex:none;" alt="" draggable="false" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.15rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<span class="notification-system-icon"><i class="fa-solid fa-circle-info"></i></span>`;
+      return `<div class="notif-item-wrap" data-id="${esc(n.id)}"><button type="button" class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}" data-view="${esc(n.target_view || 'home')}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || '')}" data-actor-avatar="${esc(n.actor_avatar_url || '')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">${avatar}<span class="notif-copy"><strong>${esc(n.title || 'Notification')}</strong>${n.body ? `<span class="muted" style="font-size:.8rem;">${esc(n.notification_category === 'new_follower' ? (n.actor_name || n.body) : n.body)}</span>` : ''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span></button></div>`;
+    }).join('');
   } else {
     panel.innerHTML = '';
   }
@@ -11149,6 +11160,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     try { paintHomeFromLocalCatalog(false); } catch (_) {}
   }
   let html;
+  let __levroRouteHadRenderError = false;
   try {
     switch (view) {
       case "home": html = await renderHome(); break;
@@ -11241,6 +11253,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       }
     }
   } catch (err) {
+    __levroRouteHadRenderError = true;
     lastRenderError = err?.message || String(err || "");
     const cachedFallback = routeHtmlCache.get(cacheKey);
     if (cachedFallback) {
@@ -11287,6 +11300,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     return;
   }
   app.innerHTML = html;
+  if (!__levroRouteHadRenderError) hideLevromartSplash();
   if (view === "notifications") void renderNotifPanel();
   if (view === "home") setTimeout(() => { try { filterHomeProducts(); } catch (_) {} }, 0);
   syncLeviFabVisibility();
@@ -12942,6 +12956,7 @@ function productCardHtml(p) {
       </div>
       ${p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`}
       <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
+      ${!p.is_service ? `<div class="product-card-payment-plan ${p.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><i class="fa-solid fa-wallet"></i> ${p.payment_timing === "pay_after" ? "Pay after delivery · 20% + 80%" : "Pay before delivery · Full payment"}</div>` : ""}
       <div class="product-card-action-row ${String(p._cardContext||"").toLowerCase()==="trending"?"trending-card-action-row":""}"><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button><div class="product-card-action-left">${actionHtml}</div></div>
     </div>
   </div>`;
@@ -15219,6 +15234,7 @@ async function renderProductDetail(productId) {
         <input type="number" id="rentQty" value="1" min="1" max="${product.quantity_total}" placeholder="Qty" oninput="updateRentTotalPreview(${product.rental_rate},'${product.rental_rate_unit}')" style="width:90px;" />
       </div>
       <p class="muted" id="rentTotalPreview">Pick your dates to see the total.</p>
+      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? "Pay 20% first; the remaining 80% is due after delivery." : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       ${deliveryFieldsHtml("rent", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km)}
       <button class="btn" onclick="confirmRental('${product.vendor.id}','${product.id}')">Reserve</button>
       <p id="rentError" class="error-text hidden"></p>
@@ -15236,6 +15252,7 @@ async function renderProductDetail(productId) {
           : `<input type="number" id="buyQty" value="1" min="1" max="${product.quantity_available}" placeholder="Qty" oninput="updateBuyTotalPreview(${product.sale_price ?? 0})" style="width:90px;" />`}
       </div>
       ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview">Total: ${naira(productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price)}</p>` : ""}
+      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? "Pay 20% first; the remaining 80% is due after delivery." : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
       ${!product.is_service ? `<div style="margin-top:0.7rem;">
         <label style="margin:0;">Note for the vendor <span class="muted" style="font-weight:400;">(optional)</span></label>
@@ -18330,6 +18347,8 @@ async function showProductModal() {
     byId("prodDiscountPrice").value = p.discount_price ?? "";
     byId("prodRentalRate").value = p.rental_rate ?? "";
     byId("prodDeliveryMode").value = p.delivery_fee_mode || "free";
+    if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = p.payment_timing || "pay_after";
+    updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = p.delivery_fee ?? 0;
     byId("prodDeliveryPerKm").value = p.delivery_fee_per_km ?? 0;
     byId("prodRateUnit").value = p.rental_rate_unit || "day";
@@ -18350,6 +18369,8 @@ async function showProductModal() {
     byId("productModalTitle").textContent = "Add New Product";
     ["prodName", "prodDesc", "prodSalePrice", "prodDiscountPrice", "prodRentalRate", "prodDeposit"].forEach((id) => (byId(id).value = ""));
     byId("prodDeliveryMode").value = "free";
+    if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = "pay_before";
+    updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = 0;
     byId("prodDeliveryPerKm").value = 0;
     byId("prodQtyTotal").value = 1;
@@ -18500,6 +18521,12 @@ function toggleProdCategoryOther() {
   byId("prodCategoryOther").classList.toggle("hidden", byId("prodCategory").value !== "__other__");
 }
 
+function updateProductPaymentTimingHint(){
+  const el=byId("prodPaymentTimingHint"); const sel=byId("prodPaymentTiming"); if(!el||!sel)return;
+  el.innerHTML=sel.value==="pay_after"
+    ? "<strong>Pay after delivery:</strong> buyer pays 20% of the item amount first; the remaining 80% is due after delivery. Delivery fee stays in the order total."
+    : "<strong>Pay before delivery:</strong> buyer pays the full order amount before delivery. If a buyer needs a different arrangement, they should contact the vendor.";
+}
 function updateProductDeliveryFields() {
   const mode = byId("prodDeliveryMode")?.value || "free";
   const isService = byId("prodIsService")?.checked;
@@ -18812,6 +18839,7 @@ async function saveProduct() {
       delivery_fee_mode,
       delivery_fee,
       delivery_fee_per_km,
+      payment_timing: byId("prodPaymentTiming")?.value === "pay_after" ? "pay_after" : "pay_before",
       rental_rate: listing_type === "sale" ? null : rental_rate,
       rental_rate_unit: listing_type === "sale" ? null : rental_rate_unit,
       deposit_amount: is_service ? null : (byId("prodDeposit").value ? Number(byId("prodDeposit").value) : null),
@@ -19784,6 +19812,8 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const feePaid = paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
   const depositPaid = order.deposit_amount === 0 || paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === "deposit" && p.status === "paid");
   const isDeliveryOrder = order.delivery_method === "delivery";
+  const paymentTiming = order.payment_timing === "pay_after" ? "pay_after" : "pay_before";
+  const isPayAfterDelivery = isDeliveryOrder && paymentTiming === "pay_after";
   const deliveryBaseAmount = Math.max(0, Number(order.total_amount || 0) - Number(order.delivery_fee || 0));
   const deliveryDepositAmount = Math.round(deliveryBaseAmount * 0.20 * 100) / 100;
   const deliveryDepositPaidAmount = paymentRows.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum, p) => sum + Number(p.amount || 0), 0);
@@ -19795,7 +19825,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const deliveryDepositReported = isCustomer && paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "pending");
   const deliveryDepositReadyFor80 = deliveryDepositPaid || deliveryDepositReported;
   const deliveryBalanceAmount = Math.max(0, Number(order.total_amount || 0) - deliveryDepositPaidAmount - (deliveryDepositReported && deliveryDepositPaidAmount <= 0.009 ? Number(paymentRows.find((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "pending")?.amount || 0) : 0));
-  const deliveryPaymentsComplete = !isDeliveryOrder || (deliveryDepositPaid && feePaid);
+  const deliveryPaymentsComplete = !isDeliveryOrder || (isPayAfterDelivery ? (deliveryDepositPaid && feePaid) : feePaid);
   // Pickup keeps the existing full-payment flow. Delivery uses two stages:
   // 20% of the item/rental amount first, then the remaining order balance.
   const canRecordPayment = isVendor && !deliveryPaymentsComplete && (order.status === "confirmed" || (isDeliveryOrder && order.status === "handed_over"));
@@ -19914,21 +19944,21 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   }
 
   if (canPayOnline) {
-    const payableAmount = isDeliveryOrder
+    const payableAmount = isPayAfterDelivery
       ? (deliveryDepositReadyFor80 ? deliveryBalanceAmount : deliveryDepositAmount)
       : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
-    html += `<div class="card ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isDeliveryOrder ? (deliveryDepositReadyFor80 ? "Complete your payment" : "Pay 20% deposit to confirm your order") : "Pay now"}</h3></div>
-      ${isDeliveryOrder ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyFor80 ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>20% payment reported</strong><br>Your 20% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining 80% payment</strong><br>The vendor has delivered your order. Pay the remaining <strong>${naira(payableAmount)}</strong> balance to complete your payment.`) : `Pay a 20% deposit of <strong>${naira(payableAmount)}</strong> based on the item/rental fee. The delivery fee is included in the remaining balance.`}</p>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
+    html += `<div class="card ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isPayAfterDelivery ? (deliveryDepositReadyFor80 ? "Complete your payment" : "Pay 20% deposit to confirm your order") : isDeliveryOrder ? "Pay before delivery" : "Pay now"}</h3></div>
+      ${isPayAfterDelivery ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyFor80 ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>20% payment reported</strong><br>Your 20% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining 80% payment</strong><br>The vendor has delivered your order. Pay the remaining <strong>${naira(payableAmount)}</strong> balance to complete your payment.`) : `Pay a 20% deposit of <strong>${naira(payableAmount)}</strong> based on the item amount. The delivery fee remains part of the total order balance.`}</p>` : isDeliveryOrder ? `<div class="banner banner-warning" style="margin:.45rem 0 .8rem;"><strong><i class="fa-solid fa-wallet"></i> Pay before delivery</strong><span>Full payment of <strong>${naira(payableAmount)}</strong> is required before delivery. If you need any change to this payment arrangement, please contact the vendor.</span></div>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
       <button class="btn btn-sm btn-outline ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-paystack-btn" : ""}" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
-      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isDeliveryOrder && deliveryDepositReadyFor80 ? "Pay remaining 80% directly to vendor" : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
+      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery && deliveryDepositReadyFor80 ? "Pay remaining 80% directly to vendor" : isPayAfterDelivery ? "Pay 20% directly to vendor" : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
     </div>`;
   }
 
   if (canRecordPayment) {
-    const manualTypeOptions = isDeliveryOrder
-      ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">20% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Remaining balance" : "Remaining balance"}</option>` : ""}`
-      : `${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Sale price" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Refundable deposit</option>` : ""}`;
-    const manualAmount = isDeliveryOrder ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount) : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
+    const manualTypeOptions = isPayAfterDelivery
+      ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">20% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">Remaining balance</option>` : ""}`
+      : `${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Full payment" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Refundable deposit</option>` : ""}`;
+    const manualAmount = isPayAfterDelivery ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount) : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
     html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-payment-card" : ""}"><h3><i class="fa-solid fa-hand-holding-dollar"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Record 80% payment" : "Paid outside Paystack?"} ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
       ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;"><strong>Remaining 80% payment</strong><br>Confirm the customer's remaining <strong>${naira(manualAmount)}</strong> payment after you have actually received it.</p>` : ""}
       <div id="recordPaymentError" class="error-text hidden"></div>
@@ -24441,7 +24471,7 @@ window.addEventListener("popstate", (e) => {
   prepareLevromartSplash();
   // Absolute backstop: whatever else happens, the splash can never stay on
   // screen longer than this. The two hides below are the real triggers.
-  setTimeout(() => hideLevromartSplash(), 4000);
+
   try {
   initTheme();
   initAccent();
@@ -24647,7 +24677,8 @@ window.addEventListener("popstate", (e) => {
   // earlier popups in a previous session.
   setTimeout(maybeShowTour, 4000);
   } finally {
-    hideLevromartSplash();
+    // Keep the branded mark covering the uninitialized shell when the first
+    // route cannot render. Successful navigation hides it explicitly.
   }
 })();
 
@@ -26552,6 +26583,7 @@ window.renderVendorMapRail = function(){
     const feeType=order.order_type==="rental"?"rental_fee":"sale_price";
     const paymentRows=order.payments||[];
     const isDeliveryOrder=order.delivery_method==="delivery";
+    const isPayAfterDelivery=isDeliveryOrder && order.payment_timing==="pay_after";
     const paidFee=Number(paymentRows.filter(p=>p.payment_type===feeType&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
     const deliveryDepositPaid=Number(paymentRows.filter(p=>p.payment_type==="delivery_deposit_20"&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
     const pendingFee=paymentRows.find(p=>p.payment_type===feeType&&p.status==="pending");
@@ -26561,16 +26593,17 @@ window.renderVendorMapRail = function(){
     const baseAmount=Math.max(0,Number(order.total_amount||0)-Number(order.delivery_fee||0));
     const deliveryDepositAmount=Math.round(baseAmount*0.20*100)/100;
     let amount=0; let paymentLabel=order.order_type==="rental"?"rental fee":"sale price";
-    if(isDeliveryOrder&&!deliveryDepositPaid&&!deliveryDepositReported){amount=Number(pendingDeliveryDeposit?.amount||deliveryDepositAmount);paymentLabel="20% delivery deposit";}
-    else if(isDeliveryOrder&&!paidFee){amount=Number(pendingFee?.amount||Math.max(0,Number(order.total_amount||0)-deliveryDepositPaid-(deliveryDepositReported ? Number(pendingDeliveryDeposit?.amount||0) : 0)));paymentLabel="remaining balance";}
+    if(isPayAfterDelivery&&!deliveryDepositPaid&&!deliveryDepositReported){amount=Number(pendingDeliveryDeposit?.amount||deliveryDepositAmount);paymentLabel="20% delivery deposit";}
+    else if(isPayAfterDelivery&&!paidFee){amount=Number(pendingFee?.amount||Math.max(0,Number(order.total_amount||0)-deliveryDepositPaid-(deliveryDepositReported ? Number(pendingDeliveryDeposit?.amount||0) : 0)));paymentLabel="remaining balance";}
     else if(!isDeliveryOrder&&!paidFee){amount=Number(pendingFee?.amount||order.total_amount||0);}
+    else if(isDeliveryOrder&&!isPayAfterDelivery&&!paidFee){amount=Number(pendingFee?.amount||order.total_amount||0);paymentLabel="full payment before delivery";}
     else if(!isDeliveryOrder&&Number(order.deposit_amount||0)>0&&!paymentRows.some(p=>p.payment_type==="deposit"&&p.status==="paid")){amount=Number(pendingDeposit?.amount||order.deposit_amount||0);paymentLabel="refundable deposit";}
     else {showToast("There is no outstanding payment on this order.","info");return;}
     byId("manualVendorPaymentModal")?.remove();
     const modal=document.createElement("div"); modal.id="manualVendorPaymentModal"; modal.className="modal manual-payment-modal";
     const bankName = getBankDisplayName(order.vendor?.bank_code, order.vendor?.bank_name);
     const hasAccount = !!(order.vendor?.account_name || order.vendor?.account_number || order.vendor?.bank_code || order.vendor?.bank_name);
-    modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> ${isDeliveryOrder ? (paymentLabel === "20% delivery deposit" ? "Pay 20% deposit to confirm your order" : "Complete your payment") : "Pay directly to vendor"}</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+    modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery ? (paymentLabel === "20% delivery deposit" ? "Pay 20% deposit to confirm your order" : "Complete your payment") : isDeliveryOrder ? "Pay before delivery" : "Pay directly to vendor"}</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> for the <strong>${esc(paymentLabel)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
       <div class="manual-payment-account">
         <div class="manual-payment-account-row"><span class="muted">Bank</span><strong>${esc(bankName)}</strong>${order.vendor?.bank_name||order.vendor?.bank_code?`<button type="button" class="icon-btn manual-payment-copy-btn" title="Copy bank name" aria-label="Copy bank name" onclick="navigator.clipboard?.writeText('${esc(bankName)}').then(()=>showToast('Bank name copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i></button>`:""}</div>
@@ -28340,7 +28373,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
   window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
-  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
+  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
   async function renderUnifiedEnhancements(){
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading)return;
@@ -28445,6 +28478,15 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 .monthly-listing-kind-tabs{display:flex;gap:.35rem;overflow-x:auto;white-space:nowrap;padding-bottom:.2rem}.monthly-listing-kind-tabs button{border:1px solid var(--border);background:transparent;color:inherit;border-radius:12px;padding:.55rem .75rem;display:inline-flex;align-items:center;gap:.38rem;cursor:pointer}.monthly-listing-kind-tabs button.active{border-color:var(--primary);color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,transparent)}
 .monthly-submission-card{margin:.7rem 0;padding:1rem}.monthly-submission-pending{border-color:color-mix(in srgb,#ef4444 42%,var(--border))}.monthly-submission-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start}.monthly-submission-thumb{width:76px;height:76px;border-radius:12px;object-fit:cover;border:1px solid var(--border);flex:0 0 76px}.monthly-submission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;margin:.8rem 0}.monthly-submission-grid>div{border:1px solid var(--border);border-radius:12px;padding:.62rem;min-width:0}.monthly-submission-grid span,.monthly-submission-grid small{display:block;color:var(--text-muted);font-size:.68rem}.monthly-submission-grid strong{display:block;margin:.16rem 0;font-size:.8rem;overflow-wrap:anywhere}.monthly-submission-receipt{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.65rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}.monthly-submission-receipt span{display:block;font-size:.68rem;margin-top:.12rem}.monthly-submission-actions{display:flex;justify-content:flex-end;gap:.45rem;flex-wrap:wrap;margin-top:.7rem}.monthly-review-note{font-size:.74rem}.monthly-vendor-pending-note{color:#d97706!important;font-size:.74rem!important}.monthly-vendor-rejected-note{color:#ef4444!important;font-size:.74rem!important}
 @media(max-width:620px){.monthly-submission-grid{grid-template-columns:1fr}.monthly-listing-admin-intro{align-items:flex-start;flex-direction:column}.monthly-submission-head h3{font-size:1rem}.manual-monthly-account-row{grid-template-columns:82px minmax(0,1fr) auto}.manual-monthly-account-row .btn{padding:.38rem .48rem;font-size:.68rem}}
+</style>
+
+<style id="levromart-payment-timing-ui">
+.product-card-payment-plan{display:inline-flex;align-items:center;gap:.3rem;margin-top:.28rem;font-size:.68rem;font-weight:700;line-height:1.2;padding:.28rem .45rem;border-radius:999px;background:color-mix(in srgb,var(--primary) 9%,var(--card-bg,#fff));color:var(--text);}
+.product-card-payment-plan i{color:var(--primary);}
+.product-payment-plan-notice{display:flex;flex-direction:column;gap:.18rem;margin:.65rem 0;padding:.72rem .8rem;border-radius:12px;border:1px solid var(--border);font-size:.82rem;line-height:1.35;}
+.product-payment-plan-notice strong{display:flex;align-items:center;gap:.35rem;}
+.product-payment-plan-notice.pay-before{background:color-mix(in srgb,var(--primary) 7%,var(--card-bg,#fff));border-color:color-mix(in srgb,var(--primary) 35%,var(--border));}
+.product-payment-plan-notice.pay-after{background:color-mix(in srgb,#f59e0b 8%,var(--card-bg,#fff));border-color:color-mix(in srgb,#f59e0b 32%,var(--border));}
 </style>
 </body>
 <style id="levromart-20260910-final-polish">
@@ -32195,3 +32237,200 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 <style id="levromart-auth-log-speed-fix">
 .admin-auth-log-filters{display:flex;gap:.35rem;overflow-x:auto;padding:.25rem 0 .65rem;scrollbar-width:none}.admin-auth-log-filters::-webkit-scrollbar{display:none}.admin-auth-log-filters .range-tab{flex:0 0 auto;border:1px solid var(--border);background:var(--card);color:var(--text-muted);border-radius:999px;padding:.48rem .8rem;cursor:pointer;font:inherit;font-size:.78rem}.admin-auth-log-filters .range-tab.active{background:var(--primary);border-color:var(--primary);color:#fff}.admin-auth-log-table-wrap{max-height:56vh;overflow:auto}.admin-auth-log-table{min-width:980px}.admin-auth-log-table th,.admin-auth-log-table td{white-space:nowrap}.admin-auth-log-table td:nth-child(6){max-width:260px;overflow:hidden;text-overflow:ellipsis}.conv-unread-badge{background:#ef4444!important;color:#fff!important;border:0!important;min-width:1.25rem;height:1.25rem;padding:0 .34rem;border-radius:999px;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;line-height:1}.chat-bubble[data-msg-id^="temp-"]{opacity:.82}.chat-bubble[data-msg-id^="temp-"] .chat-time-text::after{content:" · sending";opacity:.62;font-size:.68em}
 </style>
+
+
+<!-- FINAL NOTIFICATION + CHAT REALTIME STABILITY PATCH -->
+<style id="levromart-notification-chat-stability-final">
+/* Notifications must keep one stable horizontal row from first paint through
+   fresh-data hydration. Flex is deliberately used instead of the earlier
+   multi-column grid so cached rows and live rows have identical geometry. */
+#notifPanel .notif-list-scroll,
+.notifications-page-host .notif-list-scroll{
+  width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+}
+#notifPanel .notif-item-wrap,
+.notifications-page-host .notif-item-wrap{
+  width:100% !important;
+  max-width:none !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+}
+#notifPanel .notif-item,
+.notifications-page-host .notif-item{
+  width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:.65rem !important;
+  padding:.72rem .55rem !important;
+  min-height:60px !important;
+  transform:none !important;
+  transition:none !important;
+  animation:none !important;
+}
+#notifPanel .notif-item > .notif-select-check,
+.notifications-page-host .notif-item > .notif-select-check{
+  flex:0 0 1.35rem !important;
+}
+#notifPanel .notif-item > img.avatar-circle,
+#notifPanel .notif-item > .avatar-circle,
+.notifications-page-host .notif-item > img.avatar-circle,
+.notifications-page-host .notif-item > .avatar-circle,
+.notifications-page-host .notif-item > .notification-system-icon,
+#notifPanel .notif-item > .notification-system-icon{
+  width:2.15rem !important;
+  height:2.15rem !important;
+  min-width:2.15rem !important;
+  flex:0 0 2.15rem !important;
+  object-fit:cover !important;
+}
+#notifPanel .notif-copy,
+.notifications-page-host .notif-copy{
+  min-width:0 !important;
+  flex:1 1 auto !important;
+  width:auto !important;
+  overflow:hidden !important;
+}
+#notifPanel .notif-copy strong,
+.notifications-page-host .notif-copy strong{
+  display:block !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  line-height:1.25 !important;
+}
+#notifPanel .notif-copy > .muted,
+.notifications-page-host .notif-copy > .muted{
+  display:block !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  line-height:1.35 !important;
+}
+/* A notification tap must not animate or reflow the card. */
+#notifPanel .notif-item:active,
+.notifications-page-host .notif-item:active{
+  transform:none !important;
+  animation:none !important;
+}
+</style>
+<script>
+(function(){
+  if(window.__levroFinalNotificationChatStability) return;
+  window.__levroFinalNotificationChatStability=true;
+
+  /* Keep cached notification paint structurally identical to live paint. */
+  const notificationAvatarHtml = (n) => {
+    if(n?.actor_avatar_url) return `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.15rem;height:2.15rem;object-fit:cover;flex:none;" alt="" draggable="false" />`;
+    if(n?.actor_name) return avatarFallbackHtml(n.actor_name,"2.15rem","notification-avatar-fallback",n.actor_name,n.actor_id||n.actor_name);
+    return `<span class="notification-system-icon"><i class="fa-solid fa-circle-info"></i></span>`;
+  };
+  const notificationRowHtml = (n) => `<div class="notif-item-wrap" data-id="${esc(n.id)}">
+    <button type="button" class="notif-item ${n.read?'':'unread'}" data-id="${esc(n.id)}" data-view="${esc(n.target_view||'home')}" data-params='${esc(JSON.stringify(n.target_params||{}))}' data-actor-name="${esc(n.actor_name||'')}" data-actor-avatar="${esc(n.actor_avatar_url||'')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">
+      ${notificationAvatarHtml(n)}
+      <span class="notif-copy"><strong>${esc(n.title||'Notification')}</strong>${n.body?`<span class="muted" style="font-size:.8rem;">${esc(n.notification_category==='new_follower'?(n.actor_name||n.body):n.body)}</span>`:''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span>
+    </button>
+  </div>`;
+  window.__levroNotificationRowHtml=notificationRowHtml;
+
+  /* Restore optimistic notification-read behaviour: navigation must never
+     wait for the database write. */
+  window.markSingleNotifRead = async function(id){
+    if(!session) return;
+    const selector=`.notif-item[data-id="${CSS.escape(String(id))}"]`;
+    const el=document.querySelector(selector);
+    if(!el || !el.classList.contains('unread')) return;
+    el.classList.remove('unread');
+    notifCount=Math.max(0,notifCount-1);
+    const dot=byId('notifDot');
+    if(dot){ if(notifCount>0){dot.textContent=notifCount>9?'9+':notifCount;dot.classList.remove('hidden');}else dot.classList.add('hidden'); }
+    Promise.resolve(sb.from('notifications').update({read:true}).eq('id',id)).catch(()=>{});
+  };
+
+  /* Replace only the cached first-paint branch inside renderNotifPanel so it
+     cannot briefly use a different card geometry than the fresh branch. */
+  const originalRenderNotifPanel=window.renderNotifPanel;
+  if(typeof originalRenderNotifPanel==='function' && !window.__levroNotifRenderWrapped){
+    window.__levroNotifRenderWrapped=true;
+    window.renderNotifPanel=async function(){
+      /* The original function owns the full filtering/category logic. Before
+         it runs, normalize any cached rows in-place to the same flex layout;
+         this prevents the old copy-only cache template from producing a
+         transient vertical column. */
+      try{
+        const uid=session?.user?.id;
+        if(uid){
+          const key=`levromart-notifications-cache-v2:${uid}`;
+          const cached=JSON.parse(localStorage.getItem(key)||'[]');
+          const host=getNotifHost();
+          if(host && Array.isArray(cached) && cached.length){
+            host.innerHTML=cached.slice(0,60).map(notificationRowHtml).join('');
+          }
+        }
+      }catch(_){}
+      return originalRenderNotifPanel.apply(this,arguments);
+    };
+  }
+
+  /* Realtime remains primary. This tiny foreground-only reconciliation is a
+     safety net for mobile WebSocket stalls: it checks only the newest 20
+     messages while a conversation is actually open. */
+  let pollTimer=null, pollConversation=null, pollBusy=false;
+  function stopChatMessageFallback(){
+    if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+    pollConversation=null; pollBusy=false;
+  }
+  async function reconcileLatestChatMessages(conversationId){
+    if(pollBusy || !session || activeConversationId!==conversationId || currentView!=='messages') return;
+    const el=byId('chatMessages'); if(!el) return;
+    pollBusy=true;
+    try{
+      const {data,error}=await sb.from('messages').select('*').eq('conversation_id',conversationId).order('created_at',{ascending:false}).limit(20);
+      if(error || !Array.isArray(data) || activeConversationId!==conversationId) return;
+      const missing=data.filter(m=>!el.querySelector(`.chat-bubble[data-msg-id="${CSS.escape(String(m.id))}"]`)).reverse();
+      if(!missing.length) return;
+      await enrichMessageReplies(missing);
+      missing.forEach(m=>el.insertAdjacentHTML('beforeend',chatBubbleHtml(m)));
+      lastSeenMessagesByConv.set(conversationId,[...(lastSeenMessagesByConv.get(conversationId)||[]),...missing]);
+      scrollChatToBottom();
+      resolveVisibleAttachments(el); setupMessageInteractions(el);
+      missing.filter(m=>m.sender_id!==session.user.id).forEach(m=>{
+        sb.from('messages').update({read_at:new Date().toISOString(),delivered_at:new Date().toISOString()}).eq('id',m.id).catch(()=>{});
+      });
+    }catch(_){}finally{pollBusy=false;}
+  }
+  window.__levroStartChatMessageFallback=function(conversationId){
+    stopChatMessageFallback();
+    if(!conversationId) return;
+    pollConversation=String(conversationId);
+    reconcileLatestChatMessages(pollConversation);
+    pollTimer=setInterval(()=>reconcileLatestChatMessages(pollConversation),2000);
+  };
+  window.__levroStopChatMessageFallback=stopChatMessageFallback;
+
+  /* Start the fallback whenever the existing conversation subscription is
+     established. No changes to the existing typing/presence channel. */
+  const originalSubscribe=window.subscribeToConversation;
+  if(typeof originalSubscribe==='function' && !window.__levroChatFallbackWrapped){
+    window.__levroChatFallbackWrapped=true;
+    window.subscribeToConversation=async function(conversationId){
+      const result=await originalSubscribe.apply(this,arguments);
+      window.__levroStartChatMessageFallback?.(String(conversationId));
+      return result;
+    };
+  }
+  const originalNavigate=window.navigate;
+  if(typeof originalNavigate==='function' && !window.__levroChatFallbackNavWrapped){
+    window.__levroChatFallbackNavWrapped=true;
+    window.navigate=async function(view,params,pushHistory){
+      if(view!=='messages' || !params?.conversationId) stopChatMessageFallback();
+      return originalNavigate.apply(this,arguments);
+    };
+  }
+})();
+</script>
