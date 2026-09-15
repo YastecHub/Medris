@@ -3,6 +3,24 @@
   #app .pickup-message-vendor-wrap{display:flex;flex-direction:column;align-items:center;width:100%;margin:.7rem 0 0;}
   #app .pickup-message-vendor-wrap .order-message-vendor-btn{min-width:min(290px,100%);justify-content:center;}
   #app .pickup-pay-vendor-btn{justify-content:center;}
+
+/* Minimal, centered network error state — keep the vendor directory clean and uncluttered. */
+.levromart-network-error-state {
+  width: 100%;
+  min-height: 180px;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center !important;
+  margin: 0 !important;
+  padding: 2rem 1rem !important;
+  line-height: 1.25;
+  color: var(--muted, #64748b);
+}
+.levromart-network-error-state i {
+  margin-bottom: 0.45rem !important;
+}
 </style>
 <style id="order-vendor-message-contact-ui">
   /* Customer order-detail contact action: keep the vendor messaging control
@@ -6679,6 +6697,11 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 }
 </style>
 </style>
+
+<style id="levromart-order-card-identification">
+.order-list-item,.order-history-item{display:block;font-weight:700;margin-top:.18rem;}
+.order-list-product-id,.order-history-product-id{display:block;font-size:.72rem;opacity:.72;margin-top:.14rem;word-break:break-all;}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--primary,#10b981)" stroke-width="5"/><path d="M19 34c5-1 8-4 10-9 1-3 3-5 6-5 4 0 6 3 6 7 0 5-4 8-8 8h-5c-5 0-9 3-9 7 0 3 2 5 5 5 4 0 6-2 7-5" fill="none" stroke="var(--primary,#10b981)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
@@ -11080,7 +11103,8 @@ function friendlyErrorText(err) {
 }
 function errorStateHtml(err) {
   const { icon, text } = friendlyErrorText(err);
-  return `<div class="empty-state"><i class="fa-solid ${icon}" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>${text}</div>`;
+  const isNetwork = icon === "fa-wifi";
+  return `<div class="empty-state ${isNetwork ? "levromart-network-error-state" : ""}"><i class="fa-solid ${icon}" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>${isNetwork ? "Network trouble" : text}</div>`;
 }
 function updateHeaderNavActive() {
   document.querySelectorAll(".header-nav-link").forEach((el) => el.classList.toggle("active", el.dataset.view === currentView));
@@ -13056,15 +13080,13 @@ function productDeliverySummaryHtml(p) {
     return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: distance-based · ${naira(perKm)}/km</p>`;
   }
   if (flat > 0) return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: flat fee · ${naira(flat)}</p>`;
-  return `<p class="product-delivery-summary free-delivery-highlight"><i class="fa-solid fa-truck"></i> Free delivery</p>`;
+  return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Free delivery</p>`;
 }
 
 function productPaymentPlanBadgeHtml(p){
   if (!p || p.is_service) return "";
   const timing = p.payment_timing === "pay_after" ? "pay_after" : "pay_before";
-  const deposit = Math.max(1, Math.min(99, Number(p.payment_deposit_percent ?? 20) || 20));
-  const remaining = Math.max(1, 100 - deposit);
-  return `<div class="product-card-payment-plan ${timing === "pay_after" ? "pay-after" : "pay-before"}"><i class="fa-solid fa-wallet"></i> ${timing === "pay_after" ? `Pay after delivery · ${deposit}% + ${remaining}%` : "Pay before delivery · Full payment"}</div>`;
+  return `<span class="product-card-payment-plan ${timing === "pay_after" ? "pay-after" : "pay-before"}" title="${timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}" aria-label="${timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}">${timing === "pay_after" ? "PAD" : "PBD"}</span>`;
 }
 function hydrateProductVariantIndicatorsInView(){
   // A variety indicator is intentionally tied to multiple listing photos.
@@ -13120,8 +13142,7 @@ function productCardHtml(p) {
       </div>
       ${p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`}
       <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
-      ${productPaymentPlanBadgeHtml(p)}
-      <div class="product-card-action-row ${String(p._cardContext||"").toLowerCase()==="trending"?"trending-card-action-row":""}"><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button><div class="product-card-action-left">${actionHtml}</div></div>
+      <div class="product-card-action-row ${String(p._cardContext||"").toLowerCase()==="trending"?"trending-card-action-row":""}"><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button>${productPaymentPlanBadgeHtml(p)}<div class="product-card-action-left">${actionHtml}</div></div>
     </div>
   </div>`;
 }
@@ -17124,7 +17145,7 @@ function packageCardHtml(pkg, vendorDeliveryFee, compact = false) {
     ${pkg.description ? `<p class="package-card-description muted">${esc(pkg.description)}</p>` : ""}
     <p class="package-card-includes muted"><i class="fa-solid fa-box-open"></i> Includes: ${itemsText}</p>
     <div class="package-card-vendor"><i class="fa-solid fa-store"></i> ${esc(vendorName)}</div>
-    ${pkg.vendor?.delivery_fee_mode === "distance" ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Distance delivery · ${naira(pkg.vendor.delivery_fee_per_km || 0)}/km</div>` : Number(pkg.vendor?.delivery_fee || 0) > 0 ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Delivery · ${naira(pkg.vendor.delivery_fee)}</div>` : `<div class="package-card-delivery muted free-delivery-highlight"><i class="fa-solid fa-truck"></i> Free delivery</div>`}
+    ${pkg.vendor?.delivery_fee_mode === "distance" ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Distance delivery · ${naira(pkg.vendor.delivery_fee_per_km || 0)}/km</div>` : Number(pkg.vendor?.delivery_fee || 0) > 0 ? `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Delivery · ${naira(pkg.vendor.delivery_fee)}</div>` : `<div class="package-card-delivery muted"><i class="fa-solid fa-truck"></i> Free delivery</div>`}
     ${profile?.role === "admin" ? `<span class="badge package-card-owner-badge">Admin</span>` : isOwnVendorId(pkg.vendor?.id) ? `<span class="badge own-listing-badge package-card-owner-badge"><i class="fa-solid fa-store"></i> Your package</span>` : ""}
     <div class="package-card-comment-row"><span class="package-card-engagement-count muted"><i class="fa-regular fa-heart"></i> <span class="package-like-count">0</span></span><button type="button" class="package-card-comment-btn" data-package-id="${esc(pkg.id)}" onclick="event.stopPropagation();openPackageCommentsFromCard('${esc(pkg.id)}')" aria-label="Comments on ${esc(pkg.name)}"><i class="fa-regular fa-comment"></i> <span class="package-comment-count">0</span></button></div>
   </div>`;
@@ -19776,7 +19797,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
 
   // Use order_items(*) rather than naming columns, so a schema change to
   // order_items can't make the entire Orders page look empty.
-  let query = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("vendor_id", vendor.id);
+  let query = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(id,is_service,name)), payments(payment_type,status)").eq("vendor_id", vendor.id);
   if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
@@ -19792,7 +19813,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   let safeAllOrders = allOrders;
   if (allOrdersError) {
     console.warn("Rich vendor order query failed; using compatibility query", allOrdersError);
-    let fallback = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("vendor_id", vendor.id);
+    let fallback = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(id,is_service,name)), payments(payment_type,status)").eq("vendor_id", vendor.id);
     if (status !== "all") fallback = fallback.eq("status", status);
     if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
     if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
@@ -19854,7 +19875,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
 
   // order_items(*) is intentionally used here rather than naming columns,
   // so this stays resilient to schema changes on order_items.
-  let query = sb.from("orders").select("*, vendor:vendors(business_name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("buyer_id", session.user.id);
+  let query = sb.from("orders").select("*, vendor:vendors(business_name), items:order_items(*,product:products(id,is_service,name)), payments(payment_type,status)").eq("buyer_id", session.user.id);
   if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
@@ -19862,7 +19883,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   let safeAllOrders = allOrders;
   if (allOrdersError) {
     console.warn("Rich buyer order query failed; using compatibility query", allOrdersError);
-    let fallback = sb.from("orders").select("*, vendor:vendors(business_name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("buyer_id", session.user.id);
+    let fallback = sb.from("orders").select("*, vendor:vendors(business_name), items:order_items(*,product:products(id,is_service,name)), payments(payment_type,status)").eq("buyer_id", session.user.id);
     if (status !== "all") fallback = fallback.eq("status", status);
     if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
     if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
@@ -19980,7 +20001,12 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
   let inner = "";
   byDate.forEach((dayOrders, dateKey) => {
     inner += `<div class="order-history-date"><i class="fa-regular fa-calendar"></i><span>${esc(dateKey)}</span></div>`;
-    inner += `<div class="order-history-day">${dayOrders.map((o) => `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-history-main"><strong>${isCustomerView ? esc(o.vendor?.business_name || "") : esc(o.buyer?.name || "")}</strong><span class="order-history-meta"><span>${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span><small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${orderStatusBadgeClass(o.status)} order-history-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`).join("")}</div>`;
+    inner += `<div class="order-history-day">${dayOrders.map((o) => {
+      const itemNames = (o.items || []).map((it) => `${it.product?.name || "Item"}${Number(it.quantity || 0) > 1 ? ` ×${it.quantity}` : ""}`).join(", ");
+      const productIds = [...new Set((o.items || []).map((it) => it.product?.id || it.product_id).filter(Boolean))].join(", ");
+      const partyName = isCustomerView ? (o.vendor?.business_name || "") : (o.buyer?.name || "");
+      return `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-history-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span class="order-history-meta"><span>Order: ${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span>${!isCustomerView && itemNames ? `<span class="order-history-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-history-product-id">Product ID: ${esc(productIds)}</small>` : ""}<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${orderStatusBadgeClass(o.status)} order-history-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`;
+    }).join("")}</div>`;
   });
   const historyTitle = isCustomerView ? (sourcePerspective === "purchases" ? "My purchase history" : "My order history") : "Customer order history";
   const historyId = sourcePerspective === "purchases" ? "vendorPurchaseHistoryAccordion" : sourcePerspective === "sales" ? "vendorSalesHistoryAccordion" : "buyerOrderHistoryAccordion";
@@ -20032,7 +20058,12 @@ function orderListHtml(orders, isCustomerView, sourcePerspective = null) {
       <td><span class="badge ${orderStatusBadgeClass(o.status)}">${o.status.replace("_", " ")}</span></td>
     </tr>`).join("")}</tbody></table></div>${moreBtn}`;
   }
-  return shown.map((o) => `<button type="button" class="order-list-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-list-main"><strong>${isCustomerView ? esc(o.vendor?.business_name || "") : esc(o.buyer?.name || "")}</strong><span>${esc(o.order_type)} · ${naira(o.total_amount)}</span>${orderActivityIso(o) ? `<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small>` : ""}</span><span class="badge ${orderStatusBadgeClass(o.status)} order-list-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`).join("") + moreBtn;
+  return shown.map((o) => {
+    const itemNames = (o.items || []).map((it) => `${it.product?.name || "Item"}${Number(it.quantity || 0) > 1 ? ` ×${it.quantity}` : ""}`).join(", ");
+    const productIds = [...new Set((o.items || []).map((it) => it.product?.id || it.product_id).filter(Boolean))].join(", ");
+    const partyName = isCustomerView ? (o.vendor?.business_name || "") : (o.buyer?.name || "");
+    return `<button type="button" class="order-list-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-list-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span>Order: ${esc(o.order_type)} · ${naira(o.total_amount)}</span>${!isCustomerView && itemNames ? `<span class="order-list-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-list-product-id">Product ID: ${esc(productIds)}</small>` : ""}${orderActivityIso(o) ? `<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small>` : ""}</span><span class="badge ${orderStatusBadgeClass(o.status)} order-list-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`;
+  }).join("") + moreBtn;
 }
 
 // ---------- ORDER DETAIL ----------
@@ -28781,10 +28812,11 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 </style>
 
 <style id="levromart-payment-timing-ui">
-.product-card-payment-plan{display:inline-flex;align-items:center;gap:.3rem;margin-top:.28rem;font-size:.68rem;font-weight:800;line-height:1.2;padding:.3rem .5rem;border-radius:999px;border:1px solid transparent;}
+.product-card-payment-plan{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:2.25rem;height:1.55rem;margin:0 .15rem;font-size:.56rem;font-weight:900;letter-spacing:.03em;line-height:1;border-radius:999px;border:1px solid transparent;padding:0 .42rem;white-space:nowrap;}
 .product-card-payment-plan.pay-before{background:#dcfce7;color:#166534;border-color:#86efac;}
-.product-card-payment-plan.pay-after{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd;}
+.product-card-payment-plan.pay-after{background:#ffedd5;color:#c2410c;border-color:#fdba74;}
 .product-card-payment-plan i{color:currentColor;}
+.product-card-action-row .product-card-payment-plan{align-self:center;}
 .product-payment-plan-notice{display:flex;flex-direction:column;gap:.18rem;margin:.65rem 0;padding:.72rem .8rem;border-radius:12px;border:1px solid var(--border);font-size:.82rem;line-height:1.35;}
 .product-payment-plan-notice strong{display:flex;align-items:center;gap:.35rem;}
 .product-payment-plan-notice.pay-before{background:#f0fdf4;border-color:#86efac;color:#166534;}
@@ -32645,9 +32677,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
 /* Card payment/delivery status cues. */
 .product-card-payment-plan.pay-before{background:#dcfce7!important;color:#166534!important;border-color:#86efac!important;}
-.product-card-payment-plan.pay-after{background:#dbeafe!important;color:#1d4ed8!important;border-color:#93c5fd!important;}
-.free-delivery-highlight{display:inline-flex!important;align-items:center!important;gap:.3rem!important;width:max-content!important;max-width:100%!important;padding:.18rem .42rem!important;border-radius:999px!important;background:#fef9c3!important;color:#854d0e!important;border:1px solid #fde68a!important;font-weight:750!important;}
-.package-card-delivery.free-delivery-highlight{display:inline-flex!important;}
+.product-card-payment-plan.pay-after{background:#ffedd5!important;color:#c2410c!important;border-color:#fdba74!important;}
 </style>
 <script>
 (function(){
