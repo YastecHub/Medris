@@ -20185,8 +20185,9 @@ async function loadCommissionBreakdown(){
     const grouped=new Map();
     rows.forEach(r=>{
       const key=r.order_id||r.charge_id;
-      if(!grouped.has(key))grouped.set(key,{order_id:r.order_id,sold_at:r.sold_at,payment_amount:0,commission_amount:0,commission_rates:[],products:[]});
+      if(!grouped.has(key))grouped.set(key,{order_id:r.order_id,sold_at:r.sold_at,buyer_name:r.buyer_name||"Buyer",payment_amount:0,commission_amount:0,commission_rates:[],products:[]});
       const g=grouped.get(key);
+      if(r.buyer_name)g.buyer_name=r.buyer_name;
       g.payment_amount+=Number(r.payment_amount||0);
       g.commission_amount+=Number(r.commission_amount||0);
       const rate=Number(r.commission_rate||0);if(rate&&!g.commission_rates.includes(rate))g.commission_rates.push(rate);
@@ -20202,7 +20203,7 @@ async function loadCommissionBreakdown(){
       const date=g.sold_at?new Date(g.sold_at).toLocaleString([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Date unavailable";
       const rateText=g.commission_rates.length?g.commission_rates.map(x=>`${x}%`).join(" / "):"—";
       const lines=g.products.length?g.products.map(x=>`<li><span>${esc(x.qty+"× "+x.name)}</span><span>${naira(x.qty*x.unit)}</span></li>`).join(""):'<li><span>Order items unavailable</span><span>—</span></li>';
-      return `<div class="vendor-commission-item"><div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length>1?`${g.products.length} products`:(g.products[0]?esc(g.products[0].name):"Sale")}</div><div class="vendor-commission-item-date">Sold ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div><ul class="vendor-commission-products">${lines}</ul><div class="vendor-commission-math"><span>Sale/payment recorded</span><strong>${naira(g.payment_amount)}</strong></div><div class="vendor-commission-math"><span>Commission calculation</span><strong>${esc(rateText)} × ${naira(g.payment_amount)} = ${naira(g.commission_amount)}</strong></div></div>`;
+      return `<div class="vendor-commission-item"><div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length>1?`${g.products.length} products`:(g.products[0]?esc(g.products[0].name):"Sale")}</div><div class="vendor-commission-item-date">Sold ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div><div class="vendor-commission-buyer"><i class="fa-solid fa-user"></i><span>Buyer</span><strong>${esc(g.buyer_name||"Buyer")}</strong></div><ul class="vendor-commission-products">${lines}</ul><div class="vendor-commission-math"><span>Sale/payment recorded</span><strong>${naira(g.payment_amount)}</strong></div><div class="vendor-commission-math"><span>Commission calculation</span><strong>${esc(rateText)} × ${naira(g.payment_amount)} = ${naira(g.commission_amount)}</strong></div></div>`;
     }).join("");
     box.innerHTML=`<div class="vendor-commission-breakdown-head">Outstanding commission — ${grouped.size} sale${grouped.size===1?"":"s"}</div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span>Total commission owed</span><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
   }catch(err){box.innerHTML=`<div class="vendor-commission-breakdown-head" style="color:var(--danger,#ef4444)">Could not load the commission breakdown. ${esc(err?.message||"Please try again.")}</div>`;}
@@ -27577,6 +27578,36 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     commissionHeartbeat=setInterval(checkCommissionDeadline,60000);
   }
   function stopCommissionHeartbeat(){if(commissionHeartbeat){clearInterval(commissionHeartbeat);commissionHeartbeat=null;}}
+
+  // TEST MODE: auto-finalize eligible paid orders after 1 minute when there
+  // is no open dispute. The backend is authoritative; this heartbeat simply
+  // gives the test a frequent opportunity to run while the app is open.
+  // Change the backend interval from 1 minute to 24 hours after testing.
+  let orderAutoCompletionHeartbeat=null;
+  let orderAutoCompletionInFlight=false;
+  async function runOrderAutoCompletion(){
+    if(orderAutoCompletionInFlight)return;
+    if(!session?.user?.id)return;
+    orderAutoCompletionInFlight=true;
+    try{
+      const {data,error}=await sb.rpc('auto_complete_eligible_orders');
+      if(error)throw error;
+      const changed=Number(data||0);
+      if(changed>0){
+        try{await refreshVisibleOrderView();}catch(_){}
+        if(currentView==='vendorOrders'||currentView==='buyerOrders')try{await navigate(currentView,{},false);}catch(_){}
+      }
+    }catch(e){console.warn('[Levromart] automatic order completion check failed:',e);}
+    finally{orderAutoCompletionInFlight=false;}
+  }
+  function startOrderAutoCompletionHeartbeat(){
+    if(orderAutoCompletionHeartbeat)clearInterval(orderAutoCompletionHeartbeat);
+    runOrderAutoCompletion();
+    orderAutoCompletionHeartbeat=setInterval(runOrderAutoCompletion,15000);
+  }
+  startOrderAutoCompletionHeartbeat();
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)runOrderAutoCompletion();},{passive:true});
+
   setTimeout(()=>{
     if(session&&profile?.role==='vendor'&&vendor?.id)startCommissionHeartbeat();
   },1000);
@@ -28116,6 +28147,9 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 .vendor-commission-item-top{display:flex;justify-content:space-between;gap:.7rem;align-items:flex-start}
 .vendor-commission-item-title{font-weight:800;font-size:.88rem}
 .vendor-commission-item-date{font-size:.72rem;color:var(--text-muted);margin-top:.18rem}
+.vendor-commission-buyer{display:flex;align-items:center;gap:.42rem;margin:.55rem 0 .35rem;padding:.45rem .55rem;border-radius:10px;background:rgba(255,255,255,.035);font-size:.76rem}
+.vendor-commission-buyer span{color:var(--text-muted)}
+.vendor-commission-buyer strong{margin-left:auto;text-align:right;font-weight:800}
 .vendor-commission-products{margin:.55rem 0 0;padding:0;list-style:none}
 .vendor-commission-products li{display:flex;justify-content:space-between;gap:.6rem;padding:.22rem 0;font-size:.76rem}
 .vendor-commission-products li span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
