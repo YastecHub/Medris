@@ -6657,6 +6657,26 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 .product-comment-compose-row{width:min(100%,680px);margin:.35rem auto 0;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:end!important;gap:.65rem!important;}
 .product-comment-compose-row textarea{width:100%!important;min-width:0!important;box-sizing:border-box!important;margin:0!important;}
 .product-comment-compose-row > button{flex:0 0 auto!important;justify-self:end!important;margin:0!important;}
+<style id="pickup-payment-display-precision-final">
+/* Final precision: payment CTA and vendor confirmation must render as blue. */
+#app .delivery-balance-direct-btn,
+#app .delivery-balance-direct-btn:hover,
+#app .delivery-balance-direct-btn:focus,
+#app .delivery-balance-direct-btn:active,
+#app .pickup-pay-vendor-btn,
+#app .pickup-pay-vendor-btn:hover,
+#app .pickup-pay-vendor-btn:focus,
+#app .pickup-pay-vendor-btn:active,
+#app .order-action-wrap .order-action-confirm,
+#app .order-action-wrap .order-action-confirm:hover,
+#app .order-action-wrap .order-action-confirm:focus,
+#app .order-action-wrap .order-action-confirm:active {
+  background:#2563eb !important;
+  background-image:none !important;
+  border-color:#2563eb !important;
+  color:#fff !important;
+}
+</style>
 </style>
 </head>
 <body>
@@ -20195,7 +20215,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     html += `<div class="card ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isPayAfterDelivery ? (deliveryDepositReadyFor80 ? "Complete your payment" : "Pay deposit to confirm your order") : isDeliveryOrder ? "Pay before delivery" : "Pay now"}</h3></div>
       ${isPayAfterDelivery ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyFor80 ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>${deliveryDepositPercent}% payment reported</strong><br>Your ${deliveryDepositPercent}% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>The vendor has delivered your order. Pay the remaining ${deliveryRemainingPercent}% balance of <strong>${naira(payableAmount)}</strong> to complete your payment.`) : `Pay a ${deliveryDepositPercent}% deposit of <strong>${naira(payableAmount)}</strong> based on the item amount. The delivery fee remains part of the total order balance.`}</p>` : isDeliveryOrder ? `<div class="banner banner-warning" style="margin:.45rem 0 .8rem;"><strong><i class="fa-solid fa-wallet"></i> Pay before delivery</strong><span>Full payment of <strong>${naira(payableAmount)}</strong> is required before delivery. If you need any change to this payment arrangement, please contact the vendor.</span></div>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
       <button class="btn btn-sm btn-outline ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-paystack-btn" : ""}" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
-      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery && deliveryDepositReadyFor80 ? "Pay remaining ${deliveryRemainingPercent}% directly to vendor" : isPayAfterDelivery ? "Pay ${deliveryDepositPercent}% directly to vendor" : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
+      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery && deliveryDepositReadyFor80 ? ("Pay remaining " + deliveryRemainingPercent + "% directly to vendor") : isPayAfterDelivery ? ("Pay " + deliveryDepositPercent + "% directly to vendor") : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
     </div>`;
   }
 
@@ -26867,7 +26887,7 @@ window.renderVendorMapRail = function(){
   };
   window.reportDirectVendorPayment = async function(orderId,amount){
     const err=byId("directPaymentError"),btn=byId("directPaymentReportedBtn"); if(!err||!btn)return; err.classList.add("hidden"); btn.disabled=true;
-    try{const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});if(error)throw error;byId("manualVendorPaymentModal")?.remove();if(data?.order_completed){showToast("Payment marked as paid. Order completed.","success");await navigate("orderDetail",{orderId});}else{showToast(data?.message||"Payment reported to the vendor.","success");await navigate("leaveReview",{orderId});}}
+    try{const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});if(error)throw error;byId("manualVendorPaymentModal")?.remove();if(data?.order_completed){showToast("Payment marked as paid. Order completed.","success");await navigate("leaveReview",{orderId});}else{showToast(data?.message||"Payment reported to the vendor. Complete the remaining payment before leaving a review.","success");await navigate("orderDetail",{orderId});}}
     catch(e){err.textContent=e?.message||"Could not report the payment.";err.classList.remove("hidden");btn.disabled=false;}
   };
   /* Final vendor application form: make WhatsApp and bank details mandatory. */
