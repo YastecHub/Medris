@@ -19559,13 +19559,20 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (!isCustomer && !isVendor && profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
 
   const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
-  const feePaid = order.payments.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
-  const depositPaid = order.deposit_amount === 0 || order.payments.some((p) => String(p.payment_type || "").trim().toLowerCase() === "deposit" && p.status === "paid");
-  // Payment only opens up once the vendor has confirmed - paying at
-  // "pending" meant a decline afterward left the customer waiting on a
-  // refund for something that should never have been charged at all.
-  const canRecordPayment = isVendor && !(feePaid && depositPaid) && order.status === "confirmed";
-  const canPayOnline = isCustomer && !(feePaid && depositPaid) && order.status === "confirmed";
+  const paymentRows = Array.isArray(order.payments) ? order.payments : [];
+  const feePaid = paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
+  const depositPaid = order.deposit_amount === 0 || paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === "deposit" && p.status === "paid");
+  const isDeliveryOrder = order.delivery_method === "delivery";
+  const deliveryBaseAmount = Math.max(0, Number(order.total_amount || 0) - Number(order.delivery_fee || 0));
+  const deliveryDepositAmount = Math.round(deliveryBaseAmount * 0.20 * 100) / 100;
+  const deliveryDepositPaidAmount = paymentRows.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const deliveryDepositPaid = deliveryDepositPaidAmount > 0.009;
+  const deliveryBalanceAmount = Math.max(0, Number(order.total_amount || 0) - deliveryDepositPaidAmount);
+  const deliveryPaymentsComplete = !isDeliveryOrder || (deliveryDepositPaid && feePaid);
+  // Pickup keeps the existing full-payment flow. Delivery uses two stages:
+  // 20% of the item/rental amount first, then the remaining order balance.
+  const canRecordPayment = isVendor && !deliveryPaymentsComplete && (order.status === "confirmed" || (isDeliveryOrder && order.status === "handed_over"));
+  const canPayOnline = isCustomer && !deliveryPaymentsComplete && order.status === "confirmed";
 
   let html = `<div class="card">
     <div class="flex" style="justify-content:space-between;align-items:flex-start;">
@@ -19663,7 +19670,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (displayPayments.length > 0) {
     html += `<div class="card"><h3 style="margin-top:0;">Payments</h3>
       ${displayPayments.map((p, i) => {
-        const paymentName = p.payment_type === "sale_price" ? "Sale price" : p.payment_type === "rental_fee" ? "Rental fee" : p.payment_type === "deposit" ? "Deposit" : String(p.payment_type || "Payment").replace(/_/g, " ");
+        const paymentName = p.payment_type === "sale_price" ? "Sale price" : p.payment_type === "rental_fee" ? "Rental fee" : p.payment_type === "deposit" ? "Refundable deposit" : p.payment_type === "delivery_deposit_20" ? "20% delivery deposit" : String(p.payment_type || "Payment").replace(/_/g, " ");
         const methodName = p.method === "cash" ? "Cash" : p.method === "transfer" ? "Bank transfer" : p.method === "card" ? "Card" : "";
         return `<div class="flex" style="justify-content:space-between;font-size:0.9rem;${i > 0 ? "border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.5rem;" : ""}"><span>${esc(paymentName)}${p.status === "paid" && methodName ? `<small class="muted" style="display:block;font-size:0.75rem;margin-top:0.15rem;">${esc(methodName)}${p.provider_reference ? " · Paystack" : " · Recorded manually"}</small>` : ""}</span><span>${naira(p.amount)} · <span class="badge ${p.status === "paid" ? "success" : ""}">${esc(p.status)}</span></span></div>`;
       }).join("")}
@@ -19671,23 +19678,26 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   }
 
   if (canPayOnline) {
-    const payableAmount = feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0);
-    html += `<div class="card"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> Pay now</h3></div>
-      <p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>
+    const payableAmount = isDeliveryOrder
+      ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount)
+      : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
+    html += `<div class="card"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isDeliveryOrder ? (deliveryDepositPaid ? "Complete your payment" : "Pay 20% deposit to confirm your order") : "Pay now"}</h3></div>
+      ${isDeliveryOrder ? `<p class="muted" style="margin:.45rem 0 .8rem;">${deliveryDepositPaid ? `The vendor has delivered your order. Pay the remaining <strong>${naira(payableAmount)}</strong> balance to complete your payment.` : `Pay a 20% deposit of <strong>${naira(payableAmount)}</strong> based on the item/rental fee. The delivery fee is included in the remaining balance.`}</p>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
       <button class="btn btn-sm btn-outline" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
       <button class="btn btn-sm" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor · ${naira(payableAmount)}</button>
     </div>`;
   }
 
   if (canRecordPayment) {
-    html += `<div class="card"><h3><i class="fa-solid fa-hand-holding-dollar"></i> Paid outside Paystack? ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It permanently settles that payment obligation as paid and prevents another paid record for the same fee.")}</h3>
+    const manualTypeOptions = isDeliveryOrder
+      ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">20% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Remaining balance" : "Remaining balance"}</option>` : ""}`
+      : `${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Sale price" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Refundable deposit</option>` : ""}`;
+    const manualAmount = isDeliveryOrder ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount) : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
+    html += `<div class="card"><h3><i class="fa-solid fa-hand-holding-dollar"></i> Paid outside Paystack? ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
       <div id="recordPaymentError" class="error-text hidden"></div>
-      <label>Payment for</label>
-      <select id="rpType">${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Sale price" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Deposit</option>` : ""}</select>
-      <label>Amount</label>
-      <input type="number" id="rpAmount" value="${feePaid ? order.deposit_amount : order.total_amount}" />
-      <label>Method</label>
-      <select id="rpMethod"><option value="transfer" selected>Transfer</option><option value="cash">Cash</option></select>
+      <label>Payment for</label><select id="rpType">${manualTypeOptions}</select>
+      <label>Amount</label><input type="number" id="rpAmount" value="${manualAmount}" />
+      <label>Method</label><select id="rpMethod"><option value="transfer" selected>Transfer</option><option value="cash">Cash</option></select>
       <button class="btn btn-sm" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> Mark as paid manually</button>
     </div>`;
   }
@@ -19743,45 +19753,48 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
 const BUYER_CANCEL_WINDOW_HOURS = 5;
 function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   const buttons = [];
+  const isDeliveryOrder = order.delivery_method === "delivery";
+  const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
+  const payments = Array.isArray(order.payments) ? order.payments : [];
+  const deliveryDepositPaid = payments.some((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid");
+  const deliveryBalancePaid = payments.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
+  const paymentComplete = isDeliveryOrder ? (deliveryDepositPaid && deliveryBalancePaid) : feePaid;
   if (isVendor) {
     if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
-    // Can't hand over what hasn't been paid for yet - avoids a mismatch
-    // where the order's marked handed_over/completed but no payment ever
-    // actually came in.
     if (order.status === "confirmed") {
-      if (feePaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-handshake"></i> Mark handed over</button>`);
+      if (isDeliveryOrder) {
+        if (deliveryDepositPaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-truck"></i> Mark as delivered</button>`);
+        else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting for the customer's 20% delivery deposit before delivery.</p>`);
+      } else if (feePaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-handshake"></i> Mark handed over</button>`);
       else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this can be marked handed over.</p>`);
     }
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
   if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
   if (isCustomer && order.status === "confirmed") {
-    const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
-    const paidRow = order.payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
+    const paidRow = payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
     const hoursSincePaid = paidRow ? (Date.now() - new Date(paidRow.paid_at || paidRow.created_at).getTime()) / 3600000 : 0;
-    if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) {
-      buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="buyerCancelOrder('${order.id}',${feePaid ? "true" : "false"})">Cancel order</button>`);
+    if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
+    else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
+  }
+  if (isCustomer && order.status === "handed_over" && order.order_type === "rental" && !isDeliveryOrder) buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
+  if (isCustomer && order.status === "handed_over" && isDeliveryOrder) {
+    if (!deliveryBalancePaid) {
+      const depositPaidAmount = payments.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum,p)=>sum+Number(p.amount||0),0);
+      const balance = Math.max(0, Number(order.total_amount || 0) - depositPaidAmount);
+      buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-building-columns"></i> Complete payment · ${naira(balance)}</button>`);
     } else {
-      buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
-    }
-  }
-  if (isCustomer && order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
-  // Only the customer confirms completion - that's what releases an escrowed
-  // payment to the vendor, so it can't be something the vendor self-marks.
-  // Also gated on feePaid for the same reason as the vendor's handover
-  // button - shouldn't be possible to complete an order that was never
-  // actually paid for.
-  if (isCustomer && order.status === "handed_over" && order.order_type === "sale") {
-    if (feePaid) {
-      buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`);
-      buttons.push(notReceivedButtonHtml(order));
-    } else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
-  }
-  if (isCustomer && order.status === "returned" && order.order_type === "rental") {
-    if (feePaid) {
       buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> Confirm &amp; complete</button>`);
       buttons.push(notReceivedButtonHtml(order));
-    } else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
+    }
+  }
+  if (isCustomer && order.status === "handed_over" && order.order_type === "sale" && !isDeliveryOrder) {
+    if (feePaid) { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`); buttons.push(notReceivedButtonHtml(order)); }
+    else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
+  }
+  if (isCustomer && order.status === "returned" && order.order_type === "rental") {
+    if (feePaid) { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> Confirm &amp; complete</button>`); buttons.push(notReceivedButtonHtml(order)); }
+    else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
   }
   return buttons.join("");
 }
@@ -19855,15 +19868,17 @@ async function updateOrderStatus(orderId, newStatus) {
 }
 
 async function confirmHandOverOrder(orderId) {
+  const { data: orderForHandover } = await sb.from("orders").select("delivery_method").eq("id",orderId).maybeSingle();
+  const isDelivery = orderForHandover?.delivery_method === "delivery";
   const confirmed = await showConfirmDialog(
-    "Confirm that you have physically handed this order to the customer. This changes the order to Handed over and tells the customer to confirm receipt. Only continue if the handover has actually happened.",
-    { title: "Mark as handed over", okLabel: "Yes, mark handed over" }
+    isDelivery ? "Confirm that you have actually delivered this order to the customer. This changes the order to Delivered and tells the customer to complete the remaining payment." : "Confirm that you have physically handed this order to the customer. This changes the order to Handed over and tells the customer to confirm receipt. Only continue if the handover has actually happened.",
+    { title: isDelivery ? "Mark as delivered" : "Mark as handed over", okLabel: isDelivery ? "Yes, mark delivered" : "Yes, mark handed over" }
   );
   if (!confirmed) return;
   showToast("Updating order…", "info");
   const { error } = await sb.rpc("transition_order_status", { p_order_id: orderId, p_new_status: "handed_over" });
   if (error) { showToast(error.message, "error"); return; }
-  showToast("Order marked as handed over.", "success");
+  showToast(isDelivery ? "Order marked as delivered." : "Order marked as handed over.", "success");
   await navigate("orderDetail", { orderId });
 }
 
@@ -19932,25 +19947,29 @@ async function submitNotReceived() {
 // every other status change, this one also has to actually move money, so
 // it goes through a serverless endpoint instead of a plain RPC call.
 async function confirmReceiveOrder(orderId) {
-  if (!(await showConfirmDialog(
-    "Confirm that you have physically received this order. This completes the order and, where applicable, releases the held payment to the vendor. Only continue after you have actually received it.",
-    { title: "Confirm I've received this", okLabel: "Yes, I've received it" }
-  ))) return;
+  if (!(await showConfirmDialog("Confirm that you have physically received this order. This completes the order once all required payments have been paid. Only continue after you have actually received it.", { title: "Confirm I've received it", okLabel: "Yes, I've received it" }))) return;
   showToast("Confirming…", "info");
   try {
-    const res = await fetch("/api/order-payout-action", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "release", orderId, accessToken: session.access_token }),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Could not complete this order.");
-    if (json.transferred) showToast("Order completed. Payment released to the vendor.", "success");
-    else if (json.payoutError) showToast("Order completed. There was a hiccup releasing payment, our team will sort it out.", "info");
-    else showToast("Order completed.", "success");
-  } catch (err) {
-    showToast(err.message, "error");
-  }
+    const { data: currentOrder, error: orderError } = await sb.from("orders").select("id,delivery_method,order_type").eq("id",orderId).maybeSingle();
+    if (orderError) throw orderError;
+    if (currentOrder?.delivery_method === "delivery") {
+      const { data: freshPayments, error: paymentError } = await sb.from("payments").select("payment_type,status").eq("order_id",orderId);
+      if (paymentError) throw paymentError;
+      const feeType = currentOrder.order_type === "rental" ? "rental_fee" : "sale_price";
+      const depositPaid = (freshPayments||[]).some(p=>p.payment_type==="delivery_deposit_20"&&p.status==="paid");
+      const balancePaid = (freshPayments||[]).some(p=>p.payment_type===feeType&&p.status==="paid");
+      if (!depositPaid || !balancePaid) throw new Error("Both the 20% delivery deposit and remaining balance must be paid before this order can be completed.");
+      const { error } = await sb.rpc("transition_order_status", { p_order_id: orderId, p_new_status: "completed" });
+      if (error) throw error;
+      showToast("Order completed. Both payments are recorded.", "success");
+    } else {
+      const res = await fetch("/api/order-payout-action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "release", orderId, accessToken: session.access_token }) });
+      const json = await res.json(); if (!res.ok) throw new Error(json.error || "Could not complete this order.");
+      if (json.transferred) showToast("Order completed. Payment released to the vendor.", "success");
+      else if (json.payoutError) showToast("Order completed. There was a hiccup releasing payment, our team will sort it out.", "info");
+      else showToast("Order completed.", "success");
+    }
+  } catch (err) { showToast(err.message, "error"); }
   navigate("orderDetail", { orderId });
 }
 
@@ -20027,32 +20046,15 @@ async function payOnline(orderId) {
 }
 
 async function recordOfflinePayment(orderId) {
-  const errorEl = byId("recordPaymentError");
-  errorEl.classList.add("hidden");
-  const paymentType = byId("rpType")?.value;
-  const amount = Number(byId("rpAmount")?.value);
-  const method = byId("rpMethod")?.value;
-  if (!paymentType || !Number.isFinite(amount) || amount <= 0 || !method) {
-    errorEl.textContent = "Enter a valid payment amount and method.";
-    errorEl.classList.remove("hidden");
-    return;
-  }
-  const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : "deposit";
+  const errorEl = byId("recordPaymentError"); errorEl.classList.add("hidden");
+  const paymentType = byId("rpType")?.value; const amount = Number(byId("rpAmount")?.value); const method = byId("rpMethod")?.value;
+  if (!paymentType || !Number.isFinite(amount) || amount <= 0 || !method) { errorEl.textContent = "Enter a valid payment amount and method."; errorEl.classList.remove("hidden"); return; }
+  const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : paymentType === "delivery_deposit_20" ? "20% delivery deposit" : "refundable deposit";
   const methodLabel = method === "cash" ? "cash" : "bank transfer";
-  const confirmed = await showConfirmDialog(
-    `Confirm that you actually received ${naira(amount)} for the ${paymentLabel} by ${methodLabel}. This records the payment as PAID outside Paystack and permanently settles this payment obligation. If it is already paid, no second paid payment will be created.`,
-    { title: "Mark as paid manually", okLabel: "Yes, mark paid" }
-  );
-  if (!confirmed) return;
-  const { error } = await sb.rpc("record_offline_payment", {
-    p_order_id: orderId,
-    p_payment_type: paymentType,
-    p_amount: amount,
-    p_method: method,
-  });
+  if (!(await showConfirmDialog(`Confirm that you actually received ${naira(amount)} for the ${paymentLabel} by ${methodLabel}. This records the payment as PAID outside Paystack and settles this payment obligation.`, { title: "Mark as paid manually", okLabel: "Yes, mark paid" }))) return;
+  const { error } = await sb.rpc("record_offline_payment", { p_order_id: orderId, p_payment_type: paymentType, p_amount: amount, p_method: method });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
-  showToast("Payment recorded as paid.", "success");
-  await navigate("orderDetail", { orderId });
+  showToast("Payment recorded as paid.", "success"); await navigate("orderDetail", { orderId });
 }
 
 let vendorReviewModalOrderId = null;
@@ -26108,7 +26110,7 @@ window.renderVendorMapRail = function(){
   "use strict";
   window.openVendorDirectPayment = async function(orderId){
     if(!session || !orderId){showLogin();return;}
-    const {data:order,error}=await sb.from("orders").select("id,total_amount,deposit_amount,buyer_id,vendor_id,order_type,vendor:vendors(id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
+    const {data:order,error}=await sb.from("orders").select("id,total_amount,delivery_fee,deposit_amount,buyer_id,vendor_id,order_type,delivery_method,vendor:vendors(id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
     if(error||!order){showToast(error?.message||"Order not found.","error");return;}
     if(String(order.buyer_id)!==String(session.user.id)){showToast("You can only pay for your own order.","error");return;}
     // The vendor relationship can be filtered by RLS on older/paused vendor rows.
@@ -26118,18 +26120,26 @@ window.renderVendorMapRail = function(){
       if(freshVendor) order.vendor={...(order.vendor||{}),...freshVendor};
     }
     const feeType=order.order_type==="rental"?"rental_fee":"sale_price";
-    const paidFee=Number((order.payments||[]).filter(p=>p.payment_type===feeType&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
-    const pendingFee=(order.payments||[]).find(p=>p.payment_type===feeType&&p.status==="pending");
-    const pendingDeposit=(order.payments||[]).find(p=>p.payment_type==="deposit"&&p.status==="pending");
+    const paymentRows=order.payments||[];
+    const isDeliveryOrder=order.delivery_method==="delivery";
+    const paidFee=Number(paymentRows.filter(p=>p.payment_type===feeType&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
+    const deliveryDepositPaid=Number(paymentRows.filter(p=>p.payment_type==="delivery_deposit_20"&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
+    const pendingFee=paymentRows.find(p=>p.payment_type===feeType&&p.status==="pending");
+    const pendingDeliveryDeposit=paymentRows.find(p=>p.payment_type==="delivery_deposit_20"&&p.status==="pending");
+    const pendingDeposit=paymentRows.find(p=>p.payment_type==="deposit"&&p.status==="pending");
+    const baseAmount=Math.max(0,Number(order.total_amount||0)-Number(order.delivery_fee||0));
+    const deliveryDepositAmount=Math.round(baseAmount*0.20*100)/100;
     let amount=0; let paymentLabel=order.order_type==="rental"?"rental fee":"sale price";
-    if(!paidFee){amount=Number(pendingFee?.amount||order.total_amount||0);}
-    else if(Number(order.deposit_amount||0)>0 && !((order.payments||[]).some(p=>p.payment_type==="deposit"&&p.status==="paid"))){amount=Number(pendingDeposit?.amount||order.deposit_amount||0);paymentLabel="refundable deposit";}
+    if(isDeliveryOrder&&!deliveryDepositPaid){amount=Number(pendingDeliveryDeposit?.amount||deliveryDepositAmount);paymentLabel="20% delivery deposit";}
+    else if(isDeliveryOrder&&!paidFee){amount=Number(pendingFee?.amount||Math.max(0,Number(order.total_amount||0)-deliveryDepositPaid));paymentLabel="remaining balance";}
+    else if(!isDeliveryOrder&&!paidFee){amount=Number(pendingFee?.amount||order.total_amount||0);}
+    else if(!isDeliveryOrder&&Number(order.deposit_amount||0)>0&&!paymentRows.some(p=>p.payment_type==="deposit"&&p.status==="paid")){amount=Number(pendingDeposit?.amount||order.deposit_amount||0);paymentLabel="refundable deposit";}
     else {showToast("There is no outstanding payment on this order.","info");return;}
     byId("manualVendorPaymentModal")?.remove();
     const modal=document.createElement("div"); modal.id="manualVendorPaymentModal"; modal.className="modal manual-payment-modal";
     const bankName = getBankDisplayName(order.vendor?.bank_code, order.vendor?.bank_name);
     const hasAccount = !!(order.vendor?.account_name || order.vendor?.account_number || order.vendor?.bank_code || order.vendor?.bank_name);
-    modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+    modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> ${isDeliveryOrder ? (paymentLabel === "20% delivery deposit" ? "Pay 20% deposit to confirm your order" : "Complete your payment") : "Pay directly to vendor"}</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> for the <strong>${esc(paymentLabel)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
       <div class="manual-payment-account">
         <div class="manual-payment-account-row"><span class="muted">Bank</span><strong>${esc(bankName)}</strong>${order.vendor?.bank_name||order.vendor?.bank_code?`<button type="button" class="icon-btn manual-payment-copy-btn" title="Copy bank name" aria-label="Copy bank name" onclick="navigator.clipboard?.writeText('${esc(bankName)}').then(()=>showToast('Bank name copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i></button>`:""}</div>
