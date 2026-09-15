@@ -1,3 +1,27 @@
+
+<style id="pickup-payment-message-polish">
+  #app .pickup-message-vendor-wrap{display:flex;flex-direction:column;align-items:center;width:100%;margin:.7rem 0 0;}
+  #app .pickup-message-vendor-wrap .order-message-vendor-btn{min-width:min(290px,100%);justify-content:center;}
+  #app .pickup-pay-vendor-btn{justify-content:center;}
+
+/* Minimal, centered network error state — keep the vendor directory clean and uncluttered. */
+.levromart-network-error-state {
+  width: 100%;
+  min-height: 180px;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center !important;
+  margin: 0 !important;
+  padding: 2rem 1rem !important;
+  line-height: 1.25;
+  color: var(--muted, #64748b);
+}
+.levromart-network-error-state i {
+  margin-bottom: 0.45rem !important;
+}
+</style>
 <style id="order-vendor-message-contact-ui">
   /* Customer order-detail contact action: keep the vendor messaging control
      directly beneath the visible phone line, centered, with the same compact
@@ -116,16 +140,16 @@
     width: 100%; max-width: 100%; background-color: var(--bg); background-image: var(--bg-wash); background-attachment: fixed;
     transition: background-color 0.25s ease, color 0.25s ease; touch-action: pan-x pan-y;
   }
-  /* Branded app splash: solid black backdrop with the real Levromart mark
-     centered and sized generously, shown briefly on load/reload. Hiding is
-     driven entirely from JS (prepareLevromartSplash/hideLevromartSplash),
-     which guarantees this can never stay stuck on screen - see the
-     try/finally + hard safety timeout around init(). */
-  #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#000;opacity:1;visibility:visible;pointer-events:auto;transition:opacity .28s ease,visibility .28s ease;}
+  /* Professional app loading surface: never expose the uninitialized header,
+     logo masks, or empty navigation while the first route is being prepared.
+     The user sees only the real Levromart mark on the normal app surface;
+     the splash disappears as soon as init() has a route ready. */
+  #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:var(--bg);opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease;}
   #levromartSplash.is-hidden{opacity:0;visibility:hidden;pointer-events:none;}
-  .levromart-splash-logo{display:block;width:min(20rem,72vw);height:auto;object-fit:contain;border:0;outline:none;animation:levroSplashLogoIn .32s cubic-bezier(.22,1,.36,1) both;}
-  @keyframes levroSplashLogoIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
-  @media(prefers-reduced-motion:reduce){#levromartSplash{transition:none}.levromart-splash-logo{animation:none;opacity:1;transform:none;}}
+  .levromart-splash-mark{width:88px;height:88px;display:flex;align-items:center;justify-content:center;border-radius:26px;background:var(--card,#fff);box-shadow:0 12px 34px rgba(15,23,42,.10);animation:levroSplashMark 1.5s ease-in-out infinite;}
+  .levromart-splash-mark svg{width:54px;height:54px;display:block;}
+  @keyframes levroSplashMark{0%,100%{transform:scale(1);opacity:.88}50%{transform:scale(1.035);opacity:1}}
+  @media(prefers-reduced-motion:reduce){#levromartSplash{transition:none}.levromart-splash-mark{animation:none;opacity:1;}}
   /* Android/PWA system-bar area: keep the top chrome on the same dark
      surface as Levromart instead of exposing a bright device accent. */
   :root { --safe-top: 8px; --safe-bottom: 8px; }
@@ -399,6 +423,20 @@
   .divider { border: 0; border-top: 1px solid var(--border); margin: 1rem 0; }
   .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }
   .error-text { color: var(--danger); font-size: 0.85rem; margin: 0.3rem 0; }
+  /* Product-save validation stays with the field that needs attention. */
+  #productError { display:none !important; }
+  .product-validation-focus {
+    border-color: var(--danger, #dc2626) !important;
+    box-shadow: 0 0 0 3px rgba(220,38,38,.14) !important;
+    outline: none !important;
+  }
+  .product-field-validation-message {
+    color: var(--danger, #dc2626);
+    font-size: .84rem;
+    font-weight: 600;
+    margin: .28rem 0 .5rem;
+    line-height: 1.35;
+  }
   .muted { color: var(--text-muted); font-size: 0.9rem; }
   .tabs { display: flex; gap: 1rem; border-bottom: 1px solid var(--border); margin: 1rem 0; flex-wrap: wrap; }
   .tabs a { padding-bottom: 0.5rem; color: var(--text-muted); text-decoration: none; border-bottom: 2px solid transparent; font-size: 0.9rem; cursor: pointer; text-transform: capitalize; }
@@ -4085,6 +4123,74 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 .card .btn[data-draft]{margin-top:1rem!important;}
 @media(max-width:600px){#payOnlineBtn{width:100%!important;min-height:46px!important;margin-top:1.05rem!important}.card h3{margin-bottom:.15rem!important}}
 
+/* ================================================================
+   ORDER ACTION / STATUS PRECISION
+   ================================================================ */
+.order-action-wrap{
+  display:flex !important;
+  justify-content:space-between !important;
+  align-items:center !important;
+  width:100% !important;
+  gap:.85rem !important;
+}
+.order-action-wrap .order-action-cancel,
+.order-action-wrap .order-action-decline{
+  order:1 !important;
+  margin-right:auto !important;
+}
+.order-action-wrap .pickup-pay-vendor-btn,
+.order-action-wrap .order-action-confirm{
+  order:2 !important;
+  margin-left:auto !important;
+}
+.order-action-wrap .order-action-neutral{
+  margin-left:auto !important;
+}
+.pickup-pay-vendor-btn{
+  background:#2563eb !important;
+  background-image:none !important;
+  border-color:#2563eb !important;
+  color:#fff !important;
+}
+.order-action-confirm{
+  background:#2563eb !important;
+  background-image:none !important;
+  border-color:#2563eb !important;
+  color:#fff !important;
+}
+.order-action-cancel,.order-action-decline{
+  background:#dc2626 !important;
+  background-image:none !important;
+  border-color:#dc2626 !important;
+  color:#fff !important;
+}
+.order-status-badge-pending,
+.badge.pending{
+  background:#d97706 !important;
+  color:#fff !important;
+  border-color:#d97706 !important;
+}
+.order-buyer-contact-actions{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  align-items:stretch !important;
+  gap:.7rem !important;
+  width:100% !important;
+}
+.order-buyer-contact-actions .btn{
+  width:100% !important;
+  min-width:0 !important;
+  justify-content:center !important;
+  margin:0 !important;
+}
+.order-contact-no-phone{
+  grid-column:1 / -1 !important;
+}
+@media(max-width:420px){
+  .order-buyer-contact-actions{grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;}
+  .order-action-wrap{gap:.55rem !important;}
+}
+
   /* ================================================================
      BATCH SELECTION - TAP ONLY, NO SWIPE
      ================================================================ */
@@ -4497,6 +4603,7 @@ body.chat-full-page #aiChatFab { display:none !important; }
 .chat-page-wrap .chat-thread { flex:1; height:auto; min-height:0; border-radius:0; }
 .chat-page-wrap .chat-edit-hint { flex-shrink:0; margin:0; padding:0.35rem 0.85rem calc(0.35rem + env(safe-area-inset-bottom,0px)); font-size:0.7rem; text-align:center; }
 .chat-skeleton-spinner { flex:1; display:flex; align-items:center; justify-content:center; font-size:1.4rem; color:var(--text-muted); }
+.chat-fast-empty { flex:1; min-height:18rem; }
 </style>
 
 
@@ -6541,9 +6648,61 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 
   .order-follow-up-note{font-size:.78rem!important;line-height:1.45;margin:.1rem 0 .65rem!important;opacity:.72;} .order-follow-up-actions{display:flex;justify-content:center;align-items:center;width:100%;} .order-remind-btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;background:#dc2626!important;background-color:#dc2626!important;border:1px solid #dc2626!important;border-color:#dc2626!important;color:#fff!important;min-width:190px;box-shadow:0 5px 14px rgba(220,38,38,.24)!important;} .order-remind-btn:hover{filter:brightness(.94);} .order-remind-btn:disabled{opacity:.7;filter:none;cursor:wait;} .vendor-order-waiting-banner{display:flex;flex-direction:column;gap:.2rem;} .vendor-order-waiting-banner span{font-size:.8rem;color:var(--text-muted);} .vendor-application-payout-section{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:1rem;background:color-mix(in srgb,var(--primary) 3%,var(--card));} .vendor-application-payout-heading strong{display:block;font-size:.95rem;} .vendor-application-payout-heading span{display:block;margin-top:.18rem;color:var(--text-muted);font-size:.76rem;line-height:1.4;}
 </style>
+
+<style id="levromart-commission-3pct-final">
+.vendor-commission-breakdown{margin-top:.75rem;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--card) 88%,transparent);overflow:hidden}
+.vendor-commission-breakdown-head{padding:.75rem .85rem;border-bottom:1px solid var(--border);font-size:.78rem;font-weight:800}
+.vendor-commission-breakdown-list{max-height:360px;overflow:auto}
+.vendor-commission-item{padding:.8rem .85rem;border-bottom:1px solid var(--border)}
+.vendor-commission-item:last-child{border-bottom:0}
+.vendor-commission-item-top{display:flex;justify-content:space-between;gap:.7rem;align-items:flex-start}
+.vendor-commission-item-title{font-weight:800;font-size:.88rem}
+.vendor-commission-item-date{font-size:.72rem;color:var(--text-muted);margin-top:.18rem}
+.vendor-commission-buyer{display:flex;align-items:center;gap:.42rem;margin:.55rem 0 .35rem;padding:.45rem .55rem;border-radius:10px;background:color-mix(in srgb,var(--text) 4%,transparent);font-size:.76rem}
+.vendor-commission-buyer span{color:var(--text-muted)}
+.vendor-commission-buyer strong{margin-left:auto;text-align:right;font-weight:800}
+.vendor-commission-products{margin:.55rem 0 0;padding:0;list-style:none}
+.vendor-commission-products li{display:flex;justify-content:space-between;gap:.6rem;padding:.22rem 0;font-size:.76rem}
+.vendor-commission-products li span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.vendor-commission-math{display:flex;justify-content:space-between;gap:.6rem;margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border);font-size:.75rem}
+.vendor-commission-math>strong{white-space:nowrap}
+.vendor-commission-total{display:flex;justify-content:space-between;gap:.7rem;padding:.8rem .85rem;font-weight:850;font-size:.86rem;background:color-mix(in srgb,var(--primary) 7%,transparent)}
+.vendor-commission-pay-now{width:100%;justify-content:center;margin-top:.65rem!important}
+@media(max-width:720px){.vendor-commission-breakdown-list{max-height:45vh}.vendor-commission-item-top{align-items:center}}
+</style>
+<style id="product-comment-composer-final">
+/* Product/package comment composer — balanced mobile proportions. */
+.product-comment-composer{width:100%;box-sizing:border-box;}
+.product-comment-compose-row{width:min(100%,680px);margin:.35rem auto 0;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:end!important;gap:.65rem!important;}
+.product-comment-compose-row textarea{width:100%!important;min-width:0!important;box-sizing:border-box!important;margin:0!important;}
+.product-comment-compose-row > button{flex:0 0 auto!important;justify-self:end!important;margin:0!important;}
+</style>
+<style id="pickup-payment-display-precision-final">
+/* Payment timing UI follows the compact green/orange Levromart scheme. */
+#app .product-payment-plan-notice.pay-after{background:#fff7ed !important;border-color:#fdba74 !important;color:#c2410c !important;}
+#app .product-payment-plan-notice.pay-before{background:#f0fdf4 !important;border-color:#86efac !important;color:#166534 !important;}
+#app .payment-timing-option.pay-after.selected{background:#fff7ed !important;border-color:#fb923c !important;color:#c2410c !important;}
+#app .payment-timing-option.pay-before.selected{background:#f0fdf4 !important;border-color:#22c55e !important;color:#166534 !important;}
+</style>
+
+<style id="levromart-home-and-payment-final-repair">
+/* Final repair: Home must remain usable during silent refreshes. */
+#app .levro-home-fallback{display:none !important;}
+/* Compact payment-plan tabs on every product card, including storefront cards. */
+#app .product-card-action-row{display:grid !important;grid-template-columns:auto minmax(0,1fr) auto !important;align-items:center !important;gap:.38rem !important;width:100% !important;min-width:0 !important;}
+#app .product-card-action-row .card-comment-btn{grid-column:1 !important;justify-self:start !important;}
+#app .product-card-action-row .product-card-payment-plan{grid-column:2 !important;justify-self:start !important;display:inline-flex !important;visibility:visible !important;opacity:1 !important;}
+#app .product-card-action-row .product-card-action-left{grid-column:3 !important;justify-self:end !important;min-width:0 !important;}
+#app .product-card-payment-plan.pay-after{background:#ffedd5 !important;color:#c2410c !important;border-color:#fdba74 !important;}
+#app .product-card-payment-plan.pay-before{background:#dcfce7 !important;color:#166534 !important;border-color:#86efac !important;}
+</style>
+<style id="levromart-order-card-identification">
+.order-list-item,.order-history-item{display:block;font-weight:700;margin-top:.18rem;}
+.order-list-product-id,.order-history-product-id{display:block;font-size:.72rem;opacity:.72;margin-top:.14rem;word-break:break-all;}
+</style>
 </head>
 <body>
-<div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
+<div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--primary,#10b981)" stroke-width="5"/><path d="M19 34c5-1 8-4 10-9 1-3 3-5 6-5 4 0 6 3 6 7 0 5-4 8-8 8h-5c-5 0-9 3-9 7 0 3 2 5 5 5 4 0 6-2 7-5" fill="none" stroke="var(--primary,#10b981)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
 <script id="levromart-splash-watchdog">
 (function(){
   // This watchdog intentionally lives before the large application bundle.
@@ -6556,10 +6715,11 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     el.classList.add("is-hidden");
     el.setAttribute("aria-hidden","true");
   }
-  setTimeout(hide,1200);
-  window.addEventListener("load",function(){
-    setTimeout(function(){ if(Date.now()-started>900) hide(); },1200);
-  },{once:true});
+  // Do not hide the branded surface merely because window.load fired. The
+  // app may still be preparing its first route; exposing the raw header at
+  // that point produces the ugly green logo rectangles/empty controls.
+  // init() hides this surface in its finally block once routing is ready.
+
 })();
 </script>
 <header>
@@ -6568,9 +6728,9 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="toggleProfilePanel()" title="Profile"></button>
       <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
     </div>
-    <h1 onclick="navigate('home')"><span class="brand-logo-stack"><span id="brandLogoLeft" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span><img id="brandLogoCircle" class="brand-logo-layer brand-logo-circle" alt="" /><span id="brandLogoRight" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span></span><span class="sr-only">Levromart</span></h1>
+    <h1 role="button" tabindex="0" onclick="fastNavigateHome(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fastNavigateHome(event)}"><span class="brand-logo-stack"><span id="brandLogoLeft" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span><img id="brandLogoCircle" class="brand-logo-layer brand-logo-circle" alt="" /><span id="brandLogoRight" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span></span><span class="sr-only">Levromart</span></h1>
     <nav class="header-nav-links">
-      <a class="header-nav-link active" data-view="home" href="#" onclick="navigate('home');return false;">Browse</a>
+      <a class="header-nav-link active" data-view="home" href="#" onclick="fastNavigateHome(event);return false;">Browse</a>
       <a class="header-nav-link" data-view="vendors" href="#" onclick="navigate('vendors');return false;">Vendors</a>
     </nav>
   </div>
@@ -6897,6 +7057,26 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
         <div><label style="margin:0;">Fee per km (₦)</label><input type="number" id="prodDeliveryPerKm" min="0" step="10" placeholder="e.g. 200" /></div>
       </div>
       <p id="prodDeliveryHint" class="muted" style="font-size:.76rem;margin:.45rem 0 0;"></p>
+    </div>
+    <div class="listing-payment-timing-settings" id="prodPaymentTimingSettings">
+      <label class="payment-timing-title"><i class="fa-solid fa-wallet"></i> Payment timing for this product</label>
+      <div class="payment-timing-choice" role="group" aria-label="Choose when buyers pay">
+        <button type="button" class="payment-timing-option pay-before" data-payment-timing="pay_before" onclick="setProductPaymentTiming('pay_before')">
+          <span class="payment-timing-option-dot"></span>
+          <span><strong>Pay before delivery</strong><small>Full payment before dispatch</small></span>
+        </button>
+        <button type="button" class="payment-timing-option pay-after" data-payment-timing="pay_after" onclick="setProductPaymentTiming('pay_after')">
+          <span class="payment-timing-option-dot"></span>
+          <span><strong>Pay after delivery</strong><small>Choose the buyer deposit percentage</small></span>
+        </button>
+      </div>
+      <input type="hidden" id="prodPaymentTiming" value="pay_before" />
+      <div id="prodPaymentDepositPercentWrap" class="payment-deposit-percent-wrap hidden">
+        <label>Buyer deposit before delivery (%)</label>
+        <input type="number" id="prodPaymentDepositPercent" min="1" max="99" step="1" value="20" inputmode="numeric" oninput="updateProductPaymentTimingHint()" onblur="normalizeProductPaymentDepositPercent()" />
+        <p class="muted payment-deposit-percent-note">The remaining <strong id="prodPaymentRemainingPercent">80%</strong> is due after delivery.</p>
+      </div>
+      <p id="prodPaymentTimingHint" class="muted payment-timing-hint"></p>
     </div>
     <div class="listing-engagement-settings" id="prodEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="prodLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="prodAllowComments" checked onchange="syncProductEngagementSettingsUI()"></label><div id="prodCommentAudienceWrap"><label>Who can comment</label><select id="prodCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div>
     <div id="prodQtyWrap">
@@ -7965,14 +8145,17 @@ function prepareLevromartSplash() {
   const splash = byId("levromartSplash");
   if (!splash) return;
   const logo = splash.querySelector(".levromart-splash-logo");
-  if (logo && typeof MEDRIS_LOGO !== "undefined") logo.src = MEDRIS_LOGO;
+  if (logo) {
+    if (typeof LEVROMART_LOGO_CIRCLE !== "undefined") logo.src = LEVROMART_LOGO_CIRCLE;
+    else if (typeof MEDRIS_LOGO !== "undefined") logo.src = MEDRIS_LOGO;
+  }
   window.__levroSplashShownAt = Date.now();
   window.__levroSplashHidden = false;
 }
 function hideLevromartSplash() {
   const splash = byId("levromartSplash");
   if (!splash || window.__levroSplashHidden) return;
-  const minVisibleMs = 0;
+  const minVisibleMs = 650;
   const elapsed = Date.now() - (window.__levroSplashShownAt || 0);
   if (elapsed < minVisibleMs) {
     setTimeout(() => hideLevromartSplash(), minVisibleMs - elapsed);
@@ -8912,6 +9095,14 @@ function toggleNotifPanel() {
   requestOfferBadgeCount = 0; updateRequestOfferBadge();
   try { sessionStorage.setItem("levromart-request-offers-seen-at", new Date().toISOString()); } catch (_) {}
   notifViewMode = "all"; exitNotifSelectMode(false);
+  // LinkedIn-style behavior: opening the notification surface immediately clears unread state.
+  if(session?.user?.id){
+    notifCount=0;
+    byId("notifDot")?.classList.add("hidden");
+    const notifCacheKey=`levromart-notifications-cache-v2:${session.user.id}`;
+    try { const cached=JSON.parse(localStorage.getItem(notifCacheKey)||"[]"); if(Array.isArray(cached)&&cached.length){ cached.forEach(n=>{n.read=true}); localStorage.setItem(notifCacheKey,JSON.stringify(cached)); } } catch(_){}
+    sb.from("notifications").update({read:true}).eq("user_id",session.user.id).eq("read",false).is("deleted_at",null).then(()=>{}).catch(()=>{});
+  }
   if(currentView!=="notifications"){lastNotificationReturnView=currentView||"home";lastNotificationReturnParams={...(currentViewParams||{})};}
   navigate("notifications");
 }
@@ -9181,12 +9372,25 @@ async function renderNotifPanel() {
     panel.innerHTML = '<p class="muted">Sign in to view your notifications.</p>';
     return;
   }
-  panel.innerHTML = '<p class="muted" role="status">Loading notifications…</p>';
+  const notifCacheKey = `levromart-notifications-cache-v2:${session.user.id}`;
+  let cachedNotifItems = [];
+  try { cachedNotifItems = JSON.parse(localStorage.getItem(notifCacheKey) || '[]'); } catch (_) { cachedNotifItems = []; }
+  if (Array.isArray(cachedNotifItems) && cachedNotifItems.length) {
+    panel.innerHTML = cachedNotifItems.map(n => {
+      const avatar = n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.15rem;height:2.15rem;object-fit:cover;flex:none;" alt="" draggable="false" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.15rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<span class="notification-system-icon"><i class="fa-solid fa-circle-info"></i></span>`;
+      return `<div class="notif-item-wrap" data-id="${esc(n.id)}"><button type="button" class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}" data-view="${esc(n.target_view || 'home')}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || '')}" data-actor-avatar="${esc(n.actor_avatar_url || '')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">${avatar}<span class="notif-copy"><strong>${esc(n.title || 'Notification')}</strong>${n.body ? `<span class="muted" style="font-size:.8rem;">${esc(n.notification_category === 'new_follower' ? (n.actor_name || n.body) : n.body)}</span>` : ''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span></button></div>`;
+    }).join('');
+  } else {
+    panel.innerHTML = '';
+  }
   // The backend still retains archived/deleted fields for compatibility, but
   // the user-facing notification experience is now a smart activity stream.
   // We never mutate or destructively migrate those legacy fields here.
   let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(60);
   const { data: rawItems, error } = await q;
+  if (!error && Array.isArray(rawItems)) {
+    try { localStorage.setItem(notifCacheKey, JSON.stringify(rawItems.slice(0,60))); } catch (_) {}
+  }
   const currentVendorId=String(vendor?.id||'');
   const owners=new Map();
   for(const [kind,table] of [['product','products'],['package','vendor_packages']]){
@@ -9248,7 +9452,7 @@ async function renderNotifPanel() {
           <div class="ms-list hidden messages-more-menu" id="notifMoreMenu">
             <button type="button" class="ms-item" onclick="enterNotifSelectMode();toggleInlineMenu('notifMoreMenu',event)"><i class="fa-solid fa-check-double"></i> Select notifications</button>
             <button type="button" class="ms-item" onclick="enterNotifSelectMode();toggleSelectAllNotifs();toggleInlineMenu('notifMoreMenu',event)"><i class="fa-solid fa-square-check"></i> Select all notifications</button>
-            ${notifViewMode !== "trash" ? `<button type="button" class="ms-item" onclick="markAllNotifsRead();toggleInlineMenu('notifMoreMenu',event)"><i class="fa-solid fa-envelope-open"></i> Mark all as read</button>` : ""}
+
           </div>
         </div>
       </div>
@@ -9271,7 +9475,7 @@ async function renderNotifPanel() {
   panel.classList.toggle("selecting", notifSelectMode);
   if (isNotificationsPage) {
     const actions = byId("notificationsPageHeaderActions");
-    if (actions) actions.innerHTML = `<button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications" title="Select notifications"><i class="fa-regular fa-square-check"></i></button>${hasUnread ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all notifications as read" title="Mark all notifications as read"><i class="fa-solid fa-check-double"></i></button>` : ""}`;
+    if (actions) actions.innerHTML = `<button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications" title="Select notifications"><i class="fa-regular fa-square-check"></i></button>`;
   }
   } catch (err) {
     console.error("Notification rendering failed", err);
@@ -9683,7 +9887,7 @@ function refreshVisibleOrderView() {
       } catch (err) {
         console.warn("[Levromart] Live order-detail refresh failed:", err);
       }
-    }, 60);
+    }, 0);
     return;
   }
 
@@ -9733,7 +9937,7 @@ function subscribeOrderUpdates() {
   // Also catch item-level changes.
   ordersLiveChannel.on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, refreshVisibleOrderView);
   // Payment confirmations live in a separate table. Re-render the current
-  // order detail immediately when a vendor confirms the 20% delivery deposit.
+  // Re-render the current order detail immediately when a payment changes.
   ordersLiveChannel.on("postgres_changes", { event: "*", schema: "public", table: "payments" }, refreshVisibleOrderView);
   ordersLiveChannel.subscribe(status => {
     window.__ordersRealtimeStatus = status;
@@ -10315,13 +10519,12 @@ function renderBottomNav() {
       { icon: "<i class='fa-solid fa-shield-halved'></i>", label: "Admin", action: "navigate('adminPanel')", view: "adminPanel" },
       { icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
   } else if (isVendorUser) {
-    // Vendor navigation keeps the + action centered with two controls on each side.
-    // Priority: Vendors, Orders | + | Messages, My Shop.
+    // Vendor navigation: Vendors, Orders | + | Messages, My Shop.
     items = [vendorsTab, ordersTab, messagesTab, myShopTab];
   } else if (session) {
-    // Buyer priority: Vendors → Request → Home → Messages → Orders.
-    // Buyers do not get the vendor-only centered + action or My Shop.
-    items = [vendorsTab, requestsTab, homeTab, messagesTab, ordersTab];
+    // Buyer navigation: Vendors → Request → Home → Orders → Messages.
+    // Messages stays at the extreme right; Orders sits immediately beside Home.
+    items = [vendorsTab, requestsTab, homeTab, ordersTab, messagesTab];
   } else {
     items = [homeTab, vendorsTab, requestsTab,
       { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
@@ -10599,8 +10802,9 @@ async function submitAuth() {
       await finishLoginSuccess("home");
     }
   } catch (err) {
-    errorEl.textContent = err.message;
-    errorEl.classList.remove("hidden");
+    errorEl.textContent = err?.message || "Please check the highlighted listing fields.";
+    errorEl.classList.add("hidden");
+    showToast(err?.message || "Please check the listing details and try again.", "error");
   } finally {
     btn.disabled = false;
   }
@@ -10738,6 +10942,7 @@ async function cancelLoginOtp() {
   byId("otpModal").classList.add("hidden");
   pendingOtpAccessToken = null;
   manualLogout = true;
+  await recordAuthActivity("logout");
   await sb.auth.signOut();
 }
 
@@ -10754,6 +10959,7 @@ async function logout() {
   if (!(await showConfirmDialog("Log out of Levromart?", { title: "Log out", okLabel: "Log out" }))) return;
   manualLogout = true;
   try { window.__levromartClearPersistedRoute?.(); } catch (_) {}
+  await recordAuthActivity("logout");
   await sb.auth.signOut();
   await refreshAuthStateOnce();
   navigate("home");
@@ -10850,7 +11056,10 @@ function showLevromartAbout() {
   const modal = byId("aboutLevromartModal");
   if (!modal) return;
   const logo = byId("aboutLevromartLogo");
-  if (logo && typeof MEDRIS_LOGO !== "undefined") logo.src = MEDRIS_LOGO;
+  if (logo) {
+    if (typeof LEVROMART_LOGO_CIRCLE !== "undefined") logo.src = LEVROMART_LOGO_CIRCLE;
+    else if (typeof MEDRIS_LOGO !== "undefined") logo.src = MEDRIS_LOGO;
+  }
   const year = byId("aboutYear");
   if (year) year.textContent = new Date().getFullYear();
   byId("settingsMoreMenu")?.classList.add("hidden");
@@ -10891,7 +11100,8 @@ function friendlyErrorText(err) {
 }
 function errorStateHtml(err) {
   const { icon, text } = friendlyErrorText(err);
-  return `<div class="empty-state"><i class="fa-solid ${icon}" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>${text}</div>`;
+  const isNetwork = icon === "fa-wifi";
+  return `<div class="empty-state ${isNetwork ? "levromart-network-error-state" : ""}"><i class="fa-solid ${icon}" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>${isNetwork ? "Network trouble" : text}</div>`;
 }
 function updateHeaderNavActive() {
   document.querySelectorAll(".header-nav-link").forEach((el) => el.classList.toggle("active", el.dataset.view === currentView));
@@ -10903,6 +11113,46 @@ let messageChannelClosePromise = Promise.resolve();
 // Keep the last successfully rendered screen in memory so returning to a
 // page is instant. Fresh Supabase data still refreshes it in the background.
 const routeHtmlCache = new Map();
+const ORDER_ROUTE_SNAPSHOT_PREFIX = "levromart-order-route-v1:";
+function orderRouteSnapshotKey(view, params = {}) {
+  return `${ORDER_ROUTE_SNAPSHOT_PREFIX}${routeCacheKey(view, params)}`;
+}
+// Persist the last REAL rendered page, not a loading shell. This makes navigation
+// cache-first across reloads so users see the page they asked for immediately
+// while the live renderer silently reconciles fresh Supabase data underneath.
+const ROUTE_HTML_SNAPSHOT_PREFIX = "levromart-route-html-v2:";
+const ROUTE_HTML_SNAPSHOT_MAX = 500000;
+function persistedRouteHtmlKey(view, params = {}) {
+  return `${ROUTE_HTML_SNAPSHOT_PREFIX}${routeCacheKey(view, params)}`;
+}
+function isUsableRouteSnapshot(raw) {
+  return !!(raw && raw.length > 100 && !/Your latest orders will refresh in the background\.|Refreshing in the background\.|Your latest shop data will refresh in the background\.|Opening…|Loading…/i.test(raw));
+}
+function getPersistedRouteHtml(view, params = {}) {
+  try {
+    const key = persistedRouteHtmlKey(view, params);
+    const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
+    return isUsableRouteSnapshot(raw) ? raw : null;
+  } catch (_) { return null; }
+}
+function persistRouteHtml(view, params = {}, html) {
+  if (!html || !isUsableRouteSnapshot(String(html))) return;
+  const value = String(html);
+  if (value.length > ROUTE_HTML_SNAPSHOT_MAX) return;
+  try {
+    const key = persistedRouteHtmlKey(view, params);
+    sessionStorage.setItem(key, value);
+    localStorage.setItem(key, value);
+  } catch (_) {
+    // Quota pressure should never block navigation. Keep the in-memory cache.
+  }
+}
+function getPersistedOrderRouteHtml(view, params = {}) {
+  return getPersistedRouteHtml(view, params);
+}
+function persistOrderRouteHtml(view, params = {}, html) {
+  persistRouteHtml(view, params, html);
+}
 function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
@@ -10911,9 +11161,10 @@ function navigationShellHtml(view) {
   const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
-  if(view==='vendorDashboard') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> My Shop</h2><div class="dash-tabs shop-tabs-rail"><button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button><button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button><button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button><button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions</button></div><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating your shop…</div></div>`;
-  if(view==='vendorOrders'||view==='buyerOrders') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating orders…</div></div>`;
-  return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating…</div></div>`;
+  // Never expose a background-refresh message as the page itself. If no real
+  // snapshot exists yet, use a tiny neutral skeleton; the live renderer replaces
+  // it as soon as its data arrives.
+  return `<div class="instant-page-shell instant-route-opening" aria-hidden="true"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-route-skeleton"><span></span><span></span><span></span></div></div>`;
 }
 
 function isOwnVendorId(vendorId) {
@@ -10939,12 +11190,28 @@ function navigationLoadingHtml(view) {
 
 function homeFallbackHtml(message = "The marketplace is taking a moment to load. Please try again.") {
   const safeMessage = typeof esc === "function" ? esc(message) : String(message).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c] || c));
-  return `<div class="empty-state levro-home-fallback" role="status" aria-live="polite">
-    <i class="fa-solid fa-store" style="display:block;font-size:2rem;margin-bottom:.65rem;color:var(--primary);"></i>
-    <strong style="display:block;margin-bottom:.35rem;">Levromart is still loading</strong>
-    <p class="muted" style="margin:0 auto .8rem;max-width:28rem;">${safeMessage}</p>
+  return `<div class="empty-state levro-home-fallback" role="status" aria-live="polite" style="min-height:48vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+    <div style="font-size:2rem;font-weight:850;letter-spacing:-.04em;color:var(--primary);margin-bottom:.55rem;">Levromart</div>
+    <p class="muted" style="margin:0 auto .9rem;max-width:28rem;">${safeMessage}</p>
     <button type="button" class="btn" onclick="navigate('home',{},false)"><i class="fa-solid fa-rotate-right"></i> Try again</button>
   </div>`;
+}
+
+function fastNavigateHome(event) {
+  try { event?.preventDefault?.(); event?.stopPropagation?.(); } catch (_) {}
+  const app = byId('app');
+  // Paint the last known homepage immediately. The normal router then refreshes
+  // Home in the background. This must never wait on Supabase before showing Home.
+  try {
+    if (app) {
+      const cache = getOfflineHomeCache?.();
+      if (cache) {
+        const rendered = renderOfflineHomeFromCache(cache, { showOfflineNotice:false });
+        if (rendered) { app.innerHTML = rendered; syncLeviFabVisibility(); updateHeaderNavActive(); }
+      }
+    }
+  } catch (_) {}
+  Promise.resolve(navigate('home', {}, false)).catch(() => {});
 }
 
 async function navigate(view, params = {}, pushHistory = true) {
@@ -10989,18 +11256,15 @@ async function navigate(view, params = {}, pushHistory = true) {
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
     try {
-      /* Mobile Safari can restore the cached session after the route tap.
-         Never let the protected renderer mistake that short gap for a real
-         permission failure. Wait for the shared auth/profile refresh first. */
-      await Promise.race([
-        refreshAuthStateOnce(),
-        new Promise(resolve => setTimeout(resolve, 8000))
-      ]);
-      if (session && !profile) {
-        const authGraceUntil = Date.now() + 3000;
-        while (Date.now() < authGraceUntil && session && !profile) {
-          await new Promise(resolve => setTimeout(resolve, 120));
-        }
+      // Navigation is never held hostage by profile hydration. A live session
+      // is enough to start rendering; role/vendor hydration continues through
+      // the existing auth listener and bounded renderer checks. Only a truly
+      // missing session gets a short recovery window.
+      if (!session) {
+        await Promise.race([
+          refreshAuthStateOnce(),
+          new Promise(resolve => setTimeout(resolve, 1200))
+        ]);
       }
     } catch (_) {}
   }
@@ -11030,12 +11294,14 @@ async function navigate(view, params = {}, pushHistory = true) {
   // that wait was what made opening a DM feel like it "popped" the inbox
   // page first. The real render below still replaces this once it's ready.
   if (view === "messages" && params?.conversationId && profile?.role !== "admin") {
-    const cachedConv = (window.__conversations || []).find((c) => c.conversation_id === params.conversationId);
-    if (cachedConv) {
-      const cachedMessages = lastSeenMessagesByConv.get(params.conversationId);
-      app.innerHTML = chatSkeletonHtml(params.conversationId, cachedConv, cachedMessages);
-      if (cachedMessages?.length) requestAnimationFrame(scrollChatToBottom);
-    }
+    window.__chatFastPaintDirty = false;
+    const cachedConv = (window.__conversations || []).find((c) => c.conversation_id === params.conversationId) || { conversation_id: params.conversationId, other_name: "Chat", other_avatar: null, unread_count: 0 };
+    const cachedMessages = lastSeenMessagesByConv.get(params.conversationId);
+    // Always paint the chat surface immediately, even for a deep link where
+    // the inbox has not been hydrated yet. Network hydration replaces only
+    // the stale content later; there is never a central loading spinner.
+    app.innerHTML = chatSkeletonHtml(params.conversationId, cachedConv, cachedMessages);
+    if (cachedMessages?.length) requestAnimationFrame(scrollChatToBottom);
   }
   updateAuthUI();
   renderBottomNav();
@@ -11065,11 +11331,13 @@ async function navigate(view, params = {}, pushHistory = true) {
   // Paint the destination immediately. Reuse a previously rendered screen
   // when available; otherwise show a lightweight page shell. Do not block a
   // tap on Supabase and do not show a generic "Loading..." page.
-  const hasChatFastPath = view === "messages" && !!params?.conversationId && profile?.role !== "admin" && !!((window.__conversations || []).find((c) => c.conversation_id === params.conversationId));
+  const hasChatFastPath = view === "messages" && !!params?.conversationId && profile?.role !== "admin";
   const cacheKey = routeCacheKey(view, params);
   const cachedRouteHtml = routeHtmlCache.get(cacheKey);
+  const persistedRouteHtml = getPersistedRouteHtml(view, params);
+  const instantRouteHtml = cachedRouteHtml || persistedRouteHtml;
   if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && view !== "storefront") {
-    app.innerHTML = cachedRouteHtml || navigationShellHtml(view);
+    app.innerHTML = instantRouteHtml || navigationShellHtml(view);
     syncLeviFabVisibility();
     hideLevromartSplash();
     clearAutoScrollTimers();
@@ -11080,7 +11348,16 @@ async function navigate(view, params = {}, pushHistory = true) {
     hideLevromartSplash();
     clearAutoScrollTimers();
   }
+  // Home is cache-first: if this device has a previously rendered marketplace,
+  // paint it immediately before any Supabase request begins. The live renderer
+  // below still refreshes the data in the background and replaces this content
+  // only when the fresh render is ready. This prevents the Home fallback/loading
+  // state from ever becoming the visible result of a slow or transient request.
+  if (view === "home" && app && !routeHtmlCache.has(cacheKey)) {
+    try { paintHomeFromLocalCatalog(false); } catch (_) {}
+  }
   let html;
+  let __levroRouteHadRenderError = false;
   try {
     switch (view) {
       case "home": html = await renderHome(); break;
@@ -11111,6 +11388,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminUsers": html = await renderAdminUsers(); break;
       case "adminFinance": html = await renderAdminFinance(); break;
       case "adminLog": html = await renderAdminLog(); break;
+      case "adminAuthLogs": html = await renderAdminAuthLogs(); break;
       case "adminMonthlyListings": html = await renderAdminMonthlyListings(); break;
       case "wishlist": html = await renderWishlist(); break;
       case "cart": html = await renderCart(); break;
@@ -11172,6 +11450,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       }
     }
   } catch (err) {
+    __levroRouteHadRenderError = true;
     lastRenderError = err?.message || String(err || "");
     const cachedFallback = routeHtmlCache.get(cacheKey);
     if (cachedFallback) {
@@ -11179,14 +11458,20 @@ async function navigate(view, params = {}, pushHistory = true) {
       lastRenderError = null;
     } else if (view === "home") {
       const cachedHome = getOfflineHomeCache();
-      // Only label the marketplace as offline when the browser actually
-      // reports an offline state. A transient Supabase/query failure while
-      // online must never surface the offline banner.
-      html = cachedHome
-        ? renderOfflineHomeFromCache(cachedHome, { showOfflineNotice: browserLooksOffline() })
-        : homeFallbackHtml(browserLooksOffline()
-            ? "You're offline. Connect once to load Levromart's marketplace."
-            : "The marketplace is taking a moment to load. Please try again.");
+      // Home is cache-first. If a previous real marketplace is already painted,
+      // leave it on screen and let the failed refresh disappear silently. Never
+      // replace a usable Home surface with a generic loading/fallback page.
+      const existingHome = app?.innerHTML?.trim() || "";
+      const existingHomeIsReal = existingHome && !/Levromart is still loading|The marketplace is taking a moment to load|We could not load the marketplace right now/i.test(existingHome);
+      if (existingHomeIsReal && existingHome.length > 300) {
+        html = existingHome;
+      } else if (cachedHome) {
+        html = renderOfflineHomeFromCache(cachedHome, { showOfflineNotice:false });
+      } else {
+        // Last-resort first paint: keep a clean marketplace shell rather than
+        // showing a failure message. The next successful refresh fills it.
+        html = renderOfflineHomeFromCache({ categories:[], sectors:[], trending:[], browseProducts:[], topVendors:[], recentProducts:[], packages:[], carouselSlides:[] }, { showOfflineNotice:false }) || `<div class="empty-state" style="min-height:40vh;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-shop" style="font-size:2rem;color:var(--primary);"></i></div>`;
+      }
       lastRenderError = null;
     } else if (view === "home" || view === "storefront") {
       html = app?.innerHTML?.trim() ? app.innerHTML : '<div class="empty-state">Please try again.</div>';
@@ -11206,10 +11491,22 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   // Ignore an older request if the user has already navigated somewhere else.
   if (navToken !== navigationGeneration) return;
-  if (html && !lastRenderError) routeHtmlCache.set(cacheKey, html);
+  if (html && !lastRenderError) {
+    routeHtmlCache.set(cacheKey, html);
+    persistRouteHtml(view, params, html);
+  }
   const preserveSameViewScroll = !pushHistory && previousView === view;
   const sameViewScrollY = preserveSameViewScroll ? window.scrollY : 0;
+  const preserveActiveFastChat = view === "messages" && !!currentViewParams?.conversationId && !!byId("chatInput") && window.__chatFastPaintDirty === true;
+  if (preserveActiveFastChat) {
+    // The user has already started typing into the instant-painted chat. Do
+    // not replace their live DOM with the slower hydrated copy. The realtime
+    // channel and background fetch will reconcile messages without losing the
+    // text they are composing.
+    return;
+  }
   app.innerHTML = html;
+  if (!__levroRouteHadRenderError) hideLevromartSplash();
   if (view === "notifications") void renderNotifPanel();
   if (view === "home") setTimeout(() => { try { filterHomeProducts(); } catch (_) {} }, 0);
   syncLeviFabVisibility();
@@ -11497,10 +11794,10 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span>Request an item</span></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
   </section>`;
-  const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service).slice(0, 10),"trending-products");
-  const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
+  const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
+  const trendingServices = deterministicHourlyShuffle((trending || []).filter(p => p.is_service),"trending-services");
   if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
-  if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${topVendors.map(vendorCardHtml).join("")}</div>`;
+  if (topVendors.length) { const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors"); html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`; }
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
@@ -12086,7 +12383,7 @@ async function renderHome() {
   const activeCategory = (categories || []).find((c) => String(c.id) === String(currentHomeCategoryId)) || null;
   const subCats = (categories || []).filter(c => c.parent_category_id && (!activeSector || String(c.sector_id) === String(activeSector.id)));
 
-  let vendorQuery = sb.from("products").select("id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
+  let vendorQuery = sb.from("products").select("id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, delivery_fee, delivery_fee_mode, delivery_fee_per_km, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
@@ -12176,9 +12473,21 @@ async function renderHome() {
         (activeCategory && String(p.category_id) !== String(activeCategory.id))),
         ...(trending || [])].map(p => [String(p.id), p])).values()]
       .sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0));
+  const cacheBase = cachedHome || {};
+  const safeBrowseForCache = rotatedBrowseProducts.length ? rotatedBrowseProducts : (cacheBase.browseProducts || []);
+  const safeTrendingForCache = cachedTrending.length ? cachedTrending : (cacheBase.trending || []);
+  const safeTopVendorsForCache = Array.isArray(topVendors) && topVendors.length ? topVendors : (cacheBase.topVendors || []);
+  const safeRecentForCache = Array.isArray(recentProducts) && recentProducts.length ? recentProducts : (cacheBase.recentProducts || []);
+  const safePackagesForCache = Array.isArray(packages) && packages.length ? packages : (cacheBase.packages || []);
   writeOfflineHomeCache({
-    categories, sectors: sectors || sectorsData || [], trending: cachedTrending,
-    browseProducts: hourlyBrowseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
+    categories: Array.isArray(categories) && categories.length ? categories : (cacheBase.categories || []),
+    sectors: Array.isArray(sectors) && sectors.length ? sectors : (cacheBase.sectors || sectorsData || []),
+    trending: safeTrendingForCache,
+    browseProducts: safeBrowseForCache,
+    topVendors: safeTopVendorsForCache,
+    recentProducts: safeRecentForCache,
+    packages: safePackagesForCache,
+    carouselSlides: Array.isArray(homepageCarouselSlides) && homepageCarouselSlides.length ? homepageCarouselSlides : (cacheBase.carouselSlides || [])
   });
 
   const allHomePackages = packages || [];
@@ -12217,13 +12526,14 @@ async function renderHome() {
 
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
   if (trending && trending.length) {
-    const trendingProducts = deterministicHourlyShuffle(trending.filter(p => !p.is_service).slice(0, 10),"trending-products");
+    const trendingProducts = deterministicHourlyShuffle(trending.filter(p => !p.is_service),"trending-products");
     if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
 
   }
 
   if (topVendors && topVendors.length) {
-    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${topVendors.map(vendorCardHtml).join("")}</div>`;
+    const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors");
+    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`;
   }
   const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
@@ -12410,30 +12720,7 @@ function deterministicHourlyShuffle(list, seedSource){
   return arr;
 }
 
-function startBrowseEverythingRotation(){
-  if(window.__levroBrowseRotationTimer)clearInterval(window.__levroBrowseRotationTimer);
-  window.__levroBrowseRotationTimer=setInterval(()=>{
-    const grid=byId('productGrid');
-    const catalog=Array.isArray(window.__homeBrowseCatalog)?window.__homeBrowseCatalog:[];
-    if(!grid||!catalog.length||browserLooksOffline())return;
-    const search=byId('searchInput')?.value.trim()||'';
-    const listing=byId('filterListing')?.value||'';
-    const catId=byId('filterCategory')?.value||'';
-    // Search/filter results keep their intentional relevance. The automatic
-    // 10-minute rotation applies to the unfiltered Browse Everything grid.
-    if(search||listing||catId||homeListingTab!=='products')return;
-    const key=Math.floor(Date.now()/600000);
-    if(key===window.__homeBrowseRotationKey)return;
-    window.__homeBrowseRotationKey=key;
-    window.__homeBrowseCatalog=deterministicBrowseVisibilityShuffle(catalog,`browse:${currentSectorId||'all'}`);
-    const cache=getOfflineHomeCache();
-    if(cache)writeOfflineHomeCache({...cache,browseProducts:window.__homeBrowseCatalog});
-    grid.innerHTML=window.__homeBrowseCatalog.filter(p=>!p.is_service).map(productCardHtml).join('');
-  },30000);
-}
 
-
-startBrowseEverythingRotation();
 
 function scrollToBrowse(listingType) {
   const sel = byId("filterListing");
@@ -12504,7 +12791,7 @@ async function fetchSearchSuggestions(term) {
 }
 function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hidden"); }
 
-const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
+const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
 
 // Used whenever a search/filter comes up empty - instead of a dead end,
 // show what IS available so the customer isn't stuck looking at nothing.
@@ -12834,7 +13121,17 @@ function productDeliverySummaryHtml(p) {
   return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Free delivery</p>`;
 }
 
-async function hydrateProductVariantIndicatorsInView(){
+function productPaymentPlanBadgeHtml(p){
+  if (!p || p.is_service) return "";
+  const timing = p.payment_timing === "pay_after" ? "pay_after" : "pay_before";
+  const depositPercent = Math.max(1, Math.min(99, Number(p.payment_deposit_percent ?? 20) || 20));
+  const label = timing === "pay_after" ? `${depositPercent}% PAD` : "PBD";
+  const title = timing === "pay_after"
+    ? `Pay ${depositPercent}% before delivery; remaining ${100 - depositPercent}% after delivery`
+    : "Pay before delivery";
+  return `<span class="product-card-payment-plan ${timing === "pay_after" ? "pay-after" : "pay-before"}" title="${title}" aria-label="${title}">${label}</span>`;
+}
+function hydrateProductVariantIndicatorsInView(){
   // A variety indicator is intentionally tied to multiple listing photos.
   // It belongs under the delivery line, not beside the vendor name.
   const nodes=[...document.querySelectorAll('.product-card-wrap[data-product-id]')];
@@ -12888,7 +13185,7 @@ function productCardHtml(p) {
       </div>
       ${p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`}
       <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
-      <div class="product-card-action-row ${String(p._cardContext||"").toLowerCase()==="trending"?"trending-card-action-row":""}"><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button><div class="product-card-action-left">${actionHtml}</div></div>
+      <div class="product-card-action-row ${String(p._cardContext||"").toLowerCase()==="trending"?"trending-card-action-row":""}"><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button>${productPaymentPlanBadgeHtml(p)}<div class="product-card-action-left">${actionHtml}</div></div>
     </div>
   </div>`;
 }
@@ -13533,12 +13830,17 @@ async function refreshChatLists() {
     myChatLists = [];
   }
 }
+function archivedUnreadChatCount() {
+  const archivedIds = getArchivedChatIds();
+  return (window.__conversations || []).filter(c => archivedIds.has(c.conversation_id) && Number(c.unread_count || 0) > 0).length;
+}
 function chatListTabsHtml() {
   const listTabs = myChatLists.map((l) => `<a class="${msgListFilter === "list:" + l.id ? "active" : ""}" onclick="setMsgListFilter('list:${l.id}')">${esc(l.name)}</a>`).join("");
+  const archivedUnread = archivedUnreadChatCount();
   return `<div class="tabs" style="overflow-x:auto;flex-wrap:nowrap;">
       <a class="${msgListFilter === "all" ? "active" : ""}" onclick="setMsgListFilter('all')">all</a>
       <a class="${msgListFilter === "unread" ? "active" : ""}" onclick="setMsgListFilter('unread')">unread</a>
-      <a class="${msgListFilter === "archived" ? "active" : ""}" onclick="setMsgListFilter('archived')">archived</a>
+      <a class="${msgListFilter === "archived" ? "active" : ""}" onclick="setMsgListFilter('archived')">archived${archivedUnread ? ` <span class="conv-unread-badge" style="display:inline-flex;vertical-align:middle;margin-left:.18rem;">${archivedUnread > 99 ? "99+" : archivedUnread}</span>` : ""}</a>
       ${listTabs}
       <a onclick="createChatListPrompt()" title="Create a new list"><i class="fa-solid fa-plus"></i> New list</a>
       ${msgListFilter.startsWith("list:") ? `<a onclick="deleteChatListPrompt('${msgListFilter.slice(5)}')" title="Delete this list" style="color:var(--danger);"><i class="fa-solid fa-trash"></i></a>` : ""}
@@ -13628,7 +13930,7 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
   const avatar = cached.other_avatar;
   const messagesArea = cachedMessages && cachedMessages.length
     ? chatMessagesWithDatesHtml(cachedMessages, chatBubbleHtml)
-    : `<div class="chat-skeleton-spinner"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
+    : `<div class="chat-fast-empty" aria-live="polite"></div>`;
   return `<div class="chat-page-wrap">
     <div class="chat-page-header">
       <button class="chat-header-back" onclick="navigate('messages')" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
@@ -13644,8 +13946,8 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
       <div class="chat-messages" id="chatMessages">${messagesArea}</div>
       <div class="chat-input-row">
         <button class="msg-attach-btn" disabled style="opacity:0.4;"><i class="fa-solid fa-paperclip"></i></button>
-        <textarea rows="1" placeholder="Type a message…" disabled></textarea>
-        <button class="btn btn-sm" disabled style="opacity:0.6;"><i class="fa-solid fa-paper-plane"></i></button>
+        <textarea id="chatInput" rows="1" placeholder="Type a message…" oninput="window.__chatFastPaintDirty=true;autoGrowChatInput(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}')}" ></textarea>
+        <button class="btn btn-sm" onclick="sendChatMessage('${conversationId}')" aria-label="Send message"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
     </div>
   </div>`;
@@ -13754,7 +14056,15 @@ async function renderMessages(conversationId) {
   const otherPhone = op.phone || "";
   lastSeenMessagesByConv.set(conversationId, messages || []);
 
-  sb.rpc("mark_conversation_opened", { p_conversation_id: conversationId }).then(() => refreshNotifications());
+  // Mark the thread read immediately in the local inbox state as well as in
+  // the database. This prevents the inbox from showing a stale unread badge
+  // when the user has just opened the conversation.
+  const cachedConv = (window.__conversations || []).find(c => c.conversation_id === conversationId);
+  if (cachedConv) cachedConv.unread_count = 0;
+  sb.rpc("mark_conversation_opened", { p_conversation_id: conversationId }).then(() => {
+    if (currentView === "messages" && !currentViewParams?.conversationId) filterMsgList();
+    return refreshNotifications();
+  }).catch(() => {});
 
   const chatArchived = isChatArchived(conversationId);
   const chatMenuItems = [];
@@ -14684,16 +14994,30 @@ async function sendChatMessage(conversationId) {
   if (msgListening || msgVoicePaused) { stopMsgVoiceRecording(); }
   clearTimeout(typingStopTimer);
   publishChatTyping(false);
-  resetChatInput(input);
   const replyToId = chatReplyTarget?.id || null;
-  const { data, error } = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: session.user.id, body, reply_to_id: replyToId }).select("*").single();
-  if (error) { showToast(error.message, "error"); return; }
   const replyTargetSnapshot = chatReplyTarget ? { ...chatReplyTarget } : null;
-  if (replyTargetSnapshot) data.reply_to = { id: replyTargetSnapshot.id, body: replyTargetSnapshot.body, attachment_name: replyTargetSnapshot.attachment, sender_id: document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains("mine") ? session.user.id : "" };
+  const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const optimistic = { id: tempId, conversation_id: conversationId, sender_id: session.user.id, body, reply_to_id: replyToId, created_at: new Date().toISOString(), delivered_at: null, read_at: null, __optimistic: true };
+  if (replyTargetSnapshot) optimistic.reply_to = { id: replyTargetSnapshot.id, body: replyTargetSnapshot.body, attachment_name: replyTargetSnapshot.attachment, sender_id: document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains("mine") ? session.user.id : "" };
+  resetChatInput(input);
   chatReplyTarget = null;
   renderChatReplyPreview();
-  byId("chatMessages")?.insertAdjacentHTML("beforeend", chatBubbleHtml(data));
+  const chatEl = byId("chatMessages");
+  // Paint the outgoing bubble before waiting on the network/database. The
+  // database insert still remains authoritative; the temporary bubble is
+  // replaced/removed below if the write succeeds/fails.
+  chatEl?.insertAdjacentHTML("beforeend", chatBubbleHtml(optimistic));
   scrollChatToBottom();
+  setupMessageInteractions(chatEl);
+  const { data, error } = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: session.user.id, body, reply_to_id: replyToId }).select("*").single();
+  if (error) {
+    document.querySelector(`.chat-bubble[data-msg-id="${tempId}"]`)?.remove();
+    showToast(error.message, "error");
+    return;
+  }
+  if (replyTargetSnapshot) data.reply_to = { id: replyTargetSnapshot.id, body: replyTargetSnapshot.body, attachment_name: replyTargetSnapshot.attachment, sender_id: document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains("mine") ? session.user.id : "" };
+  const tempBubble = document.querySelector(`.chat-bubble[data-msg-id="${tempId}"]`);
+  if (tempBubble) tempBubble.outerHTML = chatBubbleHtml(data);
   setupMessageInteractions(byId("chatMessages"));
 }
 let chatAttachmentEditorState = null;
@@ -15081,6 +15405,10 @@ async function renderProductDetail(productId) {
   const canRent=!ownListing&&(product.listing_type==="rent"||product.listing_type==="both"), canBuy=!ownListing&&(product.listing_type==="sale"||product.listing_type==="both");
   const productPhotos=Array.isArray(product.photos)?product.photos.filter(Boolean):[];
   const productVariants=Array.isArray(product.variants)?product.variants.slice().sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)):[];
+  // Keep payment-plan percentages as real JavaScript values. These are reused by the
+  // customer-facing notices below; do not nest a template literal inside a quoted string.
+  const paymentDepositPercent=Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20));
+  const paymentRemainingPercent=100-paymentDepositPercent;
   const cleanDescription=stripProductVariantMeta(product.description||"");
   const photosHtml = productPhotos.length
     ? `<div class="product-gallery product-gallery-carousel">
@@ -15138,6 +15466,7 @@ async function renderProductDetail(productId) {
         <input type="number" id="rentQty" value="1" min="1" max="${product.quantity_total}" placeholder="Qty" oninput="updateRentTotalPreview(${product.rental_rate},'${product.rental_rate_unit}')" style="width:90px;" />
       </div>
       <p class="muted" id="rentTotalPreview">Pick your dates to see the total.</p>
+      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% first; the remaining ${paymentRemainingPercent}% is due after delivery.` : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       ${deliveryFieldsHtml("rent", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km)}
       <button class="btn" onclick="confirmRental('${product.vendor.id}','${product.id}')">Reserve</button>
       <p id="rentError" class="error-text hidden"></p>
@@ -15155,6 +15484,7 @@ async function renderProductDetail(productId) {
           : `<input type="number" id="buyQty" value="1" min="1" max="${product.quantity_available}" placeholder="Qty" oninput="updateBuyTotalPreview(${product.sale_price ?? 0})" style="width:90px;" />`}
       </div>
       ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview">Total: ${naira(productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price)}</p>` : ""}
+      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% first; the remaining ${paymentRemainingPercent}% is due after delivery.` : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
       ${!product.is_service ? `<div style="margin-top:0.7rem;">
         <label style="margin:0;">Note for the vendor <span class="muted" style="font-weight:400;">(optional)</span></label>
@@ -15592,6 +15922,8 @@ function filterVendorsDirectory() {
       const db = b.lat != null ? haversineKm(buyerLocation.lat, buyerLocation.lng, b.lat, b.lng) : Infinity;
       return da - db;
     });
+  } else {
+    list = deterministicHourlyShuffle(list, `vendors-directory:${vendorsListingFilter}:${sectorId}:${city}:${category}:${search}`);
   }
   window.__filteredVendors = list;
   const grid = byId("vendorsGrid");
@@ -15932,7 +16264,7 @@ async function renderStorefront(vendorId) {
   updateStorefrontSocialMeta(v);
 
   const [{ data: products }, { data: stats }, { data: reviews }, { data: packages }, { data: followState }] = await Promise.all([
-    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
+    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, delivery_fee, delivery_fee_mode, delivery_fee_per_km, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
     sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
     sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
@@ -17090,7 +17422,8 @@ async function renderVendorDashboard() {
       <p class="muted" style="margin-top:0.35rem;">Pay anytime within 7 days.</p>
       <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
       <div id="commissionError" class="error-text hidden"></div>
-      <button class="btn btn-sm" id="payCommissionBtn" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
+      <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-receipt"></i> Review commission breakdown</button>
+    <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
     </div>`;
   }
   html += statusBanner;
@@ -17368,7 +17701,8 @@ async function renderVendorEditProfile() {
     <p class="muted" style="margin-top:0.35rem;">Pay anytime within 7 days.</p>
     <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
     <div id="commissionError" class="error-text hidden"></div>
-    <button class="btn btn-sm" id="payCommissionBtn" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
+    <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-receipt"></i> Review commission breakdown</button>
+    <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
   </div>` : ""}
   ${v.verification_status === "verified" ? `
   <div class="dash-actions" style="max-width:480px;margin:0 auto 1rem;">
@@ -18247,6 +18581,9 @@ async function showProductModal() {
     byId("prodDiscountPrice").value = p.discount_price ?? "";
     byId("prodRentalRate").value = p.rental_rate ?? "";
     byId("prodDeliveryMode").value = p.delivery_fee_mode || "free";
+    if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = p.payment_timing || "pay_after";
+    if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = Math.max(1, Math.min(99, Number(p.payment_deposit_percent ?? 20) || 20));
+    updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = p.delivery_fee ?? 0;
     byId("prodDeliveryPerKm").value = p.delivery_fee_per_km ?? 0;
     byId("prodRateUnit").value = p.rental_rate_unit || "day";
@@ -18254,6 +18591,9 @@ async function showProductModal() {
     byId("prodQtyTotal").value = p.quantity_total;
     byId("prodIsService").checked = !!p.is_service;
     byId("prodServiceUnit").value = p.service_price_unit || "flat";
+    if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = p.payment_timing === "pay_after" ? "pay_after" : "pay_before";
+    if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = Math.max(1, Math.min(99, Number(p.payment_deposit_percent ?? 20) || 20));
+    updateProductPaymentTimingHint();
     if (byId("prodBillingModel")) byId("prodBillingModel").value = p.billing_model || (p.is_service ? "commission" : "commission");
     byId("prodLikeVisibility").value=engagement?.like_visibility||"everyone";byId("prodAllowComments").checked=engagement?.allow_comments!==false;byId("prodCommentAudience").value=engagement?.comment_audience||"everyone";
     window.__existingPhotos = p.photos || [];
@@ -18267,6 +18607,9 @@ async function showProductModal() {
     byId("productModalTitle").textContent = "Add New Product";
     ["prodName", "prodDesc", "prodSalePrice", "prodDiscountPrice", "prodRentalRate", "prodDeposit"].forEach((id) => (byId(id).value = ""));
     byId("prodDeliveryMode").value = "free";
+    if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = "pay_before";
+    if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = 20;
+    updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = 0;
     byId("prodDeliveryPerKm").value = 0;
     byId("prodQtyTotal").value = 1;
@@ -18417,6 +18760,47 @@ function toggleProdCategoryOther() {
   byId("prodCategoryOther").classList.toggle("hidden", byId("prodCategory").value !== "__other__");
 }
 
+function setProductPaymentTiming(mode){
+  const value=mode==="pay_after" ? "pay_after" : "pay_before";
+  const sel=byId("prodPaymentTiming");
+  if(sel) sel.value=value;
+  document.querySelectorAll(".payment-timing-option").forEach(btn=>{
+    btn.classList.toggle("selected",btn.dataset.paymentTiming===value);
+    btn.setAttribute("aria-pressed",btn.dataset.paymentTiming===value ? "true" : "false");
+  });
+  updateProductPaymentTimingHint();
+}
+function updateProductPaymentTimingHint(){
+  const el=byId("prodPaymentTimingHint"); const sel=byId("prodPaymentTiming"); if(!el||!sel)return;
+  const isAfter=sel.value==="pay_after";
+  const pctInput=byId("prodPaymentDepositPercent");
+  const raw=String(pctInput?.value ?? "").trim();
+  const pct=raw==="" ? null : Number(raw);
+  const validPct=Number.isFinite(pct) ? Math.max(1,Math.min(99,pct)) : null;
+  const remaining=validPct==null ? null : 100-validPct;
+  if (isAfter) {
+    byId("prodPaymentRemainingPercent")?.replaceChildren(document.createTextNode(remaining==null ? "—" : `${remaining}%`));
+    el.innerHTML=validPct==null
+      ? "<strong>Pay after delivery:</strong> enter the buyer's deposit percentage before saving."
+      : `<strong>Pay after delivery:</strong> the buyer pays ${validPct}% before delivery; the remaining ${remaining}% is due after delivery.`;
+  } else {
+    el.innerHTML="<strong>Pay before delivery:</strong> the buyer pays the full item amount before dispatch. If they need a different arrangement, they should contact the vendor.";
+  }
+  byId("prodPaymentDepositPercentWrap")?.classList.toggle("hidden",!isAfter);
+  document.querySelectorAll(".payment-timing-option").forEach(btn=>{
+    btn.classList.toggle("selected",btn.dataset.paymentTiming===sel.value);
+    btn.setAttribute("aria-pressed",btn.dataset.paymentTiming===sel.value ? "true" : "false");
+  });
+}
+function normalizeProductPaymentDepositPercent(){
+  const input=byId("prodPaymentDepositPercent");
+  if(!input)return;
+  const raw=String(input.value||"").trim();
+  if(raw==="") { updateProductPaymentTimingHint(); return; }
+  const pct=Math.max(1,Math.min(99,Math.round(Number(raw))));
+  if(Number.isFinite(pct)) input.value=String(pct);
+  updateProductPaymentTimingHint();
+}
 function updateProductDeliveryFields() {
   const mode = byId("prodDeliveryMode")?.value || "free";
   const isService = byId("prodIsService")?.checked;
@@ -18440,6 +18824,7 @@ function updateProductFormFields() {
   byId("prodListingTypeWrap").classList.toggle("hidden", isService);
   byId("prodQtyWrap").classList.toggle("hidden", isService);
   byId("prodServiceUnitWrap").classList.toggle("hidden", !isService);
+  byId("prodPaymentTimingSettings")?.classList.toggle("hidden", isService);
 
   if (isService) {
     const unit = byId("prodServiceUnit").value;
@@ -18616,6 +19001,7 @@ async function refreshSavedProductState(productId) {
   };
 
   window.__homeBrowseCatalog = replaceById(window.__homeBrowseCatalog);
+  window.__storefrontProducts = replaceById(window.__storefrontProducts);
   try {
     const cache = getOfflineHomeCache();
     if (cache) {
@@ -18666,6 +19052,72 @@ async function refreshVisibleProductAfterSave(productId) {
   return savedProduct;
 }
 
+function clearProductValidationState() {
+  document.querySelectorAll(".product-field-validation-message").forEach(el => el.remove());
+  document.querySelectorAll(".product-validation-focus").forEach(el => el.classList.remove("product-validation-focus"));
+  document.querySelectorAll('[aria-invalid="true"]').forEach(el => el.removeAttribute("aria-invalid"));
+}
+
+function focusProductValidationField(message) {
+  clearProductValidationState();
+  const text = String(message || "Please complete this field before saving.");
+  const rules = [
+    [/^Product name is required/i, "prodName"],
+    [/^Choose how you want to pay Levromart/i, "prodBillingModel"],
+    [/^Price is required|^Enter a price for this service/i, "prodSalePrice"],
+    [/^Discount price must be lower/i, "prodDiscountPrice"],
+    [/^Enter a fee per kilometre/i, "prodDeliveryPerKm"],
+    [/^Enter a buyer deposit percentage/i, "prodPaymentDepositPercent"],
+    [/^Rental rate is required/i, "prodRentalRate"],
+    [/^Type a name for the new sector/i, "prodSectorOther"],
+    [/^Type a name for the new category/i, "prodCategoryOther"],
+    [/^Couldn't create that sector/i, "prodSectorOther"],
+    [/^Couldn't create that category/i, "prodCategoryOther"],
+    [/^This sector does not have an Other category/i, "prodCategory"]
+  ];
+  let fieldId = null;
+  for (const [pattern, id] of rules) { if (pattern.test(text)) { fieldId = id; break; } }
+  const field = fieldId ? byId(fieldId) : null;
+  if (!field) return;
+
+  field.classList.add("product-validation-focus");
+  field.setAttribute("aria-invalid", "true");
+  const msg = document.createElement("div");
+  msg.className = "product-field-validation-message";
+  msg.setAttribute("role", "alert");
+  msg.textContent = text;
+  field.insertAdjacentElement("afterend", msg);
+
+  requestAnimationFrame(() => {
+    try { field.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_) { field.scrollIntoView(); }
+    setTimeout(() => {
+      try { field.focus({ preventScroll: true }); } catch (_) { try { field.focus(); } catch (_) {} }
+    }, 180);
+  });
+}
+
+function bindProductValidationClearers() {
+  if (window.__levromartProductValidationClearersBound) return;
+  window.__levromartProductValidationClearersBound = true;
+  document.addEventListener("input", e => {
+    if (e.target?.closest?.("#productModal") && (e.target.matches?.("#prodName,#prodSalePrice,#prodDiscountPrice,#prodRentalRate,#prodDeliveryPerKm,#prodPaymentDepositPercent,#prodSectorOther,#prodCategoryOther"))) {
+      e.target.classList.remove("product-validation-focus");
+      e.target.removeAttribute("aria-invalid");
+      e.target.parentElement?.querySelector?.(":scope > .product-field-validation-message")?.remove();
+      e.target.nextElementSibling?.classList?.contains("product-field-validation-message") && e.target.nextElementSibling.remove();
+    }
+  }, true);
+  document.addEventListener("change", e => {
+    if (e.target?.closest?.("#productModal") && e.target.matches?.("#prodBillingModel,#prodCategory,#prodSector")) {
+      e.target.classList.remove("product-validation-focus");
+      e.target.removeAttribute("aria-invalid");
+      e.target.nextElementSibling?.classList?.contains("product-field-validation-message") && e.target.nextElementSibling.remove();
+    }
+  }, true);
+}
+
+bindProductValidationClearers();
+
 async function saveProduct() {
   const errorEl = byId("productError");
   errorEl.classList.add("hidden");
@@ -18685,6 +19137,9 @@ async function saveProduct() {
     const delivery_fee_mode = is_service ? "free" : (byId("prodDeliveryMode").value || "free");
     const delivery_fee = is_service || delivery_fee_mode !== "flat" ? 0 : Math.max(0, Number(byId("prodDeliveryFee").value) || 0);
     const delivery_fee_per_km = is_service || delivery_fee_mode !== "distance" ? 0 : Math.max(0, Number(byId("prodDeliveryPerKm").value) || 0);
+    const payment_timing = is_service ? "pay_before" : (byId("prodPaymentTiming")?.value === "pay_after" ? "pay_after" : "pay_before");
+    const paymentDepositRaw = String(byId("prodPaymentDepositPercent")?.value ?? "").trim();
+    const payment_deposit_percent = paymentDepositRaw === "" ? null : Math.max(1, Math.min(99, Number(paymentDepositRaw)));
     const rental_rate_unit = byId("prodRateUnit").value;
     const service_price_unit = is_service ? (byId("prodServiceUnit").value || "flat") : null;
     if (!name) throw new Error("Product name is required.");
@@ -18693,6 +19148,7 @@ async function saveProduct() {
     if (is_service && !sale_price) throw new Error("Enter a price for this service.");
     if (discount_price != null && (sale_price == null || discount_price <= 0 || discount_price >= sale_price)) throw new Error("Discount price must be lower than the regular price.");
     if (delivery_fee_mode === "distance" && delivery_fee_per_km <= 0) throw new Error("Enter a fee per kilometre for distance-based delivery.");
+    if (payment_timing === "pay_after" && (!Number.isFinite(payment_deposit_percent) || payment_deposit_percent < 1 || payment_deposit_percent > 99)) throw new Error("Enter a buyer deposit percentage between 1% and 99%.");
     if (listing_type !== "sale" && !rental_rate) throw new Error("Rental rate is required for a rental listing.");
 
     let chosenSectorId = byId("prodSector").value || null;
@@ -18729,6 +19185,8 @@ async function saveProduct() {
       delivery_fee_mode,
       delivery_fee,
       delivery_fee_per_km,
+      payment_timing,
+      payment_deposit_percent,
       rental_rate: listing_type === "sale" ? null : rental_rate,
       rental_rate_unit: listing_type === "sale" ? null : rental_rate_unit,
       deposit_amount: is_service ? null : (byId("prodDeposit").value ? Number(byId("prodDeposit").value) : null),
@@ -18806,6 +19264,8 @@ async function saveProduct() {
     closeProductModal({ skipDraft: true });
     window.__homeBrowseCatalog = Array.isArray(window.__homeBrowseCatalog)
       ? window.__homeBrowseCatalog.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p) : window.__homeBrowseCatalog;
+    window.__storefrontProducts = Array.isArray(window.__storefrontProducts)
+      ? window.__storefrontProducts.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p) : window.__storefrontProducts;
     if (currentProductDetail && String(currentProductDetail.id) === String(savedProductId)) currentProductDetail = { ...currentProductDetail, ...primarySavedProduct };
     document.querySelectorAll(`.product-card-wrap[data-product-id="${CSS.escape(String(savedProductId))}"]`).forEach(node => {
       const context = node.querySelector(".product-card-action-row")?.classList.contains("trending-card-action-row") ? "trending" : "";
@@ -18823,8 +19283,7 @@ async function saveProduct() {
       try { await refreshVisibleProductAfterSave(savedProductId); } catch (e) { console.warn("[Levromart] Post-save product reconciliation failed:", e); }
     });
   } catch (err) {
-    errorEl.textContent = err.message;
-    errorEl.classList.remove("hidden");
+    focusProductValidationField(err?.message || "Please complete the required field before saving.");
   } finally {
     btn.disabled = false;
   }
@@ -19381,7 +19840,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
 
   // Use order_items(*) rather than naming columns, so a schema change to
   // order_items can't make the entire Orders page look empty.
-  let query = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("vendor_id", vendor.id);
+  let query = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(id,is_service,name)), payments(payment_type,status)").eq("vendor_id", vendor.id);
   if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
@@ -19389,39 +19848,51 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // status/type/payment/date filters the list below happens to be set to
   // -- run both queries together instead of one after the other.
   const [{ data: allOrders, error: allOrdersError }, { data: statsOrders, error: statsError }] = await Promise.all([
-    query.order("created_at", { ascending: false }),
-    sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, updated_at").eq("vendor_id", vendor.id),
+    withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") }),
+    withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, updated_at").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") }),
   ]);
   // If the timestamp migration has not been run yet, fall back to the base
   // order query instead of rendering an empty page.
   let safeAllOrders = allOrders;
   if (allOrdersError) {
     console.warn("Rich vendor order query failed; using compatibility query", allOrdersError);
-    let fallback = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("vendor_id", vendor.id);
+    let fallback = sb.from("orders").select("*").eq("vendor_id", vendor.id);
     if (status !== "all") fallback = fallback.eq("status", status);
     if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
     if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
-    const r = await fallback.order("created_at", { ascending: false });
+    const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: [], error: null });
     safeAllOrders = r.data || [];
   }
+  // Hydrate item summaries separately from the base order query. This keeps a
+  // restrictive nested relationship from blocking the whole Orders page.
+  try {
+    const orderIds = (safeAllOrders || []).map(o => o.id).filter(Boolean);
+    if (orderIds.length) {
+      const { data: orderItems } = await withRouteTimeout(
+        sb.from("order_items").select("order_id,product_id,quantity,unit_price,product:products(id,is_service,name)").in("order_id", orderIds),
+        2500, { data: [], error: null }
+      );
+      const byOrder = new Map();
+      (orderItems || []).forEach(it => { if (!byOrder.has(it.order_id)) byOrder.set(it.order_id, []); byOrder.get(it.order_id).push(it); });
+      (safeAllOrders || []).forEach(o => { if (!Array.isArray(o.items) || !o.items.length) o.items = byOrder.get(o.id) || []; });
+    }
+  } catch (_) {}
+
   let orders = type === "all" ? safeAllOrders : (safeAllOrders || []).filter((o) => orderCategory(o) === type);
   if (payment !== "all") orders = (orders || []).filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
 
-  // The nested buyer:users(name) relation can be blank when the users table
-  // relationship is restricted by RLS. Resolve the customer name through the
-  // same secure order-contact RPC used by Order Detail, so vendor order cards
-  // always show the actual customer's name instead of the generic "Customer".
-  if (orders.length) {
-    await Promise.all(orders.map(async (o) => {
-      try {
-        const { data: contact } = await sb.rpc("get_order_buyer_contact", { p_order_id: o.id });
-        const c = Array.isArray(contact) ? contact[0] : contact;
-        o.__buyer_name = String(c?.name || o.buyer?.name || "Customer").trim() || "Customer";
-      } catch (_) {
-        o.__buyer_name = String(o.buyer?.name || "Customer").trim() || "Customer";
-      }
+  // The orders relation can return the order while hiding the nested users row
+  // under RLS. Resolve the customer's display name through the existing secure
+  // buyer-contact RPC so every vendor card can identify the customer.
+  try {
+    await Promise.all((safeAllOrders || []).map(async (o) => {
+      if (o.buyer?.name || !o.id) return;
+      const r = await withRouteTimeout(sb.rpc("get_order_buyer_contact", { p_order_id: o.id }), 2200, { data: [] });
+      const c = Array.isArray(r?.data) ? r.data[0] : null;
+      if (c?.name) o.buyer = { ...(o.buyer || {}), name: c.name };
     }));
-  }
+  } catch (_) {}
+
   let safeStatsOrders = statsOrders || [];
   if (statsError) {
     const { data: fallbackStats } = await sb.from("orders").select("status, created_at").eq("vendor_id", vendor.id);
@@ -19475,23 +19946,42 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
 
   // order_items(*) is intentionally used here rather than naming columns,
   // so this stays resilient to schema changes on order_items.
-  let query = sb.from("orders").select("*, vendor:vendors(business_name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("buyer_id", session.user.id);
+  let query = sb.from("orders").select("*, vendor:vendors(business_name), items:order_items(*,product:products(id,is_service,name)), payments(payment_type,status)").eq("buyer_id", session.user.id);
   if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
-  const { data: allOrders, error: allOrdersError } = await query.order("created_at", { ascending: false });
+  const { data: allOrders, error: allOrdersError } = await withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") });
   let safeAllOrders = allOrders;
   if (allOrdersError) {
     console.warn("Rich buyer order query failed; using compatibility query", allOrdersError);
-    let fallback = sb.from("orders").select("*, vendor:vendors(business_name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("buyer_id", session.user.id);
+    let fallback = sb.from("orders").select("*").eq("buyer_id", session.user.id);
     if (status !== "all") fallback = fallback.eq("status", status);
     if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
     if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
-    const r = await fallback.order("created_at", { ascending: false });
+    const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: [], error: null });
     safeAllOrders = r.data || [];
   }
-  let orders = type === "all" ? safeAllOrders : (safeAllOrders || []).filter((o) => orderCategory(o) === type);
+  try {
+    const orderIds = (safeAllOrders || []).map(o => o.id).filter(Boolean);
+    if (orderIds.length) {
+      const { data: orderItems } = await withRouteTimeout(
+        sb.from("order_items").select("order_id,product_id,quantity,unit_price,product:products(id,is_service,name)").in("order_id", orderIds),
+        2500, { data: [], error: null }
+      );
+      const byOrder = new Map();
+      (orderItems || []).forEach(it => { if (!byOrder.has(it.order_id)) byOrder.set(it.order_id, []); byOrder.get(it.order_id).push(it); });
+      (safeAllOrders || []).forEach(o => { if (!Array.isArray(o.items) || !o.items.length) o.items = byOrder.get(o.id) || []; });
+    }
+  } catch (_) {}
   if (payment !== "all") orders = (orders || []).filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
+  try {
+    const vendorIds = [...new Set((safeAllOrders || []).map(o => o.vendor_id).filter(Boolean))];
+    if (vendorIds.length) {
+      const { data: vendorRows } = await withRouteTimeout(sb.from("vendors").select("id,business_name").in("id", vendorIds), 2200, { data: [], error: null });
+      const byId = new Map((vendorRows || []).map(v => [String(v.id), v]));
+      (safeAllOrders || []).forEach(o => { if (!o.vendor && byId.has(String(o.vendor_id))) o.vendor = byId.get(String(o.vendor_id)); });
+    }
+  } catch (_) {}
 
   let html = embeddedVendorOrders ? `<h2><i class='fa-solid fa-clipboard-list'></i> Orders</h2>` : `<h2><i class='fa-solid fa-clipboard-list'></i> My Orders</h2>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
@@ -19516,7 +20006,8 @@ function orderStatusBadgeClass(status) {
   if (status === "completed") return "success";
   if (status === "handed_over" || status === "returned") return "warning";
   if (status === "confirmed") return "info";
-  return ""; // pending - plain accent color
+  if (status === "pending") return "pending";
+  return "";
 }
 
 // Pending and confirmed orders need action right now, so they float to the
@@ -19600,7 +20091,12 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
   let inner = "";
   byDate.forEach((dayOrders, dateKey) => {
     inner += `<div class="order-history-date"><i class="fa-regular fa-calendar"></i><span>${esc(dateKey)}</span></div>`;
-    inner += `<div class="order-history-day">${dayOrders.map((o) => `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-history-main"><strong>${isCustomerView ? esc(o.vendor?.business_name || "") : esc(o.__buyer_name || o.buyer?.name || "Customer")}</strong><span class="order-history-meta"><span>${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span><small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${orderStatusBadgeClass(o.status)} order-history-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`).join("")}</div>`;
+    inner += `<div class="order-history-day">${dayOrders.map((o) => {
+      const itemNames = (o.items || []).map((it) => `${it.product?.name || "Item"}${Number(it.quantity || 0) > 1 ? ` ×${it.quantity}` : ""}`).join(", ");
+      const productIds = [...new Set((o.items || []).map((it) => it.product?.id || it.product_id).filter(Boolean))].join(", ");
+      const partyName = isCustomerView ? (o.vendor?.business_name || "Vendor") : (o.buyer?.name || "Customer");
+      return `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-history-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span class="order-history-meta"><span>Order: ${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span>${!isCustomerView && itemNames ? `<span class="order-history-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-history-product-id">Product ID: ${esc(productIds)}</small>` : ""}<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${orderStatusBadgeClass(o.status)} order-history-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`;
+    }).join("")}</div>`;
   });
   const historyTitle = isCustomerView ? (sourcePerspective === "purchases" ? "My purchase history" : "My order history") : "Customer order history";
   const historyId = sourcePerspective === "purchases" ? "vendorPurchaseHistoryAccordion" : sourcePerspective === "sales" ? "vendorSalesHistoryAccordion" : "buyerOrderHistoryAccordion";
@@ -19645,14 +20141,19 @@ function orderListHtml(orders, isCustomerView, sourcePerspective = null) {
     return `<div class="table-wrap" style="max-height:26rem;overflow-y:auto;"><table class="data-table"><thead><tr>
       <th>${isCustomerView ? "Vendor" : "Customer"}</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th>
     </tr></thead><tbody>${shown.map((o) => `<tr onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})" style="cursor:pointer;">
-      <td>${isCustomerView ? esc(o.vendor?.business_name || "") : esc(o.__buyer_name || o.buyer?.name || "Customer")}</td>
+      <td>${isCustomerView ? esc(o.vendor?.business_name || "") : esc(o.buyer?.name || "")}</td>
       <td style="text-transform:capitalize;">${esc(o.order_type)}</td>
       <td>${naira(o.total_amount)}</td>
       <td>${orderActivityIso(o) ? esc(orderActivityLabel(o)) : ""}</td>
       <td><span class="badge ${orderStatusBadgeClass(o.status)}">${o.status.replace("_", " ")}</span></td>
     </tr>`).join("")}</tbody></table></div>${moreBtn}`;
   }
-  return shown.map((o) => `<button type="button" class="order-list-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-list-main"><strong>${isCustomerView ? esc(o.vendor?.business_name || "") : esc(o.__buyer_name || o.buyer?.name || "Customer")}</strong><span>${esc(o.order_type)} · ${naira(o.total_amount)}</span>${orderActivityIso(o) ? `<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small>` : ""}</span><span class="badge ${orderStatusBadgeClass(o.status)} order-list-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`).join("") + moreBtn;
+  return shown.map((o) => {
+    const itemNames = (o.items || []).map((it) => `${it.product?.name || "Item"}${Number(it.quantity || 0) > 1 ? ` ×${it.quantity}` : ""}`).join(", ");
+    const productIds = [...new Set((o.items || []).map((it) => it.product?.id || it.product_id).filter(Boolean))].join(", ");
+    const partyName = isCustomerView ? (o.vendor?.business_name || "Vendor") : (o.buyer?.name || "Customer");
+    return `<button type="button" class="order-list-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-list-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span>Order: ${esc(o.order_type)} · ${naira(o.total_amount)}</span>${!isCustomerView && itemNames ? `<span class="order-list-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-list-product-id">Product ID: ${esc(productIds)}</small>` : ""}${orderActivityIso(o) ? `<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small>` : ""}</span><span class="badge ${orderStatusBadgeClass(o.status)} order-list-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`;
+  }).join("") + moreBtn;
 }
 
 // ---------- ORDER DETAIL ----------
@@ -19717,20 +20218,24 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const feePaid = paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
   const depositPaid = order.deposit_amount === 0 || paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === "deposit" && p.status === "paid");
   const isDeliveryOrder = order.delivery_method === "delivery";
+  const paymentTiming = order.payment_timing === "pay_after" ? "pay_after" : "pay_before";
+  const isPayAfterDelivery = isDeliveryOrder && paymentTiming === "pay_after";
   const deliveryBaseAmount = Math.max(0, Number(order.total_amount || 0) - Number(order.delivery_fee || 0));
-  const deliveryDepositAmount = Math.round(deliveryBaseAmount * 0.20 * 100) / 100;
+  const deliveryDepositPercent = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20));
+  const deliveryRemainingPercent = 100 - deliveryDepositPercent;
+  const deliveryDepositAmount = Math.round(deliveryBaseAmount * deliveryDepositPercent / 100 * 100) / 100;
   const deliveryDepositPaidAmount = paymentRows.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const deliveryDepositPaid = deliveryDepositPaidAmount > 0.009;
   // buyer_report_manual_payment records the buyer's transfer as pending until
   // the vendor verifies it. The buyer should nevertheless move forward to the
-  // 80% screen immediately after tapping "I've paid" rather than waiting for
+  // remaining-balance screen immediately after tapping "I've paid" rather than waiting for
   // the vendor's manual confirmation. The payment remains pending server-side.
   const deliveryDepositReported = isCustomer && paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "pending");
-  const deliveryDepositReadyFor80 = deliveryDepositPaid || deliveryDepositReported;
+  const deliveryDepositReadyForBalance = deliveryDepositPaid || deliveryDepositReported;
   const deliveryBalanceAmount = Math.max(0, Number(order.total_amount || 0) - deliveryDepositPaidAmount - (deliveryDepositReported && deliveryDepositPaidAmount <= 0.009 ? Number(paymentRows.find((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "pending")?.amount || 0) : 0));
-  const deliveryPaymentsComplete = !isDeliveryOrder || (deliveryDepositPaid && feePaid);
+  const deliveryPaymentsComplete = !isDeliveryOrder || (isPayAfterDelivery ? (deliveryDepositPaid && feePaid) : feePaid);
   // Pickup keeps the existing full-payment flow. Delivery uses two stages:
-  // 20% of the item/rental amount first, then the remaining order balance.
+  // The vendor-selected deposit percentage is paid first, then the remaining order balance.
   const canRecordPayment = isVendor && !deliveryPaymentsComplete && (order.status === "confirmed" || (isDeliveryOrder && order.status === "handed_over"));
   const canPayOnline = isCustomer && !deliveryPaymentsComplete && order.status === "confirmed";
 
@@ -19740,7 +20245,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
         <h2 style="margin:0;text-transform:capitalize;">${order.order_type} order</h2>
         <p class="muted" style="margin:0.15rem 0 0;">${isVendor ? "Customer order" : esc(order.vendor?.business_name || "")}${order.package?.name ? " · " + esc(order.package.name) : ""}</p>
       </div>
-      <span class="badge ${orderStatusBadgeClass(order.status)}" style="text-transform:capitalize;flex-shrink:0;">${order.status.replace("_", " ")}</span>
+      <span class="badge order-status-badge order-status-badge-${esc(order.status)} ${orderStatusBadgeClass(order.status)}" style="text-transform:capitalize;flex-shrink:0;">${order.status.replace("_", " ")}</span>
     </div>
     ${order.created_at ? `<p class="muted" style="font-size:0.8rem;margin-top:0.7rem;"><i class="fa-solid fa-calendar-days"></i> Placed ${orderDateTimeStr(order.created_at)}</p>` : ""}
     ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>If the payout button does not reflect within 20–30 minutes, please contact the vendor immediately.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button></div></div>`:''}
@@ -19770,15 +20275,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <div><p class="muted" style="margin:0;">Total</p><strong>${naira(order.total_amount)}</strong></div>
       ${order.deposit_amount > 0 ? `<div><p class="muted" style="margin:0;">Refundable deposit</p><strong>${naira(order.deposit_amount)}</strong></div>` : ""}
       <div><p class="muted" style="margin:0;">Delivery</p><strong style="text-transform:capitalize;">${order.delivery_method}${order.delivery_address ? " · " + esc(order.delivery_address) : ""}</strong>${order.delivery_phone ? `<p class="muted" style="margin:0.2rem 0 0;"><i class="fa-solid fa-phone"></i> <a href="${telLink(order.delivery_phone)}">${esc(order.delivery_phone)}</a></p>` : ""}
-        ${isCustomer && order.vendor?.id ? `<div class="order-vendor-message-wrap">
-          <button class="btn btn-sm order-message-vendor-btn" type="button" onclick="toggleInlineMenu('orderVendorMessageMenu-${order.id}',event)" aria-label="Message vendor" title="Message vendor">
-            <i class="fa-solid fa-comment-dots"></i> Message vendor <i class="fa-solid fa-chevron-down" style="font-size:.68em;margin-left:.15rem;"></i>
-          </button>
-          <div class="ms-list hidden order-vendor-message-menu" id="orderVendorMessageMenu-${order.id}">
-            <button class="ms-item" type="button" onclick="startConversationWithVendor('${order.vendor.id}');closeInlineMenu('orderVendorMessageMenu-${order.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button>
-            ${order.vendor.whatsapp_visible && order.vendor.whatsapp_number ? `<a class="ms-item" href="${waLink(order.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('orderVendorMessageMenu-${order.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a>` : ""}
-          </div>
-        </div>` : ""}</div>
+      </div>
     </div>
     ${order.delivery_method === "delivery" && order.vendor?.lat != null && order.vendor?.lng != null ? `<p class="muted" id="orderEtaLine" style="font-size:0.8rem;margin-top:0.6rem;"></p>` : ""}
   </div>`;
@@ -19793,8 +20290,8 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     html += `<div class="card order-buyer-card"><h3><i class="fa-solid fa-address-card"></i> Customer</h3>
       <p style="margin-bottom:.45rem;">${esc(c.name || "Customer")}</p>
       <div class="flex order-buyer-contact-actions" style="gap:.7rem;flex-wrap:wrap;align-items:center;">
-        <button class="btn btn-sm" type="button" onclick="messageCustomerFromOrder('${orderId}')"><i class="fa-solid fa-comment-dots"></i> Message customer</button>
-        ${c.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(c.phone)}"><i class="fa-solid fa-phone"></i> ${esc(c.phone)}</a>` : `<span class="muted" style="font-size:0.85rem;align-self:center;">No phone on file</span>`}
+        <button class="btn btn-sm order-contact-message-btn" type="button" onclick="messageCustomerFromOrder('${orderId}')"><i class="fa-solid fa-comment-dots"></i> Message customer</button>
+        ${c.phone ? `<a class="btn btn-sm btn-outline order-contact-call-btn" href="${telLink(c.phone)}"><i class="fa-solid fa-phone"></i> ${esc(c.phone)}</a>` : `<span class="muted order-contact-no-phone" style="font-size:0.85rem;align-self:center;">No phone on file</span>`}
       </div>
     </div>`;
   }
@@ -19804,7 +20301,15 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     html += `<div class="card"><h3><i class="fa-solid fa-location-dot"></i> Pickup location</h3>
       ${addr ? `<p>${addr}</p>` : `<p class="muted">This vendor hasn't listed a pickup address yet. Message them to confirm where to collect your order.</p>`}
       ${order.vendor?.opening_hours ? `<p class="muted" style="font-size:0.85rem;"><i class="fa-solid fa-clock"></i> ${esc(order.vendor.opening_hours)}</p>` : ""}
-      <button class="btn btn-sm" data-draft="${esc(pickupMessageDraft(order))}" onclick="startConversationWithVendor('${order.vendor.id}', this.dataset.draft)"><i class="fa-solid fa-comment-dots"></i> Message vendor to confirm pickup</button>
+      <div class="order-vendor-message-wrap pickup-message-vendor-wrap">
+        <button class="btn btn-sm order-message-vendor-btn" type="button" onclick="toggleInlineMenu('pickupVendorMessageMenu-${order.id}',event)" aria-label="Message vendor to confirm pickup" title="Message vendor to confirm pickup">
+          <i class="fa-solid fa-comment-dots"></i> Message vendor to confirm pickup <i class="fa-solid fa-chevron-down" style="font-size:.68em;margin-left:.15rem;"></i>
+        </button>
+        <div class="ms-list hidden order-vendor-message-menu" id="pickupVendorMessageMenu-${order.id}">
+          <button class="ms-item" type="button" data-draft="${esc(pickupMessageDraft(order))}" onclick="startConversationWithVendor('${order.vendor.id}', this.dataset.draft);closeInlineMenu('pickupVendorMessageMenu-${order.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button>
+          ${order.vendor.whatsapp_visible && order.vendor.whatsapp_number ? `<a class="ms-item" href="${waLink(order.vendor.whatsapp_number, pickupMessageDraft(order))}" target="_blank" rel="noopener" onclick="closeInlineMenu('pickupVendorMessageMenu-${order.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a>` : ""}
+        </div>
+      </div>
     </div>`;
   }
 
@@ -19839,7 +20344,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (displayPayments.length > 0) {
     html += `<div class="card"><h3 style="margin-top:0;">Payments</h3>
       ${displayPayments.map((p, i) => {
-        const paymentName = p.payment_type === "sale_price" ? "Sale price" : p.payment_type === "rental_fee" ? "Rental fee" : p.payment_type === "deposit" ? "Refundable deposit" : p.payment_type === "delivery_deposit_20" ? "20% delivery deposit" : String(p.payment_type || "Payment").replace(/_/g, " ");
+        const paymentName = p.payment_type === "sale_price" ? "Sale price" : p.payment_type === "rental_fee" ? "Rental fee" : p.payment_type === "deposit" ? "Refundable deposit" : p.payment_type === "delivery_deposit_20" ? `${deliveryDepositPercent}% delivery deposit` : String(p.payment_type || "Payment").replace(/_/g, " ");
         const methodName = p.method === "cash" ? "Cash" : p.method === "transfer" ? "Bank transfer" : p.method === "card" ? "Card" : "";
         return `<div class="flex" style="justify-content:space-between;font-size:0.9rem;${i > 0 ? "border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.5rem;" : ""}"><span>${esc(paymentName)}${p.status === "paid" && methodName ? `<small class="muted" style="display:block;font-size:0.75rem;margin-top:0.15rem;">${esc(methodName)}${p.provider_reference ? " · Paystack" : " · Recorded manually"}</small>` : ""}</span><span>${naira(p.amount)} · <span class="badge ${p.status === "paid" ? "success" : ""}">${esc(p.status)}</span></span></div>`;
       }).join("")}
@@ -19847,28 +20352,28 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   }
 
   if (canPayOnline) {
-    const payableAmount = isDeliveryOrder
-      ? (deliveryDepositReadyFor80 ? deliveryBalanceAmount : deliveryDepositAmount)
+    const payableAmount = isPayAfterDelivery
+      ? (deliveryDepositReadyForBalance ? deliveryBalanceAmount : deliveryDepositAmount)
       : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
-    html += `<div class="card ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isDeliveryOrder ? (deliveryDepositReadyFor80 ? "Complete your payment" : "Pay 20% deposit to confirm your order") : "Pay now"}</h3></div>
-      ${isDeliveryOrder ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyFor80 ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>20% payment reported</strong><br>Your 20% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining 80% payment</strong><br>The vendor has delivered your order. Pay the remaining <strong>${naira(payableAmount)}</strong> balance to complete your payment.`) : `Pay a 20% deposit of <strong>${naira(payableAmount)}</strong> based on the item/rental fee. The delivery fee is included in the remaining balance.`}</p>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
-      <button class="btn btn-sm btn-outline ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-paystack-btn" : ""}" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
-      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isDeliveryOrder && deliveryDepositReadyFor80 ? "Pay remaining 80% directly to vendor" : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
+    html += `<div class="card ${isDeliveryOrder && deliveryDepositReadyForBalance ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isPayAfterDelivery ? (deliveryDepositReadyForBalance ? "Complete your payment" : "Pay deposit to confirm your order") : isDeliveryOrder ? "Pay before delivery" : "Pay now"}</h3></div>
+      ${isPayAfterDelivery ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyForBalance ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>${deliveryDepositPercent}% payment reported</strong><br>Your ${deliveryDepositPercent}% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>The vendor has delivered your order. Pay the remaining ${deliveryRemainingPercent}% balance of <strong>${naira(payableAmount)}</strong> to complete your payment.`) : `Pay a ${deliveryDepositPercent}% deposit of <strong>${naira(payableAmount)}</strong> based on the item amount. The delivery fee remains part of the total order balance.`}</p>` : isDeliveryOrder ? `<div class="banner banner-warning" style="margin:.45rem 0 .8rem;"><strong><i class="fa-solid fa-wallet"></i> Pay before delivery</strong><span>Full payment of <strong>${naira(payableAmount)}</strong> is required before delivery. If you need any change to this payment arrangement, please contact the vendor.</span></div>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
+      <button class="btn btn-sm btn-outline ${isDeliveryOrder && deliveryDepositReadyForBalance ? "delivery-balance-paystack-btn" : ""}" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
+      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyForBalance ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery && deliveryDepositReadyForBalance ? ("Pay remaining " + deliveryRemainingPercent + "% directly to vendor") : isPayAfterDelivery ? ("Pay " + deliveryDepositPercent + "% directly to vendor") : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
     </div>`;
   }
 
   if (canRecordPayment) {
-    const manualTypeOptions = isDeliveryOrder
-      ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">20% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Remaining balance" : "Remaining balance"}</option>` : ""}`
-      : `${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Sale price" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Refundable deposit</option>` : ""}`;
-    const manualAmount = isDeliveryOrder ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount) : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
-    html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-payment-card" : ""}"><h3><i class="fa-solid fa-hand-holding-dollar"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Record 80% payment" : "Paid outside Paystack?"} ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
-      ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;"><strong>Remaining 80% payment</strong><br>Confirm the customer's remaining <strong>${naira(manualAmount)}</strong> payment after you have actually received it.</p>` : ""}
+    const manualTypeOptions = isPayAfterDelivery
+      ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">${deliveryDepositPercent}% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">Remaining balance</option>` : ""}`
+      : `${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Full payment" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Refundable deposit</option>` : ""}`;
+    const manualAmount = isPayAfterDelivery ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount) : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
+    html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-payment-card" : ""}"><h3><i class="fa-solid fa-hand-holding-dollar"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Record ${deliveryRemainingPercent}% payment" : "Paid outside Paystack?"} ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
+      ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;"><strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>Confirm the customer's remaining <strong>${naira(manualAmount)}</strong> payment after you have actually received it.</p>` : ""}
       <div id="recordPaymentError" class="error-text hidden"></div>
       <label>Payment for</label><select id="rpType">${manualTypeOptions}</select>
       <label>Amount</label><input type="number" id="rpAmount" value="${manualAmount}" />
       <label>Method</label><select id="rpMethod"><option value="transfer" selected>Transfer</option><option value="cash">Cash</option></select>
-      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-manual-btn" : ""}" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Confirm 80% payment received" : "Mark as paid manually"}</button>
+      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-manual-btn" : ""}" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Confirm ${deliveryRemainingPercent}% payment received" : "Mark as paid manually"}</button>
     </div>`;
   }
 
@@ -19930,27 +20435,31 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   const deliveryBalancePaid = payments.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
   const paymentComplete = isDeliveryOrder ? (deliveryDepositPaid && deliveryBalancePaid) : feePaid;
   if (isVendor) {
-    if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
+    if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-confirm" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger order-action-decline" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
     if (order.status === "confirmed") {
       if (isDeliveryOrder) {
         if (deliveryDepositPaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-truck"></i> Mark as delivered</button>`);
-        else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting for the customer's 20% delivery deposit before delivery.</p>`);
+        else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting for the customer's ${deliveryDepositPercent}% delivery deposit before delivery.</p>`);
       } else if (feePaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-handshake"></i> Mark handed over</button>`);
       else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this can be marked handed over.</p>`);
     }
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
-  if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
+  if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
   if (isCustomer && order.status === "confirmed") {
     const paidRow = payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
+    if (!isDeliveryOrder && !paidRow) {
+      const pickupPayAmount = Number(order.total_amount || 0);
+      buttons.push(`<button class="btn btn-sm pickup-pay-vendor-btn" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-building-columns"></i> Pay vendor · ${naira(pickupPayAmount)}</button>`);
+    }
     const hoursSincePaid = paidRow ? (Date.now() - new Date(paidRow.paid_at || paidRow.created_at).getTime()) / 3600000 : 0;
-    if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
+    if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
     else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
   }
   if (isCustomer && order.status === "handed_over" && order.order_type === "rental" && !isDeliveryOrder) buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
   if (isCustomer && order.status === "handed_over" && isDeliveryOrder) {
     // Delivery orders complete automatically when the vendor confirms the
-    // remaining 80% payment. The customer does not need a separate
+    // remaining-balance payment. The customer does not need a separate
     // "Confirm & complete" / "I've received this" action.
     if (!deliveryBalancePaid) {
       const depositPaidAmount = payments.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum,p)=>sum+Number(p.amount||0),0);
@@ -20020,7 +20529,7 @@ async function remindOrderVendor(orderId,button){
     unlockNotificationAudio();
     if(audioCtx?.state==='running')playReminderChime();
     else if(audioCtx)audioCtx.resume().then(()=>playReminderChime()).catch(()=>{});
-    showToast('Reminder sent to vendor. Push notification sent if the vendor has notifications enabled on this device.','success');
+    showToast('Reminder sent to vendor.','success');
   }catch(err){showToast(err.message||'Could not send reminder. Please message the vendor.','error');}
   finally{orderReminderBusy.delete(orderId);if(button)button.disabled=false;}
 }
@@ -20128,7 +20637,7 @@ async function confirmReceiveOrder(orderId) {
       const feeType = currentOrder.order_type === "rental" ? "rental_fee" : "sale_price";
       const depositPaid = (freshPayments||[]).some(p=>p.payment_type==="delivery_deposit_20"&&p.status==="paid");
       const balancePaid = (freshPayments||[]).some(p=>p.payment_type===feeType&&p.status==="paid");
-      if (!depositPaid || !balancePaid) throw new Error("Both the 20% delivery deposit and remaining balance must be paid before this order can be completed.");
+      if (!depositPaid || !balancePaid) throw new Error("Both the ${deliveryDepositPercent}% delivery deposit and remaining balance must be paid before this order can be completed.");
       const { error } = await sb.rpc("transition_order_status", { p_order_id: orderId, p_new_status: "completed" });
       if (error) throw error;
       showToast("Order completed. Both payments are recorded.", "success");
@@ -20141,6 +20650,77 @@ async function confirmReceiveOrder(orderId) {
     }
   } catch (err) { showToast(err.message, "error"); }
   navigate("orderDetail", { orderId });
+}
+
+
+async function loadCommissionBreakdown(){
+  const box=byId("commissionBreakdown");
+  if(!box||!vendor?.id)return;
+  box.innerHTML='<div class="vendor-commission-breakdown-head">Loading your outstanding commission breakdown…</div>';
+  try{
+    const {data,error}=await sb.rpc("get_vendor_commission_breakdown",{p_vendor_id:vendor.id});
+    if(error)throw error;
+    const rows=Array.isArray(data)?data:[];
+    if(!rows.length){box.innerHTML='<div class="vendor-commission-breakdown-head">No outstanding commission charges found.</div>';return;}
+    const groups=new Map();
+    rows.forEach(r=>{
+      const key=r.order_id||r.charge_id;
+      if(!groups.has(key))groups.set(key,{order_id:r.order_id,sold_at:r.sold_at,buyer_name:r.buyer_name||"Buyer",payment_amount:Number(r.payment_amount||0),commission_amount:Number(r.commission_amount||0),products:[]});
+      const g=groups.get(key);
+      g.payment_amount=Number(r.payment_amount||0);
+      g.commission_amount=Number(r.commission_amount||0);
+      if(r.buyer_name)g.buyer_name=r.buyer_name;
+      (Array.isArray(r.products)?r.products:[]).forEach(item=>{
+        const name=String(item.product_name||"Unnamed product"),unit=Number(item.unit_price||0),qty=Number(item.quantity||0);
+        const existing=g.products.find(x=>x.name===name&&x.unit===unit);
+        if(existing)existing.qty=Math.max(existing.qty,qty); else g.products.push({name,qty,unit});
+      });
+    });
+    let total=0;
+    const cards=[...groups.values()].map(g=>{
+      total+=g.commission_amount;
+      const date=g.sold_at?new Date(g.sold_at).toLocaleString([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Date unavailable";
+      const lines=g.products.length
+        ? g.products.map(x=>`<li><span>${esc(x.qty+"× "+x.name)}</span><span>${naira(x.qty*x.unit)}</span></li>`).join("")
+        : '<li><span>Order items unavailable</span><span>—</span></li>';
+      const autoDispute = g.auto_completed_at ? `<div class="vendor-commission-auto-note"><i class="fa-solid fa-clock-rotate-left"></i> Automatically completed after the 24-hour confirmation window.</div><button type="button" class="btn btn-sm btn-outline vendor-commission-dispute-btn" onclick="openCommissionDispute('${esc(g.order_id||"")}')"><i class="fa-solid fa-scale-balanced"></i> Raise dispute</button>` : "";
+      return `<div class="vendor-commission-item">
+        <div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length===1?esc(g.products[0].name):g.products.length>1?`${g.products.length} products`:"Sale"}</div><div class="vendor-commission-item-date">Completed ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div>
+        <div class="vendor-commission-buyer"><i class="fa-solid fa-user"></i><span>Buyer</span><strong>${esc(g.buyer_name||"Buyer")}</strong></div>
+        <ul class="vendor-commission-products">${lines}</ul>
+        <div class="vendor-commission-math"><span>Total sale + transportation</span><strong>${naira(g.payment_amount)}</strong></div>
+        <div class="vendor-commission-math"><span>Commission calculation</span><strong>3% × ${naira(g.payment_amount)} = ${naira(g.commission_amount)}</strong></div>
+        ${autoDispute}
+      </div>`;
+    }).join("");
+    box.innerHTML=`<div class="vendor-commission-breakdown-head">Outstanding commission — ${groups.size} sale${groups.size===1?"":"s"}</div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span>Total commission owed</span><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
+  }catch(err){
+    box.innerHTML=`<div class="vendor-commission-breakdown-head" style="color:var(--danger,#ef4444)">Could not load the commission breakdown. ${esc(err?.message||"Please try again.")}</div>`;
+  }
+}
+async function openCommissionDispute(orderId){
+  if(!orderId)return;
+  await navigate("orderDetail",{orderId});
+  setTimeout(()=>{
+    try{
+      const link=[...document.querySelectorAll('a')].find(a=>String(a.textContent||'').toLowerCase().includes('report an issue with this order'));
+      if(link){link.click();return;}
+      const form=byId('disputeForm');
+      if(form)form.classList.remove('hidden');
+    }catch(_){}
+  },80);
+}
+
+async function toggleCommissionBreakdown(){
+  const box=byId("commissionBreakdown"),btn=byId("payCommissionBtn");
+  if(!box)return;
+  const opening=box.classList.contains("hidden");
+  box.classList.toggle("hidden",!opening);
+  if(btn){
+    btn.setAttribute("aria-expanded",String(opening));
+    btn.innerHTML=opening?'<i class="fa-solid fa-receipt"></i> Hide commission breakdown':'<i class="fa-solid fa-receipt"></i> Review commission breakdown';
+  }
+  if(opening)await loadCommissionBreakdown();
 }
 
 async function payCommission() {
@@ -20219,24 +20799,20 @@ async function recordOfflinePayment(orderId) {
   const errorEl = byId("recordPaymentError"); errorEl.classList.add("hidden");
   const paymentType = byId("rpType")?.value; const amount = Number(byId("rpAmount")?.value); const method = byId("rpMethod")?.value;
   if (!paymentType || !Number.isFinite(amount) || amount <= 0 || !method) { errorEl.textContent = "Enter a valid payment amount and method."; errorEl.classList.remove("hidden"); return; }
-  const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : paymentType === "delivery_deposit_20" ? "20% delivery deposit" : "refundable deposit";
+  const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : paymentType === "delivery_deposit_20" ? "delivery deposit" : "refundable deposit";
   const methodLabel = method === "cash" ? "cash" : "bank transfer";
   const isRemainingDeliveryPayment = paymentType !== "delivery_deposit_20" && paymentType !== "deposit" && byId("rpType")?.value === paymentType && !!byId("rpType")?.closest(".delivery-balance-payment-card");
   const confirmMessage = isRemainingDeliveryPayment
-    ? `You are confirming the customer's remaining 80% payment of ${naira(amount)} by ${methodLabel}. Only continue if you have actually received this full amount. This will mark the 80% balance as PAID.`
+    ? `You are confirming the customer's remaining ${deliveryRemainingPercent}% payment of ${naira(amount)} by ${methodLabel}. Only continue if you have actually received this full amount. This will mark the remaining balance as PAID.`
     : `Confirm that you actually received ${naira(amount)} for the ${paymentLabel} by ${methodLabel}. This records the payment as PAID outside Paystack and settles this payment obligation.`;
-  if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? "Confirm 80% payment" : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? "Yes, confirm 80% paid" : "Yes, mark paid" }))) return;
+  if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? `Confirm ${deliveryRemainingPercent}% payment` : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? `Yes, confirm ${deliveryRemainingPercent}% paid` : "Yes, mark paid" }))) return;
   const { error } = await sb.rpc("record_offline_payment", { p_order_id: orderId, p_payment_type: paymentType, p_amount: amount, p_method: method });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
-  // For delivery, recording the remaining 80% is the final customer action.
-  // Complete the order immediately on the server so the buyer and vendor both
-  // receive the terminal `completed` state through Realtime.
-  if (isRemainingDeliveryPayment) {
-    const { error: completeError } = await sb.rpc("transition_order_status", { p_order_id: orderId, p_new_status: "completed" });
-    if (completeError) { errorEl.textContent = completeError.message; errorEl.classList.remove("hidden"); return; }
-  }
-  showToast(isRemainingDeliveryPayment ? "80% payment recorded. Order completed." : "Payment recorded as paid.", "success");
-  // Once the vendor records the remaining 80%, the payment workflow is done
+  // record_offline_payment atomically marks an eligible final payment as paid and
+  // completes the order on the server. Do not issue a second completed transition
+  // here; doing so can race the realtime refresh and produce "completed to completed".
+  showToast(isRemainingDeliveryPayment ? `${deliveryRemainingPercent}% payment recorded. Order completed.` : "Payment recorded as paid.", "success");
+  // Once the vendor records the remaining balance, the payment workflow is done
   // and the order is terminal. Return them directly to their Orders list.
   await navigate(isRemainingDeliveryPayment ? "vendorOrders" : "orderDetail", isRemainingDeliveryPayment ? {} : { orderId });
 }
@@ -20322,9 +20898,21 @@ function backToPaymentFromReview(orderId) {
 async function renderLeaveReview(orderId) {
   if (!session?.user?.id || !orderId) return '<div class="empty-state">Access denied.</div>';
   const { data: order, error } = await sb.from("orders")
-    .select("id,status,buyer_id,vendor_id,delivery_method,vendor:vendors(id,business_name)")
+    .select("id,status,buyer_id,vendor_id,order_type,delivery_method,payment_timing,vendor:vendors(id,business_name),payments:payments(payment_type,amount,status,created_at)")
     .eq("id", orderId).eq("buyer_id", session.user.id).maybeSingle();
   if (error || !order) return `<div class="empty-state">${esc(error?.message || "Order not found.")}</div>`;
+
+  // A delivery deposit is NOT a completed payment. Never allow the review
+  // route to appear while only the first payment stage is pending.
+  const reviewRows = Array.isArray(order.payments) ? order.payments : [];
+  const reviewFeeType = order.order_type === "rental" ? "rental_fee" : "sale_price";
+  const reviewIsDelivery = order.delivery_method === "delivery";
+  const reviewIsPayAfter = reviewIsDelivery && order.payment_timing === "pay_after";
+  const reviewFinalReported = order.status === "completed" || reviewRows.some(p => String(p.payment_type || "").toLowerCase() === reviewFeeType && (p.status === "pending" || p.status === "paid") && (p.status === "paid" || p.provider_reference === "buyer_report"));
+  const reviewDepositPendingOnly = !reviewFinalReported;
+  if (reviewDepositPendingOnly) {
+    return `<div class="card" style="max-width:620px;margin:1rem auto;text-align:center;"><h2 style="margin-top:0;">Complete your payment first</h2><p class="muted">Your payment is not complete yet. Finish the remaining payment before leaving a review.</p><button type="button" class="btn btn-sm btn-outline" onclick="backToPaymentFromReview('${order.id}')"><i class="fa-solid fa-arrow-left"></i> Back to payment</button></div>`;
+  }
 
   const { data: existingReview } = await sb.from("reviews")
     .select("id").eq("order_id", order.id).eq("buyer_id", session.user.id).maybeSingle();
@@ -20338,6 +20926,7 @@ async function renderLeaveReview(orderId) {
 
   const vendorName = esc(order.vendor?.business_name || "this vendor");
   return `<div class="card leave-review-page" style="max-width:620px;margin:1rem auto;">
+    <div class="banner banner-success" style="margin-bottom:.85rem;text-align:center;"><strong><i class="fa-solid fa-circle-check"></i> Payment completed.</strong></div>
     <div style="text-align:center;">
       <h2 style="margin:0;">Leave a review</h2>
       <p class="muted" style="margin:.35rem 0 1rem;">How was your experience with ${vendorName}?</p>
@@ -20394,7 +20983,8 @@ function adminNavHtml(active) {
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
     ["adminSupportRequests", "fa-headset", "Support"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],
-    ["adminLog", "fa-clock-rotate-left", "Log"],
+    ["adminLog", "fa-clock-rotate-left", "Admin log"],
+    ["adminAuthLogs", "fa-right-to-bracket", "Login logs"],
     ["adminUsers", "fa-user-shield", "Admins"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
@@ -21131,6 +21721,40 @@ async function demoteAdmin(email) {
   navigate("adminUsers");
 }
 
+let adminAuthLogRange = "all";
+function adminAuthRangeStart(range) {
+  const now = new Date();
+  if (range === "today") return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (range === "week") { const d = new Date(now); const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day); d.setHours(0,0,0,0); return d; }
+  if (range === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
+  return null;
+}
+async function renderAdminAuthLogs() {
+  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  const start = adminAuthRangeStart(adminAuthLogRange);
+  let q = sb.from("auth_activity_logs").select("id,user_id,event_type,occurred_at,user_agent,ip,source").order("occurred_at", { ascending:false }).limit(2000);
+  if (start) q = q.gte("occurred_at", start.toISOString());
+  const { data: rows, error } = await q;
+  if (error) return `<div class="empty-state">Could not load login logs.</div>`;
+  const userIds = [...new Set((rows||[]).map(r=>r.user_id).filter(Boolean))];
+  let users = [];
+  if (userIds.length) { const r = await sb.from("users").select("id,name,email,role").in("id",userIds); users = r.data || []; }
+  const byUser = new Map(users.map(u=>[String(u.id),u]));
+  const groups = new Map();
+  (rows||[]).forEach(r=>{ const key=new Date(r.occurred_at).toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"}); if(!groups.has(key))groups.set(key,[]); groups.get(key).push(r); });
+  let html = `<h2><i class="fa-solid fa-right-to-bracket"></i> Login & logout logs</h2>${adminNavHtml("adminAuthLogs")}
+    <p class="muted" style="margin:.55rem 0 .75rem;">Every recorded sign-in/session start and voluntary logout. Historical session starts available in Supabase are included; browser closes and older events that were never recorded cannot be reconstructed.</p>
+    <div class="admin-auth-log-filters">${[["today","Today"],["week","This week"],["month","This month"],["all","All time"]].map(([k,l])=>`<button class="range-tab ${adminAuthLogRange===k?'active':''}" onclick="adminAuthLogRange='${k}';navigate('adminAuthLogs',{},false)">${l}</button>`).join("")}</div>`;
+  if (!rows?.length) return html + `<p class="muted">No login/logout activity recorded for this period.</p>`;
+  groups.forEach((dayRows,day)=>{
+    html += `<div class="category-group-header"><i class="fa-regular fa-calendar"></i>${esc(day)} <span class="muted" style="font-size:.78rem;font-weight:400;">${dayRows.length} event${dayRows.length===1?'':'s'}</span></div><div class="table-wrap admin-auth-log-table-wrap"><table class="data-table admin-auth-log-table"><thead><tr><th>Time</th><th>Person</th><th>Email</th><th>Role</th><th>Event</th><th>Device / browser</th><th>IP</th></tr></thead><tbody>`;
+    dayRows.forEach(r=>{ const u=byUser.get(String(r.user_id))||{}; const event=r.event_type==='logout'?'Logged out':'Logged in'; const cls=r.event_type==='logout'?'danger':'success'; html += `<tr><td>${new Date(r.occurred_at).toLocaleTimeString("en-NG",{hour:"numeric",minute:"2-digit",second:"2-digit"})}</td><td>${esc(u.name||"Unknown user")}</td><td>${esc(u.email||"-")}</td><td>${esc(u.role||"-")}</td><td><span class="badge ${cls}">${event}</span></td><td title="${esc(r.user_agent||"")}">${esc(String(r.user_agent||"-").slice(0,70))}</td><td>${esc(r.ip||"-")}</td></tr>`; });
+    html += `</tbody></table></div>`;
+  });
+  html += `<p class="muted admin-people-hint"><i class="fa-solid fa-arrows-up-down-left-right"></i> Scroll vertically through events and horizontally on smaller screens for wider columns.</p>`;
+  return html;
+}
+
 async function renderAdminLog() {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
   const { data: log } = await sb.from("admin_actions").select("*").order("created_at", { ascending: false }).limit(100);
@@ -21451,7 +22075,12 @@ function exportFinancePdf() {
       th{background:#f3f8f7;} .stats{display:flex;gap:1.5rem;margin:1.2rem 0;}
       .stat{border:1px solid #e2e8f0;border-radius:8px;padding:.8rem 1.2rem;}
       .stat b{display:block;font-size:1.3rem;color:#0e8f7f;}
-    </style></head><body>
+    </style>
+<style id="levromart-auto-commission-dispute-ui">
+.vendor-commission-auto-note{margin-top:.7rem;padding:.6rem .7rem;border-radius:10px;background:rgba(245,158,11,.10);color:#92400e;font-size:.84rem;line-height:1.35;}
+.vendor-commission-dispute-btn{margin-top:.55rem;border-color:var(--danger,#ef4444)!important;color:var(--danger,#ef4444)!important;background:#fff!important;}
+</style>
+</head><body>
     <h1>Levromart Transactions</h1>
     <p class="muted">Range: ${rangeLabel(adminFinanceRange)} · Generated ${new Date().toLocaleString()}</p>
     <div class="stats">
@@ -21504,6 +22133,16 @@ function exportFinancePdf() {
 .notifications-page-host .notif-item.unread{background:color-mix(in srgb,var(--primary) 8%,var(--card));}
 .notifications-page-host .notification-avatar-fallback{flex:none;}
 @media(max-width:720px){.notifications-page-shell{padding-left:.75rem;padding-right:.75rem;}.notifications-page-tools{align-items:flex-start;}}
+</style>
+
+
+<style id="levromart-instant-route-skeleton-fix">
+.instant-route-opening{min-height:22rem;}
+.instant-route-skeleton{display:flex;flex-direction:column;gap:.7rem;max-width:680px;margin:1.2rem auto 0;opacity:.65;}
+.instant-route-skeleton span{display:block;height:3.4rem;border-radius:1rem;background:color-mix(in srgb,var(--card) 88%,var(--border));border:1px solid var(--border);animation:levroRoutePulse 1.15s ease-in-out infinite;}
+.instant-route-skeleton span:nth-child(2){width:88%;}
+.instant-route-skeleton span:nth-child(3){width:72%;}
+@keyframes levroRoutePulse{0%,100%{opacity:.48}50%{opacity:.85}}
 </style>
 </body>
 
@@ -21734,6 +22373,11 @@ function renderRefundPolicy() {
     <h3>6. How refunds are paid</h3>
     <p>Refunds for online payments are issued back through Paystack to your original payment method. For orders paid offline (cash/transfer directly to the vendor), any refund is arranged directly between buyer and vendor, with Levromart admins available to mediate a dispute.</p>
   </div>`;
+}
+
+async function recordAuthActivity(eventType) {
+  if (!session?.user?.id || !["login","logout"].includes(eventType)) return;
+  try { await sb.rpc("record_auth_activity", { p_event_type: eventType, p_user_agent: navigator.userAgent || null }); } catch (_) {}
 }
 
 sb.auth.onAuthStateChange((_event) => {
@@ -24258,7 +24902,7 @@ window.addEventListener("popstate", (e) => {
   prepareLevromartSplash();
   // Absolute backstop: whatever else happens, the splash can never stay on
   // screen longer than this. The two hides below are the real triggers.
-  setTimeout(() => hideLevromartSplash(), 1200);
+
   try {
   initTheme();
   initAccent();
@@ -24464,7 +25108,8 @@ window.addEventListener("popstate", (e) => {
   // earlier popups in a previous session.
   setTimeout(maybeShowTour, 4000);
   } finally {
-    hideLevromartSplash();
+    // Keep the branded mark covering the uninitialized shell when the first
+    // route cannot render. Successful navigation hides it explicitly.
   }
 })();
 
@@ -25197,8 +25842,16 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   };
 
   window.toggleVendorsMore = function () {
-    vendorDirectoryExpanded = !vendorDirectoryExpanded;
+    // “View more vendors” is an explicit directory expansion action.
+    // Always land in the two-column grid so the additional vendors are
+    // presented side-by-side, rather than inheriting the list/map mode.
+    vendorDirectoryExpanded = true;
+    vendorDirectoryMode = "grid";
     renderVendorDirectoryCards();
+    requestAnimationFrame(() => {
+      const grid = byId("vendorsGrid");
+      if (grid) grid.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   window.setVendorDirectorySort = function (mode) {
@@ -26285,7 +26938,7 @@ window.renderVendorMapRail = function(){
 .manual-payment-copy-btn{flex:0 0 auto;width:1.9rem;height:1.9rem;min-width:1.9rem;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;font-size:.78rem;cursor:pointer;}
 .manual-payment-copy-btn:hover{background:color-mix(in srgb,var(--primary) 10%,var(--card));}
 
-/* Flat blue visual cue for the remaining 80% delivery payment. */
+/* Flat blue visual cue for the remaining-balance delivery payment. */
 .delivery-balance-payment-card{
   border:1px solid rgba(37,99,235,.58) !important;
   background:color-mix(in srgb,#2563eb 7%,var(--card)) !important;
@@ -26357,7 +27010,7 @@ window.renderVendorMapRail = function(){
   "use strict";
   window.openVendorDirectPayment = async function(orderId){
     if(!session || !orderId){showLogin();return;}
-    const {data:order,error}=await sb.from("orders").select("id,total_amount,delivery_fee,deposit_amount,buyer_id,vendor_id,order_type,delivery_method,vendor:vendors(id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
+    const {data:order,error}=await sb.from("orders").select("id,total_amount,delivery_fee,deposit_amount,buyer_id,vendor_id,order_type,delivery_method,payment_timing,payment_deposit_percent,vendor:vendors(id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
     if(error||!order){showToast(error?.message||"Order not found.","error");return;}
     if(String(order.buyer_id)!==String(session.user.id)){showToast("You can only pay for your own order.","error");return;}
     // The vendor relationship can be filtered by RLS on older/paused vendor rows.
@@ -26369,6 +27022,7 @@ window.renderVendorMapRail = function(){
     const feeType=order.order_type==="rental"?"rental_fee":"sale_price";
     const paymentRows=order.payments||[];
     const isDeliveryOrder=order.delivery_method==="delivery";
+    const isPayAfterDelivery=isDeliveryOrder && order.payment_timing==="pay_after";
     const paidFee=Number(paymentRows.filter(p=>p.payment_type===feeType&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
     const deliveryDepositPaid=Number(paymentRows.filter(p=>p.payment_type==="delivery_deposit_20"&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
     const pendingFee=paymentRows.find(p=>p.payment_type===feeType&&p.status==="pending");
@@ -26376,18 +27030,20 @@ window.renderVendorMapRail = function(){
     const deliveryDepositReported=!!pendingDeliveryDeposit;
     const pendingDeposit=paymentRows.find(p=>p.payment_type==="deposit"&&p.status==="pending");
     const baseAmount=Math.max(0,Number(order.total_amount||0)-Number(order.delivery_fee||0));
-    const deliveryDepositAmount=Math.round(baseAmount*0.20*100)/100;
+    const deliveryDepositPercent=Math.max(1,Math.min(99,Number(order.payment_deposit_percent??20)||20));
+    const deliveryDepositAmount=Math.round(baseAmount*deliveryDepositPercent/100*100)/100;
     let amount=0; let paymentLabel=order.order_type==="rental"?"rental fee":"sale price";
-    if(isDeliveryOrder&&!deliveryDepositPaid&&!deliveryDepositReported){amount=Number(pendingDeliveryDeposit?.amount||deliveryDepositAmount);paymentLabel="20% delivery deposit";}
-    else if(isDeliveryOrder&&!paidFee){amount=Number(pendingFee?.amount||Math.max(0,Number(order.total_amount||0)-deliveryDepositPaid-(deliveryDepositReported ? Number(pendingDeliveryDeposit?.amount||0) : 0)));paymentLabel="remaining balance";}
+    if(isPayAfterDelivery&&!deliveryDepositPaid&&!deliveryDepositReported){amount=Number(pendingDeliveryDeposit?.amount||deliveryDepositAmount);paymentLabel=`${deliveryDepositPercent}% delivery deposit`;}
+    else if(isPayAfterDelivery&&!paidFee){amount=Number(pendingFee?.amount||Math.max(0,Number(order.total_amount||0)-deliveryDepositPaid-(deliveryDepositReported ? Number(pendingDeliveryDeposit?.amount||0) : 0)));paymentLabel="remaining balance";}
     else if(!isDeliveryOrder&&!paidFee){amount=Number(pendingFee?.amount||order.total_amount||0);}
+    else if(isDeliveryOrder&&!isPayAfterDelivery&&!paidFee){amount=Number(pendingFee?.amount||order.total_amount||0);paymentLabel="full payment before delivery";}
     else if(!isDeliveryOrder&&Number(order.deposit_amount||0)>0&&!paymentRows.some(p=>p.payment_type==="deposit"&&p.status==="paid")){amount=Number(pendingDeposit?.amount||order.deposit_amount||0);paymentLabel="refundable deposit";}
     else {showToast("There is no outstanding payment on this order.","info");return;}
     byId("manualVendorPaymentModal")?.remove();
     const modal=document.createElement("div"); modal.id="manualVendorPaymentModal"; modal.className="modal manual-payment-modal";
     const bankName = getBankDisplayName(order.vendor?.bank_code, order.vendor?.bank_name);
     const hasAccount = !!(order.vendor?.account_name || order.vendor?.account_number || order.vendor?.bank_code || order.vendor?.bank_name);
-    modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> ${isDeliveryOrder ? (paymentLabel === "20% delivery deposit" ? "Pay 20% deposit to confirm your order" : "Complete your payment") : "Pay directly to vendor"}</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+    modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery ? (paymentLabel === `${deliveryDepositPercent}% delivery deposit` ? `Pay ${deliveryDepositPercent}% deposit to confirm your order` : "Complete your payment") : isDeliveryOrder ? "Pay before delivery" : "Pay directly to vendor"}</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> for the <strong>${esc(paymentLabel)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
       <div class="manual-payment-account">
         <div class="manual-payment-account-row"><span class="muted">Bank</span><strong>${esc(bankName)}</strong>${order.vendor?.bank_name||order.vendor?.bank_code?`<button type="button" class="icon-btn manual-payment-copy-btn" title="Copy bank name" aria-label="Copy bank name" onclick="navigator.clipboard?.writeText('${esc(bankName)}').then(()=>showToast('Bank name copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i></button>`:""}</div>
@@ -26396,12 +27052,31 @@ window.renderVendorMapRail = function(){
       </div>
       ${!hasAccount ? `<div class="banner banner-warning" style="margin-top:.7rem;"><strong>Vendor payment details are not saved yet.</strong> Please contact the vendor before transferring.</div>` : ""}
       <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
-      <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount})"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
+      <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount},'${esc(paymentLabel)}')"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
     document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
   };
-  window.reportDirectVendorPayment = async function(orderId,amount){
+  window.reportDirectVendorPayment = async function(orderId,amount,paymentStage=""){
     const err=byId("directPaymentError"),btn=byId("directPaymentReportedBtn"); if(!err||!btn)return; err.classList.add("hidden"); btn.disabled=true;
-    try{const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});if(error)throw error;byId("manualVendorPaymentModal")?.remove();showToast(data?.message||"Payment reported to the vendor.","success");await navigate("leaveReview",{orderId});}
+    try{
+      const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});
+      if(error)throw error;
+      byId("manualVendorPaymentModal")?.remove();
+
+      // The stage selected by the payment modal is authoritative for the UI:
+      // the first delivery deposit can NEVER open the review screen. Only the
+      // final sale/rental balance (or a completed full payment) can do that.
+      const stage=String(paymentStage||"").trim().toLowerCase();
+      const isDepositStage=stage.includes("deposit") || stage.includes("20%") && stage.includes("delivery");
+      const isFinalStage=!isDepositStage && (stage.includes("sale price") || stage.includes("rental fee") || stage.includes("remaining balance") || stage.includes("full payment"));
+
+      if(isFinalStage){
+        showToast("Payment completed.","success");
+        await navigate("leaveReview",{orderId});
+      }else{
+        showToast(data?.message||"20% payment reported. Complete the remaining payment before leaving a review.","success");
+        await navigate("orderDetail",{orderId});
+      }
+    }
     catch(e){err.textContent=e?.message||"Could not report the payment.";err.classList.remove("hidden");btn.disabled=false;}
   };
   /* Final vendor application form: make WhatsApp and bank details mandatory. */
@@ -28157,7 +28832,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
   window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
-  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
+  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
   async function renderUnifiedEnhancements(){
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading)return;
@@ -28263,6 +28938,20 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 .monthly-submission-card{margin:.7rem 0;padding:1rem}.monthly-submission-pending{border-color:color-mix(in srgb,#ef4444 42%,var(--border))}.monthly-submission-head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start}.monthly-submission-thumb{width:76px;height:76px;border-radius:12px;object-fit:cover;border:1px solid var(--border);flex:0 0 76px}.monthly-submission-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;margin:.8rem 0}.monthly-submission-grid>div{border:1px solid var(--border);border-radius:12px;padding:.62rem;min-width:0}.monthly-submission-grid span,.monthly-submission-grid small{display:block;color:var(--text-muted);font-size:.68rem}.monthly-submission-grid strong{display:block;margin:.16rem 0;font-size:.8rem;overflow-wrap:anywhere}.monthly-submission-receipt{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.65rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}.monthly-submission-receipt span{display:block;font-size:.68rem;margin-top:.12rem}.monthly-submission-actions{display:flex;justify-content:flex-end;gap:.45rem;flex-wrap:wrap;margin-top:.7rem}.monthly-review-note{font-size:.74rem}.monthly-vendor-pending-note{color:#d97706!important;font-size:.74rem!important}.monthly-vendor-rejected-note{color:#ef4444!important;font-size:.74rem!important}
 @media(max-width:620px){.monthly-submission-grid{grid-template-columns:1fr}.monthly-listing-admin-intro{align-items:flex-start;flex-direction:column}.monthly-submission-head h3{font-size:1rem}.manual-monthly-account-row{grid-template-columns:82px minmax(0,1fr) auto}.manual-monthly-account-row .btn{padding:.38rem .48rem;font-size:.68rem}}
 </style>
+
+<style id="levromart-payment-timing-ui">
+.product-card-payment-plan{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:2.25rem;height:1.55rem;margin:0 .15rem;font-size:.56rem;font-weight:900;letter-spacing:.03em;line-height:1;border-radius:999px;border:1px solid transparent;padding:0 .42rem;white-space:nowrap;}
+.product-card-payment-plan.pay-before{background:#dcfce7;color:#166534;border-color:#86efac;}
+.product-card-payment-plan.pay-after{background:#ffedd5;color:#c2410c;border-color:#fdba74;}
+.product-card-payment-plan i{color:currentColor;}
+.product-card-action-row .product-card-payment-plan{align-self:center;}
+.product-payment-plan-notice{display:flex;flex-direction:column;gap:.18rem;margin:.65rem 0;padding:.72rem .8rem;border-radius:12px;border:1px solid var(--border);font-size:.82rem;line-height:1.35;}
+.product-payment-plan-notice strong{display:flex;align-items:center;gap:.35rem;}
+.product-payment-plan-notice.pay-before{background:#f0fdf4;border-color:#86efac;color:#166534;}
+.product-payment-plan-notice.pay-after{background:#fff7ed;border-color:#fdba74;color:#c2410c;}
+</style>
+
+
 </body>
 <style id="levromart-20260910-final-polish">
 /* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
@@ -32008,3 +32697,230 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   -webkit-text-fill-color:#2563eb !important;
 }
 </style>
+
+<style id="levromart-auth-log-speed-fix">
+.admin-auth-log-filters{display:flex;gap:.35rem;overflow-x:auto;padding:.25rem 0 .65rem;scrollbar-width:none}.admin-auth-log-filters::-webkit-scrollbar{display:none}.admin-auth-log-filters .range-tab{flex:0 0 auto;border:1px solid var(--border);background:var(--card);color:var(--text-muted);border-radius:999px;padding:.48rem .8rem;cursor:pointer;font:inherit;font-size:.78rem}.admin-auth-log-filters .range-tab.active{background:var(--primary);border-color:var(--primary);color:#fff}.admin-auth-log-table-wrap{max-height:56vh;overflow:auto}.admin-auth-log-table{min-width:980px}.admin-auth-log-table th,.admin-auth-log-table td{white-space:nowrap}.admin-auth-log-table td:nth-child(6){max-width:260px;overflow:hidden;text-overflow:ellipsis}.conv-unread-badge{background:#ef4444!important;color:#fff!important;border:0!important;min-width:1.25rem;height:1.25rem;padding:0 .34rem;border-radius:999px;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;line-height:1}.chat-bubble[data-msg-id^="temp-"]{opacity:.82}.chat-bubble[data-msg-id^="temp-"] .chat-time-text::after{content:" · sending";opacity:.62;font-size:.68em}
+</style>
+
+
+<!-- FINAL NOTIFICATION + CHAT REALTIME STABILITY PATCH -->
+<style id="levromart-notification-chat-stability-final">
+/* Notifications must keep one stable horizontal row from first paint through
+   fresh-data hydration. Flex is deliberately used instead of the earlier
+   multi-column grid so cached rows and live rows have identical geometry. */
+#notifPanel .notif-list-scroll,
+.notifications-page-host .notif-list-scroll{
+  width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+}
+#notifPanel .notif-item-wrap,
+.notifications-page-host .notif-item-wrap{
+  width:100% !important;
+  max-width:none !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+}
+#notifPanel .notif-item,
+.notifications-page-host .notif-item{
+  width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  gap:.65rem !important;
+  padding:.72rem .55rem !important;
+  min-height:60px !important;
+  transform:none !important;
+  transition:none !important;
+  animation:none !important;
+}
+#notifPanel .notif-item > .notif-select-check,
+.notifications-page-host .notif-item > .notif-select-check{
+  flex:0 0 1.35rem !important;
+}
+#notifPanel .notif-item > img.avatar-circle,
+#notifPanel .notif-item > .avatar-circle,
+.notifications-page-host .notif-item > img.avatar-circle,
+.notifications-page-host .notif-item > .avatar-circle,
+.notifications-page-host .notif-item > .notification-system-icon,
+#notifPanel .notif-item > .notification-system-icon{
+  width:2.15rem !important;
+  height:2.15rem !important;
+  min-width:2.15rem !important;
+  flex:0 0 2.15rem !important;
+  object-fit:cover !important;
+}
+#notifPanel .notif-copy,
+.notifications-page-host .notif-copy{
+  min-width:0 !important;
+  flex:1 1 auto !important;
+  width:auto !important;
+  overflow:hidden !important;
+}
+#notifPanel .notif-copy strong,
+.notifications-page-host .notif-copy strong{
+  display:block !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  line-height:1.25 !important;
+}
+#notifPanel .notif-copy > .muted,
+.notifications-page-host .notif-copy > .muted{
+  display:block !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  line-height:1.35 !important;
+}
+/* A notification tap must not animate or reflow the card. */
+#notifPanel .notif-item:active,
+.notifications-page-host .notif-item:active{
+  transform:none !important;
+  animation:none !important;
+}
+
+/* Product payment timing: explicit seller choice and card-visible status */
+.listing-payment-timing-settings{margin-top:.8rem;padding:.9rem;border:1px solid var(--border);border-radius:16px;background:var(--card-bg,#fff);}
+.payment-timing-title{display:block;margin:0 0 .55rem;font-weight:800;}
+.payment-timing-choice{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;}
+.payment-timing-option{appearance:none;border:1px solid var(--border);background:var(--card-bg,#fff);border-radius:14px;padding:.7rem .75rem;display:flex;align-items:flex-start;gap:.6rem;text-align:left;cursor:pointer;color:var(--text);transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;min-width:0;}
+.payment-timing-option strong{display:block;font-size:.8rem;line-height:1.2;}
+.payment-timing-option small{display:block;margin-top:.2rem;font-size:.68rem;line-height:1.25;color:var(--muted,#64748b);}
+.payment-timing-option-dot{width:12px;height:12px;border-radius:50%;border:2px solid currentColor;flex:0 0 auto;margin-top:.12rem;}
+.payment-timing-option.pay-before{color:#166534;}
+.payment-timing-option.pay-after{color:#c2410c;}
+.payment-timing-option.pay-before.selected{background:#f0fdf4;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12);}
+.payment-timing-option.pay-after.selected{background:#fff7ed;border-color:#fb923c;box-shadow:0 0 0 2px rgba(249,115,22,.12);}
+.payment-timing-option.selected .payment-timing-option-dot{background:currentColor;box-shadow:inset 0 0 0 2px #fff;}
+.payment-timing-hint{font-size:.76rem;margin:.55rem 0 0;}
+@media(max-width:520px){.payment-timing-choice{grid-template-columns:1fr;}}
+
+/* Seller-selected delivery payment percentage. */
+.payment-deposit-percent-wrap{margin-top:.65rem;padding:.7rem .75rem;border:1px solid color-mix(in srgb,#3b82f6 18%,var(--border));border-radius:12px;background:#eff6ff;}
+.payment-deposit-percent-wrap label{margin:0;color:#1e3a8a;font-weight:800;font-size:.76rem;}
+.payment-deposit-percent-wrap input{margin:.3rem 0 .15rem;}
+.payment-deposit-percent-note{font-size:.7rem;margin:0;color:#475569;}
+
+/* Card payment/delivery status cues. */
+.product-card-payment-plan.pay-before{background:#dcfce7!important;color:#166534!important;border-color:#86efac!important;}
+.product-card-payment-plan.pay-after{background:#ffedd5!important;color:#c2410c!important;border-color:#fdba74!important;}
+</style>
+<script>
+(function(){
+  if(window.__levroFinalNotificationChatStability) return;
+  window.__levroFinalNotificationChatStability=true;
+
+  /* Keep cached notification paint structurally identical to live paint. */
+  const notificationAvatarHtml = (n) => {
+    if(n?.actor_avatar_url) return `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.15rem;height:2.15rem;object-fit:cover;flex:none;" alt="" draggable="false" />`;
+    if(n?.actor_name) return avatarFallbackHtml(n.actor_name,"2.15rem","notification-avatar-fallback",n.actor_name,n.actor_id||n.actor_name);
+    return `<span class="notification-system-icon"><i class="fa-solid fa-circle-info"></i></span>`;
+  };
+  const notificationRowHtml = (n) => `<div class="notif-item-wrap" data-id="${esc(n.id)}">
+    <button type="button" class="notif-item ${n.read?'':'unread'}" data-id="${esc(n.id)}" data-view="${esc(n.target_view||'home')}" data-params='${esc(JSON.stringify(n.target_params||{}))}' data-actor-name="${esc(n.actor_name||'')}" data-actor-avatar="${esc(n.actor_avatar_url||'')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">
+      ${notificationAvatarHtml(n)}
+      <span class="notif-copy"><strong>${esc(n.title||'Notification')}</strong>${n.body?`<span class="muted" style="font-size:.8rem;">${esc(n.notification_category==='new_follower'?(n.actor_name||n.body):n.body)}</span>`:''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span>
+    </button>
+  </div>`;
+  window.__levroNotificationRowHtml=notificationRowHtml;
+
+  /* Restore optimistic notification-read behaviour: navigation must never
+     wait for the database write. */
+  window.markSingleNotifRead = async function(id){
+    if(!session) return;
+    const selector=`.notif-item[data-id="${CSS.escape(String(id))}"]`;
+    const el=document.querySelector(selector);
+    if(!el || !el.classList.contains('unread')) return;
+    el.classList.remove('unread');
+    notifCount=Math.max(0,notifCount-1);
+    const dot=byId('notifDot');
+    if(dot){ if(notifCount>0){dot.textContent=notifCount>9?'9+':notifCount;dot.classList.remove('hidden');}else dot.classList.add('hidden'); }
+    Promise.resolve(sb.from('notifications').update({read:true}).eq('id',id)).catch(()=>{});
+  };
+
+  /* Replace only the cached first-paint branch inside renderNotifPanel so it
+     cannot briefly use a different card geometry than the fresh branch. */
+  const originalRenderNotifPanel=window.renderNotifPanel;
+  if(typeof originalRenderNotifPanel==='function' && !window.__levroNotifRenderWrapped){
+    window.__levroNotifRenderWrapped=true;
+    window.renderNotifPanel=async function(){
+      /* The original function owns the full filtering/category logic. Before
+         it runs, normalize any cached rows in-place to the same flex layout;
+         this prevents the old copy-only cache template from producing a
+         transient vertical column. */
+      try{
+        const uid=session?.user?.id;
+        if(uid){
+          const key=`levromart-notifications-cache-v2:${uid}`;
+          const cached=JSON.parse(localStorage.getItem(key)||'[]');
+          const host=getNotifHost();
+          if(host && Array.isArray(cached) && cached.length){
+            host.innerHTML=cached.slice(0,60).map(notificationRowHtml).join('');
+          }
+        }
+      }catch(_){}
+      return originalRenderNotifPanel.apply(this,arguments);
+    };
+  }
+
+  /* Realtime remains primary. This tiny foreground-only reconciliation is a
+     safety net for mobile WebSocket stalls: it checks only the newest 20
+     messages while a conversation is actually open. */
+  let pollTimer=null, pollConversation=null, pollBusy=false;
+  function stopChatMessageFallback(){
+    if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+    pollConversation=null; pollBusy=false;
+  }
+  async function reconcileLatestChatMessages(conversationId){
+    if(pollBusy || !session || activeConversationId!==conversationId || currentView!=='messages') return;
+    const el=byId('chatMessages'); if(!el) return;
+    pollBusy=true;
+    try{
+      const {data,error}=await sb.from('messages').select('*').eq('conversation_id',conversationId).order('created_at',{ascending:false}).limit(20);
+      if(error || !Array.isArray(data) || activeConversationId!==conversationId) return;
+      const missing=data.filter(m=>!el.querySelector(`.chat-bubble[data-msg-id="${CSS.escape(String(m.id))}"]`)).reverse();
+      if(!missing.length) return;
+      await enrichMessageReplies(missing);
+      missing.forEach(m=>el.insertAdjacentHTML('beforeend',chatBubbleHtml(m)));
+      lastSeenMessagesByConv.set(conversationId,[...(lastSeenMessagesByConv.get(conversationId)||[]),...missing]);
+      scrollChatToBottom();
+      resolveVisibleAttachments(el); setupMessageInteractions(el);
+      missing.filter(m=>m.sender_id!==session.user.id).forEach(m=>{
+        sb.from('messages').update({read_at:new Date().toISOString(),delivered_at:new Date().toISOString()}).eq('id',m.id).catch(()=>{});
+      });
+    }catch(_){}finally{pollBusy=false;}
+  }
+  window.__levroStartChatMessageFallback=function(conversationId){
+    stopChatMessageFallback();
+    if(!conversationId) return;
+    pollConversation=String(conversationId);
+    reconcileLatestChatMessages(pollConversation);
+    pollTimer=setInterval(()=>reconcileLatestChatMessages(pollConversation),2000);
+  };
+  window.__levroStopChatMessageFallback=stopChatMessageFallback;
+
+  /* Start the fallback whenever the existing conversation subscription is
+     established. No changes to the existing typing/presence channel. */
+  const originalSubscribe=window.subscribeToConversation;
+  if(typeof originalSubscribe==='function' && !window.__levroChatFallbackWrapped){
+    window.__levroChatFallbackWrapped=true;
+    window.subscribeToConversation=async function(conversationId){
+      const result=await originalSubscribe.apply(this,arguments);
+      window.__levroStartChatMessageFallback?.(String(conversationId));
+      return result;
+    };
+  }
+  const originalNavigate=window.navigate;
+  if(typeof originalNavigate==='function' && !window.__levroChatFallbackNavWrapped){
+    window.__levroChatFallbackNavWrapped=true;
+    window.navigate=async function(view,params,pushHistory){
+      if(view!=='messages' || !params?.conversationId) stopChatMessageFallback();
+      return originalNavigate.apply(this,arguments);
+    };
+  }
+})();
+</script>
