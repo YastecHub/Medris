@@ -12093,13 +12093,14 @@ async function renderHome() {
     .eq("status", "active")
     .eq("vendor.verification_status", "verified")
     .eq("vendor.is_active", true);
+  // Browse Everything must not be permanently dominated by the newest or
+  // most-viewed listings. Load the full eligible catalogue in pages so the
+  // 10-minute visibility rotation can give older/less-viewed products a turn.
   const browseCatalogQuery = sb.from("products")
     .select(PRODUCT_LIST_SELECT)
     .eq("status", "active")
     .eq("vendor.verification_status", "verified")
-    .eq("vendor.is_active", true)
-    .order("view_count", { ascending: false })
-    .limit(80);
+    .eq("vendor.is_active", true);
   // Keep the package relation query aligned with the known-working storefront
   // implementation. Do not request product.category_id here: package_items ->
   // products already supplies the product/category data needed by package cards,
@@ -12127,12 +12128,26 @@ async function renderHome() {
     }
     return { data: [...new Map(rows.map(v => [String(v.id), v])).values()] };
   };
+  const loadBrowseCatalogue = async () => {
+    const rows = [];
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const q = browseCatalogQuery.range(offset, offset + pageSize - 1);
+      if (activeSector) q.eq("category.sector_id", activeSector.id);
+      if (activeCategory) q.eq("category_id", activeCategory.id);
+      const { data, error } = await q;
+      if (error) return { data: null, error };
+      rows.push(...(data || []));
+      if (!data || data.length < pageSize) break;
+    }
+    return { data: [...new Map(rows.map(p => [String(p.id), p])).values()] };
+  };
   const [{ data: trending, error: trendingError }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
     vendorQuery.order("view_count", { ascending: false }),
     loadTopVendors(),
     recentPhotosQuery.order("created_at", { ascending: false }).limit(3),
     packageQuery,
-    browseCatalogQuery,
+    loadBrowseCatalogue(),
   ]);
   // Never discard a previously good Browse Everything catalogue just because
   // this refresh returned null/empty data for a moment. The homepage is
@@ -12144,8 +12159,9 @@ async function renderHome() {
   const stableBrowseProducts = Array.isArray(browseProducts) && browseProducts.length
     ? browseProducts
     : knownGoodBrowseCatalog;
-  const hourlyBrowseProducts = deterministicHourlyShuffle(stableBrowseProducts, `browse:${activeSector?.id||"all"}`);
-  window.__homeBrowseCatalog = hourlyBrowseProducts;
+  const rotatedBrowseProducts = deterministicBrowseVisibilityShuffle(stableBrowseProducts, `browse:${activeSector?.id||"all"}`);
+  window.__homeBrowseCatalog = rotatedBrowseProducts;
+  window.__homeBrowseRotationKey = Math.floor(Date.now() / 600000);
   const homepageCarouselSlides = await loadHomepageCarouselSlides();
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
@@ -12327,11 +12343,93 @@ function switchSector(sectorId) {
   else refreshHomeCategorySelection();
 }
 
-function deterministicHourlyShuffle(list, seedSource){
-  const arr=Array.isArray(list)?list.slice():[]; const hour=Math.floor(Date.now()/3600000); const seed=String(seedSource||'levromart')+':'+hour;
-  let h=2166136261; for(let i=0;i<seed.length;i++){h^=seed.charCodeAt(i); h=Math.imul(h,16777619);} const rand=()=>{h+=0x6D2B79F5; let t=h; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296;};
-  for(let i=arr.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr;
+function deterministicBrowseVisibilityShuffle(list, seedSource){
+  const arr=Array.isArray(list)?list.slice():[];
+  const slot=Math.floor(Date.now()/600000); // new arrangement every 10 minutes
+  const seed=String(seedSource||'levromart')+':'+slot;
+  let h=2166136261;
+  for(let i=0;i<seed.length;i++){h^=seed.charCodeAt(i);h=Math.imul(h,16777619);}
+  const rand=()=>{h+=0x6D2B79F5;let t=h;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};
+  const shuffle=(a)=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+
+  // First mix sectors, then mix vendors within each sector. This prevents
+  // Browse Everything from becoming a wall of one vendor/category and gives
+  // the whole eligible catalogue a fair turn at the top, middle and bottom.
+  const sectorBuckets=new Map();
+  for(const p of arr){
+    const sector=String(p?.category?.sector_id||p?.sector_id||'__other__');
+    if(!sectorBuckets.has(sector))sectorBuckets.set(sector,[]);
+    sectorBuckets.get(sector).push(p);
+  }
+  const sectorEntries=shuffle([...sectorBuckets.entries()]);
+  const sectorVendorQueues=sectorEntries.map(([sector,items])=>{
+    const vendors=new Map();
+    for(const p of items){
+      const vendor=String(p?.vendor?.id||p?.vendor_id||'__unknown_vendor__');
+      if(!vendors.has(vendor))vendors.set(vendor,[]);
+      vendors.get(vendor).push(p);
+    }
+    const vendorQueues=shuffle([...vendors.values()]).map(shuffle);
+    const mixed=[];
+    let remaining=true;
+    while(remaining){
+      remaining=false;
+      shuffle(vendorQueues);
+      for(const q of vendorQueues){
+        if(q.length){mixed.push(q.shift());remaining=true;}
+      }
+    }
+    return mixed;
+  });
+
+  const out=[];
+  let remaining=true;
+  while(remaining){
+    remaining=false;
+    shuffle(sectorVendorQueues);
+    for(const q of sectorVendorQueues){
+      if(q.length){out.push(q.shift());remaining=true;}
+    }
+  }
+  return out;
 }
+
+// Trending Now historically used the same helper name. Keep it available so
+// its existing behaviour and layout remain untouched.
+function deterministicHourlyShuffle(list, seedSource){
+  const arr=Array.isArray(list)?list.slice():[];
+  const hour=Math.floor(Date.now()/3600000);
+  const seed=String(seedSource||'levromart')+':'+hour;
+  let h=2166136261; for(let i=0;i<seed.length;i++){h^=seed.charCodeAt(i);h=Math.imul(h,16777619);}
+  const rand=()=>{h+=0x6D2B79F5;let t=h;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};
+  for(let i=arr.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}
+  return arr;
+}
+
+function startBrowseEverythingRotation(){
+  if(window.__levroBrowseRotationTimer)clearInterval(window.__levroBrowseRotationTimer);
+  window.__levroBrowseRotationTimer=setInterval(()=>{
+    const grid=byId('productGrid');
+    const catalog=Array.isArray(window.__homeBrowseCatalog)?window.__homeBrowseCatalog:[];
+    if(!grid||!catalog.length||browserLooksOffline())return;
+    const search=byId('searchInput')?.value.trim()||'';
+    const listing=byId('filterListing')?.value||'';
+    const catId=byId('filterCategory')?.value||'';
+    // Search/filter results keep their intentional relevance. The automatic
+    // 10-minute rotation applies to the unfiltered Browse Everything grid.
+    if(search||listing||catId||homeListingTab!=='products')return;
+    const key=Math.floor(Date.now()/600000);
+    if(key===window.__homeBrowseRotationKey)return;
+    window.__homeBrowseRotationKey=key;
+    window.__homeBrowseCatalog=deterministicBrowseVisibilityShuffle(catalog,`browse:${currentSectorId||'all'}`);
+    const cache=getOfflineHomeCache();
+    if(cache)writeOfflineHomeCache({...cache,browseProducts:window.__homeBrowseCatalog});
+    grid.innerHTML=window.__homeBrowseCatalog.filter(p=>!p.is_service).map(productCardHtml).join('');
+  },30000);
+}
+
+
+startBrowseEverythingRotation();
 
 function scrollToBrowse(listingType) {
   const sel = byId("filterListing");
@@ -12702,7 +12800,15 @@ async function filterHomeProducts() {
   }
 
   if (matchingIds) products.sort((a, b) => matchingIds.indexOf(a.id) - matchingIds.indexOf(b.id));
-  const tabProducts = products.filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
+  else if (!search && !listing && !catId && homeListingTab === "products") {
+    const rotated=deterministicBrowseVisibilityShuffle(products,`browse:${currentSectorId||'all'}`);
+    window.__homeBrowseCatalog=rotated;
+    window.__homeBrowseRotationKey=Math.floor(Date.now()/600000);
+  }
+  const displayProducts = (!search && !listing && !catId && homeListingTab === "products" && Array.isArray(window.__homeBrowseCatalog) && window.__homeBrowseCatalog.length)
+    ? window.__homeBrowseCatalog
+    : products;
+  const tabProducts = displayProducts.filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
   grid.innerHTML = tabProducts.length
     ? tabProducts.map(productCardHtml).join("")
     : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
