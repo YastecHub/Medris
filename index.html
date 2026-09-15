@@ -6490,6 +6490,47 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 .product-variety-add-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.45rem;margin-top:.5rem;}
 @media(max-width:520px){.product-variety-add-row{grid-template-columns:1fr}.product-display-picture-editor{min-height:125px}}
 </style>
+
+<style id="levromart-variety-editor-precision">
+/* Variety editor — intentionally scoped only to the product variety section. */
+#productVariantPricing{padding:.95rem;background:color-mix(in srgb,var(--primary) 3%,var(--card));border:1px solid var(--border);border-radius:16px;}
+#productVariantPricing .product-variant-pricing-head{margin-bottom:.85rem;}
+#productVariantPricing .product-variant-pricing-head strong{font-size:1rem;}
+#productVariantPricing .variant-price-row{display:block;padding:0;margin:.75rem 0 0;border:1px solid var(--border);border-radius:14px;background:var(--card);overflow:hidden;box-shadow:0 2px 8px color-mix(in srgb,var(--text) 5%,transparent);}
+#productVariantPricing .variant-price-row:first-of-type{border-top:1px solid var(--border);}
+#productVariantPricing .variant-row-topbar{display:flex;align-items:center;gap:.55rem;padding:.55rem .65rem;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--primary) 5%,var(--card));}
+#productVariantPricing .variant-dnd-handle{width:38px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border));border-radius:9px;background:color-mix(in srgb,var(--primary) 8%,var(--card));color:var(--primary);font-size:.82rem;cursor:grab;touch-action:none;}
+#productVariantPricing .variant-dnd-handle:active{cursor:grabbing;background:color-mix(in srgb,var(--primary) 14%,var(--card));}
+#productVariantPricing .variant-row-title{flex:1;font-size:.82rem;color:var(--text);}
+#productVariantPricing .variant-price-remove{width:34px;height:34px;border-radius:9px;}
+#productVariantPricing .variant-photo-section{padding:.8rem;display:grid;grid-template-columns:minmax(0,1fr);gap:.65rem;border-bottom:1px solid var(--border);}
+#productVariantPricing .variant-photo-picker{width:100%;min-height:82px;display:flex;align-items:center;gap:.75rem;padding:.65rem;border:1px dashed color-mix(in srgb,var(--primary) 48%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--primary) 4%,var(--input-bg));color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:border-color .18s ease,background .18s ease,transform .18s ease;}
+#productVariantPricing .variant-photo-picker:hover{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 7%,var(--input-bg));}
+#productVariantPricing .variant-photo-picker:active{transform:scale(.995);}
+#productVariantPricing .variant-photo-preview{width:64px;height:64px;flex:0 0 64px;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:color-mix(in srgb,var(--primary) 9%,var(--input-bg));border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border));color:var(--primary);font-size:1.15rem;}
+#productVariantPricing .variant-photo-preview img{display:block;width:100%;height:100%;object-fit:cover;}
+#productVariantPricing .variant-photo-copy{min-width:0;display:flex;flex-direction:column;gap:.18rem;flex:1;}
+#productVariantPricing .variant-photo-copy strong{font-size:.8rem;}
+#productVariantPricing .variant-photo-copy small{font-size:.68rem;color:var(--text-muted);line-height:1.3;}
+#productVariantPricing .variant-photo-camera{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);flex:0 0 32px;}
+#productVariantPricing .variant-existing-photo-wrap{display:grid;gap:.25rem;}
+#productVariantPricing .variant-existing-photo-wrap label{font-size:.68rem;color:var(--text-muted);margin:0;}
+#productVariantPricing .variant-existing-photo-wrap select{margin:0;}
+#productVariantPricing .variant-fields-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;padding:.8rem;}
+#productVariantPricing .variant-field{min-width:0;}
+#productVariantPricing .variant-field-wide{grid-column:1 / -1;}
+#productVariantPricing .variant-field label{display:block;margin:0 0 .28rem;font-size:.7rem;font-weight:750;color:var(--text);}
+#productVariantPricing .variant-field label span{font-weight:500;color:var(--text-muted);}
+#productVariantPricing .variant-field input{width:100%;min-width:0;margin:0;}
+#productVariantPricing .variant-price-row.dragging{opacity:.62;box-shadow:0 8px 24px color-mix(in srgb,var(--primary) 15%,transparent);}
+@media(max-width:520px){
+  #productVariantPricing{padding:.75rem;border-radius:14px;}
+  #productVariantPricing .variant-fields-grid{grid-template-columns:1fr;gap:.62rem;}
+  #productVariantPricing .variant-field-wide{grid-column:auto;}
+  #productVariantPricing .variant-photo-preview{width:58px;height:58px;flex-basis:58px;}
+  #productVariantPricing .variant-photo-picker{min-height:76px;}
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -17964,6 +18005,7 @@ async function showProductModal() {
   byId("prodSectorOther").classList.add("hidden");
   window.__existingPhotos = [];
   window.__productVariants = [];
+  window.__productVariantPhotoFiles = {};
   renderProductVariantPricing();
 
   let presetCategoryId = "";
@@ -18230,29 +18272,67 @@ function renderProductVariantPricing() {
   const existing = Array.isArray(window.__existingPhotos) ? window.__existingPhotos : [];
   const pending = Array.isArray(window.__newProductPhotoFiles) ? window.__newProductPhotoFiles : [];
   const rows = [];
-  variants.forEach((v, index) => rows.push({ ...v, _localKey: String(v.id || `variant-${index}`), _source: v.photo_url ? "existing" : "none" }));
+  variants.forEach((v, index) => rows.push({ ...v, _localKey: String(v.id || v._localKey || `variant-${index}`), _source: v.photo_url ? "existing" : "none" }));
   if (!rows.length && existing.length) existing.forEach((url, idx)=>rows.push({ _localKey:`photo-${idx}`, photo_url:url, name:"", sale_price:"", discount_price:"", sort_order:idx }));
   if (!rows.length && pending.length) pending.forEach((f, idx)=>rows.push({ _localKey:`new-${idx}`, photo_url:"", name:"", sale_price:"", discount_price:"", sort_order:idx, temp_index:idx }));
-  if (!rows.length) { wrap.innerHTML='<div class="product-variant-pricing-head"><strong>Varieties</strong><div class="variant-price-note">Use “Add variety” to create customer-facing varieties. A product without varieties works normally.</div></div>'; renderProductDisplayPicture(); return; }
-  wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Drag to reorder. Size and Color may be left blank.</div></div></div>${rows.map((r,i)=>{
-    const image = r.photo_url || (r.temp_index != null ? pending[r.temp_index] && URL.createObjectURL(pending[r.temp_index]) : "") || "";
-    return `<div class="variant-price-row" draggable="true" data-variant-key="${esc(String(r.id || r._localKey))}" data-photo-url="${esc(r.photo_url||"")}" data-temp-index="${r.temp_index ?? ""}">
-      <button type="button" class="variant-dnd-handle" aria-label="Drag to reorder" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></button>
-      <div class="variant-price-thumb">${image?`<img src="${esc(image)}" alt="">`:`<i class="fa-regular fa-image"></i>`}</div>
-      <input class="variant-name" type="text" maxlength="120" placeholder="Variety name" value="${esc(r.name||"")}">
-      <input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="Price" value="${r.sale_price==null?"":esc(String(r.sale_price))}">
-      <input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="Discount price" value="${r.discount_price==null?"":esc(String(r.discount_price))}">
-      <select class="variant-image" aria-label="Variety image">${existing.map((u,j)=>`<option value="${esc(u)}" ${String(r.photo_url||"")===String(u)?"selected":""}>Image ${j+1}${j===0?" (display)":""}</option>`).join("")}<option value="" ${!r.photo_url?"selected":""}>No image</option></select>
-      <div class="variant-extra-fields"><input class="variant-size" type="text" maxlength="80" placeholder="Size" value="${esc(r.size||"")}"><input class="variant-color" type="text" maxlength="80" placeholder="Color" value="${esc(r.color||"")}"></div>
-      <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Clear this variety" title="Clear this variety"><i class="fa-solid fa-xmark"></i></button>
+  if (!rows.length) {
+    wrap.innerHTML='<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Add optional variety details such as an image, name, color, size, price or discount price.</div></div></div>';
+    renderProductDisplayPicture();
+    return;
+  }
+  const photoFiles = window.__productVariantPhotoFiles || {};
+  wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Each variety is optional. Add only the details that apply. Drag the handle to reorder.</div></div></div>${rows.map((r,i)=>{
+    const key=String(r.id || r._localKey);
+    const uploadedFile=photoFiles[key];
+    const image = uploadedFile ? URL.createObjectURL(uploadedFile) : (r.photo_url || (r.temp_index != null ? pending[r.temp_index] && URL.createObjectURL(pending[r.temp_index]) : "") || "");
+    const imageOptions = existing.map((u,j)=>`<option value="${esc(u)}" ${String(r.photo_url||"")===String(u)?"selected":""}>Product photo ${j+1}${j===0?" (display)":""}</option>`).join("");
+    return `<div class="variant-price-row" draggable="true" data-variant-key="${esc(key)}" data-photo-url="${esc(r.photo_url||"")}" data-temp-index="${r.temp_index ?? ""}">
+      <div class="variant-row-topbar">
+        <button type="button" class="variant-dnd-handle" aria-label="Drag to reorder" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></button>
+        <strong class="variant-row-title">Variety ${i+1}</strong>
+        <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Remove this variety" title="Remove this variety"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="variant-photo-section">
+        <button type="button" class="variant-photo-picker" onclick="openProductVariantPhotoPicker('${esc(key)}')" aria-label="Add variety photo">
+          <span class="variant-photo-preview">${image?`<img src="${esc(image)}" alt="Variety photo">`:`<i class="fa-regular fa-image"></i>`}</span>
+          <span class="variant-photo-copy"><strong>${image?'Change variety photo':'Add variety photo'}</strong><small>Optional · tap to choose an image</small></span>
+          <i class="fa-solid fa-camera variant-photo-camera"></i>
+        </button>
+        <input type="file" class="variant-photo-file" data-variant-photo-key="${esc(key)}" accept="image/*" onchange="handleProductVariantPhotoChange(this)" hidden>
+        ${existing.length?`<div class="variant-existing-photo-wrap"><label>Or use a product photo</label><select class="variant-image" aria-label="Use an existing product photo" onchange="clearProductVariantUploadedPhoto(this)"><option value="" ${!r.photo_url?"selected":""}>No existing photo</option>${imageOptions}</select></div>`:''}
+      </div>
+      <div class="variant-fields-grid">
+        <div class="variant-field"><label>Variety name <span>(optional)</span></label><input class="variant-name" type="text" maxlength="120" placeholder="e.g. Large / Black / 500ml" value="${esc(r.name||"")}"></div>
+        <div class="variant-field"><label>Color <span>(optional)</span></label><input class="variant-color" type="text" maxlength="80" placeholder="e.g. Black" value="${esc(r.color||"")}"></div>
+        <div class="variant-field"><label>Size <span>(optional)</span></label><input class="variant-size" type="text" maxlength="80" placeholder="e.g. XL" value="${esc(r.size||"")}"></div>
+        <div class="variant-field"><label>Price (₦) <span>(optional)</span></label><input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="e.g. 15000" value="${r.sale_price==null?"":esc(String(r.sale_price))}"></div>
+        <div class="variant-field variant-field-wide"><label>Discount price (₦) <span>(optional)</span></label><input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="e.g. 13500" value="${r.discount_price==null?"":esc(String(r.discount_price))}"></div>
+      </div>
     </div>`;
   }).join("")}`;
   bindProductVariantDnd();
   renderProductDisplayPicture();
 }
+function openProductVariantPhotoPicker(key) {
+  const input=[...document.querySelectorAll('#productVariantPricing .variant-photo-file')].find(el=>String(el.dataset.variantPhotoKey||'')===String(key));
+  input?.click();
+}
+function handleProductVariantPhotoChange(input) {
+  const key=String(input?.dataset.variantPhotoKey||'');
+  const file=input?.files?.[0];
+  if(!key || !file || !file.type?.startsWith('image/')) return;
+  window.__productVariantPhotoFiles ||= {};
+  persistVisibleVariantOrder();
+  window.__productVariantPhotoFiles[key]=file;
+  renderProductVariantPricing();
+}
+function clearProductVariantUploadedPhoto(select) {
+  const key=String(select?.closest?.('.variant-price-row')?.dataset.variantKey||'');
+  if(window.__productVariantPhotoFiles && key) delete window.__productVariantPhotoFiles[key];
+}
 function addProductVarietyDraft() {
   const variants = Array.isArray(window.__productVariants) ? window.__productVariants : (window.__productVariants=[]);
-  variants.push({ id:null, _localKey:`local-${crypto.randomUUID()}`, name:"", sale_price:"", discount_price:"", photo_url:(window.__existingPhotos||[])[0]||"", sort_order:variants.length });
+  variants.push({ id:null, _localKey:`local-${crypto.randomUUID()}`, name:"", sale_price:"", discount_price:"", photo_url:"", sort_order:variants.length });
   window.__productVariants = variants;
   renderProductVariantPricing();
   const rows=document.querySelectorAll('#productVariantPricing .variant-price-row');
@@ -18261,6 +18341,7 @@ function addProductVarietyDraft() {
 function clearProductVariantRow(btn) {
   const row=btn?.closest?.('.variant-price-row'); if(!row)return;
   const key=String(row.dataset.variantKey||"");
+  if(window.__productVariantPhotoFiles) delete window.__productVariantPhotoFiles[key];
   window.__productVariants=(window.__productVariants||[]).filter(v=>String(v.id||v._localKey||"")!==key);
   renderProductVariantPricing();
 }
@@ -18278,22 +18359,35 @@ function bindProductVariantDnd(){
 function persistVisibleVariantOrder(){
   const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
   const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||""),v]));
-  window.__productVariants=rows.map((r,i)=>{const v=byKey.get(String(r.dataset.variantKey||""))||{};return {...v, name:r.querySelector('.variant-name')?.value?.trim()||v.name||"", sale_price:r.querySelector('.variant-sale-price')?.value||v.sale_price||"", discount_price:r.querySelector('.variant-discount-price')?.value||v.discount_price||"", size:r.querySelector('.variant-size')?.value||v.size||"", color:r.querySelector('.variant-color')?.value||v.color||"", photo_url:r.querySelector('.variant-image')?.value || r.dataset.photoUrl || v.photo_url || "", sort_order:i};});
+  window.__productVariants=rows.map((r,i)=>{const titleEl=r.querySelector('.variant-row-title');if(titleEl) titleEl.textContent=`Variety ${i+1}`;const v=byKey.get(String(r.dataset.variantKey||""))||{};return {...v, name:r.querySelector('.variant-name')?.value?.trim()??v.name??"", sale_price:r.querySelector('.variant-sale-price')?.value??v.sale_price??"", discount_price:r.querySelector('.variant-discount-price')?.value??v.discount_price??"", size:r.querySelector('.variant-size')?.value?.trim()??v.size??"", color:r.querySelector('.variant-color')?.value?.trim()??v.color??"", photo_url:r.querySelector('.variant-image')?.value || r.dataset.photoUrl || v.photo_url || "", sort_order:i};});
 }
-function collectProductVariantDrafts(photoUrls) {
+async function uploadProductVariantPhotoFiles() {
+  const files=window.__productVariantPhotoFiles||{};
+  const urls={};
+  for(const [key,file] of Object.entries(files)){
+    if(!file) continue;
+    const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+    const path=`${vendor.id}/${crypto.randomUUID()}.${ext}`;
+    const {error}=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});
+    if(error) throw new Error(`Variety photo upload failed: ${error.message}`);
+    urls[key]=sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl;
+  }
+  return urls;
+}
+function collectProductVariantDrafts(photoUrls, uploadedVariantPhotoUrls={}) {
   persistVisibleVariantOrder();
   const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
   const drafts=[];
   rows.forEach((row,index)=>{
-    const name=String(row.querySelector('.variant-name')?.value||'').trim();
+    const key=String(row.dataset.variantKey||'');
+    const name=String(row.querySelector('.variant-name')?.value||'').trim()||null;
     const saleRaw=row.querySelector('.variant-sale-price')?.value; const discountRaw=row.querySelector('.variant-discount-price')?.value;
     const sale=saleRaw===''?null:Number(saleRaw); const discount=discountRaw===''?null:Number(discountRaw);
     const size=String(row.querySelector('.variant-size')?.value||'').trim()||null; const color=String(row.querySelector('.variant-color')?.value||'').trim()||null;
-    if(!name&&!sale&&!discount&&!size&&!color)return;
-    if(!name)throw new Error('Every variety needs a variety name.');
-    if(!Number.isFinite(sale)||sale<=0)throw new Error(`Enter a valid sale price for ${name}.`);
-    if(discount!=null&&(!Number.isFinite(discount)||discount<=0||discount>=sale))throw new Error(`Discount price for ${name} must be lower than its regular price.`);
-    let photoUrl=row.querySelector('.variant-image')?.value || row.dataset.photoUrl || '';
+    if(name==null&&sale==null&&discount==null&&size==null&&color==null&&!uploadedVariantPhotoUrls[key]&&!row.querySelector('.variant-image')?.value&&!row.dataset.photoUrl) return;
+    if(discount!=null&&(!Number.isFinite(discount)||discount<=0||(sale!=null&&discount>=sale)))throw new Error(`Discount price${name?` for ${name}`:''} must be lower than the regular price.`);
+    if(sale!=null&&(!Number.isFinite(sale)||sale<=0))throw new Error(`Enter a valid price${name?` for ${name}`:''}.`);
+    let photoUrl=uploadedVariantPhotoUrls[key] || row.querySelector('.variant-image')?.value || row.dataset.photoUrl || '';
     if(row.dataset.tempIndex!=='')photoUrl=photoUrls[Number(row.dataset.tempIndex)]||photoUrl;
     drafts.push({name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,sort_order:index});
   });
@@ -18501,7 +18595,8 @@ async function saveProduct() {
     }
 
     if (!is_service) {
-      variantDrafts = collectProductVariantDrafts(photos);
+      const uploadedVariantPhotoUrls = await uploadProductVariantPhotoFiles();
+      variantDrafts = collectProductVariantDrafts(photos, uploadedVariantPhotoUrls);
     }
 
     if (isNewMonthlyListing) {
@@ -25852,7 +25947,7 @@ window.renderVendorMapRail = function(){
 .vendor-bank-picker-title i{color:var(--primary);}
 .vendor-bank-search-wrap{position:relative;margin-bottom:.65rem;}
 .vendor-bank-search-wrap > i{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;}
-.vendor-bank-search{width:100%;margin:0;padding:.72rem .8rem .72rem 2.25rem;border-radius:.8rem;background:var(--input-bg);}
+.vendor-bank-search{width:100%;margin:0;padding:.72rem .8rem .72rem 3.05rem!important;border-radius:.8rem;background:var(--input-bg);}
 .vendor-bank-picker-list{overflow-y:auto;min-height:0;padding-right:.1rem;}
 .vendor-bank-option{width:100%;display:flex;align-items:center;gap:.7rem;padding:.72rem .65rem;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);text-align:left;cursor:pointer;}
 .vendor-bank-option:hover,.vendor-bank-option.selected{background:color-mix(in srgb,var(--primary) 9%,transparent);}
@@ -27666,7 +27761,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
   window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
-  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
+  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls],await uploadProductVariantPhotoFiles())};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
   async function renderUnifiedEnhancements(){
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading)return;
