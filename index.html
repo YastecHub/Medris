@@ -4105,6 +4105,73 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 .card .btn[data-draft]{margin-top:1rem!important;}
 @media(max-width:600px){#payOnlineBtn{width:100%!important;min-height:46px!important;margin-top:1.05rem!important}.card h3{margin-bottom:.15rem!important}}
 
+/* ================================================================
+   ORDER ACTION / STATUS PRECISION
+   ================================================================ */
+.order-action-wrap{
+  display:flex !important;
+  justify-content:space-between !important;
+  align-items:center !important;
+  width:100% !important;
+  gap:.85rem !important;
+}
+.order-action-wrap .order-action-cancel,
+.order-action-wrap .order-action-decline{
+  order:1 !important;
+  margin-right:auto !important;
+}
+.order-action-wrap .pickup-pay-vendor-btn,
+.order-action-wrap .order-action-confirm{
+  order:2 !important;
+  margin-left:auto !important;
+}
+.order-action-wrap .order-action-neutral{
+  margin-left:auto !important;
+}
+.pickup-pay-vendor-btn{
+  background:#2563eb !important;
+  background-image:none !important;
+  border-color:#2563eb !important;
+  color:#fff !important;
+}
+.order-action-confirm{
+  background:#2563eb !important;
+  background-image:none !important;
+  border-color:#2563eb !important;
+  color:#fff !important;
+}
+.order-action-cancel,.order-action-decline{
+  background:#dc2626 !important;
+  background-image:none !important;
+  border-color:#dc2626 !important;
+  color:#fff !important;
+}
+.order-status-badge-pending{
+  background:#d97706 !important;
+  color:#fff !important;
+  border-color:#d97706 !important;
+}
+.order-buyer-contact-actions{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  align-items:stretch !important;
+  gap:.7rem !important;
+  width:100% !important;
+}
+.order-buyer-contact-actions .btn{
+  width:100% !important;
+  min-width:0 !important;
+  justify-content:center !important;
+  margin:0 !important;
+}
+.order-contact-no-phone{
+  grid-column:1 / -1 !important;
+}
+@media(max-width:420px){
+  .order-buyer-contact-actions{grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;}
+  .order-action-wrap{gap:.55rem !important;}
+}
+
   /* ================================================================
      BATCH SELECTION - TAP ONLY, NO SWIPE
      ================================================================ */
@@ -20015,7 +20082,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
         <h2 style="margin:0;text-transform:capitalize;">${order.order_type} order</h2>
         <p class="muted" style="margin:0.15rem 0 0;">${isVendor ? "Customer order" : esc(order.vendor?.business_name || "")}${order.package?.name ? " · " + esc(order.package.name) : ""}</p>
       </div>
-      <span class="badge ${orderStatusBadgeClass(order.status)}" style="text-transform:capitalize;flex-shrink:0;">${order.status.replace("_", " ")}</span>
+      <span class="badge order-status-badge order-status-badge-${esc(order.status)} ${orderStatusBadgeClass(order.status)}" style="text-transform:capitalize;flex-shrink:0;">${order.status.replace("_", " ")}</span>
     </div>
     ${order.created_at ? `<p class="muted" style="font-size:0.8rem;margin-top:0.7rem;"><i class="fa-solid fa-calendar-days"></i> Placed ${orderDateTimeStr(order.created_at)}</p>` : ""}
     ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>If the payout button does not reflect within 20–30 minutes, please contact the vendor immediately.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button></div></div>`:''}
@@ -20060,8 +20127,8 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     html += `<div class="card order-buyer-card"><h3><i class="fa-solid fa-address-card"></i> Customer</h3>
       <p style="margin-bottom:.45rem;">${esc(c.name || "Customer")}</p>
       <div class="flex order-buyer-contact-actions" style="gap:.7rem;flex-wrap:wrap;align-items:center;">
-        <button class="btn btn-sm" type="button" onclick="messageCustomerFromOrder('${orderId}')"><i class="fa-solid fa-comment-dots"></i> Message customer</button>
-        ${c.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(c.phone)}"><i class="fa-solid fa-phone"></i> ${esc(c.phone)}</a>` : `<span class="muted" style="font-size:0.85rem;align-self:center;">No phone on file</span>`}
+        <button class="btn btn-sm order-contact-message-btn" type="button" onclick="messageCustomerFromOrder('${orderId}')"><i class="fa-solid fa-comment-dots"></i> Message customer</button>
+        ${c.phone ? `<a class="btn btn-sm btn-outline order-contact-call-btn" href="${telLink(c.phone)}"><i class="fa-solid fa-phone"></i> ${esc(c.phone)}</a>` : `<span class="muted order-contact-no-phone" style="font-size:0.85rem;align-self:center;">No phone on file</span>`}
       </div>
     </div>`;
   }
@@ -20205,7 +20272,7 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   const deliveryBalancePaid = payments.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
   const paymentComplete = isDeliveryOrder ? (deliveryDepositPaid && deliveryBalancePaid) : feePaid;
   if (isVendor) {
-    if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
+    if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-confirm" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger order-action-decline" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
     if (order.status === "confirmed") {
       if (isDeliveryOrder) {
         if (deliveryDepositPaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-truck"></i> Mark as delivered</button>`);
@@ -20215,15 +20282,15 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
     }
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
-  if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
+  if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
   if (isCustomer && order.status === "confirmed") {
     const paidRow = payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
     if (!isDeliveryOrder && !paidRow) {
       const pickupPayAmount = Number(order.total_amount || 0);
-      buttons.push(`<button class="btn btn-sm order-action-neutral pickup-pay-vendor-btn" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-building-columns"></i> Pay vendor · ${naira(pickupPayAmount)}</button>`);
+      buttons.push(`<button class="btn btn-sm pickup-pay-vendor-btn" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-building-columns"></i> Pay vendor · ${naira(pickupPayAmount)}</button>`);
     }
     const hoursSincePaid = paidRow ? (Date.now() - new Date(paidRow.paid_at || paidRow.created_at).getTime()) / 3600000 : 0;
-    if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
+    if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
     else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
   }
   if (isCustomer && order.status === "handed_over" && order.order_type === "rental" && !isDeliveryOrder) buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
