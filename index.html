@@ -6530,7 +6530,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #productVariantPricing .variant-photo-picker{min-height:76px;}
 }
 
-  .order-follow-up-note{font-size:.78rem!important;line-height:1.45;margin:.1rem 0 .65rem!important;opacity:.72;} .order-follow-up-actions{display:flex;justify-content:center;align-items:center;width:100%;} .order-remind-btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;background:var(--danger)!important;border-color:var(--danger)!important;color:#fff!important;min-width:190px;box-shadow:0 5px 14px color-mix(in srgb,var(--danger) 22%,transparent);} .order-remind-btn:hover{filter:brightness(.94);} .order-remind-btn:disabled{opacity:.7;filter:none;cursor:wait;} .vendor-order-waiting-banner{display:flex;flex-direction:column;gap:.2rem;} .vendor-order-waiting-banner span{font-size:.8rem;color:var(--text-muted);} .vendor-application-payout-section{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:1rem;background:color-mix(in srgb,var(--primary) 3%,var(--card));} .vendor-application-payout-heading strong{display:block;font-size:.95rem;} .vendor-application-payout-heading span{display:block;margin-top:.18rem;color:var(--text-muted);font-size:.76rem;line-height:1.4;}
+  .order-follow-up-note{font-size:.78rem!important;line-height:1.45;margin:.1rem 0 .65rem!important;opacity:.72;} .order-follow-up-actions{display:flex;justify-content:center;align-items:center;width:100%;} .order-remind-btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;background:#dc2626!important;background-color:#dc2626!important;border:1px solid #dc2626!important;border-color:#dc2626!important;color:#fff!important;min-width:190px;box-shadow:0 5px 14px rgba(220,38,38,.24)!important;} .order-remind-btn:hover{filter:brightness(.94);} .order-remind-btn:disabled{opacity:.7;filter:none;cursor:wait;} .vendor-order-waiting-banner{display:flex;flex-direction:column;gap:.2rem;} .vendor-order-waiting-banner span{font-size:.8rem;color:var(--text-muted);} .vendor-application-payout-section{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:1rem;background:color-mix(in srgb,var(--primary) 3%,var(--card));} .vendor-application-payout-heading strong{display:block;font-size:.95rem;} .vendor-application-payout-heading span{display:block;margin-top:.18rem;color:var(--text-muted);font-size:.76rem;line-height:1.4;}
 </style>
 </head>
 <body>
@@ -8319,20 +8319,37 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // ---------- AUDIO COMPATIBILITY ----------
-// Levromart UI sounds are disabled. Levi read-aloud voice remains separate.
-let soundEnabled = false;
+// Levromart notification sound. This is the app-level sound used while the web app
+// is actively open. OS-level push notification audio remains controlled by the
+// browser/phone notification settings (web apps cannot force a custom OS sound).
+let soundEnabled = true;
 let audioCtx = null;
 const heardNotifications=new Set();let notificationSoundUntil=0;
 function unlockNotificationAudio(){
   const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return;
-  if(!audioCtx)audioCtx=new Ctx();if(audioCtx.state==='suspended')audioCtx.resume().catch(err=>console.warn('Notification audio unavailable',err));
+  if(!audioCtx)audioCtx=new Ctx();
+  if(audioCtx.state==='suspended')audioCtx.resume().catch(err=>console.warn('Notification audio unavailable',err));
 }
 function playNotificationSound(n){
-  if(!n?.id||!session?.user?.id)return;const key=`${session.user.id}:${n.id}`;
-  if(heardNotifications.has(key))return;heardNotifications.add(key);
+  if(!soundEnabled||!n?.id||!session?.user?.id)return;
+  const key=`${session.user.id}:${n.id}`;
+  if(heardNotifications.has(key))return;
   if(document.hidden||!audioCtx||audioCtx.state!=='running')return;
-  const now=audioCtx.currentTime;if(now<notificationSoundUntil)return;notificationSoundUntil=now+1.8;
-  [523.25,659.25,783.99].forEach((hz,i)=>{const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),at=now+i*.22;osc.type='sine';osc.frequency.value=hz;gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.09,at+.025);gain.gain.exponentialRampToValueAtTime(.0001,at+1.25);osc.connect(gain);gain.connect(audioCtx.destination);osc.start(at);osc.stop(at+1.3);});
+  const now=audioCtx.currentTime;
+  if(now<notificationSoundUntil)return;
+  notificationSoundUntil=now+1.8;
+  heardNotifications.add(key);
+  // Short Levromart three-note chime. It is intentionally generated in-app so
+  // no external audio file or autoplay download is required.
+  [523.25,659.25,783.99].forEach((hz,i)=>{
+    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),at=now+i*.22;
+    osc.type='sine';osc.frequency.setValueAtTime(hz,at);
+    gain.gain.setValueAtTime(0,at);
+    gain.gain.linearRampToValueAtTime(.09,at+.025);
+    gain.gain.exponentialRampToValueAtTime(.0001,at+1.25);
+    osc.connect(gain);gain.connect(audioCtx.destination);
+    osc.start(at);osc.stop(at+1.3);
+  });
 }
 function playSound() {}
 function toggleSound() {}
@@ -8340,12 +8357,12 @@ function renderSoundToggle() {}
 function setSoundStyle() {}
 function renderSoundStyleOptions() {}
 function initSound() {
-  if(!window.__notificationAudioBound){window.__notificationAudioBound=true;document.addEventListener("pointerdown",unlockNotificationAudio,{passive:true});document.addEventListener("keydown",unlockNotificationAudio);}
-  soundEnabled = false;
-  try {
-    localStorage.removeItem('medris-sound');
-    localStorage.removeItem('medris-sound-style');
-  } catch (e) {}
+  if(!window.__notificationAudioBound){
+    window.__notificationAudioBound=true;
+    document.addEventListener("pointerdown",unlockNotificationAudio,{passive:true});
+    document.addEventListener("keydown",unlockNotificationAudio);
+  }
+  soundEnabled = true;
 }
 
 
@@ -19802,7 +19819,7 @@ async function remindOrderVendor(orderId,button){
     const {data:order,error}=await sb.from('orders').select('id,buyer_id,status,vendor_id,vendor:vendors(user_id)').eq('id',orderId).eq('buyer_id',session.user.id).single();if(error)throw error;
     if(order.status!=='pending'||!order.vendor?.user_id)throw new Error('This order no longer needs a reminder.');
     const {error:sendError}=await sb.rpc('send_order_reminder',{p_order_id:order.id});if(sendError)throw sendError;
-    showToast('Reminder sent to vendor.','success');
+    showToast('Reminder sent to vendor. Push notification sent if the vendor has notifications enabled on this device.','success');
   }catch(err){showToast(err.message||'Could not send reminder. Please message the vendor.','error');}
   finally{orderReminderBusy.delete(orderId);if(button)button.disabled=false;}
 }
