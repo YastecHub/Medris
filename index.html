@@ -4146,7 +4146,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
   border-color:#dc2626 !important;
   color:#fff !important;
 }
-.order-status-badge-pending{
+.order-status-badge-pending,
+.badge.pending{
   background:#d97706 !important;
   color:#fff !important;
   border-color:#d97706 !important;
@@ -11091,6 +11092,21 @@ let messageChannelClosePromise = Promise.resolve();
 // Keep the last successfully rendered screen in memory so returning to a
 // page is instant. Fresh Supabase data still refreshes it in the background.
 const routeHtmlCache = new Map();
+const ORDER_ROUTE_SNAPSHOT_PREFIX = "levromart-order-route-v1:";
+function orderRouteSnapshotKey(view, params = {}) {
+  return `${ORDER_ROUTE_SNAPSHOT_PREFIX}${routeCacheKey(view, params)}`;
+}
+function getPersistedOrderRouteHtml(view, params = {}) {
+  if (view !== "buyerOrders" && view !== "vendorOrders") return null;
+  try {
+    const raw = sessionStorage.getItem(orderRouteSnapshotKey(view, params));
+    return raw && raw.length > 100 ? raw : null;
+  } catch (_) { return null; }
+}
+function persistOrderRouteHtml(view, params = {}, html) {
+  if (view !== "buyerOrders" && view !== "vendorOrders" || !html) return;
+  try { sessionStorage.setItem(orderRouteSnapshotKey(view, params), String(html)); } catch (_) {}
+}
 function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
@@ -11274,8 +11290,10 @@ async function navigate(view, params = {}, pushHistory = true) {
   const hasChatFastPath = view === "messages" && !!params?.conversationId && profile?.role !== "admin";
   const cacheKey = routeCacheKey(view, params);
   const cachedRouteHtml = routeHtmlCache.get(cacheKey);
+  const persistedOrderRouteHtml = getPersistedOrderRouteHtml(view, params);
+  const instantRouteHtml = cachedRouteHtml || persistedOrderRouteHtml;
   if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && view !== "storefront") {
-    app.innerHTML = cachedRouteHtml || navigationShellHtml(view);
+    app.innerHTML = instantRouteHtml || navigationShellHtml(view);
     syncLeviFabVisibility();
     hideLevromartSplash();
     clearAutoScrollTimers();
@@ -11423,7 +11441,10 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   // Ignore an older request if the user has already navigated somewhere else.
   if (navToken !== navigationGeneration) return;
-  if (html && !lastRenderError) routeHtmlCache.set(cacheKey, html);
+  if (html && !lastRenderError) {
+    routeHtmlCache.set(cacheKey, html);
+    persistOrderRouteHtml(view, params, html);
+  }
   const preserveSameViewScroll = !pushHistory && previousView === view;
   const sameViewScrollY = preserveSameViewScroll ? window.scrollY : 0;
   const preserveActiveFastChat = view === "messages" && !!currentViewParams?.conversationId && !!byId("chatInput") && window.__chatFastPaintDirty === true;
@@ -12312,7 +12333,7 @@ async function renderHome() {
   const activeCategory = (categories || []).find((c) => String(c.id) === String(currentHomeCategoryId)) || null;
   const subCats = (categories || []).filter(c => c.parent_category_id && (!activeSector || String(c.sector_id) === String(activeSector.id)));
 
-  let vendorQuery = sb.from("products").select("id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
+  let vendorQuery = sb.from("products").select("id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, delivery_fee, delivery_fee_mode, delivery_fee_per_km, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
@@ -19755,7 +19776,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
 
   // Use order_items(*) rather than naming columns, so a schema change to
   // order_items can't make the entire Orders page look empty.
-  let query = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("vendor_id", vendor.id);
+  let query = sb.from("orders").select("id, vendor_id, buyer_id, order_type, delivery_method, total_amount, delivery_fee, status, created_at, updated_at, status_changed_at, completed_at, cancelled_at, awaiting_confirmation_since, buyer:users(name), items:order_items(quantity,product:products(is_service)), payments(payment_type,status,paid_at,created_at)").eq("vendor_id", vendor.id);
   if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
@@ -19771,7 +19792,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   let safeAllOrders = allOrders;
   if (allOrdersError) {
     console.warn("Rich vendor order query failed; using compatibility query", allOrdersError);
-    let fallback = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("vendor_id", vendor.id);
+    let fallback = sb.from("orders").select("id, vendor_id, buyer_id, order_type, delivery_method, total_amount, delivery_fee, status, created_at, updated_at, status_changed_at, completed_at, cancelled_at, awaiting_confirmation_since, buyer:users(name), items:order_items(quantity,product:products(is_service)), payments(payment_type,status,paid_at,created_at)").eq("vendor_id", vendor.id);
     if (status !== "all") fallback = fallback.eq("status", status);
     if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
     if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
@@ -19833,7 +19854,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
 
   // order_items(*) is intentionally used here rather than naming columns,
   // so this stays resilient to schema changes on order_items.
-  let query = sb.from("orders").select("*, vendor:vendors(business_name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("buyer_id", session.user.id);
+  let query = sb.from("orders").select("id, vendor_id, buyer_id, order_type, delivery_method, total_amount, delivery_fee, status, created_at, updated_at, status_changed_at, completed_at, cancelled_at, awaiting_confirmation_since, vendor:vendors(business_name), items:order_items(quantity,product:products(is_service)), payments(payment_type,status,paid_at,created_at)").eq("buyer_id", session.user.id);
   if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
@@ -19841,7 +19862,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   let safeAllOrders = allOrders;
   if (allOrdersError) {
     console.warn("Rich buyer order query failed; using compatibility query", allOrdersError);
-    let fallback = sb.from("orders").select("*, vendor:vendors(business_name), items:order_items(*,product:products(is_service,name)), payments(payment_type,status)").eq("buyer_id", session.user.id);
+    let fallback = sb.from("orders").select("id, vendor_id, buyer_id, order_type, delivery_method, total_amount, delivery_fee, status, created_at, updated_at, status_changed_at, completed_at, cancelled_at, awaiting_confirmation_since, vendor:vendors(business_name), items:order_items(quantity,product:products(is_service)), payments(payment_type,status,paid_at,created_at)").eq("buyer_id", session.user.id);
     if (status !== "all") fallback = fallback.eq("status", status);
     if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
     if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
@@ -19874,7 +19895,8 @@ function orderStatusBadgeClass(status) {
   if (status === "completed") return "success";
   if (status === "handed_over" || status === "returned") return "warning";
   if (status === "confirmed") return "info";
-  return ""; // pending - plain accent color
+  if (status === "pending") return "pending";
+  return "";
 }
 
 // Pending and confirmed orders need action right now, so they float to the
@@ -20386,7 +20408,7 @@ async function remindOrderVendor(orderId,button){
     unlockNotificationAudio();
     if(audioCtx?.state==='running')playReminderChime();
     else if(audioCtx)audioCtx.resume().then(()=>playReminderChime()).catch(()=>{});
-    showToast('Reminder sent to vendor. Push notification sent if the vendor has notifications enabled on this device.','success');
+    showToast('Reminder sent to vendor.','success');
   }catch(err){showToast(err.message||'Could not send reminder. Please message the vendor.','error');}
   finally{orderReminderBusy.delete(orderId);if(button)button.disabled=false;}
 }
