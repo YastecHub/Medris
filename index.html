@@ -6490,6 +6490,46 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 .product-variety-add-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.45rem;margin-top:.5rem;}
 @media(max-width:520px){.product-variety-add-row{grid-template-columns:1fr}.product-display-picture-editor{min-height:125px}}
 </style>
+<style id="levromart-variety-editor-precision">
+/* Variety editor — intentionally scoped only to the product variety section. */
+#productVariantPricing{padding:.95rem;background:color-mix(in srgb,var(--primary) 3%,var(--card));border:1px solid var(--border);border-radius:16px;}
+#productVariantPricing .product-variant-pricing-head{margin-bottom:.85rem;}
+#productVariantPricing .product-variant-pricing-head strong{font-size:1rem;}
+#productVariantPricing .variant-price-row{display:block;padding:0;margin:.75rem 0 0;border:1px solid var(--border);border-radius:14px;background:var(--card);overflow:hidden;box-shadow:0 2px 8px color-mix(in srgb,var(--text) 5%,transparent);}
+#productVariantPricing .variant-price-row:first-of-type{border-top:1px solid var(--border);}
+#productVariantPricing .variant-row-topbar{display:flex;align-items:center;gap:.55rem;padding:.55rem .65rem;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--primary) 5%,var(--card));}
+#productVariantPricing .variant-dnd-handle{width:38px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border));border-radius:9px;background:color-mix(in srgb,var(--primary) 8%,var(--card));color:var(--primary);font-size:.82rem;cursor:grab;touch-action:none;}
+#productVariantPricing .variant-dnd-handle:active{cursor:grabbing;background:color-mix(in srgb,var(--primary) 14%,var(--card));}
+#productVariantPricing .variant-row-title{flex:1;font-size:.82rem;color:var(--text);}
+#productVariantPricing .variant-price-remove{width:34px;height:34px;border-radius:9px;}
+#productVariantPricing .variant-photo-section{padding:.8rem;display:grid;grid-template-columns:minmax(0,1fr);gap:.65rem;border-bottom:1px solid var(--border);}
+#productVariantPricing .variant-photo-picker{width:100%;min-height:82px;display:flex;align-items:center;gap:.75rem;padding:.65rem;border:1px dashed color-mix(in srgb,var(--primary) 48%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--primary) 4%,var(--input-bg));color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:border-color .18s ease,background .18s ease,transform .18s ease;}
+#productVariantPricing .variant-photo-picker:hover{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 7%,var(--input-bg));}
+#productVariantPricing .variant-photo-picker:active{transform:scale(.995);}
+#productVariantPricing .variant-photo-preview{width:64px;height:64px;flex:0 0 64px;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:color-mix(in srgb,var(--primary) 9%,var(--input-bg));border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border));color:var(--primary);font-size:1.15rem;}
+#productVariantPricing .variant-photo-preview img{display:block;width:100%;height:100%;object-fit:cover;}
+#productVariantPricing .variant-photo-copy{min-width:0;display:flex;flex-direction:column;gap:.18rem;flex:1;}
+#productVariantPricing .variant-photo-copy strong{font-size:.8rem;}
+#productVariantPricing .variant-photo-copy small{font-size:.68rem;color:var(--text-muted);line-height:1.3;}
+#productVariantPricing .variant-photo-camera{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);flex:0 0 32px;}
+#productVariantPricing .variant-existing-photo-wrap{display:grid;gap:.25rem;}
+#productVariantPricing .variant-existing-photo-wrap label{font-size:.68rem;color:var(--text-muted);margin:0;}
+#productVariantPricing .variant-existing-photo-wrap select{margin:0;}
+#productVariantPricing .variant-fields-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;padding:.8rem;}
+#productVariantPricing .variant-field{min-width:0;}
+#productVariantPricing .variant-field-wide{grid-column:1 / -1;}
+#productVariantPricing .variant-field label{display:block;margin:0 0 .28rem;font-size:.7rem;font-weight:750;color:var(--text);}
+#productVariantPricing .variant-field label span{font-weight:500;color:var(--text-muted);}
+#productVariantPricing .variant-field input{width:100%;min-width:0;margin:0;}
+#productVariantPricing .variant-price-row.dragging{opacity:.62;box-shadow:0 8px 24px color-mix(in srgb,var(--primary) 15%,transparent);}
+@media(max-width:520px){
+  #productVariantPricing{padding:.75rem;border-radius:14px;}
+  #productVariantPricing .variant-fields-grid{grid-template-columns:1fr;gap:.62rem;}
+  #productVariantPricing .variant-field-wide{grid-column:auto;}
+  #productVariantPricing .variant-photo-preview{width:58px;height:58px;flex-basis:58px;}
+  #productVariantPricing .variant-photo-picker{min-height:76px;}
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -17235,12 +17275,16 @@ async function renderVendorEditProfile() {
     <h2><i class="fa-solid fa-money-bill-transfer"></i> Payout details ${infoPopoverHtml("payoutInfo", `Set your bank account once. Levromart then pays you directly through Paystack on every order (minus the ${Number(v.commission_pct ?? 3)}% platform commission), no manual transfers needed. Funds typically land in your account the next business day after a sale.`)}</h2>
     <div id="bankError" class="error-text hidden"></div>
     ${v.paystack_subaccount_code
-      ? `<div class="banner banner-success" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-check"></i> Payouts active.</strong> ${esc(v.account_name || "")} · <span id="payoutBankName">${esc(payoutBankName(v))}</span> ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</div>
+      ? `<div class="banner banner-success" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-check"></i> Payouts active.</strong> ${esc(v.account_name || "")} · <span id="payoutBankName">${esc(getBankDisplayName(v.bank_code, v.bank_name))}</span> ${v.account_number ? "···" + esc(v.account_number.slice(-4)) : ""}</div>
        <button class="btn btn-sm btn-outline" onclick="byId('bankFormWrap').classList.toggle('hidden')">Change bank account</button>`
       : `<div class="banner banner-warning" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-triangle-exclamation"></i> Not set up yet.</strong> Until you add your bank, order payments go to Levromart and you'll be paid out manually.</div>`}
     <div id="bankFormWrap" class="${v.paystack_subaccount_code ? "hidden" : ""}" style="margin-top:0.8rem;">
       <label>Bank</label>
-      <select id="veBankCode" data-current-bank="${esc(v.bank_code || "")}">${`<option value="" ${!v.bank_code?"selected":""}>Choose a bank</option>`}${NIGERIAN_BANKS.map((b) => `<option value="${b.code}" ${b.code === String(v.bank_code) ? "selected" : ""}>${esc(b.name)}</option>`).join("")}${v.bank_code&&!NIGERIAN_BANKS.some(b=>b.code===String(v.bank_code))?`<option value="${esc(v.bank_code)}" selected>${esc(v.bank_name||`Bank ${v.bank_code}`)}</option>`:""}</select>
+      <button type="button" id="veBankPickerBtn" class="bank-picker-trigger" onclick="openVendorBankPicker()" aria-haspopup="dialog" aria-expanded="false">
+        <span id="veBankPickerLabel">${esc(getBankDisplayName(v.bank_code, v.bank_name) || "Select a bank")}</span>
+        <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+      </button>
+      <select id="veBankCode" data-current-bank="${esc(v.bank_code || "")}" class="hidden" aria-hidden="true" tabindex="-1">${NIGERIAN_BANKS.map((b) => `<option value="${esc(b.code)}" ${String(b.code) === String(v.bank_code || "") ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>
       <label>Account number</label>
       <input id="veAccountNumber" inputmode="numeric" maxlength="10" placeholder="10-digit account number" value="${esc(v.account_number || "")}" />
       <button class="btn btn-sm" style="margin-top:0.6rem;" id="saveBankBtn" onclick="saveVendorBankDetails()">Save payout details</button>
@@ -17254,39 +17298,258 @@ async function renderVendorEditProfile() {
 // current list (every bank, microfinance bank and fintech they support)
 // on every render of this page, so vendors aren't limited to this subset.
 const NIGERIAN_BANKS = [
-  { name: "Access Bank", code: "044" }, { name: "Citibank Nigeria", code: "023" }, { name: "Ecobank Nigeria", code: "050" },
-  { name: "Fidelity Bank", code: "070" }, { name: "First Bank of Nigeria", code: "011" }, { name: "First City Monument Bank", code: "214" },
-  { name: "Globus Bank", code: "00103" }, { name: "Guaranty Trust Bank", code: "058" }, { name: "Heritage Bank", code: "030" },
-  { name: "Jaiz Bank", code: "301" }, { name: "Keystone Bank", code: "082" }, { name: "Kuda Bank", code: "50211" },
-  { name: "Moniepoint MFB", code: "50515" }, { name: "Opay", code: "999992" }, { name: "PalmPay", code: "999991" },
-  { name: "Polaris Bank", code: "076" }, { name: "Providus Bank", code: "101" }, { name: "Stanbic IBTC Bank", code: "221" },
-  { name: "Standard Chartered Bank", code: "068" }, { name: "Sterling Bank", code: "232" }, { name: "Suntrust Bank", code: "100" },
-  { name: "Union Bank of Nigeria", code: "032" }, { name: "United Bank For Africa", code: "033" }, { name: "Unity Bank", code: "215" },
-  { name: "Wema Bank", code: "035" }, { name: "Zenith Bank", code: "057" },
+  { name: "9mobile 9Payment Service Bank", code: "120001" },
+  { name: "Abbey Mortgage Bank", code: "801" },
+  { name: "Above Only MFB", code: "51204" },
+  { name: "Abulesoro MFB", code: "51312" },
+  { name: "Access Bank", code: "044" },
+  { name: "Access Bank (Diamond)", code: "063" },
+  { name: "Accion Microfinance Bank", code: "602" },
+  { name: "AG Mortgage Bank", code: "90077" },
+  { name: "Ahmadu Bello University Microfinance Bank", code: "50036" },
+  { name: "Airtel Smartcash PSB", code: "120004" },
+  { name: "AKU Microfinance Bank", code: "51336" },
+  { name: "ALAT by WEMA", code: "035" },
+  { name: "Amju Unique MFB", code: "50926" },
+  { name: "Aramoko MFB", code: "50083" },
+  { name: "ASO Savings and Loans", code: "401" },
+  { name: "Astrapolaris MFB LTD", code: "50094" },
+  { name: "Bowen Microfinance Bank", code: "50931" },
+  { name: "Carbon", code: "565" },
+  { name: "CEMCS Microfinance Bank", code: "50823" },
+  { name: "Chanelle Microfinance Bank Limited", code: "50171" },
+  { name: "Citibank Nigeria", code: "023" },
+  { name: "Corestep MFB", code: "50204" },
+  { name: "Coronation Merchant Bank", code: "559" },
+  { name: "Crescent MFB", code: "51297" },
+  { name: "Ecobank Nigeria", code: "050" },
+  { name: "Ekimogun MFB", code: "50263" },
+  { name: "Ekondo Microfinance Bank", code: "562" },
+  { name: "Eyowo", code: "50126" },
+  { name: "FairMoney Microfinance Bank", code: "51318" },
+  { name: "Fidelity Bank", code: "070" },
+  { name: "Firmus MFB", code: "51314" },
+  { name: "First Bank of Nigeria", code: "011" },
+  { name: "First City Monument Bank", code: "214" },
+  { name: "FirstTrust Mortgage Bank Nigeria", code: "413" },
+  { name: "FSDH Merchant Bank Limited", code: "501" },
+  { name: "Gateway Mortgage Bank LTD", code: "812" },
+  { name: "Globus Bank", code: "00103" },
+  { name: "GoMoney", code: "100022" },
+  { name: "Guaranty Trust Bank", code: "058" },
+  { name: "Hackman Microfinance Bank", code: "51251" },
+  { name: "Hasal Microfinance Bank", code: "50383" },
+  { name: "Heritage Bank", code: "030" },
+  { name: "HopePSB", code: "120002" },
+  { name: "Ibile Microfinance Bank", code: "51244" },
+  { name: "Infinity MFB", code: "50457" },
+  { name: "Jaiz Bank", code: "301" },
+  { name: "Kadpoly MFB", code: "50502" },
+  { name: "Keystone Bank", code: "082" },
+  { name: "Kredi Money MFB LTD", code: "50200" },
+  { name: "Kuda Bank", code: "50211" },
+  { name: "Lagos Building Investment Company Plc.", code: "90052" },
+  { name: "Links MFB", code: "50549" },
+  { name: "Living Trust Mortgage Bank", code: "031" },
+  { name: "Lotus Bank", code: "303" },
+  { name: "MAINSTREET MICROFINANCE BANK", code: "090171" },
+  { name: "Mayfair MFB", code: "50563" },
+  { name: "Mint MFB", code: "50304" },
+  { name: "Money Master PSB", code: "946" },
+  { name: "Moniepoint MFB", code: "50515" },
+  { name: "MTN Momo PSB", code: "120003" },
+  { name: "MUTUAL BENEFITS MICROFINANCE BANK", code: "090190" },
+  { name: "NDCC MICROFINANCE BANK", code: "090679" },
+  { name: "NET MICROFINANCE BANK", code: "51361" },
+  { name: "Nigerian Navy Microfinance Bank Limited", code: "51142" },
+  { name: "NPF MICROFINANCE BANK", code: "50629" },
+  { name: "OPay Digital Services Limited (OPay)", code: "999992" },
+  { name: "Optimus Bank Limited", code: "107" },
+  { name: "Paga", code: "100002" },
+  { name: "PalmPay", code: "999991" },
+  { name: "Parallex Bank", code: "104" },
+  { name: "Parkway - ReadyCash", code: "311" },
+  { name: "PATHFINDER MICROFINANCE BANK LIMITED", code: "090680" },
+  { name: "Paystack-Titan", code: "100039" },
+  { name: "Peace Microfinance Bank", code: "50743" },
+  { name: "PECANTRUST MICROFINANCE BANK LIMITED", code: "51226" },
+  { name: "Personal Trust MFB", code: "51146" },
+  { name: "Petra Mircofinance Bank Plc", code: "50746" },
+  { name: "Polaris Bank", code: "076" },
+  { name: "PremiumTrust Bank", code: "105" },
+  { name: "Providus Bank", code: "101" },
+  { name: "QuickFund MFB", code: "51293" },
+  { name: "Rand Merchant Bank", code: "502" },
+  { name: "Refuge Mortgage Bank", code: "90067" },
+  { name: "Rubies MFB", code: "125" },
+  { name: "Safe Haven MFB", code: "51113" },
+  { name: "Signature Bank Ltd", code: "106" },
+  { name: "Solid Rock MFB", code: "50800" },
+  { name: "Sparkle Microfinance Bank", code: "51310" },
+  { name: "Stanbic IBTC Bank", code: "221" },
+  { name: "Standard Chartered Bank", code: "068" },
+  { name: "Sterling Bank", code: "232" },
+  { name: "Suntrust Bank", code: "100" },
+  { name: "TAJ Bank", code: "302" },
+  { name: "Tangerine Money", code: "51269" },
+  { name: "TCF MFB", code: "51211" },
+  { name: "Titan Bank", code: "102" },
+  { name: "U&C Microfinance Bank Ltd", code: "50840" },
+  { name: "Uhuru MFB", code: "51322" },
+  { name: "Unaab Microfinance Bank Limited", code: "50870" },
+  { name: "Unical MFB", code: "50871" },
+  { name: "Unilag Microfinance Bank", code: "51316" },
+  { name: "Union Bank of Nigeria", code: "032" },
+  { name: "United Bank For Africa", code: "033" },
+  { name: "Unity Bank", code: "215" },
+  { name: "VFD Microfinance Bank Limited", code: "566" },
+  { name: "Wema Bank", code: "035" },
+  { name: "Zenith Bank", code: "057" },
 ];
-function payoutBankName(v){
-  const code=String(v?.bank_code||'');
-  return [...(window.__payoutBanks||[]),...NIGERIAN_BANKS].find(b=>String(b.code)===code)?.name||v?.bank_name||(code?`Bank ${code}`:'Bank not set');
+window.__levroBankOptions = Array.isArray(window.__levroBankOptions) && window.__levroBankOptions.length
+  ? window.__levroBankOptions
+  : NIGERIAN_BANKS.slice();
+
+function getBankDisplayName(bankCode, storedBankName) {
+  const code = String(bankCode || "").trim();
+  const source = Array.isArray(window.__levroBankOptions) && window.__levroBankOptions.length
+    ? window.__levroBankOptions
+    : NIGERIAN_BANKS;
+  const mapped = code
+    ? source.find((b) => String(b.code) === code)?.name
+    : "";
+  // IMPORTANT: bank_code is authoritative. A stale bank_name must never
+  // override the bank selected/saved by the vendor.
+  return mapped || String(storedBankName || "").trim() || (code ? `Bank code ${code}` : "Not provided");
 }
+
+function normaliseBankList(list) {
+  const seen = new Set();
+  return (Array.isArray(list) ? list : [])
+    .map((b) => ({ name: String(b?.name || "").trim(), code: String(b?.code || "").trim() }))
+    .filter((b) => b.name && b.code)
+    .filter((b) => {
+      const key = `${b.code}::${b.name.toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+function renderVendorBankPicker() {
+  const select = byId("veBankCode");
+  const label = byId("veBankPickerLabel");
+  if (!select || !label) return;
+  const selected = select.options[select.selectedIndex];
+  label.textContent = selected?.textContent?.trim() || getBankDisplayName(select.value, "");
+}
+
+function closeVendorBankPicker() {
+  const modal = byId("vendorBankPickerModal");
+  if (modal) modal.remove();
+  const trigger = byId("veBankPickerBtn");
+  if (trigger) trigger.setAttribute("aria-expanded", "false");
+}
+
+function selectVendorBank(code, name) {
+  const select = byId("veBankCode");
+  if (!select) return;
+  const option = Array.from(select.options).find((o) => String(o.value) === String(code));
+  if (!option) return;
+  select.value = String(code);
+  select.dataset.currentBank = String(code);
+  const label = byId("veBankPickerLabel");
+  if (label) label.textContent = name || option.textContent.trim();
+  closeVendorBankPicker();
+}
+
+function openVendorBankPicker() {
+  const select = byId("veBankCode");
+  if (!select) return;
+  closeVendorBankPicker();
+
+  const banks = Array.from(select.options)
+    .map((o) => ({ code: o.value, name: o.textContent.trim() }))
+    .filter((b) => b.code && b.name)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+
+  const modal = document.createElement("div");
+  modal.id = "vendorBankPickerModal";
+  modal.className = "modal vendor-bank-picker-modal";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.innerHTML = `
+    <div class="modal-content vendor-bank-picker-content">
+      <div class="vendor-bank-picker-head">
+        <div>
+          <div class="vendor-bank-picker-title"><i class="fa-solid fa-building-columns"></i><span>Select payout bank</span></div>
+          <div class="muted" style="font-size:.76rem;margin-top:.2rem;">${banks.length} supported banks and financial institutions</div>
+        </div>
+        <button type="button" class="drawer-close-btn" onclick="closeVendorBankPicker()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="vendor-bank-search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input id="vendorBankSearch" class="vendor-bank-search" type="search" autocomplete="off" placeholder="Search bank..." aria-label="Search banks" />
+      </div>
+      <div id="vendorBankPickerList" class="vendor-bank-picker-list"></div>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  const listEl = byId("vendorBankPickerList");
+  const searchEl = byId("vendorBankSearch");
+  const selectedCode = String(select.value || "");
+
+  const paint = () => {
+    const q = String(searchEl?.value || "").trim().toLowerCase();
+    const filtered = banks.filter((b) => !q || b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q));
+    listEl.innerHTML = filtered.length
+      ? filtered.map((b) => `<button type="button" class="vendor-bank-option ${String(b.code) === selectedCode ? "selected" : ""}" onclick="selectVendorBank('${esc(b.code)}','${esc(b.name)}')"><span class="vendor-bank-option-icon"><i class="fa-solid fa-building-columns"></i></span><span class="vendor-bank-option-main"><strong>${esc(b.name)}</strong><small>${esc(b.code)}</small></span>${String(b.code) === selectedCode ? '<i class="fa-solid fa-circle-check vendor-bank-option-check"></i>' : '<i class="fa-solid fa-chevron-right vendor-bank-option-arrow"></i>'}</button>`).join("")
+      : `<div class="empty-state" style="padding:2rem 1rem;">No bank matches your search.</div>`;
+  };
+
+  searchEl?.addEventListener("input", paint);
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeVendorBankPicker(); });
+  paint();
+  requestAnimationFrame(() => {
+    byId("veBankPickerBtn")?.setAttribute("aria-expanded", "true");
+    searchEl?.focus();
+  });
+}
+
 async function loadBankOptions() {
   const select = byId("veBankCode");
   if (!select) return;
-  const owner=vendor?.id;
+  const currentBank = String(select.dataset.currentBank || select.value || "");
   try {
-    const res = await fetch("/api/vendor-payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "list-banks" }) });
+    const res = await fetch("/api/vendor-payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "list-banks", country: "nigeria", currency: "NGN", perPage: 100 }),
+    });
     const json = await res.json();
-    if (!res.ok || !json.banks?.length) return;
-    if(byId('veBankCode')!==select||vendor?.id!==owner)return;
-    const currentBank=String(select.value||'');
-    window.__payoutBanks=json.banks.map(b=>({name:String(b.name),code:String(b.code)}));
-    const banks=[...window.__payoutBanks];
-    if(currentBank&&!banks.some(b=>b.code===currentBank))banks.push({code:currentBank,name:select.selectedOptions[0]?.textContent||`Bank ${currentBank}`});
-    select.innerHTML='<option value="">Choose a bank</option>'+banks.map(b=>`<option value="${esc(b.code)}">${esc(b.name)}</option>`).join('');
-    select.value=currentBank;
-    const summary=byId('payoutBankName');if(summary)summary.textContent=payoutBankName(vendor);
-    if (select.dataset.msEnhanced) select.dispatchEvent(new Event("change", { bubbles: true }));
+    if (!res.ok || !Array.isArray(json.banks) || !json.banks.length) throw new Error("Bank list unavailable");
+
+    const banks = normaliseBankList(json.banks);
+    if (!banks.length) throw new Error("Bank list unavailable");
+    window.__levroBankOptions = banks;
+
+    // Keep the live Paystack-backed list authoritative and alphabetically ordered.
+    select.innerHTML = banks.map((b) => `<option value="${esc(b.code)}" ${String(b.code) === currentBank ? "selected" : ""}>${esc(b.name)}</option>`).join("");
+    if (currentBank && !Array.from(select.options).some((o) => String(o.value) === currentBank)) {
+      select.value = currentBank;
+      select.dataset.currentBank = currentBank;
+    }
+    renderVendorBankPicker();
   } catch (e) {
-    // Fine - the hardcoded NIGERIAN_BANKS list already rendered as a fallback.
+    // The complete fallback is already rendered in the HTML. Never default
+    // to Access Bank: preserve the saved bank code if one exists.
+    if (currentBank) {
+      select.value = currentBank;
+      select.dataset.currentBank = currentBank;
+    }
+    renderVendorBankPicker();
   }
 }
 
@@ -18054,42 +18317,21 @@ function openProductDisplayPictureActions(event){
 function clearProductDisplayPicture(){window.__existingPhotos=(window.__existingPhotos||[]).slice(1);renderExistingPhotos();renderProductDisplayPicture();}
 
 function renderProductVariantPricing() {
-  const wrap = byId("productVariantPricing");
-  if (!wrap) return;
-  const variants = Array.isArray(window.__productVariants) ? window.__productVariants : [];
-  const existing = Array.isArray(window.__existingPhotos) ? window.__existingPhotos : [];
-  const pending = Array.isArray(window.__newProductPhotoFiles) ? window.__newProductPhotoFiles : [];
-  const rows = [];
-  variants.forEach((v, index) => rows.push({ ...v, _localKey: String(v.id || v._localKey || `variant-${index}`), _source: v.photo_url ? "existing" : "none" }));
-  if (!rows.length) { wrap.innerHTML='<div class="product-variant-pricing-head"><strong>Varieties</strong><div class="variant-price-note">Use “Add variety” to create customer-facing varieties. A product without varieties works normally.</div></div>'; renderProductDisplayPicture(); return; }
-  wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Drag to reorder. Size and Color may be left blank.</div></div></div>${rows.map((r,i)=>{
-    const image = r._previewUrl || r.photo_url || (r.temp_index != null ? pending[r.temp_index] && URL.createObjectURL(pending[r.temp_index]) : "") || "";
-    return `<div class="variant-price-row" draggable="true" data-variant-key="${esc(String(r.id || r._localKey))}" data-photo-url="${esc(r.photo_url||"")}" data-temp-index="${r.temp_index ?? ""}">
-      <button type="button" class="variant-dnd-handle" aria-label="Drag to reorder" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></button>
-      <div class="variant-price-thumb">${image?`<img src="${esc(image)}" alt="">`:`<i class="fa-regular fa-image"></i>`}</div>
-      <input class="variant-name" type="text" maxlength="120" placeholder="Variety name" value="${esc(r.name||"")}">
-      <input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="Price" value="${r.sale_price==null?"":esc(String(r.sale_price))}">
-      <input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="Discount price" value="${r.discount_price==null?"":esc(String(r.discount_price))}">
-      <input type="hidden" class="variant-image" value="${esc(r.photo_url||'')}">
-      <label class="variant-upload-label">Variety image<input type="file" accept="image/*" onchange="selectVarietyImage(this)"></label>
-      <textarea class="variant-description" aria-label="Variety description" placeholder="Description">${esc(r.description||'')}</textarea>
-      <input class="variant-quantity" type="number" min="0" step="1" aria-label="Variety quantity available" placeholder="Quantity available" value="${r.quantity_available==null?'':esc(r.quantity_available)}">
-
-      <div class="variant-extra-fields"><input class="variant-size" type="text" maxlength="80" placeholder="Size" value="${esc(r.size||"")}"><input class="variant-color" type="text" maxlength="80" placeholder="Color" value="${esc(r.color||"")}"></div>
-      <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Clear this variety" title="Clear this variety"><i class="fa-solid fa-xmark"></i></button>
-    </div>`;
-  }).join("")}`;
-  bindProductVariantDnd();
-  renderProductDisplayPicture();
+  const wrap=byId("productVariantPricing"); if(!wrap)return;
+  const variants=Array.isArray(window.__productVariants)?window.__productVariants:[], existing=Array.isArray(window.__existingPhotos)?window.__existingPhotos:[], pending=Array.isArray(window.__newProductPhotoFiles)?window.__newProductPhotoFiles:[];
+  const rows=[]; variants.forEach((v,index)=>rows.push({...v,_localKey:String(v.id||v._localKey||`variant-${index}`),_source:v.photo_url?"existing":"none"}));
+  if(!rows.length){wrap.innerHTML='<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Add optional variety details such as an image, name, color, size, price or discount price.</div></div></div>';renderProductDisplayPicture();return;}
+  const photoFiles=window.__productVariantPhotoFiles||{};
+  wrap.innerHTML=`<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Each variety is optional. Add only the details that apply. Drag the handle to reorder.</div></div></div>${rows.map((r,i)=>{const key=String(r.id||r._localKey),uploadedFile=photoFiles[key],image=uploadedFile?URL.createObjectURL(uploadedFile):(r._previewUrl||r.photo_url||(r.temp_index!=null?pending[r.temp_index]&&URL.createObjectURL(pending[r.temp_index]):"")||""),imageOptions=existing.map((u,j)=>`<option value="${esc(u)}" ${String(r.photo_url||"")===String(u)?"selected":""}>Product photo ${j+1}${j===0?" (display)":""}</option>`).join("");return `<div class="variant-price-row" draggable="true" data-variant-key="${esc(key)}" data-photo-url="${esc(r.photo_url||"")}" data-temp-index="${r.temp_index??""}">
+    <div class="variant-row-topbar"><button type="button" class="variant-dnd-handle" aria-label="Drag to reorder" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></button><strong class="variant-row-title">Variety ${i+1}</strong><button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Remove this variety" title="Remove this variety"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="variant-photo-section"><button type="button" class="variant-photo-picker" onclick="openProductVariantPhotoPicker('${esc(key)}')" aria-label="Add variety photo"><span class="variant-photo-preview">${image?`<img src="${esc(image)}" alt="Variety photo">`:`<i class="fa-regular fa-image"></i>`}</span><span class="variant-photo-copy"><strong>${image?'Change variety photo':'Add variety photo'}</strong><small>Optional · tap to choose an image</small></span><i class="fa-solid fa-camera variant-photo-camera"></i></button><input type="file" class="variant-photo-file" data-variant-photo-key="${esc(key)}" accept="image/*" onchange="handleProductVariantPhotoChange(this)" hidden>${existing.length?`<div class="variant-existing-photo-wrap"><label>Or use a product photo</label><select class="variant-image" aria-label="Use an existing product photo" onchange="clearProductVariantUploadedPhoto(this)"><option value="" ${!r.photo_url?"selected":""}>No existing photo</option>${imageOptions}</select></div>`:''}</div>
+    <div class="variant-fields-grid"><div class="variant-field"><label>Variety name <span>(optional)</span></label><input class="variant-name" type="text" maxlength="120" placeholder="e.g. Large / Black / 500ml" value="${esc(r.name||"")}"></div><div class="variant-field"><label>Color <span>(optional)</span></label><input class="variant-color" type="text" maxlength="80" placeholder="e.g. Black" value="${esc(r.color||"")}"></div><div class="variant-field"><label>Size <span>(optional)</span></label><input class="variant-size" type="text" maxlength="80" placeholder="e.g. XL" value="${esc(r.size||"")}"></div><div class="variant-field"><label>Price (₦) <span>(optional)</span></label><input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="e.g. 15000" value="${r.sale_price==null?"":esc(String(r.sale_price))}"></div><div class="variant-field variant-field-wide"><label>Discount price (₦) <span>(optional)</span></label><input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="e.g. 13500" value="${r.discount_price==null?"":esc(String(r.discount_price))}"></div><div class="variant-field variant-field-wide"><label>Description <span>(optional)</span></label><textarea class="variant-description" aria-label="Variety description" placeholder="Description">${esc(r.description||"")}</textarea></div><div class="variant-field variant-field-wide"><label>Quantity available <span>(optional)</span></label><input class="variant-quantity" type="number" min="0" step="1" aria-label="Variety quantity available" placeholder="Quantity available" value="${r.quantity_available==null?'':esc(r.quantity_available)}"></div></div>
+  </div>`;}).join("")}`;bindProductVariantDnd();renderProductDisplayPicture();
 }
-async function selectVarietyImage(input){
-  const file=input.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){showToast('Choose an image.','error');return;}
-  persistVisibleVariantOrder();const row=input.closest('.variant-price-row'),key=row.dataset.variantKey;
-  const v=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===key);if(!v)return;
-  v._imageFile=file;if(v._previewUrl)URL.revokeObjectURL(v._previewUrl);v._previewUrl=URL.createObjectURL(file);
-  row.querySelector('.variant-price-thumb').innerHTML=`<img src="${esc(v._previewUrl)}" alt="Variety image">`;
-  window.__captureListingDraftForModal?.('product');
-}
+function openProductVariantPhotoPicker(key){const input=[...document.querySelectorAll('#productVariantPricing .variant-photo-file')].find(el=>String(el.dataset.variantPhotoKey||'')===String(key));input?.click();}
+function handleProductVariantPhotoChange(input){const key=String(input?.dataset.variantPhotoKey||'');const file=input?.files?.[0];if(!key||!file||!file.type?.startsWith('image/'))return;window.__productVariantPhotoFiles ||= {};persistVisibleVariantOrder();window.__productVariantPhotoFiles[key]=file;const v=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===key);if(v){v._imageFile=file;v._previewUrl=URL.createObjectURL(file);}renderProductVariantPricing();window.__captureListingDraftForModal?.('product');}
+function clearProductVariantUploadedPhoto(select){const key=String(select?.closest?.('.variant-price-row')?.dataset.variantKey||'');if(window.__productVariantPhotoFiles&&key)delete window.__productVariantPhotoFiles[key];}
+async function selectVarietyImage(input){return handleProductVariantPhotoChange(input);}
 async function uploadVarietyImages(){
   persistVisibleVariantOrder();
   await Promise.all((window.__productVariants||[]).map(async v=>{
@@ -18124,14 +18366,7 @@ function bindProductVariantDnd(){
   wrap.addEventListener('pointermove',e=>{if(!touchRow)return; if(Math.abs(e.clientY-(touchY||e.clientY))<10)return; const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.variant-price-row'); if(!target||target===touchRow||!wrap.contains(target))return; const before=e.clientY<target.getBoundingClientRect().top+target.getBoundingClientRect().height/2; target.parentNode.insertBefore(touchRow,before?target:target.nextSibling);},true);
   wrap.addEventListener('pointerup',()=>{if(touchRow){persistVisibleVariantOrder();touchRow=null;}},true);
 }
-function persistVisibleVariantOrder(){
-  const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
-  const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||''),v]));
-  window.__productVariants=rows.map((r,i)=>{
-    const v=byKey.get(r.dataset.variantKey)||{_localKey:r.dataset.variantKey},value=c=>r.querySelector(c)?.value??'';
-    return {...v,name:value('.variant-name'),sale_price:value('.variant-sale-price'),discount_price:value('.variant-discount-price'),size:value('.variant-size'),color:value('.variant-color'),description:value('.variant-description'),quantity_available:value('.variant-quantity')===''?null:Number(value('.variant-quantity')),photo_url:value('.variant-image'),sort_order:i};
-  });
-}
+function persistVisibleVariantOrder(){const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||''),v]));window.__productVariants=rows.map((r,i)=>{const v=byKey.get(String(r.dataset.variantKey||""))||{_localKey:r.dataset.variantKey},value=c=>r.querySelector(c)?.value??'',titleEl=r.querySelector('.variant-row-title');if(titleEl)titleEl.textContent=`Variety ${i+1}`;return {...v,name:value('.variant-name').trim(),sale_price:value('.variant-sale-price'),discount_price:value('.variant-discount-price'),size:value('.variant-size').trim(),color:value('.variant-color').trim(),description:value('.variant-description'),quantity_available:value('.variant-quantity')===''?null:Number(value('.variant-quantity')),photo_url:r.querySelector('.variant-image')?.value||r.dataset.photoUrl||v.photo_url||'',sort_order:i};});}
 function collectProductVariantDrafts(photoUrls) {
   persistVisibleVariantOrder();
   const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
@@ -25764,6 +25999,39 @@ window.renderVendorMapRail = function(){
 /* legacy Top-rated Vendor row layout removed */
 .vendors-map-vendor-chip{flex-basis:196px !important;min-width:196px !important;padding:.55rem .62rem !important;}
 .vendors-map-vendor-chip img,.vendors-map-vendor-chip .avatar-circle{width:2.8rem !important;height:2.8rem !important;flex-basis:2.8rem !important;font-size:1rem !important;font-weight:800 !important;display:flex !important;align-items:center !important;justify-content:center !important;border-radius:50% !important;}
+/* Payout bank picker: searchable, alphabetical, mobile-friendly and consistent
+   with Levromart's existing glass/card visual language. */
+.bank-picker-trigger{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+  padding:.78rem .9rem;margin:.3rem 0 .5rem;border:1px solid var(--border);
+  border-radius:.85rem;background:color-mix(in srgb,var(--primary) 3%,var(--input-bg));
+  color:var(--text);font:inherit;text-align:left;cursor:pointer;
+}
+.bank-picker-trigger:hover{border-color:color-mix(in srgb,var(--primary) 45%,var(--border));box-shadow:0 2px 10px color-mix(in srgb,var(--primary) 10%,transparent);}
+.bank-picker-trigger > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bank-picker-trigger > i{color:var(--text-muted);flex:0 0 auto;}
+.vendor-bank-picker-modal{z-index:310;padding:1rem;}
+.vendor-bank-picker-content{width:min(520px,100%);max-height:min(82vh,720px);padding:1rem;overflow:hidden;display:flex;flex-direction:column;}
+.vendor-bank-picker-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.8rem;}
+.vendor-bank-picker-title{display:flex;align-items:center;gap:.55rem;font-size:1.05rem;font-weight:800;}
+.vendor-bank-picker-title i{color:var(--primary);}
+.vendor-bank-search-wrap{position:relative;margin-bottom:.65rem;}
+.vendor-bank-search-wrap > i{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;}
+.vendor-bank-search{width:100%;margin:0;padding:.72rem .8rem .72rem 3.05rem!important;border-radius:.8rem;background:var(--input-bg);}
+.vendor-bank-picker-list{overflow-y:auto;min-height:0;padding-right:.1rem;}
+.vendor-bank-option{width:100%;display:flex;align-items:center;gap:.7rem;padding:.72rem .65rem;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);text-align:left;cursor:pointer;}
+.vendor-bank-option:hover,.vendor-bank-option.selected{background:color-mix(in srgb,var(--primary) 9%,transparent);}
+.vendor-bank-option-icon{width:2rem;height:2rem;flex:0 0 2rem;border-radius:.65rem;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);}
+.vendor-bank-option-main{min-width:0;display:flex;flex-direction:column;gap:.1rem;flex:1;}
+.vendor-bank-option-main strong{font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vendor-bank-option-main small{font-size:.7rem;color:var(--text-muted);}
+.vendor-bank-option-check{color:var(--primary);flex:0 0 auto;}
+.vendor-bank-option-arrow{color:var(--text-muted);font-size:.7rem;flex:0 0 auto;}
+.payout-active-banner{line-height:1.45;}
+@media(max-width:560px){
+  .vendor-bank-picker-content{max-height:86vh;border-radius:1.1rem;padding:.85rem;}
+  .vendor-bank-option{padding:.78rem .5rem;}
+}
 </style>
 
 <script id="levromart-final-2026-09-09">
@@ -25790,7 +26058,7 @@ window.renderVendorMapRail = function(){
     else {showToast("There is no outstanding payment on this order.","info");return;}
     byId("manualVendorPaymentModal")?.remove();
     const modal=document.createElement("div"); modal.id="manualVendorPaymentModal"; modal.className="modal manual-payment-modal";
-    const bankName = order.vendor?.bank_name || (typeof NIGERIAN_BANKS!=="undefined" ? NIGERIAN_BANKS.find(b=>String(b.code)===String(order.vendor?.bank_code||""))?.name : null) || (order.vendor?.bank_code ? `Bank code ${order.vendor.bank_code}` : "Not provided");
+    const bankName = getBankDisplayName(order.vendor?.bank_code, order.vendor?.bank_name);
     const hasAccount = !!(order.vendor?.account_name || order.vendor?.account_number || order.vendor?.bank_code || order.vendor?.bank_name);
     modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> for the <strong>${esc(paymentLabel)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
