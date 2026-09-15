@@ -116,15 +116,15 @@
     width: 100%; max-width: 100%; background-color: var(--bg); background-image: var(--bg-wash); background-attachment: fixed;
     transition: background-color 0.25s ease, color 0.25s ease; touch-action: pan-x pan-y;
   }
-  /* Branded app splash: solid black backdrop with the real Levromart mark
-     centered and sized generously, shown briefly on load/reload. Hiding is
-     driven entirely from JS (prepareLevromartSplash/hideLevromartSplash),
-     which guarantees this can never stay stuck on screen - see the
-     try/finally + hard safety timeout around init(). */
-  #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#000;opacity:1;visibility:visible;pointer-events:auto;transition:opacity .28s ease,visibility .28s ease;}
+  /* Professional app loading surface: never expose the uninitialized header,
+     logo masks, or empty navigation while the first route is being prepared.
+     The user sees only the real Levromart mark on the normal app surface;
+     the splash disappears as soon as init() has a route ready. */
+  #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.9rem;background:var(--bg);opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease;}
   #levromartSplash.is-hidden{opacity:0;visibility:hidden;pointer-events:none;}
-  .levromart-splash-logo{display:block;width:min(20rem,72vw);height:auto;object-fit:contain;border:0;outline:none;animation:levroSplashLogoIn .32s cubic-bezier(.22,1,.36,1) both;}
-  @keyframes levroSplashLogoIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+  .levromart-splash-logo{display:block;width:92px;height:92px;object-fit:contain;border:0;outline:none;border-radius:24px;animation:levroSplashLogoIn .28s ease-out both;filter:drop-shadow(0 8px 18px rgba(15,23,42,.10));}
+  .levromart-splash-logo-fallback{width:92px;height:92px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:var(--card,#fff);box-shadow:0 8px 24px rgba(15,23,42,.10);color:var(--primary,#10b981);font-size:2.7rem;font-weight:900;}
+  @keyframes levroSplashLogoIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
   @media(prefers-reduced-motion:reduce){#levromartSplash{transition:none}.levromart-splash-logo{animation:none;opacity:1;transform:none;}}
   /* Android/PWA system-bar area: keep the top chrome on the same dark
      surface as Levromart instead of exposing a bright device accent. */
@@ -6566,7 +6566,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 </style>
 </head>
 <body>
-<div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
+<div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none';var f=document.getElementById('levromartSplashFallback');if(f)f.style.display='flex'" /><div id="levromartSplashFallback" class="levromart-splash-logo-fallback" style="display:none" aria-hidden="true">L</div></div>
 <script id="levromart-splash-watchdog">
 (function(){
   // This watchdog intentionally lives before the large application bundle.
@@ -6579,10 +6579,11 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     el.classList.add("is-hidden");
     el.setAttribute("aria-hidden","true");
   }
-  setTimeout(hide,4500);
-  window.addEventListener("load",function(){
-    setTimeout(function(){ if(Date.now()-started>900) hide(); },1200);
-  },{once:true});
+  // Do not hide the branded surface merely because window.load fired. The
+  // app may still be preparing its first route; exposing the raw header at
+  // that point produces the ugly green logo rectangles/empty controls.
+  // init() hides this surface in its finally block once routing is ready.
+  setTimeout(hide,8000);
 })();
 </script>
 <header>
@@ -7988,7 +7989,10 @@ function prepareLevromartSplash() {
   const splash = byId("levromartSplash");
   if (!splash) return;
   const logo = splash.querySelector(".levromart-splash-logo");
-  if (logo && typeof MEDRIS_LOGO !== "undefined") logo.src = MEDRIS_LOGO;
+  if (logo) {
+    if (typeof LEVROMART_LOGO_CIRCLE !== "undefined") logo.src = LEVROMART_LOGO_CIRCLE;
+    else if (typeof MEDRIS_LOGO !== "undefined") logo.src = MEDRIS_LOGO;
+  }
   window.__levroSplashShownAt = Date.now();
   window.__levroSplashHidden = false;
 }
@@ -10885,7 +10889,10 @@ function showLevromartAbout() {
   const modal = byId("aboutLevromartModal");
   if (!modal) return;
   const logo = byId("aboutLevromartLogo");
-  if (logo && typeof MEDRIS_LOGO !== "undefined") logo.src = MEDRIS_LOGO;
+  if (logo) {
+    if (typeof LEVROMART_LOGO_CIRCLE !== "undefined") logo.src = LEVROMART_LOGO_CIRCLE;
+    else if (typeof MEDRIS_LOGO !== "undefined") logo.src = MEDRIS_LOGO;
+  }
   const year = byId("aboutYear");
   if (year) year.textContent = new Date().getFullYear();
   byId("settingsMoreMenu")?.classList.add("hidden");
@@ -10974,10 +10981,9 @@ function navigationLoadingHtml(view) {
 
 function homeFallbackHtml(message = "The marketplace is taking a moment to load. Please try again.") {
   const safeMessage = typeof esc === "function" ? esc(message) : String(message).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c] || c));
-  return `<div class="empty-state levro-home-fallback" role="status" aria-live="polite">
-    <i class="fa-solid fa-store" style="display:block;font-size:2rem;margin-bottom:.65rem;color:var(--primary);"></i>
-    <strong style="display:block;margin-bottom:.35rem;">Levromart is still loading</strong>
-    <p class="muted" style="margin:0 auto .8rem;max-width:28rem;">${safeMessage}</p>
+  return `<div class="empty-state levro-home-fallback" role="status" aria-live="polite" style="min-height:48vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+    <div style="font-size:2rem;font-weight:850;letter-spacing:-.04em;color:var(--primary);margin-bottom:.55rem;">Levromart</div>
+    <p class="muted" style="margin:0 auto .9rem;max-width:28rem;">${safeMessage}</p>
     <button type="button" class="btn" onclick="navigate('home',{},false)"><i class="fa-solid fa-rotate-right"></i> Try again</button>
   </div>`;
 }
