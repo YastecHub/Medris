@@ -20185,12 +20185,14 @@ async function loadCommissionBreakdown(){
     const grouped=new Map();
     rows.forEach(r=>{
       const key=r.order_id||r.charge_id;
-      if(!grouped.has(key))grouped.set(key,{order_id:r.order_id,sold_at:r.sold_at,buyer_name:r.buyer_name||"Buyer",payment_amount:0,commission_amount:0,commission_rates:[],products:[]});
+      if(!grouped.has(key))grouped.set(key,{order_id:r.order_id,sold_at:r.sold_at,buyer_name:r.buyer_name||"Buyer",payment_amount:0,commission_amount:0,commission_rates:[],components:[],products:[]});
       const g=grouped.get(key);
       if(r.buyer_name)g.buyer_name=r.buyer_name;
       g.payment_amount+=Number(r.payment_amount||0);
       g.commission_amount+=Number(r.commission_amount||0);
-      const rate=Number(r.commission_rate||0);if(rate&&!g.commission_rates.includes(rate))g.commission_rates.push(rate);
+      const paymentAmount=Number(r.payment_amount||0), commissionAmount=Number(r.commission_amount||0), rate=Number(r.commission_rate||0);
+      if(rate&&!g.commission_rates.includes(rate))g.commission_rates.push(rate);
+      if(paymentAmount>0&&commissionAmount>0)g.components.push({rate,amount:paymentAmount,commission:commissionAmount});
       (Array.isArray(r.products)?r.products:[]).forEach(item=>{
         const name=String(item.product_name||"Unnamed product"),unit=Number(item.unit_price||0),qty=Number(item.quantity||0);
         const existing=g.products.find(x=>x.name===name&&x.unit===unit);
@@ -20203,7 +20205,8 @@ async function loadCommissionBreakdown(){
       const date=g.sold_at?new Date(g.sold_at).toLocaleString([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Date unavailable";
       const rateText=g.commission_rates.length?g.commission_rates.map(x=>`${x}%`).join(" / "):"—";
       const lines=g.products.length?g.products.map(x=>`<li><span>${esc(x.qty+"× "+x.name)}</span><span>${naira(x.qty*x.unit)}</span></li>`).join(""):'<li><span>Order items unavailable</span><span>—</span></li>';
-      return `<div class="vendor-commission-item"><div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length>1?`${g.products.length} products`:(g.products[0]?esc(g.products[0].name):"Sale")}</div><div class="vendor-commission-item-date">Sold ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div><div class="vendor-commission-buyer"><i class="fa-solid fa-user"></i><span>Buyer</span><strong>${esc(g.buyer_name||"Buyer")}</strong></div><ul class="vendor-commission-products">${lines}</ul><div class="vendor-commission-math"><span>Sale/payment recorded</span><strong>${naira(g.payment_amount)}</strong></div><div class="vendor-commission-math"><span>Commission calculation</span><strong>${esc(rateText)} × ${naira(g.payment_amount)} = ${naira(g.commission_amount)}</strong></div></div>`;
+      const componentRows=(g.components||[]).map(c=>`<div class="vendor-commission-component"><span>${esc(c.rate+"% × "+naira(c.amount))}</span><strong>${naira(c.commission)}</strong></div>`).join("");
+      return `<div class="vendor-commission-item"><div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length>1?`${g.products.length} products`:(g.products[0]?esc(g.products[0].name):"Sale")}</div><div class="vendor-commission-item-date">Sold ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div><div class="vendor-commission-buyer"><i class="fa-solid fa-user"></i><span>Buyer</span><strong>${esc(g.buyer_name||"Buyer")}</strong></div><ul class="vendor-commission-products">${lines}</ul><div class="vendor-commission-math"><span>Total sale/payment recorded</span><strong>${naira(g.payment_amount)}</strong></div><div class="vendor-commission-math"><span>Commission calculation</span><div class="vendor-commission-components">${componentRows||`<div class="vendor-commission-component"><span>${esc(rateText)} × ${naira(g.payment_amount)}</span><strong>${naira(g.commission_amount)}</strong></div>`}</div></div><div class="vendor-commission-math"><span>Commission for this order</span><strong>${naira(g.commission_amount)}</strong></div></div>`;
     }).join("");
     box.innerHTML=`<div class="vendor-commission-breakdown-head">Outstanding commission — ${grouped.size} sale${grouped.size===1?"":"s"}</div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span>Total commission owed</span><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
   }catch(err){box.innerHTML=`<div class="vendor-commission-breakdown-head" style="color:var(--danger,#ef4444)">Could not load the commission breakdown. ${esc(err?.message||"Please try again.")}</div>`;}
@@ -28153,7 +28156,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 .vendor-commission-products{margin:.55rem 0 0;padding:0;list-style:none}
 .vendor-commission-products li{display:flex;justify-content:space-between;gap:.6rem;padding:.22rem 0;font-size:.76rem}
 .vendor-commission-products li span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
-.vendor-commission-math{display:flex;justify-content:space-between;gap:.6rem;margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border);font-size:.75rem}
+.vendor-commission-math{display:flex;justify-content:space-between;gap:.6rem;margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border);font-size:.75rem}.vendor-commission-components{flex:1;min-width:0}.vendor-commission-component{display:flex;justify-content:flex-end;gap:.7rem;margin:.18rem 0;font-variant-numeric:tabular-nums}.vendor-commission-component strong{white-space:nowrap}
 .vendor-commission-total{display:flex;justify-content:space-between;gap:.7rem;padding:.8rem .85rem;font-weight:850;font-size:.86rem;background:color-mix(in srgb,var(--primary) 7%,transparent)}
 .vendor-commission-pay-now{width:100%;justify-content:center;margin-top:.65rem!important}
 @media(max-width:720px){.vendor-commission-breakdown-list{max-height:45vh}.vendor-commission-item-top{align-items:center}}
