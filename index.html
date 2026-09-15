@@ -10499,12 +10499,12 @@ function renderBottomNav() {
       { icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
   } else if (isVendorUser) {
     // Vendor navigation keeps the + action centered with two controls on each side.
-    // Priority: Vendors, Orders | + | Messages, My Shop.
-    items = [vendorsTab, ordersTab, messagesTab, myShopTab];
+    // Priority: Vendors, Messages | + | Orders, My Shop.
+    items = [vendorsTab, messagesTab, ordersTab, myShopTab];
   } else if (session) {
-    // Buyer priority: Vendors → Request → Home → Messages → Orders.
+    // Buyer priority: Vendors → Request → Home → Orders → Messages.
     // Buyers do not get the vendor-only centered + action or My Shop.
-    items = [vendorsTab, requestsTab, homeTab, messagesTab, ordersTab];
+    items = [vendorsTab, requestsTab, homeTab, ordersTab, messagesTab];
   } else {
     items = [homeTab, vendorsTab, requestsTab,
       { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
