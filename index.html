@@ -9678,8 +9678,11 @@ function refreshVisibleOrderView() {
   if (savedView === "orderDetail") {
     ordersLiveRefreshTimer = setTimeout(async () => {
       if (currentView !== savedView) return;
-      try { await navigate(savedView, savedParams, false); }
-      catch (err) { console.warn("[Levromart] Live order-detail refresh failed:", err); }
+      try {
+        await navigate(savedView, savedParams, false);
+      } catch (err) {
+        console.warn("[Levromart] Live order-detail refresh failed:", err);
+      }
     }, 60);
     return;
   }
@@ -12174,7 +12177,7 @@ async function renderHome() {
       .sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0));
   writeOfflineHomeCache({
     categories, sectors: sectors || sectorsData || [], trending: cachedTrending,
-    browseProducts: hourlyBrowseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
+    browseProducts: rotatedBrowseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
   });
 
   const allHomePackages = packages || [];
@@ -19929,13 +19932,13 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   }
   if (isCustomer && order.status === "handed_over" && order.order_type === "rental" && !isDeliveryOrder) buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
   if (isCustomer && order.status === "handed_over" && isDeliveryOrder) {
+    // Delivery orders complete automatically when the vendor confirms the
+    // remaining 80% payment. The customer does not need a separate
+    // "Confirm & complete" / "I've received this" action.
     if (!deliveryBalancePaid) {
       const depositPaidAmount = payments.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum,p)=>sum+Number(p.amount||0),0);
       const balance = Math.max(0, Number(order.total_amount || 0) - depositPaidAmount);
       buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-building-columns"></i> Complete payment · ${naira(balance)}</button>`);
-    } else {
-      buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> Confirm &amp; complete</button>`);
-      buttons.push(notReceivedButtonHtml(order));
     }
   }
   if (isCustomer && order.status === "handed_over" && order.order_type === "sale" && !isDeliveryOrder) {
@@ -20208,10 +20211,16 @@ async function recordOfflinePayment(orderId) {
   if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? "Confirm 80% payment" : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? "Yes, confirm 80% paid" : "Yes, mark paid" }))) return;
   const { error } = await sb.rpc("record_offline_payment", { p_order_id: orderId, p_payment_type: paymentType, p_amount: amount, p_method: method });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
-  showToast(isRemainingDeliveryPayment ? "80% payment recorded as paid." : "Payment recorded as paid.", "success");
+  // For delivery, recording the remaining 80% is the final customer action.
+  // Complete the order immediately on the server so the buyer and vendor both
+  // receive the terminal `completed` state through Realtime.
+  if (isRemainingDeliveryPayment) {
+    const { error: completeError } = await sb.rpc("transition_order_status", { p_order_id: orderId, p_new_status: "completed" });
+    if (completeError) { errorEl.textContent = completeError.message; errorEl.classList.remove("hidden"); return; }
+  }
+  showToast(isRemainingDeliveryPayment ? "80% payment recorded. Order completed." : "Payment recorded as paid.", "success");
   // Once the vendor records the remaining 80%, the payment workflow is done
-  // for the vendor. Return them directly to their Orders list so they can see
-  // their remaining work instead of making them press Back manually.
+  // and the order is terminal. Return them directly to their Orders list.
   await navigate(isRemainingDeliveryPayment ? "vendorOrders" : "orderDetail", isRemainingDeliveryPayment ? {} : { orderId });
 }
 
@@ -31896,3 +31905,49 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   });
 })();
 </script>
+
+<style id="levromart-order-payment-flat-colors-final">
+/* Final order-payment controls: use the requested solid colors with no brand texture. */
+#app .order-remind-btn,
+#app .order-remind-btn:hover,
+#app .order-remind-btn:focus,
+#app .order-remind-btn:active {
+  background:#dc2626 !important;
+  background-color:#dc2626 !important;
+  background-image:none !important;
+  background-blend-mode:normal !important;
+  border-color:#dc2626 !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  box-shadow:0 5px 14px rgba(220,38,38,.24) !important;
+}
+#app .delivery-balance-direct-btn,
+#app .delivery-balance-direct-btn:hover,
+#app .delivery-balance-direct-btn:focus,
+#app .delivery-balance-direct-btn:active,
+#app .delivery-balance-manual-btn,
+#app .delivery-balance-manual-btn:hover,
+#app .delivery-balance-manual-btn:focus,
+#app .delivery-balance-manual-btn:active {
+  background:#2563eb !important;
+  background-color:#2563eb !important;
+  background-image:none !important;
+  background-blend-mode:normal !important;
+  border-color:#2563eb !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  box-shadow:0 5px 14px rgba(37,99,235,.22) !important;
+}
+#app .delivery-balance-paystack-btn,
+#app .delivery-balance-paystack-btn:hover,
+#app .delivery-balance-paystack-btn:focus,
+#app .delivery-balance-paystack-btn:active {
+  background:transparent !important;
+  background-color:transparent !important;
+  background-image:none !important;
+  background-blend-mode:normal !important;
+  border-color:#2563eb !important;
+  color:#2563eb !important;
+  -webkit-text-fill-color:#2563eb !important;
+}
+</style>
