@@ -6931,13 +6931,18 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
         </button>
         <button type="button" class="payment-timing-option pay-after" data-payment-timing="pay_after" onclick="setProductPaymentTiming('pay_after')">
           <span class="payment-timing-option-dot"></span>
-          <span><strong>Pay after delivery</strong><small>20% deposit first, 80% after delivery</small></span>
+          <span><strong>Pay after delivery</strong><small>Choose the buyer deposit percentage</small></span>
         </button>
       </div>
       <select id="prodPaymentTiming" class="hidden" aria-hidden="true" tabindex="-1">
         <option value="pay_before">Pay before delivery</option>
         <option value="pay_after">Pay after delivery</option>
       </select>
+      <div id="prodPaymentDepositPercentWrap" class="payment-deposit-percent-wrap hidden">
+        <label>Buyer deposit before delivery (%)</label>
+        <input type="number" id="prodPaymentDepositPercent" min="1" max="99" step="1" value="20" inputmode="numeric" oninput="updateProductPaymentTimingHint()" />
+        <p class="muted payment-deposit-percent-note">The remaining <strong id="prodPaymentRemainingPercent">80%</strong> is due after delivery.</p>
+      </div>
       <p id="prodPaymentTimingHint" class="muted payment-timing-hint"></p>
     </div>
     <div class="listing-engagement-settings" id="prodEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="prodLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="prodAllowComments" checked onchange="syncProductEngagementSettingsUI()"></label><div id="prodCommentAudienceWrap"><label>Who can comment</label><select id="prodCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div>
@@ -8957,6 +8962,14 @@ function toggleNotifPanel() {
   requestOfferBadgeCount = 0; updateRequestOfferBadge();
   try { sessionStorage.setItem("levromart-request-offers-seen-at", new Date().toISOString()); } catch (_) {}
   notifViewMode = "all"; exitNotifSelectMode(false);
+  // LinkedIn-style behavior: opening the notification surface immediately clears unread state.
+  if(session?.user?.id){
+    notifCount=0;
+    byId("notifDot")?.classList.add("hidden");
+    const notifCacheKey=`levromart-notifications-cache-v2:${session.user.id}`;
+    try { const cached=JSON.parse(localStorage.getItem(notifCacheKey)||"[]"); if(Array.isArray(cached)&&cached.length){ cached.forEach(n=>{n.read=true}); localStorage.setItem(notifCacheKey,JSON.stringify(cached)); } } catch(_){}
+    sb.from("notifications").update({read:true}).eq("user_id",session.user.id).eq("read",false).is("deleted_at",null).then(()=>{}).catch(()=>{});
+  }
   if(currentView!=="notifications"){lastNotificationReturnView=currentView||"home";lastNotificationReturnParams={...(currentViewParams||{})};}
   navigate("notifications");
 }
@@ -9306,7 +9319,7 @@ async function renderNotifPanel() {
           <div class="ms-list hidden messages-more-menu" id="notifMoreMenu">
             <button type="button" class="ms-item" onclick="enterNotifSelectMode();toggleInlineMenu('notifMoreMenu',event)"><i class="fa-solid fa-check-double"></i> Select notifications</button>
             <button type="button" class="ms-item" onclick="enterNotifSelectMode();toggleSelectAllNotifs();toggleInlineMenu('notifMoreMenu',event)"><i class="fa-solid fa-square-check"></i> Select all notifications</button>
-            ${notifViewMode !== "trash" ? `<button type="button" class="ms-item" onclick="markAllNotifsRead();toggleInlineMenu('notifMoreMenu',event)"><i class="fa-solid fa-envelope-open"></i> Mark all as read</button>` : ""}
+
           </div>
         </div>
       </div>
@@ -9329,7 +9342,7 @@ async function renderNotifPanel() {
   panel.classList.toggle("selecting", notifSelectMode);
   if (isNotificationsPage) {
     const actions = byId("notificationsPageHeaderActions");
-    if (actions) actions.innerHTML = `<button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications" title="Select notifications"><i class="fa-regular fa-square-check"></i></button>${hasUnread ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all notifications as read" title="Mark all notifications as read"><i class="fa-solid fa-check-double"></i></button>` : ""}`;
+    if (actions) actions.innerHTML = `<button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications" title="Select notifications"><i class="fa-regular fa-square-check"></i></button>`;
   }
   } catch (err) {
     console.error("Notification rendering failed", err);
@@ -9791,7 +9804,7 @@ function subscribeOrderUpdates() {
   // Also catch item-level changes.
   ordersLiveChannel.on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, refreshVisibleOrderView);
   // Payment confirmations live in a separate table. Re-render the current
-  // order detail immediately when a vendor confirms the 20% delivery deposit.
+  // Re-render the current order detail immediately when a payment changes.
   ordersLiveChannel.on("postgres_changes", { event: "*", schema: "public", table: "payments" }, refreshVisibleOrderView);
   ordersLiveChannel.subscribe(status => {
     window.__ordersRealtimeStatus = status;
@@ -11598,10 +11611,10 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span>Request an item</span></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
   </section>`;
-  const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service).slice(0, 10),"trending-products");
-  const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
+  const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
+  const trendingServices = deterministicHourlyShuffle((trending || []).filter(p => p.is_service),"trending-services");
   if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
-  if (topVendors.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${topVendors.map(vendorCardHtml).join("")}</div>`;
+  if (topVendors.length) { const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors"); html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`; }
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
@@ -12187,7 +12200,7 @@ async function renderHome() {
   const activeCategory = (categories || []).find((c) => String(c.id) === String(currentHomeCategoryId)) || null;
   const subCats = (categories || []).filter(c => c.parent_category_id && (!activeSector || String(c.sector_id) === String(activeSector.id)));
 
-  let vendorQuery = sb.from("products").select("id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
+  let vendorQuery = sb.from("products").select("id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, view_count, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
@@ -12318,13 +12331,14 @@ async function renderHome() {
 
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
   if (trending && trending.length) {
-    const trendingProducts = deterministicHourlyShuffle(trending.filter(p => !p.is_service).slice(0, 10),"trending-products");
+    const trendingProducts = deterministicHourlyShuffle(trending.filter(p => !p.is_service),"trending-products");
     if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
 
   }
 
   if (topVendors && topVendors.length) {
-    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${topVendors.map(vendorCardHtml).join("")}</div>`;
+    const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors");
+    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`;
   }
   const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
@@ -12582,7 +12596,7 @@ async function fetchSearchSuggestions(term) {
 }
 function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hidden"); }
 
-const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
+const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
 
 // Used whenever a search/filter comes up empty - instead of a dead end,
 // show what IS available so the customer isn't stuck looking at nothing.
@@ -12915,7 +12929,9 @@ function productDeliverySummaryHtml(p) {
 function productPaymentPlanBadgeHtml(p){
   if (!p || p.is_service) return "";
   const timing = p.payment_timing === "pay_after" ? "pay_after" : "pay_before";
-  return `<div class="product-card-payment-plan ${timing === "pay_after" ? "pay-after" : "pay-before"}"><i class="fa-solid fa-wallet"></i> ${timing === "pay_after" ? "Pay after delivery · 20% + 80%" : "Pay before delivery · Full payment"}</div>`;
+  const deposit = Math.max(1, Math.min(99, Number(p.payment_deposit_percent ?? 20) || 20));
+  const remaining = Math.max(1, 100 - deposit);
+  return `<div class="product-card-payment-plan ${timing === "pay_after" ? "pay-after" : "pay-before"}"><i class="fa-solid fa-wallet"></i> ${timing === "pay_after" ? `Pay after delivery · ${deposit}% + ${remaining}%` : "Pay before delivery · Full payment"}</div>`;
 }
 function hydrateProductVariantIndicatorsInView(){
   // A variety indicator is intentionally tied to multiple listing photos.
@@ -15249,7 +15265,7 @@ async function renderProductDetail(productId) {
         <input type="number" id="rentQty" value="1" min="1" max="${product.quantity_total}" placeholder="Qty" oninput="updateRentTotalPreview(${product.rental_rate},'${product.rental_rate_unit}')" style="width:90px;" />
       </div>
       <p class="muted" id="rentTotalPreview">Pick your dates to see the total.</p>
-      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? "Pay 20% first; the remaining 80% is due after delivery." : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
+      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? "Pay ${Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20))}% first; the remaining ${100-Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20))}% is due after delivery." : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       ${deliveryFieldsHtml("rent", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km)}
       <button class="btn" onclick="confirmRental('${product.vendor.id}','${product.id}')">Reserve</button>
       <p id="rentError" class="error-text hidden"></p>
@@ -15267,7 +15283,7 @@ async function renderProductDetail(productId) {
           : `<input type="number" id="buyQty" value="1" min="1" max="${product.quantity_available}" placeholder="Qty" oninput="updateBuyTotalPreview(${product.sale_price ?? 0})" style="width:90px;" />`}
       </div>
       ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview">Total: ${naira(productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price)}</p>` : ""}
-      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? "Pay 20% first; the remaining 80% is due after delivery." : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
+      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? "Pay ${Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20))}% first; the remaining ${100-Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20))}% is due after delivery." : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
       ${!product.is_service ? `<div style="margin-top:0.7rem;">
         <label style="margin:0;">Note for the vendor <span class="muted" style="font-weight:400;">(optional)</span></label>
@@ -15705,6 +15721,8 @@ function filterVendorsDirectory() {
       const db = b.lat != null ? haversineKm(buyerLocation.lat, buyerLocation.lng, b.lat, b.lng) : Infinity;
       return da - db;
     });
+  } else {
+    list = deterministicHourlyShuffle(list, `vendors-directory:${vendorsListingFilter}:${sectorId}:${city}:${category}:${search}`);
   }
   window.__filteredVendors = list;
   const grid = byId("vendorsGrid");
@@ -16045,7 +16063,7 @@ async function renderStorefront(vendorId) {
   updateStorefrontSocialMeta(v);
 
   const [{ data: products }, { data: stats }, { data: reviews }, { data: packages }, { data: followState }] = await Promise.all([
-    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, delivery_fee, delivery_fee_mode, delivery_fee_per_km, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
+    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, delivery_fee, delivery_fee_mode, delivery_fee_per_km, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
     sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
     sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
@@ -18363,6 +18381,7 @@ async function showProductModal() {
     byId("prodRentalRate").value = p.rental_rate ?? "";
     byId("prodDeliveryMode").value = p.delivery_fee_mode || "free";
     if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = p.payment_timing || "pay_after";
+    if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = Math.max(1, Math.min(99, Number(p.payment_deposit_percent ?? 20) || 20));
     updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = p.delivery_fee ?? 0;
     byId("prodDeliveryPerKm").value = p.delivery_fee_per_km ?? 0;
@@ -18372,6 +18391,7 @@ async function showProductModal() {
     byId("prodIsService").checked = !!p.is_service;
     byId("prodServiceUnit").value = p.service_price_unit || "flat";
     if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = p.payment_timing === "pay_after" ? "pay_after" : "pay_before";
+    if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = Math.max(1, Math.min(99, Number(p.payment_deposit_percent ?? 20) || 20));
     updateProductPaymentTimingHint();
     if (byId("prodBillingModel")) byId("prodBillingModel").value = p.billing_model || (p.is_service ? "commission" : "commission");
     byId("prodLikeVisibility").value=engagement?.like_visibility||"everyone";byId("prodAllowComments").checked=engagement?.allow_comments!==false;byId("prodCommentAudience").value=engagement?.comment_audience||"everyone";
@@ -18387,6 +18407,7 @@ async function showProductModal() {
     ["prodName", "prodDesc", "prodSalePrice", "prodDiscountPrice", "prodRentalRate", "prodDeposit"].forEach((id) => (byId(id).value = ""));
     byId("prodDeliveryMode").value = "free";
     if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = "pay_before";
+    if (byId("prodPaymentDepositPercent")) byId("prodPaymentDepositPercent").value = 20;
     updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = 0;
     byId("prodDeliveryPerKm").value = 0;
@@ -18551,8 +18572,14 @@ function setProductPaymentTiming(mode){
 function updateProductPaymentTimingHint(){
   const el=byId("prodPaymentTimingHint"); const sel=byId("prodPaymentTiming"); if(!el||!sel)return;
   const isAfter=sel.value==="pay_after";
+  const pct=Math.max(1,Math.min(99,Number(byId("prodPaymentDepositPercent")?.value||20)));
+  const remaining=100-pct;
+  const pctInput=byId("prodPaymentDepositPercent");
+  if(pctInput && String(pctInput.value)!==String(pct)) pctInput.value=String(pct);
+  byId("prodPaymentRemainingPercent")?.replaceChildren(document.createTextNode(`${remaining}%`));
+  byId("prodPaymentDepositPercentWrap")?.classList.toggle("hidden",!isAfter);
   el.innerHTML=isAfter
-    ? "<strong>Pay after delivery:</strong> the buyer pays a 20% deposit first; the remaining 80% is due after delivery."
+    ? `<strong>Pay after delivery:</strong> the buyer pays ${pct}% before delivery; the remaining ${remaining}% is due after delivery.`
     : "<strong>Pay before delivery:</strong> the buyer pays the full item amount before dispatch. If they need a different arrangement, they should contact the vendor.";
   document.querySelectorAll(".payment-timing-option").forEach(btn=>{
     btn.classList.toggle("selected",btn.dataset.paymentTiming===sel.value);
@@ -18829,6 +18856,8 @@ async function saveProduct() {
     const delivery_fee_mode = is_service ? "free" : (byId("prodDeliveryMode").value || "free");
     const delivery_fee = is_service || delivery_fee_mode !== "flat" ? 0 : Math.max(0, Number(byId("prodDeliveryFee").value) || 0);
     const delivery_fee_per_km = is_service || delivery_fee_mode !== "distance" ? 0 : Math.max(0, Number(byId("prodDeliveryPerKm").value) || 0);
+    const payment_timing = is_service ? "pay_before" : (byId("prodPaymentTiming")?.value === "pay_after" ? "pay_after" : "pay_before");
+    const payment_deposit_percent = Math.max(1, Math.min(99, Number(byId("prodPaymentDepositPercent")?.value || 20)));
     const rental_rate_unit = byId("prodRateUnit").value;
     const service_price_unit = is_service ? (byId("prodServiceUnit").value || "flat") : null;
     if (!name) throw new Error("Product name is required.");
@@ -18837,6 +18866,7 @@ async function saveProduct() {
     if (is_service && !sale_price) throw new Error("Enter a price for this service.");
     if (discount_price != null && (sale_price == null || discount_price <= 0 || discount_price >= sale_price)) throw new Error("Discount price must be lower than the regular price.");
     if (delivery_fee_mode === "distance" && delivery_fee_per_km <= 0) throw new Error("Enter a fee per kilometre for distance-based delivery.");
+    if (payment_timing === "pay_after" && (payment_deposit_percent < 1 || payment_deposit_percent > 99)) throw new Error("Buyer deposit must be between 1% and 99%.");
     if (listing_type !== "sale" && !rental_rate) throw new Error("Rental rate is required for a rental listing.");
 
     let chosenSectorId = byId("prodSector").value || null;
@@ -18873,7 +18903,8 @@ async function saveProduct() {
       delivery_fee_mode,
       delivery_fee,
       delivery_fee_per_km,
-      payment_timing: byId("prodPaymentTiming")?.value === "pay_after" ? "pay_after" : "pay_before",
+      payment_timing,
+      payment_deposit_percent,
       rental_rate: listing_type === "sale" ? null : rental_rate,
       rental_rate_unit: listing_type === "sale" ? null : rental_rate_unit,
       deposit_amount: is_service ? null : (byId("prodDeposit").value ? Number(byId("prodDeposit").value) : null),
@@ -19851,7 +19882,9 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const paymentTiming = order.payment_timing === "pay_after" ? "pay_after" : "pay_before";
   const isPayAfterDelivery = isDeliveryOrder && paymentTiming === "pay_after";
   const deliveryBaseAmount = Math.max(0, Number(order.total_amount || 0) - Number(order.delivery_fee || 0));
-  const deliveryDepositAmount = Math.round(deliveryBaseAmount * 0.20 * 100) / 100;
+  const deliveryDepositPercent = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20));
+  const deliveryRemainingPercent = 100 - deliveryDepositPercent;
+  const deliveryDepositAmount = Math.round(deliveryBaseAmount * deliveryDepositPercent / 100 * 100) / 100;
   const deliveryDepositPaidAmount = paymentRows.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const deliveryDepositPaid = deliveryDepositPaidAmount > 0.009;
   // buyer_report_manual_payment records the buyer's transfer as pending until
@@ -19863,7 +19896,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const deliveryBalanceAmount = Math.max(0, Number(order.total_amount || 0) - deliveryDepositPaidAmount - (deliveryDepositReported && deliveryDepositPaidAmount <= 0.009 ? Number(paymentRows.find((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "pending")?.amount || 0) : 0));
   const deliveryPaymentsComplete = !isDeliveryOrder || (isPayAfterDelivery ? (deliveryDepositPaid && feePaid) : feePaid);
   // Pickup keeps the existing full-payment flow. Delivery uses two stages:
-  // 20% of the item/rental amount first, then the remaining order balance.
+  // The vendor-selected deposit percentage is paid first, then the remaining order balance.
   const canRecordPayment = isVendor && !deliveryPaymentsComplete && (order.status === "confirmed" || (isDeliveryOrder && order.status === "handed_over"));
   const canPayOnline = isCustomer && !deliveryPaymentsComplete && order.status === "confirmed";
 
@@ -19972,7 +20005,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (displayPayments.length > 0) {
     html += `<div class="card"><h3 style="margin-top:0;">Payments</h3>
       ${displayPayments.map((p, i) => {
-        const paymentName = p.payment_type === "sale_price" ? "Sale price" : p.payment_type === "rental_fee" ? "Rental fee" : p.payment_type === "deposit" ? "Refundable deposit" : p.payment_type === "delivery_deposit_20" ? "20% delivery deposit" : String(p.payment_type || "Payment").replace(/_/g, " ");
+        const paymentName = p.payment_type === "sale_price" ? "Sale price" : p.payment_type === "rental_fee" ? "Rental fee" : p.payment_type === "deposit" ? "Refundable deposit" : p.payment_type === "delivery_deposit_20" ? `${deliveryDepositPercent}% delivery deposit` : String(p.payment_type || "Payment").replace(/_/g, " ");
         const methodName = p.method === "cash" ? "Cash" : p.method === "transfer" ? "Bank transfer" : p.method === "card" ? "Card" : "";
         return `<div class="flex" style="justify-content:space-between;font-size:0.9rem;${i > 0 ? "border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.5rem;" : ""}"><span>${esc(paymentName)}${p.status === "paid" && methodName ? `<small class="muted" style="display:block;font-size:0.75rem;margin-top:0.15rem;">${esc(methodName)}${p.provider_reference ? " · Paystack" : " · Recorded manually"}</small>` : ""}</span><span>${naira(p.amount)} · <span class="badge ${p.status === "paid" ? "success" : ""}">${esc(p.status)}</span></span></div>`;
       }).join("")}
@@ -19983,25 +20016,25 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     const payableAmount = isPayAfterDelivery
       ? (deliveryDepositReadyFor80 ? deliveryBalanceAmount : deliveryDepositAmount)
       : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
-    html += `<div class="card ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isPayAfterDelivery ? (deliveryDepositReadyFor80 ? "Complete your payment" : "Pay 20% deposit to confirm your order") : isDeliveryOrder ? "Pay before delivery" : "Pay now"}</h3></div>
-      ${isPayAfterDelivery ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyFor80 ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>20% payment reported</strong><br>Your 20% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining 80% payment</strong><br>The vendor has delivered your order. Pay the remaining <strong>${naira(payableAmount)}</strong> balance to complete your payment.`) : `Pay a 20% deposit of <strong>${naira(payableAmount)}</strong> based on the item amount. The delivery fee remains part of the total order balance.`}</p>` : isDeliveryOrder ? `<div class="banner banner-warning" style="margin:.45rem 0 .8rem;"><strong><i class="fa-solid fa-wallet"></i> Pay before delivery</strong><span>Full payment of <strong>${naira(payableAmount)}</strong> is required before delivery. If you need any change to this payment arrangement, please contact the vendor.</span></div>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
+    html += `<div class="card ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isPayAfterDelivery ? (deliveryDepositReadyFor80 ? "Complete your payment" : "Pay deposit to confirm your order") : isDeliveryOrder ? "Pay before delivery" : "Pay now"}</h3></div>
+      ${isPayAfterDelivery ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyFor80 ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>${deliveryDepositPercent}% payment reported</strong><br>Your ${deliveryDepositPercent}% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>The vendor has delivered your order. Pay the remaining ${deliveryRemainingPercent}% balance of <strong>${naira(payableAmount)}</strong> to complete your payment.`) : `Pay a ${deliveryDepositPercent}% deposit of <strong>${naira(payableAmount)}</strong> based on the item amount. The delivery fee remains part of the total order balance.`}</p>` : isDeliveryOrder ? `<div class="banner banner-warning" style="margin:.45rem 0 .8rem;"><strong><i class="fa-solid fa-wallet"></i> Pay before delivery</strong><span>Full payment of <strong>${naira(payableAmount)}</strong> is required before delivery. If you need any change to this payment arrangement, please contact the vendor.</span></div>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
       <button class="btn btn-sm btn-outline ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-paystack-btn" : ""}" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
-      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery && deliveryDepositReadyFor80 ? "Pay remaining 80% directly to vendor" : isPayAfterDelivery ? "Pay 20% directly to vendor" : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
+      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery && deliveryDepositReadyFor80 ? "Pay remaining ${deliveryRemainingPercent}% directly to vendor" : isPayAfterDelivery ? "Pay ${deliveryDepositPercent}% directly to vendor" : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
     </div>`;
   }
 
   if (canRecordPayment) {
     const manualTypeOptions = isPayAfterDelivery
-      ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">20% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">Remaining balance</option>` : ""}`
+      ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">${deliveryDepositPercent}% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">Remaining balance</option>` : ""}`
       : `${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Full payment" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Refundable deposit</option>` : ""}`;
     const manualAmount = isPayAfterDelivery ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount) : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
-    html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-payment-card" : ""}"><h3><i class="fa-solid fa-hand-holding-dollar"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Record 80% payment" : "Paid outside Paystack?"} ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
-      ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;"><strong>Remaining 80% payment</strong><br>Confirm the customer's remaining <strong>${naira(manualAmount)}</strong> payment after you have actually received it.</p>` : ""}
+    html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-payment-card" : ""}"><h3><i class="fa-solid fa-hand-holding-dollar"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Record ${deliveryRemainingPercent}% payment" : "Paid outside Paystack?"} ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
+      ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;"><strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>Confirm the customer's remaining <strong>${naira(manualAmount)}</strong> payment after you have actually received it.</p>` : ""}
       <div id="recordPaymentError" class="error-text hidden"></div>
       <label>Payment for</label><select id="rpType">${manualTypeOptions}</select>
       <label>Amount</label><input type="number" id="rpAmount" value="${manualAmount}" />
       <label>Method</label><select id="rpMethod"><option value="transfer" selected>Transfer</option><option value="cash">Cash</option></select>
-      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-manual-btn" : ""}" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Confirm 80% payment received" : "Mark as paid manually"}</button>
+      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-manual-btn" : ""}" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Confirm ${deliveryRemainingPercent}% payment received" : "Mark as paid manually"}</button>
     </div>`;
   }
 
@@ -20067,7 +20100,7 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
     if (order.status === "confirmed") {
       if (isDeliveryOrder) {
         if (deliveryDepositPaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-truck"></i> Mark as delivered</button>`);
-        else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting for the customer's 20% delivery deposit before delivery.</p>`);
+        else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting for the customer's ${deliveryDepositPercent}% delivery deposit before delivery.</p>`);
       } else if (feePaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-handshake"></i> Mark handed over</button>`);
       else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this can be marked handed over.</p>`);
     }
@@ -20261,7 +20294,7 @@ async function confirmReceiveOrder(orderId) {
       const feeType = currentOrder.order_type === "rental" ? "rental_fee" : "sale_price";
       const depositPaid = (freshPayments||[]).some(p=>p.payment_type==="delivery_deposit_20"&&p.status==="paid");
       const balancePaid = (freshPayments||[]).some(p=>p.payment_type===feeType&&p.status==="paid");
-      if (!depositPaid || !balancePaid) throw new Error("Both the 20% delivery deposit and remaining balance must be paid before this order can be completed.");
+      if (!depositPaid || !balancePaid) throw new Error("Both the ${deliveryDepositPercent}% delivery deposit and remaining balance must be paid before this order can be completed.");
       const { error } = await sb.rpc("transition_order_status", { p_order_id: orderId, p_new_status: "completed" });
       if (error) throw error;
       showToast("Order completed. Both payments are recorded.", "success");
@@ -20423,13 +20456,13 @@ async function recordOfflinePayment(orderId) {
   const errorEl = byId("recordPaymentError"); errorEl.classList.add("hidden");
   const paymentType = byId("rpType")?.value; const amount = Number(byId("rpAmount")?.value); const method = byId("rpMethod")?.value;
   if (!paymentType || !Number.isFinite(amount) || amount <= 0 || !method) { errorEl.textContent = "Enter a valid payment amount and method."; errorEl.classList.remove("hidden"); return; }
-  const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : paymentType === "delivery_deposit_20" ? "20% delivery deposit" : "refundable deposit";
+  const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : paymentType === "delivery_deposit_20" ? "delivery deposit" : "refundable deposit";
   const methodLabel = method === "cash" ? "cash" : "bank transfer";
   const isRemainingDeliveryPayment = paymentType !== "delivery_deposit_20" && paymentType !== "deposit" && byId("rpType")?.value === paymentType && !!byId("rpType")?.closest(".delivery-balance-payment-card");
   const confirmMessage = isRemainingDeliveryPayment
-    ? `You are confirming the customer's remaining 80% payment of ${naira(amount)} by ${methodLabel}. Only continue if you have actually received this full amount. This will mark the 80% balance as PAID.`
+    ? `You are confirming the customer's remaining ${deliveryRemainingPercent}% payment of ${naira(amount)} by ${methodLabel}. Only continue if you have actually received this full amount. This will mark the 80% balance as PAID.`
     : `Confirm that you actually received ${naira(amount)} for the ${paymentLabel} by ${methodLabel}. This records the payment as PAID outside Paystack and settles this payment obligation.`;
-  if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? "Confirm 80% payment" : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? "Yes, confirm 80% paid" : "Yes, mark paid" }))) return;
+  if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? `Confirm ${deliveryRemainingPercent}% payment` : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? `Yes, confirm ${deliveryRemainingPercent}% paid` : "Yes, mark paid" }))) return;
   const { error } = await sb.rpc("record_offline_payment", { p_order_id: orderId, p_payment_type: paymentType, p_amount: amount, p_method: method });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
   // For delivery, recording the remaining 80% is the final customer action.
@@ -26607,7 +26640,7 @@ window.renderVendorMapRail = function(){
   "use strict";
   window.openVendorDirectPayment = async function(orderId){
     if(!session || !orderId){showLogin();return;}
-    const {data:order,error}=await sb.from("orders").select("id,total_amount,delivery_fee,deposit_amount,buyer_id,vendor_id,order_type,delivery_method,vendor:vendors(id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
+    const {data:order,error}=await sb.from("orders").select("id,total_amount,delivery_fee,deposit_amount,buyer_id,vendor_id,order_type,delivery_method,payment_timing,payment_deposit_percent,vendor:vendors(id,business_name,bank_code,bank_name,account_number,account_name,phone,whatsapp_number),payments:payments(payment_type,amount,status,created_at)").eq("id",orderId).maybeSingle();
     if(error||!order){showToast(error?.message||"Order not found.","error");return;}
     if(String(order.buyer_id)!==String(session.user.id)){showToast("You can only pay for your own order.","error");return;}
     // The vendor relationship can be filtered by RLS on older/paused vendor rows.
@@ -26627,9 +26660,10 @@ window.renderVendorMapRail = function(){
     const deliveryDepositReported=!!pendingDeliveryDeposit;
     const pendingDeposit=paymentRows.find(p=>p.payment_type==="deposit"&&p.status==="pending");
     const baseAmount=Math.max(0,Number(order.total_amount||0)-Number(order.delivery_fee||0));
-    const deliveryDepositAmount=Math.round(baseAmount*0.20*100)/100;
+    const deliveryDepositPercent=Math.max(1,Math.min(99,Number(order.payment_deposit_percent??20)||20));
+    const deliveryDepositAmount=Math.round(baseAmount*deliveryDepositPercent/100*100)/100;
     let amount=0; let paymentLabel=order.order_type==="rental"?"rental fee":"sale price";
-    if(isPayAfterDelivery&&!deliveryDepositPaid&&!deliveryDepositReported){amount=Number(pendingDeliveryDeposit?.amount||deliveryDepositAmount);paymentLabel="20% delivery deposit";}
+    if(isPayAfterDelivery&&!deliveryDepositPaid&&!deliveryDepositReported){amount=Number(pendingDeliveryDeposit?.amount||deliveryDepositAmount);paymentLabel=`${deliveryDepositPercent}% delivery deposit`;}
     else if(isPayAfterDelivery&&!paidFee){amount=Number(pendingFee?.amount||Math.max(0,Number(order.total_amount||0)-deliveryDepositPaid-(deliveryDepositReported ? Number(pendingDeliveryDeposit?.amount||0) : 0)));paymentLabel="remaining balance";}
     else if(!isDeliveryOrder&&!paidFee){amount=Number(pendingFee?.amount||order.total_amount||0);}
     else if(isDeliveryOrder&&!isPayAfterDelivery&&!paidFee){amount=Number(pendingFee?.amount||order.total_amount||0);paymentLabel="full payment before delivery";}
@@ -26639,7 +26673,7 @@ window.renderVendorMapRail = function(){
     const modal=document.createElement("div"); modal.id="manualVendorPaymentModal"; modal.className="modal manual-payment-modal";
     const bankName = getBankDisplayName(order.vendor?.bank_code, order.vendor?.bank_name);
     const hasAccount = !!(order.vendor?.account_name || order.vendor?.account_number || order.vendor?.bank_code || order.vendor?.bank_name);
-    modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery ? (paymentLabel === "20% delivery deposit" ? "Pay 20% deposit to confirm your order" : "Complete your payment") : isDeliveryOrder ? "Pay before delivery" : "Pay directly to vendor"}</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+    modal.innerHTML=`<div class="modal-content"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery ? (paymentLabel === `${deliveryDepositPercent}% delivery deposit` ? `Pay ${deliveryDepositPercent}% deposit to confirm your order` : "Complete your payment") : isDeliveryOrder ? "Pay before delivery" : "Pay directly to vendor"}</h3><button type="button" class="drawer-close-btn" onclick="byId('manualVendorPaymentModal')?.remove()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <p class="muted" style="margin:.5rem 0 1rem;">Transfer <strong>${naira(amount)}</strong> for the <strong>${esc(paymentLabel)}</strong> directly to ${esc(order.vendor?.business_name||"the vendor")}. Paystack is coming soon.</p>
       <div class="manual-payment-account">
         <div class="manual-payment-account-row"><span class="muted">Bank</span><strong>${esc(bankName)}</strong>${order.vendor?.bank_name||order.vendor?.bank_code?`<button type="button" class="icon-btn manual-payment-copy-btn" title="Copy bank name" aria-label="Copy bank name" onclick="navigator.clipboard?.writeText('${esc(bankName)}').then(()=>showToast('Bank name copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i></button>`:""}</div>
@@ -28409,7 +28443,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
   window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
-  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
+  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
   async function renderUnifiedEnhancements(){
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading)return;
@@ -32372,6 +32406,12 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .payment-timing-option.selected .payment-timing-option-dot{background:currentColor;box-shadow:inset 0 0 0 2px #fff;}
 .payment-timing-hint{font-size:.76rem;margin:.55rem 0 0;}
 @media(max-width:520px){.payment-timing-choice{grid-template-columns:1fr;}}
+
+/* Seller-selected delivery payment percentage. */
+.payment-deposit-percent-wrap{margin-top:.65rem;padding:.7rem .75rem;border:1px solid color-mix(in srgb,#3b82f6 18%,var(--border));border-radius:12px;background:#eff6ff;}
+.payment-deposit-percent-wrap label{margin:0;color:#1e3a8a;font-weight:800;font-size:.76rem;}
+.payment-deposit-percent-wrap input{margin:.3rem 0 .15rem;}
+.payment-deposit-percent-note{font-size:.7rem;margin:0;color:#475569;}
 
 /* Card payment/delivery status cues. */
 .product-card-payment-plan.pay-before{background:#dcfce7!important;color:#166534!important;border-color:#86efac!important;}
