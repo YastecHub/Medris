@@ -6591,9 +6591,9 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="toggleProfilePanel()" title="Profile"></button>
       <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
     </div>
-    <h1 onclick="navigate('home')"><span class="brand-logo-stack"><span id="brandLogoLeft" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span><img id="brandLogoCircle" class="brand-logo-layer brand-logo-circle" alt="" /><span id="brandLogoRight" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span></span><span class="sr-only">Levromart</span></h1>
+    <h1 role="button" tabindex="0" onclick="fastNavigateHome(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fastNavigateHome(event)}"><span class="brand-logo-stack"><span id="brandLogoLeft" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span><img id="brandLogoCircle" class="brand-logo-layer brand-logo-circle" alt="" /><span id="brandLogoRight" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span></span><span class="sr-only">Levromart</span></h1>
     <nav class="header-nav-links">
-      <a class="header-nav-link active" data-view="home" href="#" onclick="navigate('home');return false;">Browse</a>
+      <a class="header-nav-link active" data-view="home" href="#" onclick="fastNavigateHome(event);return false;">Browse</a>
       <a class="header-nav-link" data-view="vendors" href="#" onclick="navigate('vendors');return false;">Vendors</a>
     </nav>
   </div>
@@ -9204,12 +9204,22 @@ async function renderNotifPanel() {
     panel.innerHTML = '<p class="muted">Sign in to view your notifications.</p>';
     return;
   }
-  panel.innerHTML = '<p class="muted" role="status">Loading notifications…</p>';
+  const notifCacheKey = `levromart-notifications-cache-v2:${session.user.id}`;
+  let cachedNotifItems = [];
+  try { cachedNotifItems = JSON.parse(localStorage.getItem(notifCacheKey) || '[]'); } catch (_) { cachedNotifItems = []; }
+  if (Array.isArray(cachedNotifItems) && cachedNotifItems.length) {
+    panel.innerHTML = cachedNotifItems.map(n => `<button type="button" class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}" onclick="handleNotifItemClick(event,'${esc(n.id)}')"><span class="notif-copy"><strong>${esc(n.title || 'Notification')}</strong><span>${esc(n.body || '')}</span><br/><span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span></button>`).join('');
+  } else {
+    panel.innerHTML = '';
+  }
   // The backend still retains archived/deleted fields for compatibility, but
   // the user-facing notification experience is now a smart activity stream.
   // We never mutate or destructively migrate those legacy fields here.
   let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(60);
   const { data: rawItems, error } = await q;
+  if (!error && Array.isArray(rawItems)) {
+    try { localStorage.setItem(notifCacheKey, JSON.stringify(rawItems.slice(0,60))); } catch (_) {}
+  }
   const currentVendorId=String(vendor?.id||'');
   const owners=new Map();
   for(const [kind,table] of [['product','products'],['package','vendor_packages']]){
@@ -10972,6 +10982,23 @@ function homeFallbackHtml(message = "The marketplace is taking a moment to load.
   </div>`;
 }
 
+function fastNavigateHome(event) {
+  try { event?.preventDefault?.(); event?.stopPropagation?.(); } catch (_) {}
+  const app = byId('app');
+  // Paint the last known homepage immediately. The normal router then refreshes
+  // Home in the background. This must never wait on Supabase before showing Home.
+  try {
+    if (app) {
+      const cache = getOfflineHomeCache?.();
+      if (cache) {
+        const rendered = renderOfflineHomeFromCache(cache, { showOfflineNotice:false });
+        if (rendered) { app.innerHTML = rendered; syncLeviFabVisibility(); updateHeaderNavActive(); }
+      }
+    }
+  } catch (_) {}
+  Promise.resolve(navigate('home', {}, false)).catch(() => {});
+}
+
 async function navigate(view, params = {}, pushHistory = true) {
   try { window.closeLevromartTransientFilters?.(); } catch (_) {}
   const app = byId("app");
@@ -11106,6 +11133,14 @@ async function navigate(view, params = {}, pushHistory = true) {
     syncLeviFabVisibility();
     hideLevromartSplash();
     clearAutoScrollTimers();
+  }
+  // Home is cache-first: if this device has a previously rendered marketplace,
+  // paint it immediately before any Supabase request begins. The live renderer
+  // below still refreshes the data in the background and replaces this content
+  // only when the fresh render is ready. This prevents the Home fallback/loading
+  // state from ever becoming the visible result of a slow or transient request.
+  if (view === "home" && app && !routeHtmlCache.has(cacheKey)) {
+    try { paintHomeFromLocalCatalog(false); } catch (_) {}
   }
   let html;
   try {
@@ -12199,7 +12234,7 @@ async function renderHome() {
   const stableBrowseProducts = Array.isArray(browseProducts) && browseProducts.length
     ? browseProducts
     : knownGoodBrowseCatalog;
-  const rotatedBrowseProducts = deterministicBrowseVisibilityShuffle(stableBrowseProducts, `browse:${activeSector?.id||"all"}`);
+  const rotatedBrowseProducts = deterministicHourlyShuffle(stableBrowseProducts, `browse:${activeSector?.id||"all"}`);
   window.__homeBrowseCatalog = rotatedBrowseProducts;
   window.__homeBrowseRotationKey = Math.floor(Date.now() / 600000);
   const homepageCarouselSlides = await loadHomepageCarouselSlides();
@@ -12446,30 +12481,7 @@ function deterministicHourlyShuffle(list, seedSource){
   return arr;
 }
 
-function startBrowseEverythingRotation(){
-  if(window.__levroBrowseRotationTimer)clearInterval(window.__levroBrowseRotationTimer);
-  window.__levroBrowseRotationTimer=setInterval(()=>{
-    const grid=byId('productGrid');
-    const catalog=Array.isArray(window.__homeBrowseCatalog)?window.__homeBrowseCatalog:[];
-    if(!grid||!catalog.length||browserLooksOffline())return;
-    const search=byId('searchInput')?.value.trim()||'';
-    const listing=byId('filterListing')?.value||'';
-    const catId=byId('filterCategory')?.value||'';
-    // Search/filter results keep their intentional relevance. The automatic
-    // 10-minute rotation applies to the unfiltered Browse Everything grid.
-    if(search||listing||catId||homeListingTab!=='products')return;
-    const key=Math.floor(Date.now()/600000);
-    if(key===window.__homeBrowseRotationKey)return;
-    window.__homeBrowseRotationKey=key;
-    window.__homeBrowseCatalog=deterministicBrowseVisibilityShuffle(catalog,`browse:${currentSectorId||'all'}`);
-    const cache=getOfflineHomeCache();
-    if(cache)writeOfflineHomeCache({...cache,browseProducts:window.__homeBrowseCatalog});
-    grid.innerHTML=window.__homeBrowseCatalog.filter(p=>!p.is_service).map(productCardHtml).join('');
-  },30000);
-}
 
-
-startBrowseEverythingRotation();
 
 function scrollToBrowse(listingType) {
   const sel = byId("filterListing");
@@ -12841,7 +12853,7 @@ async function filterHomeProducts() {
 
   if (matchingIds) products.sort((a, b) => matchingIds.indexOf(a.id) - matchingIds.indexOf(b.id));
   else if (!search && !listing && !catId && homeListingTab === "products") {
-    const rotated=deterministicBrowseVisibilityShuffle(products,`browse:${currentSectorId||'all'}`);
+    const rotated=deterministicHourlyShuffle(products,`browse:${currentSectorId||'all'}`);
     window.__homeBrowseCatalog=rotated;
     window.__homeBrowseRotationKey=Math.floor(Date.now()/600000);
   }
@@ -20223,12 +20235,14 @@ async function loadCommissionBreakdown(){
       const lines=g.products.length
         ? g.products.map(x=>`<li><span>${esc(x.qty+"× "+x.name)}</span><span>${naira(x.qty*x.unit)}</span></li>`).join("")
         : '<li><span>Order items unavailable</span><span>—</span></li>';
+      const autoDispute = g.auto_completed_at ? `<div class="vendor-commission-auto-note"><i class="fa-solid fa-clock-rotate-left"></i> Automatically completed after the 24-hour confirmation window.</div><button type="button" class="btn btn-sm btn-outline vendor-commission-dispute-btn" onclick="openCommissionDispute('${esc(g.order_id||"")}')"><i class="fa-solid fa-scale-balanced"></i> Raise dispute</button>` : "";
       return `<div class="vendor-commission-item">
         <div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length===1?esc(g.products[0].name):g.products.length>1?`${g.products.length} products`:"Sale"}</div><div class="vendor-commission-item-date">Completed ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div>
         <div class="vendor-commission-buyer"><i class="fa-solid fa-user"></i><span>Buyer</span><strong>${esc(g.buyer_name||"Buyer")}</strong></div>
         <ul class="vendor-commission-products">${lines}</ul>
         <div class="vendor-commission-math"><span>Total sale + transportation</span><strong>${naira(g.payment_amount)}</strong></div>
         <div class="vendor-commission-math"><span>Commission calculation</span><strong>3% × ${naira(g.payment_amount)} = ${naira(g.commission_amount)}</strong></div>
+        ${autoDispute}
       </div>`;
     }).join("");
     box.innerHTML=`<div class="vendor-commission-breakdown-head">Outstanding commission — ${groups.size} sale${groups.size===1?"":"s"}</div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span>Total commission owed</span><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
@@ -20236,6 +20250,19 @@ async function loadCommissionBreakdown(){
     box.innerHTML=`<div class="vendor-commission-breakdown-head" style="color:var(--danger,#ef4444)">Could not load the commission breakdown. ${esc(err?.message||"Please try again.")}</div>`;
   }
 }
+async function openCommissionDispute(orderId){
+  if(!orderId)return;
+  await navigate("orderDetail",{orderId});
+  setTimeout(()=>{
+    try{
+      const link=[...document.querySelectorAll('a')].find(a=>String(a.textContent||'').toLowerCase().includes('report an issue with this order'));
+      if(link){link.click();return;}
+      const form=byId('disputeForm');
+      if(form)form.classList.remove('hidden');
+    }catch(_){}
+  },80);
+}
+
 async function toggleCommissionBreakdown(){
   const box=byId("commissionBreakdown"),btn=byId("payCommissionBtn");
   if(!box)return;
@@ -21591,7 +21618,12 @@ function exportFinancePdf() {
       th{background:#f3f8f7;} .stats{display:flex;gap:1.5rem;margin:1.2rem 0;}
       .stat{border:1px solid #e2e8f0;border-radius:8px;padding:.8rem 1.2rem;}
       .stat b{display:block;font-size:1.3rem;color:#0e8f7f;}
-    </style></head><body>
+    </style>
+<style id="levromart-auto-commission-dispute-ui">
+.vendor-commission-auto-note{margin-top:.7rem;padding:.6rem .7rem;border-radius:10px;background:rgba(245,158,11,.10);color:#92400e;font-size:.84rem;line-height:1.35;}
+.vendor-commission-dispute-btn{margin-top:.55rem;border-color:var(--danger,#ef4444)!important;color:var(--danger,#ef4444)!important;background:#fff!important;}
+</style>
+</head><body>
     <h1>Levromart Transactions</h1>
     <p class="muted">Range: ${rangeLabel(adminFinanceRange)} · Generated ${new Date().toLocaleString()}</p>
     <div class="stats">
