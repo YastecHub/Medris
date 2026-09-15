@@ -10500,11 +10500,11 @@ function renderBottomNav() {
   } else if (isVendorUser) {
     // Vendor navigation keeps the + action centered with two controls on each side.
     // Priority: Vendors, Orders | + | Messages, My Shop.
-    items = [vendorsTab, ordersTab, messagesTab, myShopTab];
+    items = [vendorsTab, messagesTab, ordersTab, myShopTab];
   } else if (session) {
     // Buyer priority: Vendors → Request → Home → Messages → Orders.
     // Buyers do not get the vendor-only centered + action or My Shop.
-    items = [vendorsTab, requestsTab, homeTab, messagesTab, ordersTab];
+    items = [vendorsTab, requestsTab, homeTab, ordersTab, messagesTab];
   } else {
     items = [homeTab, vendorsTab, requestsTab,
       { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
@@ -19782,10 +19782,19 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
-  const [{ data: allOrders, error: allOrdersError }, { data: statsOrders, error: statsError }] = await Promise.all([
+  // The order list must never wait for the secondary stats query. Fetch the
+  // actual order rows first; stats can refresh independently afterward.
+  const { data: allOrders, error: allOrdersError } = await withRouteTimeout(
     query.order("created_at", { ascending: false }),
+    7000,
+    { data: [], error: { message: "Orders request timed out." } }
+  );
+  const statsPromise = withRouteTimeout(
     sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, updated_at").eq("vendor_id", vendor.id),
-  ]);
+    2500,
+    { data: [], error: { message: "Stats request timed out." } }
+  );
+  const { data: statsOrders, error: statsError } = await statsPromise;
   if (allOrdersError) {
     console.error("Vendor Orders base query failed:", allOrdersError);
     throw allOrdersError;
@@ -19796,11 +19805,11 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // failure is isolated and cannot turn a valid order list into "No orders".
   const orderIds = safeAllOrders.map(o => o.id).filter(Boolean);
   if (orderIds.length) {
-    const [buyersRes, itemsRes, paymentsRes] = await Promise.all([
+    const [buyersRes, itemsRes, paymentsRes] = await withRouteTimeout(Promise.all([
       sb.from("users").select("id,name").in("id", [...new Set(safeAllOrders.map(o => o.buyer_id).filter(Boolean))]),
       sb.from("order_items").select("order_id,quantity,product:products(is_service)").in("order_id", orderIds),
       sb.from("payments").select("order_id,payment_type,status,paid_at,created_at").in("order_id", orderIds),
-    ]);
+    ]), 2500, [{data:[]},{data:[]},{data:[]}]);
     const buyers = new Map((buyersRes.data || []).map(u => [String(u.id), u]));
     const itemsByOrder = new Map();
     (itemsRes.data || []).forEach(i => { const k=String(i.order_id); if(!itemsByOrder.has(k)) itemsByOrder.set(k,[]); itemsByOrder.get(k).push(i); });
@@ -19872,7 +19881,11 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
-  const { data: allOrders, error: allOrdersError } = await query.order("created_at", { ascending: false });
+  const { data: allOrders, error: allOrdersError } = await withRouteTimeout(
+    query.order("created_at", { ascending: false }),
+    7000,
+    { data: [], error: { message: "Orders request timed out." } }
+  );
   if (allOrdersError) {
     console.error("Buyer Orders base query failed:", allOrdersError);
     throw allOrdersError;
@@ -19882,11 +19895,11 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   const orderIds = safeAllOrders.map(o => o.id).filter(Boolean);
   if (orderIds.length) {
     const vendorIds = [...new Set(safeAllOrders.map(o => o.vendor_id).filter(Boolean))];
-    const [vendorsRes, itemsRes, paymentsRes] = await Promise.all([
+    const [vendorsRes, itemsRes, paymentsRes] = await withRouteTimeout(Promise.all([
       sb.from("vendors").select("id,business_name").in("id", vendorIds),
       sb.from("order_items").select("order_id,quantity,product:products(is_service)").in("order_id", orderIds),
       sb.from("payments").select("order_id,payment_type,status,paid_at,created_at").in("order_id", orderIds),
-    ]);
+    ]), 2500, [{data:[]},{data:[]},{data:[]}]);
     const vendors = new Map((vendorsRes.data || []).map(v => [String(v.id), v]));
     const itemsByOrder = new Map();
     (itemsRes.data || []).forEach(i => { const k=String(i.order_id); if(!itemsByOrder.has(k)) itemsByOrder.set(k,[]); itemsByOrder.get(k).push(i); });
