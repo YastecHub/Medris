@@ -154,6 +154,10 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
     `${origin}/?nview=${encodeURIComponent(n.target_view || "home")}` +
     `&nparams=${encodeURIComponent(JSON.stringify(n.target_params || {}))}`;
 
+  // Keep both the classic service-worker payload and the iOS 18.4+
+  // Declarative Web Push shape. This makes the notification user-visible
+  // even if the Home Screen web app is closed and the service worker cannot
+  // be started in time. Older browsers simply use the classic fields.
   const payload = JSON.stringify({
     title: n.title,
     body: n.body,
@@ -161,7 +165,18 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
     tag: `levromart-${n.id}`,
     icon: '/levromart-notification-icon.png',
     badge: '/levromart-badge.png',
-    silent: false
+    silent: false,
+    web_push: 8030,
+    notification: {
+      title: n.title,
+      body: n.body,
+      icon: '/levromart-notification-icon.png',
+      badge: '/levromart-badge.png',
+      silent: false,
+      tag: `levromart-${n.id}`,
+      renotify: true,
+      navigate: url
+    }
   });
 
   let sent = 0;
@@ -177,7 +192,8 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
               auth: s.auth_key
             }
           },
-          payload
+          payload,
+          { urgency: 'high', TTL: 86400 }
         );
 
         sent++;
