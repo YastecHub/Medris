@@ -9123,6 +9123,45 @@ function timeAgo(dateStr) {
 let notifViewMode = "all"; // inbox | archived | trash
 let notifSelectMode = false;
 let notifSelectedIds = new Set();
+const NOTIF_CACHE_PREFIX = "levromart-notifications-cache-v2:";
+
+function getCachedNotificationsForUser() {
+  if (!session?.user?.id) return [];
+  try {
+    const raw = localStorage.getItem(NOTIF_CACHE_PREFIX + session.user.id);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed.slice(0, 60) : [];
+  } catch (_) { return []; }
+}
+function cacheNotificationsForUser(items) {
+  if (!session?.user?.id || !Array.isArray(items)) return;
+  const clean = items.slice(0, 60);
+  try { localStorage.setItem(NOTIF_CACHE_PREFIX + session.user.id, JSON.stringify(clean)); } catch (_) {}
+  window.__levromartNotificationCache = clean;
+}
+
+// Paint the notification list from the last successful fetch immediately.
+// The network refresh happens afterwards, so opening Notifications never has
+// to wait on Supabase before the user can see the page.
+function paintCachedNotificationsImmediately(panel) {
+  if (!panel || !session?.user?.id) return false;
+  const cached = Array.isArray(window.__levromartNotificationCache)
+    ? window.__levromartNotificationCache
+    : getCachedNotificationsForUser();
+  if (!cached.length) return false;
+  window.__levromartNotificationCache = cached;
+  const items = cached.filter(n => !n?.deleted_at);
+  window.__notifPanelIds = items.map(n => n.id);
+  const hasUnread = items.some(n => !n.read);
+  const list = items.map(n => `<div class="notif-item-wrap" data-id="${n.id}"><button type="button" class="notif-item ${n.read ? "" : "unread"}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" onclick="handleNotifItemClick(event,'${n.id}')">${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;flex:none;" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.1rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<span class="notification-system-icon"><i class='fa-solid fa-circle-info'></i></span>`}<span class="notif-copy"><strong style="display:block;">${esc(n.title || "Notification")}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span></button></div>`).join("");
+  const tabs = `<div class="notif-tabs" role="tablist" aria-label="Notification categories"><button type="button" role="tab" aria-selected="true" class="notif-tab active">All</button></div>`;
+  panel.innerHTML = `${tabs}<div class="notif-list-scroll">${list || `<p class="muted" style="padding:.4rem;">You're all caught up.</p>`}</div>`;
+  if (currentView === "notifications") {
+    const actions = byId("notificationsPageHeaderActions");
+    if (actions) actions.innerHTML = hasUnread ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all notifications as read" title="Mark all notifications as read"><i class="fa-solid fa-check-double"></i></button>` : "";
+  }
+  return true;
+}
 
 function updateRequestOfferBadge() {
   document.querySelectorAll('[data-profile-label="Requests"] .profile-request-badge').forEach(el => {
@@ -9181,12 +9220,14 @@ async function renderNotifPanel() {
     panel.innerHTML = '<p class="muted">Sign in to view your notifications.</p>';
     return;
   }
-  panel.innerHTML = '<p class="muted" role="status">Loading notifications…</p>';
+  const hadCachedPaint = paintCachedNotificationsImmediately(panel);
+  if (!hadCachedPaint) panel.innerHTML = '<p class="muted" role="status">Updating notifications…</p>';
   // The backend still retains archived/deleted fields for compatibility, but
   // the user-facing notification experience is now a smart activity stream.
   // We never mutate or destructively migrate those legacy fields here.
   let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(60);
   const { data: rawItems, error } = await q;
+  if (Array.isArray(rawItems)) cacheNotificationsForUser(rawItems);
   const currentVendorId=String(vendor?.id||'');
   const owners=new Map();
   for(const [kind,table] of [['product','products'],['package','vendor_packages']]){
@@ -9293,19 +9334,20 @@ async function handleNotifItemClick(event, id) {
   if (!item) return;
   let params = {};
   try { params = JSON.parse(item.dataset.params || "{}"); } catch (_) {}
-  await markSingleNotifRead(id);
+  // Never make a tap wait on a database write or secondary message fetch.
+  // The destination paints first; any data hydration continues in the background.
+  markSingleNotifRead(id);
   closeAllPanels();
   if ((item.dataset.view || "home") === "messages" && params?.conversationId) {
     const conversationId = String(params.conversationId);
-    // Refresh the inbox snapshot first so the destination always has the
-    // exact conversation and its latest messages, even after a cold start or
-    // when the notification was generated while the inbox list was stale.
-    try { await refreshConversationInboxInBackground(); } catch (_) {}
-    try {
-      const {data:latestMessages}=await sb.from('messages').select('*').eq('conversation_id',conversationId).order('created_at',{ascending:true});
-      if(Array.isArray(latestMessages)) lastSeenMessagesByConv.set(conversationId,latestMessages);
-    } catch (_) {}
     navigate('messages',{conversationId});
+    Promise.resolve().then(async () => {
+      try { await refreshConversationInboxInBackground(); } catch (_) {}
+      try {
+        const {data:latestMessages}=await sb.from('messages').select('*').eq('conversation_id',conversationId).order('created_at',{ascending:true});
+        if(Array.isArray(latestMessages)) lastSeenMessagesByConv.set(conversationId,latestMessages);
+      } catch (_) {}
+    });
     return;
   }
   navigate(item.dataset.view || 'home', params);
@@ -9577,8 +9619,14 @@ async function markAllNotifsRead(){
   if(!session||markAllNotifsBusy)return;markAllNotifsBusy=true;
   try{
     if(!(await showConfirmDialog('Mark every notification as read?',{title:'Mark all as read',okLabel:'Mark all read'})))return;
-    const {error}=await sb.from('notifications').update({read:true}).eq('user_id',session.user.id).eq('read',false).is('deleted_at',null);if(error)throw error;
-    await refreshNotifications();showToast('All marked as read.','success');
+    const cached = Array.isArray(window.__levromartNotificationCache) ? window.__levromartNotificationCache : getCachedNotificationsForUser();
+    cached.forEach(n => { if (!n.deleted_at) n.read = true; });
+    cacheNotificationsForUser(cached);
+    if (getNotifHost()) paintCachedNotificationsImmediately(getNotifHost());
+    notifCount = 0;
+    byId("notifDot")?.classList.add("hidden");
+    sb.from('notifications').update({read:true}).eq('user_id',session.user.id).eq('read',false).is('deleted_at',null).then(({error})=>{ if(error) console.warn('Mark-all notifications failed:',error); else refreshNotifications(false).catch(()=>{}); }).catch(()=>{});
+    showToast('All marked as read.','success');
   }catch(err){showToast(err.message||'Could not mark notifications as read.','error');}
   finally{markAllNotifsBusy=false;}
 }
@@ -9587,7 +9635,15 @@ async function markSingleNotifRead(id) {
   const el = document.querySelector(`.notif-item[data-id="${id}"]`);
   if (!el || !el.classList.contains("unread")) return;
   el.classList.remove("unread");
-  await sb.from("notifications").update({ read: true }).eq("id", id);
+  // Mark read optimistically. Navigation must never wait for this network
+  // write; the database update continues in the background.
+  try {
+    const cached = Array.isArray(window.__levromartNotificationCache) ? window.__levromartNotificationCache : getCachedNotificationsForUser();
+    const hit = cached.find(n => String(n.id) === String(id));
+    if (hit) hit.read = true;
+    cacheNotificationsForUser(cached);
+  } catch (_) {}
+  sb.from("notifications").update({ read: true }).eq("id", id).then(() => {}).catch(() => {});
   notifCount = Math.max(0, notifCount - 1);
   const dot = byId("notifDot");
   if (dot) {
