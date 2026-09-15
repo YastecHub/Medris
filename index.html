@@ -4497,6 +4497,7 @@ body.chat-full-page #aiChatFab { display:none !important; }
 .chat-page-wrap .chat-thread { flex:1; height:auto; min-height:0; border-radius:0; }
 .chat-page-wrap .chat-edit-hint { flex-shrink:0; margin:0; padding:0.35rem 0.85rem calc(0.35rem + env(safe-area-inset-bottom,0px)); font-size:0.7rem; text-align:center; }
 .chat-skeleton-spinner { flex:1; display:flex; align-items:center; justify-content:center; font-size:1.4rem; color:var(--text-muted); }
+.chat-fast-empty { flex:1; min-height:18rem; }
 </style>
 
 
@@ -10935,9 +10936,9 @@ function navigationShellHtml(view) {
   const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
-  if(view==='vendorDashboard') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> My Shop</h2><div class="dash-tabs shop-tabs-rail"><button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button><button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button><button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button><button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions</button></div><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating your shop…</div></div>`;
-  if(view==='vendorOrders'||view==='buyerOrders') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating orders…</div></div>`;
-  return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status"><i class="fa-solid fa-arrows-rotate"></i> Updating…</div></div>`;
+  if(view==='vendorDashboard') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> My Shop</h2><div class="dash-tabs shop-tabs-rail"><button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products</button><button class="dash-tab" onclick="navigate('vendorPackages')"><i class="fa-solid fa-boxes-packing"></i> Packages</button><button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button><button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions</button></div><div class="instant-nav-status">Your latest shop data will refresh in the background.</div></div>`;
+  if(view==='vendorOrders'||view==='buyerOrders') return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status">Your latest orders will refresh in the background.</div></div>`;
+  return `<div class="instant-page-shell"><h2><i class="fa-solid ${icon}"></i> ${title}</h2><div class="instant-nav-status">Refreshing in the background.</div></div>`;
 }
 
 function isOwnVendorId(vendorId) {
@@ -11054,12 +11055,14 @@ async function navigate(view, params = {}, pushHistory = true) {
   // that wait was what made opening a DM feel like it "popped" the inbox
   // page first. The real render below still replaces this once it's ready.
   if (view === "messages" && params?.conversationId && profile?.role !== "admin") {
-    const cachedConv = (window.__conversations || []).find((c) => c.conversation_id === params.conversationId);
-    if (cachedConv) {
-      const cachedMessages = lastSeenMessagesByConv.get(params.conversationId);
-      app.innerHTML = chatSkeletonHtml(params.conversationId, cachedConv, cachedMessages);
-      if (cachedMessages?.length) requestAnimationFrame(scrollChatToBottom);
-    }
+    window.__chatFastPaintDirty = false;
+    const cachedConv = (window.__conversations || []).find((c) => c.conversation_id === params.conversationId) || { conversation_id: params.conversationId, other_name: "Chat", other_avatar: null, unread_count: 0 };
+    const cachedMessages = lastSeenMessagesByConv.get(params.conversationId);
+    // Always paint the chat surface immediately, even for a deep link where
+    // the inbox has not been hydrated yet. Network hydration replaces only
+    // the stale content later; there is never a central loading spinner.
+    app.innerHTML = chatSkeletonHtml(params.conversationId, cachedConv, cachedMessages);
+    if (cachedMessages?.length) requestAnimationFrame(scrollChatToBottom);
   }
   updateAuthUI();
   renderBottomNav();
@@ -11089,7 +11092,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // Paint the destination immediately. Reuse a previously rendered screen
   // when available; otherwise show a lightweight page shell. Do not block a
   // tap on Supabase and do not show a generic "Loading..." page.
-  const hasChatFastPath = view === "messages" && !!params?.conversationId && profile?.role !== "admin" && !!((window.__conversations || []).find((c) => c.conversation_id === params.conversationId));
+  const hasChatFastPath = view === "messages" && !!params?.conversationId && profile?.role !== "admin";
   const cacheKey = routeCacheKey(view, params);
   const cachedRouteHtml = routeHtmlCache.get(cacheKey);
   if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && view !== "storefront") {
@@ -11234,6 +11237,14 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (html && !lastRenderError) routeHtmlCache.set(cacheKey, html);
   const preserveSameViewScroll = !pushHistory && previousView === view;
   const sameViewScrollY = preserveSameViewScroll ? window.scrollY : 0;
+  const preserveActiveFastChat = view === "messages" && !!currentViewParams?.conversationId && !!byId("chatInput") && window.__chatFastPaintDirty === true;
+  if (preserveActiveFastChat) {
+    // The user has already started typing into the instant-painted chat. Do
+    // not replace their live DOM with the slower hydrated copy. The realtime
+    // channel and background fetch will reconcile messages without losing the
+    // text they are composing.
+    return;
+  }
   app.innerHTML = html;
   if (view === "notifications") void renderNotifPanel();
   if (view === "home") setTimeout(() => { try { filterHomeProducts(); } catch (_) {} }, 0);
@@ -13658,7 +13669,7 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
   const avatar = cached.other_avatar;
   const messagesArea = cachedMessages && cachedMessages.length
     ? chatMessagesWithDatesHtml(cachedMessages, chatBubbleHtml)
-    : `<div class="chat-skeleton-spinner"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
+    : `<div class="chat-fast-empty" aria-live="polite"></div>`;
   return `<div class="chat-page-wrap">
     <div class="chat-page-header">
       <button class="chat-header-back" onclick="navigate('messages')" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
@@ -13674,8 +13685,8 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
       <div class="chat-messages" id="chatMessages">${messagesArea}</div>
       <div class="chat-input-row">
         <button class="msg-attach-btn" disabled style="opacity:0.4;"><i class="fa-solid fa-paperclip"></i></button>
-        <textarea rows="1" placeholder="Type a message…" disabled></textarea>
-        <button class="btn btn-sm" disabled style="opacity:0.6;"><i class="fa-solid fa-paper-plane"></i></button>
+        <textarea id="chatInput" rows="1" placeholder="Type a message…" oninput="window.__chatFastPaintDirty=true;autoGrowChatInput(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}')}" ></textarea>
+        <button class="btn btn-sm" onclick="sendChatMessage('${conversationId}')" aria-label="Send message"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
     </div>
   </div>`;
