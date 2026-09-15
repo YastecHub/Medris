@@ -157,7 +157,11 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
   const payload = JSON.stringify({
     title: n.title,
     body: n.body,
-    url
+    url,
+    tag: `levromart-${n.id}`,
+    icon: '/levromart-notification-icon.png',
+    badge: '/levromart-badge.png',
+    silent: false
   });
 
   let sent = 0;
