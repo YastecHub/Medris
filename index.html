@@ -6529,6 +6529,8 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #productVariantPricing .variant-photo-preview{width:58px;height:58px;flex-basis:58px;}
   #productVariantPricing .variant-photo-picker{min-height:76px;}
 }
+
+  .order-follow-up-note{font-size:.78rem!important;line-height:1.45;margin:.1rem 0 .65rem!important;opacity:.72;} .order-follow-up-actions{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;} .order-remind-btn{display:inline-flex;align-items:center;gap:.4rem;} .vendor-order-waiting-banner{display:flex;flex-direction:column;gap:.2rem;} .vendor-order-waiting-banner span{font-size:.8rem;color:var(--text-muted);} .vendor-application-payout-section{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:1rem;background:color-mix(in srgb,var(--primary) 3%,var(--card));} .vendor-application-payout-heading strong{display:block;font-size:.95rem;} .vendor-application-payout-heading span{display:block;margin-top:.18rem;color:var(--text-muted);font-size:.76rem;line-height:1.4;}
 </style>
 </head>
 <body>
@@ -15760,7 +15762,7 @@ async function renderStorefront(vendorId) {
   updateStorefrontSocialMeta(v);
 
   const [{ data: products }, { data: stats }, { data: reviews }, { data: packages }, { data: followState }] = await Promise.all([
-    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
+    sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
     sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
     sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
@@ -19542,7 +19544,8 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <span class="badge ${orderStatusBadgeClass(order.status)}" style="text-transform:capitalize;flex-shrink:0;">${order.status.replace("_", " ")}</span>
     </div>
     ${order.created_at ? `<p class="muted" style="font-size:0.8rem;margin-top:0.7rem;"><i class="fa-solid fa-calendar-days"></i> Placed ${orderDateTimeStr(order.created_at)}</p>` : ""}
-    ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted">If the payout button does not appear within 20–30 minutes, please contact the vendor by message or call.</p><button type="button" class="btn btn-sm" onclick="remindOrderVendor('${esc(order.id)}',this)">Remind Vendor</button><button type="button" class="btn btn-sm btn-outline" onclick="startConversationWithVendor('${esc(order.vendor_id)}')">Message vendor</button>${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}">Call vendor</a>`:''}</div>`:''}
+    ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>If the payout button does not reflect within 20–30 minutes, please contact the vendor immediately.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button><button type="button" class="btn btn-sm btn-outline" onclick="startConversationWithVendor('${esc(order.vendor_id)}')"><i class="fa-solid fa-message"></i> Message vendor</button>${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:''}
+     ${isVendor&&order.status==='pending'?`<div class="banner banner-warning vendor-order-waiting-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-hourglass-half"></i> Customer waiting for confirmation.</strong><span>The customer is waiting for you to confirm this order.</span></div>`:''}</div></div>`:''}
     ${(order.status === "completed" || order.status === "cancelled") && orderActivityIso(order) ? `<p class="muted" style="font-size:0.8rem;margin-top:0.25rem;"><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(order))}</p>` : ""}
     ${ORDER_STATUS_HELP[order.status]
       ? order.status === "pending"
@@ -25075,6 +25078,11 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     };
   }
 
+  function renderVendorApplyBankPicker(){const select=byId("vaBankCode"),label=byId("vaBankPickerLabel");if(!select||!label)return;label.textContent=select.options[select.selectedIndex]?.textContent?.trim()||"Select a bank";}
+  function closeVendorApplyBankPicker(){byId("vendorApplyBankPickerModal")?.remove();byId("vaBankPickerBtn")?.setAttribute("aria-expanded","false");}
+  function selectVendorApplyBank(code){const select=byId("vaBankCode"),option=select&&Array.from(select.options).find(o=>String(o.value)===String(code));if(!option)return;select.value=String(code);renderVendorApplyBankPicker();closeVendorApplyBankPicker();}
+  function openVendorApplyBankPicker(){const select=byId("vaBankCode");if(!select)return;closeVendorApplyBankPicker();const banks=Array.from(select.options).map(o=>({code:o.value,name:o.textContent.trim()})).filter(b=>b.code&&b.name).sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:"base"}));const modal=document.createElement("div");modal.id="vendorApplyBankPickerModal";modal.className="modal vendor-bank-picker-modal";modal.onclick=e=>{if(e.target===modal)closeVendorApplyBankPicker()};modal.innerHTML=`<div class="vendor-bank-picker-content" role="dialog" aria-modal="true" aria-labelledby="vaBankPickerTitle"><div class="vendor-bank-picker-header"><div><h3 id="vaBankPickerTitle"><i class="fa-solid fa-building-columns"></i> Select payout bank</h3><p>${banks.length} supported banks and financial institutions</p></div><button type="button" class="vendor-bank-picker-close" onclick="closeVendorApplyBankPicker()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="vendor-bank-search-wrap"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="vaBankSearch" class="vendor-bank-search" type="search" placeholder="Search bank…" autocomplete="off" /></div><div id="vaBankPickerList" class="vendor-bank-picker-list"></div></div>`;document.body.appendChild(modal);const render=q=>{const query=String(q||"").trim().toLowerCase(),current=String(select.value||""),filtered=query?banks.filter(b=>b.name.toLowerCase().includes(query)||b.code.toLowerCase().includes(query)):banks;byId("vaBankPickerList").innerHTML=filtered.length?filtered.map(b=>"<button type=\"button\" class=\"vendor-bank-option "+(String(b.code)===current?"selected":"")+"\" onclick=\"selectVendorApplyBank('"+esc(b.code)+"')\"><span class=\"vendor-bank-option-icon\"><i class=\"fa-solid fa-building-columns\"></i></span><span class=\"vendor-bank-option-main\"><strong>"+esc(b.name)+"</strong><small>"+esc(b.code)+"</small></span><i class=\"fa-solid "+(String(b.code)===current?"fa-circle-check":"fa-chevron-right")+"\"></i></button>").join(""):"<div class=\"vendor-bank-picker-empty\">No banks match your search.</div>"};byId("vaBankSearch")?.addEventListener("input",e=>render(e.target.value));render("");byId("vaBankPickerBtn")?.setAttribute("aria-expanded","true");setTimeout(()=>byId("vaBankSearch")?.focus(),0);}
+
   /* ---------------------------------------------------------------
      VENDOR APPLICATION — explicit type=button + delegated click fallback,
      plus a busy guard so slow browsers cannot double-submit.
@@ -25097,6 +25105,14 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       <label>City</label><input id="vaCity" value="Lagos" autocomplete="address-level2" />
       <label>Phone *</label><input id="vaPhone" type="tel" autocomplete="tel" />
       <label>WhatsApp number</label><input id="vaWhatsapp" type="tel" autocomplete="tel" />
+      <div class="vendor-application-payout-section">
+        <div class="vendor-application-payout-heading"><strong>Payout account</strong><span>These are the bank details Levromart will use for your vendor payouts.</span></div>
+        <label>Bank</label>
+        <button type="button" id="vaBankPickerBtn" class="bank-picker-trigger" onclick="openVendorApplyBankPicker()" aria-haspopup="dialog" aria-expanded="false"><span id="vaBankPickerLabel">Select a bank</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
+        <select id="vaBankCode" class="hidden" aria-hidden="true" tabindex="-1">${NIGERIAN_BANKS.map((b) => `<option value="${esc(b.code)}">${esc(b.name)}</option>`).join("")}</select>
+        <label>Account name</label><input id="vaAccountName" autocomplete="name" placeholder="Name on the bank account" />
+        <label>Account number</label><input id="vaAccountNumber" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="10-digit account number" />
+      </div>
       <label>CAC number</label><input id="vaCac" autocomplete="off" />
       <label>CAC document (optional upload)</label><input id="vaDoc" type="file" accept="application/pdf,image/*" />
       <label>About your business</label><textarea id="vaBio" rows="3" placeholder="If you're online-only, mention that here: how buyers reach you, delivery area, etc."></textarea>
@@ -25132,7 +25148,14 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         if (upErr) throw new Error(`Document upload failed: ${upErr.message}`);
         verification_docs = [path];
       }
-      const { error } = await sb.from("vendors").insert({
+      const bankCode = String(byId("vaBankCode")?.value || "").trim();
+      const bankName = String(byId("vaBankPickerLabel")?.textContent || "").trim();
+      const accountName = String(byId("vaAccountName")?.value || "").trim();
+      const accountNumber = String(byId("vaAccountNumber")?.value || "").trim();
+      if (bankCode || accountName || accountNumber) {
+        if (!bankCode || !accountName || !/^\d{10}$/.test(accountNumber)) throw new Error("Please enter a bank, account name, and valid 10-digit account number, or leave the payout details blank.");
+      }
+      const { data: createdVendor, error } = await sb.from("vendors").insert({
         user_id: session.user.id,
         sector_id: byId("vaSector")?.value || null,
         business_name,
@@ -25143,8 +25166,19 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         cac_number: String(byId("vaCac")?.value || "").trim() || null,
         bio: String(byId("vaBio")?.value || "").trim() || null,
         verification_docs,
-      });
+        bank_code: bankCode || null,
+        bank_name: bankCode ? bankName : null,
+        account_name: accountName || null,
+        account_number: accountNumber || null,
+      }).select("id").single();
       if (error) throw new Error(error.message);
+      if (bankCode && accountNumber) {
+        const payoutRes = await fetch("/api/vendor-payments", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ action:"create-subaccount", accessToken:session.access_token, bankCode, accountNumber }) });
+        const payoutJson = await payoutRes.json();
+        if (!payoutRes.ok) throw new Error(payoutJson.error || "Your application was saved, but the payout account could not be verified. Please try again from your payout details.");
+        const { error: payoutSaveError } = await sb.from("vendors").update({ bank_code:bankCode, bank_name:bankName, account_name:accountName || payoutJson.account_name || null, account_number:accountNumber, paystack_subaccount_code:payoutJson.subaccount_code || payoutJson.subaccount?.subaccount_code || null }).eq("id", createdVendor?.id).eq("user_id", session.user.id);
+        if (payoutSaveError) throw new Error("Application submitted, but your payout account could not be finalized. Please check Payout details before accepting orders.");
+      }
       showToast("Vendor application submitted successfully.", "success");
       await refreshAuthState();
       navigate("vendorDashboard");
