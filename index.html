@@ -6922,13 +6922,23 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       </div>
       <p id="prodDeliveryHint" class="muted" style="font-size:.76rem;margin:.45rem 0 0;"></p>
     </div>
-    <div class="listing-payment-timing-settings" style="margin-top:.8rem;padding:.8rem;border:1px solid var(--border);border-radius:14px;background:var(--card-bg,#fff);">
-      <label style="margin:0 0 .35rem;font-weight:700;"><i class="fa-solid fa-wallet"></i> Delivery payment plan</label>
-      <select id="prodPaymentTiming" onchange="updateProductPaymentTimingHint()">
-        <option value="pay_before">Pay before delivery — full payment before dispatch</option>
-        <option value="pay_after">Pay after delivery — 20% deposit, 80% after delivery</option>
+    <div class="listing-payment-timing-settings" id="prodPaymentTimingSettings">
+      <label class="payment-timing-title"><i class="fa-solid fa-wallet"></i> Payment timing for this product</label>
+      <div class="payment-timing-choice" role="group" aria-label="Choose when buyers pay">
+        <button type="button" class="payment-timing-option pay-before" data-payment-timing="pay_before" onclick="setProductPaymentTiming('pay_before')">
+          <span class="payment-timing-option-dot"></span>
+          <span><strong>Pay before delivery</strong><small>Full payment before dispatch</small></span>
+        </button>
+        <button type="button" class="payment-timing-option pay-after" data-payment-timing="pay_after" onclick="setProductPaymentTiming('pay_after')">
+          <span class="payment-timing-option-dot"></span>
+          <span><strong>Pay after delivery</strong><small>20% deposit first, 80% after delivery</small></span>
+        </button>
+      </div>
+      <select id="prodPaymentTiming" class="hidden" aria-hidden="true" tabindex="-1">
+        <option value="pay_before">Pay before delivery</option>
+        <option value="pay_after">Pay after delivery</option>
       </select>
-      <p id="prodPaymentTimingHint" class="muted" style="font-size:.76rem;margin:.45rem 0 0;"></p>
+      <p id="prodPaymentTimingHint" class="muted payment-timing-hint"></p>
     </div>
     <div class="listing-engagement-settings" id="prodEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="prodLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="prodAllowComments" checked onchange="syncProductEngagementSettingsUI()"></label><div id="prodCommentAudienceWrap"><label>Who can comment</label><select id="prodCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div>
     <div id="prodQtyWrap">
@@ -18356,6 +18366,8 @@ async function showProductModal() {
     byId("prodQtyTotal").value = p.quantity_total;
     byId("prodIsService").checked = !!p.is_service;
     byId("prodServiceUnit").value = p.service_price_unit || "flat";
+    if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = p.payment_timing === "pay_after" ? "pay_after" : "pay_before";
+    updateProductPaymentTimingHint();
     if (byId("prodBillingModel")) byId("prodBillingModel").value = p.billing_model || (p.is_service ? "commission" : "commission");
     byId("prodLikeVisibility").value=engagement?.like_visibility||"everyone";byId("prodAllowComments").checked=engagement?.allow_comments!==false;byId("prodCommentAudience").value=engagement?.comment_audience||"everyone";
     window.__existingPhotos = p.photos || [];
@@ -18521,11 +18533,26 @@ function toggleProdCategoryOther() {
   byId("prodCategoryOther").classList.toggle("hidden", byId("prodCategory").value !== "__other__");
 }
 
+function setProductPaymentTiming(mode){
+  const value=mode==="pay_after" ? "pay_after" : "pay_before";
+  const sel=byId("prodPaymentTiming");
+  if(sel) sel.value=value;
+  document.querySelectorAll(".payment-timing-option").forEach(btn=>{
+    btn.classList.toggle("selected",btn.dataset.paymentTiming===value);
+    btn.setAttribute("aria-pressed",btn.dataset.paymentTiming===value ? "true" : "false");
+  });
+  updateProductPaymentTimingHint();
+}
 function updateProductPaymentTimingHint(){
   const el=byId("prodPaymentTimingHint"); const sel=byId("prodPaymentTiming"); if(!el||!sel)return;
-  el.innerHTML=sel.value==="pay_after"
-    ? "<strong>Pay after delivery:</strong> buyer pays 20% of the item amount first; the remaining 80% is due after delivery. Delivery fee stays in the order total."
-    : "<strong>Pay before delivery:</strong> buyer pays the full order amount before delivery. If a buyer needs a different arrangement, they should contact the vendor.";
+  const isAfter=sel.value==="pay_after";
+  el.innerHTML=isAfter
+    ? "<strong>Pay after delivery:</strong> the buyer pays a 20% deposit first; the remaining 80% is due after delivery."
+    : "<strong>Pay before delivery:</strong> the buyer pays the full item amount before dispatch. If they need a different arrangement, they should contact the vendor.";
+  document.querySelectorAll(".payment-timing-option").forEach(btn=>{
+    btn.classList.toggle("selected",btn.dataset.paymentTiming===sel.value);
+    btn.setAttribute("aria-pressed",btn.dataset.paymentTiming===sel.value ? "true" : "false");
+  });
 }
 function updateProductDeliveryFields() {
   const mode = byId("prodDeliveryMode")?.value || "free";
@@ -18550,6 +18577,7 @@ function updateProductFormFields() {
   byId("prodListingTypeWrap").classList.toggle("hidden", isService);
   byId("prodQtyWrap").classList.toggle("hidden", isService);
   byId("prodServiceUnitWrap").classList.toggle("hidden", !isService);
+  byId("prodPaymentTimingSettings")?.classList.toggle("hidden", isService);
 
   if (isService) {
     const unit = byId("prodServiceUnit").value;
@@ -28481,12 +28509,14 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 </style>
 
 <style id="levromart-payment-timing-ui">
-.product-card-payment-plan{display:inline-flex;align-items:center;gap:.3rem;margin-top:.28rem;font-size:.68rem;font-weight:700;line-height:1.2;padding:.28rem .45rem;border-radius:999px;background:color-mix(in srgb,var(--primary) 9%,var(--card-bg,#fff));color:var(--text);}
-.product-card-payment-plan i{color:var(--primary);}
+.product-card-payment-plan{display:inline-flex;align-items:center;gap:.3rem;margin-top:.28rem;font-size:.68rem;font-weight:800;line-height:1.2;padding:.3rem .5rem;border-radius:999px;border:1px solid transparent;}
+.product-card-payment-plan.pay-before{background:#dcfce7;color:#166534;border-color:#86efac;}
+.product-card-payment-plan.pay-after{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd;}
+.product-card-payment-plan i{color:currentColor;}
 .product-payment-plan-notice{display:flex;flex-direction:column;gap:.18rem;margin:.65rem 0;padding:.72rem .8rem;border-radius:12px;border:1px solid var(--border);font-size:.82rem;line-height:1.35;}
 .product-payment-plan-notice strong{display:flex;align-items:center;gap:.35rem;}
-.product-payment-plan-notice.pay-before{background:color-mix(in srgb,var(--primary) 7%,var(--card-bg,#fff));border-color:color-mix(in srgb,var(--primary) 35%,var(--border));}
-.product-payment-plan-notice.pay-after{background:color-mix(in srgb,#f59e0b 8%,var(--card-bg,#fff));border-color:color-mix(in srgb,#f59e0b 32%,var(--border));}
+.product-payment-plan-notice.pay-before{background:#f0fdf4;border-color:#86efac;color:#166534;}
+.product-payment-plan-notice.pay-after{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;}
 </style>
 </body>
 <style id="levromart-20260910-final-polish">
@@ -32318,6 +32348,22 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   transform:none !important;
   animation:none !important;
 }
+
+/* Product payment timing: explicit seller choice and card-visible status */
+.listing-payment-timing-settings{margin-top:.8rem;padding:.9rem;border:1px solid var(--border);border-radius:16px;background:var(--card-bg,#fff);}
+.payment-timing-title{display:block;margin:0 0 .55rem;font-weight:800;}
+.payment-timing-choice{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;}
+.payment-timing-option{appearance:none;border:1px solid var(--border);background:var(--card-bg,#fff);border-radius:14px;padding:.7rem .75rem;display:flex;align-items:flex-start;gap:.6rem;text-align:left;cursor:pointer;color:var(--text);transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;min-width:0;}
+.payment-timing-option strong{display:block;font-size:.8rem;line-height:1.2;}
+.payment-timing-option small{display:block;margin-top:.2rem;font-size:.68rem;line-height:1.25;color:var(--muted,#64748b);}
+.payment-timing-option-dot{width:12px;height:12px;border-radius:50%;border:2px solid currentColor;flex:0 0 auto;margin-top:.12rem;}
+.payment-timing-option.pay-before{color:#166534;}
+.payment-timing-option.pay-after{color:#1d4ed8;}
+.payment-timing-option.pay-before.selected{background:#f0fdf4;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12);}
+.payment-timing-option.pay-after.selected{background:#eff6ff;border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.12);}
+.payment-timing-option.selected .payment-timing-option-dot{background:currentColor;box-shadow:inset 0 0 0 2px #fff;}
+.payment-timing-hint{font-size:.76rem;margin:.55rem 0 0;}
+@media(max-width:520px){.payment-timing-choice{grid-template-columns:1fr;}}
 </style>
 <script>
 (function(){
