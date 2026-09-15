@@ -9712,6 +9712,9 @@ function subscribeOrderUpdates() {
   }
   // Also catch item-level changes.
   ordersLiveChannel.on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, refreshVisibleOrderView);
+  // Payment confirmations live in a separate table. Re-render the current
+  // order detail immediately when a vendor confirms the 20% delivery deposit.
+  ordersLiveChannel.on("postgres_changes", { event: "*", schema: "public", table: "payments" }, refreshVisibleOrderView);
   ordersLiveChannel.subscribe();
 
   // Intentionally no fixed polling interval. Replacing the Orders DOM while
@@ -19586,7 +19589,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>If the payout button does not reflect within 20–30 minutes, please contact the vendor immediately.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button></div></div>`:''}
     ${isVendor&&order.status==='pending'?`<div class="banner banner-warning vendor-order-waiting-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-hourglass-half"></i> Customer waiting for confirmation.</strong><span>The customer is waiting for you to confirm this order.</span></div>`:''}
     ${(order.status === "completed" || order.status === "cancelled") && orderActivityIso(order) ? `<p class="muted" style="font-size:0.8rem;margin-top:0.25rem;"><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(order))}</p>` : ""}
-    ${ORDER_STATUS_HELP[order.status]
+    ${(!(isVendor&&order.status==='pending') && ORDER_STATUS_HELP[order.status])
       ? order.status === "pending"
         ? `<div class="banner banner-warning order-status-banner" style="margin-top:0.6rem;"><i class="fa-solid fa-hourglass-half order-status-icon"></i><span class="order-status-text">${esc(ORDER_STATUS_SHORT_LABEL[order.status] || ORDER_STATUS_HELP[order.status])}</span>${ORDER_STATUS_SHORT_LABEL[order.status] ? infoPopoverHtml("orderStatusInfo", esc(ORDER_STATUS_HELP[order.status])) : ""}</div>`
         : `<p class="muted" style="font-size:0.85rem;margin-top:0.4rem;">${esc(ORDER_STATUS_SHORT_LABEL[order.status] || ORDER_STATUS_HELP[order.status])} ${ORDER_STATUS_SHORT_LABEL[order.status] ? infoPopoverHtml("orderStatusInfo", esc(ORDER_STATUS_HELP[order.status])) : ""}</p>`
@@ -19681,10 +19684,10 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     const payableAmount = isDeliveryOrder
       ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount)
       : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
-    html += `<div class="card"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isDeliveryOrder ? (deliveryDepositPaid ? "Complete your payment" : "Pay 20% deposit to confirm your order") : "Pay now"}</h3></div>
-      ${isDeliveryOrder ? `<p class="muted" style="margin:.45rem 0 .8rem;">${deliveryDepositPaid ? `The vendor has delivered your order. Pay the remaining <strong>${naira(payableAmount)}</strong> balance to complete your payment.` : `Pay a 20% deposit of <strong>${naira(payableAmount)}</strong> based on the item/rental fee. The delivery fee is included in the remaining balance.`}</p>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
-      <button class="btn btn-sm btn-outline" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
-      <button class="btn btn-sm" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> Pay directly to vendor · ${naira(payableAmount)}</button>
+    html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isDeliveryOrder ? (deliveryDepositPaid ? "Complete your payment" : "Pay 20% deposit to confirm your order") : "Pay now"}</h3></div>
+      ${isDeliveryOrder ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositPaid ? `<strong>Remaining 80% payment</strong><br>The vendor has delivered your order. Pay the remaining <strong>${naira(payableAmount)}</strong> balance to complete your payment.` : `Pay a 20% deposit of <strong>${naira(payableAmount)}</strong> based on the item/rental fee. The delivery fee is included in the remaining balance.`}</p>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
+      <button class="btn btn-sm btn-outline ${isDeliveryOrder && deliveryDepositPaid ? "delivery-balance-paystack-btn" : ""}" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
+      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositPaid ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isDeliveryOrder && deliveryDepositPaid ? "Pay remaining 80% directly to vendor" : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
     </div>`;
   }
 
@@ -19693,12 +19696,13 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">20% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Remaining balance" : "Remaining balance"}</option>` : ""}`
       : `${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Sale price" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Refundable deposit</option>` : ""}`;
     const manualAmount = isDeliveryOrder ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount) : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
-    html += `<div class="card"><h3><i class="fa-solid fa-hand-holding-dollar"></i> Paid outside Paystack? ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
+    html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-payment-card" : ""}"><h3><i class="fa-solid fa-hand-holding-dollar"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Record 80% payment" : "Paid outside Paystack?"} ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
+      ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;"><strong>Remaining 80% payment</strong><br>Confirm the customer's remaining <strong>${naira(manualAmount)}</strong> payment after you have actually received it.</p>` : ""}
       <div id="recordPaymentError" class="error-text hidden"></div>
       <label>Payment for</label><select id="rpType">${manualTypeOptions}</select>
       <label>Amount</label><input type="number" id="rpAmount" value="${manualAmount}" />
       <label>Method</label><select id="rpMethod"><option value="transfer" selected>Transfer</option><option value="cash">Cash</option></select>
-      <button class="btn btn-sm" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> Mark as paid manually</button>
+      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-manual-btn" : ""}" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Confirm 80% payment received" : "Mark as paid manually"}</button>
     </div>`;
   }
 
@@ -20051,7 +20055,11 @@ async function recordOfflinePayment(orderId) {
   if (!paymentType || !Number.isFinite(amount) || amount <= 0 || !method) { errorEl.textContent = "Enter a valid payment amount and method."; errorEl.classList.remove("hidden"); return; }
   const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : paymentType === "delivery_deposit_20" ? "20% delivery deposit" : "refundable deposit";
   const methodLabel = method === "cash" ? "cash" : "bank transfer";
-  if (!(await showConfirmDialog(`Confirm that you actually received ${naira(amount)} for the ${paymentLabel} by ${methodLabel}. This records the payment as PAID outside Paystack and settles this payment obligation.`, { title: "Mark as paid manually", okLabel: "Yes, mark paid" }))) return;
+  const isRemainingDeliveryPayment = paymentType !== "delivery_deposit_20" && paymentType !== "deposit" && byId("rpType")?.value === paymentType && !!byId("rpType")?.closest(".delivery-balance-payment-card");
+  const confirmMessage = isRemainingDeliveryPayment
+    ? `You are confirming the customer's remaining 80% payment of ${naira(amount)} by ${methodLabel}. Only continue if you have actually received this full amount. This will mark the 80% balance as PAID.`
+    : `Confirm that you actually received ${naira(amount)} for the ${paymentLabel} by ${methodLabel}. This records the payment as PAID outside Paystack and settles this payment obligation.`;
+  if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? "Confirm 80% payment" : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? "Yes, confirm 80% paid" : "Yes, mark paid" }))) return;
   const { error } = await sb.rpc("record_offline_payment", { p_order_id: orderId, p_payment_type: paymentType, p_amount: amount, p_method: method });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
   showToast("Payment recorded as paid.", "success"); await navigate("orderDetail", { orderId });
@@ -26060,6 +26068,29 @@ window.renderVendorMapRail = function(){
 .manual-payment-account-row strong{min-width:0;overflow-wrap:anywhere;}
 .manual-payment-copy-btn{flex:0 0 auto;width:1.9rem;height:1.9rem;min-width:1.9rem;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--primary);display:inline-flex;align-items:center;justify-content:center;font-size:.78rem;cursor:pointer;}
 .manual-payment-copy-btn:hover{background:color-mix(in srgb,var(--primary) 10%,var(--card));}
+
+/* Flat blue visual cue for the remaining 80% delivery payment. */
+.delivery-balance-payment-card{
+  border:1px solid rgba(37,99,235,.58) !important;
+  background:color-mix(in srgb,#2563eb 7%,var(--card)) !important;
+  background-image:none !important;
+  box-shadow:0 6px 20px rgba(37,99,235,.10) !important;
+}
+.delivery-balance-payment-card .delivery-balance-payment-copy strong{color:#2563eb !important;}
+.delivery-balance-direct-btn,.delivery-balance-manual-btn{
+  background:#2563eb !important;
+  background-image:none !important;
+  border:1px solid #2563eb !important;
+  color:#fff !important;
+  box-shadow:0 5px 14px rgba(37,99,235,.22) !important;
+}
+.delivery-balance-direct-btn:hover,.delivery-balance-manual-btn:hover{background:#1d4ed8 !important;filter:none !important;}
+.delivery-balance-paystack-btn{
+  color:#2563eb !important;
+  border-color:#2563eb !important;
+  background:transparent !important;
+  background-image:none !important;
+}
 @media(max-width:560px){#vendorsGrid .vendor-card{padding:.62rem !important}.vendor-directory-logo{width:2.65rem !important;height:2.65rem !important;min-width:2.65rem !important;min-height:2.65rem !important;}}
 
 /* Final vendor-card sizing: smaller cards, but a genuinely large uniform profile circle. */
