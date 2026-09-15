@@ -1,3 +1,12 @@
+<style id="order-vendor-message-contact-ui">
+  /* Customer order-detail contact action: keep the vendor messaging control
+     directly beneath the visible phone line, centered, with the same compact
+     dropdown used elsewhere in Levromart. */
+  #app .order-vendor-message-wrap{position:relative;display:flex;flex-direction:column;align-items:center;width:100%;margin:.55rem 0 .05rem;}
+  #app .order-message-vendor-btn{justify-content:center;min-width:190px;}
+  #app .order-vendor-message-menu{position:relative;top:auto;left:auto;right:auto;width:min(240px,100%);margin:.4rem auto 0;z-index:95;}
+  #app .order-vendor-message-menu .ms-item{display:block;width:100%;text-align:left;}
+</style>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9658,31 +9667,39 @@ function ensureOrderScrollWatch() {
 }
 function refreshVisibleOrderView() {
   if (!["vendorOrders", "buyerOrders", "orderDetail"].includes(currentView)) return;
-  ensureOrderScrollWatch();
   clearTimeout(ordersLiveRefreshTimer);
 
   const savedView = currentView;
   const savedParams = { ...(currentViewParams || {}) };
+
+  // An open order detail is a live transaction surface. Do not wait for
+  // scrolling to settle or for another timer: a status/payment change should
+  // repaint immediately so the buyer/vendor sees the next step at once.
+  if (savedView === "orderDetail") {
+    ordersLiveRefreshTimer = setTimeout(async () => {
+      if (currentView !== savedView) return;
+      try { await navigate(savedView, savedParams, false); }
+      catch (err) { console.warn("[Levromart] Live order-detail refresh failed:", err); }
+    }, 60);
+    return;
+  }
+
+  // Order lists still wait briefly for an active scroll gesture so a realtime
+  // event cannot make iOS jump while the customer/vendor is reading history.
+  ensureOrderScrollWatch();
   const waitForScrollToSettle = () => {
     if (currentView !== savedView) return;
     const elapsed = performance.now() - lastOrderScrollAt;
-    if (elapsed < 550) {
-      ordersLiveRefreshTimer = setTimeout(waitForScrollToSettle, Math.max(120, 550 - elapsed));
+    if (elapsed < 350) {
+      ordersLiveRefreshTimer = setTimeout(waitForScrollToSettle, Math.max(80, 350 - elapsed));
       return;
     }
     ordersLiveRefreshTimer = setTimeout(async () => {
       if (currentView !== savedView) return;
       document.body.classList.add("orders-refreshing");
-      try {
-        // navigate() captures the scroll position immediately before replacing
-        // #app, rather than using a stale value captured when the realtime
-        // event first arrived. This prevents iOS from jumping upward while
-        // the user is actively reading history.
-        await navigate(savedView, savedParams, false);
-      } finally {
-        requestAnimationFrame(() => document.body.classList.remove("orders-refreshing"));
-      }
-    }, 120);
+      try { await navigate(savedView, savedParams, false); }
+      finally { requestAnimationFrame(() => document.body.classList.remove("orders-refreshing")); }
+    }, 50);
   };
   waitForScrollToSettle();
 }
@@ -9715,9 +9732,17 @@ function subscribeOrderUpdates() {
   // Payment confirmations live in a separate table. Re-render the current
   // order detail immediately when a vendor confirms the 20% delivery deposit.
   ordersLiveChannel.on("postgres_changes", { event: "*", schema: "public", table: "payments" }, refreshVisibleOrderView);
-  ordersLiveChannel.subscribe();
+  ordersLiveChannel.subscribe(status => {
+    window.__ordersRealtimeStatus = status;
+    if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+      console.warn("[Levromart] Orders realtime unavailable:", status);
+    }
+  });
 
-  // Intentionally no fixed polling interval. Replacing the Orders DOM while
+  // No routine polling: orders and payments are now explicitly included in
+  // Supabase Realtime publication, so status/payment changes are delivered by
+  // the database event stream instead of waiting for a manual refresh.
+  //
   // the user is scrolling is what caused the history screen to twitch/jump.
   // Realtime handles live changes; focus/visibility refreshes are bound once.
   if (!ordersVisibilityRefreshBound) {
@@ -19532,7 +19557,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (!session) return '<div class="empty-state">Please log in.</div>';
   const { data: order, error } = await sb
     .from("orders")
-    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, address, city, opening_hours, user_id, lat, lng), items:order_items(*,variant:product_variants(name),product:products(name)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at), package:vendor_packages(name)")
+    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng), items:order_items(*,variant:product_variants(name),product:products(name)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at), package:vendor_packages(name)")
     .eq("id", orderId)
     .maybeSingle();
   if (error || !order) return '<div class="empty-state">Order not found.</div>';
@@ -19570,7 +19595,13 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const deliveryDepositAmount = Math.round(deliveryBaseAmount * 0.20 * 100) / 100;
   const deliveryDepositPaidAmount = paymentRows.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const deliveryDepositPaid = deliveryDepositPaidAmount > 0.009;
-  const deliveryBalanceAmount = Math.max(0, Number(order.total_amount || 0) - deliveryDepositPaidAmount);
+  // buyer_report_manual_payment records the buyer's transfer as pending until
+  // the vendor verifies it. The buyer should nevertheless move forward to the
+  // 80% screen immediately after tapping "I've paid" rather than waiting for
+  // the vendor's manual confirmation. The payment remains pending server-side.
+  const deliveryDepositReported = isCustomer && paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "pending");
+  const deliveryDepositReadyFor80 = deliveryDepositPaid || deliveryDepositReported;
+  const deliveryBalanceAmount = Math.max(0, Number(order.total_amount || 0) - deliveryDepositPaidAmount - (deliveryDepositReported && deliveryDepositPaidAmount <= 0.009 ? Number(paymentRows.find((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "pending")?.amount || 0) : 0));
   const deliveryPaymentsComplete = !isDeliveryOrder || (deliveryDepositPaid && feePaid);
   // Pickup keeps the existing full-payment flow. Delivery uses two stages:
   // 20% of the item/rental amount first, then the remaining order balance.
@@ -19612,7 +19643,16 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <div><p class="muted" style="margin:0;">Delivery fee</p><strong>${naira(order.delivery_fee)}</strong></div>` : ""}
       <div><p class="muted" style="margin:0;">Total</p><strong>${naira(order.total_amount)}</strong></div>
       ${order.deposit_amount > 0 ? `<div><p class="muted" style="margin:0;">Refundable deposit</p><strong>${naira(order.deposit_amount)}</strong></div>` : ""}
-      <div><p class="muted" style="margin:0;">Delivery</p><strong style="text-transform:capitalize;">${order.delivery_method}${order.delivery_address ? " · " + esc(order.delivery_address) : ""}</strong>${order.delivery_phone ? `<p class="muted" style="margin:0.2rem 0 0;"><i class="fa-solid fa-phone"></i> <a href="${telLink(order.delivery_phone)}">${esc(order.delivery_phone)}</a></p>` : ""}</div>
+      <div><p class="muted" style="margin:0;">Delivery</p><strong style="text-transform:capitalize;">${order.delivery_method}${order.delivery_address ? " · " + esc(order.delivery_address) : ""}</strong>${order.delivery_phone ? `<p class="muted" style="margin:0.2rem 0 0;"><i class="fa-solid fa-phone"></i> <a href="${telLink(order.delivery_phone)}">${esc(order.delivery_phone)}</a></p>` : ""}
+        ${isCustomer && order.vendor?.id ? `<div class="order-vendor-message-wrap">
+          <button class="btn btn-sm order-message-vendor-btn" type="button" onclick="toggleInlineMenu('orderVendorMessageMenu-${order.id}',event)" aria-label="Message vendor" title="Message vendor">
+            <i class="fa-solid fa-comment-dots"></i> Message vendor <i class="fa-solid fa-chevron-down" style="font-size:.68em;margin-left:.15rem;"></i>
+          </button>
+          <div class="ms-list hidden order-vendor-message-menu" id="orderVendorMessageMenu-${order.id}">
+            <button class="ms-item" type="button" onclick="startConversationWithVendor('${order.vendor.id}');closeInlineMenu('orderVendorMessageMenu-${order.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button>
+            ${order.vendor.whatsapp_visible && order.vendor.whatsapp_number ? `<a class="ms-item" href="${waLink(order.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('orderVendorMessageMenu-${order.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a>` : ""}
+          </div>
+        </div>` : ""}</div>
     </div>
     ${order.delivery_method === "delivery" && order.vendor?.lat != null && order.vendor?.lng != null ? `<p class="muted" id="orderEtaLine" style="font-size:0.8rem;margin-top:0.6rem;"></p>` : ""}
   </div>`;
@@ -19682,12 +19722,12 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
 
   if (canPayOnline) {
     const payableAmount = isDeliveryOrder
-      ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount)
+      ? (deliveryDepositReadyFor80 ? deliveryBalanceAmount : deliveryDepositAmount)
       : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
-    html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isDeliveryOrder ? (deliveryDepositPaid ? "Complete your payment" : "Pay 20% deposit to confirm your order") : "Pay now"}</h3></div>
-      ${isDeliveryOrder ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositPaid ? `<strong>Remaining 80% payment</strong><br>The vendor has delivered your order. Pay the remaining <strong>${naira(payableAmount)}</strong> balance to complete your payment.` : `Pay a 20% deposit of <strong>${naira(payableAmount)}</strong> based on the item/rental fee. The delivery fee is included in the remaining balance.`}</p>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
-      <button class="btn btn-sm btn-outline ${isDeliveryOrder && deliveryDepositPaid ? "delivery-balance-paystack-btn" : ""}" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
-      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositPaid ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isDeliveryOrder && deliveryDepositPaid ? "Pay remaining 80% directly to vendor" : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
+    html += `<div class="card ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isDeliveryOrder ? (deliveryDepositReadyFor80 ? "Complete your payment" : "Pay 20% deposit to confirm your order") : "Pay now"}</h3></div>
+      ${isDeliveryOrder ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyFor80 ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>20% payment reported</strong><br>Your 20% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining 80% payment</strong><br>The vendor has delivered your order. Pay the remaining <strong>${naira(payableAmount)}</strong> balance to complete your payment.`) : `Pay a 20% deposit of <strong>${naira(payableAmount)}</strong> based on the item/rental fee. The delivery fee is included in the remaining balance.`}</p>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
+      <button class="btn btn-sm btn-outline ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-paystack-btn" : ""}" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
+      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyFor80 ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isDeliveryOrder && deliveryDepositReadyFor80 ? "Pay remaining 80% directly to vendor" : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
     </div>`;
   }
 
@@ -19745,7 +19785,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
 
   const orderBackView = isVendor ? "vendorDashboard" : "buyerOrders";
   const orderBackParams = {};
-  html += `<button class="btn btn-sm" style="margin-top:1rem;background:#6b7280;" onclick='navigate("${orderBackView}",${orderBackParams})'><i class="fa-solid fa-arrow-left"></i> ${isVendor ? "Back to Dashboard" : "Back to Orders"}</button>`;
+  html += `<button type="button" class="btn btn-sm" style="margin-top:1rem;background:#6b7280;" onclick='event.preventDefault();event.stopPropagation();navigate("${orderBackView}",{});return false;'><i class="fa-solid fa-arrow-left"></i> ${isVendor ? "Back to Dashboard" : "Back to Orders"}</button>`;
   return html;
 }
 
@@ -20062,7 +20102,11 @@ async function recordOfflinePayment(orderId) {
   if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? "Confirm 80% payment" : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? "Yes, confirm 80% paid" : "Yes, mark paid" }))) return;
   const { error } = await sb.rpc("record_offline_payment", { p_order_id: orderId, p_payment_type: paymentType, p_amount: amount, p_method: method });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
-  showToast("Payment recorded as paid.", "success"); await navigate("orderDetail", { orderId });
+  showToast(isRemainingDeliveryPayment ? "80% payment recorded as paid." : "Payment recorded as paid.", "success");
+  // Once the vendor records the remaining 80%, the payment workflow is done
+  // for the vendor. Return them directly to their Orders list so they can see
+  // their remaining work instead of making them press Back manually.
+  await navigate(isRemainingDeliveryPayment ? "vendorOrders" : "orderDetail", isRemainingDeliveryPayment ? {} : { orderId });
 }
 
 let vendorReviewModalOrderId = null;
@@ -26157,12 +26201,13 @@ window.renderVendorMapRail = function(){
     const deliveryDepositPaid=Number(paymentRows.filter(p=>p.payment_type==="delivery_deposit_20"&&p.status==="paid").reduce((sum,p)=>sum+Number(p.amount||0),0));
     const pendingFee=paymentRows.find(p=>p.payment_type===feeType&&p.status==="pending");
     const pendingDeliveryDeposit=paymentRows.find(p=>p.payment_type==="delivery_deposit_20"&&p.status==="pending");
+    const deliveryDepositReported=!!pendingDeliveryDeposit;
     const pendingDeposit=paymentRows.find(p=>p.payment_type==="deposit"&&p.status==="pending");
     const baseAmount=Math.max(0,Number(order.total_amount||0)-Number(order.delivery_fee||0));
     const deliveryDepositAmount=Math.round(baseAmount*0.20*100)/100;
     let amount=0; let paymentLabel=order.order_type==="rental"?"rental fee":"sale price";
-    if(isDeliveryOrder&&!deliveryDepositPaid){amount=Number(pendingDeliveryDeposit?.amount||deliveryDepositAmount);paymentLabel="20% delivery deposit";}
-    else if(isDeliveryOrder&&!paidFee){amount=Number(pendingFee?.amount||Math.max(0,Number(order.total_amount||0)-deliveryDepositPaid));paymentLabel="remaining balance";}
+    if(isDeliveryOrder&&!deliveryDepositPaid&&!deliveryDepositReported){amount=Number(pendingDeliveryDeposit?.amount||deliveryDepositAmount);paymentLabel="20% delivery deposit";}
+    else if(isDeliveryOrder&&!paidFee){amount=Number(pendingFee?.amount||Math.max(0,Number(order.total_amount||0)-deliveryDepositPaid-(deliveryDepositReported ? Number(pendingDeliveryDeposit?.amount||0) : 0)));paymentLabel="remaining balance";}
     else if(!isDeliveryOrder&&!paidFee){amount=Number(pendingFee?.amount||order.total_amount||0);}
     else if(!isDeliveryOrder&&Number(order.deposit_amount||0)>0&&!paymentRows.some(p=>p.payment_type==="deposit"&&p.status==="paid")){amount=Number(pendingDeposit?.amount||order.deposit_amount||0);paymentLabel="refundable deposit";}
     else {showToast("There is no outstanding payment on this order.","info");return;}
