@@ -17089,7 +17089,8 @@ async function renderVendorDashboard() {
       <p class="muted" style="margin-top:0.35rem;">Pay anytime within 7 days.</p>
       <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
       <div id="commissionError" class="error-text hidden"></div>
-      <button class="btn btn-sm" id="payCommissionBtn" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
+      <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
+      <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
     </div>`;
   }
   html += statusBanner;
@@ -17367,7 +17368,8 @@ async function renderVendorEditProfile() {
     <p class="muted" style="margin-top:0.35rem;">Pay anytime within 7 days.</p>
     <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
     <div id="commissionError" class="error-text hidden"></div>
-    <button class="btn btn-sm" id="payCommissionBtn" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
+    <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
+      <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
   </div>` : ""}
   ${v.verification_status === "verified" ? `
   <div class="dash-actions" style="max-width:480px;margin:0 auto 1rem;">
@@ -19840,6 +19842,11 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
+  if (isCustomer && isDeliveryOrder && order.status === "confirmed" && (deliveryDepositReported || paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "pending"))) {
+    const pendingLabel = deliveryDepositReported ? "20% payment" : "remaining 80% payment";
+    html += `<div class="order-payment-recovery"><span><i class="fa-solid fa-circle-info"></i> ${pendingLabel} is currently reported as pending. If you tapped the payment button by mistake, you can return to the payment details.</span><button type="button" class="btn btn-sm direct-payment-recovery-btn" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-arrow-left"></i> Back to payment</button></div>`;
+  }
+
   if (canRecordPayment) {
     const manualTypeOptions = isDeliveryOrder
       ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">20% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Remaining balance" : "Remaining balance"}</option>` : ""}`
@@ -19914,13 +19921,10 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   const paymentComplete = isDeliveryOrder ? (deliveryDepositPaid && deliveryBalancePaid) : feePaid;
   if (isVendor) {
     if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
-    if (order.status === "confirmed") {
-      if (isDeliveryOrder) {
-        if (deliveryDepositPaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-truck"></i> Mark as delivered</button>`);
-        else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting for the customer's 20% delivery deposit before delivery.</p>`);
-      } else if (feePaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-handshake"></i> Mark handed over</button>`);
-      else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this can be marked handed over.</p>`);
-    }
+    // Handover/delivery is no longer a separate vendor action. For delivery
+    // orders, the final 80% payment is the terminal vendor confirmation. For
+    // pickup sales, the full payment is likewise the terminal action. Rentals
+    // keep their return lifecycle without exposing a separate handover button.
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
   if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
@@ -19931,24 +19935,11 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
     else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
   }
   if (isCustomer && order.status === "handed_over" && order.order_type === "rental" && !isDeliveryOrder) buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
-  if (isCustomer && order.status === "handed_over" && isDeliveryOrder) {
-    // Delivery orders complete automatically when the vendor confirms the
-    // remaining 80% payment. The customer does not need a separate
-    // "Confirm & complete" / "I've received this" action.
-    if (!deliveryBalancePaid) {
-      const depositPaidAmount = payments.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum,p)=>sum+Number(p.amount||0),0);
-      const balance = Math.max(0, Number(order.total_amount || 0) - depositPaidAmount);
-      buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-building-columns"></i> Complete payment · ${naira(balance)}</button>`);
-    }
-  }
-  if (isCustomer && order.status === "handed_over" && order.order_type === "sale" && !isDeliveryOrder) {
-    if (feePaid) { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`); buttons.push(notReceivedButtonHtml(order)); }
-    else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
-  }
-  if (isCustomer && order.status === "returned" && order.order_type === "rental") {
-    if (feePaid) { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> Confirm &amp; complete</button>`); buttons.push(notReceivedButtonHtml(order)); }
-    else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
-  }
+  // There is no separate customer delivery/receipt action anymore. The
+  // confirmed order itself exposes the outstanding payment stage above, and
+  // the vendor's final payment confirmation is the terminal completion event.
+  // Returned rentals no longer require a customer "Confirm & complete"
+  // button. Their existing return state remains visible in history.
   return buttons.join("");
 }
 
@@ -19967,8 +19958,8 @@ function notReceivedButtonHtml(order) {
 const ORDER_STATUS_HELP = {
   pending: "Your order has been placed. You haven't been charged yet. Payment becomes available when the vendor accepts.",
   confirmed: "The vendor has accepted. Next, they'll hand over the equipment.",
-  handed_over: "The equipment has physically been handed to the customer (picked up or delivered). For rentals, either side can mark it \"returned\" once it's back with the vendor. For sales, the customer confirms receipt to complete the order and release payment.",
-  returned: "The rented equipment is back with the vendor. The buyer confirms to complete the order and release payment.",
+  handed_over: "This order is in the handover stage. Rentals can still be returned from here; sales no longer require a separate customer receipt confirmation.",
+  returned: "The rented equipment is back with the vendor. The order is ready to finish once its required payment state is settled.",
   completed: "This order is finished.",
   cancelled: "This order was cancelled.",
   disputed: "An issue was reported on this order. An admin is reviewing it.",
@@ -20126,6 +20117,47 @@ async function confirmReceiveOrder(orderId) {
   navigate("orderDetail", { orderId });
 }
 
+async function loadCommissionBreakdown(){
+  const box=byId("commissionBreakdown");
+  if(!box||!vendor?.id)return;
+  box.innerHTML='<div class="vendor-commission-breakdown-head">Loading your outstanding commission breakdown…</div>';
+  try{
+    const {data,error}=await sb.rpc("get_vendor_commission_breakdown",{p_vendor_id:vendor.id});
+    if(error)throw error;
+    const rows=Array.isArray(data)?data:[];
+    if(!rows.length){box.innerHTML='<div class="vendor-commission-breakdown-head">No outstanding commission charges found.</div>';return;}
+    const grouped=new Map();
+    rows.forEach(r=>{
+      const key=r.order_id||r.charge_id;
+      if(!grouped.has(key))grouped.set(key,{order_id:r.order_id,sold_at:r.sold_at,payment_amount:0,commission_amount:0,commission_rates:[],products:[]});
+      const g=grouped.get(key);
+      g.payment_amount+=Number(r.payment_amount||0);
+      g.commission_amount+=Number(r.commission_amount||0);
+      const rate=Number(r.commission_rate||0);if(rate&&!g.commission_rates.includes(rate))g.commission_rates.push(rate);
+      (Array.isArray(r.products)?r.products:[]).forEach(item=>{
+        const name=String(item.product_name||"Unnamed product"),unit=Number(item.unit_price||0),qty=Number(item.quantity||0);
+        const existing=g.products.find(x=>x.name===name&&x.unit===unit);
+        if(existing)existing.qty+=qty;else g.products.push({name,qty,unit});
+      });
+    });
+    let total=0;
+    const cards=[...grouped.values()].map(g=>{
+      total+=g.commission_amount;
+      const date=g.sold_at?new Date(g.sold_at).toLocaleString([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Date unavailable";
+      const rateText=g.commission_rates.length?g.commission_rates.map(x=>`${x}%`).join(" / "):"—";
+      const lines=g.products.length?g.products.map(x=>`<li><span>${esc(x.qty+"× "+x.name)}</span><span>${naira(x.qty*x.unit)}</span></li>`).join(""):'<li><span>Order items unavailable</span><span>—</span></li>';
+      return `<div class="vendor-commission-item"><div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length>1?`${g.products.length} products`:(g.products[0]?esc(g.products[0].name):"Sale")}</div><div class="vendor-commission-item-date">Sold ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div><ul class="vendor-commission-products">${lines}</ul><div class="vendor-commission-math"><span>Sale/payment recorded</span><strong>${naira(g.payment_amount)}</strong></div><div class="vendor-commission-math"><span>Commission calculation</span><strong>${esc(rateText)} × ${naira(g.payment_amount)} = ${naira(g.commission_amount)}</strong></div></div>`;
+    }).join("");
+    box.innerHTML=`<div class="vendor-commission-breakdown-head">Outstanding commission — ${grouped.size} sale${grouped.size===1?"":"s"}</div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span>Total commission owed</span><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
+  }catch(err){box.innerHTML=`<div class="vendor-commission-breakdown-head" style="color:var(--danger,#ef4444)">Could not load the commission breakdown. ${esc(err?.message||"Please try again.")}</div>`;}
+}
+async function toggleCommissionBreakdown(){
+  const box=byId("commissionBreakdown"),btn=byId("payCommissionBtn");if(!box)return;
+  const opening=box.classList.contains("hidden");box.classList.toggle("hidden",!opening);
+  if(btn){btn.setAttribute("aria-expanded",String(opening));btn.innerHTML=opening?'<i class="fa-solid fa-receipt"></i> Hide commission breakdown':'<i class="fa-solid fa-credit-card"></i> Review commission payment';}
+  if(opening)await loadCommissionBreakdown();
+}
+
 async function payCommission() {
   const errorEl = byId("commissionError");
   const btn = byId("payCommissionBtn");
@@ -20200,6 +20232,9 @@ async function payOnline(orderId) {
 
 async function recordOfflinePayment(orderId) {
   const errorEl = byId("recordPaymentError"); errorEl.classList.add("hidden");
+  const { data: autoCompleteOrder, error: autoCompleteOrderError } = await sb.from("orders").select("order_type,delivery_method,status").eq("id", orderId).maybeSingle();
+  if (autoCompleteOrderError || !autoCompleteOrder) { errorEl.textContent = autoCompleteOrderError?.message || "Order not found."; errorEl.classList.remove("hidden"); return; }
+  const orderTypeForAutoComplete = String(autoCompleteOrder.order_type || "").toLowerCase();
   const paymentType = byId("rpType")?.value; const amount = Number(byId("rpAmount")?.value); const method = byId("rpMethod")?.value;
   if (!paymentType || !Number.isFinite(amount) || amount <= 0 || !method) { errorEl.textContent = "Enter a valid payment amount and method."; errorEl.classList.remove("hidden"); return; }
   const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : paymentType === "delivery_deposit_20" ? "20% delivery deposit" : "refundable deposit";
@@ -20211,17 +20246,13 @@ async function recordOfflinePayment(orderId) {
   if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? "Confirm 80% payment" : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? "Yes, confirm 80% paid" : "Yes, mark paid" }))) return;
   const { error } = await sb.rpc("record_offline_payment", { p_order_id: orderId, p_payment_type: paymentType, p_amount: amount, p_method: method });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
-  // For delivery, recording the remaining 80% is the final customer action.
-  // Complete the order immediately on the server so the buyer and vendor both
-  // receive the terminal `completed` state through Realtime.
-  if (isRemainingDeliveryPayment) {
-    const { error: completeError } = await sb.rpc("transition_order_status", { p_order_id: orderId, p_new_status: "completed" });
-    if (completeError) { errorEl.textContent = completeError.message; errorEl.classList.remove("hidden"); return; }
-  }
-  showToast(isRemainingDeliveryPayment ? "80% payment recorded. Order completed." : "Payment recorded as paid.", "success");
-  // Once the vendor records the remaining 80%, the payment workflow is done
-  // and the order is terminal. Return them directly to their Orders list.
-  await navigate(isRemainingDeliveryPayment ? "vendorOrders" : "orderDetail", isRemainingDeliveryPayment ? {} : { orderId });
+  // The database payment transaction now owns terminal completion for
+  // delivery orders and sales: recording the final required payment atomically
+  // changes the order to completed. Do not issue a second status transition
+  // here, because Realtime may already have delivered the completed state.
+  const completesOrderNow = isRemainingDeliveryPayment || (paymentType === "sale_price" && orderTypeForAutoComplete !== "rental");
+  showToast(completesOrderNow ? (isRemainingDeliveryPayment ? "80% payment recorded. Order completed." : "Payment recorded. Order completed.") : "Payment recorded as paid.", "success");
+  await navigate(completesOrderNow ? "vendorOrders" : "orderDetail", completesOrderNow ? {} : { orderId });
 }
 
 let vendorReviewModalOrderId = null;
@@ -26339,7 +26370,7 @@ window.renderVendorMapRail = function(){
       </div>
       ${!hasAccount ? `<div class="banner banner-warning" style="margin-top:.7rem;"><strong>Vendor payment details are not saved yet.</strong> Please contact the vendor before transferring.</div>` : ""}
       <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
-      <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount})"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
+      <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><div style="display:flex;gap:.55rem;margin-top:.45rem;flex-wrap:wrap;"><button type="button" class="btn btn-sm direct-payment-back-btn" onclick="byId('manualVendorPaymentModal')?.remove()"><i class="fa-solid fa-arrow-left"></i> Back</button><button type="button" class="btn btn-sm direct-payment-report-btn" id="directPaymentReportedBtn" style="flex:1;justify-content:center;" onclick="reportDirectVendorPayment('${order.id}',${amount})"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div></div>`;
     document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
   };
   window.reportDirectVendorPayment = async function(orderId,amount){
@@ -28020,6 +28051,23 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 }
 </style>
 
+<style id="levromart-commission-breakdown">
+.vendor-commission-breakdown{margin-top:.75rem;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--card) 88%,transparent);overflow:hidden}
+.vendor-commission-breakdown-head{padding:.75rem .85rem;border-bottom:1px solid var(--border);font-size:.78rem;font-weight:800}
+.vendor-commission-breakdown-list{max-height:360px;overflow:auto}
+.vendor-commission-item{padding:.8rem .85rem;border-bottom:1px solid var(--border)}
+.vendor-commission-item:last-child{border-bottom:0}
+.vendor-commission-item-top{display:flex;justify-content:space-between;gap:.7rem;align-items:flex-start}
+.vendor-commission-item-title{font-weight:800;font-size:.88rem}
+.vendor-commission-item-date{font-size:.72rem;color:var(--text-muted);margin-top:.18rem}
+.vendor-commission-products{margin:.55rem 0 0;padding:0;list-style:none}
+.vendor-commission-products li{display:flex;justify-content:space-between;gap:.6rem;padding:.22rem 0;font-size:.76rem}
+.vendor-commission-products li span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.vendor-commission-math{display:flex;justify-content:space-between;gap:.6rem;margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border);font-size:.75rem}
+.vendor-commission-total{display:flex;justify-content:space-between;gap:.7rem;padding:.8rem .85rem;font-weight:850;font-size:.86rem;background:color-mix(in srgb,var(--primary) 7%,transparent)}
+.vendor-commission-pay-now{width:100%;justify-content:center;margin-top:.65rem!important}
+@media(max-width:720px){.vendor-commission-breakdown-list{max-height:45vh}.vendor-commission-item-top{align-items:center}}
+</style>
 <style id="levromart-final-product-social-ux">
 /* Final source-of-truth UX pass. */
 .vendor-profile-setting-note{display:block;margin:.35rem 0 .9rem;padding:.65rem .75rem;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--primary) 5%,transparent);font-size:.78rem;color:var(--text-muted)}
@@ -31950,4 +31998,21 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   color:#2563eb !important;
   -webkit-text-fill-color:#2563eb !important;
 }
+</style>
+
+<style id="levromart-order-payment-final-solid-controls">
+#app .order-follow-up .order-remind-btn,
+#app .direct-payment-report-btn,
+#app .direct-payment-recovery-btn,
+#app .delivery-balance-direct-btn,
+#app .delivery-balance-manual-btn { background-image:none !important; background-color:#dc2626 !important; color:#fff !important; }
+#app .direct-payment-report-btn,
+#app .direct-payment-recovery-btn,
+#app .delivery-balance-direct-btn,
+#app .delivery-balance-manual-btn { background-color:#2563eb !important; }
+#app .order-follow-up .order-remind-btn { background-color:#dc2626 !important; }
+#app .direct-payment-back-btn { background-image:none !important; background-color:#374151 !important; color:#fff !important; }
+.order-payment-recovery { margin-top:1rem; padding:.75rem .85rem; border:1px solid var(--border); border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:.7rem; flex-wrap:wrap; font-size:.82rem; color:var(--text-muted); }
+.order-payment-recovery > span { flex:1 1 220px; line-height:1.4; }
+.order-payment-recovery i { color:#2563eb; }
 </style>
