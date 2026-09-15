@@ -6541,6 +6541,28 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 
   .order-follow-up-note{font-size:.78rem!important;line-height:1.45;margin:.1rem 0 .65rem!important;opacity:.72;} .order-follow-up-actions{display:flex;justify-content:center;align-items:center;width:100%;} .order-remind-btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;background:#dc2626!important;background-color:#dc2626!important;border:1px solid #dc2626!important;border-color:#dc2626!important;color:#fff!important;min-width:190px;box-shadow:0 5px 14px rgba(220,38,38,.24)!important;} .order-remind-btn:hover{filter:brightness(.94);} .order-remind-btn:disabled{opacity:.7;filter:none;cursor:wait;} .vendor-order-waiting-banner{display:flex;flex-direction:column;gap:.2rem;} .vendor-order-waiting-banner span{font-size:.8rem;color:var(--text-muted);} .vendor-application-payout-section{margin-top:1rem;padding:1rem;border:1px solid var(--border);border-radius:1rem;background:color-mix(in srgb,var(--primary) 3%,var(--card));} .vendor-application-payout-heading strong{display:block;font-size:.95rem;} .vendor-application-payout-heading span{display:block;margin-top:.18rem;color:var(--text-muted);font-size:.76rem;line-height:1.4;}
 </style>
+
+<style id="levromart-commission-3pct-final">
+.vendor-commission-breakdown{margin-top:.75rem;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--card) 88%,transparent);overflow:hidden}
+.vendor-commission-breakdown-head{padding:.75rem .85rem;border-bottom:1px solid var(--border);font-size:.78rem;font-weight:800}
+.vendor-commission-breakdown-list{max-height:360px;overflow:auto}
+.vendor-commission-item{padding:.8rem .85rem;border-bottom:1px solid var(--border)}
+.vendor-commission-item:last-child{border-bottom:0}
+.vendor-commission-item-top{display:flex;justify-content:space-between;gap:.7rem;align-items:flex-start}
+.vendor-commission-item-title{font-weight:800;font-size:.88rem}
+.vendor-commission-item-date{font-size:.72rem;color:var(--text-muted);margin-top:.18rem}
+.vendor-commission-buyer{display:flex;align-items:center;gap:.42rem;margin:.55rem 0 .35rem;padding:.45rem .55rem;border-radius:10px;background:color-mix(in srgb,var(--text) 4%,transparent);font-size:.76rem}
+.vendor-commission-buyer span{color:var(--text-muted)}
+.vendor-commission-buyer strong{margin-left:auto;text-align:right;font-weight:800}
+.vendor-commission-products{margin:.55rem 0 0;padding:0;list-style:none}
+.vendor-commission-products li{display:flex;justify-content:space-between;gap:.6rem;padding:.22rem 0;font-size:.76rem}
+.vendor-commission-products li span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.vendor-commission-math{display:flex;justify-content:space-between;gap:.6rem;margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border);font-size:.75rem}
+.vendor-commission-math>strong{white-space:nowrap}
+.vendor-commission-total{display:flex;justify-content:space-between;gap:.7rem;padding:.8rem .85rem;font-weight:850;font-size:.86rem;background:color-mix(in srgb,var(--primary) 7%,transparent)}
+.vendor-commission-pay-now{width:100%;justify-content:center;margin-top:.65rem!important}
+@media(max-width:720px){.vendor-commission-breakdown-list{max-height:45vh}.vendor-commission-item-top{align-items:center}}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><img class="levromart-splash-logo" alt="" onerror="this.style.display='none'" /></div>
@@ -9123,45 +9145,6 @@ function timeAgo(dateStr) {
 let notifViewMode = "all"; // inbox | archived | trash
 let notifSelectMode = false;
 let notifSelectedIds = new Set();
-const NOTIF_CACHE_PREFIX = "levromart-notifications-cache-v2:";
-
-function getCachedNotificationsForUser() {
-  if (!session?.user?.id) return [];
-  try {
-    const raw = localStorage.getItem(NOTIF_CACHE_PREFIX + session.user.id);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return Array.isArray(parsed) ? parsed.slice(0, 60) : [];
-  } catch (_) { return []; }
-}
-function cacheNotificationsForUser(items) {
-  if (!session?.user?.id || !Array.isArray(items)) return;
-  const clean = items.slice(0, 60);
-  try { localStorage.setItem(NOTIF_CACHE_PREFIX + session.user.id, JSON.stringify(clean)); } catch (_) {}
-  window.__levromartNotificationCache = clean;
-}
-
-// Paint the notification list from the last successful fetch immediately.
-// The network refresh happens afterwards, so opening Notifications never has
-// to wait on Supabase before the user can see the page.
-function paintCachedNotificationsImmediately(panel) {
-  if (!panel || !session?.user?.id) return false;
-  const cached = Array.isArray(window.__levromartNotificationCache)
-    ? window.__levromartNotificationCache
-    : getCachedNotificationsForUser();
-  if (!cached.length) return false;
-  window.__levromartNotificationCache = cached;
-  const items = cached.filter(n => !n?.deleted_at);
-  window.__notifPanelIds = items.map(n => n.id);
-  const hasUnread = items.some(n => !n.read);
-  const list = items.map(n => `<div class="notif-item-wrap" data-id="${n.id}"><button type="button" class="notif-item ${n.read ? "" : "unread"}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" onclick="handleNotifItemClick(event,'${n.id}')">${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;flex:none;" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.1rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<span class="notification-system-icon"><i class='fa-solid fa-circle-info'></i></span>`}<span class="notif-copy"><strong style="display:block;">${esc(n.title || "Notification")}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span></button></div>`).join("");
-  const tabs = `<div class="notif-tabs" role="tablist" aria-label="Notification categories"><button type="button" role="tab" aria-selected="true" class="notif-tab active">All</button></div>`;
-  panel.innerHTML = `${tabs}<div class="notif-list-scroll">${list || `<p class="muted" style="padding:.4rem;">You're all caught up.</p>`}</div>`;
-  if (currentView === "notifications") {
-    const actions = byId("notificationsPageHeaderActions");
-    if (actions) actions.innerHTML = hasUnread ? `<button type="button" class="notif-mark-all-compact" onclick="markAllNotifsRead()" aria-label="Mark all notifications as read" title="Mark all notifications as read"><i class="fa-solid fa-check-double"></i></button>` : "";
-  }
-  return true;
-}
 
 function updateRequestOfferBadge() {
   document.querySelectorAll('[data-profile-label="Requests"] .profile-request-badge').forEach(el => {
@@ -9220,14 +9203,12 @@ async function renderNotifPanel() {
     panel.innerHTML = '<p class="muted">Sign in to view your notifications.</p>';
     return;
   }
-  const hadCachedPaint = paintCachedNotificationsImmediately(panel);
-  if (!hadCachedPaint) panel.innerHTML = '<p class="muted" role="status">Updating notifications…</p>';
+  panel.innerHTML = '<p class="muted" role="status">Loading notifications…</p>';
   // The backend still retains archived/deleted fields for compatibility, but
   // the user-facing notification experience is now a smart activity stream.
   // We never mutate or destructively migrate those legacy fields here.
   let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(60);
   const { data: rawItems, error } = await q;
-  if (Array.isArray(rawItems)) cacheNotificationsForUser(rawItems);
   const currentVendorId=String(vendor?.id||'');
   const owners=new Map();
   for(const [kind,table] of [['product','products'],['package','vendor_packages']]){
@@ -9334,20 +9315,19 @@ async function handleNotifItemClick(event, id) {
   if (!item) return;
   let params = {};
   try { params = JSON.parse(item.dataset.params || "{}"); } catch (_) {}
-  // Never make a tap wait on a database write or secondary message fetch.
-  // The destination paints first; any data hydration continues in the background.
-  markSingleNotifRead(id);
+  await markSingleNotifRead(id);
   closeAllPanels();
   if ((item.dataset.view || "home") === "messages" && params?.conversationId) {
     const conversationId = String(params.conversationId);
+    // Refresh the inbox snapshot first so the destination always has the
+    // exact conversation and its latest messages, even after a cold start or
+    // when the notification was generated while the inbox list was stale.
+    try { await refreshConversationInboxInBackground(); } catch (_) {}
+    try {
+      const {data:latestMessages}=await sb.from('messages').select('*').eq('conversation_id',conversationId).order('created_at',{ascending:true});
+      if(Array.isArray(latestMessages)) lastSeenMessagesByConv.set(conversationId,latestMessages);
+    } catch (_) {}
     navigate('messages',{conversationId});
-    Promise.resolve().then(async () => {
-      try { await refreshConversationInboxInBackground(); } catch (_) {}
-      try {
-        const {data:latestMessages}=await sb.from('messages').select('*').eq('conversation_id',conversationId).order('created_at',{ascending:true});
-        if(Array.isArray(latestMessages)) lastSeenMessagesByConv.set(conversationId,latestMessages);
-      } catch (_) {}
-    });
     return;
   }
   navigate(item.dataset.view || 'home', params);
@@ -9619,14 +9599,8 @@ async function markAllNotifsRead(){
   if(!session||markAllNotifsBusy)return;markAllNotifsBusy=true;
   try{
     if(!(await showConfirmDialog('Mark every notification as read?',{title:'Mark all as read',okLabel:'Mark all read'})))return;
-    const cached = Array.isArray(window.__levromartNotificationCache) ? window.__levromartNotificationCache : getCachedNotificationsForUser();
-    cached.forEach(n => { if (!n.deleted_at) n.read = true; });
-    cacheNotificationsForUser(cached);
-    if (getNotifHost()) paintCachedNotificationsImmediately(getNotifHost());
-    notifCount = 0;
-    byId("notifDot")?.classList.add("hidden");
-    sb.from('notifications').update({read:true}).eq('user_id',session.user.id).eq('read',false).is('deleted_at',null).then(({error})=>{ if(error) console.warn('Mark-all notifications failed:',error); else refreshNotifications(false).catch(()=>{}); }).catch(()=>{});
-    showToast('All marked as read.','success');
+    const {error}=await sb.from('notifications').update({read:true}).eq('user_id',session.user.id).eq('read',false).is('deleted_at',null);if(error)throw error;
+    await refreshNotifications();showToast('All marked as read.','success');
   }catch(err){showToast(err.message||'Could not mark notifications as read.','error');}
   finally{markAllNotifsBusy=false;}
 }
@@ -9635,15 +9609,7 @@ async function markSingleNotifRead(id) {
   const el = document.querySelector(`.notif-item[data-id="${id}"]`);
   if (!el || !el.classList.contains("unread")) return;
   el.classList.remove("unread");
-  // Mark read optimistically. Navigation must never wait for this network
-  // write; the database update continues in the background.
-  try {
-    const cached = Array.isArray(window.__levromartNotificationCache) ? window.__levromartNotificationCache : getCachedNotificationsForUser();
-    const hit = cached.find(n => String(n.id) === String(id));
-    if (hit) hit.read = true;
-    cacheNotificationsForUser(cached);
-  } catch (_) {}
-  sb.from("notifications").update({ read: true }).eq("id", id).then(() => {}).catch(() => {});
+  await sb.from("notifications").update({ read: true }).eq("id", id);
   notifCount = Math.max(0, notifCount - 1);
   const dot = byId("notifDot");
   if (dot) {
@@ -10794,6 +10760,7 @@ async function cancelLoginOtp() {
   byId("otpModal").classList.add("hidden");
   pendingOtpAccessToken = null;
   manualLogout = true;
+  await recordAuthActivity("logout");
   await sb.auth.signOut();
 }
 
@@ -10810,6 +10777,7 @@ async function logout() {
   if (!(await showConfirmDialog("Log out of Levromart?", { title: "Log out", okLabel: "Log out" }))) return;
   manualLogout = true;
   try { window.__levromartClearPersistedRoute?.(); } catch (_) {}
+  await recordAuthActivity("logout");
   await sb.auth.signOut();
   await refreshAuthStateOnce();
   navigate("home");
@@ -11038,7 +11006,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   const protectedRouteViews = new Set([
     "cart","messages","vendorDashboard","vendorProducts","vendorPackages",
     "vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests",
-    "settings","supportRequest","wishlist","buyerOrders","orderDetail",
+    "settings","supportRequest","wishlist","buyerOrders","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
     "adminSupportRequests","adminPeople","adminFeedback","adminUsers",
     "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications"
@@ -11155,6 +11123,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
       case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
       case "orderDetail": html = await renderOrderDetail(params.orderId, params.source); break;
+      case "leaveReview": html = await renderLeaveReview(params.orderId); break;
       case "adminPanel": html = await renderAdminPanel(params.status); break;
       case "adminCarousel": html = await renderAdminCarousel(); break;
       case "adminLinkLibrary": html = renderAdminLinkLibrary(); break;
@@ -11166,6 +11135,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminUsers": html = await renderAdminUsers(); break;
       case "adminFinance": html = await renderAdminFinance(); break;
       case "adminLog": html = await renderAdminLog(); break;
+      case "adminAuthLogs": html = await renderAdminAuthLogs(); break;
       case "adminMonthlyListings": html = await renderAdminMonthlyListings(); break;
       case "wishlist": html = await renderWishlist(); break;
       case "cart": html = await renderCart(); break;
@@ -12233,7 +12203,7 @@ async function renderHome() {
       .sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0));
   writeOfflineHomeCache({
     categories, sectors: sectors || sectorsData || [], trending: cachedTrending,
-    browseProducts: rotatedBrowseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
+    browseProducts: hourlyBrowseProducts, topVendors, recentProducts, packages, carouselSlides: homepageCarouselSlides
   });
 
   const allHomePackages = packages || [];
@@ -13588,12 +13558,17 @@ async function refreshChatLists() {
     myChatLists = [];
   }
 }
+function archivedUnreadChatCount() {
+  const archivedIds = getArchivedChatIds();
+  return (window.__conversations || []).filter(c => archivedIds.has(c.conversation_id) && Number(c.unread_count || 0) > 0).length;
+}
 function chatListTabsHtml() {
   const listTabs = myChatLists.map((l) => `<a class="${msgListFilter === "list:" + l.id ? "active" : ""}" onclick="setMsgListFilter('list:${l.id}')">${esc(l.name)}</a>`).join("");
+  const archivedUnread = archivedUnreadChatCount();
   return `<div class="tabs" style="overflow-x:auto;flex-wrap:nowrap;">
       <a class="${msgListFilter === "all" ? "active" : ""}" onclick="setMsgListFilter('all')">all</a>
       <a class="${msgListFilter === "unread" ? "active" : ""}" onclick="setMsgListFilter('unread')">unread</a>
-      <a class="${msgListFilter === "archived" ? "active" : ""}" onclick="setMsgListFilter('archived')">archived</a>
+      <a class="${msgListFilter === "archived" ? "active" : ""}" onclick="setMsgListFilter('archived')">archived${archivedUnread ? ` <span class="conv-unread-badge" style="display:inline-flex;vertical-align:middle;margin-left:.18rem;">${archivedUnread > 99 ? "99+" : archivedUnread}</span>` : ""}</a>
       ${listTabs}
       <a onclick="createChatListPrompt()" title="Create a new list"><i class="fa-solid fa-plus"></i> New list</a>
       ${msgListFilter.startsWith("list:") ? `<a onclick="deleteChatListPrompt('${msgListFilter.slice(5)}')" title="Delete this list" style="color:var(--danger);"><i class="fa-solid fa-trash"></i></a>` : ""}
@@ -13809,7 +13784,15 @@ async function renderMessages(conversationId) {
   const otherPhone = op.phone || "";
   lastSeenMessagesByConv.set(conversationId, messages || []);
 
-  sb.rpc("mark_conversation_opened", { p_conversation_id: conversationId }).then(() => refreshNotifications());
+  // Mark the thread read immediately in the local inbox state as well as in
+  // the database. This prevents the inbox from showing a stale unread badge
+  // when the user has just opened the conversation.
+  const cachedConv = (window.__conversations || []).find(c => c.conversation_id === conversationId);
+  if (cachedConv) cachedConv.unread_count = 0;
+  sb.rpc("mark_conversation_opened", { p_conversation_id: conversationId }).then(() => {
+    if (currentView === "messages" && !currentViewParams?.conversationId) filterMsgList();
+    return refreshNotifications();
+  }).catch(() => {});
 
   const chatArchived = isChatArchived(conversationId);
   const chatMenuItems = [];
@@ -14739,16 +14722,30 @@ async function sendChatMessage(conversationId) {
   if (msgListening || msgVoicePaused) { stopMsgVoiceRecording(); }
   clearTimeout(typingStopTimer);
   publishChatTyping(false);
-  resetChatInput(input);
   const replyToId = chatReplyTarget?.id || null;
-  const { data, error } = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: session.user.id, body, reply_to_id: replyToId }).select("*").single();
-  if (error) { showToast(error.message, "error"); return; }
   const replyTargetSnapshot = chatReplyTarget ? { ...chatReplyTarget } : null;
-  if (replyTargetSnapshot) data.reply_to = { id: replyTargetSnapshot.id, body: replyTargetSnapshot.body, attachment_name: replyTargetSnapshot.attachment, sender_id: document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains("mine") ? session.user.id : "" };
+  const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const optimistic = { id: tempId, conversation_id: conversationId, sender_id: session.user.id, body, reply_to_id: replyToId, created_at: new Date().toISOString(), delivered_at: null, read_at: null, __optimistic: true };
+  if (replyTargetSnapshot) optimistic.reply_to = { id: replyTargetSnapshot.id, body: replyTargetSnapshot.body, attachment_name: replyTargetSnapshot.attachment, sender_id: document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains("mine") ? session.user.id : "" };
+  resetChatInput(input);
   chatReplyTarget = null;
   renderChatReplyPreview();
-  byId("chatMessages")?.insertAdjacentHTML("beforeend", chatBubbleHtml(data));
+  const chatEl = byId("chatMessages");
+  // Paint the outgoing bubble before waiting on the network/database. The
+  // database insert still remains authoritative; the temporary bubble is
+  // replaced/removed below if the write succeeds/fails.
+  chatEl?.insertAdjacentHTML("beforeend", chatBubbleHtml(optimistic));
   scrollChatToBottom();
+  setupMessageInteractions(chatEl);
+  const { data, error } = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: session.user.id, body, reply_to_id: replyToId }).select("*").single();
+  if (error) {
+    document.querySelector(`.chat-bubble[data-msg-id="${tempId}"]`)?.remove();
+    showToast(error.message, "error");
+    return;
+  }
+  if (replyTargetSnapshot) data.reply_to = { id: replyTargetSnapshot.id, body: replyTargetSnapshot.body, attachment_name: replyTargetSnapshot.attachment, sender_id: document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains("mine") ? session.user.id : "" };
+  const tempBubble = document.querySelector(`.chat-bubble[data-msg-id="${tempId}"]`);
+  if (tempBubble) tempBubble.outerHTML = chatBubbleHtml(data);
   setupMessageInteractions(byId("chatMessages"));
 }
 let chatAttachmentEditorState = null;
@@ -17145,8 +17142,8 @@ async function renderVendorDashboard() {
       <p class="muted" style="margin-top:0.35rem;">Pay anytime within 7 days.</p>
       <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
       <div id="commissionError" class="error-text hidden"></div>
-      <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
-      <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
+      <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-receipt"></i> Review commission breakdown</button>
+    <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
     </div>`;
   }
   html += statusBanner;
@@ -17424,8 +17421,8 @@ async function renderVendorEditProfile() {
     <p class="muted" style="margin-top:0.35rem;">Pay anytime within 7 days.</p>
     <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
     <div id="commissionError" class="error-text hidden"></div>
-    <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-credit-card"></i> Pay ${naira(commissionOwed)} now</button>
-      <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
+    <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-receipt"></i> Review commission breakdown</button>
+    <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
   </div>` : ""}
   ${v.verification_status === "verified" ? `
   <div class="dash-actions" style="max-width:480px;margin:0 auto 1rem;">
@@ -19898,11 +19895,6 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
-  if (isCustomer && isDeliveryOrder && order.status === "confirmed" && (deliveryDepositReported || paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "pending"))) {
-    const pendingLabel = deliveryDepositReported ? "20% payment" : "remaining 80% payment";
-    html += `<div class="order-payment-recovery"><span><i class="fa-solid fa-circle-info"></i> ${pendingLabel} is currently reported as pending. If you tapped the payment button by mistake, you can return to the payment details.</span><button type="button" class="btn btn-sm direct-payment-recovery-btn" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-arrow-left"></i> Back to payment</button></div>`;
-  }
-
   if (canRecordPayment) {
     const manualTypeOptions = isDeliveryOrder
       ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">20% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Remaining balance" : "Remaining balance"}</option>` : ""}`
@@ -19977,10 +19969,13 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   const paymentComplete = isDeliveryOrder ? (deliveryDepositPaid && deliveryBalancePaid) : feePaid;
   if (isVendor) {
     if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
-    // Handover/delivery is no longer a separate vendor action. For delivery
-    // orders, the final 80% payment is the terminal vendor confirmation. For
-    // pickup sales, the full payment is likewise the terminal action. Rentals
-    // keep their return lifecycle without exposing a separate handover button.
+    if (order.status === "confirmed") {
+      if (isDeliveryOrder) {
+        if (deliveryDepositPaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-truck"></i> Mark as delivered</button>`);
+        else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting for the customer's 20% delivery deposit before delivery.</p>`);
+      } else if (feePaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-handshake"></i> Mark handed over</button>`);
+      else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this can be marked handed over.</p>`);
+    }
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
   if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm order-action-neutral" style="background:#6b7280;" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
@@ -19991,11 +19986,24 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
     else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
   }
   if (isCustomer && order.status === "handed_over" && order.order_type === "rental" && !isDeliveryOrder) buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
-  // There is no separate customer delivery/receipt action anymore. The
-  // confirmed order itself exposes the outstanding payment stage above, and
-  // the vendor's final payment confirmation is the terminal completion event.
-  // Returned rentals no longer require a customer "Confirm & complete"
-  // button. Their existing return state remains visible in history.
+  if (isCustomer && order.status === "handed_over" && isDeliveryOrder) {
+    // Delivery orders complete automatically when the vendor confirms the
+    // remaining 80% payment. The customer does not need a separate
+    // "Confirm & complete" / "I've received this" action.
+    if (!deliveryBalancePaid) {
+      const depositPaidAmount = payments.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum,p)=>sum+Number(p.amount||0),0);
+      const balance = Math.max(0, Number(order.total_amount || 0) - depositPaidAmount);
+      buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-building-columns"></i> Complete payment · ${naira(balance)}</button>`);
+    }
+  }
+  if (isCustomer && order.status === "handed_over" && order.order_type === "sale" && !isDeliveryOrder) {
+    if (feePaid) { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`); buttons.push(notReceivedButtonHtml(order)); }
+    else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
+  }
+  if (isCustomer && order.status === "returned" && order.order_type === "rental") {
+    if (feePaid) { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> Confirm &amp; complete</button>`); buttons.push(notReceivedButtonHtml(order)); }
+    else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
+  }
   return buttons.join("");
 }
 
@@ -20014,8 +20022,8 @@ function notReceivedButtonHtml(order) {
 const ORDER_STATUS_HELP = {
   pending: "Your order has been placed. You haven't been charged yet. Payment becomes available when the vendor accepts.",
   confirmed: "The vendor has accepted. Next, they'll hand over the equipment.",
-  handed_over: "This order is in the handover stage. Rentals can still be returned from here; sales no longer require a separate customer receipt confirmation.",
-  returned: "The rented equipment is back with the vendor. The order is ready to finish once its required payment state is settled.",
+  handed_over: "The equipment has physically been handed to the customer (picked up or delivered). For rentals, either side can mark it \"returned\" once it's back with the vendor. For sales, the customer confirms receipt to complete the order and release payment.",
+  returned: "The rented equipment is back with the vendor. The buyer confirms to complete the order and release payment.",
   completed: "This order is finished.",
   cancelled: "This order was cancelled.",
   disputed: "An issue was reported on this order. An admin is reviewing it.",
@@ -20173,6 +20181,7 @@ async function confirmReceiveOrder(orderId) {
   navigate("orderDetail", { orderId });
 }
 
+
 async function loadCommissionBreakdown(){
   const box=byId("commissionBreakdown");
   if(!box||!vendor?.id)return;
@@ -20182,39 +20191,49 @@ async function loadCommissionBreakdown(){
     if(error)throw error;
     const rows=Array.isArray(data)?data:[];
     if(!rows.length){box.innerHTML='<div class="vendor-commission-breakdown-head">No outstanding commission charges found.</div>';return;}
-    const grouped=new Map();
+    const groups=new Map();
     rows.forEach(r=>{
       const key=r.order_id||r.charge_id;
-      if(!grouped.has(key))grouped.set(key,{order_id:r.order_id,sold_at:r.sold_at,buyer_name:r.buyer_name||"Buyer",payment_amount:0,commission_amount:0,commission_rates:[],components:[],products:[]});
-      const g=grouped.get(key);
+      if(!groups.has(key))groups.set(key,{order_id:r.order_id,sold_at:r.sold_at,buyer_name:r.buyer_name||"Buyer",payment_amount:Number(r.payment_amount||0),commission_amount:Number(r.commission_amount||0),products:[]});
+      const g=groups.get(key);
+      g.payment_amount=Number(r.payment_amount||0);
+      g.commission_amount=Number(r.commission_amount||0);
       if(r.buyer_name)g.buyer_name=r.buyer_name;
-      g.payment_amount+=Number(r.payment_amount||0);
-      g.commission_amount+=Number(r.commission_amount||0);
-      const paymentAmount=Number(r.payment_amount||0), commissionAmount=Number(r.commission_amount||0), rate=Number(r.commission_rate||0);
-      if(rate&&!g.commission_rates.includes(rate))g.commission_rates.push(rate);
-      if(paymentAmount>0&&commissionAmount>0)g.components.push({rate,amount:paymentAmount,commission:commissionAmount});
       (Array.isArray(r.products)?r.products:[]).forEach(item=>{
         const name=String(item.product_name||"Unnamed product"),unit=Number(item.unit_price||0),qty=Number(item.quantity||0);
         const existing=g.products.find(x=>x.name===name&&x.unit===unit);
-        if(existing)existing.qty+=qty;else g.products.push({name,qty,unit});
+        if(existing)existing.qty=Math.max(existing.qty,qty); else g.products.push({name,qty,unit});
       });
     });
     let total=0;
-    const cards=[...grouped.values()].map(g=>{
+    const cards=[...groups.values()].map(g=>{
       total+=g.commission_amount;
       const date=g.sold_at?new Date(g.sold_at).toLocaleString([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Date unavailable";
-      const rateText=g.commission_rates.length?g.commission_rates.map(x=>`${x}%`).join(" / "):"—";
-      const lines=g.products.length?g.products.map(x=>`<li><span>${esc(x.qty+"× "+x.name)}</span><span>${naira(x.qty*x.unit)}</span></li>`).join(""):'<li><span>Order items unavailable</span><span>—</span></li>';
-      const componentRows=(g.components||[]).map(c=>`<div class="vendor-commission-component"><span>${esc(c.rate+"% × "+naira(c.amount))}</span><strong>${naira(c.commission)}</strong></div>`).join("");
-      return `<div class="vendor-commission-item"><div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length>1?`${g.products.length} products`:(g.products[0]?esc(g.products[0].name):"Sale")}</div><div class="vendor-commission-item-date">Sold ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div><div class="vendor-commission-buyer"><i class="fa-solid fa-user"></i><span>Buyer</span><strong>${esc(g.buyer_name||"Buyer")}</strong></div><ul class="vendor-commission-products">${lines}</ul><div class="vendor-commission-math"><span>Total sale/payment recorded</span><strong>${naira(g.payment_amount)}</strong></div><div class="vendor-commission-math"><span>Commission calculation</span><div class="vendor-commission-components">${componentRows||`<div class="vendor-commission-component"><span>${esc(rateText)} × ${naira(g.payment_amount)}</span><strong>${naira(g.commission_amount)}</strong></div>`}</div></div><div class="vendor-commission-math"><span>Commission for this order</span><strong>${naira(g.commission_amount)}</strong></div></div>`;
+      const lines=g.products.length
+        ? g.products.map(x=>`<li><span>${esc(x.qty+"× "+x.name)}</span><span>${naira(x.qty*x.unit)}</span></li>`).join("")
+        : '<li><span>Order items unavailable</span><span>—</span></li>';
+      return `<div class="vendor-commission-item">
+        <div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length===1?esc(g.products[0].name):g.products.length>1?`${g.products.length} products`:"Sale"}</div><div class="vendor-commission-item-date">Completed ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div>
+        <div class="vendor-commission-buyer"><i class="fa-solid fa-user"></i><span>Buyer</span><strong>${esc(g.buyer_name||"Buyer")}</strong></div>
+        <ul class="vendor-commission-products">${lines}</ul>
+        <div class="vendor-commission-math"><span>Total sale + transportation</span><strong>${naira(g.payment_amount)}</strong></div>
+        <div class="vendor-commission-math"><span>Commission calculation</span><strong>3% × ${naira(g.payment_amount)} = ${naira(g.commission_amount)}</strong></div>
+      </div>`;
     }).join("");
-    box.innerHTML=`<div class="vendor-commission-breakdown-head">Outstanding commission — ${grouped.size} sale${grouped.size===1?"":"s"}</div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span>Total commission owed</span><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
-  }catch(err){box.innerHTML=`<div class="vendor-commission-breakdown-head" style="color:var(--danger,#ef4444)">Could not load the commission breakdown. ${esc(err?.message||"Please try again.")}</div>`;}
+    box.innerHTML=`<div class="vendor-commission-breakdown-head">Outstanding commission — ${groups.size} sale${groups.size===1?"":"s"}</div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span>Total commission owed</span><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
+  }catch(err){
+    box.innerHTML=`<div class="vendor-commission-breakdown-head" style="color:var(--danger,#ef4444)">Could not load the commission breakdown. ${esc(err?.message||"Please try again.")}</div>`;
+  }
 }
 async function toggleCommissionBreakdown(){
-  const box=byId("commissionBreakdown"),btn=byId("payCommissionBtn");if(!box)return;
-  const opening=box.classList.contains("hidden");box.classList.toggle("hidden",!opening);
-  if(btn){btn.setAttribute("aria-expanded",String(opening));btn.innerHTML=opening?'<i class="fa-solid fa-receipt"></i> Hide commission breakdown':'<i class="fa-solid fa-credit-card"></i> Review commission payment';}
+  const box=byId("commissionBreakdown"),btn=byId("payCommissionBtn");
+  if(!box)return;
+  const opening=box.classList.contains("hidden");
+  box.classList.toggle("hidden",!opening);
+  if(btn){
+    btn.setAttribute("aria-expanded",String(opening));
+    btn.innerHTML=opening?'<i class="fa-solid fa-receipt"></i> Hide commission breakdown':'<i class="fa-solid fa-receipt"></i> Review commission breakdown';
+  }
   if(opening)await loadCommissionBreakdown();
 }
 
@@ -20292,9 +20311,6 @@ async function payOnline(orderId) {
 
 async function recordOfflinePayment(orderId) {
   const errorEl = byId("recordPaymentError"); errorEl.classList.add("hidden");
-  const { data: autoCompleteOrder, error: autoCompleteOrderError } = await sb.from("orders").select("order_type,delivery_method,status").eq("id", orderId).maybeSingle();
-  if (autoCompleteOrderError || !autoCompleteOrder) { errorEl.textContent = autoCompleteOrderError?.message || "Order not found."; errorEl.classList.remove("hidden"); return; }
-  const orderTypeForAutoComplete = String(autoCompleteOrder.order_type || "").toLowerCase();
   const paymentType = byId("rpType")?.value; const amount = Number(byId("rpAmount")?.value); const method = byId("rpMethod")?.value;
   if (!paymentType || !Number.isFinite(amount) || amount <= 0 || !method) { errorEl.textContent = "Enter a valid payment amount and method."; errorEl.classList.remove("hidden"); return; }
   const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : paymentType === "delivery_deposit_20" ? "20% delivery deposit" : "refundable deposit";
@@ -20306,13 +20322,17 @@ async function recordOfflinePayment(orderId) {
   if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? "Confirm 80% payment" : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? "Yes, confirm 80% paid" : "Yes, mark paid" }))) return;
   const { error } = await sb.rpc("record_offline_payment", { p_order_id: orderId, p_payment_type: paymentType, p_amount: amount, p_method: method });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
-  // The database payment transaction now owns terminal completion for
-  // delivery orders and sales: recording the final required payment atomically
-  // changes the order to completed. Do not issue a second status transition
-  // here, because Realtime may already have delivered the completed state.
-  const completesOrderNow = isRemainingDeliveryPayment || (paymentType === "sale_price" && orderTypeForAutoComplete !== "rental");
-  showToast(completesOrderNow ? (isRemainingDeliveryPayment ? "80% payment recorded. Order completed." : "Payment recorded. Order completed.") : "Payment recorded as paid.", "success");
-  await navigate(completesOrderNow ? "vendorOrders" : "orderDetail", completesOrderNow ? {} : { orderId });
+  // For delivery, recording the remaining 80% is the final customer action.
+  // Complete the order immediately on the server so the buyer and vendor both
+  // receive the terminal `completed` state through Realtime.
+  if (isRemainingDeliveryPayment) {
+    const { error: completeError } = await sb.rpc("transition_order_status", { p_order_id: orderId, p_new_status: "completed" });
+    if (completeError) { errorEl.textContent = completeError.message; errorEl.classList.remove("hidden"); return; }
+  }
+  showToast(isRemainingDeliveryPayment ? "80% payment recorded. Order completed." : "Payment recorded as paid.", "success");
+  // Once the vendor records the remaining 80%, the payment workflow is done
+  // and the order is terminal. Return them directly to their Orders list.
+  await navigate(isRemainingDeliveryPayment ? "vendorOrders" : "orderDetail", isRemainingDeliveryPayment ? {} : { orderId });
 }
 
 let vendorReviewModalOrderId = null;
@@ -20387,6 +20407,46 @@ function setStarRating(n) { byId("reviewRating").value = n; renderStarPreview(n)
 function previewStars(n) { renderStarPreview(n); }
 function resetStarPreview() { renderStarPreview(Number(byId("reviewRating")?.value || 5)); }
 
+function backToPaymentFromReview(orderId) {
+  navigate("orderDetail", { orderId }, false).then(() => {
+    setTimeout(() => { try { openVendorDirectPayment(orderId); } catch (_) {} }, 60);
+  }).catch(() => {});
+}
+
+async function renderLeaveReview(orderId) {
+  if (!session?.user?.id || !orderId) return '<div class="empty-state">Access denied.</div>';
+  const { data: order, error } = await sb.from("orders")
+    .select("id,status,buyer_id,vendor_id,delivery_method,vendor:vendors(id,business_name)")
+    .eq("id", orderId).eq("buyer_id", session.user.id).maybeSingle();
+  if (error || !order) return `<div class="empty-state">${esc(error?.message || "Order not found.")}</div>`;
+
+  const { data: existingReview } = await sb.from("reviews")
+    .select("id").eq("order_id", order.id).eq("buyer_id", session.user.id).maybeSingle();
+  if (existingReview) {
+    return `<div class="card" style="max-width:620px;margin:1rem auto;text-align:center;">
+      <h2 style="margin-top:0;">Review already submitted</h2>
+      <p class="muted">You've already reviewed this order.</p>
+      <button type="button" class="btn btn-sm btn-outline" onclick="backToPaymentFromReview('${order.id}')"><i class="fa-solid fa-arrow-left"></i> Back to payment</button>
+    </div>`;
+  }
+
+  const vendorName = esc(order.vendor?.business_name || "this vendor");
+  return `<div class="card leave-review-page" style="max-width:620px;margin:1rem auto;">
+    <div style="text-align:center;">
+      <h2 style="margin:0;">Leave a review</h2>
+      <p class="muted" style="margin:.35rem 0 1rem;">How was your experience with ${vendorName}?</p>
+    </div>
+    <div id="reviewError" class="error-text hidden"></div>
+    ${starRatingWidgetHtml(5)}
+    <input type="hidden" id="reviewRating" value="5" />
+    <textarea id="reviewComment" rows="4" placeholder="Tell us about your experience with the order and vendor…"></textarea>
+    <div class="leave-review-actions" style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:.8rem;">
+      <button type="button" class="btn btn-sm btn-outline" onclick="backToPaymentFromReview('${order.id}')"><i class="fa-solid fa-arrow-left"></i> Back to payment</button>
+      <button type="button" class="btn btn-sm" onclick="submitReview('${order.id}','${order.vendor?.id || order.vendor_id}')"><i class="fa-solid fa-paper-plane"></i> Submit review</button>
+    </div>
+  </div>`;
+}
+
 async function submitReview(orderId, vendorId) {
   const errorEl = byId("reviewError");
   errorEl.classList.add("hidden");
@@ -20428,7 +20488,8 @@ function adminNavHtml(active) {
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
     ["adminSupportRequests", "fa-headset", "Support"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],
-    ["adminLog", "fa-clock-rotate-left", "Log"],
+    ["adminLog", "fa-clock-rotate-left", "Admin log"],
+    ["adminAuthLogs", "fa-right-to-bracket", "Login logs"],
     ["adminUsers", "fa-user-shield", "Admins"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
@@ -21165,6 +21226,40 @@ async function demoteAdmin(email) {
   navigate("adminUsers");
 }
 
+let adminAuthLogRange = "all";
+function adminAuthRangeStart(range) {
+  const now = new Date();
+  if (range === "today") return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (range === "week") { const d = new Date(now); const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day); d.setHours(0,0,0,0); return d; }
+  if (range === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
+  return null;
+}
+async function renderAdminAuthLogs() {
+  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  const start = adminAuthRangeStart(adminAuthLogRange);
+  let q = sb.from("auth_activity_logs").select("id,user_id,event_type,occurred_at,user_agent,ip,source").order("occurred_at", { ascending:false }).limit(2000);
+  if (start) q = q.gte("occurred_at", start.toISOString());
+  const { data: rows, error } = await q;
+  if (error) return `<div class="empty-state">Could not load login logs.</div>`;
+  const userIds = [...new Set((rows||[]).map(r=>r.user_id).filter(Boolean))];
+  let users = [];
+  if (userIds.length) { const r = await sb.from("users").select("id,name,email,role").in("id",userIds); users = r.data || []; }
+  const byUser = new Map(users.map(u=>[String(u.id),u]));
+  const groups = new Map();
+  (rows||[]).forEach(r=>{ const key=new Date(r.occurred_at).toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"}); if(!groups.has(key))groups.set(key,[]); groups.get(key).push(r); });
+  let html = `<h2><i class="fa-solid fa-right-to-bracket"></i> Login & logout logs</h2>${adminNavHtml("adminAuthLogs")}
+    <p class="muted" style="margin:.55rem 0 .75rem;">Every recorded sign-in/session start and voluntary logout. Historical session starts available in Supabase are included; browser closes and older events that were never recorded cannot be reconstructed.</p>
+    <div class="admin-auth-log-filters">${[["today","Today"],["week","This week"],["month","This month"],["all","All time"]].map(([k,l])=>`<button class="range-tab ${adminAuthLogRange===k?'active':''}" onclick="adminAuthLogRange='${k}';navigate('adminAuthLogs',{},false)">${l}</button>`).join("")}</div>`;
+  if (!rows?.length) return html + `<p class="muted">No login/logout activity recorded for this period.</p>`;
+  groups.forEach((dayRows,day)=>{
+    html += `<div class="category-group-header"><i class="fa-regular fa-calendar"></i>${esc(day)} <span class="muted" style="font-size:.78rem;font-weight:400;">${dayRows.length} event${dayRows.length===1?'':'s'}</span></div><div class="table-wrap admin-auth-log-table-wrap"><table class="data-table admin-auth-log-table"><thead><tr><th>Time</th><th>Person</th><th>Email</th><th>Role</th><th>Event</th><th>Device / browser</th><th>IP</th></tr></thead><tbody>`;
+    dayRows.forEach(r=>{ const u=byUser.get(String(r.user_id))||{}; const event=r.event_type==='logout'?'Logged out':'Logged in'; const cls=r.event_type==='logout'?'danger':'success'; html += `<tr><td>${new Date(r.occurred_at).toLocaleTimeString("en-NG",{hour:"numeric",minute:"2-digit",second:"2-digit"})}</td><td>${esc(u.name||"Unknown user")}</td><td>${esc(u.email||"-")}</td><td>${esc(u.role||"-")}</td><td><span class="badge ${cls}">${event}</span></td><td title="${esc(r.user_agent||"")}">${esc(String(r.user_agent||"-").slice(0,70))}</td><td>${esc(r.ip||"-")}</td></tr>`; });
+    html += `</tbody></table></div>`;
+  });
+  html += `<p class="muted admin-people-hint"><i class="fa-solid fa-arrows-up-down-left-right"></i> Scroll vertically through events and horizontally on smaller screens for wider columns.</p>`;
+  return html;
+}
+
 async function renderAdminLog() {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
   const { data: log } = await sb.from("admin_actions").select("*").order("created_at", { ascending: false }).limit(100);
@@ -21768,6 +21863,11 @@ function renderRefundPolicy() {
     <h3>6. How refunds are paid</h3>
     <p>Refunds for online payments are issued back through Paystack to your original payment method. For orders paid offline (cash/transfer directly to the vendor), any refund is arranged directly between buyer and vendor, with Levromart admins available to mediate a dispute.</p>
   </div>`;
+}
+
+async function recordAuthActivity(eventType) {
+  if (!session?.user?.id || !["login","logout"].includes(eventType)) return;
+  try { await sb.rpc("record_auth_activity", { p_event_type: eventType, p_user_agent: navigator.userAgent || null }); } catch (_) {}
 }
 
 sb.auth.onAuthStateChange((_event) => {
@@ -26430,12 +26530,12 @@ window.renderVendorMapRail = function(){
       </div>
       ${!hasAccount ? `<div class="banner banner-warning" style="margin-top:.7rem;"><strong>Vendor payment details are not saved yet.</strong> Please contact the vendor before transferring.</div>` : ""}
       <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
-      <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><div style="display:flex;gap:.55rem;margin-top:.45rem;flex-wrap:wrap;"><button type="button" class="btn btn-sm direct-payment-back-btn" onclick="byId('manualVendorPaymentModal')?.remove()"><i class="fa-solid fa-arrow-left"></i> Back</button><button type="button" class="btn btn-sm direct-payment-report-btn" id="directPaymentReportedBtn" style="flex:1;justify-content:center;" onclick="reportDirectVendorPayment('${order.id}',${amount})"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div></div>`;
+      <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount})"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
     document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
   };
   window.reportDirectVendorPayment = async function(orderId,amount){
     const err=byId("directPaymentError"),btn=byId("directPaymentReportedBtn"); if(!err||!btn)return; err.classList.add("hidden"); btn.disabled=true;
-    try{const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});if(error)throw error;byId("manualVendorPaymentModal")?.remove();showToast(data?.message||"Payment reported to the vendor.","success");await navigate("orderDetail",{orderId});}
+    try{const {data,error}=await sb.rpc("buyer_report_manual_payment",{p_order_id:orderId,p_amount:Number(amount)});if(error)throw error;byId("manualVendorPaymentModal")?.remove();showToast(data?.message||"Payment reported to the vendor.","success");await navigate("leaveReview",{orderId});}
     catch(e){err.textContent=e?.message||"Could not report the payment.";err.classList.remove("hidden");btn.disabled=false;}
   };
   /* Final vendor application form: make WhatsApp and bank details mandatory. */
@@ -27581,36 +27681,6 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     commissionHeartbeat=setInterval(checkCommissionDeadline,60000);
   }
   function stopCommissionHeartbeat(){if(commissionHeartbeat){clearInterval(commissionHeartbeat);commissionHeartbeat=null;}}
-
-  // TEST MODE: auto-finalize eligible paid orders after 1 minute when there
-  // is no open dispute. The backend is authoritative; this heartbeat simply
-  // gives the test a frequent opportunity to run while the app is open.
-  // Change the backend interval from 1 minute to 24 hours after testing.
-  let orderAutoCompletionHeartbeat=null;
-  let orderAutoCompletionInFlight=false;
-  async function runOrderAutoCompletion(){
-    if(orderAutoCompletionInFlight)return;
-    if(!session?.user?.id)return;
-    orderAutoCompletionInFlight=true;
-    try{
-      const {data,error}=await sb.rpc('auto_complete_eligible_orders');
-      if(error)throw error;
-      const changed=Number(data||0);
-      if(changed>0){
-        try{await refreshVisibleOrderView();}catch(_){}
-        if(currentView==='vendorOrders'||currentView==='buyerOrders')try{await navigate(currentView,{},false);}catch(_){}
-      }
-    }catch(e){console.warn('[Levromart] automatic order completion check failed:',e);}
-    finally{orderAutoCompletionInFlight=false;}
-  }
-  function startOrderAutoCompletionHeartbeat(){
-    if(orderAutoCompletionHeartbeat)clearInterval(orderAutoCompletionHeartbeat);
-    runOrderAutoCompletion();
-    orderAutoCompletionHeartbeat=setInterval(runOrderAutoCompletion,15000);
-  }
-  startOrderAutoCompletionHeartbeat();
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)runOrderAutoCompletion();},{passive:true});
-
   setTimeout(()=>{
     if(session&&profile?.role==='vendor'&&vendor?.id)startCommissionHeartbeat();
   },1000);
@@ -28141,26 +28211,6 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 }
 </style>
 
-<style id="levromart-commission-breakdown">
-.vendor-commission-breakdown{margin-top:.75rem;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--card) 88%,transparent);overflow:hidden}
-.vendor-commission-breakdown-head{padding:.75rem .85rem;border-bottom:1px solid var(--border);font-size:.78rem;font-weight:800}
-.vendor-commission-breakdown-list{max-height:360px;overflow:auto}
-.vendor-commission-item{padding:.8rem .85rem;border-bottom:1px solid var(--border)}
-.vendor-commission-item:last-child{border-bottom:0}
-.vendor-commission-item-top{display:flex;justify-content:space-between;gap:.7rem;align-items:flex-start}
-.vendor-commission-item-title{font-weight:800;font-size:.88rem}
-.vendor-commission-item-date{font-size:.72rem;color:var(--text-muted);margin-top:.18rem}
-.vendor-commission-buyer{display:flex;align-items:center;gap:.42rem;margin:.55rem 0 .35rem;padding:.45rem .55rem;border-radius:10px;background:rgba(255,255,255,.035);font-size:.76rem}
-.vendor-commission-buyer span{color:var(--text-muted)}
-.vendor-commission-buyer strong{margin-left:auto;text-align:right;font-weight:800}
-.vendor-commission-products{margin:.55rem 0 0;padding:0;list-style:none}
-.vendor-commission-products li{display:flex;justify-content:space-between;gap:.6rem;padding:.22rem 0;font-size:.76rem}
-.vendor-commission-products li span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
-.vendor-commission-math{display:flex;justify-content:space-between;gap:.6rem;margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border);font-size:.75rem}.vendor-commission-components{flex:1;min-width:0}.vendor-commission-component{display:flex;justify-content:flex-end;gap:.7rem;margin:.18rem 0;font-variant-numeric:tabular-nums}.vendor-commission-component strong{white-space:nowrap}
-.vendor-commission-total{display:flex;justify-content:space-between;gap:.7rem;padding:.8rem .85rem;font-weight:850;font-size:.86rem;background:color-mix(in srgb,var(--primary) 7%,transparent)}
-.vendor-commission-pay-now{width:100%;justify-content:center;margin-top:.65rem!important}
-@media(max-width:720px){.vendor-commission-breakdown-list{max-height:45vh}.vendor-commission-item-top{align-items:center}}
-</style>
 <style id="levromart-final-product-social-ux">
 /* Final source-of-truth UX pass. */
 .vendor-profile-setting-note{display:block;margin:.35rem 0 .9rem;padding:.65rem .75rem;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--primary) 5%,transparent);font-size:.78rem;color:var(--text-muted)}
@@ -32093,19 +32143,6 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 }
 </style>
 
-<style id="levromart-order-payment-final-solid-controls">
-#app .order-follow-up .order-remind-btn,
-#app .direct-payment-report-btn,
-#app .direct-payment-recovery-btn,
-#app .delivery-balance-direct-btn,
-#app .delivery-balance-manual-btn { background-image:none !important; background-color:#dc2626 !important; color:#fff !important; }
-#app .direct-payment-report-btn,
-#app .direct-payment-recovery-btn,
-#app .delivery-balance-direct-btn,
-#app .delivery-balance-manual-btn { background-color:#2563eb !important; }
-#app .order-follow-up .order-remind-btn { background-color:#dc2626 !important; }
-#app .direct-payment-back-btn { background-image:none !important; background-color:#374151 !important; color:#fff !important; }
-.order-payment-recovery { margin-top:1rem; padding:.75rem .85rem; border:1px solid var(--border); border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:.7rem; flex-wrap:wrap; font-size:.82rem; color:var(--text-muted); }
-.order-payment-recovery > span { flex:1 1 220px; line-height:1.4; }
-.order-payment-recovery i { color:#2563eb; }
+<style id="levromart-auth-log-speed-fix">
+.admin-auth-log-filters{display:flex;gap:.35rem;overflow-x:auto;padding:.25rem 0 .65rem;scrollbar-width:none}.admin-auth-log-filters::-webkit-scrollbar{display:none}.admin-auth-log-filters .range-tab{flex:0 0 auto;border:1px solid var(--border);background:var(--card);color:var(--text-muted);border-radius:999px;padding:.48rem .8rem;cursor:pointer;font:inherit;font-size:.78rem}.admin-auth-log-filters .range-tab.active{background:var(--primary);border-color:var(--primary);color:#fff}.admin-auth-log-table-wrap{max-height:56vh;overflow:auto}.admin-auth-log-table{min-width:980px}.admin-auth-log-table th,.admin-auth-log-table td{white-space:nowrap}.admin-auth-log-table td:nth-child(6){max-width:260px;overflow:hidden;text-overflow:ellipsis}.conv-unread-badge{background:#ef4444!important;color:#fff!important;border:0!important;min-width:1.25rem;height:1.25rem;padding:0 .34rem;border-radius:999px;align-items:center;justify-content:center;font-size:.68rem;font-weight:800;line-height:1}.chat-bubble[data-msg-id^="temp-"]{opacity:.82}.chat-bubble[data-msg-id^="temp-"] .chat-time-text::after{content:" · sending";opacity:.62;font-size:.68em}
 </style>
