@@ -20377,13 +20377,13 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">${deliveryDepositPercent}% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">Remaining balance</option>` : ""}`
       : `${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Full payment" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Refundable deposit</option>` : ""}`;
     const manualAmount = isPayAfterDelivery ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount) : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
-    html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-payment-card" : ""}"><h3><i class="fa-solid fa-hand-holding-dollar"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Record ${deliveryRemainingPercent}% payment" : "Paid outside Paystack?"} ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
+    html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-payment-card" : ""}"><h3><i class="fa-solid fa-hand-holding-dollar"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `Record ${deliveryRemainingPercent}% payment` : "Paid outside Paystack?"} ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
       ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;"><strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>Confirm the customer's remaining <strong>${naira(manualAmount)}</strong> payment after you have actually received it.</p>` : ""}
       <div id="recordPaymentError" class="error-text hidden"></div>
       <label>Payment for</label><select id="rpType">${manualTypeOptions}</select>
       <label>Amount</label><input type="number" id="rpAmount" value="${manualAmount}" />
       <label>Method</label><select id="rpMethod"><option value="transfer" selected>Transfer</option><option value="cash">Cash</option></select>
-      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-manual-btn" : ""}" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "Confirm ${deliveryRemainingPercent}% payment received" : "Mark as paid manually"}</button>
+      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-manual-btn" : ""}" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}', ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? deliveryRemainingPercent : 'null'})"><i class="fa-solid fa-check-circle"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `Confirm ${deliveryRemainingPercent}% payment received` : "Mark as paid manually"}</button>
     </div>`;
   }
 
@@ -20804,23 +20804,24 @@ async function payOnline(orderId) {
   }
 }
 
-async function recordOfflinePayment(orderId) {
+async function recordOfflinePayment(orderId, remainingPercent = null) {
   const errorEl = byId("recordPaymentError"); errorEl.classList.add("hidden");
   const paymentType = byId("rpType")?.value; const amount = Number(byId("rpAmount")?.value); const method = byId("rpMethod")?.value;
   if (!paymentType || !Number.isFinite(amount) || amount <= 0 || !method) { errorEl.textContent = "Enter a valid payment amount and method."; errorEl.classList.remove("hidden"); return; }
   const paymentLabel = paymentType === "sale_price" ? "sale price" : paymentType === "rental_fee" ? "rental fee" : paymentType === "delivery_deposit_20" ? "delivery deposit" : "refundable deposit";
   const methodLabel = method === "cash" ? "cash" : "bank transfer";
   const isRemainingDeliveryPayment = paymentType !== "delivery_deposit_20" && paymentType !== "deposit" && byId("rpType")?.value === paymentType && !!byId("rpType")?.closest(".delivery-balance-payment-card");
+  const safeRemainingPercent = Number.isFinite(Number(remainingPercent)) ? Number(remainingPercent) : null;
   const confirmMessage = isRemainingDeliveryPayment
-    ? `You are confirming the customer's remaining ${deliveryRemainingPercent}% payment of ${naira(amount)} by ${methodLabel}. Only continue if you have actually received this full amount. This will mark the remaining balance as PAID.`
+    ? `You are confirming the customer's remaining ${safeRemainingPercent ?? 100}% payment of ${naira(amount)} by ${methodLabel}. Only continue if you have actually received this full amount. This will mark the remaining balance as PAID.`
     : `Confirm that you actually received ${naira(amount)} for the ${paymentLabel} by ${methodLabel}. This records the payment as PAID outside Paystack and settles this payment obligation.`;
-  if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? `Confirm ${deliveryRemainingPercent}% payment` : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? `Yes, confirm ${deliveryRemainingPercent}% paid` : "Yes, mark paid" }))) return;
+  if (!(await showConfirmDialog(confirmMessage, { title: isRemainingDeliveryPayment ? `Confirm ${safeRemainingPercent ?? 100}% payment` : "Mark as paid manually", okLabel: isRemainingDeliveryPayment ? `Yes, confirm ${safeRemainingPercent ?? 100}% paid` : "Yes, mark paid" }))) return;
   const { error } = await sb.rpc("record_offline_payment", { p_order_id: orderId, p_payment_type: paymentType, p_amount: amount, p_method: method });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
   // record_offline_payment atomically marks an eligible final payment as paid and
   // completes the order on the server. Do not issue a second completed transition
   // here; doing so can race the realtime refresh and produce "completed to completed".
-  showToast(isRemainingDeliveryPayment ? `${deliveryRemainingPercent}% payment recorded. Order completed.` : "Payment recorded as paid.", "success");
+  showToast(isRemainingDeliveryPayment ? `${safeRemainingPercent ?? 100}% payment recorded. Order completed.` : "Payment recorded as paid.", "success");
   // Once the vendor records the remaining balance, the payment workflow is done
   // and the order is terminal. Return them directly to their Orders list.
   await navigate(isRemainingDeliveryPayment ? "vendorOrders" : "orderDetail", isRemainingDeliveryPayment ? {} : { orderId });
@@ -32800,20 +32801,21 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   animation:none !important;
 }
 
-/* Product payment timing: explicit seller choice and card-visible status */
-.listing-payment-timing-settings{margin-top:.8rem;padding:.9rem;border:1px solid var(--border);border-radius:16px;background:var(--card-bg,#fff);}
-.payment-timing-title{display:block;margin:0 0 .55rem;font-weight:800;}
+/* Product payment timing: explicit seller choice and card-visible status.
+   Keep this component on the app theme surface in both light and dark modes. */
+.listing-payment-timing-settings{margin-top:.8rem;padding:.9rem;border:1px solid var(--border);border-radius:16px;background:var(--card);color:var(--text);}
+.payment-timing-title{display:block;margin:0 0 .55rem;font-weight:800;color:var(--text);}
 .payment-timing-choice{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;}
-.payment-timing-option{appearance:none;border:1px solid var(--border);background:var(--card-bg,#fff);border-radius:14px;padding:.7rem .75rem;display:flex;align-items:flex-start;gap:.6rem;text-align:left;cursor:pointer;color:var(--text);transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;min-width:0;}
+.payment-timing-option{appearance:none;border:1px solid var(--border);background:var(--card);border-radius:14px;padding:.7rem .75rem;display:flex;align-items:flex-start;gap:.6rem;text-align:left;cursor:pointer;color:var(--text);transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;min-width:0;}
 .payment-timing-option strong{display:block;font-size:.8rem;line-height:1.2;}
-.payment-timing-option small{display:block;margin-top:.2rem;font-size:.68rem;line-height:1.25;color:var(--muted,#64748b);}
+.payment-timing-option small{display:block;margin-top:.2rem;font-size:.68rem;line-height:1.25;color:var(--text-muted);}
 .payment-timing-option-dot{width:12px;height:12px;border-radius:50%;border:2px solid currentColor;flex:0 0 auto;margin-top:.12rem;}
-.payment-timing-option.pay-before{color:#166534;}
-.payment-timing-option.pay-after{color:#c2410c;}
-.payment-timing-option.pay-before.selected{background:#f0fdf4;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12);}
-.payment-timing-option.pay-after.selected{background:#fff7ed;border-color:#fb923c;box-shadow:0 0 0 2px rgba(249,115,22,.12);}
-.payment-timing-option.selected .payment-timing-option-dot{background:currentColor;box-shadow:inset 0 0 0 2px #fff;}
-.payment-timing-hint{font-size:.76rem;margin:.55rem 0 0;}
+.payment-timing-option.pay-before{color:#22c55e;}
+.payment-timing-option.pay-after{color:#fb923c;}
+.payment-timing-option.pay-before.selected{background:color-mix(in srgb,var(--card) 88%,#22c55e 12%);border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12);}
+.payment-timing-option.pay-after.selected{background:color-mix(in srgb,var(--card) 88%,#fb923c 12%);border-color:#fb923c;box-shadow:0 0 0 2px rgba(249,115,22,.12);}
+.payment-timing-option.selected .payment-timing-option-dot{background:currentColor;box-shadow:inset 0 0 0 2px var(--card);}
+.payment-timing-hint{font-size:.76rem;margin:.55rem 0 0;color:var(--text-muted);}
 @media(max-width:520px){.payment-timing-choice{grid-template-columns:1fr;}}
 
 /* Seller-selected delivery payment percentage. */
