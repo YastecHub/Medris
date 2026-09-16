@@ -34366,3 +34366,322 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   setTimeout(showBannerIfPossible,1800);
 })();
 </script>
+
+
+<style id="levromart-bank-list-visible-and-install-banner-final-20260916">
+/* Final bank-picker visibility fix. */
+#vendorApplyBankPickerModal{
+  position:fixed !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  z-index:1000000 !important;
+  padding:12px !important;
+  box-sizing:border-box !important;
+  background:rgba(2,8,23,.62) !important;
+  overflow-y:auto !important;
+}
+#vendorApplyBankPickerModal .vendor-bank-picker-content{
+  display:flex !important;
+  flex-direction:column !important;
+  width:min(560px,100%) !important;
+  max-height:min(86vh,760px) !important;
+  min-height:240px !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+  background:var(--surface,#fff) !important;
+  color:var(--text,#172033) !important;
+  border-radius:18px !important;
+  padding:16px !important;
+}
+#vendorApplyBankPickerModal .vendor-bank-picker-list{
+  display:block !important;
+  flex:1 1 auto !important;
+  min-height:80px !important;
+  max-height:52vh !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  color:var(--text,#172033) !important;
+  background:var(--surface,#fff) !important;
+  -webkit-overflow-scrolling:touch !important;
+}
+#vendorApplyBankPickerModal .vendor-bank-option{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  width:100% !important;
+  min-height:58px !important;
+  color:var(--text,#172033) !important;
+  background:transparent !important;
+}
+#vendorApplyBankPickerModal .vendor-bank-option-main strong,
+#vendorApplyBankPickerModal .vendor-bank-option-main small{
+  color:inherit !important;
+}
+#vendorApplyBankPickerModal .vendor-bank-option-main small{
+  color:var(--text-muted,#667085) !important;
+}
+#vendorApplyBankPickerModal .vendor-bank-picker-empty{
+  display:block !important;
+  padding:18px 12px !important;
+  color:var(--text-muted,#667085) !important;
+  text-align:center !important;
+}
+
+/* Browser install banner: visible on normal browser sessions, hidden only
+   when the PWA is already installed. */
+#levroInstallBanner{
+  display:none !important;
+}
+#levroInstallBanner.is-visible{
+  display:flex !important;
+}
+</style>
+
+<script id="levromart-bank-list-visible-and-install-banner-final-js-20260916">
+(function(){
+  "use strict";
+
+  function bankSource(){
+    /* Prefer the live Paystack-backed list when already loaded. */
+    const live = Array.isArray(window.__levroBankOptions) ? window.__levroBankOptions : [];
+    if(live.length) return live;
+
+    /* NIGERIAN_BANKS is a top-level lexical binding in this index, not a
+       window property, so read it directly when available. */
+    try{
+      if(typeof NIGERIAN_BANKS !== "undefined" && Array.isArray(NIGERIAN_BANKS) && NIGERIAN_BANKS.length){
+        return NIGERIAN_BANKS;
+      }
+    }catch(_){}
+
+    return [];
+  }
+
+  function bankListFromSelect(){
+    const select=document.getElementById("vaBankCode");
+    if(select){
+      const rows=Array.from(select.options)
+        .map(o=>({code:String(o.value||"").trim(),name:String(o.textContent||"").trim()}))
+        .filter(b=>b.code && b.name);
+      if(rows.length) return rows;
+    }
+    return bankSource().map(b=>({code:String(b.code||"").trim(),name:String(b.name||"").trim()}))
+      .filter(b=>b.code && b.name);
+  }
+
+  window.openVendorApplyBankPicker=function(){
+    const select=document.getElementById("vaBankCode");
+    if(!select) return;
+
+    window.closeVendorApplyBankPicker?.();
+
+    const seen=new Set();
+    const banks=bankListFromSelect()
+      .filter(b=>{
+        const key=`${b.code}::${b.name.toLowerCase()}`;
+        if(seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:"base"}));
+
+    const modal=document.createElement("div");
+    modal.id="vendorApplyBankPickerModal";
+    modal.className="modal vendor-bank-picker-modal";
+    modal.innerHTML=`
+      <div class="vendor-bank-picker-content" role="dialog" aria-modal="true" aria-labelledby="vaBankPickerTitle">
+        <div class="vendor-bank-picker-header">
+          <div>
+            <h3 id="vaBankPickerTitle"><i class="fa-solid fa-building-columns"></i> Select payout bank</h3>
+            <p>${banks.length} supported banks and financial institutions</p>
+          </div>
+          <button type="button" class="vendor-bank-picker-close" id="vaBankPickerClose" aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="vendor-bank-search-wrap">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input id="vaBankSearch" class="vendor-bank-search" type="search"
+                 placeholder="Search bank…" autocomplete="off" aria-label="Search bank" />
+        </div>
+
+        <div id="vaBankPickerList" class="vendor-bank-picker-list"></div>
+      </div>`;
+
+    document.body.appendChild(modal);
+
+    const list=document.getElementById("vaBankPickerList");
+    const search=document.getElementById("vaBankSearch");
+    const current=()=>String(select.value||"");
+
+    const choose=(code)=>{
+      const option=Array.from(select.options).find(o=>String(o.value)===String(code));
+      if(!option){
+        const source=banks.find(b=>String(b.code)===String(code));
+        if(source){
+          const opt=document.createElement("option");
+          opt.value=source.code;
+          opt.textContent=source.name;
+          select.appendChild(opt);
+        }
+      }
+      select.value=String(code);
+      const label=document.getElementById("vaBankPickerLabel");
+      const chosen=Array.from(select.options).find(o=>String(o.value)===String(code));
+      if(label) label.textContent=chosen?.textContent?.trim() || banks.find(b=>String(b.code)===String(code))?.name || "Select a bank";
+      window.closeVendorApplyBankPicker();
+    };
+
+    const paint=()=>{
+      const q=String(search?.value||"").trim().toLowerCase();
+      const rows=q
+        ? banks.filter(b=>b.name.toLowerCase().includes(q)||b.code.toLowerCase().includes(q))
+        : banks;
+
+      if(!list) return;
+
+      list.innerHTML=rows.length
+        ? rows.map(b=>`
+            <button type="button"
+                    class="vendor-bank-option ${String(b.code)===current()?"selected":""}"
+                    data-bank-code="${String(b.code).replace(/[^a-zA-Z0-9._-]/g,"")}">
+              <span class="vendor-bank-option-icon"><i class="fa-solid fa-building-columns"></i></span>
+              <span class="vendor-bank-option-main">
+                <strong>${esc(b.name)}</strong>
+                <small>${esc(b.code)}</small>
+              </span>
+              <i class="fa-solid ${String(b.code)===current()?"fa-circle-check":"fa-chevron-right"}"></i>
+            </button>`).join("")
+        : `<div class="vendor-bank-picker-empty">${banks.length ? "No banks match your search." : "Bank list unavailable right now. Please try again."}</div>`;
+
+      list.querySelectorAll("[data-bank-code]").forEach(btn=>{
+        btn.addEventListener("click",()=>choose(btn.dataset.bankCode));
+      });
+    };
+
+    document.getElementById("vaBankPickerClose")?.addEventListener("click",window.closeVendorApplyBankPicker);
+    modal.addEventListener("click",e=>{if(e.target===modal)window.closeVendorApplyBankPicker();});
+    search?.addEventListener("input",paint);
+    paint();
+
+    document.getElementById("vaBankPickerBtn")?.setAttribute("aria-expanded","true");
+    setTimeout(()=>search?.focus(),60);
+  };
+
+  window.closeVendorApplyBankPicker=function(){
+    document.getElementById("vendorApplyBankPickerModal")?.remove();
+    document.getElementById("vaBankPickerBtn")?.setAttribute("aria-expanded","false");
+  };
+
+  /* Ensure the application form's hidden select always contains the fallback
+     bank list even when the form was rendered through an older code path. */
+  function hydrateApplicationBankSelect(){
+    const select=document.getElementById("vaBankCode");
+    if(!select) return;
+
+    const existing=Array.from(select.options).filter(o=>o.value);
+    if(existing.length) return;
+
+    const banks=bankSource();
+    if(!banks.length) return;
+
+    select.innerHTML='<option value="">Select a bank</option>'+
+      banks.map(b=>`<option value="${esc(String(b.code))}">${esc(String(b.name))}</option>`).join("");
+  }
+
+  setInterval(hydrateApplicationBankSelect,1200);
+
+  /* ---------- Install banner ---------- */
+  function isStandalone(){
+    return window.matchMedia("(display-mode: standalone)").matches ||
+           window.navigator.standalone === true;
+  }
+
+  function addInstallBanner(){
+    if(isStandalone()) return null;
+    let banner=document.getElementById("levroInstallBanner");
+    if(banner) return banner;
+
+    banner=document.createElement("div");
+    banner.id="levroInstallBanner";
+    banner.innerHTML=`
+      <div class="levro-install-icon">
+        <img src="${typeof MEDRIS_LOGO!=="undefined"?MEDRIS_LOGO:""}" alt="Levromart">
+      </div>
+      <div class="levro-install-copy">
+        <strong>Install Levromart</strong>
+        <span id="levroInstallBannerText">Install Levromart for a faster app-like experience.</span>
+      </div>
+      <div class="levro-install-actions">
+        <button type="button" class="levro-install-btn" id="levroInstallBannerAction">Install</button>
+        <button type="button" class="levro-install-close" id="levroInstallBannerClose" aria-label="Dismiss">×</button>
+      </div>`;
+
+    const header=document.querySelector("header");
+    if(header?.parentNode) header.parentNode.insertBefore(banner,header.nextSibling);
+    else document.body.prepend(banner);
+
+    banner.querySelector("#levroInstallBannerClose")?.addEventListener("click",()=>{
+      banner.classList.remove("is-visible");
+    });
+
+    banner.querySelector("#levroInstallBannerAction")?.addEventListener("click",async()=>{
+      if(typeof deferredInstallPrompt!=="undefined" && deferredInstallPrompt){
+        try{
+          deferredInstallPrompt.prompt();
+          await deferredInstallPrompt.userChoice;
+        }catch(_){}
+        deferredInstallPrompt=null;
+        banner.classList.remove("is-visible");
+        return;
+      }
+
+      /* Some browsers do not expose beforeinstallprompt. Give the user an
+         actionable browser-specific instruction instead of a dead button. */
+      const t=document.getElementById("levroInstallBannerText");
+      const ua=navigator.userAgent||"";
+      if(/iPhone|iPad|iPod/i.test(ua)){
+        if(t)t.textContent="Tap Share → Add to Home Screen.";
+      }else if(/Android/i.test(ua)){
+        if(t)t.textContent="Tap your browser menu → Install app or Add to Home screen.";
+      }else{
+        if(t)t.textContent="Use your browser menu to install Levromart as an app.";
+      }
+    });
+
+    return banner;
+  }
+
+  function showInstallBanner(){
+    if(isStandalone()) return;
+    const banner=addInstallBanner();
+    if(!banner) return;
+
+    const hasNativePrompt=typeof deferredInstallPrompt!=="undefined" && !!deferredInstallPrompt;
+    if(hasNativePrompt){
+      banner.querySelector("#levroInstallBannerText").textContent="Install Levromart for a faster app-like experience.";
+    }
+    banner.classList.add("is-visible");
+  }
+
+  window.addEventListener("beforeinstallprompt",(e)=>{
+    /* A separate early handler may already own this event; use the shared
+       deferred prompt and surface the banner immediately. */
+    setTimeout(showInstallBanner,50);
+  });
+
+  window.addEventListener("appinstalled",()=>{
+    document.getElementById("levroInstallBanner")?.classList.remove("is-visible");
+  });
+
+  setTimeout(showInstallBanner,2200);
+})();
+</script>
+
