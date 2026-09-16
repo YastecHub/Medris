@@ -21756,7 +21756,7 @@ const SUPER_ADMIN_EMAIL = "kenniskalu18@gmail.com";
 // (reject, pause). This is a fat-finger guard, not real security - anyone
 // with admin access already passed real auth to get this far, and this
 // password is visible to anyone who reads the page source.
-const ADMIN_ACTION_PASSWORD = "medris2026";
+/* Dangerous admin actions are verified against the currently signed-in admin password. */
 // Shared modal, pluggable check -- promptAdminPassword below keeps the old
 // fat-finger behavior (checks the one shared team password) for routine
 // dangerous actions like deleting a vendor. promptPasswordConfirm on its
@@ -21797,7 +21797,15 @@ function promptPasswordConfirm(actionLabel, verify) {
   });
 }
 function promptAdminPassword(actionLabel) {
-  return promptPasswordConfirm(actionLabel, async (v) => v === ADMIN_ACTION_PASSWORD);
+  return promptPasswordConfirm(actionLabel, async (v) => {
+    const password = String(v || "");
+    if (!session?.user?.id || !profile?.email || !password) return false;
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: profile.email,
+      password
+    });
+    return !error && !!data?.user && String(data.user.id) === String(session.user.id);
+  });
 }
 
 // Immutable trail of the actions that actually affect a vendor's ability
@@ -21968,9 +21976,6 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
     `Permanently delete "${businessName}"? Their storefront and all listings are pulled immediately, they're demoted back to an ordinary buyer account, and this stops showing on your dashboard. Past orders and reviews stay on record for buyers.`,
     { title: "Delete vendor", okLabel: "Delete vendor", danger: true }
   ))) return;
-  const confirmation=prompt('Enter 11 digits to confirm vendor deletion:','');
-  if(confirmation===null)return;
-  if(!/^\d{11}$/.test(confirmation)){showToast('Enter exactly 11 digits.','error');return;}
   if(!(await promptAdminPassword('delete this vendor')))return;
   let mutationSucceeded = false;
 
@@ -34682,6 +34687,536 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   });
 
   setTimeout(showInstallBanner,2200);
+})();
+</script>
+
+
+
+<style id="levromart-vendor-application-final-polish-20260916">
+/* Vendor application: clean themed sector picker and compact actions. */
+.vendor-application-sector-wrap{position:relative;margin-top:.25rem}
+.vendor-application-sector-trigger{
+  width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;
+  gap:.75rem;padding:.75rem .9rem;border:1px solid var(--border);
+  background:var(--input-bg,var(--card));color:var(--text);border-radius:13px;
+  font:inherit;text-align:left;cursor:pointer;touch-action:manipulation;
+}
+.vendor-application-sector-trigger:hover{border-color:color-mix(in srgb,var(--primary) 45%,var(--border))}
+.vendor-application-sector-trigger span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vendor-application-sector-modal{
+  position:fixed;inset:0;z-index:16000;display:flex;align-items:center;justify-content:center;
+  padding:1rem;background:rgba(2,6,23,.58);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.vendor-application-sector-sheet{
+  width:min(520px,94vw);max-height:min(80vh,700px);overflow:hidden;
+  background:var(--card);color:var(--text);border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border));
+  border-radius:22px;box-shadow:0 24px 80px rgba(0,0,0,.34);padding:.9rem;
+  display:flex;flex-direction:column;
+}
+.vendor-application-sector-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.7rem}
+.vendor-application-sector-head strong{font-size:1.05rem}
+.vendor-application-sector-search{position:relative}
+.vendor-application-sector-search i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.vendor-application-sector-search input{
+  width:100%;box-sizing:border-box;padding:.75rem .9rem .75rem 2.65rem;
+  border:1px solid var(--border);border-radius:13px;background:var(--input-bg,var(--card));color:var(--text);
+}
+.vendor-application-sector-results{
+  overflow:auto;margin-top:.7rem;display:flex;flex-direction:column;gap:.2rem;
+  -webkit-overflow-scrolling:touch;
+}
+.vendor-application-sector-option{
+  width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:.7rem;
+  padding:.7rem .8rem;border:1px solid transparent;border-radius:12px;
+  background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;touch-action:manipulation;
+}
+.vendor-application-sector-option:hover,.vendor-application-sector-option.selected{
+  background:color-mix(in srgb,var(--primary) 10%,transparent);
+  border-color:color-mix(in srgb,var(--primary) 25%,var(--border));
+}
+.vendor-application-sector-option i{color:var(--primary)}
+.vendor-application-sector-other{
+  margin-top:.65rem;padding-top:.65rem;border-top:1px solid var(--border);
+}
+.vendor-application-actions{display:flex;gap:.65rem;margin-top:.8rem}
+.vendor-application-actions .btn{margin-top:0!important;flex:1 1 0}
+.vendor-application-cancel{background:transparent!important;color:var(--text)!important;border:1px solid var(--border)!important}
+@media(max-width:480px){
+  .vendor-application-sector-sheet{width:calc(100vw - 24px)}
+  .vendor-application-actions{position:sticky;bottom:0;background:var(--card);padding-top:.55rem}
+}
+</style>
+
+<script id="levromart-vendor-application-final-behavior-20260916">
+(function(){
+  "use strict";
+
+  const escLocal = (v) => {
+    try { return typeof esc === "function" ? esc(v) : String(v ?? ""); }
+    catch(_) { return String(v ?? ""); }
+  };
+
+  function applicationSectors(){
+    const list = Array.isArray(window.__vendorApplySectorOptions) && window.__vendorApplySectorOptions.length
+      ? window.__vendorApplySectorOptions
+      : (Array.isArray(sectors) ? sectors : []);
+    const seen = new Set();
+    return list.filter(s=>{
+      const id=String(s?.id||"").trim(), name=String(s?.name||"").trim();
+      if(!id||!name||seen.has(name.toLowerCase())) return false;
+      seen.add(name.toLowerCase());
+      return true;
+    }).sort((a,b)=>String(a.name).localeCompare(String(b.name),undefined,{sensitivity:"base"}));
+  }
+
+  function syncSectorLabel(){
+    const select=byId("vaSector"), label=byId("vaSectorPickerLabel");
+    if(!select||!label)return;
+    if(select.value==="__other__"){
+      label.textContent="Other";
+      return;
+    }
+    const opt=Array.from(select.options).find(o=>String(o.value)===String(select.value));
+    label.textContent=opt?.textContent?.trim() || "Select a sector";
+  }
+
+  window.closeVendorApplySectorPicker=function(){
+    byId("vendorApplySectorPickerModal")?.remove();
+    byId("vaSectorPickerBtn")?.setAttribute("aria-expanded","false");
+  };
+
+  window.openVendorApplySectorPicker=function(){
+    const select=byId("vaSector");
+    if(!select)return;
+    window.closeVendorApplySectorPicker();
+
+    const rows=applicationSectors();
+    const current=String(select.value||"");
+
+    const modal=document.createElement("div");
+    modal.id="vendorApplySectorPickerModal";
+    modal.className="vendor-application-sector-modal";
+    modal.addEventListener("click",e=>{if(e.target===modal)window.closeVendorApplySectorPicker();});
+    modal.innerHTML=`
+      <div class="vendor-application-sector-sheet" role="dialog" aria-modal="true" aria-label="Choose business sector">
+        <div class="vendor-application-sector-head">
+          <strong>Choose a business sector</strong>
+          <button type="button" class="icon-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="vendor-application-sector-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="vaSectorSearch" type="search" autocomplete="off" placeholder="Search sectors…" />
+        </div>
+        <div id="vaSectorPickerResults" class="vendor-application-sector-results"></div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector(".icon-btn")?.addEventListener("click",window.closeVendorApplySectorPicker);
+
+    const list=byId("vaSectorPickerResults");
+    const render=(q="")=>{
+      const query=String(q).trim().toLowerCase();
+      const filtered=query ? rows.filter(s=>String(s.name).toLowerCase().includes(query)) : rows;
+      const all=[...filtered,{id:"__other__",name:"Other"}];
+      list.innerHTML=all.length
+        ? all.map(s=>`<button type="button" class="vendor-application-sector-option ${String(s.id)===current?"selected":""}" data-sector="${escLocal(s.id)}"><span>${escLocal(s.name)}</span><i class="fa-solid ${String(s.id)===current?"fa-circle-check":"fa-chevron-right"}"></i></button>`).join("")
+        : `<div class="vendor-application-sector-empty">No sectors match your search.</div>`;
+      list.querySelectorAll("[data-sector]").forEach(btn=>{
+        btn.addEventListener("click",()=>{
+          select.value=btn.dataset.sector;
+          syncSectorLabel();
+          window.closeVendorApplySectorPicker();
+          if(btn.dataset.sector==="__other__"){
+            openVendorApplyOtherSector();
+          }
+        });
+      });
+    };
+    byId("vaSectorSearch")?.addEventListener("input",e=>render(e.target.value));
+    render("");
+    byId("vaSectorPickerBtn")?.setAttribute("aria-expanded","true");
+    setTimeout(()=>byId("vaSectorSearch")?.focus(),30);
+  };
+
+  function openVendorApplyOtherSector(){
+    const wrap=byId("vaOtherSectorWrap");
+    if(!wrap)return;
+    wrap.classList.remove("hidden");
+    setTimeout(()=>byId("vaOtherSector")?.focus(),30);
+  }
+
+  function closeVendorApplyOtherSector(){
+    byId("vaOtherSectorWrap")?.classList.add("hidden");
+  }
+
+  window.renderVendorApply = async function(){
+    if(!session) return '<div class="empty-state">Please log in to apply as a vendor.</div>';
+    if(profile?.role==="admin") return '<div class="empty-state">Admin accounts can\'t own a vendor store on Levromart.</div>';
+
+    const {data:existing,error:existingError}=await sb.from("vendors")
+      .select("id,verification_status")
+      .eq("user_id",session.user.id).is("deleted_at",null).maybeSingle();
+
+    if(existingError) console.warn("[Levromart] Vendor application existing-check:",existingError);
+    if(existing?.verification_status==="verified"){
+      navigate("vendorDashboard");
+      return '<p class="muted">Redirecting…</p>';
+    }
+
+    if(!Array.isArray(sectors)||!sectors.length){
+      const {data}=await sb.from("sectors").select("*").order("sort_order");
+      sectors=data||[];
+    }
+
+    const rows=Array.isArray(sectors)?sectors:[];
+    window.__vendorApplySectorOptions=rows;
+
+    const banks=(typeof NIGERIAN_BANKS!=="undefined"&&Array.isArray(NIGERIAN_BANKS))?NIGERIAN_BANKS:[];
+
+    return `<div class="card" style="max-width:480px;margin:0 auto;">
+      <h2>Apply as a vendor</h2>
+      <p class="muted">Tell us about your business. An admin will review this manually.</p>
+      <div id="vendorApplyError" class="error-text hidden"></div>
+
+      <label>Which sector is your business in? *</label>
+      <div class="vendor-application-sector-wrap">
+        <button type="button" id="vaSectorPickerBtn" class="vendor-application-sector-trigger" onclick="openVendorApplySectorPicker()" aria-haspopup="dialog" aria-expanded="false">
+          <span id="vaSectorPickerLabel">Select a sector</span><i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <select id="vaSector" class="hidden" aria-hidden="true" tabindex="-1">
+          <option value="">Select a sector</option>
+          ${rows.map(s=>`<option value="${escLocal(s.id)}">${escLocal(s.name)}</option>`).join("")}
+          <option value="__other__">Other</option>
+        </select>
+      </div>
+      <div id="vaOtherSectorWrap" class="vendor-application-sector-other hidden">
+        <label>Name of your sector</label>
+        <input id="vaOtherSector" type="text" autocomplete="organization-title" placeholder="Enter your business sector…" />
+      </div>
+
+      <label>Business name *</label>
+      <input id="vaBusinessName" autocomplete="organization" />
+
+      <label>Address <span class="muted">(leave blank if you're an online-only business)</span></label>
+      <input id="vaAddress" autocomplete="street-address" />
+
+      <label>City</label>
+      <input id="vaCity" value="Lagos" autocomplete="address-level2" />
+
+      <label>Phone *</label>
+      <input id="vaPhone" type="tel" autocomplete="tel" />
+
+      <label>WhatsApp number <span class="muted">(optional)</span></label>
+      <input id="vaWhatsapp" type="tel" autocomplete="tel" />
+
+      <div class="vendor-application-payout-section">
+        <div class="vendor-application-payout-heading">
+          <strong>Payout account</strong>
+          <span>Select your bank and enter your 10-digit account number. The account name is resolved automatically from the bank.</span>
+        </div>
+
+        <label>Bank *</label>
+        <button type="button" id="vaBankPickerBtn" class="bank-picker-trigger" onclick="openVendorApplyBankPicker()" aria-haspopup="dialog" aria-expanded="false">
+          <span id="vaBankPickerLabel">Select a bank</span><i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <select id="vaBankCode" class="hidden" aria-hidden="true" tabindex="-1">
+          <option value="">Select a bank</option>
+          ${banks.map(b=>`<option value="${escLocal(b.code)}">${escLocal(b.name)}</option>`).join("")}
+        </select>
+
+        <label>Account number *</label>
+        <input id="vaAccountNumber" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="10-digit account number" />
+      </div>
+
+      <label>CAC number <span class="muted">(optional)</span></label>
+      <input id="vaCac" autocomplete="off" />
+
+      <label>CAC document <span class="muted">(optional)</span></label>
+      <input id="vaDoc" type="file" accept="application/pdf,image/*" />
+
+      <label>About your business <span class="muted">(optional)</span></label>
+      <textarea id="vaBio" rows="3" placeholder="Tell buyers briefly what your business offers."></textarea>
+
+      <div class="vendor-application-actions">
+        <button type="button" class="btn" id="vendorApplySubmitBtn" onclick="submitVendorApply()"><i class="fa-solid fa-paper-plane"></i> Submit application</button>
+        <button type="button" class="btn vendor-application-cancel" onclick="cancelVendorApply()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      </div>
+    </div>`;
+  };
+
+  let vendorApplyBusy=false;
+
+  window.cancelVendorApply=function(){
+    if(vendorApplyBusy)return;
+    window.closeVendorApplySectorPicker();
+    window.closeVendorApplyBankPicker();
+    closeVendorApplyOtherSector();
+    navigate("home");
+  };
+
+  window.submitVendorApply=async function(){
+    if(vendorApplyBusy)return;
+    const errorEl=byId("vendorApplyError"),button=byId("vendorApplySubmitBtn");
+    if(!errorEl||!button)return;
+    errorEl.classList.add("hidden");errorEl.textContent="";
+
+    const business_name=String(byId("vaBusinessName")?.value||"").trim();
+    const phone=String(byId("vaPhone")?.value||"").trim();
+    const sectorSelection=String(byId("vaSector")?.value||"").trim();
+    const customSector=String(byId("vaOtherSector")?.value||"").trim();
+    const bankCode=String(byId("vaBankCode")?.value||"").trim();
+    const accountNumber=String(byId("vaAccountNumber")?.value||"").trim();
+
+    if(!sectorSelection){errorEl.textContent="Please select your business sector.";errorEl.classList.remove("hidden");return;}
+    if(sectorSelection==="__other__"&&!customSector){errorEl.textContent="Please enter your business sector.";errorEl.classList.remove("hidden");openVendorApplyOtherSector();return;}
+    if(!business_name){errorEl.textContent="Please enter your business name.";errorEl.classList.remove("hidden");byId("vaBusinessName")?.focus();return;}
+    if(!phone){errorEl.textContent="Please enter your phone number.";errorEl.classList.remove("hidden");byId("vaPhone")?.focus();return;}
+    if(!bankCode){errorEl.textContent="Please select your payout bank.";errorEl.classList.remove("hidden");byId("vaBankPickerBtn")?.focus();return;}
+    if(!/^\d{10}$/.test(accountNumber)){errorEl.textContent="Please enter a valid 10-digit account number.";errorEl.classList.remove("hidden");byId("vaAccountNumber")?.focus();return;}
+
+    vendorApplyBusy=true;button.disabled=true;button.classList.add("is-busy");
+    const original=button.innerHTML;
+    let vendorId=null;
+    let createdNew=false;
+
+    try{
+      let sectorId=sectorSelection;
+      if(sectorSelection==="__other__"){
+        button.innerHTML='<i class="fa-solid fa-layer-group"></i> Saving sector…';
+        const {data:newSector,error:sectorError}=await sb.rpc("get_or_create_custom_sector",{p_name:customSector});
+        if(sectorError)throw new Error(sectorError.message);
+        if(!newSector)throw new Error("We couldn't save that sector. Please try again.");
+        sectorId=newSector;
+      }
+
+      const address=String(byId("vaAddress")?.value||"").trim();
+      const city=String(byId("vaCity")?.value||"").trim();
+      const whatsapp=String(byId("vaWhatsapp")?.value||"").trim();
+      const cac=String(byId("vaCac")?.value||"").trim();
+      const bio=String(byId("vaBio")?.value||"").trim();
+
+      let verificationDocs=[];
+      const file=byId("vaDoc")?.files?.[0];
+      if(file){
+        const ext=(file.name.split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase()||"bin";
+        const path=`${session.user.id}/${Date.now()}.${ext}`;
+        button.innerHTML='<i class="fa-solid fa-upload"></i> Uploading…';
+        const {error:uploadError}=await sb.storage.from("vendor-docs").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});
+        if(uploadError)throw new Error(`Document upload failed: ${uploadError.message}`);
+        verificationDocs=[path];
+      }
+
+      button.innerHTML='<i class="fa-solid fa-paper-plane"></i> Submitting…';
+
+      const {data:existing}=await sb.from("vendors")
+        .select("id,verification_status").eq("user_id",session.user.id).is("deleted_at",null).maybeSingle();
+
+      const payload={
+        sector_id:sectorId,business_name,address:address||null,city:city||null,phone,
+        whatsapp_number:whatsapp||null,cac_number:cac||null,bio:bio||null,
+        verification_docs:verificationDocs,bank_code:bankCode,bank_name:null,
+        account_name:null,account_number:accountNumber,is_active:false
+      };
+
+      if(existing?.id){
+        vendorId=existing.id;
+        if(existing.verification_status==="verified")throw new Error("Your vendor account is already active.");
+        const {error:updateError}=await sb.from("vendors").update({...payload,verification_status:"pending"}).eq("id",vendorId).eq("user_id",session.user.id);
+        if(updateError)throw new Error(updateError.message);
+      }else{
+        const {data:createdVendor,error:insertError}=await sb.from("vendors").insert({user_id:session.user.id,...payload,verification_status:"pending"}).select("id").single();
+        if(insertError)throw new Error(insertError.message);
+        vendorId=createdVendor?.id;createdNew=true;
+      }
+
+      button.innerHTML='<i class="fa-solid fa-building-columns"></i> Activating payout…';
+      const payoutRes=await fetch("/api/vendor-payments",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({action:"create-subaccount",accessToken:session.access_token,bankCode,accountNumber})
+      });
+      const payoutJson=await payoutRes.json().catch(()=>({}));
+      if(!payoutRes.ok||!payoutJson.subaccount_code){
+        throw new Error(payoutJson.error||"We couldn't activate the payout account. Please check the bank and account number.");
+      }
+
+      const {error:finalPayoutSaveError}=await sb.from("vendors").update({
+        bank_code:bankCode,
+        bank_name:payoutJson.bank_name||null,
+        account_name:payoutJson.account_name||null,
+        account_number:accountNumber,
+        paystack_subaccount_code:payoutJson.subaccount_code
+      }).eq("id",vendorId).eq("user_id",session.user.id);
+      if(finalPayoutSaveError)throw new Error("The payout account was created but could not be linked to your application.");
+
+      showToast("Application submitted successfully. Your payout account is already set up.", "success");
+      await refreshAuthState();
+      navigate("home");
+    }catch(err){
+      console.error("[Levromart] Vendor application failed:",err);
+      if(createdNew&&vendorId){
+        try{await sb.from("vendors").delete().eq("id",vendorId).eq("user_id",session.user.id);}catch(_){}
+      }
+      errorEl.textContent=err?.message||"We couldn't submit your application. Please try again.";
+      errorEl.classList.remove("hidden");
+      button.innerHTML=original;
+    }finally{
+      vendorApplyBusy=false;button.disabled=false;button.classList.remove("is-busy");
+      if(button.innerHTML.includes("Saving sector")||button.innerHTML.includes("Uploading")||button.innerHTML.includes("Submitting")||button.innerHTML.includes("Activating payout"))button.innerHTML=original;
+    }
+  };
+
+  /* Make the sector picker react if a caller changes the hidden select. */
+  document.addEventListener("change",e=>{
+    if(e.target?.id==="vaSector"){
+      syncSectorLabel();
+      if(e.target.value==="__other__")openVendorApplyOtherSector();else closeVendorApplyOtherSector();
+    }
+  },true);
+})();
+</script>
+
+<style id="levromart-admin-delete-password-only-20260916">
+/* The deletion flow no longer asks for the old 11-digit phone confirmation. */
+</style>
+
+<script id="levromart-admin-delete-password-only-js-20260916">
+(function(){
+  "use strict";
+
+  /* Replace the shared hard-coded admin password check with a real
+     verification against the currently signed-in admin account. */
+  window.promptAdminPassword=async function(actionLabel){
+    if(!session?.user?.id||!profile?.email){
+      showToast("Your admin session has expired. Please sign in again.","error");
+      return false;
+    }
+    return await promptPasswordConfirm(actionLabel,async(value)=>{
+      const password=String(value||"");
+      if(!password)return false;
+      const {data,error}=await sb.auth.signInWithPassword({email:profile.email,password});
+      if(error||!data?.user)return false;
+      return String(data.user.id)===String(session.user.id);
+    });
+  };
+
+  const originalDelete=window.adminDeleteVendor;
+  window.adminDeleteVendor=async function(vendorId,filterStatus,businessName){
+    if(adminVendorActionBusy.has(vendorId))return;
+    if(profile?.email!==SUPER_ADMIN_EMAIL)return;
+    adminVendorActionBusy.add(vendorId);
+    try{
+      if(!businessName){
+        const {data:target}=await sb.from("vendors").select("business_name").eq("id",vendorId).maybeSingle();
+        businessName=target?.business_name||"this vendor";
+      }
+      if(!(await showConfirmDialog(
+        `Permanently delete "${businessName}"? Their storefront and all listings are pulled immediately, they're demoted back to an ordinary buyer account, and past orders and reviews stay on record.`,
+        {title:"Delete vendor",okLabel:"Delete vendor",danger:true}
+      )))return;
+
+      if(!(await window.promptAdminPassword("delete this vendor")))return;
+
+      const {data:{session:liveSession}={}}=await sb.auth.getSession();
+      if(!liveSession?.user?.id){showToast("Your admin session has expired. Please sign in again and retry.","error");return;}
+
+      const {data,error}=await sb.rpc("admin_delete_vendor",{p_vendor_id:vendorId});
+      if(error){showToast(error.message||"Could not delete this vendor.","error");return;}
+      if(!data?.deleted){showToast("The delete request did not complete. Please check this vendor before retrying.","error");return;}
+
+      invalidateMarketplaceState();
+      showToast("Vendor deleted and demoted to a customer.","success");
+      await navigate("adminPanel",{status:filterStatus||"pending"});
+    }catch(err){
+      console.error("[Levromart] Admin vendor deletion failed:",err);
+      showToast(err?.message||"Could not delete this vendor.","error");
+    }finally{
+      adminVendorActionBusy.delete(vendorId);
+    }
+  };
+})();
+</script>
+
+<script id="levromart-admin-approval-auto-payout-20260916">
+(function(){
+  "use strict";
+
+  const originalSetVendorStatus=window.setVendorStatus;
+
+  window.setVendorStatus=async function(id,status,filterStatus,businessName){
+    if(status!=="verified")return originalSetVendorStatus.apply(this,arguments);
+    if(adminVendorActionBusy.has(id))return;
+    if(!session?.user?.id||profile?.role!=="admin"){
+      showToast("Admin access is required.","error");return;
+    }
+
+    const {data:target,error:targetError}=await sb.from("vendors")
+      .select("id,user_id,business_name,verification_status,bank_code,account_number,paystack_subaccount_code")
+      .eq("id",id).is("deleted_at",null).maybeSingle();
+
+    if(targetError||!target){
+      showToast(targetError?.message||"Vendor application not found.","error");return;
+    }
+    businessName=target.business_name||businessName||"this business";
+
+    if(!(await showConfirmDialog(
+      `Approve "${businessName}" as a vendor? Their payout account will be activated first, then the storefront will go live.`,
+      {title:"Approve vendor",okLabel:"Approve"}
+    )))return;
+
+    adminVendorActionBusy.add(id);
+    try{
+      const {data:{session:liveSession}={}}=await sb.auth.getSession();
+      if(!liveSession?.user?.id){showToast("Your admin session has expired. Please sign in again.","error");return;}
+
+      /* Payout is provisioned BEFORE verification. If Paystack cannot verify
+         the bank account, the vendor is not approved into a half-configured
+         payout state. */
+      if(!target.paystack_subaccount_code){
+        if(!target.bank_code||!target.account_number){
+          showToast("This vendor has no complete bank and account number. Add the payout details before approving.","error");
+          return;
+        }
+        const payoutRes=await fetch("/api/vendor-payout-setup",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({accessToken:liveSession.access_token,vendorId:id})
+        });
+        const payoutJson=await payoutRes.json().catch(()=>({}));
+        if(!payoutRes.ok||!payoutJson.subaccount_code){
+          showToast(payoutJson.error||"Payout setup failed. The vendor was not approved.","error");
+          return;
+        }
+      }
+
+      const {data,error}=await sb.rpc("admin_set_vendor_status",{p_vendor_id:id,p_status:"verified"});
+      if(error){showToast(`Could not approve ${businessName}: ${error.message}`,"error");return;}
+      if(!data?.success){showToast("Approval returned an unexpected result. Please check the vendor status.","error");return;}
+
+      try{await logAdminAction("approve_vendor","vendor",id,businessName);}catch(_){}
+      showToast(`${businessName} approved successfully. Payout is active.`, "success");
+      await navigate("adminPanel",{status:filterStatus||"pending"},{replace:true});
+    }catch(err){
+      console.error("[Levromart] Vendor approval failed:",err);
+      showToast(err?.message||"Could not approve this vendor.","error");
+    }finally{
+      adminVendorActionBusy.delete(id);
+    }
+  };
+})();
+</script>
+
+<script id="levromart-google-role-prompt-final-20260916">
+(function(){
+  "use strict";
+  /* The database trigger now marks new OAuth accounts as role_selected=false.
+     Keep this fallback for a Google callback that lands before the profile
+     row has fully hydrated. */
+  const oldSignInWithGoogle=window.signInWithGoogle;
+  if(typeof oldSignInWithGoogle==="function"){
+    window.signInWithGoogle=async function(){
+      try{sessionStorage.setItem("levromart-google-role-selection-pending","1");}catch(_){}
+      return oldSignInWithGoogle.apply(this,arguments);
+    };
+  }
 })();
 </script>
 
