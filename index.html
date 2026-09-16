@@ -10211,9 +10211,11 @@ function updateAuthUI() {
       links.push({ label: "Wishlist", action: "navigate('wishlist')" });
     }
     if (profile.role === "admin") {
-      links.push({ label: "Admin panel", action: "navigate('adminPanel')" });
-      links.push({label:`Monthly Listing <span class="badge danger monthly-profile-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount||0)}</span>`,action:"navigate('adminMonthlyListings')"});
-      links.push({ label: "Manage admins", action: "navigate('adminUsers')" });
+      if (isSuperAdmin()) {
+        links.push({ label: "Admin panel", action: "navigate('adminPanel')" });
+        links.push({label:`Monthly Listing <span class="badge danger monthly-profile-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount||0)}</span>`,action:"navigate('adminMonthlyListings')"});
+        links.push({ label: "Manage admins", action: "navigate('adminUsers')" });
+      }
       links.push({ label: "Vendors &amp; transactions", action: "navigate('adminFinance')" });
       links.push({ label: `Disputes <span class="badge danger profile-disputes-badge ${Number(window.__adminDisputeCount || 0) > 0 ? "" : "hidden"}">${Number(window.__adminDisputeCount || 0) > 9 ? "9+" : Number(window.__adminDisputeCount || 0)}</span>`, action: "navigate('adminDisputes')", profileKey: "disputes" });
       links.push({ label: `Support requests`, action: "navigate('adminSupportRequests')" });
@@ -11312,6 +11314,14 @@ async function navigate(view, params = {}, pushHistory = true) {
       }
     } catch (_) {}
   }
+  // Sensitive admin areas are super-admin only. This is a route-level guard
+  // as well as a hidden-tab rule, so a regular admin cannot reach them by a
+  // direct URL/deep link or a manually constructed navigate() call.
+  if (profile?.role === "admin" && !isSuperAdmin() && SUPER_ADMIN_ONLY_VIEWS.has(view)) {
+    view = "adminDisputes";
+    params = {};
+  }
+
   if (view !== "settings" && previousView !== "settings") lastNonSettingsView = previousView || "home";
   // Closing a Realtime channel is a network operation. Never make a normal
   // navigation tap wait for it; queue the close in the background and only
@@ -11706,7 +11716,7 @@ function setHorizontalBrowseEnabled(enabled){
   document.body.classList.toggle("levro-static-rails", !horizontalBrowseEnabled);
   clearAutoScrollTimers();
   if (horizontalBrowseEnabled) {
-    document.querySelectorAll("#app .cat-row, #app .hscroll, #app .storefront-product-strip").forEach((el) => setupAutoScroll(el));
+    document.querySelectorAll("#app .cat-row, #app .hscroll, #app .storefront-product-strip, #app .vendors-map-vendor-rail").forEach((el) => setupAutoScroll(el));
   }
   hydrateSettingsPage();
 }
@@ -12472,7 +12482,8 @@ async function renderHome() {
       rows.push(...(data || []));
       if (!data || data.length < pageSize) break;
     }
-    return { data: [...new Map(rows.map(v => [String(v.id), v])).values()] };
+    const uniqueRows = [...new Map(rows.map(v => [String(v.id), v])).values()];
+    return { data: await attachVendorFollowerCounts(uniqueRows) };
   };
   const loadBrowseCatalogue = async () => {
     const rows = [];
@@ -15913,6 +15924,22 @@ function renderVendorsDirectory() {
   return html;
 }
 
+async function attachVendorFollowerCounts(vendors) {
+  const rows = Array.isArray(vendors) ? vendors : [];
+  if (!rows.length || typeof sb === "undefined") return rows;
+  try {
+    const ids = [...new Set(rows.map(v => v?.id).filter(Boolean))];
+    if (!ids.length) return rows;
+    const { data, error } = await sb.rpc("get_vendor_follower_counts", { p_vendor_ids: ids });
+    if (error) throw error;
+    const counts = new Map((data || []).map(r => [String(r.vendor_id), Number(r.follower_count || 0)]));
+    return rows.map(v => ({ ...v, follower_count: counts.get(String(v.id)) ?? 0 }));
+  } catch (err) {
+    console.warn("[Levromart] Could not hydrate vendor follower counts:", err);
+    return rows.map(v => ({ ...v, follower_count: Number(v?.follower_count || 0) }));
+  }
+}
+
 async function loadVendorsDirectory() {
   const [{ data: vendors }, { data: products }, { data: vendorPackages }, { data: sectorsData }] = await Promise.all([
     sb.from("vendors").select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, lat, lng").eq("verification_status", "verified").eq("is_active", true).order("business_name"),
@@ -15940,13 +15967,13 @@ async function loadVendorsDirectory() {
   // Lets the vendor search box double as a product search - typing "paracetamol"
   // or "iron" surfaces any vendor who lists a matching product, not just a
   // vendor whose own business name happens to match.
-  window.__allVendors = (vendors || []).map((v) => ({
+  window.__allVendors = await attachVendorFollowerCounts((vendors || []).map((v) => ({
     ...v,
     categories: [...(catsByVendor[v.id] || [])],
     searchText: [v.business_name, ...(productTextByVendor[v.id] || [])].filter(Boolean).join(" ").toLowerCase(),
     canBuy: !!capabilitiesByVendor[v.id]?.canBuy,
     canRent: !!capabilitiesByVendor[v.id]?.canRent,
-  }));
+  })));
 
   const sectorSel = byId("vendorSectorFilter");
   if (sectorSel) {
@@ -21220,6 +21247,20 @@ async function fileDispute(orderId) {
 }
 
 // ---------- ADMIN ----------
+function isSuperAdmin() {
+  return !!session?.user?.id && profile?.role === "admin" && profile?.is_super_admin === true;
+}
+
+const SUPER_ADMIN_ONLY_VIEWS = new Set([
+  "adminPeople",
+  "adminPanel",
+  "adminMonthlyListings",
+  "adminPasswordResets",
+  "adminLog",
+  "adminAuthLogs",
+  "adminUsers"
+]);
+
 function adminNavHtml(active) {
   const items = [
     ["adminPeople", "fa-users", "People"],
@@ -21233,7 +21274,7 @@ function adminNavHtml(active) {
     ["adminAuthLogs", "fa-right-to-bracket", "Login logs"],
     ["adminUsers", "fa-user-shield", "Admins"],
     ["adminCarousel", "fa-images", "Carousel"],
-  ];
+  ].filter(([view]) => isSuperAdmin() || !SUPER_ADMIN_ONLY_VIEWS.has(view));
   return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : view === "adminPasswordResets" && Number(window.__passwordResetPendingCount||0) > 0 ? `<span class="dash-tab-dot password-reset-admin-badge">${Number(window.__passwordResetPendingCount||0) > 9 ? "9+" : Number(window.__passwordResetPendingCount||0)}</span>` : ""}</button>`).join("")}</div>`;
 }
 
@@ -21248,7 +21289,7 @@ async function refreshMonthlyPendingCount(){
 function monthlySubmissionKindLabel(kind,listing){return kind==="product"?(listing?.is_service?"Service":"Product"):"Package"}
 function monthlySubmissionListingTable(kind){return kind==="product"?"products":"vendor_packages"}
 async function renderAdminMonthlyListings(){
-  if(!session||profile?.role!=="admin")return '<div class="empty-state">Access denied.</div>';
+  if(!session||!isSuperAdmin())return '<div class="empty-state">Access denied.</div>';
   const {data:subs,error}=await sb.from("monthly_listing_submissions").select("id,kind,listing_id,vendor_id,user_id,payer_name,receipt_path,status,submitted_at,reviewed_at,review_note").order("submitted_at",{ascending:false}).limit(100);
   let html=`<h2><i class="fa-solid fa-receipt"></i> Monthly listings</h2>${adminNavHtml("adminMonthlyListings")}`;
   if(error)return html+errorStateHtml(error);
@@ -21277,7 +21318,7 @@ async function fetchManualPasswordResetRequests() {
 }
 
 async function refreshManualPasswordResetBadge() {
-  if (!session || profile?.role !== "admin") return 0;
+  if (!session || !isSuperAdmin()) return 0;
   try {
     const rows = await fetchManualPasswordResetRequests();
     const pending = rows.filter(r => r.status === "pending").length;
@@ -21306,7 +21347,7 @@ async function refreshManualPasswordResetBadge() {
 }
 
 async function renderAdminPasswordResets() {
-  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
   let rows = [];
   try {
     rows = await fetchManualPasswordResetRequests();
@@ -21359,7 +21400,7 @@ async function renderAdminPasswordResets() {
 
   clearInterval(window.__passwordResetAdminTimer);
   window.__passwordResetAdminTimer = setInterval(async () => {
-    if (profile?.role !== "admin" || !document.querySelector('.admin-dash-tabs [data-admin-view="adminPasswordResets"]')) {
+    if (!isSuperAdmin() || !document.querySelector('.admin-dash-tabs [data-admin-view="adminPasswordResets"]')) {
       clearInterval(window.__passwordResetAdminTimer);
       return;
     }
@@ -21468,7 +21509,7 @@ async function saveSupportRequest(id) {
 }
 
 async function renderAdminPanel(status) {
-  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
   status = ["all", "pending", "verified", "rejected"].includes(status) ? status : "pending";
   let q = sb.from("vendors")
     .select("id, business_name, address, city, phone, whatsapp_number, cac_number, bio, verification_docs, verification_status, avg_rating, review_count, created_at, applicant:users(name, email)")
@@ -21820,7 +21861,7 @@ async function adminToggleVendorActive(vendorId, currentlyActive, businessName) 
 // below, which is only for promoting/demoting admin access. This is just
 // for seeing who's actually on the platform and how many of each kind.
 async function renderAdminPeople() {
-  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
   const result = window.__adminPeopleLoadedData;
   if (result) return renderAdminPeopleFromData(result.people || [], result.appeals || []);
 
@@ -22050,7 +22091,7 @@ async function renderVendorSuggestionsInbox() {
 }
 
 async function renderAdminUsers() {
-  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
   const { data: admins } = await sb.from("users").select("id, name, email").eq("role", "admin").order("name");
 
   let html = `<h2><i class='fa-solid fa-user'></i> Manage admins</h2>`;
@@ -22109,7 +22150,7 @@ function adminAuthRangeStart(range) {
   return null;
 }
 async function renderAdminAuthLogs() {
-  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
   const start = adminAuthRangeStart(adminAuthLogRange);
   let q = sb.from("auth_activity_logs").select("id,user_id,event_type,occurred_at,user_agent,ip,source").order("occurred_at", { ascending:false }).limit(2000);
   if (start) q = q.gte("occurred_at", start.toISOString());
@@ -22135,7 +22176,7 @@ async function renderAdminAuthLogs() {
 }
 
 async function renderAdminLog() {
-  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
   const { data: log } = await sb.from("admin_actions").select("*").order("created_at", { ascending: false }).limit(100);
 
   const ACTION_LABEL = {
@@ -27695,6 +27736,9 @@ window.renderVendorMapRail = function(){
 .vendors-map-vendor-chip-copy strong{font-size:.78rem !important;}
 .vendors-map-vendor-chip-copy small{font-size:.63rem !important;}
 .vendors-map-vendor-chip-action{border:1px solid color-mix(in srgb,var(--primary) 38%,var(--border)) !important;border-radius:999px !important;padding:.25rem .38rem !important;background:color-mix(in srgb,var(--primary) 8%,transparent) !important;white-space:nowrap !important;font-size:.61rem !important;}
+.vendors-map-vendor-chip{cursor:pointer !important;scroll-snap-align:start !important;}
+.vendors-map-vendor-chip:focus-visible{outline:2px solid var(--primary) !important;outline-offset:2px !important;}
+.vendors-map-vendor-chip-action{display:inline-flex !important;align-items:center !important;gap:.2rem !important;}
 
 /* CHAT — fixed WhatsApp-style header + obvious drag feedback */
 .chat-page-wrap .chat-page-header{position:sticky !important;top:0 !important;z-index:80 !important;flex:0 0 auto !important;background:var(--bg) !important;}
@@ -27729,7 +27773,8 @@ window.renderVendorMapRail = function(){
       : avatarFallbackHtml(name, '3.1rem', 'vendor-directory-logo', name);
     const sectorName = (Array.isArray(sectors) ? sectors : []).find(sec => String(sec.id) === String(v?.sector_id))?.name || "";
     const knownLine = `<p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${esc(sectorName || "Sector not listed")}</p>`;
-    return `<div class="vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || '')}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || '')}'});}">
+    const followerCount=Number(v?.follower_count||0);
+    return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${esc(v?.id || '')}" onclick="navigate('storefront',{vendorId:'${esc(v?.id || '')}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || '')}'});}">
       ${avatarHtml}
       <div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
         <strong class="vendor-directory-name">${esc(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
@@ -27737,7 +27782,7 @@ window.renderVendorMapRail = function(){
         ${knownLine}
         <div class="vendor-card-footer">
           <span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} (${Number(v?.review_count ?? 0)})</span>
-          <span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> ${Number(v?.follower_count || 0).toLocaleString()} follower${Number(v?.follower_count || 0) === 1 ? "" : "s"}</span>
+          <span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> <span class="vendor-follower-count">${followerCount.toLocaleString()}</span> follower${followerCount === 1 ? "" : "s"}</span>
           <span class="badge" style="margin-left:auto;"><i class="fa-solid fa-store"></i> View storefront</span>
         </div>
       </div>
@@ -27751,20 +27796,22 @@ window.renderVendorMapRail = function(){
   function vendorRailHtmlV2(){
     const all=Array.isArray(window.__filteredVendors)?window.__filteredVendors:[];
     if(!all.length) return '<div class="vendors-map-vendor-rail-head"><strong>Vendors</strong></div><div class="muted" style="padding:.2rem 0 .7rem;font-size:.8rem;">No vendors match these filters.</div>';
-    const chips=all.slice(0,6).map(v=>{
+    const chips=all.map(v=>{
       const avatar=v?.logo_url
-        ? `<img class="vendor-directory-logo" src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(v.business_name||'Vendor')}','2.9rem','vendor-directory-logo','${esc(v.business_name||'Vendor')}')))" />`
+        ? `<img class="vendor-directory-logo" src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(v.business_name||'Vendor')}','2.9rem','vendor-directory-logo','${esc(v.business_name||'Vendor')}')))">`
         : avatarFallbackHtml(v.business_name || 'Vendor', '2.9rem', 'vendor-directory-logo', v.business_name || 'Vendor');
       const dist=(buyerLocation&&v.lat!=null&&v.lng!=null)?formatDistanceKm(haversineKm(buyerLocation.lat,buyerLocation.lng,v.lat,v.lng)):'';
-      return `<div class="vendors-map-vendor-chip" role="button" tabindex="0" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v.id)}'});}">
+      const count=Number(v?.follower_count||0);
+      return `<div class="vendors-map-vendor-chip" data-vendor-id="${esc(v.id)}" role="button" tabindex="0" aria-label="Show ${esc(v.business_name||'Vendor')} on map" onclick="focusVendorOnMap('${esc(v.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();focusVendorOnMap('${esc(v.id)}');}">
         ${avatar}
         <span class="vendors-map-vendor-chip-copy"><strong>${esc(v.business_name||'Vendor')}</strong><small>${esc(v.city||'Online')}${dist?' · '+esc(dist):''}</small></span>
-        <button type="button" class="vendors-map-vendor-chip-action" onclick="event.preventDefault();event.stopPropagation();focusVendorOnMap('${esc(v.id)}')">View</button>
+        <span class="vendors-map-vendor-chip-action"><i class="fa-solid fa-location-dot"></i> View on map</span>
       </div>`;
     }).join('');
     return `<div class="vendors-map-vendor-rail-head"><strong>Vendors</strong>${all.length>6?`<button type="button" onclick="switchVendorsView('list')">See all →</button>`:''}</div><div class="vendors-map-vendor-rail">${chips}</div>`;
   }
-  if(typeof window.renderVendorMapRail==='function') window.renderVendorMapRail=function(){const wrap=byId('vendorsMapVendorRail');if(wrap)wrap.innerHTML=vendorRailHtmlV2();};
+
+  if(typeof window.renderVendorMapRail==='function') window.renderVendorMapRail=function(){const wrap=byId('vendorsMapVendorRail');if(wrap){wrap.innerHTML=vendorRailHtmlV2();const rail=wrap.querySelector('.vendors-map-vendor-rail');if(rail&&horizontalBrowseEnabled)setupAutoScroll(rail);hydrateFollowerCounts();}};
 
   /* ---------------------------------------------------------------
      Road route trace from buyer to vendor, accent-coloured and animated.
@@ -32122,14 +32169,12 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     if(typeof sb === "undefined")return;
     const ids=[...new Set([...document.querySelectorAll("[data-vendor-id]")].map(el=>el.dataset.vendorId).filter(Boolean))];
     if(!ids.length)return;
-    await Promise.all(ids.map(async id=>{
-      try{
-        const {data,error}=await sb.rpc("get_vendor_follow_state",{p_vendor_id:id});
-        if(error)return;
-        const count=Number(data?.[0]?.follower_count||0).toLocaleString();
-        document.querySelectorAll(`[data-vendor-id="${CSS.escape(id)}"] .vendor-follower-count`).forEach(el=>el.textContent=count);
-      }catch(_){}
-    }));
+    try{
+      const {data,error}=await sb.rpc("get_vendor_follower_counts",{p_vendor_ids:ids});
+      if(error)throw error;
+      const counts=new Map((data||[]).map(r=>[String(r.vendor_id),Number(r.follower_count||0).toLocaleString()]));
+      ids.forEach(id=>document.querySelectorAll(`[data-vendor-id="${CSS.escape(id)}"] .vendor-follower-count`).forEach(el=>{el.textContent=counts.get(String(id))||"0";}));
+    }catch(err){ console.warn("[Levromart] Follower count refresh failed:",err); }
   }
 
   function installVendorCardRenderer(){
@@ -32709,7 +32754,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
         sb.from('disputes').select('id',{count:'exact',head:true}).not('status','in','(resolved,closed)'),
         sb.from('suggestions').select('id',{count:'exact',head:true}).eq('status','new')
       ]);
-      const counts={adminPanel:Number(vendorsQ.count||0),adminSupportRequests:Number(supportQ.count||0),adminDisputes:Number(disputesQ.count||0),adminFeedback:Number(suggestionsQ.count||0),adminPasswordResets:Number(window.__passwordResetPendingCount||0)};
+      const counts={adminPanel:isSuperAdmin()?Number(vendorsQ.count||0):0,adminSupportRequests:Number(supportQ.count||0),adminDisputes:Number(disputesQ.count||0),adminFeedback:Number(suggestionsQ.count||0),adminPasswordResets:isSuperAdmin()?Number(window.__passwordResetPendingCount||0):0};
       window.__adminDisputeCount = counts.adminDisputes;
       const profileDisputeBadge = document.querySelector('#profilePanel [data-profile-key="disputes"] .profile-disputes-badge');
       if(profileDisputeBadge){
