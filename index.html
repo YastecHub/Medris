@@ -11378,7 +11378,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
       case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
       case "orderDetail": html = await renderOrderDetail(params.orderId, params.source); break;
-      case "leaveReview": html = await renderLeaveReview(params.orderId); break;
+      case "leaveReview": html = await renderLeaveReview(params.orderId, !!params.reviewAfterPayment); break;
       case "adminPanel": html = await renderAdminPanel(params.status); break;
       case "adminCarousel": html = await renderAdminCarousel(); break;
       case "adminLinkLibrary": html = renderAdminLinkLibrary(); break;
@@ -11477,20 +11477,6 @@ async function navigate(view, params = {}, pushHistory = true) {
       lastRenderError = null;
     } else if (view === "home" || view === "storefront") {
       html = app?.innerHTML?.trim() ? app.innerHTML : '<div class="empty-state">Please try again.</div>';
-    } else if (["vendorOrders", "buyerOrders", "orderDetail"].includes(view)) {
-      // Order screens are live transaction surfaces. A transient realtime/RLS
-      // refresh failure must never replace a usable order page with the bare
-      // navigation shell. Keep the last real order screen visible; the next
-      // realtime event/focus refresh can reconcile it in the background.
-      const existingOrderHtml = app?.innerHTML?.trim() || "";
-      const isBareOrderShell = /class="instant-page-shell[^>]*>|class="page-loading-shell[^>]*>|This page is temporarily unavailable/i.test(existingOrderHtml);
-      if (existingOrderHtml.length > 300 && !isBareOrderShell) {
-        html = existingOrderHtml;
-        lastRenderError = null;
-      } else {
-        const cachedOrderHtml = getPersistedOrderRouteHtml(view, params);
-        html = cachedOrderHtml || navigationShellHtml(view) || '<div class="empty-state">Orders are temporarily unavailable. Please try again.</div>';
-      }
     } else if (view === "vendorApply") {
       html = `<div class="card" style="max-width:480px;margin:0 auto;text-align:center;">
         <i class="fa-solid fa-store" style="font-size:2rem;color:var(--primary);margin-bottom:.65rem;"></i>
@@ -20367,7 +20353,10 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       ${displayPayments.map((p, i) => {
         const paymentName = p.payment_type === "sale_price" ? "Sale price" : p.payment_type === "rental_fee" ? "Rental fee" : p.payment_type === "deposit" ? "Refundable deposit" : p.payment_type === "delivery_deposit_20" ? `${deliveryDepositPercent}% delivery deposit` : String(p.payment_type || "Payment").replace(/_/g, " ");
         const methodName = p.method === "cash" ? "Cash" : p.method === "transfer" ? "Bank transfer" : p.method === "card" ? "Card" : "";
-        return `<div class="flex" style="justify-content:space-between;font-size:0.9rem;${i > 0 ? "border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.5rem;" : ""}"><span>${esc(paymentName)}${p.status === "paid" && methodName ? `<small class="muted" style="display:block;font-size:0.75rem;margin-top:0.15rem;">${esc(methodName)}${p.provider_reference ? " · Paystack" : " · Recorded manually"}</small>` : ""}</span><span>${naira(p.amount)} · <span class="badge ${p.status === "paid" ? "success" : ""}">${esc(p.status)}</span></span></div>`;
+        const buyerReportedPending = isCustomer && p.status === "pending" && String(p.provider_reference || "").trim().toLowerCase() === "buyer_report";
+        const displayPaymentStatus = buyerReportedPending ? "Reported" : p.status;
+        const displayPaymentStatusClass = buyerReportedPending || p.status === "paid" ? "success" : "";
+        return `<div class="flex" style="justify-content:space-between;font-size:0.9rem;${i > 0 ? "border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.5rem;" : ""}"><span>${esc(paymentName)}${(p.status === "paid" || buyerReportedPending) && methodName ? `<small class="muted" style="display:block;font-size:0.75rem;margin-top:0.15rem;">${esc(methodName)} · ${buyerReportedPending ? "Awaiting vendor confirmation" : (p.provider_reference ? "Paystack" : "Recorded manually")}</small>` : ""}</span><span>${naira(p.amount)} · <span class="badge ${displayPaymentStatusClass}">${esc(displayPaymentStatus)}</span></span></div>`;
       }).join("")}
     </div>`;
   }
@@ -20457,13 +20446,12 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   const paymentComplete = isDeliveryOrder ? (deliveryDepositPaid && deliveryBalancePaid) : feePaid;
   if (isVendor) {
     if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-confirm" onclick="updateOrderStatus('${order.id}','confirmed')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger order-action-decline" onclick="updateOrderStatus('${order.id}','cancelled')">Decline</button>`); }
-    if (order.status === "confirmed") {
-      if (isDeliveryOrder) {
-        if (deliveryDepositPaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-truck"></i> Mark as delivered</button>`);
-        else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting for the customer's ${deliveryDepositPercent}% delivery deposit before delivery.</p>`);
-      } else if (feePaid) buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmHandOverOrder('${order.id}')"><i class="fa-solid fa-handshake"></i> Mark handed over</button>`);
-      else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this can be marked handed over.</p>`);
-    }
+    // Once the vendor has confirmed the order, do NOT render another
+    // "Confirm order" / handover action here. The payment card above is the
+    // single source of truth for the next vendor action: mark the selected
+    // payment obligation as paid (delivery deposit first, then the remaining
+    // balance; pickup uses the full payment). This prevents a stale/duplicate
+    // confirmation control from reappearing on an already-confirmed order.
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
   if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
@@ -20916,10 +20904,10 @@ function backToPaymentFromReview(orderId) {
   }).catch(() => {});
 }
 
-async function renderLeaveReview(orderId) {
+async function renderLeaveReview(orderId, reviewAfterPayment = false) {
   if (!session?.user?.id || !orderId) return '<div class="empty-state">Access denied.</div>';
   const { data: order, error } = await sb.from("orders")
-    .select("id,status,buyer_id,vendor_id,order_type,delivery_method,payment_timing,vendor:vendors(id,business_name),payments:payments(payment_type,amount,status,provider_reference,created_at)")
+    .select("id,status,buyer_id,vendor_id,order_type,delivery_method,payment_timing,vendor:vendors(id,business_name),payments:payments(payment_type,amount,status,created_at)")
     .eq("id", orderId).eq("buyer_id", session.user.id).maybeSingle();
   if (error || !order) return `<div class="empty-state">${esc(error?.message || "Order not found.")}</div>`;
 
@@ -20930,7 +20918,12 @@ async function renderLeaveReview(orderId) {
   const reviewIsDelivery = order.delivery_method === "delivery";
   const reviewIsPayAfter = reviewIsDelivery && order.payment_timing === "pay_after";
   const reviewFinalReported = order.status === "completed" || reviewRows.some(p => String(p.payment_type || "").toLowerCase() === reviewFeeType && (p.status === "pending" || p.status === "paid") && (p.status === "paid" || p.provider_reference === "buyer_report"));
-  const reviewDepositPendingOnly = !reviewFinalReported;
+  // When the buyer has just tapped “I’ve paid the vendor”, the payment report
+  // is intentionally still pending server-side until the vendor verifies it.
+  // The buyer-facing flow must NOT block on that verification: the explicit
+  // navigation flag is the authoritative signal that this review screen was
+  // reached immediately after the buyer reported the final payment.
+  const reviewDepositPendingOnly = !reviewAfterPayment && !reviewFinalReported;
   if (reviewDepositPendingOnly) {
     return `<div class="card" style="max-width:620px;margin:1rem auto;text-align:center;"><h2 style="margin-top:0;">Complete your payment first</h2><p class="muted">Your payment is not complete yet. Finish the remaining payment before leaving a review.</p><button type="button" class="btn btn-sm btn-outline" onclick="backToPaymentFromReview('${order.id}')"><i class="fa-solid fa-arrow-left"></i> Back to payment</button></div>`;
   }
@@ -27087,12 +27080,15 @@ window.renderVendorMapRail = function(){
       // the first delivery deposit can NEVER open the review screen. Only the
       // final sale/rental balance (or a completed full payment) can do that.
       const stage=String(paymentStage||"").trim().toLowerCase();
-      const isDepositStage=stage.includes("deposit") || stage.includes("20%") && stage.includes("delivery");
+      const isDepositStage=stage.includes("deposit") || stage.includes("delivery") && stage.includes("%");
       const isFinalStage=!isDepositStage && (stage.includes("sale price") || stage.includes("rental fee") || stage.includes("remaining balance") || stage.includes("full payment"));
 
       if(isFinalStage){
         showToast("Payment completed.","success");
-        await navigate("leaveReview",{orderId});
+        // Navigate immediately. Do not wait for the vendor's confirmation;
+        // buyer_report_manual_payment intentionally leaves the payment pending
+        // for the vendor while the buyer is already allowed to review.
+        await navigate("leaveReview",{orderId,reviewAfterPayment:true});
       }else{
         showToast(data?.message||"20% payment reported. Complete the remaining payment before leaving a review.","success");
         await navigate("orderDetail",{orderId});
@@ -32805,19 +32801,19 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 }
 
 /* Product payment timing: explicit seller choice and card-visible status */
-.listing-payment-timing-settings{margin-top:.8rem;padding:.9rem;border:1px solid #26322e;border-radius:16px;background:#0f1513;color:var(--text,#f5f7f6);}
-.payment-timing-title{display:block;margin:0 0 .55rem;font-weight:800;color:inherit;}
+.listing-payment-timing-settings{margin-top:.8rem;padding:.9rem;border:1px solid var(--border);border-radius:16px;background:var(--card-bg,#fff);}
+.payment-timing-title{display:block;margin:0 0 .55rem;font-weight:800;}
 .payment-timing-choice{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;}
-.payment-timing-option{appearance:none;border:1px solid #2b3532;background:#121917;border-radius:14px;padding:.7rem .75rem;display:flex;align-items:flex-start;gap:.6rem;text-align:left;cursor:pointer;color:var(--text,#f5f7f6);transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;min-width:0;}
+.payment-timing-option{appearance:none;border:1px solid var(--border);background:var(--card-bg,#fff);border-radius:14px;padding:.7rem .75rem;display:flex;align-items:flex-start;gap:.6rem;text-align:left;cursor:pointer;color:var(--text);transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;min-width:0;}
 .payment-timing-option strong{display:block;font-size:.8rem;line-height:1.2;}
-.payment-timing-option small{display:block;margin-top:.2rem;font-size:.68rem;line-height:1.25;color:#aeb9b5;}
+.payment-timing-option small{display:block;margin-top:.2rem;font-size:.68rem;line-height:1.25;color:var(--muted,#64748b);}
 .payment-timing-option-dot{width:12px;height:12px;border-radius:50%;border:2px solid currentColor;flex:0 0 auto;margin-top:.12rem;}
-.payment-timing-option.pay-before{color:#86efac;}
-.payment-timing-option.pay-after{color:#fb923c;}
-.payment-timing-option.pay-before.selected{background:#10251b;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12);}
-.payment-timing-option.pay-after.selected{background:#24170d;border-color:#fb923c;box-shadow:0 0 0 2px rgba(249,115,22,.12);}
-.payment-timing-option.selected .payment-timing-option-dot{background:currentColor;box-shadow:inset 0 0 0 2px #0f1513;}
-.payment-timing-hint{font-size:.76rem;margin:.55rem 0 0;color:#aeb9b5;}
+.payment-timing-option.pay-before{color:#166534;}
+.payment-timing-option.pay-after{color:#c2410c;}
+.payment-timing-option.pay-before.selected{background:#f0fdf4;border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12);}
+.payment-timing-option.pay-after.selected{background:#fff7ed;border-color:#fb923c;box-shadow:0 0 0 2px rgba(249,115,22,.12);}
+.payment-timing-option.selected .payment-timing-option-dot{background:currentColor;box-shadow:inset 0 0 0 2px #fff;}
+.payment-timing-hint{font-size:.76rem;margin:.55rem 0 0;}
 @media(max-width:520px){.payment-timing-choice{grid-template-columns:1fr;}}
 
 /* Seller-selected delivery payment percentage. */
