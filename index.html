@@ -13262,6 +13262,7 @@ function vendorDistanceKm(v){
   return haversineKm(a,b,c,d);
 }
 function vendorDistanceHtml(v){const km=vendorDistanceKm(v);return km==null?'':`<span class="vendor-distance"><i class="fa-solid fa-location-dot"></i> ${km<1?Math.round(km*1000)+' m':km.toFixed(1)+' km'} away</span>`;}
+function storefrontDistanceHtml(v){const km=vendorDistanceKm(v);if(km==null)return '';const label=km<1?Math.round(km*1000)+' m':km.toFixed(1)+' km';return `<button type="button" class="storefront-distance-link" onclick="event.stopPropagation();openVendorDistanceMap('${esc(v?.id||'')}')" title="View route to this vendor on the map" aria-label="${esc(label)} away. View route on map"><i class="fa-solid fa-route"></i> ${esc(label)} away</button>`;}
 function vendorCardHtml(v) {
   const name = v?.business_name || "Vendor";
   const avatar = v?.logo_url || v?.user_avatar_url || "";
@@ -15941,18 +15942,47 @@ async function attachVendorFollowerCounts(vendors) {
 }
 
 async function loadVendorsDirectory() {
-  const [{ data: vendors }, { data: products }, { data: vendorPackages }, { data: sectorsData }] = await Promise.all([
-    sb.from("vendors").select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, lat, lng").eq("verification_status", "verified").eq("is_active", true).order("business_name"),
+  // Vendor discovery must remain usable even when an optional enrichment
+  // query (products, packages, sectors, follower counts) is temporarily slow
+  // or unavailable. The vendor list itself is the primary page content.
+  const vendorResult = await sb.from("vendors")
+    .select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, lat, lng")
+    .eq("verification_status", "verified")
+    .eq("is_active", true)
+    .order("business_name");
+
+  if (vendorResult.error) {
+    // Keep the last successful directory in memory instead of replacing a
+    // usable vendor page with a generic error block during a transient retry.
+    if (Array.isArray(window.__allVendors) && window.__allVendors.length) {
+      window.__filteredVendors = vendorDirectorySortList
+        ? vendorDirectorySortList(window.__allVendors)
+        : window.__allVendors;
+      renderVendorDirectoryCards?.();
+      return window.__allVendors;
+    }
+    throw vendorResult.error;
+  }
+
+  const vendors = vendorResult.data || [];
+
+  // These enrichments are useful for search/filtering but must never prevent
+  // the verified vendor directory from rendering.
+  const [productsRes, packagesRes, sectorsRes] = await Promise.allSettled([
     sb.from("products").select("vendor_id, name, description, listing_type, is_service, category:categories(name)").eq("status", "active"),
     sb.from("vendor_packages").select("vendor_id, name, description").eq("status", "active"),
-    sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
+    sectors.length ? Promise.resolve({ data: sectors, error: null }) : sb.from("sectors").select("*").order("sort_order")
   ]);
-  if (!sectors.length) sectors = sectorsData || [];
+
+  const products = productsRes.status === "fulfilled" && !productsRes.value?.error ? (productsRes.value.data || []) : [];
+  const vendorPackages = packagesRes.status === "fulfilled" && !packagesRes.value?.error ? (packagesRes.value.data || []) : [];
+  const sectorsData = sectorsRes.status === "fulfilled" && !sectorsRes.value?.error ? (sectorsRes.value.data || []) : [];
+  if (!sectors.length && sectorsData.length) sectors = sectorsData;
 
   const catsByVendor = {};
   const productTextByVendor = {};
   const capabilitiesByVendor = {};
-  (products || []).forEach((p) => {
+  products.forEach((p) => {
     const cap = (capabilitiesByVendor[p.vendor_id] ||= { canBuy: false, canRent: false });
     if (["sale", "both"].includes(p.listing_type)) cap.canBuy = true;
     if (["rent", "both"].includes(p.listing_type)) cap.canRent = true;
@@ -15960,14 +15990,11 @@ async function loadVendorsDirectory() {
     if (name) (catsByVendor[p.vendor_id] ||= new Set()).add(name);
     (productTextByVendor[p.vendor_id] ||= []).push(p.name, p.description, name);
   });
-  (vendorPackages || []).forEach((pkg) => {
+  vendorPackages.forEach((pkg) => {
     (productTextByVendor[pkg.vendor_id] ||= []).push(pkg.name, pkg.description, "package", "bundle");
   });
 
-  // Lets the vendor search box double as a product search - typing "paracetamol"
-  // or "iron" surfaces any vendor who lists a matching product, not just a
-  // vendor whose own business name happens to match.
-  window.__allVendors = await attachVendorFollowerCounts((vendors || []).map((v) => ({
+  window.__allVendors = await attachVendorFollowerCounts(vendors.map((v) => ({
     ...v,
     categories: [...(catsByVendor[v.id] || [])],
     searchText: [v.business_name, ...(productTextByVendor[v.id] || [])].filter(Boolean).join(" ").toLowerCase(),
@@ -15977,11 +16004,11 @@ async function loadVendorsDirectory() {
 
   const sectorSel = byId("vendorSectorFilter");
   if (sectorSel) {
-    sectorSel.innerHTML = '<option value="">All sectors</option>' + sectors.map((s) => `<option value="${s.id}" ${currentSectorId === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("");
+    sectorSel.innerHTML = '<option value="">All sectors</option>' + sectors.map((s) => `<option value="${esc(s.id)}" ${currentSectorId === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("");
   }
   const citySel = byId("vendorCityFilter");
   if (citySel) {
-    const cities = [...new Set((vendors || []).map((v) => v.city).filter(Boolean))].sort();
+    const cities = [...new Set(vendors.map((v) => v.city).filter(Boolean))].sort();
     citySel.innerHTML = '<option value="">All cities</option>' + cities.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
   }
   const catSel = byId("vendorCategoryFilter");
@@ -15991,8 +16018,8 @@ async function loadVendorsDirectory() {
   }
   filterVendorsDirectory();
   enhanceSelectsIn(byId("app"));
+  return window.__allVendors;
 }
-
 function filterVendorsDirectory() {
   const search = (byId("vendorSearchInput")?.value || "").trim().toLowerCase();
   const sectorId = byId("vendorSectorFilter")?.value || "";
@@ -16157,6 +16184,12 @@ async function renderVendorsMap() {
     marker.bindPopup(`<div class="vendor-map-popup"><div class="vendor-map-popup-head">${vendorLogo}<div class="vendor-map-popup-copy"><strong>${vendorName}</strong>${popupMeta ? `<span>${esc(popupMeta)}</span>` : ""}</div></div><a class="vendor-map-popup-link" href="#" onclick="navigate('storefront',{vendorId:'${v.id}'});return false;">View storefront</a></div>`);
     vendorsMapMarkers.push(marker);
   });
+
+  const pendingFocusId=window.__pendingVendorMapFocusId;
+  if(pendingFocusId){
+    window.__pendingVendorMapFocusId=null;
+    setTimeout(()=>{try{window.focusVendorOnMap?.(pendingFocusId);}catch(_){ }},120);
+  }
 
   if (statusEl && list.length === 0) statusEl.textContent = "None of the vendors matching your filters have set a shop location yet.";
   if (!buyerLocation && buyerDistanceAutoEnabled && locationSharingEnabled && vendorsMap) {
@@ -16423,7 +16456,7 @@ async function renderStorefront(vendorId) {
           ${!isOwnStorefront && v.phone ? `<a class="btn btn-sm btn-outline storefront-social-icon" href="${telLink(v.phone)}" aria-label="Call vendor" title="Call vendor" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i><span>Call</span></a>` : ""}
         </div>
       </div>
-      <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
+      <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${storefrontDistanceHtml(v)}${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
       ${v.bio ? `<p class="storefront-bio">${esc(v.bio)}</p>` : ""}
       <div class="storefront-stats">
         <span><strong>${allProducts.length}</strong> listing${allProducts.length === 1 ? "" : "s"}</span>
@@ -26471,10 +26504,18 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         if (buyerDistanceAutoEnabled) scheduleAutomaticLocationRefresh();
         else updateVendorsLocationUI();
       } catch (err) {
-        console.warn("[Levromart] Vendor directory failed:", err);
+        console.warn("[Levromart] Vendor directory refresh failed:", err);
         const grid = byId("vendorsGrid");
-        if (grid) grid.innerHTML = errorStateHtml(err);
+        if (grid) {
+          const cached = Array.isArray(window.__filteredVendors) ? window.__filteredVendors : [];
+          grid.innerHTML = cached.length
+            ? cached.map(vendorCardHtml).join("")
+            : '<div class="vendors-directory-soft-empty" aria-live="polite"><i class="fa-solid fa-store" aria-hidden="true"></i><span>Vendor listings are loading…</span></div>';
+        }
         updateVendorsLocationUI();
+        setTimeout(() => {
+          if (currentView === "vendors") loadVendorsDirectory().catch(e => console.warn("[Levromart] Vendor directory retry failed:", e));
+        }, 1800);
       }
     }, 0);
     return html;
@@ -27438,6 +27479,12 @@ window.renderVendorMapRail = function(){
 </script>
 
 
+<style id="storefront-distance-link-style">
+.storefront-distance-link{display:inline-flex;align-items:center;gap:.28rem;border:0;background:transparent;color:var(--primary);font:inherit;font-size:.78rem;font-weight:700;padding:0;cursor:pointer;text-decoration:none;}
+.storefront-distance-link:hover{text-decoration:underline;}
+.storefront-distance-link:focus-visible{outline:2px solid color-mix(in srgb,var(--primary) 55%,transparent);outline-offset:3px;border-radius:5px;}
+</style>
+
 <!-- ---------------------------------------------------------------
      FAST VENDOR DIRECTORY LOADER
      Paint verified vendors as soon as that small query returns. Product/package
@@ -27952,6 +27999,16 @@ window.renderVendorMapRail = function(){
   }
 
   if(typeof window.renderVendorMapRail==='function') window.renderVendorMapRail=function(){const wrap=byId('vendorsMapVendorRail');if(wrap){wrap.innerHTML=vendorRailHtmlV2();const rail=wrap.querySelector('.vendors-map-vendor-rail');if(rail&&horizontalBrowseEnabled)setupAutoScroll(rail);hydrateFollowerCounts();}};
+
+  /* Open the Vendors map for a storefront distance click, then focus the exact vendor and trace the road route. */
+  window.openVendorDistanceMap=async function(vendorId){
+    if(!vendorId)return;
+    window.__pendingVendorMapFocusId=String(vendorId);
+    try{await navigate("vendors");}catch(err){
+      window.__pendingVendorMapFocusId=null;
+      showToast("Could not open the vendor map right now.","error");
+    }
+  };
 
   /* ---------------------------------------------------------------
      Road route trace from buyer to vendor, accent-coloured and animated.
@@ -33274,6 +33331,9 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 #productVariantPricing .variant-sale-price{grid-column:3}#productVariantPricing .variant-discount-price{grid-column:4}
 #productVariantPricing .variant-upload-label,#productVariantPricing .variant-description,#productVariantPricing .variant-extra-fields,#productVariantPricing .variant-quantity{grid-column:2/5;width:100%;min-width:0;box-sizing:border-box}
 #productVariantPricing .variant-extra-fields{display:flex;gap:.4rem}#productVariantPricing .variant-extra-fields input{min-width:0;width:50%}
+
+.vendors-directory-soft-empty{min-height:8rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.28rem;text-align:center;color:var(--text-muted);font-size:.78rem;grid-column:1/-1;}
+.vendors-directory-soft-empty i{font-size:1.35rem;color:var(--primary);}
 </style>
 <script>
 (function(){
