@@ -6721,6 +6721,31 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 .order-list-item,.order-history-item{display:block;font-weight:700;margin-top:.18rem;}
 .order-list-product-id,.order-history-product-id{display:block;font-size:.72rem;opacity:.72;margin-top:.14rem;word-break:break-all;}
 </style>
+
+<style id="levromart-android-horizontal-scroll-fix-20260916">
+/* Android horizontal rails: let the browser own the gesture completely. */
+#app .hscroll,
+#app .cat-row,
+#app .storefront-product-strip,
+#app .vendors-map-vendor-rail {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-x: contain !important;
+  scroll-snap-type: none !important;
+  scroll-behavior: auto !important;
+  touch-action: pan-x !important;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#app .hscroll > *,
+#app .cat-row > *,
+#app .storefront-product-strip > *,
+#app .vendors-map-vendor-rail > * {
+  scroll-snap-align: none !important;
+}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--primary,#10b981)" stroke-width="5"/><path d="M19 34c5-1 8-4 10-9 1-3 3-5 6-5 4 0 6 3 6 7 0 5-4 8-8 8h-5c-5 0-9 3-9 7 0 3 2 5 5 5 4 0 6-2 7-5" fill="none" stroke="var(--primary,#10b981)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
@@ -13209,6 +13234,7 @@ function hydrateProductVariantIndicatorsInView(){
 }
 function productCardHtml(p) {
   const img = p.photos?.[0];
+  const commissionService = !!p.is_service && p.billing_model !== "monthly";
   try { (window.__productPhotoCache ||= {})[p.id] = Array.isArray(p.photos) ? p.photos : []; } catch (_) {}
   const isFav = favoriteIds.has(p.id);
   const ownListing = isOwnVendorId(p.vendor?.id);
@@ -13226,21 +13252,21 @@ function productCardHtml(p) {
       <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
       <h4>${esc(p.name)}</h4>
       <div class="product-card-vendor-row">
-        <span class="badge">${p.is_service ? "service" : p.listing_type}</span>
+        <span class="badge">${p.is_service ? esc(p.category?.name || "Service") : p.listing_type}</span>
         <span class="product-card-vendor" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${p.vendor?.id || ""}'})">
           ${p.vendor?.logo_url ? profileAvatarHtml(p.vendor.logo_url, p.vendor?.business_name || "Vendor", "1rem", { extraClass: "product-vendor-initial" }) : avatarFallbackHtml(p.vendor?.business_name || "Vendor", "1rem", "product-vendor-initial", p.vendor?.business_name || "Vendor")}
           <span>${esc(p.vendor?.business_name || "")}</span>
         </span>
       </div>
       <div class="product-card-like-row" data-product-like-id="${esc(p.id)}"><span class="product-like-indicator hidden"><i class="fa-regular fa-heart"></i> <span>0</span></span></div>
-      <div class="product-card-price-block">
+      ${commissionService ? "" : `<div class="product-card-price-block">
         ${p.sale_price != null ? (p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price)
           ? `<span><strong>${p.is_service ? "Price" : "Buy"}:</strong> <span class="product-old-price">${naira(p.sale_price)}</span> <span class="product-current-price">${naira(p.discount_price)}</span>${servicePriceSuffix(p)}</span>`
           : `<span><strong>${p.is_service ? "Price" : "Buy"}:</strong> ${naira(p.sale_price)}${servicePriceSuffix(p)}</span>`) : ""}
         ${p.rental_rate != null ? `<span><strong>Rent:</strong> ${naira(p.rental_rate)}/${p.rental_rate_unit}</span>` : ""}
-      </div>
-      ${p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`}
-      <div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>
+      </div>`}
+      ${commissionService ? "" : (p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`)}
+      ${commissionService ? "" : `<div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>`}
       <div class="product-card-action-row ${String(p._cardContext||"").toLowerCase()==="trending"?"trending-card-action-row":""}"><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button>${productPaymentPlanBadgeHtml(p)}<div class="product-card-action-left">${actionHtml}</div></div>
     </div>
   </div>`;
@@ -15447,7 +15473,114 @@ async function renderPackageDetail(packageId) {
 }
 
 // ---------- PRODUCT DETAIL ----------
-async function renderProductDetail(productId) {
+
+async function getServicePriceHint(listingId){
+  try{
+    const {data,error}=await sb.rpc("get_service_price_hint",{p_listing_id:listingId});
+    if(error||!data||!data[0]||Number(data[0].booking_count||0)<2)return null;
+    return {min:Number(data[0].min_price||0),max:Number(data[0].max_price||0),count:Number(data[0].booking_count||0)};
+  }catch(_){return null;}
+}
+async function loadServiceOffers(listingId){
+  if(!session?.user?.id)return [];
+  try{
+    const {data,error}=await sb.from("service_offers").select("id,listing_id,buyer_id,vendor_id,description,current_price,current_offer_by,status,round_count,created_at,updated_at,expires_at,accepted_at,payment_reported_at,completed_at,order_id").eq("listing_id",listingId).order("updated_at",{ascending:false}).limit(20);
+    if(error)return [];
+    return data||[];
+  }catch(_){return []}
+}
+function serviceOfferStatusLabel(s){return String(s||'').replace(/_/g,' ').replace(/\b\w/g,m=>m.toUpperCase());}
+async function serviceOfferAction(id,action,expectedPrice){
+  try{
+    let price=null;
+    if(action==='counter'){
+      const raw=prompt('Enter your counter-offer price (₦):','');
+      if(raw===null)return;
+      price=Number(String(raw).replace(/,/g,''));
+      if(!Number.isFinite(price)||price<=0){showToast('Enter a valid counter-offer price.','error');return;}
+    }
+    const {data,error}=await sb.rpc('respond_service_offer',{p_offer_id:id,p_action:action,p_price:price,p_expected_price:Number(expectedPrice)});
+    if(error)throw error;
+    if(data?.order_id){showToast('Price accepted. You can now pay the vendor directly.','success');await navigate('orderDetail',{orderId:data.order_id});return;}
+    showToast(action==='decline'?'Offer declined.':action==='counter'?'Counter-offer sent.':'Offer accepted.','success');
+    await navigate('productDetail',{productId:currentViewParams?.productId||currentProductDetail?.id,serviceOfferId:id},false);
+  }catch(e){showToast(e?.message||'Could not update the service offer.','error');}
+}
+function serviceOfferActionsHtml(offer,isBuyer,isVendor){
+  if(!offer)return '';
+  const common=`data-service-offer-id="${esc(offer.id)}"`;
+  if(offer.status==='payment_reported' && isVendor){
+    return `<div class="service-offer-actions"><button type="button" class="btn btn-sm" onclick="confirmServiceOfferPayment('${offer.id}')"><i class="fa-solid fa-check"></i> Confirm payment received</button><button type="button" class="btn btn-sm btn-danger" onclick="disputeServiceOfferPayment('${offer.id}')"><i class="fa-solid fa-triangle-exclamation"></i> Dispute payment</button></div>`;
+  }
+  if(offer.status!=='pending'&&offer.status!=='countered')return '';
+  const mine=(offer.current_offer_by==='buyer')===isBuyer;
+  if(mine)return `<span class="muted service-offer-waiting">Waiting for ${isBuyer?'vendor':'buyer'} response.</span>`;
+  const canCounter=Number(offer.round_count||1)<7;
+  return `<div class="service-offer-actions"><button type="button" class="btn btn-sm" onclick="serviceOfferAction('${offer.id}','accept',${Number(offer.current_price)})"><i class="fa-solid fa-check"></i> Accept · ${naira(offer.current_price)}</button>${canCounter?`<button type="button" class="btn btn-sm btn-outline" onclick="serviceOfferAction('${offer.id}','counter',${Number(offer.current_price)})"><i class="fa-solid fa-arrow-right-arrow-left"></i> Counter</button>`:''}<button type="button" class="btn btn-sm btn-danger" onclick="serviceOfferAction('${offer.id}','decline',${Number(offer.current_price)})"><i class="fa-solid fa-xmark"></i> Decline</button></div>`;
+}
+function renderServiceOfferList(offers,isBuyer,isVendor){
+  if(!offers.length)return `<p class="muted" style="margin:0;">No service requests yet.</p>`;
+  return offers.map(o=>`<div class="service-offer-row" ${serviceOfferActionsHtml(o,isBuyer,isVendor).includes('data-service-offer-id')?'data-service-offer':''}>
+    <div class="service-offer-head"><strong>${isBuyer?'Your request':'Buyer request'}</strong><span class="badge">${esc(serviceOfferStatusLabel(o.status))}</span></div>
+    <p class="service-offer-description">${esc(o.description)}</p>
+    <div class="service-offer-meta"><span><strong>${naira(o.current_price)}</strong></span><span>${esc(o.current_offer_by==='buyer'?'Buyer proposed':'Vendor proposed')}</span><span>Round ${Number(o.round_count||1)}</span></div>
+    ${serviceOfferActionsHtml(o,isBuyer,isVendor)}
+  </div>`).join('');
+}
+async function renderCommissionServiceDetail(product,priceHint,offers){
+  const ownListing=isOwnVendorId(product.vendor?.id);
+  const isBuyer=!!session && !ownListing && profile?.role!=='admin';
+  const isVendor=!!session && ownListing;
+  const photos=Array.isArray(product.photos)?product.photos.filter(Boolean):[];
+  const image=photos[0];
+  const vendor=product.vendor||{};
+  const rating=Number(vendor.avg_rating||0).toFixed(1);
+  const reviews=Number(vendor.review_count||0);
+  const category=product.category?.name||'Service';
+  let html=`<div class="card service-detail-card" data-service-detail-id="${esc(product.id)}">
+    <div class="product-detail-top-actions"><button class="fav-btn ${favoriteIds.has(product.id)?'active':''}" onclick="toggleFavorite(event,'${product.id}')" aria-label="Save to wishlist">${favoriteIds.has(product.id)?"<i class='fa-solid fa-heart'></i>":"<i class='fa-regular fa-heart'></i>"}</button><button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share service"><i class="fa-solid fa-share-nodes"></i></button></div>
+    <h2 class="product-detail-title">${esc(product.name)} <span class="badge">Service</span></h2>
+    ${image?`<div class="product-detail-media"><div class="product-gallery"><div class="product-gallery-main"><img src="${esc(image)}" alt="${esc(product.name)}" loading="eager" /></div></div></div>`:''}
+    <div class="service-vendor-info-block"><div class="service-vendor-info-head"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating">★ ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div><div class="service-vendor-contact-actions">${vendor.phone?`<a class="btn btn-sm btn-outline" href="${telLink(vendor.phone)}" onclick="callVendorGated(event,'${esc(vendor.phone)}','${vendor.id}')"><i class="fa-solid fa-phone"></i> Call vendor</a>`:''}<button type="button" class="btn btn-sm" onclick="startConversationWithVendor('${vendor.id}')"><i class="fa-solid fa-comment-dots"></i> Message vendor</button></div></div>
+    <div class="service-description-block"><h3>About this service</h3><p>${esc(stripProductVariantMeta(product.description||'No description provided.'))}</p></div>
+    ${priceHint?`<div class="service-price-hint"><i class="fa-solid fa-chart-line"></i> <strong>Past agreed prices:</strong> ${naira(priceHint.min)}${priceHint.min!==priceHint.max?' – '+naira(priceHint.max):''} <span>(last ${priceHint.count} completed bookings)</span></div>`:''}
+  </div>`;
+  if(isBuyer){
+    html+=`<div class="card service-request-card"><h3><i class="fa-solid fa-handshake"></i> Request this service</h3><p class="muted">Describe what you need and propose the price you are willing to pay. The vendor can accept, decline, or counter your offer.</p><div id="serviceOfferError" class="error-text hidden"></div><label>What do you need?</label><textarea id="serviceOfferDescription" rows="4" maxlength="4000" placeholder="Describe exactly what you need from the vendor…"></textarea><label>Proposed price (₦)</label><input id="serviceOfferPrice" type="number" min="1" step="0.01" placeholder="e.g. 15000" /><button type="button" class="btn" onclick="submitServiceOffer('${product.id}')"><i class="fa-solid fa-paper-plane"></i> Send request</button></div>`;
+  } else if(profile?.role==='admin'){
+    html+=`<div class="card"><p class="muted"><i class="fa-solid fa-circle-info"></i> Admin accounts can't negotiate service bookings.</p></div>`;
+  }
+  if((isBuyer||isVendor)&&offers.length){
+    html+=`<div class="card service-offers-card"><div class="service-offers-head"><h3><i class="fa-solid fa-comments-dollar"></i> ${isVendor?'Service requests':'Your service requests'}</h3><span class="muted">${offers.length} request${offers.length===1?'':'s'}</span></div>${renderServiceOfferList(offers,isBuyer,isVendor)}</div>`;
+  }
+  html+=`<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('home')"><i class="fa-solid fa-arrow-left"></i> Back to Marketplace</button>`;
+  return html;
+}
+window.submitServiceOffer=async function(listingId){
+  if(!session){showLogin();return;}
+  const desc=String(byId('serviceOfferDescription')?.value||'').trim();
+  const price=Number(String(byId('serviceOfferPrice')?.value||'').replace(/,/g,''));
+  const err=byId('serviceOfferError'); if(err){err.classList.add('hidden');err.textContent='';}
+  if(!desc){if(err){err.textContent='Describe what you need from the vendor.';err.classList.remove('hidden')}return;}
+  if(!Number.isFinite(price)||price<=0){if(err){err.textContent='Enter a valid proposed price.';err.classList.remove('hidden')}return;}
+  const btn=document.querySelector('.service-request-card button.btn:not(.btn-outline)');if(btn)btn.disabled=true;
+  try{const {data,error}=await sb.rpc('create_service_offer',{p_listing_id:listingId,p_description:desc,p_price:price});if(error)throw error;showToast('Service request sent to the vendor.','success');await navigate('productDetail',{productId:listingId,serviceOfferId:data},false);}catch(e){if(err){err.textContent=e.message||'Could not send the service request.';err.classList.remove('hidden')}}finally{if(btn)btn.disabled=false;}
+};
+window.confirmServiceOfferPayment=async function(id){if(!(await showConfirmDialog('Confirm that you have received the buyer’s bank transfer for this service?',{title:'Confirm payment received',okLabel:'Confirm payment'})))return;try{const {data,error}=await sb.rpc('confirm_service_offer_payment',{p_offer_id:id});if(error)throw error;showToast('Payment confirmed. The service booking is complete.','success');if(data?.order_id){await navigate('orderDetail',{orderId:data.order_id},false);}else{await navigate('productDetail',{productId:currentProductDetail?.id,serviceOfferId:id},false);}}catch(e){showToast(e.message||'Could not confirm payment.','error')}};
+window.disputeServiceOfferPayment=async function(id){if(!(await showConfirmDialog('Dispute this reported payment? No commission will be added while it is disputed.',{title:'Dispute payment',okLabel:'Dispute',danger:true})))return;try{const {error}=await sb.rpc('dispute_service_offer_payment',{p_offer_id:id});if(error)throw error;showToast('Payment disputed.','success');await navigate('productDetail',{productId:currentProductDetail?.id,serviceOfferId:id},false);}catch(e){showToast(e.message||'Could not dispute payment.','error')}};
+window.__levroBaseRenderProductDetail = __levroOriginalRenderProductDetail;
+window.renderProductDetail = async function(productId){
+  const {data:p,error}=await sb.from('products').select('id,name,description,photos,is_service,billing_model,status,category:categories(name),vendor:vendors(id,business_name,previous_business_name,name_changed_at,logo_url,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active)').eq('id',productId).maybeSingle();
+  if(!error&&p?.is_service&&p.billing_model==='commission'){
+    const own=isOwnVendorId(p.vendor?.id);
+    if(!own&&(p.status!=='active'||p.vendor?.verification_status!=='verified'||!p.vendor?.is_active))return '<div class="empty-state">This service is not currently available.</div>';
+    const hint=await getServicePriceHint(productId); const offers=await loadServiceOffers(productId); currentProductDetail=p;
+    return renderCommissionServiceDetail(p,hint,offers);
+  }
+  return window.__levroBaseRenderProductDetail(productId);
+};
+
+async function __levroOriginalRenderProductDetail(productId) {
   const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)").eq("id", productId).maybeSingle();
   const variantsQuery = sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
@@ -19255,7 +19388,7 @@ async function saveProduct() {
     const name = byId("prodName").value.trim();
     const quantity_total = is_service ? 999 : parseInt(byId("prodQtyTotal").value) || 1;
     const sale_price = byId("prodSalePrice").value ? Number(byId("prodSalePrice").value) : null;
-    const discount_price = !is_service && byId("prodDiscountPrice").value ? Number(byId("prodDiscountPrice").value) : (is_service && byId("prodDiscountPrice").value ? Number(byId("prodDiscountPrice").value) : null);
+    const discount_price = is_service && billing_model === "commission" ? null : (byId("prodDiscountPrice").value ? Number(byId("prodDiscountPrice").value) : null);
     const rental_rate = is_service ? null : (byId("prodRentalRate").value ? Number(byId("prodRentalRate").value) : null);
     const delivery_fee_mode = is_service ? "free" : (byId("prodDeliveryMode").value || "free");
     const delivery_fee = is_service || delivery_fee_mode !== "flat" ? 0 : Math.max(0, Number(byId("prodDeliveryFee").value) || 0);
@@ -19268,7 +19401,7 @@ async function saveProduct() {
     if (!name) throw new Error("Product name is required.");
     if (!["commission","monthly"].includes(billing_model)) throw new Error("Choose how you want to pay Levromart for this listing.");
     if (!is_service && listing_type !== "rent" && !sale_price) throw new Error("Price is required for a sale listing.");
-    if (is_service && !sale_price) throw new Error("Enter a price for this service.");
+    if (is_service && billing_model === "monthly" && !sale_price) throw new Error("Enter a fixed price for this monthly service listing.");
     if (discount_price != null && (sale_price == null || discount_price <= 0 || discount_price >= sale_price)) throw new Error("Discount price must be lower than the regular price.");
     if (delivery_fee_mode === "distance" && delivery_fee_per_km <= 0) throw new Error("Enter a fee per kilometre for distance-based delivery.");
     if (payment_timing === "pay_after" && (!Number.isFinite(payment_deposit_percent) || payment_deposit_percent < 1 || payment_deposit_percent > 99)) throw new Error("Enter a buyer deposit percentage between 1% and 99%.");
@@ -19303,7 +19436,7 @@ async function saveProduct() {
       listing_type,
       is_service,
       service_price_unit,
-      sale_price: listing_type === "rent" ? null : sale_price,
+      sale_price: is_service && billing_model === "commission" ? null : (listing_type === "rent" ? null : sale_price),
       discount_price: listing_type === "rent" ? null : discount_price,
       delivery_fee_mode,
       delivery_fee,
@@ -20363,6 +20496,10 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   }
   if (!isCustomer && !isVendor && profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
 
+  if(order.service_offer_id){
+    try{const {data:so}=await sb.from("service_offers").select("id,listing_id,buyer_id,vendor_id,status,current_price,description,round_count,payment_reported_at,order_id,expires_at").eq("id",order.service_offer_id).maybeSingle();order.__serviceOffer=so||null;}catch(_){order.__serviceOffer=null;}
+  }
+
   const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
   const paymentRows = Array.isArray(order.payments) ? order.payments : [];
   const feePaid = paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
@@ -20432,6 +20569,12 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (order.delivery_method === "delivery" && order.vendor?.lat != null && order.vendor?.lng != null) {
     window.__orderEtaVendor = { lat: order.vendor.lat, lng: order.vendor.lng };
     setTimeout(updateOrderDeliveryEta, 0);
+  }
+
+  if(order.__serviceOffer?.status==='payment_reported' && isVendor){
+    html += `<div class="card service-payment-confirm-card"><h3><i class="fa-solid fa-hand-holding-dollar"></i> Service payment reported</h3><p class="muted">The buyer has reported a bank transfer of <strong>${naira(order.__serviceOffer.current_price)}</strong>. Check your account and either confirm receipt or dispute the payment.</p><div class="flex" style="gap:.55rem;flex-wrap:wrap;"><button type="button" class="btn btn-sm" onclick="confirmServiceOfferPayment('${order.__serviceOffer.id}')"><i class="fa-solid fa-check"></i> Confirm payment received</button><button type="button" class="btn btn-sm btn-danger" onclick="disputeServiceOfferPayment('${order.__serviceOffer.id}')"><i class="fa-solid fa-triangle-exclamation"></i> Dispute payment</button></div></div>`;
+  } else if(order.__serviceOffer?.status==='payment_reported' && isCustomer){
+    html += `<div class="card"><p class="muted"><i class="fa-solid fa-hourglass-half"></i> Payment reported. The vendor has up to 48 hours to confirm receipt or raise a dispute. If no dispute is raised, the payment will be automatically confirmed.</p></div>`;
   }
 
   if (isVendor) {
@@ -20747,13 +20890,19 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   }
   if (isCustomer && order.status === "confirmed") {
     const paidRow = payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
-    if (!isDeliveryOrder && !paidRow) {
+    const servicePaymentReported = order.__serviceOffer?.status === "payment_reported";
+    if (!isDeliveryOrder && !paidRow && !servicePaymentReported) {
       const pickupPayAmount = Number(order.total_amount || 0);
       buttons.push(`<button class="btn btn-sm pickup-pay-vendor-btn" onclick="openVendorDirectPayment('${order.id}')"><i class="fa-solid fa-building-columns"></i> Pay vendor · ${naira(pickupPayAmount)}</button>`);
     }
     const hoursSincePaid = paidRow ? (Date.now() - new Date(paidRow.paid_at || paidRow.created_at).getTime()) / 3600000 : 0;
-    if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
-    else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
+    if (servicePaymentReported) {
+      buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Payment reported. Waiting for the vendor to confirm receipt.</p>`);
+    } else if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) {
+      buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
+    } else {
+      buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
+    }
   }
   if (isCustomer && order.status === "handed_over" && order.order_type === "rental" && !isDeliveryOrder) buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
   if (isCustomer && order.status === "handed_over" && isDeliveryOrder) {
@@ -32577,10 +32726,12 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   window.syncListingBillingUI=function(){
     const service=byId("prodIsService")?.checked, select=byId("prodBillingModel"), hint=byId("prodBillingHint"), saveBtn=byId("saveProductBtn");
     if(!select)return;
-    // Services use commission, not an upfront monthly fee. Physical listings
-    // can choose between commission and ₦1,000/month.
+    // Services can use either billing model. Commission services use negotiation;
+    // monthly services keep a fixed price and use the existing ₦1,000 manual listing-fee flow.
     select.disabled=false;
-    if(hint)hint.textContent=select.value==="monthly"?(service?"Monthly service listing: transfer ₦1,000, upload your receipt, then wait for admin approval.":"Monthly listing: transfer ₦1,000, upload your receipt, then wait for admin approval."):"Commission-based listings can go live without an upfront activation payment.";
+    if(hint)hint.textContent=select.value==="monthly"
+      ? (service ? "Monthly service: set a fixed price, transfer ₦1,000, upload your receipt, then wait for admin approval." : "Monthly listing: transfer ₦1,000, upload your receipt, then wait for admin approval.")
+      : (service ? "Commission service: buyers request the service and propose a price for you to accept, decline, or counter." : "Commission-based listings can go live without an upfront activation payment.");
     if(saveBtn&&!editingProductId)saveBtn.innerHTML=select.value==="monthly"?'<i class="fa-solid fa-receipt"></i> Submit ₦1,000 payment': 'Save to Product';
   };
   window.syncPackageBillingUI=function(){
@@ -33575,6 +33726,31 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 /* Card payment/delivery status cues. */
 .product-card-payment-plan.pay-before{background:#dcfce7!important;color:#166534!important;border-color:#86efac!important;}
 .product-card-payment-plan.pay-after{background:#ffedd5!important;color:#c2410c!important;border-color:#fdba74!important;}
+
+/* Service negotiation UI — scoped only to service listings. */
+.service-vendor-info-block{border:1px solid var(--border);border-radius:.9rem;padding:.8rem;margin:.8rem 0;background:color-mix(in srgb,var(--primary) 3%,var(--card-bg,transparent));}
+.service-vendor-info-head{display:flex;align-items:center;gap:.7rem;}
+.service-vendor-avatar{flex:0 0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:50%;}
+.service-vendor-rating{font-size:.82rem;color:var(--text-muted);margin-top:.15rem;}
+.service-vendor-contact-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.7rem;}
+.service-description-block{margin-top:.9rem;}
+.service-description-block h3{margin:0 0 .35rem;}
+.service-description-block p{margin:0;line-height:1.55;white-space:pre-wrap;}
+.service-price-hint{margin-top:.8rem;padding:.7rem .8rem;border-radius:.75rem;background:color-mix(in srgb,var(--primary) 8%,transparent);font-size:.84rem;line-height:1.45;}
+.service-price-hint i{color:var(--primary);margin-right:.3rem;}
+.service-request-card textarea{min-height:100px;resize:vertical;}
+.service-offers-card{margin-top:1rem;}
+.service-offers-head{display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin-bottom:.6rem;}
+.service-offers-head h3{margin:0;}
+.service-offer-row{border-top:1px solid var(--border);padding:.75rem 0;}
+.service-offer-row:first-of-type{border-top:0;padding-top:.1rem;}
+.service-offer-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem;}
+.service-offer-description{margin:.4rem 0;white-space:pre-wrap;line-height:1.45;}
+.service-offer-meta{display:flex;gap:.7rem;flex-wrap:wrap;font-size:.78rem;color:var(--text-muted);}
+.service-offer-actions{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.6rem;}
+.service-offer-waiting{display:block;margin-top:.55rem;font-size:.82rem;}
+.service-payment-confirm-card{border-color:color-mix(in srgb,var(--primary) 35%,var(--border));}
+@media(max-width:560px){.service-offers-head{align-items:flex-start;flex-direction:column}.service-vendor-contact-actions .btn{flex:1 1 auto;justify-content:center}}
 </style>
 <script>
 (function(){
@@ -33691,3 +33867,360 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   }
 })();
 </script>
+
+<script id="levromart-service-negotiation-payment-bridge">
+(function(){
+  "use strict";
+  const baseReport=window.reportDirectVendorPayment;
+  if(typeof baseReport!=="function"||window.__serviceNegotiationPaymentBridge)return;
+  window.__serviceNegotiationPaymentBridge=true;
+  window.reportDirectVendorPayment=async function(orderId,amount,paymentStage=""){
+    try{
+      const {data:order,error}=await sb.from("orders").select("service_offer_id").eq("id",orderId).maybeSingle();
+      if(!error&&order?.service_offer_id){
+        const err=byId("directPaymentError"),btn=byId("directPaymentReportedBtn");
+        if(!err||!btn)return;
+        err.classList.add("hidden");btn.disabled=true;
+        const {error:rpcError}=await sb.rpc("report_service_offer_payment",{p_order_id:orderId,p_amount:Number(amount)});
+        if(rpcError)throw rpcError;
+        byId("manualVendorPaymentModal")?.remove();
+        showToast("Payment reported. The vendor has 48 hours to confirm receipt or raise a dispute.","success");
+        await navigate("orderDetail",{orderId},false);
+        return;
+      }
+    }catch(e){
+      const err=byId("directPaymentError"),btn=byId("directPaymentReportedBtn");
+      if(err){err.textContent=e?.message||"Could not report the payment.";err.classList.remove("hidden");}
+      if(btn)btn.disabled=false;
+      return;
+    }
+    return baseReport(orderId,amount,paymentStage);
+  };
+})();
+</script>
+
+
+<script id="levromart-vendor-application-final-repair-20260916">
+(function(){
+  "use strict";
+
+  const escLocal = (v) => {
+    try { return typeof esc === "function" ? esc(v) : String(v ?? ""); }
+    catch(_) { return String(v ?? ""); }
+  };
+
+  function getBanks(){
+    return Array.isArray(window.NIGERIAN_BANKS) ? window.NIGERIAN_BANKS : [];
+  }
+
+  function getBankName(code){
+    const hit = getBanks().find(b => String(b.code) === String(code));
+    return hit?.name || String(code || "");
+  }
+
+  async function getLocation(){
+    try{
+      if(typeof captureVendorCurrentLocationForApplication === "function"){
+        const loc = await captureVendorCurrentLocationForApplication();
+        if(loc?.lat != null && loc?.lng != null) return loc;
+      }
+    }catch(_){}
+    if(!navigator.geolocation) return null;
+    return await new Promise(resolve=>{
+      navigator.geolocation.getCurrentPosition(
+        p=>resolve({lat:p.coords.latitude,lng:p.coords.longitude}),
+        ()=>resolve(null),
+        {enableHighAccuracy:true,timeout:8000,maximumAge:300000}
+      );
+    });
+  }
+
+  window.renderVendorApply = async function(){
+    if(!session) return '<div class="empty-state">Please log in to apply as a vendor.</div>';
+    if(profile?.role === "admin") return '<div class="empty-state">Admin accounts can\'t own a vendor store on Levromart.</div>';
+
+    const {data:existing,error:existingError} = await sb
+      .from("vendors")
+      .select("id")
+      .eq("user_id",session.user.id)
+      .is("deleted_at",null)
+      .maybeSingle();
+
+    if(existingError) console.warn("[Levromart] Vendor application existing-check:", existingError);
+    if(existing){
+      navigate("vendorDashboard");
+      return '<p class="muted">Redirecting…</p>';
+    }
+
+    if(!Array.isArray(sectors) || !sectors.length){
+      const {data} = await sb.from("sectors").select("*").order("sort_order");
+      sectors = data || [];
+    }
+
+    const banks = getBanks();
+
+    return `<div class="card" style="max-width:480px;margin:0 auto;">
+      <h2>Apply as a vendor</h2>
+      <p class="muted">Tell us about your business. An admin will review this manually.</p>
+      <div id="vendorApplyError" class="error-text hidden"></div>
+
+      <label>Which sector is your business in? *</label>
+      <select id="vaSector" required>
+        ${sectors.map(s=>`<option value="${escLocal(s.id)}">${escLocal(s.name)}</option>`).join("")}
+      </select>
+
+      <label>Business name *</label>
+      <input id="vaBusinessName" autocomplete="organization" />
+
+      <label>Address <span class="muted">(leave blank if you're an online-only business)</span></label>
+      <input id="vaAddress" autocomplete="street-address" />
+
+      <label>City</label>
+      <input id="vaCity" value="Lagos" autocomplete="address-level2" />
+
+      <label>Phone *</label>
+      <input id="vaPhone" type="tel" autocomplete="tel" />
+
+      <label>WhatsApp number <span class="muted">(optional)</span></label>
+      <input id="vaWhatsapp" type="tel" autocomplete="tel" />
+
+      <div class="vendor-application-payout-section">
+        <div class="vendor-application-payout-heading">
+          <strong>Payout account *</strong>
+          <span>The bank details you enter here automatically become your Levromart payout account.</span>
+        </div>
+
+        <label>Bank *</label>
+        <button type="button" id="vaBankPickerBtn" class="bank-picker-trigger"
+          onclick="openVendorApplyBankPicker()" aria-haspopup="dialog" aria-expanded="false">
+          <span id="vaBankPickerLabel">Select a bank</span>
+          <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+        </button>
+        <select id="vaBankCode" class="hidden" aria-hidden="true" tabindex="-1">
+          <option value="">Select a bank</option>
+          ${banks.map(b=>`<option value="${escLocal(b.code)}">${escLocal(b.name)}</option>`).join("")}
+        </select>
+
+        <label>Account name *</label>
+        <input id="vaAccountName" autocomplete="name" placeholder="Name on the bank account" />
+
+        <label>Account number *</label>
+        <input id="vaAccountNumber" inputmode="numeric" maxlength="10"
+          autocomplete="off" placeholder="10-digit account number" />
+      </div>
+
+      <label>CAC number <span class="muted">(optional)</span></label>
+      <input id="vaCac" autocomplete="off" />
+
+      <label>CAC document <span class="muted">(optional upload)</span></label>
+      <input id="vaDoc" type="file" accept="application/pdf,image/*" />
+
+      <label>About your business <span class="muted">(optional)</span></label>
+      <textarea id="vaBio" rows="3"
+        placeholder="Tell buyers briefly what your business offers."></textarea>
+
+      <button type="button" class="btn" id="vendorApplySubmitBtn"
+        style="margin-top:.8rem;" onclick="submitVendorApply()">
+        <i class="fa-solid fa-paper-plane"></i> Submit application
+      </button>
+    </div>`;
+  };
+
+  let submitting = false;
+
+  window.submitVendorApply = async function(){
+    if(submitting) return;
+
+    const errorEl = byId("vendorApplyError");
+    const button = byId("vendorApplySubmitBtn");
+    if(!errorEl || !button) return;
+
+    const businessName = String(byId("vaBusinessName")?.value || "").trim();
+    const phone = String(byId("vaPhone")?.value || "").trim();
+    const bankCode = String(byId("vaBankCode")?.value || "").trim();
+    const accountName = String(byId("vaAccountName")?.value || "").trim();
+    const accountNumber = String(byId("vaAccountNumber")?.value || "").trim();
+
+    errorEl.classList.add("hidden");
+    errorEl.textContent = "";
+
+    /* Only genuinely required application fields are enforced. */
+    if(!businessName){
+      errorEl.textContent = "Please enter your business name.";
+      errorEl.classList.remove("hidden");
+      byId("vaBusinessName")?.focus();
+      return;
+    }
+    if(!phone){
+      errorEl.textContent = "Please enter your phone number.";
+      errorEl.classList.remove("hidden");
+      byId("vaPhone")?.focus();
+      return;
+    }
+    if(!bankCode){
+      errorEl.textContent = "Please select your payout bank.";
+      errorEl.classList.remove("hidden");
+      byId("vaBankPickerBtn")?.focus();
+      return;
+    }
+    if(!accountName){
+      errorEl.textContent = "Please enter the name on the bank account.";
+      errorEl.classList.remove("hidden");
+      byId("vaAccountName")?.focus();
+      return;
+    }
+    if(!/^\d{10}$/.test(accountNumber)){
+      errorEl.textContent = "Please enter a valid 10-digit account number.";
+      errorEl.classList.remove("hidden");
+      byId("vaAccountNumber")?.focus();
+      return;
+    }
+
+    submitting = true;
+    button.disabled = true;
+    button.classList.add("is-busy");
+    const original = button.innerHTML;
+    let createdVendorId = null;
+
+    try{
+      const address = String(byId("vaAddress")?.value || "").trim();
+      const city = String(byId("vaCity")?.value || "").trim();
+      const whatsapp = String(byId("vaWhatsapp")?.value || "").trim();
+      const cac = String(byId("vaCac")?.value || "").trim();
+      const bio = String(byId("vaBio")?.value || "").trim();
+
+      let verificationDocs = [];
+      const file = byId("vaDoc")?.files?.[0];
+      if(file){
+        const ext=(file.name.split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase()||"bin";
+        const path=`${session.user.id}/${Date.now()}.${ext}`;
+        button.innerHTML='<i class="fa-solid fa-upload"></i> Uploading…';
+        const {error:uploadError}=await sb.storage.from("vendor-docs").upload(
+          path,file,{contentType:file.type||"application/octet-stream",upsert:false}
+        );
+        if(uploadError) throw new Error(`Document upload failed: ${uploadError.message}`);
+        verificationDocs=[path];
+      }
+
+      button.innerHTML='<i class="fa-solid fa-location-dot"></i> Getting location…';
+      const loc = await getLocation();
+
+      button.innerHTML='<i class="fa-solid fa-paper-plane"></i> Submitting…';
+
+      const bankName = getBankName(bankCode);
+
+      const {data:createdVendor,error:insertError}=await sb.from("vendors").insert({
+        user_id:session.user.id,
+        sector_id:byId("vaSector")?.value || null,
+        business_name:businessName,
+        address:address || null,
+        city:city || null,
+        phone,
+        whatsapp_number:whatsapp || null,
+        cac_number:cac || null,
+        bio:bio || null,
+        verification_docs:verificationDocs,
+        bank_code:bankCode,
+        bank_name:bankName,
+        account_name:accountName,
+        account_number:accountNumber,
+        logo_url:profile?.avatar_url || null,
+        lat:loc?.lat ?? null,
+        lng:loc?.lng ?? null,
+        is_active:false
+      }).select("id").single();
+
+      if(insertError) throw new Error(insertError.message);
+      createdVendorId=createdVendor?.id;
+      if(!createdVendorId) throw new Error("The vendor application could not be created.");
+
+      /*
+       * The payout account is created immediately from the exact bank details
+       * supplied above. No second payout setup is required by the vendor.
+       */
+      button.innerHTML='<i class="fa-solid fa-building-columns"></i> Activating payout…';
+
+      const payoutRes=await fetch("/api/vendor-payments",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          action:"create-subaccount",
+          accessToken:session.access_token,
+          bankCode,
+          accountNumber
+        })
+      });
+
+      let payoutJson={};
+      try{ payoutJson=await payoutRes.json(); }catch(_){}
+
+      if(!payoutRes.ok){
+        throw new Error(
+          payoutJson.error ||
+          "We couldn't verify the payout account. Please check the bank details and try again."
+        );
+      }
+
+      const subaccountCode =
+        payoutJson.subaccount_code ||
+        payoutJson.subaccount?.subaccount_code ||
+        null;
+
+      if(!subaccountCode){
+        throw new Error("The payout account could not be activated. Please try again.");
+      }
+
+      const {error:savePayoutError}=await sb.from("vendors").update({
+        bank_code:bankCode,
+        bank_name:bankName,
+        account_name:accountName || payoutJson.account_name || null,
+        account_number:accountNumber,
+        paystack_subaccount_code:subaccountCode
+      }).eq("id",createdVendorId).eq("user_id",session.user.id);
+
+      if(savePayoutError) throw new Error("Your application was created, but the payout account could not be linked. Please try again.");
+
+      showToast(
+        loc
+          ? "Application submitted. Your payout account is already linked."
+          : "Application submitted. Your payout account is already linked.",
+        "success"
+      );
+
+      await refreshAuthState();
+      navigate("vendorDashboard");
+    }catch(err){
+      console.error("[Levromart] Vendor application submit failed:",err);
+
+      /* If payout activation failed after vendor creation, remove only the
+         just-created application so it cannot look payout-ready when it isn't. */
+      if(createdVendorId){
+        try{
+          await sb.from("vendors")
+            .delete()
+            .eq("id",createdVendorId)
+            .eq("user_id",session.user.id);
+        }catch(cleanupErr){
+          console.warn("[Levromart] Vendor application cleanup failed:",cleanupErr);
+        }
+      }
+
+      errorEl.textContent = err?.message || "We couldn't submit your application. Please try again.";
+      errorEl.classList.remove("hidden");
+      button.innerHTML=original;
+    }finally{
+      submitting=false;
+      button.disabled=false;
+      button.classList.remove("is-busy");
+      if(button.innerHTML.includes("Uploading") || button.innerHTML.includes("Getting location") || button.innerHTML.includes("Submitting") || button.innerHTML.includes("Activating payout")){
+        button.innerHTML=original;
+      }
+    }
+  };
+
+  /* Existing bank-picker functions use #vaBankCode. Because this final form
+     contains exactly one such element, the custom picker now writes to the
+     same field that submitVendorApply() reads. */
+})();
+</script>
+
