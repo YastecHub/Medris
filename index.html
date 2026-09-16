@@ -6957,7 +6957,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <label>Confirm password</label>
       <input type="password" id="loginPasswordConfirm" placeholder="Retype your password" />
     </div>
-    <p id="forgotPasswordMsg" class="muted hidden" style="font-size:0.85rem;">We'll email you a link to set a new password.</p>
+    <p id="forgotPasswordMsg" class="muted hidden" style="font-size:0.85rem;">Enter your account email. A password-reset request will be sent to the admin dashboard for approval.</p>
     <p id="authAgreementMsg" class="muted hidden" style="font-size:0.78rem;">By creating an account you agree to Levromart's <a href="#" onclick="hideLogin();navigate('terms');return false;">Terms of Service</a> and <a href="#" onclick="hideLogin();navigate('privacy');return false;">Privacy Policy</a>.</p>
 
     <div class="flex" style="justify-content: space-between; margin-top: 0.8rem;">
@@ -6984,9 +6984,26 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </div>
     <label>New password</label>
     <div class="password-field-wrap"><input type="password" id="newPasswordInput" placeholder="New password" autocomplete="new-password" /><button type="button" class="password-visibility-toggle" data-password-target="newPasswordInput" aria-label="Show new password" title="Show password"><i class="fa-solid fa-eye"></i></button></div>
+    <div id="confirmNewPasswordWrap" class="hidden" style="margin-top:.7rem;">
+      <label>Confirm new password</label>
+      <div class="password-field-wrap"><input type="password" id="confirmNewPasswordInput" placeholder="Confirm new password" autocomplete="new-password" /><button type="button" class="password-visibility-toggle" data-password-target="confirmNewPasswordInput" aria-label="Show confirm password" title="Show password"><i class="fa-solid fa-eye"></i></button></div>
+    </div>
     <div class="flex" style="justify-content:flex-end;margin-top:0.8rem;">
       <button class="btn btn-sm btn-outline hidden" id="resetPasswordCancel" onclick="closeChangePasswordModal()">Cancel</button>
       <button class="btn btn-sm" id="resetPasswordSubmit" onclick="submitNewPassword()">Set password</button>
+    </div>
+  </div>
+</div>
+
+<div id="manualResetWaitingModal" class="modal hidden">
+  <div class="modal-content" style="max-width:400px;">
+    <h3><i class="fa-solid fa-user-shield"></i> Reset request sent</h3>
+    <div id="manualResetWaitingError" class="error-text hidden"></div>
+    <p class="muted" style="font-size:.9rem;">Your password reset request has been sent to the Levromart admin dashboard. Once an admin approves it, this page will automatically change to the new-password form.</p>
+    <p id="manualResetWaitingEmail" style="font-weight:700;margin:.75rem 0;"></p>
+    <div id="manualResetWaitingStatus" class="badge warning" style="display:inline-block;">Waiting for approval</div>
+    <div class="flex" style="justify-content:flex-end;margin-top:1rem;">
+      <button class="btn btn-sm btn-outline" onclick="closeManualResetWaiting()">Close</button>
     </div>
   </div>
 </div>
@@ -10687,7 +10704,7 @@ function applyAuthMode() {
   byId("forgotPasswordMsg").classList.toggle("hidden", !isForgot);
   byId("authAgreementMsg").classList.toggle("hidden", !isRegister);
   byId("forgotPasswordLinkWrap").classList.toggle("hidden", isRegister || isForgot);
-  byId("authSubmitBtn").textContent = isForgot ? "Send reset link" : isRegister ? "Create account" : "Login";
+  byId("authSubmitBtn").textContent = isForgot ? "Request password reset" : isRegister ? "Create account" : "Login";
   byId("authToggleLink").textContent = "Back to login";
   byId("authToggleLink").onclick = (e) => { e.preventDefault(); isForgot ? setAuthMode("login") : toggleAuthMode(); };
   byId("authToggleLink").parentElement?.classList.toggle("hidden", !isForgot);
@@ -10744,12 +10761,16 @@ async function submitAuth() {
     const btn = byId("authSubmitBtn");
     btn.disabled = true;
     try {
-      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      const { data, error } = await sb.rpc("request_manual_password_reset", { p_email: email });
       if (error) throw error;
+      if (!data?.request_id || !data?.token) throw new Error("Could not create the reset request.");
+      const resetState = { request_id: data.request_id, token: data.token, email: email.toLowerCase() };
+      localStorage.setItem("levromart_manual_password_reset", JSON.stringify(resetState));
       hideLogin();
-      showToast("Check your email for a password reset link.", "success");
+      showManualResetWaiting(resetState.email);
+      startManualResetWatcher();
     } catch (err) {
-      errorEl.textContent = err.message;
+      errorEl.textContent = err.message || "Could not submit the password reset request.";
       errorEl.classList.remove("hidden");
     } finally {
       btn.disabled = false;
@@ -11274,7 +11295,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests",
     "settings","supportRequest","wishlist","buyerOrders","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
-    "adminSupportRequests","adminPeople","adminFeedback","adminUsers",
+    "adminSupportRequests","adminPasswordResets","adminPeople","adminFeedback","adminUsers",
     "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications"
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
@@ -11405,6 +11426,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminLinkLibrary": html = renderAdminLinkLibrary(); break;
       case "adminDisputes": html = await renderAdminDisputes(); break;
       case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
+      case "adminPasswordResets": html = await renderAdminPasswordResets(); break;
       case "adminPeople": html = await renderAdminPeople(); break;
       case "adminFeedback": html = await renderAdminFeedback(); break;
       case "vendorSuggestionsInbox": html = await renderVendorSuggestionsInbox(); break;
@@ -12018,8 +12040,8 @@ function handleHomeCarouselSlideClick(event, index) {
         }, 80));
         return;
       }
-      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
-        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
+      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminPasswordResets","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminPasswordResets","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
         if (!session && authViews.includes(deepView)) { showLogin(); return; }
         navigate(deepView, {}, true);
         return;
@@ -20291,7 +20313,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const deliveryBaseAmount = Math.max(0, Number(order.total_amount || 0) - Number(order.delivery_fee || 0));
   const deliveryDepositPercent = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20));
   const deliveryRemainingPercent = 100 - deliveryDepositPercent;
-  const deliveryDepositAmount = Math.round(Number(order.total_amount || 0) * deliveryDepositPercent / 100 * 100) / 100;
+  const deliveryDepositAmount = Math.round(deliveryBaseAmount * deliveryDepositPercent / 100 * 100) / 100;
   const deliveryDepositPaidAmount = paymentRows.filter((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "paid").reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const deliveryDepositPaid = deliveryDepositPaidAmount > 0.009;
   // buyer_report_manual_payment records the buyer's transfer as pending until
@@ -20429,7 +20451,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       ? (deliveryDepositReadyForBalance ? deliveryBalanceAmount : deliveryDepositAmount)
       : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
     html += `<div class="card ${isDeliveryOrder && deliveryDepositReadyForBalance ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isPayAfterDelivery ? (deliveryDepositReadyForBalance ? "Complete your payment" : "Pay deposit to confirm your order") : isDeliveryOrder ? "Pay before delivery" : "Pay now"}</h3></div>
-      ${isPayAfterDelivery ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyForBalance ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>${deliveryDepositPercent}% payment reported</strong><br>Your ${deliveryDepositPercent}% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>The vendor has delivered your order. Pay the remaining ${deliveryRemainingPercent}% balance of <strong>${naira(payableAmount)}</strong> to complete your payment.`) : `Pay a ${deliveryDepositPercent}% deposit of <strong>${naira(payableAmount)}</strong> based on the total order amount, including delivery.`}</p>` : isDeliveryOrder ? `<div class="banner banner-warning" style="margin:.45rem 0 .8rem;"><strong><i class="fa-solid fa-wallet"></i> Pay before delivery</strong><span>Full payment of <strong>${naira(payableAmount)}</strong> is required before delivery. If you need any change to this payment arrangement, please contact the vendor.</span></div>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
+      ${isPayAfterDelivery ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyForBalance ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>${deliveryDepositPercent}% payment reported</strong><br>Your ${deliveryDepositPercent}% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>The vendor has delivered your order. Pay the remaining ${deliveryRemainingPercent}% balance of <strong>${naira(payableAmount)}</strong> to complete your payment.`) : `Pay a ${deliveryDepositPercent}% deposit of <strong>${naira(payableAmount)}</strong> based on the item amount. The delivery fee remains part of the total order balance.`}</p>` : isDeliveryOrder ? `<div class="banner banner-warning" style="margin:.45rem 0 .8rem;"><strong><i class="fa-solid fa-wallet"></i> Pay before delivery</strong><span>Full payment of <strong>${naira(payableAmount)}</strong> is required before delivery. If you need any change to this payment arrangement, please contact the vendor.</span></div>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
       <button class="btn btn-sm btn-outline ${isDeliveryOrder && deliveryDepositReadyForBalance ? "delivery-balance-paystack-btn" : ""}" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
       <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyForBalance ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery && deliveryDepositReadyForBalance ? ("Pay remaining " + deliveryRemainingPercent + "% directly to vendor") : isPayAfterDelivery ? ("Pay " + deliveryDepositPercent + "% directly to vendor") : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
     </div>`;
@@ -21205,13 +21227,14 @@ function adminNavHtml(active) {
     ["adminMonthlyListings", "fa-receipt", "Monthly listings"],
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
     ["adminSupportRequests", "fa-headset", "Support"],
+    ["adminPasswordResets", "fa-key", "Password resets"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],
     ["adminLog", "fa-clock-rotate-left", "Admin log"],
     ["adminAuthLogs", "fa-right-to-bracket", "Login logs"],
     ["adminUsers", "fa-user-shield", "Admins"],
     ["adminCarousel", "fa-images", "Carousel"],
   ];
-  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : ""}</button>`).join("")}</div>`;
+  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : view === "adminPasswordResets" && Number(window.__passwordResetPendingCount||0) > 0 ? `<span class="dash-tab-dot password-reset-admin-badge">${Number(window.__passwordResetPendingCount||0) > 9 ? "9+" : Number(window.__passwordResetPendingCount||0)}</span>` : ""}</button>`).join("")}</div>`;
 }
 
 async function refreshMonthlyPendingCount(){
@@ -21246,6 +21269,139 @@ window.viewMonthlyReceipt=async function(path){try{const {data,error}=await sb.s
 window.approveMonthlyListing=async function(id){if(!(await showConfirmDialog('Activate this listing for one month? The one-month clock starts now.',{title:'Activate monthly listing',okLabel:'Activate'})))return;try{const {error}=await sb.rpc('admin_approve_monthly_listing',{p_submission_id:id});if(error)throw error;showToast('Monthly listing activated for one month.','success');await navigate('adminMonthlyListings',{},false)}catch(e){showToast(e.message||'Could not activate listing.','error')}};
 window.rejectMonthlyListing=async function(id){const note=prompt('Optional reason for rejecting this receipt:','Receipt could not be verified.');if(note===null)return;try{const {error}=await sb.rpc('admin_reject_monthly_listing',{p_submission_id:id,p_note:note});if(error)throw error;showToast('Receipt rejected.','success');await navigate('adminMonthlyListings',{},false)}catch(e){showToast(e.message||'Could not reject receipt.','error')}};
 window.deactivateMonthlyListing=async function(id){if(!(await showConfirmDialog('Deactivate this monthly listing? It will be paused immediately and its active period will be cancelled.',{title:'Deactivate listing',okLabel:'Deactivate',danger:true})))return;const note=prompt('Optional reason for deactivation:','Receipt/payment could not be verified.');if(note===null)return;try{const {error}=await sb.rpc('admin_deactivate_monthly_listing',{p_submission_id:id,p_note:note});if(error)throw error;showToast('Monthly listing deactivated.','success');await navigate('adminMonthlyListings',{},false)}catch(e){showToast(e.message||'Could not deactivate listing.','error')}};
+
+async function fetchManualPasswordResetRequests() {
+  const { data, error } = await sb.rpc("admin_get_manual_password_reset_requests");
+  if (error) throw error;
+  return data || [];
+}
+
+async function refreshManualPasswordResetBadge() {
+  if (!session || profile?.role !== "admin") return 0;
+  try {
+    const rows = await fetchManualPasswordResetRequests();
+    const pending = rows.filter(r => r.status === "pending").length;
+    window.__passwordResetPendingCount = pending;
+    document.querySelectorAll(".password-reset-admin-badge").forEach(el => {
+      el.textContent = pending > 9 ? "9+" : String(pending);
+    });
+    document.querySelectorAll('.admin-dash-tabs [data-admin-view="adminPasswordResets"]').forEach(tab => {
+      let badge = tab.querySelector(".password-reset-admin-badge");
+      if (pending > 0) {
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className = "dash-tab-dot password-reset-admin-badge";
+          tab.appendChild(badge);
+        }
+        badge.textContent = pending > 9 ? "9+" : String(pending);
+      } else {
+        badge?.remove();
+      }
+    });
+    return pending;
+  } catch (e) {
+    console.warn("Password reset badge refresh failed", e);
+    return Number(window.__passwordResetPendingCount || 0);
+  }
+}
+
+async function renderAdminPasswordResets() {
+  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
+  let rows = [];
+  try {
+    rows = await fetchManualPasswordResetRequests();
+  } catch (e) {
+    return `<h2><i class="fa-solid fa-key"></i> Password resets</h2>${adminNavHtml("adminPasswordResets")}${errorStateHtml(e)}`;
+  }
+
+  const pending = rows.filter(r => r.status === "pending").length;
+  window.__passwordResetPendingCount = pending;
+
+  let html = `<h2><i class="fa-solid fa-key"></i> Password reset requests</h2>`;
+  html += adminNavHtml("adminPasswordResets");
+  html += `<div class="card" style="margin-bottom:1rem;">
+    <strong>Manual password reset approval</strong>
+    <p class="muted" style="margin:.35rem 0 0;font-size:.88rem;">Users who tap Forgot password submit a request here. Approve only when you have verified the person's identity. After approval, their screen automatically changes to Set a new password.</p>
+  </div>`;
+
+  if (!rows.length) {
+    html += `<div class="empty-state">No password reset requests yet.</div>`;
+  } else {
+    html += `<div class="admin-password-reset-list">`;
+    for (const r of rows) {
+      const isPending = r.status === "pending";
+      const accountFound = !!r.user_id;
+      const statusClass = r.status === "approved" ? "success" : (r.status === "rejected" || r.status === "expired" ? "danger" : "warning");
+      html += `<details class="card admin-password-reset-card ${isPending ? "admin-password-reset-pending" : ""}" ${isPending ? "open" : ""}>
+        <summary class="flex" style="justify-content:space-between;gap:.8rem;">
+          <div>
+            <strong>${esc(r.email || "")}</strong>
+            <div class="muted" style="font-size:.8rem;margin-top:.2rem;">${esc(r.user_name || (accountFound ? "Account found" : "No matching account"))} · ${new Date(r.created_at).toLocaleString("en-GB")}</div>
+          </div>
+          <span class="badge ${statusClass}">${esc(r.status)}</span>
+        </summary>
+        <div style="margin-top:.8rem;">
+          <p class="muted" style="margin:.25rem 0;">${accountFound ? "A Levromart account matches this email." : "No Levromart account currently matches this email."}</p>
+          ${isPending ? `<div class="flex" style="gap:.5rem;flex-wrap:wrap;">
+            <button type="button" class="btn btn-sm ${accountFound ? "" : "btn-outline"}" ${accountFound ? "" : "disabled"} onclick="approveManualPasswordReset('${esc(r.id)}')"><i class="fa-solid fa-check"></i> Approve reset</button>
+            <button type="button" class="btn btn-sm btn-danger" onclick="rejectManualPasswordReset('${esc(r.id)}')"><i class="fa-solid fa-xmark"></i> Reject</button>
+          </div>` : ""}
+          ${r.status === "approved" && r.approved_at ? `<p class="muted" style="margin:.6rem 0 0;">Approved ${new Date(r.approved_at).toLocaleString("en-GB")}.</p>` : ""}
+          ${r.status === "rejected" && r.rejected_at ? `<p class="muted" style="margin:.6rem 0 0;">Rejected ${new Date(r.rejected_at).toLocaleString("en-GB")}.</p>` : ""}
+          ${r.status === "completed" && r.completed_at ? `<p class="muted" style="margin:.6rem 0 0;">Password was set ${new Date(r.completed_at).toLocaleString("en-GB")}.</p>` : ""}
+        </div>
+      </details>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<button class="btn btn-sm btn-outline" style="margin-top:1rem;" onclick="navigate('adminPanel',{status:'pending'})"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>`;
+
+  clearInterval(window.__passwordResetAdminTimer);
+  window.__passwordResetAdminTimer = setInterval(async () => {
+    if (profile?.role !== "admin" || !document.querySelector('.admin-dash-tabs [data-admin-view="adminPasswordResets"]')) {
+      clearInterval(window.__passwordResetAdminTimer);
+      return;
+    }
+    try {
+      const latest = await fetchManualPasswordResetRequests();
+      const latestPending = latest.filter(r => r.status === "pending").length;
+      if (latestPending !== window.__passwordResetPendingCount) {
+        await navigate("adminPasswordResets", {}, false);
+      } else {
+        window.__passwordResetPendingCount = latestPending;
+        document.querySelectorAll(".password-reset-admin-badge").forEach(el => el.textContent = latestPending > 9 ? "9+" : String(latestPending));
+      }
+    } catch (_) {}
+  }, 5000);
+
+  return html;
+}
+
+window.approveManualPasswordReset = async function(id) {
+  if (!(await showConfirmDialog("Approve this password reset request? Only approve after verifying the person's identity.", { title: "Approve password reset", okLabel: "Approve" }))) return;
+  try {
+    const { error } = await sb.rpc("admin_approve_manual_password_reset", { p_request_id: id });
+    if (error) throw error;
+    showToast("Password reset approved. The user's page will update automatically.", "success");
+    await navigate("adminPasswordResets", {}, false);
+  } catch (e) {
+    showToast(e.message || "Could not approve password reset.", "error");
+  }
+};
+
+window.rejectManualPasswordReset = async function(id) {
+  if (!(await showConfirmDialog("Reject this password reset request?", { title: "Reject password reset", okLabel: "Reject", danger: true }))) return;
+  try {
+    const { error } = await sb.rpc("admin_reject_manual_password_reset", { p_request_id: id });
+    if (error) throw error;
+    showToast("Password reset request rejected.", "success");
+    await navigate("adminPasswordResets", {}, false);
+  } catch (e) {
+    showToast(e.message || "Could not reject password reset.", "error");
+  }
+};
+
 async function renderAdminSupportRequests() {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
   // Do not depend on a fragile nested users relationship here. A broken or
@@ -22607,9 +22763,12 @@ sb.auth.onAuthStateChange((_event) => {
   if (_event === "PASSWORD_RECOVERY") {
     hideLogin();
     isVoluntaryPasswordChange = false;
+    manualResetMode = false;
     byId("currentPasswordWrap").classList.add("hidden");
+    byId("confirmNewPasswordWrap").classList.add("hidden");
     byId("resetPasswordTitle").innerHTML = '<i class="fa-solid fa-key"></i> Set a new password';
     byId("newPasswordInput").value = "";
+    byId("confirmNewPasswordInput").value = "";
     byId("resetPasswordError").classList.add("hidden");
     byId("resetPasswordModal").classList.remove("hidden");
     return;
@@ -22633,8 +22792,11 @@ sb.auth.onAuthStateChange((_event) => {
 let isVoluntaryPasswordChange = false;
 function showChangePassword() {
   isVoluntaryPasswordChange = true;
+  manualResetMode = false;
   byId("currentPasswordInput").value = "";
   byId("newPasswordInput").value = "";
+  byId("confirmNewPasswordInput").value = "";
+  byId("confirmNewPasswordWrap").classList.add("hidden");
   byId("resetPasswordError").classList.add("hidden");
   byId("currentPasswordWrap").classList.remove("hidden");
   byId("resetPasswordTitle").innerHTML = '<i class="fa-solid fa-key"></i> Change password';
@@ -22646,11 +22808,143 @@ function closeChangePasswordModal() {
   byId("resetPasswordModal").classList.add("hidden");
   if (dismissibleModalId === "resetPasswordModal") dismissibleModalId = null;
 }
+
+let manualResetMode = false;
+let manualResetWatcherTimer = null;
+
+function showManualResetWaiting(email) {
+  const modal = byId("manualResetWaitingModal");
+  if (!modal) return;
+  byId("manualResetWaitingEmail").textContent = email || "";
+  byId("manualResetWaitingStatus").textContent = "Waiting for admin approval";
+  byId("manualResetWaitingStatus").className = "badge warning";
+  byId("manualResetWaitingError").classList.add("hidden");
+  modal.classList.remove("hidden");
+  trackModalOpened("manualResetWaitingModal");
+}
+
+function closeManualResetWaiting() {
+  byId("manualResetWaitingModal")?.classList.add("hidden");
+}
+
+function stopManualResetWatcher() {
+  if (manualResetWatcherTimer) clearInterval(manualResetWatcherTimer);
+  manualResetWatcherTimer = null;
+}
+
+function openApprovedManualReset(email) {
+  stopManualResetWatcher();
+  closeManualResetWaiting();
+  manualResetMode = true;
+  byId("currentPasswordWrap").classList.add("hidden");
+  byId("confirmNewPasswordWrap").classList.remove("hidden");
+  byId("currentPasswordInput").value = "";
+  byId("newPasswordInput").value = "";
+  byId("confirmNewPasswordInput").value = "";
+  byId("resetPasswordTitle").innerHTML = '<i class="fa-solid fa-key"></i> Set a new password';
+  byId("resetPasswordError").classList.add("hidden");
+  byId("resetPasswordCancel").classList.add("hidden");
+  byId("resetPasswordModal").classList.remove("hidden");
+  setTimeout(() => byId("newPasswordInput")?.focus(), 50);
+}
+
+async function checkManualResetStatus() {
+  const raw = localStorage.getItem("levromart_manual_password_reset");
+  if (!raw) return null;
+  let state;
+  try { state = JSON.parse(raw); } catch (_) { localStorage.removeItem("levromart_manual_password_reset"); return null; }
+  if (!state?.request_id || !state?.token) return null;
+  try {
+    const { data, error } = await sb.rpc("get_manual_password_reset_status", {
+      p_request_id: state.request_id,
+      p_token: state.token
+    });
+    if (error) throw error;
+    if (data?.status === "approved") {
+      openApprovedManualReset(state.email || data.email || "");
+    } else if (data?.status === "rejected" || data?.status === "expired" || data?.status === "invalid") {
+      stopManualResetWatcher();
+      localStorage.removeItem("levromart_manual_password_reset");
+      closeManualResetWaiting();
+      if (data?.status === "rejected") showToast("Your password reset request was rejected by the admin.", "error");
+      else if (data?.status === "expired") showToast("Your password reset request expired. Please submit a new request.", "error");
+    } else if (data?.status === "pending") {
+      if (!byId("manualResetWaitingModal")?.classList.contains("hidden")) {
+        byId("manualResetWaitingStatus").textContent = "Waiting for admin approval";
+      } else {
+        showManualResetWaiting(state.email || data.email || "");
+      }
+    }
+    return data;
+  } catch (e) {
+    console.warn("Manual password reset status check failed", e);
+    return null;
+  }
+}
+
+function startManualResetWatcher() {
+  stopManualResetWatcher();
+  checkManualResetStatus();
+  manualResetWatcherTimer = setInterval(checkManualResetStatus, 3000);
+}
+
+function resumeManualResetWatcher() {
+  const raw = localStorage.getItem("levromart_manual_password_reset");
+  if (!raw) return;
+  try {
+    const state = JSON.parse(raw);
+    if (state?.request_id && state?.token) {
+      showManualResetWaiting(state.email || "");
+      startManualResetWatcher();
+    }
+  } catch (_) {
+    localStorage.removeItem("levromart_manual_password_reset");
+  }
+}
+
 async function submitNewPassword() {
   const password = byId("newPasswordInput").value;
   const errorEl = byId("resetPasswordError");
   errorEl.classList.add("hidden");
   if (!password || password.length < 8) { errorEl.textContent = "Password must be at least 8 characters."; errorEl.classList.remove("hidden"); return; }
+  if (manualResetMode) {
+    const confirmation = byId("confirmNewPasswordInput").value;
+    if (password !== confirmation) { errorEl.textContent = "Passwords do not match."; errorEl.classList.remove("hidden"); return; }
+    const raw = localStorage.getItem("levromart_manual_password_reset");
+    let state = null;
+    try { state = JSON.parse(raw || ""); } catch (_) {}
+    if (!state?.request_id || !state?.token || !state?.email) {
+      errorEl.textContent = "This reset request is no longer available. Please submit a new request.";
+      errorEl.classList.remove("hidden");
+      return;
+    }
+    const btn = byId("resetPasswordSubmit");
+    btn.disabled = true;
+    try {
+      const { error } = await sb.rpc("complete_manual_password_reset", {
+        p_request_id: state.request_id,
+        p_token: state.token,
+        p_new_password: password
+      });
+      if (error) throw error;
+      const { error: signInError } = await sb.auth.signInWithPassword({ email: state.email, password });
+      if (signInError) throw signInError;
+      localStorage.removeItem("levromart_manual_password_reset");
+      stopManualResetWatcher();
+      manualResetMode = false;
+      byId("confirmNewPasswordWrap").classList.add("hidden");
+      byId("resetPasswordModal").classList.add("hidden");
+      showToast("Password updated successfully.", "success");
+      await refreshAuthStateOnce();
+      navigate("home", {}, false);
+    } catch (err) {
+      errorEl.textContent = err.message || "Could not set the new password.";
+      errorEl.classList.remove("hidden");
+    } finally {
+      btn.disabled = false;
+    }
+    return;
+  }
   const btn = byId("resetPasswordSubmit");
   btn.disabled = true;
   try {
@@ -25146,6 +25440,7 @@ window.addEventListener("popstate", (e) => {
     refreshAuthStateOnce(),
     new Promise(resolve => setTimeout(resolve, 900))
   ]).catch(() => {});
+  resumeManualResetWatcher();
 
   const urlParams = new URLSearchParams(location.search);
   // The SPA route is also encoded in the browser URL for every ordinary view.
@@ -27254,7 +27549,7 @@ window.renderVendorMapRail = function(){
     const pendingDeposit=paymentRows.find(p=>p.payment_type==="deposit"&&p.status==="pending");
     const baseAmount=Math.max(0,Number(order.total_amount||0)-Number(order.delivery_fee||0));
     const deliveryDepositPercent=Math.max(1,Math.min(99,Number(order.payment_deposit_percent??20)||20));
-    const deliveryDepositAmount=Math.round(Number(order.total_amount||0)*deliveryDepositPercent/100*100)/100;
+    const deliveryDepositAmount=Math.round(baseAmount*deliveryDepositPercent/100*100)/100;
     let amount=0; let paymentLabel=order.order_type==="rental"?"rental fee":"sale price";
     if(isPayAfterDelivery&&!deliveryDepositPaid&&!deliveryDepositReported){amount=Number(pendingDeliveryDeposit?.amount||deliveryDepositAmount);paymentLabel=`${deliveryDepositPercent}% delivery deposit`;}
     else if(isPayAfterDelivery&&!paidFee){amount=Number(pendingFee?.amount||Math.max(0,Number(order.total_amount||0)-deliveryDepositPaid-(deliveryDepositReported ? Number(pendingDeliveryDeposit?.amount||0) : 0)));paymentLabel="remaining balance";}
@@ -32414,7 +32709,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
         sb.from('disputes').select('id',{count:'exact',head:true}).not('status','in','(resolved,closed)'),
         sb.from('suggestions').select('id',{count:'exact',head:true}).eq('status','new')
       ]);
-      const counts={adminPanel:Number(vendorsQ.count||0),adminSupportRequests:Number(supportQ.count||0),adminDisputes:Number(disputesQ.count||0),adminFeedback:Number(suggestionsQ.count||0)};
+      const counts={adminPanel:Number(vendorsQ.count||0),adminSupportRequests:Number(supportQ.count||0),adminDisputes:Number(disputesQ.count||0),adminFeedback:Number(suggestionsQ.count||0),adminPasswordResets:Number(window.__passwordResetPendingCount||0)};
       window.__adminDisputeCount = counts.adminDisputes;
       const profileDisputeBadge = document.querySelector('#profilePanel [data-profile-key="disputes"] .profile-disputes-badge');
       if(profileDisputeBadge){
