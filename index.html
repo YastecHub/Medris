@@ -6746,6 +6746,114 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 }
 </style>
 
+
+<style id="levromart-bank-picker-dark-mode-fix-20260916">
+/* Payout-bank picker: keep the entire sheet consistent with the active theme.
+   The previous visibility fix used a white fallback, which made bank names
+   nearly invisible in dark mode. */
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-picker-content,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-picker-content,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-picker-content,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-picker-content {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-picker-list,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-picker-list,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-picker-list,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-picker-list {
+  background: var(--card) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-option,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-option,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-option,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-option {
+  background: transparent !important;
+  color: var(--text) !important;
+  border-bottom-color: var(--border) !important;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-option:hover,
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-option.selected,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-option:hover,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-option.selected,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-option:hover,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-option.selected,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-option:hover,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-option.selected {
+  background: color-mix(in srgb, var(--primary) 10%, var(--card)) !important;
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-picker-header,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-picker-header,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-picker-head,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-picker-head {
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal #vaBankSearch,
+[data-theme="black"] #vendorApplyBankPickerModal #vaBankSearch,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-search,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-search {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal #vaBankSearch::placeholder,
+[data-theme="black"] #vendorApplyBankPickerModal #vaBankSearch::placeholder,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-search::placeholder,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-search::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 1;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-picker-header p,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-picker-header p,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-picker-head p,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-picker-head p {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-option-main strong,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-option-main strong,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-option-main strong,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-option-main strong {
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-option-main small,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-option-main small,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-option-main small,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-option-main small {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-option-icon,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-option-icon,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-option-icon,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-option-icon {
+  background: color-mix(in srgb, var(--primary) 12%, var(--card)) !important;
+  color: var(--primary) !important;
+}
+
+[data-theme="dark"] #vendorApplyBankPickerModal .vendor-bank-picker-close,
+[data-theme="black"] #vendorApplyBankPickerModal .vendor-bank-picker-close,
+[data-theme="dark"] #vendorBankPickerModal .vendor-bank-picker-close,
+[data-theme="black"] #vendorBankPickerModal .vendor-bank-picker-close {
+  color: var(--text) !important;
+  background: color-mix(in srgb, var(--card) 92%, var(--primary) 8%) !important;
+  border-color: var(--border) !important;
+}
+
+/* Keep the light theme unchanged. */
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--primary,#10b981)" stroke-width="5"/><path d="M19 34c5-1 8-4 10-9 1-3 3-5 6-5 4 0 6 3 6 7 0 5-4 8-8 8h-5c-5 0-9 3-9 7 0 3 2 5 5 5 4 0 6-2 7-5" fill="none" stroke="var(--primary,#10b981)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
@@ -35261,8 +35369,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   /* Delete = move to recycle bin. No password, no phone-number confirmation. */
   window.adminDeleteVendor = async function(vendorId, filterStatus, businessName){
     if(adminVendorActionBusy.has(vendorId)) return;
-    if(!session?.user?.id || profile?.role !== "admin" || profile?.is_super_admin !== true){
-      showToast("Super admin access is required.","error"); return;
+    if(!session?.user?.id || profile?.role !== "admin"){
+      showToast("Admin access is required.","error"); return;
     }
     adminVendorActionBusy.add(vendorId);
     try{
@@ -35288,16 +35396,24 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     }finally{adminVendorActionBusy.delete(vendorId);}
   };
 
+  function friendlyVendorRecycleError(err, fallback){
+    const raw=String(err?.message||err||"");
+    if(/deleted_previous_verification_status|column \"role\"|user_role|vendor_verification_status/i.test(raw)){
+      return fallback;
+    }
+    return raw||fallback;
+  }
+
   window.restoreAdminVendor = async function(vendorId){
     if(adminVendorActionBusy.has(vendorId)) return;
-    if(!session?.user?.id || profile?.role !== "admin" || profile?.is_super_admin !== true){showToast("Super admin access is required.","error");return;}
+    if(!session?.user?.id || profile?.role !== "admin"){showToast("Admin access is required.","error");return;}
     adminVendorActionBusy.add(vendorId);
     try{
       const {data:target}=await sb.from("vendors").select("business_name").eq("id",vendorId).maybeSingle();
       const name=target?.business_name && target.business_name!=="Deleted vendor" ? target.business_name : "this vendor";
       if(!(await showConfirmDialog(`Restore "${name}"? Their storefront, vendor status and saved listings will be restored.`,{title:"Restore vendor",okLabel:"Restore"})))return;
       const {data,error}=await sb.rpc("admin_restore_vendor",{p_vendor_id:vendorId});
-      if(error){showToast(error.message||"Could not restore this vendor.","error");return;}
+      if(error){showToast(friendlyVendorRecycleError(error,"Could not restore this vendor. Please try again."),"error");return;}
       if(!data?.restored){showToast("The vendor was not restored.","error");return;}
       invalidateMarketplaceState();
       showToast(`${name} restored successfully.`,"success");
@@ -35308,7 +35424,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
   window.permanentlyDeleteAdminVendor = async function(vendorId){
     if(adminVendorActionBusy.has(vendorId)) return;
-    if(!session?.user?.id || profile?.role !== "admin" || profile?.is_super_admin !== true){showToast("Super admin access is required.","error");return;}
+    if(!session?.user?.id || profile?.role !== "admin"){showToast("Admin access is required.","error");return;}
     adminVendorActionBusy.add(vendorId);
     try{
       const {data:target}=await sb.from("vendors").select("business_name").eq("id",vendorId).maybeSingle();
@@ -35318,7 +35434,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
         {title:"Delete permanently",okLabel:"Delete permanently",danger:true}
       )))return;
       const {data,error}=await sb.rpc("admin_permanently_delete_vendor",{p_vendor_id:vendorId});
-      if(error){showToast(error.message||"Could not permanently delete this vendor.","error");return;}
+      if(error){showToast(friendlyVendorRecycleError(error,"Could not permanently delete this vendor. Please try again."),"error");return;}
       if(!data?.deleted_permanently){showToast("The vendor was not permanently deleted.","error");return;}
       invalidateMarketplaceState();
       showToast(`${name} was permanently removed. The account is now a buyer and must apply again to become a vendor.`,"success");
@@ -35664,7 +35780,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   // happens without waiting for a full admin-page re-render.
   window.adminDeleteVendor=async function(vendorId,filterStatus,businessName){
     if(adminVendorActionBusy.has(vendorId))return;
-    if(!session?.user?.id || profile?.role!=="admin" || profile?.is_super_admin!==true){showToast("Super admin access is required.","error");return;}
+    if(!session?.user?.id || profile?.role!=="admin"){showToast("Admin access is required.","error");return;}
     const card=adminCard(vendorId);
     businessName=businessName||card?.dataset?.name||card?.querySelector("summary strong")?.textContent?.trim()||"this vendor";
     if(!(await showConfirmDialog(`Move "${businessName}" to the Recycle Bin? Their storefront and listings will be hidden, but everything can be restored later.`,{title:"Move to Recycle Bin",okLabel:"Move to Recycle Bin",danger:true})))return;
