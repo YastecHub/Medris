@@ -1,4 +1,25 @@
 
+<style id="order-edit-and-buyer-location-ui">
+  #app .order-action-edit{background:var(--primary)!important;color:#fff!important;}
+  .edit-order-modal-content{max-width:560px!important;padding:1.15rem!important;}
+  .edit-order-intro{font-size:.82rem;line-height:1.45;margin:.65rem 0 1rem;}
+  .edit-order-items{border:1px solid var(--border);border-radius:.9rem;overflow:hidden;}
+  .edit-order-item-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem .9rem;background:var(--card);}
+  .edit-order-item-row + .edit-order-item-row{border-top:1px solid var(--border);}
+  .edit-order-item-copy{min-width:0;display:flex;flex-direction:column;gap:.15rem;}
+  .edit-order-item-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .edit-order-item-copy .muted{font-size:.75rem;}
+  .edit-order-qty-label{display:flex;align-items:center;gap:.45rem;margin:0;white-space:nowrap;font-size:.78rem;color:var(--text-muted);font-weight:600;}
+  .edit-order-qty{width:78px!important;margin:0!important;text-align:center;}
+  .edit-order-section{margin-top:.9rem;}
+  .edit-order-section h4{margin:0 0 .4rem;font-size:.9rem;}
+  .edit-order-total{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding:.75rem .85rem;border-radius:.8rem;background:color-mix(in srgb,var(--primary) 7%,var(--card));border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border));}
+  .edit-order-total strong{font-size:1.05rem;color:var(--primary);}
+  .edit-order-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem;}
+  .order-buyer-location-wrap{margin-top:.9rem;padding-top:.9rem;border-top:1px solid var(--border);}
+  .order-buyer-location-map{width:100%;height:300px;margin-top:.65rem;border-radius:.9rem;overflow:hidden;border:1px solid var(--border);background:var(--input-bg);}
+  @media(max-width:520px){.edit-order-modal-content{padding:.95rem!important}.edit-order-item-row{align-items:flex-start}.edit-order-qty-label{flex-direction:column;align-items:flex-end;gap:.2rem}.order-buyer-location-map{height:260px}}
+</style>
 <style id="pickup-payment-message-polish">
   #app .pickup-message-vendor-wrap{display:flex;flex-direction:column;align-items:center;width:100%;margin:.7rem 0 0;}
   #app .pickup-message-vendor-wrap .order-message-vendor-btn{min-width:min(290px,100%);justify-content:center;}
@@ -13430,6 +13451,7 @@ async function checkoutCartVendor(vendorId) {
     return;
   }
   await sb.from("cart_items").delete().in("id", group.items.map((it) => it.id));
+  await persistBuyerDeliveryLocation(orderId, delivery.method);
   refreshNotifications();
   navigate("orderDetail", { orderId });
   } catch (err) {
@@ -15324,6 +15346,7 @@ async function buyPackageFromDetail(packageId) {
     if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); }
     return;
   }
+  await persistBuyerDeliveryLocation(orderId, delivery.method);
   navigate("orderDetail", { orderId });
 }
 async function renderPackageDetail(packageId) {
@@ -15686,6 +15709,7 @@ async function confirmRental(vendorId, productId) {
     p_buyer_lng: buyerLocation?.lng ?? null,
   });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
+  await persistBuyerDeliveryLocation(orderId, delivery.method);
   navigate("orderDetail", { orderId });
 }
 
@@ -15745,6 +15769,20 @@ function selectProductVariant(variantId, scrollGallery = true, syncGallery = tru
   }
 }
 
+async function persistBuyerDeliveryLocation(orderId, deliveryMethod) {
+  if (deliveryMethod !== "delivery" || !orderId || !buyerLocation) return;
+  try {
+    const { error } = await sb.rpc("set_order_buyer_location", {
+      p_order_id: orderId,
+      p_lat: buyerLocation.lat,
+      p_lng: buyerLocation.lng,
+    });
+    if (error) console.warn("[Levromart] Could not store buyer delivery location:", error);
+  } catch (err) {
+    console.warn("[Levromart] Could not store buyer delivery location:", err);
+  }
+}
+
 async function buyNow(vendorId, productId) {
   if (!session) { showLogin(); return; }
   if (blockOwnVendorPurchase(vendorId, "buy")) return;
@@ -15779,6 +15817,7 @@ async function buyNow(vendorId, productId) {
     p_buyer_lng: buyerLocation?.lng ?? null,
   });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
+  await persistBuyerDeliveryLocation(orderId, delivery.method);
 
   await navigate("orderDetail", { orderId });
 }
@@ -19295,11 +19334,33 @@ function listingActivationValid(p) {
   return p?.billing_model === "monthly" && Number.isFinite(Date.parse(p.billing_paid_until)) && Date.parse(p.billing_paid_until) > Date.now();
 }
 async function setProductStatus(id, status) {
-  if(status === "active")return startListingMonthlyPayment("product",id);
-
-  const { error } = await sb.from("products").update({ status }).eq("id", id).eq("vendor_id", vendor.id);
-  if (error) { showToast(error.message, "error"); return; }
-  navigate("vendorProducts");
+  if (!vendor?.id) { showToast("Your vendor profile is unavailable. Please sign in again.", "error"); return; }
+  try {
+    if (status === "active") {
+      // Commission listings can be reactivated directly. Only monthly listings
+      // need the ₦1,000 renewal flow, and only when their paid period has expired.
+      const { data: p, error: readErr } = await sb.from("products")
+        .select("id,name,status,billing_model,billing_status,billing_paid_until")
+        .eq("id", id).eq("vendor_id", vendor.id).maybeSingle();
+      if (readErr) throw readErr;
+      if (!p) throw new Error("Product not found.");
+      if (p.billing_model === "monthly" && !listingActivationValid(p)) {
+        return startListingMonthlyPayment("product", id);
+      }
+      const { error } = await sb.from("products")
+        .update({ status: "active", billing_status: p.billing_model === "monthly" ? "active" : p.billing_status })
+        .eq("id", id).eq("vendor_id", vendor.id);
+      if (error) throw error;
+      showToast(`${p.name || "Product"} is active again.`, "success");
+    } else {
+      const { error } = await sb.from("products").update({ status }).eq("id", id).eq("vendor_id", vendor.id);
+      if (error) throw error;
+      showToast("Product paused.", "success");
+    }
+    await navigate("vendorProducts", {}, false);
+  } catch (err) {
+    showToast(err?.message || "Could not update this product.", "error");
+  }
 }
 async function removeProduct(id) {
   if ((window.__vendorPendingProductIds || new Set()).has(id)) {
@@ -20299,7 +20360,9 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <div class="flex order-buyer-contact-actions" style="gap:.7rem;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-sm order-contact-message-btn" type="button" onclick="messageCustomerFromOrder('${orderId}')"><i class="fa-solid fa-comment-dots"></i> Message customer</button>
         ${c.phone ? `<a class="btn btn-sm btn-outline order-contact-call-btn" href="${telLink(c.phone)}"><i class="fa-solid fa-phone"></i> ${esc(c.phone)}</a>` : `<span class="muted order-contact-no-phone" style="font-size:0.85rem;align-self:center;">No phone on file</span>`}
+        ${isDeliveryOrder && order.buyer_lat != null && order.buyer_lng != null && order.vendor?.lat != null && order.vendor?.lng != null ? `<button class="btn btn-sm btn-outline order-buyer-location-btn" type="button" onclick="showOrderBuyerLocation('${order.id}',${Number(order.buyer_lat)},${Number(order.buyer_lng)},${Number(order.vendor.lat)},${Number(order.vendor.lng)})"><i class="fa-solid fa-map-location-dot"></i> View customer location</button>` : ""}
       </div>
+      ${isDeliveryOrder && isVendor && order.buyer_lat != null && order.buyer_lng != null ? `<div id="orderBuyerLocationWrap-${order.id}" class="order-buyer-location-wrap hidden"><div class="flex" style="justify-content:space-between;gap:.6rem;align-items:center;"><strong><i class="fa-solid fa-location-dot"></i> Delivery location</strong><span id="orderBuyerLocationStatus-${order.id}" class="muted"></span></div><div id="orderBuyerLocationMap-${order.id}" class="order-buyer-location-map"></div></div>` : ""}
     </div>`;
   }
 
@@ -20436,6 +20499,148 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
 // window the vendor may already be getting the order ready, so cancelling
 // needs a dispute instead.
 const BUYER_CANCEL_WINDOW_HOURS = 5;
+let editOrderBusy = false;
+async function openEditOrderModal(orderId) {
+  if (!session?.user?.id || editOrderBusy) return;
+  editOrderBusy = true;
+  try {
+    const { data: order, error } = await sb.from("orders")
+      .select("id,buyer_id,vendor_id,status,order_type,package_id,total_amount,delivery_method,delivery_address,delivery_phone,buyer_note,delivery_fee,items:order_items(id,product_id,quantity,unit_price,product:products(name))")
+      .eq("id", orderId).eq("buyer_id", session.user.id).maybeSingle();
+    if (error) throw error;
+    if (!order) throw new Error("Order not found.");
+    if (order.status !== "pending") throw new Error("This order can only be edited while it is waiting for vendor confirmation.");
+    if (order.package_id) throw new Error("Package orders cannot be edited after checkout.");
+    if (!Array.isArray(order.items) || !order.items.length) throw new Error("This order has no editable items.");
+
+    let modal = byId("editOrderModal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "editOrderModal";
+      modal.className = "modal hidden";
+      document.body.appendChild(modal);
+    }
+    const rows = order.items.map((item, i) => `
+      <div class="edit-order-item-row">
+        <div class="edit-order-item-copy"><strong>${esc(item.product?.name || "Item")}</strong><span class="muted">${naira(item.unit_price)} each</span></div>
+        <label class="edit-order-qty-label">Quantity<input class="edit-order-qty" data-order-item-id="${esc(item.id)}" type="number" min="0" step="1" value="${Number(item.quantity) || 0}" inputmode="numeric" /></label>
+      </div>`).join("");
+    const deliveryFields = order.delivery_method === "delivery" ? `
+      <div class="edit-order-section">
+        <h4>Delivery details</h4>
+        <label>Delivery address<input id="editOrderAddress" type="text" value="${esc(order.delivery_address || "")}" placeholder="Delivery address" /></label>
+        <label>Phone number<input id="editOrderPhone" type="tel" value="${esc(order.delivery_phone || "")}" placeholder="Phone number" /></label>
+      </div>` : "";
+    modal.innerHTML = `<div class="modal-content edit-order-modal-content">
+      <div class="drawer-header"><div><span class="muted">Order edit</span><h3 style="margin:.1rem 0 0;">Edit your order</h3></div><button type="button" class="icon-btn" onclick="closeEditOrderModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+      <p class="muted edit-order-intro">You can change the quantities or correct your delivery details while the vendor is still deciding whether to accept the order.</p>
+      <div id="editOrderError" class="error-text hidden"></div>
+      <div class="edit-order-items">${rows}</div>
+      <div class="edit-order-section"><h4>Note for the vendor</h4><textarea id="editOrderNote" rows="3" placeholder="Add or correct a note for the vendor…">${esc(order.buyer_note || "")}</textarea></div>
+      ${deliveryFields}
+      <div class="edit-order-total"><span>New total</span><strong id="editOrderTotal">${naira(order.total_amount)}</strong></div>
+      <p class="muted" style="font-size:.76rem;margin:.55rem 0 0;">The vendor will receive an immediate notification when you save the changes.</p>
+      <div class="edit-order-actions"><button type="button" class="btn btn-outline" onclick="closeEditOrderModal()">Cancel</button><button type="button" class="btn" id="editOrderSaveBtn" onclick="saveEditedOrder('${esc(order.id)}')"><i class="fa-solid fa-check"></i> Save changes</button></div>
+    </div>`;
+    modal.classList.remove("hidden");
+    modal.dataset.orderId = order.id;
+    modal.dataset.deliveryFee = String(Number(order.delivery_fee || 0));
+    modal.dataset.originalTotal = String(Number(order.total_amount || 0));
+    modal.dataset.originalItems = JSON.stringify(order.items.map(it => ({ id: it.id, qty: Number(it.quantity || 0), price: Number(it.unit_price || 0) })));
+    modal.querySelectorAll(".edit-order-qty").forEach(input => input.addEventListener("input", updateEditOrderTotal));
+    updateEditOrderTotal();
+  } catch (err) {
+    showToast(err?.message || "Could not open the order editor.", "error");
+  } finally {
+    editOrderBusy = false;
+  }
+}
+
+function closeEditOrderModal() {
+  byId("editOrderModal")?.classList.add("hidden");
+}
+
+function updateEditOrderTotal() {
+  const modal = byId("editOrderModal");
+  const totalEl = byId("editOrderTotal");
+  if (!modal || !totalEl) return;
+  let total = Number(modal.dataset.deliveryFee || 0);
+  modal.querySelectorAll(".edit-order-qty").forEach(input => {
+    const qty = Math.max(0, parseInt(input.value || "0", 10) || 0);
+    const original = JSON.parse(modal.dataset.originalItems || "[]").find(x => String(x.id) === String(input.dataset.orderItemId));
+    total += qty * Number(original?.price || 0);
+  });
+  totalEl.textContent = naira(total);
+}
+
+async function saveEditedOrder(orderId) {
+  const modal = byId("editOrderModal"), btn = byId("editOrderSaveBtn"), errorEl = byId("editOrderError");
+  if (!modal || !btn) return;
+  errorEl?.classList.add("hidden");
+  const items = [...modal.querySelectorAll(".edit-order-qty")].map(input => ({
+    order_item_id: input.dataset.orderItemId,
+    quantity: Math.max(0, parseInt(input.value || "0", 10) || 0),
+  }));
+  if (!items.some(it => it.quantity > 0)) {
+    if (errorEl) { errorEl.textContent = "Keep at least one item in the order."; errorEl.classList.remove("hidden"); }
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+  try {
+    const { error } = await sb.rpc("edit_pending_order", {
+      p_order_id: orderId,
+      p_items: items,
+      p_buyer_note: byId("editOrderNote")?.value?.trim() || null,
+      p_delivery_address: byId("editOrderAddress")?.value?.trim() || null,
+      p_delivery_phone: byId("editOrderPhone")?.value?.trim() || null,
+    });
+    if (error) throw error;
+    closeEditOrderModal();
+    showToast("Order updated. The vendor has been notified.", "success");
+    refreshNotifications();
+    await navigate("orderDetail", { orderId }, false);
+  } catch (err) {
+    if (errorEl) { errorEl.textContent = err?.message || "Could not update this order."; errorEl.classList.remove("hidden"); }
+    else showToast(err?.message || "Could not update this order.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Save changes';
+  }
+}
+
+async function showOrderBuyerLocation(orderId, buyerLat, buyerLng, vendorLat, vendorLng) {
+  const wrap = byId(`orderBuyerLocationWrap-${orderId}`);
+  const mapEl = byId(`orderBuyerLocationMap-${orderId}`);
+  const statusEl = byId(`orderBuyerLocationStatus-${orderId}`);
+  if (!wrap || !mapEl) return;
+  wrap.classList.remove("hidden");
+  await loadLeaflet();
+  if (statusEl) {
+    const km = vendorLat != null && vendorLng != null ? haversineKm(Number(vendorLat), Number(vendorLng), Number(buyerLat), Number(buyerLng)) : null;
+    statusEl.textContent = km != null ? `${formatDistanceKm(km)} from your shop` : "Customer location captured for this delivery.";
+  }
+  let map = mapEl._levroOrderBuyerMap;
+  if (!map) {
+    map = window.L.map(mapEl, { attributionControl: true, zoomControl: true, zoomControlOptions: { position: "topleft" } });
+    map.attributionControl.setPrefix(false);
+    addBasemapTileLayer(map);
+    mapEl._levroOrderBuyerMap = map;
+  } else {
+    map.eachLayer(layer => { if (layer instanceof window.L.Marker || layer instanceof window.L.CircleMarker) map.removeLayer(layer); });
+  }
+  const buyerMarker = window.L.marker([Number(buyerLat), Number(buyerLng)]).addTo(map);
+  buyerMarker.bindPopup("Customer delivery location").openPopup();
+  const points = [[Number(buyerLat), Number(buyerLng)]];
+  if (vendorLat != null && vendorLng != null) {
+    const vendorMarker = window.L.marker([Number(vendorLat), Number(vendorLng)], { icon: vendorMapIcon() }).addTo(map);
+    vendorMarker.bindPopup("Your shop");
+    points.push([Number(vendorLat), Number(vendorLng)]);
+  }
+  map.fitBounds(window.L.latLngBounds(points), { padding: [35,35], maxZoom: 15 });
+  requestAnimationFrame(() => requestAnimationFrame(() => map?.invalidateSize(true)));
+}
+
 function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   const buttons = [];
   const isDeliveryOrder = order.delivery_method === "delivery";
@@ -20454,7 +20659,10 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
     // confirmation control from reappearing on an already-confirmed order.
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
   }
-  if (isCustomer && order.status === "pending") buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
+  if (isCustomer && order.status === "pending") {
+    if (order.order_type !== "sale" || !order.package_id) buttons.push(`<button class="btn btn-sm order-action-edit" onclick="openEditOrderModal('${order.id}')"><i class="fa-solid fa-pen"></i> Edit order</button>`);
+    buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
+  }
   if (isCustomer && order.status === "confirmed") {
     const paidRow = payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
     if (!isDeliveryOrder && !paidRow) {
