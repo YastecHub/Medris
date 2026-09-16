@@ -11322,7 +11322,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests",
     "settings","supportRequest","wishlist","buyerOrders","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
-    "adminSupportRequests","adminPasswordResets","adminPeople","adminFeedback","adminUsers",
+    "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
     "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications"
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
@@ -11462,6 +11462,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminDisputes": html = await renderAdminDisputes(); break;
       case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
       case "adminPasswordResets": html = await renderAdminPasswordResets(); break;
+      case "adminInventory": html = await renderAdminInventory(); break;
       case "adminPeople": html = await renderAdminPeople(); break;
       case "adminFeedback": html = await renderAdminFeedback(); break;
       case "vendorSuggestionsInbox": html = await renderVendorSuggestionsInbox(); break;
@@ -12075,8 +12076,8 @@ function handleHomeCarouselSlideClick(event, index) {
         }, 80));
         return;
       }
-      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminPasswordResets","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
-        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminPasswordResets","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
+      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminPasswordResets","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+        const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminPasswordResets","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
         if (!session && authViews.includes(deepView)) { showLogin(); return; }
         navigate(deepView, {}, true);
         return;
@@ -12252,7 +12253,7 @@ function handleAdminDeepLinkClick(event, href) {
     const routes = new Set([
       "cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders",
       "vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist",
-      "adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance",
+      "adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance",
       "adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog",
       "vendorSuggestionsInbox","requestEquipment","buyerOrders","productDetail","packageDetail","storefront"
     ]);
@@ -21451,6 +21452,7 @@ function adminNavHtml(active) {
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
     ["adminSupportRequests", "fa-headset", "Support"],
     ["adminPasswordResets", "fa-key", "Password resets"],
+    ["adminInventory", "fa-boxes-stacked", "Inventory"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],
     ["adminLog", "fa-clock-rotate-left", "Admin log"],
     ["adminAuthLogs", "fa-right-to-bracket", "Login logs"],
@@ -21899,7 +21901,9 @@ async function setVendorStatus(id, status, filterStatus, businessName) {
   }
 
   if (status === "rejected") {
-    if (!(await promptAdminPassword(`reject "${businessName}"`))) return;
+    const reason = window.promptVendorRejectionReason ? await window.promptVendorRejectionReason(businessName) : null;
+    if (reason === null) return;
+    window.__pendingVendorRejectionReason = reason;
   }
 
   adminVendorActionBusy.add(id);
@@ -25744,9 +25748,9 @@ window.addEventListener("popstate", (e) => {
       await navigate(profile?.role === "admin" ? "adminFinance" : (vendor ? "vendorOrders" : "buyerOrders"), vendor ? {status:"all",perspective:"sales"} : {}, false);
       return;
     }
-    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+    if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
       history.replaceState({ view: "home", params: {} }, "", location.pathname);
-      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
+      const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
       if (!session && authViews.includes(deepView)) { showLogin(); return; }
       await navigate(deepView, {}, false);
       if (deepView === "vendors" && urlParams.get("map") === "1") {
@@ -29887,6 +29891,8 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 .product-payment-plan-notice.pay-before{background:#f0fdf4;border-color:#86efac;color:#166534;}
 .product-payment-plan-notice.pay-after{background:#fff7ed;border-color:#fdba74;color:#c2410c;}
 </style>
+
+
 
 
 </body>
@@ -35324,3 +35330,278 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 })();
 </script>
 
+<style id="levromart-admin-reject-inventory-fix-20260916">
+/* Admin vendor rejection + inventory: intentionally scoped to the requested
+   admin workflows. No changes to bottom navigation or marketplace surfaces. */
+.admin-reject-reason-modal{
+  position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;
+  padding:1rem;background:rgba(0,0,0,.62);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
+}
+.admin-reject-reason-modal.hidden{display:none}
+.admin-reject-reason-card{
+  width:min(560px,calc(100vw - 2rem));border:1px solid rgba(128,128,128,.28);
+  border-radius:22px;padding:1.1rem;background:var(--card-bg,#111);
+  color:var(--text,#fff);box-shadow:0 20px 60px rgba(0,0,0,.4);
+}
+.admin-reject-reason-card h3{margin:0 0 .5rem;font-size:1.2rem}
+.admin-reject-reason-card p{margin:.25rem 0 1rem;color:var(--muted,#9ca3af)}
+.admin-reject-reason-card textarea{
+  width:100%;min-height:130px;resize:vertical;box-sizing:border-box;
+  border:1px solid rgba(128,128,128,.35);border-radius:14px;padding:.85rem;
+  background:transparent;color:inherit;font:inherit;
+}
+.admin-reject-reason-actions{display:flex;justify-content:flex-end;gap:.55rem;margin-top:.75rem}
+.admin-inventory-summary{display:flex;gap:.7rem;flex-wrap:wrap;margin:.8rem 0}
+.admin-inventory-stat{padding:.8rem 1rem;border:1px solid rgba(128,128,128,.22);border-radius:15px;background:var(--card-bg,#111);min-width:135px}
+.admin-inventory-stat strong{display:block;font-size:1.25rem}
+.admin-inventory-stat span{font-size:.82rem;color:var(--muted,#9ca3af)}
+.admin-inventory-controls{display:flex;gap:.65rem;flex-wrap:wrap;margin:.8rem 0}
+.admin-inventory-controls input,.admin-inventory-controls select{
+  min-height:46px;border:1px solid rgba(128,128,128,.28);border-radius:12px;
+  background:var(--card-bg,#111);color:inherit;padding:.65rem .8rem;font:inherit;
+}
+.admin-inventory-controls input{flex:1 1 280px}
+.admin-inventory-controls select{flex:0 1 220px}
+.admin-inventory-table-wrap{overflow-x:auto;border:1px solid rgba(128,128,128,.2);border-radius:16px}
+.admin-inventory-table{width:100%;border-collapse:collapse;min-width:760px}
+.admin-inventory-table th,.admin-inventory-table td{padding:.75rem .7rem;border-bottom:1px solid rgba(128,128,128,.16);text-align:left}
+.admin-inventory-table th{font-size:.82rem;white-space:nowrap}
+.admin-inventory-table tbody tr:last-child td{border-bottom:0}
+.admin-inventory-table .num{text-align:right}
+.admin-inventory-months{margin-top:1rem}
+.admin-inventory-months summary{cursor:pointer;font-weight:700}
+.admin-inventory-status{font-size:.78rem;padding:.2rem .5rem;border-radius:999px;background:rgba(16,185,129,.12);color:#10b981}
+.admin-inventory-status.removed{background:rgba(239,68,68,.12);color:#ef4444}
+</style>
+
+<div id="adminVendorRejectReasonModal" class="admin-reject-reason-modal hidden" role="dialog" aria-modal="true" aria-labelledby="adminRejectReasonTitle">
+  <div class="admin-reject-reason-card">
+    <h3 id="adminRejectReasonTitle">Reason for rejection</h3>
+    <p id="adminRejectReasonMsg">Give the vendor a clear reason. This reason will be sent to them in a Levromart notification.</p>
+    <textarea id="adminRejectReasonInput" maxlength="1000" placeholder="Enter the reason for rejecting this vendor application…"></textarea>
+    <div class="admin-reject-reason-actions">
+      <button type="button" class="btn btn-sm btn-outline" id="adminRejectReasonCancel">Cancel</button>
+      <button type="button" class="btn btn-sm btn-danger" id="adminRejectReasonConfirm">Reject vendor</button>
+    </div>
+  </div>
+</div>
+
+<script id="levromart-admin-reject-inventory-fix-js-20260916">
+(function(){
+  "use strict";
+
+  /* ---------------- Vendor rejection: no password, reason required ---------------- */
+  window.promptVendorRejectionReason = function(businessName){
+    return new Promise((resolve)=>{
+      const modal=document.getElementById("adminVendorRejectReasonModal");
+      const input=document.getElementById("adminRejectReasonInput");
+      const msg=document.getElementById("adminRejectReasonMsg");
+      const ok=document.getElementById("adminRejectReasonConfirm");
+      const cancel=document.getElementById("adminRejectReasonCancel");
+      if(!modal||!input||!ok||!cancel){ resolve(null); return; }
+
+      msg.textContent=`Give "${businessName||"this vendor"}" a clear reason. This reason will be sent to the vendor in a notification.`;
+      input.value="";
+      modal.classList.remove("hidden");
+      setTimeout(()=>input.focus(),30);
+
+      const cleanup=(value)=>{
+        modal.classList.add("hidden");
+        ok.disabled=false;
+        ok.removeEventListener("click",onOk);
+        cancel.removeEventListener("click",onCancel);
+        input.removeEventListener("keydown",onKey);
+        modal.removeEventListener("click",onBackdrop);
+        resolve(value);
+      };
+      const onOk=()=>{
+        const reason=String(input.value||"").trim();
+        if(!reason){
+          input.focus();
+          showToast("Please enter a rejection reason.","error");
+          return;
+        }
+        cleanup(reason);
+      };
+      const onCancel=()=>cleanup(null);
+      const onKey=(e)=>{
+        if(e.key==="Escape"){e.preventDefault();onCancel();}
+        else if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){e.preventDefault();onOk();}
+      };
+      const onBackdrop=(e)=>{if(e.target===modal)onCancel();};
+      ok.addEventListener("click",onOk);
+      cancel.addEventListener("click",onCancel);
+      input.addEventListener("keydown",onKey);
+      modal.addEventListener("click",onBackdrop);
+    });
+  };
+
+  const previousSetVendorStatus=window.setVendorStatus;
+  window.setVendorStatus=async function(id,status,filterStatus,businessName){
+    if(status!=="rejected"){
+      return previousSetVendorStatus.apply(this,arguments);
+    }
+    if(adminVendorActionBusy.has(id))return;
+    if(!session?.user?.id || profile?.role!=="admin"){
+      showToast("Admin access is required.","error");return;
+    }
+
+    adminVendorActionBusy.add(id);
+    try{
+      const {data:target,error:targetError}=await sb.from("vendors")
+        .select("id,user_id,business_name,verification_status")
+        .eq("id",id).is("deleted_at",null).maybeSingle();
+      if(targetError||!target){
+        showToast(targetError?.message||"Vendor application not found.","error");return;
+      }
+      businessName=target.business_name||businessName||"this vendor";
+
+      const reason=await window.promptVendorRejectionReason(businessName);
+      if(reason===null)return;
+
+      const {data:{session:liveSession}={}}=await sb.auth.getSession();
+      if(!liveSession?.user?.id){
+        showToast("Your admin session has expired. Please sign in again and retry.","error");return;
+      }
+
+      const {data,error}=await sb.rpc("admin_reject_vendor",{
+        p_vendor_id:id,
+        p_reason:reason
+      });
+      if(error){
+        showToast(`Could not reject ${businessName}: ${error.message}`,"error");
+        return;
+      }
+      if(!data?.success || !data?.rejected){
+        showToast("The rejection did not complete. Please check the vendor status before retrying.","error");
+        return;
+      }
+
+      try{await logAdminAction("reject_vendor","vendor",id,businessName);}catch(_){}
+      invalidateMarketplaceState();
+      showToast(`${businessName} rejected. The reason was sent to the vendor.`,"success");
+      await navigate("adminPanel",{status:filterStatus||"pending"},{replace:true});
+    }catch(err){
+      console.error("[Levromart] Vendor rejection failed:",err);
+      showToast(err?.message||"Could not reject this vendor.","error");
+    }finally{
+      adminVendorActionBusy.delete(id);
+      window.__pendingVendorRejectionReason=null;
+    }
+  };
+
+  /* ---------------- Inventory ---------------- */
+  window.renderAdminInventory = async function(){
+    if(!session?.user?.id || profile?.role!=="admin"){
+      return '<div class="empty-state">Access denied.</div>';
+    }
+
+    let products=[];
+    let sectors=[];
+    try{
+      const pageSize=1000;
+      for(let from=0;;from+=pageSize){
+        const {data,error}=await sb.from("products")
+          .select("id,name,price,status,created_at,vendor_id,quantity_available,quantity_total")
+          .order("created_at",{ascending:false})
+          .range(from,from+pageSize-1);
+        if(error)throw error;
+        const batch=data||[];
+        products.push(...batch);
+        if(batch.length<pageSize)break;
+      }
+
+      const {data:vendorRows,error:vendorError}=await sb.from("vendors")
+        .select("id,business_name,sector_id");
+      if(vendorError)throw vendorError;
+
+      const {data:sectorRows,error:sectorError}=await sb.from("sectors")
+        .select("id,name").order("sort_order",{ascending:true}).order("name",{ascending:true});
+      if(sectorError)throw sectorError;
+
+      const vendorMap=new Map((vendorRows||[]).map(v=>[v.id,v]));
+      const sectorMap=new Map((sectorRows||[]).map(x=>[x.id,x]));
+      products=products.map(p=>({
+        ...p,
+        vendorName:vendorMap.get(p.vendor_id)?.business_name||"Unknown vendor",
+        sectorName:sectorMap.get(vendorMap.get(p.vendor_id)?.sector_id)?.name||"Unassigned"
+      })).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),undefined,{sensitivity:"base",numeric:true}));
+
+      window.__adminInventoryAll=products;
+
+      const total=products.length;
+      const active=products.filter(p=>String(p.status)==="active").length;
+      const removed=products.filter(p=>String(p.status)==="removed").length;
+
+      const monthCounts=new Map();
+      products.forEach(p=>{
+        const d=new Date(p.created_at);
+        if(Number.isNaN(d.getTime()))return;
+        const key=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`;
+        monthCounts.set(key,(monthCounts.get(key)||0)+1);
+      });
+      const monthRows=[...monthCounts.entries()].sort((a,b)=>b[0].localeCompare(a[0]))
+        .map(([key,count])=>{
+          const [y,m]=key.split("-");
+          const label=new Date(Date.UTC(Number(y),Number(m)-1,1)).toLocaleString(undefined,{month:"long",year:"numeric",timeZone:"UTC"});
+          return `<tr><td>${esc(label)}</td><td class="num">${count}</td></tr>`;
+        }).join("") || `<tr><td colspan="2" class="muted">No product records yet.</td></tr>`;
+
+      const sectorOptions=(sectorRows||[]).map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("");
+      let html=`<h2><i class="fa-solid fa-boxes-stacked"></i> Inventory</h2>${adminNavHtml("adminInventory")}
+        <div class="admin-inventory-summary">
+          <div class="admin-inventory-stat"><strong>${total}</strong><span>Total product records</span></div>
+          <div class="admin-inventory-stat"><strong>${active}</strong><span>Active products</span></div>
+          <div class="admin-inventory-stat"><strong>${removed}</strong><span>Removed products</span></div>
+        </div>
+        <div class="admin-inventory-controls">
+          <input id="adminInventorySearch" type="search" placeholder="Search product or vendor…" oninput="filterAdminInventory()">
+          <select id="adminInventorySector" onchange="filterAdminInventory()"><option value="">All sectors</option>${sectorOptions}</select>
+        </div>
+        <div class="muted" id="adminInventoryCount" style="margin:.35rem 0 .65rem;">Showing ${total} products</div>
+        <div class="admin-inventory-table-wrap">
+          <table class="admin-inventory-table" id="adminInventoryTable">
+            <thead><tr><th>#</th><th>Product</th><th>Vendor</th><th>Sector</th><th>Price</th><th>Status</th><th>Added</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <details class="admin-inventory-months">
+          <summary>Products added by month</summary>
+          <div class="admin-inventory-table-wrap" style="margin-top:.6rem;">
+            <table class="admin-inventory-table"><thead><tr><th>Month</th><th class="num">Products added</th></tr></thead><tbody>${monthRows}</tbody></table>
+          </div>
+        </details>`;
+      setTimeout(()=>window.filterAdminInventory(),0);
+      return html;
+    }catch(e){
+      console.error("[Levromart] Admin inventory load failed:",e);
+      return `<h2><i class="fa-solid fa-boxes-stacked"></i> Inventory</h2>${adminNavHtml("adminInventory")}${errorStateHtml(e)}`;
+    }
+  };
+
+  window.filterAdminInventory=function(){
+    const all=window.__adminInventoryAll||[];
+    const q=String(document.getElementById("adminInventorySearch")?.value||"").trim().toLowerCase();
+    const sector=String(document.getElementById("adminInventorySector")?.value||"");
+    const rows=all.filter(p=>
+      (!q || [p.name,p.vendorName,p.sectorName].some(v=>String(v||"").toLowerCase().includes(q))) &&
+      (!sector || String((window.__adminInventoryVendorSectorMap||new Map()).get(p.vendor_id)||"")===sector)
+    );
+    // Build the sector lookup lazily from the vendor data stored on each row.
+    const sectorNameSelected=document.getElementById("adminInventorySector")?.selectedOptions?.[0]?.textContent||"";
+    const filtered=all.filter(p=>
+      (!q || [p.name,p.vendorName,p.sectorName].some(v=>String(v||"").toLowerCase().includes(q))) &&
+      (!sector || p.sectorName===sectorNameSelected)
+    );
+    const tbody=document.querySelector("#adminInventoryTable tbody");
+    if(!tbody)return;
+    tbody.innerHTML=filtered.map((p,i)=>{
+      const price=(p.price===null||p.price===undefined||p.price==="")?"—":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
+      const st=String(p.status||"");
+      return `<tr><td>${i+1}</td><td><strong>${esc(p.name||"Unnamed product")}</strong></td><td>${esc(p.vendorName)}</td><td>${esc(p.sectorName)}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"—"}</td></tr>`;
+    }).join("")||`<tr><td colspan="7" class="muted" style="text-align:center;padding:1.2rem;">No products match your search/filter.</td></tr>`;
+    const count=document.getElementById("adminInventoryCount");
+    if(count)count.textContent=`Showing ${filtered.length} of ${all.length} products`;
+  };
+})();
+</script>
