@@ -21740,7 +21740,7 @@ async function renderAdminPanel(status) {
     html += `<details id="adminVendor-${esc(v.id)}" class="card admin-vendor-card" data-name="${esc(v.business_name || "Deleted vendor")}" data-created="${esc(v.deleted_at || v.created_at)}" data-search="${esc(searchable)}">
       <summary class="flex" style="justify-content:space-between;">
         <strong>${esc(v.business_name || "Deleted vendor")}</strong>
-        <span class="badge ${deleted ? "warning" : ""}">${deleted ? "Deleted" : esc(v.verification_status)}</span>
+        <span class="badge ${deleted ? "warning" : (v.verification_status === "verified" ? "success" : v.verification_status === "pending" ? "warning" : v.verification_status === "rejected" ? "danger" : "")}">${deleted ? "Deleted" : esc(v.verification_status)}</span>
       </summary>
       <p class="muted" style="margin:0.3rem 0;">Applicant: ${esc(applicantName)} ${applicantEmail ? `(${esc(applicantEmail)})` : ""}</p>
       <p class="muted" style="margin:0.3rem 0;">${[v.address, v.city].filter(Boolean).map(esc).join(", ") || "No address given (online-only)"}</p>
@@ -33172,7 +33172,12 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
   }
   const initialPush=(()=>{try{const q=new URLSearchParams(location.search);const view=q.get('target_view')||q.get('targetView')||q.get('view');if(!view)return null;let params={};const raw=q.get('target_params')||q.get('params');if(raw)try{params=JSON.parse(raw)}catch(_){}return {target_view:view,target_params:params}}catch(_){return null}})();
   if(initialPush) window.__pendingPushDeepLink=initialPush;
-  new MutationObserver(()=>{if(currentView?.startsWith('admin') && document.querySelector('.admin-dash-tabs')) hydrateAdminAttention();}).observe(document.getElementById('mainContent')||document.body,{childList:true,subtree:true});
+  let adminAttentionObserverTimer=null;
+  new MutationObserver(()=>{
+    if(!currentView?.startsWith('admin') || !document.querySelector('.admin-dash-tabs')) return;
+    clearTimeout(adminAttentionObserverTimer);
+    adminAttentionObserverTimer=setTimeout(()=>hydrateAdminAttention(),1200);
+  }).observe(document.getElementById('mainContent')||document.body,{childList:true,subtree:true});
   document.addEventListener('levromart:view-rendered',()=>{if(currentView?.startsWith('admin'))setTimeout(hydrateAdminAttention,50);});
   setInterval(()=>{if(currentView?.startsWith('admin'))hydrateAdminAttention();},60000);
   const applyPendingPush=()=>{if(window.__pendingPushDeepLink && session){const d=window.__pendingPushDeepLink;window.__pendingPushDeepLink=null;applyPushDeepLink(d);}};
@@ -35492,116 +35497,288 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
   /* ---------------- Inventory ---------------- */
   window.renderAdminInventory = async function(){
-    if(!session?.user?.id || profile?.role!=="admin"){
-      return '<div class="empty-state">Access denied.</div>';
+    if(!session?.user?.id || profile?.role!=="admin") return '<div class="empty-state">Access denied.</div>';
+
+    const CACHE_MS=30000;
+    const cached=window.__adminInventoryCache;
+    if(cached && (Date.now()-cached.loadedAt)<CACHE_MS){
+      window.__adminInventoryAll=cached.products;
+      return buildAdminInventoryHtml(cached.products);
     }
 
-    let products=[];
-    let sectors=[];
     try{
-      const pageSize=1000;
-      for(let from=0;;from+=pageSize){
-        const {data,error}=await sb.from("products")
-          .select("id,name,price,status,created_at,vendor_id,quantity_available,quantity_total")
-          .order("created_at",{ascending:false})
-          .range(from,from+pageSize-1);
-        if(error)throw error;
-        const batch=data||[];
-        products.push(...batch);
-        if(batch.length<pageSize)break;
-      }
-
-      const {data:vendorRows,error:vendorError}=await sb.from("vendors")
-        .select("id,business_name,sector_id");
-      if(vendorError)throw vendorError;
-
-      const {data:sectorRows,error:sectorError}=await sb.from("sectors")
-        .select("id,name").order("sort_order",{ascending:true}).order("name",{ascending:true});
-      if(sectorError)throw sectorError;
-
-      const vendorMap=new Map((vendorRows||[]).map(v=>[v.id,v]));
-      const sectorMap=new Map((sectorRows||[]).map(x=>[x.id,x]));
-      products=products.map(p=>({
-        ...p,
-        vendorName:vendorMap.get(p.vendor_id)?.business_name||"Unknown vendor",
-        sectorName:sectorMap.get(vendorMap.get(p.vendor_id)?.sector_id)?.name||"Unassigned"
-      })).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),undefined,{sensitivity:"base",numeric:true}));
-
+      const {data,error}=await withRouteTimeout(
+        sb.rpc("admin_get_inventory"),
+        7000,
+        {data:null,error:new Error("Inventory is taking too long to load. Please try again.")}
+      );
+      if(error) throw error;
+      const products=Array.isArray(data) ? data : [];
       window.__adminInventoryAll=products;
-
-      const total=products.length;
-      const active=products.filter(p=>String(p.status)==="active").length;
-      const removed=products.filter(p=>String(p.status)==="removed").length;
-
-      const monthCounts=new Map();
-      products.forEach(p=>{
-        const d=new Date(p.created_at);
-        if(Number.isNaN(d.getTime()))return;
-        const key=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`;
-        monthCounts.set(key,(monthCounts.get(key)||0)+1);
-      });
-      const monthRows=[...monthCounts.entries()].sort((a,b)=>b[0].localeCompare(a[0]))
-        .map(([key,count])=>{
-          const [y,m]=key.split("-");
-          const label=new Date(Date.UTC(Number(y),Number(m)-1,1)).toLocaleString(undefined,{month:"long",year:"numeric",timeZone:"UTC"});
-          return `<tr><td>${esc(label)}</td><td class="num">${count}</td></tr>`;
-        }).join("") || `<tr><td colspan="2" class="muted">No product records yet.</td></tr>`;
-
-      const sectorOptions=(sectorRows||[]).map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("");
-      let html=`<h2><i class="fa-solid fa-boxes-stacked"></i> Inventory</h2>${adminNavHtml("adminInventory")}
-        <div class="admin-inventory-summary">
-          <div class="admin-inventory-stat"><strong>${total}</strong><span>Total product records</span></div>
-          <div class="admin-inventory-stat"><strong>${active}</strong><span>Active products</span></div>
-          <div class="admin-inventory-stat"><strong>${removed}</strong><span>Removed products</span></div>
-        </div>
-        <div class="admin-inventory-controls">
-          <input id="adminInventorySearch" type="search" placeholder="Search product or vendor…" oninput="filterAdminInventory()">
-          <select id="adminInventorySector" onchange="filterAdminInventory()"><option value="">All sectors</option>${sectorOptions}</select>
-        </div>
-        <div class="muted" id="adminInventoryCount" style="margin:.35rem 0 .65rem;">Showing ${total} products</div>
-        <div class="admin-inventory-table-wrap">
-          <table class="admin-inventory-table" id="adminInventoryTable">
-            <thead><tr><th>#</th><th>Product</th><th>Vendor</th><th>Sector</th><th>Price</th><th>Status</th><th>Added</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <details class="admin-inventory-months">
-          <summary>Products added by month</summary>
-          <div class="admin-inventory-table-wrap" style="margin-top:.6rem;">
-            <table class="admin-inventory-table"><thead><tr><th>Month</th><th class="num">Products added</th></tr></thead><tbody>${monthRows}</tbody></table>
-          </div>
-        </details>`;
-      setTimeout(()=>window.filterAdminInventory(),0);
-      return html;
+      window.__adminInventoryCache={products,loadedAt:Date.now()};
+      return buildAdminInventoryHtml(products);
     }catch(e){
       console.error("[Levromart] Admin inventory load failed:",e);
-      return `<h2><i class="fa-solid fa-boxes-stacked"></i> Inventory</h2>${adminNavHtml("adminInventory")}${errorStateHtml(e)}`;
+      const cachedFallback=window.__adminInventoryCache?.products;
+      if(Array.isArray(cachedFallback)) return buildAdminInventoryHtml(cachedFallback,true);
+      return `<h2><i class="fa-solid fa-boxes-stacked"></i> Inventory</h2>${adminNavHtml("adminInventory")}<div class="empty-state"><i class="fa-solid fa-triangle-exclamation" style="font-size:1.6rem;display:block;margin-bottom:.6rem;"></i>Could not load inventory. Please try again.</div>`;
     }
   };
+
+  function buildAdminInventoryHtml(products,stale=false){
+    const all=[...(products||[])].sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),undefined,{sensitivity:"base",numeric:true}));
+    window.__adminInventoryAll=all;
+    const total=all.length;
+    const active=all.filter(p=>String(p.status)==="active").length;
+    const removed=all.filter(p=>String(p.status)==="removed").length;
+    const sectors=[...new Map(all.map(p=>[p.sector_id,p.sector_name]).filter(([id,name])=>id&&name).map(([id,name])=>[id,{id,name}])).values()]
+      .sort((a,b)=>String(a.name).localeCompare(String(b.name),undefined,{sensitivity:"base"}));
+    const monthCounts=new Map();
+    all.forEach(p=>{
+      const d=new Date(p.created_at); if(Number.isNaN(d.getTime())) return;
+      const key=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`;
+      monthCounts.set(key,(monthCounts.get(key)||0)+1);
+    });
+    const monthRows=[...monthCounts.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([key,count])=>{
+      const [y,m]=key.split("-");
+      const label=new Date(Date.UTC(Number(y),Number(m)-1,1)).toLocaleString(undefined,{month:"long",year:"numeric",timeZone:"UTC"});
+      return `<tr><td>${esc(label)}</td><td class="num">${count}</td></tr>`;
+    }).join("") || `<tr><td colspan="2" class="muted">No product records yet.</td></tr>`;
+    const sectorOptions=sectors.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("");
+    return `<h2><i class="fa-solid fa-boxes-stacked"></i> Inventory</h2>${adminNavHtml("adminInventory")}
+      ${stale?`<div class="muted" style="margin:.35rem 0;">Showing your most recent inventory snapshot.</div>`:""}
+      <div class="admin-inventory-summary">
+        <div class="admin-inventory-stat"><strong>${total}</strong><span>Total product records</span></div>
+        <div class="admin-inventory-stat"><strong>${active}</strong><span>Active products</span></div>
+        <div class="admin-inventory-stat"><strong>${removed}</strong><span>Removed products</span></div>
+      </div>
+      <div class="admin-inventory-controls">
+        <input id="adminInventorySearch" type="search" placeholder="Search product or vendor…" oninput="filterAdminInventory()">
+        <select id="adminInventorySector" onchange="filterAdminInventory()"><option value="">All sectors</option>${sectorOptions}</select>
+      </div>
+      <div class="muted" id="adminInventoryCount" style="margin:.35rem 0 .65rem;">Showing ${total} products</div>
+      <div class="admin-inventory-table-wrap">
+        <table class="admin-inventory-table" id="adminInventoryTable">
+          <thead><tr><th>#</th><th>Product</th><th>Vendor</th><th>Sector</th><th>Price</th><th>Status</th><th>Added</th></tr></thead>
+          <tbody>${renderAdminInventoryRows(all)}</tbody>
+        </table>
+      </div>
+      <details class="admin-inventory-months">
+        <summary>Products added by month</summary>
+        <div class="admin-inventory-table-wrap" style="margin-top:.6rem;">
+          <table class="admin-inventory-table"><thead><tr><th>Month</th><th class="num">Products added</th></tr></thead><tbody>${monthRows}</tbody></table>
+        </div>
+      </details>`;
+  }
+
+  function renderAdminInventoryRows(rows){
+    return rows.map((p,i)=>{
+      const price=(p.price===null||p.price===undefined||p.price==="")?"—":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
+      const st=String(p.status||"");
+      return `<tr><td>${i+1}</td><td><strong>${esc(p.name||"Unnamed product")}</strong></td><td>${esc(p.vendor_name||"Unknown vendor")}</td><td>${esc(p.sector_name||"Unassigned")}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"—"}</td></tr>`;
+    }).join("")||`<tr><td colspan="7" class="muted" style="text-align:center;padding:1.2rem;">No products match your search/filter.</td></tr>`;
+  }
 
   window.filterAdminInventory=function(){
     const all=window.__adminInventoryAll||[];
     const q=String(document.getElementById("adminInventorySearch")?.value||"").trim().toLowerCase();
     const sector=String(document.getElementById("adminInventorySector")?.value||"");
-    const rows=all.filter(p=>
-      (!q || [p.name,p.vendorName,p.sectorName].some(v=>String(v||"").toLowerCase().includes(q))) &&
-      (!sector || String((window.__adminInventoryVendorSectorMap||new Map()).get(p.vendor_id)||"")===sector)
-    );
-    // Build the sector lookup lazily from the vendor data stored on each row.
-    const sectorNameSelected=document.getElementById("adminInventorySector")?.selectedOptions?.[0]?.textContent||"";
     const filtered=all.filter(p=>
-      (!q || [p.name,p.vendorName,p.sectorName].some(v=>String(v||"").toLowerCase().includes(q))) &&
-      (!sector || p.sectorName===sectorNameSelected)
+      (!q || [p.name,p.vendor_name,p.sector_name].some(v=>String(v||"").toLowerCase().includes(q))) &&
+      (!sector || String(p.sector_id||"")===sector)
     );
     const tbody=document.querySelector("#adminInventoryTable tbody");
-    if(!tbody)return;
-    tbody.innerHTML=filtered.map((p,i)=>{
-      const price=(p.price===null||p.price===undefined||p.price==="")?"—":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
-      const st=String(p.status||"");
-      return `<tr><td>${i+1}</td><td><strong>${esc(p.name||"Unnamed product")}</strong></td><td>${esc(p.vendorName)}</td><td>${esc(p.sectorName)}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"—"}</td></tr>`;
-    }).join("")||`<tr><td colspan="7" class="muted" style="text-align:center;padding:1.2rem;">No products match your search/filter.</td></tr>`;
+    if(tbody) tbody.innerHTML=renderAdminInventoryRows(filtered);
     const count=document.getElementById("adminInventoryCount");
-    if(count)count.textContent=`Showing ${filtered.length} of ${all.length} products`;
+    if(count) count.textContent=`Showing ${filtered.length} of ${all.length} products`;
   };
+})();
+</script>
+
+<style id="levromart-admin-performance-final-20260916">
+.admin-vendor-card .badge.success{background:rgba(22,163,74,.14);color:#16a34a}
+.admin-vendor-card .badge.warning{background:rgba(245,158,11,.15);color:#d97706}
+.admin-vendor-card .badge.danger{background:rgba(239,68,68,.14);color:#dc2626}
+[data-theme="dark"] .admin-vendor-card .badge.success{color:#4ade80}
+[data-theme="dark"] .admin-vendor-card .badge.warning{color:#fbbf24}
+[data-theme="dark"] .admin-vendor-card .badge.danger{color:#f87171}
+</style>
+<script id="levromart-admin-performance-final-js-20260916">
+(function(){
+  "use strict";
+
+  function adminCard(vendorId){return document.getElementById(`adminVendor-${vendorId}`);}
+  function fastRemoveVendorCard(vendorId){
+    const card=adminCard(vendorId);
+    if(!card)return;
+    const host=card.parentElement;
+    card.remove();
+    if(host && !host.querySelector(".admin-vendor-card")){
+      host.insertAdjacentHTML("beforeend",`<div class="card empty-state"><i class="fa-solid fa-store"></i><p>No vendors.</p></div>`);
+    }
+  }
+  function updateVendorCardBadge(vendorId,status){
+    const card=adminCard(vendorId); if(!card)return;
+    const badge=card.querySelector("summary .badge"); if(!badge)return;
+    badge.textContent=status;
+    badge.className=`badge ${status==="verified"?"success":status==="pending"?"warning":status==="rejected"?"danger":""}`;
+  }
+
+  // Reject: show the reason box FIRST. Never wait for a network lookup before
+  // displaying the modal. The vendor name is already present on the card.
+  window.setVendorStatus=async function(id,status,filterStatus,businessName){
+    if(status!=="rejected"){
+      if(status==="verified"){
+        // Keep approval's existing payout provisioning flow, but remove the
+        // redundant getSession/logging round trips from the hot path.
+        if(typeof window.__levroFastApproveVendor==="function") return window.__levroFastApproveVendor(id,filterStatus,businessName);
+      }
+      return;
+    }
+    if(adminVendorActionBusy.has(id))return;
+    if(!session?.user?.id || profile?.role!=="admin"){showToast("Admin access is required.","error");return;}
+    const card=adminCard(id);
+    businessName=businessName||card?.dataset?.name||card?.querySelector("summary strong")?.textContent?.trim()||"this vendor";
+    const reason=await window.promptVendorRejectionReason(businessName);
+    if(reason===null)return;
+    adminVendorActionBusy.add(id);
+    const btn=document.querySelector(`#app .vendor-admin-action[data-vendor-id="${CSS.escape(String(id))}"][data-status="rejected"]`);
+    try{
+      if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Rejecting…';}
+      const {data,error}=await sb.rpc("admin_reject_vendor",{p_vendor_id:id,p_reason:reason});
+      if(error)throw error;
+      if(!data?.rejected)throw new Error("The rejection did not complete.");
+      invalidateMarketplaceState();
+      fastRemoveVendorCard(id);
+      showToast(`${businessName} rejected. The reason was sent to the vendor.` ,"success");
+      // Refresh in the background only; never make the successful action wait.
+      setTimeout(()=>{try{navigate("adminPanel",{status:filterStatus||"pending"},{replace:true});}catch(_){}},0);
+    }catch(err){
+      console.error("[Levromart] Fast vendor rejection failed:",err);
+      showToast(err?.message||"Could not reject this vendor.","error");
+      if(btn){btn.disabled=false;btn.innerHTML="Reject";}
+    }finally{adminVendorActionBusy.delete(id);}
+  };
+
+  // Delete: confirmation opens immediately, and the successful card removal
+  // happens without waiting for a full admin-page re-render.
+  window.adminDeleteVendor=async function(vendorId,filterStatus,businessName){
+    if(adminVendorActionBusy.has(vendorId))return;
+    if(!session?.user?.id || profile?.role!=="admin" || profile?.is_super_admin!==true){showToast("Super admin access is required.","error");return;}
+    const card=adminCard(vendorId);
+    businessName=businessName||card?.dataset?.name||card?.querySelector("summary strong")?.textContent?.trim()||"this vendor";
+    if(!(await showConfirmDialog(`Move "${businessName}" to the Recycle Bin? Their storefront and listings will be hidden, but everything can be restored later.`,{title:"Move to Recycle Bin",okLabel:"Move to Recycle Bin",danger:true})))return;
+    adminVendorActionBusy.add(vendorId);
+    const btn=document.querySelector(`#app .vendor-admin-action[data-vendor-id="${CSS.escape(String(vendorId))}"][data-status="delete"]`);
+    try{
+      if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Moving…';}
+      const {data,error}=await sb.rpc("admin_delete_vendor",{p_vendor_id:vendorId});
+      if(error)throw error;
+      if(!data?.deleted)throw new Error("The vendor could not be moved to the Recycle Bin.");
+      invalidateMarketplaceState();
+      fastRemoveVendorCard(vendorId);
+      showToast(`${businessName} moved to the Recycle Bin.` ,"success");
+      setTimeout(()=>{try{navigate("adminPanel",{status:filterStatus||"pending"},{replace:true});}catch(_){}},0);
+    }catch(err){
+      console.error("[Levromart] Fast vendor delete failed:",err);
+      showToast(err?.message||"Could not move this vendor to the Recycle Bin.","error");
+      if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-trash"></i> Delete vendor';}
+    }finally{adminVendorActionBusy.delete(vendorId);}
+  };
+
+  // Approval is also made cache-friendly. Payout provisioning remains required,
+  // but the UI no longer performs redundant session/log round trips.
+  window.__levroFastApproveVendor=async function(id,filterStatus,businessName){
+    if(adminVendorActionBusy.has(id))return;
+    if(!session?.user?.id || profile?.role!=="admin"){showToast("Admin access is required.","error");return;}
+    const card=adminCard(id);
+    businessName=businessName||card?.dataset?.name||card?.querySelector("summary strong")?.textContent?.trim()||"this vendor";
+    if(!(await showConfirmDialog(`Approve "${businessName}" as a vendor? Their payout account will be activated first, then the storefront will go live.`,{title:"Approve vendor",okLabel:"Approve"})))return;
+    adminVendorActionBusy.add(id);
+    const btn=document.querySelector(`#app .vendor-admin-action[data-vendor-id="${CSS.escape(String(id))}"][data-status="verified"]`);
+    try{
+      if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Approving…';}
+      const {data:target,error:targetError}=await sb.from("vendors").select("id,user_id,business_name,verification_status,bank_code,account_number,paystack_subaccount_code").eq("id",id).is("deleted_at",null).maybeSingle();
+      if(targetError||!target)throw new Error(targetError?.message||"Vendor application not found.");
+      if(!target.paystack_subaccount_code){
+        if(!target.bank_code||!target.account_number)throw new Error("This vendor has no complete payout bank and account number.");
+        const live=await sb.auth.getSession();
+        const accessToken=live?.data?.session?.access_token;
+        if(!accessToken)throw new Error("Your admin session has expired. Please sign in again.");
+        const res=await fetch("/api/vendor-payout-setup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accessToken,vendorId:id})});
+        const json=await res.json().catch(()=>({}));
+        if(!res.ok||!json.subaccount_code)throw new Error(json.error||"Payout setup failed. The vendor was not approved.");
+      }
+      const {data,error}=await sb.rpc("admin_set_vendor_status",{p_vendor_id:id,p_status:"verified"});
+      if(error)throw error;
+      if(!data?.success)throw new Error("Approval did not complete.");
+      fastRemoveVendorCard(id);
+      showToast(`${businessName} approved successfully. Payout is active.` ,"success");
+      setTimeout(()=>{try{navigate("adminPanel",{status:filterStatus||"pending"},{replace:true});}catch(_){}},0);
+    }catch(err){
+      console.error("[Levromart] Fast vendor approval failed:",err);
+      showToast(err?.message||"Could not approve this vendor.","error");
+      if(btn){btn.disabled=false;btn.innerHTML="Approve";}
+    }finally{adminVendorActionBusy.delete(id);}
+  };
+
+  // Inventory cache is invalidated whenever vendor actions change marketplace state.
+  const oldInvalidate=window.invalidateMarketplaceState;
+  if(typeof oldInvalidate==="function" && !window.__levroInvalidateWrapped){
+    window.__levroInvalidateWrapped=true;
+    window.invalidateMarketplaceState=function(){
+      try{window.__adminInventoryCache=null;}catch(_){}
+      return oldInvalidate.apply(this,arguments);
+    };
+  }
+})();
+</script>
+
+<style id="levromart-admin-speed-final-20260916">
+/* Keep admin status badges visually distinct without changing the admin layout. */
+.admin-vendor-card .badge.success{background:rgba(22,163,74,.14)!important;color:#16a34a!important}
+.admin-vendor-card .badge.warning{background:rgba(245,158,11,.15)!important;color:#d97706!important}
+.admin-vendor-card .badge.danger{background:rgba(239,68,68,.14)!important;color:#dc2626!important}
+[data-theme="dark"] .admin-vendor-card .badge.success{color:#4ade80!important}
+[data-theme="dark"] .admin-vendor-card .badge.warning{color:#fbbf24!important}
+[data-theme="dark"] .admin-vendor-card .badge.danger{color:#f87171!important}
+</style>
+<script id="levromart-admin-speed-final-js-20260916">
+(function(){
+  "use strict";
+
+  /* The admin attention MutationObserver used to fire a network refresh for
+     essentially every DOM mutation. Admin pages contain many mutations while
+     rendering, so that created a request storm and made tab switching slow.
+     Keep the observer, but throttle the actual network work. */
+  if(typeof window.hydrateAdminAttention === "function" && !window.__levroAdminAttentionThrottled){
+    const originalHydrateAdminAttention=window.hydrateAdminAttention;
+    let lastRun=0, queued=false;
+    window.__levroAdminAttentionThrottled=true;
+    window.hydrateAdminAttention=async function(...args){
+      const now=Date.now();
+      if(now-lastRun<5000){
+        if(!queued){
+          queued=true;
+          setTimeout(()=>{queued=false;window.hydrateAdminAttention(...args);},Math.max(250,5000-(now-lastRun)));
+        }
+        return;
+      }
+      lastRun=now;
+      return originalHydrateAdminAttention.apply(this,args);
+    };
+  }
+
+  /* The bank-select hydration loop is only useful on the application screen.
+     Make the callable path a no-op elsewhere so the existing legacy timer is
+     effectively free while the user is browsing the rest of the app. */
+  if(typeof window.hydrateApplicationBankSelect === "function" && !window.__levroBankHydrationGuarded){
+    const originalBankHydrate=window.hydrateApplicationBankSelect;
+    window.__levroBankHydrationGuarded=true;
+    window.hydrateApplicationBankSelect=function(...args){
+      if(currentView!=="vendorApply" && !document.getElementById("vaBankCode")) return;
+      return originalBankHydrate.apply(this,args);
+    };
+  }
 })();
 </script>
