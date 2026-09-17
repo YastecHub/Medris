@@ -7405,6 +7405,17 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   </div>
 </div>
 
+<div id="requiredBuyerPhoneModal" class="modal hidden" data-lock="true">
+  <div class="modal-content" style="max-width:400px;">
+    <h3><i class="fa-solid fa-phone"></i> Add your phone number</h3>
+    <p class="muted" style="margin:.6rem 0 1rem;">A phone number is required for every customer account on Levromart. It helps vendors contact you about your order and delivery.</p>
+    <div id="requiredBuyerPhoneError" class="error-text hidden"></div>
+    <label for="requiredBuyerPhoneInput">Phone number *</label>
+    <input type="tel" id="requiredBuyerPhoneInput" inputmode="tel" autocomplete="tel" placeholder="e.g. 08012345678" />
+    <button type="button" class="btn" id="requiredBuyerPhoneSaveBtn" style="width:100%;margin-top:.8rem;" onclick="saveRequiredBuyerPhone()"><i class="fa-solid fa-check"></i> Save phone number</button>
+  </div>
+</div>
+
 <div id="roleSelectModal" class="modal hidden">
   <div class="modal-content" style="max-width:400px;">
     <h3><i class="fa-solid fa-user-check"></i> One more step</h3>
@@ -8040,7 +8051,7 @@ let buyerPendingOrderCount = 0;
 // over) keep the nav badge lit -- once it's handed over/returned/disputed,
 // the ball is in the customer's (or admin's) court, not something that needs
 // a vendor to keep seeing a red flag for.
-const NON_TERMINAL_ORDER_STATUSES = ["pending", "confirmed"];
+const NON_TERMINAL_ORDER_STATUSES = ["pending", "confirmed", "payment_unresolved"];
 let unreadMessageCount = 0;
 let unreadSuggestionCount = 0;
 let buyerCartCount = 0;
@@ -10221,6 +10232,46 @@ async function refreshAuthState() {
   if (profile && profile.role_selected === false) byId("roleSelectModal")?.classList.remove("hidden");
   else await runPostAuthChecks();
 }
+function openRequiredBuyerPhoneModal() {
+  const modal = byId("requiredBuyerPhoneModal");
+  if (!modal) return;
+  const input = byId("requiredBuyerPhoneInput");
+  const error = byId("requiredBuyerPhoneError");
+  if (input) input.value = String(profile?.phone || "").trim();
+  error?.classList.add("hidden");
+  modal.classList.remove("hidden");
+  setTimeout(() => input?.focus(), 50);
+}
+
+async function saveRequiredBuyerPhone() {
+  if (!session?.user?.id || !profile) return;
+  const input = byId("requiredBuyerPhoneInput");
+  const error = byId("requiredBuyerPhoneError");
+  const btn = byId("requiredBuyerPhoneSaveBtn");
+  const phone = String(input?.value || "").trim();
+  const normalized = phone.replace(/[\s().-]/g, "");
+  error?.classList.add("hidden");
+  if (!phone) { if(error){error.textContent="Phone number is required.";error.classList.remove("hidden");} return; }
+  if (!/^\+?[0-9]{7,15}$/.test(normalized)) {
+    if(error){error.textContent="Enter a valid phone number (7–15 digits).";error.classList.remove("hidden");}
+    return;
+  }
+  if (btn) { btn.disabled=true; btn.classList.add("is-busy"); }
+  try {
+    const { error: updateError } = await sb.from("users").update({ phone }).eq("id", session.user.id);
+    if (updateError) throw updateError;
+    profile.phone = phone;
+    byId("requiredBuyerPhoneModal")?.classList.add("hidden");
+    updateAuthUI();
+    showToast("Phone number saved.", "success");
+    await runPostAuthChecks();
+  } catch (e) {
+    if(error){error.textContent=e?.message || "Could not save your phone number.";error.classList.remove("hidden");}
+  } finally {
+    if (btn) { btn.disabled=false; btn.classList.remove("is-busy"); }
+  }
+}
+
 async function chooseAccountRole(role) {
   // Selecting Vendor means "I want to apply", not "I am already an approved
   // vendor". The database becomes authoritative only after approval.
@@ -10280,6 +10331,14 @@ async function setAccountPassword() {
 let otpCheckDoneThisBoot = false;
 async function runPostAuthChecks() {
   if (!profile || !session) return;
+  // Every customer account must have a phone number. Manual registration already
+  // collects it; this gate covers Google sign-in and older accounts that predate
+  // the requirement. Do this before the password/OTP checks so the account cannot
+  // proceed as a fully configured buyer until the contact number is supplied.
+  if (profile.role === "buyer" && !String(profile.phone || "").trim()) {
+    openRequiredBuyerPhoneModal();
+    return;
+  }
   if (profile.has_password === false) { byId("setPasswordModal")?.classList.remove("hidden"); return; }
   // Email OTP is intentionally restricted to administrators. Customers and vendors
   // use their normal authenticated Supabase session without the extra email code.
@@ -10633,8 +10692,8 @@ function renderEditProfile() {
     <div id="editProfileError" class="error-text hidden"></div>
     <label>Full name</label>
     <input type="text" id="epName" value="${esc(profile.name || "")}" />
-    <label>Phone number</label>
-    <input type="tel" id="epPhone" value="${esc(profile.phone || "")}" />
+    <label>Phone number *</label>
+    <input type="tel" id="epPhone" value="${esc(profile.phone || "")}" required />
     <label>City</label>
     <input type="text" id="epCity" value="${esc(profile.city || "")}" />
     <label>Delivery address</label>
@@ -10651,18 +10710,22 @@ async function submitEditProfile() {
   const errorEl = byId("editProfileError");
   errorEl.classList.add("hidden");
   const name = byId("epName").value.trim();
+  const phone = byId("epPhone").value.trim();
+  const normalizedPhone = phone.replace(/[\s().-]/g, "");
   if (!name) { errorEl.textContent = "Full name is required."; errorEl.classList.remove("hidden"); return; }
+  if (!phone) { errorEl.textContent = "Phone number is required."; errorEl.classList.remove("hidden"); return; }
+  if (!/^\+?[0-9]{7,15}$/.test(normalizedPhone)) { errorEl.textContent = "Enter a valid phone number (7–15 digits)."; errorEl.classList.remove("hidden"); return; }
   const btn = byId("epSaveBtn");
   btn.disabled = true;
   const { error } = await sb.from("users").update({
     name,
-    phone: byId("epPhone").value.trim() || null,
+    phone,
     city: byId("epCity").value.trim() || null,
     address: byId("epAddress").value.trim() || null,
   }).eq("id", session.user.id);
   btn.disabled = false;
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
-  Object.assign(profile, { name, phone: byId("epPhone").value.trim() || null, city: byId("epCity").value.trim() || null, address: byId("epAddress").value.trim() || null });
+  Object.assign(profile, { name, phone, city: byId("epCity").value.trim() || null, address: byId("epAddress").value.trim() || null });
   updateAuthUI();
   showToast("Details updated.", "success");
   navigate(vendor ? "vendorDashboard" : "home");
@@ -11563,7 +11626,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
       case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
       case "orderDetail": html = await renderOrderDetail(params.orderId, params.source); break;
-      case "leaveReview": html = await renderLeaveReview(params.orderId, !!params.reviewAfterPayment); break;
+      case "leaveReview": html = await renderLeaveReview(params.orderId); break;
       case "adminPanel": html = await renderAdminPanel(params.status); break;
       case "adminCarousel": html = await renderAdminCarousel(); break;
       case "adminLinkLibrary": html = renderAdminLinkLibrary(); break;
@@ -17597,6 +17660,8 @@ async function buyPackage(packageId) {
     p_delivery_phone: delivery.phone,
   });
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
+  window.__reviewPromptDismissedOrderId=String(orderId);
+  window.__closeLevromartReviewPrompt?.();
   navigate("orderDetail", { orderId });
 }
 // ---------- PRODUCT + PACKAGE SOCIAL INTERACTIONS ----------
@@ -19261,7 +19326,12 @@ async function uploadVarietyImages(){
     const {error}=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(error)throw error;
     v.photo_url=sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl;
     const row=[...document.querySelectorAll('#productVariantPricing .variant-price-row')].find(r=>r.dataset.variantKey===String(v.id||v._localKey));
-    if(row){row.dataset.photoUrl=v.photo_url;row.querySelector('.variant-image').value=v.photo_url;}delete v._imageFile;
+    if(row){
+      row.dataset.photoUrl=v.photo_url;
+      const select=row.querySelector('.variant-image');
+      if(select) select.value=v.photo_url;
+    }
+    delete v._imageFile;
   }));
 }
 function addProductVarietyDraft(){
@@ -19489,6 +19559,8 @@ async function saveProduct() {
   const btn = byId("saveProductBtn");
   if(btn.disabled)return;
   btn.disabled = true;
+  btn.dataset.originalLabel = btn.innerHTML;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving…`;
 
   try {
     const is_service = byId("prodIsService").checked;
@@ -19578,7 +19650,12 @@ async function saveProduct() {
     let savedProductId = editingProductId;
     let variantDrafts = [];
     let soldUnits = 0;
-    if(!is_service){await uploadVarietyImages();variantDrafts=collectProductVariantDrafts(photos);}
+    // Services use the same underlying product_variants table, but their editor
+    // presents service/package-specific fields. Save those varieties too.
+    // Upload their images before collecting the final drafts so a newly-added
+    // service option cannot lose its image when there are no existing product photos.
+    await uploadVarietyImages();
+    variantDrafts=collectProductVariantDrafts(photos);
     const isNewMonthlyListing = !editingProductId && billing_model === "monthly";
     if (editingProductId) {
       const { data: existing } = await sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single();
@@ -19616,7 +19693,7 @@ async function saveProduct() {
     }
     const savedDraftIdentity=editingProductId||"new";
     editingProductId=savedProductId;
-    if(!is_service)await saveProductVariants(savedProductId,variantDrafts);
+    await saveProductVariants(savedProductId,variantDrafts);
     const engagementSave=Promise.allSettled([saveProductEngagementSettings(savedProductId)]);
     window.clearListingDraft?.("product", savedDraftIdentity);
     // Required product and variety writes have completed; engagement settings finish separately.
@@ -19651,6 +19728,8 @@ async function saveProduct() {
     focusProductValidationField(err?.message || "Please complete the required field before saving.");
   } finally {
     btn.disabled = false;
+    btn.innerHTML = btn.dataset.originalLabel || "Save to Product";
+    delete btn.dataset.originalLabel;
   }
 }
 
@@ -19959,6 +20038,8 @@ async function savePackage() {
   const btn = byId("savePackageBtn");
   if(btn.disabled)return;
   btn.disabled = true;
+  btn.dataset.originalLabel = btn.innerHTML;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving…`;
 
   try {
     const name = byId("pkgName").value.trim();
@@ -20031,6 +20112,8 @@ async function savePackage() {
     errorEl.classList.remove("hidden");
   } finally {
     btn.disabled = false;
+    btn.innerHTML = btn.dataset.originalLabel || "Save package";
+    delete btn.dataset.originalLabel;
   }
 }
 
@@ -20049,7 +20132,7 @@ async function deletePackage(id) {
 }
 
 // ---------- VENDOR / BUYER ORDERS ----------
-const ORDER_TABS = ["all", "pending", "confirmed", "handed_over", "returned", "completed", "cancelled", "disputed"];
+const ORDER_TABS = ["all", "pending", "confirmed", "payment_unresolved", "handed_over", "returned", "completed", "cancelled", "disputed"];
 const ORDER_TYPE_TABS = [
   { value: "all", label: "All" },
   { value: "sale", label: "Sales" },
@@ -20394,7 +20477,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
 }
 
 function orderStatusBadgeClass(status) {
-  if (status === "cancelled" || status === "disputed") return "danger";
+  if (status === "cancelled" || status === "disputed" || status === "payment_unresolved") return "danger";
   if (status === "completed") return "success";
   if (status === "handed_over" || status === "returned") return "warning";
   if (status === "confirmed") return "info";
@@ -20576,7 +20659,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (!session) return '<div class="empty-state">Please log in.</div>';
   const { data: order, error } = await sb
     .from("orders")
-    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng), items:order_items(*,variant:product_variants(name),product:products(name)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at), package:vendor_packages(name)")
+    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng), items:order_items(*,variant:product_variants(name),product:products(name)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at, raised_by), package:vendor_packages(name)")
     .eq("id", orderId)
     .maybeSingle();
   if (error || !order) return '<div class="empty-state">Order not found.</div>';
@@ -20608,6 +20691,9 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if(order.service_offer_id){
     try{const {data:so}=await sb.from("service_offers").select("id,listing_id,buyer_id,vendor_id,status,current_price,description,round_count,payment_reported_at,order_id,expires_at").eq("id",order.service_offer_id).maybeSingle();order.__serviceOffer=so||null;}catch(_){order.__serviceOffer=null;}
   }
+  const openPaymentDispute=(order.disputes||[]).find(d=>d.status==='open' && d.raised_by==='vendor');
+  const pendingReportedPayment=(order.payments||[]).find(p=>p.status==='pending' && ['buyer_report','service_offer_report'].includes(String(p.provider_reference||'').trim().toLowerCase()));
+  order.__paymentUnresolved=order.status==='payment_unresolved' || !!openPaymentDispute || !!pendingReportedPayment;
 
   const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
   const paymentRows = Array.isArray(order.payments) ? order.payments : [];
@@ -20627,7 +20713,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   // remaining-balance screen immediately after tapping "I've paid" rather than waiting for
   // the vendor's manual confirmation. The payment remains pending server-side.
   const deliveryDepositReported = isCustomer && paymentRows.some((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "pending");
-  const deliveryDepositReadyForBalance = deliveryDepositPaid || deliveryDepositReported;
+  const deliveryDepositReadyForBalance = deliveryDepositPaid;
   const deliveryBalanceAmount = Math.max(0, Number(order.total_amount || 0) - deliveryDepositPaidAmount - (deliveryDepositReported && deliveryDepositPaidAmount <= 0.009 ? Number(paymentRows.find((p) => String(p.payment_type || "").trim().toLowerCase() === "delivery_deposit_20" && p.status === "pending")?.amount || 0) : 0));
   const deliveryPaymentsComplete = !isDeliveryOrder || (isPayAfterDelivery ? (deliveryDepositPaid && feePaid) : feePaid);
   // Pickup keeps the existing full-payment flow. Delivery uses two stages:
@@ -20641,11 +20727,12 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
         <h2 style="margin:0;text-transform:capitalize;">${order.order_type} order</h2>
         <p class="muted" style="margin:0.15rem 0 0;">${isVendor ? "Customer order" : esc(order.vendor?.business_name || "")}${order.package?.name ? " · " + esc(order.package.name) : ""}</p>
       </div>
-      <span class="badge order-status-badge order-status-badge-${esc(order.status)} ${orderStatusBadgeClass(order.status)}" style="text-transform:capitalize;flex-shrink:0;">${order.status.replace("_", " ")}</span>
+      <span class="badge order-status-badge ${order.__paymentUnresolved ? "order-status-badge-payment-unresolved" : `order-status-badge-${esc(order.status)} ${orderStatusBadgeClass(order.status)}`}" style="text-transform:capitalize;flex-shrink:0;">${order.__paymentUnresolved ? "Payment unresolved" : order.status.replace("_", " ")}</span>
     </div>
     ${order.created_at ? `<p class="muted" style="font-size:0.8rem;margin-top:0.7rem;"><i class="fa-solid fa-calendar-days"></i> Placed ${orderDateTimeStr(order.created_at)}</p>` : ""}
     ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>If the payout button does not reflect within 20–30 minutes, please contact the vendor immediately.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button></div></div>`:''}
     ${isVendor&&order.status==='pending'?`<div class="banner banner-warning vendor-order-waiting-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-hourglass-half"></i> Customer waiting for confirmation.</strong><span>The customer is waiting for you to confirm this order.</span></div>`:''}
+    ${isCustomer&&['confirmed','handed_over'].includes(order.status)&&!feePaid?`<div class="banner banner-warning payment-not-paid-yet-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-exclamation"></i> Not paid yet.</strong><span>Complete the transfer to the vendor, then tap <strong>“I’ve paid the vendor”</strong> so the payment can be verified.</span></div>`:''}
     ${(order.status === "completed" || order.status === "cancelled") && orderActivityIso(order) ? `<p class="muted" style="font-size:0.8rem;margin-top:0.25rem;"><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(order))}</p>` : ""}
     ${(!(isVendor&&order.status==='pending') && ORDER_STATUS_HELP[order.status])
       ? order.status === "pending"
@@ -20683,7 +20770,14 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if(order.__serviceOffer?.status==='payment_reported' && isVendor){
     html += `<div class="card service-payment-confirm-card"><h3><i class="fa-solid fa-hand-holding-dollar"></i> Service payment reported</h3><p class="muted">The buyer has reported a bank transfer of <strong>${naira(order.__serviceOffer.current_price)}</strong>. Check your account and either confirm receipt or dispute the payment.</p><div class="flex" style="gap:.55rem;flex-wrap:wrap;"><button type="button" class="btn btn-sm" onclick="confirmServiceOfferPayment('${order.__serviceOffer.id}')"><i class="fa-solid fa-check"></i> Confirm payment received</button><button type="button" class="btn btn-sm btn-danger" onclick="disputeServiceOfferPayment('${order.__serviceOffer.id}')"><i class="fa-solid fa-triangle-exclamation"></i> Dispute payment</button></div></div>`;
   } else if(order.__serviceOffer?.status==='payment_reported' && isCustomer){
-    html += `<div class="card"><p class="muted"><i class="fa-solid fa-hourglass-half"></i> Payment reported. The vendor has up to 48 hours to confirm receipt or raise a dispute. If no dispute is raised, the payment will be automatically confirmed.</p></div>`;
+    html += `<div class="card"><p class="muted"><i class="fa-solid fa-hourglass-half"></i> Payment reported. Waiting for the vendor to confirm receipt or raise a dispute. There is no automatic payment confirmation timer.</p></div>`;
+  }
+  const buyerReportedPayment=(order.payments||[]).filter(p=>p.status==='pending' && String(p.provider_reference||'').trim().toLowerCase()==='buyer_report').sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))[0];
+  if(buyerReportedPayment && isVendor){
+    const paymentLabel=buyerReportedPayment.payment_type==='delivery_deposit_20' ? 'delivery deposit' : buyerReportedPayment.payment_type==='rental_fee' ? 'rental fee' : buyerReportedPayment.payment_type==='deposit' ? 'refundable deposit' : 'payment';
+    html += `<div class="card payment-confirmation-card"><div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.7rem;"><div><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Payment reported</h3><p class="muted" style="margin:.35rem 0 0;">The customer says they transferred <strong>${naira(buyerReportedPayment.amount)}</strong> for the ${esc(paymentLabel)}. Check your bank account before confirming.</p></div><span class="badge payment-reported-badge">Awaiting confirmation</span></div><div class="payment-confirmation-actions"><button type="button" class="btn btn-sm" onclick="confirmBuyerReportedPayment('${order.id}')"><i class="fa-solid fa-check"></i> Confirm payment</button><button type="button" class="btn btn-sm btn-danger" onclick="openBuyerPaymentDispute('${order.id}')"><i class="fa-solid fa-triangle-exclamation"></i> Raise dispute</button></div></div>`;
+  } else if(buyerReportedPayment && isCustomer){
+    html += `<div class="card payment-reported-customer-card"><div class="flex" style="gap:.55rem;align-items:flex-start;"><i class="fa-solid fa-hourglass-half" style="margin-top:.15rem;"></i><div><strong>Payment reported</strong><p class="muted" style="margin:.25rem 0 0;">Your payment of <strong>${naira(buyerReportedPayment.amount)}</strong> has been reported to the vendor. The order is now <strong>Payment unresolved</strong> until the vendor confirms receipt or raises a dispute.</p></div></div></div>`;
   }
 
   if (isVendor) {
@@ -21049,11 +21143,12 @@ function notReceivedButtonHtml(order) {
 
 const ORDER_STATUS_HELP = {
   pending: "Your order has been placed. You haven't been charged yet. Payment becomes available when the vendor accepts.",
-  confirmed: "The vendor has accepted. Next, they'll hand over the equipment.",
+  confirmed: "The vendor has accepted the order. Payment has not been verified yet; complete the required payment and report it using “I’ve paid the vendor”.",
   handed_over: "The equipment has physically been handed to the customer (picked up or delivered). For rentals, either side can mark it \"returned\" once it's back with the vendor. For sales, the customer confirms receipt to complete the order and release payment.",
   returned: "The rented equipment is back with the vendor. The buyer confirms to complete the order and release payment.",
   completed: "This order is finished.",
   cancelled: "This order was cancelled.",
+  payment_unresolved: "Payment has been reported or requires payment verification. The vendor must confirm the payment or raise a dispute. If the vendor does neither within 24 hours, Levromart will escalate it to admin.",
   disputed: "An issue was reported on this order. An admin is reviewing it.",
 };
 // Short labels for the longer entries above -- the label shows inline, the
@@ -21064,6 +21159,7 @@ const ORDER_STATUS_SHORT_LABEL = {
   pending: "Your order has been placed.",
   handed_over: "Item handed over",
   returned: "Equipment back with vendor",
+  payment_unresolved: "Payment needs verification",
 };
 
 const PAYOUT_STATUS_HELP = {
@@ -21453,56 +21549,21 @@ function backToPaymentFromReview(orderId) {
   }).catch(() => {});
 }
 
-async function renderLeaveReview(orderId, reviewAfterPayment = false) {
+async function renderLeaveReview(orderId) {
   if (!session?.user?.id || !orderId) return '<div class="empty-state">Access denied.</div>';
   const { data: order, error } = await sb.from("orders")
-    .select("id,status,buyer_id,vendor_id,order_type,delivery_method,payment_timing,vendor:vendors(id,business_name),payments:payments(payment_type,amount,status,created_at)")
+    .select("id,status,buyer_id,vendor_id,order_type,delivery_method,payment_timing,vendor:vendors(id,business_name),payments(payment_type,amount,status,provider_reference,created_at)")
     .eq("id", orderId).eq("buyer_id", session.user.id).maybeSingle();
   if (error || !order) return `<div class="empty-state">${esc(error?.message || "Order not found.")}</div>`;
-
-  // A delivery deposit is NOT a completed payment. Never allow the review
-  // route to appear while only the first payment stage is pending.
-  const reviewRows = Array.isArray(order.payments) ? order.payments : [];
   const reviewFeeType = order.order_type === "rental" ? "rental_fee" : "sale_price";
-  const reviewIsDelivery = order.delivery_method === "delivery";
-  const reviewIsPayAfter = reviewIsDelivery && order.payment_timing === "pay_after";
-  const reviewFinalReported = order.status === "completed" || reviewRows.some(p => String(p.payment_type || "").toLowerCase() === reviewFeeType && (p.status === "pending" || p.status === "paid") && (p.status === "paid" || p.provider_reference === "buyer_report"));
-  // When the buyer has just tapped “I’ve paid the vendor”, the payment report
-  // is intentionally still pending server-side until the vendor verifies it.
-  // The buyer-facing flow must NOT block on that verification: the explicit
-  // navigation flag is the authoritative signal that this review screen was
-  // reached immediately after the buyer reported the final payment.
-  const reviewDepositPendingOnly = !reviewAfterPayment && !reviewFinalReported;
-  if (reviewDepositPendingOnly) {
-    return `<div class="card" style="max-width:620px;margin:1rem auto;text-align:center;"><h2 style="margin-top:0;">Complete your payment first</h2><p class="muted">Your payment is not complete yet. Finish the remaining payment before leaving a review.</p><button type="button" class="btn btn-sm btn-outline" onclick="backToPaymentFromReview('${order.id}')"><i class="fa-solid fa-arrow-left"></i> Back to payment</button></div>`;
+  const reviewPaid = (order.payments || []).some(p => String(p.payment_type||"").toLowerCase() === reviewFeeType && p.status === "paid");
+  if (order.status !== "completed" || !reviewPaid) {
+    return `<div class="card" style="max-width:620px;margin:1rem auto;text-align:center;"><h2 style="margin-top:0;">Payment not verified yet</h2><p class="muted">You can leave a review only after the vendor or Levromart verifies the required payment and the order is completed.</p><button type="button" class="btn btn-sm btn-outline" onclick="navigate('orderDetail',{orderId:'${order.id}'},false)"><i class="fa-solid fa-arrow-left"></i> Back to order</button></div>`;
   }
-
-  const { data: existingReview } = await sb.from("reviews")
-    .select("id").eq("order_id", order.id).eq("buyer_id", session.user.id).maybeSingle();
-  if (existingReview) {
-    return `<div class="card" style="max-width:620px;margin:1rem auto;text-align:center;">
-      <h2 style="margin-top:0;">Review already submitted</h2>
-      <p class="muted">You've already reviewed this order.</p>
-      <button type="button" class="btn btn-sm btn-outline" onclick="backToPaymentFromReview('${order.id}')"><i class="fa-solid fa-arrow-left"></i> Back to payment</button>
-    </div>`;
-  }
-
+  const { data: existingReview } = await sb.from("reviews").select("id").eq("order_id", order.id).eq("buyer_id", session.user.id).maybeSingle();
+  if (existingReview) return `<div class="card" style="max-width:620px;margin:1rem auto;text-align:center;"><h2 style="margin-top:0;">Review already submitted</h2><p class="muted">You've already reviewed this order.</p><button type="button" class="btn btn-sm btn-outline" onclick="navigate('orderDetail',{orderId:'${order.id}'},false)"><i class="fa-solid fa-arrow-left"></i> Back to order</button></div>`;
   const vendorName = esc(order.vendor?.business_name || "this vendor");
-  return `<div class="card leave-review-page" style="max-width:620px;margin:1rem auto;">
-    <div class="banner banner-success" style="margin-bottom:.85rem;text-align:center;"><strong><i class="fa-solid fa-circle-check"></i> Payment completed.</strong></div>
-    <div style="text-align:center;">
-      <h2 style="margin:0;">Leave a review</h2>
-      <p class="muted" style="margin:.35rem 0 1rem;">How was your experience with ${vendorName}?</p>
-    </div>
-    <div id="reviewError" class="error-text hidden"></div>
-    ${starRatingWidgetHtml(5)}
-    <input type="hidden" id="reviewRating" value="5" />
-    <textarea id="reviewComment" rows="4" placeholder="Tell us about your experience with the order and vendor…"></textarea>
-    <div class="leave-review-actions" style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:.8rem;">
-      <button type="button" class="btn btn-sm btn-outline" onclick="backToPaymentFromReview('${order.id}')"><i class="fa-solid fa-arrow-left"></i> Back to payment</button>
-      <button type="button" class="btn btn-sm" onclick="submitReview('${order.id}','${order.vendor?.id || order.vendor_id}')"><i class="fa-solid fa-paper-plane"></i> Submit review</button>
-    </div>
-  </div>`;
+  return `<div class="card leave-review-page" style="max-width:620px;margin:1rem auto;"><div class="banner banner-success" style="margin-bottom:.85rem;text-align:center;"><strong><i class="fa-solid fa-circle-check"></i> Payment verified. Order completed.</strong></div><div style="text-align:center;"><h2 style="margin:0;">Leave a review</h2><p class="muted" style="margin:.35rem 0 1rem;">How was your experience with ${vendorName}?</p></div><div id="reviewError" class="error-text hidden"></div>${starRatingWidgetHtml(5)}<input type="hidden" id="reviewRating" value="5" /><textarea id="reviewComment" rows="4" placeholder="Tell us about your experience with the order and vendor…"></textarea><div class="leave-review-actions" style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:.8rem;"><button type="button" class="btn btn-sm btn-outline" onclick="navigate('orderDetail',{orderId:'${order.id}'},false)"><i class="fa-solid fa-arrow-left"></i> Back to order</button><button type="button" class="btn btn-sm" onclick="submitReview('${order.id}','${order.vendor?.id || order.vendor_id}')"><i class="fa-solid fa-paper-plane"></i> Submit review</button></div></div>`;
 }
 
 async function submitReview(orderId, vendorId) {
@@ -21567,7 +21628,7 @@ function adminNavHtml(active) {
     ["adminUsers", "fa-user-shield", "Admins"],
     ["adminCarousel", "fa-images", "Carousel"],
   ].filter(([view]) => isSuperAdmin() || !SUPER_ADMIN_ONLY_VIEWS.has(view));
-  return `<div class="dash-tabs admin-dash-tabs">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : view === "adminPasswordResets" && Number(window.__passwordResetPendingCount||0) > 0 ? `<span class="dash-tab-dot password-reset-admin-badge">${Number(window.__passwordResetPendingCount||0) > 9 ? "9+" : Number(window.__passwordResetPendingCount||0)}</span>` : ""}</button>`).join("")}</div>`;
+  return `<div class="dash-tabs admin-dash-tabs"><div class="admin-dash-tabs-inner">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : view === "adminPasswordResets" && Number(window.__passwordResetPendingCount||0) > 0 ? `<span class="dash-tab-dot password-reset-admin-badge">${Number(window.__passwordResetPendingCount||0) > 9 ? "9+" : Number(window.__passwordResetPendingCount||0)}</span>` : ""}</button>`).join("")}</div></div>`;
 }
 
 async function refreshMonthlyPendingCount(){
@@ -22907,34 +22968,67 @@ function exportFinancePdf() {
 
 async function renderAdminDisputes() {
   if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
-  const { data: disputes } = await sb.from("disputes").select("*, order:orders(id, order_type, buyer_id, vendor_id, payout_status, vendor:vendors(business_name))").eq("status", "open").order("created_at", { ascending: true });
+  const [{data:disputes,error:disputeError},{data:unresolved,error:unresolvedError},{data:confirmedOverdue,error:confirmedError}] = await Promise.all([
+    sb.from("disputes").select("*, order:orders(id, order_type, buyer_id, vendor_id, payout_status, status, payment_unresolved_at, payment_escalated_at, total_amount, status_changed_at, vendor:vendors(business_name), payments(id,payment_type,amount,status,provider_reference,created_at,paid_at))").eq("status", "open").order("created_at", { ascending: true }),
+    sb.from("orders").select("id,order_type,buyer_id,vendor_id,status,payment_unresolved_at,payment_escalated_at,total_amount,status_changed_at,vendor:vendors(business_name),payments(id,payment_type,amount,status,provider_reference,created_at,paid_at)").eq("status","payment_unresolved").not("payment_escalated_at","is",null).order("payment_escalated_at",{ascending:true}),
+    sb.from("orders").select("id,order_type,buyer_id,vendor_id,status,total_amount,status_changed_at,payment_escalated_at,vendor:vendors(business_name),payments(id,payment_type,amount,status,provider_reference,created_at,paid_at)").eq("status","confirmed").not("payment_escalated_at","is",null).order("payment_escalated_at",{ascending:true})
+  ]);
+  let html = `<h2><i class="fa-solid fa-scale-balanced"></i> Disputes &amp; payment issues</h2>${adminNavHtml("adminDisputes")}`;
+  if (disputeError && unresolvedError && confirmedError) return html + errorStateHtml(disputeError);
+  const openDisputes = disputes || [];
+  const paymentUnresolved = (unresolved || []).filter(o => !(openDisputes || []).some(d => String(d.order?.id || d.order_id || "") === String(o.id)));
+  const confirmed24h = confirmedOverdue || [];
+  const issueCounts = { disputes: openDisputes.length, unresolved: paymentUnresolved.length, confirmed: confirmed24h.length };
+  html += `<div class="admin-payment-issue-tabs" role="tablist" aria-label="Payment issues">
+    <button type="button" class="admin-payment-issue-tab active" data-issue-tab="unresolved" onclick="switchAdminPaymentIssueTab('unresolved')"><i class="fa-solid fa-hourglass-half"></i> Payment unresolved <strong>${issueCounts.unresolved}</strong></button>
+    <button type="button" class="admin-payment-issue-tab" data-issue-tab="confirmed" onclick="switchAdminPaymentIssueTab('confirmed')"><i class="fa-solid fa-clock"></i> Confirmed &gt;24h <strong>${issueCounts.confirmed}</strong></button>
+    <button type="button" class="admin-payment-issue-tab" data-issue-tab="disputes" onclick="switchAdminPaymentIssueTab('disputes')"><i class="fa-solid fa-scale-balanced"></i> Other disputes <strong>${issueCounts.disputes}</strong></button>
+  </div>`;
 
-  let html = `<h2>Open disputes</h2>`;
-  html += adminNavHtml("adminDisputes");
-  if (!disputes || disputes.length === 0) html += `<p class="muted">No open disputes.</p>`;
-  (disputes || []).forEach((d) => {
-    html += `<div class="card">
-      <div class="flex" style="justify-content:space-between;">
-        <a href="#" onclick="navigate('orderDetail',{orderId:'${d.order?.id}'});return false;">${esc(d.order?.vendor?.business_name || "")} · ${esc(d.order?.order_type || "")} order</a>
-        <span class="muted" style="text-transform:capitalize;">raised by ${d.raised_by}</span>
-      </div>
-      <p style="margin:0.5rem 0;"><strong>Reason:</strong> ${esc(d.reason)}</p>
-      ${d.vendor_response ? `<p style="margin:0.5rem 0;"><strong>Vendor says:</strong> ${esc(d.vendor_response)}</p>` : `<p class="muted" style="margin:0.5rem 0;">Vendor hasn't responded yet.</p>`}
-      ${d.order?.buyer_id && d.order?.vendor_id ? `<button class="btn btn-sm btn-outline" onclick="openDisputeChat('${d.order.buyer_id}','${d.order.vendor_id}')"><i class="fa-solid fa-comment-dots"></i> View chat between buyer &amp; vendor</button>` : ""}
-      ${d.order?.payout_status === "held" ? `<p class="muted" style="font-size:0.82rem;margin-top:0.4rem;"><i class="fa-solid fa-shield-halved"></i> Payment on this order is still held by Levromart. The vendor hasn't been paid.</p>
-      <button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','held')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>` : ""}
-      ${d.order?.payout_status === "released" ? `<p class="muted" style="font-size:0.82rem;margin-top:0.4rem;"><i class="fa-solid fa-triangle-exclamation"></i> The vendor's share of this order has already been paid out (split payment). A refund here comes out of Levromart's own balance.</p>
-      <button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','released')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>` : ""}
-      <div class="flex">
-        <textarea id="notes-${d.id}" rows="2" placeholder="Resolution notes" style="flex:1;"></textarea>
-        <select id="newstatus-${d.id}"><option value="" disabled selected>Choose an outcome…</option><option value="completed">Complete (release to vendor)</option><option value="cancelled">Cancel (side with buyer)</option></select>
-        <button class="btn btn-sm" onclick="resolveDispute('${d.id}','${d.order?.id}','${d.order?.payout_status}')">Mark resolved</button>
-      </div>
-    </div>`;
+  html += `<section class="admin-payment-issue-panel" data-issue-panel="unresolved">`;
+  if (!paymentUnresolved.length) html += `<div class="empty-state">No escalated payment-unresolved orders.</div>`;
+  paymentUnresolved.forEach(o => {
+    const claim=(o.payments||[]).find(p=>p.status==='pending'&&['buyer_report','service_offer_report'].includes(String(p.provider_reference||'').toLowerCase()));
+    const age=o.payment_unresolved_at?Math.max(24,(Date.now()-new Date(o.payment_unresolved_at).getTime())/3600000):24;
+    html += `<div class="card payment-escalation-admin-item"><div class="flex" style="justify-content:space-between;gap:.7rem;align-items:flex-start;flex-wrap:wrap;"><div><strong>${esc(o.vendor?.business_name||'Vendor')}</strong><div class="muted" style="font-size:.78rem;">Order ${esc(o.id)} · ${esc(o.order_type||'order')}</div></div><span class="badge danger">${Math.floor(age)}h overdue</span></div>${claim?`<p style="margin:.5rem 0 .2rem;"><strong>Reported payment:</strong> ${naira(claim.amount)}</p><p class="muted" style="margin:.1rem 0 .6rem;">Buyer reported a direct transfer; vendor has not resolved it.</p>`:`<p class="muted" style="margin:.5rem 0;">No pending payment claim record is currently visible.</p>`}<div class="flex" style="gap:.45rem;flex-wrap:wrap;"><button class="btn btn-sm" onclick="adminConfirmReportedPayment('${o.id}')" ${claim?'':'disabled'}><i class="fa-solid fa-check"></i> Verify payment</button><button class="btn btn-sm btn-danger" onclick="adminRejectReportedPayment('${o.id}')" ${claim?'':'disabled'}><i class="fa-solid fa-xmark"></i> Reject claim</button><button class="btn btn-sm btn-outline" onclick="navigate('orderDetail',{orderId:'${o.id}'})">Open order</button></div></div>`;
   });
+  html += `</section>`;
+
+  html += `<section class="admin-payment-issue-panel hidden" data-issue-panel="confirmed">`;
+  if (!confirmed24h.length) html += `<div class="empty-state">No confirmed orders have reached the 24-hour payment follow-up stage.</div>`;
+  confirmed24h.forEach(o => {
+    const feeType=o.order_type==='rental'?'rental_fee':'sale_price';
+    const paid=(o.payments||[]).some(p=>String(p.payment_type||'').toLowerCase()===feeType&&p.status==='paid');
+    if(paid)return;
+    const age=o.status_changed_at?Math.max(24,(Date.now()-new Date(o.status_changed_at).getTime())/3600000):24;
+    html += `<div class="card payment-escalation-admin-item"><div class="flex" style="justify-content:space-between;gap:.7rem;align-items:flex-start;flex-wrap:wrap;"><div><strong>${esc(o.vendor?.business_name||'Vendor')}</strong><div class="muted" style="font-size:.78rem;">Order ${esc(o.id)} · ${esc(o.order_type||'order')} · Confirmed ${o.status_changed_at?esc(new Date(o.status_changed_at).toLocaleString('en-GB')):'over 24 hours ago'}</div></div><span class="badge warning">${Math.floor(age)}h waiting</span></div><p style="margin:.55rem 0 .2rem;"><strong>Payment status:</strong> Not verified</p><p class="muted" style="margin:.1rem 0 .6rem;">The customer has not reported payment and the vendor has not verified a direct payment.</p><div class="flex" style="gap:.45rem;flex-wrap:wrap;"><button class="btn btn-sm btn-outline" onclick="navigate('orderDetail',{orderId:'${o.id}'})">Open order</button><button class="btn btn-sm" onclick="adminCancelConfirmedOverdue('${o.id}')"><i class="fa-solid fa-xmark"></i> Cancel order</button></div></div>`;
+  });
+  html += `</section>`;
+
+  html += `<section class="admin-payment-issue-panel hidden" data-issue-panel="disputes">`;
+  if (!openDisputes.length) html += `<div class="empty-state">No open disputes.</div>`;
+  openDisputes.forEach(d=>{
+    const claim=(d.order?.payments||[]).find(p=>p.status==='pending'&&['buyer_report','service_offer_report'].includes(String(p.provider_reference||'').toLowerCase()));
+    const paymentIssue=!!claim || d.order?.status==='payment_unresolved';
+    html += `<div class="card"><div class="flex" style="justify-content:space-between;"><a href="#" onclick="navigate('orderDetail',{orderId:'${d.order?.id}'});return false;">${esc(d.order?.vendor?.business_name||"")} · ${esc(d.order?.order_type||"")} order</a><span class="muted" style="text-transform:capitalize;">${paymentIssue?'Payment unresolved · ':''}raised by ${esc(d.raised_by||'unknown')}</span></div><p style="margin:.5rem 0;"><strong>Reason:</strong> ${esc(d.reason||'')}</p>${d.vendor_response?`<p style="margin:.5rem 0;"><strong>Vendor says:</strong> ${esc(d.vendor_response)}</p>`:`<p class="muted" style="margin:.5rem 0;">Vendor hasn't responded yet.</p>`}${claim?`<div class="payment-resolution-admin-card"><strong><i class="fa-solid fa-building-columns"></i> Payment claim: ${naira(claim.amount)}</strong><p class="muted" style="margin:.25rem 0 .55rem;">The buyer reported a direct transfer. This claim has not been verified yet.</p><div class="flex" style="gap:.45rem;flex-wrap:wrap;"><button class="btn btn-sm" onclick="adminConfirmReportedPayment('${d.order.id}')"><i class="fa-solid fa-check"></i> Verify payment</button><button class="btn btn-sm btn-danger" onclick="adminRejectReportedPayment('${d.order.id}')"><i class="fa-solid fa-xmark"></i> Reject claim</button></div></div>`:''}${d.order?.buyer_id&&d.order?.vendor_id?`<button class="btn btn-sm btn-outline" onclick="openDisputeChat('${d.order.buyer_id}','${d.order.vendor_id}')"><i class="fa-solid fa-comment-dots"></i> View chat between buyer &amp; vendor</button>`:""}${d.order?.payout_status==='held'?`<p class="muted" style="font-size:.82rem;margin-top:.4rem;"><i class="fa-solid fa-shield-halved"></i> Payment on this order is still held by Levromart. The vendor hasn't been paid.</p><button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','held')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>`:""}${d.order?.payout_status==='released'?`<p class="muted" style="font-size:.82rem;margin-top:.4rem;"><i class="fa-solid fa-triangle-exclamation"></i> The vendor's share of this order has already been paid out.</p><button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','released')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>`:""}<div class="flex"><textarea id="notes-${d.id}" rows="2" placeholder="Resolution notes" style="flex:1;"></textarea><select id="newstatus-${d.id}"><option value="" disabled selected>Choose an outcome…</option><option value="completed">Complete (release to vendor)</option><option value="cancelled">Cancel (side with buyer)</option></select><button class="btn btn-sm" onclick="resolveDispute('${d.id}','${d.order?.id}','${d.order?.payout_status}')">Mark resolved</button></div></div>`;
+  });
+  html += `</section>`;
   html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('adminPanel',{status:'pending'})"><i class='fa-solid fa-arrow-left'></i> Back to admin</button>`;
   return html;
 }
+
+window.switchAdminPaymentIssueTab=function(tab){
+  tab=['unresolved','confirmed','disputes'].includes(tab)?tab:'unresolved';
+  document.querySelectorAll('.admin-payment-issue-tab').forEach(b=>b.classList.toggle('active',b.dataset.issueTab===tab));
+  document.querySelectorAll('.admin-payment-issue-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.issuePanel!==tab));
+};
+window.adminCancelConfirmedOverdue=async function(orderId){
+  if(!(await showConfirmDialog('Cancel this confirmed order because payment has not been verified after the 24-hour follow-up period? The customer and vendor will be notified.',{title:'Cancel overdue order',okLabel:'Cancel order',danger:true})))return;
+  const {error}=await sb.rpc('admin_cancel_confirmed_overdue_order',{p_order_id:orderId});
+  if(error){showToast(error.message||'Could not cancel the order.','error');return;}
+  showToast('Order cancelled.','success');
+  await navigate('adminDisputes',{},false);
+};
 
 async function resolveDispute(id, orderId, payoutStatus) {
   const notes = byId(`notes-${id}`).value.trim() || "Resolved.";
@@ -25806,7 +25900,7 @@ window.addEventListener("popstate", (e) => {
   // the browser still knows exactly which Levromart screen was open.
   const persistedUrlView = urlParams.get("appView");
   if (persistedUrlView) {
-    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","supportRequest","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
+    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","supportRequest","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
     let persistedParams = {};
     try { persistedParams = JSON.parse(urlParams.get("appParams") || "{}"); } catch (_) {}
     if (allowedPersistedViews.has(persistedUrlView)) {
@@ -27942,7 +28036,7 @@ window.renderVendorMapRail = function(){
       </div>
       ${!hasAccount ? `<div class="banner banner-warning" style="margin-top:.7rem;"><strong>Vendor payment details are not saved yet.</strong> Please contact the vendor before transferring.</div>` : ""}
       <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
-      <p class="muted" style="font-size:.78rem;margin-top:.9rem;">After you complete the transfer, tap below to report it. The vendor will be notified and can confirm the money received.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount},'${esc(paymentLabel)}')"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
+      <p class="muted" style="font-size:.78rem;margin-top:.9rem;"><strong>After you complete the transfer, you must tap “I’ve paid the vendor”.</strong> This is how Levromart records that you say you paid. The order will stay Payment unresolved until the vendor confirms receipt.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount},'${esc(paymentLabel)}')"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
     document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
   };
   window.reportDirectVendorPayment = async function(orderId,amount,paymentStage=""){
@@ -27960,11 +28054,8 @@ window.renderVendorMapRail = function(){
       const isFinalStage=!isDepositStage && (stage.includes("sale price") || stage.includes("rental fee") || stage.includes("remaining balance") || stage.includes("full payment"));
 
       if(isFinalStage){
-        showToast("Payment completed.","success");
-        // Navigate immediately. Do not wait for the vendor's confirmation;
-        // buyer_report_manual_payment intentionally leaves the payment pending
-        // for the vendor while the buyer is already allowed to review.
-        await navigate("leaveReview",{orderId,reviewAfterPayment:true});
+        showToast("Payment reported. Waiting for the vendor to confirm receipt.","success");
+        await navigate("orderDetail",{orderId});
       }else{
         showToast(data?.message||"20% payment reported. Complete the remaining payment before leaving a review.","success");
         await navigate("orderDetail",{orderId});
@@ -30003,6 +30094,88 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 
 
 
+
+<style id="levromart-admin-inventory-nav-fix-20260917">
+/* Admin top navigation: readable in both themes and centered when it fits. */
+#app .admin-dash-tabs{
+  justify-content:center!important;align-items:stretch!important;
+  color:var(--text)!important;
+  padding-inline:.5rem!important;padding-right:.5rem!important;
+  gap:.55rem!important;
+}
+#app .admin-dash-tabs .dash-tab{
+  color:var(--text-muted)!important;background:transparent!important;
+  border-bottom:2px solid transparent!important;
+  margin-right:0!important;
+}
+#app .admin-dash-tabs .dash-tab i{color:currentColor!important}
+#app .admin-dash-tabs .dash-tab:hover,#app .admin-dash-tabs .dash-tab:focus-visible{color:var(--primary)!important}
+#app .admin-dash-tabs .dash-tab.active{color:var(--primary)!important;border-bottom-color:var(--primary)!important}
+@media(max-width:900px){#app .admin-dash-tabs{justify-content:center!important;padding-inline:.65rem!important;padding-right:2rem!important}}
+.admin-inventory-status-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem;margin:.85rem 0 .8rem;padding:.3rem;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--card) 88%,transparent)}
+.admin-inventory-status-tab{min-width:0;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--text-muted);padding:.62rem .55rem;display:flex;align-items:center;justify-content:center;gap:.42rem;cursor:pointer;font:inherit;font-size:.78rem;font-weight:700;transition:background .15s,color .15s,border-color .15s;white-space:nowrap}
+.admin-inventory-status-tab strong{font-size:.72rem;min-width:1.45rem;height:1.45rem;padding:0 .3rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text)}
+.admin-inventory-status-tab:hover{color:var(--primary)}
+.admin-inventory-status-tab.active{color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,var(--card));border-color:color-mix(in srgb,var(--primary) 25%,var(--border))}
+.admin-inventory-status-tab.active strong{background:var(--primary);color:#fff}
+@media(max-width:520px){.admin-inventory-status-tabs{gap:.3rem}.admin-inventory-status-tab{font-size:.68rem;padding:.58rem .3rem;gap:.3rem}.admin-inventory-status-tab strong{min-width:1.25rem;height:1.25rem;font-size:.62rem}}
+</style>
+
+<style id="levromart-payment-admin-escalation-ui-20260917">
+.payment-escalation-admin-panel{border-color:rgba(239,68,68,.25);background:color-mix(in srgb,#ef4444 4%,var(--card));}
+.payment-escalation-admin-item{margin-top:.75rem;padding:.75rem;border:1px solid var(--border);border-radius:14px;background:var(--card);}
+</style>
+
+<style id="levromart-review-prompt-20260917">
+.levro-review-prompt-backdrop{position:fixed;inset:0;z-index:100900;background:rgba(0,0,0,.58);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:1rem}
+.levro-review-prompt-card{width:min(520px,calc(100vw - 2rem));background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:22px;padding:1.15rem;box-shadow:0 24px 80px rgba(0,0,0,.35)}
+.levro-review-prompt-icon{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 12%,var(--card));color:var(--primary);font-size:1.35rem;margin:0 auto .7rem}
+.levro-review-prompt-actions{display:flex;gap:.55rem;justify-content:center;flex-wrap:wrap;margin-top:1rem}
+</style>
+<script id="levromart-review-prompt-20260917">
+(function(){
+  "use strict";
+  let promptBusy=false;
+  window.__reviewPromptDismissedOrderId=null;
+  function closePrompt(){document.getElementById('levroReviewPromptModal')?.remove();}
+  window.__closeLevromartReviewPrompt=closePrompt;
+  async function findEligibleReview(){
+    if(!session?.user?.id || profile?.role==='admin') return null;
+    const {data:orders,error}=await sb.from('orders').select('id,vendor_id,completed_at,created_at,order_type,vendor:vendors(id,business_name),payments(payment_type,status)').eq('buyer_id',session.user.id).eq('status','completed').order('completed_at',{ascending:false}).limit(25);
+    if(error||!orders?.length)return null;
+    const candidates=orders.filter(o=>{const fee=o.order_type==='rental'?'rental_fee':'sale_price';return (o.payments||[]).some(p=>String(p.payment_type||'').toLowerCase()===fee&&p.status==='paid');});
+    if(!candidates.length)return null;
+    const ids=candidates.map(o=>o.id);
+    const {data:reviews}=await sb.from('reviews').select('order_id').in('order_id',ids).eq('buyer_id',session.user.id);
+    const reviewed=new Set((reviews||[]).map(r=>String(r.order_id)));
+    return candidates.find(o=>!reviewed.has(String(o.id)))||null;
+  }
+  function showPrompt(order){
+    if(!order||document.getElementById('levroReviewPromptModal')||window.__reviewPromptDismissedOrderId===String(order.id)||currentView==='leaveReview')return;
+    const modal=document.createElement('div');modal.id='levroReviewPromptModal';modal.className='levro-review-prompt-backdrop';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
+    const name=esc(order.vendor?.business_name||'this vendor');
+    modal.innerHTML=`<div class="levro-review-prompt-card"><div class="levro-review-prompt-icon"><i class="fa-solid fa-star"></i></div><div style="text-align:center;"><h2 style="margin:0;">Give ${name} a review</h2><p class="muted" style="margin:.4rem 0 0;">Your payment has been verified and this order is complete. Tell us how your experience was.</p></div><div class="levro-review-prompt-actions"><button type="button" class="btn btn-sm btn-outline" id="levroReviewPromptLater">Not now</button><button type="button" class="btn btn-sm" id="levroReviewPromptNow"><i class="fa-solid fa-star"></i> Review now</button></div></div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#levroReviewPromptLater')?.addEventListener('click',()=>{window.__reviewPromptDismissedOrderId=String(order.id);closePrompt();});
+    modal.querySelector('#levroReviewPromptNow')?.addEventListener('click',async()=>{window.__reviewPromptDismissedOrderId=String(order.id);closePrompt();await navigate('leaveReview',{orderId:order.id},true);});
+    modal.addEventListener('click',e=>{if(e.target===modal){window.__reviewPromptDismissedOrderId=String(order.id);closePrompt();}});
+  }
+  window.maybePromptLevromartReview=async function(){
+    if(promptBusy||!session?.user?.id||profile?.role==='admin'||currentView==='leaveReview')return;
+    promptBusy=true;
+    try{const order=await findEligibleReview();if(order)showPrompt(order);}catch(e){console.warn('[Levromart] Review prompt check failed:',e);}finally{promptBusy=false;}
+  };
+  const run=()=>setTimeout(()=>window.maybePromptLevromartReview?.(),700);
+  document.addEventListener('levromart:view-rendered',run);
+  setInterval(()=>window.maybePromptLevromartReview?.(),15000);
+  // refreshAuthStateOnce is the single entry point for session restoration in this build.
+  if(typeof refreshAuthStateOnce==='function'&&!window.__reviewPromptAuthWrapped){
+    const original=refreshAuthStateOnce;
+    window.__reviewPromptAuthWrapped=true;
+    refreshAuthStateOnce=function(...args){return Promise.resolve(original.apply(this,args)).finally(run);};
+  }
+})();
+</script>
 </body>
 <style id="levromart-20260910-final-polish">
 /* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
@@ -33233,13 +33406,17 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
   async function hydrateAdminAttention(){
     if(typeof session==='undefined' || profile?.role!=='admin' || typeof sb==='undefined') return;
     try{
-      const [vendorsQ,supportQ,disputesQ,suggestionsQ]=await Promise.all([
+      const [vendorsQ,supportQ,disputesQ,suggestionsQ,paymentEscalationQ,confirmedEscalationQ]=await Promise.all([
         sb.from('vendors').select('id',{count:'exact',head:true}).eq('verification_status','pending').is('deleted_at',null),
         sb.from('support_requests').select('id',{count:'exact',head:true}).in('status',['open','in_progress']),
-        sb.from('disputes').select('id',{count:'exact',head:true}).not('status','in','(resolved,closed)'),
-        sb.from('suggestions').select('id',{count:'exact',head:true}).eq('status','new')
+        sb.from('disputes').select('id,order_id',{count:'exact'}).not('status','in','(resolved,closed)'),
+        sb.from('suggestions').select('id',{count:'exact',head:true}).eq('status','new'),
+        sb.from('orders').select('id',{count:'exact',head:true}).eq('status','payment_unresolved').not('payment_escalated_at','is',null),
+        sb.from('orders').select('id',{count:'exact',head:true}).eq('status','confirmed').not('payment_escalated_at','is',null)
       ]);
-      const counts={adminPanel:isSuperAdmin()?Number(vendorsQ.count||0):0,adminSupportRequests:Number(supportQ.count||0),adminDisputes:Number(disputesQ.count||0),adminFeedback:Number(suggestionsQ.count||0),adminPasswordResets:isSuperAdmin()?Number(window.__passwordResetPendingCount||0):0};
+      const openDisputeOrderIds=new Set((disputesQ.data||[]).map(x=>String(x.order_id||'')));
+      const escalatedExtra=Number(paymentEscalationQ?.count||0);
+      const counts={adminPanel:isSuperAdmin()?Number(vendorsQ.count||0):0,adminSupportRequests:Number(supportQ.count||0),adminDisputes:Number(disputesQ.count||0)+Math.max(0,escalatedExtra)+Number(confirmedEscalationQ?.count||0),adminFeedback:Number(suggestionsQ.count||0),adminPasswordResets:isSuperAdmin()?Number(window.__passwordResetPendingCount||0):0};
       window.__adminDisputeCount = counts.adminDisputes;
       const profileDisputeBadge = document.querySelector('#profilePanel [data-profile-key="disputes"] .profile-disputes-badge');
       if(profileDisputeBadge){
@@ -33579,7 +33756,106 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   }
   window.__levroPaymentRepairReady=true;
 })();
-</script></html>
+</script>
+<style id="levromart-payment-resolution-final-20260917">
+.payment-confirmation-card{border-color:color-mix(in srgb,var(--primary) 35%,var(--border));background:color-mix(in srgb,var(--primary) 4%,var(--card));}
+.payment-confirmation-actions{display:flex;gap:.55rem;flex-wrap:wrap;margin-top:.8rem;}
+.payment-reported-badge{background:rgba(245,158,11,.13);color:#d97706;}
+[data-theme="dark"] .payment-reported-badge{color:#fbbf24;}
+.order-status-badge-payment-unresolved{background:rgba(239,68,68,.12)!important;color:#dc2626!important;border:1px solid rgba(239,68,68,.2)!important;}
+[data-theme="dark"] .order-status-badge-payment-unresolved{color:#fca5a5!important;}
+.payment-reason-modal{position:fixed;inset:0;z-index:100800;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);}
+.payment-reason-modal.hidden{display:none;}
+.payment-reason-card{width:min(540px,calc(100vw - 2rem));background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:20px;padding:1rem;box-shadow:0 24px 80px rgba(0,0,0,.38);}
+.payment-reason-card textarea{width:100%;box-sizing:border-box;min-height:120px;margin-top:.55rem;resize:vertical;}
+.payment-reason-actions{display:flex;justify-content:flex-end;gap:.55rem;margin-top:.7rem;}
+.payment-resolution-admin-card{margin:.65rem 0;padding:.75rem;border-radius:14px;background:color-mix(in srgb,var(--primary) 5%,var(--card));border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border));}
+</style>
+<div id="levroPaymentReasonModal" class="payment-reason-modal hidden" role="dialog" aria-modal="true" aria-labelledby="levroPaymentReasonTitle">
+  <div class="payment-reason-card">
+    <h3 id="levroPaymentReasonTitle" style="margin:0;">Raise payment dispute</h3>
+    <p id="levroPaymentReasonMessage" class="muted" style="margin:.35rem 0 0;">Explain why you cannot confirm the customer's reported payment.</p>
+    <textarea id="levroPaymentReasonInput" maxlength="1200" placeholder="e.g. I have checked my account and no transfer matching this amount is showing."></textarea>
+    <div id="levroPaymentReasonError" class="error-text hidden"></div>
+    <div class="payment-reason-actions">
+      <button type="button" class="btn btn-sm btn-outline" id="levroPaymentReasonCancel">Cancel</button>
+      <button type="button" class="btn btn-sm btn-danger" id="levroPaymentReasonConfirm">Raise dispute</button>
+    </div>
+  </div>
+</div>
+<script id="levromart-payment-resolution-final-js-20260917">
+(function(){
+  "use strict";
+  let paymentReasonResolver=null;
+  function openReasonModal(){
+    const modal=document.getElementById('levroPaymentReasonModal');
+    const input=document.getElementById('levroPaymentReasonInput');
+    const err=document.getElementById('levroPaymentReasonError');
+    if(!modal||!input)return Promise.resolve(null);
+    input.value=''; err?.classList.add('hidden'); modal.classList.remove('hidden');
+    setTimeout(()=>input.focus(),30);
+    return new Promise(resolve=>{paymentReasonResolver=resolve;});
+  }
+  function closeReasonModal(value){
+    const modal=document.getElementById('levroPaymentReasonModal'); if(modal)modal.classList.add('hidden');
+    const r=paymentReasonResolver; paymentReasonResolver=null; if(r)r(value);
+  }
+  document.getElementById('levroPaymentReasonCancel')?.addEventListener('click',()=>closeReasonModal(null));
+  document.getElementById('levroPaymentReasonConfirm')?.addEventListener('click',()=>{
+    const input=document.getElementById('levroPaymentReasonInput'),err=document.getElementById('levroPaymentReasonError');
+    const reason=String(input?.value||'').trim();
+    if(!reason){err.textContent='Please explain why you are disputing the payment.';err.classList.remove('hidden');input?.focus();return;}
+    closeReasonModal(reason);
+  });
+  document.getElementById('levroPaymentReasonModal')?.addEventListener('click',e=>{if(e.target.id==='levroPaymentReasonModal')closeReasonModal(null);});
+
+  window.confirmBuyerReportedPayment=async function(orderId){
+    if(!(await showConfirmDialog('Only confirm after you have checked your bank account and actually received this transfer. This will mark the payment as verified and may complete the order and create the applicable commission charge.',{title:'Confirm payment received',okLabel:'Yes, confirm payment'})))return;
+    try{
+      const {data,error}=await sb.rpc('vendor_confirm_reported_payment',{p_order_id:orderId});
+      if(error)throw error;
+      showToast(data?.order_completed?'Payment confirmed. Order completed.':'Payment confirmed.','success');
+      await navigate('orderDetail',{orderId},false);
+    }catch(e){showToast(e?.message||'Could not confirm this payment.','error');}
+  };
+
+  window.openBuyerPaymentDispute=async function(orderId){
+    if(!(await showConfirmDialog('Raise a payment dispute only if you have checked your account and cannot verify the transfer. The order will be marked Payment unresolved and sent to the admin review queue.',{title:'Raise payment dispute',okLabel:'Continue'})))return;
+    const reason=await openReasonModal();
+    if(!reason)return;
+    try{
+      const {data,error}=await sb.rpc('vendor_dispute_reported_payment',{p_order_id:orderId,p_reason:reason});
+      if(error)throw error;
+      showToast('Payment unresolved. The claim has been sent to admin for review.','success');
+      await navigate('orderDetail',{orderId},false);
+    }catch(e){showToast(e?.message||'Could not raise the payment dispute.','error');}
+  };
+
+  window.adminConfirmReportedPayment=async function(orderId){
+    if(!(await showConfirmDialog('Verify this buyer payment claim? This will mark the transfer as paid and, where applicable, complete the order and create the commission charge.',{title:'Verify payment claim',okLabel:'Verify payment'})))return;
+    try{
+      const {data,error}=await sb.rpc('admin_confirm_reported_payment',{p_order_id:orderId,p_admin_notes:'Payment claim verified by admin.'});
+      if(error)throw error;
+      showToast(data?.order_completed?'Payment verified and order completed.':'Payment verified.','success');
+      await navigate('adminDisputes',{},false);
+    }catch(e){showToast(e?.message||'Could not verify the payment claim.','error');}
+  };
+
+  window.adminRejectReportedPayment=async function(orderId){
+    const notes=window.prompt('Resolution notes (required):','Payment claim could not be verified.');
+    if(notes===null)return;
+    if(!String(notes).trim()){showToast('Resolution notes are required.','error');return;}
+    if(!(await showConfirmDialog('Reject this payment claim and cancel the order? The reported transfer will not be treated as a verified Levromart payment.',{title:'Reject payment claim',okLabel:'Reject claim',danger:true})))return;
+    try{
+      const {error}=await sb.rpc('admin_reject_reported_payment',{p_order_id:orderId,p_admin_notes:String(notes).trim()});
+      if(error)throw error;
+      showToast('Payment claim rejected and order cancelled.','success');
+      await navigate('adminDisputes',{},false);
+    }catch(e){showToast(e?.message||'Could not reject the payment claim.','error');}
+  };
+})();
+</script>
+</html>
 <style id="levromart-final-manual-monthly-ui-20260913">
 .manual-monthly-payment-modal-content{max-height:min(90vh,760px);overflow:auto}
 .manual-monthly-account-row{grid-template-columns:96px minmax(0,1fr) auto!important}
@@ -34026,7 +34302,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
         const {error:rpcError}=await sb.rpc("report_service_offer_payment",{p_order_id:orderId,p_amount:Number(amount)});
         if(rpcError)throw rpcError;
         byId("manualVendorPaymentModal")?.remove();
-        showToast("Payment reported. The vendor has 48 hours to confirm receipt or raise a dispute.","success");
+        showToast("Payment reported. The order is now Payment unresolved until the vendor confirms receipt or raises a dispute.","success");
         await navigate("orderDetail",{orderId},false);
         return;
       }
@@ -34123,8 +34399,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       <label>Phone *</label>
       <input id="vaPhone" type="tel" autocomplete="tel" />
 
-      <label>WhatsApp number <span class="muted">(optional)</span></label>
-      <input id="vaWhatsapp" type="tel" autocomplete="tel" />
+      <label>WhatsApp number *</label>
+      <input id="vaWhatsapp" type="tel" autocomplete="tel" required />
 
       <div class="vendor-application-payout-section">
         <div class="vendor-application-payout-heading">
@@ -34855,7 +35131,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .vendor-application-sector-search{position:relative}
 .vendor-application-sector-search i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
 .vendor-application-sector-search input{
-  width:100%;box-sizing:border-box;padding:.75rem .9rem .75rem 2.65rem;
+  width:100%;box-sizing:border-box;padding:.75rem .9rem .75rem 3.15rem!important;
   border:1px solid var(--border);border-radius:13px;background:var(--input-bg,var(--card));color:var(--text);
 }
 .vendor-application-sector-results{
@@ -34877,7 +35153,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 }
 .vendor-application-actions{display:flex;gap:.65rem;margin-top:.8rem}
 .vendor-application-actions .btn{margin-top:0!important;flex:1 1 0}
-.vendor-application-cancel{background:transparent!important;color:var(--text)!important;border:1px solid var(--border)!important}
+.vendor-application-cancel{background:#dc2626!important;color:#fff!important;border:1px solid #dc2626!important}
 @media(max-width:480px){
   .vendor-application-sector-sheet{width:calc(100vw - 24px)}
   .vendor-application-actions{position:sticky;bottom:0;background:var(--card);padding-top:.55rem}
@@ -35048,7 +35324,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       <div class="vendor-application-payout-section">
         <div class="vendor-application-payout-heading">
           <strong>Payout account</strong>
-          <span>Select your bank and enter your 10-digit account number. The account name is resolved automatically from the bank.</span>
+          <span>Enter the bank details exactly as they appear on the payout account.</span>
         </div>
 
         <label>Bank *</label>
@@ -35062,6 +35338,9 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
         <label>Account number *</label>
         <input id="vaAccountNumber" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="10-digit account number" />
+
+        <label>Account name *</label>
+        <input id="vaAccountName" autocomplete="name" placeholder="Name on the bank account" />
       </div>
 
       <label>CAC number <span class="muted">(optional)</span></label>
@@ -35074,8 +35353,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       <textarea id="vaBio" rows="3" placeholder="Tell buyers briefly what your business offers."></textarea>
 
       <div class="vendor-application-actions">
-        <button type="button" class="btn" id="vendorApplySubmitBtn" onclick="submitVendorApply()"><i class="fa-solid fa-paper-plane"></i> Submit application</button>
         <button type="button" class="btn vendor-application-cancel" onclick="cancelVendorApply()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+        <button type="button" class="btn" id="vendorApplySubmitBtn" onclick="submitVendorApply()"><i class="fa-solid fa-paper-plane"></i> Submit application</button>
       </div>
     </div>`;
   };
@@ -35098,16 +35377,21 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
     const business_name=String(byId("vaBusinessName")?.value||"").trim();
     const phone=String(byId("vaPhone")?.value||"").trim();
+    const whatsapp=String(byId("vaWhatsapp")?.value||"").trim();
     const sectorSelection=String(byId("vaSector")?.value||"").trim();
     const customSector=String(byId("vaOtherSector")?.value||"").trim();
     const bankCode=String(byId("vaBankCode")?.value||"").trim();
+    const bankName=String(byId("vaBankPickerLabel")?.textContent||"").trim();
     const accountNumber=String(byId("vaAccountNumber")?.value||"").trim();
+    const accountName=String(byId("vaAccountName")?.value||"").trim();
 
     if(!sectorSelection){errorEl.textContent="Please select your business sector.";errorEl.classList.remove("hidden");return;}
     if(sectorSelection==="__other__"&&!customSector){errorEl.textContent="Please enter your business sector.";errorEl.classList.remove("hidden");openVendorApplyOtherSector();return;}
     if(!business_name){errorEl.textContent="Please enter your business name.";errorEl.classList.remove("hidden");byId("vaBusinessName")?.focus();return;}
     if(!phone){errorEl.textContent="Please enter your phone number.";errorEl.classList.remove("hidden");byId("vaPhone")?.focus();return;}
+    if(!whatsapp){errorEl.textContent="Please enter your WhatsApp number.";errorEl.classList.remove("hidden");byId("vaWhatsapp")?.focus();return;}
     if(!bankCode){errorEl.textContent="Please select your payout bank.";errorEl.classList.remove("hidden");byId("vaBankPickerBtn")?.focus();return;}
+    if(!accountName){errorEl.textContent="Please enter the account name.";errorEl.classList.remove("hidden");byId("vaAccountName")?.focus();return;}
     if(!/^\d{10}$/.test(accountNumber)){errorEl.textContent="Please enter a valid 10-digit account number.";errorEl.classList.remove("hidden");byId("vaAccountNumber")?.focus();return;}
 
     vendorApplyBusy=true;button.disabled=true;button.classList.add("is-busy");
@@ -35127,7 +35411,6 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
       const address=String(byId("vaAddress")?.value||"").trim();
       const city=String(byId("vaCity")?.value||"").trim();
-      const whatsapp=String(byId("vaWhatsapp")?.value||"").trim();
       const cac=String(byId("vaCac")?.value||"").trim();
       const bio=String(byId("vaBio")?.value||"").trim();
 
@@ -35150,8 +35433,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       const payload={
         sector_id:sectorId,business_name,address:address||null,city:city||null,phone,
         whatsapp_number:whatsapp||null,cac_number:cac||null,bio:bio||null,
-        verification_docs:verificationDocs,bank_code:bankCode,bank_name:null,
-        account_name:null,account_number:accountNumber,is_active:false
+        verification_docs:verificationDocs,bank_code:bankCode,bank_name:bankName||null,
+        account_name:accountName,account_number:accountNumber,is_active:false
       };
 
       if(existing?.id){
@@ -35168,7 +35451,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       button.innerHTML='<i class="fa-solid fa-building-columns"></i> Activating payout…';
       const payoutRes=await fetch("/api/vendor-payments",{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({action:"create-subaccount",accessToken:session.access_token,bankCode,accountNumber})
+        body:JSON.stringify({action:"create-subaccount",accessToken:session.access_token,bankCode,bankName,accountNumber,accountName})
       });
       const payoutJson=await payoutRes.json().catch(()=>({}));
       if(!payoutRes.ok||!payoutJson.subaccount_code){
@@ -35177,8 +35460,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
       const {error:finalPayoutSaveError}=await sb.from("vendors").update({
         bank_code:bankCode,
-        bank_name:payoutJson.bank_name||null,
-        account_name:payoutJson.account_name||null,
+        bank_name:payoutJson.bank_name||bankName||null,
+        account_name:payoutJson.account_name||accountName||null,
         account_number:accountNumber,
         paystack_subaccount_code:payoutJson.subaccount_code
       }).eq("id",vendorId).eq("user_id",session.user.id);
@@ -35629,7 +35912,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
         {data:null,error:new Error("Inventory is taking too long to load. Please try again.")}
       );
       if(error) throw error;
-      const products=Array.isArray(data) ? data : [];
+      const products=Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : (Array.isArray(data?.products) ? data.products : []));
       window.__adminInventoryAll=products;
       window.__adminInventoryCache={products,loadedAt:Date.now()};
       return buildAdminInventoryHtml(products);
@@ -35644,23 +35927,18 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   function buildAdminInventoryHtml(products,stale=false){
     const all=[...(products||[])].sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),undefined,{sensitivity:"base",numeric:true}));
     window.__adminInventoryAll=all;
+    if(!["all","active","removed"].includes(window.__adminInventoryStatus)) window.__adminInventoryStatus="all";
     const total=all.length;
     const active=all.filter(p=>String(p.status)==="active").length;
     const removed=all.filter(p=>String(p.status)==="removed").length;
     const sectors=[...new Map(all.map(p=>[p.sector_id,p.sector_name]).filter(([id,name])=>id&&name).map(([id,name])=>[id,{id,name}])).values()]
       .sort((a,b)=>String(a.name).localeCompare(String(b.name),undefined,{sensitivity:"base"}));
     const monthCounts=new Map();
-    all.forEach(p=>{
-      const d=new Date(p.created_at); if(Number.isNaN(d.getTime())) return;
-      const key=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`;
-      monthCounts.set(key,(monthCounts.get(key)||0)+1);
-    });
-    const monthRows=[...monthCounts.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([key,count])=>{
-      const [y,m]=key.split("-");
-      const label=new Date(Date.UTC(Number(y),Number(m)-1,1)).toLocaleString(undefined,{month:"long",year:"numeric",timeZone:"UTC"});
-      return `<tr><td>${esc(label)}</td><td class="num">${count}</td></tr>`;
-    }).join("") || `<tr><td colspan="2" class="muted">No product records yet.</td></tr>`;
+    all.forEach(p=>{const d=new Date(p.created_at);if(Number.isNaN(d.getTime()))return;const key=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`;monthCounts.set(key,(monthCounts.get(key)||0)+1);});
+    const monthRows=[...monthCounts.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([key,count])=>{const [y,m]=key.split("-");const label=new Date(Date.UTC(Number(y),Number(m)-1,1)).toLocaleString(undefined,{month:"long",year:"numeric",timeZone:"UTC"});return `<tr><td>${esc(label)}</td><td class="num">${count}</td></tr>`;}).join("")||`<tr><td colspan="2" class="muted">No product records yet.</td></tr>`;
     const sectorOptions=sectors.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("");
+    const statusLabel=window.__adminInventoryStatus==="active"?"Active products":window.__adminInventoryStatus==="removed"?"Removed products":"All products";
+    const visible=all.filter(p=>window.__adminInventoryStatus==="all" || String(p.status)===window.__adminInventoryStatus);
     return `<h2><i class="fa-solid fa-boxes-stacked"></i> Inventory</h2>${adminNavHtml("adminInventory")}
       ${stale?`<div class="muted" style="margin:.35rem 0;">Showing your most recent inventory snapshot.</div>`:""}
       <div class="admin-inventory-summary">
@@ -35668,15 +35946,20 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
         <div class="admin-inventory-stat"><strong>${active}</strong><span>Active products</span></div>
         <div class="admin-inventory-stat"><strong>${removed}</strong><span>Removed products</span></div>
       </div>
+      <div class="admin-inventory-status-tabs" role="tablist" aria-label="Inventory status">
+        <button type="button" role="tab" aria-selected="${window.__adminInventoryStatus==="all"}" class="admin-inventory-status-tab ${window.__adminInventoryStatus==="all"?"active":""}" onclick="setAdminInventoryStatus('all')"><span>All products</span><strong>${total}</strong></button>
+        <button type="button" role="tab" aria-selected="${window.__adminInventoryStatus==="active"}" class="admin-inventory-status-tab ${window.__adminInventoryStatus==="active"?"active":""}" onclick="setAdminInventoryStatus('active')"><span>Active</span><strong>${active}</strong></button>
+        <button type="button" role="tab" aria-selected="${window.__adminInventoryStatus==="removed"}" class="admin-inventory-status-tab ${window.__adminInventoryStatus==="removed"?"active":""}" onclick="setAdminInventoryStatus('removed')"><span>Removed</span><strong>${removed}</strong></button>
+      </div>
       <div class="admin-inventory-controls">
         <input id="adminInventorySearch" type="search" placeholder="Search product or vendor…" oninput="filterAdminInventory()">
         <select id="adminInventorySector" onchange="filterAdminInventory()"><option value="">All sectors</option>${sectorOptions}</select>
       </div>
-      <div class="muted" id="adminInventoryCount" style="margin:.35rem 0 .65rem;">Showing ${total} products</div>
+      <div class="muted" id="adminInventoryCount" style="margin:.35rem 0 .65rem;">Showing ${visible.length} ${statusLabel.toLowerCase()}</div>
       <div class="admin-inventory-table-wrap">
         <table class="admin-inventory-table" id="adminInventoryTable">
           <thead><tr><th>#</th><th>Product</th><th>Vendor</th><th>Sector</th><th>Price</th><th>Status</th><th>Added</th></tr></thead>
-          <tbody>${renderAdminInventoryRows(all)}</tbody>
+          <tbody>${renderAdminInventoryRows(visible)}</tbody>
         </table>
       </div>
       <details class="admin-inventory-months">
@@ -35695,18 +35978,26 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     }).join("")||`<tr><td colspan="7" class="muted" style="text-align:center;padding:1.2rem;">No products match your search/filter.</td></tr>`;
   }
 
+  window.setAdminInventoryStatus=function(status){
+    window.__adminInventoryStatus=["all","active","removed"].includes(status)?status:"all";
+    filterAdminInventory();
+    document.querySelectorAll('.admin-inventory-status-tab').forEach(btn=>{const selected=btn.classList.contains(window.__adminInventoryStatus)||btn.querySelector('span')?.textContent?.toLowerCase().startsWith(window.__adminInventoryStatus);btn.classList.toggle('active',selected);btn.setAttribute('aria-selected',selected?'true':'false');});
+  };
+
   window.filterAdminInventory=function(){
     const all=window.__adminInventoryAll||[];
+    const status=window.__adminInventoryStatus||"all";
     const q=String(document.getElementById("adminInventorySearch")?.value||"").trim().toLowerCase();
     const sector=String(document.getElementById("adminInventorySector")?.value||"");
     const filtered=all.filter(p=>
+      (status==="all" || String(p.status||"")===status) &&
       (!q || [p.name,p.vendor_name,p.sector_name].some(v=>String(v||"").toLowerCase().includes(q))) &&
       (!sector || String(p.sector_id||"")===sector)
     );
     const tbody=document.querySelector("#adminInventoryTable tbody");
     if(tbody) tbody.innerHTML=renderAdminInventoryRows(filtered);
     const count=document.getElementById("adminInventoryCount");
-    if(count) count.textContent=`Showing ${filtered.length} of ${all.length} products`;
+    if(count){const label=status==="active"?"active products":status==="removed"?"removed products":"products";count.textContent=`Showing ${filtered.length} ${label} of ${all.filter(p=>status==="all"||String(p.status||"")===status).length}`;}
   };
 })();
 </script>
@@ -35896,5 +36187,188 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       return originalBankHydrate.apply(this,args);
     };
   }
+})();
+</script>
+
+<style id="levromart-absolute-final-admin-ui-20260917">
+#app .admin-dash-tabs{display:block!important;width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;box-sizing:border-box!important;padding:0!important;margin:.8rem 0 1.3rem!important;scrollbar-width:none!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x!important;}
+#app .admin-dash-tabs::-webkit-scrollbar{display:none!important}
+#app .admin-dash-tabs-inner{display:flex!important;align-items:stretch!important;justify-content:center!important;gap:.55rem!important;min-width:100%!important;width:max-content!important;box-sizing:border-box!important;padding:0 .65rem!important;}
+#app .admin-dash-tabs .dash-tab{color:var(--text-muted)!important;background:transparent!important;border:0!important;border-bottom:2px solid transparent!important;flex:0 0 auto!important;min-width:max-content!important;margin:0!important;padding:.2rem .35rem .65rem!important;white-space:nowrap!important;}
+#app .admin-dash-tabs .dash-tab i{color:currentColor!important}
+#app .admin-dash-tabs .dash-tab:hover,#app .admin-dash-tabs .dash-tab:focus-visible{color:var(--primary)!important}
+#app .admin-dash-tabs .dash-tab.active{color:var(--primary)!important;border-bottom-color:var(--primary)!important}
+@media(max-width:900px){#app .admin-dash-tabs-inner{justify-content:center!important;min-width:max-content!important;padding-inline:.65rem!important;}}
+</style>
+
+<style id="levromart-service-editor-final-20260917">
+#productVariantPricing .service-variety-only{display:none}
+#productVariantPricing.is-service-editor .service-variety-only{display:block}
+#productVariantPricing.is-service-editor .product-variety-only{display:none}
+#productVariantPricing.is-service-editor .variant-row-title::after{content:" · Service option";font-weight:600;color:var(--text-muted);font-size:.72rem}
+#productVariantPricing.is-service-editor .variant-price-note{max-width:44rem}
+</style>
+<script id="levromart-service-editor-final-js-20260917">
+(function(){
+  const originalRender=window.renderProductVariantPricing;
+  if(typeof originalRender==='function'&&!window.__levroServiceVariantRenderWrapped){
+    window.__levroServiceVariantRenderWrapped=true;
+    window.renderProductVariantPricing=function(){
+      const result=originalRender.apply(this,arguments);
+      const wrap=document.getElementById('productVariantPricing');
+      const service=!!document.getElementById('prodIsService')?.checked;
+      if(!wrap)return result;
+      wrap.classList.toggle('is-service-editor',service);
+      const note=wrap.querySelector('.variant-price-note');
+      if(note) note.textContent=service ? 'Add each service option or package separately. Give it a name, description and price; add an image when useful.' : (wrap.querySelector('.variant-price-row') ? 'Each variety is optional. Add only the details that apply. Drag the handle to reorder.' : 'Add optional variety details such as an image, name, color, size, price or discount price.');
+      wrap.querySelectorAll('.variant-price-row').forEach((row)=>{
+        const name=row.querySelector('.variant-name')?.closest('.variant-field');
+        const color=row.querySelector('.variant-color')?.closest('.variant-field');
+        const size=row.querySelector('.variant-size')?.closest('.variant-field');
+        const price=row.querySelector('.variant-sale-price')?.closest('.variant-field');
+        const discount=row.querySelector('.variant-discount-price')?.closest('.variant-field');
+        const desc=row.querySelector('.variant-description')?.closest('.variant-field');
+        const qty=row.querySelector('.variant-quantity')?.closest('.variant-field');
+        if(service){
+          if(name) name.querySelector('label').innerHTML='Service/package name <span>(required)</span>';
+          if(row.querySelector('.variant-name')) row.querySelector('.variant-name').placeholder='e.g. Shuku, All Back, Fulani Braids';
+          if(color) color.style.display='none';
+          if(size) size.style.display='none';
+          if(price) price.querySelector('label').innerHTML='Price (₦) <span>(required)</span>';
+          if(discount) discount.querySelector('label').innerHTML='Discount price (₦) <span>(optional)</span>';
+          if(desc){desc.classList.add('service-variety-only');desc.querySelector('label').innerHTML='Description <span>(optional)</span>';desc.querySelector('textarea').placeholder='Describe what this service/package includes…';}
+          if(qty) qty.style.display='none';
+        }else{
+          if(name) name.querySelector('label').innerHTML='Variety name <span>(optional)</span>';
+          if(row.querySelector('.variant-name')) row.querySelector('.variant-name').placeholder='e.g. Large / Black / 500ml';
+          if(color) color.style.display='';
+          if(size) size.style.display='';
+          if(price) price.querySelector('label').innerHTML='Price (₦) <span>(optional)</span>';
+          if(desc){desc.classList.remove('service-variety-only');desc.querySelector('label').innerHTML='Description <span>(optional)</span>';desc.querySelector('textarea').placeholder='Description';}
+          if(qty) qty.style.display='';
+        }
+      });
+      return result;
+    };
+  }
+  const originalForm=window.updateProductFormFields;
+  if(typeof originalForm==='function'&&!window.__levroServiceFormWrapped){
+    window.__levroServiceFormWrapped=true;
+    window.updateProductFormFields=function(){const r=originalForm.apply(this,arguments);setTimeout(()=>window.renderProductVariantPricing?.(),0);return r;};
+  }
+})();
+</script>
+
+<style id="levromart-payment-followup-modal-20260917">
+.levro-payment-followup-backdrop{position:fixed;inset:0;z-index:100850;background:rgba(0,0,0,.62);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:1rem}
+.levro-payment-followup-card{width:min(520px,calc(100vw - 2rem));background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:22px;padding:1.2rem;box-shadow:0 24px 90px rgba(0,0,0,.4)}
+.levro-payment-followup-icon{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--warning) 14%,var(--card));color:var(--warning);font-size:1.4rem;margin:0 auto .75rem}
+.levro-payment-followup-actions{display:grid;grid-template-columns:1fr;gap:.55rem;margin-top:1rem}
+.levro-payment-followup-actions .btn{width:100%}
+.levro-payment-followup-meta{margin-top:.7rem;padding:.65rem .75rem;border-radius:13px;background:color-mix(in srgb,var(--primary) 5%,var(--card));border:1px solid var(--border);font-size:.78rem}
+</style>
+<script id="levromart-payment-followup-final-js-20260917">
+(function(){
+  'use strict';
+  let busy=false;
+  function close(){document.getElementById('levroPaymentFollowupModal')?.remove();}
+  async function fetchBuyerOverdue(){
+    if(!session?.user?.id||profile?.role!=='buyer')return null;
+    const {data,error}=await sb.from('orders').select('id,total_amount,order_type,delivery_method,payment_timing,payment_deposit_percent,status,status_changed_at,payment_escalated_at,vendor:vendors(id,business_name),payments(payment_type,status,amount)').eq('buyer_id',session.user.id).eq('status','confirmed').not('payment_escalated_at','is',null).order('payment_escalated_at',{ascending:true}).limit(10);
+    if(error)return null;
+    return (data||[]).find(o=>{const fee=o.order_type==='rental'?'rental_fee':'sale_price';const feePaid=(o.payments||[]).some(p=>String(p.payment_type||'').toLowerCase()===fee&&p.status==='paid');const depositPaid=(o.payments||[]).some(p=>String(p.payment_type||'').toLowerCase()==='delivery_deposit_20'&&p.status==='paid');return !feePaid && !(o.delivery_method==='delivery'&&o.payment_timing==='pay_after'&&depositPaid);})||null;
+  }
+  async function fetchVendorOverdue(){
+    if(!session?.user?.id||profile?.role!=='vendor'||!vendor?.id)return null;
+    const {data,error}=await sb.from('orders').select('id,total_amount,order_type,delivery_method,payment_timing,payment_deposit_percent,status,status_changed_at,payment_escalated_at,buyer:users(name),payments(payment_type,status,amount)').eq('vendor_id',vendor.id).eq('status','confirmed').not('payment_escalated_at','is',null).order('payment_escalated_at',{ascending:true}).limit(10);
+    if(error)return null;
+    return (data||[]).find(o=>{const fee=o.order_type==='rental'?'rental_fee':'sale_price';const feePaid=(o.payments||[]).some(p=>String(p.payment_type||'').toLowerCase()===fee&&p.status==='paid');const depositPaid=(o.payments||[]).some(p=>String(p.payment_type||'').toLowerCase()==='delivery_deposit_20'&&p.status==='paid');return !feePaid && !(o.delivery_method==='delivery'&&o.payment_timing==='pay_after'&&depositPaid);})||null;
+  }
+  function amountForBuyer(o){
+    if(o.delivery_method==='delivery'&&o.payment_timing==='pay_after'){
+      const pct=Math.max(1,Math.min(99,Number(o.payment_deposit_percent??20)||20));
+      return Math.round(Math.max(0,Number(o.total_amount||0))*pct/100*100)/100;
+    }
+    return Number(o.total_amount||0);
+  }
+  function showBuyer(o){
+    if(!o||document.getElementById('levroPaymentFollowupModal'))return;
+    const m=document.createElement('div');m.id='levroPaymentFollowupModal';m.className='levro-payment-followup-backdrop';m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');
+    const vendorName=esc(o.vendor?.business_name||'the vendor');
+    const amount=amountForBuyer(o);
+    m.innerHTML=`<div class="levro-payment-followup-card"><div class="levro-payment-followup-icon"><i class="fa-solid fa-wallet"></i></div><div style="text-align:center;"><h2 style="margin:0;">Payment still required</h2><p class="muted" style="margin:.4rem 0 0;">Your order with <strong>${vendorName}</strong> has been confirmed, but Levromart has not received a payment confirmation.</p></div><div class="levro-payment-followup-meta"><strong>What to do now</strong><br>Transfer the required amount to the vendor, then tap <strong>I've paid the vendor</strong>. If you no longer want the order, cancel it instead.</div><div class="levro-payment-followup-actions"><button type="button" class="btn" id="levroBuyerPaidFollowup"><i class="fa-solid fa-check"></i> I've paid the vendor · ${naira(amount)}</button><button type="button" class="btn btn-danger" id="levroBuyerCancelFollowup"><i class="fa-solid fa-xmark"></i> Cancel order</button></div></div>`;
+    document.body.appendChild(m);
+    m.querySelector('#levroBuyerPaidFollowup').onclick=async()=>{if(busy)return;busy=true;try{const {data,error}=await sb.rpc('buyer_report_manual_payment',{p_order_id:o.id,p_amount:amount});if(error)throw error;close();showToast(data?.message||'Payment reported. The vendor must confirm it or raise a dispute.','success');await navigate('orderDetail',{orderId:o.id},false);}catch(e){showToast(e?.message||'Could not report the payment.','error');}finally{busy=false;}};
+    m.querySelector('#levroBuyerCancelFollowup').onclick=async()=>{if(busy)return;close();await buyerCancelOrder(o.id,false);};
+  }
+  function showVendor(o){
+    if(!o||document.getElementById('levroPaymentFollowupModal'))return;
+    const m=document.createElement('div');m.id='levroPaymentFollowupModal';m.className='levro-payment-followup-backdrop';m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');
+    const buyerName=esc(o.buyer?.name||'the customer');
+    m.innerHTML=`<div class="levro-payment-followup-card"><div class="levro-payment-followup-icon"><i class="fa-solid fa-building-columns"></i></div><div style="text-align:center;"><h2 style="margin:0;">Payment follow-up required</h2><p class="muted" style="margin:.4rem 0 0;">Order <strong>${esc(o.id)}</strong> for <strong>${buyerName}</strong> has been confirmed for more than 24 hours without a verified payment.</p></div><div class="levro-payment-followup-meta"><strong>If the customer has paid you directly</strong><br>Confirm the payment after checking your account. If you cannot verify it, raise a dispute so Levromart can investigate.</div><div class="levro-payment-followup-actions"><button type="button" class="btn" id="levroVendorConfirmFollowup"><i class="fa-solid fa-check"></i> Confirm payment received</button><button type="button" class="btn btn-danger" id="levroVendorDisputeFollowup"><i class="fa-solid fa-triangle-exclamation"></i> Raise dispute</button></div></div>`;
+    document.body.appendChild(m);
+    m.querySelector('#levroVendorConfirmFollowup').onclick=async()=>{if(busy)return;if(!(await showConfirmDialog('Only confirm if you have actually received the customer’s payment, including a direct bank transfer outside Levromart. This records the payment and may complete the order. If you have not received it, raise a dispute instead.',{title:'Confirm payment received',okLabel:'Yes, confirm payment'})))return;busy=true;try{const {data,error}=await sb.rpc('vendor_confirm_unreported_payment',{p_order_id:o.id});if(error)throw error;close();showToast(data?.order_completed?'Payment confirmed. Order completed.':'Payment confirmed.','success');await navigate('orderDetail',{orderId:o.id},false);setTimeout(()=>window.maybePromptLevromartReview?.(),900);}catch(e){showToast(e?.message||'Could not confirm the payment.','error');}finally{busy=false;}};
+    m.querySelector('#levroVendorDisputeFollowup').onclick=async()=>{if(busy)return;const reason=window.prompt('Why can you not confirm this payment? Please give the reason for admin review.','I cannot verify receipt of the payment.');if(reason===null||!String(reason).trim())return;busy=true;try{const {data,error}=await sb.rpc('vendor_dispute_unreported_payment',{p_order_id:o.id,p_reason:String(reason).trim()});if(error)throw error;close();showToast('Payment unresolved. The issue has been sent to admin for review.','success');await navigate('orderDetail',{orderId:o.id},false);}catch(e){showToast(e?.message||'Could not raise the dispute.','error');}finally{busy=false;}};
+  }
+  window.maybePromptPaymentFollowup=async function(){
+    if(busy||document.getElementById('levroPaymentFollowupModal')||!session?.user?.id||profile?.role==='admin')return;
+    if(currentView==='leaveReview')return;
+    try{
+      const order=profile?.role==='buyer'?await fetchBuyerOverdue():await fetchVendorOverdue();
+      if(order){if(profile?.role==='buyer')showBuyer(order);else showVendor(order);}
+    }catch(e){console.warn('[Levromart] payment follow-up check failed',e);}
+  };
+  document.addEventListener('levromart:view-rendered',()=>setTimeout(()=>window.maybePromptPaymentFollowup?.(),500));
+  document.addEventListener('levromart:auth-ready',()=>setTimeout(()=>window.maybePromptPaymentFollowup?.(),700));
+  setInterval(()=>window.maybePromptPaymentFollowup?.(),30000);
+})();
+</script>
+
+<style id="levromart-admin-nav-final-hardening-20260917">
+#app .admin-dash-tabs{display:block!important;width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important;color:var(--text)!important;text-align:center!important}
+#app .admin-dash-tabs::-webkit-scrollbar{display:none!important}
+#app .admin-dash-tabs-inner{display:flex!important;width:max-content!important;min-width:100%!important;justify-content:center!important;align-items:stretch!important;gap:.65rem!important;margin:0 auto!important;padding:0 .75rem!important;box-sizing:border-box!important}
+#app .admin-dash-tabs .dash-tab{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:.4rem!important;flex:0 0 auto!important;color:var(--text)!important;background:transparent!important;border:0!important;border-bottom:2px solid transparent!important;padding:.35rem .45rem .7rem!important;white-space:nowrap!important}
+#app .admin-dash-tabs .dash-tab i{color:currentColor!important}
+#app .admin-dash-tabs .dash-tab.active{color:var(--primary)!important;border-bottom-color:var(--primary)!important}
+#app .admin-dash-tabs .dash-tab:hover,#app .admin-dash-tabs .dash-tab:focus-visible{color:var(--primary)!important}
+@media(max-width:900px){#app .admin-dash-tabs-inner{min-width:max-content!important;margin-left:max(0px,calc((100vw - 900px)/2))!important;margin-right:max(0px,calc((100vw - 900px)/2))!important}}
+.admin-payment-issue-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.4rem;margin:.8rem 0 .9rem;padding:.3rem;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--card) 92%,transparent)}
+.admin-payment-issue-tab{min-width:0;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--text-muted);padding:.62rem .45rem;display:flex;align-items:center;justify-content:center;gap:.35rem;cursor:pointer;font:inherit;font-size:.72rem;font-weight:750;white-space:nowrap}
+.admin-payment-issue-tab strong{min-width:1.3rem;height:1.3rem;padding:0 .25rem;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text)}
+.admin-payment-issue-tab.active{color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,var(--card));border-color:color-mix(in srgb,var(--primary) 25%,var(--border))}
+.admin-payment-issue-tab.active strong{background:var(--primary);color:#fff}
+@media(max-width:560px){.admin-payment-issue-tabs{grid-template-columns:1fr}.admin-payment-issue-tab{justify-content:space-between}}
+</style>
+<style id="levromart-service-booking-picker-20260917">
+.service-variant-picker{margin:.7rem 0;padding:.75rem;border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--primary) 3%,var(--card))}
+.service-variant-picker-head{display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.55rem}
+.service-variant-picker-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}
+.service-variant-choice{display:flex;flex-direction:column;align-items:flex-start;gap:.18rem;padding:.65rem;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);text-align:left;cursor:pointer;font:inherit;min-width:0}
+.service-variant-choice.active{border-color:var(--primary);box-shadow:0 0 0 1px color-mix(in srgb,var(--primary) 35%,transparent);background:color-mix(in srgb,var(--primary) 7%,var(--card))}
+.service-variant-choice strong{font-size:.78rem;line-height:1.25}
+.service-variant-choice small{font-size:.68rem;color:var(--text-muted);line-height:1.35}
+.service-variant-choice .service-variant-price{color:var(--primary);font-weight:800}
+@media(max-width:480px){.service-variant-picker-list{grid-template-columns:1fr}}
+</style>
+<script id="levromart-service-booking-picker-js-20260917">
+(function(){
+  function enhance(){
+    if(typeof currentView==='undefined'||currentView!=='productDetail')return;
+    const p=window.__lastRenderedProductPreview||window.currentProductDetail||null;
+    const product=p||currentProductDetail;
+    if(!product?.is_service||!Array.isArray(product.variants)||!product.variants.length)return;
+    if(document.querySelector('#app .service-variant-picker'))return;
+    const qty=document.getElementById('buyQty');
+    if(!qty)return;
+    const variants=product.variants.slice().sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0));
+    const selected=variants[0];
+    const wrap=document.createElement('div');wrap.className='service-variant-picker';
+    wrap.innerHTML=`<div class="service-variant-picker-head"><strong>Choose a service/package</strong><span class="muted" style="font-size:.7rem;">${variants.length} option${variants.length===1?'':'s'}</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(selected.id)}"><div class="service-variant-picker-list">${variants.map((v,i)=>{const price=Number(v.discount_price??v.sale_price??v.rental_rate??0);return `<button type="button" class="service-variant-choice ${i===0?'active':''}" aria-pressed="${i===0?'true':'false'}" data-service-variant-id="${esc(v.id)}"><strong>${esc(v.name||`Option ${i+1}`)}</strong>${v.description?`<small>${esc(v.description)}</small>`:''}<small class="service-variant-price">${price>0?naira(price):'Price on request'}</small></button>`}).join('')}</div>`;
+    qty.closest('.flex')?.before(wrap);
+    wrap.querySelectorAll('.service-variant-choice').forEach(btn=>btn.addEventListener('click',()=>{const id=btn.dataset.serviceVariantId;selectProductVariant(id,false,false);wrap.querySelectorAll('.service-variant-choice').forEach(b=>{const on=b===btn;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));});}));
+    selectProductVariant(selected.id,false,false);
+  }
+  document.addEventListener('levromart:view-rendered',()=>setTimeout(enhance,80));
 })();
 </script>
