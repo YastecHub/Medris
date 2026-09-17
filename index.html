@@ -19023,6 +19023,14 @@ async function openAddProductModal() {
   await showProductModal();
 }
 async function openEditProductModal(productId) {
+  // Editing an existing listing must always start from the database. A stale
+  // autosave from a previous edit must never replace the saved varieties or
+  // saved photos that the vendor is trying to edit.
+  try {
+    const key = typeof draftKey === "function" ? draftKey("product", productId) : null;
+    if (key && typeof cancelDraftTimer === "function") cancelDraftTimer(key);
+    if (key) { try { localStorage.removeItem(key); } catch (_) {} }
+  } catch (_) {}
   editingProductId = productId;
   await showProductModal();
 }
@@ -19061,6 +19069,11 @@ async function showProductModal() {
   byId("prodSectorOther").classList.add("hidden");
   window.__existingPhotos = [];
   window.__productVariants = [];
+  // Photo selections are scoped to this modal session. Never let a previous
+  // edit leak a File object or preview into the next product.
+  window.__productVariantPhotoFiles = {};
+  window.__replaceDisplayPicture = false;
+  window.__displayPictureWasReplaced = false;
   renderProductVariantPricing();
 
   let presetCategoryId = "";
@@ -19068,17 +19081,41 @@ async function showProductModal() {
     const { data: p } = await sb.from("products").select("*").eq("id", editingProductId).single();
     const { data: engagement } = await sb.from("product_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("product_id",editingProductId).maybeSingle();
     let { data: productVariants, error: productVariantsError } = await sb.rpc("get_owned_product_variants", { p_product_id: editingProductId });
-    if (productVariantsError) {
-      const direct = await sb.from("product_variants").select("*").eq("product_id", editingProductId).order("sort_order").order("created_at");
+    // Supabase normally returns JSONB arrays as real JS arrays, but older
+    // clients/proxies can surface JSONB as a string/object. Normalize every
+    // supported shape before rendering so saved varieties cannot silently
+    // disappear from Edit Product.
+    const normalizeVariants = (value) => {
+      if (Array.isArray(value)) return value;
+      if (typeof value === "string") { try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : []; } catch (_) { return []; } }
+      if (value && typeof value === "object") {
+        for (const key of ["variants", "data", "result", "items"]) {
+          if (Array.isArray(value[key])) return value[key];
+          if (typeof value[key] === "string") { try { const parsed = JSON.parse(value[key]); if (Array.isArray(parsed)) return parsed; } catch (_) {} }
+        }
+      }
+      return [];
+    };
+    productVariants = normalizeVariants(productVariants);
+    if (productVariantsError || !Array.isArray(productVariants)) {
+      const direct = await sb.from("product_variants").select("*").eq("product_id", editingProductId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
       productVariants = direct.data || [];
       productVariantsError = direct.error;
     }
+    // The direct table read is also used when the RPC succeeds but returns an
+    // empty set. This makes the editor self-healing if an older function/client
+    // response is inconsistent with the rows actually stored.
+    if (!productVariantsError && productVariants.length === 0) {
+      const direct = await sb.from("product_variants").select("*").eq("product_id", editingProductId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
+      if (Array.isArray(direct.data) && direct.data.length) productVariants = direct.data;
+      if (direct.error && !productVariantsError) productVariantsError = direct.error;
+    }
     window.__productVariants = Array.isArray(productVariants) ? productVariants : [];
-    // Mark the moment the authoritative server state was loaded. The draft
-    // observer below must never replace freshly loaded saved varieties with an
-    // older local draft snapshot. A genuinely newer in-progress draft is still
-    // allowed to restore.
-    byId("productModal").dataset.serverLoadedAt = String(Date.now());
+    // Existing-listing edits are database-authoritative. Never run the draft
+    // restoration observer for this modal instance.
+    const productModalRoot = byId("productModal");
+    productModalRoot.dataset.serverLoadedAt = String(Date.now());
+    productModalRoot.dataset.draftRestored = "1";
     byId("productModalTitle").textContent = "Edit Product";
     byId("prodName").value = p.name;
     byId("prodDesc").value = stripProductVariantMeta(p.description || "");
@@ -19486,7 +19523,7 @@ async function saveProductVariants(productId,drafts){
   const localById=new Map(payload.map(v=>[String(v.id),v]));
   window.__productVariants=rows.map((row,i)=>{
     const source=localById.get(String(row.id))||payload[i];
-    const original=sourceByKey.get(String(source?.id||source?._localKey||''));
+    const original=sourceByKey.get(String(source?.id||source?._localKey||'')) || (source?._localKey ? sourceByKey.get(String(source._localKey)) : null);
     return {...row,_localKey:original?._localKey||source?._localKey||row.id,...(original?._imageFile?{_imageFile:original._imageFile}:{}),...(original?._previewUrl?{_previewUrl:original._previewUrl}: {})};
   });
   return window.__productVariants;
@@ -19794,44 +19831,69 @@ async function saveProduct() {
     const pendingVariantMedia=Array.isArray(window.__productVariants)?window.__productVariants.filter(v=>v._imageFile).map(v=>({id:v.id,file:v._imageFile})):[];
     const baseSavedPhotos=[...(window.__existingPhotos||[])];
     const wasDisplayPictureReplaced=!!window.__displayPictureWasReplaced;
-    const engagementSave=Promise.allSettled([saveProductEngagementSettings(savedProductId)]);
-    // Once the required listing/variant rows exist, upload new media in the
-    // background. This deliberately does not block the successful save UX.
-    void (async()=>{
-      try{
-        const mainUrls=await Promise.all(newFiles.map(async(file)=>{
-          const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
-          const path=`${vendor.id}/${crypto.randomUUID()}.${ext}`;
-          const {error:upErr}=await sb.storage.from("product-photos").upload(path,file,{contentType:file.type});
-          if(upErr)throw new Error(`Photo upload failed: ${upErr.message}`);
-          return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
-        }));
-        let nextPhotos=[...baseSavedPhotos,...mainUrls];
-        if(wasDisplayPictureReplaced&&mainUrls.length)nextPhotos=[mainUrls[0],...baseSavedPhotos,...mainUrls.slice(1)];
-        if(mainUrls.length){
-          const {error:photoLinkError}=await sb.from("products").update({photos:nextPhotos}).eq("id",savedProductId).eq("vendor_id",vendor.id);
-          if(photoLinkError)throw photoLinkError;
-          if(window.__lastSavedProductRow)window.__lastSavedProductRow.photos=nextPhotos;
-        }
-        await Promise.all(pendingVariantMedia.map(async(item)=>{
-          const file=item.file,ext=(file.name.split(".").pop()||"jpg").toLowerCase(),path=`${vendor.id}/variants/${crypto.randomUUID()}.${ext}`;
-          const {error:upErr}=await sb.storage.from("product-photos").upload(path,file,{contentType:file.type});
-          if(upErr)throw new Error(`Variety photo upload failed: ${upErr.message}`);
-          const url=sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
-          const {error:variantLinkError}=await sb.from("product_variants").update({photo_url:url}).eq("id",item.id).eq("product_id",savedProductId);
-          if(variantLinkError)throw variantLinkError;
-        }));
-        if(mainUrls.length)showToast("Listing saved. Photos are now attached.","success");
-      }catch(mediaErr){
-        console.warn("[Levromart] Background listing media upload failed:",mediaErr);
-        showToast("Listing saved, but one or more new photos could not be uploaded. Reopen the listing to retry.","info");
+
+    // Media is part of the save operation now. Previously this ran in a
+    // detached background promise, so the listing UI refreshed from the old
+    // photo array before the upload/link completed. That made Add/Replace
+    // photo appear to do nothing until a later reload (or forever if the
+    // background operation failed). Upload first, link the URLs, then refresh
+    // the saved listing from Supabase.
+    const uploadAndAttachProductMedia = async()=>{
+      const mainFiles=Array.isArray(newFiles)?newFiles:[];
+      const variantFiles=Array.isArray(pendingVariantMedia)?pendingVariantMedia:[];
+      if(!mainFiles.length && !variantFiles.length) return baseSavedPhotos;
+
+      btn.innerHTML=`<i class="fa-solid fa-spinner fa-spin"></i> Uploading photos…`;
+
+      const mainUrls=await Promise.all(mainFiles.map(async(file)=>{
+        const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+        const path=`${vendor.id}/${crypto.randomUUID()}.${ext}`;
+        const {error:upErr}=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type,upsert:false});
+        if(upErr)throw new Error(`Photo upload failed: ${upErr.message}`);
+        const {data:urlData}=sb.storage.from('product-photos').getPublicUrl(path);
+        if(!urlData?.publicUrl)throw new Error('Photo upload succeeded, but its public URL could not be created.');
+        return urlData.publicUrl;
+      }));
+
+      let nextPhotos=[...baseSavedPhotos,...mainUrls];
+      if(wasDisplayPictureReplaced&&mainUrls.length){
+        nextPhotos=[mainUrls[0],...baseSavedPhotos,...mainUrls.slice(1)];
       }
-    })();
+      if(mainUrls.length){
+        const {error:photoLinkError}=await sb.from('products').update({photos:nextPhotos}).eq('id',savedProductId).eq('vendor_id',vendor.id);
+        if(photoLinkError)throw new Error(`Could not attach the new product photo: ${photoLinkError.message}`);
+        if(window.__lastSavedProductRow)window.__lastSavedProductRow.photos=nextPhotos;
+      }
+
+      if(variantFiles.length){
+        await Promise.all(variantFiles.map(async(item)=>{
+          if(!item?.id||!item.file)throw new Error('A variety photo could not be linked to its saved variety.');
+          const ext=(item.file.name.split('.').pop()||'jpg').toLowerCase();
+          const path=`${vendor.id}/variants/${crypto.randomUUID()}.${ext}`;
+          const {error:upErr}=await sb.storage.from('product-photos').upload(path,item.file,{contentType:item.file.type,upsert:false});
+          if(upErr)throw new Error(`Variety photo upload failed: ${upErr.message}`);
+          const {data:urlData}=sb.storage.from('product-photos').getPublicUrl(path);
+          const url=urlData?.publicUrl;
+          if(!url)throw new Error('Variety photo uploaded, but its public URL could not be created.');
+          const {error:variantLinkError}=await sb.from('product_variants').update({photo_url:url}).eq('id',item.id).eq('product_id',savedProductId);
+          if(variantLinkError)throw new Error(`Could not attach a variety photo: ${variantLinkError.message}`);
+          const local=window.__productVariants?.find(v=>String(v.id)===String(item.id));
+          if(local){local.photo_url=url;delete local._imageFile;local._previewUrl=url;}
+        }));
+      }
+      return nextPhotos;
+    };
+
+    const engagementSave=Promise.allSettled([saveProductEngagementSettings(savedProductId)]);
+    const finalPhotos=await uploadAndAttachProductMedia();
+    if(finalPhotos.length)window.__existingPhotos=[...finalPhotos];
+    if(Array.isArray(window.__productVariants))renderProductVariantPricing();
+    if(newFiles.length||pendingVariantMedia.length)showToast('Listing and photos saved successfully.','success');
     window.clearListingDraft?.("product", savedDraftIdentity);
     // Required product and variety writes have completed; engagement settings finish separately.
     const primarySavedProduct = {
       ...(window.__lastSavedProductRow || {}),
-      id: savedProductId, ...fields, vendor_id: vendor.id, photos,
+      id: savedProductId, ...fields, vendor_id: vendor.id, photos: finalPhotos,
       quantity_available: Number(window.__lastSavedProductRow?.quantity_available ?? Math.max(quantity_total - soldUnits, 0))
     };
     window.__lastSavedProductRow = null;
@@ -19851,10 +19913,15 @@ async function saveProduct() {
     if (currentView === "vendorProducts") void navigate("vendorProducts", {}, false).catch(e => console.warn("[Levromart] Post-save navigation failed:", e));
     else if (currentView === "productDetail" && String(currentViewParams?.productId) === String(savedProductId)) void navigate("productDetail", { productId: savedProductId }, false).catch(e => console.warn("[Levromart] Post-save navigation failed:", e));
 
-    engagementSave.then(async results => {
+    // Reconcile from the database only after the product, varieties and media
+    // are all committed. This guarantees Edit Product and the visible listing
+    // see the exact same saved state immediately.
+    try { await refreshVisibleProductAfterSave(savedProductId); }
+    catch (e) { console.warn("[Levromart] Post-save product reconciliation failed:", e); }
+
+    engagementSave.then(results => {
       const failed = results.filter(r => r.status === "rejected");
       if (failed.length) showToast("Listing saved, but one secondary setting could not be synchronized. Please reopen the listing to retry that setting.", "info");
-      try { await refreshVisibleProductAfterSave(savedProductId); } catch (e) { console.warn("[Levromart] Post-save product reconciliation failed:", e); }
     });
   } catch (err) {
     focusProductValidationField(err?.message || "Please complete the required field before saving.");
