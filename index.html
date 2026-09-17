@@ -15855,6 +15855,7 @@ async function __levroOriginalRenderProductDetail(productId) {
     </div>
     <h2 class="product-detail-title">${esc(product.name)}${product.is_service ? ` <span class="badge">Service</span>` : ""}</h2>
     <div class="product-detail-media">${photosHtml}</div>
+    ${productVariants.length ? `<div class="product-gallery-varieties" id="productGalleryVarieties"><div class="product-gallery-varieties-head"><strong>Varieties</strong><span class="muted" style="font-size:.68rem;">${productVariants.length} option${productVariants.length===1?'':'s'}</span></div><div class="product-gallery-varieties-list">${productVariants.map((v,i)=>{const unit=Number(v.discount_price ?? v.sale_price ?? v.rental_rate ?? 0);const photo=v.photo_url||'';return `<button type="button" class="product-gallery-variety ${i===0?'active':''}" data-gallery-variety-id="${esc(v.id)}" onclick="selectProductVariant('${esc(v.id)}',true,true)">${photo?`<img src="${esc(photo)}" alt="${esc(v.name||`Variety ${i+1}`)}" loading="lazy" decoding="async">`:`<span class="product-gallery-variety-placeholder"><i class="fa-solid fa-layer-group"></i></span>`}<strong>${esc(v.name||`Variety ${i+1}`)}</strong><small>${unit>0?naira(unit):'Price on request'}</small></button>`;}).join('')}</div></div>` : ''}
     ${productGalleryVariantMetaHtml}
     <div class="product-detail-actions">
       ${profile?.role !== "admin" ? (product.vendor.whatsapp_visible && product.vendor.whatsapp_number ? `<div class="ms-wrap product-message-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm" type="button" onclick="toggleInlineMenu('productMessageMenu-${product.id}',event)"><i class='fa-solid fa-comment-dots'></i> Message vendor</button><div class="ms-list hidden" id="productMessageMenu-${product.id}" style="left:0;right:auto;width:max-content;min-width:190px;"><button class="ms-item" type="button" onclick="startConversationWithVendor('${product.vendor.id}');closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(product.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm" onclick="startConversationWithVendor('${product.vendor.id}')"><i class='fa-solid fa-comment-dots'></i> Message vendor</button>`) : ""}
@@ -16136,6 +16137,11 @@ function selectProductVariant(variantId, scrollGallery = true, syncGallery = tru
     const selected = btn.getAttribute("onclick")?.includes(String(variant.id));
     btn.classList.toggle("active", !!selected);
     btn.setAttribute("aria-pressed", String(!!selected));
+  });
+  document.querySelectorAll(".product-gallery-variety[data-gallery-variety-id]").forEach(btn => {
+    const selected = String(btn.dataset.galleryVarietyId) === String(variant.id);
+    btn.classList.toggle("active", selected);
+    btn.setAttribute("aria-pressed", String(selected));
   });
   const qty = parseInt(byId("buyQty")?.value || 1) || 1;
   const unit = Number(variant.discount_price ?? variant.sale_price ?? variant.rental_rate ?? 0);
@@ -19449,7 +19455,7 @@ function renderProductVariantPricing() {
   wrap.innerHTML=`<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Each variety is optional. Add only the details that apply. Drag the handle to reorder.</div></div></div>${rows.map((r,i)=>{const key=String(r.id||r._localKey),uploadedFile=photoFiles[key],image=uploadedFile?URL.createObjectURL(uploadedFile):(r._previewUrl||r.photo_url||(r.temp_index!=null?pending[r.temp_index]&&URL.createObjectURL(pending[r.temp_index]):"")||""),imageOptions=existing.map((u,j)=>`<option value="${esc(u)}" ${String(r.photo_url||"")===String(u)?"selected":""}>Product photo ${j+1}${j===0?" (display)":""}</option>`).join("");return `<div class="variant-price-row" draggable="true" data-variant-key="${esc(key)}" data-photo-url="${esc(r.photo_url||"")}" data-temp-index="${r.temp_index??""}">
     <div class="variant-row-topbar"><button type="button" class="variant-dnd-handle" aria-label="Drag to reorder" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></button><strong class="variant-row-title">Variety ${i+1}</strong><button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Remove this variety" title="Remove this variety"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="variant-photo-section"><button type="button" class="variant-photo-picker" onclick="openProductVariantPhotoPicker('${esc(key)}')" aria-label="Add variety photo"><span class="variant-photo-preview">${image?`<img src="${esc(image)}" alt="Variety photo">`:`<i class="fa-regular fa-image"></i>`}</span><span class="variant-photo-copy"><strong>${image?'Change variety photo':'Add variety photo'}</strong><small>Optional · tap to choose an image</small></span><i class="fa-solid fa-camera variant-photo-camera"></i></button><input type="file" class="variant-photo-file" data-variant-photo-key="${esc(key)}" accept="image/*" onchange="handleProductVariantPhotoChange(this)" hidden>${existing.length?`<div class="variant-existing-photo-wrap"><label>Or use a product photo</label><select class="variant-image" aria-label="Use an existing product photo" onchange="clearProductVariantUploadedPhoto(this)"><option value="" ${!r.photo_url?"selected":""}>No existing photo</option>${imageOptions}</select></div>`:''}</div>
-    <div class="variant-fields-grid"><div class="variant-field"><label>Variety name <span>(optional)</span></label><input class="variant-name" type="text" maxlength="120" placeholder="e.g. Large / Black / 500ml" value="${esc(r.name||"")}"></div><div class="variant-field"><label>Color <span>(optional)</span></label><input class="variant-color" type="text" maxlength="80" placeholder="e.g. Black" value="${esc(r.color||"")}"></div><div class="variant-field"><label>Size <span>(optional)</span></label><input class="variant-size" type="text" maxlength="80" placeholder="e.g. XL" value="${esc(r.size||"")}"></div><div class="variant-field"><label>Price (₦) <span>(optional)</span></label><input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="e.g. 15000" value="${r.sale_price==null?"":esc(String(r.sale_price))}"></div><div class="variant-field variant-field-wide"><label>Discount price (₦) <span>(optional)</span></label><input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="e.g. 13500" value="${r.discount_price==null?"":esc(String(r.discount_price))}"></div><div class="variant-field variant-field-wide"><label>Description <span>(optional)</span></label><textarea class="variant-description" aria-label="Variety description" placeholder="Description">${esc(r.description||"")}</textarea></div><div class="variant-field variant-field-wide"><label>Quantity available <span>(optional)</span></label><input class="variant-quantity" type="number" min="0" step="1" aria-label="Variety quantity available" placeholder="Quantity available" value="${r.quantity_available==null?'':esc(r.quantity_available)}"></div></div>
+    <div class="variant-fields-grid"><div class="variant-field"><label>Variety name <span>(optional · auto-named if blank)</span></label><input class="variant-name" type="text" maxlength="120" placeholder="e.g. Large / Black / 500ml" value="${esc(r.name||"")}"></div><div class="variant-field"><label>Color <span>(optional)</span></label><input class="variant-color" type="text" maxlength="80" placeholder="e.g. Black" value="${esc(r.color||"")}"></div><div class="variant-field"><label>Size <span>(optional)</span></label><input class="variant-size" type="text" maxlength="80" placeholder="e.g. XL" value="${esc(r.size||"")}"></div><div class="variant-field"><label>Price (₦) <span>(optional · uses product price if blank)</span></label><input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="e.g. 15000" value="${r.sale_price==null?"":esc(String(r.sale_price))}"></div><div class="variant-field variant-field-wide"><label>Discount price (₦) <span>(optional)</span></label><input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="e.g. 13500" value="${r.discount_price==null?"":esc(String(r.discount_price))}"></div><div class="variant-field variant-field-wide"><label>Description <span>(optional)</span></label><textarea class="variant-description" aria-label="Variety description" placeholder="Description">${esc(r.description||"")}</textarea></div><div class="variant-field variant-field-wide"><label>Quantity available <span>(optional)</span></label><input class="variant-quantity" type="number" min="0" step="1" aria-label="Variety quantity available" placeholder="Quantity available" value="${r.quantity_available==null?'':esc(r.quantity_available)}"></div></div>
   </div>`;}).join("")}`;bindProductVariantDnd();renderProductDisplayPicture();
 }
 function openProductVariantPhotoPicker(key){const input=[...document.querySelectorAll('#productVariantPricing .variant-photo-file')].find(el=>String(el.dataset.variantPhotoKey||'')===String(key));input?.click();}
@@ -19496,23 +19502,37 @@ function bindProductVariantDnd(){
   wrap.addEventListener('pointerup',()=>{if(touchRow){persistVisibleVariantOrder();touchRow=null;}},true);
 }
 function persistVisibleVariantOrder(){const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||''),v]));window.__productVariants=rows.map((r,i)=>{const v=byKey.get(String(r.dataset.variantKey||""))||{_localKey:r.dataset.variantKey},value=c=>r.querySelector(c)?.value??'',titleEl=r.querySelector('.variant-row-title');if(titleEl)titleEl.textContent=`Variety ${i+1}`;return {...v,name:value('.variant-name').trim(),sale_price:value('.variant-sale-price'),discount_price:value('.variant-discount-price'),size:value('.variant-size').trim(),color:value('.variant-color').trim(),description:value('.variant-description'),rental_rate:value('.variant-rental-rate')===''?null:Number(value('.variant-rental-rate')),quantity_available:value('.variant-quantity')===''?null:Number(value('.variant-quantity')),photo_url:r.querySelector('.variant-image')?.value||r.dataset.photoUrl||v.photo_url||'',sort_order:i};});}
-function collectProductVariantDrafts(photoUrls) {
+function collectProductVariantDrafts(photoUrls, pricingFallback={}) {
   persistVisibleVariantOrder();
   const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
   const drafts=[];
+  const fallbackSale=Number(pricingFallback?.salePriceFallback);
+  const fallbackRental=Number(pricingFallback?.rentalRateFallback);
   rows.forEach((row,index)=>{
-    const name=String(row.querySelector('.variant-name')?.value||'').trim();
-    const saleRaw=row.querySelector('.variant-sale-price')?.value; const discountRaw=row.querySelector('.variant-discount-price')?.value;
-    const sale=saleRaw===''?null:Number(saleRaw); const discount=discountRaw===''?null:Number(discountRaw);
-    const size=String(row.querySelector('.variant-size')?.value||'').trim()||null; const color=String(row.querySelector('.variant-color')?.value||'').trim()||null;
+    const nameInput=String(row.querySelector('.variant-name')?.value||'').trim();
+    const saleRaw=String(row.querySelector('.variant-sale-price')?.value??'').trim();
+    const discountRaw=String(row.querySelector('.variant-discount-price')?.value??'').trim();
+    const size=String(row.querySelector('.variant-size')?.value||'').trim()||null;
+    const color=String(row.querySelector('.variant-color')?.value||'').trim()||null;
     const descriptionRaw=String(row.querySelector('.variant-description')?.value||'').trim();
     const quantityRaw=String(row.querySelector('.variant-quantity')?.value??'').trim();
-    if(!name&&!sale&&!discount&&!size&&!color&&!descriptionRaw&&!quantityRaw)return;
-    if(!name)throw new Error('Every variety needs a variety name.');
-    if(!Number.isFinite(sale)||sale<=0)throw new Error(`Enter a valid sale price for ${name}.`);
-    if(discount!=null&&(!Number.isFinite(discount)||discount<=0||discount>=sale))throw new Error(`Discount price for ${name} must be lower than its regular price.`);
     let photoUrl=row.querySelector('.variant-image')?.value || row.dataset.photoUrl || '';
     if(row.dataset.tempIndex!=='')photoUrl=photoUrls[Number(row.dataset.tempIndex)]||photoUrl;
+    const source=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===row.dataset.variantKey);
+    const hasUploadedPhoto=!!source?._imageFile || !!window.__productVariantPhotoFiles?.[String(row.dataset.variantKey||'')];
+    const hasMeaningfulInput=!!nameInput || saleRaw!=='' || discountRaw!=='' || !!size || !!color || !!descriptionRaw || quantityRaw!=='' || !!photoUrl || hasUploadedPhoto;
+    if(!hasMeaningfulInput)return;
+
+    // The editor deliberately treats name and price as optional. The database
+    // requires a name and the existing variant RPC requires a positive sale price,
+    // so give an image-only/partially-filled variety a stable name and inherit the
+    // product's base price rather than silently dropping the row.
+    const name=nameInput || `Variety ${index+1}`;
+    const inheritedPrice=Number.isFinite(fallbackSale)&&fallbackSale>0 ? fallbackSale : (Number.isFinite(fallbackRental)&&fallbackRental>0 ? fallbackRental : null);
+    const sale=saleRaw==='' ? inheritedPrice : Number(saleRaw);
+    const discount=discountRaw===''?null:Number(discountRaw);
+    if(!Number.isFinite(sale)||sale<=0)throw new Error(`Enter a valid price for ${name}, or enter a base product price first.`);
+    if(discount!=null&&(!Number.isFinite(discount)||discount<=0||discount>=sale))throw new Error(`Discount price for ${name} must be lower than its regular price.`);
     const raw=row.querySelector('.variant-quantity')?.value??'',quantity_available=raw===''?null:Number(raw);
     if(quantity_available!=null&&(!Number.isInteger(quantity_available)||quantity_available<0))throw new Error(`Enter a whole-number quantity for ${name}.`);
     const saved=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===row.dataset.variantKey);
@@ -19896,7 +19916,7 @@ async function saveProduct() {
 
     // Snapshot the editor BEFORE any server mutation. Every later write is derived
     // from this one snapshot, so a render/draft observer cannot change what Save means.
-    const variantDrafts = collectProductVariantDrafts(basePhotos).map((d, index) => ({
+    const variantDrafts = collectProductVariantDrafts(basePhotos, { salePriceFallback: sale_price, rentalRateFallback: rental_rate }).map((d, index) => ({
       ...d,
       id: d.id || crypto.randomUUID(),
       sort_order: index
@@ -33605,6 +33625,19 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 .rating-five-star{background:color-mix(in srgb,#8b5cf6 12%,transparent)!important;color:#8b5cf6!important;border:1px solid color-mix(in srgb,#8b5cf6 38%,transparent)!important;box-shadow:0 0 0 1px color-mix(in srgb,#8b5cf6 8%,transparent) inset!important}
 /* Listing forms stay inside viewport */
 #productModal .modal-content,#packageModal .modal-content{max-width:min(720px,calc(100vw - 1rem))!important;overflow-x:hidden!important}#productModal,#packageModal{overflow-x:hidden!important}#productModal input,#productModal select,#productModal textarea,#packageModal input,#packageModal select,#packageModal textarea{max-width:100%!important;min-width:0!important}.product-detail-card,.owner-listing-management{overflow-x:hidden!important}
+/* Variety choices directly beneath the main product image. */
+.product-gallery-varieties{margin:.65rem 0 .9rem;padding:.7rem;border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--primary) 3%,var(--card));}
+.product-gallery-varieties-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.5rem;}
+.product-gallery-varieties-head strong{font-size:.8rem;}
+.product-gallery-varieties-list{display:flex;gap:.5rem;overflow-x:auto;padding:.05rem 0 .15rem;scrollbar-width:none;}
+.product-gallery-varieties-list::-webkit-scrollbar{display:none;}
+.product-gallery-variety{flex:0 0 112px;display:flex;flex-direction:column;gap:.28rem;padding:.45rem;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);text-align:left;cursor:pointer;font:inherit;}
+.product-gallery-variety.active{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 10%,transparent);}
+.product-gallery-variety img,.product-gallery-variety-placeholder{width:100%;height:74px;border-radius:9px;object-fit:cover;background:color-mix(in srgb,var(--primary) 8%,var(--input-bg));}
+.product-gallery-variety-placeholder{display:flex;align-items:center;justify-content:center;color:var(--primary);}
+.product-gallery-variety strong{font-size:.72rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.product-gallery-variety small{font-size:.66rem;color:var(--text-muted);line-height:1.2;}
+@media(max-width:520px){.product-gallery-variety{flex-basis:104px;}.product-gallery-variety img,.product-gallery-variety-placeholder{height:68px;}}
 /* Selected variety summary */
 .selected-variant-summary{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.55rem;margin:.55rem 0 .8rem;padding:.65rem .75rem;border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));background:color-mix(in srgb,var(--primary) 5%,var(--card));border-radius:13px}.selected-variant-summary span{font-size:.68rem}.selected-variant-summary strong{font-size:.8rem}.selected-variant-summary strong:last-child{color:var(--primary)}
 /* Owner listing details */
@@ -36703,11 +36736,11 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
           if(desc){desc.classList.add('service-variety-only');desc.querySelector('label').innerHTML='Description <span>(optional)</span>';desc.querySelector('textarea').placeholder='Describe what this service/package includes…';}
           if(qty) qty.style.display='none';
         }else{
-          if(name) name.querySelector('label').innerHTML='Variety name <span>(optional)</span>';
+          if(name) name.querySelector('label').innerHTML='Variety name <span>(optional · auto-named if blank)</span>';
           if(row.querySelector('.variant-name')) row.querySelector('.variant-name').placeholder='e.g. Large / Black / 500ml';
           if(color) color.style.display='';
           if(size) size.style.display='';
-          if(price) price.querySelector('label').innerHTML='Price (₦) <span>(optional)</span>';
+          if(price) price.querySelector('label').innerHTML='Price (₦) <span>(optional · uses product price if blank)</span>';
           if(desc){desc.classList.remove('service-variety-only');desc.querySelector('label').innerHTML='Description <span>(optional)</span>';desc.querySelector('textarea').placeholder='Description';}
           if(qty) qty.style.display='';
         }
