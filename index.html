@@ -22780,9 +22780,14 @@ async function adminUnlockVendor(vendorId, businessName) {
   if (adminVendorActionBusy.has(vendorId)) return;
   adminVendorActionBusy.add(vendorId);
   try {
-    const { data, error } = await sb.rpc("admin_set_vendor_storefront_active", { p_vendor_id: vendorId, p_active: true });
+    // Use the dedicated admin unlock RPC. This path intentionally does NOT
+    // consult commission balance: an administrator may unlock a vendor even
+    // when commission remains outstanding. The commission stays owed.
+    const { data, error } = await sb.rpc("admin_force_unlock_vendor", { p_vendor_id: vendorId });
     if (error) throw error;
-    if (!data?.success || data?.vendor?.is_active !== true) throw new Error("The vendor could not be confirmed as unlocked.");
+    if (!data?.success || data?.vendor?.is_active !== true || data?.vendor?.admin_paused === true) {
+      throw new Error("The vendor could not be confirmed as unlocked by the server.");
+    }
     showToast(`${businessName || "Vendor"} unlocked successfully.`, "success");
     await navigate("adminFinance");
   } catch (e) {
@@ -37199,3 +37204,145 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .product-gallery-thumb.is-variety-thumb{border-style:dashed}
 .product-gallery-thumb.is-variety-thumb.active{border-style:solid}
 </style>
+
+
+<script id="levromart-admin-approval-payout-choice-final-20260917">
+(function(){
+  "use strict";
+
+  function showVendorApprovalChoiceDialog(businessName){
+    return new Promise((resolve)=>{
+      const existing=document.getElementById("levroVendorApprovalChoiceModal");
+      if(existing) existing.remove();
+
+      const overlay=document.createElement("div");
+      overlay.id="levroVendorApprovalChoiceModal";
+      overlay.style.cssText="position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.52);backdrop-filter:blur(4px);";
+
+      const card=document.createElement("div");
+      card.style.cssText="width:min(520px,100%);background:var(--card-bg,#fff);color:var(--text,#172033);border:1px solid rgba(100,116,139,.18);border-radius:22px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.24);";
+
+      const title=document.createElement("h3");
+      title.textContent="Approve vendor";
+      title.style.cssText="margin:0 0 8px;font-size:1.2rem;";
+
+      const message=document.createElement("p");
+      message.textContent=`How would you like to approve ${businessName}?`;
+      message.style.cssText="margin:0 0 18px;line-height:1.5;opacity:.82;";
+
+      const note=document.createElement("p");
+      note.textContent="Approve with payout will configure/verify the vendor payout before approval. Approve without payout lets the vendor go live now; they can complete payout setup later.";
+      note.style.cssText="margin:0 0 18px;font-size:.9rem;line-height:1.45;opacity:.72;";
+
+      const actions=document.createElement("div");
+      actions.style.cssText="display:grid;grid-template-columns:1fr;gap:10px;";
+
+      const withPayout=document.createElement("button");
+      withPayout.type="button";
+      withPayout.className="btn";
+      withPayout.textContent="Approve with payout";
+
+      const withoutPayout=document.createElement("button");
+      withoutPayout.type="button";
+      withoutPayout.className="btn btn-outline";
+      withoutPayout.textContent="Approve without payout";
+
+      const cancel=document.createElement("button");
+      cancel.type="button";
+      cancel.className="btn btn-outline";
+      cancel.textContent="Cancel";
+
+      actions.append(withPayout,withoutPayout,cancel);
+      card.append(title,message,note,actions);
+      overlay.append(card);
+      document.body.append(overlay);
+
+      const cleanup=(result)=>{
+        overlay.remove();
+        document.removeEventListener("keydown",onKey);
+        resolve(result);
+      };
+      const onKey=(e)=>{if(e.key==="Escape")cleanup(null);};
+      withPayout.addEventListener("click",()=>cleanup("with_payout"));
+      withoutPayout.addEventListener("click",()=>cleanup("without_payout"));
+      cancel.addEventListener("click",()=>cleanup(null));
+      overlay.addEventListener("click",(e)=>{if(e.target===overlay)cleanup(null);});
+      document.addEventListener("keydown",onKey);
+      withPayout.focus();
+    });
+  }
+
+  window.__levroFastApproveVendor=async function(id,filterStatus,businessName){
+    if(adminVendorActionBusy.has(id))return;
+    if(!session?.user?.id || profile?.role!=="admin"){
+      showToast("Admin access is required.","error");
+      return;
+    }
+
+    const card=document.getElementById(`adminVendor-${id}`);
+    businessName=businessName||card?.dataset?.name||card?.querySelector("summary strong")?.textContent?.trim()||"this vendor";
+
+    const choice=await showVendorApprovalChoiceDialog(businessName);
+    if(!choice)return;
+
+    adminVendorActionBusy.add(id);
+    const btn=document.querySelector(`#app .vendor-admin-action[data-vendor-id="${CSS.escape(String(id))}"][data-status="verified"]`);
+
+    try{
+      if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Approving…';}
+
+      const {data:target,error:targetError}=await sb.from("vendors")
+        .select("id,user_id,business_name,verification_status,bank_code,bank_name,account_number,account_name,paystack_subaccount_code")
+        .eq("id",id).is("deleted_at",null).maybeSingle();
+      if(targetError||!target)throw new Error(targetError?.message||"Vendor application not found.");
+
+      businessName=target.business_name||businessName;
+
+      let payoutConfigured=!!String(target.paystack_subaccount_code||"").trim();
+
+      if(choice==="with_payout" && !payoutConfigured){
+        if(!target.bank_code||!target.account_number){
+          throw new Error("This vendor has not completed their payout bank and account number. Choose Approve without payout if you want to approve them now.");
+        }
+
+        const live=await sb.auth.getSession();
+        const accessToken=live?.data?.session?.access_token;
+        if(!accessToken)throw new Error("Your admin session has expired. Please sign in again.");
+
+        const res=await fetch("/api/vendor-payout-setup",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({accessToken,vendorId:id})
+        });
+        const json=await res.json().catch(()=>({}));
+        if(!res.ok||!json.subaccount_code){
+          throw new Error(json.error||"Payout setup failed. Choose Approve without payout if you want to approve this vendor without payout setup.");
+        }
+        payoutConfigured=true;
+      }
+
+      const {data,error}=await sb.rpc("admin_approve_vendor",{
+        p_vendor_id:id,
+        p_approve_without_payout:choice==="without_payout"
+      });
+      if(error)throw error;
+      if(!data?.success)throw new Error("Approval did not complete.");
+
+      fastRemoveVendorCard(id);
+      showToast(
+        payoutConfigured
+          ? `${businessName} approved successfully. Payout is active.`
+          : `${businessName} approved successfully without payout. They can complete payout setup later.`,
+        "success"
+      );
+      setTimeout(()=>{try{navigate("adminPanel",{status:filterStatus||"pending"},{replace:true});}catch(_){}},0);
+    }catch(err){
+      console.error("[Levromart] Admin vendor approval failed:",err);
+      showToast(err?.message||"Could not approve this vendor.","error");
+      if(btn){btn.disabled=false;btn.innerHTML="Approve";}
+    }finally{
+      adminVendorActionBusy.delete(id);
+    }
+  };
+})();
+</script>
