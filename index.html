@@ -9044,76 +9044,6 @@ function setTheme(theme) {
   });
   applyAccent(currentAccentIndex);
 }
-// ---------- LEVROMART MOTION PREFERENCE ----------
-const LEVROMART_MOTION_KEY = "levromart-motion";
-const LEVROMART_MOTION_CALM = "calm";
-const LEVROMART_MOTION_FULL = "full";
-let levromartMotion = LEVROMART_MOTION_CALM;
-
-function getLevromartMotionPreference() {
-  try {
-    const saved = localStorage.getItem(LEVROMART_MOTION_KEY);
-    return saved === LEVROMART_MOTION_FULL ? LEVROMART_MOTION_FULL : LEVROMART_MOTION_CALM;
-  } catch (_) { return LEVROMART_MOTION_CALM; }
-}
-function isLevromartCalmMotion() { return levromartMotion !== LEVROMART_MOTION_FULL; }
-function registerLevromartMotionCleanup(fn) {
-  if (!window.__levromartMotionCleanups) window.__levromartMotionCleanups = new Set();
-  window.__levromartMotionCleanups.add(fn);
-}
-function clearLevromartMotionCleanups() {
-  const set = window.__levromartMotionCleanups;
-  if (!set) return;
-  [...set].forEach(fn => { try { fn(); } catch (_) {} });
-  set.clear();
-}
-function applyLevromartMotionPreference(value) {
-  levromartMotion = value === LEVROMART_MOTION_FULL ? LEVROMART_MOTION_FULL : LEVROMART_MOTION_CALM;
-  document.documentElement.dataset.levroMotion = levromartMotion;
-  document.documentElement.style.setProperty("--levro-motion", levromartMotion);
-  if (isLevromartCalmMotion()) {
-    clearLevromartMotionCleanups();
-    try { resetHomeSearchScrollMotion(); } catch (_) {}
-    try { clearAutoScrollTimers(); } catch (_) {}
-    try { byId("bottomNav")?.classList.remove("nav-scroll-hide", "nav-scroll-shrink"); } catch (_) {}
-    try { byId("aiChatFab")?.classList.remove("scroll-faded"); byId("cartFab")?.classList.remove("scroll-faded"); } catch (_) {}
-    try { document.querySelectorAll(".home-search-scrolling,.home-search-pinned,.home-search-fixed").forEach(el => el.classList.remove("home-search-scrolling","home-search-pinned","home-search-fixed")); } catch (_) {}
-    try { const nav = byId("bottomNav"); if (nav) delete nav.dataset.scrollMotionReady; } catch (_) {}
-    try { window.__leviCartScrollReady = false; } catch (_) {}
-  } else {
-    setTimeout(() => {
-      try { initBottomNavScrollMotion(); } catch (_) {}
-      try { initFloatingScrollVisibility(); } catch (_) {}
-      try { initHomeSearchScrollMotion(); } catch (_) {}
-      try {
-        if (horizontalBrowseEnabled) {
-          document.querySelectorAll("#app .cat-row, #app .hscroll, #app .storefront-product-strip").forEach(el => setupAutoScroll(el));
-        }
-      } catch (_) {}
-    }, 0);
-  }
-  document.querySelectorAll("#settings-page [data-motion-choice]").forEach(el => {
-    const on = el.dataset.motionChoice === levromartMotion;
-    el.classList.toggle("active", on);
-    el.dataset.active = String(on);
-  });
-  document.querySelectorAll("#settingsPanel [data-motion-choice]").forEach(el => {
-    const on = el.dataset.motionChoice === levromartMotion;
-    el.classList.toggle("active", on);
-    el.dataset.active = String(on);
-  });
-}
-function setLevromartMotionPreference(value) {
-  const next = value === LEVROMART_MOTION_FULL ? LEVROMART_MOTION_FULL : LEVROMART_MOTION_CALM;
-  try { localStorage.setItem(LEVROMART_MOTION_KEY, next); } catch (_) {}
-  applyLevromartMotionPreference(next);
-  try { hydrateSettingsPage(); } catch (_) {}
-  showToast(next === LEVROMART_MOTION_CALM ? "Calm motion enabled." : "Full motion enabled.", "success");
-}
-function initLevromartMotionPreference() {
-  applyLevromartMotionPreference(getLevromartMotionPreference());
-}
-
 function initTheme() {
   const saved = localStorage.getItem("medris-theme") || "light";
   setTheme(saved);
@@ -10409,10 +10339,6 @@ async function setAccountPassword() {
 let otpCheckDoneThisBoot = false;
 async function runPostAuthChecks() {
   if (!profile || !session) return;
-  if (typeof window.__levromartCheckLegalTermsGate === "function" && !window.__levromartLegalGateReady?.()) {
-    const legalAccepted = await window.__levromartCheckLegalTermsGate();
-    if (!legalAccepted) return;
-  }
   // Every customer account must have a phone number. Manual registration already
   // collects it; this gate covers Google sign-in and older accounts that predate
   // the requirement. Do this before the password/OTP checks so the account cannot
@@ -10745,7 +10671,6 @@ function renderSettingsPage(){
   return `<div class="settings-page" id="settings-page">
     <div class="settings-page-header"><button class="settings-back-btn" onclick="navigate(lastNonSettingsView||'home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><span class="settings-kicker">Levromart</span><h2>Settings</h2><p class="muted">Manage your account and app experience.</p></div></div>
     <section class="settings-page-section"><h3><i class="fa-solid fa-palette"></i> Appearance</h3><p class="settings-section-note">Choose how Levromart looks on this device.</p><div class="settings-choice-list"><button class="settings-choice" data-theme-choice="light" onclick="setTheme('light')"><i class="fa-solid fa-sun"></i><span><strong>Light</strong><small>Bright and clean</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-theme-choice="dark" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i><span><strong>Dark</strong><small>Comfortable for low light</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-theme-choice="black" onclick="setTheme('black')"><i class="fa-solid fa-circle"></i><span><strong>Deep black</strong><small>OLED-friendly black</small></span><i class="fa-solid fa-check settings-choice-check"></i></button></div></section>
-    <section class="settings-page-section"><h3><i class="fa-solid fa-wand-magic-sparkles"></i> Motion</h3><p class="settings-section-note">Choose how much decorative motion Levromart uses on this device. Calm is the default and keeps scrolling lightweight.</p><div class="settings-choice-list"><button class="settings-choice" data-motion-choice="calm" onclick="setLevromartMotionPreference('calm')"><i class="fa-solid fa-feather"></i><span><strong>Calm</strong><small>Lightweight scrolling with no unnecessary continuous motion.</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-motion-choice="full" onclick="setLevromartMotionPreference('full')"><i class="fa-solid fa-wand-magic-sparkles"></i><span><strong>Full Motion</strong><small>Restore Levromart's optional decorative and scroll-linked motion.</small></span><i class="fa-solid fa-check settings-choice-check"></i></button></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-text-height"></i> Text size</h3><p class="settings-section-note">Make Levromart easier to read. This changes the app's text scale on this device.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Font size</strong><span>Choose a comfortable size from 85% to 125%.</span></div><div class="levi-size-value" id="levroFontScaleValue">${Math.round(getLevromartFontScale()*100)}%</div><input class="levi-size-range" id="levroFontScaleRange" type="range" min="0.85" max="1.25" step="0.05" value="${getLevromartFontScale()}" aria-label="Levromart font size" oninput="setLevromartFontScale(this.value)" onchange="setLevromartFontScale(this.value)" /></div></section>
     <section class="settings-page-section"><h3><span class="settings-levi-logo-wrap"><img class="settings-levi-logo" src="${esc(MEDRIS_LOGO)}" alt="" /></span> Levi</h3><p class="settings-section-note">Adjust Levi's size, visibility, data preference and voice.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Levi size</strong><span>Drag the scale to make Levi smaller or restore the current maximum.</span></div><div class="levi-size-value" id="leviSizeValue">${getLeviFabSize()}px</div><input class="levi-size-range" id="leviSizeRange" type="range" min="44" max="74" step="1" value="${getLeviFabSize()}" aria-label="Levi size" oninput="setLeviFabSize(this.value)" /></div><div class="settings-divider"></div><div class="settings-toggle-row" id="leviVisibleSettingRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="settingsAiConsentPageRow"></div><div class="settings-divider"></div><div class="settings-voice-wrap"><div class="settings-control-copy"><strong>Levi's voice</strong><span>Choose from the voices available on your device.</span></div><select id="voiceSelectPage" class="settings-select" aria-label="Levi voice"></select><button class="btn btn-outline settings-full-btn" onclick="previewAiVoice()"><i class="fa-solid fa-play"></i> Preview voice</button></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-sliders"></i> App preferences</h3><div class="settings-simple-row" id="settingsInstallPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="settingsNotifPageRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="horizontalBrowseSettingPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="locationSettingPageRow"></div></section>
@@ -10757,7 +10682,6 @@ function hydrateSettingsPage(){
   setLevromartFontScale(getLevromartFontScale());
   const theme=document.documentElement.dataset.theme||localStorage.getItem("medris-theme")||"light";
   document.querySelectorAll("#settings-page .settings-choice").forEach(el=>{const on=el.dataset.themeChoice===theme;el.classList.toggle("active",on);el.dataset.active=String(on);});
-  document.querySelectorAll("#settings-page [data-motion-choice]").forEach(el=>{const on=el.dataset.motionChoice===getLevromartMotionPreference();el.classList.toggle("active",on);el.dataset.active=String(on);});
   const vis=byId("leviVisibleSettingRow");
   if(vis) vis.innerHTML=`<i class="fa-solid ${leviVisible?'fa-comment-dots':'fa-comment-slash'} settings-row-icon"></i><span class="settings-row-copy"><strong>Levi assistant</strong><small>${leviVisible?'Shown on the app':'Hidden from the app'}</small></span><button class="settings-inline-btn" onclick="toggleLeviVisible();setTimeout(hydrateSettingsPage,0)">${leviVisible?'Hide':'Show'}</button>`;
   const consent=byId("settingsAiConsentPageRow");
@@ -10878,7 +10802,7 @@ function renderBottomNav() {
 
 function initBottomNavScrollMotion(){
   const nav = byId("bottomNav");
-  if (!nav || nav.dataset.scrollMotionReady === "1" || isLevromartCalmMotion()) return;
+  if (!nav || nav.dataset.scrollMotionReady === "1") return;
   nav.dataset.scrollMotionReady = "1";
   const getMetrics=()=>{
     const chat=document.body.classList.contains("chat-full-page") ? document.querySelector(".chat-messages") : null;
@@ -10904,30 +10828,17 @@ function initBottomNavScrollMotion(){
     idleTimer=setTimeout(()=>{if(delta<0||y<=16||y>=maxY-8)restore();},420);
   };
   const onScroll=()=>{if(!raf)raf=requestAnimationFrame(apply);};
-  const onResize=()=>{lastY=getMetrics().y;restore();};
-  const onVisibility=()=>{if(!document.hidden){lastY=getMetrics().y;restore();}};
   window.addEventListener("scroll",onScroll,{passive:true});
   document.addEventListener("scroll",onScroll,{passive:true,capture:true});
-  window.addEventListener("resize",onResize,{passive:true});
-  document.addEventListener("visibilitychange",onVisibility);
-  registerLevromartMotionCleanup(()=>{
-    window.removeEventListener("scroll",onScroll);
-    document.removeEventListener("scroll",onScroll,{capture:true});
-    window.removeEventListener("resize",onResize);
-    document.removeEventListener("visibilitychange",onVisibility);
-    clearTimeout(idleTimer);
-    if(raf) cancelAnimationFrame(raf);
-    raf=0;
-    restore();
-    delete nav.dataset.scrollMotionReady;
-  });
+  window.addEventListener("resize",()=>{lastY=getMetrics().y;restore();},{passive:true});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden){lastY=getMetrics().y;restore();}});
 }
 
 // A floating cart button, docked near Levi's FAB, is easier to notice
 // than a nav-tab would be without adding a 6th cramped item to the
 // already-full buyer bottom nav.
 function initFloatingScrollVisibility(){
-  if (window.__leviCartScrollReady || isLevromartCalmMotion()) return;
+  if (window.__leviCartScrollReady) return;
   window.__leviCartScrollReady = true;
   let lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
   let timer = 0;
@@ -10948,25 +10859,8 @@ function initFloatingScrollVisibility(){
       lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
     }, 260);
   };
-  const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
-  window.addEventListener('scroll', onScroll, {passive:true});
-  const clickHandlers=[];
-  ['aiChatFab','cartFab'].forEach(id => {
-    const el=byId(id); if(!el) return;
-    const fn=()=>el.classList.remove('scroll-faded');
-    el.addEventListener('click',fn,{passive:true});
-    clickHandlers.push([el,fn]);
-  });
-  registerLevromartMotionCleanup(()=>{
-    window.removeEventListener('scroll',onScroll);
-    clickHandlers.forEach(([el,fn])=>el.removeEventListener('click',fn));
-    clearTimeout(timer);
-    if(raf) cancelAnimationFrame(raf);
-    raf=0;
-    byId('aiChatFab')?.classList.remove('scroll-faded');
-    byId('cartFab')?.classList.remove('scroll-faded');
-    window.__leviCartScrollReady=false;
-  });
+  window.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(apply); }, {passive:true});
+  ['aiChatFab','cartFab'].forEach(id => byId(id)?.addEventListener('click', () => byId(id)?.classList.remove('scroll-faded'), {passive:true}));
 }
 
 function updateCartFab() {
@@ -11396,12 +11290,11 @@ async function resetLevromartPreferences() {
     { title: "Reset preferences", okLabel: "Reset", danger: true }
   );
   if (!confirmed) return;
-  ["medris-theme", "medris-accent", "medris-install-dismissed", "medris-notif-dismissed", "medris-ai-chat-expanded", "medris-levi-fab-size", "medris-levi-visible", "medris-ai-voice", "levromart-font-scale", "levromart-horizontal-browse", "levromart-motion", "levromart-interface-defaults-v2", "levromart_ai_fab_pos", "levromart_cart_fab_pos", "levromart_ai_panel_pos"].forEach((k) => { try { localStorage.removeItem(k); } catch (e) {} });
+  ["medris-theme", "medris-accent", "medris-install-dismissed", "medris-notif-dismissed", "medris-ai-chat-expanded", "medris-levi-fab-size", "medris-levi-visible", "medris-ai-voice", "levromart-font-scale", "levromart-horizontal-browse", "levromart-interface-defaults-v2", "levromart_ai_fab_pos", "levromart_cart_fab_pos", "levromart_ai_panel_pos"].forEach((k) => { try { localStorage.removeItem(k); } catch (e) {} });
   currentAccentIndex = DEFAULT_ACCENT_INDEX;
   leviVisible = true;
   setTheme("light");
   setAccent(DEFAULT_ACCENT_INDEX);
-  setLevromartMotionPreference("calm");
   applyLeviFabSize();
   applyLevromartFontScale();
   applyLeviVisibility();
@@ -12080,7 +11973,7 @@ function clearAutoScrollTimers() {
   autoScrollTimers = [];
 }
 function setupAutoScroll(container, { interval = 30, pauseAfterInteraction = 6500 } = {}) {
-  if (!container || !horizontalBrowseEnabled || isLevromartCalmMotion()) return;
+  if (!container || !horizontalBrowseEnabled) return;
   if (container.matches(".trending-scroll, .top-rated-vendors-scroll")) return;
   if (container.__levroAutoScrollTimer) return;
   let paused = false;
@@ -12217,7 +12110,6 @@ let homeSearchMotionIdle = 0;
 let homeSearchMotionLastY = 0;
 function initHomeSearchScrollMotion(){
   resetHomeSearchScrollMotion();
-  if (isLevromartCalmMotion()) return;
   const wrap = document.querySelector("#app .levro-home-search-wrap");
   const search = wrap?.querySelector(".hero-search");
   if (!wrap || !search) return;
@@ -12286,7 +12178,6 @@ function initHomeSearchScrollMotion(){
     rafId = 0;
     restoreNormal();
   };
-  registerLevromartMotionCleanup(() => wrap._homeSearchScrollCleanup?.());
 }
 function resetHomeSearchScrollMotion(){
   homeSearchMotionReady = false;
@@ -26249,7 +26140,6 @@ window.addEventListener("popstate", (e) => {
   // the splash as soon as a real route is painted.
 
   initTheme();
-  initLevromartMotionPreference();
   initAccent();
   ensureCurrentInterfaceDefaults();
   applyLevromartFontScale();
@@ -30757,219 +30647,6 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 </script>
 
 
-
-<style id="levromart-calm-motion-20260917">
-/* Calm is the lightweight application default. Keep functional interaction
-   feedback, but remove continuous/decorative animation and scroll-linked
-   visual effects that add work on lower-end Android devices. */
-html[data-levro-motion="calm"] .product-card-wrap,
-html[data-levro-motion="calm"] .vendor-card,
-html[data-levro-motion="calm"] .brand-logo-circle,
-html[data-levro-motion="calm"] .ai-chat-fab,
-html[data-levro-motion="calm"] .hero-aurora,
-html[data-levro-motion="calm"] .levro-vendor-route-path,
-html[data-levro-motion="calm"] .home-loading-search,
-html[data-levro-motion="calm"] .home-loading-actions span,
-html[data-levro-motion="calm"] .instant-route-skeleton span { animation:none !important; }
-html[data-levro-motion="calm"] .ai-chat-fab.scroll-faded,
-html[data-levro-motion="calm"] #cartFab.scroll-faded { opacity:1 !important; transform:none !important; }
-html[data-levro-motion="calm"] #app .levro-home-search-wrap .hero-search {
-  transform:none !important; opacity:1 !important; filter:none !important;
-  will-change:auto !important;
-}
-html[data-levro-motion="calm"] #bottomNav { transform:none !important; }
-</style>
-<script id="levromart-calm-motion-final-20260917">
-(function(){
-  // The motion core is declared before init() so it is available during the
-  // first render. This final observer only keeps the document state aligned
-  // if another legacy script changes the root attribute.
-  try { applyLevromartMotionPreference(getLevromartMotionPreference()); } catch (_) {}
-})();
-</script>
-
-<!-- LEVROMART LEGAL CONSENT GATE 2026-09-17 -->
-<div id="legalConsentModal" class="modal hidden legal-consent-modal" data-lock="true" role="dialog" aria-modal="true" aria-labelledby="legalConsentTitle">
-  <div class="modal-content legal-consent-content">
-    <div class="legal-consent-header">
-      <div>
-        <p class="legal-consent-eyebrow">LEVROMART ACCOUNT AGREEMENT</p>
-        <h2 id="legalConsentTitle">Before you continue</h2>
-        <p class="muted legal-consent-intro">Please review Levromart's current Terms of Service, Privacy Policy, and Refund &amp; Cancellation Policy. You need to accept these terms to continue using your account.</p>
-      </div>
-    </div>
-    <div id="legalConsentBody" class="legal-consent-body" tabindex="0" aria-label="Levromart legal terms"></div>
-    <div class="legal-consent-footer">
-      <p class="legal-consent-confirmation">By selecting <strong>Agree &amp; Continue</strong>, you confirm that you have reviewed and agree to the current Levromart terms and policies.</p>
-      <div id="legalConsentError" class="error-text hidden" role="alert"></div>
-      <button type="button" id="legalConsentAgreeBtn" class="btn legal-consent-agree-btn" onclick="acceptLegalTermsAndContinue()">
-        <i class="fa-solid fa-check"></i> Agree &amp; Continue
-      </button>
-    </div>
-  </div>
-</div>
-
-<style id="levromart-legal-consent-styles">
-.legal-consent-open{overflow:hidden !important}.legal-consent-modal{z-index:100000;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,.58);overscroll-behavior:contain}
-.legal-consent-content{width:min(720px,calc(100vw - 2rem));max-height:min(88vh,860px);display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:18px}
-.legal-consent-header{padding:1.25rem 1.25rem .9rem;border-bottom:1px solid var(--border)}
-.legal-consent-eyebrow{margin:0 0 .35rem;font-size:.68rem;font-weight:800;letter-spacing:.1em;color:var(--muted,#6b7280)}
-.legal-consent-header h2{margin:0;font-size:1.35rem}
-.legal-consent-intro{margin:.45rem 0 0;font-size:.86rem;line-height:1.55}
-.legal-consent-body{flex:1;min-height:0;overflow:auto;padding:1rem 1.25rem;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-.legal-consent-body .legal-page{max-width:none;padding:0;margin:0}
-.legal-consent-body .legal-page h2{display:none}
-.legal-consent-body .legal-page .muted{display:none}
-.legal-consent-body .legal-page h3{margin-top:1rem}
-.legal-consent-body .legal-page h3:first-of-type{margin-top:0}
-.legal-consent-section-divider{height:1px;background:var(--border);margin:1.25rem 0}
-.legal-consent-footer{padding:.85rem 1.25rem 1.1rem;border-top:1px solid var(--border);background:var(--surface,#fff)}
-.legal-consent-confirmation{margin:0 0 .7rem;font-size:.76rem;line-height:1.45;color:var(--muted,#6b7280)}
-.legal-consent-agree-btn{width:100%;justify-content:center;min-height:46px}
-.legal-consent-agree-btn:disabled{opacity:.65;cursor:wait}
-@media(max-width:600px){.legal-consent-modal{padding:.55rem}.legal-consent-content{width:100%;max-height:94vh;border-radius:15px}.legal-consent-header{padding:1rem 1rem .75rem}.legal-consent-body{padding:.9rem 1rem}.legal-consent-footer{padding:.75rem 1rem 1rem}}
-</style>
-
-<script id="levromart-legal-consent-logic-20260917">
-(() => {
-  const LEGAL_TERMS_VERSION = "2026-09-17";
-  let legalConsentCheckInFlight = null;
-  let legalConsentAcceptedThisSession = false;
-  let legalConsentModalOpen = false;
-
-  function legalConsentModal() { return document.getElementById("legalConsentModal"); }
-  function legalConsentError() { return document.getElementById("legalConsentError"); }
-  function legalConsentAgreeBtn() { return document.getElementById("legalConsentAgreeBtn"); }
-
-  function renderLegalConsentContent() {
-    const body = document.getElementById("legalConsentBody");
-    if (!body) return;
-    try {
-      const terms = typeof renderTerms === "function" ? renderTerms() : "";
-      const privacy = typeof renderPrivacy === "function" ? renderPrivacy() : "";
-      const refund = typeof renderRefundPolicy === "function" ? renderRefundPolicy() : "";
-      body.innerHTML = [
-        terms,
-        '<div class="legal-consent-section-divider" aria-hidden="true"></div>',
-        privacy,
-        '<div class="legal-consent-section-divider" aria-hidden="true"></div>',
-        refund
-      ].filter(Boolean).join("");
-    } catch (e) {
-      console.error("[Levromart] Could not render legal consent content:", e);
-      body.innerHTML = '<div class="empty-state">The legal documents could not be loaded. Please try again.</div>';
-    }
-  }
-
-  function openLegalConsentGate() {
-    const modal = legalConsentModal();
-    if (!modal) return;
-    renderLegalConsentContent();
-    legalConsentError()?.classList.add("hidden");
-    const btn = legalConsentAgreeBtn();
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Agree &amp; Continue'; }
-    modal.classList.remove("hidden");
-    legalConsentModalOpen = true;
-    document.body.classList.add("legal-consent-open");
-    setTimeout(() => document.getElementById("legalConsentBody")?.focus(), 50);
-  }
-
-  function closeLegalConsentGate() {
-    // Intentionally no public close/cancel action. This only runs after a
-    // successful server-side acceptance.
-    const modal = legalConsentModal();
-    if (!modal) return;
-    modal.classList.add("hidden");
-    legalConsentModalOpen = false;
-    document.body.classList.remove("legal-consent-open");
-  }
-
-  async function checkLegalTermsGate() {
-    if (!session?.user?.id || !profile) return true;
-    if (legalConsentAcceptedThisSession) return true;
-    if (legalConsentCheckInFlight) return legalConsentCheckInFlight;
-
-    legalConsentCheckInFlight = (async () => {
-      try {
-        const { data, error } = await sb.rpc("get_legal_terms_consent");
-        if (error) throw error;
-        const accepted = data?.accepted === true && String(data?.current_version || LEGAL_TERMS_VERSION) === LEGAL_TERMS_VERSION;
-        if (accepted) {
-          legalConsentAcceptedThisSession = true;
-          if (legalConsentModalOpen) closeLegalConsentGate();
-          return true;
-        }
-        openLegalConsentGate();
-        return false;
-      } catch (e) {
-        console.error("[Levromart] Legal consent check failed:", e);
-        openLegalConsentGate();
-        const err = legalConsentError();
-        if (err) {
-          err.textContent = "We couldn't verify your agreement status. Check your connection and try again.";
-          err.classList.remove("hidden");
-        }
-        return false;
-      } finally {
-        legalConsentCheckInFlight = null;
-      }
-    })();
-    return legalConsentCheckInFlight;
-  }
-
-  async function acceptLegalTermsAndContinue() {
-    if (!session?.user?.id || !profile) return;
-    const btn = legalConsentAgreeBtn();
-    const err = legalConsentError();
-    err?.classList.add("hidden");
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving agreement…'; }
-    try {
-      const { data, error } = await sb.rpc("accept_legal_terms");
-      if (error) throw error;
-      if (data?.accepted !== true) throw new Error("The agreement could not be recorded.");
-
-      profile.legal_terms_version = LEGAL_TERMS_VERSION;
-      profile.legal_terms_accepted_at = data.accepted_at || new Date().toISOString();
-      legalConsentAcceptedThisSession = true;
-      closeLegalConsentGate();
-      showToast("Agreement accepted. Welcome to Levromart.", "success");
-
-      // Continue the existing post-auth sequence. This is deliberately called
-      // only after the server confirms the consent, so other required account
-      // checks (phone/password/admin OTP) keep their existing order.
-      await runPostAuthChecks();
-    } catch (e) {
-      console.error("[Levromart] Legal consent acceptance failed:", e);
-      if (err) {
-        err.textContent = "We couldn't save your agreement. Please check your connection and try again.";
-        err.classList.remove("hidden");
-      }
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Agree &amp; Continue'; }
-    }
-  }
-
-  window.acceptLegalTermsAndContinue = acceptLegalTermsAndContinue;
-  window.__levromartCheckLegalTermsGate = checkLegalTermsGate;
-  window.__levromartLegalConsentGateOpen = () => legalConsentModalOpen;
-
-  // The existing lexical runPostAuthChecks() is guarded at its source above.
-  window.__levromartLegalGateReady = () => legalConsentAcceptedThisSession;
-
-  // The initial session restore can run before this late-loaded consent module.
-  // Re-check once the module exists so existing logged-in accounts are also
-  // covered without changing the authentication flow itself.
-  setTimeout(() => {
-    if (session?.user?.id && profile) {
-      checkLegalTermsGate().then((accepted) => {
-        if (accepted) return;
-        // If an earlier post-auth check opened another required modal during the
-        // initial restore, keep the legal agreement in front until it is accepted.
-        legalConsentModal()?.classList.remove("hidden");
-      }).catch(() => {});
-    }
-  }, 0);
-})();
-</script>
 </body>
 <style id="levromart-20260910-final-polish">
 /* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
@@ -37371,111 +37048,3 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 })();
 </script>
 <!-- LEVROMART_FINAL_PATCH_20260917_PAYOUT_BANK_PICKER_AND_BANNER -->
-
-<style id="levromart-calm-absolute-no-motion-20260917">
-/* CALM MODE = absolutely no visual motion.  Full Motion leaves the existing
-   Levromart motion systems untouched. */
-html[data-levro-motion="calm"],
-html[data-levro-motion="calm"] body {
-  scroll-behavior: auto !important;
-}
-html[data-levro-motion="calm"] *,
-html[data-levro-motion="calm"] *::before,
-html[data-levro-motion="calm"] *::after {
-  animation: none !important;
-  animation-play-state: paused !important;
-  transition: none !important;
-  scroll-behavior: auto !important;
-}
-/* Remove decorative lift/pop states; do not touch explicit drag/swipe transforms. */
-html[data-levro-motion="calm"] #app .product-card-wrap:hover,
-html[data-levro-motion="calm"] #app .product-card-wrap:active,
-html[data-levro-motion="calm"] #app .vendor-card:hover,
-html[data-levro-motion="calm"] #app .vendor-card:active,
-html[data-levro-motion="calm"] #app .card:hover,
-html[data-levro-motion="calm"] #app .card:active,
-html[data-levro-motion="calm"] #app .cat-chip:hover,
-html[data-levro-motion="calm"] #app .cat-chip:active,
-html[data-levro-motion="calm"] #app .fav-btn:hover,
-html[data-levro-motion="calm"] #app .fav-btn:active,
-html[data-levro-motion="calm"] #app .card-cart-btn:hover,
-html[data-levro-motion="calm"] #app .card-cart-btn:active,
-html[data-levro-motion="calm"] #app .levro-quick-action:hover,
-html[data-levro-motion="calm"] #app .levro-quick-action:active {
-  transform: none !important;
-}
-html[data-levro-motion="calm"] #bottomNav,
-html[data-levro-motion="calm"] #aiChatFab,
-html[data-levro-motion="calm"] #cartFab {
-  transform: none !important;
-  opacity: 1 !important;
-}
-</style>
-<script id="levromart-calm-absolute-no-motion-20260917">
-(function(){
-  "use strict";
-  const originalScrollTo = window.scrollTo.bind(window);
-  const originalScrollBy = window.scrollBy.bind(window);
-  const originalElementScrollIntoView = Element.prototype.scrollIntoView;
-  let patched = false;
-
-  function calmScrollOptions(options){
-    if (!options || typeof options !== "object") return options;
-    if (options.behavior !== "smooth") return options;
-    return Object.assign({}, options, {behavior:"auto"});
-  }
-
-  function patchScrollingForCalm(){
-    if (patched) return;
-    patched = true;
-    window.scrollTo = function(){
-      if (isLevromartCalmMotion()) {
-        const args = Array.from(arguments);
-        if (args.length === 1 && args[0] && typeof args[0] === "object") args[0] = calmScrollOptions(args[0]);
-        return originalScrollTo.apply(window, args);
-      }
-      return originalScrollTo.apply(window, arguments);
-    };
-    window.scrollBy = function(){
-      if (isLevromartCalmMotion()) {
-        const args = Array.from(arguments);
-        if (args.length === 1 && args[0] && typeof args[0] === "object") args[0] = calmScrollOptions(args[0]);
-        return originalScrollBy.apply(window, args);
-      }
-      return originalScrollBy.apply(window, arguments);
-    };
-    Element.prototype.scrollIntoView = function(){
-      if (isLevromartCalmMotion()) {
-        const args = Array.from(arguments);
-        if (args.length === 1 && args[0] && typeof args[0] === "object") args[0] = calmScrollOptions(args[0]);
-        return originalElementScrollIntoView.apply(this, args);
-      }
-      return originalElementScrollIntoView.apply(this, arguments);
-    };
-  }
-  function unpatchScrollingForFullMotion(){
-    if (!patched) return;
-    patched = false;
-    window.scrollTo = originalScrollTo;
-    window.scrollBy = originalScrollBy;
-    Element.prototype.scrollIntoView = originalElementScrollIntoView;
-  }
-
-  const originalApply = window.applyLevromartMotionPreference;
-  if (typeof originalApply === "function" && !window.__levroAbsoluteCalmMotionWrapped) {
-    window.__levroAbsoluteCalmMotionWrapped = true;
-    window.applyLevromartMotionPreference = function(value){
-      const result = originalApply.apply(this, arguments);
-      if (isLevromartCalmMotion()) patchScrollingForCalm();
-      else unpatchScrollingForFullMotion();
-      return result;
-    };
-  }
-
-  /* Ensure the currently selected/default mode is applied even if this final
-     guard loads after the original motion preference initializer. */
-  try {
-    if (isLevromartCalmMotion()) patchScrollingForCalm();
-  } catch (_) {}
-})();
-</script>
