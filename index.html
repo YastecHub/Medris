@@ -19074,6 +19074,11 @@ async function showProductModal() {
       productVariantsError = direct.error;
     }
     window.__productVariants = Array.isArray(productVariants) ? productVariants : [];
+    // Mark the moment the authoritative server state was loaded. The draft
+    // observer below must never replace freshly loaded saved varieties with an
+    // older local draft snapshot. A genuinely newer in-progress draft is still
+    // allowed to restore.
+    byId("productModal").dataset.serverLoadedAt = String(Date.now());
     byId("productModalTitle").textContent = "Edit Product";
     byId("prodName").value = p.name;
     byId("prodDesc").value = stripProductVariantMeta(p.description || "");
@@ -19136,6 +19141,12 @@ async function showProductModal() {
   byId("productModal").classList.remove("hidden");
   trackModalOpened("productModal");
   enhanceSelectsIn(byId("productModal"));
+  // Re-render AFTER the modal is mounted. This is intentionally explicit: the
+  // editor must always paint the complete saved variety set, even when the
+  // initial render happened while the modal was being reset.
+  if (editingProductId) {
+    requestAnimationFrame(() => renderProductVariantPricing());
+  }
 }
 function loadProdCategoriesForSector(presetCategoryId) {
   const sectorId = byId("prodSector").value;
@@ -21490,22 +21501,35 @@ async function toggleCommissionBreakdown(){
 
 async function payCommission() {
   const errorEl = byId("commissionError");
-  const btn = byId("payCommissionBtn");
-  errorEl.classList.add("hidden");
-  btn.disabled = true;
+  // This function is also called from the global commission-lock popup, where
+  // the breakdown button does not exist. Never let a missing button prevent
+  // the Paystack checkout from starting.
+  const buttons = [...document.querySelectorAll('[onclick*="payCommission()"]')];
+  const btn = byId("payCommissionBtn") || buttons.find(b => !b.disabled) || null;
+  if (errorEl) errorEl.classList.add("hidden");
+  if (btn) btn.disabled = true;
   try {
+    if (!session?.access_token) throw new Error("Please sign in again to pay your commission.");
     const res = await fetch("/api/vendor-payments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "pay-commission", accessToken: session.access_token }),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Could not start payment.");
-    window.location.href = json.authorization_url;
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || "Could not start commission payment.");
+    const checkoutUrl = json.authorization_url || json.checkout_url || json.url;
+    if (!checkoutUrl) throw new Error("Paystack checkout could not be created. Please try again.");
+    // Send the vendor straight to the Paystack checkout returned by the
+    // server; there is no intermediate payout/settings page.
+    window.location.assign(checkoutUrl);
   } catch (err) {
-    errorEl.textContent = err.message;
-    errorEl.classList.remove("hidden");
-    btn.disabled = false;
+    if (errorEl) {
+      errorEl.textContent = err.message || "Could not start commission payment.";
+      errorEl.classList.remove("hidden");
+    } else {
+      showToast(err.message || "Could not start commission payment.", "error");
+    }
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -33431,6 +33455,11 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
     if(!raw)return;
     let d;try{d=JSON.parse(raw)}catch(_){return}
     if(!d?.values||d.kind!==kind||String(d.id||'new')!==String(id||'new'))return;
+    // For an existing listing, the database is authoritative. Do not let an
+    // older autosaved draft (which may contain an empty/partial variety set)
+    // overwrite varieties that were just loaded from Supabase.
+    const serverLoadedAt=Number(root.dataset.serverLoadedAt||0);
+    if(serverLoadedAt && Number(d.savedAt||0) <= serverLoadedAt) return;
     draftRevisions.set(key,Math.max(Number(d.revision)||0,draftRevisions.get(key)||0));
     Object.entries(d.values).forEach(([fieldId,v])=>{const el=byId(fieldId);if(!el||!root.contains(el))return;if(el.type==='checkbox')el.checked=!!v;else el.value=v;el.dispatchEvent(new Event('change',{bubbles:true}))});
     if(kind==='product'){
