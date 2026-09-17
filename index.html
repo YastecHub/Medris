@@ -22776,7 +22776,7 @@ async function adminToggleVendorActive(vendorId, currentlyActive, businessName) 
 
 async function adminUnlockVendor(vendorId, businessName) {
   if (!session?.user?.id || profile?.role !== "admin") { showToast("Admin access is required.", "error"); return; }
-  if (!(await showConfirmDialog(`Unlock "${businessName || "this vendor"}"? The vendor will become active again. Any commission still owed will remain owed.`, { title: "Unlock vendor", okLabel: "Unlock vendor" }))) return;
+  if (!(await showConfirmDialog(`Unlock "${businessName || "this vendor"}"? The vendor will become active again. Any commission still owed will remain owed. Admins can unlock the storefront regardless of the outstanding commission amount.`, { title: "Unlock vendor", okLabel: "Unlock vendor" }))) return;
   if (adminVendorActionBusy.has(vendorId)) return;
   adminVendorActionBusy.add(vendorId);
   try {
@@ -23209,7 +23209,7 @@ async function renderAdminFinance() {
       <td><span class="badge ${v.commission_status === "overdue" ? "danger" : v.commission_status === "due_soon" ? "warning" : v.commission_status === "paid" ? "success" : "warning"}">${esc(v.commission_status || "paid")}</span></td>
       <td>
         <span class="badge ${v.is_active ? "success" : "danger"}">${v.is_active ? "Active" : "Paused"}</span>
-        ${v.admin_paused ? `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', false, '${esc(v.business_name)}')">Reactivate</button>` : (owed > 0 && v.commission_paused ? `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminUnlockVendor('${v.vendor_id}', '${esc(v.business_name)}')">Unlock</button>` : `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', ${v.is_active}, '${esc(v.business_name)}')">${v.is_active ? "Pause" : "Reactivate"}</button>`)}
+        ${v.admin_paused ? `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', false, '${esc(v.business_name)}')">Reactivate</button>` : `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="${v.is_active ? `adminToggleVendorActive('${v.vendor_id}', true, '${esc(v.business_name)}')` : `adminUnlockVendor('${v.vendor_id}', '${esc(v.business_name)}')`}">${v.is_active ? "Pause" : "Unlock"}</button>`}
       </td>
     </tr>`;
   });
