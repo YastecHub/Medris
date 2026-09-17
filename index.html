@@ -37371,3 +37371,111 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 })();
 </script>
 <!-- LEVROMART_FINAL_PATCH_20260917_PAYOUT_BANK_PICKER_AND_BANNER -->
+
+<style id="levromart-calm-absolute-no-motion-20260917">
+/* CALM MODE = absolutely no visual motion.  Full Motion leaves the existing
+   Levromart motion systems untouched. */
+html[data-levro-motion="calm"],
+html[data-levro-motion="calm"] body {
+  scroll-behavior: auto !important;
+}
+html[data-levro-motion="calm"] *,
+html[data-levro-motion="calm"] *::before,
+html[data-levro-motion="calm"] *::after {
+  animation: none !important;
+  animation-play-state: paused !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+/* Remove decorative lift/pop states; do not touch explicit drag/swipe transforms. */
+html[data-levro-motion="calm"] #app .product-card-wrap:hover,
+html[data-levro-motion="calm"] #app .product-card-wrap:active,
+html[data-levro-motion="calm"] #app .vendor-card:hover,
+html[data-levro-motion="calm"] #app .vendor-card:active,
+html[data-levro-motion="calm"] #app .card:hover,
+html[data-levro-motion="calm"] #app .card:active,
+html[data-levro-motion="calm"] #app .cat-chip:hover,
+html[data-levro-motion="calm"] #app .cat-chip:active,
+html[data-levro-motion="calm"] #app .fav-btn:hover,
+html[data-levro-motion="calm"] #app .fav-btn:active,
+html[data-levro-motion="calm"] #app .card-cart-btn:hover,
+html[data-levro-motion="calm"] #app .card-cart-btn:active,
+html[data-levro-motion="calm"] #app .levro-quick-action:hover,
+html[data-levro-motion="calm"] #app .levro-quick-action:active {
+  transform: none !important;
+}
+html[data-levro-motion="calm"] #bottomNav,
+html[data-levro-motion="calm"] #aiChatFab,
+html[data-levro-motion="calm"] #cartFab {
+  transform: none !important;
+  opacity: 1 !important;
+}
+</style>
+<script id="levromart-calm-absolute-no-motion-20260917">
+(function(){
+  "use strict";
+  const originalScrollTo = window.scrollTo.bind(window);
+  const originalScrollBy = window.scrollBy.bind(window);
+  const originalElementScrollIntoView = Element.prototype.scrollIntoView;
+  let patched = false;
+
+  function calmScrollOptions(options){
+    if (!options || typeof options !== "object") return options;
+    if (options.behavior !== "smooth") return options;
+    return Object.assign({}, options, {behavior:"auto"});
+  }
+
+  function patchScrollingForCalm(){
+    if (patched) return;
+    patched = true;
+    window.scrollTo = function(){
+      if (isLevromartCalmMotion()) {
+        const args = Array.from(arguments);
+        if (args.length === 1 && args[0] && typeof args[0] === "object") args[0] = calmScrollOptions(args[0]);
+        return originalScrollTo.apply(window, args);
+      }
+      return originalScrollTo.apply(window, arguments);
+    };
+    window.scrollBy = function(){
+      if (isLevromartCalmMotion()) {
+        const args = Array.from(arguments);
+        if (args.length === 1 && args[0] && typeof args[0] === "object") args[0] = calmScrollOptions(args[0]);
+        return originalScrollBy.apply(window, args);
+      }
+      return originalScrollBy.apply(window, arguments);
+    };
+    Element.prototype.scrollIntoView = function(){
+      if (isLevromartCalmMotion()) {
+        const args = Array.from(arguments);
+        if (args.length === 1 && args[0] && typeof args[0] === "object") args[0] = calmScrollOptions(args[0]);
+        return originalElementScrollIntoView.apply(this, args);
+      }
+      return originalElementScrollIntoView.apply(this, arguments);
+    };
+  }
+  function unpatchScrollingForFullMotion(){
+    if (!patched) return;
+    patched = false;
+    window.scrollTo = originalScrollTo;
+    window.scrollBy = originalScrollBy;
+    Element.prototype.scrollIntoView = originalElementScrollIntoView;
+  }
+
+  const originalApply = window.applyLevromartMotionPreference;
+  if (typeof originalApply === "function" && !window.__levroAbsoluteCalmMotionWrapped) {
+    window.__levroAbsoluteCalmMotionWrapped = true;
+    window.applyLevromartMotionPreference = function(value){
+      const result = originalApply.apply(this, arguments);
+      if (isLevromartCalmMotion()) patchScrollingForCalm();
+      else unpatchScrollingForFullMotion();
+      return result;
+    };
+  }
+
+  /* Ensure the currently selected/default mode is applied even if this final
+     guard loads after the original motion preference initializer. */
+  try {
+    if (isLevromartCalmMotion()) patchScrollingForCalm();
+  } catch (_) {}
+})();
+</script>
