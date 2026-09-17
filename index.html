@@ -18,6 +18,18 @@
   .edit-order-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem;}
   .order-buyer-location-wrap{margin-top:.9rem;padding-top:.9rem;border-top:1px solid var(--border);}
   .order-buyer-location-map{width:100%;height:300px;margin-top:.65rem;border-radius:.9rem;overflow:hidden;border:1px solid var(--border);background:var(--input-bg);}
+  .order-buyer-location-btn{display:flex!important;align-items:center;justify-content:center;width:100%;max-width:420px;margin:.75rem auto 0!important;text-align:center;}
+  .order-buyer-map-recenter-control{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--card)!important;color:var(--text)!important;border:1px solid var(--border)!important;box-shadow:0 3px 12px rgba(0,0,0,.16);cursor:pointer;font-size:1rem;}
+  .order-buyer-map-recenter-control:hover{color:var(--primary)!important;}
+  .order-buyer-route{pointer-events:none;}
+  .payment-before-delivery-notice{display:flex;flex-direction:column;gap:.42rem;padding:.8rem .9rem!important;}
+  .payment-before-delivery-title{display:block;font-size:1rem;line-height:1.3;}
+  .payment-before-delivery-copy{display:block;font-size:.78rem;line-height:1.55;color:var(--text-muted);}
+  .payment-contact-vendor{font-style:normal;font-weight:800;color:var(--primary);}
+  #app .payment-confirm-btn{background:#2563eb!important;border-color:#2563eb!important;color:#fff!important;box-shadow:none!important;}
+  #app .payment-confirm-btn:hover{background:#1d4ed8!important;border-color:#1d4ed8!important;}
+  #app .payment-confirm-btn:active{background:#1e40af!important;border-color:#1e40af!important;}
+
   @media(max-width:520px){.edit-order-modal-content{padding:.95rem!important}.edit-order-item-row{align-items:flex-start}.edit-order-qty-label{flex-direction:column;align-items:flex-end;gap:.2rem}.order-buyer-location-map{height:260px}}
 </style>
 <style id="pickup-payment-message-polish">
@@ -9276,8 +9288,15 @@ async function setAiDataConsent(value) {
 let pendingNotificationReads = new Set();
 async function queueNotificationRead(id){
   if(!session?.user?.id || !id) return;
-  const key=String(id); pendingNotificationReads.add(key);
-  getNotifHost()?.querySelector(`.notif-item[data-id="${CSS.escape(key)}"]`)?.classList.remove("unread");
+  pendingNotificationReads.add(String(id));
+}
+function queueVisibleNotificationReads(){
+  const host=getNotifHost();
+  if(!host || !session?.user?.id) return;
+  host.querySelectorAll(".notif-item.unread[data-id]").forEach((el)=>{
+    const id=String(el.dataset.id||"").trim();
+    if(id) pendingNotificationReads.add(id);
+  });
 }
 async function commitPendingNotificationReads(){
   if(!session?.user?.id || !pendingNotificationReads.size) return;
@@ -9575,6 +9594,7 @@ async function renderNotifPanel() {
   } else {
     panel.innerHTML = '';
   }
+  queueVisibleNotificationReads();
   // The backend still retains archived/deleted fields for compatibility, but
   // the user-facing notification experience is now a smart activity stream.
   // We never mutate or destructively migrate those legacy fields here.
@@ -9664,6 +9684,8 @@ async function renderNotifPanel() {
     : `<p class="muted" style="padding:0.4rem;">${emptyMsg}</p>`;
 
   panel.innerHTML = `${topBar}${markAllBar}<div class="notif-list-scroll">${list}</div>`;
+  // Keep unread styling visible while the notification surface is open; leaving the surface commits these IDs as read.
+  queueVisibleNotificationReads();
   panel.classList.toggle("selecting", notifSelectMode);
   if (isNotificationsPage) {
     const actions = byId("notificationsPageHeaderActions");
@@ -10738,7 +10760,7 @@ function renderBottomNav() {
   if (!nav) return;
 
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
-  const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors')", view: "vendors" };
+  const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('grid'),80))", view: "vendors" };
   const messagesTab = { icon: "<i class='fa-solid fa-comment-dots'></i>", label: "Messages", action: "navigate('messages')", view: "messages", badge: unreadMessageCount };
   const requestsTab = isVendorUser
     ? { icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
@@ -11499,6 +11521,12 @@ function showCommissionPaywall(owedAmount) {
 
 async function navigate(view, params = {}, pushHistory = true) {
   if (await levroCommissionGate(view)) return;
+  // Leaving the notification surface commits the unread items that were
+  // visible during this visit. This covers Back, bottom-nav taps, links, and
+  // any other route transition that does not pass through closeAllPanels().
+  if (currentView === "notifications" && view !== "notifications") {
+    try { await commitPendingNotificationReads(); } catch (_) {}
+  }
   try { window.closeLevromartTransientFilters?.(); } catch (_) {}
   const app = byId("app");
   // Accept both the historical boolean and the newer {replace:true} form so
@@ -11886,6 +11914,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     saveRaf=requestAnimationFrame(saveScroll);
   },{passive:true});
   window.addEventListener("pagehide",saveScroll,{passive:true});
+  window.addEventListener("pagehide",()=>{ try { if (typeof commitPendingNotificationReads === "function") void commitPendingNotificationReads(); } catch (_) {} },{passive:true});
   window.addEventListener("beforeunload",saveScroll,{passive:true});
 
   let initialScrollRestored=false;
@@ -21279,7 +21308,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const buyerReportedPayment=(order.payments||[]).filter(p=>p.status==='pending' && String(p.provider_reference||'').trim().toLowerCase()==='buyer_report').sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))[0];
   if(buyerReportedPayment && isVendor){
     const paymentLabel=buyerReportedPayment.payment_type==='delivery_deposit_20' ? 'delivery deposit' : buyerReportedPayment.payment_type==='rental_fee' ? 'rental fee' : buyerReportedPayment.payment_type==='deposit' ? 'refundable deposit' : 'payment';
-    html += `<div class="card payment-confirmation-card"><div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.7rem;"><div><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Payment reported</h3><p class="muted" style="margin:.35rem 0 0;">The customer says they transferred <strong>${naira(buyerReportedPayment.amount)}</strong> for the ${esc(paymentLabel)}. Check your bank account before confirming.</p></div><span class="badge payment-reported-badge">Awaiting confirmation</span></div><div class="payment-confirmation-actions"><button type="button" class="btn btn-sm" onclick="confirmBuyerReportedPayment('${order.id}')"><i class="fa-solid fa-check"></i> Confirm payment</button><button type="button" class="btn btn-sm btn-danger" onclick="openBuyerPaymentDispute('${order.id}')"><i class="fa-solid fa-triangle-exclamation"></i> Raise dispute</button></div></div>`;
+    html += `<div class="card payment-confirmation-card"><div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.7rem;"><div><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Payment reported</h3><p class="muted" style="margin:.35rem 0 0;">The customer says they transferred <strong>${naira(buyerReportedPayment.amount)}</strong> for the ${esc(paymentLabel)}. Check your bank account before confirming.</p></div><span class="badge payment-reported-badge">Awaiting confirmation</span></div><div class="payment-confirmation-actions"><button type="button" class="btn btn-sm payment-confirm-btn" onclick="confirmBuyerReportedPayment('${order.id}')"><i class="fa-solid fa-check"></i> Confirm payment</button><button type="button" class="btn btn-sm btn-danger" onclick="openBuyerPaymentDispute('${order.id}')"><i class="fa-solid fa-triangle-exclamation"></i> Raise dispute</button></div></div>`;
   } else if(buyerReportedPayment && isCustomer){
     html += `<div class="card payment-reported-customer-card"><div class="flex" style="gap:.55rem;align-items:flex-start;"><i class="fa-solid fa-hourglass-half" style="margin-top:.15rem;"></i><div><strong>Payment reported</strong><p class="muted" style="margin:.25rem 0 0;">Your payment of <strong>${naira(buyerReportedPayment.amount)}</strong> has been reported to the vendor. The order is now <strong>Payment unresolved</strong> until the vendor confirms receipt or raises a dispute.</p></div></div></div>`;
   }
@@ -21361,7 +21390,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       ? (deliveryDepositReadyForBalance ? deliveryBalanceAmount : deliveryDepositAmount)
       : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
     html += `<div class="card ${isDeliveryOrder && deliveryDepositReadyForBalance ? "delivery-balance-payment-card" : ""}"><div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;"><h3 style="margin:0;"><i class="fa-solid fa-credit-card"></i> ${isPayAfterDelivery ? (deliveryDepositReadyForBalance ? "Complete your payment" : "Pay deposit to confirm your order") : isDeliveryOrder ? "Pay before delivery" : "Pay now"}</h3></div>
-      ${isPayAfterDelivery ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyForBalance ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>${deliveryDepositPercent}% payment reported</strong><br>Your ${deliveryDepositPercent}% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>The vendor has delivered your order. Pay the remaining ${deliveryRemainingPercent}% balance of <strong>${naira(payableAmount)}</strong> to complete your payment.`) : `Pay a ${deliveryDepositPercent}% deposit of <strong>${naira(payableAmount)}</strong> based on the item amount. The delivery fee remains part of the total order balance.`}</p>` : isDeliveryOrder ? `<div class="banner banner-warning" style="margin:.45rem 0 .8rem;"><strong><i class="fa-solid fa-wallet"></i> Pay before delivery</strong><span>Full payment of <strong>${naira(payableAmount)}</strong> is required before delivery. If you need any change to this payment arrangement, please contact the vendor.</span></div>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
+      ${isPayAfterDelivery ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;">${deliveryDepositReadyForBalance ? (deliveryDepositReported && !deliveryDepositPaid ? `<strong>${deliveryDepositPercent}% payment reported</strong><br>Your ${deliveryDepositPercent}% delivery payment has been reported to the vendor. You can proceed with the remaining <strong>${naira(payableAmount)}</strong> balance.` : `<strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>The vendor has delivered your order. Pay the remaining ${deliveryRemainingPercent}% balance of <strong>${naira(payableAmount)}</strong> to complete your payment.`) : `Pay a ${deliveryDepositPercent}% deposit of <strong>${naira(payableAmount)}</strong> based on the item amount. The delivery fee remains part of the total order balance.`}</p>` : isDeliveryOrder ? `<div class="banner banner-warning payment-before-delivery-notice" style="margin:.65rem 0 .9rem;"><strong class="payment-before-delivery-title"><i class="fa-solid fa-wallet"></i> Pay ${naira(payableAmount)} before delivery</strong><span class="payment-before-delivery-copy"><em>Full payment is required before the order can be delivered.</em> <span class="payment-contact-vendor">Contact the vendor</span> if you need a different payment arrangement.</span></div>` : `<p class="muted" style="margin:.45rem 0 .8rem;">Paystack is not available yet. Pay the vendor directly for now.</p>`}
       <button class="btn btn-sm btn-outline ${isDeliveryOrder && deliveryDepositReadyForBalance ? "delivery-balance-paystack-btn" : ""}" type="button" disabled style="opacity:.58;cursor:not-allowed;width:100%;justify-content:center;"><i class="fa-solid fa-credit-card"></i> Pay with Paystack — Coming soon</button>
       <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositReadyForBalance ? "delivery-balance-direct-btn" : ""}" type="button" onclick="openVendorDirectPayment('${order.id}')" style="width:100%;justify-content:center;margin-top:.5rem;"><i class="fa-solid fa-building-columns"></i> ${isPayAfterDelivery && deliveryDepositReadyForBalance ? ("Pay remaining " + deliveryRemainingPercent + "% directly to vendor") : isPayAfterDelivery ? ("Pay " + deliveryDepositPercent + "% directly to vendor") : "Pay directly to vendor"} · ${naira(payableAmount)}</button>
     </div>`;
@@ -21548,28 +21577,71 @@ async function showOrderBuyerLocation(orderId, buyerLat, buyerLng, vendorLat, ve
   if (!wrap || !mapEl) return;
   wrap.classList.remove("hidden");
   await loadLeaflet();
+
+  const customerPoint = [Number(buyerLat), Number(buyerLng)];
+  const vendorPoint = vendorLat != null && vendorLng != null ? [Number(vendorLat), Number(vendorLng)] : null;
   if (statusEl) {
-    const km = vendorLat != null && vendorLng != null ? haversineKm(Number(vendorLat), Number(vendorLng), Number(buyerLat), Number(buyerLng)) : null;
+    const km = vendorPoint ? haversineKm(vendorPoint[0], vendorPoint[1], customerPoint[0], customerPoint[1]) : null;
     statusEl.textContent = km != null ? `${formatDistanceKm(km)} from your shop` : "Customer location captured for this delivery.";
   }
+
   let map = mapEl._levroOrderBuyerMap;
   if (!map) {
     map = window.L.map(mapEl, { attributionControl: true, zoomControl: true, zoomControlOptions: { position: "topleft" } });
     map.attributionControl.setPrefix(false);
     addBasemapTileLayer(map);
+    const RecenterControl = window.L.Control.extend({
+      options: { position: "topright" },
+      onAdd() {
+        const btn = window.L.DomUtil.create("button", "order-buyer-map-recenter-control");
+        btn.type = "button";
+        btn.title = "Center on customer location";
+        btn.setAttribute("aria-label", "Center map on customer location");
+        btn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i>';
+        window.L.DomEvent.disableClickPropagation(btn);
+        window.L.DomEvent.on(btn, "click", (e) => {
+          window.L.DomEvent.stop(e);
+          map.setView(customerPoint, Math.max(map.getZoom(), 15), { animate: true, duration: .35 });
+        });
+        return btn;
+      }
+    });
+    map.addControl(new RecenterControl());
     mapEl._levroOrderBuyerMap = map;
   } else {
-    map.eachLayer(layer => { if (layer instanceof window.L.Marker || layer instanceof window.L.CircleMarker) map.removeLayer(layer); });
+    map.eachLayer(layer => {
+      if (layer instanceof window.L.Marker || layer instanceof window.L.CircleMarker || layer instanceof window.L.Polyline) map.removeLayer(layer);
+    });
   }
-  const buyerMarker = window.L.marker([Number(buyerLat), Number(buyerLng)]).addTo(map);
+
+  const buyerMarker = window.L.marker(customerPoint).addTo(map);
   buyerMarker.bindPopup("Customer delivery location").openPopup();
-  const points = [[Number(buyerLat), Number(buyerLng)]];
-  if (vendorLat != null && vendorLng != null) {
-    const vendorMarker = window.L.marker([Number(vendorLat), Number(vendorLng)], { icon: vendorMapIcon() }).addTo(map);
+  const points = [customerPoint];
+  if (vendorPoint) {
+    const vendorMarker = window.L.marker(vendorPoint, { icon: vendorMapIcon() }).addTo(map);
     vendorMarker.bindPopup("Your shop");
-    points.push([Number(vendorLat), Number(vendorLng)]);
+    points.push(vendorPoint);
+
+    // Draw the direct trace immediately so the relationship is visible even
+    // before the optional road-routing request returns.
+    const routeLine = window.L.polyline([vendorPoint, customerPoint], {
+      color: "#10b080", weight: 4, opacity: .82, lineCap: "round", lineJoin: "round", dashArray: "10 8", className: "order-buyer-route"
+    }).addTo(map);
+    mapEl._levroOrderBuyerRoute = routeLine;
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${vendorPoint[1]},${vendorPoint[0]};${customerPoint[1]},${customerPoint[0]}?overview=full&geometries=geojson`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4500);
+      const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+      clearTimeout(timer);
+      const json = await res.json().catch(() => null);
+      const coords = json?.routes?.[0]?.geometry?.coordinates;
+      if (Array.isArray(coords) && coords.length > 1) routeLine.setLatLngs(coords.map(c => [Number(c[1]), Number(c[0])]));
+    } catch (_) {}
   }
-  map.fitBounds(window.L.latLngBounds(points), { padding: [35,35], maxZoom: 15 });
+
+  if (points.length > 1) map.fitBounds(window.L.latLngBounds(points), { padding: [42,42], maxZoom: 15, animate: false });
+  else map.setView(customerPoint, Math.max(map.getZoom(), 15), { animate: false });
   requestAnimationFrame(() => requestAnimationFrame(() => map?.invalidateSize(true)));
 }
 
