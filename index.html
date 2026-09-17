@@ -10426,7 +10426,8 @@ function updateAuthUI() {
     panel.innerHTML = `
       <div class="profile-panel-static">
         <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn" onclick="closeAllPanels()" aria-label="Close profile"><i class='fa-solid fa-xmark'></i></button></div>
-        <div class="profile-panel-header">
+
+        <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : ''}" ${vendor ? `role="button" tabindex="0" aria-label="Open your storefront" onclick="closeAllPanels();navigate('storefront',{vendorId:'${esc(vendor.id)}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('storefront',{vendorId:'${esc(vendor.id)}'})}"` : ''}>
           <div class="avatar-edit-wrap">
             ${profile.avatar_url
               ? `<button type="button" class="profile-avatar-lightbox-btn" onclick="openProfileImageLightbox('${esc(profile.avatar_url)}','${esc(profile.name || "Profile")}',event)" aria-label="View profile picture"><img src="${esc(profile.avatar_url)}" class="avatar-circle avatar-lg" style="object-fit:cover;" alt="${esc(profile.name || "Profile")}" draggable="false" /></button>`
@@ -22983,6 +22984,12 @@ function exportFinancePdf() {
 .instant-route-skeleton span:nth-child(3){width:72%;}
 @keyframes levroRoutePulse{0%,100%{opacity:.48}50%{opacity:.85}}
 </style>
+<style id="levromart-own-storefront-profile-link-20260917">
+.profile-own-storefront-header{cursor:pointer!important;border-radius:16px!important;transition:background .16s ease,transform .16s ease!important;}
+.profile-own-storefront-header:hover{background:color-mix(in srgb,var(--primary) 6%,transparent)!important;}
+.profile-own-storefront-header:active{transform:scale(.99)!important;}
+.profile-own-storefront-header:focus-visible{outline:2px solid var(--primary)!important;outline-offset:2px!important;}
+</style>
 </body>
 
 
@@ -27355,7 +27362,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 
       if(file){
         const ext=(file.name.split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase()||"bin";
-        const path=`${session.user.id}/${Date.now()}.${ext}`;
+        const path=String(session.user.id)+"/"+String(Date.now())+"."+ext;
         const {error:upErr}=await sb.storage.from("vendor-docs").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});
         if(upErr) throw new Error(`Document upload failed: ${upErr.message}`);
         verification_docs=[path];
@@ -28111,7 +28118,7 @@ window.renderVendorMapRail = function(){
     const banks=typeof NIGERIAN_BANKS!=="undefined"?NIGERIAN_BANKS:[];
     return out.replace(/<label>WhatsApp number<\/label>/i,'<label>WhatsApp number *</label>')
       .replace(/(<input id="vaWhatsapp"[^>]*)(>)/i,'$1 required$2')
-      .replace(/<label>CAC number<\/label>/i,`<label>Bank details *</label><div class="grid" style="grid-template-columns:1fr 1fr;gap:.55rem;"><div><label style="font-size:.78rem;">Bank *</label><select id="vaBankCode" required>${banks.map(b=>`<option value="${esc(b.code)}">${esc(b.name)}</option>`).join("")}</select></div><div><label style="font-size:.78rem;">Account number *</label><input id="vaAccountNumber" inputmode="numeric" maxlength="10" required placeholder="10-digit account number" /></div></div><label>Account name *</label><input id="vaAccountName" required placeholder="Name on bank account" /><label>CAC number</label>`);
+      .replace(/<label>CAC number<\/label>/i,`<label>Bank details *</label><div class="grid" style="grid-template-columns:1fr 1fr;gap:.55rem;"><div><label style="font-size:.78rem;">Bank *</label><select id="vaBankCode" required>${banks.map(b=>`<option value="${esc(b.code)}">${esc(b.name)}</option>`).join("")}</select></div><div><label style="font-size:.78rem;">Account number *</label><input id="vaAccountNumber" inputmode="numeric" maxlength="10" required placeholder="10-digit account number" /></div></div><label>Account name <span class="muted">(optional)</span></label><input id="vaAccountName" required placeholder="Name on bank account" /><label>CAC number</label>`);
   };
   async function getApplicantLocation(){
     if(!navigator.geolocation)return null;
@@ -28146,7 +28153,7 @@ window.renderVendorMapRail = function(){
       const file=byId("vaDoc")?.files?.[0];
       if(file){
         const ext=(file.name.split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase()||"bin";
-        const path=`${session.user.id}/${Date.now()}.${ext}`;
+        const path=String(session.user.id)+"/"+String(Date.now())+"."+ext;
         const {error:upErr}=await sb.storage.from("vendor-docs").upload(
           path,file,
           {contentType:file.type||"application/octet-stream",upsert:false}
@@ -30178,6 +30185,9 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   "use strict";
   let promptBusy=false;
   window.__reviewPromptDismissedOrderId=null;
+  const REVIEW_DISMISS_KEY='levromart_review_prompt_dismissed_v1';
+  function dismissed(orderId){try{return JSON.parse(localStorage.getItem(REVIEW_DISMISS_KEY)||'[]').includes(String(orderId));}catch(_){return false;}}
+  function rememberDismissed(orderId){try{const a=JSON.parse(localStorage.getItem(REVIEW_DISMISS_KEY)||'[]');const id=String(orderId);if(!a.includes(id)){a.push(id);localStorage.setItem(REVIEW_DISMISS_KEY,JSON.stringify(a.slice(-100)));}}catch(_){}}
   function closePrompt(){document.getElementById('levroReviewPromptModal')?.remove();}
   window.__closeLevromartReviewPrompt=closePrompt;
   async function findEligibleReview(){
@@ -30192,14 +30202,14 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
     return candidates.find(o=>!reviewed.has(String(o.id)))||null;
   }
   function showPrompt(order){
-    if(!order||document.getElementById('levroReviewPromptModal')||window.__reviewPromptDismissedOrderId===String(order.id)||currentView==='leaveReview')return;
+    if(!order||document.getElementById('levroReviewPromptModal')||(window.__reviewPromptDismissedOrderId===String(order.id)||dismissed(order.id))||currentView==='leaveReview')return;
     const modal=document.createElement('div');modal.id='levroReviewPromptModal';modal.className='levro-review-prompt-backdrop';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
     const name=esc(order.vendor?.business_name||'this vendor');
     modal.innerHTML=`<div class="levro-review-prompt-card"><div class="levro-review-prompt-icon"><i class="fa-solid fa-star"></i></div><div style="text-align:center;"><h2 style="margin:0;">Give ${name} a review</h2><p class="muted" style="margin:.4rem 0 0;">Your payment has been verified and this order is complete. Tell us how your experience was.</p></div><div class="levro-review-prompt-actions"><button type="button" class="btn btn-sm btn-outline" id="levroReviewPromptLater">Not now</button><button type="button" class="btn btn-sm" id="levroReviewPromptNow"><i class="fa-solid fa-star"></i> Review now</button></div></div>`;
     document.body.appendChild(modal);
-    modal.querySelector('#levroReviewPromptLater')?.addEventListener('click',()=>{window.__reviewPromptDismissedOrderId=String(order.id);closePrompt();});
-    modal.querySelector('#levroReviewPromptNow')?.addEventListener('click',async()=>{window.__reviewPromptDismissedOrderId=String(order.id);closePrompt();await navigate('leaveReview',{orderId:order.id},true);});
-    modal.addEventListener('click',e=>{if(e.target===modal){window.__reviewPromptDismissedOrderId=String(order.id);closePrompt();}});
+    modal.querySelector('#levroReviewPromptLater')?.addEventListener('click',()=>{window.__reviewPromptDismissedOrderId=String(order.id);rememberDismissed(order.id);closePrompt();});
+    modal.querySelector('#levroReviewPromptNow')?.addEventListener('click',async()=>{window.__reviewPromptDismissedOrderId=String(order.id);rememberDismissed(order.id);closePrompt();await navigate('leaveReview',{orderId:order.id},true);});
+    modal.addEventListener('click',e=>{if(e.target===modal){window.__reviewPromptDismissedOrderId=String(order.id);rememberDismissed(order.id);closePrompt();}});
   }
   window.maybePromptLevromartReview=async function(){
     if(promptBusy||!session?.user?.id||profile?.role==='admin'||currentView==='leaveReview')return;
@@ -34449,7 +34459,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
           <span>The bank details you enter here automatically become your Levromart payout account.</span>
         </div>
 
-        <label>Bank *</label>
+        <label>Bank <span class="muted">(optional)</span></label>
         <button type="button" id="vaBankPickerBtn" class="bank-picker-trigger"
           onclick="openVendorApplyBankPicker()" aria-haspopup="dialog" aria-expanded="false">
           <span id="vaBankPickerLabel">Select a bank</span>
@@ -34463,7 +34473,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
         <label>Account name *</label>
         <input id="vaAccountName" autocomplete="name" placeholder="Name on the bank account" />
 
-        <label>Account number *</label>
+        <label>Account number <span class="muted">(optional)</span></label>
         <input id="vaAccountNumber" inputmode="numeric" maxlength="10"
           autocomplete="off" placeholder="10-digit account number" />
       </div>
@@ -34552,7 +34562,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       const file = byId("vaDoc")?.files?.[0];
       if(file){
         const ext=(file.name.split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase()||"bin";
-        const path=`${session.user.id}/${Date.now()}.${ext}`;
+        const path=String(session.user.id)+"/"+String(Date.now())+"."+ext;
         button.innerHTML='<i class="fa-solid fa-upload"></i> Uploading…';
         const {error:uploadError}=await sb.storage.from("vendor-docs").upload(
           path,file,{contentType:file.type||"application/octet-stream",upsert:false}
@@ -35364,8 +35374,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
       <div class="vendor-application-payout-section">
         <div class="vendor-application-payout-heading">
-          <strong>Payout account</strong>
-          <span>Enter the bank details exactly as they appear on the payout account.</span>
+          <strong>Payout account <span class="muted">(optional at application stage)</span></strong>
+          <span>Your payout account can be completed separately after your application is submitted.</span>
         </div>
 
         <label>Bank *</label>
@@ -35431,14 +35441,10 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     if(!business_name){errorEl.textContent="Please enter your business name.";errorEl.classList.remove("hidden");byId("vaBusinessName")?.focus();return;}
     if(!phone){errorEl.textContent="Please enter your phone number.";errorEl.classList.remove("hidden");byId("vaPhone")?.focus();return;}
     if(!whatsapp){errorEl.textContent="Please enter your WhatsApp number.";errorEl.classList.remove("hidden");byId("vaWhatsapp")?.focus();return;}
-    if(!bankCode){errorEl.textContent="Please select your payout bank.";errorEl.classList.remove("hidden");byId("vaBankPickerBtn")?.focus();return;}
-    if(!accountName){errorEl.textContent="Please enter the account name.";errorEl.classList.remove("hidden");byId("vaAccountName")?.focus();return;}
-    if(!/^\d{10}$/.test(accountNumber)){errorEl.textContent="Please enter a valid 10-digit account number.";errorEl.classList.remove("hidden");byId("vaAccountNumber")?.focus();return;}
 
     vendorApplyBusy=true;button.disabled=true;button.classList.add("is-busy");
     const original=button.innerHTML;
     let vendorId=null;
-    let createdNew=false;
 
     try{
       let sectorId=sectorSelection;
@@ -35454,116 +35460,75 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       const city=String(byId("vaCity")?.value||"").trim();
       const cac=String(byId("vaCac")?.value||"").trim();
       const bio=String(byId("vaBio")?.value||"").trim();
-
-      let verificationDocs=[];
-      const file=byId("vaDoc")?.files?.[0];
-      if(file){
-        const ext=(file.name.split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase()||"bin";
-        const path=`${session.user.id}/${Date.now()}.${ext}`;
-        button.innerHTML='<i class="fa-solid fa-upload"></i> Uploading…';
-        const {error:uploadError}=await sb.storage.from("vendor-docs").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});
-        if(uploadError)throw new Error(`Document upload failed: ${uploadError.message}`);
-        verificationDocs=[path];
-      }
+      const file=byId("vaDoc")?.files?.[0]||null;
 
       button.innerHTML='<i class="fa-solid fa-paper-plane"></i> Submitting…';
 
-      const {data:existing}=await sb.from("vendors")
-        .select("id,verification_status").eq("user_id",session.user.id).is("deleted_at",null).maybeSingle();
+      // Atomic server-side upsert. This specifically fixes the
+      // vendors_user_id_key failure caused by an existing soft-deleted vendor
+      // row. It also creates the applicant notification in the same transaction.
+      const {data:submittedVendorId,error:submitError}=await sb.rpc("submit_vendor_application",{
+        p_sector_id:sectorId,
+        p_business_name:business_name,
+        p_address:address||null,
+        p_city:city||null,
+        p_phone:phone||null,
+        p_whatsapp:whatsapp,
+        p_cac_number:cac||null,
+        p_bio:bio||null,
+        p_bank_code:bankCode||null,
+        p_bank_name:bankName||null,
+        p_account_name:accountName||null,
+        p_account_number:/^\d{10}$/.test(accountNumber)?accountNumber:null
+      });
+      if(submitError)throw new Error(submitError.message);
+      vendorId=submittedVendorId;
+      if(!vendorId)throw new Error("The application could not be submitted. Please try again.");
 
-      const payload={
-        sector_id:sectorId,business_name,address:address||null,city:city||null,phone,
-        whatsapp_number:whatsapp||null,cac_number:cac||null,bio:bio||null,
-        verification_docs:verificationDocs,bank_code:bankCode,bank_name:bankName||null,
-        account_name:accountName,account_number:accountNumber,is_active:false
-      };
+      // A successful RPC means the application and notification are already
+      // committed. Never wait for Storage, Paystack, auth refresh, or navigation.
+      showToast("Application submitted successfully. Your application is now awaiting review.","success");
 
-      if(existing?.id){
-        vendorId=existing.id;
-        if(existing.verification_status==="verified")throw new Error("Your vendor account is already active.");
-        const {error:updateError}=await sb.from("vendors").update({...payload,verification_status:"pending"}).eq("id",vendorId).eq("user_id",session.user.id);
-        if(updateError)throw new Error(updateError.message);
-      }else{
-        const {data:createdVendor,error:insertError}=await sb.from("vendors").insert({user_id:session.user.id,...payload,verification_status:"pending"}).select("id").single();
-        if(insertError)throw new Error(insertError.message);
-        vendorId=createdVendor?.id;createdNew=true;
+      // Optional document upload is deliberately secondary to application
+      // submission. It can never make the Submit button appear stuck.
+      if(file&&vendorId){
+        void (async()=>{
+          try{
+            const ext=(file.name.split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase()||"bin";
+            const path=String(session.user.id)+"/"+String(Date.now())+"."+ext;
+            const {error:uploadError}=await sb.storage.from("vendor-docs").upload(path,file,{contentType:file.type||"application/octet-stream",upsert:false});
+            if(uploadError)throw uploadError;
+            const {data:cur,error:readError}=await sb.from("vendors").select("verification_docs").eq("id",vendorId).eq("user_id",session.user.id).maybeSingle();
+            if(readError)throw readError;
+            const docs=Array.isArray(cur?.verification_docs)?cur.verification_docs.slice():[];
+            docs.push(path);
+            const {error:updateError}=await sb.from("vendors").update({verification_docs:docs}).eq("id",vendorId).eq("user_id",session.user.id);
+            if(updateError)throw updateError;
+          }catch(e){
+            console.warn("[Levromart] Background vendor document upload failed:",e);
+            void sb.rpc("create_notification",{
+              p_user_id:session.user.id,p_type:"vendor_application_document_action_needed",
+              p_title:"Application submitted — document needs attention",
+              p_body:"Your vendor application was submitted successfully, but the optional verification document could not be uploaded. Please add it from your vendor profile if required.",
+              p_target_view:"home",p_target_params:{vendorId},p_actor_id:null
+            }).catch(()=>{});
+          }
+        })();
       }
 
-      // The application itself is now safely persisted. Notify the applicant immediately
-      // rather than making them wait for the external payout-provider setup.
-      // The application row is the authoritative submission event. Fire the applicant
-      // notification immediately and do not block the UI on this secondary write.
-      void sb.rpc("create_notification",{
-        p_user_id:session.user.id,
-        p_type:"vendor_application_submitted",
-        p_title:"Application submitted",
-        p_body:"Your vendor application has been submitted successfully and is now awaiting review.",
-        p_target_view:"home",
-        p_target_params:{vendorId},
-        p_actor_id:null
-      }).then(({error:notificationError})=>{
-        if(notificationError)console.warn("[Levromart] Vendor application notification failed:",notificationError);
-      });
-
-      // Do not make the applicant wait for the external payout-provider API.
-      // The application is already saved and can be reviewed while payout setup runs.
-      showToast("Application submitted successfully. Your application is now awaiting review.", "success");
+      // Payout activation is intentionally not part of application submission.
+      // It remains a separate setup/approval operation.
       void refreshAuthState().catch(e=>console.warn("[Levromart] Post-application auth refresh failed:",e));
       void navigate("home").catch(e=>console.warn("[Levromart] Post-application navigation failed:",e));
-
-      // Do NOT hold the application submission open on the external payout API.
-      // The application is already persisted and the applicant has been notified.
-      // Payout provisioning continues independently and can be retried if needed.
-      void (async()=>{
-        try{
-          const payoutRes=await fetch("/api/vendor-payments",{
-            method:"POST",headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({action:"create-subaccount",accessToken:session.access_token,bankCode,bankName,accountNumber,accountName})
-          });
-          const payoutJson=await payoutRes.json().catch(()=>({}));
-          if(!payoutRes.ok||!payoutJson.subaccount_code)throw new Error(payoutJson.error||"Payout setup could not be completed.");
-          const {error:finalPayoutSaveError}=await sb.from("vendors").update({
-            bank_code:bankCode,bank_name:payoutJson.bank_name||bankName||null,
-            account_name:payoutJson.account_name||accountName||null,account_number:accountNumber,
-            paystack_subaccount_code:payoutJson.subaccount_code
-          }).eq("id",vendorId).eq("user_id",session.user.id);
-          if(finalPayoutSaveError)throw new Error("The payout account was created but could not be linked to your application.");
-          console.info("[Levromart] Vendor payout setup completed after application submission:",vendorId);
-        }catch(payoutErr){
-          console.warn("[Levromart] Background payout setup failed:",payoutErr);
-          void sb.rpc("create_notification",{
-            p_user_id:session.user.id,p_type:"vendor_application_payout_action_needed",
-            p_title:"Payout setup needs attention",
-            p_body:"Your vendor application was submitted successfully, but your payout account still needs to be completed. Please review your vendor profile.",
-            p_target_view:"home",p_target_params:{vendorId},p_actor_id:null
-          }).catch(notificationError=>console.warn("[Levromart] Payout follow-up notification failed:",notificationError));
-        }
-      })();
       return;
     }catch(err){
       console.error("[Levromart] Vendor application failed:",err);
-      if(createdNew&&vendorId){
-        // Keep the persisted application. Payout setup can be retried without forcing
-        // the vendor to fill the entire application again.
-        console.warn("[Levromart] Preserving submitted vendor application after payout setup failure:",vendorId);
-      }
-      errorEl.textContent=err?.message||"We couldn't complete the payout setup. Your application was saved; please retry payout setup from your vendor profile.";
+      errorEl.textContent=err?.message||"We couldn't submit your application. Please check the form and try again.";
       errorEl.classList.remove("hidden");
-      if(vendorId){
-        void sb.rpc("create_notification",{
-          p_user_id:session.user.id,
-          p_type:"vendor_application_payout_action_needed",
-          p_title:"Payout setup needs attention",
-          p_body:"Your vendor application was submitted, but the payout account could not be completed. Please review your vendor profile and try again.",
-          p_target_view:"home",
-          p_target_params:{vendorId},
-          p_actor_id:null
-        }).catch(notificationError=>console.warn("[Levromart] Payout failure notification failed:",notificationError));
-      }
       button.innerHTML=original;
     }finally{
       vendorApplyBusy=false;button.disabled=false;button.classList.remove("is-busy");
-      if(button.innerHTML.includes("Saving sector")||button.innerHTML.includes("Uploading")||button.innerHTML.includes("Submitting")||button.innerHTML.includes("Activating payout"))button.innerHTML=original;
+      if(button.innerHTML.includes("Saving sector")||button.innerHTML.includes("Submitting"))button.innerHTML=original;
     }
   };
 
