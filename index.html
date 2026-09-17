@@ -9180,12 +9180,14 @@ function toggleAccordion(trigger) {
 
 // ---------- SLIDE-IN DRAWERS ----------
 function closeAllPanels() {
+  const wasNotificationSurface = currentView === "notifications" || byId("notifPanel")?.classList.contains("open");
   try { window.closeLevromartTransientFilters?.(); } catch (_) {}
   closeAllInfoPopovers();
   document.querySelectorAll(".side-drawer.open").forEach((d) => { d.classList.remove("open"); d.style.transform = ""; d.classList.remove("profile-page-reveal"); });
   byId("drawerBackdrop")?.classList.remove("open");
   document.body.classList.remove("profile-reveal-open", "profile-reveal-dragging");
   document.body.style.removeProperty("--profile-reveal-x");
+  if(wasNotificationSurface) void commitPendingNotificationReads();
 }
 function openDrawer(id) {
   try { window.closeLevromartHeaderSearch?.(); } catch (_) {}
@@ -9271,20 +9273,28 @@ async function setAiDataConsent(value) {
   }
   showToast(value ? "Thanks, your chats may now be reviewed to improve Levi." : "Turned off. Your chats stay private again.", "success");
 }
+let pendingNotificationReads = new Set();
+async function queueNotificationRead(id){
+  if(!session?.user?.id || !id) return;
+  const key=String(id); pendingNotificationReads.add(key);
+  getNotifHost()?.querySelector(`.notif-item[data-id="${CSS.escape(key)}"]`)?.classList.remove("unread");
+}
+async function commitPendingNotificationReads(){
+  if(!session?.user?.id || !pendingNotificationReads.size) return;
+  const ids=[...pendingNotificationReads]; pendingNotificationReads.clear();
+  const {error}=await sb.from("notifications").update({read:true}).eq("user_id",session.user.id).in("id",ids);
+  if(error){ids.forEach(id=>pendingNotificationReads.add(String(id)));console.warn("[Levromart] Notification read-state commit failed:",error);return;}
+  refreshNotifications(false).catch(()=>{});
+}
+
 let lastNotificationReturnView="home"; let lastNotificationReturnParams={};
 function getNotifHost() { return currentView === "notifications" ? byId("notificationsPage") : byId("notifPanel"); }
 function toggleNotifPanel() {
   requestOfferBadgeCount = 0; updateRequestOfferBadge();
   try { sessionStorage.setItem("levromart-request-offers-seen-at", new Date().toISOString()); } catch (_) {}
   notifViewMode = "all"; exitNotifSelectMode(false);
-  // LinkedIn-style behavior: opening the notification surface immediately clears unread state.
-  if(session?.user?.id){
-    notifCount=0;
-    byId("notifDot")?.classList.add("hidden");
-    const notifCacheKey=`levromart-notifications-cache-v2:${session.user.id}`;
-    try { const cached=JSON.parse(localStorage.getItem(notifCacheKey)||"[]"); if(Array.isArray(cached)&&cached.length){ cached.forEach(n=>{n.read=true}); localStorage.setItem(notifCacheKey,JSON.stringify(cached)); } } catch(_){}
-    sb.from("notifications").update({read:true}).eq("user_id",session.user.id).eq("read",false).is("deleted_at",null).then(()=>{}).catch(()=>{});
-  }
+  // Opening Notifications is a viewing action. Keep unread state intact until the user leaves.
+  if(session?.user?.id) refreshNotifications(false).catch(()=>{});
   if(currentView!=="notifications"){lastNotificationReturnView=currentView||"home";lastNotificationReturnParams={...(currentViewParams||{})};}
   navigate("notifications");
 }
@@ -9679,7 +9689,7 @@ async function handleNotifItemClick(event, id) {
   if (!item) return;
   let params = {};
   try { params = JSON.parse(item.dataset.params || "{}"); } catch (_) {}
-  await markSingleNotifRead(id);
+  await queueNotificationRead(id);
   closeAllPanels();
   if ((item.dataset.view || "home") === "messages" && params?.conversationId) {
     const conversationId = String(params.conversationId);
@@ -9968,19 +9978,7 @@ async function markAllNotifsRead(){
   }catch(err){showToast(err.message||'Could not mark notifications as read.','error');}
   finally{markAllNotifsBusy=false;}
 }
-async function markSingleNotifRead(id) {
-  if (!session) return;
-  const el = document.querySelector(`.notif-item[data-id="${id}"]`);
-  if (!el || !el.classList.contains("unread")) return;
-  el.classList.remove("unread");
-  await sb.from("notifications").update({ read: true }).eq("id", id);
-  notifCount = Math.max(0, notifCount - 1);
-  const dot = byId("notifDot");
-  if (dot) {
-    if (notifCount > 0) { dot.textContent = notifCount > 9 ? "9+" : notifCount; }
-    else { dot.classList.add("hidden"); }
-  }
-}
+async function markSingleNotifRead(id) { return queueNotificationRead(id); }
 
 let notifChannelUserId=null;
 function subscribeNotifications() {
@@ -10663,6 +10661,7 @@ function renderSettingsPage(){
   return `<div class="settings-page" id="settings-page">
     <div class="settings-page-header"><button class="settings-back-btn" onclick="navigate(lastNonSettingsView||'home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><span class="settings-kicker">Levromart</span><h2>Settings</h2><p class="muted">Manage your account and app experience.</p></div></div>
     <section class="settings-page-section"><h3><i class="fa-solid fa-palette"></i> Appearance</h3><p class="settings-section-note">Choose how Levromart looks on this device.</p><div class="settings-choice-list"><button class="settings-choice" data-theme-choice="light" onclick="setTheme('light')"><i class="fa-solid fa-sun"></i><span><strong>Light</strong><small>Bright and clean</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-theme-choice="dark" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i><span><strong>Dark</strong><small>Comfortable for low light</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-theme-choice="black" onclick="setTheme('black')"><i class="fa-solid fa-circle"></i><span><strong>Deep black</strong><small>OLED-friendly black</small></span><i class="fa-solid fa-check settings-choice-check"></i></button></div></section>
+    <section class="settings-page-section"><h3><i class="fa-solid fa-wand-magic-sparkles"></i> Motion</h3><p class="settings-section-note">Choose between a static low-motion interface and Levromart's existing motion effects.</p><div class="settings-choice-list"><button class="settings-choice" data-motion-choice="calm" onclick="setLevromartMotionPreference('calm')"><i class="fa-solid fa-leaf"></i><span><strong>Calm</strong><small>Static interface with decorative motion disabled</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-motion-choice="full" onclick="setLevromartMotionPreference('full')"><i class="fa-solid fa-wand-magic-sparkles"></i><span><strong>Full Motion</strong><small>Use existing Levromart motion effects</small></span><i class="fa-solid fa-check settings-choice-check"></i></button></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-text-height"></i> Text size</h3><p class="settings-section-note">Make Levromart easier to read. This changes the app's text scale on this device.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Font size</strong><span>Choose a comfortable size from 85% to 125%.</span></div><div class="levi-size-value" id="levroFontScaleValue">${Math.round(getLevromartFontScale()*100)}%</div><input class="levi-size-range" id="levroFontScaleRange" type="range" min="0.85" max="1.25" step="0.05" value="${getLevromartFontScale()}" aria-label="Levromart font size" oninput="setLevromartFontScale(this.value)" onchange="setLevromartFontScale(this.value)" /></div></section>
     <section class="settings-page-section"><h3><span class="settings-levi-logo-wrap"><img class="settings-levi-logo" src="${esc(MEDRIS_LOGO)}" alt="" /></span> Levi</h3><p class="settings-section-note">Adjust Levi's size, visibility, data preference and voice.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Levi size</strong><span>Drag the scale to make Levi smaller or restore the current maximum.</span></div><div class="levi-size-value" id="leviSizeValue">${getLeviFabSize()}px</div><input class="levi-size-range" id="leviSizeRange" type="range" min="44" max="74" step="1" value="${getLeviFabSize()}" aria-label="Levi size" oninput="setLeviFabSize(this.value)" /></div><div class="settings-divider"></div><div class="settings-toggle-row" id="leviVisibleSettingRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="settingsAiConsentPageRow"></div><div class="settings-divider"></div><div class="settings-voice-wrap"><div class="settings-control-copy"><strong>Levi's voice</strong><span>Choose from the voices available on your device.</span></div><select id="voiceSelectPage" class="settings-select" aria-label="Levi voice"></select><button class="btn btn-outline settings-full-btn" onclick="previewAiVoice()"><i class="fa-solid fa-play"></i> Preview voice</button></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-sliders"></i> App preferences</h3><div class="settings-simple-row" id="settingsInstallPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="settingsNotifPageRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="horizontalBrowseSettingPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="locationSettingPageRow"></div></section>
@@ -10674,6 +10673,7 @@ function hydrateSettingsPage(){
   setLevromartFontScale(getLevromartFontScale());
   const theme=document.documentElement.dataset.theme||localStorage.getItem("medris-theme")||"light";
   document.querySelectorAll("#settings-page .settings-choice").forEach(el=>{const on=el.dataset.themeChoice===theme;el.classList.toggle("active",on);el.dataset.active=String(on);});
+  const motion=getLevromartMotionPreference(); document.querySelectorAll("#settings-page [data-motion-choice]").forEach(el=>{const on=el.dataset.motionChoice===motion;el.classList.toggle("active",on);el.dataset.active=String(on);});
   const vis=byId("leviVisibleSettingRow");
   if(vis) vis.innerHTML=`<i class="fa-solid ${leviVisible?'fa-comment-dots':'fa-comment-slash'} settings-row-icon"></i><span class="settings-row-copy"><strong>Levi assistant</strong><small>${leviVisible?'Shown on the app':'Hidden from the app'}</small></span><button class="settings-inline-btn" onclick="toggleLeviVisible();setTimeout(hydrateSettingsPage,0)">${leviVisible?'Hide':'Show'}</button>`;
   const consent=byId("settingsAiConsentPageRow");
@@ -10792,6 +10792,12 @@ function renderBottomNav() {
   }
 }
 
+const LEVRO_MOTION_KEY="levromart-motion-preference-v1";
+function getLevromartMotionPreference(){try{return localStorage.getItem(LEVRO_MOTION_KEY)==="full"?"full":"calm";}catch(_){return "calm";}}
+function applyLevromartMotionPreference(value){const pref=value==="full"?"full":"calm";document.documentElement.dataset.levroMotion=pref;try{localStorage.setItem(LEVRO_MOTION_KEY,pref);}catch(_){}return pref;}
+function setLevromartMotionPreference(value){const pref=applyLevromartMotionPreference(value);try{hydrateSettingsPage?.();}catch(_){}showToast(pref==="calm"?"Calm mode enabled. Decorative motion is off.":"Full Motion enabled.","success");}
+applyLevromartMotionPreference(getLevromartMotionPreference());
+
 function initBottomNavScrollMotion(){
   const nav = byId("bottomNav");
   if (!nav || nav.dataset.scrollMotionReady === "1") return;
@@ -10831,6 +10837,7 @@ function initBottomNavScrollMotion(){
 // already-full buyer bottom nav.
 function initFloatingScrollVisibility(){
   if (window.__leviCartScrollReady) return;
+  if (getLevromartMotionPreference()==="calm") return;
   window.__leviCartScrollReady = true;
   let lastY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
   let timer = 0;
@@ -12102,6 +12109,7 @@ let homeSearchMotionIdle = 0;
 let homeSearchMotionLastY = 0;
 function initHomeSearchScrollMotion(){
   resetHomeSearchScrollMotion();
+  if (getLevromartMotionPreference()==="calm") return;
   const wrap = document.querySelector("#app .levro-home-search-wrap");
   const search = wrap?.querySelector(".hero-search");
   if (!wrap || !search) return;
@@ -22728,19 +22736,16 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
 }
 
 async function adminToggleVendorActive(vendorId, currentlyActive, businessName) {
-  const action = currentlyActive ? "pause" : "reactivate";
-  if (!(await showConfirmDialog(
-    currentlyActive
-      ? "Pause this vendor's storefront? Customers won't be able to see their shop or products until you reactivate it."
-      : "Reactivate this vendor's storefront?",
-    { title: `${action[0].toUpperCase()}${action.slice(1)} storefront`, okLabel: action[0].toUpperCase() + action.slice(1), danger: currentlyActive }
-  ))) return;
+  const action = currentlyActive ? "pause" : "unlock";
+  const message = currentlyActive ? "Pause this vendor's storefront? Customers won't be able to see their shop or products until an admin reactivates it." : "Unlock vendor? Their storefront will become active again. Any outstanding commission remains owed and is not forgiven.";
+  if (!(await showConfirmDialog(message,{title:currentlyActive?"Pause storefront":"Unlock vendor",okLabel:currentlyActive?"Pause":"Unlock vendor",danger:currentlyActive}))) return;
   if (currentlyActive && !(await promptAdminPassword("pause this vendor's storefront"))) return;
-  const { error } = await sb.from("vendors").update({ is_active: !currentlyActive }).eq("id", vendorId);
-  if (error) { showToast(error.message, "error"); return; }
-  logAdminAction(currentlyActive ? "pause_storefront" : "reactivate_storefront", "vendor", vendorId, businessName);
-  showToast(`Storefront ${currentlyActive ? "paused" : "reactivated"}.`, "success");
-  navigate("adminFinance");
+  try {
+    const {data,error}=await sb.rpc("admin_set_vendor_storefront_active",{p_vendor_id:vendorId,p_active:!currentlyActive});
+    if(error) throw error; if(!data?.success) throw new Error("The storefront status change did not complete.");
+    showToast(currentlyActive?"Storefront paused.":"Vendor unlocked. Outstanding commission remains owed.","success");
+    await navigate("adminFinance");
+  } catch(err) { console.error("[Levromart] Admin storefront action failed:",err); showToast(err?.message||`Could not ${action} this vendor.`,"error"); }
 }
 
 // ---------- ADMIN: MANAGE ADMINS ----------
@@ -23162,7 +23167,7 @@ async function renderAdminFinance() {
       <td><span class="badge ${v.commission_status === "overdue" ? "danger" : v.commission_status === "due_soon" ? "warning" : v.commission_status === "paid" ? "success" : "warning"}">${esc(v.commission_status || "paid")}</span></td>
       <td>
         <span class="badge ${v.is_active ? "success" : "danger"}">${v.is_active ? "Active" : "Paused"}</span>
-        ${owed > 0 ? `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="showCommissionPaywall(${owed})">Locked — commission owed</button>` : `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', ${v.is_active}, '${esc(v.business_name)}')">${v.is_active ? "Pause" : "Reactivate"}</button>`}
+        ${owed > 0 ? (v.is_active ? `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', true, '${esc(v.business_name)}')">Pause</button>` : `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', false, '${esc(v.business_name)}')">Unlock</button>`) : `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', ${v.is_active}, '${esc(v.business_name)}')">${v.is_active ? "Pause" : "Reactivate"}</button>`}
       </td>
     </tr>`;
   });
@@ -23630,7 +23635,7 @@ function refreshAuthStateOnce() {
 function renderTerms() {
   return `<div class="legal-page">
     <h2>Terms of Service</h2>
-    <p class="muted">Last updated: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
+    <p class="muted">Last updated: 17 September 2026</p>
     <p>Levromart is an online marketplace that connects buyers with independent vendors across Lagos, including healthcare equipment, food, electronics, packages/bundles, and other goods and services, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
 
     <h3>1. What Levromart is (and isn't)</h3>
@@ -23672,7 +23677,7 @@ function renderTerms() {
 function renderPrivacy() {
   return `<div class="legal-page">
     <h2>Privacy Policy</h2>
-    <p class="muted">Last updated: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
+    <p class="muted">Last updated: 17 September 2026</p>
     <p>This explains what personal data Levromart collects, why, and how it's protected.</p>
 
     <h3>1. What we collect</h3>
@@ -23696,7 +23701,7 @@ function renderPrivacy() {
     <p>Your conversations with Levi are saved to your account so they're there when you come back, and are visible only to you: searchable, and deletable any time from the chat panel. Levromart's team does not read them unless you turn on "Help improve Levi" in Settings, which is off by default.</p>
 
     <h3>4. Your choices</h3>
-    <p>You can edit or delete your profile information from your account settings. You can permanently delete your own Levromart account from Settings → Account. Customers may delete even with pending orders; vendor accounts must have all orders completed or cancelled and any unsettled commission cleared first.</p>
+    <p>You can edit your profile information from your account settings. If you want to close your Levromart account, contact Levromart Support; closure is subject to necessary legal, transaction, dispute, payment, fraud-prevention, and audit retention requirements. Operational records are not necessarily erased simply because an account is closed.</p>
 
     <h3>5. Security</h3>
     <p>Passwords are never stored in plain text (handled by Supabase Auth). Every account, including ones created with Google, has a password on file so account actions that require it (like deleting your account) work consistently. Access to vendor verification documents and payment records is restricted to the account owner and admins.</p>
@@ -23710,7 +23715,7 @@ function renderPrivacy() {
 function renderRefundPolicy() {
   return `<div class="legal-page">
     <h2>Refund &amp; Cancellation Policy</h2>
-    <p class="muted">Last updated: ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
+    <p class="muted">Last updated: 17 September 2026</p>
 
     <h3>1. Before a vendor confirms your order</h3>
     <p>You can cancel freely from your Orders page. Any payment already made online is refunded in full to your original payment method via Paystack (refunds typically reflect within 5 - 10 business days, per Paystack's processing time).</p>
@@ -26395,6 +26400,7 @@ window.addEventListener("popstate", (e) => {
 (async function init() {
   applyHorizontalBrowsePreference();
   prepareLevromartSplash();
+  const splashEmergencyTimer=setTimeout(()=>{const el=byId("levromartSplash");if(el&&!window.__levroSplashHidden){el.classList.add("is-hidden");el.setAttribute("aria-hidden","true");console.warn("[Levromart] Splash watchdog released startup after a bounded timeout.");}},10000);
   // Absolute backstop: whatever else happens, the splash can never stay on
   // screen longer than this. The two hides below are the real triggers.
 
@@ -26419,6 +26425,8 @@ window.addEventListener("popstate", (e) => {
     new Promise(resolve => setTimeout(resolve, 900))
   ]).catch(() => {});
   resumeManualResetWatcher();
+
+  if(session){const legalOk=await window.__levroCheckLegalConsent?.();if(legalOk===false){hideLevromartSplash();return;}}
 
   const urlParams = new URLSearchParams(location.search);
   // The SPA route is also encoded in the browser URL for every ordinary view.
@@ -26604,8 +26612,8 @@ window.addEventListener("popstate", (e) => {
   // earlier popups in a previous session.
   setTimeout(maybeShowTour, 4000);
   } finally {
-    // Keep the branded mark covering the uninitialized shell when the first
-    // route cannot render. Successful navigation hides it explicitly.
+    clearTimeout(splashEmergencyTimer);
+    hideLevromartSplash();
   }
 })();
 
@@ -26649,6 +26657,25 @@ if ("serviceWorker" in navigator) {
 
 
 
+<style id="levromart-legal-consent-final">
+.levromart-legal-consent-backdrop{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+.levromart-legal-consent-card{width:min(680px,96vw);max-height:min(88vh,820px);display:flex;flex-direction:column;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.35);overflow:hidden}.levromart-legal-consent-head{padding:1.1rem 1.15rem .8rem;border-bottom:1px solid var(--border)}.levromart-legal-consent-head h2{margin:0 0 .35rem;font-size:1.2rem}.levromart-legal-consent-body{overflow:auto;padding:1rem 1.15rem;line-height:1.55}.levromart-legal-consent-body .legal-page{max-width:none}.levromart-legal-consent-links{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.65rem}.levromart-legal-consent-links button{border:0;background:none;color:var(--primary);font:inherit;font-weight:700;cursor:pointer;padding:.2rem}.levromart-legal-consent-foot{padding:.85rem 1.15rem;border-top:1px solid var(--border)}.levromart-legal-consent-foot .btn{width:100%;justify-content:center}html.levromart-legal-gated,html.levromart-legal-gated body{overflow:hidden!important}
+</style>
+<script id="levromart-legal-consent-final-js">
+(function(){
+  const CURRENT_LEGAL_VERSION="2026-09-17"; let gate=null,busy=false;
+  function bodyFor(view){return view==="privacy"?renderPrivacy():view==="refundPolicy"?renderRefundPolicy():renderTerms();}
+  function showGate(view="terms"){if(!session?.user?.id)return;if(!gate){gate=document.createElement("div");gate.className="levromart-legal-consent-backdrop";gate.setAttribute("role","dialog");gate.setAttribute("aria-modal","true");gate.innerHTML=`<div class="levromart-legal-consent-card"><div class="levromart-legal-consent-head"><h2>Before you continue</h2><p class="muted" style="margin:0;font-size:.82rem;">Please review Levromart's current Terms of Service, Privacy Policy, and Refund &amp; Cancellation Policy. You need to accept the current agreement to continue using your account.</p><div class="levromart-legal-consent-links"><button type="button" data-legal="terms">Terms of Service</button><button type="button" data-legal="privacy">Privacy Policy</button><button type="button" data-legal="refundPolicy">Refund &amp; Cancellation Policy</button></div></div><div id="levroLegalGateBody" class="levromart-legal-consent-body"></div><div class="levromart-legal-consent-foot"><div id="levroLegalGateError" class="error-text hidden"></div><button type="button" id="levroLegalGateAgree" class="btn"><i class="fa-solid fa-check"></i> Agree &amp; Continue</button></div></div>`;document.body.appendChild(gate);gate.querySelectorAll("[data-legal]").forEach(b=>b.addEventListener("click",()=>showGate(b.dataset.legal)));gate.querySelector("#levroLegalGateAgree").addEventListener("click",accept);}
+    gate.querySelector("#levroLegalGateBody").innerHTML=bodyFor(view);gate.classList.remove("hidden");document.documentElement.classList.add("levromart-legal-gated");}
+  async function accept(){if(busy)return;busy=true;const b=gate?.querySelector("#levroLegalGateAgree"),e=gate?.querySelector("#levroLegalGateError");if(b)b.disabled=true;if(e)e.classList.add("hidden");try{const {data,error}=await sb.rpc("accept_legal_terms");if(error)throw error;if(!data?.accepted||String(data.version)!==CURRENT_LEGAL_VERSION)throw new Error("The legal agreement could not be recorded.");if(profile){profile.legal_terms_version=CURRENT_LEGAL_VERSION;profile.legal_terms_accepted_at=data.accepted_at||new Date().toISOString();}gate.remove();gate=null;document.documentElement.classList.remove("levromart-legal-gated");}catch(err){console.error("[Levromart] Legal consent failed:",err);if(e){e.textContent=err?.message||"Could not record your acceptance. Please try again.";e.classList.remove("hidden");}}finally{busy=false;if(b)b.disabled=false;}}
+  window.__levroCheckLegalConsent=async function(){if(!session?.user?.id)return true;try{const {data,error}=await sb.rpc("get_legal_terms_consent");if(error)throw error;if(data?.accepted===true)return true;showGate();return false;}catch(err){console.error("[Levromart] Legal consent check failed:",err);showGate();const e=gate?.querySelector("#levroLegalGateError");if(e){e.textContent="We couldn't verify your legal agreement right now. Please try again.";e.classList.remove("hidden");}return false;}};
+  // This script is intentionally loaded after the main init bundle. Run the
+  // account-based check after that bundle has restored the session, and again
+  // when a later sign-in occurs. No localStorage-only consent is accepted.
+  setTimeout(()=>{if(session?.user?.id) window.__levroCheckLegalConsent();},0);
+  sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN")setTimeout(()=>window.__levroCheckLegalConsent(),0);});
+})();
+</script>
 <style id="final-system-bar-and-map-popup-polish">
 /* Match the phone safe-area/system-bar fill to Levromart's actual background. */
 :root { --system-bar-shade: #f5f7fa; }
@@ -34422,6 +34449,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 #productVariantPricing .variant-price-row.is-collapsed .variant-row-topbar{border-bottom:0;}
 @media(max-width:520px){#productVariantPricing .variant-accordion-thumb{width:38px;height:38px;flex-basis:38px;}#productVariantPricing .variant-accordion-title small{max-width:11rem;}}
 </style>
+<style id="levromart-calm-final-guard">html[data-levro-motion="calm"] *,html[data-levro-motion="calm"] *::before,html[data-levro-motion="calm"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}html[data-levro-motion="calm"] .product-card-wrap:hover,html[data-levro-motion="calm"] .vendor-card:hover{transform:none!important}html[data-levro-motion="calm"] .ai-chat-fab.scroll-faded,html[data-levro-motion="calm"] #cartFab.scroll-faded{opacity:1!important;transform:none!important}html[data-levro-motion="calm"] .nav-scroll-hide,html[data-levro-motion="calm"] .nav-scroll-shrink{transform:none!important;opacity:1!important}html[data-levro-motion="calm"] .home-search-fixed,html[data-levro-motion="calm"] .home-search-scrolling{transform:none!important}</style><script id="levromart-calm-final-state">applyLevromartMotionPreference(getLevromartMotionPreference());</script>
+<style id="levromart-inventory-accordion-final">.admin-inventory-accordion-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem}.admin-inventory-accordion-summary .admin-inventory-stat{padding:0;min-width:0;background:var(--card)!important;color:var(--text);border:1px solid var(--border);overflow:hidden}.admin-inventory-stat summary{list-style:none;display:flex;align-items:center;gap:.5rem;justify-content:space-between;padding:.75rem .8rem;cursor:pointer}.admin-inventory-stat summary::-webkit-details-marker{display:none}.admin-inventory-stat summary span{font-size:.75rem;font-weight:700;color:var(--text-muted)}.admin-inventory-stat summary strong{font-size:1.15rem;color:var(--text)}.admin-inventory-stat summary i{font-size:.7rem;color:var(--text-muted);transition:transform .15s}.admin-inventory-stat[open] summary i{transform:rotate(180deg)}.admin-inventory-stat-body{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.65rem .8rem;border-top:1px solid var(--border);font-size:.72rem;color:var(--text-muted)}@media(max-width:620px){.admin-inventory-accordion-summary{grid-template-columns:1fr}.admin-inventory-stat-body{padding:.55rem .7rem}}</style>
 </html>
 <style id="levromart-final-manual-monthly-ui-20260913">
 .manual-monthly-payment-modal-content{max-height:min(90vh,760px);overflow:auto}
@@ -36121,68 +36150,34 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 <script id="levromart-admin-approval-auto-payout-20260916">
 (function(){
   "use strict";
-
-  const originalSetVendorStatus=window.setVendorStatus;
-
   window.setVendorStatus=async function(id,status,filterStatus,businessName){
-    if(status!=="verified")return originalSetVendorStatus.apply(this,arguments);
-    if(adminVendorActionBusy.has(id))return;
-    if(!session?.user?.id||profile?.role!=="admin"){
-      showToast("Admin access is required.","error");return;
+    if(status!=="verified"){
+      if(typeof window.__levroOriginalSetVendorStatusForApproval === "function") return window.__levroOriginalSetVendorStatusForApproval(id,status,filterStatus,businessName);
+      return;
     }
-
-    const {data:target,error:targetError}=await sb.from("vendors")
-      .select("id,user_id,business_name,verification_status,bank_code,account_number,paystack_subaccount_code")
-      .eq("id",id).is("deleted_at",null).maybeSingle();
-
-    if(targetError||!target){
-      showToast(targetError?.message||"Vendor application not found.","error");return;
-    }
+    if(adminVendorActionBusy.has(id)||!session?.user?.id||profile?.role!=="admin"){if(!session?.user?.id||profile?.role!=="admin")showToast("Admin access is required.","error");return;}
+    const {data:target,error}=await sb.from("vendors").select("id,business_name,verification_status,bank_code,account_number,paystack_subaccount_code").eq("id",id).is("deleted_at",null).maybeSingle();
+    if(error||!target){showToast(error?.message||"Vendor application not found.","error");return;}
     businessName=target.business_name||businessName||"this business";
-
-    if(!(await showConfirmDialog(
-      `Approve "${businessName}" as a vendor? Their payout account will be activated first, then the storefront will go live.`,
-      {title:"Approve vendor",okLabel:"Approve"}
-    )))return;
-
+    const choice=await showConfirmDialog(`Approve "${businessName}" as a vendor? Choose whether payout is configured now or the vendor is approved without payout setup.`,{title:"Approve vendor",okLabel:"Choose payout option"});
+    if(!choice)return;
+    const modal=document.createElement("div");modal.className="modal";modal.innerHTML=`<div class="modal-content" style="max-width:440px"><h3 style="margin-top:0">Approve vendor</h3><p class="muted">Choose how this vendor should be approved.</p><div style="display:grid;gap:.6rem;margin-top:1rem"><button type="button" class="btn" data-approval="payout"><i class="fa-solid fa-money-bill-transfer"></i> Approve with payout</button><button type="button" class="btn btn-outline" data-approval="no-payout"><i class="fa-solid fa-store"></i> Approve without payout</button><button type="button" class="btn btn-danger" data-approval="cancel">Cancel</button></div></div>`;document.body.appendChild(modal);
+    const selected=await new Promise(resolve=>{modal.addEventListener("click",e=>{const b=e.target.closest?.("[data-approval]");if(b){modal.remove();resolve(b.dataset.approval);}});});
+    if(selected==="cancel")return;
     adminVendorActionBusy.add(id);
     try{
-      const {data:{session:liveSession}={}}=await sb.auth.getSession();
-      if(!liveSession?.user?.id){showToast("Your admin session has expired. Please sign in again.","error");return;}
-
-      /* Payout is provisioned BEFORE verification. If Paystack cannot verify
-         the bank account, the vendor is not approved into a half-configured
-         payout state. */
-      if(!target.paystack_subaccount_code){
-        if(!target.bank_code||!target.account_number){
-          showToast("This vendor has no complete bank and account number. Add the payout details before approving.","error");
-          return;
-        }
-        const payoutRes=await fetch("/api/vendor-payout-setup",{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({accessToken:liveSession.access_token,vendorId:id})
-        });
-        const payoutJson=await payoutRes.json().catch(()=>({}));
-        if(!payoutRes.ok||!payoutJson.subaccount_code){
-          showToast(payoutJson.error||"Payout setup failed. The vendor was not approved.","error");
-          return;
-        }
+      const live=(await sb.auth.getSession()).data?.session;if(!live?.user?.id)throw new Error("Your admin session has expired. Please sign in again.");
+      if(selected==="payout"&&!target.paystack_subaccount_code){
+        if(!target.bank_code||!target.account_number)throw new Error("This vendor has no complete bank and account number. Use Approve without payout, or add payout details first.");
+        const payoutRes=await fetch("/api/vendor-payout-setup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accessToken:live.access_token,vendorId:id})});
+        const payoutJson=await payoutRes.json().catch(()=>({}));if(!payoutRes.ok||!payoutJson.subaccount_code)throw new Error(payoutJson.error||"Payout setup failed. The vendor was not approved.");
       }
-
-      const {data,error}=await sb.rpc("admin_set_vendor_status",{p_vendor_id:id,p_status:"verified"});
-      if(error){showToast(`Could not approve ${businessName}: ${error.message}`,"error");return;}
-      if(!data?.success){showToast("Approval returned an unexpected result. Please check the vendor status.","error");return;}
-
-      try{await logAdminAction("approve_vendor","vendor",id,businessName);}catch(_){}
-      showToast(`${businessName} approved successfully. Payout is active.`, "success");
+      const {data:result,error:statusError}=await sb.rpc("admin_set_vendor_status",{p_vendor_id:id,p_status:"verified"});if(statusError)throw statusError;if(!result?.success)throw new Error("Approval did not complete.");
+      try{await logAdminAction(selected==="payout"?"approve_vendor_with_payout":"approve_vendor_without_payout","vendor",id,businessName);}catch(_){}
+      showToast(selected==="payout"?`${businessName} approved successfully. Payout is active.`:`${businessName} approved without payout. Payout can be configured later.`,"success");
       await navigate("adminPanel",{status:filterStatus||"pending"},{replace:true});
-    }catch(err){
-      console.error("[Levromart] Vendor approval failed:",err);
-      showToast(err?.message||"Could not approve this vendor.","error");
-    }finally{
-      adminVendorActionBusy.delete(id);
-    }
+    }catch(err){console.error("[Levromart] Vendor approval failed:",err);showToast(err?.message||"Could not approve this vendor.","error");}
+    finally{adminVendorActionBusy.delete(id);}
   };
 })();
 </script>
@@ -36505,10 +36500,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     const visible=all.filter(p=>window.__adminInventoryStatus==="all" || String(p.status)===window.__adminInventoryStatus);
     return `<h2><i class="fa-solid fa-boxes-stacked"></i> Inventory</h2>${adminNavHtml("adminInventory")}
       ${stale?`<div class="muted" style="margin:.35rem 0;">Showing your most recent inventory snapshot.</div>`:""}
-      <div class="admin-inventory-summary">
-        <div class="admin-inventory-stat"><strong>${total}</strong><span>Total product records</span></div>
-        <div class="admin-inventory-stat"><strong>${active}</strong><span>Active products</span></div>
-        <div class="admin-inventory-stat"><strong>${removed}</strong><span>Removed products</span></div>
+      <div class="admin-inventory-summary admin-inventory-accordion-summary">
+        ${[["Total product records",total,"all"],["Active products",active,"active"],["Removed products",removed,"removed"]].map(([label,count,status])=>`<details class="admin-inventory-stat"><summary><span>${esc(label)}</span><strong>${count}</strong><i class="fa-solid fa-chevron-down"></i></summary><div class="admin-inventory-stat-body"><span>${count} ${status==="all"?"product records":status+" products"}</span><button type="button" class="btn btn-sm btn-outline" onclick="setAdminInventoryStatus('${status}')">View</button></div></details>`).join("")}
       </div>
       <div class="admin-inventory-status-tabs" role="tablist" aria-label="Inventory status">
         <button type="button" role="tab" aria-selected="${window.__adminInventoryStatus==="all"}" class="admin-inventory-status-tab ${window.__adminInventoryStatus==="all"?"active":""}" onclick="setAdminInventoryStatus('all')"><span>All products</span><strong>${total}</strong></button>
