@@ -7262,7 +7262,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <strong>Add photos</strong>
       <span class="muted">Tap to choose, or drag images here</span>
     </label>
-    <input type="file" id="prodPhotoFiles" accept="image/*" class="hidden" onchange="previewNewProductPhotos()" />
+    <input type="file" id="prodPhotoFiles" accept="image/*" multiple class="hidden" onchange="previewNewProductPhotos()" />
     <div class="photo-grid" id="prodExistingPhotos"></div>
     <div class="photo-grid" id="prodNewPhotoPreviews"></div>
     <div class="product-variant-pricing" id="productVariantPricing"></div>
@@ -19272,10 +19272,13 @@ function renderNewProductPhotos() {
 }
 function previewNewProductPhotos() {
   persistVisibleVariantOrder();
-  const files=[...(byId("prodPhotoFiles").files || [])].filter(f=>f.type?.startsWith("image/")).slice(0,1);
+  const files=[...(byId("prodPhotoFiles").files || [])].filter(f=>f.type?.startsWith("image/"));
+  // Replacing the display picture is a single-image operation; normal Add photos
+  // accepts the complete selected collection. Never silently truncate uploads.
+  const selectedFiles=window.__replaceDisplayPicture ? files.slice(0,1) : files;
   if(window.__replaceDisplayPicture && files.length){
     window.__existingPhotos=(window.__existingPhotos||[]).slice(1);
-    window.__newProductPhotoFiles=files;
+    window.__newProductPhotoFiles=selectedFiles;
   }else{
     window.__newProductPhotoFiles=files;
   }
@@ -19492,7 +19495,7 @@ function bindProductVariantDnd(){
   wrap.addEventListener('pointermove',e=>{if(!touchRow)return; if(Math.abs(e.clientY-(touchY||e.clientY))<10)return; const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.variant-price-row'); if(!target||target===touchRow||!wrap.contains(target))return; const before=e.clientY<target.getBoundingClientRect().top+target.getBoundingClientRect().height/2; target.parentNode.insertBefore(touchRow,before?target:target.nextSibling);},true);
   wrap.addEventListener('pointerup',()=>{if(touchRow){persistVisibleVariantOrder();touchRow=null;}},true);
 }
-function persistVisibleVariantOrder(){const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||''),v]));window.__productVariants=rows.map((r,i)=>{const v=byKey.get(String(r.dataset.variantKey||""))||{_localKey:r.dataset.variantKey},value=c=>r.querySelector(c)?.value??'',titleEl=r.querySelector('.variant-row-title');if(titleEl)titleEl.textContent=`Variety ${i+1}`;return {...v,name:value('.variant-name').trim(),sale_price:value('.variant-sale-price'),discount_price:value('.variant-discount-price'),size:value('.variant-size').trim(),color:value('.variant-color').trim(),description:value('.variant-description'),quantity_available:value('.variant-quantity')===''?null:Number(value('.variant-quantity')),photo_url:r.querySelector('.variant-image')?.value||r.dataset.photoUrl||v.photo_url||'',sort_order:i};});}
+function persistVisibleVariantOrder(){const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||''),v]));window.__productVariants=rows.map((r,i)=>{const v=byKey.get(String(r.dataset.variantKey||""))||{_localKey:r.dataset.variantKey},value=c=>r.querySelector(c)?.value??'',titleEl=r.querySelector('.variant-row-title');if(titleEl)titleEl.textContent=`Variety ${i+1}`;return {...v,name:value('.variant-name').trim(),sale_price:value('.variant-sale-price'),discount_price:value('.variant-discount-price'),size:value('.variant-size').trim(),color:value('.variant-color').trim(),description:value('.variant-description'),rental_rate:value('.variant-rental-rate')===''?null:Number(value('.variant-rental-rate')),quantity_available:value('.variant-quantity')===''?null:Number(value('.variant-quantity')),photo_url:r.querySelector('.variant-image')?.value||r.dataset.photoUrl||v.photo_url||'',sort_order:i};});}
 function collectProductVariantDrafts(photoUrls) {
   persistVisibleVariantOrder();
   const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
@@ -19502,7 +19505,9 @@ function collectProductVariantDrafts(photoUrls) {
     const saleRaw=row.querySelector('.variant-sale-price')?.value; const discountRaw=row.querySelector('.variant-discount-price')?.value;
     const sale=saleRaw===''?null:Number(saleRaw); const discount=discountRaw===''?null:Number(discountRaw);
     const size=String(row.querySelector('.variant-size')?.value||'').trim()||null; const color=String(row.querySelector('.variant-color')?.value||'').trim()||null;
-    if(!name&&!sale&&!discount&&!size&&!color)return;
+    const descriptionRaw=String(row.querySelector('.variant-description')?.value||'').trim();
+    const quantityRaw=String(row.querySelector('.variant-quantity')?.value??'').trim();
+    if(!name&&!sale&&!discount&&!size&&!color&&!descriptionRaw&&!quantityRaw)return;
     if(!name)throw new Error('Every variety needs a variety name.');
     if(!Number.isFinite(sale)||sale<=0)throw new Error(`Enter a valid sale price for ${name}.`);
     if(discount!=null&&(!Number.isFinite(discount)||discount<=0||discount>=sale))throw new Error(`Discount price for ${name} must be lower than its regular price.`);
@@ -19511,7 +19516,9 @@ function collectProductVariantDrafts(photoUrls) {
     const raw=row.querySelector('.variant-quantity')?.value??'',quantity_available=raw===''?null:Number(raw);
     if(quantity_available!=null&&(!Number.isInteger(quantity_available)||quantity_available<0))throw new Error(`Enter a whole-number quantity for ${name}.`);
     const saved=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===row.dataset.variantKey);
-    drafts.push({...(saved?.id?{id:saved.id}:{}),_localKey:row.dataset.variantKey||null,name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,description:row.querySelector('.variant-description')?.value.trim()||null,quantity_available,sort_order:index});
+    const rentalInput=row.querySelector('.variant-rental-rate');
+    const rentalRate=rentalInput ? (rentalInput.value==='' ? null : Number(rentalInput.value)) : (saved?.rental_rate ?? null);
+    drafts.push({...(saved?.id?{id:saved.id}:{}),_localKey:row.dataset.variantKey||null,name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,description:descriptionRaw||null,rental_rate:rentalRate,quantity_available,sort_order:index});
   });
   return drafts;
 }
@@ -19519,35 +19526,60 @@ async function saveProductVariants(productId,drafts){
   if(!productId)return [];
   const sourceVariants=Array.isArray(window.__productVariants)?window.__productVariants:[];
   const sourceByKey=new Map(sourceVariants.map(v=>[String(v.id||v._localKey||""),v]));
-  const payload=(Array.isArray(drafts)?drafts:[]).map((d,index)=>{
-    const row={...d,id:d.id||crypto.randomUUID(),product_id:productId,sort_order:Number.isFinite(Number(d.sort_order))?Number(d.sort_order):index};
-    delete row._localKey; delete row.product_id;
-    if(row.quantity_available==null) row.quantity_available=0;
+  const input=Array.isArray(drafts)?drafts:[];
+  const payload=input.map((d,index)=>{
+    const row={
+      id:d.id||crypto.randomUUID(),
+      product_id:productId,
+      name:String(d.name||"").trim(),
+      photo_url:d.photo_url||null,
+      sale_price:d.sale_price===""||d.sale_price==null?null:Number(d.sale_price),
+      discount_price:d.discount_price===""||d.discount_price==null?null:Number(d.discount_price),
+      rental_rate:d.rental_rate===""||d.rental_rate==null?null:Number(d.rental_rate),
+      sort_order:Number.isFinite(Number(d.sort_order))?Number(d.sort_order):index,
+      quantity_available:Number.isFinite(Number(d.quantity_available))?Math.max(0,Math.trunc(Number(d.quantity_available))):0,
+      size:d.size||null,
+      color:d.color||null,
+      description:d.description||null
+    };
+    if(!row.name)throw new Error("Every variety needs a variety name.");
     return row;
   });
-  // The entire variety set is saved by one database transaction. The database
-  // deliberately suppresses per-row follower notifications during this batch,
-  // so 10/20/30/50+ varieties cannot turn one save into dozens of slow jobs.
-  const {data:savedRows,error}=await sb.rpc('save_product_variants',{
-    p_product_id:productId,
-    p_variants:payload
-  });
-  if(error)throw new Error(error.message||'Could not save varieties.');
-  const rows=Array.isArray(savedRows)?savedRows:[];
+
+  console.info("[LEVROMART VARIANT SAVE]", { productId, submitted: payload.length });
+  const {data:savedRows,error}=await sb.rpc("save_product_variants",{p_product_id:productId,p_variants:payload});
+  if(error)throw new Error(error.message||"Could not save varieties.");
+
+  const rows = Array.isArray(savedRows) ? savedRows : normalizeVariantRowsForEditor(savedRows);
+  if(rows.length !== payload.length){
+    throw new Error(`Variety save returned ${rows.length} rows, but ${payload.length} were submitted.`);
+  }
+
   const localById=new Map(payload.map(v=>[String(v.id),v]));
-  window.__productVariants=rows.map((row,i)=>{
+  const next=rows.map((row,i)=>{
     const source=localById.get(String(row.id))||payload[i];
-    const original=sourceByKey.get(String(source?.id||source?._localKey||''))
-      || (source?._localKey ? sourceByKey.get(String(source._localKey)) : null)
-      || sourceVariants.find(v => String(v.id||v._localKey||'') === String(drafts?.[i]?._localKey||''))
-      || source;
-    return {...row,
+    const original=sourceByKey.get(String(source?.id||source?._localKey||"")) || sourceByKey.get(String(input[i]?._localKey||""));
+    return {
+      ...row,
       _localKey:original?._localKey||source?._localKey||row.id,
       ...(original?._imageFile?{_imageFile:original._imageFile}:{}),
       ...(original?._previewUrl?{_previewUrl:original._previewUrl}: {})
     };
   });
-  return window.__productVariants;
+  window.__productVariants=next;
+  console.info("[LEVROMART VARIANT SAVE]", { submitted:payload.length, returned:next.length });
+  return next;
+}
+function normalizeVariantRowsForEditor(value){
+  if(Array.isArray(value))return value;
+  if(typeof value==='string'){try{const p=JSON.parse(value);return Array.isArray(p)?p:[]}catch(_){return[]}}
+  if(value&&typeof value==='object'){
+    for(const k of ['variants','data','result','items']){
+      if(Array.isArray(value[k]))return value[k];
+      if(typeof value[k]==='string'){try{const p=JSON.parse(value[k]);if(Array.isArray(p))return p}catch(_) {}}
+    }
+  }
+  return [];
 }
 
 function syncProductEngagementSettingsUI(){byId("prodCommentAudienceWrap")?.classList.toggle("hidden",!byId("prodAllowComments")?.checked);}
@@ -19707,10 +19739,77 @@ async function saveProduct() {
   const errorEl = byId("productError");
   errorEl.classList.add("hidden");
   const btn = byId("saveProductBtn");
-  if(btn.disabled)return;
+  if (!btn || btn.disabled) return;
   btn.disabled = true;
   btn.dataset.originalLabel = btn.innerHTML;
-  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving…`;
+
+  const originalProductId = editingProductId || null;
+  let createdProductId = null;
+  const uploadedStoragePaths = [];
+  let savedDraftIdentity = originalProductId || "new";
+
+  const setSaveStage = (label) => {
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${esc(label)}`;
+  };
+
+  const removeUploadedFiles = async () => {
+    if (!uploadedStoragePaths.length) return;
+    try {
+      const { error } = await sb.storage.from("product-photos").remove(uploadedStoragePaths);
+      if (error) console.warn("[LEVROMART IMAGE ROLLBACK] Storage cleanup failed:", error);
+    } catch (e) {
+      console.warn("[LEVROMART IMAGE ROLLBACK] Storage cleanup exception:", e);
+    }
+  };
+
+  const normalizeVariantRows = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : []; } catch (_) { return []; }
+    }
+    if (value && typeof value === "object") {
+      for (const key of ["variants", "data", "result", "items"]){
+        const candidate = value[key];
+        if (Array.isArray(candidate)) return candidate;
+        if (typeof candidate === "string") {
+          try { const parsed = JSON.parse(candidate); if (Array.isArray(parsed)) return parsed; } catch (_) {}
+        }
+      }
+    }
+    return [];
+  };
+
+  const verifySavedState = async (productId, expectedVariantIds, expectedPhotos) => {
+    setSaveStage("Verifying…");
+    const [{ data: serverProduct, error: productErr }, { data: serverVariants, error: variantErr }] = await Promise.all([
+      sb.from("products").select("id,photos,vendor_id").eq("id", productId).eq("vendor_id", vendor.id).single(),
+      sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order,quantity_available,size,color,description").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true})
+    ]);
+    if (productErr) throw new Error(`Save verification failed: ${productErr.message}`);
+    if (variantErr) throw new Error(`Variety verification failed: ${variantErr.message}`);
+
+    const actualVariants = normalizeVariantRows(serverVariants);
+    const actualIds = actualVariants.map(v => String(v.id)).sort();
+    const expectedIds = (expectedVariantIds || []).map(String).sort();
+    const actualPhotos = Array.isArray(serverProduct?.photos) ? serverProduct.photos : [];
+    const photoMismatch = JSON.stringify(actualPhotos) !== JSON.stringify(Array.isArray(expectedPhotos) ? expectedPhotos : []);
+    const variantMismatch = actualIds.length !== expectedIds.length || actualIds.some((id,i) => id !== expectedIds[i]);
+
+    console.info("[LEVROMART SAVE VERIFY]", {
+      productId,
+      expectedVariants: expectedIds.length,
+      serverVariants: actualIds.length,
+      expectedPhotos: Array.isArray(expectedPhotos) ? expectedPhotos.length : 0,
+      serverPhotos: actualPhotos.length,
+      variantIdsMatch: !variantMismatch,
+      photosMatch: !photoMismatch
+    });
+
+    if (variantMismatch) throw new Error(`Save verification failed: expected ${expectedIds.length} varieties, but the server has ${actualIds.length}.`);
+    if (photoMismatch) throw new Error(`Save verification failed: expected ${Array.isArray(expectedPhotos) ? expectedPhotos.length : 0} product photos, but the server returned ${actualPhotos.length}.`);
+
+    return { product: serverProduct, variants: actualVariants };
+  };
 
   try {
     const is_service = byId("prodIsService").checked;
@@ -19729,6 +19828,7 @@ async function saveProduct() {
     const payment_deposit_percent = paymentDepositRaw === "" ? null : Math.max(1, Math.min(99, Number(paymentDepositRaw)));
     const rental_rate_unit = byId("prodRateUnit").value;
     const service_price_unit = is_service ? (byId("prodServiceUnit").value || "flat") : null;
+
     if (!name) throw new Error("Product name is required.");
     if (!["commission","monthly"].includes(billing_model)) throw new Error("Choose how you want to pay Levromart for this listing.");
     if (!is_service && listing_type !== "rent" && !sale_price) throw new Error("Price is required for a sale listing.");
@@ -19752,9 +19852,8 @@ async function saveProduct() {
       const customName = byId("prodCategoryOther").value.trim();
       if (!customName) throw new Error("Type a name for the new category, or pick one from the list.");
       const { data: otherParent } = await sb.from("categories").select("id").eq("sector_id", chosenSectorId).is("parent_category_id", null).ilike("name", "Other").maybeSingle();
-      const otherParentId = otherParent?.id;
-      if (!otherParentId) throw new Error("This sector does not have an Other category yet. Leave the category as Uncategorized or choose another category.");
-      const { data: newCategoryId, error: catErr } = await sb.rpc("create_vendor_category", { p_name: customName, p_sector_id: chosenSectorId, p_parent_category_id: otherParentId });
+      if (!otherParent?.id) throw new Error("This sector does not have an Other category yet. Leave the category as Uncategorized or choose another category.");
+      const { data: newCategoryId, error: catErr } = await sb.rpc("create_vendor_category", { p_name: customName, p_sector_id: chosenSectorId, p_parent_category_id: otherParent.id });
       if (catErr) throw new Error(`Couldn't create that category: ${catErr.message}`);
       category_id = newCategoryId;
     }
@@ -19778,181 +19877,232 @@ async function saveProduct() {
       rental_rate_unit: listing_type === "sale" ? null : rental_rate_unit,
       deposit_amount: is_service ? null : (byId("prodDeposit").value ? Number(byId("prodDeposit").value) : null),
       quantity_total,
-      billing_model,
-      billing_status: editingProductId ? undefined : (billing_model === "monthly" ? "pending_payment" : "active"),
-      billing_paid_until: editingProductId ? undefined : null,
+      billing_model
     };
-    if (editingProductId) { delete fields.billing_model; delete fields.billing_status; delete fields.billing_paid_until; } else if (billing_model === "monthly") { fields.status = "paused"; }
-
-    window.__displayPictureWasReplaced = !!window.__replaceDisplayPicture || (!((window.__existingPhotos || []).length) && !!(window.__newProductPhotoFiles || []).length);
-    const newFiles = [...(window.__newProductPhotoFiles || byId("prodPhotoFiles").files || [])];
-    // Save the listing record FIRST. Media uploads are secondary work and must not
-    // keep the Save button spinning while storage is slow. Existing photos are
-    // preserved immediately; newly selected media is uploaded after the database
-    // save and then linked back to the saved listing/variants.
-    const quantityReadPromise = editingProductId
-      ? sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single()
-      : Promise.resolve({data:null,error:null});
-    const [{data:existingProduct,error:existingProductError}] = await Promise.all([quantityReadPromise]);
-    if(existingProductError)throw new Error(existingProductError.message);
-    const photos = [...(window.__existingPhotos || [])];
-
-    let savedProductId = editingProductId;
-    let variantDrafts = [];
-    let soldUnits = 0;
-    variantDrafts=collectProductVariantDrafts(photos);
-    const isNewMonthlyListing = !editingProductId && billing_model === "monthly";
-    if (editingProductId) {
-      const existing = existingProduct;
-      const sold = existing ? existing.quantity_total - existing.quantity_available : 0;
-      soldUnits = Math.max(Number(sold) || 0, 0);
-      const quantity_available = Math.max(quantity_total - soldUnits, 0);
-      const { data: updatedRow, error } = await sb.from("products").update({ ...fields, quantity_available, photos }).eq("id", editingProductId).select("*").single();
-      if (error) throw new Error(error.message);
-      window.__lastSavedProductRow = updatedRow || null;
-    } else if (!isNewMonthlyListing) {
-      const { data: createdProduct, error } = await sb.from("products").insert({ ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos }).select("*").single();
-      if (error) throw new Error(error.message);
-      savedProductId = createdProduct?.id;
-      window.__lastSavedProductRow = createdProduct || null;
+    if (originalProductId) {
+      delete fields.billing_model;
+    } else if (billing_model === "monthly") {
+      fields.billing_status = "pending_payment";
+      fields.billing_paid_until = null;
+      fields.status = "paused";
+    } else {
+      fields.billing_status = "active";
+      fields.billing_paid_until = null;
     }
 
+    window.__displayPictureWasReplaced = !!window.__replaceDisplayPicture || (!((window.__existingPhotos || []).length) && !!(window.__newProductPhotoFiles || []).length);
+    const newFiles = [...(window.__newProductPhotoFiles || byId("prodPhotoFiles")?.files || [])].filter(f => f?.type?.startsWith("image/"));
+    const basePhotos = [...(window.__existingPhotos || [])];
 
+    // Snapshot the editor BEFORE any server mutation. Every later write is derived
+    // from this one snapshot, so a render/draft observer cannot change what Save means.
+    const variantDrafts = collectProductVariantDrafts(basePhotos).map((d, index) => ({
+      ...d,
+      id: d.id || crypto.randomUUID(),
+      sort_order: index
+    }));
+    const expectedVariantIds = variantDrafts.map(v => String(v.id));
 
+    console.info("[LEVROMART PRODUCT SAVE]", {
+      productId: originalProductId,
+      variantCount: variantDrafts.length,
+      productImageCount: newFiles.length + basePhotos.length,
+      variantImageCount: variantDrafts.filter(v => {
+        const source = (window.__productVariants || []).find(x => String(x.id || x._localKey) === String(v.id || v._localKey));
+        return !!source?._imageFile;
+      }).length
+    });
+
+    // IMPORTANT: upload all new media BEFORE changing the product/variant rows.
+    // This removes the old race where the database was updated first and a later
+    // storage failure left the UI saying "saved" without the requested image.
+    setSaveStage("Preparing photos…");
+    const variantSourceByKey = new Map((window.__productVariants || []).map(v => [String(v.id || v._localKey || ""), v]));
+
+    const uploadOne = async (file, folder) => {
+      const ext = (file.name?.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const path = `${vendor.id}/${folder ? folder + "/" : ""}${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+      if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
+      uploadedStoragePaths.push(path);
+      const { data: urlData } = sb.storage.from("product-photos").getPublicUrl(path);
+      if (!urlData?.publicUrl) throw new Error("Photo uploaded, but its public URL could not be created.");
+      return urlData.publicUrl;
+    };
+
+    const mainUrls = [];
+    for (const file of newFiles) mainUrls.push(await uploadOne(file, ""));
+
+    // A display-picture replacement is represented by previewNewProductPhotos()
+    // removing the old first photo before Save. Preserve that semantics here.
+    let finalPhotos = [...basePhotos, ...mainUrls];
+    if (window.__displayPictureWasReplaced && mainUrls.length) {
+      finalPhotos = [mainUrls[0], ...basePhotos, ...mainUrls.slice(1)];
+    }
+
+    const uploadedVariantUrls = new Map();
+    for (const draft of variantDrafts) {
+      const sourceKey = String(draft._localKey || draft.id || "");
+      const source = variantSourceByKey.get(sourceKey);
+      if (source?._imageFile) {
+        const url = await uploadOne(source._imageFile, "variants");
+        uploadedVariantUrls.set(String(draft.id), url);
+        draft.photo_url = url;
+      }
+    }
+
+    const isNewMonthlyListing = !originalProductId && billing_model === "monthly";
     if (isNewMonthlyListing) {
-      // Manual monthly payment: do not create/activate the listing until the
-      // vendor has uploaded a receipt. Admin approval is the only activation path.
+      // Monthly listings still use the existing manual-payment flow. Uploaded files
+      // are cleaned up if the handoff fails; no listing is created yet.
       window.__manualMonthlyNewDraft = {
         kind: "product", vendor_id: vendor.id,
         fields: { ...fields, status: "paused", billing_status: "pending_payment", billing_reference: null, billing_paid_until: null },
-        photos, variantDrafts,
+        photos: finalPhotos, variantDrafts,
         engagement: {
           like_visibility: byId("prodLikeVisibility")?.value || "everyone",
           allow_comments: !!byId("prodAllowComments")?.checked,
           comment_audience: byId("prodCommentAudience")?.value || "everyone"
         }
       };
-      closeProductModal();
-      await openManualMonthlyPayment("product", null, { isNew: true, draft: window.__manualMonthlyNewDraft });
+      try {
+        closeProductModal({ skipDraft: true });
+        await openManualMonthlyPayment("product", null, { isNew: true, draft: window.__manualMonthlyNewDraft });
+      } catch (e) {
+        await removeUploadedFiles();
+        throw e;
+      }
       return;
     }
-    const savedDraftIdentity=editingProductId||"new";
-    editingProductId=savedProductId;
-    const variantCount=variantDrafts.length;
-    if(variantCount){
-      btn.innerHTML=`<i class="fa-solid fa-spinner fa-spin"></i> Saving ${variantCount} ${variantCount===1?'variety':'varieties'}…`;
+
+    // Preserve sold units when editing inventory, exactly as the previous flow did.
+    const existingProduct = originalProductId
+      ? (await sb.from("products").select("quantity_total,quantity_available,photos").eq("id", originalProductId).eq("vendor_id", vendor.id).single()).data
+      : null;
+    if (originalProductId && !existingProduct) throw new Error("The product could not be loaded for saving.");
+
+    let soldUnits = 0;
+    let savedProductId = originalProductId;
+    let savedProductRow = null;
+
+    setSaveStage("Saving product…");
+    if (originalProductId) {
+      soldUnits = Math.max(Number(existingProduct.quantity_total) - Number(existingProduct.quantity_available), 0);
+      const quantity_available = Math.max(quantity_total - soldUnits, 0);
+      const { data, error } = await sb.from("products")
+        .update({ ...fields, quantity_available, photos: finalPhotos })
+        .eq("id", originalProductId).eq("vendor_id", vendor.id)
+        .select("*").single();
+      if (error) throw new Error(error.message);
+      savedProductRow = data;
+    } else {
+      const { data, error } = await sb.from("products")
+        .insert({ ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos: finalPhotos })
+        .select("*").single();
+      if (error) throw new Error(error.message);
+      savedProductId = data?.id;
+      createdProductId = savedProductId;
+      if (!savedProductId) throw new Error("Product was created but no product ID was returned.");
+      savedProductRow = data;
     }
-    await saveProductVariants(savedProductId,variantDrafts);
-    // Notifications are deliberately dispatched after the database save and
-    // never block or roll back the listing save. A failure here is non-fatal.
-    if(variantCount || editingProductId){
-      void sb.rpc('notify_product_variety_batch',{p_product_id:savedProductId})
-        .catch(e=>console.warn('[Levromart] Variety notification dispatch failed:',e));
+
+    editingProductId = savedProductId;
+    savedDraftIdentity = savedProductId;
+
+    // The RPC is intentionally kept because it is the existing transactional,
+    // ownership-checked batch path. Crucially, every new variant already has a
+    // stable UUID, so uploaded variety media cannot lose its identity.
+    setSaveStage(variantDrafts.length ? `Saving ${variantDrafts.length} ${variantDrafts.length === 1 ? "variety" : "varieties"}…` : "Saving varieties…");
+    await saveProductVariants(savedProductId, variantDrafts);
+
+    // Ensure any uploaded variant image is also reflected in the local model. The
+    // URL was already part of the RPC payload, so no second race-prone write is needed.
+    for (const [id, url] of uploadedVariantUrls) {
+      const local = (window.__productVariants || []).find(v => String(v.id) === String(id));
+      if (local) { local.photo_url = url; delete local._imageFile; local._previewUrl = url; }
     }
-    const pendingVariantMedia=Array.isArray(window.__productVariants)?window.__productVariants.filter(v=>v._imageFile).map(v=>({id:v.id,file:v._imageFile})):[];
-    const baseSavedPhotos=[...(window.__existingPhotos||[])];
-    const wasDisplayPictureReplaced=!!window.__displayPictureWasReplaced;
 
-    // Media is part of the save operation now. Previously this ran in a
-    // detached background promise, so the listing UI refreshed from the old
-    // photo array before the upload/link completed. That made Add/Replace
-    // photo appear to do nothing until a later reload (or forever if the
-    // background operation failed). Upload first, link the URLs, then refresh
-    // the saved listing from Supabase.
-    const uploadAndAttachProductMedia = async()=>{
-      const mainFiles=Array.isArray(newFiles)?newFiles:[];
-      const variantFiles=Array.isArray(pendingVariantMedia)?pendingVariantMedia:[];
-      if(!mainFiles.length && !variantFiles.length) return baseSavedPhotos;
+    const verified = await verifySavedState(savedProductId, expectedVariantIds, finalPhotos);
+    const verifiedVariants = verified.variants;
 
-      btn.innerHTML=`<i class="fa-solid fa-spinner fa-spin"></i> Uploading photos…`;
-
-      const mainUrls=await Promise.all(mainFiles.map(async(file)=>{
-        const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-        const path=`${vendor.id}/${crypto.randomUUID()}.${ext}`;
-        const {error:upErr}=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type,upsert:false});
-        if(upErr)throw new Error(`Photo upload failed: ${upErr.message}`);
-        const {data:urlData}=sb.storage.from('product-photos').getPublicUrl(path);
-        if(!urlData?.publicUrl)throw new Error('Photo upload succeeded, but its public URL could not be created.');
-        return urlData.publicUrl;
-      }));
-
-      let nextPhotos=[...baseSavedPhotos,...mainUrls];
-      if(wasDisplayPictureReplaced&&mainUrls.length){
-        nextPhotos=[mainUrls[0],...baseSavedPhotos,...mainUrls.slice(1)];
-      }
-      if(mainUrls.length){
-        const {error:photoLinkError}=await sb.from('products').update({photos:nextPhotos}).eq('id',savedProductId).eq('vendor_id',vendor.id);
-        if(photoLinkError)throw new Error(`Could not attach the new product photo: ${photoLinkError.message}`);
-        if(window.__lastSavedProductRow)window.__lastSavedProductRow.photos=nextPhotos;
-      }
-
-      if(variantFiles.length){
-        await Promise.all(variantFiles.map(async(item)=>{
-          if(!item?.id||!item.file)throw new Error('A variety photo could not be linked to its saved variety.');
-          const ext=(item.file.name.split('.').pop()||'jpg').toLowerCase();
-          const path=`${vendor.id}/variants/${crypto.randomUUID()}.${ext}`;
-          const {error:upErr}=await sb.storage.from('product-photos').upload(path,item.file,{contentType:item.file.type,upsert:false});
-          if(upErr)throw new Error(`Variety photo upload failed: ${upErr.message}`);
-          const {data:urlData}=sb.storage.from('product-photos').getPublicUrl(path);
-          const url=urlData?.publicUrl;
-          if(!url)throw new Error('Variety photo uploaded, but its public URL could not be created.');
-          const {error:variantLinkError}=await sb.from('product_variants').update({photo_url:url}).eq('id',item.id).eq('product_id',savedProductId);
-          if(variantLinkError)throw new Error(`Could not attach a variety photo: ${variantLinkError.message}`);
-          const local=window.__productVariants?.find(v=>String(v.id)===String(item.id));
-          if(local){local.photo_url=url;delete local._imageFile;local._previewUrl=url;}
-        }));
-      }
-      return nextPhotos;
-    };
-
-    const engagementSave=Promise.allSettled([saveProductEngagementSettings(savedProductId)]);
-    const finalPhotos=await uploadAndAttachProductMedia();
-    if(finalPhotos.length)window.__existingPhotos=[...finalPhotos];
-    if(Array.isArray(window.__productVariants))renderProductVariantPricing();
-    if(newFiles.length||pendingVariantMedia.length)showToast('Listing and photos saved successfully.','success');
-    window.clearListingDraft?.("product", savedDraftIdentity);
-    // Required product and variety writes have completed; engagement settings finish separately.
-    const primarySavedProduct = {
-      ...(window.__lastSavedProductRow || {}),
-      id: savedProductId, ...fields, vendor_id: vendor.id, photos: finalPhotos,
-      quantity_available: Number(window.__lastSavedProductRow?.quantity_available ?? Math.max(quantity_total - soldUnits, 0))
-    };
-    window.__lastSavedProductRow = null;
-    closeProductModal({ skipDraft: true });
-    window.__homeBrowseCatalog = Array.isArray(window.__homeBrowseCatalog)
-      ? window.__homeBrowseCatalog.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p) : window.__homeBrowseCatalog;
-    window.__storefrontProducts = Array.isArray(window.__storefrontProducts)
-      ? window.__storefrontProducts.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p) : window.__storefrontProducts;
-    if (currentProductDetail && String(currentProductDetail.id) === String(savedProductId)) currentProductDetail = { ...currentProductDetail, ...primarySavedProduct };
-    document.querySelectorAll(`.product-card-wrap[data-product-id="${CSS.escape(String(savedProductId))}"]`).forEach(node => {
-      const context = node.querySelector(".product-card-action-row")?.classList.contains("trending-card-action-row") ? "trending" : "";
-      const tpl = document.createElement("template"); tpl.innerHTML = productCardHtml({ ...primarySavedProduct, _cardContext: context }).trim();
-      if (tpl.content.firstElementChild) node.replaceWith(tpl.content.firstElementChild);
+    console.info("[LEVROMART SAVE VERIFY]", {
+      expectedVariants: expectedVariantIds.length,
+      serverVariants: verifiedVariants.length,
+      expectedPhotos: finalPhotos.length,
+      serverPhotos: verified.product?.photos?.length || 0
     });
+
+    window.__existingPhotos = Array.isArray(verified.product?.photos) ? [...verified.product.photos] : [...finalPhotos];
+    window.__productVariants = verifiedVariants.map((row, index) => {
+      const local = (window.__productVariants || []).find(v => String(v.id) === String(row.id));
+      return { ...row, _localKey: local?._localKey || row.id, ...(local?._previewUrl ? { _previewUrl: local._previewUrl } : {}) };
+    });
+
+    const primarySavedProduct = {
+      ...(savedProductRow || {}),
+      ...(verified.product || {}),
+      id: savedProductId,
+      ...fields,
+      vendor_id: vendor.id,
+      photos: [...window.__existingPhotos],
+      quantity_available: Number(savedProductRow?.quantity_available ?? verified.product?.quantity_available ?? Math.max(quantity_total - soldUnits, 0)),
+      variants: verifiedVariants
+    };
+
+    window.__lastSavedProductRow = null;
     window.__replaceDisplayPicture = false;
     window.__displayPictureWasReplaced = false;
+    window.__productVariantPhotoFiles = {};
 
-    // The required product/variety/media writes are complete at this point.
-    // Close the editor NOW instead of waiting for a secondary page refresh or
-    // reconciliation request. Vendors should never be left staring at a modal
-    // that still looks like it is saving after the database commit succeeded.
+    clearProductValidationState();
+    window.clearListingDraft?.("product", savedDraftIdentity);
+    renderProductVariantPricing();
+
+    // Keep secondary engagement settings from blocking the critical product save.
+    void saveProductEngagementSettings(savedProductId).catch(e => console.warn("[Levromart] Engagement settings sync failed:", e));
+
+    // Refresh the local marketplace state from the verified server representation.
+    window.__homeBrowseCatalog = Array.isArray(window.__homeBrowseCatalog)
+      ? window.__homeBrowseCatalog.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p)
+      : window.__homeBrowseCatalog;
+    window.__storefrontProducts = Array.isArray(window.__storefrontProducts)
+      ? window.__storefrontProducts.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p)
+      : window.__storefrontProducts;
+    if (currentProductDetail && String(currentProductDetail.id) === String(savedProductId)) currentProductDetail = { ...currentProductDetail, ...primarySavedProduct };
+
+    document.querySelectorAll(`.product-card-wrap[data-product-id="${CSS.escape(String(savedProductId))}"]`).forEach(node => {
+      const context = node.querySelector(".product-card-action-row")?.classList.contains("trending-card-action-row") ? "trending" : "";
+      const tpl = document.createElement("template");
+      tpl.innerHTML = productCardHtml({ ...primarySavedProduct, _cardContext: context }).trim();
+      if (tpl.content.firstElementChild) node.replaceWith(tpl.content.firstElementChild);
+    });
+
     btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved`;
+    showToast(newFiles.length || variantDrafts.some(v => uploadedVariantUrls.has(String(v.id))) ? "Listing and photos saved successfully." : "Listing saved successfully.", "success");
     closeProductModal({ skipDraft: true });
 
     if (currentView === "vendorProducts") void navigate("vendorProducts", {}, false).catch(e => console.warn("[Levromart] Post-save navigation failed:", e));
     else if (currentView === "productDetail" && String(currentViewParams?.productId) === String(savedProductId)) void navigate("productDetail", { productId: savedProductId }, false).catch(e => console.warn("[Levromart] Post-save navigation failed:", e));
 
-    // Reconcile from the database in the background. The save result is already
-    // committed; this refresh is only for keeping the visible marketplace in
-    // sync and must never delay closing the editor.
+    // This is now a non-critical UI reconciliation only. It can never be the
+    // thing that determines whether Save succeeded because verification already did.
     void refreshVisibleProductAfterSave(savedProductId).catch(e => console.warn("[Levromart] Post-save product reconciliation failed:", e));
-
-    engagementSave.then(results => {
-      const failed = results.filter(r => r.status === "rejected");
-      if (failed.length) showToast("Listing saved, but one secondary setting could not be synchronized. Please reopen the listing to retry that setting.", "info");
-    });
   } catch (err) {
-    focusProductValidationField(err?.message || "Please complete the required field before saving.");
+    // If we created a product and anything after creation failed, remove the newly
+    // created record. Existing products are never deleted as a rollback shortcut.
+    if (createdProductId) {
+      try {
+        await sb.from("product_variants").delete().eq("product_id", createdProductId).eq("product_id", createdProductId);
+        await sb.from("products").delete().eq("id", createdProductId).eq("vendor_id", vendor.id);
+      } catch (rollbackErr) {
+        console.error("[LEVROMART SAVE ROLLBACK] Failed to remove incomplete new product:", rollbackErr);
+      }
+    }
+    await removeUploadedFiles();
+    console.error("[LEVROMART PRODUCT SAVE FAILED]", err);
+    const message = err?.message || "Could not save this product. Nothing was reported as saved.";
+    focusProductValidationField(message);
+    showToast(message, "error");
   } finally {
     btn.disabled = false;
     btn.innerHTML = btn.dataset.originalLabel || "Save to Product";
