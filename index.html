@@ -10427,7 +10427,7 @@ function updateAuthUI() {
       <div class="profile-panel-static">
         <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn" onclick="closeAllPanels()" aria-label="Close profile"><i class='fa-solid fa-xmark'></i></button></div>
 
-        <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : ''}" ${vendor ? `role="button" tabindex="0" aria-label="Open your storefront" onclick="closeAllPanels();navigate('storefront',{vendorId:'${esc(vendor.id)}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('storefront',{vendorId:'${esc(vendor.id)}'})}"` : ''}>
+        <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="Open your storefront" onclick="closeAllPanels();navigate('storefront',{vendorId:'${esc(vendor.id)}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('storefront',{vendorId:'${esc(vendor.id)}'})}"` : profile.role !== 'admin' ? `role="button" tabindex="0" aria-label="Open vendors you follow" onclick="event.stopPropagation();closeAllPanels();navigate('customerFollowing')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();closeAllPanels();navigate('customerFollowing')}"` : ''}>
           <div class="avatar-edit-wrap">
             ${profile.avatar_url
               ? `<button type="button" class="profile-avatar-lightbox-btn" onclick="openProfileImageLightbox('${esc(profile.avatar_url)}','${esc(profile.name || "Profile")}',event)" aria-label="View profile picture"><img src="${esc(profile.avatar_url)}" class="avatar-circle avatar-lg" style="object-fit:cover;" alt="${esc(profile.name || "Profile")}" draggable="false" /></button>`
@@ -11457,7 +11457,41 @@ function fastNavigateHome(event) {
   Promise.resolve(navigate('home', {}, false)).catch(() => {});
 }
 
+async function levroCommissionGate(view) {
+  const restricted = new Set(["vendorDashboard","vendorEditProfile","vendorProducts","vendorPackages","vendorSuggestionsInbox","settings"]);
+  if (!restricted.has(view) || !session || profile?.role !== "vendor" || !vendor?.id) return false;
+  try {
+    const { data: owed, error } = await sb.rpc("get_vendor_commission_owed", { p_vendor_id: vendor.id });
+    if (error || Number(owed || 0) <= 0) return false;
+    vendor.is_active = false;
+    vendor.commission_paused = true;
+    vendor.commission_pause_reason = "commission_owed";
+    showCommissionPaywall(Number(owed || 0));
+    return true;
+  } catch (_) { return false; }
+}
+function showCommissionPaywall(owedAmount) {
+  document.getElementById("levroCommissionPaywall")?.remove();
+  const modal = document.createElement("div");
+  modal.id = "levroCommissionPaywall";
+  modal.className = "modal open";
+  modal.style.zIndex = "10000";
+  modal.innerHTML = `<div class="modal-content" style="max-width:430px;text-align:center;">
+    <div style="width:64px;height:64px;border-radius:50%;margin:0 auto .8rem;display:grid;place-items:center;background:#fff3cd;color:#b45309;font-size:1.5rem;"><i class="fa-solid fa-lock"></i></div>
+    <h3 style="margin:.2rem 0 .5rem;">Pay commission to continue</h3>
+    <p class="muted" style="margin:.4rem 0 .8rem;">Your storefront has been paused because you have an outstanding Levromart commission balance.</p>
+    <div class="card" style="margin:.8rem 0;padding:.9rem;"><strong style="font-size:1.25rem;">${naira(Number(owedAmount || 0))}</strong><div class="muted" style="font-size:.8rem;margin-top:.2rem;">Commission outstanding</div></div>
+    <p class="muted" style="font-size:.78rem;margin:.4rem 0 1rem;">Pay the outstanding balance to unlock your storefront and vendor tools.</p>
+    <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;">
+      <button type="button" class="btn" onclick="this.closest('.modal')?.remove(); payCommission();"><i class="fa-solid fa-credit-card"></i> Pay commission</button>
+      <button type="button" class="btn btn-outline" onclick="this.closest('.modal')?.remove();">Close</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
 async function navigate(view, params = {}, pushHistory = true) {
+  if (await levroCommissionGate(view)) return;
   try { window.closeLevromartTransientFilters?.(); } catch (_) {}
   const app = byId("app");
   // Accept both the historical boolean and the newer {replace:true} form so
@@ -11495,7 +11529,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "settings","supportRequest","wishlist","buyerOrders","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
     "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
-    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications"
+    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing"
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
     try {
@@ -11644,6 +11678,8 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminAuthLogs": html = await renderAdminAuthLogs(); break;
       case "adminMonthlyListings": html = await renderAdminMonthlyListings(); break;
       case "wishlist": html = await renderWishlist(); break;
+            case "customerFollowing": html = await renderCustomerFollowing(); break;
+      case "customerFollowing": html = await renderCustomerFollowing(); break;
       case "cart": html = await renderCart(); break;
       case "messages": html = await renderMessages(params.conversationId); break;
       case "notifications": html = renderNotificationsPage(); break;
@@ -12248,7 +12284,7 @@ function handleHomeCarouselSlideClick(event, index) {
         }, 80));
         return;
       }
-      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminPasswordResets","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"].includes(deepView)) {
+      if (["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminPasswordResets","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications","customerFollowing"].includes(deepView)) {
         const authViews = ["cart","messages","vendorDashboard","vendorProducts","vendorPackages","vendorOrders","vendorEditProfile","vendorRequests","settings","supportRequest","wishlist","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance","adminDisputes","adminSupportRequests","adminPasswordResets","adminFeedback","adminUsers","adminLog","adminMonthlyListings","vendorSuggestionsInbox","notifications"];
         if (!session && authViews.includes(deepView)) { showLogin(); return; }
         navigate(deepView, {}, true);
@@ -13502,6 +13538,19 @@ async function renderWishlist() {
   if (packages.length) html += `<h3 class="section-title"><i class="fa-solid fa-boxes-stacked"></i> Packages</h3><div class="grid">${packages.map((p) => packageCardHtml(p, p.vendor?.delivery_fee)).join("")}</div>`;
   if (!products.length && !packages.length) html += `<div class="empty-state">Nothing saved yet. Tap the <i class='fa-regular fa-heart'></i> on a product or package to save it here.</div>`;
   return html;
+}
+
+async function renderCustomerFollowing(){
+  if(!session?.user?.id || profile?.role==='admin') return '<div class="empty-state">This page is available for customer accounts.</div>';
+  try{
+    const {data,error}=await sb.from('vendor_follows').select('vendor:vendors!inner(id,business_name,logo_url,cover_image_url,bio,city,avg_rating,review_count,verification_status,is_active,sector_id)').eq('follower_id',session.user.id).order('created_at',{ascending:false});
+    if(error) throw error;
+    const rows=(data||[]).map(r=>r.vendor).filter(v=>v && v.verification_status==='verified' && v.is_active);
+    let html=`<div class="customer-following-page"><div class="customer-following-head"><button type="button" class="icon-btn" onclick="navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><h2 style="margin:0;"><i class="fa-solid fa-user-group"></i> Vendors you follow</h2><p class="muted" style="margin:.25rem 0 0;">Your followed vendors and their storefronts.</p></div></div>`;
+    if(!rows.length) html+=`<div class="empty-state"><i class="fa-solid fa-user-group" style="font-size:1.7rem;display:block;margin-bottom:.6rem;"></i><strong>You aren't following any vendors yet.</strong><p class="muted">Follow a vendor from their storefront and they will appear here.</p><button type="button" class="btn" onclick="navigate('vendors')">Explore vendors</button></div>`;
+    else html+=`<div class="customer-following-grid">${rows.map(v=>`<button type="button" class="customer-following-card" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'})"><div class="customer-following-avatar">${v.logo_url?`<img src="${esc(v.logo_url)}" alt="${esc(v.business_name||'Vendor')}" loading="lazy">`:`<span>${esc(String(v.business_name||'V').trim().charAt(0).toUpperCase())}</span>`}</div><div class="customer-following-copy"><strong>${esc(v.business_name||'Vendor')}</strong><span>${esc(v.city||'Online')}</span><span>★ ${Number(v.avg_rating||0).toFixed(1)} · ${Number(v.review_count||0)} reviews</span></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>`;
+    html+='</div>'; return html;
+  }catch(e){console.error('[Levromart] Customer following load failed:',e);return `<div class="empty-state">Could not load the vendors you follow. <button type="button" class="btn btn-outline" onclick="navigate('customerFollowing',{},false)">Try again</button></div>`;}
 }
 
 // ---------- CART (buy-and-sale items only, grouped by vendor; add/remove actions stay on the current page) ----------
@@ -15841,8 +15890,8 @@ async function __levroOriginalRenderProductDetail(productId) {
     const buyLabel = product.is_service ? "Book Now" : "Buy Now";
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
-      ${!product.is_service && productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><span class="variety-choice-image">${v.photo_url?`<img src="${esc(v.photo_url)}" alt="${esc(v.name)}"><span class="variety-image-position">${productVariants.filter(x=>x.photo_url).findIndex(x=>x.id===v.id)+1}/${productVariants.filter(x=>x.photo_url).length}</span>`:""}</span><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
-      ${!product.is_service && productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="product-gallery-variant-label">Selected variety:</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</small><small class="muted" style="display:block;margin-top:.16rem;">Available: <span id="selectedVariantStock">${variantStockLabel(productVariants[0])}</span></small></div><strong id="selectedVariantPrice">Price: ${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
+      ${productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><span class="variety-choice-image">${v.photo_url?`<img src="${esc(v.photo_url)}" alt="${esc(v.name)}"><span class="variety-image-position">${productVariants.filter(x=>x.photo_url).findIndex(x=>x.id===v.id)+1}/${productVariants.filter(x=>x.photo_url).length}</span>`:""}</span><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
+      ${productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="product-gallery-variant-label">Selected variety:</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</small><small class="muted" style="display:block;margin-top:.16rem;">Available: <span id="selectedVariantStock">${variantStockLabel(productVariants[0])}</span></small></div><strong id="selectedVariantPrice">Price: ${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
       <div class="flex">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
@@ -17850,7 +17899,7 @@ async function renderVendorDashboard() {
   if (commissionOwed > 0) {
     html += `<div class="banner banner-warning" style="max-width:480px;margin:0 auto 1rem;">
       <h3 style="margin:0;display:flex;align-items:center;gap:.45rem;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)} <button type="button" class="vendor-commission-info" title="About commission" aria-label="About commission" onclick="levroCommissionInfo()"><i class="fa-solid fa-info"></i></button></h3>
-      <p class="muted" style="margin-top:0.35rem;">Pay anytime within 7 days.</p>
+      <p class="muted" style="margin-top:0.35rem;">Your storefront is paused until this balance is settled.</p>
       <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
       <div id="commissionError" class="error-text hidden"></div>
       <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-receipt"></i> Review commission breakdown</button>
@@ -17889,8 +17938,18 @@ async function renderVendorDashboard() {
 }
 
 async function toggleVendorActive(currentlyActive) {
-  const { error } = await sb.from("vendors").update({ is_active: !currentlyActive }).eq("id", vendor.id);
+  if (!vendor?.id) return;
+  const { data: owed, error: owedError } = await sb.rpc("get_vendor_commission_owed", { p_vendor_id: vendor.id });
+  if (owedError) { showToast(owedError.message, "error"); return; }
+  if (!currentlyActive && Number(owed || 0) > 0) {
+    vendor.is_active = false; vendor.commission_paused = true; vendor.commission_pause_reason = "commission_owed";
+    showCommissionPaywall(Number(owed || 0));
+    return;
+  }
+  const { error } = await sb.rpc("vendor_set_storefront_active", { p_active: !currentlyActive });
   if (error) { showToast(error.message, "error"); return; }
+  vendor.is_active = !currentlyActive;
+  if (!currentlyActive) { vendor.commission_paused = false; vendor.commission_pause_reason = null; }
   navigate("vendorDashboard");
 }
 
@@ -18782,6 +18841,15 @@ async function renderVendorProducts() {
   const pendingMonthlyProductIds = new Set((monthlyProductSubmissions || []).filter(x => x.status === "pending").map(x => String(x.listing_id)));
   const products = (allVendorProducts || []).filter((p) => p.status !== "removed");
   const removedProducts = (allVendorProducts || []).filter((p) => p.status === "removed");
+  // Load all varieties for the vendor's current listings in one query so the
+  // My Products page can show the same saved variety state as the editor.
+  const productIds = products.map(p => p.id).filter(Boolean);
+  const { data: vendorProductVariants } = productIds.length
+    ? await sb.from("product_variants").select("*").in("product_id", productIds).order("sort_order", { ascending: true }).order("created_at", { ascending: true })
+    : { data: [] };
+  const variantsByProduct = {};
+  (vendorProductVariants || []).forEach(vr => { (variantsByProduct[vr.product_id] ||= []).push(vr); });
+  products.forEach(p => { p.variants = variantsByProduct[p.id] || []; });
   // Already sorted order_count desc per product by the RPC -- [0] of each
   // group is that product's single busiest region.
   const regionsByProduct = {};
@@ -18853,13 +18921,14 @@ async function renderVendorProducts() {
       </div>
     </div>`;
     html += `<div class="table-wrap" style="max-height:26rem;overflow-y:auto;"><table class="data-table"><thead><tr>
-      <th>Product</th><th>Category</th><th>Price</th><th>Qty avail / total</th><th>Views</th><th>Saved</th><th>Revenue</th><th>Status</th>
+      <th>Product</th><th>Category</th><th>Varieties</th><th>Price</th><th>Qty avail / total</th><th>Views</th><th>Saved</th><th>Revenue</th><th>Status</th>
     </tr></thead><tbody>`;
     products.forEach((p, i) => {
       const topRegion = regionsByProduct[p.id]?.[0];
-      html += `<tr onclick="openEditProductModal('${p.id}')" style="cursor:pointer;" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc((p.category?.name || "").toLowerCase())}">
+      html += `<tr onclick="event.stopPropagation();openEditProductModal('${p.id}')" style="cursor:pointer;" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc((p.category?.name || "").toLowerCase())}">
         <td>${esc(p.name)}</td>
         <td>${esc(p.category?.name || "Uncategorized")}</td>
+        <td>${p.variants?.length || 0}</td>
         <td>${p.sale_price != null ? naira(p.sale_price) + servicePriceSuffix(p) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</td>
         <td>${p.is_service ? "-" : `${p.quantity_available} / ${p.quantity_total}`}</td>
         <td>${p.view_count || 0}</td>
@@ -18879,19 +18948,20 @@ async function renderVendorProducts() {
       const favCount = favCountByProduct[p.id] ?? 0;
       const hasPendingOrder = pendingProductIds.has(p.id);
       const topRegion = regionsByProduct[p.id]?.[0];
-      html += `<div class="card" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}">
+      html += `<div class="card vendor-own-product-card" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}" onclick="navigate('productDetail',{productId:'${esc(p.id)}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('productDetail',{productId:'${esc(p.id)}'});}">
         <div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
         <h4 style="margin:0.5rem 0 0.2rem;">${esc(p.name)}</h4>
         <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.quantity_available}/${p.quantity_total} available`} · ${p.status}${p.billing_model === "monthly" && p.billing_paid_until ? listingExpiryMarkup(p) : ""}</p>
         ${p.billing_model === "monthly" && pendingMonthlyProductIds.has(String(p.id)) ? `<p class="muted monthly-vendor-pending-note"><i class="fa-solid fa-clock"></i> Receipt submitted · awaiting admin approval</p>` : p.billing_model === "monthly" && p.billing_status === "cancelled" ? `<p class="muted monthly-vendor-rejected-note"><i class="fa-solid fa-circle-exclamation"></i> Monthly listing deactivated. Submit a new ₦1,000 receipt to restore it.</p>` : ""}
         <p class="muted" style="font-size:0.8rem;"><i class='fa-solid fa-eye'></i> ${p.view_count || 0} views · <i class='fa-solid fa-heart'></i> ${favCount} saved · <i class="fa-solid fa-sack-dollar"></i> ${naira(revenueByProduct[p.id] || 0)}</p>
+        ${Array.isArray(p.variants) && p.variants.length ? `<p class="muted vendor-product-variety-summary" style="font-size:0.8rem;"><i class="fa-solid fa-layer-group"></i> ${p.variants.length} variet${p.variants.length===1?'y':'ies'} · ${p.variants.slice(0,3).map(v=>esc(v.name)).join(', ')}${p.variants.length>3?'…':''}</p>` : ''}
         ${topRegion ? `<p class="muted" style="font-size:0.8rem;"><i class="fa-solid fa-map-location-dot"></i> Sells best in <a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count} order${topRegion.order_count === 1 ? "" : "s"})</a></p>` : ""}
         ${hasPendingOrder ? `<p class="muted" style="font-size:0.8rem;color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
         <div class="vendor-product-actions">
           <button class="btn btn-sm vendor-edit-action" onclick="openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
-          ${p.status === "active" ? `<button class="btn btn-sm vendor-pause-action" onclick="setProductStatus('${p.id}','paused')">Pause</button>` : ""}
+          ${p.status === "active" ? `<button class="btn btn-sm vendor-pause-action" onclick="event.stopPropagation();setProductStatus('${p.id}','paused')">Pause</button>` : ""}
           ${p.status === "paused" ? (p.billing_model === "monthly" ? (listingActivationValid(p) ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Resume</button>` : pendingMonthlyProductIds.has(String(p.id)) ? `<button class="btn btn-sm btn-outline" disabled><i class="fa-solid fa-clock"></i> Receipt submitted</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-receipt"></i> ${p.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
-          <button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>
+          <button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="event.stopPropagation();removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>
         </div>
       </div>`;
     });
@@ -18997,12 +19067,13 @@ async function showProductModal() {
   if (editingProductId) {
     const { data: p } = await sb.from("products").select("*").eq("id", editingProductId).single();
     const { data: engagement } = await sb.from("product_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("product_id",editingProductId).maybeSingle();
-    let { data: productVariants, error: productVariantsError } = await sb.from("product_variants").select("*").eq("product_id", editingProductId).order("sort_order").order("created_at");
-    if (productVariantsError && /column|schema cache|does not exist|unknown/i.test(String(productVariantsError.message || ""))) {
-      const legacy = await sb.from("product_variants").select("id,name,photo_url,sale_price,discount_price,sort_order").eq("product_id", editingProductId).order("sort_order").order("created_at");
-      productVariants = legacy.data || [];
+    let { data: productVariants, error: productVariantsError } = await sb.rpc("get_owned_product_variants", { p_product_id: editingProductId });
+    if (productVariantsError) {
+      const direct = await sb.from("product_variants").select("*").eq("product_id", editingProductId).order("sort_order").order("created_at");
+      productVariants = direct.data || [];
+      productVariantsError = direct.error;
     }
-    window.__productVariants = productVariants || [];
+    window.__productVariants = Array.isArray(productVariants) ? productVariants : [];
     byId("productModalTitle").textContent = "Edit Product";
     byId("prodName").value = p.name;
     byId("prodDesc").value = stripProductVariantMeta(p.description || "");
@@ -19383,44 +19454,32 @@ function collectProductVariantDrafts(photoUrls) {
   return drafts;
 }
 async function saveProductVariants(productId,drafts){
-  if(!productId)return;
+  if(!productId)return [];
   const sourceVariants=Array.isArray(window.__productVariants)?window.__productVariants:[];
   const sourceByKey=new Map(sourceVariants.map(v=>[String(v.id||v._localKey||""),v]));
-  const payload=drafts.map(d=>{
+  const payload=(Array.isArray(drafts)?drafts:[]).map(d=>{
     const row={...d,id:d.id||crypto.randomUUID(),product_id:productId};
-    delete row._localKey;
+    delete row._localKey; delete row.product_id;
     if(row.quantity_available==null) row.quantity_available=0;
     return row;
   });
-  if(payload.length){
-    let pending=payload.map(v=>({...v}));
-    for(let attempt=0;attempt<5;attempt++){
-      const {error}=await sb.from('product_variants').upsert(pending,{onConflict:'id'});
-      if(!error){
-        window.__productVariants=payload.map((v,i)=>{
-          const draft=drafts[i]||{};
-          const source=sourceByKey.get(String(draft.id||draft._localKey||""));
-          return {...v,_localKey:source?._localKey||draft._localKey||v.id,...(source?._imageFile?{_imageFile:source._imageFile}:{}),...(source?._previewUrl?{_previewUrl:source._previewUrl}: {})};
-        });
-        break;
-      }
-      const missing=['description','quantity_available','size','color'].find(k=>new RegExp(`[\'".]${k}[\'" ]`).test(error.message||'')&&/column|schema cache/i.test(error.message||''));
-      if(!missing||pending.some(v=>v[missing]!=null&&v[missing]!==''))throw error;
-      pending=pending.map(v=>{const copy={...v};delete copy[missing];return copy;});
-      if(attempt===4)throw error;
-    }
-  }else{
-    window.__productVariants=[];
-  }
-  const ids=new Set(payload.map(v=>v.id));
-  void (async()=>{
-    try{
-      const {data:existing,error}=await sb.from('product_variants').select('id').eq('product_id',productId);
-      if(error)throw error;
-      const removed=(existing||[]).filter(v=>!ids.has(v.id)).map(v=>v.id);
-      if(removed.length){const {error:deleteError}=await sb.from('product_variants').delete().eq('product_id',productId).in('id',removed);if(deleteError)throw deleteError;}
-    }catch(e){console.warn('[Levromart] Variant cleanup deferred:',e);}
-  })();
+  // Save the entire variety set atomically in one server-side transaction.
+  // This prevents partial saves and makes large sets (10/20/40+ varieties)
+  // behave exactly like a single listing save.
+  const {data:savedRows,error}=await sb.rpc('save_product_variants',{
+    p_product_id:productId,
+    p_variants:payload
+  });
+  if(error)throw new Error(error.message||'Could not save varieties.');
+  const rows=Array.isArray(savedRows)?savedRows:[];
+  const localById=new Map(payload.map(v=>[String(v.id),v]));
+  const localByKey=new Map(payload.map(v=>[String(v.id),v]));
+  window.__productVariants=rows.map((row,i)=>{
+    const source=localById.get(String(row.id))||localByKey.get(String(payload[i]?.id||''));
+    const original=sourceByKey.get(String(source?.id||source?._localKey||''));
+    return {...row,_localKey:original?._localKey||source?._localKey||row.id,...(original?._imageFile?{_imageFile:original._imageFile}:{}),...(original?._previewUrl?{_previewUrl:original._previewUrl}: {})};
+  });
+  return window.__productVariants;
 }
 
 function syncProductEngagementSettingsUI(){byId("prodCommentAudienceWrap")?.classList.toggle("hidden",!byId("prodAllowComments")?.checked);}
@@ -19430,13 +19489,13 @@ async function refreshSavedProductState(productId) {
 
   const [{ data: savedProduct, error: productError }, variantResult] = await Promise.all([
     sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name, sector_id)").eq("id", productId).maybeSingle(),
-    sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true})
+    sb.rpc("get_owned_product_variants", { p_product_id: productId })
   ]);
-  let savedVariants = variantResult.data || [], variantsError = variantResult.error;
-  if (variantsError && /column|schema cache|does not exist|unknown/i.test(String(variantsError.message || ""))) {
-    const legacy = await sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
-    savedVariants = legacy.data || [];
-    variantsError = legacy.error;
+  let savedVariants = Array.isArray(variantResult.data) ? variantResult.data : [], variantsError = variantResult.error;
+  if (variantsError) {
+    const direct = await sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
+    savedVariants = direct.data || [];
+    variantsError = direct.error;
   }
 
   if (productError) throw productError;
@@ -22678,10 +22737,18 @@ async function renderAdminFinance() {
   let html = `<h2><i class="fa-solid fa-sack-dollar"></i> Vendors &amp; Transactions</h2><p class="muted">Monitor payouts and every payment moving through Levromart.</p>`;
   html += adminNavHtml("adminFinance");
 
+  const commissionOwingCount = (vendors || []).filter(v => Number(v.commission_owed || 0) > 0).length;
+  const commissionOverdueCount = (vendors || []).filter(v => v.commission_status === "overdue").length;
+  const commissionDueSoonCount = (vendors || []).filter(v => v.commission_status === "due_soon").length;
+  html += `<div class="stats-grid" style="max-width:900px;margin:1rem auto;">
+    <div class="stat"><div class="n">${commissionOwingCount}</div><div class="muted">Vendors owing</div></div>
+    <div class="stat"><div class="n">${commissionOverdueCount}</div><div class="muted">Overdue</div></div>
+    <div class="stat"><div class="n">${commissionDueSoonCount}</div><div class="muted">Due within 48h</div></div>
+  </div>`;
   html += `<h3 style="margin-top:1.2rem;">Vendors</h3>`;
   html += `<input type="text" placeholder="Search vendors…" style="max-width:320px;margin-bottom:0.6rem;" oninput="filterTableRowsBySearch(this,'.financeVendorsTableWrap')" />`;
   html += `<div class="table-wrap financeVendorsTableWrap"><table class="data-table"><thead><tr>
-    <th>Business</th><th>Status</th><th>Payouts</th><th>Commission %</th><th>Completed orders</th><th>Total collected</th><th>Commission owed (offline)</th><th>Storefront</th>
+    <th>Business</th><th>Status</th><th>Payouts</th><th>Commission %</th><th>Completed orders</th><th>Total collected</th><th>Commission owed</th><th>Due date</th><th>Days remaining</th><th>Commission status</th><th>Storefront</th>
   </tr></thead><tbody>`;
   (vendors || []).forEach((v) => {
     const owed = Number(v.commission_owed || 0);
@@ -22693,9 +22760,12 @@ async function renderAdminFinance() {
       <td>${v.completed_orders}</td>
       <td>${naira(v.total_paid_in)}</td>
       <td>${owed > 0 ? `<span class="badge warning">${naira(owed)}</span>` : naira(0)}</td>
+      <td>${v.commission_due_at ? esc(new Date(v.commission_due_at).toLocaleDateString("en-NG", {day:"numeric",month:"short",year:"numeric"})) : "-"}</td>
+      <td>${owed > 0 ? (Number(v.commission_days_remaining) < 0 ? `<span class="badge danger">${Math.abs(Number(v.commission_days_remaining))}d overdue</span>` : `<span class="badge ${Number(v.commission_days_remaining) <= 2 ? "warning" : "success"}">${Number(v.commission_days_remaining)}d</span>`) : "-"}</td>
+      <td><span class="badge ${v.commission_status === "overdue" ? "danger" : v.commission_status === "due_soon" ? "warning" : v.commission_status === "paid" ? "success" : "warning"}">${esc(v.commission_status || "paid")}</span></td>
       <td>
         <span class="badge ${v.is_active ? "success" : "danger"}">${v.is_active ? "Active" : "Paused"}</span>
-        <button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', ${v.is_active}, '${esc(v.business_name)}')">${v.is_active ? "Pause" : "Reactivate"}</button>
+        ${owed > 0 ? `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="showCommissionPaywall(${owed})">Locked — commission owed</button>` : `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', ${v.is_active}, '${esc(v.business_name)}')">${v.is_active ? "Pause" : "Reactivate"}</button>`}
       </td>
     </tr>`;
   });
@@ -25959,7 +26029,7 @@ window.addEventListener("popstate", (e) => {
   // the browser still knows exactly which Levromart screen was open.
   const persistedUrlView = urlParams.get("appView");
   if (persistedUrlView) {
-    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","supportRequest","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
+    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
     let persistedParams = {};
     try { persistedParams = JSON.parse(urlParams.get("appParams") || "{}"); } catch (_) {}
     if (allowedPersistedViews.has(persistedUrlView)) {
@@ -29382,7 +29452,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     const modal=document.createElement('div');
     modal.id='commissionOverdueModal';modal.className='modal open';
     modal.style.zIndex='2500';
-    modal.innerHTML=`<div class="modal-content" style="max-width:430px;"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-lock"></i> Storefront paused</h3></div><p style="margin:.7rem 0;">Commission unpaid for over a week — storefront paused until it's settled.</p><div id="commissionOverdueAmount" class="card" style="margin:.65rem 0;padding:.8rem;">Loading amount owed…</div><button type="button" class="btn" style="width:100%;justify-content:center;" onclick="commissionOverduePayNow()"><i class="fa-solid fa-credit-card"></i> Pay commission owed</button></div>`;
+    modal.innerHTML=`<div class="modal-content" style="max-width:430px;"><div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;"><h3 style="margin:0;"><i class="fa-solid fa-lock"></i> Storefront paused</h3></div><p style="margin:.7rem 0;">Your storefront and vendor tools are paused until your outstanding commission is settled.</p><div id="commissionOverdueAmount" class="card" style="margin:.65rem 0;padding:.8rem;">Loading amount owed…</div><button type="button" class="btn" style="width:100%;justify-content:center;" onclick="commissionOverduePayNow()"><i class="fa-solid fa-credit-card"></i> Pay commission owed</button></div>`;
     document.body.appendChild(modal);
     loadCommissionOverdueAmount();
   }
@@ -36017,7 +36087,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       <div class="muted" id="adminInventoryCount" style="margin:.35rem 0 .65rem;">Showing ${visible.length} ${statusLabel.toLowerCase()}</div>
       <div class="admin-inventory-table-wrap">
         <table class="admin-inventory-table" id="adminInventoryTable">
-          <thead><tr><th>#</th><th>Product</th><th>Vendor</th><th>Sector</th><th>Price</th><th>Status</th><th>Added</th></tr></thead>
+          <thead><tr><th>#</th><th>Product</th><th>Vendor</th><th>Sector</th><th>Price</th><th>Status</th><th>Added</th><th>Action</th></tr></thead>
           <tbody>${renderAdminInventoryRows(visible)}</tbody>
         </table>
       </div>
@@ -36033,9 +36103,37 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     return rows.map((p,i)=>{
       const price=(p.price===null||p.price===undefined||p.price==="")?"—":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
       const st=String(p.status||"");
-      return `<tr><td>${i+1}</td><td><strong>${esc(p.name||"Unnamed product")}</strong></td><td>${esc(p.vendor_name||"Unknown vendor")}</td><td>${esc(p.sector_name||"Unassigned")}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"—"}</td></tr>`;
-    }).join("")||`<tr><td colspan="7" class="muted" style="text-align:center;padding:1.2rem;">No products match your search/filter.</td></tr>`;
+      return `<tr><td>${i+1}</td><td><strong>${esc(p.name||"Unnamed product")}</strong></td><td>${esc(p.vendor_name||"Unknown vendor")}</td><td>${esc(p.sector_name||"Unassigned")}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"—"}</td><td><button type="button" class="btn btn-sm btn-danger admin-inventory-delete-btn" data-product-id="${esc(p.id)}" data-product-name="${esc(p.name||"Unnamed product")}" onclick="adminDeleteInventoryProduct('${esc(p.id)}','${esc(p.name||"Unnamed product")}',event)"><i class="fa-solid fa-trash"></i> Delete</button></td></tr>`;
+    }).join("")||`<tr><td colspan="8" class="muted" style="text-align:center;padding:1.2rem;">No products match your search/filter.</td></tr>`;
   }
+
+  window.adminDeleteInventoryProduct=async function(productId,productName,event){
+    event?.preventDefault?.(); event?.stopPropagation?.();
+    if(!session?.user?.id || profile?.role!=="admin"){showToast("Admin access is required.","error");return;}
+    productName=String(productName||"this product");
+    if(!(await showConfirmDialog(`Delete "${esc(productName)}" from the inventory? If it has order history, Levromart will preserve that history while permanently removing the listing from the inventory view.`,{title:"Delete inventory product",okLabel:"Delete product",danger:true})))return;
+    const btn=document.querySelector(`.admin-inventory-delete-btn[data-product-id="${CSS.escape(String(productId))}"]`);
+    if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Deleting…';}
+    try{
+      const {data,error}=await sb.rpc("admin_delete_inventory_product",{p_product_id:productId});
+      if(error)throw error;
+      if(!data?.deleted)throw new Error("The product was not deleted.");
+      const deletedId=String(productId);
+      window.__adminInventoryAll=(window.__adminInventoryAll||[]).filter(p=>String(p.id)!==deletedId);
+      if(window.__adminInventoryCache?.products) window.__adminInventoryCache.products=window.__adminInventoryCache.products.filter(p=>String(p.id)!==deletedId);
+      filterAdminInventory();
+      const total=window.__adminInventoryAll.length;
+      const active=window.__adminInventoryAll.filter(p=>String(p.status)==='active').length;
+      const removed=window.__adminInventoryAll.filter(p=>String(p.status)==='removed').length;
+      document.querySelectorAll('.admin-inventory-stat strong').forEach((el,i)=>{el.textContent=String([total,active,removed][i]??0)});
+      document.querySelectorAll('.admin-inventory-status-tab').forEach(btn=>{const label=(btn.querySelector('span')?.textContent||'').toLowerCase();const n=label.includes('all')?total:label.includes('active')?active:removed;const badge=btn.querySelector('strong');if(badge)badge.textContent=String(n);});
+      showToast(data.permanent?`${productName} permanently deleted.`:`${productName} removed from inventory; order history preserved.`,'success');
+    }catch(err){
+      console.error('[Levromart] Admin inventory delete failed:',err);
+      showToast(err?.message||'Could not delete this product.','error');
+      if(btn){btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-trash"></i> Delete';}
+    }
+  };
 
   window.setAdminInventoryStatus=function(status){
     window.__adminInventoryStatus=["all","active","removed"].includes(status)?status:"all";
@@ -36061,6 +36159,25 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 })();
 </script>
 
+<style id="levromart-admin-delete-following-20260917">
+.admin-inventory-table th:last-child,.admin-inventory-table td:last-child{min-width:92px;text-align:center;}
+.admin-inventory-delete-btn{padding:.38rem .55rem!important;font-size:.72rem!important;white-space:nowrap;}
+.customer-following-page{max-width:900px;margin:0 auto;padding-bottom:1rem;}
+.customer-following-head{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;}
+.customer-following-head h2{font-size:1.2rem;}
+.customer-following-grid{display:grid;gap:.65rem;}
+.customer-following-card{width:100%;display:flex;align-items:center;gap:.75rem;text-align:left;padding:.75rem;border:1px solid var(--border);border-radius:16px;background:var(--card);color:var(--text);cursor:pointer;font:inherit;box-shadow:var(--shadow-sm,0 2px 10px rgba(0,0,0,.05));}
+.customer-following-card:hover{border-color:color-mix(in srgb,var(--primary) 30%,var(--border));}
+.customer-following-avatar{width:54px;height:54px;flex:0 0 54px;border-radius:50%;overflow:hidden;background:color-mix(in srgb,var(--primary) 12%,var(--card));display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--primary);}
+.customer-following-avatar img{width:100%;height:100%;object-fit:cover;}
+.customer-following-copy{min-width:0;display:flex;flex-direction:column;gap:.14rem;flex:1;}
+.customer-following-copy strong{font-size:.98rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.customer-following-copy span{font-size:.76rem;color:var(--text-muted);}
+.customer-following-card>i{color:var(--text-muted);font-size:.78rem;}
+.profile-customer-following-header{cursor:pointer;border-radius:14px;}
+.profile-customer-following-header:hover{background:color-mix(in srgb,var(--primary) 5%,transparent);}
+@media(max-width:520px){.admin-inventory-table th:last-child,.admin-inventory-table td:last-child{min-width:80px}.admin-inventory-delete-btn{font-size:.65rem!important;padding:.35rem .42rem!important}.customer-following-head h2{font-size:1.05rem;}}
+</style>
 <style id="levromart-admin-performance-final-20260916">
 .admin-vendor-card .badge.success{background:rgba(22,163,74,.14);color:#16a34a}
 .admin-vendor-card .badge.warning{background:rgba(245,158,11,.15);color:#d97706}
@@ -36431,3 +36548,154 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   document.addEventListener('levromart:view-rendered',()=>setTimeout(enhance,80));
 })();
 </script>
+
+
+<style id="levromart-final-payout-activation-and-bank-picker-20260917">
+/* Final payout UX: the selected bank must be obvious and the activation CTA
+   must remain visible until a Paystack subaccount actually exists. */
+.vendor-payout-activation-banner{
+  width:min(700px,100%);margin:0 auto 1rem;padding:1rem 1.05rem;
+  border:1px solid color-mix(in srgb,var(--primary) 34%,var(--border));
+  border-radius:1rem;background:color-mix(in srgb,var(--primary) 7%,var(--card));
+  box-shadow:0 6px 18px color-mix(in srgb,var(--primary) 8%,transparent);
+}
+.vendor-payout-activation-banner strong{display:flex;align-items:center;gap:.45rem;font-size:1rem;color:var(--text);}
+.vendor-payout-activation-banner p{margin:.35rem 0 .7rem;color:var(--text-muted);line-height:1.45;font-size:.86rem;}
+.vendor-payout-activation-banner .btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;}
+.vendor-bank-picker-modal .vendor-bank-option{cursor:pointer!important;pointer-events:auto!important;}
+.vendor-bank-picker-modal .vendor-bank-option-main{pointer-events:none;}
+.vendor-bank-picker-modal .vendor-bank-option-icon,
+.vendor-bank-picker-modal .vendor-bank-option > i{pointer-events:none;}
+</style>
+<script id="levromart-final-payout-activation-and-bank-picker-20260917">
+(function(){
+  "use strict";
+
+  /* ------------------------------------------------------------------
+     BANK PICKER: use event delegation instead of inline onclick strings.
+     This fixes search-result clicks, including banks whose names contain
+     punctuation/apostrophes, and keeps the hidden select authoritative.
+     ------------------------------------------------------------------ */
+  window.selectVendorBank = function(code, name){
+    const select=document.getElementById("veBankCode");
+    const label=document.getElementById("veBankPickerLabel");
+    if(!select)return false;
+    const wanted=String(code||"").trim();
+    const option=Array.from(select.options).find(o=>String(o.value)===wanted);
+    if(!option)return false;
+    select.value=wanted;
+    select.dataset.currentBank=wanted;
+    if(label)label.textContent=String(name||option.textContent||"").trim()||getBankDisplayName(wanted,"");
+    select.dispatchEvent(new Event("change",{bubbles:true}));
+    closeVendorBankPicker();
+    return true;
+  };
+
+  window.openVendorBankPicker = function(){
+    const select=document.getElementById("veBankCode");
+    if(!select){console.warn("[Levromart] Payout bank selector is not mounted.");return;}
+    closeVendorBankPicker();
+
+    const banks=Array.from(select.options)
+      .map(o=>({code:String(o.value||"").trim(),name:String(o.textContent||"").trim()}))
+      .filter(b=>b.code&&b.name)
+      .sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:"base"}));
+
+    const modal=document.createElement("div");
+    modal.id="vendorBankPickerModal";
+    modal.className="modal vendor-bank-picker-modal";
+    modal.setAttribute("role","dialog");
+    modal.setAttribute("aria-modal","true");
+    modal.innerHTML=`<div class="modal-content vendor-bank-picker-content">
+      <div class="vendor-bank-picker-head">
+        <div><div class="vendor-bank-picker-title"><i class="fa-solid fa-building-columns"></i><span>Select payout bank</span></div>
+        <div class="muted" style="font-size:.76rem;margin-top:.2rem;">${banks.length} supported banks and financial institutions</div></div>
+        <button type="button" class="drawer-close-btn" data-bank-picker-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="vendor-bank-search-wrap"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input id="vendorBankSearch" class="vendor-bank-search" type="search" autocomplete="off" placeholder="Search bank..." aria-label="Search banks" />
+      </div>
+      <div id="vendorBankPickerList" class="vendor-bank-picker-list"></div>
+    </div>`;
+    document.body.appendChild(modal);
+
+    const list=document.getElementById("vendorBankPickerList");
+    const search=document.getElementById("vendorBankSearch");
+    const paint=()=>{
+      const q=String(search?.value||"").trim().toLowerCase();
+      const current=String(select.value||"");
+      const filtered=q?banks.filter(b=>b.name.toLowerCase().includes(q)||b.code.toLowerCase().includes(q)):banks;
+      list.innerHTML=filtered.length?filtered.map(b=>{
+        const selected=String(b.code)===current;
+        return `<button type="button" class="vendor-bank-option ${selected?"selected":""}" data-bank-code="${esc(b.code)}" data-bank-name="${esc(b.name)}">
+          <span class="vendor-bank-option-icon"><i class="fa-solid fa-building-columns"></i></span>
+          <span class="vendor-bank-option-main"><strong>${esc(b.name)}</strong><small>${esc(b.code)}</small></span>
+          <i class="fa-solid ${selected?"fa-circle-check vendor-bank-option-check":"fa-chevron-right vendor-bank-option-arrow"}"></i>
+        </button>`;
+      }).join(""):`<div class="empty-state" style="padding:2rem 1rem;">No bank matches your search.</div>`;
+    };
+
+    modal.addEventListener("click",e=>{
+      if(e.target===modal){closeVendorBankPicker();return;}
+      const close=e.target.closest?.("[data-bank-picker-close]");
+      if(close){e.preventDefault();e.stopPropagation();closeVendorBankPicker();return;}
+      const option=e.target.closest?.("[data-bank-code]");
+      if(option){
+        e.preventDefault();e.stopPropagation();
+        window.selectVendorBank(option.dataset.bankCode,option.dataset.bankName);
+      }
+    },true);
+    search?.addEventListener("input",paint);
+    paint();
+    document.getElementById("veBankPickerBtn")?.setAttribute("aria-expanded","true");
+    requestAnimationFrame(()=>search?.focus());
+  };
+
+  /* ------------------------------------------------------------------
+     VISIBLE PAYOUT ACTIVATION CARD on My Shop. It disappears only when
+     paystack_subaccount_code is present. The approval restriction remains
+     unchanged; this is simply the persistent vendor-side prompt.
+     ------------------------------------------------------------------ */
+  window.openVendorPayoutSetup = async function(){
+    try{
+      await navigate("vendorEditProfile",{focusPayout:true},false);
+      const reveal=()=>{
+        const wrap=document.getElementById("bankFormWrap");
+        const card=wrap?.closest?.(".card");
+        if(wrap){
+          wrap.classList.remove("hidden");
+          card?.scrollIntoView({behavior:"smooth",block:"start"});
+          document.getElementById("veBankPickerBtn")?.focus({preventScroll:true});
+          return true;
+        }
+        return false;
+      };
+      if(!reveal()){
+        let tries=0;const timer=setInterval(()=>{if(reveal()||++tries>20)clearInterval(timer);},100);
+      }
+    }catch(e){showToast?.(e?.message||"Could not open payout setup.","error");}
+  };
+
+  const baseDashboard=window.renderVendorDashboard;
+  if(typeof baseDashboard==="function"){
+    window.renderVendorDashboard=async function(){
+      const html=await baseDashboard.apply(this,arguments);
+      try{
+        const v=vendor;
+        if(!v||v.paystack_subaccount_code)return html;
+        const activation=`<div class="vendor-payout-activation-banner" role="status">
+          <strong><i class="fa-solid fa-money-bill-transfer"></i> Activate Payout</strong>
+          <p>Your vendor account does not have an active payout account yet. Set it up now so Levromart can pay you through your connected bank account. This reminder disappears automatically once payout activation is complete.</p>
+          <button type="button" class="btn btn-sm" onclick="openVendorPayoutSetup()"><i class="fa-solid fa-building-columns"></i> Activate Payout</button>
+        </div>`;
+        return String(html||"").replace(/(<h2[^>]*>[\s\S]*?<\/h2>)/,`$1${activation}`);
+      }catch(e){console.warn("[Levromart] Payout activation banner render failed:",e);return html;}
+    };
+  }
+
+  /* Also expose a small refresh hook so a successful payout save can redraw
+     My Shop without a hard reload. */
+  window.__levroPayoutUxReady=true;
+})();
+</script>
+<!-- LEVROMART_FINAL_PATCH_20260917_PAYOUT_BANK_PICKER_AND_BANNER -->
