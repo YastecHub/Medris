@@ -28502,10 +28502,28 @@ window.renderVendorMapRail = function(){
     const started=performance.now();
     const vendorPromise=sb.from('vendors').select('id,business_name,city,avg_rating,review_count,sector_id,logo_url,lat,lng').eq('verification_status','verified').eq('is_active',true).order('business_name').limit(300);
     const sectorPromise=sectors.length?Promise.resolve({data:sectors}):sb.from('sectors').select('*').order('sort_order');
-    const [{data:vendors,error:vendorErr},{data:sectorsData}]=await Promise.all([vendorPromise,sectorPromise]);
+    /* Capability data is part of the directory's critical path. The Buy/Rent/
+       Buy & Rent tabs depend on listing_type, so do not first paint every
+       vendor with false capabilities and hope a later enrichment query fixes
+       them. A failed optional category/search enrichment must never make a
+       valid Buy tab look empty. */
+    const capabilityPromise=sb.from('products').select('vendor_id,listing_type').eq('status','active').limit(5000);
+    const [{data:vendors,error:vendorErr},{data:sectorsData},{data:capabilityRows,error:capabilityErr}]=await Promise.all([vendorPromise,sectorPromise,capabilityPromise]);
     if(vendorErr)throw vendorErr;
     if(!sectors.length)sectors=sectorsData||[];
-    window.__allVendors=(vendors||[]).map(v=>({...v,categories:[],canBuy:false,canRent:false,searchText:[v.business_name,v.city].filter(Boolean).join(' ').toLowerCase()}));
+    if(capabilityErr) console.warn('[Levromart] Vendor capability hydration failed:',capabilityErr);
+    const capabilitiesByVendor=new Map();
+    (capabilityRows||[]).forEach(p=>{
+      const id=String(p.vendor_id);
+      const cap=capabilitiesByVendor.get(id)||{canBuy:false,canRent:false};
+      if(['sale','both'].includes(p.listing_type)) cap.canBuy=true;
+      if(['rent','both'].includes(p.listing_type)) cap.canRent=true;
+      capabilitiesByVendor.set(id,cap);
+    });
+    window.__allVendors=(vendors||[]).map(v=>{
+      const cap=capabilitiesByVendor.get(String(v.id))||{canBuy:false,canRent:false};
+      return {...v,categories:[],canBuy:cap.canBuy,canRent:cap.canRent,searchText:[v.business_name,v.city].filter(Boolean).join(' ').toLowerCase()};
+    });
     window.__filteredVendors=[...window.__allVendors];
     const sectorSel=byId('vendorSectorFilter');
     if(sectorSel)sectorSel.innerHTML='<option value="">All sectors</option>'+sectors.map(s=>`<option value="${esc(s.id)}" ${currentSectorId===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
