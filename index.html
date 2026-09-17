@@ -19383,20 +19383,28 @@ function collectProductVariantDrafts(photoUrls) {
 }
 async function saveProductVariants(productId,drafts){
   if(!productId)return;
-  const {data:existing,error:readError}=await sb.from('product_variants').select('*').eq('product_id',productId);if(readError)throw readError;
-  const payload=drafts.map(d=>{d.id=d.id||crypto.randomUUID();return {product_id:productId,...d}});
+  const payload=drafts.map(d=>({...d,id:d.id||crypto.randomUUID(),product_id:productId}));
+  // The existing-row read and the upsert do not depend on each other. Run them
+  // together so saving a listing does not wait through two avoidable network RTTs.
+  const existingPromise=sb.from('product_variants').select('id').eq('product_id',productId);
+  let upsertPromise=null;
   if(payload.length){
     let pending=payload.map(v=>({...v}));
-    for(let attempt=0;attempt<5;attempt++){
-      const {error}=await sb.from('product_variants').upsert(pending,{onConflict:'id'});
-      if(!error){window.__productVariants=payload.map(v=>({...v}));break;}
-      // Compatibility for absent optional fields only: never discard entered data.
-      const missing=['description','quantity_available','size','color'].find(k=>new RegExp(`['".]${k}['" ]`).test(error.message||'')&&/column|schema cache/i.test(error.message||''));
-      if(!missing||pending.some(v=>v[missing]!=null&&v[missing]!==''))throw error;
-      pending=pending.map(v=>{const copy={...v};delete copy[missing];return copy;});
-      if(attempt===4)throw error;
-    }
+    upsertPromise=(async()=>{
+      for(let attempt=0;attempt<5;attempt++){
+        const {error}=await sb.from('product_variants').upsert(pending,{onConflict:'id'});
+        if(!error){window.__productVariants=payload.map(v=>({...v}));return;}
+        // Compatibility for absent optional fields only: never discard entered data.
+        const missing=['description','quantity_available','size','color'].find(k=>new RegExp(`['".]${k}['" ]`).test(error.message||'')&&/column|schema cache/i.test(error.message||''));
+        if(!missing||pending.some(v=>v[missing]!=null&&v[missing]!==''))throw error;
+        pending=pending.map(v=>{const copy={...v};delete copy[missing];return copy;});
+        if(attempt===4)throw error;
+      }
+    })();
   }
+  const [{data:existing,error:readError}]=await Promise.all([existingPromise,upsertPromise||Promise.resolve({data:[],error:null})]);
+  if(readError)throw readError;
+  if(upsertPromise)await upsertPromise;
   const ids=new Set(payload.map(v=>v.id)),removed=(existing||[]).filter(v=>!ids.has(v.id)).map(v=>v.id);
   if(removed.length){const {error}=await sb.from('product_variants').delete().eq('product_id',productId).in('id',removed);if(error)throw error;}
 }
@@ -19636,13 +19644,21 @@ async function saveProduct() {
 
     window.__displayPictureWasReplaced = !!window.__replaceDisplayPicture || (!((window.__existingPhotos || []).length) && !!(window.__newProductPhotoFiles || []).length);
     const newFiles = [...(window.__newProductPhotoFiles || byId("prodPhotoFiles").files || [])];
-    const newPhotoUrls = await Promise.all(newFiles.map(async (file) => {
+    // Photo uploads, variety-image uploads and the edit-only quantity read are independent.
+    // Start them together to remove avoidable serial waits from the save path.
+    const quantityReadPromise = editingProductId
+      ? sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single()
+      : Promise.resolve({data:null,error:null});
+    const newPhotoUrlsPromise = Promise.all(newFiles.map(async (file) => {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${vendor.id}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await sb.storage.from("product-photos").upload(path, file, { contentType: file.type });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
       return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
     }));
+    const variantUploadPromise = uploadVarietyImages();
+    const [{data:existingProduct,error:existingProductError},newPhotoUrls] = await Promise.all([quantityReadPromise,newPhotoUrlsPromise,variantUploadPromise]);
+    if(existingProductError)throw new Error(existingProductError.message);
     const photos = window.__displayPictureWasReplaced && newPhotoUrls.length
       ? [newPhotoUrls[0], ...(window.__existingPhotos || []), ...newPhotoUrls.slice(1)]
       : [...(window.__existingPhotos || []), ...newPhotoUrls];
@@ -19650,15 +19666,10 @@ async function saveProduct() {
     let savedProductId = editingProductId;
     let variantDrafts = [];
     let soldUnits = 0;
-    // Services use the same underlying product_variants table, but their editor
-    // presents service/package-specific fields. Save those varieties too.
-    // Upload their images before collecting the final drafts so a newly-added
-    // service option cannot lose its image when there are no existing product photos.
-    await uploadVarietyImages();
     variantDrafts=collectProductVariantDrafts(photos);
     const isNewMonthlyListing = !editingProductId && billing_model === "monthly";
     if (editingProductId) {
-      const { data: existing } = await sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single();
+      const existing = existingProduct;
       const sold = existing ? existing.quantity_total - existing.quantity_available : 0;
       soldUnits = Math.max(Number(sold) || 0, 0);
       const quantity_available = Math.max(quantity_total - soldUnits, 0);
@@ -19716,8 +19727,8 @@ async function saveProduct() {
     });
     window.__replaceDisplayPicture = false;
     window.__displayPictureWasReplaced = false;
-    if (currentView === "vendorProducts") await navigate("vendorProducts", {}, false);
-    else if (currentView === "productDetail" && String(currentViewParams?.productId) === String(savedProductId)) await navigate("productDetail", { productId: savedProductId }, false);
+    if (currentView === "vendorProducts") void navigate("vendorProducts", {}, false).catch(e => console.warn("[Levromart] Post-save navigation failed:", e));
+    else if (currentView === "productDetail" && String(currentViewParams?.productId) === String(savedProductId)) void navigate("productDetail", { productId: savedProductId }, false).catch(e => console.warn("[Levromart] Post-save navigation failed:", e));
 
     engagementSave.then(async results => {
       const failed = results.filter(r => r.status === "rejected");
@@ -35448,7 +35459,29 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
         vendorId=createdVendor?.id;createdNew=true;
       }
 
-      button.innerHTML='<i class="fa-solid fa-building-columns"></i> Activating payout…';
+      // The application itself is now safely persisted. Notify the applicant immediately
+      // rather than making them wait for the external payout-provider setup.
+      // The application row is the authoritative submission event. Fire the applicant
+      // notification immediately and do not block the UI on this secondary write.
+      void sb.rpc("create_notification",{
+        p_user_id:session.user.id,
+        p_type:"vendor_application_submitted",
+        p_title:"Application submitted",
+        p_body:"Your vendor application has been submitted successfully and is now awaiting review.",
+        p_target_view:"home",
+        p_target_params:{vendorId},
+        p_actor_id:null
+      }).then(({error:notificationError})=>{
+        if(notificationError)console.warn("[Levromart] Vendor application notification failed:",notificationError);
+      });
+
+      // Do not make the applicant wait for the external payout-provider API.
+      // The application is already saved and can be reviewed while payout setup runs.
+      showToast("Application submitted successfully. Your application is now awaiting review.", "success");
+      void refreshAuthState().catch(e=>console.warn("[Levromart] Post-application auth refresh failed:",e));
+      void navigate("home").catch(e=>console.warn("[Levromart] Post-application navigation failed:",e));
+
+      button.innerHTML='<i class="fa-solid fa-building-columns"></i> Setting up payout…';
       const payoutRes=await fetch("/api/vendor-payments",{
         method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({action:"create-subaccount",accessToken:session.access_token,bankCode,bankName,accountNumber,accountName})
@@ -35467,16 +35500,27 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       }).eq("id",vendorId).eq("user_id",session.user.id);
       if(finalPayoutSaveError)throw new Error("The payout account was created but could not be linked to your application.");
 
-      showToast("Application submitted successfully. Your payout account is already set up.", "success");
-      await refreshAuthState();
-      navigate("home");
+      showToast("Your payout account is now set up. Your application remains pending review.", "success");
     }catch(err){
       console.error("[Levromart] Vendor application failed:",err);
       if(createdNew&&vendorId){
-        try{await sb.from("vendors").delete().eq("id",vendorId).eq("user_id",session.user.id);}catch(_){}
+        // Keep the persisted application. Payout setup can be retried without forcing
+        // the vendor to fill the entire application again.
+        console.warn("[Levromart] Preserving submitted vendor application after payout setup failure:",vendorId);
       }
-      errorEl.textContent=err?.message||"We couldn't submit your application. Please try again.";
+      errorEl.textContent=err?.message||"We couldn't complete the payout setup. Your application was saved; please retry payout setup from your vendor profile.";
       errorEl.classList.remove("hidden");
+      if(vendorId){
+        void sb.rpc("create_notification",{
+          p_user_id:session.user.id,
+          p_type:"vendor_application_payout_action_needed",
+          p_title:"Payout setup needs attention",
+          p_body:"Your vendor application was submitted, but the payout account could not be completed. Please review your vendor profile and try again.",
+          p_target_view:"home",
+          p_target_params:{vendorId},
+          p_actor_id:null
+        }).catch(notificationError=>console.warn("[Levromart] Payout failure notification failed:",notificationError));
+      }
       button.innerHTML=original;
     }finally{
       vendorApplyBusy=false;button.disabled=false;button.classList.remove("is-busy");
