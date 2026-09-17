@@ -21240,7 +21240,7 @@ async function loadCommissionBreakdown(){
       const lines=g.products.length
         ? g.products.map(x=>`<li><span>${esc(x.qty+"× "+x.name)}</span><span>${naira(x.qty*x.unit)}</span></li>`).join("")
         : '<li><span>Order items unavailable</span><span>—</span></li>';
-      const autoDispute = g.auto_completed_at ? `<div class="vendor-commission-auto-note"><i class="fa-solid fa-clock-rotate-left"></i> Automatically completed after the 24-hour confirmation window.</div><button type="button" class="btn btn-sm btn-outline vendor-commission-dispute-btn" onclick="openCommissionDispute('${esc(g.order_id||"")}')"><i class="fa-solid fa-scale-balanced"></i> Raise dispute</button>` : "";
+      const autoDispute = g.auto_completed_at ? `<button type="button" class="btn btn-sm btn-outline vendor-commission-dispute-btn" onclick="openCommissionDispute('${esc(g.order_id||"")}')"><i class="fa-solid fa-scale-balanced"></i> Raise dispute</button>` : "";
       return `<div class="vendor-commission-item">
         <div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length===1?esc(g.products[0].name):g.products.length>1?`${g.products.length} products`:"Sale"}</div><div class="vendor-commission-item-date">Completed ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div>
         <div class="vendor-commission-buyer"><i class="fa-solid fa-user"></i><span>Buyer</span><strong>${esc(g.buyer_name||"Buyer")}</strong></div>
