@@ -19384,30 +19384,33 @@ function collectProductVariantDrafts(photoUrls) {
 async function saveProductVariants(productId,drafts){
   if(!productId)return;
   const payload=drafts.map(d=>({...d,id:d.id||crypto.randomUUID(),product_id:productId}));
-  // The existing-row read and the upsert do not depend on each other. Run them
-  // together so saving a listing does not wait through two avoidable network RTTs.
-  const existingPromise=sb.from('product_variants').select('id').eq('product_id',productId);
-  let upsertPromise=null;
+  // The upsert is the required part of saving. Do not make the vendor wait for
+  // a cleanup read/delete pass; stale rows are reconciled immediately afterward
+  // in the background.
   if(payload.length){
     let pending=payload.map(v=>({...v}));
-    upsertPromise=(async()=>{
-      for(let attempt=0;attempt<5;attempt++){
-        const {error}=await sb.from('product_variants').upsert(pending,{onConflict:'id'});
-        if(!error){window.__productVariants=payload.map(v=>({...v}));return;}
-        // Compatibility for absent optional fields only: never discard entered data.
-        const missing=['description','quantity_available','size','color'].find(k=>new RegExp(`['".]${k}['" ]`).test(error.message||'')&&/column|schema cache/i.test(error.message||''));
-        if(!missing||pending.some(v=>v[missing]!=null&&v[missing]!==''))throw error;
-        pending=pending.map(v=>{const copy={...v};delete copy[missing];return copy;});
-        if(attempt===4)throw error;
-      }
-    })();
+    for(let attempt=0;attempt<5;attempt++){
+      const {error}=await sb.from('product_variants').upsert(pending,{onConflict:'id'});
+      if(!error){window.__productVariants=payload.map(v=>({...v}));break;}
+      const missing=['description','quantity_available','size','color'].find(k=>new RegExp(`['".]${k}['" ]`).test(error.message||'')&&/column|schema cache/i.test(error.message||''));
+      if(!missing||pending.some(v=>v[missing]!=null&&v[missing]!==''))throw error;
+      pending=pending.map(v=>{const copy={...v};delete copy[missing];return copy;});
+      if(attempt===4)throw error;
+    }
+  }else{
+    window.__productVariants=[];
   }
-  const [{data:existing,error:readError}]=await Promise.all([existingPromise,upsertPromise||Promise.resolve({data:[],error:null})]);
-  if(readError)throw readError;
-  if(upsertPromise)await upsertPromise;
-  const ids=new Set(payload.map(v=>v.id)),removed=(existing||[]).filter(v=>!ids.has(v.id)).map(v=>v.id);
-  if(removed.length){const {error}=await sb.from('product_variants').delete().eq('product_id',productId).in('id',removed);if(error)throw error;}
+  const ids=new Set(payload.map(v=>v.id));
+  void (async()=>{
+    try{
+      const {data:existing,error}=await sb.from('product_variants').select('id').eq('product_id',productId);
+      if(error)throw error;
+      const removed=(existing||[]).filter(v=>!ids.has(v.id)).map(v=>v.id);
+      if(removed.length){const {error:deleteError}=await sb.from('product_variants').delete().eq('product_id',productId).in('id',removed);if(deleteError)throw deleteError;}
+    }catch(e){console.warn('[Levromart] Variant cleanup deferred:',e);}
+  })();
 }
+
 function syncProductEngagementSettingsUI(){byId("prodCommentAudienceWrap")?.classList.toggle("hidden",!byId("prodAllowComments")?.checked);}
 async function saveProductEngagementSettings(id){if(!id||!vendor?.id)return;const {error}=await sb.from("product_engagement_settings").upsert({product_id:id,vendor_id:vendor.id,like_visibility:byId("prodLikeVisibility")?.value||"everyone",allow_comments:!!byId("prodAllowComments")?.checked,comment_audience:byId("prodCommentAudience")?.value||"everyone"},{onConflict:"product_id"});if(error)throw error;}
 async function refreshSavedProductState(productId) {
@@ -19644,24 +19647,16 @@ async function saveProduct() {
 
     window.__displayPictureWasReplaced = !!window.__replaceDisplayPicture || (!((window.__existingPhotos || []).length) && !!(window.__newProductPhotoFiles || []).length);
     const newFiles = [...(window.__newProductPhotoFiles || byId("prodPhotoFiles").files || [])];
-    // Photo uploads, variety-image uploads and the edit-only quantity read are independent.
-    // Start them together to remove avoidable serial waits from the save path.
+    // Save the listing record FIRST. Media uploads are secondary work and must not
+    // keep the Save button spinning while storage is slow. Existing photos are
+    // preserved immediately; newly selected media is uploaded after the database
+    // save and then linked back to the saved listing/variants.
     const quantityReadPromise = editingProductId
       ? sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single()
       : Promise.resolve({data:null,error:null});
-    const newPhotoUrlsPromise = Promise.all(newFiles.map(async (file) => {
-      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `${vendor.id}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, file, { contentType: file.type });
-      if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
-      return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
-    }));
-    const variantUploadPromise = uploadVarietyImages();
-    const [{data:existingProduct,error:existingProductError},newPhotoUrls] = await Promise.all([quantityReadPromise,newPhotoUrlsPromise,variantUploadPromise]);
+    const [{data:existingProduct,error:existingProductError}] = await Promise.all([quantityReadPromise]);
     if(existingProductError)throw new Error(existingProductError.message);
-    const photos = window.__displayPictureWasReplaced && newPhotoUrls.length
-      ? [newPhotoUrls[0], ...(window.__existingPhotos || []), ...newPhotoUrls.slice(1)]
-      : [...(window.__existingPhotos || []), ...newPhotoUrls];
+    const photos = [...(window.__existingPhotos || [])];
 
     let savedProductId = editingProductId;
     let variantDrafts = [];
@@ -19705,7 +19700,42 @@ async function saveProduct() {
     const savedDraftIdentity=editingProductId||"new";
     editingProductId=savedProductId;
     await saveProductVariants(savedProductId,variantDrafts);
+    const pendingVariantMedia=Array.isArray(window.__productVariants)?window.__productVariants.filter(v=>v._imageFile).map(v=>({id:v.id,file:v._imageFile})):[];
+    const baseSavedPhotos=[...(window.__existingPhotos||[])];
+    const wasDisplayPictureReplaced=!!window.__displayPictureWasReplaced;
     const engagementSave=Promise.allSettled([saveProductEngagementSettings(savedProductId)]);
+    // Once the required listing/variant rows exist, upload new media in the
+    // background. This deliberately does not block the successful save UX.
+    void (async()=>{
+      try{
+        const mainUrls=await Promise.all(newFiles.map(async(file)=>{
+          const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
+          const path=`${vendor.id}/${crypto.randomUUID()}.${ext}`;
+          const {error:upErr}=await sb.storage.from("product-photos").upload(path,file,{contentType:file.type});
+          if(upErr)throw new Error(`Photo upload failed: ${upErr.message}`);
+          return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
+        }));
+        let nextPhotos=[...baseSavedPhotos,...mainUrls];
+        if(wasDisplayPictureReplaced&&mainUrls.length)nextPhotos=[mainUrls[0],...baseSavedPhotos,...mainUrls.slice(1)];
+        if(mainUrls.length){
+          const {error:photoLinkError}=await sb.from("products").update({photos:nextPhotos}).eq("id",savedProductId).eq("vendor_id",vendor.id);
+          if(photoLinkError)throw photoLinkError;
+          if(window.__lastSavedProductRow)window.__lastSavedProductRow.photos=nextPhotos;
+        }
+        await Promise.all(pendingVariantMedia.map(async(item)=>{
+          const file=item.file,ext=(file.name.split(".").pop()||"jpg").toLowerCase(),path=`${vendor.id}/variants/${crypto.randomUUID()}.${ext}`;
+          const {error:upErr}=await sb.storage.from("product-photos").upload(path,file,{contentType:file.type});
+          if(upErr)throw new Error(`Variety photo upload failed: ${upErr.message}`);
+          const url=sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
+          const {error:variantLinkError}=await sb.from("product_variants").update({photo_url:url}).eq("id",item.id).eq("product_id",savedProductId);
+          if(variantLinkError)throw variantLinkError;
+        }));
+        if(mainUrls.length)showToast("Listing saved. Photos are now attached.","success");
+      }catch(mediaErr){
+        console.warn("[Levromart] Background listing media upload failed:",mediaErr);
+        showToast("Listing saved, but one or more new photos could not be uploaded. Reopen the listing to retry.","info");
+      }
+    })();
     window.clearListingDraft?.("product", savedDraftIdentity);
     // Required product and variety writes have completed; engagement settings finish separately.
     const primarySavedProduct = {
@@ -35481,26 +35511,35 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       void refreshAuthState().catch(e=>console.warn("[Levromart] Post-application auth refresh failed:",e));
       void navigate("home").catch(e=>console.warn("[Levromart] Post-application navigation failed:",e));
 
-      button.innerHTML='<i class="fa-solid fa-building-columns"></i> Setting up payout…';
-      const payoutRes=await fetch("/api/vendor-payments",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({action:"create-subaccount",accessToken:session.access_token,bankCode,bankName,accountNumber,accountName})
-      });
-      const payoutJson=await payoutRes.json().catch(()=>({}));
-      if(!payoutRes.ok||!payoutJson.subaccount_code){
-        throw new Error(payoutJson.error||"We couldn't activate the payout account. Please check the bank and account number.");
-      }
-
-      const {error:finalPayoutSaveError}=await sb.from("vendors").update({
-        bank_code:bankCode,
-        bank_name:payoutJson.bank_name||bankName||null,
-        account_name:payoutJson.account_name||accountName||null,
-        account_number:accountNumber,
-        paystack_subaccount_code:payoutJson.subaccount_code
-      }).eq("id",vendorId).eq("user_id",session.user.id);
-      if(finalPayoutSaveError)throw new Error("The payout account was created but could not be linked to your application.");
-
-      showToast("Your payout account is now set up. Your application remains pending review.", "success");
+      // Do NOT hold the application submission open on the external payout API.
+      // The application is already persisted and the applicant has been notified.
+      // Payout provisioning continues independently and can be retried if needed.
+      void (async()=>{
+        try{
+          const payoutRes=await fetch("/api/vendor-payments",{
+            method:"POST",headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({action:"create-subaccount",accessToken:session.access_token,bankCode,bankName,accountNumber,accountName})
+          });
+          const payoutJson=await payoutRes.json().catch(()=>({}));
+          if(!payoutRes.ok||!payoutJson.subaccount_code)throw new Error(payoutJson.error||"Payout setup could not be completed.");
+          const {error:finalPayoutSaveError}=await sb.from("vendors").update({
+            bank_code:bankCode,bank_name:payoutJson.bank_name||bankName||null,
+            account_name:payoutJson.account_name||accountName||null,account_number:accountNumber,
+            paystack_subaccount_code:payoutJson.subaccount_code
+          }).eq("id",vendorId).eq("user_id",session.user.id);
+          if(finalPayoutSaveError)throw new Error("The payout account was created but could not be linked to your application.");
+          console.info("[Levromart] Vendor payout setup completed after application submission:",vendorId);
+        }catch(payoutErr){
+          console.warn("[Levromart] Background payout setup failed:",payoutErr);
+          void sb.rpc("create_notification",{
+            p_user_id:session.user.id,p_type:"vendor_application_payout_action_needed",
+            p_title:"Payout setup needs attention",
+            p_body:"Your vendor application was submitted successfully, but your payout account still needs to be completed. Please review your vendor profile.",
+            p_target_view:"home",p_target_params:{vendorId},p_actor_id:null
+          }).catch(notificationError=>console.warn("[Levromart] Payout follow-up notification failed:",notificationError));
+        }
+      })();
+      return;
     }catch(err){
       console.error("[Levromart] Vendor application failed:",err);
       if(createdNew&&vendorId){
