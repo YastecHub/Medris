@@ -19468,15 +19468,15 @@ async function saveProductVariants(productId,drafts){
   if(!productId)return [];
   const sourceVariants=Array.isArray(window.__productVariants)?window.__productVariants:[];
   const sourceByKey=new Map(sourceVariants.map(v=>[String(v.id||v._localKey||""),v]));
-  const payload=(Array.isArray(drafts)?drafts:[]).map(d=>{
-    const row={...d,id:d.id||crypto.randomUUID(),product_id:productId};
+  const payload=(Array.isArray(drafts)?drafts:[]).map((d,index)=>{
+    const row={...d,id:d.id||crypto.randomUUID(),product_id:productId,sort_order:Number.isFinite(Number(d.sort_order))?Number(d.sort_order):index};
     delete row._localKey; delete row.product_id;
     if(row.quantity_available==null) row.quantity_available=0;
     return row;
   });
-  // Save the entire variety set atomically in one server-side transaction.
-  // This prevents partial saves and makes large sets (10/20/40+ varieties)
-  // behave exactly like a single listing save.
+  // The entire variety set is saved by one database transaction. The database
+  // deliberately suppresses per-row follower notifications during this batch,
+  // so 10/20/30/50+ varieties cannot turn one save into dozens of slow jobs.
   const {data:savedRows,error}=await sb.rpc('save_product_variants',{
     p_product_id:productId,
     p_variants:payload
@@ -19484,9 +19484,8 @@ async function saveProductVariants(productId,drafts){
   if(error)throw new Error(error.message||'Could not save varieties.');
   const rows=Array.isArray(savedRows)?savedRows:[];
   const localById=new Map(payload.map(v=>[String(v.id),v]));
-  const localByKey=new Map(payload.map(v=>[String(v.id),v]));
   window.__productVariants=rows.map((row,i)=>{
-    const source=localById.get(String(row.id))||localByKey.get(String(payload[i]?.id||''));
+    const source=localById.get(String(row.id))||payload[i];
     const original=sourceByKey.get(String(source?.id||source?._localKey||''));
     return {...row,_localKey:original?._localKey||source?._localKey||row.id,...(original?._imageFile?{_imageFile:original._imageFile}:{}),...(original?._previewUrl?{_previewUrl:original._previewUrl}: {})};
   });
@@ -19781,7 +19780,17 @@ async function saveProduct() {
     }
     const savedDraftIdentity=editingProductId||"new";
     editingProductId=savedProductId;
+    const variantCount=variantDrafts.length;
+    if(variantCount){
+      btn.innerHTML=`<i class="fa-solid fa-spinner fa-spin"></i> Saving ${variantCount} ${variantCount===1?'variety':'varieties'}…`;
+    }
     await saveProductVariants(savedProductId,variantDrafts);
+    // Notifications are deliberately dispatched after the database save and
+    // never block or roll back the listing save. A failure here is non-fatal.
+    if(variantCount || editingProductId){
+      void sb.rpc('notify_product_variety_batch',{p_product_id:savedProductId})
+        .catch(e=>console.warn('[Levromart] Variety notification dispatch failed:',e));
+    }
     const pendingVariantMedia=Array.isArray(window.__productVariants)?window.__productVariants.filter(v=>v._imageFile).map(v=>({id:v.id,file:v._imageFile})):[];
     const baseSavedPhotos=[...(window.__existingPhotos||[])];
     const wasDisplayPictureReplaced=!!window.__displayPictureWasReplaced;
