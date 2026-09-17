@@ -36246,7 +36246,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       return;
     }
     if(adminVendorActionBusy.has(id)||!session?.user?.id||profile?.role!=="admin"){if(!session?.user?.id||profile?.role!=="admin")showToast("Admin access is required.","error");return;}
-    const {data:target,error}=await sb.from("vendors").select("id,business_name,verification_status,bank_code,account_number,paystack_subaccount_code").eq("id",id).is("deleted_at",null).maybeSingle();
+    const {data:target,error}=await sb.from("vendors").select("id,business_name,verification_status,bank_code,bank_name,account_number,account_name,paystack_subaccount_code").eq("id",id).is("deleted_at",null).maybeSingle();
     if(error||!target){showToast(error?.message||"Vendor application not found.","error");return;}
     businessName=target.business_name||businessName||"this business";
     const choice=await showConfirmDialog(`Approve "${businessName}" as a vendor? Choose whether payout is configured now or the vendor is approved without payout setup.`,{title:"Approve vendor",okLabel:"Choose payout option"});
@@ -36257,10 +36257,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     adminVendorActionBusy.add(id);
     try{
       const live=(await sb.auth.getSession()).data?.session;if(!live?.user?.id)throw new Error("Your admin session has expired. Please sign in again.");
-      if(selected==="payout"&&!target.paystack_subaccount_code){
-        if(!target.bank_code||!target.account_number)throw new Error("This vendor has no complete bank and account number. Use Approve without payout, or add payout details first.");
-        const payoutRes=await fetch("/api/vendor-payout-setup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accessToken:live.access_token,vendorId:id})});
-        const payoutJson=await payoutRes.json().catch(()=>({}));if(!payoutRes.ok||!payoutJson.subaccount_code)throw new Error(payoutJson.error||"Payout setup failed. The vendor was not approved.");
+      if(selected==="payout"){
+        await window.__levroEnsureVendorPayout(target,live.access_token);
       }
       const {data:result,error:statusError}=await sb.rpc("admin_set_vendor_status",{p_vendor_id:id,p_status:"verified"});if(statusError)throw statusError;if(!result?.success)throw new Error("Approval did not complete.");
       try{await logAdminAction(selected==="payout"?"approve_vendor_with_payout":"approve_vendor_without_payout","vendor",id,businessName);}catch(_){}
@@ -36787,6 +36785,70 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     }finally{adminVendorActionBusy.delete(vendorId);}
   };
 
+  /*
+   * Single payout-provisioning path for admin approval.
+   *
+   * The vendor application and vendor payout editor already use
+   * /api/vendor-payments?action=create-subaccount and that endpoint returns
+   * the Paystack subaccount code. The old admin approval path used a separate
+   * /api/vendor-payout-setup endpoint, which is why approval could fail even
+   * though the vendor had valid bank details. Keep one proven path here and
+   * persist the returned code before approval is committed.
+   */
+  window.__levroEnsureVendorPayout=async function(target,accessToken){
+    if(!target?.id) throw new Error("Vendor record not found.");
+    if(!accessToken) throw new Error("Your admin session has expired. Please sign in again.");
+
+    const existing=String(target.paystack_subaccount_code||"").trim();
+    if(existing) return existing;
+
+    const bankCode=String(target.bank_code||"").trim();
+    const accountNumber=String(target.account_number||"").trim();
+    if(!bankCode||!/^\d{10}$/.test(accountNumber)){
+      throw new Error("This vendor has no complete payout bank and 10-digit account number. Add the payout details first, or approve without payout.");
+    }
+
+    const payoutRes=await fetch("/api/vendor-payments",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"create-subaccount",accessToken,bankCode,accountNumber})
+    });
+    const payoutJson=await payoutRes.json().catch(()=>({}));
+    const subaccountCode=String(
+      payoutJson.subaccount_code || payoutJson.subaccount?.subaccount_code || ""
+    ).trim();
+    if(!payoutRes.ok || !subaccountCode){
+      const detail=String(
+        payoutJson.error || payoutJson.message || payoutJson.subaccount?.message || ""
+      ).trim();
+      throw new Error(detail || "Paystack payout setup failed. The vendor was not approved.");
+    }
+
+    const bankName=String(target.bank_name||"").trim() || null;
+    const accountName=String(
+      payoutJson.account_name || payoutJson.subaccount?.account_name || target.account_name || ""
+    ).trim() || null;
+
+    const {error:saveError}=await sb.from("vendors").update({
+      bank_code:bankCode,
+      bank_name:bankName,
+      account_number:accountNumber,
+      account_name:accountName,
+      paystack_subaccount_code:subaccountCode
+    }).eq("id",target.id).is("deleted_at",null);
+    if(saveError){
+      throw new Error(`Paystack created the payout account, but Levromart could not link it: ${saveError.message}`);
+    }
+
+    const {data:saved,error:readError}=await sb.from("vendors")
+      .select("paystack_subaccount_code,bank_code,account_number")
+      .eq("id",target.id).is("deleted_at",null).maybeSingle();
+    if(readError || String(saved?.paystack_subaccount_code||"").trim()!==subaccountCode){
+      throw new Error("Paystack created the payout account, but Levromart could not verify the saved payout link. The vendor was not approved.");
+    }
+    return subaccountCode;
+  };
+
   // Approval is also made cache-friendly. Payout provisioning remains required,
   // but the UI no longer performs redundant session/log round trips.
   window.__levroFastApproveVendor=async function(id,filterStatus,businessName){
@@ -36799,17 +36861,11 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     const btn=document.querySelector(`#app .vendor-admin-action[data-vendor-id="${CSS.escape(String(id))}"][data-status="verified"]`);
     try{
       if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Approving…';}
-      const {data:target,error:targetError}=await sb.from("vendors").select("id,user_id,business_name,verification_status,bank_code,account_number,paystack_subaccount_code").eq("id",id).is("deleted_at",null).maybeSingle();
+      const {data:target,error:targetError}=await sb.from("vendors").select("id,user_id,business_name,verification_status,bank_code,bank_name,account_number,account_name,paystack_subaccount_code").eq("id",id).is("deleted_at",null).maybeSingle();
       if(targetError||!target)throw new Error(targetError?.message||"Vendor application not found.");
-      if(!target.paystack_subaccount_code){
-        if(!target.bank_code||!target.account_number)throw new Error("This vendor has no complete payout bank and account number.");
-        const live=await sb.auth.getSession();
-        const accessToken=live?.data?.session?.access_token;
-        if(!accessToken)throw new Error("Your admin session has expired. Please sign in again.");
-        const res=await fetch("/api/vendor-payout-setup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accessToken,vendorId:id})});
-        const json=await res.json().catch(()=>({}));
-        if(!res.ok||!json.subaccount_code)throw new Error(json.error||"Payout setup failed. The vendor was not approved.");
-      }
+      const live=await sb.auth.getSession();
+      const accessToken=live?.data?.session?.access_token;
+      await window.__levroEnsureVendorPayout(target,accessToken);
       const {data,error}=await sb.rpc("admin_set_vendor_status",{p_vendor_id:id,p_status:"verified"});
       if(error)throw error;
       if(!data?.success)throw new Error("Approval did not complete.");
