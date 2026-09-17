@@ -7262,7 +7262,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <strong>Add photos</strong>
       <span class="muted">Tap to choose, or drag images here</span>
     </label>
-    <input type="file" id="prodPhotoFiles" accept="image/*" class="hidden" onchange="previewNewProductPhotos()" />
+    <input type="file" id="prodPhotoFiles" accept="image/*" multiple class="hidden" onchange="previewNewProductPhotos()" />
     <div class="photo-grid" id="prodExistingPhotos"></div>
     <div class="photo-grid" id="prodNewPhotoPreviews"></div>
     <div class="product-variant-pricing" id="productVariantPricing"></div>
@@ -15456,17 +15456,32 @@ function stripProductVariantMeta(description) {
   return String(description || "").replace(/\s*<!--LEVROMART_VARIANTS:[\s\S]*?-->/, "").trim();
 }
 let productGalleryIndex = 0;
-function setProductGalleryPhoto(index, smooth = true, syncVariant = true) {
+window.__productGalleryMainIndex = 0;
+window.__productGalleryVarietyOverride = false;
+function updateProductGalleryMainControl() {
+  const btn = byId("productGalleryReturnMain");
+  if (!btn) return;
+  btn.classList.toggle("hidden", !window.__productGalleryVarietyOverride || productGalleryIndex === Number(window.__productGalleryMainIndex || 0));
+}
+function restoreProductGalleryMainImage() {
+  const mainIndex = Number(window.__productGalleryMainIndex || 0);
+  window.__productGalleryVarietyOverride = false;
+  setProductGalleryPhoto(mainIndex, true, false, true);
+  updateProductGalleryMainControl();
+}
+function setProductGalleryPhoto(index, smooth = true, syncVariant = true, preserveVarietyOverride = false) {
   const photos = window.__productGalleryPhotos || [];
   const track = byId("productGalleryTrack");
   if (!photos.length || !track) return;
   productGalleryIndex = (index + photos.length) % photos.length;
+  if (!preserveVarietyOverride) window.__productGalleryVarietyOverride = false;
   const slide = track.querySelector(`.product-gallery-slide[data-gallery-index="${productGalleryIndex}"]`);
   slide?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", inline: "center", block: "nearest" });
   const count = byId("productGalleryCount");
   if (count) count.textContent = String(productGalleryIndex + 1);
   document.querySelectorAll(".product-gallery-thumb").forEach((el) => el.classList.toggle("active", Number(el.dataset.galleryIndex) === productGalleryIndex));
   if (syncVariant) syncProductVariantToGalleryIndex(productGalleryIndex);
+  updateProductGalleryMainControl();
 }
 function changeProductGalleryPhoto(delta) { setProductGalleryPhoto(productGalleryIndex + delta); }
 function syncProductVariantToGalleryIndex(index) {
@@ -15831,9 +15846,12 @@ async function __levroOriginalRenderProductDetail(productId) {
           ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
         ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
+        <button type="button" id="productGalleryReturnMain" class="product-gallery-return-main hidden" onclick="restoreProductGalleryMainImage()" aria-label="Return to main product image"><i class="fa-solid fa-arrow-left"></i> Main image</button>
       </div>`
     : `<div class="product-img" style="height:220px;"><i class='fa-solid fa-camera'></i> No image</div>`;
   window.__productGalleryPhotos = productPhotos;
+  window.__productGalleryMainIndex = 0;
+  window.__productGalleryVarietyOverride = false;
   window.__productGalleryIndex = 0;
   const isFav = favoriteIds.has(product.id);
   window.__lastRenderedProductPreview = product;
@@ -15855,6 +15873,7 @@ async function __levroOriginalRenderProductDetail(productId) {
     </div>
     <h2 class="product-detail-title">${esc(product.name)}${product.is_service ? ` <span class="badge">Service</span>` : ""}</h2>
     <div class="product-detail-media">${photosHtml}</div>
+    ${productVariants.length ? `<div class="product-gallery-varieties" id="productGalleryVarieties"><div class="product-gallery-varieties-head"><strong>Varieties</strong><span class="muted" style="font-size:.68rem;">${productVariants.length} option${productVariants.length===1?'':'s'}</span></div><div class="product-gallery-varieties-list">${productVariants.map((v,i)=>{const unit=Number(v.discount_price ?? v.sale_price ?? v.rental_rate ?? 0);const photo=v.photo_url||'';return `<button type="button" class="product-gallery-variety ${i===0?'active':''}" data-gallery-variety-id="${esc(v.id)}" onclick="selectProductVariant('${esc(v.id)}',true,true)">${photo?`<img src="${esc(photo)}" alt="${esc(v.name||`Variety ${i+1}`)}" loading="lazy" decoding="async">`:`<span class="product-gallery-variety-placeholder"><i class="fa-solid fa-layer-group"></i></span>`}<strong>${esc(v.name||`Variety ${i+1}`)}</strong><small>${unit>0?naira(unit):'Price on request'}</small></button>`;}).join('')}</div></div>` : ''}
     ${productGalleryVariantMetaHtml}
     <div class="product-detail-actions">
       ${profile?.role !== "admin" ? (product.vendor.whatsapp_visible && product.vendor.whatsapp_number ? `<div class="ms-wrap product-message-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm" type="button" onclick="toggleInlineMenu('productMessageMenu-${product.id}',event)"><i class='fa-solid fa-comment-dots'></i> Message vendor</button><div class="ms-list hidden" id="productMessageMenu-${product.id}" style="left:0;right:auto;width:max-content;min-width:190px;"><button class="ms-item" type="button" onclick="startConversationWithVendor('${product.vendor.id}');closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(product.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm" onclick="startConversationWithVendor('${product.vendor.id}')"><i class='fa-solid fa-comment-dots'></i> Message vendor</button>`) : ""}
@@ -16137,6 +16156,11 @@ function selectProductVariant(variantId, scrollGallery = true, syncGallery = tru
     btn.classList.toggle("active", !!selected);
     btn.setAttribute("aria-pressed", String(!!selected));
   });
+  document.querySelectorAll(".product-gallery-variety[data-gallery-variety-id]").forEach(btn => {
+    const selected = String(btn.dataset.galleryVarietyId) === String(variant.id);
+    btn.classList.toggle("active", selected);
+    btn.setAttribute("aria-pressed", String(selected));
+  });
   const qty = parseInt(byId("buyQty")?.value || 1) || 1;
   const unit = Number(variant.discount_price ?? variant.sale_price ?? variant.rental_rate ?? 0);
   const preview = byId("serviceTotalPreview");
@@ -16151,10 +16175,12 @@ function selectProductVariant(variantId, scrollGallery = true, syncGallery = tru
   const stockEl=byId("selectedVariantStock"); if(stockEl) stockEl.textContent=variantStockLabel(variant);
   const q=byId("buyQty");if(q){const stock=variantStock(variant);if(stock==null)q.removeAttribute("max");else q.max=String(stock);}
   if (scrollGallery && variant.photo_url) {
+    window.__productGalleryVarietyOverride = true;
     const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => String(u) === String(variant.photo_url)) ?? -1);
-    if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex, false, syncGallery);
+    if (galleryIndex >= 0) setProductGalleryPhoto(galleryIndex, false, syncGallery, true);
     const mainImg = document.querySelector("#productGalleryTrack .product-gallery-slide.active img") || document.querySelector("#productGalleryTrack .product-gallery-slide img");
     if (mainImg && galleryIndex < 0) mainImg.src = variant.photo_url;
+    updateProductGalleryMainControl();
   }
 }
 
@@ -18552,39 +18578,75 @@ async function loadBankOptions() {
 async function saveVendorBankDetails() {
   const errorEl = byId("bankError");
   errorEl.classList.add("hidden");
-  const bankCode = byId("veBankCode").value;
-  const accountNumber = byId("veAccountNumber").value.trim();
+  const bankSelect = byId("veBankCode");
+  const accountInput = byId("veAccountNumber");
+  const bankCode = String(bankSelect?.value || "").trim();
+  const accountNumber = String(accountInput?.value || "").trim();
+  const bankName = String(bankSelect?.selectedOptions?.[0]?.textContent || "").trim();
   if (!/^\d{10}$/.test(accountNumber)) {
     errorEl.textContent = "Enter a valid 10-digit account number.";
     errorEl.classList.remove("hidden");
     return;
   }
   const btn = byId("saveBankBtn");
-  if(btn.disabled)return;
-  if(!bankCode){errorEl.textContent="Choose a bank.";errorEl.classList.remove("hidden");return;}
-  const owner=vendor.id;
-  btn.disabled = true;
+  if (btn?.disabled) return;
+  if (!bankCode || !bankName) {
+    errorEl.textContent = "Choose a bank.";
+    errorEl.classList.remove("hidden");
+    return;
+  }
+  const owner = vendor?.id;
+  if (!owner || !session?.user?.id || !session?.access_token) {
+    errorEl.textContent = "Your vendor session has expired. Please sign in again.";
+    errorEl.classList.remove("hidden");
+    return;
+  }
+  if (btn) btn.disabled = true;
   try {
+    // First let Paystack verify/create the payout subaccount from the exact
+    // selection the vendor made. No local payout fields are changed yet.
     const res = await fetch("/api/vendor-payments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "create-subaccount", accessToken: session.access_token, bankCode, accountNumber }),
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json.error || "Could not save payout details.");
+
+    const subaccountCode = String(json.subaccount_code || json.subaccount?.subaccount_code || "").trim();
+    if (!subaccountCode) throw new Error("Paystack verified the account but did not return a payout account code. Please try again.");
+    const verifiedAccountName = String(json.account_name || json.subaccount?.account_name || "").trim();
+
+    // Persist the complete, exact payout configuration on the vendor row.
+    // This is the missing step that caused the old-account/new-selection mismatch.
+    const { error: payoutSaveError } = await sb.from("vendors").update({
+      bank_code: bankCode,
+      bank_name: bankName,
+      account_name: verifiedAccountName || null,
+      account_number: accountNumber,
+      paystack_subaccount_code: subaccountCode
+    }).eq("id", owner).eq("user_id", session.user.id);
+    if (payoutSaveError) throw new Error(`Paystack verified the account, but Levromart could not save the payout details: ${payoutSaveError.message}`);
+
+    // Read back from the database and verify what was actually persisted.
+    const { data: saved, error: readError } = await sb.from("vendors")
+      .select("*").eq("id", owner).eq("user_id", session.user.id).single();
+    if (readError) throw new Error("Payout account was saved, but the saved details could not be verified. Please reopen Payout details before retrying.");
+    if (String(saved.bank_code || "") !== bankCode || String(saved.account_number || "") !== accountNumber || String(saved.paystack_subaccount_code || "") !== subaccountCode) {
+      throw new Error("The payout account was not saved exactly as selected. Please retry before accepting payouts.");
+    }
+
+    if (vendor?.id === owner) vendor = saved;
     const keepScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-    const {data:saved,error:readError}=await sb.from('vendors').select('*').eq('id',owner).eq('user_id',session.user.id).single();
-    if(readError)throw new Error('Payout request completed, but saved details could not be verified. Reopen Payout details before retrying.');
-    if(String(saved.bank_code)!==String(bankCode)||String(saved.account_number)!==accountNumber)throw new Error('The saved payout account does not match your selection. Please contact support before accepting payouts.');
-    if(vendor?.id===owner)vendor=saved;
-    if(currentView!=='vendorEditProfile')return;
-    showToast(`Payouts set up for ${saved.account_name||json.account_name}.`, "success");
+    if (currentView !== "vendorEditProfile") return;
+    showToast(`Payouts set up successfully for ${saved.account_name || verifiedAccountName || "this account"}.`, "success");
     await navigate("vendorEditProfile", {}, false);
     requestAnimationFrame(() => window.scrollTo({ top: keepScrollY, left: 0, behavior: "auto" }));
   } catch (err) {
-    errorEl.textContent = err.message;
+    errorEl.textContent = err?.message || "Could not save payout details.";
     errorEl.classList.remove("hidden");
-    btn.disabled = false;
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -19272,10 +19334,13 @@ function renderNewProductPhotos() {
 }
 function previewNewProductPhotos() {
   persistVisibleVariantOrder();
-  const files=[...(byId("prodPhotoFiles").files || [])].filter(f=>f.type?.startsWith("image/")).slice(0,1);
+  const files=[...(byId("prodPhotoFiles").files || [])].filter(f=>f.type?.startsWith("image/"));
+  // Replacing the display picture is a single-image operation; normal Add photos
+  // accepts the complete selected collection. Never silently truncate uploads.
+  const selectedFiles=window.__replaceDisplayPicture ? files.slice(0,1) : files;
   if(window.__replaceDisplayPicture && files.length){
     window.__existingPhotos=(window.__existingPhotos||[]).slice(1);
-    window.__newProductPhotoFiles=files;
+    window.__newProductPhotoFiles=selectedFiles;
   }else{
     window.__newProductPhotoFiles=files;
   }
@@ -19437,17 +19502,57 @@ function openProductDisplayPictureActions(event){
 }
 function clearProductDisplayPicture(){window.__existingPhotos=(window.__existingPhotos||[]).slice(1);renderExistingPhotos();renderProductDisplayPicture();}
 
+window.__collapsedProductVariants ||= new Set();
+function toggleProductVariantAccordion(key) {
+  const k = String(key || "");
+  if (!k) return;
+  const set = window.__collapsedProductVariants ||= new Set();
+  if (set.has(k)) set.delete(k); else set.add(k);
+  const row = [...document.querySelectorAll("#productVariantPricing .variant-price-row")].find(r => String(r.dataset.variantKey || "") === k);
+  if (!row) return;
+  const body = row.querySelector(".variant-accordion-body");
+  const toggle = row.querySelector(".variant-accordion-toggle");
+  const collapsed = set.has(k);
+  body?.classList.toggle("hidden", collapsed);
+  row.classList.toggle("is-collapsed", collapsed);
+  toggle?.setAttribute("aria-expanded", String(!collapsed));
+  const icon = toggle?.querySelector(".variant-accordion-chevron");
+  if (icon) icon.className = `fa-solid ${collapsed ? "fa-chevron-down" : "fa-chevron-up"} variant-accordion-chevron`;
+}
 function renderProductVariantPricing() {
-  const wrap=byId("productVariantPricing"); if(!wrap)return;
-  const variants=Array.isArray(window.__productVariants)?window.__productVariants:[], existing=Array.isArray(window.__existingPhotos)?window.__existingPhotos:[], pending=Array.isArray(window.__newProductPhotoFiles)?window.__newProductPhotoFiles:[];
-  const rows=[]; variants.forEach((v,index)=>rows.push({...v,_localKey:String(v.id||v._localKey||`variant-${index}`),_source:v.photo_url?"existing":"none"}));
-  if(!rows.length){wrap.innerHTML='<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Add optional variety details such as an image, name, color, size, price or discount price.</div></div></div>';renderProductDisplayPicture();return;}
-  const photoFiles=window.__productVariantPhotoFiles||{};
-  wrap.innerHTML=`<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Each variety is optional. Add only the details that apply. Drag the handle to reorder.</div></div></div>${rows.map((r,i)=>{const key=String(r.id||r._localKey),uploadedFile=photoFiles[key],image=uploadedFile?URL.createObjectURL(uploadedFile):(r._previewUrl||r.photo_url||(r.temp_index!=null?pending[r.temp_index]&&URL.createObjectURL(pending[r.temp_index]):"")||""),imageOptions=existing.map((u,j)=>`<option value="${esc(u)}" ${String(r.photo_url||"")===String(u)?"selected":""}>Product photo ${j+1}${j===0?" (display)":""}</option>`).join("");return `<div class="variant-price-row" draggable="true" data-variant-key="${esc(key)}" data-photo-url="${esc(r.photo_url||"")}" data-temp-index="${r.temp_index??""}">
-    <div class="variant-row-topbar"><button type="button" class="variant-dnd-handle" aria-label="Drag to reorder" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></button><strong class="variant-row-title">Variety ${i+1}</strong><button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Remove this variety" title="Remove this variety"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="variant-photo-section"><button type="button" class="variant-photo-picker" onclick="openProductVariantPhotoPicker('${esc(key)}')" aria-label="Add variety photo"><span class="variant-photo-preview">${image?`<img src="${esc(image)}" alt="Variety photo">`:`<i class="fa-regular fa-image"></i>`}</span><span class="variant-photo-copy"><strong>${image?'Change variety photo':'Add variety photo'}</strong><small>Optional · tap to choose an image</small></span><i class="fa-solid fa-camera variant-photo-camera"></i></button><input type="file" class="variant-photo-file" data-variant-photo-key="${esc(key)}" accept="image/*" onchange="handleProductVariantPhotoChange(this)" hidden>${existing.length?`<div class="variant-existing-photo-wrap"><label>Or use a product photo</label><select class="variant-image" aria-label="Use an existing product photo" onchange="clearProductVariantUploadedPhoto(this)"><option value="" ${!r.photo_url?"selected":""}>No existing photo</option>${imageOptions}</select></div>`:''}</div>
-    <div class="variant-fields-grid"><div class="variant-field"><label>Variety name <span>(optional)</span></label><input class="variant-name" type="text" maxlength="120" placeholder="e.g. Large / Black / 500ml" value="${esc(r.name||"")}"></div><div class="variant-field"><label>Color <span>(optional)</span></label><input class="variant-color" type="text" maxlength="80" placeholder="e.g. Black" value="${esc(r.color||"")}"></div><div class="variant-field"><label>Size <span>(optional)</span></label><input class="variant-size" type="text" maxlength="80" placeholder="e.g. XL" value="${esc(r.size||"")}"></div><div class="variant-field"><label>Price (₦) <span>(optional)</span></label><input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="e.g. 15000" value="${r.sale_price==null?"":esc(String(r.sale_price))}"></div><div class="variant-field variant-field-wide"><label>Discount price (₦) <span>(optional)</span></label><input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="e.g. 13500" value="${r.discount_price==null?"":esc(String(r.discount_price))}"></div><div class="variant-field variant-field-wide"><label>Description <span>(optional)</span></label><textarea class="variant-description" aria-label="Variety description" placeholder="Description">${esc(r.description||"")}</textarea></div><div class="variant-field variant-field-wide"><label>Quantity available <span>(optional)</span></label><input class="variant-quantity" type="number" min="0" step="1" aria-label="Variety quantity available" placeholder="Quantity available" value="${r.quantity_available==null?'':esc(r.quantity_available)}"></div></div>
-  </div>`;}).join("")}`;bindProductVariantDnd();renderProductDisplayPicture();
+  const wrap = byId("productVariantPricing"); if (!wrap) return;
+  const variants = Array.isArray(window.__productVariants) ? window.__productVariants : [];
+  const existing = Array.isArray(window.__existingPhotos) ? window.__existingPhotos : [];
+  const pending = Array.isArray(window.__newProductPhotoFiles) ? window.__newProductPhotoFiles : [];
+  const rows = variants.map((v,index) => ({...v,_localKey:String(v.id||v._localKey||`variant-${index}`),_source:v.photo_url?"existing":"none"}));
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Add optional variety details such as an image, name, color, size, price or discount price.</div></div></div>';
+    renderProductDisplayPicture(); return;
+  }
+  const photoFiles = window.__productVariantPhotoFiles || {};
+  const collapsed = window.__collapsedProductVariants ||= new Set();
+  rows.forEach(r => { const key=String(r.id||r._localKey); if (!collapsed.has(key)) collapsed.add(key); });
+  wrap.innerHTML = `<div class="product-variant-pricing-head"><div><strong>Varieties</strong><div class="variant-price-note">Each variety is optional. Drag the handle to reorder. Tap a variety header to expand or collapse its fields.</div></div></div>${rows.map((r,i)=>{
+    const key=String(r.id||r._localKey), uploadedFile=photoFiles[key];
+    const image=uploadedFile?URL.createObjectURL(uploadedFile):(r._previewUrl||r.photo_url||(r.temp_index!=null?pending[r.temp_index]&&URL.createObjectURL(pending[r.temp_index]):"")||"");
+    const imageOptions=existing.map((u,j)=>`<option value="${esc(u)}" ${String(r.photo_url||"")===String(u)?"selected":""}>Product photo ${j+1}${j===0?" (display)":""}</option>`).join("");
+    const isCollapsed=collapsed.has(key);
+    const thumb=image?`<img class="variant-accordion-thumb" src="${esc(image)}" alt="">`:`<span class="variant-accordion-thumb variant-accordion-thumb-empty"><i class="fa-regular fa-image"></i></span>`;
+    return `<div class="variant-price-row ${isCollapsed?"is-collapsed":""}" draggable="true" data-variant-key="${esc(key)}" data-photo-url="${esc(r.photo_url||"")}" data-temp-index="${r.temp_index??""}">
+      <div class="variant-row-topbar">
+        <button type="button" class="variant-dnd-handle" aria-label="Drag to reorder" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></button>
+        <button type="button" class="variant-accordion-toggle" aria-expanded="${String(!isCollapsed)}" aria-controls="variant-body-${esc(key)}" onclick="toggleProductVariantAccordion('${esc(key)}')">
+          ${thumb}<span class="variant-accordion-title"><strong class="variant-row-title">Variety ${i+1}</strong><small>${esc(r.name||"Unnamed variety")}</small></span><i class="fa-solid ${isCollapsed?"fa-chevron-down":"fa-chevron-up"} variant-accordion-chevron"></i>
+        </button>
+        <button type="button" class="variant-price-remove" onclick="clearProductVariantRow(this)" aria-label="Remove this variety" title="Remove this variety"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="variant-body-${esc(key)}" class="variant-accordion-body ${isCollapsed?"hidden":""}">
+        <div class="variant-photo-section"><button type="button" class="variant-photo-picker" onclick="openProductVariantPhotoPicker('${esc(key)}')" aria-label="Add variety photo"><span class="variant-photo-preview">${image?`<img src="${esc(image)}" alt="Variety photo">`:`<i class="fa-regular fa-image"></i>`}</span><span class="variant-photo-copy"><strong>${image?'Change variety photo':'Add variety photo'}</strong><small>Optional · tap to choose an image</small></span><i class="fa-solid fa-camera variant-photo-camera"></i></button><input type="file" class="variant-photo-file" data-variant-photo-key="${esc(key)}" accept="image/*" onchange="handleProductVariantPhotoChange(this)" hidden>${existing.length?`<div class="variant-existing-photo-wrap"><label>Or use a product photo</label><select class="variant-image" aria-label="Use an existing product photo" onchange="clearProductVariantUploadedPhoto(this)"><option value="" ${!r.photo_url?"selected":""}>No existing photo</option>${imageOptions}</select></div>`:''}</div>
+        <div class="variant-fields-grid"><div class="variant-field"><label>Variety name <span>(optional · auto-named if blank)</span></label><input class="variant-name" type="text" maxlength="120" placeholder="e.g. Large / Black / 500ml" value="${esc(r.name||"")}"></div><div class="variant-field"><label>Color <span>(optional)</span></label><input class="variant-color" type="text" maxlength="80" placeholder="e.g. Black" value="${esc(r.color||"")}"></div><div class="variant-field"><label>Size <span>(optional)</span></label><input class="variant-size" type="text" maxlength="80" placeholder="e.g. XL" value="${esc(r.size||"")}"></div><div class="variant-field"><label>Price (₦) <span>(optional · uses product price if blank)</span></label><input class="variant-sale-price" type="number" min="0" step="0.01" placeholder="e.g. 15000" value="${r.sale_price==null?"":esc(String(r.sale_price))}"></div><div class="variant-field variant-field-wide"><label>Discount price (₦) <span>(optional)</span></label><input class="variant-discount-price" type="number" min="0" step="0.01" placeholder="e.g. 13500" value="${r.discount_price==null?"":esc(String(r.discount_price))}"></div><div class="variant-field variant-field-wide"><label>Description <span>(optional)</span></label><textarea class="variant-description" aria-label="Variety description" placeholder="Description">${esc(r.description||"")}</textarea></div><div class="variant-field variant-field-wide"><label>Quantity available <span>(optional)</span></label><input class="variant-quantity" type="number" min="0" step="1" aria-label="Variety quantity available" placeholder="Quantity available" value="${r.quantity_available==null?'':esc(r.quantity_available)}"></div></div>
+      </div>
+    </div>`;
+  }).join("")}`;
+  bindProductVariantDnd(); renderProductDisplayPicture();
 }
 function openProductVariantPhotoPicker(key){const input=[...document.querySelectorAll('#productVariantPricing .variant-photo-file')].find(el=>String(el.dataset.variantPhotoKey||'')===String(key));input?.click();}
 function handleProductVariantPhotoChange(input){const key=String(input?.dataset.variantPhotoKey||'');const file=input?.files?.[0];if(!key||!file||!file.type?.startsWith('image/'))return;window.__productVariantPhotoFiles ||= {};persistVisibleVariantOrder();window.__productVariantPhotoFiles[key]=file;const v=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===key);if(v){v._imageFile=file;v._previewUrl=URL.createObjectURL(file);}renderProductVariantPricing();window.__captureListingDraftForModal?.('product');}
@@ -19470,7 +19575,9 @@ async function uploadVarietyImages(){
 }
 function addProductVarietyDraft(){
   persistVisibleVariantOrder();const variants=window.__productVariants||[];
-  variants.push({_localKey:`local-${crypto.randomUUID()}`,name:'',sale_price:'',discount_price:'',photo_url:'',description:'',quantity_available:null,sort_order:variants.length});
+  const newKey=`local-${crypto.randomUUID()}`;
+  variants.push({_localKey:newKey,name:'',sale_price:'',discount_price:'',photo_url:'',description:'',quantity_available:null,sort_order:variants.length});
+  (window.__collapsedProductVariants ||= new Set()).delete(newKey);
   window.__productVariants=variants;renderProductVariantPricing();
   const rows=document.querySelectorAll('#productVariantPricing .variant-price-row');rows[rows.length-1]?.querySelector('.variant-name')?.focus({preventScroll:true});
 }
@@ -19479,6 +19586,7 @@ function clearProductVariantRow(btn) {
   persistVisibleVariantOrder();
   const key=String(row.dataset.variantKey||"");
   window.__productVariants=(window.__productVariants||[]).filter(v=>String(v.id||v._localKey||"")!==key);
+  window.__collapsedProductVariants?.delete(key);
   renderProductVariantPricing();
 }
 function bindProductVariantDnd(){
@@ -19492,26 +19600,44 @@ function bindProductVariantDnd(){
   wrap.addEventListener('pointermove',e=>{if(!touchRow)return; if(Math.abs(e.clientY-(touchY||e.clientY))<10)return; const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.variant-price-row'); if(!target||target===touchRow||!wrap.contains(target))return; const before=e.clientY<target.getBoundingClientRect().top+target.getBoundingClientRect().height/2; target.parentNode.insertBefore(touchRow,before?target:target.nextSibling);},true);
   wrap.addEventListener('pointerup',()=>{if(touchRow){persistVisibleVariantOrder();touchRow=null;}},true);
 }
-function persistVisibleVariantOrder(){const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||''),v]));window.__productVariants=rows.map((r,i)=>{const v=byKey.get(String(r.dataset.variantKey||""))||{_localKey:r.dataset.variantKey},value=c=>r.querySelector(c)?.value??'',titleEl=r.querySelector('.variant-row-title');if(titleEl)titleEl.textContent=`Variety ${i+1}`;return {...v,name:value('.variant-name').trim(),sale_price:value('.variant-sale-price'),discount_price:value('.variant-discount-price'),size:value('.variant-size').trim(),color:value('.variant-color').trim(),description:value('.variant-description'),quantity_available:value('.variant-quantity')===''?null:Number(value('.variant-quantity')),photo_url:r.querySelector('.variant-image')?.value||r.dataset.photoUrl||v.photo_url||'',sort_order:i};});}
-function collectProductVariantDrafts(photoUrls) {
+function persistVisibleVariantOrder(){const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];const byKey=new Map((window.__productVariants||[]).map(v=>[String(v.id||v._localKey||''),v]));window.__productVariants=rows.map((r,i)=>{const v=byKey.get(String(r.dataset.variantKey||""))||{_localKey:r.dataset.variantKey},value=c=>r.querySelector(c)?.value??'',titleEl=r.querySelector('.variant-row-title');if(titleEl)titleEl.textContent=`Variety ${i+1}`;return {...v,name:value('.variant-name').trim(),sale_price:value('.variant-sale-price'),discount_price:value('.variant-discount-price'),size:value('.variant-size').trim(),color:value('.variant-color').trim(),description:value('.variant-description'),rental_rate:value('.variant-rental-rate')===''?null:Number(value('.variant-rental-rate')),quantity_available:value('.variant-quantity')===''?null:Number(value('.variant-quantity')),photo_url:r.querySelector('.variant-image')?.value||r.dataset.photoUrl||v.photo_url||'',sort_order:i};});}
+function collectProductVariantDrafts(photoUrls, pricingFallback={}) {
   persistVisibleVariantOrder();
   const rows=[...document.querySelectorAll('#productVariantPricing .variant-price-row')];
   const drafts=[];
+  const fallbackSale=Number(pricingFallback?.salePriceFallback);
+  const fallbackRental=Number(pricingFallback?.rentalRateFallback);
   rows.forEach((row,index)=>{
-    const name=String(row.querySelector('.variant-name')?.value||'').trim();
-    const saleRaw=row.querySelector('.variant-sale-price')?.value; const discountRaw=row.querySelector('.variant-discount-price')?.value;
-    const sale=saleRaw===''?null:Number(saleRaw); const discount=discountRaw===''?null:Number(discountRaw);
-    const size=String(row.querySelector('.variant-size')?.value||'').trim()||null; const color=String(row.querySelector('.variant-color')?.value||'').trim()||null;
-    if(!name&&!sale&&!discount&&!size&&!color)return;
-    if(!name)throw new Error('Every variety needs a variety name.');
-    if(!Number.isFinite(sale)||sale<=0)throw new Error(`Enter a valid sale price for ${name}.`);
-    if(discount!=null&&(!Number.isFinite(discount)||discount<=0||discount>=sale))throw new Error(`Discount price for ${name} must be lower than its regular price.`);
+    const nameInput=String(row.querySelector('.variant-name')?.value||'').trim();
+    const saleRaw=String(row.querySelector('.variant-sale-price')?.value??'').trim();
+    const discountRaw=String(row.querySelector('.variant-discount-price')?.value??'').trim();
+    const size=String(row.querySelector('.variant-size')?.value||'').trim()||null;
+    const color=String(row.querySelector('.variant-color')?.value||'').trim()||null;
+    const descriptionRaw=String(row.querySelector('.variant-description')?.value||'').trim();
+    const quantityRaw=String(row.querySelector('.variant-quantity')?.value??'').trim();
     let photoUrl=row.querySelector('.variant-image')?.value || row.dataset.photoUrl || '';
     if(row.dataset.tempIndex!=='')photoUrl=photoUrls[Number(row.dataset.tempIndex)]||photoUrl;
+    const source=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===row.dataset.variantKey);
+    const hasUploadedPhoto=!!source?._imageFile || !!window.__productVariantPhotoFiles?.[String(row.dataset.variantKey||'')];
+    const hasMeaningfulInput=!!nameInput || saleRaw!=='' || discountRaw!=='' || !!size || !!color || !!descriptionRaw || quantityRaw!=='' || !!photoUrl || hasUploadedPhoto;
+    if(!hasMeaningfulInput)return;
+
+    // The editor deliberately treats name and price as optional. The database
+    // requires a name and the existing variant RPC requires a positive sale price,
+    // so give an image-only/partially-filled variety a stable name and inherit the
+    // product's base price rather than silently dropping the row.
+    const name=nameInput || `Variety ${index+1}`;
+    const inheritedPrice=Number.isFinite(fallbackSale)&&fallbackSale>0 ? fallbackSale : (Number.isFinite(fallbackRental)&&fallbackRental>0 ? fallbackRental : null);
+    const sale=saleRaw==='' ? inheritedPrice : Number(saleRaw);
+    const discount=discountRaw===''?null:Number(discountRaw);
+    if(!Number.isFinite(sale)||sale<=0)throw new Error(`Enter a valid price for ${name}, or enter a base product price first.`);
+    if(discount!=null&&(!Number.isFinite(discount)||discount<=0||discount>=sale))throw new Error(`Discount price for ${name} must be lower than its regular price.`);
     const raw=row.querySelector('.variant-quantity')?.value??'',quantity_available=raw===''?null:Number(raw);
     if(quantity_available!=null&&(!Number.isInteger(quantity_available)||quantity_available<0))throw new Error(`Enter a whole-number quantity for ${name}.`);
     const saved=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===row.dataset.variantKey);
-    drafts.push({...(saved?.id?{id:saved.id}:{}),_localKey:row.dataset.variantKey||null,name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,description:row.querySelector('.variant-description')?.value.trim()||null,quantity_available,sort_order:index});
+    const rentalInput=row.querySelector('.variant-rental-rate');
+    const rentalRate=rentalInput ? (rentalInput.value==='' ? null : Number(rentalInput.value)) : (saved?.rental_rate ?? null);
+    drafts.push({...(saved?.id?{id:saved.id}:{}),_localKey:row.dataset.variantKey||null,name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,description:descriptionRaw||null,rental_rate:rentalRate,quantity_available,sort_order:index});
   });
   return drafts;
 }
@@ -19519,35 +19645,60 @@ async function saveProductVariants(productId,drafts){
   if(!productId)return [];
   const sourceVariants=Array.isArray(window.__productVariants)?window.__productVariants:[];
   const sourceByKey=new Map(sourceVariants.map(v=>[String(v.id||v._localKey||""),v]));
-  const payload=(Array.isArray(drafts)?drafts:[]).map((d,index)=>{
-    const row={...d,id:d.id||crypto.randomUUID(),product_id:productId,sort_order:Number.isFinite(Number(d.sort_order))?Number(d.sort_order):index};
-    delete row._localKey; delete row.product_id;
-    if(row.quantity_available==null) row.quantity_available=0;
+  const input=Array.isArray(drafts)?drafts:[];
+  const payload=input.map((d,index)=>{
+    const row={
+      id:d.id||crypto.randomUUID(),
+      product_id:productId,
+      name:String(d.name||"").trim(),
+      photo_url:d.photo_url||null,
+      sale_price:d.sale_price===""||d.sale_price==null?null:Number(d.sale_price),
+      discount_price:d.discount_price===""||d.discount_price==null?null:Number(d.discount_price),
+      rental_rate:d.rental_rate===""||d.rental_rate==null?null:Number(d.rental_rate),
+      sort_order:Number.isFinite(Number(d.sort_order))?Number(d.sort_order):index,
+      quantity_available:Number.isFinite(Number(d.quantity_available))?Math.max(0,Math.trunc(Number(d.quantity_available))):0,
+      size:d.size||null,
+      color:d.color||null,
+      description:d.description||null
+    };
+    if(!row.name)throw new Error("Every variety needs a variety name.");
     return row;
   });
-  // The entire variety set is saved by one database transaction. The database
-  // deliberately suppresses per-row follower notifications during this batch,
-  // so 10/20/30/50+ varieties cannot turn one save into dozens of slow jobs.
-  const {data:savedRows,error}=await sb.rpc('save_product_variants',{
-    p_product_id:productId,
-    p_variants:payload
-  });
-  if(error)throw new Error(error.message||'Could not save varieties.');
-  const rows=Array.isArray(savedRows)?savedRows:[];
+
+  console.info("[LEVROMART VARIANT SAVE]", { productId, submitted: payload.length });
+  const {data:savedRows,error}=await sb.rpc("save_product_variants",{p_product_id:productId,p_variants:payload});
+  if(error)throw new Error(error.message||"Could not save varieties.");
+
+  const rows = Array.isArray(savedRows) ? savedRows : normalizeVariantRowsForEditor(savedRows);
+  if(rows.length !== payload.length){
+    throw new Error(`Variety save returned ${rows.length} rows, but ${payload.length} were submitted.`);
+  }
+
   const localById=new Map(payload.map(v=>[String(v.id),v]));
-  window.__productVariants=rows.map((row,i)=>{
+  const next=rows.map((row,i)=>{
     const source=localById.get(String(row.id))||payload[i];
-    const original=sourceByKey.get(String(source?.id||source?._localKey||''))
-      || (source?._localKey ? sourceByKey.get(String(source._localKey)) : null)
-      || sourceVariants.find(v => String(v.id||v._localKey||'') === String(drafts?.[i]?._localKey||''))
-      || source;
-    return {...row,
+    const original=sourceByKey.get(String(source?.id||source?._localKey||"")) || sourceByKey.get(String(input[i]?._localKey||""));
+    return {
+      ...row,
       _localKey:original?._localKey||source?._localKey||row.id,
       ...(original?._imageFile?{_imageFile:original._imageFile}:{}),
       ...(original?._previewUrl?{_previewUrl:original._previewUrl}: {})
     };
   });
-  return window.__productVariants;
+  window.__productVariants=next;
+  console.info("[LEVROMART VARIANT SAVE]", { submitted:payload.length, returned:next.length });
+  return next;
+}
+function normalizeVariantRowsForEditor(value){
+  if(Array.isArray(value))return value;
+  if(typeof value==='string'){try{const p=JSON.parse(value);return Array.isArray(p)?p:[]}catch(_){return[]}}
+  if(value&&typeof value==='object'){
+    for(const k of ['variants','data','result','items']){
+      if(Array.isArray(value[k]))return value[k];
+      if(typeof value[k]==='string'){try{const p=JSON.parse(value[k]);if(Array.isArray(p))return p}catch(_) {}}
+    }
+  }
+  return [];
 }
 
 function syncProductEngagementSettingsUI(){byId("prodCommentAudienceWrap")?.classList.toggle("hidden",!byId("prodAllowComments")?.checked);}
@@ -19707,10 +19858,77 @@ async function saveProduct() {
   const errorEl = byId("productError");
   errorEl.classList.add("hidden");
   const btn = byId("saveProductBtn");
-  if(btn.disabled)return;
+  if (!btn || btn.disabled) return;
   btn.disabled = true;
   btn.dataset.originalLabel = btn.innerHTML;
-  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving…`;
+
+  const originalProductId = editingProductId || null;
+  let createdProductId = null;
+  const uploadedStoragePaths = [];
+  let savedDraftIdentity = originalProductId || "new";
+
+  const setSaveStage = (label) => {
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${esc(label)}`;
+  };
+
+  const removeUploadedFiles = async () => {
+    if (!uploadedStoragePaths.length) return;
+    try {
+      const { error } = await sb.storage.from("product-photos").remove(uploadedStoragePaths);
+      if (error) console.warn("[LEVROMART IMAGE ROLLBACK] Storage cleanup failed:", error);
+    } catch (e) {
+      console.warn("[LEVROMART IMAGE ROLLBACK] Storage cleanup exception:", e);
+    }
+  };
+
+  const normalizeVariantRows = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : []; } catch (_) { return []; }
+    }
+    if (value && typeof value === "object") {
+      for (const key of ["variants", "data", "result", "items"]){
+        const candidate = value[key];
+        if (Array.isArray(candidate)) return candidate;
+        if (typeof candidate === "string") {
+          try { const parsed = JSON.parse(candidate); if (Array.isArray(parsed)) return parsed; } catch (_) {}
+        }
+      }
+    }
+    return [];
+  };
+
+  const verifySavedState = async (productId, expectedVariantIds, expectedPhotos) => {
+    setSaveStage("Verifying…");
+    const [{ data: serverProduct, error: productErr }, { data: serverVariants, error: variantErr }] = await Promise.all([
+      sb.from("products").select("id,photos,vendor_id").eq("id", productId).eq("vendor_id", vendor.id).single(),
+      sb.from("product_variants").select("id,product_id,name,photo_url,sale_price,discount_price,rental_rate,sort_order,quantity_available,size,color,description").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true})
+    ]);
+    if (productErr) throw new Error(`Save verification failed: ${productErr.message}`);
+    if (variantErr) throw new Error(`Variety verification failed: ${variantErr.message}`);
+
+    const actualVariants = normalizeVariantRows(serverVariants);
+    const actualIds = actualVariants.map(v => String(v.id)).sort();
+    const expectedIds = (expectedVariantIds || []).map(String).sort();
+    const actualPhotos = Array.isArray(serverProduct?.photos) ? serverProduct.photos : [];
+    const photoMismatch = JSON.stringify(actualPhotos) !== JSON.stringify(Array.isArray(expectedPhotos) ? expectedPhotos : []);
+    const variantMismatch = actualIds.length !== expectedIds.length || actualIds.some((id,i) => id !== expectedIds[i]);
+
+    console.info("[LEVROMART SAVE VERIFY]", {
+      productId,
+      expectedVariants: expectedIds.length,
+      serverVariants: actualIds.length,
+      expectedPhotos: Array.isArray(expectedPhotos) ? expectedPhotos.length : 0,
+      serverPhotos: actualPhotos.length,
+      variantIdsMatch: !variantMismatch,
+      photosMatch: !photoMismatch
+    });
+
+    if (variantMismatch) throw new Error(`Save verification failed: expected ${expectedIds.length} varieties, but the server has ${actualIds.length}.`);
+    if (photoMismatch) throw new Error(`Save verification failed: expected ${Array.isArray(expectedPhotos) ? expectedPhotos.length : 0} product photos, but the server returned ${actualPhotos.length}.`);
+
+    return { product: serverProduct, variants: actualVariants };
+  };
 
   try {
     const is_service = byId("prodIsService").checked;
@@ -19729,6 +19947,7 @@ async function saveProduct() {
     const payment_deposit_percent = paymentDepositRaw === "" ? null : Math.max(1, Math.min(99, Number(paymentDepositRaw)));
     const rental_rate_unit = byId("prodRateUnit").value;
     const service_price_unit = is_service ? (byId("prodServiceUnit").value || "flat") : null;
+
     if (!name) throw new Error("Product name is required.");
     if (!["commission","monthly"].includes(billing_model)) throw new Error("Choose how you want to pay Levromart for this listing.");
     if (!is_service && listing_type !== "rent" && !sale_price) throw new Error("Price is required for a sale listing.");
@@ -19752,9 +19971,8 @@ async function saveProduct() {
       const customName = byId("prodCategoryOther").value.trim();
       if (!customName) throw new Error("Type a name for the new category, or pick one from the list.");
       const { data: otherParent } = await sb.from("categories").select("id").eq("sector_id", chosenSectorId).is("parent_category_id", null).ilike("name", "Other").maybeSingle();
-      const otherParentId = otherParent?.id;
-      if (!otherParentId) throw new Error("This sector does not have an Other category yet. Leave the category as Uncategorized or choose another category.");
-      const { data: newCategoryId, error: catErr } = await sb.rpc("create_vendor_category", { p_name: customName, p_sector_id: chosenSectorId, p_parent_category_id: otherParentId });
+      if (!otherParent?.id) throw new Error("This sector does not have an Other category yet. Leave the category as Uncategorized or choose another category.");
+      const { data: newCategoryId, error: catErr } = await sb.rpc("create_vendor_category", { p_name: customName, p_sector_id: chosenSectorId, p_parent_category_id: otherParent.id });
       if (catErr) throw new Error(`Couldn't create that category: ${catErr.message}`);
       category_id = newCategoryId;
     }
@@ -19778,181 +19996,232 @@ async function saveProduct() {
       rental_rate_unit: listing_type === "sale" ? null : rental_rate_unit,
       deposit_amount: is_service ? null : (byId("prodDeposit").value ? Number(byId("prodDeposit").value) : null),
       quantity_total,
-      billing_model,
-      billing_status: editingProductId ? undefined : (billing_model === "monthly" ? "pending_payment" : "active"),
-      billing_paid_until: editingProductId ? undefined : null,
+      billing_model
     };
-    if (editingProductId) { delete fields.billing_model; delete fields.billing_status; delete fields.billing_paid_until; } else if (billing_model === "monthly") { fields.status = "paused"; }
-
-    window.__displayPictureWasReplaced = !!window.__replaceDisplayPicture || (!((window.__existingPhotos || []).length) && !!(window.__newProductPhotoFiles || []).length);
-    const newFiles = [...(window.__newProductPhotoFiles || byId("prodPhotoFiles").files || [])];
-    // Save the listing record FIRST. Media uploads are secondary work and must not
-    // keep the Save button spinning while storage is slow. Existing photos are
-    // preserved immediately; newly selected media is uploaded after the database
-    // save and then linked back to the saved listing/variants.
-    const quantityReadPromise = editingProductId
-      ? sb.from("products").select("quantity_total, quantity_available").eq("id", editingProductId).single()
-      : Promise.resolve({data:null,error:null});
-    const [{data:existingProduct,error:existingProductError}] = await Promise.all([quantityReadPromise]);
-    if(existingProductError)throw new Error(existingProductError.message);
-    const photos = [...(window.__existingPhotos || [])];
-
-    let savedProductId = editingProductId;
-    let variantDrafts = [];
-    let soldUnits = 0;
-    variantDrafts=collectProductVariantDrafts(photos);
-    const isNewMonthlyListing = !editingProductId && billing_model === "monthly";
-    if (editingProductId) {
-      const existing = existingProduct;
-      const sold = existing ? existing.quantity_total - existing.quantity_available : 0;
-      soldUnits = Math.max(Number(sold) || 0, 0);
-      const quantity_available = Math.max(quantity_total - soldUnits, 0);
-      const { data: updatedRow, error } = await sb.from("products").update({ ...fields, quantity_available, photos }).eq("id", editingProductId).select("*").single();
-      if (error) throw new Error(error.message);
-      window.__lastSavedProductRow = updatedRow || null;
-    } else if (!isNewMonthlyListing) {
-      const { data: createdProduct, error } = await sb.from("products").insert({ ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos }).select("*").single();
-      if (error) throw new Error(error.message);
-      savedProductId = createdProduct?.id;
-      window.__lastSavedProductRow = createdProduct || null;
+    if (originalProductId) {
+      delete fields.billing_model;
+    } else if (billing_model === "monthly") {
+      fields.billing_status = "pending_payment";
+      fields.billing_paid_until = null;
+      fields.status = "paused";
+    } else {
+      fields.billing_status = "active";
+      fields.billing_paid_until = null;
     }
 
+    window.__displayPictureWasReplaced = !!window.__replaceDisplayPicture || (!((window.__existingPhotos || []).length) && !!(window.__newProductPhotoFiles || []).length);
+    const newFiles = [...(window.__newProductPhotoFiles || byId("prodPhotoFiles")?.files || [])].filter(f => f?.type?.startsWith("image/"));
+    const basePhotos = [...(window.__existingPhotos || [])];
 
+    // Snapshot the editor BEFORE any server mutation. Every later write is derived
+    // from this one snapshot, so a render/draft observer cannot change what Save means.
+    const variantDrafts = collectProductVariantDrafts(basePhotos, { salePriceFallback: sale_price, rentalRateFallback: rental_rate }).map((d, index) => ({
+      ...d,
+      id: d.id || crypto.randomUUID(),
+      sort_order: index
+    }));
+    const expectedVariantIds = variantDrafts.map(v => String(v.id));
 
+    console.info("[LEVROMART PRODUCT SAVE]", {
+      productId: originalProductId,
+      variantCount: variantDrafts.length,
+      productImageCount: newFiles.length + basePhotos.length,
+      variantImageCount: variantDrafts.filter(v => {
+        const source = (window.__productVariants || []).find(x => String(x.id || x._localKey) === String(v.id || v._localKey));
+        return !!source?._imageFile;
+      }).length
+    });
+
+    // IMPORTANT: upload all new media BEFORE changing the product/variant rows.
+    // This removes the old race where the database was updated first and a later
+    // storage failure left the UI saying "saved" without the requested image.
+    setSaveStage("Preparing photos…");
+    const variantSourceByKey = new Map((window.__productVariants || []).map(v => [String(v.id || v._localKey || ""), v]));
+
+    const uploadOne = async (file, folder) => {
+      const ext = (file.name?.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const path = `${vendor.id}/${folder ? folder + "/" : ""}${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+      if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
+      uploadedStoragePaths.push(path);
+      const { data: urlData } = sb.storage.from("product-photos").getPublicUrl(path);
+      if (!urlData?.publicUrl) throw new Error("Photo uploaded, but its public URL could not be created.");
+      return urlData.publicUrl;
+    };
+
+    const mainUrls = [];
+    for (const file of newFiles) mainUrls.push(await uploadOne(file, ""));
+
+    // A display-picture replacement is represented by previewNewProductPhotos()
+    // removing the old first photo before Save. Preserve that semantics here.
+    let finalPhotos = [...basePhotos, ...mainUrls];
+    if (window.__displayPictureWasReplaced && mainUrls.length) {
+      finalPhotos = [mainUrls[0], ...basePhotos, ...mainUrls.slice(1)];
+    }
+
+    const uploadedVariantUrls = new Map();
+    for (const draft of variantDrafts) {
+      const sourceKey = String(draft._localKey || draft.id || "");
+      const source = variantSourceByKey.get(sourceKey);
+      if (source?._imageFile) {
+        const url = await uploadOne(source._imageFile, "variants");
+        uploadedVariantUrls.set(String(draft.id), url);
+        draft.photo_url = url;
+      }
+    }
+
+    const isNewMonthlyListing = !originalProductId && billing_model === "monthly";
     if (isNewMonthlyListing) {
-      // Manual monthly payment: do not create/activate the listing until the
-      // vendor has uploaded a receipt. Admin approval is the only activation path.
+      // Monthly listings still use the existing manual-payment flow. Uploaded files
+      // are cleaned up if the handoff fails; no listing is created yet.
       window.__manualMonthlyNewDraft = {
         kind: "product", vendor_id: vendor.id,
         fields: { ...fields, status: "paused", billing_status: "pending_payment", billing_reference: null, billing_paid_until: null },
-        photos, variantDrafts,
+        photos: finalPhotos, variantDrafts,
         engagement: {
           like_visibility: byId("prodLikeVisibility")?.value || "everyone",
           allow_comments: !!byId("prodAllowComments")?.checked,
           comment_audience: byId("prodCommentAudience")?.value || "everyone"
         }
       };
-      closeProductModal();
-      await openManualMonthlyPayment("product", null, { isNew: true, draft: window.__manualMonthlyNewDraft });
+      try {
+        closeProductModal({ skipDraft: true });
+        await openManualMonthlyPayment("product", null, { isNew: true, draft: window.__manualMonthlyNewDraft });
+      } catch (e) {
+        await removeUploadedFiles();
+        throw e;
+      }
       return;
     }
-    const savedDraftIdentity=editingProductId||"new";
-    editingProductId=savedProductId;
-    const variantCount=variantDrafts.length;
-    if(variantCount){
-      btn.innerHTML=`<i class="fa-solid fa-spinner fa-spin"></i> Saving ${variantCount} ${variantCount===1?'variety':'varieties'}…`;
+
+    // Preserve sold units when editing inventory, exactly as the previous flow did.
+    const existingProduct = originalProductId
+      ? (await sb.from("products").select("quantity_total,quantity_available,photos").eq("id", originalProductId).eq("vendor_id", vendor.id).single()).data
+      : null;
+    if (originalProductId && !existingProduct) throw new Error("The product could not be loaded for saving.");
+
+    let soldUnits = 0;
+    let savedProductId = originalProductId;
+    let savedProductRow = null;
+
+    setSaveStage("Saving product…");
+    if (originalProductId) {
+      soldUnits = Math.max(Number(existingProduct.quantity_total) - Number(existingProduct.quantity_available), 0);
+      const quantity_available = Math.max(quantity_total - soldUnits, 0);
+      const { data, error } = await sb.from("products")
+        .update({ ...fields, quantity_available, photos: finalPhotos })
+        .eq("id", originalProductId).eq("vendor_id", vendor.id)
+        .select("*").single();
+      if (error) throw new Error(error.message);
+      savedProductRow = data;
+    } else {
+      const { data, error } = await sb.from("products")
+        .insert({ ...fields, vendor_id: vendor.id, quantity_available: quantity_total, photos: finalPhotos })
+        .select("*").single();
+      if (error) throw new Error(error.message);
+      savedProductId = data?.id;
+      createdProductId = savedProductId;
+      if (!savedProductId) throw new Error("Product was created but no product ID was returned.");
+      savedProductRow = data;
     }
-    await saveProductVariants(savedProductId,variantDrafts);
-    // Notifications are deliberately dispatched after the database save and
-    // never block or roll back the listing save. A failure here is non-fatal.
-    if(variantCount || editingProductId){
-      void sb.rpc('notify_product_variety_batch',{p_product_id:savedProductId})
-        .catch(e=>console.warn('[Levromart] Variety notification dispatch failed:',e));
+
+    editingProductId = savedProductId;
+    savedDraftIdentity = savedProductId;
+
+    // The RPC is intentionally kept because it is the existing transactional,
+    // ownership-checked batch path. Crucially, every new variant already has a
+    // stable UUID, so uploaded variety media cannot lose its identity.
+    setSaveStage(variantDrafts.length ? `Saving ${variantDrafts.length} ${variantDrafts.length === 1 ? "variety" : "varieties"}…` : "Saving varieties…");
+    await saveProductVariants(savedProductId, variantDrafts);
+
+    // Ensure any uploaded variant image is also reflected in the local model. The
+    // URL was already part of the RPC payload, so no second race-prone write is needed.
+    for (const [id, url] of uploadedVariantUrls) {
+      const local = (window.__productVariants || []).find(v => String(v.id) === String(id));
+      if (local) { local.photo_url = url; delete local._imageFile; local._previewUrl = url; }
     }
-    const pendingVariantMedia=Array.isArray(window.__productVariants)?window.__productVariants.filter(v=>v._imageFile).map(v=>({id:v.id,file:v._imageFile})):[];
-    const baseSavedPhotos=[...(window.__existingPhotos||[])];
-    const wasDisplayPictureReplaced=!!window.__displayPictureWasReplaced;
 
-    // Media is part of the save operation now. Previously this ran in a
-    // detached background promise, so the listing UI refreshed from the old
-    // photo array before the upload/link completed. That made Add/Replace
-    // photo appear to do nothing until a later reload (or forever if the
-    // background operation failed). Upload first, link the URLs, then refresh
-    // the saved listing from Supabase.
-    const uploadAndAttachProductMedia = async()=>{
-      const mainFiles=Array.isArray(newFiles)?newFiles:[];
-      const variantFiles=Array.isArray(pendingVariantMedia)?pendingVariantMedia:[];
-      if(!mainFiles.length && !variantFiles.length) return baseSavedPhotos;
+    const verified = await verifySavedState(savedProductId, expectedVariantIds, finalPhotos);
+    const verifiedVariants = verified.variants;
 
-      btn.innerHTML=`<i class="fa-solid fa-spinner fa-spin"></i> Uploading photos…`;
-
-      const mainUrls=await Promise.all(mainFiles.map(async(file)=>{
-        const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-        const path=`${vendor.id}/${crypto.randomUUID()}.${ext}`;
-        const {error:upErr}=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type,upsert:false});
-        if(upErr)throw new Error(`Photo upload failed: ${upErr.message}`);
-        const {data:urlData}=sb.storage.from('product-photos').getPublicUrl(path);
-        if(!urlData?.publicUrl)throw new Error('Photo upload succeeded, but its public URL could not be created.');
-        return urlData.publicUrl;
-      }));
-
-      let nextPhotos=[...baseSavedPhotos,...mainUrls];
-      if(wasDisplayPictureReplaced&&mainUrls.length){
-        nextPhotos=[mainUrls[0],...baseSavedPhotos,...mainUrls.slice(1)];
-      }
-      if(mainUrls.length){
-        const {error:photoLinkError}=await sb.from('products').update({photos:nextPhotos}).eq('id',savedProductId).eq('vendor_id',vendor.id);
-        if(photoLinkError)throw new Error(`Could not attach the new product photo: ${photoLinkError.message}`);
-        if(window.__lastSavedProductRow)window.__lastSavedProductRow.photos=nextPhotos;
-      }
-
-      if(variantFiles.length){
-        await Promise.all(variantFiles.map(async(item)=>{
-          if(!item?.id||!item.file)throw new Error('A variety photo could not be linked to its saved variety.');
-          const ext=(item.file.name.split('.').pop()||'jpg').toLowerCase();
-          const path=`${vendor.id}/variants/${crypto.randomUUID()}.${ext}`;
-          const {error:upErr}=await sb.storage.from('product-photos').upload(path,item.file,{contentType:item.file.type,upsert:false});
-          if(upErr)throw new Error(`Variety photo upload failed: ${upErr.message}`);
-          const {data:urlData}=sb.storage.from('product-photos').getPublicUrl(path);
-          const url=urlData?.publicUrl;
-          if(!url)throw new Error('Variety photo uploaded, but its public URL could not be created.');
-          const {error:variantLinkError}=await sb.from('product_variants').update({photo_url:url}).eq('id',item.id).eq('product_id',savedProductId);
-          if(variantLinkError)throw new Error(`Could not attach a variety photo: ${variantLinkError.message}`);
-          const local=window.__productVariants?.find(v=>String(v.id)===String(item.id));
-          if(local){local.photo_url=url;delete local._imageFile;local._previewUrl=url;}
-        }));
-      }
-      return nextPhotos;
-    };
-
-    const engagementSave=Promise.allSettled([saveProductEngagementSettings(savedProductId)]);
-    const finalPhotos=await uploadAndAttachProductMedia();
-    if(finalPhotos.length)window.__existingPhotos=[...finalPhotos];
-    if(Array.isArray(window.__productVariants))renderProductVariantPricing();
-    if(newFiles.length||pendingVariantMedia.length)showToast('Listing and photos saved successfully.','success');
-    window.clearListingDraft?.("product", savedDraftIdentity);
-    // Required product and variety writes have completed; engagement settings finish separately.
-    const primarySavedProduct = {
-      ...(window.__lastSavedProductRow || {}),
-      id: savedProductId, ...fields, vendor_id: vendor.id, photos: finalPhotos,
-      quantity_available: Number(window.__lastSavedProductRow?.quantity_available ?? Math.max(quantity_total - soldUnits, 0))
-    };
-    window.__lastSavedProductRow = null;
-    closeProductModal({ skipDraft: true });
-    window.__homeBrowseCatalog = Array.isArray(window.__homeBrowseCatalog)
-      ? window.__homeBrowseCatalog.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p) : window.__homeBrowseCatalog;
-    window.__storefrontProducts = Array.isArray(window.__storefrontProducts)
-      ? window.__storefrontProducts.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p) : window.__storefrontProducts;
-    if (currentProductDetail && String(currentProductDetail.id) === String(savedProductId)) currentProductDetail = { ...currentProductDetail, ...primarySavedProduct };
-    document.querySelectorAll(`.product-card-wrap[data-product-id="${CSS.escape(String(savedProductId))}"]`).forEach(node => {
-      const context = node.querySelector(".product-card-action-row")?.classList.contains("trending-card-action-row") ? "trending" : "";
-      const tpl = document.createElement("template"); tpl.innerHTML = productCardHtml({ ...primarySavedProduct, _cardContext: context }).trim();
-      if (tpl.content.firstElementChild) node.replaceWith(tpl.content.firstElementChild);
+    console.info("[LEVROMART SAVE VERIFY]", {
+      expectedVariants: expectedVariantIds.length,
+      serverVariants: verifiedVariants.length,
+      expectedPhotos: finalPhotos.length,
+      serverPhotos: verified.product?.photos?.length || 0
     });
+
+    window.__existingPhotos = Array.isArray(verified.product?.photos) ? [...verified.product.photos] : [...finalPhotos];
+    window.__productVariants = verifiedVariants.map((row, index) => {
+      const local = (window.__productVariants || []).find(v => String(v.id) === String(row.id));
+      return { ...row, _localKey: local?._localKey || row.id, ...(local?._previewUrl ? { _previewUrl: local._previewUrl } : {}) };
+    });
+
+    const primarySavedProduct = {
+      ...(savedProductRow || {}),
+      ...(verified.product || {}),
+      id: savedProductId,
+      ...fields,
+      vendor_id: vendor.id,
+      photos: [...window.__existingPhotos],
+      quantity_available: Number(savedProductRow?.quantity_available ?? verified.product?.quantity_available ?? Math.max(quantity_total - soldUnits, 0)),
+      variants: verifiedVariants
+    };
+
+    window.__lastSavedProductRow = null;
     window.__replaceDisplayPicture = false;
     window.__displayPictureWasReplaced = false;
+    window.__productVariantPhotoFiles = {};
 
-    // The required product/variety/media writes are complete at this point.
-    // Close the editor NOW instead of waiting for a secondary page refresh or
-    // reconciliation request. Vendors should never be left staring at a modal
-    // that still looks like it is saving after the database commit succeeded.
+    clearProductValidationState();
+    window.clearListingDraft?.("product", savedDraftIdentity);
+    renderProductVariantPricing();
+
+    // Keep secondary engagement settings from blocking the critical product save.
+    void saveProductEngagementSettings(savedProductId).catch(e => console.warn("[Levromart] Engagement settings sync failed:", e));
+
+    // Refresh the local marketplace state from the verified server representation.
+    window.__homeBrowseCatalog = Array.isArray(window.__homeBrowseCatalog)
+      ? window.__homeBrowseCatalog.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p)
+      : window.__homeBrowseCatalog;
+    window.__storefrontProducts = Array.isArray(window.__storefrontProducts)
+      ? window.__storefrontProducts.map(p => String(p.id) === String(savedProductId) ? { ...p, ...primarySavedProduct } : p)
+      : window.__storefrontProducts;
+    if (currentProductDetail && String(currentProductDetail.id) === String(savedProductId)) currentProductDetail = { ...currentProductDetail, ...primarySavedProduct };
+
+    document.querySelectorAll(`.product-card-wrap[data-product-id="${CSS.escape(String(savedProductId))}"]`).forEach(node => {
+      const context = node.querySelector(".product-card-action-row")?.classList.contains("trending-card-action-row") ? "trending" : "";
+      const tpl = document.createElement("template");
+      tpl.innerHTML = productCardHtml({ ...primarySavedProduct, _cardContext: context }).trim();
+      if (tpl.content.firstElementChild) node.replaceWith(tpl.content.firstElementChild);
+    });
+
     btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved`;
+    showToast(newFiles.length || variantDrafts.some(v => uploadedVariantUrls.has(String(v.id))) ? "Listing and photos saved successfully." : "Listing saved successfully.", "success");
     closeProductModal({ skipDraft: true });
 
     if (currentView === "vendorProducts") void navigate("vendorProducts", {}, false).catch(e => console.warn("[Levromart] Post-save navigation failed:", e));
     else if (currentView === "productDetail" && String(currentViewParams?.productId) === String(savedProductId)) void navigate("productDetail", { productId: savedProductId }, false).catch(e => console.warn("[Levromart] Post-save navigation failed:", e));
 
-    // Reconcile from the database in the background. The save result is already
-    // committed; this refresh is only for keeping the visible marketplace in
-    // sync and must never delay closing the editor.
+    // This is now a non-critical UI reconciliation only. It can never be the
+    // thing that determines whether Save succeeded because verification already did.
     void refreshVisibleProductAfterSave(savedProductId).catch(e => console.warn("[Levromart] Post-save product reconciliation failed:", e));
-
-    engagementSave.then(results => {
-      const failed = results.filter(r => r.status === "rejected");
-      if (failed.length) showToast("Listing saved, but one secondary setting could not be synchronized. Please reopen the listing to retry that setting.", "info");
-    });
   } catch (err) {
-    focusProductValidationField(err?.message || "Please complete the required field before saving.");
+    // If we created a product and anything after creation failed, remove the newly
+    // created record. Existing products are never deleted as a rollback shortcut.
+    if (createdProductId) {
+      try {
+        await sb.from("product_variants").delete().eq("product_id", createdProductId).eq("product_id", createdProductId);
+        await sb.from("products").delete().eq("id", createdProductId).eq("vendor_id", vendor.id);
+      } catch (rollbackErr) {
+        console.error("[LEVROMART SAVE ROLLBACK] Failed to remove incomplete new product:", rollbackErr);
+      }
+    }
+    await removeUploadedFiles();
+    console.error("[LEVROMART PRODUCT SAVE FAILED]", err);
+    const message = err?.message || "Could not save this product. Nothing was reported as saved.";
+    focusProductValidationField(message);
+    showToast(message, "error");
   } finally {
     btn.disabled = false;
     btn.innerHTML = btn.dataset.originalLabel || "Save to Product";
@@ -22893,7 +23162,7 @@ async function renderAdminFinance() {
       <td><span class="badge ${v.commission_status === "overdue" ? "danger" : v.commission_status === "due_soon" ? "warning" : v.commission_status === "paid" ? "success" : "warning"}">${esc(v.commission_status || "paid")}</span></td>
       <td>
         <span class="badge ${v.is_active ? "success" : "danger"}">${v.is_active ? "Active" : "Paused"}</span>
-        <button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', ${v.is_active}, '${esc(v.business_name)}')">${v.is_active ? "Pause" : "Unlock"}</button>
+        ${owed > 0 ? `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="showCommissionPaywall(${owed})">Locked — commission owed</button>` : `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', ${v.is_active}, '${esc(v.business_name)}')">${v.is_active ? "Pause" : "Reactivate"}</button>`}
       </td>
     </tr>`;
   });
@@ -23199,7 +23468,6 @@ function exportFinancePdf() {
 .profile-own-storefront-header:active{transform:scale(.99)!important;}
 .profile-own-storefront-header:focus-visible{outline:2px solid var(--primary)!important;outline-offset:2px!important;}
 </style>
-
 </body>
 
 
@@ -30437,206 +30705,6 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   }
 })();
 </script>
-<script id="levromart-admin-approval-unlock-notification-final-20260917">
-(function(){
-  "use strict";
-
-  /* ================================================================
-     ADMIN VENDOR APPROVAL OVERRIDE
-     - Admin can explicitly approve with payout OR without payout.
-     - "Without payout" bypasses payout validation intentionally and does
-       not fabricate payout configuration.
-     ================================================================ */
-  function adminApprovalChoice(businessName){
-    return new Promise(resolve=>{
-      document.getElementById("levroAdminApprovalChoice")?.remove();
-      const modal=document.createElement("div");
-      modal.id="levroAdminApprovalChoice";
-      modal.className="modal open";
-      modal.style.zIndex="30000";
-      modal.innerHTML=`<div class="modal-content" style="max-width:440px;">
-        <div style="text-align:center;">
-          <div style="width:58px;height:58px;border-radius:50%;margin:0 auto .75rem;display:grid;place-items:center;background:color-mix(in srgb,var(--primary) 12%,var(--card));color:var(--primary);font-size:1.35rem;"><i class="fa-solid fa-store"></i></div>
-          <h3 style="margin:.15rem 0 .45rem;">Approve vendor</h3>
-          <p class="muted" style="margin:0 auto 1rem;">How do you want to approve <strong>${esc(businessName)}</strong>?</p>
-          <div style="display:grid;gap:.6rem;">
-            <button type="button" class="btn" data-choice="payout"><i class="fa-solid fa-building-columns"></i> Approve with payout</button>
-            <button type="button" class="btn btn-outline" data-choice="without"><i class="fa-solid fa-shield-check"></i> Approve without payout</button>
-            <button type="button" class="btn btn-outline" data-choice="cancel">Cancel</button>
-          </div>
-        </div>
-      </div>`;
-      document.body.appendChild(modal);
-      let done=false;
-      const finish=value=>{if(done)return;done=true;modal.remove();resolve(value);};
-      modal.addEventListener("click",e=>{const b=e.target?.closest?.("[data-choice]");if(!b)return;finish(b.dataset.choice);if(b.dataset.choice!=="cancel")return;});
-      modal.addEventListener("click",e=>{if(e.target===modal)finish(null);});
-      const onKey=e=>{if(e.key==="Escape"){e.preventDefault();finish(null);}};
-      document.addEventListener("keydown",onKey,{once:true});
-    });
-  }
-
-  window.__levroFastApproveVendor=async function(id,filterStatus,businessName){
-    if(adminVendorActionBusy.has(id))return;
-    if(!session?.user?.id||profile?.role!=="admin"){
-      showToast("Admin access is required.","error");return;
-    }
-    const card=document.getElementById(`adminVendor-${id}`);
-    businessName=businessName||card?.dataset?.name||card?.querySelector("summary strong")?.textContent?.trim()||"this vendor";
-    const choice=await adminApprovalChoice(businessName);
-    if(!choice||choice==="cancel")return;
-
-    adminVendorActionBusy.add(id);
-    const btn=document.querySelector(`#app .vendor-admin-action[data-vendor-id="${CSS.escape(String(id))}"][data-status="verified"]`);
-    try{
-      if(btn){btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Approving…';}
-
-      const {data:target,error:targetError}=await sb.from("vendors")
-        .select("id,business_name,bank_name,bank_code,account_number,paystack_subaccount_code")
-        .eq("id",id).is("deleted_at",null).maybeSingle();
-      if(targetError||!target)throw new Error(targetError?.message||"Vendor application not found.");
-
-      let withoutPayout=choice==="without";
-      if(!withoutPayout && !target.paystack_subaccount_code){
-        if(!target.bank_code||!target.account_number){
-          throw new Error("This vendor has no complete payout details. Choose 'Approve without payout' if you want to approve them now.");
-        }
-        const live=await sb.auth.getSession();
-        const accessToken=live?.data?.session?.access_token;
-        if(!accessToken)throw new Error("Your admin session has expired. Please sign in again.");
-        const res=await fetch("/api/vendor-payout-setup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accessToken,vendorId:id})});
-        const json=await res.json().catch(()=>({}));
-        if(!res.ok||!json.subaccount_code)throw new Error(json.error||"Payout setup failed. Choose 'Approve without payout' to override this and approve the vendor now.");
-      }
-
-      const {data,error}=await sb.rpc("admin_approve_vendor",{p_vendor_id:id,p_approve_without_payout:withoutPayout});
-      if(error)throw error;
-      if(!data?.success)throw new Error("Approval did not complete.");
-
-      try{invalidateMarketplaceState();}catch(_){}
-      try{await logAdminAction(withoutPayout?"approve_vendor_without_payout":"approve_vendor","vendor",id,businessName);}catch(_){ }
-      showToast(withoutPayout
-        ? `${businessName} approved without payout. Payout can be set up later.`
-        : `${businessName} approved successfully. Payout is active.`,"success");
-      try{await navigate("adminPanel",{status:filterStatus||"pending"},{replace:true});}catch(_){ }
-    }catch(err){
-      console.error("[Levromart] Admin vendor approval failed:",err);
-      showToast(err?.message||"Could not approve this vendor.","error");
-      if(btn){btn.disabled=false;btn.innerHTML="Approve";}
-    }finally{
-      adminVendorActionBusy.delete(id);
-    }
-  };
-
-  /* ================================================================
-     ADMIN STOREFRONT LOCK/UNLOCK
-     Admin actions intentionally bypass the vendor commission gate.
-     A vendor paused by admin is marked admin_paused so the vendor-side
-     vendor_set_storefront_active() function cannot unpause it themselves.
-     ================================================================ */
-  window.adminToggleVendorActive=async function(vendorId,currentActive,businessName){
-    if(!session?.user?.id||profile?.role!=="admin"){
-      showToast("Admin access is required.","error");return;
-    }
-    const active=!!currentActive;
-    businessName=businessName||"this vendor";
-    if(!active){
-      if(!(await showConfirmDialog(`Unlock "${businessName}"? This will activate the storefront even if commission is still outstanding.`,{title:"Unlock vendor",okLabel:"Unlock vendor"})))return;
-    }else{
-      if(!(await showConfirmDialog(`Pause "${businessName}"? The vendor will not be able to reactivate the storefront themselves.`,{title:"Pause vendor",okLabel:"Pause vendor",danger:true})))return;
-      if(!(await promptAdminPassword("pause this vendor's storefront")))return;
-    }
-    try{
-      const {data,error}=await sb.rpc("admin_toggle_vendor_storefront_active",{p_vendor_id:vendorId,p_active:!active});
-      if(error)throw error;
-      if(!data?.success)throw new Error("The storefront status change did not complete.");
-      try{invalidateMarketplaceState();}catch(_){}
-      showToast(active
-        ? `${businessName} paused. Only an admin can reactivate it.`
-        : `${businessName} unlocked and activated, even with outstanding commission.`,"success");
-      await navigate("adminFinance",{}, {replace:true});
-    }catch(err){
-      console.error("[Levromart] Admin storefront toggle failed:",err);
-      showToast(err?.message||"Could not change the vendor storefront status.","error");
-    }
-  };
-
-  /* ================================================================
-     NOTIFICATIONS — do not mark anything read on open.
-     Read state is committed only when the notification page/drawer is left.
-     ================================================================ */
-  async function commitNotificationsReadOnClose(){
-    if(!session?.user?.id)return;
-    const uid=session.user.id;
-    const key=`levromart-notifications-cache-v2:${uid}`;
-    try{
-      const cached=JSON.parse(localStorage.getItem(key)||"[]");
-      if(Array.isArray(cached)&&cached.length){
-        cached.forEach(n=>{n.read=true;});
-        localStorage.setItem(key,JSON.stringify(cached));
-      }
-    }catch(_){ }
-    try{
-      await sb.from("notifications").update({read:true})
-        .eq("user_id",uid).eq("read",false).is("deleted_at",null);
-    }catch(_){ }
-    notifCount=0;
-    const dot=byId("notifDot");
-    if(dot)dot.classList.add("hidden");
-  }
-
-  window.toggleNotifPanel=function(){
-    requestOfferBadgeCount=0;
-    updateRequestOfferBadge();
-    try{sessionStorage.setItem("levromart-request-offers-seen-at",new Date().toISOString());}catch(_){ }
-    notifViewMode="all";
-    exitNotifSelectMode(false);
-    if(currentView!=="notifications"){
-      lastNotificationReturnView=currentView||"home";
-      lastNotificationReturnParams={...(currentViewParams||{})};
-    }
-    // IMPORTANT: opening notifications never changes read state.
-    navigate("notifications");
-  };
-
-  const originalNavigate=window.navigate;
-  if(typeof originalNavigate==="function"&&!window.__levroNotificationCloseNavigateWrapped){
-    window.__levroNotificationCloseNavigateWrapped=true;
-    window.navigate=async function(view,params,pushHistory){
-      const leaving=currentView==="notifications"&&view!=="notifications";
-      if(leaving)await commitNotificationsReadOnClose();
-      return originalNavigate.apply(this,arguments);
-    };
-  }
-
-  /* Clicking a notification may navigate elsewhere, but it still must not
-     individually mark the notification read. Leaving the notifications page
-     will commit the read state through the navigate wrapper above. */
-  window.handleNotifItemClick=async function(event,id){
-    if(event){event.preventDefault();event.stopPropagation();}
-    const clicked=event?.currentTarget;
-    if(clicked?.dataset.longPressConsumed==='1'){delete clicked.dataset.longPressConsumed;return;}
-    if(notifSelectMode){toggleNotifSelect(String(id));return;}
-    const item=event?.currentTarget||getNotifHost()?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`);
-    if(!item)return;
-    let params={};try{params=JSON.parse(item.dataset.params||"{}");}catch(_){ }
-    closeAllPanels();
-    if((item.dataset.view||"home")==="messages"&&params?.conversationId){
-      const conversationId=String(params.conversationId);
-      try{await refreshConversationInboxInBackground();}catch(_){ }
-      try{
-        const {data:latestMessages}=await sb.from("messages").select("*").eq("conversation_id",conversationId).order("created_at",{ascending:true});
-        if(Array.isArray(latestMessages))lastSeenMessagesByConv.set(conversationId,latestMessages);
-      }catch(_){ }
-      navigate("messages",{conversationId});
-      return;
-    }
-    navigate(item.dataset.view||"home",params);
-  };
-})();
-</script>
-
-
 </body>
 <style id="levromart-20260910-final-polish">
 /* Only the requested surfaces: request list/card, homepage quick actions and photo editor. */
@@ -33656,6 +33724,19 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 .rating-five-star{background:color-mix(in srgb,#8b5cf6 12%,transparent)!important;color:#8b5cf6!important;border:1px solid color-mix(in srgb,#8b5cf6 38%,transparent)!important;box-shadow:0 0 0 1px color-mix(in srgb,#8b5cf6 8%,transparent) inset!important}
 /* Listing forms stay inside viewport */
 #productModal .modal-content,#packageModal .modal-content{max-width:min(720px,calc(100vw - 1rem))!important;overflow-x:hidden!important}#productModal,#packageModal{overflow-x:hidden!important}#productModal input,#productModal select,#productModal textarea,#packageModal input,#packageModal select,#packageModal textarea{max-width:100%!important;min-width:0!important}.product-detail-card,.owner-listing-management{overflow-x:hidden!important}
+/* Variety choices directly beneath the main product image. */
+.product-gallery-varieties{margin:.65rem 0 .9rem;padding:.7rem;border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--primary) 3%,var(--card));}
+.product-gallery-varieties-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.5rem;}
+.product-gallery-varieties-head strong{font-size:.8rem;}
+.product-gallery-varieties-list{display:flex;gap:.5rem;overflow-x:auto;padding:.05rem 0 .15rem;scrollbar-width:none;}
+.product-gallery-varieties-list::-webkit-scrollbar{display:none;}
+.product-gallery-variety{flex:0 0 112px;display:flex;flex-direction:column;gap:.28rem;padding:.45rem;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);text-align:left;cursor:pointer;font:inherit;}
+.product-gallery-variety.active{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 10%,transparent);}
+.product-gallery-variety img,.product-gallery-variety-placeholder{width:100%;height:74px;border-radius:9px;object-fit:cover;background:color-mix(in srgb,var(--primary) 8%,var(--input-bg));}
+.product-gallery-variety-placeholder{display:flex;align-items:center;justify-content:center;color:var(--primary);}
+.product-gallery-variety strong{font-size:.72rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.product-gallery-variety small{font-size:.66rem;color:var(--text-muted);line-height:1.2;}
+@media(max-width:520px){.product-gallery-variety{flex-basis:104px;}.product-gallery-variety img,.product-gallery-variety-placeholder{height:68px;}}
 /* Selected variety summary */
 .selected-variant-summary{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.55rem;margin:.55rem 0 .8rem;padding:.65rem .75rem;border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));background:color-mix(in srgb,var(--primary) 5%,var(--card));border-radius:13px}.selected-variant-summary span{font-size:.68rem}.selected-variant-summary strong{font-size:.8rem}.selected-variant-summary strong:last-child{color:var(--primary)}
 /* Owner listing details */
@@ -34326,6 +34407,21 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   };
 })();
 </script>
+
+<style id="levromart-bounded-gallery-accordion-fix-20260917">
+.product-gallery-return-main{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;margin:.55rem auto 0;padding:.5rem .75rem;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font:inherit;font-size:.72rem;font-weight:750;cursor:pointer;}
+.product-gallery-return-main.hidden{display:none!important;}
+#productVariantPricing .variant-row-topbar{align-items:stretch;}
+#productVariantPricing .variant-accordion-toggle{min-width:0;flex:1;display:flex;align-items:center;gap:.55rem;border:0;background:transparent;color:var(--text);padding:0;text-align:left;cursor:pointer;font:inherit;}
+#productVariantPricing .variant-accordion-thumb{width:42px;height:42px;flex:0 0 42px;border-radius:9px;object-fit:cover;border:1px solid var(--border);background:var(--input-bg);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--primary);}
+#productVariantPricing .variant-accordion-title{min-width:0;flex:1;display:flex;flex-direction:column;gap:.1rem;}
+#productVariantPricing .variant-accordion-title .variant-row-title{font-size:.82rem;}
+#productVariantPricing .variant-accordion-title small{font-size:.68rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#productVariantPricing .variant-accordion-chevron{font-size:.72rem;color:var(--text-muted);margin-right:.15rem;}
+#productVariantPricing .variant-accordion-body.hidden{display:none!important;}
+#productVariantPricing .variant-price-row.is-collapsed .variant-row-topbar{border-bottom:0;}
+@media(max-width:520px){#productVariantPricing .variant-accordion-thumb{width:38px;height:38px;flex-basis:38px;}#productVariantPricing .variant-accordion-title small{max-width:11rem;}}
+</style>
 </html>
 <style id="levromart-final-manual-monthly-ui-20260913">
 .manual-monthly-payment-modal-content{max-height:min(90vh,760px);overflow:auto}
@@ -36754,11 +36850,11 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
           if(desc){desc.classList.add('service-variety-only');desc.querySelector('label').innerHTML='Description <span>(optional)</span>';desc.querySelector('textarea').placeholder='Describe what this service/package includes…';}
           if(qty) qty.style.display='none';
         }else{
-          if(name) name.querySelector('label').innerHTML='Variety name <span>(optional)</span>';
+          if(name) name.querySelector('label').innerHTML='Variety name <span>(optional · auto-named if blank)</span>';
           if(row.querySelector('.variant-name')) row.querySelector('.variant-name').placeholder='e.g. Large / Black / 500ml';
           if(color) color.style.display='';
           if(size) size.style.display='';
-          if(price) price.querySelector('label').innerHTML='Price (₦) <span>(optional)</span>';
+          if(price) price.querySelector('label').innerHTML='Price (₦) <span>(optional · uses product price if blank)</span>';
           if(desc){desc.classList.remove('service-variety-only');desc.querySelector('label').innerHTML='Description <span>(optional)</span>';desc.querySelector('textarea').placeholder='Description';}
           if(qty) qty.style.display='';
         }
