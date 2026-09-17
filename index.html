@@ -19378,22 +19378,33 @@ function collectProductVariantDrafts(photoUrls) {
     const raw=row.querySelector('.variant-quantity')?.value??'',quantity_available=raw===''?null:Number(raw);
     if(quantity_available!=null&&(!Number.isInteger(quantity_available)||quantity_available<0))throw new Error(`Enter a whole-number quantity for ${name}.`);
     const saved=(window.__productVariants||[]).find(v=>String(v.id||v._localKey)===row.dataset.variantKey);
-    drafts.push({...(saved?.id?{id:saved.id}:{}),name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,description:row.querySelector('.variant-description')?.value.trim()||null,quantity_available,sort_order:index});
+    drafts.push({...(saved?.id?{id:saved.id}:{}),_localKey:row.dataset.variantKey||null,name,photo_url:photoUrl||null,sale_price:sale,discount_price:discount,size,color,description:row.querySelector('.variant-description')?.value.trim()||null,quantity_available,sort_order:index});
   });
   return drafts;
 }
 async function saveProductVariants(productId,drafts){
   if(!productId)return;
-  const payload=drafts.map(d=>({...d,id:d.id||crypto.randomUUID(),product_id:productId}));
-  // The upsert is the required part of saving. Do not make the vendor wait for
-  // a cleanup read/delete pass; stale rows are reconciled immediately afterward
-  // in the background.
+  const sourceVariants=Array.isArray(window.__productVariants)?window.__productVariants:[];
+  const sourceByKey=new Map(sourceVariants.map(v=>[String(v.id||v._localKey||""),v]));
+  const payload=drafts.map(d=>{
+    const row={...d,id:d.id||crypto.randomUUID(),product_id:productId};
+    delete row._localKey;
+    if(row.quantity_available==null) row.quantity_available=0;
+    return row;
+  });
   if(payload.length){
     let pending=payload.map(v=>({...v}));
     for(let attempt=0;attempt<5;attempt++){
       const {error}=await sb.from('product_variants').upsert(pending,{onConflict:'id'});
-      if(!error){window.__productVariants=payload.map(v=>({...v}));break;}
-      const missing=['description','quantity_available','size','color'].find(k=>new RegExp(`['".]${k}['" ]`).test(error.message||'')&&/column|schema cache/i.test(error.message||''));
+      if(!error){
+        window.__productVariants=payload.map((v,i)=>{
+          const draft=drafts[i]||{};
+          const source=sourceByKey.get(String(draft.id||draft._localKey||""));
+          return {...v,_localKey:source?._localKey||draft._localKey||v.id,...(source?._imageFile?{_imageFile:source._imageFile}:{}),...(source?._previewUrl?{_previewUrl:source._previewUrl}: {})};
+        });
+        break;
+      }
+      const missing=['description','quantity_available','size','color'].find(k=>new RegExp(`[\'".]${k}[\'" ]`).test(error.message||'')&&/column|schema cache/i.test(error.message||''));
       if(!missing||pending.some(v=>v[missing]!=null&&v[missing]!==''))throw error;
       pending=pending.map(v=>{const copy={...v};delete copy[missing];return copy;});
       if(attempt===4)throw error;
