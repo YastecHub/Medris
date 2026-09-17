@@ -10409,6 +10409,10 @@ async function setAccountPassword() {
 let otpCheckDoneThisBoot = false;
 async function runPostAuthChecks() {
   if (!profile || !session) return;
+  if (typeof window.__levromartCheckLegalTermsGate === "function" && !window.__levromartLegalGateReady?.()) {
+    const legalAccepted = await window.__levromartCheckLegalTermsGate();
+    if (!legalAccepted) return;
+  }
   // Every customer account must have a phone number. Manual registration already
   // collects it; this gate covers Google sign-in and older accounts that predate
   // the requirement. Do this before the password/OTP checks so the account cannot
@@ -30781,6 +30785,189 @@ html[data-levro-motion="calm"] #bottomNav { transform:none !important; }
   // first render. This final observer only keeps the document state aligned
   // if another legacy script changes the root attribute.
   try { applyLevromartMotionPreference(getLevromartMotionPreference()); } catch (_) {}
+})();
+</script>
+
+<!-- LEVROMART LEGAL CONSENT GATE 2026-09-17 -->
+<div id="legalConsentModal" class="modal hidden legal-consent-modal" data-lock="true" role="dialog" aria-modal="true" aria-labelledby="legalConsentTitle">
+  <div class="modal-content legal-consent-content">
+    <div class="legal-consent-header">
+      <div>
+        <p class="legal-consent-eyebrow">LEVROMART ACCOUNT AGREEMENT</p>
+        <h2 id="legalConsentTitle">Before you continue</h2>
+        <p class="muted legal-consent-intro">Please review Levromart's current Terms of Service, Privacy Policy, and Refund &amp; Cancellation Policy. You need to accept these terms to continue using your account.</p>
+      </div>
+    </div>
+    <div id="legalConsentBody" class="legal-consent-body" tabindex="0" aria-label="Levromart legal terms"></div>
+    <div class="legal-consent-footer">
+      <p class="legal-consent-confirmation">By selecting <strong>Agree &amp; Continue</strong>, you confirm that you have reviewed and agree to the current Levromart terms and policies.</p>
+      <div id="legalConsentError" class="error-text hidden" role="alert"></div>
+      <button type="button" id="legalConsentAgreeBtn" class="btn legal-consent-agree-btn" onclick="acceptLegalTermsAndContinue()">
+        <i class="fa-solid fa-check"></i> Agree &amp; Continue
+      </button>
+    </div>
+  </div>
+</div>
+
+<style id="levromart-legal-consent-styles">
+.legal-consent-open{overflow:hidden !important}.legal-consent-modal{z-index:100000;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,.58);overscroll-behavior:contain}
+.legal-consent-content{width:min(720px,calc(100vw - 2rem));max-height:min(88vh,860px);display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:18px}
+.legal-consent-header{padding:1.25rem 1.25rem .9rem;border-bottom:1px solid var(--border)}
+.legal-consent-eyebrow{margin:0 0 .35rem;font-size:.68rem;font-weight:800;letter-spacing:.1em;color:var(--muted,#6b7280)}
+.legal-consent-header h2{margin:0;font-size:1.35rem}
+.legal-consent-intro{margin:.45rem 0 0;font-size:.86rem;line-height:1.55}
+.legal-consent-body{flex:1;min-height:0;overflow:auto;padding:1rem 1.25rem;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.legal-consent-body .legal-page{max-width:none;padding:0;margin:0}
+.legal-consent-body .legal-page h2{display:none}
+.legal-consent-body .legal-page .muted{display:none}
+.legal-consent-body .legal-page h3{margin-top:1rem}
+.legal-consent-body .legal-page h3:first-of-type{margin-top:0}
+.legal-consent-section-divider{height:1px;background:var(--border);margin:1.25rem 0}
+.legal-consent-footer{padding:.85rem 1.25rem 1.1rem;border-top:1px solid var(--border);background:var(--surface,#fff)}
+.legal-consent-confirmation{margin:0 0 .7rem;font-size:.76rem;line-height:1.45;color:var(--muted,#6b7280)}
+.legal-consent-agree-btn{width:100%;justify-content:center;min-height:46px}
+.legal-consent-agree-btn:disabled{opacity:.65;cursor:wait}
+@media(max-width:600px){.legal-consent-modal{padding:.55rem}.legal-consent-content{width:100%;max-height:94vh;border-radius:15px}.legal-consent-header{padding:1rem 1rem .75rem}.legal-consent-body{padding:.9rem 1rem}.legal-consent-footer{padding:.75rem 1rem 1rem}}
+</style>
+
+<script id="levromart-legal-consent-logic-20260917">
+(() => {
+  const LEGAL_TERMS_VERSION = "2026-09-17";
+  let legalConsentCheckInFlight = null;
+  let legalConsentAcceptedThisSession = false;
+  let legalConsentModalOpen = false;
+
+  function legalConsentModal() { return document.getElementById("legalConsentModal"); }
+  function legalConsentError() { return document.getElementById("legalConsentError"); }
+  function legalConsentAgreeBtn() { return document.getElementById("legalConsentAgreeBtn"); }
+
+  function renderLegalConsentContent() {
+    const body = document.getElementById("legalConsentBody");
+    if (!body) return;
+    try {
+      const terms = typeof renderTerms === "function" ? renderTerms() : "";
+      const privacy = typeof renderPrivacy === "function" ? renderPrivacy() : "";
+      const refund = typeof renderRefundPolicy === "function" ? renderRefundPolicy() : "";
+      body.innerHTML = [
+        terms,
+        '<div class="legal-consent-section-divider" aria-hidden="true"></div>',
+        privacy,
+        '<div class="legal-consent-section-divider" aria-hidden="true"></div>',
+        refund
+      ].filter(Boolean).join("");
+    } catch (e) {
+      console.error("[Levromart] Could not render legal consent content:", e);
+      body.innerHTML = '<div class="empty-state">The legal documents could not be loaded. Please try again.</div>';
+    }
+  }
+
+  function openLegalConsentGate() {
+    const modal = legalConsentModal();
+    if (!modal) return;
+    renderLegalConsentContent();
+    legalConsentError()?.classList.add("hidden");
+    const btn = legalConsentAgreeBtn();
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Agree &amp; Continue'; }
+    modal.classList.remove("hidden");
+    legalConsentModalOpen = true;
+    document.body.classList.add("legal-consent-open");
+    setTimeout(() => document.getElementById("legalConsentBody")?.focus(), 50);
+  }
+
+  function closeLegalConsentGate() {
+    // Intentionally no public close/cancel action. This only runs after a
+    // successful server-side acceptance.
+    const modal = legalConsentModal();
+    if (!modal) return;
+    modal.classList.add("hidden");
+    legalConsentModalOpen = false;
+    document.body.classList.remove("legal-consent-open");
+  }
+
+  async function checkLegalTermsGate() {
+    if (!session?.user?.id || !profile) return true;
+    if (legalConsentAcceptedThisSession) return true;
+    if (legalConsentCheckInFlight) return legalConsentCheckInFlight;
+
+    legalConsentCheckInFlight = (async () => {
+      try {
+        const { data, error } = await sb.rpc("get_legal_terms_consent");
+        if (error) throw error;
+        const accepted = data?.accepted === true && String(data?.current_version || LEGAL_TERMS_VERSION) === LEGAL_TERMS_VERSION;
+        if (accepted) {
+          legalConsentAcceptedThisSession = true;
+          if (legalConsentModalOpen) closeLegalConsentGate();
+          return true;
+        }
+        openLegalConsentGate();
+        return false;
+      } catch (e) {
+        console.error("[Levromart] Legal consent check failed:", e);
+        openLegalConsentGate();
+        const err = legalConsentError();
+        if (err) {
+          err.textContent = "We couldn't verify your agreement status. Check your connection and try again.";
+          err.classList.remove("hidden");
+        }
+        return false;
+      } finally {
+        legalConsentCheckInFlight = null;
+      }
+    })();
+    return legalConsentCheckInFlight;
+  }
+
+  async function acceptLegalTermsAndContinue() {
+    if (!session?.user?.id || !profile) return;
+    const btn = legalConsentAgreeBtn();
+    const err = legalConsentError();
+    err?.classList.add("hidden");
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving agreement…'; }
+    try {
+      const { data, error } = await sb.rpc("accept_legal_terms");
+      if (error) throw error;
+      if (data?.accepted !== true) throw new Error("The agreement could not be recorded.");
+
+      profile.legal_terms_version = LEGAL_TERMS_VERSION;
+      profile.legal_terms_accepted_at = data.accepted_at || new Date().toISOString();
+      legalConsentAcceptedThisSession = true;
+      closeLegalConsentGate();
+      showToast("Agreement accepted. Welcome to Levromart.", "success");
+
+      // Continue the existing post-auth sequence. This is deliberately called
+      // only after the server confirms the consent, so other required account
+      // checks (phone/password/admin OTP) keep their existing order.
+      await runPostAuthChecks();
+    } catch (e) {
+      console.error("[Levromart] Legal consent acceptance failed:", e);
+      if (err) {
+        err.textContent = "We couldn't save your agreement. Please check your connection and try again.";
+        err.classList.remove("hidden");
+      }
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Agree &amp; Continue'; }
+    }
+  }
+
+  window.acceptLegalTermsAndContinue = acceptLegalTermsAndContinue;
+  window.__levromartCheckLegalTermsGate = checkLegalTermsGate;
+  window.__levromartLegalConsentGateOpen = () => legalConsentModalOpen;
+
+  // The existing lexical runPostAuthChecks() is guarded at its source above.
+  window.__levromartLegalGateReady = () => legalConsentAcceptedThisSession;
+
+  // The initial session restore can run before this late-loaded consent module.
+  // Re-check once the module exists so existing logged-in accounts are also
+  // covered without changing the authentication flow itself.
+  setTimeout(() => {
+    if (session?.user?.id && profile) {
+      checkLegalTermsGate().then((accepted) => {
+        if (accepted) return;
+        // If an earlier post-auth check opened another required modal during the
+        // initial restore, keep the legal agreement in front until it is accepted.
+        legalConsentModal()?.classList.remove("hidden");
+      }).catch(() => {});
+    }
+  }, 0);
 })();
 </script>
 </body>
