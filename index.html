@@ -19080,11 +19080,13 @@ async function showProductModal() {
   if (editingProductId) {
     const { data: p } = await sb.from("products").select("*").eq("id", editingProductId).single();
     const { data: engagement } = await sb.from("product_engagement_settings").select("like_visibility,allow_comments,comment_audience").eq("product_id",editingProductId).maybeSingle();
-    let { data: productVariants, error: productVariantsError } = await sb.rpc("get_owned_product_variants", { p_product_id: editingProductId });
-    // Supabase normally returns JSONB arrays as real JS arrays, but older
-    // clients/proxies can surface JSONB as a string/object. Normalize every
-    // supported shape before rendering so saved varieties cannot silently
-    // disappear from Edit Product.
+    // For the editor, read the actual product_variants rows first. This avoids
+    // relying on a JSONB RPC representation for the primary UI path. If RLS or
+    // an older deployment blocks the direct read, fall back to the ownership-
+    // checked RPC. Either way the editor receives a plain array.
+    let { data: productVariants, error: productVariantsError } = await sb.from("product_variants")
+      .select("*").eq("product_id", editingProductId)
+      .order("sort_order", {ascending:true}).order("created_at", {ascending:true});
     const normalizeVariants = (value) => {
       if (Array.isArray(value)) return value;
       if (typeof value === "string") { try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : []; } catch (_) { return []; } }
@@ -19097,18 +19099,11 @@ async function showProductModal() {
       return [];
     };
     productVariants = normalizeVariants(productVariants);
-    if (productVariantsError || !Array.isArray(productVariants)) {
-      const direct = await sb.from("product_variants").select("*").eq("product_id", editingProductId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
-      productVariants = direct.data || [];
-      productVariantsError = direct.error;
-    }
-    // The direct table read is also used when the RPC succeeds but returns an
-    // empty set. This makes the editor self-healing if an older function/client
-    // response is inconsistent with the rows actually stored.
-    if (!productVariantsError && productVariants.length === 0) {
-      const direct = await sb.from("product_variants").select("*").eq("product_id", editingProductId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
-      if (Array.isArray(direct.data) && direct.data.length) productVariants = direct.data;
-      if (direct.error && !productVariantsError) productVariantsError = direct.error;
+    if (productVariantsError || !productVariants.length) {
+      const rpc = await sb.rpc("get_owned_product_variants", { p_product_id: editingProductId });
+      const rpcVariants = normalizeVariants(rpc.data);
+      if (!rpc.error && rpcVariants.length) { productVariants = rpcVariants; productVariantsError = null; }
+      else if (productVariantsError && rpc.error) productVariantsError = rpc.error;
     }
     window.__productVariants = Array.isArray(productVariants) ? productVariants : [];
     // Existing-listing edits are database-authoritative. Never run the draft
@@ -19183,6 +19178,25 @@ async function showProductModal() {
   // initial render happened while the modal was being reset.
   if (editingProductId) {
     requestAnimationFrame(() => renderProductVariantPricing());
+    // One final server reconciliation after the modal is painted. This is the
+    // last word for Edit Product and prevents any late UI/draft observer from
+    // replacing the saved variety table.
+    setTimeout(async () => {
+      if (!editingProductId || byId("productModal")?.classList.contains("hidden")) return;
+      try {
+        let { data: latest, error: latestError } = await sb.from("product_variants")
+          .select("*").eq("product_id", editingProductId)
+          .order("sort_order", {ascending:true}).order("created_at", {ascending:true});
+        if (latestError) {
+          const rpc = await sb.rpc("get_owned_product_variants", { p_product_id: editingProductId });
+          latest = normalizeVariants(rpc.data); latestError = rpc.error;
+        }
+        if (!latestError && Array.isArray(latest)) {
+          window.__productVariants = latest;
+          renderProductVariantPricing();
+        }
+      } catch (e) { console.warn("[Levromart] Final variety reconciliation failed:", e); }
+    }, 180);
   }
 }
 function loadProdCategoriesForSector(presetCategoryId) {
@@ -19523,8 +19537,15 @@ async function saveProductVariants(productId,drafts){
   const localById=new Map(payload.map(v=>[String(v.id),v]));
   window.__productVariants=rows.map((row,i)=>{
     const source=localById.get(String(row.id))||payload[i];
-    const original=sourceByKey.get(String(source?.id||source?._localKey||'')) || (source?._localKey ? sourceByKey.get(String(source._localKey)) : null);
-    return {...row,_localKey:original?._localKey||source?._localKey||row.id,...(original?._imageFile?{_imageFile:original._imageFile}:{}),...(original?._previewUrl?{_previewUrl:original._previewUrl}: {})};
+    const original=sourceByKey.get(String(source?.id||source?._localKey||''))
+      || (source?._localKey ? sourceByKey.get(String(source._localKey)) : null)
+      || sourceVariants.find(v => String(v.id||v._localKey||'') === String(drafts?.[i]?._localKey||''))
+      || source;
+    return {...row,
+      _localKey:original?._localKey||source?._localKey||row.id,
+      ...(original?._imageFile?{_imageFile:original._imageFile}:{}),
+      ...(original?._previewUrl?{_previewUrl:original._previewUrl}: {})
+    };
   });
   return window.__productVariants;
 }
@@ -19910,14 +19931,21 @@ async function saveProduct() {
     });
     window.__replaceDisplayPicture = false;
     window.__displayPictureWasReplaced = false;
+
+    // The required product/variety/media writes are complete at this point.
+    // Close the editor NOW instead of waiting for a secondary page refresh or
+    // reconciliation request. Vendors should never be left staring at a modal
+    // that still looks like it is saving after the database commit succeeded.
+    btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved`;
+    closeProductModal({ skipDraft: true });
+
     if (currentView === "vendorProducts") void navigate("vendorProducts", {}, false).catch(e => console.warn("[Levromart] Post-save navigation failed:", e));
     else if (currentView === "productDetail" && String(currentViewParams?.productId) === String(savedProductId)) void navigate("productDetail", { productId: savedProductId }, false).catch(e => console.warn("[Levromart] Post-save navigation failed:", e));
 
-    // Reconcile from the database only after the product, varieties and media
-    // are all committed. This guarantees Edit Product and the visible listing
-    // see the exact same saved state immediately.
-    try { await refreshVisibleProductAfterSave(savedProductId); }
-    catch (e) { console.warn("[Levromart] Post-save product reconciliation failed:", e); }
+    // Reconcile from the database in the background. The save result is already
+    // committed; this refresh is only for keeping the visible marketplace in
+    // sync and must never delay closing the editor.
+    void refreshVisibleProductAfterSave(savedProductId).catch(e => console.warn("[Levromart] Post-save product reconciliation failed:", e));
 
     engagementSave.then(results => {
       const failed = results.filter(r => r.status === "rejected");
@@ -33527,6 +33555,11 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
     if(!root||root.dataset.draftRestored==='1')return;
     root.dataset.draftRestored='1';
     const kind=listingModalKind(root), id=listingModalIdentity(root), key=draftKey(kind,id);
+    // Existing product edits are always loaded from Supabase. Restoring an
+    // autosaved local snapshot here can overwrite server-loaded varieties or
+    // photos with stale/partial state. Draft restore remains available for new
+    // listings and package flows.
+    if(kind==='product' && id && id!=='new') return;
     let raw;try{raw=localStorage.getItem(key)}catch(_){return}
     if(!raw)return;
     let d;try{d=JSON.parse(raw)}catch(_){return}
