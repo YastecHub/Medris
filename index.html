@@ -8335,7 +8335,7 @@ function toggleInfoPopover(id, evt) {
   positionInfoPopover(el);
 }
 function closeAllInfoPopovers() {
-  document.querySelectorAll(".info-popover").forEach((p) => {
+  document.querySelectorAll(".info-popover:not(.hidden)").forEach((p) => {
     p.classList.add("hidden");
     p.style.left = "";
     p.style.top = "";
@@ -9382,7 +9382,7 @@ function setupDrawerSwipe(drawer, side) { return; }
   window.__drawerDragGesturesReady = true;
   const MIN_DRAG = 42;
   const AXIS_RATIO = 1.15;
-  const START_ZONE = 0.50;
+  const START_ZONE = 0.14;
   const isBlocked = (target) => {
     if (!target?.closest) return false;
     return !!target.closest([
@@ -11935,8 +11935,9 @@ async function navigate(view, params = {}, pushHistory = true) {
   const SCROLL_KEY = "levromart_persisted_scroll_v4";
   const LEGACY_ROUTE_KEY = "levromart_persisted_route_v3";
   const LEGACY_SCROLL_KEY = "levromart_persisted_scroll_v3";
-  let saveRaf = 0;
+  let saveTimer = 0;
   let lastRoute = null;
+  let pendingScrollState = null;
 
   function readStore(store,key){try{return JSON.parse(store.getItem(key)||"null")}catch(_){return null}}
   function safeRead(key){
@@ -11958,23 +11959,36 @@ async function navigate(view, params = {}, pushHistory = true) {
     safeWrite(SCROLL_KEY,{x:Number(window.scrollX||0),y:Number(window.scrollY||0),view:lastRoute.view});
   };
 
-  function saveScroll(){
-    saveRaf=0;
+  function captureScrollState(){
+    if(!lastRoute)return null;
+    return {x:Number(window.scrollX||0),y:Number(window.scrollY||0),view:lastRoute.view};
+  }
+  function saveScroll(force=false){
+    if(saveTimer){clearTimeout(saveTimer);saveTimer=0;}
     if(!lastRoute)return;
-    safeWrite(ROUTE_KEY,lastRoute);
-    safeWrite(LEGACY_ROUTE_KEY,lastRoute);
-    const state={x:Number(window.scrollX||0),y:Number(window.scrollY||0),view:lastRoute.view};
+    const state=pendingScrollState||captureScrollState();
+    pendingScrollState=null;
+    if(!state)return;
+    // Route identity is written only when navigation occurs. Writing the same
+    // route object to localStorage on every scroll frame is synchronous and can
+    // block Chromium's touch-scroll pipeline on lower-end Android devices.
     safeWrite(SCROLL_KEY,state);
     safeWrite(LEGACY_SCROLL_KEY,state);
   }
+  function scheduleScrollSave(){
+    if(!lastRoute)return;
+    pendingScrollState=captureScrollState();
+    if(saveTimer)return;
+    // Scroll restoration is a persistence feature, not a frame-by-frame UI
+    // feature. Debounce storage I/O until the user pauses, while pagehide and
+    // beforeunload still force the latest position to disk.
+    saveTimer=setTimeout(()=>saveScroll(false),220);
+  }
 
-  window.addEventListener("scroll",()=>{
-    if(saveRaf)return;
-    saveRaf=requestAnimationFrame(saveScroll);
-  },{passive:true});
-  window.addEventListener("pagehide",saveScroll,{passive:true});
+  window.addEventListener("scroll",scheduleScrollSave,{passive:true});
+  window.addEventListener("pagehide",()=>saveScroll(true),{passive:true});
   window.addEventListener("pagehide",()=>{ try { if (typeof commitPendingNotificationReads === "function") void commitPendingNotificationReads(); } catch (_) {} },{passive:true});
-  window.addEventListener("beforeunload",saveScroll,{passive:true});
+  window.addEventListener("beforeunload",()=>saveScroll(true),{passive:true});
 
   let initialScrollRestored=false;
   window.__levromartRestoreScroll=function(view){
@@ -12059,7 +12073,10 @@ function clearAutoScrollTimers() {
   });
   autoScrollTimers = [];
 }
-function setupAutoScroll(container, { interval = 30, pauseAfterInteraction = 6500 } = {}) {
+function setupAutoScroll(container, {
+  /* PERFORMANCE A/B TEST: automatic horizontal Home-rail movement disabled. Manual horizontal scrolling remains fully enabled. */
+  return;
+ interval = 30, pauseAfterInteraction = 6500 } = {}) {
   if (!container || !horizontalBrowseEnabled) return;
   if (container.matches(".trending-scroll, .top-rated-vendors-scroll")) return;
   if (container.__levroAutoScrollTimer) return;
@@ -12186,7 +12203,6 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
   html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" /><button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button><div class="browse-filter-panel hidden" id="browseFilterPanel"><div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('listing')"><span>Type</span><strong id="browseListingLabel">${esc("All types")}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu hidden" id="browseListingSubmenu"><button type="button" onclick="chooseBrowseListing('', 'All types')">All types</button><button type="button" onclick="chooseBrowseListing('rent', 'Rent')">Rent</button><button type="button" onclick="chooseBrowseListing('sale', 'Buy')">Buy</button></div></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || 'All categories')}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><div id="browseCategoryOptions">${subCats.map(c => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace("'","&#39;")}')">${esc(c.name)}</button>`).join("")}</div><button type="button" onclick="chooseBrowseCategory('','All categories')">All categories</button></div></div><button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button></div><select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
-  setTimeout(filterHomeProducts, 0);
   return html;
 }
 
@@ -12203,18 +12219,22 @@ function initHomeSearchScrollMotion(){
   if (!wrap || !search) return;
 
   const header = document.querySelector("body > header");
+  let dockTop = 72;
   const syncDockTop = () => {
     const rect = header?.getBoundingClientRect();
-    const top = Math.ceil((rect?.bottom ?? 64) + 6);
-    document.documentElement.style.setProperty("--levro-search-dock-top", `${top}px`);
+    dockTop = Math.ceil((rect?.bottom ?? 64) + 6);
+    document.documentElement.style.setProperty("--levro-search-dock-top", `${dockTop}px`);
   };
   syncDockTop();
 
   let idleTimer = 0;
   let rafId = 0;
-  let lastY = window.scrollY || 0;
+  let fixed = false;
+  let scrolling = false;
 
   const restoreNormal = () => {
+    fixed = false;
+    scrolling = false;
     wrap.classList.remove("home-search-fixed", "home-search-scrolling");
     document.body.classList.remove("home-search-active");
   };
@@ -12224,26 +12244,44 @@ function initHomeSearchScrollMotion(){
     rafId = requestAnimationFrame(() => {
       rafId = 0;
       const y = window.scrollY || window.pageYOffset || 0;
-      lastY = y;
-      syncDockTop();
+
       if (y <= 8) {
-        restoreNormal();
+        if (fixed || scrolling) restoreNormal();
         return;
       }
-      wrap.classList.add("home-search-fixed", "home-search-scrolling");
-      document.body.classList.add("home-search-active");
+
+      // Only mutate classes when the visual state actually changes.
+      // The previous implementation also called getBoundingClientRect()
+      // and rewrote the dock CSS variable on every scroll frame.
+      if (!fixed) {
+        fixed = true;
+        wrap.classList.add("home-search-fixed");
+        document.body.classList.add("home-search-active");
+      }
+      if (!scrolling) {
+        scrolling = true;
+        wrap.classList.add("home-search-scrolling");
+      }
+
       clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
-        if (!search.matches(":focus-within")) wrap.classList.remove("home-search-scrolling");
+        scrolling = false;
+        if (!search.matches(":focus-within")) {
+          wrap.classList.remove("home-search-scrolling");
+        }
       }, 180);
     });
   };
 
   const onFocus = () => {
     clearTimeout(idleTimer);
-    wrap.classList.add("home-search-fixed");
+    if (!fixed) {
+      fixed = true;
+      wrap.classList.add("home-search-fixed");
+      document.body.classList.add("home-search-active");
+    }
+    scrolling = false;
     wrap.classList.remove("home-search-scrolling");
-    document.body.classList.add("home-search-active");
     syncDockTop();
   };
 
@@ -12253,8 +12291,8 @@ function initHomeSearchScrollMotion(){
   window.addEventListener("resize", onResize, {passive:true});
   search.addEventListener("focus", onFocus, true);
   search.addEventListener("blur", () => {
-    lastY = window.scrollY || window.pageYOffset || 0;
-    if (lastY <= 8) restoreNormal();
+    const y = window.scrollY || window.pageYOffset || 0;
+    if (y <= 8) restoreNormal();
   }, true);
 
   wrap._homeSearchScrollCleanup = () => {
@@ -13261,6 +13299,7 @@ function switchHomeListingTab(tab) {
   const listingFilter = byId("filterListing");
   const categoryFilter = byId("filterCategory");
   if (homeListingTab === "packages") {
+    removeHomeBrowseSentinel?.();
     if (listingFilter) listingFilter.style.display = "none";
     if (categoryFilter) categoryFilter.style.display = "none";
     if (packageResults) { packageResults.classList.add("hidden"); packageResults.innerHTML = ""; }
@@ -13372,6 +13411,82 @@ function filterBrowseCategoryOptions() {
 }
 
 let homeFilterGeneration = 0;
+
+// HOME BROWSE WINDOWING
+// Keep the complete catalogue in memory for filtering/searching, but do not
+// create hundreds/thousands of product-card DOM trees in one operation. The
+// previous implementation rendered the entire catalogue into #productGrid at
+// once. That makes Android pay the layout/style/image bookkeeping cost for the
+// whole marketplace even though only a handful of cards are visible.
+let homeBrowseRenderState = { items: [], rendered: 0, generation: 0, observer: null, sentinel: null, busy: false };
+function resetHomeBrowseRenderState(){
+  try { homeBrowseRenderState.observer?.disconnect(); } catch (_) {}
+  homeBrowseRenderState = { items: [], rendered: 0, generation: 0, observer: null, sentinel: null, busy: false };
+}
+function removeHomeBrowseSentinel(){
+  try { homeBrowseRenderState.observer?.disconnect(); } catch (_) {}
+  homeBrowseRenderState.observer = null;
+  homeBrowseRenderState.sentinel?.remove();
+  homeBrowseRenderState.sentinel = null;
+}
+function renderHomeBrowseChunk(items, generation, reset=true){
+  const grid=byId("productGrid");
+  if(!grid || generation!==homeFilterGeneration) return false;
+  const list=Array.isArray(items)?items:[];
+  if(reset){
+    const previous=homeBrowseRenderState.items||[];
+    const sameList=previous.length===list.length && previous.length>0 && previous.every((p,i)=>String(p?.id||"")===String(list[i]?.id||""));
+    if(sameList && homeBrowseRenderState.rendered>0){
+      // A fresh Supabase response can arrive a moment after the cache-first
+      // paint. If the visible ordering is unchanged, keep the existing DOM
+      // and scroll position instead of rebuilding the first batch.
+      homeBrowseRenderState.items=list;
+      homeBrowseRenderState.generation=generation;
+      return true;
+    }
+    resetHomeBrowseRenderState();
+    homeBrowseRenderState.items=list;
+    homeBrowseRenderState.generation=generation;
+    grid.innerHTML="";
+  }else if(homeBrowseRenderState.generation!==generation){
+    return false;
+  }
+  const state=homeBrowseRenderState;
+  const CHUNK_SIZE=24;
+  const start=state.rendered;
+  const next=list.slice(start,start+CHUNK_SIZE);
+  if(next.length){
+    grid.insertAdjacentHTML("beforeend",next.map(productCardHtml).join(""));
+    state.rendered+=next.length;
+  }
+  removeHomeBrowseSentinel();
+  if(state.rendered<list.length){
+    const sentinel=document.createElement("div");
+    sentinel.id="homeBrowseLoadSentinel";
+    sentinel.setAttribute("aria-hidden","true");
+    sentinel.style.cssText="height:1px;width:100%;pointer-events:none;";
+    grid.parentNode?.insertBefore(sentinel,grid.nextSibling);
+    state.sentinel=sentinel;
+    if("IntersectionObserver" in window){
+      state.observer=new IntersectionObserver(entries=>{
+        if(!entries.some(e=>e.isIntersecting)||state.busy||state.generation!==homeFilterGeneration)return;
+        state.busy=true;
+        // Let the current scroll/compositor work finish before adding the next
+        // small batch of cards. This avoids a large synchronous append inside
+        // the browser's scroll callback.
+        setTimeout(()=>{
+          state.busy=false;
+          if(state.generation===homeFilterGeneration) renderHomeBrowseChunk(state.items,state.generation,false);
+        },0);
+      },{root:null,rootMargin:"1000px 0px",threshold:0});
+      state.observer.observe(sentinel);
+    }
+  }else{
+    state.sentinel=null;
+  }
+  return true;
+}
+
 async function filterHomeProducts() {
   const generation = ++homeFilterGeneration;
   const search = byId("searchInput")?.value.trim() || "";
@@ -13396,9 +13511,8 @@ async function filterHomeProducts() {
     .filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
   const hasLocalCatalogue = localCatalog.length > 0;
   if (hasLocalCatalogue) {
-    grid.innerHTML = localFiltered.length
-      ? localFiltered.map(productCardHtml).join("")
-      : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+    if(localFiltered.length) renderHomeBrowseChunk(localFiltered,generation,true);
+    else { resetHomeBrowseRenderState(); grid.innerHTML = `<div class="empty-state">No ${homeListingTab} match these filters.</div>`; }
   }
 
   if (browserLooksOffline()) {
@@ -13486,9 +13600,8 @@ async function filterHomeProducts() {
     ? window.__homeBrowseCatalog
     : products;
   const tabProducts = displayProducts.filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
-  grid.innerHTML = tabProducts.length
-    ? tabProducts.map(productCardHtml).join("")
-    : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+  if(tabProducts.length) renderHomeBrowseChunk(tabProducts,generation,true);
+  else { resetHomeBrowseRenderState(); grid.innerHTML = `<div class="empty-state">No ${homeListingTab} match these filters.</div>`; }
 }
 function productDeliverySummaryHtml(p) {
   const v = p?.vendor || {};
@@ -34813,6 +34926,51 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 <style id="levromart-calm-final-guard">html[data-levro-motion="calm"] *,html[data-levro-motion="calm"] *::before,html[data-levro-motion="calm"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}html[data-levro-motion="calm"] .product-card-wrap:hover,html[data-levro-motion="calm"] .vendor-card:hover{transform:none!important}html[data-levro-motion="calm"] .ai-chat-fab.scroll-faded,html[data-levro-motion="calm"] #cartFab.scroll-faded{opacity:1!important;transform:none!important}html[data-levro-motion="calm"] .nav-scroll-hide,html[data-levro-motion="calm"] .nav-scroll-shrink{transform:none!important;opacity:1!important}html[data-levro-motion="calm"] .home-search-fixed,html[data-levro-motion="calm"] .home-search-scrolling{transform:none!important}</style><script id="levromart-calm-final-state">applyLevromartMotionPreference(getLevromartMotionPreference());</script>
 <style id="levromart-inventory-accordion-final">.admin-inventory-accordion-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem}.admin-inventory-accordion-summary .admin-inventory-stat{padding:0;min-width:0;background:var(--card)!important;color:var(--text);border:1px solid var(--border);overflow:hidden}.admin-inventory-stat summary{list-style:none;display:flex;align-items:center;gap:.5rem;justify-content:space-between;padding:.75rem .8rem;cursor:pointer}.admin-inventory-stat summary::-webkit-details-marker{display:none}.admin-inventory-stat summary span{font-size:.75rem;font-weight:700;color:var(--text-muted)}.admin-inventory-stat summary strong{font-size:1.15rem;color:var(--text)}.admin-inventory-stat summary i{font-size:.7rem;color:var(--text-muted);transition:transform .15s}.admin-inventory-stat[open] summary i{transform:rotate(180deg)}.admin-inventory-stat-body{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.65rem .8rem;border-top:1px solid var(--border);font-size:.72rem;color:var(--text-muted)}@media(max-width:620px){.admin-inventory-accordion-summary{grid-template-columns:1fr}.admin-inventory-stat-body{padding:.55rem .7rem}}</style>
+
+<style id="levromart-home-android-scroll-surgical-20260918">
+/*
+ * HOME / ANDROID PERFORMANCE GUARD
+ * Scope: only while the Home surface is mounted.
+ * Purpose: reduce mobile compositor work and avoid eagerly painting the entire
+ * catalogue when it is far below the viewport.
+ */
+@media (max-width:720px){
+  body:has(#app .levro-home-hero){
+    background-attachment:scroll !important;
+  }
+
+  body:has(#app .levro-home-hero) > header{
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+    background:color-mix(in srgb,var(--bg) 94%, transparent) !important;
+  }
+
+  /* Home's vertical catalogue is windowed in small batches. Keep offscreen
+     batches cheap as they are appended, and isolate each listing's paint/layout
+     so one card cannot invalidate the whole grid. */
+  #app #productGrid > .product-card-wrap{
+    content-visibility:auto !important;
+    contain:layout paint !important;
+    contain-intrinsic-size:300px !important;
+  }
+  #app #productGrid > .product-card-wrap .product-img{
+    contain:layout paint;
+  }
+}
+</style>
+
+<style id="levromart-home-android-scroll-v2-20260918">
+@media (max-width:720px){
+  /* Keep the small discovery rails from creating unnecessary scroll-linked
+     smoothing work. Native touch scrolling remains unchanged. */
+  #app .hscroll, #app .home-promotional-viewport{
+    -webkit-overflow-scrolling:touch;
+  }
+  #app .home-promotional-track{
+    will-change:transform;
+  }
+}
+</style>
 </html>
 <style id="levromart-final-manual-monthly-ui-20260913">
 .manual-monthly-payment-modal-content{max-height:min(90vh,760px);overflow:auto}
