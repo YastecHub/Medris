@@ -6953,14 +6953,8 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </nav>
   </div>
   <div class="header-right">
-    <div class="icon-wrap" id="headerSearchWrap">
-      <button type="button" class="icon-btn header-search-btn" id="levromartHeaderSearchButton" title="Search Levromart" aria-label="Search Levromart" onclick="window.__levroTopSearch(event)"><i class='fa-solid fa-magnifying-glass'></i></button>
-    </div>
     <div class="icon-wrap hidden" id="messagesWrap">
       <button class="icon-btn" onclick="navigate('messages')" title="Messages"><i class='fa-solid fa-comment-dots'></i><span id="messagesDot" class="notif-dot hidden">0</span></button>
-    </div>
-    <div class="icon-wrap hidden" id="notifWrap">
-      <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
     </div>
   </div>
 </header>
@@ -8268,6 +8262,12 @@ function enhanceSelectsIn(root) {
 // for grouping secondary actions behind a single "More" button instead of
 // a row of same-weight buttons - the global outside-click handler below
 // already closes any .ms-list, so this needs no extra wiring.
+function toggleStorefrontBio(btn) {
+  const wrap = btn.closest(".storefront-bio-wrap");
+  if (!wrap) return;
+  const expanded = wrap.classList.toggle("expanded");
+  btn.textContent = expanded ? "Show less" : "Read more";
+}
 function toggleInlineMenu(id, evt) {
   evt?.stopPropagation();
   const list = byId(id);
@@ -9376,11 +9376,9 @@ function toggleNotifPanel() {
 }
 function toggleProfilePanel() { openDrawer("profilePanel"); }
 function openProfileOrShop() {
-  // Vendors' profile page IS their shop dashboard now; buyers still get the
-  // quick-access drawer.
-  const isVendorUser = session && profile?.role !== "admin" && !!vendor;
-  if (isVendorUser) navigate("vendorDashboard");
-  else toggleProfilePanel();
+  // Tapping the avatar always opens the quick-access panel first, LinkedIn
+  // style; the panel's own header links into the full profile/shop page.
+  toggleProfilePanel();
 }
 
 function setupDrawerSwipe(drawer, side) { return; }
@@ -9604,10 +9602,10 @@ async function refreshNotifications(renderPanel = true) {
     return;
   }
   byId("notifWrap")?.classList.remove("hidden");
-  // Vendors get a header Messages icon (their bottom nav no longer has one);
-  // buyers keep Messages in the bottom nav, so the header icon stays hidden.
-  const isVendorForHeaderIcons = profile?.role !== "admin" && !!vendor;
-  byId("messagesWrap")?.classList.toggle("hidden", !isVendorForHeaderIcons);
+  // Every logged-in buyer/vendor gets a header Messages icon; their bottom
+  // nav has Notifications instead. Admins are unaffected (no bottom-nav add
+  // slot logic applies to them and they don't use Messages).
+  byId("messagesWrap")?.classList.toggle("hidden", profile?.role === "admin");
 
   // Independent badge/count reads run concurrently so one slow table cannot
   // hold up unrelated UI state.
@@ -10483,9 +10481,9 @@ function updateAuthUI() {
 
     const links = [];
     if (vendor && profile.role !== "admin") {
-      links.push({ label: "My Shop", action: "navigate('vendorDashboard')" });
-      links.push({label:`Monthly Listing <span class="badge danger monthly-profile-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount||0)}</span>`,action:"navigate('vendorProducts')"});
-      links.push({ label: "Edit Business Profile", action: "navigate('vendorEditProfile')" });
+      // My Shop / Monthly Listing / Edit Business Profile now live inside
+      // the full vendor profile page itself (tap the name/photo above to
+      // open it) - this panel stays a short quick-access list, LinkedIn-style.
       links.push({ label: `Requests${requestOfferBadgeCount > 0 ? ` <span class="badge danger profile-request-badge">${requestOfferBadgeCount > 9 ? "9+" : requestOfferBadgeCount}</span>` : ""}`, action: "navigate('vendorRequests')" });
     } else if (profile.role !== "admin") {
       links.push({ label: "My Orders", action: "navigate('buyerOrders')" });
@@ -10493,7 +10491,6 @@ function updateAuthUI() {
     }
     if (profile.role !== "admin") {
       links.push({ label: "My details", action: "navigate('editProfile')" });
-      links.push({ label: "Messages", action: "navigate('messages')" });
       links.push({ label: "Wishlist", action: "navigate('wishlist')" });
     }
     if (profile.role === "admin") {
@@ -10510,18 +10507,17 @@ function updateAuthUI() {
     }
     if (vendor) links.push({ label: `Suggestions${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('vendorSuggestionsInbox')" });
     if (profile.role !== "admin") links.push({ label: "Support request", action: "navigate('supportRequest')" });
-    if (profile.role !== "admin") links.push({ label: "Send feedback", action: "showSuggestionModal('platform')" });
     if (profile.role === "admin") {
       links.push({ label: "Link Library", action: "navigate('adminLinkLibrary')" });
     }
-    links.push({ label: "Take the tour", action: "showTour()" });
-    links.push({ label: "Settings", action: "navigate('settings')" });
+    // Take the tour / Send feedback / Log out now live inside Settings.
+    links.push({ label: "Settings &amp; Privacy", action: "navigate('settings')" });
 
     panel.innerHTML = `
       <div class="profile-panel-static">
         <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn" onclick="closeAllPanels()" aria-label="Close profile"><i class='fa-solid fa-xmark'></i></button></div>
 
-        <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="Open your storefront" onclick="closeAllPanels();navigate('storefront',{vendorId:'${esc(vendor.id)}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('storefront',{vendorId:'${esc(vendor.id)}'})}"` : profile.role !== 'admin' ? `role="button" tabindex="0" aria-label="Open vendors you follow" onclick="event.stopPropagation();closeAllPanels();navigate('customerFollowing')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();closeAllPanels();navigate('customerFollowing')}"` : ''}>
+        <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('vendorDashboard')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('vendorDashboard')}"` : profile.role !== 'admin' ? `role="button" tabindex="0" aria-label="Open vendors you follow" onclick="event.stopPropagation();closeAllPanels();navigate('customerFollowing')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();closeAllPanels();navigate('customerFollowing')}"` : ''}>
           <div class="avatar-edit-wrap">
             ${profile.avatar_url
               ? `<button type="button" class="profile-avatar-lightbox-btn" onclick="openProfileImageLightbox('${esc(profile.avatar_url)}','${esc(profile.name || "Profile")}',event)" aria-label="View profile picture"><img src="${esc(profile.avatar_url)}" class="avatar-circle avatar-lg" style="object-fit:cover;" alt="${esc(profile.name || "Profile")}" draggable="false" /></button>`
@@ -10534,6 +10530,7 @@ function updateAuthUI() {
             <strong class="profile-account-name">${esc(profile.name || "")}</strong>
             <span class="profile-account-email muted">${esc(profile.email)}</span>
             <span class="badge profile-role-badge">${profile.role === "admin" ? "admin" : vendor ? "vendor" : "customer"}</span>
+            ${vendor ? `<span class="profile-view-full-link">View full profile <i class="fa-solid fa-chevron-right"></i></span>` : ""}
           </div>
         </div>
       </div>
@@ -10545,7 +10542,6 @@ function updateAuthUI() {
           const profileKeyAttr = l.profileKey ? ` data-profile-key="${esc(l.profileKey)}"` : "";
           return `<a class="profile-nav-link"${profileLabelAttr}${profileKeyAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
         }).join("")}
-        <a class="profile-nav-link profile-nav-link-danger" onclick="closeAllPanels();logout();"><span class="profile-item-icon"><i class="fa-solid fa-arrow-right-from-bracket"></i></span><span class="profile-nav-text">Log out</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>
       </div>
     `;
     byId("accountDangerSection")?.classList.remove("hidden");
@@ -10837,7 +10833,6 @@ function renderBottomNav() {
 
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
   const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('grid'),80))", view: "vendors" };
-  const messagesTab = { icon: "<i class='fa-solid fa-comment-dots'></i>", label: "Messages", action: "navigate('messages')", view: "messages", badge: unreadMessageCount };
   const notificationsTab = { icon: "<i class='fa-solid fa-bell'></i>", label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
   const requestsTab = isVendorUser
     ? { icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
@@ -10859,9 +10854,9 @@ function renderBottomNav() {
     // profile page (tapping the header avatar opens it directly).
     items = [homeTab, vendorsTab, notificationsTab, ordersTab];
   } else if (session) {
-    // Buyer navigation: Vendors → Request → Home → Orders → Messages.
-    // Messages stays at the extreme right; Orders sits immediately beside Home.
-    items = [vendorsTab, requestsTab, homeTab, ordersTab, messagesTab];
+    // Buyer navigation: Vendors → Request → Home → Orders → Notifications.
+    // Messages moved to the header, same as vendors.
+    items = [vendorsTab, requestsTab, homeTab, ordersTab, notificationsTab];
   } else {
     items = [homeTab, vendorsTab, requestsTab,
       { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
@@ -16953,13 +16948,18 @@ async function renderStorefront(vendorId) {
       <div class="storefront-name-row">
         <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
         <div class="storefront-name-actions">
-          ${!isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm storefront-social-icon" type="button" aria-label="Message vendor" title="Message vendor" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button>` : ""}
-          ${!isOwnStorefront && profile?.role !== "admin" && v.whatsapp_visible && v.whatsapp_number ? `<a class="btn btn-sm btn-outline storefront-social-icon storefront-whatsapp-icon" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener" aria-label="WhatsApp vendor" title="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></a>` : ""}
-          ${!isOwnStorefront && v.phone ? `<a class="btn btn-sm btn-outline storefront-social-icon" href="${telLink(v.phone)}" aria-label="Call vendor" title="Call vendor" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i><span>Call</span></a>` : ""}
+          ${!isOwnStorefront && profile?.role !== "admin" ? `<div class="ms-wrap storefront-contact-wrap" style="position:relative;display:inline-flex;">
+            <button class="btn btn-sm storefront-social-icon storefront-contact-trigger" type="button" aria-label="Contact vendor" title="Contact vendor" onclick="toggleInlineMenu('storefrontContactMenu',event)"><i class="fa-solid fa-comment-dots"></i><span>Contact</span></button>
+            <div class="ms-list hidden" id="storefrontContactMenu">
+              <button type="button" class="ms-item" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i> Message</button>
+              ${v.whatsapp_visible && v.whatsapp_number ? `<a class="ms-item" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>` : ""}
+              ${v.phone ? `<a class="ms-item" href="${telLink(v.phone)}" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i> Call</a>` : ""}
+            </div>
+          </div>` : ""}
         </div>
       </div>
       <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${storefrontDistanceHtml(v)}${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
-      ${v.bio ? `<p class="storefront-bio">${esc(v.bio)}</p>` : ""}
+      ${v.bio ? `<div class="storefront-bio-wrap" id="storefrontBioWrap"><p class="storefront-bio">${esc(v.bio)}</p>${v.bio.length > 160 ? `<button type="button" class="storefront-bio-toggle" onclick="toggleStorefrontBio(this)">Read more</button>` : ""}</div>` : ""}
       <div class="storefront-stats">
         <span><strong>${allProducts.length}</strong> listing${allProducts.length === 1 ? "" : "s"}</span>
         <button type="button" class="storefront-stat-link" onclick="event.stopPropagation();scrollToVendorReviews()"><strong>${st.review_count || 0}</strong> review${Number(st.review_count || 0) === 1 ? "" : "s"}</button>
@@ -18498,7 +18498,7 @@ async function renderVendorEditProfile() {
       <select id="veBankCode" data-current-bank="${esc(v.bank_code || "")}" class="hidden" aria-hidden="true" tabindex="-1">${NIGERIAN_BANKS.map((b) => `<option value="${esc(b.code)}" ${String(b.code) === String(v.bank_code || "") ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>
       <label>Account number</label>
       <input id="veAccountNumber" inputmode="numeric" maxlength="10" placeholder="10-digit account number" value="${esc(v.account_number || "")}" />
-      <button class="btn btn-sm" style="margin-top:0.6rem;" id="saveBankBtn" onclick="saveVendorBankDetails()">Save payout details</button>
+      <button class="btn btn-sm ${v.paystack_subaccount_code ? "" : "levro-pulse-attention"}" style="margin-top:0.6rem;" id="saveBankBtn" onclick="saveVendorBankDetails()">Save payout details</button>
     </div>
   </div>
 `;
@@ -36512,10 +36512,15 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
         })();
       }
 
-      // Payout activation is intentionally not part of application submission.
-      // It remains a separate setup/approval operation.
-      void refreshAuthState().catch(e=>console.warn("[Levromart] Post-application auth refresh failed:",e));
-      void navigate("home").catch(e=>console.warn("[Levromart] Post-application navigation failed:",e));
+      // Approval remains a separate, admin-controlled step, but a freshly
+      // submitted applicant is sent straight into payout setup so their
+      // account is ready to receive money the moment they're approved.
+      try { await refreshAuthState(); } catch(e) { console.warn("[Levromart] Post-application auth refresh failed:",e); }
+      if (typeof window.openVendorPayoutSetup === "function") {
+        void window.openVendorPayoutSetup().catch(e=>console.warn("[Levromart] Post-application payout setup redirect failed:",e));
+      } else {
+        void navigate("vendorEditProfile",{focusPayout:true},false).catch(e=>console.warn("[Levromart] Post-application navigation failed:",e));
+      }
       return;
     }catch(err){
       console.error("[Levromart] Vendor application failed:",err);
@@ -37609,11 +37614,12 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 <style id="levromart-vendor-profile-merged-final">
 /* Vendor profile = vendor shop dashboard, LinkedIn-style: header card, then
    full-width sections separated by thin lines, no unnecessary icon clutter. */
-.vendor-profile-header-card{max-width:700px;margin:0 auto;border-radius:16px;overflow:hidden;background:var(--card);border:1px solid var(--border);}
-.vendor-profile-header-cover{height:104px;position:relative;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 24%,var(--card)),color-mix(in srgb,var(--primary) 6%,var(--card)));background-size:cover;background-position:center;border-radius:0;}
+.vendor-profile-header-card{max-width:700px;margin:0 auto;border-radius:16px;overflow:visible;background:var(--card);border:1px solid var(--border);}
+.vendor-profile-header-cover{height:104px;position:relative;overflow:hidden;border-radius:16px 16px 0 0;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 24%,var(--card)),color-mix(in srgb,var(--primary) 6%,var(--card)));background-size:cover;background-position:center;border-bottom:0;}
 .vendor-profile-header-cover .storefront-cover-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:.76rem;}
-.vendor-profile-header-body{padding:0 1.1rem 1.15rem;}
-.vendor-profile-header-avatar-row{display:flex;align-items:flex-end;justify-content:space-between;gap:.6rem;margin-top:-2.3rem;}
+.vendor-profile-header-cover::after{content:none;}
+.vendor-profile-header-body{padding:0 1.1rem 1.15rem;overflow:visible;}
+.vendor-profile-header-avatar-row{display:flex;align-items:flex-end;justify-content:space-between;gap:.6rem;margin-top:-1.1rem;}
 .vendor-profile-header-avatar{width:4.4rem;height:4.4rem;border-radius:50%;object-fit:cover;border:3px solid var(--card);background:var(--card);flex:0 0 auto;}
 .vendor-profile-edit-btn{margin-bottom:.35rem;flex:0 0 auto;}
 .vendor-profile-header-name{margin:.7rem 0 0;font-size:1.15rem;line-height:1.3;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;}
@@ -37633,9 +37639,54 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .vendor-profile-plain-row:first-child{border-top:none;}
 .vendor-profile-settings-row{display:flex;align-items:center;gap:.5rem;color:var(--text-muted);}
 .settings-logout-row,.settings-logout-row i{color:var(--danger) !important;}
+.profile-view-full-link{display:inline-flex;align-items:center;gap:.3rem;margin-top:.3rem;font-size:.76rem;font-weight:700;color:var(--primary);}
+
+/* Horizontal vendor rails have few items and don't need the
+   content-visibility containment meant for the big vertical product grid;
+   off-screen cards there were reporting a mismatched 280x280 placeholder
+   size, and align-items:stretch on the row stretched every card (including
+   visible ones) to match, making the whole rail look elongated. */
+.hscroll > .vendor-card, .hscroll > .homepage-vendor-card,
+.top-rated-vendors-scroll > .vendor-card, .top-rated-vendors-scroll > .homepage-vendor-card,
+.trending-scroll > .vendor-card, .trending-scroll > .homepage-vendor-card{
+  content-visibility:visible !important; contain:none !important;
+}
+
+/* Storefront bio: collapse long descriptions instead of pushing everything
+   below off the initial screen. */
+.storefront-bio-wrap .storefront-bio{
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden;
+}
+.storefront-bio-wrap.expanded .storefront-bio{ display:block; -webkit-line-clamp:unset; overflow:visible; }
+.storefront-bio-toggle{background:none;border:none;padding:.3rem 0 0;margin:0;color:var(--primary);font-weight:700;font-size:.82rem;cursor:pointer;}
+
+/* Consolidated storefront contact menu (was 3 separate Message/WhatsApp/Call
+   buttons cluttering the name row). */
+.storefront-contact-wrap .ms-list{left:0;right:auto;width:max-content;min-width:170px;}
+.storefront-contact-wrap .ms-item{display:flex;align-items:center;gap:.5rem;}
+
+/* Restore the intended 2x2 grid for product-card action buttons (Edit +
+   Duplicate on top, Pause/Resume + Remove below) - a later, unrelated patch
+   had switched this back to flex-wrap, which wrapped 3-then-1 instead. */
+#app .vendor-product-actions{
+  display:grid !important; grid-template-columns:repeat(2,minmax(46px,48px)) !important;
+  grid-template-rows:repeat(2,minmax(46px,48px)) !important; grid-auto-flow:row !important;
+  justify-content:center !important; align-items:center !important; justify-items:center !important;
+  gap:.55rem !important; flex-wrap:unset !important;
+}
+
+/* Draws the eye to a save action that genuinely needs the vendor's
+   attention (e.g. payout details not yet saved). */
+@media (prefers-reduced-motion:no-preference){
+  .levro-pulse-attention{ animation:levroPulseAttention 1.7s ease-in-out infinite; }
+  @keyframes levroPulseAttention{
+    0%,100%{ box-shadow:0 0 0 0 color-mix(in srgb,var(--primary) 45%,transparent); }
+    50%{ box-shadow:0 0 0 8px color-mix(in srgb,var(--primary) 0%,transparent); }
+  }
+}
 @media(max-width:520px){
   .vendor-profile-header-cover{height:88px;}
   .vendor-profile-header-avatar{width:3.8rem;height:3.8rem;}
-  .vendor-profile-header-avatar-row{margin-top:-1.9rem;}
+  .vendor-profile-header-avatar-row{margin-top:-.9rem;}
 }
 </style>
