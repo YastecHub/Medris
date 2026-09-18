@@ -107,10 +107,10 @@
   main > h2 + .card, main > .page-title + .card { margin-top: 0.9rem !important; }
   #settingsAiConsentPageRow .settings-inline-btn { min-width: 4.25rem; justify-content:center; }
   :root {
-    --brand-grad: #10b981;
-    --primary: #10b981;
-    --primary-light: #10b981;
-    --primary-grad: #10b981;
+    --brand-grad: #0B6E4A;
+    --primary: #0B6E4A;
+    --primary-light: #0B6E4A;
+    --primary-grad: #0B6E4A;
     --bg: #f5f7fa;
     --bg-wash: radial-gradient(at top left, rgba(37,211,102,0.08), transparent 55%), radial-gradient(at bottom right, rgba(18,140,126,0.06), transparent 50%);
     --card: #ffffff;
@@ -129,9 +129,9 @@
     color-scheme: light;
   }
   [data-theme="dark"] {
-    --primary: #10b981;
-    --primary-light: #10b981;
-    --primary-grad: #10b981;
+    --primary: #0B6E4A;
+    --primary-light: #0B6E4A;
+    --primary-grad: #0B6E4A;
     --bg: #0f172a;
     --bg-wash: radial-gradient(at top left, rgba(37,211,102,0.08), transparent 55%), radial-gradient(at bottom right, rgba(18,140,126,0.10), transparent 50%);
     --card: #1e293b;
@@ -146,9 +146,9 @@
     color-scheme: dark;
   }
   [data-theme="black"] {
-    --primary: #10b981;
-    --primary-light: #10b981;
-    --primary-grad: #10b981;
+    --primary: #0B6E4A;
+    --primary-light: #0B6E4A;
+    --primary-grad: #0B6E4A;
     --bg: #000000;
     --bg-wash: radial-gradient(at top left, rgba(37,211,102,0.06), transparent 55%), radial-gradient(at bottom right, rgba(18,140,126,0.08), transparent 50%);
     --card: #111111;
@@ -6920,7 +6920,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 
 </head>
 <body>
-<div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--primary,#10b981)" stroke-width="5"/><path d="M19 34c5-1 8-4 10-9 1-3 3-5 6-5 4 0 6 3 6 7 0 5-4 8-8 8h-5c-5 0-9 3-9 7 0 3 2 5 5 5 4 0 6-2 7-5" fill="none" stroke="var(--primary,#10b981)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+<div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--primary,#0B6E4A)" stroke-width="5"/><path d="M19 34c5-1 8-4 10-9 1-3 3-5 6-5 4 0 6 3 6 7 0 5-4 8-8 8h-5c-5 0-9 3-9 7 0 3 2 5 5 5 4 0 6-2 7-5" fill="none" stroke="var(--primary,#0B6E4A)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
 <script id="levromart-splash-watchdog">
 (function(){
   // This watchdog intentionally lives before the large application bundle.
@@ -9113,7 +9113,7 @@ function initTheme() {
 // distinguishable shade rather than a near-duplicate.
 const ACCENT_PALETTE = [
   { name: "Teal", group: "Greens", base: "#0f766e", light: "#0f766e" },
-  { name: "Mint", group: "Greens", base: "#10b981", light: "#10b981" },
+  { name: "Mint", group: "Greens", base: "#0B6E4A", light: "#0B6E4A" },
   { name: "Emerald", group: "Greens", base: "#047857", light: "#047857" },
   { name: "Forest", group: "Greens", base: "#166534", light: "#166534" },
   { name: "WhatsApp Green", group: "Greens", base: "#25D366", light: "#25D366" },
@@ -9159,19 +9159,19 @@ function lightenHex(hex, amt) {
   return `#${[r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")}`;
 }
 function hexHue(hex) {
-  const n=parseInt(String(hex||"#10b981").replace("#",""),16);
+  const n=parseInt(String(hex||"#0B6E4A").replace("#",""),16);
   let r=((n>>16)&255)/255,g=((n>>8)&255)/255,b=(n&255)/255;
   const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
   let h=0;if(d){if(max===r)h=((g-b)/d)%6;else if(max===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;if(h<0)h+=360;}return h;
 }
 function accentLogoFilter(hex){
-  const target=hexHue(hex),base=hexHue("#10b981");
+  const target=hexHue(hex),base=hexHue("#0B6E4A");
   let delta=target-base;if(delta>180)delta-=360;if(delta<-180)delta+=360;
   return `hue-rotate(${delta.toFixed(1)}deg) saturate(1.08)`;
 }
 function applyAccent(index) {
   /* Accent customization has been retired: Levromart uses one calm brand green everywhere. */
-  const preset = { name: "Levromart Green", group: "Brand", base: "#10b080", light: "#10b080" };
+  const preset = { name: "Levromart Green", group: "Brand", base: "#0B6E4A", light: "#0B6E4A" };
   const theme = localStorage.getItem("medris-theme") || "light";
   const root = document.documentElement;
   // Chat bubbles always use the accent's darker "base" tone, regardless of
@@ -12323,7 +12323,7 @@ function handleHomeCarouselImageError(img, failedIndex) {
     return;
   }
   img.onerror = null;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420"><rect width="1200" height="420" fill="#0f172a"/><circle cx="920" cy="120" r="180" fill="#10b981" fill-opacity=".22"/><circle cx="980" cy="180" r="110" fill="#10b981" fill-opacity=".18"/><text x="80" y="215" font-family="Arial, sans-serif" font-size="48" font-weight="700" fill="#ffffff">Levromart</text><text x="80" y="270" font-family="Arial, sans-serif" font-size="28" fill="#d1fae5">Explore the marketplace</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420"><rect width="1200" height="420" fill="#0f172a"/><circle cx="920" cy="120" r="180" fill="#0B6E4A" fill-opacity=".22"/><circle cx="980" cy="180" r="110" fill="#0B6E4A" fill-opacity=".18"/><text x="80" y="215" font-family="Arial, sans-serif" font-size="48" font-weight="700" fill="#ffffff">Levromart</text><text x="80" y="270" font-family="Arial, sans-serif" font-size="28" fill="#d1fae5">Explore the marketplace</text></svg>`;
   img.src = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
   img.closest(".home-promotional-slide")?.classList.add("image-failed");
 }
@@ -16646,7 +16646,7 @@ async function renderVendorsMap() {
   vendorsMapMarkers = [];
 
   if (buyerLocation) {
-    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim() || "#10b981";
+    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim() || "#0B6E4A";
     const me = window.L.circleMarker([buyerLocation.lat, buyerLocation.lng], { radius: 8, color: "#fff", weight: 2, fillColor: primaryColor, fillOpacity: 1 }).addTo(vendorsMap);
     me.bindPopup("You are here");
     vendorsMapMarkers.push(me);
@@ -21831,7 +21831,7 @@ async function showOrderBuyerLocation(orderId, buyerLat, buyerLng, vendorLat, ve
     // Draw the direct trace immediately so the relationship is visible even
     // before the optional road-routing request returns.
     const routeLine = window.L.polyline([vendorPoint, customerPoint], {
-      color: "#10b080", weight: 4, opacity: .82, lineCap: "round", lineJoin: "round", dashArray: "10 8", className: "order-buyer-route"
+      color: "#0B6E4A", weight: 4, opacity: .82, lineCap: "round", lineJoin: "round", dashArray: "10 8", className: "order-buyer-route"
     }).addTo(map);
     mapEl._levroOrderBuyerRoute = routeLine;
     try {
@@ -23684,12 +23684,12 @@ function exportFinancePdf() {
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Levromart Transactions (${rangeLabel(adminFinanceRange)})</title>
     <style>
       body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#0d201c;padding:2rem;}
-      h1{color:#0e8f7f;margin:0 0 .2rem;} .muted{color:#5c7269;margin-top:0;}
+      h1{color:#0B6E4A;margin:0 0 .2rem;} .muted{color:#5c7269;margin-top:0;}
       table{width:100%;border-collapse:collapse;margin-top:1.2rem;font-size:.85rem;}
       th,td{padding:.5rem .6rem;text-align:left;border-bottom:1px solid #e2e8f0;}
       th{background:#f3f8f7;} .stats{display:flex;gap:1.5rem;margin:1.2rem 0;}
       .stat{border:1px solid #e2e8f0;border-radius:8px;padding:.8rem 1.2rem;}
-      .stat b{display:block;font-size:1.3rem;color:#0e8f7f;}
+      .stat b{display:block;font-size:1.3rem;color:#0B6E4A;}
     </style>
 <style id="levromart-auto-commission-dispute-ui">
 .vendor-commission-auto-note{margin-top:.7rem;padding:.6rem .7rem;border-radius:10px;background:rgba(245,158,11,.10);color:#92400e;font-size:.84rem;line-height:1.35;}
@@ -29316,7 +29316,7 @@ window.renderVendorMapRail = function(){
       else showToast('We could not get your current location yet. Tap Locate me on the map and try again.','info');
       return;
     }
-    const color=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()||'#10b981';
+    const color=getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()||'#0B6E4A';
     let coords=[[Number(loc.lat),Number(loc.lng)],[Number(vendor.lat),Number(vendor.lng)]];
     try{
       const url=`https://router.project-osrm.org/route/v1/driving/${encodeURIComponent(loc.lng)},${encodeURIComponent(loc.lat)};${encodeURIComponent(vendor.lng)},${encodeURIComponent(vendor.lat)}?overview=full&geometries=geojson`;
@@ -30759,7 +30759,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 #app .levro-quick-action:nth-child(1){--quick-accent:#14b8a6 !important;}
 #app .levro-quick-action:nth-child(2){--quick-accent:#f59e0b !important;}
 #app .levro-quick-action:nth-child(3){--quick-accent:#6366f1 !important;}
-#app .levro-quick-action:nth-child(4){--quick-accent:#10b981 !important;}
+#app .levro-quick-action:nth-child(4){--quick-accent:#0B6E4A !important;}
 #app .levro-quick-action:nth-child(5){--quick-accent:#ef4444 !important;}
 #app .levro-quick-action:nth-child(6){--quick-accent:#3b82f6 !important;}
 #app .levro-quick-icon{
@@ -31840,16 +31840,16 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 }
 
 /* Levromart brand accent: one calm green across the entire application. */
-#app .levro-home-quick-actions .levro-quick-action{--quick-solid:#10b080 !important;}
+#app .levro-home-quick-actions .levro-quick-action{--quick-solid:#0B6E4A !important;}
 #app .levro-home-quick-actions .levro-quick-icon{
-  background:#10b080 !important;
+  background:#0B6E4A !important;
   color:#fff !important;
   border:0 !important;
   box-shadow:none !important;
 }
 #app .levro-home-quick-actions .levro-quick-action:hover .levro-quick-icon,
 #app .levro-home-quick-actions .levro-quick-action:focus-visible .levro-quick-icon{
-  background:#10b080 !important;
+  background:#0B6E4A !important;
   color:#fff !important;
   box-shadow:none !important;
 }
@@ -31897,16 +31897,15 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 
 <style id="levromart-final-static-brand-and-filters">
 :root,html[data-theme="light"],html[data-theme="dark"],html[data-theme="black"]{
-  --primary:#10b080 !important;
-  --primary-light:#10b080 !important;
-  --primary-grad:#10b080 !important;
-  --brand-green:#10b080 !important;
-  --brand-green-2:#0d8f69 !important;
-  --brand-grad:#10b080 !important;
-  --levro-texture:url("/levromart-green-texture-tile.png") !important;
+  --primary:#0B6E4A !important;
+  --primary-light:#0B6E4A !important;
+  --primary-grad:#0B6E4A !important;
+  --brand-green:#0B6E4A !important;
+  --brand-green-2:#084F36 !important;
+  --brand-grad:#0B6E4A !important;
 }
 
-/* Static brand texture: the image is applied only to green surfaces. */
+/* Flat brand green surfaces (no texture overlay). */
 #app .btn:not(.btn-outline),
 #app .btn-primary,
 #app .btn-sm:not(.btn-outline),
@@ -31925,11 +31924,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 #app .cart-fab,
 #app .home-promotional-dot.active,
 #app .action-button.active{
-  background-color:#10b080 !important;
-  background-image:var(--levro-texture) !important;
-  background-size:180px 180px !important;
-  background-repeat:repeat !important;
-  background-blend-mode:soft-light !important;
+  background-color:#0B6E4A !important;
+  background-image:none !important;
   color:#fff !important;
   -webkit-text-fill-color:#fff !important;
   text-shadow:none !important;
@@ -31954,8 +31950,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   background-image:none !important;
   background-clip:border-box !important;
   -webkit-background-clip:border-box !important;
-  color:#10b080 !important;
-  -webkit-text-fill-color:#10b080 !important;
+  color:#0B6E4A !important;
+  -webkit-text-fill-color:#0B6E4A !important;
 }
 #app .product-current-price,#app .product-price,#app .price,
 #app .rating,#app .stars,#app .star-display,
@@ -31979,10 +31975,9 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   white-space:nowrap !important;box-shadow:none !important;
 }
 #app .vendor-listing-tab.active{
-  background-color:#10b080 !important;background-image:var(--levro-texture) !important;
-  background-size:180px 180px !important;background-repeat:repeat !important;
-  background-blend-mode:soft-light !important;color:#fff !important;
-  -webkit-text-fill-color:#fff !important;border-color:#10b080 !important;
+  background-color:#0B6E4A !important;background-image:none !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;border-color:#0B6E4A !important;
 }
 
 /* Vendor directory view controls: never change size or animate when selected. */
@@ -31994,10 +31989,9 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 #app .vendors-directory-view-buttons .btn.active,
 #app .vendors-directory-view-buttons .btn[aria-pressed="true"],
 #app #vendorsViewListBtn.active,#app #vendorsViewMapBtn.active{
-  background-color:#10b080 !important;background-image:var(--levro-texture) !important;
-  background-size:180px 180px !important;background-repeat:repeat !important;
-  background-blend-mode:soft-light !important;color:#fff !important;
-  -webkit-text-fill-color:#fff !important;border-color:#10b080 !important;
+  background-color:#0B6E4A !important;background-image:none !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;border-color:#0B6E4A !important;
 }
 #app .vendors-directory-view-buttons .btn:not(.active):not([aria-pressed="true"]),
 #app #vendorsViewListBtn:not(.active),#app #vendorsViewMapBtn:not(.active){
@@ -32010,10 +32004,9 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   display:inline-flex !important;align-items:center !important;justify-content:center !important;
   gap:.38rem !important;flex:0 0 auto !important;white-space:nowrap !important;
   min-height:42px !important;width:auto !important;padding:.58rem .9rem !important;
-  border:1px solid #10b080 !important;border-radius:999px !important;
-  background-color:#10b080 !important;background-image:var(--levro-texture) !important;
-  background-size:180px 180px !important;background-repeat:repeat !important;
-  background-blend-mode:soft-light !important;color:#fff !important;
+  border:1px solid #0B6E4A !important;border-radius:999px !important;
+  background-color:#0B6E4A !important;background-image:none !important;
+  color:#fff !important;
   -webkit-text-fill-color:#fff !important;box-shadow:none !important;
 }
 #app .vendors-filters-toggle .vendors-filters-chevron{color:#fff !important;-webkit-text-fill-color:#fff !important;}
@@ -32043,7 +32036,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 }
 #app .browse-filter-toolbar>input{width:100% !important;min-width:0 !important;}
 #app .browse-filter-trigger{
-  min-width:118px !important;border:1px solid #10b080 !important;
+  min-width:118px !important;border:1px solid #0B6E4A !important;
   border-radius:999px !important;padding:.72rem .95rem !important;
   display:inline-flex !important;align-items:center !important;justify-content:center !important;
   gap:.45rem !important;cursor:pointer !important;font:700 .82rem inherit !important;
@@ -32057,7 +32050,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   width:min(390px,calc(100vw - 1.3rem)) !important;
   max-height:min(72vh,560px) !important;overflow:auto !important;z-index:500 !important;
   padding:.7rem !important;background:var(--card) !important;color:var(--text) !important;
-  border:1px solid color-mix(in srgb,#10b080 20%,var(--border)) !important;
+  border:1px solid color-mix(in srgb,#0B6E4A 20%,var(--border)) !important;
   border-radius:18px !important;box-shadow:0 18px 42px rgba(15,23,42,.14) !important;
   backdrop-filter:blur(22px) saturate(145%) !important;
   -webkit-backdrop-filter:blur(22px) saturate(145%) !important;
@@ -32080,7 +32073,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 #app .browse-filter-subtrigger strong{font-size:.82rem !important;text-align:right !important;color:var(--text) !important;-webkit-text-fill-color:var(--text) !important;}
 #app .browse-filter-submenu{
   position:relative !important;margin:0 0 .5rem !important;padding:.35rem !important;
-  border-radius:13px !important;background:color-mix(in srgb,#10b080 3%,var(--card)) !important;
+  border-radius:13px !important;background:color-mix(in srgb,#0B6E4A 3%,var(--card)) !important;
   border:1px solid var(--border) !important;
 }
 #app .browse-filter-submenu.hidden{display:none !important;}
@@ -32091,15 +32084,15 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   cursor:pointer !important;font:500 .82rem inherit !important;
 }
 #app .browse-filter-submenu button:hover,#app .browse-filter-submenu button:focus-visible{
-  background:color-mix(in srgb,#10b080 11%,transparent) !important;color:#10b080 !important;
-  -webkit-text-fill-color:#10b080 !important;outline:none !important;
+  background:color-mix(in srgb,#0B6E4A 11%,transparent) !important;color:#0B6E4A !important;
+  -webkit-text-fill-color:#0B6E4A !important;outline:none !important;
 }
 #app .browse-category-submenu input{margin:0 0 .35rem !important;width:100% !important;}
 #app .browse-category-submenu #browseCategoryOptions{max-height:230px !important;overflow-y:auto !important;overscroll-behavior:contain !important;}
 #app .browse-filter-clear{
   margin:.65rem auto .15rem !important;width:auto !important;max-width:max-content !important;
   min-height:36px !important;justify-content:center !important;
-  border:1px solid #10b080 !important;border-radius:999px !important;
+  border:1px solid #0B6E4A !important;border-radius:999px !important;
   padding:.48rem .8rem !important;
 }
 #app .visually-hidden-select{position:absolute !important;width:1px !important;height:1px !important;opacity:0 !important;pointer-events:none !important;overflow:hidden !important;}
@@ -32115,13 +32108,13 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 /* Orders filter trigger remains a single dropdown and never uses browser-grey. */
 #app .order-filters-trigger{
   background:var(--card) !important;color:var(--text) !important;
-  -webkit-text-fill-color:var(--text) !important;border-color:color-mix(in srgb,#10b080 30%,var(--border)) !important;
+  -webkit-text-fill-color:var(--text) !important;border-color:color-mix(in srgb,#0B6E4A 30%,var(--border)) !important;
   transition:none !important;
 }
-#app .order-filters-trigger>span{color:#10b080 !important;-webkit-text-fill-color:#10b080 !important;}
+#app .order-filters-trigger>span{color:#0B6E4A !important;-webkit-text-fill-color:#0B6E4A !important;}
 #app .order-filters-panel{background:var(--card) !important;color:var(--text) !important;}
 #app .order-filters-panel select{appearance:none !important;-webkit-appearance:none !important;background:var(--card) !important;color:var(--text) !important;-webkit-text-fill-color:var(--text) !important;border:1px solid var(--border) !important;border-radius:12px !important;}
-#app .order-filter-clear-btn{background:transparent !important;color:#10b080 !important;-webkit-text-fill-color:#10b080 !important;}
+#app .order-filter-clear-btn{background:transparent !important;color:#0B6E4A !important;-webkit-text-fill-color:#0B6E4A !important;}
 
 /* Keep the texture on the navigation plus/cart/Levi controls but never on
    ordinary white surfaces. */
@@ -32185,17 +32178,17 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 html:not([data-theme="dark"]):not([data-theme="black"]) #app .browse-filter-trigger,
 html:not([data-theme="dark"]):not([data-theme="black"]) #app .vendors-filters-toggle,
 html:not([data-theme="dark"]):not([data-theme="black"]) #app .order-filters-trigger{
-  background:color-mix(in srgb,#10b080 7%,var(--card)) !important;
-  border:1px solid color-mix(in srgb,#10b080 42%,var(--border)) !important;
-  color:#0b7f5f !important;
-  -webkit-text-fill-color:#0b7f5f !important;
+  background:color-mix(in srgb,#0B6E4A 7%,var(--card)) !important;
+  border:1px solid color-mix(in srgb,#0B6E4A 42%,var(--border)) !important;
+  color:#0A5C40 !important;
+  -webkit-text-fill-color:#0A5C40 !important;
 }
 html:not([data-theme="dark"]):not([data-theme="black"]) #app .browse-filter-trigger i,
 html:not([data-theme="dark"]):not([data-theme="black"]) #app .vendors-filters-toggle i,
 html:not([data-theme="dark"]):not([data-theme="black"]) #app .order-filters-trigger i,
 html:not([data-theme="dark"]):not([data-theme="black"]) #app .order-filters-trigger span,
 html:not([data-theme="dark"]):not([data-theme="black"]) #app .order-filters-trigger small{
-  color:#0b7f5f !important;-webkit-text-fill-color:#0b7f5f !important;
+  color:#0A5C40 !important;-webkit-text-fill-color:#0A5C40 !important;
 }
 
 /* Dark/black mode: transparent glass with only the brand-green outline. */
@@ -32216,7 +32209,7 @@ html[data-theme="dark"] #app .vendors-filters-toggle i,
 html[data-theme="black"] #app .vendors-filters-toggle i,
 html[data-theme="dark"] #app .order-filters-trigger i,
 html[data-theme="black"] #app .order-filters-trigger i{
-  color:#35cfa1 !important;-webkit-text-fill-color:#35cfa1 !important;
+  color:#4FBE94 !important;-webkit-text-fill-color:#4FBE94 !important;
 }
 html[data-theme="dark"] #app .order-filters-trigger span,
 html[data-theme="black"] #app .order-filters-trigger span{
@@ -32227,8 +32220,8 @@ html[data-theme="black"] #app .order-filters-trigger span{
 #app .browse-filter-trigger.active,
 #app .vendors-filters-toggle.active,
 #app .order-filters-trigger.active{
-  background:color-mix(in srgb,#10b080 7%,var(--card)) !important;
-  border-color:#10b080 !important;
+  background:color-mix(in srgb,#0B6E4A 7%,var(--card)) !important;
+  border-color:#0B6E4A !important;
 }
 html[data-theme="dark"] #app .browse-filter-trigger.active,
 html[data-theme="black"] #app .browse-filter-trigger.active,
@@ -32245,7 +32238,7 @@ html[data-theme="black"] #app .order-filters-trigger.active{
 #app .order-filters-panel{
   background:var(--card) !important;
   color:var(--text) !important;
-  border:1px solid color-mix(in srgb,#10b080 18%,var(--border)) !important;
+  border:1px solid color-mix(in srgb,#0B6E4A 18%,var(--border)) !important;
   border-radius:18px !important;
   box-shadow:0 16px 36px rgba(0,0,0,.12) !important;
 }
@@ -32377,24 +32370,21 @@ html[data-theme="black"] #app .order-filters-panel{
 #app .order-filter-clear-btn{
   background:transparent !important;
   background-image:none !important;
-  color:#0b7f5f !important;
-  -webkit-text-fill-color:#0b7f5f !important;
-  border:1px solid color-mix(in srgb,#10b080 38%,var(--border)) !important;
+  color:#0A5C40 !important;
+  -webkit-text-fill-color:#0A5C40 !important;
+  border:1px solid color-mix(in srgb,#0B6E4A 38%,var(--border)) !important;
 }
 #app .order-filter-done-btn{
-  background:#10b080 !important;
-  background-image:var(--levro-texture) !important;
-  background-size:180px 180px !important;
-  background-repeat:repeat !important;
-  background-blend-mode:soft-light !important;
+  background:#0B6E4A !important;
+  background-image:none !important;
   color:#fff !important;
   -webkit-text-fill-color:#fff !important;
-  border:1px solid #10b080 !important;
+  border:1px solid #0B6E4A !important;
 }
 html[data-theme="dark"] #app .order-filter-clear-btn,
 html[data-theme="black"] #app .order-filter-clear-btn{
-  color:#35cfa1 !important;
-  -webkit-text-fill-color:#35cfa1 !important;
+  color:#4FBE94 !important;
+  -webkit-text-fill-color:#4FBE94 !important;
   border-color:rgba(16,176,128,.55) !important;
 }
 @media(max-width:520px){
@@ -32692,27 +32682,27 @@ html[data-theme="black"] #app .order-filter-clear-btn{
   style.id = "levi-smart-experience-style";
   style.textContent = `
     .levi-smart-search-host{position:relative !important;z-index:250 !important;}
-    .levi-smart-search-menu{position:absolute;left:0;right:0;top:calc(100% + .35rem);max-height:22rem;overflow:auto;background:var(--card,#fff);border:1px solid color-mix(in srgb,#10b080 30%,var(--border,#ddd));border-radius:16px;box-shadow:0 16px 38px rgba(0,0,0,.16);padding:.35rem;z-index:9999;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);}
-    .levi-smart-search-heading{font-size:.68rem;font-weight:800;color:#0b8f6b;padding:.45rem .55rem;display:flex;gap:.4rem;align-items:center;}
+    .levi-smart-search-menu{position:absolute;left:0;right:0;top:calc(100% + .35rem);max-height:22rem;overflow:auto;background:var(--card,#fff);border:1px solid color-mix(in srgb,#0B6E4A 30%,var(--border,#ddd));border-radius:16px;box-shadow:0 16px 38px rgba(0,0,0,.16);padding:.35rem;z-index:9999;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);}
+    .levi-smart-search-heading{font-size:.68rem;font-weight:800;color:#0A5C40;padding:.45rem .55rem;display:flex;gap:.4rem;align-items:center;}
     .levi-smart-search-item{width:100%;border:0;background:transparent;color:var(--text);display:flex;align-items:center;gap:.65rem;padding:.65rem .6rem;border-radius:12px;text-align:left;cursor:pointer;font:inherit;}
-    .levi-smart-search-item:hover,.levi-smart-search-item:focus-visible{background:color-mix(in srgb,#10b080 10%,transparent);outline:none;}
-    .levi-smart-search-item>i{width:1.25rem;text-align:center;color:#10b080;}
+    .levi-smart-search-item:hover,.levi-smart-search-item:focus-visible{background:color-mix(in srgb,#0B6E4A 10%,transparent);outline:none;}
+    .levi-smart-search-item>i{width:1.25rem;text-align:center;color:#0B6E4A;}
     .levi-smart-search-item span{display:flex;min-width:0;flex-direction:column;gap:.08rem;}
     .levi-smart-search-item strong{font-size:.78rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .levi-smart-search-item small{font-size:.62rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .levi-idle-nudge{animation:leviIdleNudge .95s cubic-bezier(.34,1.56,.64,1);}
     @keyframes leviIdleNudge{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-7px) rotate(-3deg)}50%{transform:translateY(2px) rotate(2deg)}75%{transform:translateY(-4px) rotate(-1deg)}}
     .levi-permission-nudge{position:fixed;left:1rem;right:1rem;bottom:calc(6.4rem + env(safe-area-inset-bottom,0px));z-index:9997;display:flex;justify-content:center;pointer-events:none;}
-    .levi-permission-nudge-card{pointer-events:auto;width:min(100%,520px);display:grid;grid-template-columns:auto 1fr auto;gap:.7rem;align-items:center;padding:.8rem;border:1px solid color-mix(in srgb,#10b080 28%,var(--border,#ddd));border-radius:18px;background:color-mix(in srgb,var(--card,#fff) 92%,#10b080 8%);box-shadow:0 14px 36px rgba(0,0,0,.18);backdrop-filter:blur(18px);}
-    .levi-permission-nudge-icon{width:2.4rem;height:2.4rem;border-radius:50%;display:grid;place-items:center;background:#10b080;color:#fff;}
+    .levi-permission-nudge-card{pointer-events:auto;width:min(100%,520px);display:grid;grid-template-columns:auto 1fr auto;gap:.7rem;align-items:center;padding:.8rem;border:1px solid color-mix(in srgb,#0B6E4A 28%,var(--border,#ddd));border-radius:18px;background:color-mix(in srgb,var(--card,#fff) 92%,#0B6E4A 8%);box-shadow:0 14px 36px rgba(0,0,0,.18);backdrop-filter:blur(18px);}
+    .levi-permission-nudge-icon{width:2.4rem;height:2.4rem;border-radius:50%;display:grid;place-items:center;background:#0B6E4A;color:#fff;}
     .levi-permission-nudge-copy{display:flex;flex-direction:column;gap:.15rem;min-width:0;}
     .levi-permission-nudge-copy strong{font-size:.78rem;}.levi-permission-nudge-copy span{font-size:.66rem;color:var(--text-muted);line-height:1.35;}
-    .levi-permission-nudge-action{border:0;border-radius:999px;background:#10b080;color:#fff;padding:.58rem .82rem;font:700 .7rem inherit;white-space:nowrap;cursor:pointer;}
+    .levi-permission-nudge-action{border:0;border-radius:999px;background:#0B6E4A;color:#fff;padding:.58rem .82rem;font:700 .7rem inherit;white-space:nowrap;cursor:pointer;}
     .levi-permission-nudge-close{border:0;background:transparent;color:var(--text-muted);font-size:1.15rem;cursor:pointer;grid-column:3;grid-row:1;align-self:start;}
     #leviComposeSuggestions{display:flex;gap:.4rem;overflow:auto;padding:.35rem .1rem;scrollbar-width:none;}
     #leviComposeSuggestions::-webkit-scrollbar{display:none;}
-    .levi-compose-chip{flex:0 0 auto;border:1px solid color-mix(in srgb,#10b080 28%,var(--border,#ddd));background:color-mix(in srgb,#10b080 7%,var(--card,#fff));color:var(--text);border-radius:999px;padding:.42rem .68rem;font:600 .66rem inherit;cursor:pointer;}
-    .levi-compose-chip:hover{background:color-mix(in srgb,#10b080 13%,var(--card,#fff));}
+    .levi-compose-chip{flex:0 0 auto;border:1px solid color-mix(in srgb,#0B6E4A 28%,var(--border,#ddd));background:color-mix(in srgb,#0B6E4A 7%,var(--card,#fff));color:var(--text);border-radius:999px;padding:.42rem .68rem;font:600 .66rem inherit;cursor:pointer;}
+    .levi-compose-chip:hover{background:color-mix(in srgb,#0B6E4A 13%,var(--card,#fff));}
     @media(max-width:520px){.levi-permission-nudge{left:.65rem;right:.65rem}.levi-permission-nudge-card{grid-template-columns:auto 1fr auto}.levi-permission-nudge-copy span{font-size:.61rem}.levi-permission-nudge-action{padding:.5rem .65rem}}
   `;
   document.head.appendChild(style);
@@ -34296,7 +34286,7 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
 <style id="levromart-refinement-20260912">
 .req-category-search,.req-sector-search{position:relative;display:flex;align-items:center;gap:.45rem}.req-category-search>i,.req-sector-search>i{position:absolute;left:.85rem;z-index:2;color:var(--text-muted);pointer-events:none}.req-category-search input,.req-sector-search input{padding:.72rem 2.65rem .72rem 2.6rem!important;min-width:0!important;width:100%!important;box-sizing:border-box!important}.req-category-picker,.req-sector-picker{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.7rem .85rem;border:1px solid var(--border);background:color-mix(in srgb,var(--card) 92%,transparent);color:var(--text);border-radius:13px;font:inherit;text-align:left;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.08)}.req-category-picker>span,.req-sector-picker>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.req-category-picker-modal,.req-sector-picker-modal{position:fixed;inset:0;z-index:14000;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(2,6,23,.56);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:levroPickerIn .16s ease both}.req-category-picker-sheet,.req-sector-picker-sheet{width:min(520px,94vw);max-height:min(78vh,680px);overflow:hidden;background:color-mix(in srgb,var(--card) 95%,transparent);border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border));border-radius:22px;box-shadow:0 24px 80px rgba(0,0,0,.32);padding:.9rem}.req-category-results{max-height:54vh;overflow:auto;margin-top:.65rem;display:flex;flex-direction:column;gap:.25rem}.req-picker-row{min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.65rem .75rem;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;touch-action:manipulation}.req-picker-row:hover,.req-picker-row.selected{background:color-mix(in srgb,var(--primary) 9%,transparent);border-color:color-mix(in srgb,var(--primary) 26%,transparent)}.req-picker-row i{opacity:0;color:var(--primary)}.req-picker-row.selected i{opacity:1}.req-category-empty{padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem}@keyframes levroPickerIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 #bottomNav{min-height:52px!important;height:52px!important;padding:.16rem .22rem max(.16rem,env(safe-area-inset-bottom,0px))!important;border-radius:17px!important}#bottomNav .bottom-nav-item{min-height:40px!important;height:40px!important;padding:.12rem .08rem!important;font-size:.72rem!important}#bottomNav .bottom-nav-item i,#bottomNav .bottom-nav-item .bn-icon{font-size:.9rem!important}#bottomNav .bottom-nav-add{width:40px!important;height:40px!important;top:0!important;border:0!important;box-shadow:none!important}#bottomNav.nav-scroll-shrink{transform:translateY(2px) scale(.965)!important;opacity:.82!important}@media(max-width:720px){#bottomNav{left:.58rem!important;right:.58rem!important;bottom:calc(.42rem + env(safe-area-inset-bottom,0px))!important}#bottomNav .bottom-nav-item{min-height:40px!important;height:40px!important;font-size:.61rem!important}}
-#aiChatFab{position:fixed!important;isolation:isolate!important;overflow:visible!important}#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.18),transparent 28%),radial-gradient(circle at 72% 75%,rgba(0,0,0,.09),transparent 42%),repeating-linear-gradient(135deg,rgba(255,255,255,.045) 0 2px,rgba(0,0,0,.025) 2px 4px),color-mix(in srgb,var(--primary) 92%,#0a7f43)!important;opacity:.96!important;z-index:1!important;pointer-events:none!important}#aiChatFab::after{content:none!important;display:none!important}#aiChatFab .ai-chat-fab-logo{display:block!important;position:absolute!important;inset:17%!important;width:66%!important;height:66%!important;max-width:none!important;max-height:none!important;object-fit:contain!important;opacity:1!important;visibility:visible!important;pointer-events:none!important;z-index:2!important;filter:brightness(0) invert(1) drop-shadow(0 1px 2px rgba(0,0,0,.12))!important;-webkit-filter:brightness(0) invert(1) drop-shadow(0 1px 2px rgba(0,0,0,.12))!important;background:transparent!important;border-radius:0!important}
+#aiChatFab{position:fixed!important;isolation:isolate!important;overflow:visible!important}#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.18),transparent 28%),radial-gradient(circle at 72% 75%,rgba(0,0,0,.09),transparent 42%),repeating-linear-gradient(135deg,rgba(255,255,255,.045) 0 2px,rgba(0,0,0,.025) 2px 4px),color-mix(in srgb,var(--primary) 92%,#084F36)!important;opacity:.96!important;z-index:1!important;pointer-events:none!important}#aiChatFab::after{content:none!important;display:none!important}#aiChatFab .ai-chat-fab-logo{display:block!important;position:absolute!important;inset:17%!important;width:66%!important;height:66%!important;max-width:none!important;max-height:none!important;object-fit:contain!important;opacity:1!important;visibility:visible!important;pointer-events:none!important;z-index:2!important;filter:brightness(0) invert(1) drop-shadow(0 1px 2px rgba(0,0,0,.12))!important;-webkit-filter:brightness(0) invert(1) drop-shadow(0 1px 2px rgba(0,0,0,.12))!important;background:transparent!important;border-radius:0!important}
 body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.search-input-active #cartFab{display:none!important}
 #app [data-levro-back]{background:#6b7280!important;border-color:#6b7280!important;color:#fff!important}.ai-history-select-toolbar{display:flex;align-items:center;gap:.45rem;padding:.1rem 0 .55rem}.ai-history-select-toolbar>strong{flex:1;font-size:.76rem}.ai-history-batch-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:.38rem .62rem;font:inherit;font-size:.7rem}.ai-history-danger{color:var(--danger)!important}.ai-chat-history-item.selected{border-color:color-mix(in srgb,var(--primary) 42%,var(--border));background:color-mix(in srgb,var(--primary) 7%,var(--card))}.ai-history-check{width:1.55rem;height:1.55rem;border-radius:50%;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;color:transparent}.ai-history-check.active{background:var(--primary);border-color:var(--primary);color:#fff}
 #aiChatFab::after{content:none!important;display:none!important}
@@ -34341,7 +34331,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
 #aiChatFab.hidden{display:none!important}
 #aiChatFab.dragging{cursor:grabbing!important}
 #aiChatFab .ai-chat-fab-logo{opacity:1!important;visibility:visible!important;pointer-events:none!important}
-#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.18),transparent 28%),radial-gradient(circle at 72% 76%,rgba(0,0,0,.09),transparent 40%),repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 2px,rgba(0,0,0,.03) 2px 4px),color-mix(in srgb,var(--primary) 92%,#0a7f43)!important;opacity:.96!important;z-index:1!important;pointer-events:none!important}
+#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.18),transparent 28%),radial-gradient(circle at 72% 76%,rgba(0,0,0,.09),transparent 40%),repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 2px,rgba(0,0,0,.03) 2px 4px),color-mix(in srgb,var(--primary) 92%,#084F36)!important;opacity:.96!important;z-index:1!important;pointer-events:none!important}
 #aiChatFab::after{content:none!important;display:none!important}
 
 .levro-route-neon-core{filter:drop-shadow(0 0 2px rgba(34,197,94,.24)) drop-shadow(0 0 5px rgba(34,197,94,.07))!important}
@@ -35624,14 +35614,14 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
    (or on iOS where the Add to Home Screen instructions are useful). */
 #levroInstallBanner{display:none;position:relative;z-index:9000;width:100%;box-sizing:border-box;padding:10px 14px;border-bottom:1px solid var(--border,#dfe4ea);background:var(--surface,#fff);box-shadow:0 2px 10px rgba(0,0,0,.08);}
 #levroInstallBanner.is-visible{display:flex;align-items:center;gap:12px;}
-#levroInstallBanner .levro-install-icon{width:42px;height:42px;flex:0 0 42px;border-radius:10px;overflow:hidden;background:var(--primary,#11b889);display:flex;align-items:center;justify-content:center;}
+#levroInstallBanner .levro-install-icon{width:42px;height:42px;flex:0 0 42px;border-radius:10px;overflow:hidden;background:var(--primary,#0B6E4A);display:flex;align-items:center;justify-content:center;}
 #levroInstallBanner .levro-install-icon img{width:100%;height:100%;object-fit:cover;}
 #levroInstallBanner .levro-install-copy{min-width:0;flex:1;line-height:1.2;}
 #levroInstallBanner .levro-install-copy strong{display:block;font-size:.95rem;color:var(--text,#172033);}
 #levroInstallBanner .levro-install-copy span{display:block;font-size:.78rem;color:var(--muted,#667085);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #levroInstallBanner .levro-install-actions{display:flex;align-items:center;gap:7px;flex:0 0 auto;}
 #levroInstallBanner button{border:0;border-radius:9px;padding:8px 12px;font:inherit;font-weight:700;cursor:pointer;}
-#levroInstallBanner .levro-install-btn{background:var(--primary,#11b889);color:#fff;}
+#levroInstallBanner .levro-install-btn{background:var(--primary,#0B6E4A);color:#fff;}
 #levroInstallBanner .levro-install-close{background:transparent;color:var(--muted,#667085);font-size:1.15rem;padding:7px;}
 @media(max-width:480px){#levroInstallBanner{padding:9px 10px;gap:9px;}#levroInstallBanner .levro-install-icon{width:38px;height:38px;flex-basis:38px;}#levroInstallBanner .levro-install-copy strong{font-size:.88rem;}#levroInstallBanner .levro-install-copy span{font-size:.72rem;}#levroInstallBanner .levro-install-btn{padding:8px 10px;}}
 </style>
@@ -36697,7 +36687,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .admin-inventory-table .num{text-align:right}
 .admin-inventory-months{margin-top:1rem}
 .admin-inventory-months summary{cursor:pointer;font-weight:700}
-.admin-inventory-status{font-size:.78rem;padding:.2rem .5rem;border-radius:999px;background:rgba(16,185,129,.12);color:#10b981}
+.admin-inventory-status{font-size:.78rem;padding:.2rem .5rem;border-radius:999px;background:rgba(16,185,129,.12);color:#0B6E4A}
 .admin-inventory-status.removed{background:rgba(239,68,68,.12);color:#ef4444}
 </style>
 
