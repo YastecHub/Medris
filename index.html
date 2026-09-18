@@ -10762,6 +10762,8 @@ function renderSettingsPage(){
     <section class="settings-page-section"><h3><span class="settings-levi-logo-wrap"><img class="settings-levi-logo" src="${esc(MEDRIS_LOGO)}" alt="" /></span> Levi</h3><p class="settings-section-note">Adjust Levi's size, visibility, data preference and voice.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Levi size</strong><span>Drag the scale to make Levi smaller or restore the current maximum.</span></div><div class="levi-size-value" id="leviSizeValue">${getLeviFabSize()}px</div><input class="levi-size-range" id="leviSizeRange" type="range" min="44" max="74" step="1" value="${getLeviFabSize()}" aria-label="Levi size" oninput="setLeviFabSize(this.value)" /></div><div class="settings-divider"></div><div class="settings-toggle-row" id="leviVisibleSettingRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="settingsAiConsentPageRow"></div><div class="settings-divider"></div><div class="settings-voice-wrap"><div class="settings-control-copy"><strong>Levi's voice</strong><span>Choose from the voices available on your device.</span></div><select id="voiceSelectPage" class="settings-select" aria-label="Levi voice"></select><button class="btn btn-outline settings-full-btn" onclick="previewAiVoice()"><i class="fa-solid fa-play"></i> Preview voice</button></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-sliders"></i> App preferences</h3><div class="settings-simple-row" id="settingsInstallPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="settingsNotifPageRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="horizontalBrowseSettingPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="locationSettingPageRow"></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-lock"></i> Account</h3><button class="settings-action-row" onclick="showChangePassword()"><i class="fa-solid fa-key"></i><span><strong>Change password</strong><small>Update your account password</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showLevromartAbout()"><i class="fa-solid fa-circle-info"></i><span><strong>About Levromart</strong><small>Version and platform information</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
+    <section class="settings-page-section"><h3><i class="fa-solid fa-circle-question"></i> Help &amp; feedback</h3><button class="settings-action-row" onclick="showTour()"><i class="fa-solid fa-compass"></i><span><strong>Take the tour</strong><small>Replay the Levromart walkthrough</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showSuggestionModal('platform')"><i class="fa-solid fa-comment-dots"></i><span><strong>Send feedback</strong><small>Tell us what could be better</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
+    <section class="settings-page-section"><button class="settings-action-row settings-logout-row" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i><span><strong>Log out</strong></span></button></section>
     <button class="settings-close-page" onclick="navigate(lastNonSettingsView||'home')">Back to Levromart</button>
   </div>`;
 }
@@ -18043,9 +18045,48 @@ async function renderVendorDashboard() {
   const earliestCommissionDueAt = commissionDeadline?.[0]?.earliest_due_at || null;
   const commissionIsOverdue = !!earliestCommissionDueAt && new Date(earliestCommissionDueAt).getTime() <= Date.now();
 
-  let html = `<h2 style="display:flex;align-items:center;gap:0.5rem;"><i class='fa-solid fa-box'></i> ${esc(v.business_name)} ${verifiedTick}</h2>`;
+  const monthlyPending = Number(window.__monthlyPendingCount || 0);
+
+  // ---------- 1. Profile header ----------
+  let html = `<div class="vendor-profile-header-card">
+    <div class="storefront-cover vendor-profile-header-cover ${v.cover_url ? "has-custom-cover" : ""}" ${v.cover_url ? `style="background-image:url('${esc(v.cover_url)}');"` : ""}>
+      ${v.cover_url ? "" : '<div class="storefront-cover-empty">No custom header image yet</div>'}
+    </div>
+    <div class="vendor-profile-header-body">
+      <div class="vendor-profile-header-avatar-row">
+        ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(profile?.name || v.business_name || "Vendor", "4.4rem", "vendor-profile-header-avatar", profile?.name || v.business_name || "Vendor")}
+        <button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('vendorEditProfile')" title="Edit profile" aria-label="Edit profile"><i class="fa-solid fa-pen"></i> Edit</button>
+      </div>
+      <h2 class="vendor-profile-header-name">${esc(v.business_name)} ${verifiedTick}</h2>
+      ${profile?.name ? `<p class="vendor-profile-header-personal">${esc(profile.name)}</p>` : ""}
+      ${v.city ? `<p class="vendor-profile-header-location"><i class="fa-solid fa-location-dot"></i> ${esc(v.city)}</p>` : ""}
+      ${v.bio ? `<p class="vendor-profile-header-bio">${esc(v.bio)}</p>` : ""}
+    </div>
+  </div>`;
+
+  // ---------- 2. Analytics ----------
+  html += `<hr class="vendor-profile-divider" />
+  <div class="vendor-profile-section">
+    <h3 class="vendor-profile-section-title"><i class="fa-solid fa-chart-simple"></i> Analytics</h3>
+    <table class="order-stats-table">
+      <tr><td>Total orders</td><td>${totalOrders}</td></tr>
+      <tr><td>Revenue (completed)</td><td>${naira(revenue)}</td></tr>
+      <tr><td>Product views</td><td>${totalViews}</td></tr>
+      <tr><td>Wishlist saves</td><td>${totalFavorites}</td></tr>
+    </table>
+    <div id="vendorRevenueChartArea" style="margin-top:0.6rem;"></div>
+    <button type="button" class="vendor-profile-see-more" onclick="navigate('vendorEarnings')">See full earnings <i class="fa-solid fa-chevron-right"></i></button>
+  </div>`;
+
+  const recentCompleted = (orders || []).filter((o) => o.status === "completed");
+  setTimeout(() => {
+    const area = byId("vendorRevenueChartArea");
+    if (area) area.appendChild(buildRevenueChart(recentCompleted, "all", { field: "total_amount", label: "Revenue per day (last 14 days)" }));
+  }, 0);
+
+  // ---------- 3. Commission (only when owed) ----------
   if (commissionOwed > 0) {
-    html += `<div class="banner banner-${commissionIsOverdue ? "danger" : "warning"}" style="max-width:480px;margin:0 auto 1rem;">
+    html += `<div class="banner banner-${commissionIsOverdue ? "danger" : "warning"}" style="max-width:480px;margin:1rem auto 0;">
       <h3 style="margin:0;display:flex;align-items:center;gap:.45rem;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)} <button type="button" class="vendor-commission-info" title="About commission" aria-label="About commission" onclick="levroCommissionInfo()"><i class="fa-solid fa-info"></i></button></h3>
       <p class="muted" style="margin-top:0.35rem;">${commissionIsOverdue ? "Your 7-day payment window has elapsed and your storefront is paused until this balance is settled." : "You can pay this commission anytime within your 7-day payment window. Your storefront remains active until the deadline."}</p>
       <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
@@ -18056,31 +18097,44 @@ async function renderVendorDashboard() {
   }
   html += statusBanner;
   if (v.verification_status === "verified" && (v.lat == null || v.lng == null)) {
-    html += `<div class="banner banner-warning" style="max-width:700px;margin:0 auto 1rem;"><strong><i class="fa-solid fa-location-dot"></i> Add your shop location</strong><p style="margin:.35rem 0 .65rem;">Your storefront cannot appear on the vendor map until a shop location is saved.</p><button class="btn btn-sm" onclick="navigate('vendorEditProfile')"><i class="fa-solid fa-map-location-dot"></i> Set shop location</button></div>`;
+    html += `<div class="banner banner-warning" style="max-width:700px;margin:1rem auto 0;"><strong><i class="fa-solid fa-location-dot"></i> Add your shop location</strong><p style="margin:.35rem 0 .65rem;">Your storefront cannot appear on the vendor map until a shop location is saved.</p><button class="btn btn-sm" onclick="navigate('vendorEditProfile')"><i class="fa-solid fa-map-location-dot"></i> Set shop location</button></div>`;
   }
-  html += `<div class="dash-tabs shop-tabs-rail" aria-label="My Shop sections">
-    <button class="dash-tab" onclick="navigate('vendorProducts')"><i class="fa-solid fa-layer-group"></i> Listings</button>
-    <button class="dash-tab" onclick="navigate('vendorEarnings')"><i class="fa-solid fa-sack-dollar"></i> Earnings</button>
-    <button class="dash-tab" onclick="navigate('vendorSuggestionsInbox')"><i class="fa-solid fa-inbox"></i> Suggestions${unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}</button>
-  </div>`;
-  html += `<div class="accordion-section vendor-glance" style="width:100%;max-width:700px;margin:0 auto 1.4rem;">
-    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-chart-simple"></i> At a glance</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
-    <div class="accordion-body">
-      <table class="order-stats-table">
-        <tr><td>Total orders</td><td>${totalOrders}</td></tr>
-        <tr><td>Revenue (completed)</td><td>${naira(revenue)}</td></tr>
-        <tr><td>Product views</td><td>${totalViews}</td></tr>
-        <tr><td>Wishlist saves</td><td>${totalFavorites}</td></tr>
-      </table>
+
+  // ---------- 4. My listings (+ working hours, reviews, monthly listing) ----------
+  html += `<hr class="vendor-profile-divider" />
+  <div class="vendor-profile-section">
+    <h3 class="vendor-profile-section-title"><i class="fa-solid fa-layer-group"></i> My listings</h3>
+    <div class="vendor-profile-listing-tabs">
+      <button type="button" class="btn btn-sm btn-outline" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products &amp; Services</button>
+      <button type="button" class="btn btn-sm btn-outline" onclick="navigate('vendorPackages')"><i class="fa-solid fa-box-open"></i> Packages</button>
+    </div>
+    <button type="button" class="vendor-profile-see-more" onclick="navigate('vendorProducts')">Manage listings <i class="fa-solid fa-chevron-right"></i></button>
+    <div class="vendor-profile-subrow" onclick="navigate('vendorEditProfile')" role="button" tabindex="0">
+      <span><i class="fa-solid fa-clock"></i> Working hours</span>
+      <span class="muted">${v.opening_hours ? esc(v.opening_hours) : "Not set"} <i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+    <div class="vendor-profile-subrow" onclick="navigate('storefront',{vendorId:'${v.id}'})" role="button" tabindex="0">
+      <span><i class="fa-solid fa-star"></i> Reviews</span>
+      <span class="muted">★ ${Number(v.avg_rating || 0).toFixed(1)} (${Number(v.review_count || 0)}) <i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+    <div class="vendor-profile-subrow" onclick="navigate('vendorProducts')" role="button" tabindex="0">
+      <span><i class="fa-solid fa-calendar-days"></i> Monthly listing</span>
+      <span class="muted">${monthlyPending > 0 ? `${monthlyPending} pending` : "Up to date"} <i class="fa-solid fa-chevron-right"></i></span>
     </div>
   </div>`;
-  html += `<div id="vendorRevenueChartArea" style="max-width:700px;margin-top:0.4rem;"></div>`;
 
-  const recentCompleted = (orders || []).filter((o) => o.status === "completed");
-  setTimeout(() => {
-    const area = byId("vendorRevenueChartArea");
-    if (area) area.appendChild(buildRevenueChart(recentCompleted, "all", { field: "total_amount", label: "Revenue per day (last 14 days)" }));
-  }, 0);
+  // ---------- 5. Requests / Suggestions / Support ----------
+  html += `<hr class="vendor-profile-divider" />
+  <div class="vendor-profile-plain-rows">
+    <button type="button" class="vendor-profile-plain-row" onclick="navigate('vendorRequests')">Requests</button>
+    <button type="button" class="vendor-profile-plain-row" onclick="navigate('vendorSuggestionsInbox')">Suggestions${unreadSuggestionCount > 0 ? ` (${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount})` : ""}</button>
+    <button type="button" class="vendor-profile-plain-row" onclick="navigate('supportRequest')">Support</button>
+  </div>
+
+  <hr class="vendor-profile-divider" />
+  <div class="vendor-profile-plain-rows">
+    <button type="button" class="vendor-profile-plain-row vendor-profile-settings-row" onclick="navigate('settings')"><i class="fa-solid fa-gear"></i> Settings &amp; Privacy</button>
+  </div>`;
 
   return html;
 }
@@ -18377,6 +18431,7 @@ async function renderVendorEditProfile() {
       </div>
       <p class="muted" style="margin:.45rem 0 0;font-size:.76rem;">Your account profile picture is used across your vendor cards and storefront.</p>
     </div>
+    <label>Your name *</label><input id="vePersonalName" value="${esc(profile?.name || "")}" />
     <label>Business name *</label><input id="veBusinessName" value="${esc(v.business_name || "")}" />
     <label>Address (leave blank if you're an online-only business)</label><input id="veAddress" value="${esc(v.address || "")}" />
     <label>City</label><input id="veCity" value="${esc(v.city || "")}" />
@@ -18830,12 +18885,18 @@ async function toggleVendorWhatsappVisibility() {
 async function submitVendorEditProfile() {
   const errorEl = byId("vendorEditError");
   errorEl.classList.add("hidden");
+  const personalName = byId("vePersonalName")?.value.trim() || "";
   const business_name = byId("veBusinessName").value.trim();
   const phone = byId("vePhone").value.trim();
-  if (!business_name || !phone) {
-    errorEl.textContent = "Business name and phone are required.";
+  if (!personalName || !business_name || !phone) {
+    errorEl.textContent = "Your name, business name and phone are required.";
     errorEl.classList.remove("hidden");
     return;
+  }
+  if (personalName !== (profile?.name || "")) {
+    const { error: nameError } = await sb.from("users").update({ name: personalName }).eq("id", session.user.id);
+    if (nameError) { errorEl.textContent = nameError.message; errorEl.classList.remove("hidden"); return; }
+    profile.name = personalName;
   }
   const business_hours = collectBusinessHoursFromForm();
   const { error } = await sb.from("vendors").update({
@@ -18857,6 +18918,7 @@ async function submitVendorEditProfile() {
   vendor.whatsapp_visible = !!byId("veWhatsappVisible")?.checked && !!vendor.whatsapp_number;
   vendor.business_hours = business_hours;
   vendor.allow_after_hours_messages = byId("veAllowAfterHours").checked;
+  updateAuthUI();
   const keepScrollY = window.scrollY || document.documentElement.scrollTop || 0;
   showToast("Business profile saved.", "success");
   await navigate("vendorEditProfile", {}, false);
@@ -37479,7 +37541,23 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
           <p>Your vendor account does not have an active payout account yet. Set it up now so Levromart can pay you through your connected bank account. This reminder disappears automatically once payout activation is complete.</p>
           <button type="button" class="btn btn-sm" onclick="openVendorPayoutSetup()"><i class="fa-solid fa-building-columns"></i> Activate Payout</button>
         </div>`;
-        return String(html||"").replace(/(<h2[^>]*>[\s\S]*?<\/h2>)/,`$1${activation}`);
+        const htmlStr = String(html||"");
+        // Prefer inserting after the whole profile header card (so the banner
+        // doesn't land in the middle of the name/location/bio block); fall
+        // back to right after the first heading for any older layout.
+        if (htmlStr.includes('vendor-profile-header-card')) {
+          let depth = 0, start = htmlStr.indexOf('<div class="vendor-profile-header-card">');
+          if (start !== -1) {
+            const divRe = /<div\b[^>]*>|<\/div>/g;
+            divRe.lastIndex = start;
+            let m;
+            while ((m = divRe.exec(htmlStr))) {
+              depth += m[0] === "</div>" ? -1 : 1;
+              if (depth === 0) { const end = divRe.lastIndex; return htmlStr.slice(0, end) + activation + htmlStr.slice(end); }
+            }
+          }
+        }
+        return htmlStr.replace(/(<h2[^>]*>[\s\S]*?<\/h2>)/,`$1${activation}`);
       }catch(e){console.warn("[Levromart] Payout activation banner render failed:",e);return html;}
     };
   }
@@ -37525,5 +37603,39 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   .storefront-profile .storefront-profile-actions .follow-btn.follow-btn-icon{
     width:38px !important; height:38px !important; min-width:38px !important; min-height:38px !important;
   }
+}
+</style>
+
+<style id="levromart-vendor-profile-merged-final">
+/* Vendor profile = vendor shop dashboard, LinkedIn-style: header card, then
+   full-width sections separated by thin lines, no unnecessary icon clutter. */
+.vendor-profile-header-card{max-width:700px;margin:0 auto;border-radius:16px;overflow:hidden;background:var(--card);border:1px solid var(--border);}
+.vendor-profile-header-cover{height:104px;position:relative;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 24%,var(--card)),color-mix(in srgb,var(--primary) 6%,var(--card)));background-size:cover;background-position:center;border-radius:0;}
+.vendor-profile-header-cover .storefront-cover-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:.76rem;}
+.vendor-profile-header-body{padding:0 1.1rem 1.15rem;}
+.vendor-profile-header-avatar-row{display:flex;align-items:flex-end;justify-content:space-between;gap:.6rem;margin-top:-2.3rem;}
+.vendor-profile-header-avatar{width:4.4rem;height:4.4rem;border-radius:50%;object-fit:cover;border:3px solid var(--card);background:var(--card);flex:0 0 auto;}
+.vendor-profile-edit-btn{margin-bottom:.35rem;flex:0 0 auto;}
+.vendor-profile-header-name{margin:.7rem 0 0;font-size:1.15rem;line-height:1.3;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;}
+.vendor-profile-header-personal{margin:.18rem 0 0;color:var(--text-muted);font-size:.85rem;}
+.vendor-profile-header-location{margin:.35rem 0 0;color:var(--text-muted);font-size:.82rem;display:flex;align-items:center;gap:.32rem;}
+.vendor-profile-header-bio{margin:.55rem 0 0;font-size:.86rem;line-height:1.42;}
+
+.vendor-profile-divider{border:none;border-top:1px solid var(--border);max-width:700px;margin:1.3rem auto;}
+.vendor-profile-section{max-width:700px;margin:0 auto;}
+.vendor-profile-section-title{display:flex;align-items:center;gap:.45rem;font-size:.95rem;margin:0 0 .75rem;}
+.vendor-profile-see-more{display:flex;align-items:center;gap:.35rem;width:100%;background:none;border:none;padding:.65rem 0 0;color:var(--primary);font-weight:700;font-size:.82rem;cursor:pointer;text-align:left;}
+.vendor-profile-listing-tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.2rem;}
+.vendor-profile-subrow{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-top:1px solid var(--border);font-size:.86rem;cursor:pointer;gap:.6rem;}
+.vendor-profile-subrow .muted{display:flex;align-items:center;gap:.4rem;font-size:.8rem;white-space:nowrap;}
+.vendor-profile-plain-rows{max-width:700px;margin:0 auto;display:flex;flex-direction:column;}
+.vendor-profile-plain-row{display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--border);padding:.85rem .1rem;font-size:.92rem;font-weight:600;color:var(--text);cursor:pointer;}
+.vendor-profile-plain-row:first-child{border-top:none;}
+.vendor-profile-settings-row{display:flex;align-items:center;gap:.5rem;color:var(--text-muted);}
+.settings-logout-row,.settings-logout-row i{color:var(--danger) !important;}
+@media(max-width:520px){
+  .vendor-profile-header-cover{height:88px;}
+  .vendor-profile-header-avatar{width:3.8rem;height:3.8rem;}
+  .vendor-profile-header-avatar-row{margin-top:-1.9rem;}
 }
 </style>
