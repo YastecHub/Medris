@@ -27606,8 +27606,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 
   /* ---------------------------------------------------------------
      VENDORS DIRECTORY
-     Six vendors are shown initially. "View more vendors" expands the
-     complete filtered set. Sort can be alphabetical or closest.
+     All filtered vendors are shown freely. Sort can be alphabetical or closest.
      Grid/list/map are separate presentation modes.
      --------------------------------------------------------------- */
   let vendorDirectoryExpanded = false;
@@ -27643,7 +27642,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       grid.classList.add("hidden");
       grid.innerHTML = "";
     } else {
-      const visible = vendorDirectoryExpanded ? all : all.slice(0, 6);
+      const visible = all;
       grid.classList.remove("hidden");
       grid.classList.toggle("vendors-list-mode", vendorDirectoryMode === "list");
       grid.innerHTML = visible.length
@@ -27654,14 +27653,14 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     const more = byId("vendorsDirectoryMoreBtn");
     if (more) {
       const hasMore = all.length > 6;
-      more.classList.toggle("hidden", !hasMore || vendorDirectoryMode === "map");
+      more.classList.add("hidden");
       more.innerHTML = vendorDirectoryExpanded
         ? '<i class="fa-solid fa-chevron-up"></i> Show fewer vendors'
         : '<i class="fa-solid fa-chevron-down"></i> View more vendors (' + (all.length - Math.min(all.length, 6)) + ' more)';
     }
 
     const count = byId("vendorsDirectoryCount");
-    if (count) count.textContent = `${all.length} verified vendor${all.length === 1 ? "" : "s"}`;
+    if (count) count.textContent = "";
 
     byId("vendorsViewGridBtn")?.classList.toggle("active", vendorDirectoryMode === "grid");
     byId("vendorsViewListBtn")?.classList.toggle("active", vendorDirectoryMode === "list");
@@ -27702,18 +27701,18 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 
   window.setVendorDirectorySort = function (mode) {
     vendorDirectorySort = mode === "closest" ? "closest" : "alphabetical";
-    vendorDirectoryExpanded = false;
+    vendorDirectoryExpanded = true;
     renderVendorDirectoryCards();
   };
 
   window.renderVendorsDirectory = function () {
-    vendorDirectoryExpanded = false;
+    vendorDirectoryExpanded = true;
     vendorDirectoryMode = "map";
     vendorDirectorySort = "alphabetical";
     let html = `<div class="flex" style="justify-content:space-between;align-items:center;gap:.55rem;flex-wrap:wrap;">
       <div>
         <h2 style="margin:0;"><i class="fa-solid fa-store"></i> All vendors</h2>
-        <p class="muted" id="vendorsDirectoryCount" style="font-size:.76rem;margin:.2rem 0 0;">Verified vendors</p>
+        
       </div>
       <div class="vendors-directory-view-buttons">
         <button class="btn btn-sm btn-outline" id="vendorsViewGridBtn" onclick="switchVendorsView('grid')" title="Grid view" aria-label="Grid view"><i class="fa-solid fa-grip"></i></button>
@@ -27747,7 +27746,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       </div>
     </div>
     <div class="vendors-directory-grid" id="vendorsGrid"><p class="muted">Loading…</p></div>
-    <button type="button" class="btn btn-sm btn-outline vendors-directory-more hidden" id="vendorsDirectoryMoreBtn" onclick="toggleVendorsMore()"></button>
+    
     <div id="vendorsMapWrap" class="hidden">
       <p class="muted" id="vendorsMapStatus" style="font-size:.82rem;margin:0 0 1rem;line-height:1.45;"></p>
       <div id="vendorsMap" style="height:min(60vh,420px);border-radius:.9rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;"></div>
@@ -37464,3 +37463,9 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 })();
 </script>
 <!-- LEVROMART_FINAL_PATCH_20260917_PAYOUT_BANK_PICKER_AND_BANNER -->
+
+<style id="levromart-20260918-vendor-directory-free-list-final">
+/* Vendor directory: show the complete filtered set; no pagination/"View more" control. */
+#vendorsDirectoryMoreBtn { display:none !important; }
+#vendorsDirectoryCount { display:none !important; }
+</style>
