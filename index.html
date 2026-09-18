@@ -10517,7 +10517,7 @@ function updateAuthUI() {
       <div class="profile-panel-static">
         <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn" onclick="closeAllPanels()" aria-label="Close profile"><i class='fa-solid fa-xmark'></i></button></div>
 
-        <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('vendorDashboard')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('vendorDashboard')}"` : profile.role !== 'admin' ? `role="button" tabindex="0" aria-label="Open vendors you follow" onclick="event.stopPropagation();closeAllPanels();navigate('customerFollowing')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();closeAllPanels();navigate('customerFollowing')}"` : ''}>
+        <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('vendorDashboard')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('vendorDashboard')}"` : profile.role !== 'admin' ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('buyerProfile')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('buyerProfile')}"` : ''}>
           <div class="avatar-edit-wrap">
             ${profile.avatar_url
               ? `<button type="button" class="profile-avatar-lightbox-btn" onclick="openProfileImageLightbox('${esc(profile.avatar_url)}','${esc(profile.name || "Profile")}',event)" aria-label="View profile picture"><img src="${esc(profile.avatar_url)}" class="avatar-circle avatar-lg" style="object-fit:cover;" alt="${esc(profile.name || "Profile")}" draggable="false" /></button>`
@@ -10530,7 +10530,7 @@ function updateAuthUI() {
             <strong class="profile-account-name">${esc(profile.name || "")}</strong>
             <span class="profile-account-email muted">${esc(profile.email)}</span>
             <span class="badge profile-role-badge">${profile.role === "admin" ? "admin" : vendor ? "vendor" : "customer"}</span>
-            ${vendor ? `<span class="profile-view-full-link">View full profile <i class="fa-solid fa-chevron-right"></i></span>` : ""}
+            ${profile.role !== "admin" ? `<span class="profile-view-full-link">View full profile <i class="fa-solid fa-chevron-right"></i></span>` : ""}
           </div>
         </div>
       </div>
@@ -10780,6 +10780,72 @@ function hydrateSettingsPage(){
 }
 
 // ---------- MY DETAILS (any logged-in buyer/vendor's own contact info) ----------
+async function renderBuyerProfile() {
+  if (!session || !profile || profile.role === "admin" || vendor) return '<div class="empty-state">Access denied.</div>';
+  const [{ count: totalOrders }, { count: followingCount }] = await Promise.all([
+    sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id),
+    sb.from("vendor_follows").select("id", { count: "exact", head: true }).eq("follower_id", session.user.id),
+  ]);
+  const wishlistCount = (favoriteIds?.size || 0) + (packageFavoriteIds?.size || 0);
+  const memberSince = profile.created_at ? new Date(profile.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "";
+
+  let html = `<div class="vendor-profile-header-card">
+    <div class="vendor-profile-header-cover"></div>
+    <div class="vendor-profile-header-body">
+      <div class="vendor-profile-header-avatar-row">
+        ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "4.4rem", "vendor-profile-header-avatar", profile.name || profile.email)}
+        <button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('editProfile')" title="Edit my details" aria-label="Edit my details"><i class="fa-solid fa-pen"></i> Edit</button>
+      </div>
+      <h2 class="vendor-profile-header-name">${esc(profile.name || "")}</h2>
+      ${memberSince ? `<p class="vendor-profile-header-personal">Member since ${memberSince}</p>` : ""}
+      ${profile.city ? `<p class="vendor-profile-header-location"><i class="fa-solid fa-location-dot"></i> ${esc(profile.city)}</p>` : ""}
+    </div>
+  </div>
+
+  <hr class="vendor-profile-divider" />
+  <div class="vendor-profile-section">
+    <h3 class="vendor-profile-section-title"><i class="fa-solid fa-chart-simple"></i> Activity</h3>
+    <table class="order-stats-table">
+      <tr><td>Total orders</td><td>${totalOrders || 0}</td></tr>
+      <tr><td>Saved items</td><td>${wishlistCount}</td></tr>
+      <tr><td>Vendors followed</td><td>${followingCount || 0}</td></tr>
+    </table>
+  </div>
+
+  <hr class="vendor-profile-divider" />
+  <div class="vendor-profile-section">
+    <div class="vendor-profile-subrow" onclick="navigate('buyerOrders')" role="button" tabindex="0">
+      <span><i class="fa-solid fa-receipt"></i> My orders</span>
+      <span class="muted">${Number(buyerPendingOrderCount || 0) > 0 ? `${buyerPendingOrderCount} pending` : "View all"} <i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+    <div class="vendor-profile-subrow" onclick="navigate('wishlist')" role="button" tabindex="0">
+      <span><i class="fa-solid fa-heart"></i> Wishlist</span>
+      <span class="muted">${wishlistCount} saved <i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+    <div class="vendor-profile-subrow" onclick="navigate('customerFollowing')" role="button" tabindex="0">
+      <span><i class="fa-solid fa-store"></i> Vendors you follow</span>
+      <span class="muted">${followingCount || 0} <i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+    <div class="vendor-profile-subrow" onclick="navigate('editProfile')" role="button" tabindex="0">
+      <span><i class="fa-solid fa-id-card"></i> My details</span>
+      <span class="muted"><i class="fa-solid fa-chevron-right"></i></span>
+    </div>
+  </div>
+
+  <hr class="vendor-profile-divider" />
+  <div class="vendor-profile-plain-rows">
+    <button type="button" class="vendor-profile-plain-row" onclick="navigate('requestEquipment')">Request an item</button>
+    <button type="button" class="vendor-profile-plain-row" onclick="navigate('supportRequest')">Support</button>
+  </div>
+
+  <hr class="vendor-profile-divider" />
+  <div class="vendor-profile-plain-rows">
+    <button type="button" class="vendor-profile-plain-row vendor-profile-settings-row" onclick="navigate('settings')"><i class="fa-solid fa-gear"></i> Settings &amp; Privacy</button>
+  </div>`;
+
+  return html;
+}
+
 function renderEditProfile() {
   if (!session || !profile) return '<div class="empty-state">Please log in.</div>';
   return `<h2 class="page-title"><i class="fa-solid fa-id-card"></i> My details ${infoPopoverHtml("editProfileInfo", "Keep this up to date. It's what fills in automatically at checkout, so a typo here won't follow you into every future order.")}</h2>
@@ -11500,8 +11566,8 @@ function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
 function navigationShellHtml(view) {
-  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications"};
-  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store"};
+  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile"};
+  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
   // Never expose a background-refresh message as the page itself. If no real
@@ -11642,7 +11708,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "settings","supportRequest","wishlist","buyerOrders","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
     "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
-    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing"
+    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing","buyerProfile"
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
     try {
@@ -11767,6 +11833,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "vendorDashboard": html = await renderVendorDashboard(); break;
       case "vendorEditProfile": html = await renderVendorEditProfile(); break;
       case "editProfile": html = renderEditProfile(); break;
+      case "buyerProfile": html = await renderBuyerProfile(); break;
       case "settings": html = renderSettingsPage(); break;
       case "vendorProducts": html = await renderVendorProducts(); break;
       case "vendorPackages": html = await renderVendorPackages(); break;
@@ -11824,6 +11891,7 @@ async function navigate(view, params = {}, pushHistory = true) {
             case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
             case "vendorEditProfile": html = await renderVendorEditProfile(); break;
             case "vendorRequests": html = await renderVendorRequests(); break;
+            case "buyerProfile": html = await renderBuyerProfile(); break;
             case "messages": html = await renderMessages(params.conversationId); break;
             case "cart": html = await renderCart(); break;
             case "wishlist": html = await renderWishlist(); break;
@@ -13574,7 +13642,7 @@ function productCardHtml(p) {
   return `<div class="product-card-wrap" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
-      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
+      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
       <h4>${esc(p.name)}</h4>
       <div class="product-card-vendor-row">
         <span class="badge">${p.is_service ? esc(p.category?.name || "Service") : p.listing_type}</span>
@@ -14001,13 +14069,19 @@ function dedupeConversationRows(rows) {
     const key = identity(c);
     const prev = byKey.get(key);
     if (!prev) {
-      byKey.set(key, { ...c });
+      byKey.set(key, { ...c, mergedConversationIds: [c.conversation_id] });
       return;
     }
     const prevTime = new Date(prev.updated_at || prev.last_message_at || prev.created_at || 0).getTime();
     const nextTime = new Date(c.updated_at || c.last_message_at || c.created_at || 0).getTime();
     const winner = nextTime >= prevTime ? { ...c } : { ...prev };
     winner.unread_count = Number(prev.unread_count || 0) + Number(c.unread_count || 0);
+    // Legacy duplicate threads for the same person are merged into one row
+    // for display, but each raw conversation_id still needs to be marked
+    // opened server-side when the user opens this thread - otherwise a
+    // duplicate's unread messages never clear and keep re-summing into a
+    // badge that won't go away.
+    winner.mergedConversationIds = [...new Set([...(prev.mergedConversationIds || [prev.conversation_id]), ...(c.mergedConversationIds || [c.conversation_id])])];
     byKey.set(key, winner);
   });
   return [...byKey.values()].sort((a,b) => {
@@ -14483,7 +14557,12 @@ async function renderMessages(conversationId) {
   // when the user has just opened the conversation.
   const cachedConv = (window.__conversations || []).find(c => c.conversation_id === conversationId);
   if (cachedConv) cachedConv.unread_count = 0;
-  sb.rpc("mark_conversation_opened", { p_conversation_id: conversationId }).then(() => {
+  // Legacy duplicate threads with the same person were merged into this one
+  // row for display (dedupeConversationRows); mark every raw conversation_id
+  // opened, not just the one the user actually tapped, or a duplicate's
+  // unread count keeps re-summing into a badge that never clears.
+  const idsToMarkOpened = [...new Set([conversationId, ...(cachedConv?.mergedConversationIds || [])])];
+  Promise.all(idsToMarkOpened.map(id => sb.rpc("mark_conversation_opened", { p_conversation_id: id }))).then(() => {
     if (currentView === "messages" && !currentViewParams?.conversationId) filterMsgList();
     return refreshNotifications();
   }).catch(() => {});
@@ -14539,7 +14618,7 @@ async function renderMessages(conversationId) {
         <button type="button" onclick="cancelMsgVoiceRecording()" title="Cancel recording" aria-label="Cancel recording"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="chat-input-row">
-        <input type="file" id="chatFileInput" class="chat-file-input" accept="image/*,.heic,.heif,.webp" onchange="handleChatFileSelected(event,'${conversationId}')" />
+        <input type="file" id="chatFileInput" class="chat-file-input" accept="image/*,.heic,.heif,.webp" multiple onchange="handleChatFileSelected(event,'${conversationId}')" />
         <button class="msg-attach-btn" onclick="byId('chatFileInput').click()" title="Attach a file (max 10MB)"><i class="fa-solid fa-paperclip"></i></button>
         ${AiSpeechRecognition ? `<button class="ai-chat-mic-btn" id="msgMicBtn" onclick="toggleMsgMic()" title="Tap to talk"><i class="fa-solid fa-microphone"></i></button>` : ""}
         <textarea id="chatInput" rows="1" placeholder="Type a message…" maxlength="2000" oninput="handleChatTyping('${conversationId}');autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}');}"></textarea>
@@ -24602,7 +24681,7 @@ document.addEventListener("click", (e) => {
 // tolerates those slips.
 const AI_NAV_TAG_RE = /`?\[\[NAV:([^\]]*)\]\]`?/;
 const AI_NAV_ALLOWED_VIEWS = new Set([
-  "home", "profile", "vendors", "storefront", "productDetail", "packageDetail", "wishlist", "cart", "requestEquipment", "buyerOrders", "messages", "settings",
+  "home", "profile", "buyerProfile", "vendors", "storefront", "productDetail", "packageDetail", "wishlist", "cart", "requestEquipment", "buyerOrders", "messages", "settings", "customerFollowing",
   "vendorDashboard", "vendorProducts", "vendorPackages", "vendorOrders", "vendorEditProfile", "vendorRequests", "vendorSuggestionsInbox", "supportRequest",
   "adminPanel", "adminCarousel", "adminLinkLibrary", "adminPeople", "adminFinance", "adminDisputes", "adminSupportRequests", "adminFeedback", "adminUsers", "adminLog",
 ]);
@@ -37650,6 +37729,20 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .top-rated-vendors-scroll > .vendor-card, .top-rated-vendors-scroll > .homepage-vendor-card,
 .trending-scroll > .vendor-card, .trending-scroll > .homepage-vendor-card{
   content-visibility:visible !important; contain:none !important;
+}
+
+/* Horizontal rail cards (vendor cards, product cards) carry role="button"
+   for accessibility, which made them match the sitewide
+   [role="button"]{touch-action:manipulation} tap-responsiveness rule with
+   equal-or-higher specificity than the rail's own touch-action:pan-x pan-y -
+   silently blocking horizontal drag-scroll when a touch started ON a card
+   instead of the empty gap between them. Restore full pan on the cards too. */
+.hscroll > .vendor-card, .hscroll > .homepage-vendor-card,
+.hscroll .product-card-wrap, .hscroll > .card,
+.top-rated-vendors-scroll > .vendor-card, .top-rated-vendors-scroll > .homepage-vendor-card,
+.trending-scroll > .vendor-card, .trending-scroll > .homepage-vendor-card,
+.trending-scroll .product-card-wrap{
+  touch-action: pan-x pan-y !important;
 }
 
 /* Storefront bio: collapse long descriptions instead of pushing everything
