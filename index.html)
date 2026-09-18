@@ -8335,7 +8335,7 @@ function toggleInfoPopover(id, evt) {
   positionInfoPopover(el);
 }
 function closeAllInfoPopovers() {
-  document.querySelectorAll(".info-popover:not(.hidden)").forEach((p) => {
+  document.querySelectorAll(".info-popover").forEach((p) => {
     p.classList.add("hidden");
     p.style.left = "";
     p.style.top = "";
@@ -9382,7 +9382,7 @@ function setupDrawerSwipe(drawer, side) { return; }
   window.__drawerDragGesturesReady = true;
   const MIN_DRAG = 42;
   const AXIS_RATIO = 1.15;
-  const START_ZONE = 0.14;
+  const START_ZONE = 0.50;
   const isBlocked = (target) => {
     if (!target?.closest) return false;
     return !!target.closest([
@@ -11935,9 +11935,8 @@ async function navigate(view, params = {}, pushHistory = true) {
   const SCROLL_KEY = "levromart_persisted_scroll_v4";
   const LEGACY_ROUTE_KEY = "levromart_persisted_route_v3";
   const LEGACY_SCROLL_KEY = "levromart_persisted_scroll_v3";
-  let saveTimer = 0;
+  let saveRaf = 0;
   let lastRoute = null;
-  let pendingScrollState = null;
 
   function readStore(store,key){try{return JSON.parse(store.getItem(key)||"null")}catch(_){return null}}
   function safeRead(key){
@@ -11959,36 +11958,23 @@ async function navigate(view, params = {}, pushHistory = true) {
     safeWrite(SCROLL_KEY,{x:Number(window.scrollX||0),y:Number(window.scrollY||0),view:lastRoute.view});
   };
 
-  function captureScrollState(){
-    if(!lastRoute)return null;
-    return {x:Number(window.scrollX||0),y:Number(window.scrollY||0),view:lastRoute.view};
-  }
-  function saveScroll(force=false){
-    if(saveTimer){clearTimeout(saveTimer);saveTimer=0;}
+  function saveScroll(){
+    saveRaf=0;
     if(!lastRoute)return;
-    const state=pendingScrollState||captureScrollState();
-    pendingScrollState=null;
-    if(!state)return;
-    // Route identity is written only when navigation occurs. Writing the same
-    // route object to localStorage on every scroll frame is synchronous and can
-    // block Chromium's touch-scroll pipeline on lower-end Android devices.
+    safeWrite(ROUTE_KEY,lastRoute);
+    safeWrite(LEGACY_ROUTE_KEY,lastRoute);
+    const state={x:Number(window.scrollX||0),y:Number(window.scrollY||0),view:lastRoute.view};
     safeWrite(SCROLL_KEY,state);
     safeWrite(LEGACY_SCROLL_KEY,state);
   }
-  function scheduleScrollSave(){
-    if(!lastRoute)return;
-    pendingScrollState=captureScrollState();
-    if(saveTimer)return;
-    // Scroll restoration is a persistence feature, not a frame-by-frame UI
-    // feature. Debounce storage I/O until the user pauses, while pagehide and
-    // beforeunload still force the latest position to disk.
-    saveTimer=setTimeout(()=>saveScroll(false),220);
-  }
 
-  window.addEventListener("scroll",scheduleScrollSave,{passive:true});
-  window.addEventListener("pagehide",()=>saveScroll(true),{passive:true});
+  window.addEventListener("scroll",()=>{
+    if(saveRaf)return;
+    saveRaf=requestAnimationFrame(saveScroll);
+  },{passive:true});
+  window.addEventListener("pagehide",saveScroll,{passive:true});
   window.addEventListener("pagehide",()=>{ try { if (typeof commitPendingNotificationReads === "function") void commitPendingNotificationReads(); } catch (_) {} },{passive:true});
-  window.addEventListener("beforeunload",()=>saveScroll(true),{passive:true});
+  window.addEventListener("beforeunload",saveScroll,{passive:true});
 
   let initialScrollRestored=false;
   window.__levromartRestoreScroll=function(view){
@@ -13296,7 +13282,6 @@ function switchHomeListingTab(tab) {
   const listingFilter = byId("filterListing");
   const categoryFilter = byId("filterCategory");
   if (homeListingTab === "packages") {
-    removeHomeBrowseSentinel?.();
     if (listingFilter) listingFilter.style.display = "none";
     if (categoryFilter) categoryFilter.style.display = "none";
     if (packageResults) { packageResults.classList.add("hidden"); packageResults.innerHTML = ""; }
@@ -13408,82 +13393,6 @@ function filterBrowseCategoryOptions() {
 }
 
 let homeFilterGeneration = 0;
-
-// HOME BROWSE WINDOWING
-// Keep the complete catalogue in memory for filtering/searching, but do not
-// create hundreds/thousands of product-card DOM trees in one operation. The
-// previous implementation rendered the entire catalogue into #productGrid at
-// once. That makes Android pay the layout/style/image bookkeeping cost for the
-// whole marketplace even though only a handful of cards are visible.
-let homeBrowseRenderState = { items: [], rendered: 0, generation: 0, observer: null, sentinel: null, busy: false };
-function resetHomeBrowseRenderState(){
-  try { homeBrowseRenderState.observer?.disconnect(); } catch (_) {}
-  homeBrowseRenderState = { items: [], rendered: 0, generation: 0, observer: null, sentinel: null, busy: false };
-}
-function removeHomeBrowseSentinel(){
-  try { homeBrowseRenderState.observer?.disconnect(); } catch (_) {}
-  homeBrowseRenderState.observer = null;
-  homeBrowseRenderState.sentinel?.remove();
-  homeBrowseRenderState.sentinel = null;
-}
-function renderHomeBrowseChunk(items, generation, reset=true){
-  const grid=byId("productGrid");
-  if(!grid || generation!==homeFilterGeneration) return false;
-  const list=Array.isArray(items)?items:[];
-  if(reset){
-    const previous=homeBrowseRenderState.items||[];
-    const sameList=previous.length===list.length && previous.length>0 && previous.every((p,i)=>String(p?.id||"")===String(list[i]?.id||""));
-    if(sameList && homeBrowseRenderState.rendered>0){
-      // A fresh Supabase response can arrive a moment after the cache-first
-      // paint. If the visible ordering is unchanged, keep the existing DOM
-      // and scroll position instead of rebuilding the first batch.
-      homeBrowseRenderState.items=list;
-      homeBrowseRenderState.generation=generation;
-      return true;
-    }
-    resetHomeBrowseRenderState();
-    homeBrowseRenderState.items=list;
-    homeBrowseRenderState.generation=generation;
-    grid.innerHTML="";
-  }else if(homeBrowseRenderState.generation!==generation){
-    return false;
-  }
-  const state=homeBrowseRenderState;
-  const CHUNK_SIZE=24;
-  const start=state.rendered;
-  const next=list.slice(start,start+CHUNK_SIZE);
-  if(next.length){
-    grid.insertAdjacentHTML("beforeend",next.map(productCardHtml).join(""));
-    state.rendered+=next.length;
-  }
-  removeHomeBrowseSentinel();
-  if(state.rendered<list.length){
-    const sentinel=document.createElement("div");
-    sentinel.id="homeBrowseLoadSentinel";
-    sentinel.setAttribute("aria-hidden","true");
-    sentinel.style.cssText="height:1px;width:100%;pointer-events:none;";
-    grid.parentNode?.insertBefore(sentinel,grid.nextSibling);
-    state.sentinel=sentinel;
-    if("IntersectionObserver" in window){
-      state.observer=new IntersectionObserver(entries=>{
-        if(!entries.some(e=>e.isIntersecting)||state.busy||state.generation!==homeFilterGeneration)return;
-        state.busy=true;
-        // Let the current scroll/compositor work finish before adding the next
-        // small batch of cards. This avoids a large synchronous append inside
-        // the browser's scroll callback.
-        setTimeout(()=>{
-          state.busy=false;
-          if(state.generation===homeFilterGeneration) renderHomeBrowseChunk(state.items,state.generation,false);
-        },0);
-      },{root:null,rootMargin:"1000px 0px",threshold:0});
-      state.observer.observe(sentinel);
-    }
-  }else{
-    state.sentinel=null;
-  }
-  return true;
-}
-
 async function filterHomeProducts() {
   const generation = ++homeFilterGeneration;
   const search = byId("searchInput")?.value.trim() || "";
@@ -13508,8 +13417,9 @@ async function filterHomeProducts() {
     .filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
   const hasLocalCatalogue = localCatalog.length > 0;
   if (hasLocalCatalogue) {
-    if(localFiltered.length) renderHomeBrowseChunk(localFiltered,generation,true);
-    else { resetHomeBrowseRenderState(); grid.innerHTML = `<div class="empty-state">No ${homeListingTab} match these filters.</div>`; }
+    grid.innerHTML = localFiltered.length
+      ? localFiltered.map(productCardHtml).join("")
+      : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
   }
 
   if (browserLooksOffline()) {
@@ -13597,8 +13507,9 @@ async function filterHomeProducts() {
     ? window.__homeBrowseCatalog
     : products;
   const tabProducts = displayProducts.filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
-  if(tabProducts.length) renderHomeBrowseChunk(tabProducts,generation,true);
-  else { resetHomeBrowseRenderState(); grid.innerHTML = `<div class="empty-state">No ${homeListingTab} match these filters.</div>`; }
+  grid.innerHTML = tabProducts.length
+    ? tabProducts.map(productCardHtml).join("")
+    : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
 }
 function productDeliverySummaryHtml(p) {
   const v = p?.vendor || {};
@@ -34942,29 +34853,11 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     background:color-mix(in srgb,var(--bg) 94%, transparent) !important;
   }
 
-  /* Home's vertical catalogue is windowed in small batches. Keep offscreen
-     batches cheap as they are appended, and isolate each listing's paint/layout
-     so one card cannot invalidate the whole grid. */
+  /* Home's vertical catalogue can contain a large number of cards. Let
+     Chromium skip layout/paint work for cards well outside the viewport. */
   #app #productGrid > .product-card-wrap{
     content-visibility:auto !important;
-    contain:layout paint !important;
-    contain-intrinsic-size:300px !important;
-  }
-  #app #productGrid > .product-card-wrap .product-img{
-    contain:layout paint;
-  }
-}
-</style>
-
-<style id="levromart-home-android-scroll-v2-20260918">
-@media (max-width:720px){
-  /* Keep the small discovery rails from creating unnecessary scroll-linked
-     smoothing work. Native touch scrolling remains unchanged. */
-  #app .hscroll, #app .home-promotional-viewport{
-    -webkit-overflow-scrolling:touch;
-  }
-  #app .home-promotional-track{
-    will-change:transform;
+    contain-intrinsic-size:360px !important;
   }
 }
 </style>
