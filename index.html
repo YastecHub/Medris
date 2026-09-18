@@ -6866,6 +6866,56 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 /* Keep the light theme unchanged. */
 </style>
 
+
+<style id="levromart-vendor-dashboard-refurbish-20260918">
+/* Vendor listing dashboard: compact, touch-friendly, modern controls. */
+#app .vendor-products-dashboard-head{
+  display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:1rem!important;
+  padding:.2rem 0 0!important;margin:0!important;
+}
+#app .vendor-products-title-block{min-width:0!important;}
+#app .vendor-products-eyebrow{display:inline-flex!important;align-items:center!important;gap:.35rem!important;color:var(--primary)!important;font-size:.68rem!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.055em!important;margin-bottom:.18rem!important;}
+#app .vendor-products-dashboard-head h2{font-size:clamp(1.35rem,4vw,1.75rem)!important;line-height:1.08!important;letter-spacing:-.035em!important;margin:0!important;}
+#app .vendor-products-subtitle{margin:.3rem 0 0!important;color:var(--text-muted)!important;font-size:.72rem!important;line-height:1.45!important;max-width:34rem!important;}
+#app .vendor-products-top-menu{margin-left:auto!important;align-self:flex-start!important;position:relative!important;}
+#app .vendor-products-top-menu .vendor-products-menu-btn{width:42px!important;height:42px!important;min-width:42px!important;border-radius:50%!important;background:var(--card)!important;border:1px solid var(--border)!important;box-shadow:0 5px 18px rgba(0,0,0,.08)!important;}
+#app .vendor-products-dashboard-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:.55rem!important;margin:.7rem 0 .85rem!important;padding:.45rem!important;border:1px solid var(--border)!important;border-radius:16px!important;background:color-mix(in srgb,var(--card) 92%,var(--primary) 8%)!important;box-shadow:0 7px 24px rgba(0,0,0,.05)!important;}
+#app .vendor-dashboard-icon-action{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;padding:0!important;margin:0!important;border:1px solid var(--border)!important;border-radius:12px!important;background:var(--card)!important;color:var(--text-muted)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important;font:inherit!important;box-shadow:none!important;transition:transform .15s ease,background .15s ease,color .15s ease,border-color .15s ease!important;}
+#app .vendor-dashboard-icon-action:hover{color:var(--primary)!important;border-color:color-mix(in srgb,var(--primary) 35%,var(--border))!important;transform:translateY(-1px)!important;}
+#app .vendor-dashboard-icon-action.active{background:color-mix(in srgb,var(--primary) 12%,var(--card))!important;color:var(--primary)!important;border-color:color-mix(in srgb,var(--primary) 45%,var(--border))!important;}
+#app .vendor-dashboard-add-action{background:var(--primary)!important;color:#fff!important;border-color:var(--primary)!important;box-shadow:0 7px 18px color-mix(in srgb,var(--primary) 25%,transparent)!important;transform:translateY(-1px)!important;}
+#app .vendor-dashboard-add-action:hover{color:#fff!important;transform:translateY(-2px)!important;}
+#app .vendor-products-heading-actions{display:none!important;}
+#app .vendor-product-actions{display:grid!important;grid-template-columns:repeat(2,48px)!important;grid-auto-rows:48px!important;justify-content:center!important;align-items:center!important;gap:.55rem!important;margin:.8rem 0 0!important;padding:.75rem 0 0!important;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)!important;}
+#app .vendor-card-icon-action{width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;padding:0!important;margin:0!important;border:1px solid var(--border)!important;border-radius:50%!important;background:var(--card)!important;color:var(--text-muted)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important;font:inherit!important;box-shadow:0 3px 10px rgba(0,0,0,.06)!important;transition:transform .14s ease,background .14s ease,color .14s ease,border-color .14s ease,box-shadow .14s ease!important;}
+#app .vendor-card-icon-action i{font-size:1rem!important;line-height:1!important;}
+#app .vendor-card-icon-action:hover{transform:translateY(-1px)!important;color:var(--primary)!important;border-color:color-mix(in srgb,var(--primary) 40%,var(--border))!important;}
+#app .vendor-card-icon-action:active{transform:scale(.94)!important;}
+#app .vendor-card-icon-action.vendor-edit-action{color:var(--primary)!important;background:color-mix(in srgb,var(--primary) 8%,var(--card))!important;border-color:color-mix(in srgb,var(--primary) 25%,var(--border))!important;}
+#app .vendor-card-icon-action.vendor-remove-action{color:var(--danger,#dc2626)!important;background:color-mix(in srgb,var(--danger,#dc2626) 7%,var(--card))!important;border-color:color-mix(in srgb,var(--danger,#dc2626) 22%,var(--border))!important;}
+#app .vendor-card-icon-action.vendor-pause-action,#app .vendor-card-icon-action.vendor-resume-action{color:var(--text)!important;}
+#app .vendor-card-icon-action.vendor-duplicate-action{color:var(--primary)!important;}
+#app .vendor-card-icon-action.vendor-pending-action{opacity:.58!important;cursor:default!important;}
+#app .vendor-card-icon-action:disabled{opacity:.55!important;cursor:not-allowed!important;transform:none!important;}
+#app .vendor-own-product-card{overflow:visible!important;}
+#app .vendor-products-menu{min-width:205px!important;border-radius:16px!important;padding:.35rem!important;box-shadow:0 18px 50px rgba(0,0,0,.2)!important;}
+#app .vendor-products-menu button{min-height:42px!important;border-radius:11px!important;}
+#app .vendor-discarded-panel{scroll-margin-top:1rem!important;}
+@media(max-width:620px){
+  #app .vendor-products-dashboard-head{gap:.6rem!important;}
+  #app .vendor-products-subtitle{font-size:.68rem!important;}
+  #app .vendor-products-dashboard-actions{justify-content:space-between!important;margin:.65rem 0 .75rem!important;padding:.4rem!important;}
+  #app .vendor-dashboard-icon-action{width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;}
+  #app .vendor-products-top-menu .vendor-products-menu-btn{width:40px!important;height:40px!important;min-width:40px!important;}
+}
+@media(max-width:430px){
+  #app .vendor-products-dashboard-actions{gap:.45rem!important;}
+  #app .vendor-dashboard-icon-action{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;border-radius:11px!important;}
+  #app .vendor-product-actions{grid-template-columns:repeat(2,46px)!important;grid-auto-rows:46px!important;gap:.48rem!important;padding-top:.65rem!important;}
+  #app .vendor-card-icon-action{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;}
+}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--primary,#10b981)" stroke-width="5"/><path d="M19 34c5-1 8-4 10-9 1-3 3-5 6-5 4 0 6 3 6 7 0 5-4 8-8 8h-5c-5 0-9 3-9 7 0 3 2 5 5 5 4 0 6-2 7-5" fill="none" stroke="var(--primary,#10b981)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
@@ -7283,7 +7333,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <div class="flex" style="justify-content: flex-end; margin-top:0.8rem;">
       <button type="button" class="btn btn-sm" style="background:#6b7280;" onclick="clearNewListingDraft('product');closeProductModal()">Cancel</button>
       <button class="btn btn-outline hidden" id="saveProductDraftBtn" onclick="saveProductAsDraft()"><i class="fa-solid fa-file-lines"></i> Save draft</button>
-      <button class="btn" id="saveProductBtn" onclick="saveProduct()">Save to Product</button>
+      <button type="button" class="btn" id="saveProductBtn" onclick="saveProduct()">Save to Product</button>
     </div>
   </div>
 </div>
@@ -18970,19 +19020,23 @@ async function renderVendorProducts() {
   });
   window.__vendorPendingProductIds = pendingProductIds;
 
-  let html = `<div class="vendor-products-heading">
-    <h2>My Products</h2>
-    <div class="vendor-products-heading-actions">
-      <button class="btn btn-sm ${vendorProductsView === "grid" ? "" : "btn-outline"}" onclick="toggleVendorProductsView('grid')"><i class="fa-solid fa-grip"></i> Grid</button>
-      <button class="btn btn-sm ${vendorProductsView === "table" ? "" : "btn-outline"}" onclick="toggleVendorProductsView('table')"><i class="fa-solid fa-table-list"></i> Inventory</button>
-      <button class="btn" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add product</button>
-      <div class="vendor-products-menu-wrap">
-        <button type="button" class="icon-btn vendor-products-menu-btn" aria-label="More product options" title="More product options" onclick="toggleVendorProductsMenu(event)"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-        <div id="vendorProductsMenu" class="vendor-products-menu hidden">
-          <button type="button" onclick="toggleVendorDiscarded(event)"><i class="fa-solid fa-trash-can"></i> Discarded items <span>${removedProducts.length}</span></button>
-        </div>
+  let html = `<div class="vendor-products-heading vendor-products-dashboard-head">
+    <div class="vendor-products-title-block">
+      <span class="vendor-products-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
+      <h2>My Products</h2>
+      <p class="vendor-products-subtitle">Manage products, services and packages from one place.</p>
+    </div>
+    <div class="vendor-products-menu-wrap vendor-products-top-menu">
+      <button type="button" class="icon-btn vendor-products-menu-btn" aria-label="More listing options" title="More listing options" onclick="toggleVendorProductsMenu(event)"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+      <div id="vendorProductsMenu" class="vendor-products-menu hidden">
+        <button type="button" onclick="toggleVendorDiscarded(event)"><i class="fa-solid fa-trash-can"></i> Discarded items <span>${removedProducts.length}</span></button>
       </div>
     </div>
+  </div>
+  <div class="vendor-products-dashboard-actions" aria-label="Listing controls">
+    <button type="button" class="vendor-dashboard-icon-action ${vendorProductsView === "grid" ? "active" : ""}" onclick="toggleVendorProductsView('grid')" aria-label="Grid view" title="Grid view"><i class="fa-solid fa-grip"></i></button>
+    <button type="button" class="vendor-dashboard-icon-action vendor-dashboard-add-action" onclick="openAddProductModal()" aria-label="Add product" title="Add product"><i class="fa-solid fa-plus"></i></button>
+    <button type="button" class="vendor-dashboard-icon-action ${vendorProductsView === "table" ? "active" : ""}" onclick="toggleVendorProductsView('table')" aria-label="Inventory view" title="Inventory view"><i class="fa-solid fa-table-list"></i></button>
   </div>`;
   if (v.verification_status !== "verified") html += `<p class="muted">Products won't appear publicly until your vendor account is verified.</p>`;
 
@@ -19062,12 +19116,12 @@ async function renderVendorProducts() {
         ${Array.isArray(p.variants) && p.variants.length ? `<p class="muted vendor-product-variety-summary" style="font-size:0.8rem;"><i class="fa-solid fa-layer-group"></i> ${p.variants.length} variet${p.variants.length===1?'y':'ies'} · ${p.variants.slice(0,3).map(v=>esc(v.name)).join(', ')}${p.variants.length>3?'…':''}</p>` : ''}
         ${topRegion ? `<p class="muted" style="font-size:0.8rem;"><i class="fa-solid fa-map-location-dot"></i> Sells best in <a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count} order${topRegion.order_count === 1 ? "" : "s"})</a></p>` : ""}
         ${hasPendingOrder ? `<p class="muted" style="font-size:0.8rem;color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
-        <div class="vendor-product-actions">
-          <button class="btn btn-sm vendor-edit-action" onclick="event.stopPropagation();openEditProductModal('${p.id}')"><i class='fa-solid fa-pen'></i> Edit</button>
-          <button class="btn btn-sm btn-outline vendor-duplicate-action" onclick="event.stopPropagation();openDuplicateProductModal('${p.id}')" title="Create a new listing from this one"><i class='fa-solid fa-copy'></i> Duplicate</button>
-          ${p.status === "active" ? `<button class="btn btn-sm vendor-pause-action" onclick="event.stopPropagation();setProductStatus('${p.id}','paused')">Pause</button>` : ""}
-          ${p.status === "paused" ? (p.billing_model === "monthly" ? (listingActivationValid(p) ? `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Resume</button>` : pendingMonthlyProductIds.has(String(p.id)) ? `<button class="btn btn-sm btn-outline" disabled><i class="fa-solid fa-clock"></i> Receipt submitted</button>` : `<button class="btn btn-sm" onclick="startListingMonthlyPayment('product','${p.id}')"><i class="fa-solid fa-receipt"></i> ${p.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000"}</button>`) : `<button class="btn btn-sm" onclick="setProductStatus('${p.id}','active')">Activate</button>`) : ""}
-          <button class="btn btn-sm btn-danger" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : ""} onclick="event.stopPropagation();removeProduct('${p.id}')"><i class='fa-solid fa-trash'></i> Remove</button>
+        <div class="vendor-product-actions" aria-label="Listing actions">
+          <button type="button" class="vendor-card-icon-action vendor-edit-action" onclick="event.stopPropagation();openEditProductModal('${p.id}')" aria-label="Edit ${esc(p.name)}" title="Edit"><i class='fa-solid fa-pen'></i><span class="sr-only">Edit</span></button>
+          <button type="button" class="vendor-card-icon-action vendor-duplicate-action" onclick="event.stopPropagation();openDuplicateProductModal('${p.id}')" aria-label="Duplicate ${esc(p.name)}" title="Duplicate"><i class='fa-solid fa-copy'></i><span class="sr-only">Duplicate</span></button>
+          ${p.status === "active" ? `<button type="button" class="vendor-card-icon-action vendor-pause-action" onclick="event.stopPropagation();setProductStatus('${p.id}','paused')" aria-label="Pause ${esc(p.name)}" title="Pause"><i class="fa-solid fa-pause"></i><span class="sr-only">Pause</span></button>` : ""}
+          ${p.status === "paused" ? (p.billing_model === "monthly" ? (listingActivationValid(p) ? `<button type="button" class="vendor-card-icon-action vendor-resume-action" onclick="event.stopPropagation();setProductStatus('${p.id}','active')" aria-label="Resume ${esc(p.name)}" title="Resume"><i class="fa-solid fa-play"></i><span class="sr-only">Resume</span></button>` : pendingMonthlyProductIds.has(String(p.id)) ? `<button type="button" class="vendor-card-icon-action vendor-pending-action" disabled aria-label="Receipt submitted" title="Receipt submitted"><i class="fa-solid fa-clock"></i><span class="sr-only">Receipt submitted</span></button>` : `<button type="button" class="vendor-card-icon-action vendor-resume-action" onclick="event.stopPropagation();startListingMonthlyPayment('product','${p.id}')" aria-label="${p.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000"}" title="${p.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000"}"><i class="fa-solid fa-receipt"></i><span class="sr-only">${p.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000"}</span></button>`) : `<button type="button" class="vendor-card-icon-action vendor-resume-action" onclick="event.stopPropagation();setProductStatus('${p.id}','active')" aria-label="Activate ${esc(p.name)}" title="Activate"><i class="fa-solid fa-play"></i><span class="sr-only">Activate</span></button>`) : ""}
+          <button type="button" class="vendor-card-icon-action vendor-remove-action" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : "title=\"Remove\""} onclick="event.stopPropagation();removeProduct('${p.id}')" aria-label="Remove ${esc(p.name)}"><i class='fa-solid fa-trash'></i><span class="sr-only">Remove</span></button>
         </div>
       </div>`;
     });
@@ -19993,6 +20047,29 @@ function bindProductValidationClearers() {
 }
 
 bindProductValidationClearers();
+
+/*
+ * Service-save click guard.
+ * Some mobile/browser event layers can swallow the inline click on the service
+ * submit button after the service form is dynamically enhanced. Handle service
+ * saves at capture level so the intended save path always receives the tap.
+ * Physical-product saves keep their existing handler unchanged.
+ */
+(function bindServiceSaveButtonGuard(){
+  if(window.__levromartServiceSaveButtonGuardBound)return;
+  window.__levromartServiceSaveButtonGuardBound=true;
+  document.addEventListener("click",function(e){
+    const btn=e.target?.closest?.("#saveProductBtn");
+    if(!btn || !byId("prodIsService")?.checked)return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if(btn.disabled)return;
+    Promise.resolve(window.saveProduct ? window.saveProduct() : saveProduct()).catch(err=>{
+      console.error("[LEVROMART SERVICE SAVE CLICK]",err);
+      showToast?.(err?.message||"Could not save this service.","error");
+    });
+  },true);
+})();
 
 async function saveProduct() {
   const errorEl = byId("productError");
