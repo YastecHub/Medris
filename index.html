@@ -6715,9 +6715,9 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 <style id="pickup-payment-display-precision-final">
 /* Payment timing UI follows the compact green/orange Levromart scheme. */
 #app .product-payment-plan-notice.pay-after{background:#fff7ed !important;border-color:#fdba74 !important;color:#c2410c !important;}
-#app .product-payment-plan-notice.pay-before{background:#f0fdf4 !important;border-color:#86efac !important;color:#166534 !important;}
+#app .product-payment-plan-notice.pay-before{background:#EAF6F0 !important;border-color:#5BA98A !important;color:#0A5C40 !important;}
 #app .payment-timing-option.pay-after.selected{background:#fff7ed !important;border-color:#fb923c !important;color:#c2410c !important;}
-#app .payment-timing-option.pay-before.selected{background:#f0fdf4 !important;border-color:#22c55e !important;color:#166534 !important;}
+#app .payment-timing-option.pay-before.selected{background:#EAF6F0 !important;border-color:#5BA98A !important;color:#0A5C40 !important;}
 </style>
 
 <style id="levromart-home-and-payment-final-repair">
@@ -6729,7 +6729,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 #app .product-card-action-row .product-card-payment-plan{grid-column:2 !important;justify-self:start !important;display:inline-flex !important;visibility:visible !important;opacity:1 !important;}
 #app .product-card-action-row .product-card-action-left{grid-column:3 !important;justify-self:end !important;min-width:0 !important;}
 #app .product-card-payment-plan.pay-after{background:#ffedd5 !important;color:#c2410c !important;border-color:#fdba74 !important;}
-#app .product-card-payment-plan.pay-before{background:#dcfce7 !important;color:#166534 !important;border-color:#86efac !important;}
+#app .product-card-payment-plan.pay-before{background:#EAF6F0 !important;color:#0A5C40 !important;border-color:#5BA98A !important;}
 </style>
 <style id="levromart-order-card-identification">
 .order-list-item,.order-history-item{display:block;font-weight:700;margin-top:.18rem;}
@@ -12323,7 +12323,7 @@ function handleHomeCarouselImageError(img, failedIndex) {
     return;
   }
   img.onerror = null;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420"><rect width="1200" height="420" fill="#0f172a"/><circle cx="920" cy="120" r="180" fill="#0B6E4A" fill-opacity=".22"/><circle cx="980" cy="180" r="110" fill="#0B6E4A" fill-opacity=".18"/><text x="80" y="215" font-family="Arial, sans-serif" font-size="48" font-weight="700" fill="#ffffff">Levromart</text><text x="80" y="270" font-family="Arial, sans-serif" font-size="28" fill="#d1fae5">Explore the marketplace</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420"><rect width="1200" height="420" fill="#0f172a"/><circle cx="920" cy="120" r="180" fill="#0B6E4A" fill-opacity=".22"/><circle cx="980" cy="180" r="110" fill="#0B6E4A" fill-opacity=".18"/><text x="80" y="215" font-family="Arial, sans-serif" font-size="48" font-weight="700" fill="#ffffff">Levromart</text><text x="80" y="270" font-family="Arial, sans-serif" font-size="28" fill="#4FBE94">Explore the marketplace</text></svg>`;
   img.src = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
   img.closest(".home-promotional-slide")?.classList.add("image-failed");
 }
@@ -30983,13 +30983,13 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 
 <style id="levromart-payment-timing-ui">
 .product-card-payment-plan{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:2.25rem;height:1.55rem;margin:0 .15rem;font-size:.56rem;font-weight:900;letter-spacing:.03em;line-height:1;border-radius:999px;border:1px solid transparent;padding:0 .42rem;white-space:nowrap;}
-.product-card-payment-plan.pay-before{background:#dcfce7;color:#166534;border-color:#86efac;}
+.product-card-payment-plan.pay-before{background:#EAF6F0;color:#0A5C40;border-color:#5BA98A;}
 .product-card-payment-plan.pay-after{background:#ffedd5;color:#c2410c;border-color:#fdba74;}
 .product-card-payment-plan i{color:currentColor;}
 .product-card-action-row .product-card-payment-plan{align-self:center;}
 .product-payment-plan-notice{display:flex;flex-direction:column;gap:.18rem;margin:.65rem 0;padding:.72rem .8rem;border-radius:12px;border:1px solid var(--border);font-size:.82rem;line-height:1.35;}
 .product-payment-plan-notice strong{display:flex;align-items:center;gap:.35rem;}
-.product-payment-plan-notice.pay-before{background:#f0fdf4;border-color:#86efac;color:#166534;}
+.product-payment-plan-notice.pay-before{background:#EAF6F0;border-color:#5BA98A;color:#0A5C40;}
 .product-payment-plan-notice.pay-after{background:#fff7ed;border-color:#fdba74;color:#c2410c;}
 </style>
 
@@ -35089,9 +35089,9 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .payment-timing-option strong{display:block;font-size:.8rem;line-height:1.2;}
 .payment-timing-option small{display:block;margin-top:.2rem;font-size:.68rem;line-height:1.25;color:var(--text-muted);}
 .payment-timing-option-dot{width:12px;height:12px;border-radius:50%;border:2px solid currentColor;flex:0 0 auto;margin-top:.12rem;}
-.payment-timing-option.pay-before{color:#22c55e;}
+.payment-timing-option.pay-before{color:#0A5C40;}
 .payment-timing-option.pay-after{color:#fb923c;}
-.payment-timing-option.pay-before.selected{background:color-mix(in srgb,var(--card) 88%,#22c55e 12%);border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.12);}
+.payment-timing-option.pay-before.selected{background:color-mix(in srgb,var(--card) 88%,#5BA98A 12%);border-color:#5BA98A;box-shadow:0 0 0 2px rgba(91,169,138,.16);}
 .payment-timing-option.pay-after.selected{background:color-mix(in srgb,var(--card) 88%,#fb923c 12%);border-color:#fb923c;box-shadow:0 0 0 2px rgba(249,115,22,.12);}
 .payment-timing-option.selected .payment-timing-option-dot{background:currentColor;box-shadow:inset 0 0 0 2px var(--card);}
 .payment-timing-hint{font-size:.76rem;margin:.55rem 0 0;color:var(--text-muted);}
@@ -35104,7 +35104,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .payment-deposit-percent-note{font-size:.7rem;margin:0;color:#475569;}
 
 /* Card payment/delivery status cues. */
-.product-card-payment-plan.pay-before{background:#dcfce7!important;color:#166534!important;border-color:#86efac!important;}
+.product-card-payment-plan.pay-before{background:#EAF6F0!important;color:#0A5C40!important;border-color:#5BA98A!important;}
 .product-card-payment-plan.pay-after{background:#ffedd5!important;color:#c2410c!important;border-color:#fdba74!important;}
 
 /* Service negotiation UI — scoped only to service listings. */
