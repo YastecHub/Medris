@@ -6943,7 +6943,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 <header>
   <div class="header-left">
     <div class="icon-wrap" id="profileWrap">
-      <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="toggleProfilePanel()" title="Profile"></button>
+      <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="openProfileOrShop()" title="Profile"></button>
       <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
     </div>
     <h1 role="button" tabindex="0" onclick="fastNavigateHome(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fastNavigateHome(event)}"><span class="brand-logo-stack"><span id="brandLogoLeft" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span><img id="brandLogoCircle" class="brand-logo-layer brand-logo-circle" alt="" /><span id="brandLogoRight" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span></span><span class="sr-only">Levromart</span></h1>
@@ -6955,6 +6955,9 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   <div class="header-right">
     <div class="icon-wrap" id="headerSearchWrap">
       <button type="button" class="icon-btn header-search-btn" id="levromartHeaderSearchButton" title="Search Levromart" aria-label="Search Levromart" onclick="window.__levroTopSearch(event)"><i class='fa-solid fa-magnifying-glass'></i></button>
+    </div>
+    <div class="icon-wrap hidden" id="messagesWrap">
+      <button class="icon-btn" onclick="navigate('messages')" title="Messages"><i class='fa-solid fa-comment-dots'></i><span id="messagesDot" class="notif-dot hidden">0</span></button>
     </div>
     <div class="icon-wrap hidden" id="notifWrap">
       <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
@@ -9372,6 +9375,13 @@ function toggleNotifPanel() {
   navigate("notifications");
 }
 function toggleProfilePanel() { openDrawer("profilePanel"); }
+function openProfileOrShop() {
+  // Vendors' profile page IS their shop dashboard now; buyers still get the
+  // quick-access drawer.
+  const isVendorUser = session && profile?.role !== "admin" && !!vendor;
+  if (isVendorUser) navigate("vendorDashboard");
+  else toggleProfilePanel();
+}
 
 function setupDrawerSwipe(drawer, side) { return; }
 
@@ -9474,7 +9484,7 @@ function setupDrawerSwipe(drawer, side) { return; }
     d.panel.style.willChange = '';
     d.panel.style.transform = '';
     if (d.active && enough && correct && Math.abs(dx) > Math.abs(dy) * AXIS_RATIO) {
-      if (d.mode === 'open') d.side === 'left' ? toggleProfilePanel() : toggleNotifPanel();
+      if (d.mode === 'open') d.side === 'left' ? openProfileOrShop() : toggleNotifPanel();
       else closeAllPanels();
     }
     drag = null;
@@ -9590,9 +9600,14 @@ async function refreshNotifications(renderPanel = true) {
   if (!session || !profile) {
     notifCount = 0;
     byId("notifWrap")?.classList.add("hidden");
+    byId("messagesWrap")?.classList.add("hidden");
     return;
   }
   byId("notifWrap")?.classList.remove("hidden");
+  // Vendors get a header Messages icon (their bottom nav no longer has one);
+  // buyers keep Messages in the bottom nav, so the header icon stays hidden.
+  const isVendorForHeaderIcons = profile?.role !== "admin" && !!vendor;
+  byId("messagesWrap")?.classList.toggle("hidden", !isVendorForHeaderIcons);
 
   // Independent badge/count reads run concurrently so one slow table cannot
   // hold up unrelated UI state.
@@ -9619,6 +9634,11 @@ async function refreshNotifications(renderPanel = true) {
   buyerPendingOrderCount = buyerRes?.count || 0;
   unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => String(x.status || "").toLowerCase() === "new").length;
   unreadMessageCount = (conversationsRes?.data || []).reduce((sum, c) => sum + (c.unread_count > 0 ? 1 : 0), 0);
+  const messagesDot = byId("messagesDot");
+  if (messagesDot) {
+    if (unreadMessageCount > 0) { messagesDot.textContent = unreadMessageCount > 9 ? "9+" : unreadMessageCount; messagesDot.classList.remove("hidden"); }
+    else messagesDot.classList.add("hidden");
+  }
   buyerCartCount = profile?.role !== "admin" ? (cartRes?.count || 0) : 0;
   requestOfferBadgeCount = Number(requestOfferRes?.count || 0);
   updateRequestOfferBadge();
@@ -10816,6 +10836,7 @@ function renderBottomNav() {
   const isVendorUser = session && profile?.role !== "admin" && !!vendor;
   const vendorsTab = { icon: "<i class='fa-solid fa-store'></i>", label: "Vendors", action: "navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('grid'),80))", view: "vendors" };
   const messagesTab = { icon: "<i class='fa-solid fa-comment-dots'></i>", label: "Messages", action: "navigate('messages')", view: "messages", badge: unreadMessageCount };
+  const notificationsTab = { icon: "<i class='fa-solid fa-bell'></i>", label: "Notifications", action: "navigate('notifications')", view: "notifications", badge: notifCount };
   const requestsTab = isVendorUser
     ? { icon: "<i class='fa-solid fa-hand'></i>", label: "Requests", action: "navigate('vendorRequests')", view: "vendorRequests", badge: 0 }
     : { icon: "<i class='fa-solid fa-hand'></i>", label: "Request", action: session ? "navigate('requestEquipment')" : "requireLoginThen('requestEquipment')", view: "requestEquipment" };
@@ -10823,7 +10844,6 @@ function renderBottomNav() {
     ? { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
     : { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
   const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "navigate('home')", view: "home" };
-  const myShopTab = { icon: "<i class='fa-solid fa-box'></i>", label: "My Shop", action: "navigate('vendorDashboard')", view: "vendorDashboard" };
 
   let items;
   if (session && profile?.role === "admin") {
@@ -10832,10 +10852,10 @@ function renderBottomNav() {
       { icon: "<i class='fa-solid fa-shield-halved'></i>", label: "Admin", action: "navigate('adminPanel')", view: "adminPanel" },
       { icon: "<i class='fa-solid fa-sack-dollar'></i>", label: "Finance", action: "navigate('adminFinance')", view: "adminFinance" }];
   } else if (isVendorUser) {
-    // Vendor navigation: Vendors, Messages | + | Orders, My Shop.
-    // Keep Orders and Messages in the positions established for the vendor
-    // navigation; buyer navigation remains unchanged.
-    items = [vendorsTab, messagesTab, ordersTab, myShopTab];
+    // Vendor navigation: Home, Vendors | + | Notifications, Orders.
+    // Messages moved to the header; My Shop moved into the vendor's
+    // profile page (tapping the header avatar opens it directly).
+    items = [homeTab, vendorsTab, notificationsTab, ordersTab];
   } else if (session) {
     // Buyer navigation: Vendors → Request → Home → Orders → Messages.
     // Messages stays at the extreme right; Orders sits immediately beside Home.
@@ -12367,7 +12387,7 @@ function handleHomeCarouselSlideClick(event, index) {
       if (deepView === "notifications" || deepView === "profile") {
         if (!session) { showLogin(); return; }
         if (deepView === "notifications") { lastNotificationReturnView = "home"; navigate("notifications", {}, true); }
-        else navigate("home", {}, true).then(() => setTimeout(() => toggleProfilePanel(), 60));
+        else navigate("home", {}, true).then(() => setTimeout(() => openProfileOrShop(), 60));
         return;
       }
       if (deepView === "orders") {
@@ -12544,7 +12564,7 @@ function handleAdminDeepLinkClick(event, href) {
     if (!deepView) return false;
     const params = {};
     u.searchParams.forEach((value,key)=>{ if(key!=="levro" && key!=="section") params[key]=value; });
-    if (deepView === "profile") { closeAllPanels(); toggleProfilePanel(); return false; }
+    if (deepView === "profile") { closeAllPanels(); openProfileOrShop(); return false; }
     if (deepView === "notifications") { closeAllPanels(); lastNotificationReturnView = currentView || "home"; navigate("notifications", {}, true); return false; }
     if (deepView === "home") {
       Promise.resolve(navigate("home", {}, true)).then(()=>{
@@ -16908,7 +16928,7 @@ async function renderStorefront(vendorId) {
           ${isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-message-icon" type="button" aria-label="Messages" title="Messages" onclick="navigate('messages')"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
           ${!isOwnStorefront ? `<div class="storefront-follow-wrap" data-follow-vendor-id="${v.id}">
             <div class="storefront-follow-controls">
-              <button type="button" class="btn btn-sm follow-btn ${followState?.[0]?.following ? "" : "btn-outline"}" aria-label="${followState?.[0]?.following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${followState?.[0]?.following ? "Unfollow vendor" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${followState?.[0]?.following ? "fa-check" : "fa-plus"}"></i> ${followState?.[0]?.following ? "Following" : "Follow"}</button>
+              <button type="button" class="btn btn-sm follow-btn follow-btn-icon ${followState?.[0]?.following ? "" : "btn-outline"}" aria-pressed="${followState?.[0]?.following ? "true" : "false"}" aria-label="${followState?.[0]?.following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${followState?.[0]?.following ? "Following — tap to unfollow" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${followState?.[0]?.following ? "fa-check" : "fa-user-plus"}"></i></button>
               <button type="button" class="btn btn-sm btn-outline follow-settings-btn" ${followState?.[0]?.following ? "" : "disabled"} aria-expanded="false" aria-label="Notification preferences" title="${followState?.[0]?.following ? "Notification preferences" : "Follow this vendor to manage notifications"}" onclick="window.toggleLevromartFollowNotifications?.('${v.id}',event)"><i class="fa-solid fa-bell"></i></button>
             </div>
             <div class="follow-menu hidden" role="dialog" aria-label="Vendor notification preferences">
@@ -24681,7 +24701,7 @@ async function goToAiChatNav(nav) {
 
   try {
     if (nav.view === "profile") {
-      toggleProfilePanel();
+      openProfileOrShop();
       return;
     }
     if (nav.view === "settings") {
@@ -26800,7 +26820,7 @@ window.addEventListener("popstate", (e) => {
       } else {
         history.replaceState({ view: "home", params: {} }, "", location.pathname);
         await navigate("home", {}, false);
-        setTimeout(() => toggleProfilePanel(), 60);
+        setTimeout(() => openProfileOrShop(), 60);
       }
       return;
     }
@@ -30840,7 +30860,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   // Follow/unfollow is instant; no confirmation dialog.
   async function followState(vendorId){try{const r=await sb.rpc('get_vendor_follow_state',{p_vendor_id:vendorId});return r.error?null:r.data?.[0]||null}catch(_){return null}}
   async function toggleFollow(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();if(!session){showLogin?.();return}const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const next=!st.following;const btn=wrap.querySelector('.follow-btn');if(btn)btn.disabled=true;try{const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});if(r.error)throw r.error;await refreshFollow(vendorId);if(typeof showToast==='function')showToast(next?'Following vendor.':'Unfollowed vendor.','success')}catch(e){showToast?.(e.message||'Could not update your following list.','error')}finally{if(btn)btn.disabled=false}}
-  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-plus')+'"></i> '+(following?'Following':'Follow');btn.title=following?'Unfollow vendor':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
+  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following — tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
   async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const open=menu.classList.toggle('hidden')===false;bell.setAttribute('aria-expanded',String(open));if(open)await refreshFollow(vendorId)}
   window.toggleLevromartVendorFollow=toggleFollow;window.toggleLevromartFollowNotifications=toggleFollowBell;
   async function saveFollowPrefsFromWrap(wrap,muteModeOverride){const id=wrap?.dataset.followVendorId;if(!id)return;const checked=k=>!!wrap.querySelector('[data-pref="'+k+'"]')?.checked;let muteMode=muteModeOverride;if(muteMode==null){const active=wrap.querySelector('.follow-mute-grid button.active');muteMode=active?.dataset.mute||'none';}try{const r=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:muteMode,p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')});if(r.error)throw r.error;wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===muteMode));showToast?.(muteMode==='none'?'Vendor notifications turned on.':muteMode==='always'?'Vendor notifications muted until you turn them back on.':`Vendor notifications muted for ${muteMode==='1h'?'1 hour':'8 hours'}.`,'success');}catch(e){showToast?.(e.message||'Could not update vendor notifications.','error')}}
@@ -37475,4 +37495,35 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 /* Vendor directory: show the complete filtered set; no pagination/"View more" control. */
 #vendorsDirectoryMoreBtn { display:none !important; }
 #vendorsDirectoryCount { display:none !important; }
+</style>
+
+<style id="levromart-bottom-nav-add-inline-final">
+/* The + (add listing) control sits flush inside the bar, not raised above it. */
+#bottomNav .bottom-nav-add{
+  position:relative !important; inset:auto !important; top:0 !important; margin:0 !important;
+  width:34px !important; height:34px !important; min-width:34px !important; min-height:34px !important;
+  flex:0 0 34px !important; border-radius:50% !important; border:0 !important;
+  background:var(--primary) !important; color:#fff !important; font-size:1rem !important;
+  box-shadow:none !important; align-self:center !important; justify-self:center !important;
+}
+</style>
+
+<style id="levromart-follow-btn-icon-only-final">
+/* Storefront Follow/Following is icon-only (checkmark once following, a
+   person-plus icon otherwise) instead of a wide text button. */
+.storefront-follow-wrap .follow-btn.follow-btn-icon,
+.storefront-profile .storefront-top-actions .follow-btn.follow-btn-icon,
+.storefront-profile .storefront-profile-actions .follow-btn.follow-btn-icon{
+  min-width:40px !important; width:40px !important; height:40px !important; min-height:40px !important;
+  padding:0 !important; border-radius:50% !important; display:inline-flex !important;
+  align-items:center !important; justify-content:center !important; font-size:1rem !important;
+  white-space:nowrap !important;
+}
+@media(max-width:620px){
+  .storefront-follow-wrap .follow-btn.follow-btn-icon,
+  .storefront-profile .storefront-top-actions .follow-btn.follow-btn-icon,
+  .storefront-profile .storefront-profile-actions .follow-btn.follow-btn-icon{
+    width:38px !important; height:38px !important; min-width:38px !important; min-height:38px !important;
+  }
+}
 </style>
