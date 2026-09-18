@@ -1395,6 +1395,16 @@ input:focus, select:focus, textarea:focus {
 
 /* ---------- app shell ---------- */
 body { background-attachment: fixed; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+/* Touch/Android Chrome can't cheaply composite a fixed background behind a
+   scrolling page: it falls back to repainting the background on every scroll
+   frame, and that repaint cost scales with how much is on screen. The wash
+   is a subtle low-opacity gradient, so letting it scroll with the page on
+   coarse-pointer (touch) devices is visually unnoticeable but removes a
+   real per-frame repaint cost on Home, which has by far the largest and
+   busiest scroll surface in the app. Desktop/mouse pointers are unaffected. */
+@media (pointer:coarse) {
+  body { background-attachment: scroll !important; }
+}
 header {
   min-height: 68px;
   padding: calc(.7rem + env(safe-area-inset-top,0px)) clamp(1rem,3vw,2rem) .7rem;
