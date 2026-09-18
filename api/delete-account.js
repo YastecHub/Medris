@@ -113,6 +113,12 @@ async function registerAccount(body, res) {
   if (role !== "buyer" && role !== "vendor") return res.status(400).json({ error: "Invalid account type." });
   if (cleanEmail && !cleanEmail.includes("@")) return res.status(400).json({ error: "Enter a valid email address or leave email blank." });
 
+  // Choosing "vendor" at signup is only an application intent, never an
+  // approved role — mirrors chooseAccountRole's authoritativeRole logic so
+  // the stored users.role can never be 'vendor' before a vendor application
+  // is actually reviewed and verified.
+  const authoritativeRole = role === "vendor" ? "buyer" : role;
+
   const supabaseUrl = env("SUPABASE_URL");
   const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceKey) return res.status(500).json({ error: "Supabase server configuration is incomplete." });
@@ -150,7 +156,8 @@ async function registerAccount(body, res) {
         name: cleanName,
         phone: cleanPhone,
         city,
-        role,
+        role: authoritativeRole,
+        requested_role: role,
         email_optional: !cleanEmail
       }
     })
@@ -175,7 +182,7 @@ async function registerAccount(body, res) {
       email: cleanEmail || null,
       phone: cleanPhone,
       city,
-      role,
+      role: authoritativeRole,
       role_selected: true,
       has_password: true
     })

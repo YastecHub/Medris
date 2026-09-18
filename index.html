@@ -2987,12 +2987,6 @@ html { scroll-padding-top: 86px !important; }
 .product-card-wrap:focus-within .card {
   transform:none !important;
 }
-.product-card-wrap,
-.vendor-card,
-.review-card {
-  content-visibility:visible !important;
-  contain:none !important;
-}
 .product-card-wrap { animation:none !important; }
 
 @media (max-width:600px) {
@@ -3088,8 +3082,6 @@ html { scroll-padding-top: 86px !important; }
 #tourCallout .install-modal-actions { margin:0 !important; gap:.32rem !important; }
 #tourCallout .install-modal-actions .btn { min-height:32px !important; padding:.3rem .58rem !important; font-size:.7rem !important; }
 #tourCallout .tour-skip { margin:.28rem auto 0 !important; font-size:.64rem !important; }
-.product-card-wrap,.vendor-card,.review-card { content-visibility:visible !important; contain:none !important; }
-.product-card-wrap:hover .card,.product-card-wrap:active .card,.product-card-wrap:focus-within .card { transform:none !important; }
 
 /* FINAL ORDER STATUS INFO LAYER
    Keep the status icon, status text and info button on one predictable row.
@@ -9000,7 +8992,7 @@ function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
   const safeName = String(name || "User").trim() || "User";
   if (url) {
     const clickable = opts.lightbox ? ` role="button" tabindex="0" onclick="event.stopPropagation();openProfileImageLightbox('${esc(url)}','${esc(safeName)}',event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openProfileImageLightbox('${esc(url)}','${esc(safeName)}',event)}"` : "";
-    return `<img src="${esc(url)}" class="avatar-circle ${opts.extraClass || ""}" style="width:${size};height:${size};object-fit:cover;" alt="${esc(safeName)}" draggable="false"${clickable} onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(safeName)}','${esc(size)}','${esc(opts.extraClass || "")}','${esc(safeName)}')))" />`;
+    return `<img src="${esc(url)}" class="avatar-circle ${opts.extraClass || ""}" style="width:${size};height:${size};object-fit:cover;" alt="${esc(safeName)}" draggable="false" loading="lazy" decoding="async"${clickable} onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(safeName)}','${esc(size)}','${esc(opts.extraClass || "")}','${esc(safeName)}')))" />`;
   }
   return avatarFallbackHtml(safeName, size, opts.extraClass || "", safeName, opts.stableKey || safeName);
 }
@@ -12225,7 +12217,8 @@ function initHomeSearchScrollMotion(){
       rafId = 0;
       const y = window.scrollY || window.pageYOffset || 0;
       lastY = y;
-      syncDockTop();
+      // header is position:fixed, so its rect is constant across scroll —
+      // only resync on resize/orientation change, not on every scroll frame.
       if (y <= 8) {
         restoreNormal();
         return;
@@ -33983,7 +33976,18 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   }
   document.addEventListener("change",e=>{if(e.target?.id==="prodIsService"||e.target?.id==="prodBillingModel")syncListingBillingUI();if(e.target?.id==="pkgBillingModel")syncPackageBillingUI();},true);
   document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target?.matches?.("#searchInput,#vendorSearchInput,#orderHistorySearch")&&e.target.value.trim())saveHistory(e.target.value.trim());},true);
-  const observer=new MutationObserver(()=>{clearTimeout(window.__levroFinalUxTimer);window.__levroFinalUxTimer=setTimeout(()=>{setupCompactSearches();installVendorCardRenderer();hydrateFollowerCounts();syncListingBillingUI();syncPackageBillingUI();},80);});
+  const observer=new MutationObserver((mutations)=>{
+    // Browse Everything's product grid replaces its own innerHTML on every
+    // filter/refresh; those mutations never contain vendor cards or search
+    // toolbars, so skip the expensive re-hydration pass for them instead of
+    // re-scanning the whole document after every Home grid rebuild.
+    const onlyProductGrid=mutations.length>0 && mutations.every(m=>{
+      const t=m.target;
+      return t && t.nodeType===1 && (t.id==="productGrid" || t.closest?.("#productGrid"));
+    });
+    if(onlyProductGrid)return;
+    clearTimeout(window.__levroFinalUxTimer);window.__levroFinalUxTimer=setTimeout(()=>{setupCompactSearches();installVendorCardRenderer();hydrateFollowerCounts();syncListingBillingUI();syncPackageBillingUI();},80);
+  });
   observer.observe(document.body,{childList:true,subtree:true});
   setTimeout(run,250);
 })();
@@ -36228,7 +36232,10 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       .eq("user_id",session.user.id).is("deleted_at",null).maybeSingle();
 
     if(existingError) console.warn("[Levromart] Vendor application existing-check:",existingError);
-    if(existing?.verification_status==="verified"){
+    if(existing){
+      // Any existing non-deleted application (pending, rejected, or verified)
+      // already has its own status view on the dashboard — never re-show a
+      // blank, resubmittable application form to a returning applicant.
       navigate("vendorDashboard");
       return '<p class="muted">Redirecting…</p>';
     }
