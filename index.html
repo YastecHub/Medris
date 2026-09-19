@@ -8318,6 +8318,7 @@ let requestOfferBadgeCount = 0;
 let vendorPendingOrderCount = 0;
 let buyerPendingOrderCount = 0;
 let buyerFollowingCount = 0;
+let buyerTotalOrderCount = 0;
 let vendorProductCount = 0;
 // Only orders still awaiting the vendor's own action (accept, then hand
 // over) keep the nav badge lit -- once it's handed over/returned/disputed,
@@ -9832,14 +9833,15 @@ async function refreshNotifications(renderPanel = true) {
   const vendorProductCountQ = vendor ? sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id) : Promise.resolve({ count: 0 });
   const buyerQ = sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES);
   const followingQ = profile?.role !== "admin" ? sb.from("vendor_follows").select("id", { count: "exact", head: true }).eq("follower_id", session.user.id) : Promise.resolve({ count: 0 });
+  const totalOrdersQ = profile?.role !== "admin" ? sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve({ count: 0 });
   const suggestionQ = profile?.role === "admin" ? sb.rpc("get_platform_suggestions") : vendor ? sb.rpc("get_vendor_suggestions") : Promise.resolve({ data: [] });
   const conversationsQ = sb.rpc("list_my_conversations");
   const cartQ = profile?.role !== "admin" ? sb.from("cart_items").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve({ count: 0 });
   let requestSeenAt = ""; try { requestSeenAt = sessionStorage.getItem("levromart-request-offers-seen-at") || ""; } catch (_) {}
   const requestOfferQ = profile?.role !== "admin" ? sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("type", "new_offer").eq("read", false).eq("archived", false).is("deleted_at", null).gt("created_at", requestSeenAt || "1970-01-01T00:00:00.000Z") : Promise.resolve({ count: 0 });
 
-  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes, followingRes] = await Promise.all([
-    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ, vendorProductCountQ, followingQ
+  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes, followingRes, totalOrdersRes] = await Promise.all([
+    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ, vendorProductCountQ, followingQ, totalOrdersQ
   ]);
   vendorProductCount = vendor ? (vendorProductCountRes?.count || 0) : 0;
 
@@ -9852,6 +9854,7 @@ async function refreshNotifications(renderPanel = true) {
   vendorPendingOrderCount = vendor ? (vendorRes?.count || 0) : 0;
   buyerPendingOrderCount = buyerRes?.count || 0;
   buyerFollowingCount = followingRes?.count || 0;
+  buyerTotalOrderCount = totalOrdersRes?.count || 0;
   unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => String(x.status || "").toLowerCase() === "new").length;
   unreadMessageCount = (conversationsRes?.data || []).reduce((sum, c) => sum + (c.unread_count > 0 ? 1 : 0), 0);
   const messagesDot = byId("messagesDot");
@@ -10777,6 +10780,7 @@ function updateAuthUI() {
       ];
     } else if (profile.role !== "admin") {
       miniStats = [
+        { label: "Total orders", value: Number(buyerTotalOrderCount || 0) },
         { label: "Pending orders", value: Number(buyerPendingOrderCount || 0) },
         { label: "Saved items", value: (favoriteIds?.size || 0) + (packageFavoriteIds?.size || 0) },
         { label: "Vendors followed", value: Number(buyerFollowingCount || 0) },
