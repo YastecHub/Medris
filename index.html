@@ -105,6 +105,7 @@
 <link rel="preconnect" href="https://unpkg.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';"></script>
+<script src="/lib/compress-image.js"></script>
 <style>
 
   /* Clean page-heading rhythm: headings must never visually collide with the
@@ -4337,6 +4338,29 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 #profilePanel .profile-panel-scroll > .divider { display:none !important; }
 #profilePanel .profile-nav-link-danger { border:0 !important; margin-top:.3rem !important; }
 
+/* Admin's icon-styled nav list: spread the rows out into their own cards
+   with breathing room between them, instead of a cramped edge-to-edge list. */
+#profilePanel .admin-profile-nav-list {
+  display:flex !important;
+  flex-direction:column !important;
+  gap:.55rem !important;
+  padding:.3rem 1rem .9rem !important;
+}
+#profilePanel .admin-profile-nav-list .profile-nav-link {
+  margin:0 !important;
+  padding:.85rem .9rem !important;
+  min-height:52px !important;
+  border-radius:14px !important;
+  background:color-mix(in srgb, var(--text) 4%, var(--card)) !important;
+  border:1px solid var(--border) !important;
+}
+#profilePanel .admin-profile-nav-list .profile-nav-link:hover,
+#profilePanel .admin-profile-nav-list .profile-nav-link:focus-visible {
+  background:color-mix(in srgb, var(--primary) 8%, var(--card)) !important;
+  border-color:color-mix(in srgb, var(--primary) 22%, var(--border)) !important;
+}
+#profilePanel .admin-profile-nav-list .profile-nav-link-danger { margin-top:.15rem !important; }
+
 /* Floating controls have a stable, aligned opening position. Dragging remains
    available, but positions are intentionally session-only rather than
    remembered across a fresh app open. */
@@ -6975,6 +6999,9 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </nav>
   </div>
   <div class="header-right">
+    <div class="icon-wrap hidden" id="notifWrap">
+      <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
+    </div>
     <div class="icon-wrap hidden" id="messagesWrap">
       <button class="icon-btn" onclick="navigate('messages')" title="Messages"><i class='fa-solid fa-comment-dots'></i><span id="messagesDot" class="notif-dot hidden">0</span></button>
     </div>
@@ -9653,10 +9680,10 @@ async function refreshNotifications(renderPanel = true) {
     byId("messagesWrap")?.classList.add("hidden");
     return;
   }
-  byId("notifWrap")?.classList.remove("hidden");
-  // Every logged-in buyer/vendor gets a header Messages icon; their bottom
-  // nav has Notifications instead. Admins are unaffected (no bottom-nav add
-  // slot logic applies to them and they don't use Messages).
+  // Buyers/vendors get their Notifications in the bottom nav instead, and a
+  // header Messages icon. Admins have neither a bottom-nav Notifications tab
+  // nor Messages, so they get a header notification bell instead.
+  byId("notifWrap")?.classList.toggle("hidden", profile?.role !== "admin");
   byId("messagesWrap")?.classList.toggle("hidden", profile?.role === "admin");
 
   // Independent badge/count reads run concurrently so one slow table cannot
@@ -10606,12 +10633,12 @@ function updateAuthUI() {
         </div>
       </div>
       <div class="profile-panel-scroll">
-        ${profile.role === "admin" ? links.map((l) => {
+        ${profile.role === "admin" ? `<div class="admin-profile-nav-list">${links.map((l) => {
           const raw = String(l.label).replace(/<[^>]*>/g, '').trim().toLowerCase();
           const icon = raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('link library') ? 'fa-link' : raw.includes('disputes') ? 'fa-scale-balanced' : raw.includes('monthly listing') ? 'fa-receipt' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
           const profileKeyAttr = l.profileKey ? ` data-profile-key="${esc(l.profileKey)}"` : "";
           return `<a class="profile-nav-link"${profileKeyAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
-        }).join("") : `
+        }).join("")}</div>` : `
         <div class="profile-panel-stats">
           ${miniStats.map(s => `<div class="profile-panel-stat"><strong>${s.value}</strong><span>${esc(s.label)}</span></div>`).join("")}
         </div>
@@ -12850,7 +12877,9 @@ async function addAdminCarouselSlide() {
   const btn = byId("adminCarouselAddBtn"); if (btn) btn.disabled = true;
   try {
     const path = carouselStoragePathForUpload(file);
-    const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(path, file, { contentType: file.type, upsert: false });
+    let uploadBlob = file;
+    try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
+    const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false });
     if (uploadError) throw uploadError;
     const { data: publicData } = sb.storage.from("homepage-carousel").getPublicUrl(path);
     const payload = { storage_path: path, image_url: publicData.publicUrl, alt_text: String(byId("adminCarouselNewAlt")?.value || file.name).trim().slice(0,180), link_url: String(byId("adminCarouselNewLink")?.value || "").trim() || null, sort_order: Math.max(0, Number(byId("adminCarouselNewOrder")?.value || 100)), is_active: true, created_by: session.user.id };
@@ -12889,7 +12918,9 @@ async function replaceAdminCarouselImage(event, id) {
     const { data: old, error: oldError } = await sb.from("homepage_carousel_slides").select("storage_path").eq("id", id).maybeSingle();
     if (oldError) throw oldError;
     const newPath = carouselStoragePathForUpload(file);
-    const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(newPath, file, { contentType: file.type, upsert: false });
+    let uploadBlob = file;
+    try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
+    const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(newPath, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false });
     if (uploadError) throw uploadError;
     const { data: publicData } = sb.storage.from("homepage-carousel").getPublicUrl(newPath);
     const { error: updateError } = await sb.from("homepage_carousel_slides").update({ storage_path: newPath, image_url: publicData.publicUrl, updated_at: new Date().toISOString() }).eq("id", id);
@@ -15775,9 +15806,16 @@ function bindChatImageEditorPointer(){
 
 async function sendPreparedChatImage(conversationId, prepared, replyToId, replyTargetSnapshot) {
   const path=`conv/${conversationId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeFilename(prepared.name||"photo.jpg")}`;
-  const {error:upErr}=await sb.storage.from("chat-attachments").upload(path,prepared.blob,{contentType:"image/jpeg",upsert:false});
+  // Chat photos are the highest-volume image upload in the app -- compress
+  // before it ever reaches Supabase Storage. compressImage() is a safe
+  // no-op for anything that wouldn't actually benefit (already small, not
+  // an image, etc); if the utility script failed to load for any reason,
+  // fall back to uploading the original rather than failing the send.
+  let uploadBlob = prepared.blob;
+  try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(prepared.blob, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
+  const {error:upErr}=await sb.storage.from("chat-attachments").upload(path,uploadBlob,{contentType:uploadBlob.type||"image/jpeg",upsert:false});
   if(upErr) throw upErr;
-  const {data,error}=await sb.from("messages").insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||"",reply_to_id:replyToId,attachment_url:path,attachment_name:prepared.name||"photo.jpg",attachment_type:"image/jpeg",attachment_size:prepared.blob.size}).select("*").single();
+  const {data,error}=await sb.from("messages").insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||"",reply_to_id:replyToId,attachment_url:path,attachment_name:prepared.name||"photo.jpg",attachment_type:uploadBlob.type||"image/jpeg",attachment_size:uploadBlob.size}).select("*").single();
   if(error) throw error;
   if(replyTargetSnapshot)data.reply_to={id:replyTargetSnapshot.id,body:replyTargetSnapshot.body,attachment_name:replyTargetSnapshot.attachment,sender_id:document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains("mine")?session.user.id:""};
   byId("chatMessages")?.insertAdjacentHTML("beforeend",chatBubbleHtml(data));
@@ -17423,11 +17461,13 @@ async function submitSupportRequest() {
   const uploaded = [];
   try {
     for (const file of files) {
-      const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+      let uploadBlob = file;
+      try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
+      const ext = (uploadBlob.name || file.name || '').split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
       const path = `${session.user.id}/${request.id}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadError } = await sb.storage.from('support-attachments').upload(path, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
+      const { error: uploadError } = await sb.storage.from('support-attachments').upload(path, uploadBlob, { upsert: false, contentType: uploadBlob.type || file.type || 'application/octet-stream' });
       if (uploadError) throw uploadError;
-      uploaded.push({ path, name: file.name, type: file.type || 'application/octet-stream', size: file.size });
+      uploaded.push({ path, name: file.name, type: uploadBlob.type || file.type || 'application/octet-stream', size: uploadBlob.size });
     }
     const { error: updateError } = await sb.from('support_requests').update({ attachments: uploaded }).eq('id', request.id).eq('user_id', session.user.id);
     if (updateError) throw updateError;
@@ -19217,7 +19257,9 @@ async function uploadVendorLogo(event) {
   if (!file || !vendor) return;
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const path = `${vendor.id}/logo.${ext}`;
-  const { error: upErr } = await sb.storage.from("vendor-logos").upload(path, file, { upsert: true, contentType: file.type });
+  let uploadBlob = file;
+  try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 800, maxHeight: 800 }); } catch (_) {}
+  const { error: upErr } = await sb.storage.from("vendor-logos").upload(path, uploadBlob, { upsert: true, contentType: uploadBlob.type || file.type });
   if (upErr) { showToast(upErr.message, "error"); return; }
   const { data: pub } = sb.storage.from("vendor-logos").getPublicUrl(path);
   const url = `${pub.publicUrl}?t=${Date.now()}`;
@@ -20127,7 +20169,9 @@ async function uploadVarietyImages(){
   persistVisibleVariantOrder();
   await Promise.all((window.__productVariants||[]).map(async v=>{
     if(!v._imageFile)return;const file=v._imageFile,path=`${vendor.id}/variants/${crypto.randomUUID()}.${(file.name.split('.').pop()||'jpg').toLowerCase()}`;
-    const {error}=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(error)throw error;
+    let uploadBlob=file;
+    try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}
+    const {error}=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type});if(error)throw error;
     v.photo_url=sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl;
     const row=[...document.querySelectorAll('#productVariantPricing .variant-price-row')].find(r=>r.dataset.variantKey===String(v.id||v._localKey));
     if(row){
@@ -20630,7 +20674,9 @@ async function saveProduct() {
     const uploadOne = async (file, folder) => {
       const ext = (file.name?.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
       const path = `${vendor.id}/${folder ? folder + "/" : ""}${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+      let uploadBlob = file;
+      try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type || "image/jpeg", upsert: false });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
       uploadedStoragePaths.push(path);
       const { data: urlData } = sb.storage.from("product-photos").getPublicUrl(path);
@@ -21142,7 +21188,9 @@ async function savePackage() {
     const newPhotoUrls = await Promise.all(newFiles.map(async (file) => {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${vendor.id}/packages/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, file, { contentType: file.type });
+      let uploadBlob = file;
+      try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
       return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
     }));
@@ -31273,14 +31321,24 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     };
     ensureEditor();openChatAttachmentEditor(valid,0,valid.length,finish);setTimeout(bindPointer,0);
   };
+  // Snapshot this version (array-based, grouped multi-photo send) so it can
+  // be restored later even if something further down the file reassigns
+  // window.handleChatFileSelected again -- see the restoration at the end
+  // of the file, which pairs with this rather than the older single-file
+  // handleChatFileSelected()/openChatAttachmentEditor() from earlier in the
+  // file (that pairing is no longer compatible with the array-based
+  // window.openChatAttachmentEditor defined in this same block).
+  window.__handleChatFileSelectedGrouped = window.handleChatFileSelected;
 
   const originalSendPrepared=window.sendPreparedChatImage;
   window.sendPreparedChatImage=async function(conversationId,prepared,replyToId,replyTargetSnapshot,groupId){
     if(!groupId)return originalSendPrepared(conversationId,prepared,replyToId,replyTargetSnapshot);
     const path=`conv/${conversationId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeFilename(prepared.name||'photo.jpg')}`;
-    const {error:upErr}=await sb.storage.from('chat-attachments').upload(path,prepared.blob,{contentType:'image/jpeg',upsert:false});if(upErr)throw upErr;
+    let uploadBlob=prepared.blob;
+    try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(prepared.blob,{maxWidth:1600,maxHeight:1600});}catch(_){}
+    const {error:upErr}=await sb.storage.from('chat-attachments').upload(path,uploadBlob,{contentType:uploadBlob.type||'image/jpeg',upsert:false});if(upErr)throw upErr;
     const markedName=`${GROUP_PREFIX}${groupId}__|${prepared.name||'photo.jpg'}`;
-    const {data,error}=await sb.from('messages').insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||'',reply_to_id:replyToId,attachment_url:path,attachment_name:markedName,attachment_type:'image/jpeg',attachment_size:prepared.blob.size}).select('*').single();if(error)throw error;
+    const {data,error}=await sb.from('messages').insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||'',reply_to_id:replyToId,attachment_url:path,attachment_name:markedName,attachment_type:uploadBlob.type||'image/jpeg',attachment_size:uploadBlob.size}).select('*').single();if(error)throw error;
     if(replyTargetSnapshot)data.reply_to={id:replyTargetSnapshot.id,body:replyTargetSnapshot.body,attachment_name:replyTargetSnapshot.attachment,sender_id:document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains('mine')?session.user.id:''};
     byId('chatMessages')?.insertAdjacentHTML('beforeend',chatBubbleHtml(data));
   };
@@ -31427,7 +31485,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
   window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
-  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,file,{contentType:file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
+  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;let uploadBlob=file;try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}const up=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
   async function renderUnifiedEnhancements(){
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading)return;
@@ -32360,13 +32418,15 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
     });
   }
 
-  // A later "simplify" pass replaced the real multi-photo editor
-  // (handleChatFileSelected, defined earlier: crop/draw/highlight/rotate,
-  // one photo after another) with this single-photo-only shortcut, which
-  // silently became the active one and quietly dropped that capability.
-  // Restore the real one as authoritative instead of the stripped-down
-  // single-photo path.
-  window.handleChatFileSelected=handleChatFileSelected;
+  // A later "simplify" pass replaced the real multi-photo editor with a
+  // single-photo-only shortcut, which silently became the active one and
+  // quietly dropped that capability. Restore the grouped, array-based
+  // version (crop/draw/highlight/rotate per photo, sent together as one
+  // group) captured above -- it's the one that actually pairs with the
+  // array-based window.openChatAttachmentEditor also defined earlier;
+  // falling back to the older single-file handleChatFileSelected only if
+  // that snapshot somehow wasn't captured.
+  window.handleChatFileSelected = window.__handleChatFileSelectedGrouped || handleChatFileSelected;
 
   /* If the page is genuinely offline, the banner remains valid. If it is
      online, remove any stale offline notice that may have been rendered by a
@@ -32394,28 +32454,29 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 }
 
 /* Home's six quick actions, per the LevroMart UI/UX master spec (Part 7):
-   a 2-column grid of compact HORIZONTAL cards -- icon, label, optional
-   arrow -- with a soft green/white treatment and a subtle border, not
-   the old vertical icon-over-label circles (gray or green). */
+   a 3-column grid (3 up, 3 down) of compact HORIZONTAL cards -- icon,
+   label, optional arrow -- with a soft green/white treatment and a
+   subtle border, sized like small rectangles (not the old vertical
+   icon-over-label circles, and not the tall 2-column cards). */
 #app .levro-home-quick-actions{
-  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-  gap:.65rem !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:.45rem !important;
 }
 #app .levro-home-quick-actions .levro-quick-action{
   --quick-solid:none !important;
   display:flex !important;
   flex-direction:row !important;
   align-items:center !important;
-  gap:.6rem !important;
-  min-height:60px !important;
-  padding:.65rem .8rem !important;
-  border-radius:14px !important;
+  gap:.35rem !important;
+  min-height:50px !important;
+  padding:.5rem .45rem !important;
+  border-radius:12px !important;
   background:color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
   border:1px solid color-mix(in srgb, var(--primary) 16%, var(--border)) !important;
   box-shadow:none !important;
   color:var(--text) !important;
   text-align:left !important;
-  font-size:.78rem !important;
+  font-size:.62rem !important;
   font-weight:700 !important;
 }
 #app .levro-home-quick-actions .levro-quick-action:hover,
@@ -32426,9 +32487,9 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 #app .levro-home-quick-actions .levro-quick-action:active{ transform:scale(.98) !important; }
 #app .levro-home-quick-actions .levro-quick-icon{
   flex:0 0 auto !important;
-  width:2.15rem !important;
-  height:2.15rem !important;
-  border-radius:10px !important;
+  width:1.7rem !important;
+  height:1.7rem !important;
+  border-radius:8px !important;
   display:inline-flex !important;
   align-items:center !important;
   justify-content:center !important;
@@ -32436,23 +32497,25 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   color:var(--primary) !important;
   border:0 !important;
   box-shadow:none !important;
-  font-size:.92rem !important;
+  font-size:.74rem !important;
 }
 #app .levro-home-quick-actions .levro-quick-label{
   flex:1 1 auto !important;
   min-width:0 !important;
   white-space:normal !important;
-  line-height:1.2 !important;
+  line-height:1.15 !important;
 }
 #app .levro-home-quick-actions .levro-quick-arrow{
   flex:0 0 auto !important;
-  font-size:.68rem !important;
+  font-size:.56rem !important;
   color:color-mix(in srgb, var(--primary) 65%, var(--text)) !important;
   opacity:.75 !important;
 }
 @media(max-width:420px){
-  #app .levro-home-quick-actions .levro-quick-action{ font-size:.72rem !important; padding:.55rem .65rem !important; }
-  #app .levro-home-quick-actions .levro-quick-icon{ width:1.95rem !important; height:1.95rem !important; }
+  #app .levro-home-quick-actions{ gap:.35rem !important; }
+  #app .levro-home-quick-actions .levro-quick-action{ font-size:.56rem !important; padding:.4rem .35rem !important; gap:.28rem !important; min-height:46px !important; }
+  #app .levro-home-quick-actions .levro-quick-icon{ width:1.5rem !important; height:1.5rem !important; font-size:.66rem !important; }
+  #app .levro-home-quick-actions .levro-quick-arrow{ display:none !important; }
 }
 
 /* Header Messages icon: same neutral gray treatment, distinct from the
