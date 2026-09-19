@@ -15966,7 +15966,7 @@ async function renderPackageDetail(packageId) {
   const gallery = photos.length
     ? `<div class="package-detail-gallery">
         <div class="package-detail-gallery-track product-gallery-main" id="packageDetailGalleryTrack" aria-label="Package photos">
-          ${photos.map((u,i) => `<div class="package-detail-gallery-slide" data-gallery-index="${i}" onclick="openPackageGallerySlide(event,${i})"><img class="package-detail-main" src="${esc(u)}" alt="${esc(pkg.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
+          ${photos.map((u,i) => `<div class="package-detail-gallery-slide" data-gallery-index="${i}" onclick="openPackageGallerySlide(event,${i})"><img class="package-detail-main" src="${esc(u)}" alt="${esc(pkg.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
           ${photos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="packageGalleryCount">1</span>/${photos.length}</span>` : ""}
         </div>
       </div>`
@@ -16144,7 +16144,7 @@ async function __levroOriginalRenderProductDetail(productId) {
   const photosHtml = productPhotos.length
     ? `<div class="product-gallery product-gallery-carousel">
         <div class="product-gallery-main product-gallery-track" id="productGalleryTrack" aria-label="Product photos">
-          ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
+          ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
           ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
         ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
@@ -24765,7 +24765,15 @@ let aiHistorySelectedIds=new Set();
 function exitAiHistorySelectMode(){aiHistorySelectMode=false;aiHistorySelectedIds.clear();renderAiChatHistoryList(window.__aiHistoryRows||[]);}
 function toggleAiHistorySelection(id){id=String(id);if(aiHistorySelectedIds.has(id))aiHistorySelectedIds.delete(id);else aiHistorySelectedIds.add(id);if(!aiHistorySelectedIds.size)aiHistorySelectMode=false;renderAiChatHistoryList(window.__aiHistoryRows||[]);}
 function toggleAiHistorySelectAll(){const rows=window.__aiHistoryRows||[];aiHistorySelectedIds=(rows.length&&aiHistorySelectedIds.size===rows.length)?new Set():new Set(rows.map(x=>String(x.id)));aiHistorySelectMode=true;renderAiChatHistoryList(rows);}
-async function deleteSelectedAiConversations(){const ids=[...aiHistorySelectedIds];if(!ids.length)return;if(!(await showConfirmDialog(`Delete ${ids.length} selected chat${ids.length===1?'':'s'}? This can't be undone.`,{title:'Delete chats',okLabel:'Delete',danger:true})))return;const {error}=await sb.from('ai_conversations').delete().in('id',ids);if(error){showToast(error.message||"Couldn't delete chats.",'error');return;}if(ids.includes(String(currentAiConversationId))){currentAiConversationId=null;aiConversationCreatePromise=null;localStorage.removeItem('medris-ai-last-conversation');aiChatMessages=[];aiChatLastDateKey=null;byId('aiChatMessages')?.replaceChildren();}aiHistorySelectedIds.clear();aiHistorySelectMode=true;await loadAiChatHistoryList();showToast(`${ids.length} chat${ids.length===1?'':'s'} deleted.`,'success');}
+async function deleteSelectedAiConversations(){const ids=[...aiHistorySelectedIds];if(!ids.length)return;if(!(await showConfirmDialog(`Delete ${ids.length} selected chat${ids.length===1?'':'s'}? This can't be undone.`,{title:'Delete chats',okLabel:'Delete',danger:true})))return;const {error}=await sb.from('ai_conversations').delete().in('id',ids);if(error){showToast(error.message||"Couldn't delete chats.",'error');return;}if(ids.includes(String(currentAiConversationId))){currentAiConversationId=null;aiConversationCreatePromise=null;localStorage.removeItem('medris-ai-last-conversation');aiChatMessages=[];aiChatLastDateKey=null;byId('aiChatMessages')?.replaceChildren();}
+  // Drop the deleted rows from the already-loaded local list and re-render
+  // in place, instead of re-fetching from the network -- a full reload here
+  // flashed "Loading..." and made the whole panel appear to collapse after
+  // every delete, when it should just stay put on the history page until
+  // the user explicitly closes it.
+  const deletedIds=new Set(ids.map(String));
+  window.__aiHistoryRows=(window.__aiHistoryRows||[]).filter(c=>!deletedIds.has(String(c.id)));
+  aiHistorySelectedIds.clear();aiHistorySelectMode=true;renderAiChatHistoryList(window.__aiHistoryRows);showToast(`${ids.length} chat${ids.length===1?'':'s'} deleted.`,'success');}
 function renderAiChatHistoryList(convos) {
   const listEl=byId("aiChatHistoryList");window.__aiHistoryRows=Array.isArray(convos)?convos:[];const rows=window.__aiHistoryRows;if(!listEl)return;
   const toolbar=`<div class="ai-history-select-toolbar">${aiHistorySelectMode?`<button type="button" class="icon-btn" onclick="exitAiHistorySelectMode()" aria-label="Cancel selection"><i class="fa-solid fa-xmark"></i></button><strong>${aiHistorySelectedIds.size} selected</strong><button type="button" class="icon-btn" onclick="toggleAiHistorySelectAll()" aria-label="Select all"><i class="fa-solid ${aiHistorySelectedIds.size===rows.length&&rows.length?'fa-square-minus':'fa-square-check'}"></i></button><button type="button" class="icon-btn ai-history-danger" ${aiHistorySelectedIds.size?'':'disabled'} onclick="deleteSelectedAiConversations()" aria-label="Delete selected"><i class="fa-solid fa-trash"></i></button>`:`<span></span><button type="button" class="ai-history-batch-btn" onclick="aiHistorySelectMode=true;renderAiChatHistoryList(window.__aiHistoryRows||[])" title="Select chats"><i class="fa-solid fa-check-double"></i> Select</button>`}</div>`;
@@ -24795,7 +24803,11 @@ async function openAiConversation(id) {
   msgs.forEach((m) => appendAiChatMessage(m.role, m.content, false, true, m.id, m.reaction, m.created_at));
   exitAiChatHistoryMode();
 }
-async function deleteAiConversation(id,evt){evt?.stopPropagation?.();if(!(await showConfirmDialog("Delete this chat? This can't be undone.",{title:"Delete chat",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("ai_conversations").delete().eq("id",id);if(error){showToast(error.message||"Couldn't delete this chat.","error");return;}const panel=byId("aiChatPanel"),wasHistory=!!panel&&panel.classList.contains("history-mode");if(currentAiConversationId===id){currentAiConversationId=null;aiConversationCreatePromise=null;localStorage.removeItem("medris-ai-last-conversation");aiChatMessages=[];aiChatLastDateKey=null;byId("aiChatMessages")?.replaceChildren();if(!wasHistory)showAiChatGreeting();}if(wasHistory){panel?.classList.add("history-mode");byId("aiChatHistoryToggleBtn")?.classList.add("active");await loadAiChatHistoryList();}showToast("Chat deleted.","success");}
+async function deleteAiConversation(id,evt){evt?.stopPropagation?.();if(!(await showConfirmDialog("Delete this chat? This can't be undone.",{title:"Delete chat",okLabel:"Delete",danger:true})))return;const {error}=await sb.from("ai_conversations").delete().eq("id",id);if(error){showToast(error.message||"Couldn't delete this chat.","error");return;}const panel=byId("aiChatPanel"),wasHistory=!!panel&&panel.classList.contains("history-mode");if(currentAiConversationId===id){currentAiConversationId=null;aiConversationCreatePromise=null;localStorage.removeItem("medris-ai-last-conversation");aiChatMessages=[];aiChatLastDateKey=null;byId("aiChatMessages")?.replaceChildren();if(!wasHistory)showAiChatGreeting();}
+  // Same reasoning as the batch delete above: remove locally and re-render
+  // in place rather than re-fetching, so the history list doesn't flash
+  // "Loading..." and appear to collapse after every single delete.
+  if(wasHistory){const deletedId=String(id);window.__aiHistoryRows=(window.__aiHistoryRows||[]).filter(c=>String(c.id)!==deletedId);panel?.classList.add("history-mode");byId("aiChatHistoryToggleBtn")?.classList.add("active");renderAiChatHistoryList(window.__aiHistoryRows);}showToast("Chat deleted.","success");}
 async function renderSharedAiChat(token) {
   const { data: rows, error } = await sb.rpc("get_shared_ai_conversation", { p_token: token });
   if (error || !rows || rows.length === 0) {
@@ -27010,12 +27022,24 @@ function setupDraggableFab(fab, storageKey, onTap) {
   fab.addEventListener("pointerup", endDrag, { passive: true });
   fab.addEventListener("pointercancel", endDrag, { passive: true });
 
+  // Debounced, and only touches the FAB if it's now genuinely out of
+  // bounds. The on-screen keyboard opening/closing (e.g. right around
+  // closing the chat panel, whose input just had focus) fires a burst of
+  // resize events at transient, mid-animation viewport sizes; reacting to
+  // every one of those with the viewport's momentarily-wrong height was
+  // what made the FAB visibly jump toward a corner on its own.
+  let resizeSettleTimer = null;
   window.addEventListener("resize", () => {
-    if (!fab.isConnected || fab.classList.contains("hidden")) return;
-    if (fab.style.left || fab.style.top) {
+    clearTimeout(resizeSettleTimer);
+    resizeSettleTimer = setTimeout(() => {
+      if (!fab.isConnected || fab.classList.contains("hidden")) return;
+      if (!fab.style.left && !fab.style.top) return;
       const rect = fab.getBoundingClientRect();
-      applyPosition(rect.left, rect.top, false);
-    }
+      const pos = clamp(rect.left, rect.top);
+      if (Math.abs(pos.x - rect.left) > 1 || Math.abs(pos.y - rect.top) > 1) {
+        applyPosition(pos.x, pos.y, false);
+      }
+    }, 200);
   }, { passive: true });
 
   requestAnimationFrame(restoreSavedPosition);
@@ -38036,6 +38060,12 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .top-rated-vendors-scroll > .vendor-card, .top-rated-vendors-scroll > .homepage-vendor-card,
 .trending-scroll > .vendor-card, .trending-scroll > .homepage-vendor-card,
 .trending-scroll .product-card-wrap{
+  touch-action: pan-x pan-y !important;
+}
+/* Same fix, same reasoning, for the product-detail variety picker: its
+   options are native <button>s, which match the sitewide button touch-action
+   rule just as much as role="button" cards do. */
+.product-gallery-varieties-list > .product-gallery-variety{
   touch-action: pan-x pan-y !important;
 }
 
