@@ -7877,8 +7877,21 @@ async function enablePushNotifications() {
 const HOME_TOUR_STEPS = [
   { icon: "fa-hand-sparkles", title: "Hi, I'm Levi", body: "I'll walk you through the app myself, live, on the actual site. Just follow me around.", selector: null, view: "home" },
   { icon: "fa-house", title: "This is Home", body: "Tap the Levromart logo any time, from anywhere in the app, and I'll bring you straight back here.", selector: "header h1", view: "home" },
+  { icon: "fa-magnifying-glass", title: "Search anything", body: "Products, services or a vendor by name — start typing here and results show up instantly.", selector: ".levro-home-search-wrap", view: "home" },
   { icon: "fa-bolt", title: "Quick actions", body: "These six shortcuts take you straight to shopping, services, rentals, trusted vendors, item requests, and direct chat — without digging through the marketplace.", selector: ".levro-home-quick-actions", view: "home" },
+  {
+    icon: "fa-map-location-dot", title: "Find vendors near you", body: "Every verified vendor, plotted on a real map, closest first. Tap any pin — or any card up here — to open that vendor's storefront.",
+    selector: "#vendorsMapWrap, .vendors-map-vendor-rail", view: "vendors",
+    onEnter: () => { try { switchVendorsView("map"); } catch (_) {} },
+  },
   { icon: "fa-compass", title: "Get around from here", body: "The bottom bar is always one tap away, wherever you are on the site.", selector: "#bottomNav", view: "home" },
+  { icon: "fa-comment-dots", title: "Message a vendor directly", body: "Every conversation with every vendor lives here — ask a question before you buy, or sort out an order after.", selector: "#messagesWrap", view: "home" },
+  {
+    icon: "fa-user", title: "Your profile, one tap away", body: "Your account, your orders, your saved items and settings — all live in this panel, wherever you are in the app.",
+    selector: "#profilePanel", view: "home",
+    onEnter: () => { try { toggleProfilePanel(); } catch (_) {} },
+    onExit: () => { try { closeAllPanels(); } catch (_) {} },
+  },
   { icon: "fa-comments", title: "That's me, right there", body: "Tap this any time to talk to me. Ask what to buy, and I'll point you straight to a vendor, or explain how anything on here works.", selector: "#aiChatFab", view: "home" },
   { icon: "fa-bell", title: "Stay in the loop", body: "Turn on notifications so you're pinged the moment there's an order, offer, or update, right on your device.", selector: "#notifWrap", view: "home" },
 ];
@@ -7977,6 +7990,10 @@ async function runTourStep(token = liveTourRunToken) {
   const callout = byId("tourCallout");
   const hole = byId("tourSpotlightHole");
   if (!icon || !title || !body || !dots || !back || !next || !callout || !hole) return;
+
+  try { await step.onEnter?.(); } catch (_) {}
+  await new Promise(requestAnimationFrame);
+  if (token !== liveTourRunToken) return;
 
   let el = null;
   if (step.selector) {
@@ -8086,6 +8103,7 @@ window.addEventListener("resize", () => {
 
 async function tourNext() {
   if (liveTourBusy) return;
+  try { await LIVE_TOUR_STEPS[liveTourStep]?.onExit?.(); } catch (_) {}
   if (liveTourStep >= LIVE_TOUR_STEPS.length - 1) { finishTour(); return; }
   liveTourBusy = true;
   const token = ++liveTourRunToken;
@@ -8096,6 +8114,7 @@ async function tourNext() {
 
 async function tourBack() {
   if (liveTourBusy || liveTourStep <= 0) return;
+  try { await LIVE_TOUR_STEPS[liveTourStep]?.onExit?.(); } catch (_) {}
   liveTourBusy = true;
   const token = ++liveTourRunToken;
   liveTourStep -= 1;
@@ -8104,6 +8123,7 @@ async function tourBack() {
 }
 
 function finishTour() {
+  try { LIVE_TOUR_STEPS[liveTourStep]?.onExit?.(); } catch (_) {}
   cancelTourTransition();
   clearTourTargetLock();
   liveTourRunToken++;
@@ -30583,13 +30603,18 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
         if(!tracking || (pointerId!==null && e.pointerId!==pointerId)) return;
         dx=e.clientX-sx;dy=e.clientY-sy;
         if(!horizontal){
-          // Loosened gate: a real thumb swipe drifts diagonally, and the old
-          // near-perfectly-horizontal requirement rejected most natural
-          // swipes outright, so the bubble never moved and the gesture felt
-          // dead. This only needs to rule out a clearly-vertical scroll.
-          if(Math.abs(dy)>Math.abs(dx)*1.6 && Math.abs(dy)>10){reset();return;}
-          if(Math.abs(dx)<2)return;
-          if(Math.abs(dx)<=Math.abs(dy)*.35)return;
+          const adx=Math.abs(dx),ady=Math.abs(dy);
+          // Wait for a real touch-slop distance before deciding anything --
+          // deciding off the first 1-2px sample (which is often pure noise,
+          // dy=0 or dx=0 by chance) was locking the gesture into "horizontal"
+          // on pure jitter, which then called preventDefault and broke
+          // ordinary vertical scrolling over messages entirely. Once there's
+          // enough movement to mean something, a plain dx > dy ratio decides
+          // direction -- reliable, and it matches how the drag actually feels
+          // (an intentional reply swipe is close to horizontal; scrolling
+          // isn't).
+          if(adx<8 && ady<8)return;
+          if(ady>=adx){reset();return;}
           horizontal=true;wrap.classList.add('chat-swipe-active');
         }
         const allowed=mine?dx<0:dx>0;
@@ -32320,15 +32345,13 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
     });
   }
 
-  window.handleChatFileSelected=function(evt,conversationId){
-    const input=evt?.target; const files=[...(input?.files||[])];
-    if(input) input.value='';
-    if(!files.length)return;
-    const file=files.find(f=>String(f.type||'').startsWith('image/') && f.size<=MAX_ATTACHMENT_BYTES);
-    if(!file){showToast('Choose one image up to 10MB.','error');return;}
-    if(files.length>1)showToast('Only one photo can be selected at a time.','info');
-    openSimpleAttachment(file,conversationId);
-  };
+  // A later "simplify" pass replaced the real multi-photo editor
+  // (handleChatFileSelected, defined earlier: crop/draw/highlight/rotate,
+  // one photo after another) with this single-photo-only shortcut, which
+  // silently became the active one and quietly dropped that capability.
+  // Restore the real one as authoritative instead of the stripped-down
+  // single-photo path.
+  window.handleChatFileSelected=handleChatFileSelected;
 
   /* If the page is genuinely offline, the banner remains valid. If it is
      online, remove any stale offline notice that may have been rendered by a
