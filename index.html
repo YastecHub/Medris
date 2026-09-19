@@ -815,14 +815,11 @@
 
   /* ---- homepage: hero, categories, horizontal scroll sections ---- */
   .hero { position: relative; overflow: visible; padding: 0.9rem 0 0.6rem; margin-bottom: 0.6rem; }
-  .hero-aurora { position: absolute; left: -15%; right: -15%; top: -60%; height: 220%; pointer-events: none; filter: blur(60px); opacity: 0.55;
-    background:
-      radial-gradient(ellipse 40% 34% at 15% 30%, var(--primary) 0%, transparent 72%),
-      radial-gradient(ellipse 40% 34% at 85% 60%, var(--primary-light) 0%, transparent 72%),
-      radial-gradient(ellipse 34% 30% at 50% 85%, var(--primary-light) 0%, transparent 74%);
-    background-size: 150% 150%; animation: auroraFlow 12s cubic-bezier(.45,.05,.55,.95) infinite alternate;
-  }
-  [data-theme="dark"] .hero-aurora, [data-theme="black"] .hero-aurora { opacity: 0.38; }
+  /* Disabled: a blurred, animated green glow behind the hero read as an
+     unwanted ambient tint on the page. The backdrop should stay a flat
+     --bg regardless of theme. */
+  .hero-aurora { display: none; }
+  [data-theme="dark"] .hero-aurora, [data-theme="black"] .hero-aurora { display: none; }
   @media (prefers-reduced-motion: reduce) { .hero-aurora { animation: none; } }
   /* A soft strip of real product photos across the top of the hero, faded
      into the page background - the same trick app-store banners use to
@@ -1202,9 +1199,9 @@
 
 html { scroll-behavior: smooth; }
 body {
-  background-image:
-    radial-gradient(circle at 8% -8%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 30%),
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--primary-light) 6%, transparent), transparent 28%);
+  /* Was a faint green (var(--primary)) radial-gradient wash in the top
+     corners of every page -- reads as an unwanted ambient tint rather than
+     a background. The backdrop should just be the theme's flat --bg. */
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -1278,7 +1275,7 @@ input:focus, select:focus, textarea:focus {
 .cat-chip:hover { transform: none; }
 
 /* Hero: keep the glass depth, remove the over-animated / AI-template feel. */
-.hero-aurora { animation: none !important; opacity: .24; filter: blur(80px); }
+.hero-aurora { display: none !important; }
 .hero-photo-collage { opacity: .48; border-radius: var(--ui-radius); }
 .hero { padding-top: .6rem; }
 
@@ -8330,6 +8327,7 @@ let notifCount = 0;
 let requestOfferBadgeCount = 0;
 let vendorPendingOrderCount = 0;
 let buyerPendingOrderCount = 0;
+let buyerFollowingCount = 0;
 let vendorProductCount = 0;
 // Only orders still awaiting the vendor's own action (accept, then hand
 // over) keep the nav badge lit -- once it's handed over/returned/disputed,
@@ -9843,14 +9841,15 @@ async function refreshNotifications(renderPanel = true) {
   const vendorQ = vendor ? sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES) : Promise.resolve({ count: 0 });
   const vendorProductCountQ = vendor ? sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id) : Promise.resolve({ count: 0 });
   const buyerQ = sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES);
+  const followingQ = profile?.role !== "admin" ? sb.from("vendor_follows").select("id", { count: "exact", head: true }).eq("follower_id", session.user.id) : Promise.resolve({ count: 0 });
   const suggestionQ = profile?.role === "admin" ? sb.rpc("get_platform_suggestions") : vendor ? sb.rpc("get_vendor_suggestions") : Promise.resolve({ data: [] });
   const conversationsQ = sb.rpc("list_my_conversations");
   const cartQ = profile?.role !== "admin" ? sb.from("cart_items").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve({ count: 0 });
   let requestSeenAt = ""; try { requestSeenAt = sessionStorage.getItem("levromart-request-offers-seen-at") || ""; } catch (_) {}
   const requestOfferQ = profile?.role !== "admin" ? sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("type", "new_offer").eq("read", false).eq("archived", false).is("deleted_at", null).gt("created_at", requestSeenAt || "1970-01-01T00:00:00.000Z") : Promise.resolve({ count: 0 });
 
-  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes] = await Promise.all([
-    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ, vendorProductCountQ
+  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes, followingRes] = await Promise.all([
+    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ, vendorProductCountQ, followingQ
   ]);
   vendorProductCount = vendor ? (vendorProductCountRes?.count || 0) : 0;
 
@@ -9862,6 +9861,7 @@ async function refreshNotifications(renderPanel = true) {
   }
   vendorPendingOrderCount = vendor ? (vendorRes?.count || 0) : 0;
   buyerPendingOrderCount = buyerRes?.count || 0;
+  buyerFollowingCount = followingRes?.count || 0;
   unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => String(x.status || "").toLowerCase() === "new").length;
   unreadMessageCount = (conversationsRes?.data || []).reduce((sum, c) => sum + (c.unread_count > 0 ? 1 : 0), 0);
   const messagesDot = byId("messagesDot");
@@ -10782,8 +10782,12 @@ function updateAuthUI() {
       miniStats = [
         { label: "Pending orders", value: Number(buyerPendingOrderCount || 0) },
         { label: "Saved items", value: (favoriteIds?.size || 0) + (packageFavoriteIds?.size || 0) },
+        { label: "Vendors followed", value: Number(buyerFollowingCount || 0) },
       ];
       plainLinks = [
+        { label: `My orders${Number(buyerPendingOrderCount || 0) > 0 ? ` (${buyerPendingOrderCount})` : ""}`, action: "navigate('buyerOrders')" },
+        { label: "Wishlist", action: "navigate('wishlist')" },
+        { label: "Vendors you follow", action: "navigate('customerFollowing')" },
         { label: "Request an item", action: "navigate('requestEquipment')" },
         { label: "Support", action: "navigate('supportRequest')" },
         { label: "Take the tour", action: "showTour()" },
