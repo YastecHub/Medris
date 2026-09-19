@@ -5079,6 +5079,14 @@ body.product-detail-view #aiChatFab{right:.7rem !important;bottom:.65rem !import
 /* Vendor cards: verified is a bottom-left status, not part of the location row. */
 .vendor-card .vendor-card-footer{display:flex;align-items:center;justify-content:flex-start;gap:.35rem;margin-top:.55rem;min-height:1.55rem;flex-wrap:wrap;}
 .vendor-card .vendor-card-footer .badge{margin-left:0 !important;}
+.vendor-card-follow-btn{
+  margin-top:.55rem; display:inline-flex; align-items:center; justify-content:center;
+  padding:.32rem .95rem; border-radius:999px; border:0; cursor:pointer;
+  font-size:.72rem; font-weight:700;
+  background:color-mix(in srgb, var(--primary) 14%, var(--card)); color:var(--primary);
+}
+.vendor-card-follow-btn:hover{ background:color-mix(in srgb, var(--primary) 22%, var(--card)); }
+.vendor-card-follow-btn.following{ background:var(--primary); color:#fff; }
 /* Product listings must actually occupy their grid tracks. */
 .storefront-products-shell #storefrontGrid,
 .storefront-products-shell #storefrontGrid .product-card-wrap,
@@ -5457,6 +5465,23 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
   display:-webkit-box !important; -webkit-line-clamp:2 !important; -webkit-box-orient:vertical !important; overflow:hidden !important;
 }
 #app .hscroll.trending-scroll .product-card-action-row{ margin-top:auto !important; padding-top:.3rem !important; display:flex !important; align-items:center !important; justify-content:flex-end !important; }
+/* Compact trending card: photo, name, price and a quick-add button only --
+   no vendor row, availability, delivery summary or comment icon -- with the
+   wishlist heart moved to the top-right corner of the photo. */
+#app .product-card-compact .fav-btn{ left:auto !important; right:.5rem !important; top:.5rem !important; }
+#app .product-card-compact-footer{
+  display:flex !important; align-items:center !important; justify-content:space-between !important;
+  gap:.4rem !important; margin-top:auto !important; padding-top:.35rem !important;
+}
+#app .product-card-compact-price{
+  font-weight:800 !important; font-size:.82rem !important; color:var(--primary) !important;
+  overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+}
+#app .product-card-compact .card-cart-btn{
+  flex:0 0 auto !important; width:1.9rem !important; height:1.9rem !important; min-width:0 !important;
+  border-radius:999px !important; display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  background:var(--primary) !important; color:#fff !important; border:0 !important; font-size:.78rem !important; padding:0 !important;
+}
 /* Neutralise the old fixed-height (300px) + clipped service rail so a
    service card can never lose fields the way products no longer do. */
 #app .service-trending-scroll > .product-card-wrap,
@@ -12427,10 +12452,15 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span class="levro-quick-label">Request an Item</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span class="levro-quick-label">Chat Directly</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
   </section>`;
+  const offlineTopLevelCategories = categories.filter((c) => !c.parent_category_id);
+  if (offlineTopLevelCategories.length) {
+    html += `<h3 class="section-title"><span><i class="fa-solid fa-grip"></i> Shop by Category</span><a class="section-title-link" onclick="openHomeCategoryBrowser()">See all <i class="fa-solid fa-arrow-right"></i></a></h3>`;
+    html += homeCategoryRailHtml(offlineTopLevelCategories);
+  }
   const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
   const trendingServices = deterministicHourlyShuffle((trending || []).filter(p => p.is_service),"trending-services");
-  if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
-  if (topVendors.length) { const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors"); html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`; }
+  if (trendingProducts.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="scrollToBrowse('')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+  if (topVendors.length) { const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors"); html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`; }
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
@@ -13164,16 +13194,22 @@ async function renderHome() {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span class="levro-quick-label">Chat Directly</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
   </section>`;
 
+  const topLevelHomeCategories = (categories || []).filter((c) => !c.parent_category_id);
+  if (topLevelHomeCategories.length) {
+    html += `<h3 class="section-title"><span><i class="fa-solid fa-grip"></i> Shop by Category</span><a class="section-title-link" onclick="openHomeCategoryBrowser()">See all <i class="fa-solid fa-arrow-right"></i></a></h3>`;
+    html += homeCategoryRailHtml(topLevelHomeCategories);
+  }
+
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
   if (trending && trending.length) {
     const trendingProducts = deterministicHourlyShuffle(trending.filter(p => !p.is_service),"trending-products");
-    if (trendingProducts.length) html += `<h3 class="section-title"><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
+    if (trendingProducts.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="scrollToBrowse('')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
 
   }
 
   if (topVendors && topVendors.length) {
     const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors");
-    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Top-rated vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`;
+    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`;
   }
   const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
@@ -13366,6 +13402,17 @@ function scrollToBrowse(listingType) {
   const sel = byId("filterListing");
   if (sel) { sel.value = listingType; filterHomeProducts(); }
   byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+const LEVRO_CATEGORY_RAIL_PALETTE = ["#16a34a", "#2563eb", "#e11d48", "#f59e0b", "#7c3aed", "#0d9488", "#db2777", "#0891b2"];
+function homeCategoryRailHtml(topLevelCategories) {
+  const chips = topLevelCategories.slice(0, 7).map((c, i) => `<button type="button" class="levro-home-cat-chip" style="--cat-color:${LEVRO_CATEGORY_RAIL_PALETTE[i % LEVRO_CATEGORY_RAIL_PALETTE.length]}" onclick="filterByCategory('${c.id}')"><span class="levro-home-cat-icon">${categoryIcon(c.name)}</span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`).join("");
+  const more = `<button type="button" class="levro-home-cat-chip levro-home-cat-more" onclick="openHomeCategoryBrowser()"><span class="levro-home-cat-icon"><i class="fa-solid fa-ellipsis"></i></span><span class="levro-home-cat-label">More</span></button>`;
+  return `<div class="levro-home-cat-rail hscroll">${chips}${more}</div>`;
+}
+function openHomeCategoryBrowser() {
+  filterByCategory(null);
+  toggleBrowseFilters(true);
+  setTimeout(() => byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
 }
 function filterByCategory(catId) {
   currentHomeCategoryId = catId || null;
@@ -13805,6 +13852,27 @@ function productCardHtml(p) {
       : ownListing
         ? `<span class="badge own-listing-badge" title="You can't buy your own listing"><i class="fa-solid fa-store"></i> Your listing</span>`
         : "";
+  // The homepage "Trending" rail wants a clean, uncluttered card -- just the
+  // photo, name, price and a quick-add button -- rather than the full
+  // vendor/availability/delivery/comment stack used everywhere else
+  // (search results, category browse, storefront, wishlist), where that
+  // extra detail still matters for the shopping decision.
+  if (String(p._cardContext || "").toLowerCase() === "trending") {
+    const priceText = p.sale_price != null
+      ? (p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price) ? naira(p.discount_price) : naira(p.sale_price))
+      : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
+    return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
+      <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
+      <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
+        <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
+        <h4>${esc(p.name)}</h4>
+        <div class="product-card-compact-footer">
+          ${commissionService ? "<span></span>" : `<span class="product-card-compact-price">${priceText}</span>`}
+          ${canQuickAdd ? `<button type="button" class="card-cart-btn" onclick="quickAddToCart(event,'${p.id}',this,'${p.vendor?.id || ""}')" title="Add to cart" aria-label="Add ${esc(p.name)} to cart"><i class="fa-solid fa-cart-plus"></i></button>` : ""}
+        </div>
+      </div>
+    </div>`;
+  }
   return `<div class="product-card-wrap" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
@@ -31809,9 +31877,9 @@ body > footer.site-footer{display:none !important;}
 
 <style id="levromart-20260911-final-visual-polish-v2">
 body > footer.site-footer{display:none !important;}
-.home-promotional-carousel .home-promotional-dots{left:50% !important;bottom:.55rem !important;transform:translateX(-50%) !important;display:flex !important;align-items:center !important;justify-content:center !important;gap:.38rem !important;padding:0 !important;border:0 !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
-.home-promotional-carousel .home-promotional-dot{width:.48rem !important;height:.48rem !important;flex:0 0 .48rem !important;border-radius:50% !important;border:1px solid rgba(255,255,255,.78) !important;background:rgba(255,255,255,.45) !important;padding:0 !important;}
-.home-promotional-carousel .home-promotional-dot.active{width:.58rem !important;height:.58rem !important;flex-basis:.58rem !important;border-color:#fff !important;background:#fff !important;transform:none !important;}
+.home-promotional-carousel .home-promotional-dots{left:.9rem !important;right:auto !important;bottom:.65rem !important;transform:none !important;display:flex !important;align-items:center !important;justify-content:flex-start !important;gap:.3rem !important;padding:0 !important;border:0 !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
+.home-promotional-carousel .home-promotional-dot{width:1.05rem !important;height:.3rem !important;flex:0 0 1.05rem !important;border-radius:999px !important;border:0 !important;background:rgba(255,255,255,.55) !important;padding:0 !important;}
+.home-promotional-carousel .home-promotional-dot.active{width:1.6rem !important;height:.3rem !important;flex-basis:1.6rem !important;border-color:transparent !important;background:#fff !important;transform:none !important;}
 .accent-page-dropdown-trigger,.accent-page-dropdown-body,#accentPaletteBody,#accentPalettePageBody,.settings-page-swatches,.accent-swatches{display:none !important;}
 #app .levro-home-quick-actions .levro-quick-icon{background:var(--primary) !important;color:#fff !important;border:0 !important;box-shadow:none !important;}
 </style>
@@ -32495,69 +32563,117 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   }
 }
 
-/* Home's six quick actions, per the LevroMart UI/UX master spec (Part 7):
-   a 3-column grid (3 up, 3 down) of compact HORIZONTAL cards -- icon,
-   label, optional arrow -- with a soft green/white treatment and a
-   subtle border, sized like small rectangles (not the old vertical
-   icon-over-label circles, and not the tall 2-column cards). */
+/* Home's six quick actions, matching the reference marketplace layout:
+   a 2-column grid (2 up, 3 down) of horizontal cards -- a solid green
+   circular icon chip, a bold two-line label, and a chevron at the far
+   edge -- on a pale mint card background. */
 #app .levro-home-quick-actions{
-  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-  gap:.45rem !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:.7rem !important;
 }
 #app .levro-home-quick-actions .levro-quick-action{
   --quick-solid:none !important;
   display:flex !important;
   flex-direction:row !important;
   align-items:center !important;
-  gap:.35rem !important;
-  min-height:50px !important;
-  padding:.5rem .45rem !important;
-  border-radius:12px !important;
-  background:color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
-  border:1px solid color-mix(in srgb, var(--primary) 16%, var(--border)) !important;
+  gap:.7rem !important;
+  min-height:72px !important;
+  padding:.85rem .9rem !important;
+  border-radius:16px !important;
+  background:color-mix(in srgb, var(--primary) 8%, var(--card)) !important;
+  border:1px solid color-mix(in srgb, var(--primary) 14%, var(--border)) !important;
   box-shadow:none !important;
   color:var(--text) !important;
   text-align:left !important;
-  font-size:.62rem !important;
+  font-size:.86rem !important;
   font-weight:700 !important;
 }
 #app .levro-home-quick-actions .levro-quick-action:hover,
 #app .levro-home-quick-actions .levro-quick-action:focus-visible{
-  background:color-mix(in srgb, var(--primary) 11%, var(--card)) !important;
-  border-color:color-mix(in srgb, var(--primary) 30%, var(--border)) !important;
+  background:color-mix(in srgb, var(--primary) 13%, var(--card)) !important;
+  border-color:color-mix(in srgb, var(--primary) 32%, var(--border)) !important;
 }
 #app .levro-home-quick-actions .levro-quick-action:active{ transform:scale(.98) !important; }
 #app .levro-home-quick-actions .levro-quick-icon{
   flex:0 0 auto !important;
-  width:1.7rem !important;
-  height:1.7rem !important;
-  border-radius:8px !important;
+  width:2.7rem !important;
+  height:2.7rem !important;
+  border-radius:999px !important;
   display:inline-flex !important;
   align-items:center !important;
   justify-content:center !important;
-  background:color-mix(in srgb, var(--primary) 14%, var(--card)) !important;
-  color:var(--primary) !important;
+  background:var(--primary) !important;
+  color:#fff !important;
   border:0 !important;
   box-shadow:none !important;
-  font-size:.74rem !important;
+  font-size:1.05rem !important;
 }
 #app .levro-home-quick-actions .levro-quick-label{
   flex:1 1 auto !important;
   min-width:0 !important;
   white-space:normal !important;
-  line-height:1.15 !important;
+  line-height:1.22 !important;
 }
 #app .levro-home-quick-actions .levro-quick-arrow{
   flex:0 0 auto !important;
-  font-size:.56rem !important;
+  font-size:.72rem !important;
   color:color-mix(in srgb, var(--primary) 65%, var(--text)) !important;
-  opacity:.75 !important;
+  opacity:.6 !important;
 }
 @media(max-width:420px){
-  #app .levro-home-quick-actions{ gap:.35rem !important; }
-  #app .levro-home-quick-actions .levro-quick-action{ font-size:.56rem !important; padding:.4rem .35rem !important; gap:.28rem !important; min-height:46px !important; }
-  #app .levro-home-quick-actions .levro-quick-icon{ width:1.5rem !important; height:1.5rem !important; font-size:.66rem !important; }
-  #app .levro-home-quick-actions .levro-quick-arrow{ display:none !important; }
+  #app .levro-home-quick-actions{ gap:.55rem !important; }
+  #app .levro-home-quick-actions .levro-quick-action{ font-size:.76rem !important; padding:.7rem .75rem !important; gap:.55rem !important; min-height:64px !important; }
+  #app .levro-home-quick-actions .levro-quick-icon{ width:2.3rem !important; height:2.3rem !important; font-size:.92rem !important; }
+}
+
+/* Shop by Category rail: a horizontally scrolling row of circular,
+   differently-colored category icons under the quick actions, matching
+   the reference marketplace layout. */
+#app .levro-home-cat-rail{
+  display:flex !important;
+  gap:1.1rem !important;
+  overflow-x:auto !important;
+  padding:.15rem .1rem .7rem !important;
+  scrollbar-width:none !important;
+  -webkit-overflow-scrolling:touch !important;
+}
+#app .levro-home-cat-rail::-webkit-scrollbar{ display:none !important; }
+#app .levro-home-cat-chip{
+  flex:0 0 auto !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  gap:.4rem !important;
+  width:4.6rem !important;
+  background:none !important;
+  border:0 !important;
+  padding:0 !important;
+  cursor:pointer !important;
+  color:var(--text) !important;
+}
+#app .levro-home-cat-icon{
+  width:3.1rem !important;
+  height:3.1rem !important;
+  border-radius:999px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  background:color-mix(in srgb, var(--cat-color, var(--primary)) 16%, var(--card)) !important;
+  color:var(--cat-color, var(--primary)) !important;
+  font-size:1.2rem !important;
+}
+#app .levro-home-cat-label{
+  font-size:.72rem !important;
+  font-weight:600 !important;
+  text-align:center !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  max-width:100% !important;
+}
+#app .levro-home-cat-more .levro-home-cat-icon{
+  background:color-mix(in srgb, var(--text-muted) 14%, var(--card)) !important;
+  color:var(--text-muted) !important;
 }
 
 /* Header Messages icon: same neutral gray treatment, distinct from the
@@ -34470,14 +34586,45 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       const sectorName=v?.sector_name || (Array.isArray(sectors)?sectors.find(sec=>String(sec.id)===String(v?.sector_id))?.name:"") || "Sector not listed";
       const count=Number(v?.follower_count||0).toLocaleString();
       const avatarHtml=avatar?`<img src="${escText(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false">`:avatarFallbackHtml(name,'3.1rem','vendor-directory-logo',name);
+      const showFollow=profile?.role!=="admin" && !(typeof isOwnVendorId==="function" && isOwnVendorId(v?.id));
+      const followBtn=showFollow?`<button type="button" class="vendor-card-follow-btn" data-vendor-id="${escText(v?.id||"")}" onclick="event.stopPropagation();toggleVendorCardFollow('${escText(v?.id||"")}',event)">Follow</button>`:"";
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
         ${avatarHtml}<div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
           <strong class="vendor-directory-name">${escText(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
           <p class="muted vendor-directory-city" style="margin:.15rem 0;">${escText(v?.city||"Online")}</p>${vendorDistanceHtml(v)}
           <p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${escText(sectorName)}</p>
           <div class="vendor-card-footer"><span class="badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}">★ ${Number(v?.avg_rating||0).toFixed(1)} (${Number(v?.review_count||0)})</span><span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> <span class="vendor-follower-count">${count}</span> follower${Number(v?.follower_count||0)===1?'':'s'}</span></div>
+          ${followBtn}
         </div></div>`;
     };
+  }
+  async function toggleVendorCardFollow(vendorId,ev){
+    ev?.preventDefault?.();ev?.stopPropagation?.();
+    if(!session){showLogin?.();return;}
+    const btn=ev?.currentTarget||document.querySelector(`.vendor-card-follow-btn[data-vendor-id="${CSS.escape(String(vendorId))}"]`);
+    if(!btn||btn.disabled)return;
+    btn.disabled=true;
+    try{
+      const next=!btn.classList.contains("following");
+      const r=await sb.rpc("toggle_vendor_follow",{p_vendor_id:vendorId,p_following:next});
+      if(r.error)throw r.error;
+      document.querySelectorAll(`.vendor-card-follow-btn[data-vendor-id="${CSS.escape(String(vendorId))}"]`).forEach(b=>{b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";});
+      showToast?.(next?"Following vendor.":"Unfollowed vendor.","success");
+    }catch(e){ showToast?.(e.message||"Could not update your following list.","error"); }
+    finally{ btn.disabled=false; }
+  }
+  window.toggleVendorCardFollow=toggleVendorCardFollow;
+  async function hydrateVendorCardFollowState(){
+    if(!session||typeof sb==="undefined")return;
+    const ids=[...new Set([...document.querySelectorAll(".vendor-card-follow-btn[data-vendor-id]")].map(el=>el.dataset.vendorId).filter(Boolean))];
+    if(!ids.length)return;
+    try{
+      const results=await Promise.all(ids.map(id=>sb.rpc("get_vendor_follow_state",{p_vendor_id:id}).then(r=>[id,r.error?null:(r.data?.[0]||null)]).catch(()=>[id,null])));
+      results.forEach(([id,st])=>{
+        if(!st?.following)return;
+        document.querySelectorAll(`.vendor-card-follow-btn[data-vendor-id="${CSS.escape(id)}"]`).forEach(btn=>{btn.classList.add("following");btn.textContent="Following";});
+      });
+    }catch(err){ console.warn("[Levromart] Follow-state hydrate failed:",err); }
   }
 
   // Listing activation now uses the already-existing vendor-payments function,
@@ -34689,6 +34836,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       if (typeof currentView !== "undefined" && currentView === "vendors" && typeof renderVendorDirectoryCards === "function") renderVendorDirectoryCards();
     } catch(_) {}
     hydrateFollowerCounts();
+    hydrateVendorCardFollowState();
     syncListingBillingUI();syncPackageBillingUI();
     finalPaymentReturn();
   }
@@ -34704,7 +34852,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       return t && t.nodeType===1 && (t.id==="productGrid" || t.closest?.("#productGrid"));
     });
     if(onlyProductGrid)return;
-    clearTimeout(window.__levroFinalUxTimer);window.__levroFinalUxTimer=setTimeout(()=>{setupCompactSearches();installVendorCardRenderer();hydrateFollowerCounts();syncListingBillingUI();syncPackageBillingUI();},80);
+    clearTimeout(window.__levroFinalUxTimer);window.__levroFinalUxTimer=setTimeout(()=>{setupCompactSearches();installVendorCardRenderer();hydrateFollowerCounts();hydrateVendorCardFollowState();syncListingBillingUI();syncPackageBillingUI();},80);
   });
   observer.observe(document.body,{childList:true,subtree:true});
   setTimeout(run,250);
