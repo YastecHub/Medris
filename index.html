@@ -10775,10 +10775,10 @@ function updateAuthUI() {
     let plainLinks = [];
     if (vendor && profile.role !== "admin") {
       miniStats = [
-        { label: "Pending orders", value: Number(vendorPendingOrderCount || 0) },
-        { label: "Suggestions", value: Number(unreadSuggestionCount || 0) },
-        { label: "Number of listings", value: Number(vendorProductCount || 0) },
-        { label: "Profile views", value: Number(vendor?.profile_view_count || 0) },
+        { label: "Pending orders", value: Number(vendorPendingOrderCount || 0), action: "navigate('vendorOrders',{status:'all',perspective:'sales'})" },
+        { label: "Suggestions", value: Number(unreadSuggestionCount || 0), action: "navigate('vendorSuggestionsInbox')" },
+        { label: "Number of listings", value: Number(vendorProductCount || 0), action: "navigate('vendorProducts')" },
+        { label: "Profile views", value: Number(vendor?.profile_view_count || 0), action: "navigate('vendorDashboard')" },
       ];
       plainLinks = [
         { label: `Requests${requestOfferBadgeCount > 0 ? ` (${requestOfferBadgeCount > 9 ? "9+" : requestOfferBadgeCount})` : ""}`, action: "navigate('vendorRequests')" },
@@ -10788,10 +10788,10 @@ function updateAuthUI() {
       ];
     } else if (profile.role !== "admin") {
       miniStats = [
-        { label: "Total orders", value: Number(buyerTotalOrderCount || 0) },
-        { label: "Pending orders", value: Number(buyerPendingOrderCount || 0) },
-        { label: "Saved items", value: (favoriteIds?.size || 0) + (packageFavoriteIds?.size || 0) },
-        { label: "Vendors followed", value: Number(buyerFollowingCount || 0) },
+        { label: "Total orders", value: Number(buyerTotalOrderCount || 0), action: "navigate('buyerOrders')" },
+        { label: "Pending orders", value: Number(buyerPendingOrderCount || 0), action: "navigate('buyerOrders',{status:'pending'})" },
+        { label: "Saved items", value: (favoriteIds?.size || 0) + (packageFavoriteIds?.size || 0), action: "navigate('wishlist')" },
+        { label: "Vendors followed", value: Number(buyerFollowingCount || 0), action: "navigate('customerFollowing')" },
       ];
       plainLinks = [
         { label: `My orders${Number(buyerPendingOrderCount || 0) > 0 ? ` (${buyerPendingOrderCount})` : ""}`, action: "navigate('buyerOrders')" },
@@ -10836,7 +10836,9 @@ function updateAuthUI() {
           return `<a class="profile-nav-link"${profileKeyAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
         }).join("")}</div>` : `
         <div class="profile-panel-stats">
-          ${miniStats.map(s => `<div class="profile-panel-stat"><strong>${s.value}</strong><span>${esc(s.label)}</span></div>`).join("")}
+          ${miniStats.map(s => s.action
+            ? `<button type="button" class="profile-panel-stat profile-panel-stat-link" onclick="closeAllPanels();${s.action}"><strong>${s.value}</strong><span>${esc(s.label)}</span></button>`
+            : `<div class="profile-panel-stat"><strong>${s.value}</strong><span>${esc(s.label)}</span></div>`).join("")}
         </div>
         <hr class="vendor-profile-divider" />
         <div class="vendor-profile-plain-rows">
@@ -17728,12 +17730,20 @@ function hydrateStorefrontExtras(v, listingCount, stats, reviews, packages, foll
   if (reviewsSection) reviewsSection.innerHTML = storefrontReviewsInnerHtml(st, reviews);
 }
 async function renderStorefront(vendorId) {
-  const { data: v, error } = await sb.from("vendors").select("*, sector:sectors(name, icon)").eq("id", vendorId).eq("verification_status", "verified").maybeSingle();
+  // Fire the vendor lookup and the product catalogue at the same time.
+  // The products query only ever needed the vendorId that was already
+  // passed into this function -- nothing from the vendor row itself --
+  // so waiting for the vendor fetch to finish before even starting it
+  // turned what should be one network round trip into two, back to back,
+  // on every single storefront visit.
+  const vendorPromise = sb.from("vendors").select("*, sector:sectors(name, icon)").eq("id", vendorId).eq("verification_status", "verified").maybeSingle();
+  const productsPromise = sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, delivery_fee, delivery_fee_mode, delivery_fee_per_km, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", vendorId).eq("status", "active").order("created_at", { ascending: false });
+
+  const { data: v, error } = await vendorPromise;
   if (error || !v) return '<div class="empty-state">Storefront not found.</div>';
   if (!v.is_active) return '<div class="empty-state"><i class="fa-solid fa-store-slash" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>This shop is currently paused. Check back later.</div>';
   updateStorefrontSocialMeta(v);
 
-  const productsPromise = sb.from("products").select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, delivery_fee, delivery_fee_mode, delivery_fee_per_km, category:categories(name), vendor:vendors!inner(id,business_name,verification_status,logo_url,delivery_fee,delivery_fee_mode,delivery_fee_per_km,lat,lng)").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false });
   const extrasPromise = Promise.all([
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
     sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
@@ -32088,7 +32098,50 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 
   // Follow/unfollow is instant; no confirmation dialog.
   async function followState(vendorId){try{const r=await sb.rpc('get_vendor_follow_state',{p_vendor_id:vendorId});return r.error?null:r.data?.[0]||null}catch(_){return null}}
-  async function toggleFollow(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();if(!session){showLogin?.();return}const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const next=!st.following;const btn=wrap.querySelector('.follow-btn');if(btn)btn.disabled=true;try{const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});if(r.error)throw r.error;await refreshFollow(vendorId);if(typeof showToast==='function')showToast(next?'Following vendor.':'Unfollowed vendor.','success')}catch(e){showToast?.(e.message||'Could not update your following list.','error')}finally{if(btn)btn.disabled=false}}
+  // Fetching the current state, awaiting the toggle RPC, then fetching the
+  // new state again (three sequential round trips) before the button ever
+  // visibly changed meant a tap did nothing for a beat -- long enough that
+  // a second tap landed before the first had rendered, flipping it right
+  // back. Flip the UI immediately from what's already on screen (which the
+  // button itself already knows via aria-pressed), and only touch the
+  // network for the actual toggle -- reverting just that optimistic update
+  // if the RPC fails.
+  function applyFollowUiState(wrap,following){
+    const btn=wrap.querySelector('.follow-btn');
+    if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following — tap to unfollow':'Follow vendor';}
+    const bell=wrap.querySelector('.follow-settings-btn');
+    if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications';}
+  }
+  function bumpFollowCount(delta){
+    const count=document.querySelector('[data-follow-count]');
+    if(!count)return;
+    const strongEl=count.querySelector('strong');
+    const current=Number(String(strongEl?.textContent||'0').replace(/[^0-9]/g,''))||0;
+    const next=Math.max(0,current+delta);
+    count.innerHTML='<strong>'+next.toLocaleString()+'</strong> follower'+(next===1?'':'s');
+  }
+  async function toggleFollow(vendorId,ev){
+    ev?.preventDefault?.();ev?.stopPropagation?.();
+    if(!session){showLogin?.();return}
+    const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');
+    if(!wrap)return;
+    const btn=wrap.querySelector('.follow-btn');
+    if(!btn||btn.disabled)return;
+    const wasFollowing=btn.getAttribute('aria-pressed')==='true';
+    const next=!wasFollowing;
+    btn.disabled=true;
+    applyFollowUiState(wrap,next);
+    bumpFollowCount(next?1:-1);
+    try{
+      const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});
+      if(r.error)throw r.error;
+      if(typeof showToast==='function')showToast(next?'Following vendor.':'Unfollowed vendor.','success')
+    }catch(e){
+      applyFollowUiState(wrap,wasFollowing);
+      bumpFollowCount(wasFollowing?1:-1);
+      showToast?.(e.message||'Could not update your following list.','error')
+    }finally{btn.disabled=false}
+  }
   async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following — tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
   async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const open=menu.classList.toggle('hidden')===false;bell.setAttribute('aria-expanded',String(open));if(open)await refreshFollow(vendorId)}
   window.toggleLevromartVendorFollow=toggleFollow;window.toggleLevromartFollowNotifications=toggleFollowBell;
@@ -38990,6 +39043,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .settings-logout-row,.settings-logout-row i{color:var(--danger) !important;}
 .profile-panel-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:.5rem;margin:1rem 1.1rem 0;padding:.8rem;border-radius:14px;background:var(--card);border:1px solid var(--border);}
 .profile-panel-stat{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.15rem;min-width:0;}
+.profile-panel-stat-link{background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:.2rem;border-radius:10px;}
+.profile-panel-stat-link:hover,.profile-panel-stat-link:active{background:color-mix(in srgb,var(--primary) 8%,transparent);}
 .profile-panel-stat strong{font-size:1.15rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .profile-panel-stat span{font-size:.7rem;color:var(--text-muted);}
 .admin-profile-stats .profile-panel-stat strong{font-size:1rem;}

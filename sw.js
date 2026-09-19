@@ -225,7 +225,13 @@ self.addEventListener('push', event => {
           badge,
 
           data: {
-            url
+            url,
+            // Carried straight through from the push payload so a tap can
+            // route the already-open app in-app (see notificationclick
+            // below) instead of only ever having a bare URL to work with.
+            target_view: data.target_view || data.targetView || declarative?.target_view || declarative?.targetView,
+            target_params: data.target_params || data.targetParams || declarative?.target_params || declarative?.targetParams,
+            metadata: data.metadata || data.meta || declarative?.metadata
           },
 
           tag: data.tag
@@ -270,9 +276,8 @@ self.addEventListener('notificationclick', event => {
   event.notification.close();
 
 
-  const target =
-    event.notification?.data?.url ||
-    '/';
+  const notifData = event.notification?.data || {};
+  const target = notifData.url || '/';
 
 
   event.waitUntil(
@@ -292,24 +297,17 @@ self.addEventListener('notificationclick', event => {
 
         if ('focus' in client) {
 
+          // The app is already open and listens for exactly this message,
+          // turning target_view/target_params into an in-app navigate() --
+          // no reload. client.navigate() used to hard-reload the whole SPA
+          // from scratch just to land on one notification's page, wiping
+          // out whatever the person was already doing.
           try {
-
-            if (
-              target &&
-              target.startsWith('/')
-            ) {
-
-              await client.navigate(
-                new URL(
-                  target,
-                  self.location.origin
-                ).href
-              );
-
-            }
-
+            client.postMessage({
+              type: 'PUSH_NOTIFICATION_CLICK',
+              ...notifData
+            });
           } catch (_) {}
-
 
           return client.focus();
         }
