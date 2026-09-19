@@ -136,20 +136,23 @@
     color-scheme: light;
   }
   [data-theme="dark"] {
+    /* A warm, neutral charcoal (LinkedIn's dark mode) instead of the
+       previous navy-blue-tinted dark theme -- distinct from both light
+       mode and the separate, pure-black "black mode" below. */
     --primary: #0B6E4A;
     --primary-light: #0B6E4A;
     --primary-grad: #0B6E4A;
-    --bg: #0f172a;
+    --bg: #1b1f23;
     --bg-wash: none;
-    --card: #1e293b;
-    --text: #e8edf5;
-    --text-muted: #94a3b8;
-    --border: #334155;
-    --input-bg: #1e293b;
-    --glass-bg: rgba(30,41,59,0.65);
+    --card: #24282c;
+    --text: #e9ebed;
+    --text-muted: #9a9d9f;
+    --border: #383b3e;
+    --input-bg: #2a2e32;
+    --glass-bg: rgba(36,40,44,0.7);
     --glass-border: rgba(255,255,255,0.08);
     --shadow: 0 1px 3px rgba(0,0,0,0.4);
-    --shadow-float: 0 12px 28px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+    --shadow-float: 0 12px 28px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.05);
     color-scheme: dark;
   }
   [data-theme="black"] {
@@ -1094,7 +1097,7 @@
   .chat-input-row .btn { flex-shrink: 0; }
   .chat-file-input { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; opacity:0 !important; }
   .msg-attach-btn { display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; border-radius: 50%; border: none; background: none; color: var(--text-muted); cursor: pointer; flex-shrink: 0; font-size: 1rem; }
-  .msg-attach-btn:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); }
+  @media (hover: hover) { .msg-attach-btn:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); } }
   .msg-attachment { display: block; margin-bottom: 0.4rem; }
   .msg-attachment-img { max-width: 100%; max-height: 220px; border-radius: 0.6rem; display: block; object-fit: cover; background: color-mix(in srgb, var(--text) 6%, transparent); }
   .msg-attachment-file { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.7rem; border-radius: 0.6rem; background: color-mix(in srgb, var(--text) 6%, transparent); color: inherit; text-decoration: none; margin-bottom: 0.4rem; font-size: 0.85rem; word-break: break-all; }
@@ -2257,7 +2260,7 @@ h2 + .grid, h3 + .grid, .section-title + .grid{margin-top:.8rem}
 .storefront-product-strip{display:flex;gap:.7rem;overflow-x:auto;padding:.1rem .05rem .45rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;}
 .storefront-product-mini{flex:0 0 126px;scroll-snap-align:start;cursor:pointer;}
 .storefront-product-mini img,.storefront-product-mini .mini-placeholder{width:126px;height:94px;border-radius:14px;object-fit:cover;background:var(--border);display:flex;align-items:center;justify-content:center;}
-.storefront-product-mini strong{display:block;font-size:.82rem;margin-top:.38rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.storefront-product-mini strong{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;font-size:.82rem;line-height:1.22;margin-top:.38rem;min-height:2.44em;overflow:hidden;}
 .storefront-product-mini span{display:block;color:var(--text-muted);font-size:.72rem;margin-top:.08rem;}
 .storefront-packages{margin:1.35rem 0 1.5rem;}
 .storefront-packages .grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.85rem;}
@@ -4695,7 +4698,7 @@ body.chat-full-page #aiChatFab { display:none !important; }
 <style id="levromart-2026-09-07-polish">
 /* Trending: keep the horizontal browse rail compact so the next listing is always visible. */
 @media (max-width: 720px) {
-  .hscroll.trending-scroll { gap:.7rem !important; padding:.45rem .15rem .35rem !important; align-items:stretch !important; }
+  .hscroll.trending-scroll { gap:.7rem !important; padding:.45rem .15rem .35rem !important; align-items:flex-start !important; }
   /* Fix a small, fixed image height instead of an aspect-ratio on the WHOLE
      card (that's what the previous version of this rule did, and it squeezed
      some cards - e.g. products with a delivery summary or availability line -
@@ -5436,7 +5439,13 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 /* TRENDING NOW + TRENDING SERVICES — same moderate card size, and no
    fixed/short card height that could crop off price, availability or
    delivery info on a fuller listing. */
-#app .hscroll.trending-scroll{ display:flex !important; flex-wrap:nowrap !important; overflow-x:auto !important; align-items:stretch !important; gap:.7rem !important; }
+/* align-items:stretch here made every card in the row match the tallest
+   sibling's natural height (a longer product name wrapping to 2 lines, on
+   Android especially, stretched ALL cards to that height) -- with the
+   price/cart footer then pinned to the bottom via margin-top:auto, that left
+   a big blank gap between the name and price on every shorter card. Each
+   card should just be its own natural height. */
+#app .hscroll.trending-scroll{ display:flex !important; flex-wrap:nowrap !important; overflow-x:auto !important; align-items:flex-start !important; gap:.7rem !important; }
 #app .hscroll.trending-scroll > .product-card-wrap{
   flex:0 0 200px !important; width:200px !important; max-width:200px !important; min-width:200px !important;
   height:auto !important; min-height:0 !important; max-height:none !important;
@@ -5469,10 +5478,34 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
   display:-webkit-box !important; -webkit-line-clamp:2 !important; -webkit-box-orient:vertical !important; overflow:hidden !important;
 }
 #app .hscroll.trending-scroll .product-card-action-row{ margin-top:auto !important; padding-top:.3rem !important; display:flex !important; align-items:center !important; justify-content:flex-end !important; }
+/* Every home section (Trending now, Featured Vendors, Trending services,
+   Packages, Browse) is one h3.section-title followed by one .hscroll (or,
+   for Browse, the catalog grid) -- give every seam between them the exact
+   same spacing instead of each row/heading pair carrying its own
+   independently-tuned padding and margin, which is what made some gaps
+   read as bigger than others even though nothing was "extra" about them. */
+#app .hscroll.trending-scroll,
+#app .hscroll.top-rated-vendors-scroll,
+#app .hscroll.service-trending-scroll,
+#app .hscroll.package-recommendation-strip{ padding-bottom:.3rem !important; margin-bottom:0 !important; }
+#app .hscroll.trending-scroll + h3.section-title,
+#app .hscroll.top-rated-vendors-scroll + h3.section-title,
+#app .hscroll.service-trending-scroll + h3.section-title,
+#app .hscroll.package-recommendation-strip + h3.section-title{ margin-top:.3rem !important; }
 /* Compact trending card: photo, name, price and a quick-add button only --
    no vendor row, availability, delivery summary or comment icon -- with the
    wishlist heart moved to the top-right corner of the photo. */
 #app .product-card-compact .fav-btn{ left:auto !important; right:.5rem !important; top:.5rem !important; }
+#app .product-card-compact .product-img{ position:relative !important; }
+#app .product-card-vendor-badge{
+  position:absolute !important; left:.4rem !important; bottom:.4rem !important;
+  width:1.7rem !important; height:1.7rem !important; border-radius:50% !important;
+  overflow:hidden !important; background:#fff !important; border:0 !important; padding:0 !important;
+  display:flex !important; align-items:center !important; justify-content:center !important;
+  box-shadow:0 2px 8px rgba(0,0,0,.3) !important; cursor:pointer !important; z-index:2 !important;
+  color:var(--primary) !important; font-size:.7rem !important;
+}
+#app .product-card-vendor-badge img{ width:100% !important; height:100% !important; object-fit:cover !important; }
 #app .product-card-compact-footer{
   display:flex !important; align-items:center !important; justify-content:space-between !important;
   gap:.4rem !important; margin-top:auto !important; padding-top:.35rem !important;
@@ -7548,6 +7581,17 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   </div>
 </div>
 
+<div id="vendorProductDetailsModal" class="modal hidden">
+  <div class="modal-content" style="max-width:420px;">
+    <h3 id="vendorProductDetailsTitle" style="margin:0 0 .5rem;"></h3>
+    <div id="vendorProductDetailsBody"></div>
+    <div class="flex" style="justify-content:space-between;margin-top:.8rem;gap:.5rem;flex-wrap:wrap;">
+      <button type="button" class="btn btn-sm btn-outline" id="vendorProductDetailsViewBtn"><i class="fa-solid fa-eye"></i> View public listing</button>
+      <button type="button" class="btn btn-sm" onclick="byId('vendorProductDetailsModal').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="chatListPickerModal" class="modal hidden">
   <div class="modal-content" style="max-width:380px;">
     <h3><i class="fa-solid fa-layer-group"></i> Add to a list</h3>
@@ -9239,7 +9283,7 @@ function syncSystemBarColorForTheme(theme) {
   const apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
   const rootStyles = getComputedStyle(document.documentElement);
   const liveBg = (rootStyles.getPropertyValue("--bg") || "").trim();
-  const fallback = { light: "#f5f7fa", dark: "#0f172a", black: "#000000" };
+  const fallback = { light: "#f5f7fa", dark: "#1b1f23", black: "#000000" };
   if (meta) meta.setAttribute("content", liveBg || fallback[theme] || fallback.light);
   if (apple) apple.setAttribute("content", theme === "light" ? "default" : "black-translucent");
 }
@@ -11180,7 +11224,7 @@ function renderBottomNav() {
   const ordersTab = isVendorUser
     ? { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
     : { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
-  const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "navigate('home')", view: "home" };
+  const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "resetHomeFilters();navigate('home')", view: "home" };
 
   let items;
   if (session && profile?.role === "admin") {
@@ -11401,6 +11445,13 @@ function togglePasswordVisibility(inputId, button) {
   if (icon) icon.className = `fa-regular ${showing ? "fa-eye" : "fa-eye-slash"}`;
 }
 
+function friendlyAuthErrorMessage(err) {
+  const raw = String(err?.message || "").toLowerCase();
+  if (raw.includes("invalid login credentials")) return "Incorrect email/phone or password. Please try again.";
+  if (raw.includes("email not confirmed")) return "This email hasn't been confirmed yet.";
+  if (raw.includes("user already registered") || raw.includes("already registered")) return "An account with this email or phone already exists.";
+  return err?.message || "Something went wrong. Please try again.";
+}
 async function submitAuth() {
   const email = byId("loginEmail").value.trim();
   const password = byId("loginPassword").value;
@@ -11497,9 +11548,14 @@ async function submitAuth() {
       await finishLoginSuccess("home");
     }
   } catch (err) {
-    errorEl.textContent = err?.message || "Please check the highlighted listing fields.";
-    errorEl.classList.add("hidden");
-    showToast(err?.message || "Please check the listing details and try again.", "error");
+    // Every other validation branch in this function shows the inline
+    // authError box with .remove("hidden") -- this one instead did
+    // .add("hidden"), so a wrong password or bad email/phone silently hid
+    // the error box instead of showing it, leaving only a toast (easy to
+    // miss/auto-dismiss) as the sole feedback that login had failed.
+    errorEl.textContent = friendlyAuthErrorMessage(err);
+    errorEl.classList.remove("hidden");
+    showToast(friendlyAuthErrorMessage(err), "error");
   } finally {
     btn.disabled = false;
   }
@@ -11894,6 +11950,7 @@ function homeFallbackHtml(message = "The marketplace is taking a moment to load.
 
 function fastNavigateHome(event) {
   try { event?.preventDefault?.(); event?.stopPropagation?.(); } catch (_) {}
+  resetHomeFilters();
   const app = byId('app');
   // Paint the last known homepage immediately. The normal router then refreshes
   // Home in the background. This must never wait on Supabase before showing Home.
@@ -11990,7 +12047,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // exists; otherwise kick off one bounded refresh before rendering.
   const protectedRouteViews = new Set([
     "cart","messages","vendorDashboard","vendorProducts","vendorPackages",
-    "vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests",
+    "vendorEarnings","vendorFollowers","vendorOrders","vendorEditProfile","vendorRequests",
     "settings","supportRequest","wishlist","buyerOrders","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
     "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
@@ -12124,6 +12181,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "vendorProducts": html = await renderVendorProducts(); break;
       case "vendorPackages": html = await renderVendorPackages(); break;
       case "vendorEarnings": html = await renderVendorEarnings(); break;
+      case "vendorFollowers": html = await renderVendorFollowers(); break;
       case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
       case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
       case "orderDetail": html = await renderOrderDetail(params.orderId, params.source); break;
@@ -12174,6 +12232,7 @@ async function navigate(view, params = {}, pushHistory = true) {
             case "vendorProducts": html = await renderVendorProducts(); break;
             case "vendorPackages": html = await renderVendorPackages(); break;
             case "vendorEarnings": html = await renderVendorEarnings(); break;
+            case "vendorFollowers": html = await renderVendorFollowers(); break;
             case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
             case "vendorEditProfile": html = await renderVendorEditProfile(); break;
             case "vendorRequests": html = await renderVendorRequests(); break;
@@ -12580,10 +12639,26 @@ function initHomeSearchScrollMotion(){
   if (!wrap || !search) return;
 
   const header = document.querySelector("body > header");
+  const appEl = document.getElementById("app");
   const syncDockTop = () => {
     const rect = header?.getBoundingClientRect();
     const top = Math.ceil((rect?.bottom ?? 64) + 6);
     document.documentElement.style.setProperty("--levro-search-dock-top", `${top}px`);
+    // Switching the search bar from position:relative (centered by margin:auto
+    // inside #app's own padded content box) to position:fixed (centered
+    // against the viewport via left:50%) used two different reference boxes.
+    // Whenever #app's content width differed even slightly from the viewport
+    // width, the bar visibly snapped sideways the instant it docked -- the
+    // "dip"/horizontal jump. Measuring #app's actual box and feeding it in as
+    // the fixed bar's left/width keeps it pinned to the exact same spot.
+    if (appEl) {
+      const appRect = appEl.getBoundingClientRect();
+      const cs = getComputedStyle(appEl);
+      const padLeft = parseFloat(cs.paddingLeft) || 0;
+      const padRight = parseFloat(cs.paddingRight) || 0;
+      document.documentElement.style.setProperty("--levro-search-dock-left", `${appRect.left + padLeft}px`);
+      document.documentElement.style.setProperty("--levro-search-dock-width", `${Math.max(0, appRect.width - padLeft - padRight)}px`);
+    }
   };
   syncDockTop();
 
@@ -12746,6 +12821,7 @@ function resolveHomeCarouselKeywordRoute(raw) {
   return HOME_CAROUSEL_KEYWORD_ROUTES.find(([re]) => re.test(keyword))?.[1] || null;
 }
 function handleHomeCarouselSlideClick(event, index) {
+  if (homeCarouselJustDragged) { event.preventDefault(); return; }
   const slide = event.currentTarget;
   const url = slide?.dataset?.linkUrl || "";
   activateHomeCarouselSlide(index, true);
@@ -12820,23 +12896,56 @@ function activateHomeCarouselSlide(index, userInitiated = false) {
 function changeHomeCarouselSlide(delta, userInitiated = true) {
   activateHomeCarouselSlide(homeCarouselIndex + Number(delta || 0), userInitiated);
 }
+// A swipe that only decides what happened after the finger lifts (jumping
+// straight from one slide to the next with no motion in between) reads as
+// broken -- there's no feedback that a drag was even registered. Track the
+// finger in real time instead: the track follows the pointer 1:1 while
+// dragging and only snaps (with the normal CSS transition) once released.
+let homeCarouselJustDragged = false;
 function initHomepageCarousel() {
   stopHomeCarouselAutoPlay();
   const viewport = byId("homePromotionalViewport");
-  if (!viewport || homeCarouselSlides.length < 2) return;
-  let startX = 0, startY = 0, moved = false;
-  const onPointerDown = (e) => { startX = e.clientX; startY = e.clientY; moved = false; stopHomeCarouselAutoPlay(); };
-  const onPointerMove = (e) => { if (Math.abs(e.clientX - startX) > 12 || Math.abs(e.clientY - startY) > 12) moved = true; };
-  const onPointerUp = (e) => {
+  const track = byId("homePromotionalTrack");
+  if (!viewport || !track || homeCarouselSlides.length < 2) { activateHomeCarouselSlide(0, false); return; }
+  let startX = 0, startY = 0, dragging = false, moved = false, dragDx = 0;
+  const onPointerDown = (e) => {
+    startX = e.clientX; startY = e.clientY; dragging = true; moved = false; dragDx = 0;
+    track.style.transition = "none";
+    stopHomeCarouselAutoPlay();
+  };
+  const onPointerMove = (e) => {
+    if (!dragging) return;
     const dx = e.clientX - startX, dy = e.clientY - startY;
-    if (moved && Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.15) {
-      e.preventDefault(); changeHomeCarouselSlide(dx < 0 ? 1 : -1, true);
-    } else startHomeCarouselAutoPlay();
+    if (!moved) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dy) > Math.abs(dx) * 1.15) { dragging = false; track.style.transition = ""; return; }
+      moved = true;
+    }
+    // Rubber-band at the ends instead of dragging the track past the first
+    // or last slide, which would otherwise expose blank space beyond it.
+    const atStart = homeCarouselIndex === 0 && dx > 0;
+    const atEnd = homeCarouselIndex === homeCarouselSlides.length - 1 && dx < 0;
+    dragDx = (atStart || atEnd) ? dx * 0.35 : dx;
+    track.style.transform = `translate3d(calc(${-homeCarouselIndex * 100}% + ${dragDx}px),0,0)`;
+  };
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    track.style.transition = "";
+    if (moved && Math.abs(dragDx) > 48) {
+      homeCarouselJustDragged = true;
+      setTimeout(() => { homeCarouselJustDragged = false; }, 250);
+      changeHomeCarouselSlide(dragDx < 0 ? 1 : -1, true);
+    } else {
+      activateHomeCarouselSlide(homeCarouselIndex, false);
+      startHomeCarouselAutoPlay();
+    }
+    moved = false; dragDx = 0;
   };
   viewport.addEventListener("pointerdown", onPointerDown, { passive: true });
   viewport.addEventListener("pointermove", onPointerMove, { passive: true });
-  viewport.addEventListener("pointerup", onPointerUp, { passive: false });
-  viewport.addEventListener("pointercancel", startHomeCarouselAutoPlay, { passive: true });
+  viewport.addEventListener("pointerup", endDrag, { passive: true });
+  viewport.addEventListener("pointercancel", endDrag, { passive: true });
   viewport.addEventListener("mouseenter", stopHomeCarouselAutoPlay);
   viewport.addEventListener("mouseleave", startHomeCarouselAutoPlay);
   activateHomeCarouselSlide(0, false);
@@ -13450,6 +13559,14 @@ async function refreshHomeCategorySelection() {
   }
 }
 
+// Tapping Home (the bottom-nav tab or the header logo) should always land
+// on the unfiltered marketplace, not silently keep whatever sector/category
+// chip was last tapped -- that filter is meant to last only while still
+// browsing Home, not survive a deliberate "take me back to Home".
+function resetHomeFilters() {
+  currentSectorId = null;
+  currentHomeCategoryId = null;
+}
 function switchSector(sectorId) {
   currentSectorId = sectorId;
   currentHomeCategoryId = null;
@@ -13540,12 +13657,16 @@ const LEVRO_CATEGORY_RAIL_PALETTE = ["#16a34a", "#2563eb", "#e11d48", "#f59e0b",
 // trending + browse by correctly, and each sector already stores its own
 // icon in the database instead of needing a guess from its name.
 function homeCategoryRailHtml(sectorList) {
+  // "All" always comes first and always means "clear the sector filter",
+  // not toggle -- distinct from every sector chip, which is why it gets
+  // its own color (not one drawn from the cycling per-sector palette).
+  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentSectorId ? "active" : ""}" style="--cat-color:#111827" onclick="switchSector(null)"><span class="levro-home-cat-icon"><i class="fa-solid fa-border-all"></i></span><span class="levro-home-cat-label">All</span></button>`;
   const chips = sectorList.slice(0, 7).map((s, i) => {
     const active = String(currentSectorId || "") === String(s.id);
     return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" style="--cat-color:${LEVRO_CATEGORY_RAIL_PALETTE[i % LEVRO_CATEGORY_RAIL_PALETTE.length]}" onclick="toggleHomeSectorFilter('${s.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(s.icon || "fa-shapes")}"></i></span><span class="levro-home-cat-label">${esc(s.name)}</span></button>`;
   }).join("");
   const more = `<button type="button" class="levro-home-cat-chip levro-home-cat-more" onclick="openHomeCategoryBrowser()"><span class="levro-home-cat-icon"><i class="fa-solid fa-ellipsis"></i></span><span class="levro-home-cat-label">More</span></button>`;
-  return `<div class="levro-home-cat-rail hscroll">${chips}${more}</div>`;
+  return `<div class="levro-home-cat-rail hscroll">${allChip}${chips}${more}</div>`;
 }
 function toggleHomeSectorFilter(sectorId) {
   // Tapping the already-active sector clears the filter -- the chip itself
@@ -14017,10 +14138,15 @@ function productCardHtml(p) {
   // as a quiet signal that there's a choice to make once the card is opened.
   const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
   const varietyIconHtml = hasVariety ? `<i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available" aria-label="Multiple varieties available"></i>` : "";
+  // One small, tappable badge on the photo itself is the only vendor
+  // identity that belongs on the card now that the vendor name row is
+  // gone -- enough to say "this is sold by them" and jump to their
+  // storefront, without bringing back a text line.
+  const vendorBadgeHtml = p.vendor?.id ? `<button type="button" class="product-card-vendor-badge" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${esc(p.vendor.id)}'})" title="Sold by ${esc(p.vendor.business_name || "this vendor")}" aria-label="Sold by ${esc(p.vendor.business_name || "this vendor")}. View storefront">${p.vendor.logo_url ? `<img src="${esc(p.vendor.logo_url)}" alt="" loading="lazy" draggable="false">` : `<i class="fa-solid fa-store"></i>`}</button>` : "";
   return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
-      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
+      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : "<i class='fa-solid fa-camera'></i> No image"}${vendorBadgeHtml}</div>
       <h4>${esc(p.name)}</h4>
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
@@ -14100,6 +14226,34 @@ async function renderCustomerFollowing(){
     else html+=`<div class="customer-following-grid">${rows.map(v=>`<button type="button" class="customer-following-card" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'})"><div class="customer-following-avatar">${v.logo_url?`<img src="${esc(v.logo_url)}" alt="${esc(v.business_name||'Vendor')}" loading="lazy">`:`<span>${esc(String(v.business_name||'V').trim().charAt(0).toUpperCase())}</span>`}</div><div class="customer-following-copy"><strong>${esc(v.business_name||'Vendor')}</strong><span>${esc(v.city||'Online')}</span><span>★ ${Number(v.avg_rating||0).toFixed(1)} · ${Number(v.review_count||0)} reviews</span></div><i class="fa-solid fa-chevron-right"></i></button>`).join('')}</div>`;
     html+='</div>'; return html;
   }catch(e){console.error('[Levromart] Customer following load failed:',e);return `<div class="empty-state">Could not load the vendors you follow. <button type="button" class="btn btn-outline" onclick="navigate('customerFollowing',{},false)">Try again</button></div>`;}
+}
+
+// The vendor side of the same relationship: who follows THIS shop, not
+// which shops the current account follows.
+async function renderVendorFollowers(){
+  if(!session || profile?.role==='admin' || (profile?.role!=='vendor' && !vendor)) return '<div class="empty-state">Access denied.</div>';
+  const { data: v } = await sb.from("vendors").select("id,business_name").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
+  if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
+  let html=`<div class="customer-following-page"><div class="customer-following-head"><button type="button" class="icon-btn" onclick="navigate('vendorDashboard')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><h2 style="margin:0;"><i class="fa-solid fa-user-group"></i> Your followers</h2><p class="muted" style="margin:.25rem 0 0;">People following ${esc(v.business_name||"your shop")}.</p></div></div>`;
+  try{
+    const { data, error } = await sb.from("vendor_follows").select("created_at, follower:users(id,name,avatar_url)").eq("vendor_id", v.id).order("created_at", { ascending: false });
+    if (error) throw error;
+    const rows = (data||[]).filter(r=>r.follower);
+    if(!rows.length){
+      html+=`<div class="empty-state"><i class="fa-solid fa-user-group" style="font-size:1.7rem;display:block;margin-bottom:.6rem;"></i><strong>No followers yet.</strong><p class="muted">Customers who follow your shop will show up here.</p></div>`;
+    } else {
+      html+=`<div class="vendor-followers-list">${rows.map(r=>{
+        const f=r.follower;
+        const name=f.name||"Levromart user";
+        const when=r.created_at?new Date(r.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):"";
+        return `<div class="vendor-follower-row">${profileAvatarHtml(f.avatar_url,name,"2.6rem")}<div class="vendor-follower-copy"><strong>${esc(name)}</strong>${when?`<span class="muted">Following since ${esc(when)}</span>`:""}</div></div>`;
+      }).join("")}</div>`;
+    }
+  }catch(e){
+    console.error('[Levromart] Vendor followers load failed:',e);
+    html+=`<div class="empty-state">Could not load your followers. <button type="button" class="btn btn-outline" onclick="navigate('vendorFollowers',{},false)">Try again</button></div>`;
+  }
+  html+='</div>'; return html;
 }
 
 // ---------- CART (buy-and-sale items only, grouped by vendor; add/remove actions stay on the current page) ----------
@@ -15989,20 +16143,38 @@ function chatEditorFitCanvas() {
 function openChatAttachmentEditor(file, index, total, done) {
   const modal = ensureChatAttachmentEditor();
   const img = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  let settled = false;
+  // A batch of several photos chains through this one at a time (see
+  // handleChatFileSelected's next()) -- if a single image's onload/onerror
+  // never fires for any reason, that never called the next() callback and
+  // the whole send silently stalled forever with no visible error. A
+  // watchdog guarantees the chain always moves on.
+  const watchdog = setTimeout(() => { settle(null, `Could not open ${file.name} in time.`); }, 8000);
+  const settle = (result, errorMessage) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(watchdog);
+    URL.revokeObjectURL(objectUrl);
+    if (errorMessage) showToast(errorMessage, "error");
+    if (result === null) done?.(null);
+  };
   img.onload = () => {
+    if (settled) return;
+    clearTimeout(watchdog);
     const source = document.createElement("canvas");
     const max = 2400;
     const scale = Math.min(1, max / img.width, max / img.height);
     source.width = Math.max(1, Math.round(img.width * scale)); source.height = Math.max(1, Math.round(img.height * scale));
     source.getContext("2d").drawImage(img,0,0,source.width,source.height);
-    chatAttachmentEditorState = { file, index, total, done, sourceCanvas:source, rotation:0, tool:"draw", strokes:[], crop:null };
+    chatAttachmentEditorState = { file, index, total, done: (result) => { settled = true; URL.revokeObjectURL(objectUrl); done?.(result); }, sourceCanvas:source, rotation:0, tool:"draw", strokes:[], crop:null };
     byId("chatAttachmentEditorCount").textContent = total > 1 ? `Photo ${index+1} of ${total}` : "";
     byId("chatAttachmentCaption").value = "";
     modal.classList.remove("hidden");
     requestAnimationFrame(chatEditorFitCanvas);
   };
-  img.onerror = () => { showToast(`Could not open ${file.name}.`, "error"); done?.(null); };
-  img.src = URL.createObjectURL(file);
+  img.onerror = () => settle(null, `Could not open ${file.name}.`);
+  img.src = objectUrl;
 }
 function setChatImageEditorTool(tool, btn) {
   if (!chatAttachmentEditorState) return;
@@ -16034,7 +16206,18 @@ function saveChatAttachmentEditor(){
   out.toBlob(blob=>{ const result={blob,caption,name:st.file.name,type:"image/jpeg"}; const done=st.done; closeChatAttachmentEditor(true); done?.(result); },"image/jpeg",.9);
 }
 function closeChatAttachmentEditor(keep){
-  const modal=byId("chatAttachmentEditorModal"); if(modal)modal.classList.add("hidden"); if(!keep) chatAttachmentEditorState=null;
+  const modal=byId("chatAttachmentEditorModal"); if(modal)modal.classList.add("hidden");
+  if(!keep){
+    // Cancelling (or the X button) never called the pending photo's done()
+    // callback, so a Cancel anywhere but the very last photo in a multi-select
+    // batch silently broke the next()/next() chain in handleChatFileSelected
+    // forever -- no error, no toast, nothing left to click. The chat looked
+    // completely frozen even though nothing had actually gone wrong; it was
+    // just waiting on a callback that was never coming.
+    const done=chatAttachmentEditorState?.done;
+    chatAttachmentEditorState=null;
+    done?.(null);
+  }
 }
 function bindChatImageEditorPointer(){
   const canvas=byId("chatAttachmentEditorCanvas"); if(!canvas||canvas.dataset.bound==="1")return;canvas.dataset.bound="1";
@@ -16069,6 +16252,7 @@ async function handleChatFileSelected(evt, conversationId) {
   if(valid.length<files.length)showToast("Some files were skipped because they are not images or are over 10MB.","info");
   const prepared=[];
   const next=(i)=>{if(i>=valid.length){
+      if(!prepared.length)return;
       (async()=>{try{
         const input=byId("chatInput"); clearTimeout(typingStopTimer); publishChatTyping(false);
         const replyToId=chatReplyTarget?.id||null; const snap=chatReplyTarget?{...chatReplyTarget}:null;
@@ -16078,6 +16262,12 @@ async function handleChatFileSelected(evt, conversationId) {
       }catch(err){showToast(err.message||"Could not send those photos.","error");} })(); return;}
     openChatAttachmentEditor(valid[i],i,valid.length,(result)=>{if(result)prepared.push(result);next(i+1);});
   };
+  // ensureChatAttachmentEditor() builds the editor modal (and its canvas)
+  // lazily on first use. Binding pointer listeners before that canvas exists
+  // -- which is exactly what happened here on a session's very first photo
+  // attachment -- silently found nothing and never bound at all, since this
+  // is only called once per selection, not once per photo in the batch.
+  ensureChatAttachmentEditor();
   bindChatImageEditorPointer(); next(0);
 }
 // Product variations have been removed. This strip-only helper stays so any
@@ -17030,7 +17220,13 @@ async function loadVendorsDirectory() {
 
   const sectorSel = byId("vendorSectorFilter");
   if (sectorSel) {
-    sectorSel.innerHTML = '<option value="">All sectors</option>' + sectors.map((s) => `<option value="${esc(s.id)}" ${currentSectorId === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("");
+    // Deliberately does NOT pre-select whatever sector was last tapped on
+    // Home -- that's independent, page-local state on Home's own category
+    // rail, not a filter the Vendors directory should silently inherit. A
+    // vendor arriving here from a Home sector with few/no verified vendors
+    // would otherwise land on what looks like a broken, empty page with no
+    // visible reason why.
+    sectorSel.innerHTML = '<option value="">All sectors</option>' + sectors.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
   }
   const citySel = byId("vendorCityFilter");
   if (citySel) {
@@ -18608,8 +18804,8 @@ async function renderVendorDashboard() {
       <div class="storefront-stats">
         <span><strong>${totalListings}</strong> listing${totalListings === 1 ? "" : "s"}</span>
         <button type="button" class="storefront-stat-link" onclick="navigate('storefront',{vendorId:'${v.id}'});setTimeout(()=>scrollToVendorReviews(),300);"><strong>${v.review_count || 0}</strong> review${Number(v.review_count || 0) === 1 ? "" : "s"}</button>
-        <span><strong>★ ${Number(v.avg_rating ?? 0).toFixed(1)}</strong> rating</span>
-        <span><strong>${totalFollowers.toLocaleString()}</strong> follower${totalFollowers === 1 ? "" : "s"}</span>
+        <button type="button" class="storefront-stat-link" onclick="navigate('storefront',{vendorId:'${v.id}'});setTimeout(()=>scrollToVendorReviews(),300);"><strong>★ ${Number(v.avg_rating ?? 0).toFixed(1)}</strong> rating</button>
+        <button type="button" class="storefront-stat-link" onclick="navigate('vendorFollowers')"><strong>${totalFollowers.toLocaleString()}</strong> follower${totalFollowers === 1 ? "" : "s"}</button>
       </div>
     </div>
   </div>`;
@@ -18633,7 +18829,11 @@ async function renderVendorDashboard() {
   const recentCompleted = (orders || []).filter((o) => o.status === "completed");
   setTimeout(() => {
     const area = byId("vendorRevenueChartArea");
-    if (area) area.appendChild(buildRevenueChart(recentCompleted, "all", { field: "total_amount", label: "Revenue per day (last 14 days)" }));
+    // A racy auth check can cause this whole render to run twice for one
+    // navigation (see the protectedRouteViews retry below), and each run
+    // schedules its own timeout that finds the same, only-ever-one node by
+    // id -- appending without clearing first left two charts stacked in it.
+    if (area) { area.innerHTML = ""; area.appendChild(buildRevenueChart(recentCompleted, "all", { field: "total_amount", label: "Revenue per day (last 14 days)" })); }
   }, 0);
 
   // ---------- 3. Commission (only when owed) ----------
@@ -19762,21 +19962,29 @@ async function renderVendorProducts() {
   }
 
   html += `<div class="grid vendor-product-card-grid">`;
+  const vendorProductDetailsMap = {};
   products.forEach((p) => {
       const catName = p.category?.name || "Uncategorized";
       const img = p.photos?.[0];
       const favCount = favCountByProduct[p.id] ?? 0;
       const hasPendingOrder = pendingProductIds.has(p.id);
       const topRegion = regionsByProduct[p.id]?.[0];
-      html += `<div class="card vendor-own-product-card" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}" onclick="navigate('productDetail',{productId:'${esc(p.id)}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('productDetail',{productId:'${esc(p.id)}'});}">
-        <div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
-        <h4 style="margin:0.5rem 0 0.2rem;">${esc(p.name)}</h4>
+      // Everything below used to sit directly on the card face (status,
+      // views/saved/revenue, varieties, best-selling region, pending-order
+      // warning) and made a grid of listings unreadable. It's still all
+      // here -- just moved behind a tap on the card into a details popup,
+      // so the surface only shows the photo, name and the action buttons.
+      vendorProductDetailsMap[p.id] = { name: p.name, html: `
         <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.quantity_available}/${p.quantity_total} available`} · ${p.status}${p.billing_model === "monthly" && p.billing_paid_until ? listingExpiryMarkup(p) : ""}</p>
         ${p.billing_model === "monthly" && pendingMonthlyProductIds.has(String(p.id)) ? `<p class="muted monthly-vendor-pending-note"><i class="fa-solid fa-clock"></i> Receipt submitted · awaiting admin approval</p>` : p.billing_model === "monthly" && p.billing_status === "cancelled" ? `<p class="muted monthly-vendor-rejected-note"><i class="fa-solid fa-circle-exclamation"></i> Monthly listing deactivated. Submit a new ₦1,000 receipt to restore it.</p>` : ""}
-        <p class="muted" style="font-size:0.8rem;"><i class='fa-solid fa-eye'></i> ${p.view_count || 0} views · <i class='fa-solid fa-heart'></i> ${favCount} saved · <i class="fa-solid fa-sack-dollar"></i> ${naira(revenueByProduct[p.id] || 0)}</p>
-        ${Array.isArray(p.variants) && p.variants.length ? `<p class="muted vendor-product-variety-summary" style="font-size:0.8rem;"><i class="fa-solid fa-layer-group"></i> ${p.variants.length} variet${p.variants.length===1?'y':'ies'} · ${p.variants.slice(0,3).map(v=>esc(v.name)).join(', ')}${p.variants.length>3?'…':''}</p>` : ''}
-        ${topRegion ? `<p class="muted" style="font-size:0.8rem;"><i class="fa-solid fa-map-location-dot"></i> Sells best in <a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count} order${topRegion.order_count === 1 ? "" : "s"})</a></p>` : ""}
-        ${hasPendingOrder ? `<p class="muted" style="font-size:0.8rem;color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
+        <p class="muted"><i class='fa-solid fa-eye'></i> ${p.view_count || 0} views · <i class='fa-solid fa-heart'></i> ${favCount} saved · <i class="fa-solid fa-sack-dollar"></i> ${naira(revenueByProduct[p.id] || 0)}</p>
+        ${Array.isArray(p.variants) && p.variants.length ? `<p class="muted vendor-product-variety-summary"><i class="fa-solid fa-layer-group"></i> ${p.variants.length} variet${p.variants.length===1?'y':'ies'} · ${p.variants.slice(0,3).map(v=>esc(v.name)).join(', ')}${p.variants.length>3?'…':''}</p>` : ''}
+        ${topRegion ? `<p class="muted"><i class="fa-solid fa-map-location-dot"></i> Sells best in <a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count} order${topRegion.order_count === 1 ? "" : "s"})</a></p>` : ""}
+        ${hasPendingOrder ? `<p class="muted" style="color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
+      ` };
+      html += `<div class="card vendor-own-product-card" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}" onclick="showVendorProductDetails('${esc(p.id)}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showVendorProductDetails('${esc(p.id)}');}">
+        <div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
+        <h4 style="margin:0.5rem 0 0.2rem;">${esc(p.name)}</h4>
         <div class="vendor-product-actions" aria-label="Listing actions">
           <button type="button" class="vendor-card-icon-action vendor-edit-action" onclick="event.stopPropagation();openEditProductModal('${p.id}')" aria-label="Edit ${esc(p.name)}" title="Edit"><i class='fa-solid fa-pen'></i><span class="sr-only">Edit</span></button>
           <button type="button" class="vendor-card-icon-action vendor-duplicate-action" onclick="event.stopPropagation();openDuplicateProductModal('${p.id}')" aria-label="Duplicate ${esc(p.name)}" title="Duplicate"><i class='fa-solid fa-copy'></i><span class="sr-only">Duplicate</span></button>
@@ -19787,7 +19995,17 @@ async function renderVendorProducts() {
       </div>`;
     });
   html += `</div>`;
+  window.__vendorProductCardDetails = vendorProductDetailsMap;
   return html + packageSection;
+}
+function showVendorProductDetails(productId){
+  const d = (window.__vendorProductCardDetails || {})[productId];
+  if (!d) return;
+  byId("vendorProductDetailsTitle").textContent = d.name;
+  byId("vendorProductDetailsBody").innerHTML = d.html;
+  const viewBtn = byId("vendorProductDetailsViewBtn");
+  if (viewBtn) viewBtn.onclick = () => { byId("vendorProductDetailsModal").classList.add("hidden"); navigate("productDetail", { productId }); };
+  byId("vendorProductDetailsModal").classList.remove("hidden");
 }
 
 function showProductRegions(productId, productName) {
@@ -27890,7 +28108,7 @@ if ("serviceWorker" in navigator) {
 <style id="final-system-bar-and-map-popup-polish">
 /* Match the phone safe-area/system-bar fill to Levromart's actual background. */
 :root { --system-bar-shade: #f5f7fa; }
-html[data-theme="dark"] { --system-bar-shade: #0f172a; }
+html[data-theme="dark"] { --system-bar-shade: #1b1f23; }
 html[data-theme="black"] { --system-bar-shade: #000000; }
 html { background: var(--system-bar-shade) !important; }
 body::before { background: var(--system-bar-shade) !important; }
@@ -29664,7 +29882,7 @@ window.renderVendorMapRail = function(){
     });
     window.__filteredVendors=[...window.__allVendors];
     const sectorSel=byId('vendorSectorFilter');
-    if(sectorSel)sectorSel.innerHTML='<option value="">All sectors</option>'+sectors.map(s=>`<option value="${esc(s.id)}" ${currentSectorId===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
+    if(sectorSel)sectorSel.innerHTML='<option value="">All sectors</option>'+sectors.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
     const citySel=byId('vendorCityFilter');
     if(citySel){const cities=[...new Set((vendors||[]).map(v=>v.city).filter(Boolean))].sort();citySel.innerHTML='<option value="">All cities</option>'+cities.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');}
     filterVendorsDirectory();
@@ -30988,17 +31206,15 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
           // dy=0 or dx=0 by chance) was locking the gesture into "horizontal"
           // on pure jitter, which then called preventDefault and broke
           // ordinary vertical scrolling over messages entirely.
-          if(adx<8 && ady<8)return;
-          // A real finger drag is never perfectly straight -- calling reset()
-          // (which sets tracking=false) the moment the very first sample
-          // looks even slightly more vertical than horizontal killed the
-          // gesture permanently for the rest of that touch, forcing a lift
-          // and restart. Just keep waiting instead: dx/dy are measured from
-          // the original touch-down point, so as the drag continues toward
-          // horizontal the ratio corrects itself on a later sample and the
-          // swipe still arms normally -- exactly how a natural WhatsApp-style
-          // drag feels, rather than a one-shot direction guess.
-          if(ady>adx)return;
+          if(adx<6 && ady<6)return;
+          // Requiring dx to already be >= dy before committing to "horizontal"
+          // meant a real finger's first sample -- almost never perfectly
+          // straight -- had to be dragged decisively sideways before the
+          // gesture engaged at all, which read as "hold, then drag" instead
+          // of WhatsApp's immediate response to any rightward/leftward
+          // motion. Only reject a clearly-vertical drag; anything close to
+          // diagonal or better commits to swipe right away.
+          if(ady>adx*1.2)return;
           horizontal=true;wrap.classList.add('chat-swipe-active');
         }
         const allowed=mine?dx<0:dx>0;
@@ -32938,15 +33154,15 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   will-change:transform,opacity,filter !important;
 }
 #app .levro-home-search-wrap.home-search-fixed .hero-search{
-  position:fixed !important; top:var(--levro-search-dock-top,72px) !important; left:50% !important; right:auto !important; bottom:auto !important;
-  width:min(calc(100% - 1.1rem),760px) !important; max-width:760px !important; margin:0 !important;
-  transform:translateX(-50%) scale(1) !important; opacity:1 !important; z-index:230 !important;
+  position:fixed !important; top:var(--levro-search-dock-top,72px) !important; left:var(--levro-search-dock-left,50%) !important; right:auto !important; bottom:auto !important;
+  width:min(var(--levro-search-dock-width,calc(100% - 1.1rem)),760px) !important; max-width:760px !important; margin:0 !important;
+  transform:scale(1) !important; transform-origin:center top !important; opacity:1 !important; z-index:230 !important;
 }
 #app .levro-home-search-wrap.home-search-fixed.home-search-scrolling .hero-search{
-  transform:translateX(-50%) scale(.86) !important; opacity:.30 !important; filter:saturate(.62) !important; box-shadow:none !important;
+  transform:scale(.86) !important; opacity:.30 !important; filter:saturate(.62) !important; box-shadow:none !important;
 }
 #app .levro-home-search-wrap.home-search-fixed:has(.hero-search:focus-within) .hero-search{
-  transform:translateX(-50%) scale(1) !important; opacity:1 !important; filter:none !important;
+  transform:scale(1) !important; opacity:1 !important; filter:none !important;
 }
 @media(max-width:720px){
   #app .levro-home-search-wrap{padding:.85rem 0 .55rem !important;}
@@ -34816,7 +35032,9 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       const sectorName=v?.sector_name || (Array.isArray(sectors)?sectors.find(sec=>String(sec.id)===String(v?.sector_id))?.name:"") || "Sector not listed";
       const count=Number(v?.follower_count||0).toLocaleString();
       const avatarHtml=avatar?`<img src="${escText(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false">`:avatarFallbackHtml(name,'3.1rem','vendor-directory-logo',name);
-      const showFollow=profile?.role!=="admin" && !(typeof isOwnVendorId==="function" && isOwnVendorId(v?.id));
+      // Admins are people too -- there's no reason they can't follow a vendor's
+      // shop from the Featured Vendors rail like any other account can.
+      const showFollow=!(typeof isOwnVendorId==="function" && isOwnVendorId(v?.id));
       const followBtn=showFollow?`<button type="button" class="vendor-card-follow-btn" data-vendor-id="${escText(v?.id||"")}" onclick="event.stopPropagation();toggleVendorCardFollow('${escText(v?.id||"")}',event)">Follow</button>`:"";
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
         ${avatarHtml}<div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
@@ -38066,6 +38284,12 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .profile-customer-following-header{cursor:pointer;border-radius:14px;}
 .profile-customer-following-header:hover{background:color-mix(in srgb,var(--primary) 5%,transparent);}
 @media(max-width:520px){.admin-inventory-table th:last-child,.admin-inventory-table td:last-child{min-width:80px}.admin-inventory-delete-btn{font-size:.65rem!important;padding:.35rem .42rem!important}.customer-following-head h2{font-size:1.05rem;}}
+.vendor-followers-list{display:flex;flex-direction:column;gap:.15rem;}
+.vendor-follower-row{display:flex;align-items:center;gap:.75rem;padding:.65rem .2rem;border-bottom:1px solid var(--border);}
+.vendor-follower-row:last-child{border-bottom:0;}
+.vendor-follower-copy{min-width:0;display:flex;flex-direction:column;gap:.14rem;}
+.vendor-follower-copy strong{font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vendor-follower-copy span{font-size:.76rem;color:var(--text-muted);}
 </style>
 <style id="levromart-admin-performance-final-20260916">
 .admin-vendor-card .badge.success{background:rgba(22,163,74,.14);color:#16a34a}
