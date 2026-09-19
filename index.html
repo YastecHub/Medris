@@ -18238,11 +18238,12 @@ async function renderVendorDashboard() {
     ? `<span class="verified-tick" title="Verified vendor" onclick="navigate('storefront',{vendorId:'${v.id}'})"><i class="fa-solid fa-circle-check"></i></span>`
     : "";
 
-  const [{ data: orders }, { data: products }, { data: owed }, { data: commissionDeadline }] = await Promise.all([
+  const [{ data: orders }, { data: products }, { data: owed }, { data: commissionDeadline }, { data: followerCounts }] = await Promise.all([
     sb.from("orders").select("status, total_amount, created_at").eq("vendor_id", v.id),
     sb.from("products").select("id, view_count").eq("vendor_id", v.id),
     sb.rpc("get_vendor_commission_owed", { p_vendor_id: v.id }),
     sb.rpc("get_vendor_commission_deadline", { p_vendor_id: v.id }),
+    sb.rpc("get_vendor_follower_counts", { p_vendor_ids: [v.id] }),
   ]);
   const totalOrders = orders?.length ?? 0;
   const revenue = orders?.filter((o) => o.status === "completed").reduce((s, o) => s + o.total_amount, 0) ?? 0;
@@ -18251,6 +18252,8 @@ async function renderVendorDashboard() {
     ? await sb.rpc("get_favorite_counts", { p_product_ids: products.map((p) => p.id) })
     : { data: [] };
   const totalFavorites = (favCounts || []).reduce((s, r) => s + r.count, 0);
+  const totalListings = (products || []).length;
+  const totalFollowers = Number(followerCounts?.[0]?.follower_count || 0);
   const commissionOwed = Number(owed || 0);
   const earliestCommissionDueAt = commissionDeadline?.[0]?.earliest_due_at || null;
   const commissionIsOverdue = !!earliestCommissionDueAt && new Date(earliestCommissionDueAt).getTime() <= Date.now();
@@ -18281,6 +18284,8 @@ async function renderVendorDashboard() {
     <table class="order-stats-table">
       <tr><td>Total orders</td><td>${totalOrders}</td></tr>
       <tr><td>Revenue (completed)</td><td>${naira(revenue)}</td></tr>
+      <tr><td>Listings</td><td>${totalListings}</td></tr>
+      <tr><td>Followers</td><td>${totalFollowers}</td></tr>
       <tr><td>Product views</td><td>${totalViews}</td></tr>
       <tr><td>Wishlist saves</td><td>${totalFavorites}</td></tr>
     </table>
