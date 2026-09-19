@@ -945,6 +945,19 @@
   .contact-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center; margin: 0.8rem 0; }
   .btn-whatsapp { background: #25d366; color: white; }
   .btn-whatsapp:hover { filter: brightness(1.08); }
+  .call-vendor-btn { border-color:#2563eb !important; color:#2563eb !important; background:color-mix(in srgb,#2563eb 6%,transparent) !important; }
+  .call-vendor-btn:hover { filter: brightness(1.08); }
+  .product-detail-vendor-link { display:inline-flex !important; align-items:center !important; gap:.35rem !important; vertical-align:middle !important; }
+  .product-detail-vendor-logo { width:1.3rem; height:1.3rem; border-radius:50%; object-fit:cover; flex:0 0 auto; }
+  .order-summary-confirm { display:flex; flex-direction:column; gap:.5rem; }
+  .order-summary-row { display:flex; justify-content:space-between; align-items:baseline; gap:.6rem; font-size:.88rem; color:var(--text); }
+  .order-summary-row span:first-child { color:var(--text-muted); }
+  .order-summary-row:first-child span:first-child { color:var(--text); font-weight:600; }
+  .order-summary-total { border-top:1px solid var(--border); padding-top:.55rem; margin-top:.15rem; font-size:.98rem; }
+  .order-summary-total span, .order-summary-total strong { color:var(--text) !important; font-weight:700; }
+  .delivery-fee-inline { color:var(--primary); }
+  .delivery-fee-line { font-size:.86rem; color:var(--text); opacity:1; }
+  .delivery-fee-line strong { color:var(--primary); }
   .conv-list-item { display: flex; align-items: center; gap: 0.7rem; padding: 0.8rem; cursor: pointer; background: var(--card); position: relative; z-index: 1; touch-action: pan-y; user-select: none; }
   .conv-list-item:hover { background: var(--card); }
   .conv-list-item .avatar-circle { flex-shrink: 0; }
@@ -7570,7 +7583,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 <div id="confirmModal" class="modal hidden">
   <div class="modal-content" style="max-width:380px;">
     <h3 id="confirmModalTitle">Please confirm</h3>
-    <p id="confirmModalMsg" class="muted" style="margin:0.8rem 0 1.2rem;"></p>
+    <div id="confirmModalMsg" class="muted" style="margin:0.8rem 0 1.2rem;max-height:50vh;overflow-y:auto;"></div>
     <div class="flex" style="justify-content:flex-end;">
       <button class="btn btn-sm" id="confirmModalCancel" style="background:#6b7280;">Cancel</button>
       <button class="btn btn-sm" id="confirmModalOk">Confirm</button>
@@ -9178,7 +9191,9 @@ function showConfirmDialog(message, opts = {}) {
   return new Promise((resolve) => {
     const modal = byId("confirmModal");
     byId("confirmModalTitle").textContent = opts.title || "Please confirm";
-    byId("confirmModalMsg").textContent = message;
+    const msgEl = byId("confirmModalMsg");
+    if (opts.html) msgEl.innerHTML = message;
+    else msgEl.textContent = message;
     const okBtn = byId("confirmModalOk");
     const cancelBtn = byId("confirmModalCancel");
     okBtn.textContent = opts.okLabel || "Confirm";
@@ -10601,14 +10616,15 @@ async function refreshAuthState() {
     ]);
     profile = profileRes.data;
     vendor = profile?.role === "admin" ? null : vendorRes.data;
-    // The sync RPC already normalized users.role. Keep the frontend state
-    // aligned with that row instead of deriving "vendor" solely from the
-    // existence of a vendors row (pending/deleted rows are not active roles).
-    if (profile && profile.role !== "admin" && !(vendor?.verification_status === "verified" && !vendor?.deleted_at)) {
-      profile.role = "buyer";
-    } else if (profile && profile.role !== "admin" && vendor?.verification_status === "verified" && !vendor?.deleted_at) {
-      profile.role = "vendor";
-    }
+    // profile.role comes straight from the users row, which
+    // sync_current_account_role() (above, SECURITY DEFINER, immune to RLS
+    // and run first) already made authoritative. Re-deriving it here a
+    // second time from this vendors fetch used to silently downgrade a real
+    // vendor back to buyer whenever that fetch merely errored or lagged
+    // (a transient network hiccup, RLS timing) -- the vendors row exists and
+    // is fine, only this second, redundant read of it failed. Trust the
+    // already-synced role instead; `vendor` below stays purely for display
+    // (stats, storefront info), not for deciding the role.
     favoriteIds = new Set((favsRes.data || []).map((f) => f.product_id));
     packageFavoriteIds = new Set((pkgFavsRes.data || []).map((f) => f.package_id));
   }
@@ -10807,17 +10823,17 @@ function updateAuthUI() {
     const adminStats = profile.role === "admin"
       ? (isSuperAdmin()
         ? [
-            { key: "totalUsers", label: "Total users", value: Number(window.__adminStatTotalUsers || 0) },
-            { key: "buyers", label: "Buyers", value: Number(window.__adminStatBuyers || 0) },
-            { key: "vendors", label: "Vendors", value: Number(window.__adminStatVendors || 0) },
-            { key: "activeProducts", label: "Active products", value: Number(window.__adminStatActiveProducts || 0) },
+            { key: "totalUsers", label: "Total users", value: Number(window.__adminStatTotalUsers || 0), action: "window.__adminPeopleRole='buyer';navigate('adminPeople')" },
+            { key: "buyers", label: "Buyers", value: Number(window.__adminStatBuyers || 0), action: "window.__adminPeopleRole='buyer';navigate('adminPeople')" },
+            { key: "vendors", label: "Vendors", value: Number(window.__adminStatVendors || 0), action: "window.__adminPeopleRole='vendor';navigate('adminPeople')" },
+            { key: "activeProducts", label: "Active products", value: Number(window.__adminStatActiveProducts || 0), action: "window.__adminInventoryStatus='active';navigate('adminInventory')" },
           ]
         : [
-            { key: "loginsToday", label: "Logins today", value: Number(window.__adminStatLoginsToday || 0) },
-            { key: "loginLogs", label: "Login logs", value: Number(window.__adminStatLoginLogs || 0) },
-            { key: "disputes", label: "Disputes", value: Number(window.__adminDisputeCount || 0) },
-            { key: "supportRequests", label: "Support requests", value: Number(window.__adminStatSupportRequests || 0) },
-            { key: "feedback", label: "Feedback", value: Number(window.__adminStatFeedback || 0) },
+            { key: "loginsToday", label: "Logins today", value: Number(window.__adminStatLoginsToday || 0), action: "navigate('adminLog')" },
+            { key: "loginLogs", label: "Login logs", value: Number(window.__adminStatLoginLogs || 0), action: "navigate('adminLog')" },
+            { key: "disputes", label: "Disputes", value: Number(window.__adminDisputeCount || 0), action: "navigate('adminDisputes')" },
+            { key: "supportRequests", label: "Support requests", value: Number(window.__adminStatSupportRequests || 0), action: "navigate('adminSupportRequests')" },
+            { key: "feedback", label: "Feedback", value: Number(window.__adminStatFeedback || 0), action: "navigate('adminFeedback')" },
           ])
       : [];
 
@@ -10878,7 +10894,9 @@ function updateAuthUI() {
       </div>
       <div class="profile-panel-scroll">
         ${profile.role === "admin" ? `<div class="profile-panel-stats admin-profile-stats">
-          ${adminStats.map(s => `<div class="profile-panel-stat" data-admin-stat="${esc(s.key)}"><strong>${s.value}</strong><span>${esc(s.label)}</span></div>`).join("")}
+          ${adminStats.map(s => s.action
+            ? `<button type="button" class="profile-panel-stat profile-panel-stat-link" data-admin-stat="${esc(s.key)}" onclick="closeAllPanels();${s.action}"><strong>${s.value}</strong><span>${esc(s.label)}</span></button>`
+            : `<div class="profile-panel-stat" data-admin-stat="${esc(s.key)}"><strong>${s.value}</strong><span>${esc(s.label)}</span></div>`).join("")}
         </div>
         <hr class="vendor-profile-divider" />
         <div class="admin-profile-nav-list">${links.map((l) => {
@@ -12583,7 +12601,11 @@ function clearAutoScrollTimers() {
 }
 function setupAutoScroll(container, { interval = 30, pauseAfterInteraction = 6500 } = {}) {
   if (!container || !horizontalBrowseEnabled) return;
-  if (container.matches(".trending-scroll, .top-rated-vendors-scroll")) return;
+  // The category rail is a persistent filter selector, not a browse-more
+  // showcase -- auto-scrolling it made the tapped category chip silently
+  // drift out of view and eventually wrap back to "All" a few seconds
+  // after every tap, looking like the selection had reset itself.
+  if (container.matches(".trending-scroll, .top-rated-vendors-scroll, .cat-row")) return;
   if (container.__levroAutoScrollTimer) return;
   let paused = false;
   let pauseTimeout = null;
@@ -13751,7 +13773,10 @@ function homeCategoryRailHtml(sectorList) {
   // not toggle -- distinct from every sector chip, which is why it gets
   // its own color (not one drawn from the cycling per-sector palette).
   const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentSectorId ? "active" : ""}" style="--cat-color:#64748b" onclick="switchSector(null)"><span class="levro-home-cat-icon"><i class="fa-solid fa-border-all"></i></span><span class="levro-home-cat-label">All</span></button>`;
-  const chips = sectorList.slice(0, 7).map((s, i) => {
+  // Show every sector as its own chip -- previously capped at 7, which
+  // meant newly-created sectors silently never got an icon on Home at all,
+  // no matter how many vendors picked them.
+  const chips = sectorList.map((s, i) => {
     const active = String(currentSectorId || "") === String(s.id);
     return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" style="--cat-color:${LEVRO_CATEGORY_RAIL_PALETTE[i % LEVRO_CATEGORY_RAIL_PALETTE.length]}" onclick="toggleHomeSectorFilter('${s.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(s.icon || "fa-shapes")}"></i></span><span class="levro-home-cat-label">${esc(s.name)}</span></button>`;
   }).join("");
@@ -16852,7 +16877,7 @@ window.renderProductDetail = async function(productId){
 };
 
 async function __levroOriginalRenderProductDetail(productId) {
-  const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", productId).maybeSingle();
+  const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", productId).maybeSingle();
   const variantsQuery = sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
   const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = await Promise.all([productQuery,variantsQuery,engagementQuery]);
@@ -16917,12 +16942,12 @@ async function __levroOriginalRenderProductDetail(productId) {
           return `<span class="storefront-contact-closed" title="${esc(`${product.vendor.business_name || "This vendor"} is outside working hours right now${hs.todayText ? ` (${hs.todayLabel}: ${hs.todayText})` : ""}.`)}"><i class="fa-regular fa-clock"></i><span>Outside working hours</span></span>`;
         }
         return (product.vendor.whatsapp_visible && product.vendor.whatsapp_number ? `<div class="ms-wrap product-message-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm" type="button" onclick="toggleInlineMenu('productMessageMenu-${product.id}',event)"><i class='fa-solid fa-comment-dots'></i> Message vendor</button><div class="ms-list hidden" id="productMessageMenu-${product.id}" style="left:0;right:auto;width:max-content;min-width:190px;"><button class="ms-item" type="button" onclick="startConversationWithVendor('${product.vendor.id}');closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(product.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm" onclick="startConversationWithVendor('${product.vendor.id}')"><i class='fa-solid fa-comment-dots'></i> Message vendor</button>`)
-             + (product.vendor.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(product.vendor.phone)}" onclick="callVendorGated(event,'${esc(product.vendor.phone)}','${product.vendor.id}')"><i class='fa-solid fa-phone'></i> Call vendor</a>` : "");
+             + (product.vendor.phone ? `<a class="btn btn-sm btn-outline call-vendor-btn" href="${telLink(product.vendor.phone)}" onclick="callVendorGated(event,'${esc(product.vendor.phone)}','${product.vendor.id}')"><i class='fa-solid fa-phone'></i> Call vendor</a>` : "");
       })()}
       ${`<span class="badge ${ratingBadgeClass(Number(st.avg_rating ?? 0))}">★ ${Number(st.avg_rating ?? 0).toFixed(1)} (${Number(st.review_count ?? 0)})</span>`}
     </div>
     <div class="product-detail-info">
-      <p><strong>Vendor:</strong> <a href="#" onclick="navigate('storefront',{vendorId:'${product.vendor.id}'});return false;">${vendorNameWithFormerly(product.vendor)}</a></p>
+      <p><strong>Vendor:</strong> <a class="product-detail-vendor-link" href="#" onclick="navigate('storefront',{vendorId:'${product.vendor.id}'});return false;">${product.vendor.logo_url ? `<img src="${esc(product.vendor.logo_url)}" alt="" class="product-detail-vendor-logo" loading="lazy" decoding="async" draggable="false">` : ""}<span>${vendorNameWithFormerly(product.vendor)}</span></a></p>
       ${product.is_service ? "" : `<p><strong>Condition:</strong> ${esc((product.condition || "").replace("-", " "))}</p>`}
       <p>Description ${infoPopoverHtml(`productDescInfo-${product.id}`, esc(cleanDescription || "No description"))}</p>
     </div>
@@ -16957,7 +16982,7 @@ async function __levroOriginalRenderProductDetail(productId) {
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
           : `<input type="number" id="buyQty" value="1" min="1" max="${product.quantity_available}" placeholder="Qty" oninput="updateBuyTotalPreview(${product.sale_price ?? 0})" style="width:90px;" />`}
       </div>
-      ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview">Total: ${naira(productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price)}</p>` : ""}
+      ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price}">Total: ${naira(productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price)}</p>` : ""}
       ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% first; the remaining ${paymentRemainingPercent}% is due after delivery.` : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
       ${!product.is_service ? `<div style="margin-top:0.7rem;">
@@ -17013,14 +17038,14 @@ function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, 
   const isDistance = feeMode === "distance" && Number(perKm) > 0 && vendorLat != null && vendorLng != null;
   const hasVendorLoc = vendorLat != null && vendorLng != null;
   return `<div class="flex delivery-method-row" style="margin:0.6rem 0 0.9rem;flex-direction:row;">
-      <label style="display:flex;align-items:center;gap:0.35rem;margin:0;font-weight:400;"><input type="radio" name="${prefix}DeliveryMethod" value="delivery" checked onchange="toggleDeliveryFields('${prefix}')" style="width:auto;margin:0;" /> Delivery${isDistance ? " (by distance)" : fee > 0 ? ` (+${naira(fee)})` : " (free)"}</label>
+      <label style="display:flex;align-items:center;gap:0.35rem;margin:0;font-weight:400;"><input type="radio" name="${prefix}DeliveryMethod" value="delivery" checked onchange="toggleDeliveryFields('${prefix}')" style="width:auto;margin:0;" /> Delivery${isDistance ? " (by distance)" : fee > 0 ? ` <strong class="delivery-fee-inline">(+${naira(fee)})</strong>` : " (free)"}</label>
       <label style="display:flex;align-items:center;gap:0.35rem;margin:0;font-weight:400;"><input type="radio" name="${prefix}DeliveryMethod" value="pickup" onchange="toggleDeliveryFields('${prefix}')" style="width:auto;margin:0;" /> ${esc(pickupLabel || "Pickup")}</label>
     </div>
     <div id="${prefix}DeliveryFields" class="dyn-delivery-fields" style="margin-bottom:0.9rem;" data-vendor-lat="${vendorLat ?? ""}" data-vendor-lng="${vendorLng ?? ""}" data-fee="${fee}" data-fee-mode="${esc(feeMode || "flat")}" data-per-km="${Number(perKm) || 0}">
       <input type="text" id="${prefix}Address" placeholder="Delivery address" value="${esc(profile?.address || "")}" />
       <input type="tel" id="${prefix}Phone" placeholder="Phone number (so the vendor can reach you)" value="${esc(profile?.phone || "")}" />
-      ${!isDistance && fee > 0 ? `<p class="muted" style="font-size:0.8rem;margin:0.35rem 0 0;"><i class="fa-solid fa-truck"></i> ${naira(fee)} delivery fee.</p>` : ""}
-      ${isDistance || hasVendorLoc ? `<p class="muted" style="font-size:0.8rem;margin:0.35rem 0 0;" id="${prefix}FeeLine">${deliveryInfoLineHtml(prefix, isDistance, hasVendorLoc, vendorLat, vendorLng, perKm)}</p>` : ""}
+      ${!isDistance && fee > 0 ? `<p class="delivery-fee-line" style="margin:0.35rem 0 0;"><i class="fa-solid fa-truck"></i> <strong>${naira(fee)}</strong> delivery fee</p>` : ""}
+      ${isDistance || hasVendorLoc ? `<p class="delivery-fee-line" style="margin:0.35rem 0 0;" id="${prefix}FeeLine">${deliveryInfoLineHtml(prefix, isDistance, hasVendorLoc, vendorLat, vendorLng, perKm)}</p>` : ""}
       <p class="muted" style="font-size:0.76rem;margin-top:0.25rem;">Wrong? <a href="#" onclick="navigate('editProfile');return false;">Fix in profile</a>.</p>
     </div>`;
 }
@@ -17134,6 +17159,46 @@ function readDeliveryFields(prefix, errorEl) {
   }
   return { method, address, phone };
 }
+// Mirrors deliveryInfoLineHtml's math so the order-confirmation summary can
+// show the same delivery fee the buyer already saw on the page, as a real
+// number to add into the grand total (not just re-displayed text).
+function computeDeliveryFeeForPrefix(prefix, method) {
+  if (method !== "delivery") return { fee: 0, known: true };
+  const wrap = byId(`${prefix}DeliveryFields`);
+  if (!wrap) return { fee: 0, known: true };
+  const feeMode = wrap.dataset.feeMode || "flat";
+  const flatFee = Number(wrap.dataset.fee) || 0;
+  const perKm = Number(wrap.dataset.perKm) || 0;
+  const vendorLat = wrap.dataset.vendorLat !== "" ? Number(wrap.dataset.vendorLat) : null;
+  const vendorLng = wrap.dataset.vendorLng !== "" ? Number(wrap.dataset.vendorLng) : null;
+  const isDistanceMode = feeMode === "distance" && perKm > 0 && vendorLat != null && vendorLng != null;
+  if (isDistanceMode) {
+    if (!buyerLocation) return { fee: 0, known: false };
+    const km = haversineKm(buyerLocation.lat, buyerLocation.lng, vendorLat, vendorLng);
+    return { fee: Math.round((perKm * km) / 50) * 50, known: true };
+  }
+  return { fee: flatFee, known: true };
+}
+// A full, itemised breakdown for the order-confirmation pop-up -- item(s),
+// delivery/pickup method, delivery fee (if any) and a real grand total --
+// instead of a single vague line. Scrolls inside the dialog if it grows
+// long (see #confirmModalMsg's max-height/overflow-y).
+function orderSummaryConfirmHtml({ itemLines, method, pickupLabel, deliveryFee, feeKnown, itemTotal }) {
+  const rows = itemLines.map((line) => `<div class="order-summary-row"><span>${esc(line)}</span></div>`).join("");
+  const methodLabel = method === "delivery" ? "Delivery" : (pickupLabel || "Pickup");
+  const deliveryRow = method === "delivery"
+    ? (feeKnown
+      ? `<div class="order-summary-row"><span>Delivery fee</span><strong>${deliveryFee > 0 ? naira(deliveryFee) : "Free"}</strong></div>`
+      : `<div class="order-summary-row"><span>Delivery fee</span><span class="muted">Confirmed after location is shared</span></div>`)
+    : "";
+  const grandTotal = itemTotal != null && feeKnown ? itemTotal + deliveryFee : null;
+  return `<div class="order-summary-confirm">
+    ${rows}
+    <div class="order-summary-row"><span>Fulfilment</span><strong>${esc(methodLabel)}</strong></div>
+    ${deliveryRow}
+    ${grandTotal != null ? `<div class="order-summary-row order-summary-total"><span>Total to pay</span><strong>${naira(grandTotal)}</strong></div>` : ""}
+  </div>`;
+}
 
 async function confirmRental(vendorId, productId) {
   if (!session) { showLogin(); return; }
@@ -17149,8 +17214,17 @@ async function confirmRental(vendorId, productId) {
 
   const productName = currentProductDetail?.name || "this item";
   const fmtDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  const confirmMsg = `Reserve ${qty > 1 ? qty + "× " : ""}${productName} from ${fmtDate(start)} to ${fmtDate(end)}, with ${delivery.method === "delivery" ? "delivery" : "pickup"}?`;
-  if (!(await showConfirmDialog(confirmMsg, { title: "Confirm reservation", okLabel: "Reserve" }))) return;
+  const rentPreviewEl = byId("rentTotalPreview");
+  const itemTotal = rentPreviewEl?.dataset.rawTotal != null ? Number(rentPreviewEl.dataset.rawTotal) : null;
+  const { fee: deliveryFee, known: feeKnown } = computeDeliveryFeeForPrefix("rent", delivery.method);
+  const itemLine = `${qty > 1 ? qty + "× " : ""}${productName} — ${fmtDate(start)} to ${fmtDate(end)}${itemTotal != null ? ` (${naira(itemTotal)})` : ""}`;
+  const summaryHtml = orderSummaryConfirmHtml({
+    itemLines: [itemLine],
+    method: delivery.method,
+    pickupLabel: "Pickup",
+    deliveryFee, feeKnown, itemTotal,
+  });
+  if (!(await showConfirmDialog(summaryHtml, { title: "Confirm reservation", okLabel: "Reserve", html: true }))) return;
 
   const { data: orderId, error } = await sb.rpc("create_rental_order", {
     p_vendor_id: vendorId,
@@ -17172,12 +17246,12 @@ async function confirmRental(vendorId, productId) {
 function updateServiceTotalPreview(rate, unit) {
   const qty = parseInt(byId("buyQty").value) || 0;
   const el = byId("serviceTotalPreview");
-  if (el) el.textContent = `Total: ${naira(rate * qty)} (${qty} ${unit}${qty === 1 ? "" : "s"} × ${naira(rate)}/${unit})`;
+  if (el) { el.textContent = `Total: ${naira(rate * qty)} (${qty} ${unit}${qty === 1 ? "" : "s"} × ${naira(rate)}/${unit})`; el.dataset.rawTotal = String(rate * qty); }
 }
 function updateBuyTotalPreview(rate) {
   const qty = parseInt(byId("buyQty").value) || 0;
   const el = byId("serviceTotalPreview");
-  if (el) el.textContent = `Total: ${naira(rate * qty)} (${qty} × ${naira(rate)})`;
+  if (el) { el.textContent = `Total: ${naira(rate * qty)} (${qty} × ${naira(rate)})`; el.dataset.rawTotal = String(rate * qty); }
 }
 function updateRentTotalPreview(rate, unit) {
   const start = byId("rentStart")?.value;
@@ -17185,10 +17259,11 @@ function updateRentTotalPreview(rate, unit) {
   const qty = parseInt(byId("rentQty")?.value) || 0;
   const el = byId("rentTotalPreview");
   if (!el) return;
-  if (!start || !end) { el.textContent = "Pick your dates to see the total."; return; }
+  if (!start || !end) { el.textContent = "Pick your dates to see the total."; delete el.dataset.rawTotal; return; }
   const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000) + 1);
   const units = unit === "week" ? Math.ceil(days / 7) : days;
   el.textContent = `Total: ${naira(rate * units * qty)} (${qty} × ${units} ${unit}${units === 1 ? "" : "s"} × ${naira(rate)}/${unit})`;
+  el.dataset.rawTotal = String(rate * units * qty);
 }
 
 function variantStock(v){const x=v?.quantity_available;if(x==null||x==='')return null;const n=Number(x);return Number.isFinite(n)&&n>=0?n:null;}
@@ -17212,7 +17287,7 @@ function selectProductVariant(variantId, scrollGallery = true, syncGallery = tru
   const qty = parseInt(byId("buyQty")?.value || 1) || 1;
   const unit = Number(variant.discount_price ?? variant.sale_price ?? variant.rental_rate ?? 0);
   const preview = byId("serviceTotalPreview");
-  if (preview && unit > 0) preview.textContent = `Total: ${naira(unit * qty)} (${qty} × ${naira(unit)})`;
+  if (preview && unit > 0) { preview.textContent = `Total: ${naira(unit * qty)} (${qty} × ${naira(unit)})`; preview.dataset.rawTotal = String(unit * qty); }
   const nameEl = byId("selectedVariantName"), priceEl = byId("selectedVariantPrice"), descEl = byId("selectedVariantDescription");
   if (nameEl) nameEl.textContent = variant.name || "Selected variety";
   if (priceEl) priceEl.textContent = naira(unit);
@@ -17264,8 +17339,16 @@ async function buyNow(vendorId, productId) {
 
   const previewEl = byId("serviceTotalPreview");
   const totalText = previewEl ? previewEl.textContent.replace(/^Total:\s*/, "") : (currentProductDetail?.sale_price != null ? naira(currentProductDetail.sale_price * qty) : "");
-  const confirmMsg = `${verb} ${qty > 1 && !previewEl ? qty + "× " : ""}${productName}${totalText ? ` for ${totalText}` : ""}, with ${delivery.method === "delivery" ? "delivery" : "pickup"}?`;
-  if (!(await showConfirmDialog(confirmMsg, { title: `Confirm ${verb === "Book" ? "booking" : "purchase"}`, okLabel: `${verb} now` }))) return;
+  const itemTotal = previewEl?.dataset.rawTotal != null ? Number(previewEl.dataset.rawTotal) : (currentProductDetail?.sale_price != null ? currentProductDetail.sale_price * qty : null);
+  const { fee: deliveryFee, known: feeKnown } = computeDeliveryFeeForPrefix("buy", delivery.method);
+  const itemLine = `${qty > 1 && !previewEl ? qty + "× " : ""}${productName}${totalText ? ` — ${totalText}` : ""}`;
+  const summaryHtml = orderSummaryConfirmHtml({
+    itemLines: [itemLine],
+    method: delivery.method,
+    pickupLabel: currentProductDetail?.is_service ? "In-person" : "Pickup",
+    deliveryFee, feeKnown, itemTotal,
+  });
+  if (!(await showConfirmDialog(summaryHtml, { title: `Confirm ${verb === "Book" ? "booking" : "purchase"}`, okLabel: `${verb} now`, html: true }))) return;
 
   const { data: orderId, error } = await sb.rpc("create_sale_order", {
     p_vendor_id: vendorId,
@@ -18450,7 +18533,7 @@ async function renderRequestEquipment() {
               <span class="badge ${o.status === "accepted" ? "success" : o.status === "declined" ? "danger" : ""}">${esc(o.status)}</span>
               <button class="btn btn-sm btn-outline" type="button" onclick="startConversationWithVendor('${o.vendor_id}')" title="Message vendor" aria-label="Message vendor"><i class='fa-solid fa-comment-dots'></i></button>
               ${r.status === "open" && o.status === "pending" ? `<button class="btn btn-sm" onclick="acceptOffer('${o.id}')">Accept</button><button class="btn btn-sm btn-danger" onclick="declineOffer('${o.id}')">Decline</button>` : ""}
-              ${o.status === "accepted" && o.vendor?.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(o.vendor.phone)}" onclick="callVendorGated(event,'${esc(o.vendor.phone)}','${o.vendor_id}')" title="Call vendor" aria-label="Call vendor"><i class='fa-solid fa-phone'></i></a>` : ""}
+              ${o.status === "accepted" && o.vendor?.phone ? `<a class="btn btn-sm btn-outline call-vendor-btn" href="${telLink(o.vendor.phone)}" onclick="callVendorGated(event,'${esc(o.vendor.phone)}','${o.vendor_id}')" title="Call vendor" aria-label="Call vendor"><i class='fa-solid fa-phone'></i></a>` : ""}
             </div>
           </div>
           ${o.price != null ? `<p class="muted" style="font-size:0.78rem;margin:0.3rem 0 0;">Quoted total: ${naira(o.price)}${o.status === "accepted" ? " · Delivery details are handled from the listing/request." : ""}</p>` : ""}
@@ -28490,7 +28573,7 @@ body::before { background: var(--system-bar-shade) !important; }
    circular control subtle, but never allow the heart itself to become white
    on a white product card. */
 .product-detail-card .fav-btn {
-  color: var(--primary) !important;
+  color: var(--danger) !important;
   background: color-mix(in srgb, var(--card) 94%, transparent) !important;
   border: 0 !important;
   outline: 0 !important;
@@ -30313,7 +30396,7 @@ window.renderVendorMapRail = function(){
         <div class="manual-payment-account-row"><span class="muted">Account number</span><strong>${esc(order.vendor?.account_number||"Not provided")}</strong>${order.vendor?.account_number?`<button type="button" class="icon-btn manual-payment-copy-btn" title="Copy account number" aria-label="Copy account number" onclick="navigator.clipboard?.writeText('${esc(order.vendor.account_number)}').then(()=>showToast('Account number copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i></button>`:""}</div>
       </div>
       ${!hasAccount ? `<div class="banner banner-warning" style="margin-top:.7rem;"><strong>Vendor payment details are not saved yet.</strong> Please contact the vendor before transferring.</div>` : ""}
-      <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
+      <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline call-vendor-btn" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
       <p class="muted" style="font-size:.78rem;margin-top:.9rem;"><strong>After you complete the transfer, you must tap “I’ve paid the vendor”.</strong> This is how Levromart records that you say you paid. The order will stay Payment unresolved until the vendor confirms receipt.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount},'${esc(paymentLabel)}')"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
     document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
   };
