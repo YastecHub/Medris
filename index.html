@@ -185,10 +185,17 @@
      the splash disappears as soon as init() has a route ready. */
   #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:var(--bg);opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease;}
   #levromartSplash.is-hidden{opacity:0;visibility:hidden;pointer-events:none;}
-  .levromart-splash-mark{width:88px;height:88px;display:flex;align-items:center;justify-content:center;border-radius:26px;background:var(--card,#fff);box-shadow:0 12px 34px rgba(15,23,42,.10);animation:levroSplashMark 1.5s ease-in-out infinite;}
-  .levromart-splash-mark svg{width:54px;height:54px;display:block;}
-  @keyframes levroSplashMark{0%,100%{transform:scale(1);opacity:.88}50%{transform:scale(1.035);opacity:1}}
-  @media(prefers-reduced-motion:reduce){#levromartSplash{transition:none}.levromart-splash-mark{animation:none;opacity:1;}}
+  .levromart-splash-mark{width:88px;height:88px;display:flex;align-items:center;justify-content:center;border-radius:26px;background:var(--card,#fff);box-shadow:0 12px 34px rgba(15,23,42,.10);}
+  .levromart-splash-mark svg{width:56px;height:56px;display:block;}
+  .levro-splash-dot{fill:var(--primary,#0B6E4A);animation:levroSplashDot 1.8s ease-in-out infinite;transform-origin:32px 32px;}
+  .levro-splash-arc{fill:none;stroke:var(--primary,#0B6E4A);stroke-width:8;stroke-linecap:round;stroke-dasharray:53.76 84.47;}
+  .levro-splash-arc-spin{transform-origin:32px 32px;}
+  .levro-splash-arc-spin-left{animation:levroArcJamLeft 1.8s cubic-bezier(.34,1.56,.64,1) infinite;}
+  .levro-splash-arc-spin-right{animation:levroArcJamRight 1.8s cubic-bezier(.34,1.56,.64,1) infinite;}
+  @keyframes levroArcJamLeft{0%{transform:rotate(-150deg);opacity:0}50%{transform:rotate(0deg);opacity:1}78%{transform:rotate(0deg);opacity:1}100%{transform:rotate(0deg);opacity:0}}
+  @keyframes levroArcJamRight{0%{transform:rotate(150deg);opacity:0}50%{transform:rotate(0deg);opacity:1}78%{transform:rotate(0deg);opacity:1}100%{transform:rotate(0deg);opacity:0}}
+  @keyframes levroSplashDot{0%,45%{transform:scale(.4);opacity:0}55%{transform:scale(1.15);opacity:1}65%{transform:scale(1);opacity:1}78%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
+  @media(prefers-reduced-motion:reduce){#levromartSplash{transition:none}.levro-splash-dot,.levro-splash-arc-spin-left,.levro-splash-arc-spin-right{animation:none;opacity:1;transform:none;}}
   /* Android/PWA system-bar area: keep the top chrome on the same dark
      surface as Levromart instead of exposing a bright device accent. */
   :root { --safe-top: 8px; --safe-bottom: 8px; }
@@ -6931,7 +6938,11 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 
 </head>
 <body>
-<div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="32" r="27" fill="none" stroke="var(--primary,#0B6E4A)" stroke-width="5"/><path d="M19 34c5-1 8-4 10-9 1-3 3-5 6-5 4 0 6 3 6 7 0 5-4 8-8 8h-5c-5 0-9 3-9 7 0 3 2 5 5 5 4 0 6-2 7-5" fill="none" stroke="var(--primary,#0B6E4A)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+<div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
+  <g class="levro-splash-arc-spin levro-splash-arc-spin-left"><circle class="levro-splash-arc" cx="32" cy="32" r="22" transform="rotate(110 32 32)"/></g>
+  <g class="levro-splash-arc-spin levro-splash-arc-spin-right"><circle class="levro-splash-arc" cx="32" cy="32" r="22" transform="rotate(290 32 32)"/></g>
+  <circle class="levro-splash-dot" cx="32" cy="32" r="6.5"/>
+</svg></div></div>
 <script id="levromart-splash-watchdog">
 (function(){
   // This watchdog intentionally lives before the large application bundle.
