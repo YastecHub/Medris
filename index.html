@@ -9680,11 +9680,19 @@ async function renderNotifPanel() {
   const notifCacheKey = `levromart-notifications-cache-v2:${session.user.id}`;
   let cachedNotifItems = [];
   try { cachedNotifItems = JSON.parse(localStorage.getItem(notifCacheKey) || '[]'); } catch (_) { cachedNotifItems = []; }
+  // The tab row itself must appear in this instant fast-paint too, even
+  // without unread badge counts yet (those need the fresh fetch below to
+  // classify). Otherwise the tabs pop into existence a moment later once the
+  // real render lands, which read as the tabs/stars "flickering" on open.
+  const cachedNotificationTabs=[['all','All'],['personal','Personal'],...(profile?.role!=='admin'?[['orders',vendor?.id?'Orders & Requests':'Orders']]:[]),...(vendor?.id?[['myListings','My Listings']]:[]),['vendors','Vendors']];
+  if(!cachedNotificationTabs.some(([key])=>key===notifViewMode))notifViewMode='all';
+  const cachedTabsHtml=`<div class="notif-tabs" role="tablist" aria-label="Notification categories">${cachedNotificationTabs.map(([key,label])=>`<button type="button" role="tab" aria-selected="${notifViewMode===key?"true":"false"}" class="notif-tab ${notifViewMode===key?"active":""}" onclick="switchNotifView('${key}')">${label}</button>`).join('')}</div>`;
   if (Array.isArray(cachedNotifItems) && cachedNotifItems.length) {
-    panel.innerHTML = cachedNotifItems.map(n => {
+    const cachedList = cachedNotifItems.map(n => {
       const avatar = n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.15rem;height:2.15rem;object-fit:cover;flex:none;" alt="" draggable="false" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.15rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<span class="notification-system-icon"><i class="fa-solid fa-circle-info"></i></span>`;
       return `<div class="notif-item-wrap" data-id="${esc(n.id)}"><button type="button" class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}" data-view="${esc(n.target_view || 'home')}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || '')}" data-actor-avatar="${esc(n.actor_avatar_url || '')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">${avatar}<span class="notif-copy"><strong>${esc(n.title || 'Notification')}</strong>${n.body ? `<span class="muted" style="font-size:.8rem;">${esc(n.notification_category === 'new_follower' ? (n.actor_name || n.body) : n.body)}</span>` : ''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span></button></div>`;
     }).join('');
+    panel.innerHTML = currentView === "notifications" ? cachedTabsHtml + cachedList : cachedList;
   } else {
     panel.innerHTML = '';
   }
@@ -12719,7 +12727,7 @@ function renderAdminLinkLibrary() {
     <div class="flex" style="justify-content:flex-start;gap:.55rem;flex-wrap:wrap;">
       <button class="btn btn-sm btn-outline" onclick="copyAllAdminLinks()"><i class="fa-solid fa-copy"></i> Copy all links</button>
       <button class="btn btn-sm btn-outline" onclick="navigate('adminCarousel')"><i class="fa-solid fa-images"></i> Carousel manager</button>
-      <button class="btn btn-sm btn-outline" onclick="navigate('adminPanel')"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>
+      <button class="btn btn-sm" onclick="navigate('adminPanel')"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>
     </div>
   </div>`;
 }
@@ -12788,7 +12796,7 @@ async function renderAdminCarousel() {
       </div>
     </div>`).join("")}</div>`;
   }
-  html += `<button class="btn btn-sm btn-outline" style="margin-top:1rem;" onclick="navigate('adminPanel')"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>`;
+  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('adminPanel')"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>`;
   return html;
 }
 
@@ -14619,7 +14627,7 @@ async function renderMessages(conversationId) {
     if (pErr || !pInfo || !pInfo[0]) return '<div class="empty-state">Conversation not found.</div>';
     const p = pInfo[0];
     const { data: messages } = await sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true });
-    let html = `<button class="btn btn-sm" style="margin-bottom:0.8rem;background:#6b7280;" onclick="navigate('adminDisputes')"><i class="fa-solid fa-arrow-left"></i> Back to disputes</button>`;
+    let html = `<button class="btn btn-sm" style="margin-bottom:0.8rem;" onclick="navigate('adminDisputes')"><i class="fa-solid fa-arrow-left"></i> Back to disputes</button>`;
     html += `<h3><i class="fa-solid fa-comments"></i> ${esc(p.buyer_name || "Customer")} &harr; ${esc(p.vendor_name || "Vendor")}</h3>
       <p class="muted" style="font-size:0.85rem;">Viewing as admin, read only.</p>`;
     html += `<div class="chat-thread"><div class="chat-messages">${(messages || []).map((m) => {
@@ -21940,7 +21948,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
 
   const orderBackView = isVendor ? "vendorDashboard" : "buyerOrders";
   const orderBackParams = {};
-  html += `<button type="button" class="btn btn-sm" style="margin-top:1rem;background:#6b7280;" onclick='event.preventDefault();event.stopPropagation();navigate("${orderBackView}",{});return false;'><i class="fa-solid fa-arrow-left"></i> ${isVendor ? "Back to Dashboard" : "Back to Orders"}</button>`;
+  html += `<button type="button" class="btn btn-sm" style="margin-top:1rem;" onclick='event.preventDefault();event.stopPropagation();navigate("${orderBackView}",{});return false;'><i class="fa-solid fa-arrow-left"></i> ${isVendor ? "Back to Dashboard" : "Back to Orders"}</button>`;
   return html;
 }
 
@@ -22900,7 +22908,7 @@ async function renderAdminPasswordResets() {
     html += `</div>`;
   }
 
-  html += `<button class="btn btn-sm btn-outline" style="margin-top:1rem;" onclick="navigate('adminPanel',{status:'pending'})"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>`;
+  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('adminPanel',{status:'pending'})"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>`;
 
   clearInterval(window.__passwordResetAdminTimer);
   window.__passwordResetAdminTimer = setInterval(async () => {
@@ -38067,6 +38075,16 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
    rule just as much as role="button" cards do. */
 .product-gallery-varieties-list > .product-gallery-variety{
   touch-action: pan-x pan-y !important;
+}
+
+/* Back buttons were a mix of green pills, gray pills, outline pills and
+   plain-text icon buttons depending on which screen you were on. Bring
+   every "back" affordance to the same green, whether it's an icon-only
+   header button (icon turns green) or a labelled pill (goes solid green,
+   matching the default .btn instead of gray/outline). */
+.settings-back-btn, .chat-header-back, #app .messages-toolbar-title .messages-inbox-back,
+.customer-following-head .icon-btn, .chat-message-selection-bar > button:first-child {
+  color: var(--primary) !important;
 }
 
 /* Storefront bio: collapse long descriptions instead of pushing everything
