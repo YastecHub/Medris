@@ -4329,7 +4329,10 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
   .notif-selection-actions { gap:.45rem !important; }
 
   /* Clean notification/message batch selection - tap based. */
-.conv-row-wrap:last-child { border-bottom: none; }
+  /* Each row is its own single-child wrapper, so :last-child on the
+     wrapper itself matches every row -- target the last wrapper's
+     inner item instead. */
+  .messages-conversation-list > .conv-row-wrap:last-child .conv-list-item { border-bottom: none; }
   .conv-list-item { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
   .conv-list-item.selected { background: color-mix(in srgb, var(--primary) 12%, var(--card)); }
   .conv-select-check { width: 1.35rem; height: 1.35rem; border-radius: 50%; border: 2px solid var(--border); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 1.35rem; color: transparent; font-size: .62rem; }
@@ -6022,13 +6025,62 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   min-height:4.6rem !important;padding:.72rem .15rem !important;background:transparent !important;
   border-bottom:1px solid var(--border) !important;border-radius:0 !important;box-shadow:none !important;
 }
-#app .messages-conversation-list .conv-list-item:last-child{border-bottom:0 !important;}
+/* Each row is wrapped in its own single-child .conv-row-wrap, so
+   .conv-list-item:last-child matched every row (each is trivially the
+   only/last child of its own wrapper) and silently removed the divider
+   from the entire list instead of just the actual last conversation. */
+#app .messages-conversation-list > .conv-row-wrap:last-child .conv-list-item{border-bottom:0 !important;}
 #app .messages-conversation-list .conv-list-item:hover{background:color-mix(in srgb,var(--primary) 4%,transparent) !important;}
 #app .messages-conversation-list .conv-list-item .avatar-circle{width:3.25rem !important;height:3.25rem !important;}
 #app .messages-conversation-list .conv-list-item .conv-meta{min-width:0 !important;}
 #app .messages-conversation-list .conv-list-item .conv-name,
 #app .messages-conversation-list .conv-list-item strong{font-size:.92rem !important;}
 #app .messages-conversation-list .conv-list-item .conv-preview{font-size:.8rem !important;margin-top:.12rem !important;}
+
+/* WhatsApp-style swipe-to-reveal conversation actions, replacing the
+   old always-visible Pin/Archive/Add-to-list icon buttons. Each row's
+   wrapper clips the sliding surface so the action panels stay hidden
+   underneath until the surface is dragged off them. */
+#app .messages-conversation-list .conv-row-wrap{
+  position:relative !important;overflow:hidden !important;
+}
+#app .messages-conversation-list .conv-swipe-surface{
+  position:relative !important;z-index:2 !important;
+  transition:transform .18s ease !important;will-change:transform !important;
+}
+#app .messages-conversation-list .conv-swipe-actions{
+  position:absolute !important;top:0 !important;bottom:0 !important;
+  display:flex !important;align-items:stretch !important;z-index:1 !important;
+}
+#app .messages-conversation-list .conv-swipe-actions-left{left:0 !important;transform:translateX(-100%) !important;}
+#app .messages-conversation-list .conv-swipe-actions-right{right:0 !important;transform:translateX(100%) !important;}
+#app .messages-conversation-list .conv-row-wrap.conv-swipe-open-left .conv-swipe-actions-left,
+#app .messages-conversation-list .conv-row-wrap.conv-swipe-open-right .conv-swipe-actions-right{transform:translateX(0) !important;}
+#app .messages-conversation-list .conv-swipe-action{
+  width:84px !important;border:0 !important;cursor:pointer !important;font:inherit !important;
+  display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;
+  gap:.3rem !important;color:#fff !important;padding:0 !important;
+}
+#app .messages-conversation-list .conv-swipe-action i{font-size:1.05rem !important;}
+#app .messages-conversation-list .conv-swipe-action span{font-size:.68rem !important;font-weight:600 !important;}
+#app .messages-conversation-list .conv-action-pin{background:#f59e0b !important;}
+#app .messages-conversation-list .conv-action-read{background:#ef4444 !important;}
+#app .messages-conversation-list .conv-action-list{background:#64748b !important;}
+#app .messages-conversation-list .conv-action-archive{background:#334155 !important;}
+#app .messages-conversation-list .conv-top-row{
+  display:flex !important;align-items:center !important;justify-content:space-between !important;gap:.5rem !important;
+}
+#app .messages-conversation-list .conv-top-row strong{
+  overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;min-width:0 !important;
+}
+#app .messages-conversation-list .conv-time{
+  flex:0 0 auto !important;font-size:.72rem !important;color:var(--text-muted) !important;font-weight:400 !important;
+}
+#app .messages-conversation-list .conv-bottom-row{
+  display:flex !important;align-items:center !important;justify-content:space-between !important;gap:.5rem !important;margin-top:.12rem !important;
+}
+#app .messages-conversation-list .conv-bottom-row .conv-preview{margin-top:0 !important;min-width:0 !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;flex:1 1 auto !important;}
+#app .messages-conversation-list .conv-pinned-icon{font-size:.72rem !important;color:var(--text-muted) !important;margin-right:.15rem !important;}
 
 /* Compact request stack: same centered hierarchy, less vertical weight. */
 #app .vendor-request-card{
@@ -14716,29 +14768,129 @@ async function toggleBlockChatUser(otherUserId, otherName, conversationId) {
   }
   navigate("messages", { conversationId }, false);
 }
+// WhatsApp-style row: no permanently-visible icon buttons cluttering the
+// surface -- swipe right reveals Pin + Mark read, swipe left reveals Add to
+// list + Archive, exactly like the reveal-behind-the-row pattern iOS/
+// WhatsApp use. See setupConvRowSwipe() for the drag mechanics.
 function convRowHtml(c) {
   const name = c.other_name || "User";
   const isUnread = c.unread_count > 0;
   const archived = isChatArchived(c.conversation_id);
   const pinned = isConversationPinned(c);
   const selected = msgSelectMode && msgSelectedIds.has(c.conversation_id);
-  return `<div class="conv-row-wrap ${selected ? "selected" : ""}">
-    <div class="conv-list-item ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}" onclick="handleConvRowClick(event,'${c.conversation_id}')">
+  const timeLabel = convRowTimeLabel(c.updated_at || c.last_message_at || c.created_at);
+  return `<div class="conv-row-wrap ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}">
+    ${!msgSelectMode ? `
+    <div class="conv-swipe-actions conv-swipe-actions-left" aria-hidden="true">
+      <button type="button" class="conv-swipe-action conv-action-pin" onclick="event.stopPropagation();closeConvSwipe(this);togglePinConversation('${c.conversation_id}')"><i class="fa-solid fa-thumbtack"></i><span>${pinned ? "Unpin" : "Pin"}</span></button>
+      <button type="button" class="conv-swipe-action conv-action-read" onclick="event.stopPropagation();closeConvSwipe(this);markConversationRead('${c.conversation_id}')"><i class="fa-solid fa-envelope-open"></i><span>Read</span></button>
+    </div>
+    <div class="conv-swipe-actions conv-swipe-actions-right" aria-hidden="true">
+      <button type="button" class="conv-swipe-action conv-action-list" onclick="event.stopPropagation();closeConvSwipe(this);openChatListPicker('${c.conversation_id}')"><i class="fa-solid fa-layer-group"></i><span>Add to list</span></button>
+      <button type="button" class="conv-swipe-action conv-action-archive" onclick="event.stopPropagation();closeConvSwipe(this);toggleChatArchived('${c.conversation_id}')"><i class="fa-solid ${archived ? "fa-box-open" : "fa-box-archive"}"></i><span>${archived ? "Unarchive" : "Archive"}</span></button>
+    </div>` : ""}
+    <div class="conv-list-item conv-swipe-surface ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}" onclick="handleConvRowClick(event,'${c.conversation_id}')">
       ${msgSelectMode ? `<span class="conv-select-check ${selected ? "active" : ""}" aria-hidden="true"><i class="fa-solid fa-check"></i></span>` : ""}
       ${profileAvatarHtml(c.other_avatar, name, "2.6rem", { lightbox: !!c.other_avatar && !msgSelectMode })}
       <div class="conv-meta">
-        <strong>${esc(name)}</strong>
-        <div class="conv-preview">${c.last_message ? esc(c.last_message) : "No messages yet"}</div>
+        <div class="conv-top-row"><strong>${pinned ? `<i class="fa-solid fa-thumbtack conv-pinned-icon"></i> ` : ""}${esc(name)}</strong><span class="conv-time">${esc(timeLabel)}</span></div>
+        <div class="conv-bottom-row">
+          <div class="conv-preview">${c.last_message ? esc(c.last_message) : "No messages yet"}</div>
+          ${isUnread ? `<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count > 99 ? "99+" : c.unread_count}</span>` : ""}
+        </div>
       </div>
-      ${isUnread ? `<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count > 99 ? "99+" : c.unread_count}</span>` : ""}
-      ${!msgSelectMode ? `
-        <button class="icon-btn" style="flex-shrink:0;" title="Add to a list" onclick="event.stopPropagation();openChatListPicker('${c.conversation_id}')"><i class="fa-solid fa-layer-group" style="${myChatLists.some((l) => l.conversation_ids.includes(c.conversation_id)) ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
-        <button class="icon-btn" style="flex-shrink:0;" title="${archived ? "Restore chat" : "Archive chat"}" onclick="event.stopPropagation();toggleChatArchived('${c.conversation_id}')"><i class="fa-solid ${archived ? "fa-box-open" : "fa-box-archive"}" style="${archived ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
-        <button class="icon-btn" style="flex-shrink:0;" title="${pinned ? "Unpin chat" : "Pin chat"}" onclick="event.stopPropagation();togglePinConversation('${c.conversation_id}')"><i class="fa-solid fa-thumbtack" style="${pinned ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
-      ` : ""}
     </div>
   </div>`;
 }
+// A compact WhatsApp-style timestamp: clock time for today, weekday name
+// for the last week, short date otherwise.
+function convRowTimeLabel(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "";
+  const now = new Date();
+  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  if (diffDays <= 0) return d.toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" });
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return d.toLocaleDateString("en-GB", { weekday: "short" });
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+async function markConversationRead(conversationId) {
+  if (!session?.user?.id) return;
+  try {
+    await sb.from("messages").update({ read_at: new Date().toISOString(), delivered_at: new Date().toISOString() }).eq("conversation_id", conversationId).is("read_at", null).neq("sender_id", session.user.id);
+    const conv = (window.__conversations || []).find((c) => c.conversation_id === conversationId);
+    if (conv) conv.unread_count = 0;
+    refreshNotifications(false).catch(() => {});
+    navigate("messages", {}, false);
+  } catch (e) { showToast?.(e.message || "Could not mark as read.", "error"); }
+}
+// ---------- Conversation row swipe-to-reveal (Pin/Read, Add to list/Archive) ----------
+let __convSwipeOpenRow = null;
+function closeConvSwipe(elOrWrap) {
+  const wrap = elOrWrap?.closest ? elOrWrap.closest(".conv-row-wrap") : elOrWrap;
+  if (!wrap) return;
+  const surface = wrap.querySelector(".conv-swipe-surface");
+  if (surface) { surface.style.transition = ""; surface.style.transform = ""; }
+  wrap.classList.remove("conv-swipe-open-left", "conv-swipe-open-right");
+  if (__convSwipeOpenRow === wrap) __convSwipeOpenRow = null;
+}
+function setupConvRowSwipe(root) {
+  const scope = root || document;
+  const ACTION_WIDTH = 168;
+  scope.querySelectorAll?.(".conv-row-wrap[data-conversation-id]").forEach((wrap) => {
+    const surface = wrap.querySelector(".conv-swipe-surface");
+    if (!surface || surface.dataset.convSwipeBound === "1") return;
+    surface.dataset.convSwipeBound = "1";
+    let tracking = false, dragging = false, sx = 0, sy = 0, dx = 0, startOpen = 0, pointerId = null;
+    const getOpenOffset = () => wrap.classList.contains("conv-swipe-open-left") ? ACTION_WIDTH : wrap.classList.contains("conv-swipe-open-right") ? -ACTION_WIDTH : 0;
+    surface.addEventListener("pointerdown", (e) => {
+      if (msgSelectMode || (e.pointerType === "mouse" && e.button !== 0)) return;
+      sx = e.clientX; sy = e.clientY; dx = 0; tracking = true; dragging = false;
+      startOpen = getOpenOffset();
+      pointerId = e.pointerId;
+      try { surface.setPointerCapture(pointerId); } catch (_) {}
+    }, { passive: true });
+    surface.addEventListener("pointermove", (e) => {
+      if (!tracking || (pointerId !== null && e.pointerId !== pointerId)) return;
+      dx = e.clientX - sx;
+      const dy = e.clientY - sy;
+      if (!dragging) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        if (Math.abs(dy) > Math.abs(dx) * 1.2) { tracking = false; return; }
+        dragging = true;
+        surface.style.transition = "none";
+        if (__convSwipeOpenRow && __convSwipeOpenRow !== wrap) closeConvSwipe(__convSwipeOpenRow);
+        __convSwipeOpenRow = wrap;
+      }
+      e.preventDefault();
+      const offset = Math.max(-ACTION_WIDTH, Math.min(ACTION_WIDTH, startOpen + dx));
+      surface.style.transform = `translate3d(${offset}px,0,0)`;
+    }, { passive: false });
+    const finish = () => {
+      if (!tracking) return;
+      tracking = false;
+      if (!dragging) return;
+      dragging = false;
+      surface.style.transition = "";
+      const offset = startOpen + dx;
+      const openLeft = offset > ACTION_WIDTH * 0.4;
+      const openRight = offset < -ACTION_WIDTH * 0.4;
+      wrap.classList.toggle("conv-swipe-open-left", openLeft);
+      wrap.classList.toggle("conv-swipe-open-right", openRight);
+      if (openLeft) surface.style.transform = `translate3d(${ACTION_WIDTH}px,0,0)`;
+      else if (openRight) surface.style.transform = `translate3d(${-ACTION_WIDTH}px,0,0)`;
+      else { surface.style.transform = ""; __convSwipeOpenRow = null; }
+    };
+    surface.addEventListener("pointerup", finish, { passive: true });
+    surface.addEventListener("pointercancel", finish, { passive: true });
+  });
+}
+document.addEventListener("click", (e) => {
+  if (e.target.closest?.(".conv-row-wrap")) return;
+  if (__convSwipeOpenRow) closeConvSwipe(__convSwipeOpenRow);
+}, true);
 
 let msgSelectMode = false;
 let msgSelectedIds = new Set();
@@ -14867,6 +15019,11 @@ function handleConvRowClick(event, conversationId) {
   if (event) event.preventDefault();
   const clicked = event?.currentTarget;
   if (clicked?.dataset.longPressConsumed === '1') { delete clicked.dataset.longPressConsumed; return; }
+  const openWrap = clicked?.closest?.(".conv-row-wrap");
+  if (openWrap && (openWrap.classList.contains("conv-swipe-open-left") || openWrap.classList.contains("conv-swipe-open-right"))) {
+    closeConvSwipe(openWrap);
+    return;
+  }
   if (msgSelectMode) {
     toggleMsgSelected(conversationId);
     return;
@@ -14910,6 +15067,7 @@ function filterMsgList() {
   if (q) shown = shown.filter((c) => (c.other_name || "").toLowerCase().includes(q) || (c.last_message || "").toLowerCase().includes(q));
   shown = [...shown].sort((a,b) => Number(isConversationPinned(b)) - Number(isConversationPinned(a)));
   wrap.innerHTML = shown.length ? shown.map(convRowHtml).join("") : `<div class="empty-state">${q ? "No conversations match that search." : emptyReason}</div>`;
+  setupConvRowSwipe(wrap);
 }
 
 // Refresh the cached conversation list without blocking navigation.
@@ -15240,7 +15398,7 @@ async function renderMessages(conversationId) {
       </div>
       ${isBlockedByMe ? `<div class="chat-blocked-banner"><i class="fa-solid fa-user-slash"></i><span>You blocked ${esc(otherName)}.</span><button type="button" onclick="toggleBlockChatUser('${otherUserId}','${esc(otherName).replace(/'/g, "\\'")}','${conversationId}')">Unblock</button></div>` : `
       <div class="chat-input-row">
-        <input type="file" id="chatFileInput" class="chat-file-input" accept="image/*,.heic,.heif,.webp" multiple onchange="handleChatFileSelected(event,'${conversationId}')" />
+        <input type="file" id="chatFileInput" class="chat-file-input" accept="image/*,.heic,.heif,.webp" onchange="handleChatFileSelected(event,'${conversationId}')" />
         <button class="msg-attach-btn" onclick="byId('chatFileInput').click()" title="Attach a file (max 10MB)"><i class="fa-solid fa-paperclip"></i></button>
         ${AiSpeechRecognition ? `<button class="ai-chat-mic-btn" id="msgMicBtn" onclick="toggleMsgMic()" title="Tap to talk"><i class="fa-solid fa-microphone"></i></button>` : ""}
         <textarea id="chatInput" rows="1" placeholder="Type a message…" maxlength="2000" oninput="handleChatTyping('${conversationId}');autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}');}"></textarea>
@@ -15756,9 +15914,25 @@ function setupMessageLongPress(root) {
     const LONG_PRESS_MS = 460;
     const MOVE_TOLERANCE = 14;
 
-    const clear = () => {
+    // Cancelling the long-press timer and releasing pointer capture used to
+    // always happen together. But releasing capture the moment real
+    // movement is detected (MOVE_TOLERANCE below) meant that once the
+    // finger's physical position drifted outside this bubble's own narrow
+    // rectangle -- which a real swipe-to-reply drag does almost
+    // immediately -- the browser stopped delivering pointermove events to
+    // it at all, since hit-testing without capture requires the touch to
+    // still be physically over the element. That silently cut off the
+    // swipe-to-reply recognizer's own pointermove listener on the same
+    // bubble mid-gesture, which is exactly what made a normal swipe feel
+    // like it needed a held press first to "grab" before it would respond.
+    // Capture must stay held for the entire gesture; only the timer needs
+    // cancelling once we know it's a drag, not a hold.
+    const clearTimerOnly = () => {
       if (timer) { clearTimeout(timer); timer = null; }
       bubble.classList.remove("chat-long-pressing");
+    };
+    const clear = () => {
+      clearTimerOnly();
       if (activePointerId != null && bubble.hasPointerCapture?.(activePointerId)) {
         try { bubble.releasePointerCapture(activePointerId); } catch (_) {}
       }
@@ -15800,7 +15974,7 @@ function setupMessageLongPress(root) {
       const dy = (e.clientY || 0) - sy;
       if (Math.hypot(dx, dy) > MOVE_TOLERANCE) {
         moved = true;
-        clear();
+        clearTimerOnly();
       }
     };
     const finish = () => clear();
@@ -31317,15 +31491,12 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
           // dy=0 or dx=0 by chance) was locking the gesture into "horizontal"
           // on pure jitter, which then called preventDefault and broke
           // ordinary vertical scrolling over messages entirely.
-          if(adx<6 && ady<6)return;
-          // Requiring dx to already be >= dy before committing to "horizontal"
-          // meant a real finger's first sample -- almost never perfectly
-          // straight -- had to be dragged decisively sideways before the
-          // gesture engaged at all, which read as "hold, then drag" instead
-          // of WhatsApp's immediate response to any rightward/leftward
-          // motion. Only reject a clearly-vertical drag; anything close to
-          // diagonal or better commits to swipe right away.
-          if(ady>adx*1.2)return;
+          if(adx<4 && ady<4)return;
+          // Only reject a drag that's unmistakably vertical (a real scroll
+          // attempt); anything even roughly sideways commits to the swipe
+          // immediately, same as Telegram/WhatsApp -- no decisive first
+          // sample or held pause required.
+          if(ady>adx*1.6)return;
           horizontal=true;wrap.classList.add('chat-swipe-active');
         }
         const allowed=mine?dx<0:dx>0;
