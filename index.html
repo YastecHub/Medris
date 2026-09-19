@@ -9869,6 +9869,14 @@ async function refreshNotifications(renderPanel = true) {
 
   sb.from("messages").update({ delivered_at: new Date().toISOString() }).is("delivered_at", null).neq("sender_id", session.user.id).then(() => {}).catch(() => {});
   renderBottomNav();
+  // The profile panel's stats (pending orders, followers, etc.) are built
+  // from these same globals inside updateAuthUI(), but opening the panel
+  // just toggles a drawer's visibility -- it never re-renders. Without this,
+  // whichever values were current the last time updateAuthUI() happened to
+  // run (e.g. a stale count from before this refresh even started) is what
+  // stayed on screen indefinitely, showing 0 for a follower count that was
+  // simply never fetched yet at that point.
+  updateAuthUI();
   if (renderPanel && getNotifHost()) await renderNotifPanel();
 }
 async function renderNotifPanel() {
@@ -29179,6 +29187,14 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     /\bexplore (?:our|the) (?:marketplace|categories|sectors)\b/i,
     /\bvarious options (?:are )?available\b/i,
     /\blots of (?:great )?options? (?:to choose from|available)\b/i,
+    // The pipeline's own last-resort openers ("I'm on it. Tell me what you
+    // want to open, find, or do...") were never in this list, so once
+    // everything upstream (the API, the forced-specificity retry, the
+    // hardcoded intent matcher) gave up, THIS exact sentence reached the
+    // user un-flagged -- silently skipping the live marketplace search
+    // fallback below that would otherwise have tried an actual product/
+    // vendor lookup for a question like "which vendor sells phones?".
+    /^i.?m on it\b.*\btell me what you want\b/i,
   ];
   function isGenericLeviReply(reply) {
     const text = String(reply || "").trim();
@@ -30633,7 +30649,13 @@ window.renderVendorMapRail = function(){
   async function leviLiveMarketplaceFallback(text){
     const q=leviNormaliseText(text);
     if(!q)return null;
-    const stripped=q.replace(/\b(levi|please|help me|can you|could you|where can i|where do i|i want|i need|looking for|find me|show me|do you have|is there|are there)\b/g,' ').replace(/\s+/g,' ').trim();
+    // Strip common question phrasings too ("which vendor sells...", "who
+    // has...", "how far is...") -- without this, a question like "which
+    // vendor sells phones?" kept "which"/"vendor"/"sells" ahead of the
+    // actual keyword ("phones") in word order, and the ILIKE fallback
+    // below only ever looked at the first 3 words, silently dropping the
+    // one word that actually mattered.
+    const stripped=q.replace(/\b(levi|please|help me|can you|could you|where can i|where do i|which vendors?|what vendors?|who sells|which one sells|that sells|who has|how far is|how far|i want|i need|looking for|find me|show me|do you have|is there|are there|sells|selling|sell)\b/g,' ').replace(/\s+/g,' ').trim();
     if(stripped.length<2)return null;
     try{
       const {data:idRows}=await sb.rpc('search_product_ids',{p_query:stripped});
@@ -30644,7 +30666,7 @@ window.renderVendorMapRail = function(){
         products=(data||[]).sort((a,b)=>ids.indexOf(a.id)-ids.indexOf(b.id));
       }
       if(!products.length){
-        const words=stripped.split(/\s+/).filter(w=>w.length>2).slice(0,3);
+        const words=stripped.split(/\s+/).filter(w=>w.length>2).slice(0,6);
         if(words.length){
           const ors=words.map(w=>`name.ilike.%${w}%,description.ilike.%${w}%`).join(',');
           const {data}=await sb.from('products').select('id,name,description,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,vendor:vendors(id,business_name,avg_rating,review_count,city)').eq('status','active').or(ors).limit(10);
