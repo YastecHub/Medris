@@ -959,6 +959,7 @@
   .chat-bubble { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; max-width: 75%; padding: 0.55rem 0.85rem; border-radius: 1rem; touch-action: pan-y; font-size: 0.92rem; line-height: 1.4; word-break: break-word; cursor: default; }
   .chat-bubble * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .chat-bubble.chat-long-pressing { transform: scale(0.995); transition: transform .08s ease; }
+  .ai-chat-msg.ai-chat-msg-long-pressing { transform: scale(0.985); transition: transform .08s ease; }
   .chat-bubble.mine { align-self: flex-end; background: var(--chat-mine-bg, var(--primary-grad)); color: var(--chat-mine-text, white); border-bottom-right-radius: 0.25rem; }
   .chat-bubble.theirs { align-self: flex-start; background: var(--input-bg); border: 1px solid var(--border); border-bottom-left-radius: 0.25rem; }
   .chat-bubble .chat-time { display: block; font-size: 0.68rem; opacity: 0.75; margin-top: 0.2rem; }
@@ -1071,6 +1072,10 @@
   .ai-msg-reactions-row:empty { display: none; }
   .ai-msg-reactions-row { display: flex; gap: 0.2rem; margin-top: 0.2rem; }
   .chat-input-row { display: flex; gap: 0.5rem; padding: 0.7rem; border-top: 1px solid var(--border); align-items: flex-end; }
+  .chat-blocked-banner { display: flex; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--danger, #dc2626) 8%, var(--card)); color: var(--muted); font-size: 0.85rem; }
+  .chat-blocked-banner i { color: var(--danger, #dc2626); }
+  .chat-blocked-banner span { flex: 1; }
+  .chat-blocked-banner button { border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 0.35rem 0.8rem; border-radius: 999px; font-size: 0.8rem; cursor: pointer; }
   .chat-input-row textarea { margin: 0; flex: 1; resize: none; max-height: 7.5rem; overflow-y: auto; line-height: 1.35; }
   .chat-input-row .btn { flex-shrink: 0; }
   .chat-file-input { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; opacity:0 !important; }
@@ -14116,12 +14121,68 @@ function chatArchiveKey() { return `levromart-archived-chats:${session?.user?.id
 function getArchivedChatIds() { try { const x = JSON.parse(localStorage.getItem(chatArchiveKey()) || "[]"); return new Set(Array.isArray(x) ? x : []); } catch (e) { return new Set(); } }
 function setArchivedChatIds(set) { try { localStorage.setItem(chatArchiveKey(), JSON.stringify([...set])); } catch (e) {} }
 function isChatArchived(id) { return getArchivedChatIds().has(id); }
+
+// Deleted chats: hidden from every list (unlike Archive, there is no
+// "deleted" tab to restore from) - a new incoming message un-deletes the
+// thread automatically, same spirit as WhatsApp.
+function chatDeletedKey() { return `levromart-deleted-chats:${session?.user?.id || "guest"}`; }
+function getDeletedChatIds() { try { const x = JSON.parse(localStorage.getItem(chatDeletedKey()) || "[]"); return new Set(Array.isArray(x) ? x : []); } catch (e) { return new Set(); } }
+function setDeletedChatIds(set) { try { localStorage.setItem(chatDeletedKey(), JSON.stringify([...set])); } catch (e) {} }
+function isChatDeleted(id) { return getDeletedChatIds().has(id); }
+function undeleteChatOnNewMessage(conversationId) {
+  const ids = getDeletedChatIds();
+  if (ids.delete(String(conversationId))) setDeletedChatIds(ids);
+}
+async function deleteChatConversation(conversationId) {
+  const confirmed = await showConfirmDialog("Delete this chat? It will be removed from your messages. It comes back automatically if the other person sends a new message.", { title: "Delete chat", okLabel: "Delete", danger: true });
+  if (!confirmed) return;
+  const ids = getDeletedChatIds();
+  ids.add(String(conversationId));
+  setDeletedChatIds(ids);
+  closeChatMenu();
+  showToast("Chat deleted.", "success");
+  navigate("messages", {}, false);
+}
+function applyConversationsList(rows) {
+  const deduped = dedupeConversationRows(rows || []);
+  // A deleted chat comes back on its own once a new, unread message arrives -
+  // same as the archived-then-new-message convention elsewhere in the app.
+  const deletedIds = getDeletedChatIds();
+  if (deletedIds.size) {
+    let changed = false;
+    deduped.forEach((c) => { if (c.unread_count > 0 && deletedIds.delete(String(c.conversation_id))) changed = true; });
+    if (changed) setDeletedChatIds(deletedIds);
+  }
+  window.__conversations = deduped;
+  return deduped;
+}
 async function toggleChatArchived(conversationId) {
   const ids = getArchivedChatIds();
   if (ids.has(conversationId)) { ids.delete(conversationId); showToast("Chat restored.", "success"); }
   else { ids.add(conversationId); showToast("Chat archived.", "success"); }
   setArchivedChatIds(ids);
   navigate("messages", {}, false);
+}
+async function isUserBlocked(otherUserId) {
+  if (!session?.user?.id || !otherUserId) return false;
+  const { data } = await sb.from("blocked_users").select("blocked_id").eq("blocker_id", session.user.id).eq("blocked_id", otherUserId).maybeSingle();
+  return !!data;
+}
+async function toggleBlockChatUser(otherUserId, otherName, conversationId) {
+  closeChatMenu();
+  const blocked = await isUserBlocked(otherUserId);
+  if (blocked) {
+    const { error } = await sb.from("blocked_users").delete().eq("blocker_id", session.user.id).eq("blocked_id", otherUserId);
+    if (error) { showToast(error.message, "error"); return; }
+    showToast(`${otherName} unblocked.`, "success");
+  } else {
+    const confirmed = await showConfirmDialog(`Block ${otherName}? They won't be able to message you, and you won't be able to message them.`, { title: "Block user", okLabel: "Block", danger: true });
+    if (!confirmed) return;
+    const { error } = await sb.from("blocked_users").insert({ blocker_id: session.user.id, blocked_id: otherUserId });
+    if (error) { showToast(error.message, "error"); return; }
+    showToast(`${otherName} blocked.`, "success");
+  }
+  navigate("messages", { conversationId }, false);
 }
 function convRowHtml(c) {
   const name = c.other_name || "User";
@@ -14295,7 +14356,8 @@ function filterMsgList() {
   cleanupExpiredChatPins().catch(()=>{});
   const wrap = byId("convListWrap");
   if (!wrap) return;
-  const convs = window.__conversations || [];
+  const deletedIds = getDeletedChatIds();
+  const convs = (window.__conversations || []).filter((c) => !deletedIds.has(String(c.conversation_id)));
   const q = (byId("msgSearchInput")?.value || "").trim().toLowerCase();
   let shown = convs;
   let emptyReason = "No conversations yet.";
@@ -14324,7 +14386,7 @@ async function refreshConversationInboxInBackground() {
   if (conversationInboxRefreshPromise) return conversationInboxRefreshPromise;
   conversationInboxRefreshPromise = sb.rpc("list_my_conversations").then(({ data, error }) => {
     if (error) throw error;
-    window.__conversations = dedupeConversationRows(data || []);
+    applyConversationsList(data);
     if (currentView === "messages" && !currentViewParams?.conversationId && byId("convListWrap")) {
       filterMsgList();
       updateMsgSelectionBar();
@@ -14510,7 +14572,7 @@ async function renderMessages(conversationId) {
     if (!hasCachedConversations) {
       const { data: convs, error } = await sb.rpc("list_my_conversations");
       if (error) return errorStateHtml(error);
-      window.__conversations = dedupeConversationRows(convs || []);
+      applyConversationsList(convs);
       await refreshChatLists();
     } else {
       // Back from a chat should be instant. Reconcile the inbox in the
@@ -14571,6 +14633,8 @@ async function renderMessages(conversationId) {
   const otherName = op.name || (isVendorSide ? "Customer" : conv.vendor?.business_name || "Vendor");
   const otherAvatar = op.avatar_url || (isVendorSide ? null : conv.vendor?.logo_url);
   const otherPhone = op.phone || "";
+  const otherUserId = op.id || "";
+  const isBlockedByMe = otherUserId ? await isUserBlocked(otherUserId) : false;
   lastSeenMessagesByConv.set(conversationId, messages || []);
 
   // Mark the thread read immediately in the local inbox state as well as in
@@ -14595,6 +14659,10 @@ async function renderMessages(conversationId) {
   }
   chatMenuItems.push(`<button onclick="closeChatMenu();openChatListPicker('${conversationId}')"><i class="fa-solid fa-layer-group"></i><span>Add to a list</span></button>`);
   chatMenuItems.push(`<button onclick="closeChatMenu();toggleChatArchived('${conversationId}')"><i class="fa-solid ${chatArchived ? "fa-box-open" : "fa-box-archive"}"></i><span>${chatArchived ? "Restore chat" : "Archive chat"}</span></button>`);
+  chatMenuItems.push(`<button onclick="closeChatMenu();deleteChatConversation('${conversationId}')"><i class="fa-solid fa-trash-can"></i><span>Delete chat</span></button>`);
+  if (otherUserId) {
+    chatMenuItems.push(`<button onclick="toggleBlockChatUser('${otherUserId}','${esc(otherName).replace(/'/g, "\\'")}','${conversationId}')"><i class="fa-solid ${isBlockedByMe ? "fa-user-check" : "fa-user-slash"}"></i><span>${isBlockedByMe ? "Unblock" : "Block"} ${esc(otherName)}</span></button>`);
+  }
   // Levromart has no in-app calling -- the call icon just hands off to the
   // device's own phone app with the vendor's on-file number (same gated
   // check -- business hours -- as the "Call vendor" button elsewhere).
@@ -14638,13 +14706,14 @@ async function renderMessages(conversationId) {
         <button type="button" onclick="stopMsgVoiceRecording()" title="Stop recording" aria-label="Stop recording"><i class="fa-solid fa-stop"></i></button>
         <button type="button" onclick="cancelMsgVoiceRecording()" title="Cancel recording" aria-label="Cancel recording"><i class="fa-solid fa-xmark"></i></button>
       </div>
+      ${isBlockedByMe ? `<div class="chat-blocked-banner"><i class="fa-solid fa-user-slash"></i><span>You blocked ${esc(otherName)}.</span><button type="button" onclick="toggleBlockChatUser('${otherUserId}','${esc(otherName).replace(/'/g, "\\'")}','${conversationId}')">Unblock</button></div>` : `
       <div class="chat-input-row">
         <input type="file" id="chatFileInput" class="chat-file-input" accept="image/*,.heic,.heif,.webp" multiple onchange="handleChatFileSelected(event,'${conversationId}')" />
         <button class="msg-attach-btn" onclick="byId('chatFileInput').click()" title="Attach a file (max 10MB)"><i class="fa-solid fa-paperclip"></i></button>
         ${AiSpeechRecognition ? `<button class="ai-chat-mic-btn" id="msgMicBtn" onclick="toggleMsgMic()" title="Tap to talk"><i class="fa-solid fa-microphone"></i></button>` : ""}
         <textarea id="chatInput" rows="1" placeholder="Type a message…" maxlength="2000" oninput="handleChatTyping('${conversationId}');autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}');}"></textarea>
         <button class="btn btn-sm" onclick="sendChatMessage('${conversationId}')"><i class="fa-solid fa-paper-plane"></i></button>
-      </div>
+      </div>`}
     </div>
   </div>`;
 
@@ -15534,7 +15603,7 @@ async function sendChatMessage(conversationId) {
   const { data, error } = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: session.user.id, body, reply_to_id: replyToId }).select("*").single();
   if (error) {
     document.querySelector(`.chat-bubble[data-msg-id="${tempId}"]`)?.remove();
-    showToast(error.message, "error");
+    showToast(/row-level security/i.test(error.message || "") ? "This message couldn't be sent. You or the other person may have blocked this chat." : error.message, "error");
     return;
   }
   if (replyTargetSnapshot) data.reply_to = { id: replyTargetSnapshot.id, body: replyTargetSnapshot.body, attachment_name: replyTargetSnapshot.attachment, sender_id: document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains("mine") ? session.user.id : "" };
@@ -22600,9 +22669,11 @@ const SUPER_ADMIN_ONLY_VIEWS = new Set([
   "adminMonthlyListings",
   "adminPasswordResets",
   "adminLog",
-  "adminAuthLogs",
+  "adminInventory",
   "adminUsers"
 ]);
+// Login logs are the one exception: sub-admins can see them, only Reset
+// Password / Inventory / everything else in this set is super-admin-only.
 
 function adminNavHtml(active) {
   const items = [
@@ -23516,7 +23587,7 @@ function adminAuthRangeStart(range) {
   return null;
 }
 async function renderAdminAuthLogs() {
-  if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
+  if (!session || profile?.role !== "admin") return '<div class="empty-state">Access denied.</div>';
   const start = adminAuthRangeStart(adminAuthLogRange);
   let q = sb.from("auth_activity_logs").select("id,user_id,event_type,occurred_at,user_agent,ip,source").order("occurred_at", { ascending:false }).limit(2000);
   if (start) q = q.gte("occurred_at", start.toISOString());
@@ -24988,15 +25059,10 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
   if (role === "typing") { el.id = "aiChatTyping"; el.innerHTML = `<i class="fa-solid fa-ellipsis" style="opacity:.6;"></i>`; }
   else {
     el.textContent = displayText;
-    if (role === "user") {
-      const userCopyBtn = document.createElement("button");
-      userCopyBtn.className = "ai-chat-msg-user-copy";
-      userCopyBtn.title = "Copy";
-      userCopyBtn.setAttribute("aria-label", "Copy your message");
-      userCopyBtn.innerHTML = `<i class="fa-regular fa-copy"></i>`;
-      userCopyBtn.onclick = (evt) => copyAiMessageText(evt, displayText);
-      el.appendChild(userCopyBtn);
-    }
+    // Copy is long-press only now (matches the vendor/buyer messaging chat's
+    // own long-press-to-copy), not a persistent visible button under every
+    // message.
+    bindAiChatMessageLongPressCopy(el, displayText);
     if (role === "assistant" && "speechSynthesis" in window) {
       const speakBtn = document.createElement("button");
       speakBtn.className = "ai-chat-msg-speak";
@@ -25004,13 +25070,6 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       speakBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i>`;
       speakBtn.onclick = () => speakAiChatMessage(displayText, speakBtn);
       el.appendChild(speakBtn);
-      const copyBtn = document.createElement("button");
-      copyBtn.className = "ai-chat-msg-copy";
-      copyBtn.title = "Copy";
-      copyBtn.setAttribute("aria-label", "Copy message");
-      copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i>`;
-      copyBtn.onclick = (evt) => copyAiMessageText(evt, displayText);
-      el.appendChild(copyBtn);
       // Levi never reads replies automatically. Voice input only transcribes;
       // the user explicitly taps the speaker button when they want audio.
     }
@@ -25268,6 +25327,31 @@ function displayTextForAiElement(el) {
   const clone = el.cloneNode(true);
   clone.querySelectorAll(".ai-chat-action-row,.ai-chat-message-menu,.ai-chat-nav-hint,.ai-chat-draft-card,.ai-chat-msg-speak,.ai-chat-msg-user-copy,.reaction-picker,.ai-chat-copy-row").forEach((n) => n.remove());
   return (clone.textContent || "").trim();
+}
+function bindAiChatMessageLongPressCopy(el, text) {
+  const LONG_PRESS_MS = 460;
+  const MOVE_TOLERANCE = 14;
+  let timer = null, sx = 0, sy = 0, moved = false;
+  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } el.classList.remove("ai-chat-msg-long-pressing"); };
+  el.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    clear(); sx = e.clientX || 0; sy = e.clientY || 0; moved = false;
+    timer = setTimeout(() => {
+      if (moved) return;
+      el.classList.remove("ai-chat-msg-long-pressing");
+      if (navigator.vibrate) navigator.vibrate(12);
+      copyAiMessageText(null, text);
+      timer = null;
+    }, LONG_PRESS_MS);
+    if (e.pointerType === "touch" || e.pointerType === "pen") el.classList.add("ai-chat-msg-long-pressing");
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!timer) return;
+    if (Math.abs((e.clientX || 0) - sx) > MOVE_TOLERANCE || Math.abs((e.clientY || 0) - sy) > MOVE_TOLERANCE) { moved = true; clear(); }
+  });
+  el.addEventListener("pointerup", clear);
+  el.addEventListener("pointercancel", clear);
+  el.addEventListener("pointerleave", clear);
 }
 async function copyAiMessageText(evt, text) {
   evt?.stopPropagation?.();
@@ -31274,12 +31358,15 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
     if(!candidates.length)return null;
     const unmarked=candidates.filter(o=>!reviewCompletedLocally(o.id));
     if(!unmarked.length)return null;
-    const ids=unmarked.map(o=>o.id);
-    const {data:reviews,error:reviewsError}=await sb.from('reviews').select('order_id').in('order_id',ids).eq('buyer_id',session.user.id);
+    // A customer only needs to review a given vendor once - check by vendor,
+    // not by this specific order, so a second completed order from a vendor
+    // they already reviewed doesn't prompt again.
+    const vendorIds=[...new Set(unmarked.map(o=>o.vendor_id).filter(Boolean))];
+    const {data:reviews,error:reviewsError}=await sb.from('reviews').select('vendor_id').in('vendor_id',vendorIds).eq('buyer_id',session.user.id);
     if(reviewsError)return null;
-    const reviewed=new Set((reviews||[]).map(r=>String(r.order_id)));
-    reviewed.forEach(id=>rememberReviewCompleted(id));
-    return unmarked.find(o=>!reviewed.has(String(o.id)))||null;
+    const reviewedVendors=new Set((reviews||[]).map(r=>String(r.vendor_id)));
+    unmarked.filter(o=>reviewedVendors.has(String(o.vendor_id))).forEach(o=>rememberReviewCompleted(o.id));
+    return unmarked.find(o=>!reviewedVendors.has(String(o.vendor_id)))||null;
   }
   function showPrompt(order){
     if(!order||document.getElementById('levroReviewPromptModal')||(window.__reviewPromptDismissedOrderId===String(order.id)||dismissed(order.id))||currentView==='leaveReview')return;
@@ -37050,7 +37137,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
   /* ---------------- Inventory ---------------- */
   window.renderAdminInventory = async function(){
-    if(!session?.user?.id || profile?.role!=="admin") return '<div class="empty-state">Access denied.</div>';
+    if(!session?.user?.id || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
 
     const CACHE_MS=30000;
     const cached=window.__adminInventoryCache;
