@@ -10666,6 +10666,26 @@ function updateAuthUI() {
       links.push({ label: "Settings &amp; Privacy", action: "navigate('settings')" });
     }
 
+    // Admin "at a glance" stats: super admins see platform-wide totals
+    // (buyers, vendors, revenue); added/sub-admins only see their own
+    // activity (logins, disputes, support, feedback) -- never platform
+    // financials or people counts, which are super-admin-only.
+    const adminStats = profile.role === "admin"
+      ? (isSuperAdmin()
+        ? [
+            { key: "buyers", label: "Buyers", value: Number(window.__adminStatBuyers || 0) },
+            { key: "vendors", label: "Vendors", value: Number(window.__adminStatVendors || 0) },
+            { key: "revenue", label: "Revenue", value: naira(Number(window.__adminStatRevenue || 0)) },
+          ]
+        : [
+            { key: "loginsToday", label: "Logins today", value: Number(window.__adminStatLoginsToday || 0) },
+            { key: "loginLogs", label: "Login logs", value: Number(window.__adminStatLoginLogs || 0) },
+            { key: "disputes", label: "Disputes", value: Number(window.__adminDisputeCount || 0) },
+            { key: "supportRequests", label: "Support requests", value: Number(window.__adminStatSupportRequests || 0) },
+            { key: "feedback", label: "Feedback", value: Number(window.__adminStatFeedback || 0) },
+          ])
+      : [];
+
     // Vendor/buyer profile panel: header -> a small "at a glance" strip ->
     // divider -> plain utility rows (no icons) -> divider -> Settings & Privacy.
     let miniStats = [];
@@ -10717,7 +10737,11 @@ function updateAuthUI() {
         </div>
       </div>
       <div class="profile-panel-scroll">
-        ${profile.role === "admin" ? `<div class="admin-profile-nav-list">${links.map((l) => {
+        ${profile.role === "admin" ? `<div class="profile-panel-stats admin-profile-stats">
+          ${adminStats.map(s => `<div class="profile-panel-stat" data-admin-stat="${esc(s.key)}"><strong>${s.value}</strong><span>${esc(s.label)}</span></div>`).join("")}
+        </div>
+        <hr class="vendor-profile-divider" />
+        <div class="admin-profile-nav-list">${links.map((l) => {
           const raw = String(l.label).replace(/<[^>]*>/g, '').trim().toLowerCase();
           const icon = raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('link library') ? 'fa-link' : raw.includes('disputes') ? 'fa-scale-balanced' : raw.includes('monthly listing') ? 'fa-receipt' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
           const profileKeyAttr = l.profileKey ? ` data-profile-key="${esc(l.profileKey)}"` : "";
@@ -10738,12 +10762,59 @@ function updateAuthUI() {
     `;
     byId("accountDangerSection")?.classList.remove("hidden");
     byId("changePasswordSection")?.classList.remove("hidden");
+    if (profile.role === "admin") hydrateAdminProfileStats();
   } else {
     avatarBtn.classList.add("hidden");
     loginBtn.classList.remove("hidden");
     panel.innerHTML = "";
     byId("accountDangerSection")?.classList.add("hidden");
     byId("changePasswordSection")?.classList.add("hidden");
+  }
+}
+
+// Admin "at a glance" stats shown in the profile drawer. Super admins get
+// platform-wide people/revenue totals; added/sub-admins only get their own
+// activity counts (never platform financials or people counts).
+async function hydrateAdminProfileStats() {
+  if (!session || profile?.role !== "admin" || typeof sb === "undefined") return;
+  const patchStat = (key, value) => {
+    document.querySelectorAll(`.admin-profile-stats [data-admin-stat="${key}"] strong`).forEach((el) => { el.textContent = value; });
+  };
+  try {
+    if (isSuperAdmin()) {
+      const [{ count: buyerCount }, { count: vendorCount }, { data: txns }] = await Promise.all([
+        sb.from("users").select("id", { count: "exact", head: true }).eq("role", "buyer"),
+        sb.from("users").select("id", { count: "exact", head: true }).eq("role", "vendor"),
+        sb.rpc("admin_list_transactions"),
+      ]);
+      window.__adminStatBuyers = Number(buyerCount || 0);
+      window.__adminStatVendors = Number(vendorCount || 0);
+      window.__adminStatRevenue = (txns || []).filter((t) => t.status === "paid").reduce((s, t) => s + Number(t.platform_cut || 0), 0);
+      patchStat("buyers", window.__adminStatBuyers);
+      patchStat("vendors", window.__adminStatVendors);
+      patchStat("revenue", naira(window.__adminStatRevenue));
+    } else {
+      const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+      const [{ count: loginsToday }, { count: loginLogs }, { count: supportCount }, { count: feedbackCount }, { count: disputeCount }] = await Promise.all([
+        sb.from("auth_activity_logs").select("id", { count: "exact", head: true }).eq("event_type", "login").gte("occurred_at", startOfToday.toISOString()),
+        sb.from("auth_activity_logs").select("id", { count: "exact", head: true }).eq("event_type", "login"),
+        sb.from("support_requests").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
+        sb.from("suggestions").select("id", { count: "exact", head: true }).eq("status", "new"),
+        sb.from("disputes").select("id", { count: "exact", head: true }).not("status", "in", "(resolved,closed)"),
+      ]);
+      window.__adminStatLoginsToday = Number(loginsToday || 0);
+      window.__adminStatLoginLogs = Number(loginLogs || 0);
+      window.__adminStatSupportRequests = Number(supportCount || 0);
+      window.__adminStatFeedback = Number(feedbackCount || 0);
+      window.__adminDisputeCount = Number(disputeCount || 0);
+      patchStat("loginsToday", window.__adminStatLoginsToday);
+      patchStat("loginLogs", window.__adminStatLoginLogs);
+      patchStat("supportRequests", window.__adminStatSupportRequests);
+      patchStat("feedback", window.__adminStatFeedback);
+      patchStat("disputes", window.__adminDisputeCount);
+    }
+  } catch (err) {
+    console.warn("[Levromart] Admin profile stats refresh failed:", err);
   }
 }
 
@@ -38468,9 +38539,10 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .vendor-profile-settings-row{display:flex;align-items:center;gap:.5rem;color:var(--text-muted);}
 .settings-logout-row,.settings-logout-row i{color:var(--danger) !important;}
 .profile-panel-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:.5rem;margin:1rem 1.1rem 0;padding:.8rem;border-radius:14px;background:var(--card);border:1px solid var(--border);}
-.profile-panel-stat{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.15rem;}
-.profile-panel-stat strong{font-size:1.15rem;}
+.profile-panel-stat{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.15rem;min-width:0;}
+.profile-panel-stat strong{font-size:1.15rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .profile-panel-stat span{font-size:.7rem;color:var(--text-muted);}
+.admin-profile-stats .profile-panel-stat strong{font-size:1rem;}
 .profile-panel-scroll .vendor-profile-divider{margin:1rem 1.1rem;}
 .profile-panel-scroll .vendor-profile-plain-rows{padding:0 1.1rem;}
 .profile-panel-scroll .vendor-profile-plain-row{font-size:1rem;}
