@@ -2294,6 +2294,25 @@ h2 + .grid, h3 + .grid, .section-title + .grid{margin-top:.8rem}
 
 /* Fewer expensive effects on scrolling surfaces = smoother mobile UI. */
 .product-card-wrap,.vendor-card,.review-card{content-visibility:auto;contain-intrinsic-size:280px;}
+/* content-visibility:auto substitutes a flat 280px placeholder box for any
+   card it decides isn't "relevant to painting" yet, then swaps in the real
+   (much shorter, ~200px for a compact card) size once it actually renders.
+   Inside a horizontally-scrolling rail this promotion is unreliable per
+   card (especially on Android) -- some cards render at their true height,
+   one or two get stuck showing the 280px placeholder, and since the row is
+   a flex container its own height always matches its TALLEST child, that
+   one phantom-tall card inflates the whole row (and shoves everything
+   after it down) regardless of any padding/margin tuning on the row
+   itself. These rails only ever hold a handful of items, so the
+   off-screen-skipping optimisation buys nothing here anyway -- always
+   render them at their real size. */
+#app .hscroll.trending-scroll > .product-card-wrap,
+#app .hscroll.top-rated-vendors-scroll > .vendor-card,
+#app .hscroll.top-rated-vendors-scroll > .homepage-vendor-card,
+#app .hscroll.service-trending-scroll > .product-card-wrap,
+#app .hscroll.package-recommendation-strip > *{
+  content-visibility:visible !important; contain-intrinsic-size:auto !important;
+}
 @media (prefers-reduced-motion:no-preference){
   .storefront-profile,.storefront-featured,.storefront-packages,.storefront-products-shell{animation:uiSoftIn .34s cubic-bezier(.2,.75,.25,1) both;}
   @keyframes uiSoftIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -5463,6 +5482,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 #app .hscroll.trending-scroll .product-card-wrap h4{
   font-size:.82rem !important; line-height:1.22 !important; margin:.4rem 0 .15rem !important;
   display:-webkit-box !important; -webkit-line-clamp:2 !important; -webkit-box-orient:vertical !important; overflow:hidden !important;
+  min-height:2.44em !important;
 }
 #app .hscroll.trending-scroll .product-card-vendor-row{
   display:flex !important; align-items:center !important; justify-content:space-between !important;
