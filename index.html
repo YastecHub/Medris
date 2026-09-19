@@ -958,6 +958,9 @@
   .delivery-fee-inline { color:var(--primary); }
   .delivery-fee-line { font-size:.86rem; color:var(--text); opacity:1; }
   .delivery-fee-line strong { color:var(--primary); }
+  .product-description-block { margin:.6rem 0; line-height:1.5; }
+  .read-more-text.clamped { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .read-more-toggle { background:none; border:0; padding:0; margin-top:.2rem; color:var(--primary); font-weight:600; font-size:.85rem; cursor:pointer; display:inline-block; }
   .conv-list-item { display: flex; align-items: center; gap: 0.7rem; padding: 0.8rem; cursor: pointer; background: var(--card); position: relative; z-index: 1; touch-action: pan-y; user-select: none; }
   .conv-list-item:hover { background: var(--card); }
   .conv-list-item .avatar-circle { flex-shrink: 0; }
@@ -6050,49 +6053,19 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 #app .messages-conversation-list .conv-list-item strong{font-size:.92rem !important;}
 #app .messages-conversation-list .conv-list-item .conv-preview{font-size:.8rem !important;margin-top:.12rem !important;}
 
-/* WhatsApp-style swipe-to-reveal conversation actions, replacing the
-   old always-visible Pin/Archive/Add-to-list icon buttons. Each row's
-   wrapper clips the sliding surface so the action panels stay hidden
-   underneath until the surface is dragged off them. */
-#app .messages-conversation-list .conv-row-wrap{
-  position:relative !important;overflow:hidden !important;
-}
-#app .messages-conversation-list .conv-swipe-surface{
-  position:relative !important;z-index:2 !important;
-  transition:transform .18s ease !important;will-change:transform !important;
-}
-#app .messages-conversation-list .conv-swipe-actions{
-  position:absolute !important;top:0 !important;bottom:0 !important;
-  display:flex !important;align-items:stretch !important;z-index:1 !important;
-}
-#app .messages-conversation-list .conv-swipe-actions-left{left:0 !important;transform:translateX(-100%) !important;}
-#app .messages-conversation-list .conv-swipe-actions-right{right:0 !important;transform:translateX(100%) !important;}
-#app .messages-conversation-list .conv-row-wrap.conv-swipe-open-left .conv-swipe-actions-left,
-#app .messages-conversation-list .conv-row-wrap.conv-swipe-open-right .conv-swipe-actions-right{transform:translateX(0) !important;}
-#app .messages-conversation-list .conv-swipe-action{
-  width:84px !important;border:0 !important;cursor:pointer !important;font:inherit !important;
-  display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;
-  gap:.3rem !important;color:#fff !important;padding:0 !important;
-}
-#app .messages-conversation-list .conv-swipe-action i{font-size:1.05rem !important;}
-#app .messages-conversation-list .conv-swipe-action span{font-size:.68rem !important;font-weight:600 !important;}
-#app .messages-conversation-list .conv-action-pin{background:#f59e0b !important;}
-#app .messages-conversation-list .conv-action-read{background:#ef4444 !important;}
-#app .messages-conversation-list .conv-action-list{background:#64748b !important;}
-#app .messages-conversation-list .conv-action-archive{background:#334155 !important;}
-#app .messages-conversation-list .conv-top-row{
+/* Swipe-to-reveal was tried here and reverted -- back to the plain
+   always-visible Pin/Archive/Add-to-list icon buttons. Only the small,
+   independent additions from that attempt are kept: the last-message
+   timestamp next to the name, and a small pinned-chat icon. */
+#app .messages-conversation-list .conv-name-row{
   display:flex !important;align-items:center !important;justify-content:space-between !important;gap:.5rem !important;
 }
-#app .messages-conversation-list .conv-top-row strong{
+#app .messages-conversation-list .conv-name-row strong{
   overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;min-width:0 !important;
 }
 #app .messages-conversation-list .conv-time{
   flex:0 0 auto !important;font-size:.72rem !important;color:var(--text-muted) !important;font-weight:400 !important;
 }
-#app .messages-conversation-list .conv-bottom-row{
-  display:flex !important;align-items:center !important;justify-content:space-between !important;gap:.5rem !important;margin-top:.12rem !important;
-}
-#app .messages-conversation-list .conv-bottom-row .conv-preview{margin-top:0 !important;min-width:0 !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;flex:1 1 auto !important;}
 #app .messages-conversation-list .conv-pinned-icon{font-size:.72rem !important;color:var(--text-muted) !important;margin-right:.15rem !important;}
 
 /* Compact request stack: same centered hierarchy, less vertical weight. */
@@ -8582,6 +8555,26 @@ document.addEventListener("click", (event) => {
 // default while still putting the full explanation one tap away.
 function infoPopoverHtml(id, text) {
   return `<span class="info-popover-wrap"><button type="button" class="info-btn" onclick="toggleInfoPopover('${id}',event)">i</button><div class="info-popover hidden" id="${id}">${text}</div></span>`;
+}
+// A long product description used to either run in full down the page or
+// hide completely behind an unlabeled "i" icon -- neither matched the
+// familiar "show a preview, tap Read more to expand" pattern. This clamps
+// to a few lines by default and toggles a plain text button, in place.
+function readMoreHtml(id, text, opts = {}) {
+  const maxChars = opts.maxChars || 160;
+  const safe = esc(text);
+  if (String(text || "").length <= maxChars) return `<span id="${id}">${safe}</span>`;
+  return `<span class="read-more-wrap" id="${id}"><span class="read-more-text clamped">${safe}</span> <button type="button" class="read-more-toggle" onclick="toggleReadMore('${id}')">Read more</button></span>`;
+}
+function toggleReadMore(id) {
+  const wrap = byId(id);
+  if (!wrap) return;
+  const textEl = wrap.querySelector(".read-more-text");
+  const btn = wrap.querySelector(".read-more-toggle");
+  if (!textEl || !btn) return;
+  const collapsing = !textEl.classList.contains("clamped");
+  textEl.classList.toggle("clamped", collapsing);
+  btn.textContent = collapsing ? "Read more" : "Read less";
 }
 // Collapsed by default so a well-reviewed vendor's storefront doesn't open
 // with a long scroll of review cards before you even reach the products.
@@ -12016,8 +12009,8 @@ function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
 function navigationShellHtml(view) {
-  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile"};
-  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user"};
+  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package"};
+  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user",storefront:"fa-store",productDetail:"fa-box",packageDetail:"fa-boxes-stacked"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
   // Never expose a background-refresh message as the page itself. If no real
@@ -12251,12 +12244,19 @@ async function navigate(view, params = {}, pushHistory = true) {
   const cachedRouteHtml = routeHtmlCache.get(cacheKey);
   const persistedRouteHtml = getPersistedRouteHtml(view, params);
   const instantRouteHtml = cachedRouteHtml || persistedRouteHtml;
-  if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && view !== "storefront") {
+  if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home") {
+    // Storefront used to be excluded here, on the assumption its own
+    // renderer was now fast enough not to need a shell. But the very first
+    // visit to any given vendor in a session has no cached HTML yet, so
+    // this left the screen showing nothing at all -- not even a spinner --
+    // for the whole network round trip, which is exactly what read as a
+    // multi-second "stall" after tapping a vendor card. Every other route
+    // already gets an instant shell; storefront now does too.
     app.innerHTML = instantRouteHtml || navigationShellHtml(view);
     syncLeviFabVisibility();
     hideLevromartSplash();
     clearAutoScrollTimers();
-  } else if (app && (pushHistory || previousView !== view) && !hasChatFastPath && (view === "home" || view === "storefront") && cachedRouteHtml) {
+  } else if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view === "home" && cachedRouteHtml) {
     // Reuse a previously rendered real page while the original renderer refreshes it.
     app.innerHTML = cachedRouteHtml;
     syncLeviFabVisibility();
@@ -14793,10 +14793,6 @@ async function toggleBlockChatUser(otherUserId, otherName, conversationId) {
   }
   navigate("messages", { conversationId }, false);
 }
-// WhatsApp-style row: no permanently-visible icon buttons cluttering the
-// surface -- swipe right reveals Pin + Mark read, swipe left reveals Add to
-// list + Archive, exactly like the reveal-behind-the-row pattern iOS/
-// WhatsApp use. See setupConvRowSwipe() for the drag mechanics.
 function convRowHtml(c) {
   const name = c.other_name || "User";
   const isUnread = c.unread_count > 0;
@@ -14804,26 +14800,20 @@ function convRowHtml(c) {
   const pinned = isConversationPinned(c);
   const selected = msgSelectMode && msgSelectedIds.has(c.conversation_id);
   const timeLabel = convRowTimeLabel(c.updated_at || c.last_message_at || c.created_at);
-  return `<div class="conv-row-wrap ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}">
-    ${!msgSelectMode ? `
-    <div class="conv-swipe-actions conv-swipe-actions-left" aria-hidden="true">
-      <button type="button" class="conv-swipe-action conv-action-pin" onclick="event.stopPropagation();closeConvSwipe(this);togglePinConversation('${c.conversation_id}')"><i class="fa-solid fa-thumbtack"></i><span>${pinned ? "Unpin" : "Pin"}</span></button>
-      <button type="button" class="conv-swipe-action conv-action-read" onclick="event.stopPropagation();closeConvSwipe(this);markConversationRead('${c.conversation_id}')"><i class="fa-solid fa-envelope-open"></i><span>Read</span></button>
-    </div>
-    <div class="conv-swipe-actions conv-swipe-actions-right" aria-hidden="true">
-      <button type="button" class="conv-swipe-action conv-action-list" onclick="event.stopPropagation();closeConvSwipe(this);openChatListPicker('${c.conversation_id}')"><i class="fa-solid fa-layer-group"></i><span>Add to list</span></button>
-      <button type="button" class="conv-swipe-action conv-action-archive" onclick="event.stopPropagation();closeConvSwipe(this);toggleChatArchived('${c.conversation_id}')"><i class="fa-solid ${archived ? "fa-box-open" : "fa-box-archive"}"></i><span>${archived ? "Unarchive" : "Archive"}</span></button>
-    </div>` : ""}
-    <div class="conv-list-item conv-swipe-surface ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}" onclick="handleConvRowClick(event,'${c.conversation_id}')">
+  return `<div class="conv-row-wrap ${selected ? "selected" : ""}">
+    <div class="conv-list-item ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}" onclick="handleConvRowClick(event,'${c.conversation_id}')">
       ${msgSelectMode ? `<span class="conv-select-check ${selected ? "active" : ""}" aria-hidden="true"><i class="fa-solid fa-check"></i></span>` : ""}
       ${profileAvatarHtml(c.other_avatar, name, "2.6rem", { lightbox: !!c.other_avatar && !msgSelectMode })}
       <div class="conv-meta">
-        <div class="conv-top-row"><strong>${pinned ? `<i class="fa-solid fa-thumbtack conv-pinned-icon"></i> ` : ""}${esc(name)}</strong><span class="conv-time">${esc(timeLabel)}</span></div>
-        <div class="conv-bottom-row">
-          <div class="conv-preview">${c.last_message ? esc(c.last_message) : "No messages yet"}</div>
-          ${isUnread ? `<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count > 99 ? "99+" : c.unread_count}</span>` : ""}
-        </div>
+        <div class="conv-name-row"><strong>${pinned ? `<i class="fa-solid fa-thumbtack conv-pinned-icon"></i> ` : ""}${esc(name)}</strong><span class="conv-time">${esc(timeLabel)}</span></div>
+        <div class="conv-preview">${c.last_message ? esc(c.last_message) : "No messages yet"}</div>
       </div>
+      ${isUnread ? `<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count > 99 ? "99+" : c.unread_count}</span>` : ""}
+      ${!msgSelectMode ? `
+        <button class="icon-btn" style="flex-shrink:0;" title="Add to a list" onclick="event.stopPropagation();openChatListPicker('${c.conversation_id}')"><i class="fa-solid fa-layer-group" style="${myChatLists.some((l) => l.conversation_ids.includes(c.conversation_id)) ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
+        <button class="icon-btn" style="flex-shrink:0;" title="${archived ? "Restore chat" : "Archive chat"}" onclick="event.stopPropagation();toggleChatArchived('${c.conversation_id}')"><i class="fa-solid ${archived ? "fa-box-open" : "fa-box-archive"}" style="${archived ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
+        <button class="icon-btn" style="flex-shrink:0;" title="${pinned ? "Unpin chat" : "Pin chat"}" onclick="event.stopPropagation();togglePinConversation('${c.conversation_id}')"><i class="fa-solid fa-thumbtack" style="${pinned ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
+      ` : ""}
     </div>
   </div>`;
 }
@@ -14841,82 +14831,6 @@ function convRowTimeLabel(dateStr) {
   if (diffDays < 7) return d.toLocaleDateString("en-GB", { weekday: "short" });
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
-async function markConversationRead(conversationId) {
-  if (!session?.user?.id) return;
-  try {
-    await sb.from("messages").update({ read_at: new Date().toISOString(), delivered_at: new Date().toISOString() }).eq("conversation_id", conversationId).is("read_at", null).neq("sender_id", session.user.id);
-    const conv = (window.__conversations || []).find((c) => c.conversation_id === conversationId);
-    if (conv) conv.unread_count = 0;
-    refreshNotifications(false).catch(() => {});
-    navigate("messages", {}, false);
-  } catch (e) { showToast?.(e.message || "Could not mark as read.", "error"); }
-}
-// ---------- Conversation row swipe-to-reveal (Pin/Read, Add to list/Archive) ----------
-let __convSwipeOpenRow = null;
-function closeConvSwipe(elOrWrap) {
-  const wrap = elOrWrap?.closest ? elOrWrap.closest(".conv-row-wrap") : elOrWrap;
-  if (!wrap) return;
-  const surface = wrap.querySelector(".conv-swipe-surface");
-  if (surface) { surface.style.transition = ""; surface.style.transform = ""; }
-  wrap.classList.remove("conv-swipe-open-left", "conv-swipe-open-right");
-  if (__convSwipeOpenRow === wrap) __convSwipeOpenRow = null;
-}
-function setupConvRowSwipe(root) {
-  const scope = root || document;
-  const ACTION_WIDTH = 168;
-  scope.querySelectorAll?.(".conv-row-wrap[data-conversation-id]").forEach((wrap) => {
-    const surface = wrap.querySelector(".conv-swipe-surface");
-    if (!surface || surface.dataset.convSwipeBound === "1") return;
-    surface.dataset.convSwipeBound = "1";
-    let tracking = false, dragging = false, sx = 0, sy = 0, dx = 0, startOpen = 0, pointerId = null;
-    const getOpenOffset = () => wrap.classList.contains("conv-swipe-open-left") ? ACTION_WIDTH : wrap.classList.contains("conv-swipe-open-right") ? -ACTION_WIDTH : 0;
-    surface.addEventListener("pointerdown", (e) => {
-      if (msgSelectMode || (e.pointerType === "mouse" && e.button !== 0)) return;
-      sx = e.clientX; sy = e.clientY; dx = 0; tracking = true; dragging = false;
-      startOpen = getOpenOffset();
-      pointerId = e.pointerId;
-      try { surface.setPointerCapture(pointerId); } catch (_) {}
-    }, { passive: true });
-    surface.addEventListener("pointermove", (e) => {
-      if (!tracking || (pointerId !== null && e.pointerId !== pointerId)) return;
-      dx = e.clientX - sx;
-      const dy = e.clientY - sy;
-      if (!dragging) {
-        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-        if (Math.abs(dy) > Math.abs(dx) * 1.2) { tracking = false; return; }
-        dragging = true;
-        surface.style.transition = "none";
-        if (__convSwipeOpenRow && __convSwipeOpenRow !== wrap) closeConvSwipe(__convSwipeOpenRow);
-        __convSwipeOpenRow = wrap;
-      }
-      e.preventDefault();
-      const offset = Math.max(-ACTION_WIDTH, Math.min(ACTION_WIDTH, startOpen + dx));
-      surface.style.transform = `translate3d(${offset}px,0,0)`;
-    }, { passive: false });
-    const finish = () => {
-      if (!tracking) return;
-      tracking = false;
-      if (!dragging) return;
-      dragging = false;
-      surface.style.transition = "";
-      const offset = startOpen + dx;
-      const openLeft = offset > ACTION_WIDTH * 0.4;
-      const openRight = offset < -ACTION_WIDTH * 0.4;
-      wrap.classList.toggle("conv-swipe-open-left", openLeft);
-      wrap.classList.toggle("conv-swipe-open-right", openRight);
-      if (openLeft) surface.style.transform = `translate3d(${ACTION_WIDTH}px,0,0)`;
-      else if (openRight) surface.style.transform = `translate3d(${-ACTION_WIDTH}px,0,0)`;
-      else { surface.style.transform = ""; __convSwipeOpenRow = null; }
-    };
-    surface.addEventListener("pointerup", finish, { passive: true });
-    surface.addEventListener("pointercancel", finish, { passive: true });
-  });
-}
-document.addEventListener("click", (e) => {
-  if (e.target.closest?.(".conv-row-wrap")) return;
-  if (__convSwipeOpenRow) closeConvSwipe(__convSwipeOpenRow);
-}, true);
-
 let msgSelectMode = false;
 let msgSelectedIds = new Set();
 
@@ -15044,11 +14958,6 @@ function handleConvRowClick(event, conversationId) {
   if (event) event.preventDefault();
   const clicked = event?.currentTarget;
   if (clicked?.dataset.longPressConsumed === '1') { delete clicked.dataset.longPressConsumed; return; }
-  const openWrap = clicked?.closest?.(".conv-row-wrap");
-  if (openWrap && (openWrap.classList.contains("conv-swipe-open-left") || openWrap.classList.contains("conv-swipe-open-right"))) {
-    closeConvSwipe(openWrap);
-    return;
-  }
   if (msgSelectMode) {
     toggleMsgSelected(conversationId);
     return;
@@ -15092,7 +15001,6 @@ function filterMsgList() {
   if (q) shown = shown.filter((c) => (c.other_name || "").toLowerCase().includes(q) || (c.last_message || "").toLowerCase().includes(q));
   shown = [...shown].sort((a,b) => Number(isConversationPinned(b)) - Number(isConversationPinned(a)));
   wrap.innerHTML = shown.length ? shown.map(convRowHtml).join("") : `<div class="empty-state">${q ? "No conversations match that search." : emptyReason}</div>`;
-  setupConvRowSwipe(wrap);
 }
 
 // Refresh the cached conversation list without blocking navigation.
@@ -16535,7 +16443,16 @@ function setProductGalleryPhoto(index, smooth = true, syncVariant = true, preser
   productGalleryIndex = (index + photos.length) % photos.length;
   if (!preserveVarietyOverride) window.__productGalleryVarietyOverride = false;
   const slide = track.querySelector(`.product-gallery-slide[data-gallery-index="${productGalleryIndex}"]`);
-  slide?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", inline: "center", block: "nearest" });
+  // scrollIntoView() walks every scrollable ancestor, not just this
+  // horizontally-scrolling track -- if the gallery had already scrolled out
+  // of the viewport (e.g. picking a variety further down the page), it
+  // dragged the whole page back up just to satisfy the gallery's own
+  // horizontal centering. Scroll the track directly instead so choosing a
+  // variety never moves the page.
+  if (slide) {
+    const targetLeft = slide.offsetLeft - (track.clientWidth - slide.offsetWidth) / 2;
+    track.scrollTo({ left: Math.max(0, targetLeft), behavior: smooth ? "smooth" : "auto" });
+  }
   const count = byId("productGalleryCount");
   if (count) count.textContent = String(productGalleryIndex + 1);
   document.querySelectorAll(".product-gallery-thumb").forEach((el) => el.classList.toggle("active", Number(el.dataset.galleryIndex) === productGalleryIndex));
@@ -16606,7 +16523,10 @@ function setPackageDetailPhoto(index, smooth = true) {
   if (!photos.length || !track) return;
   packageDetailGalleryIndex = Math.max(0, Math.min(index, photos.length - 1));
   const slide = track.querySelector(`.package-detail-gallery-slide[data-gallery-index="${packageDetailGalleryIndex}"]`);
-  slide?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", inline: "center", block: "nearest" });
+  if (slide) {
+    const targetLeft = slide.offsetLeft - (track.clientWidth - slide.offsetWidth) / 2;
+    track.scrollTo({ left: Math.max(0, targetLeft), behavior: smooth ? "smooth" : "auto" });
+  }
   const count = byId("packageGalleryCount");
   if (count) count.textContent = String(packageDetailGalleryIndex + 1);
 }
@@ -16949,7 +16869,7 @@ async function __levroOriginalRenderProductDetail(productId) {
     <div class="product-detail-info">
       <p><strong>Vendor:</strong> <a class="product-detail-vendor-link" href="#" onclick="navigate('storefront',{vendorId:'${product.vendor.id}'});return false;">${product.vendor.logo_url ? `<img src="${esc(product.vendor.logo_url)}" alt="" class="product-detail-vendor-logo" loading="lazy" decoding="async" draggable="false">` : ""}<span>${vendorNameWithFormerly(product.vendor)}</span></a></p>
       ${product.is_service ? "" : `<p><strong>Condition:</strong> ${esc((product.condition || "").replace("-", " "))}</p>`}
-      <p>Description ${infoPopoverHtml(`productDescInfo-${product.id}`, esc(cleanDescription || "No description"))}</p>
+      <div class="product-description-block"><strong>About</strong> ${readMoreHtml(`productDescText-${product.id}`, cleanDescription || "No description provided.")}</div>
     </div>
     ${statItems.length ? `<div class="product-detail-stats">${statItems.map((s) => `<div><span class="muted">${esc(s.label)}</span><strong>${s.value}</strong></div>`).join("")}</div>` : ""}
   </div>`;
