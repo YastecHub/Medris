@@ -30179,7 +30179,15 @@ window.renderVendorMapRail = function(){
 /* EASY WHATSAPP-LIKE DRAG REPLY */
 .chat-bubble-wrap[data-msg-wrap-id] .chat-bubble{touch-action:pan-y !important;transition:transform .08s linear !important;}
 .chat-bubble-wrap.chat-swipe-active .chat-bubble{transition:none !important;will-change:transform !important;}
-.chat-bubble-wrap.chat-swipe-active::before{opacity:1 !important;transform:translateY(-50%) scale(1) !important;}
+/* The reply arrow grows and fades in as you drag instead of snapping to
+   full size the instant the gesture is recognised -- that binary jump made
+   the whole gesture feel dead/unresponsive even though the bubble itself
+   was tracking the finger underneath it. --swipe-progress is written by
+   setupMessageSwipeReply on every pointermove, 0 to 1. */
+.chat-bubble-wrap.chat-swipe-active::before{
+  opacity:var(--swipe-progress,0) !important;
+  transform:translateY(-50%) scale(calc(.55 + .45 * var(--swipe-progress,0))) !important;
+}
 
 /* Notifications: one row per conversation, with an explicit "multiple messages" label. */
 .notif-message-summary{display:flex !important;align-items:center !important;gap:.7rem !important;width:100% !important;padding:.74rem .7rem !important;border-radius:.8rem !important;background:var(--card) !important;border:1px solid var(--border) !important;color:var(--text) !important;text-align:left !important;cursor:pointer !important;box-sizing:border-box !important;}
@@ -30549,15 +30557,17 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
      --------------------------------------------------------------- */
   window.setupMessageSwipeReply = function(root){
     const scope=root||document;
+    const REPLY_THRESHOLD=54;
     scope.querySelectorAll?.('.chat-bubble-wrap[data-msg-wrap-id]').forEach(wrap=>{
       const bubble=wrap.querySelector('.chat-bubble[data-msg-id]');
       if(!bubble || bubble.classList.contains('deleted') || bubble.dataset.finalSwipeBound==='1') return;
       bubble.dataset.finalSwipeBound='1';
       const mine=bubble.classList.contains('mine');
-      let tracking=false,horizontal=false,sx=0,sy=0,dx=0,dy=0,pointerId=null;
+      let tracking=false,horizontal=false,sx=0,sy=0,dx=0,dy=0,pointerId=null,armed=false;
       const reset=()=>{
-        tracking=false;horizontal=false;pointerId=null;dx=dy=0;
+        tracking=false;horizontal=false;armed=false;pointerId=null;dx=dy=0;
         wrap.classList.remove('chat-swipe-active');
+        wrap.style.removeProperty('--swipe-progress');
         bubble.style.transform='';
       };
       bubble.addEventListener('pointerdown',e=>{
@@ -30569,21 +30579,34 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
         if(!tracking || (pointerId!==null && e.pointerId!==pointerId)) return;
         dx=e.clientX-sx;dy=e.clientY-sy;
         if(!horizontal){
-          if(Math.abs(dy)>Math.abs(dx)*1.25 && Math.abs(dy)>7){reset();return;}
-          if(Math.abs(dx)<3)return;
-          if(Math.abs(dx)<=Math.abs(dy)*.62)return;
+          // Loosened gate: a real thumb swipe drifts diagonally, and the old
+          // near-perfectly-horizontal requirement rejected most natural
+          // swipes outright, so the bubble never moved and the gesture felt
+          // dead. This only needs to rule out a clearly-vertical scroll.
+          if(Math.abs(dy)>Math.abs(dx)*1.6 && Math.abs(dy)>10){reset();return;}
+          if(Math.abs(dx)<2)return;
+          if(Math.abs(dx)<=Math.abs(dy)*.35)return;
           horizontal=true;wrap.classList.add('chat-swipe-active');
         }
         const allowed=mine?dx<0:dx>0;
-        if(!allowed){bubble.style.transform='translate3d(0,0,0)';return;}
+        if(!allowed){bubble.style.transform='translate3d(0,0,0)';wrap.style.setProperty('--swipe-progress','0');return;}
         e.preventDefault();
-        const shift=mine?Math.max(-88,Math.min(0,dx*.94)):Math.min(88,Math.max(0,dx*.94));
+        const clamped=mine?Math.max(-100,dx):Math.min(100,dx);
+        // Track the finger 1:1 up to the reply threshold, then ease off so
+        // it still feels attached to the drag without traveling forever.
+        const extra=Math.abs(clamped)-REPLY_THRESHOLD;
+        const magnitude=extra>0?REPLY_THRESHOLD+extra*.35:Math.abs(clamped);
+        const shift=mine?-magnitude:magnitude;
         bubble.style.transform=`translate3d(${shift}px,0,0)`;
+        const progress=Math.min(1,Math.abs(clamped)/REPLY_THRESHOLD);
+        wrap.style.setProperty('--swipe-progress',String(progress));
+        if(progress>=1 && !armed){armed=true; if(navigator.vibrate)navigator.vibrate(10);}
+        else if(progress<1 && armed){armed=false;}
       },{passive:false});
       const finish=()=>{
         if(!tracking)return;
         const allowed=mine?dx<0:dx>0;
-        const shouldReply=horizontal&&allowed&&Math.abs(dx)>=18;
+        const shouldReply=horizontal&&allowed&&Math.abs(dx)>=REPLY_THRESHOLD;
         const msgId=bubble.dataset.msgId;
         try{if(pointerId!==null)bubble.releasePointerCapture(pointerId);}catch(_){}
         reset();
