@@ -12336,12 +12336,12 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
   html += `<div class="hero-content levro-home-search-wrap"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div></div><div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
   html += `<section class="levro-home-quick-actions" aria-label="Quick actions">
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span>Shop products</span></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span>Book services</span></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('rent')"><span class="levro-quick-icon"><i class="fa-solid fa-key"></i></span><span>Rent items</span></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('vendors')"><span class="levro-quick-icon"><i class="fa-solid fa-store"></i></span><span>Explore verified vendors</span></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span>Request an item</span></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span class="levro-quick-label">Shop Products</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span class="levro-quick-label">Book Services</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('rent')"><span class="levro-quick-icon"><i class="fa-solid fa-key"></i></span><span class="levro-quick-label">Rent Items</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('vendors')"><span class="levro-quick-icon"><i class="fa-solid fa-store"></i></span><span class="levro-quick-label">Explore Verified Vendors</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span class="levro-quick-label">Request an Item</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span class="levro-quick-label">Chat Directly</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
   </section>`;
   const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
   const trendingServices = deterministicHourlyShuffle((trending || []).filter(p => p.is_service),"trending-services");
@@ -13068,12 +13068,12 @@ async function renderHome() {
   // The homepage now uses six high-value actions instead of the old scrolling
   // sector/category rails. Each action stays inside the SPA; no hard reloads.
   html += `<section class="levro-home-quick-actions" aria-label="Quick actions">
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span>Shop products</span></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span>Book services</span></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('rent')"><span class="levro-quick-icon"><i class="fa-solid fa-key"></i></span><span>Rent items</span></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('vendors')"><span class="levro-quick-icon"><i class="fa-solid fa-store"></i></span><span>Explore verified vendors</span></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span>Request an item</span></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span>Chat directly</span></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span class="levro-quick-label">Shop Products</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span class="levro-quick-label">Book Services</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('rent')"><span class="levro-quick-icon"><i class="fa-solid fa-key"></i></span><span class="levro-quick-label">Rent Items</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('vendors')"><span class="levro-quick-icon"><i class="fa-solid fa-store"></i></span><span class="levro-quick-label">Explore Verified Vendors</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span class="levro-quick-label">Request an Item</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
+    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span class="levro-quick-label">Chat Directly</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
   </section>`;
 
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
@@ -32378,25 +32378,66 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   }
 }
 
-/* Home's six quick-action icons: neutral gray, not brand green - the whole
-   app was reading as "everything green"; these are frequent, low-emphasis
-   shortcuts and don't need the primary CTA color. A theme-mixed tint kept
-   coming out too pale to read as an actual button, so this is now a fixed,
-   always-visible dark gray (the same gray used for back buttons elsewhere)
-   with a white icon on top, rather than something that fades into the
-   card/background color per theme. */
-#app .levro-home-quick-actions .levro-quick-action{--quick-solid:none !important;}
+/* Home's six quick actions, per the LevroMart UI/UX master spec (Part 7):
+   a 2-column grid of compact HORIZONTAL cards -- icon, label, optional
+   arrow -- with a soft green/white treatment and a subtle border, not
+   the old vertical icon-over-label circles (gray or green). */
+#app .levro-home-quick-actions{
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:.65rem !important;
+}
+#app .levro-home-quick-actions .levro-quick-action{
+  --quick-solid:none !important;
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  gap:.6rem !important;
+  min-height:60px !important;
+  padding:.65rem .8rem !important;
+  border-radius:14px !important;
+  background:color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
+  border:1px solid color-mix(in srgb, var(--primary) 16%, var(--border)) !important;
+  box-shadow:none !important;
+  color:var(--text) !important;
+  text-align:left !important;
+  font-size:.78rem !important;
+  font-weight:700 !important;
+}
+#app .levro-home-quick-actions .levro-quick-action:hover,
+#app .levro-home-quick-actions .levro-quick-action:focus-visible{
+  background:color-mix(in srgb, var(--primary) 11%, var(--card)) !important;
+  border-color:color-mix(in srgb, var(--primary) 30%, var(--border)) !important;
+}
+#app .levro-home-quick-actions .levro-quick-action:active{ transform:scale(.98) !important; }
 #app .levro-home-quick-actions .levro-quick-icon{
-  background:#6b7280 !important;
-  color:#fff !important;
+  flex:0 0 auto !important;
+  width:2.15rem !important;
+  height:2.15rem !important;
+  border-radius:10px !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  background:color-mix(in srgb, var(--primary) 14%, var(--card)) !important;
+  color:var(--primary) !important;
   border:0 !important;
   box-shadow:none !important;
+  font-size:.92rem !important;
 }
-#app .levro-home-quick-actions .levro-quick-action:hover .levro-quick-icon,
-#app .levro-home-quick-actions .levro-quick-action:focus-visible .levro-quick-icon{
-  background:#57606e !important;
-  color:#fff !important;
-  box-shadow:none !important;
+#app .levro-home-quick-actions .levro-quick-label{
+  flex:1 1 auto !important;
+  min-width:0 !important;
+  white-space:normal !important;
+  line-height:1.2 !important;
+}
+#app .levro-home-quick-actions .levro-quick-arrow{
+  flex:0 0 auto !important;
+  font-size:.68rem !important;
+  color:color-mix(in srgb, var(--primary) 65%, var(--text)) !important;
+  opacity:.75 !important;
+}
+@media(max-width:420px){
+  #app .levro-home-quick-actions .levro-quick-action{ font-size:.72rem !important; padding:.55rem .65rem !important; }
+  #app .levro-home-quick-actions .levro-quick-icon{ width:1.95rem !important; height:1.95rem !important; }
 }
 
 /* Header Messages icon: same neutral gray treatment, distinct from the
