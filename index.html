@@ -324,7 +324,7 @@
   .tour-dot.active { background: var(--primary); transform: scale(1.1); width: 1.1rem; border-radius: 999px; }
   .tour-skip { display: block; margin: 0.9rem auto 0; background: none; border: none; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; text-decoration: underline; }
   @media (prefers-reduced-motion: reduce) { .tour-content, .tour-content .install-modal-badge, .tour-content h3, .tour-content #tourBody { animation: none; } }
-  .tour-spotlight-overlay { position: fixed; inset: 0; z-index: 480; }
+  .tour-spotlight-overlay { position: fixed; inset: 0; z-index: 150000; }
   .tour-spotlight-overlay.hidden { display: none; }
   .tour-spotlight-hole {
     position: fixed; border-radius: 1rem; box-shadow: 0 0 0 9999px rgba(0,0,0,0.72), 0 0 0 2px var(--primary), 0 0 24px color-mix(in srgb, var(--primary) 60%, transparent);
@@ -2815,7 +2815,11 @@ html { scroll-padding-top: 86px !important; }
    element visible instead of covering it with the callout.
    ================================================================ */
 #tourModal {
-  z-index: 480 !important;
+  /* Higher than #profilePanel/#notifPanel/#settingsPanel (z-index 100000):
+     a tour step can open one of those drawers as part of walking through it
+     (see the "Your profile" step's onEnter), and the tour callout/spotlight
+     must stay on top of it, not get buried behind it. */
+  z-index: 150000 !important;
   padding: 0 !important;
 }
 #tourCallout {
@@ -7904,6 +7908,11 @@ async function enablePushNotifications() {
 // Each step (except the intro/outro) names a real selector on a real page.
 // The tour navigates there with the actual navigate() function and points
 // at the actual DOM element - nothing here is a mockup or a slide.
+// Messages and Notifications live in different places depending on account
+// type (Messages: header icon for buyers/vendors, nothing for admins/guests;
+// Notifications: header bell for admins only, a bottom-nav tab for
+// buyers/vendors, nothing for guests) -- these two steps are placeholder
+// strings, resolved to a real step (or dropped) per-role in showTour().
 const HOME_TOUR_STEPS = [
   { icon: "fa-hand-sparkles", title: "Hi, I'm Levi", body: "I'll walk you through the app myself, live, on the actual site. Just follow me around.", selector: null, view: "home" },
   { icon: "fa-house", title: "This is Home", body: "Tap the Levromart logo any time, from anywhere in the app, and I'll bring you straight back here.", selector: "header h1", view: "home" },
@@ -7915,7 +7924,7 @@ const HOME_TOUR_STEPS = [
     onEnter: () => { try { switchVendorsView("map"); } catch (_) {} },
   },
   { icon: "fa-compass", title: "Get around from here", body: "The bottom bar is always one tap away, wherever you are on the site.", selector: "#bottomNav", view: "home" },
-  { icon: "fa-comment-dots", title: "Message a vendor directly", body: "Every conversation with every vendor lives here — ask a question before you buy, or sort out an order after.", selector: "#messagesWrap", view: "home" },
+  "MESSAGES_TOUR_STEP",
   {
     icon: "fa-user", title: "Your profile, one tap away", body: "Your account, your orders, your saved items and settings — all live in this panel, wherever you are in the app.",
     selector: "#profilePanel", view: "home",
@@ -7923,13 +7932,31 @@ const HOME_TOUR_STEPS = [
     onExit: () => { try { closeAllPanels(); } catch (_) {} },
   },
   { icon: "fa-comments", title: "That's me, right there", body: "Tap this any time to talk to me. Ask what to buy, and I'll point you straight to a vendor, or explain how anything on here works.", selector: "#aiChatFab", view: "home" },
-  { icon: "fa-bell", title: "Stay in the loop", body: "Turn on notifications so you're pinged the moment there's an order, offer, or update, right on your device.", selector: "#notifWrap", view: "home" },
+  "NOTIFICATIONS_TOUR_STEP",
 ];
+function buildMessagesTourStep() {
+  if (!session || profile?.role === "admin") return null;
+  return { icon: "fa-comment-dots", title: "Message a vendor directly", body: "Every conversation with every vendor lives here — ask a question before you buy, or sort out an order after.", selector: "#messagesWrap", view: "home" };
+}
+function buildNotificationsTourStep() {
+  if (!session) return null;
+  if (profile?.role === "admin") {
+    return { icon: "fa-bell", title: "Your notifications", body: "Tap the bell up here any time to see orders, disputes and platform activity as they happen.", selector: "#notifWrap", view: "home" };
+  }
+  return { icon: "fa-bell", title: "Stay in the loop", body: "Notifications live in your bottom bar — tap here any time to see orders, offers and updates.", selector: `#bottomNav .bottom-nav-item[onclick*="navigate('notifications')"]`, view: "home" };
+}
+function resolveTourSteps(steps) {
+  return steps.map((s) => s === "MESSAGES_TOUR_STEP" ? buildMessagesTourStep() : s === "NOTIFICATIONS_TOUR_STEP" ? buildNotificationsTourStep() : s).filter(Boolean);
+}
 // Shown only to vendors, appended after the shared home steps: your full
 // profile page carries the same at-a-glance stats (listings, reviews,
 // rating, followers) that customers see on your public storefront.
 const VENDOR_TOUR_STEP = { icon: "fa-store", title: "Your shop, at a glance", body: "Your full profile shows your listings, reviews, rating and followers — the same numbers customers see when they visit your storefront.", selector: ".storefront-stats", view: "vendorDashboard" };
-let LIVE_TOUR_STEPS = HOME_TOUR_STEPS;
+// Placeholder only -- showTour() rebuilds this with resolveTourSteps() once
+// session/profile/vendor (declared with let further down this same script)
+// are actually live; calling resolveTourSteps() here at parse time would hit
+// their temporal dead zone.
+let LIVE_TOUR_STEPS = HOME_TOUR_STEPS.filter((s) => typeof s !== "string");
 let liveTourStep = 0;
 let liveTourRunToken = 0;
 let liveTourBusy = false;
@@ -7978,7 +8005,7 @@ async function showTour() {
   cancelTourTransition();
   liveTourRunToken++;
   const token = liveTourRunToken;
-  LIVE_TOUR_STEPS = vendor ? [...HOME_TOUR_STEPS, VENDOR_TOUR_STEP] : HOME_TOUR_STEPS;
+  LIVE_TOUR_STEPS = vendor ? [...resolveTourSteps(HOME_TOUR_STEPS), VENDOR_TOUR_STEP] : resolveTourSteps(HOME_TOUR_STEPS);
   liveTourStep = 0;
   liveTourBusy = true;
   clearTourTargetLock();
@@ -8036,6 +8063,21 @@ async function runTourStep(token = liveTourRunToken) {
         el.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
         await new Promise(requestAnimationFrame);
         await new Promise(requestAnimationFrame);
+        // Centering the target can leave too little room above AND below for
+        // the callout, forcing it to fall back to dead-centre and overlap the
+        // spotlight hole instead of sitting cleanly next to it. If the target
+        // itself is short enough to fit the callout beside it, nudge the
+        // scroll so it sits nearer the top of the viewport, freeing up room
+        // below instead.
+        const r0 = el.getBoundingClientRect();
+        const vh0 = window.innerHeight;
+        const approxCalloutH = Math.min(vh0 * 0.46, 320) + 32;
+        if (r0.top < approxCalloutH && (vh0 - r0.bottom) < approxCalloutH && r0.height < vh0 - approxCalloutH - 40) {
+          const headerH = document.querySelector("header")?.getBoundingClientRect().height || 64;
+          window.scrollBy({ top: r0.top - (headerH + 24), left: 0, behavior: "auto" });
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+        }
       }
       lockTourTarget(el);
     }
