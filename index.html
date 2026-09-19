@@ -6978,6 +6978,9 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <div class="icon-wrap hidden" id="messagesWrap">
       <button class="icon-btn" onclick="navigate('messages')" title="Messages"><i class='fa-solid fa-comment-dots'></i><span id="messagesDot" class="notif-dot hidden">0</span></button>
     </div>
+    <div class="icon-wrap hidden" id="headerCartWrap">
+      <button class="icon-btn" onclick="requireLoginThen('cart')" title="Cart"><i class='fa-solid fa-cart-shopping'></i><span id="headerCartBadge" class="notif-dot hidden">0</span></button>
+    </div>
   </div>
 </header>
 
@@ -11100,12 +11103,24 @@ function initFloatingScrollVisibility(){
 }
 
 function updateCartFab() {
+  // The cart lives in the header now (master UI/UX spec, Part 3: "the cart
+  // must NOT float over the homepage"), permanently beside Messages, for
+  // both buyers and vendors (a vendor is also a buyer). The floating
+  // draggable FAB is kept out of the render path rather than deleted
+  // outright, so its badge-count logic below stays the single source of
+  // truth for both surfaces without duplicating it.
   const fab = byId("cartFab");
-  if (!fab) return;
-  const leviPanel = byId("aiChatPanel");
-  const leviOpen = !!leviPanel && !leviPanel.classList.contains("hidden");
-  const show = session && profile?.role !== "admin" && !leviOpen;
-  fab.classList.toggle("hidden", !show);
+  if (fab) fab.classList.add("hidden");
+
+  const showCart = !!session && profile?.role !== "admin";
+  const headerWrap = byId("headerCartWrap");
+  if (headerWrap) headerWrap.classList.toggle("hidden", !showCart);
+  const headerBadge = byId("headerCartBadge");
+  if (headerBadge) {
+    headerBadge.textContent = buyerCartCount > 9 ? "9+" : buyerCartCount;
+    headerBadge.classList.toggle("hidden", buyerCartCount === 0);
+  }
+
   const badge = byId("cartFabBadge");
   if (badge) {
     badge.textContent = buyerCartCount > 9 ? "9+" : buyerCartCount;
