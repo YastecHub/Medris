@@ -1,4 +1,86 @@
+const fs = require("fs");
+const path = require("path");
 const { readBody, env } = require("./_util");
+
+// Vercel's Hobby plan caps deployments at 12 serverless functions, and this
+// file is already the shared landing spot for a couple of rewritten routes
+// (see vercel.json) -- so the vendor/product share-preview page rides along
+// here too, on GET, rather than spending a 13th function slot on it.
+//
+// WhatsApp/Facebook/Twitter link-preview crawlers fetch the raw HTML of a
+// shared URL and read its <meta> tags -- they never run this SPA's
+// JavaScript, so the client-side updateStorefrontSocialMeta()/
+// syncLevromartLinkPreviewMeta() calls in index.html (which only run in a
+// real browser, after the page has already loaded) are invisible to them.
+// A shared storefront or product link always showed the generic Levromart
+// preview image instead of that vendor's/product's own photo. This serves
+// the exact same index.html, with just the handful of default <meta> tag
+// values swapped for the real vendor's/product's name, description and
+// photo, so the crawler's very first (and only) fetch already has them.
+function escAttr(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+async function shareMetaPreview(req, res) {
+  const serveAsIs = () => {
+    const html = fs.readFileSync(path.join(process.cwd(), "index.html"), "utf8");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  };
+  try {
+    const vendorId = String(req.query?.storefront || "").trim();
+    const productId = String(req.query?.product || "").trim();
+    if (!vendorId && !productId) { serveAsIs(); return; }
+
+    const SUPABASE_URL = env("SUPABASE_URL");
+    const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+    const svcHeaders = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+    const origin = `https://${req.headers.host}`;
+
+    let title = null, description = null, image = null, pageUrl = `${origin}/`;
+
+    if (vendorId) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${encodeURIComponent(vendorId)}&verification_status=eq.verified&is_active=eq.true&select=id,business_name,bio,logo_url`, { headers: svcHeaders });
+      const [v] = await r.json();
+      if (v) {
+        title = `${v.business_name || "Levromart storefront"} | Levromart`;
+        description = v.bio || `Check out ${v.business_name || "this store"} on Levromart.`;
+        image = v.logo_url || null;
+        pageUrl = `${origin}/?storefront=${encodeURIComponent(v.id)}`;
+      }
+    } else {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(productId)}&select=id,name,description,photos,vendor:vendors(business_name)`, { headers: svcHeaders });
+      const [p] = await r.json();
+      if (p) {
+        title = `${p.name || "Levromart listing"} | Levromart`;
+        description = String(p.description || `${p.name || "This listing"} on Levromart${p.vendor?.business_name ? ` from ${p.vendor.business_name}` : ""}.`).slice(0, 200);
+        image = Array.isArray(p.photos) && p.photos[0] ? p.photos[0] : null;
+        pageUrl = `${origin}/?product=${encodeURIComponent(p.id)}`;
+      }
+    }
+
+    let html = fs.readFileSync(path.join(process.cwd(), "index.html"), "utf8");
+    if (title) {
+      const t = escAttr(title), d = escAttr(description || ""), u = escAttr(pageUrl);
+      html = html.replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`);
+      html = html.replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${d}">`);
+      html = html.replace(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${t}">`);
+      html = html.replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${d}">`);
+      html = html.replace(/<meta property="og:url" content="[^"]*">/, `<meta property="og:url" content="${u}">`);
+      html = html.replace(/<meta name="twitter:title" content="[^"]*">/, `<meta name="twitter:title" content="${t}">`);
+      html = html.replace(/<meta name="twitter:description" content="[^"]*">/, `<meta name="twitter:description" content="${d}">`);
+      if (image) {
+        const img = escAttr(image);
+        html = html.replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${img}">`);
+        html = html.replace(/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${img}">`);
+      }
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  } catch (err) {
+    console.error("Levromart share-preview error:", err);
+    try { serveAsIs(); } catch (_) { res.status(500).end(); }
+  }
+}
 
 function serviceHeaders(key) {
   return {
@@ -348,6 +430,7 @@ async function deleteAccount(body, res) {
 }
 
 module.exports = async function handler(req, res) {
+  if (req.method === "GET") return shareMetaPreview(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed." });
 
   try {

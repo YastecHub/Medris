@@ -305,4 +305,4 @@ function esc(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-module.exports = { readBody, env, settleReference, sendNotificationEmail, releaseOrderPayout, refundOrderPayout };
+module.exports = { readBody, env, settleReference, sendNotificationEmail, releaseOrderPayout, refundOrderPayout, esc };

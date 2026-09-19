@@ -11,8 +11,23 @@
     {
       "source": "/api/listing-payments",
       "destination": "/api/vendor-payments"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "query", "key": "storefront" }],
+      "destination": "/api/delete-account"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "query", "key": "product" }],
+      "destination": "/api/delete-account"
     }
   ],
+  "functions": {
+    "api/delete-account.js": {
+      "includeFiles": "index.html"
+    }
+  },
   "crons": [
     {
       "path": "/api/daily-cron",
