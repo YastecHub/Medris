@@ -1903,7 +1903,7 @@ header{
 .search-suggest{margin-top:.15rem;border-radius:14px;box-shadow:var(--ui-shadow-lg)}
 
 /* Sections / chips */
-.section-title{align-items:center;margin-top:1.1rem}
+.section-title{align-items:center;margin-top:.5rem}
 .section-title > *{min-width:0}
 .cat-row{gap:.65rem;padding-top:.5rem}
 .cat-chip{
@@ -4695,7 +4695,7 @@ body.chat-full-page #aiChatFab { display:none !important; }
 <style id="levromart-2026-09-07-polish">
 /* Trending: keep the horizontal browse rail compact so the next listing is always visible. */
 @media (max-width: 720px) {
-  .hscroll.trending-scroll { gap:.7rem !important; padding:.45rem .15rem .85rem !important; align-items:stretch !important; }
+  .hscroll.trending-scroll { gap:.7rem !important; padding:.45rem .15rem .35rem !important; align-items:stretch !important; }
   /* Fix a small, fixed image height instead of an aspect-ratio on the WHOLE
      card (that's what the previous version of this rule did, and it squeezed
      some cards - e.g. products with a delivery summary or availability line -
@@ -13954,8 +13954,11 @@ function productCardHtml(p) {
   // that detail (delivery type/distance, quantity available, payment
   // before/after delivery, etc.) still shows in full on the product detail
   // page once it's opened -- it's just not cluttering the card itself.
-  const priceText = commissionService ? "" : p.sale_price != null
-    ? (p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price) ? naira(p.discount_price) : naira(p.sale_price))
+  const hasDiscount = p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price ?? Infinity);
+  const priceHtml = commissionService ? "" : p.sale_price != null
+    ? (hasDiscount
+        ? `<span class="product-old-price">${naira(p.sale_price)}</span> <span class="product-current-price">${naira(p.discount_price)}</span>`
+        : naira(p.sale_price))
     : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
   return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
@@ -13963,7 +13966,7 @@ function productCardHtml(p) {
       <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
       <h4>${esc(p.name)}</h4>
       <div class="product-card-compact-footer">
-        ${priceText ? `<span class="product-card-compact-price">${priceText}</span>` : "<span></span>"}
+        ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}</span>` : "<span></span>"}
         ${actionHtml}
       </div>
     </div>
@@ -22032,7 +22035,13 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const deliveryPaymentsComplete = !isDeliveryOrder || (isPayAfterDelivery ? (deliveryDepositPaid && feePaid) : feePaid);
   // Pickup keeps the existing full-payment flow. Delivery uses two stages:
   // The vendor-selected deposit percentage is paid first, then the remaining order balance.
-  const canRecordPayment = isVendor && !deliveryPaymentsComplete && (order.status === "confirmed" || (isDeliveryOrder && order.status === "handed_over"));
+  // A buyer-reported manual payment flips the order to payment_unresolved,
+  // which used to fall outside this gate entirely -- the vendor lost the
+  // "confirm payment received" card right when they needed it, with only
+  // the dispute link left as an option. Once there's already an open
+  // dispute the vendor should respond to that instead of also confirming,
+  // so this only opens back up while none exists yet.
+  const canRecordPayment = isVendor && !deliveryPaymentsComplete && (order.status === "confirmed" || (isDeliveryOrder && order.status === "handed_over") || (order.status === "payment_unresolved" && !openPaymentDispute));
   const canPayOnline = isCustomer && !deliveryPaymentsComplete && order.status === "confirmed";
 
   let html = `<div class="card">
@@ -32087,6 +32096,13 @@ body > footer.site-footer{display:none !important;}
   width:100% !important;display:flex !important;justify-content:center !important;align-items:center !important;flex-wrap:wrap !important;gap:.2rem !important;
 }
 #app .top-rated-vendors-scroll .badge{font-size:.52rem !important;padding:.12rem .25rem !important;margin:0 !important;max-width:100% !important;}
+/* Every card in the row is already stretched to the tallest card's height
+   (align-items:stretch on the row); pin the Follow button to the bottom of
+   that stretched space instead of letting it float right under whatever
+   amount of name/city/category text that particular card happens to have --
+   otherwise a short name means a high button and a wrapped 2-line name means
+   a low one, and they never line up. */
+#app .top-rated-vendors-scroll .vendor-card-follow-btn{ margin-top:auto !important; }
 
 /* Admin status tabs and primary admin navigation centered. */
 #app .tabs{display:flex !important;justify-content:center !important;align-items:center !important;width:100% !important;gap:1.5rem !important;overflow-x:auto !important;flex-wrap:nowrap !important;scrollbar-width:none !important;padding:.15rem .2rem 0 !important;}
@@ -34699,15 +34715,21 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     if(!session){showLogin?.();return;}
     const btn=ev?.currentTarget||document.querySelector(`.vendor-card-follow-btn[data-vendor-id="${CSS.escape(String(vendorId))}"]`);
     if(!btn||btn.disabled)return;
-    btn.disabled=true;
+    const next=!btn.classList.contains("following");
+    const matches=document.querySelectorAll(`.vendor-card-follow-btn[data-vendor-id="${CSS.escape(String(vendorId))}"]`);
+    // Flip the button the instant it's tapped -- waiting on the round trip
+    // before showing "Following" reads as stalling. Reconcile with the
+    // server after; on failure, flip it back and say why.
+    matches.forEach(b=>{b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";b.disabled=true;});
     try{
-      const next=!btn.classList.contains("following");
       const r=await sb.rpc("toggle_vendor_follow",{p_vendor_id:vendorId,p_following:next});
       if(r.error)throw r.error;
-      document.querySelectorAll(`.vendor-card-follow-btn[data-vendor-id="${CSS.escape(String(vendorId))}"]`).forEach(b=>{b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";});
       showToast?.(next?"Following vendor.":"Unfollowed vendor.","success");
-    }catch(e){ showToast?.(e.message||"Could not update your following list.","error"); }
-    finally{ btn.disabled=false; }
+    }catch(e){
+      matches.forEach(b=>{b.classList.toggle("following",!next);b.textContent=!next?"Following":"Follow";});
+      showToast?.(e.message||"Could not update your following list.","error");
+    }
+    finally{ matches.forEach(b=>{b.disabled=false;}); }
   }
   window.toggleVendorCardFollow=toggleVendorCardFollow;
   async function hydrateVendorCardFollowState(){
