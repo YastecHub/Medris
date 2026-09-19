@@ -5513,16 +5513,6 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
    no vendor row, availability, delivery summary or comment icon -- with the
    wishlist heart moved to the top-right corner of the photo. */
 #app .product-card-compact .fav-btn{ left:auto !important; right:.5rem !important; top:.5rem !important; }
-#app .product-card-compact .product-img{ position:relative !important; }
-#app .product-card-vendor-badge{
-  position:absolute !important; left:.4rem !important; bottom:.4rem !important;
-  width:1.7rem !important; height:1.7rem !important; border-radius:50% !important;
-  overflow:hidden !important; background:#fff !important; border:0 !important; padding:0 !important;
-  display:flex !important; align-items:center !important; justify-content:center !important;
-  box-shadow:0 2px 8px rgba(0,0,0,.3) !important; cursor:pointer !important; z-index:2 !important;
-  color:var(--primary) !important; font-size:.7rem !important;
-}
-#app .product-card-vendor-badge img{ width:100% !important; height:100% !important; object-fit:cover !important; }
 #app .product-card-compact-footer{
   display:flex !important; align-items:center !important; justify-content:space-between !important;
   gap:.4rem !important; margin-top:auto !important; padding-top:.35rem !important;
@@ -9925,10 +9915,16 @@ async function renderNotifPanel() {
   }
   const currentVendorId=String(vendor?.id||'');
   const owners=new Map();
-  for(const [kind,table] of [['product','products'],['package','vendor_packages']]){
+  // These two lookups don't depend on each other -- running them one after
+  // another (await inside the loop) meant every notifications open paid
+  // for both round trips back to back instead of overlapping them.
+  await Promise.all([['product','products'],['package','vendor_packages']].map(async ([kind,table])=>{
     const ids=[...new Set((rawItems||[]).map(n=>{const p=n.target_params||{},m=n.metadata||{};return kind==='product'?(p.productId||p.product_id||m.product_id):(p.packageId||p.package_id||m.package_id)}).filter(Boolean))];
-    if(ids.length){const {data,error:ownerError}=await sb.from(table).select('id,vendor_id').in('id',ids);if(ownerError)console.warn('Notification ownership lookup failed',ownerError);(data||[]).forEach(r=>owners.set(`${kind}:${r.id}`,String(r.vendor_id)));}
-  }
+    if(!ids.length)return;
+    const {data,error:ownerError}=await sb.from(table).select('id,vendor_id').in('id',ids);
+    if(ownerError)console.warn('Notification ownership lookup failed',ownerError);
+    (data||[]).forEach(r=>owners.set(`${kind}:${r.id}`,String(r.vendor_id)));
+  }));
   const classifyNotification=n=>{
     const p=n.target_params||{},m=n.metadata||{},type=String(n.type||n.notification_type||n.notification_category||'').toLowerCase();
     const kind=String(m.kind||m.entity_type||n.notification_category||type).toLowerCase();
@@ -10748,9 +10744,10 @@ function updateAuthUI() {
     const adminStats = profile.role === "admin"
       ? (isSuperAdmin()
         ? [
+            { key: "totalUsers", label: "Total users", value: Number(window.__adminStatTotalUsers || 0) },
             { key: "buyers", label: "Buyers", value: Number(window.__adminStatBuyers || 0) },
             { key: "vendors", label: "Vendors", value: Number(window.__adminStatVendors || 0) },
-            { key: "revenue", label: "Revenue", value: naira(Number(window.__adminStatRevenue || 0)) },
+            { key: "activeProducts", label: "Active products", value: Number(window.__adminStatActiveProducts || 0) },
           ]
         : [
             { key: "loginsToday", label: "Logins today", value: Number(window.__adminStatLoginsToday || 0) },
@@ -10861,17 +10858,20 @@ async function hydrateAdminProfileStats() {
   };
   try {
     if (isSuperAdmin()) {
-      const [{ count: buyerCount }, { count: vendorCount }, { data: txns }] = await Promise.all([
+      const [{ count: totalUserCount }, { count: buyerCount }, { count: vendorCount }, { count: activeProductCount }] = await Promise.all([
+        sb.from("users").select("id", { count: "exact", head: true }),
         sb.from("users").select("id", { count: "exact", head: true }).eq("role", "buyer"),
         sb.from("users").select("id", { count: "exact", head: true }).eq("role", "vendor"),
-        sb.rpc("admin_list_transactions"),
+        sb.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
       ]);
+      window.__adminStatTotalUsers = Number(totalUserCount || 0);
       window.__adminStatBuyers = Number(buyerCount || 0);
       window.__adminStatVendors = Number(vendorCount || 0);
-      window.__adminStatRevenue = (txns || []).filter((t) => t.status === "paid").reduce((s, t) => s + Number(t.platform_cut || 0), 0);
+      window.__adminStatActiveProducts = Number(activeProductCount || 0);
+      patchStat("totalUsers", window.__adminStatTotalUsers);
       patchStat("buyers", window.__adminStatBuyers);
       patchStat("vendors", window.__adminStatVendors);
-      patchStat("revenue", naira(window.__adminStatRevenue));
+      patchStat("activeProducts", window.__adminStatActiveProducts);
     } else {
       const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
       const [{ count: loginsToday }, { count: loginLogs }, { count: supportCount }, { count: feedbackCount }, { count: disputeCount }] = await Promise.all([
@@ -14162,15 +14162,16 @@ function productCardHtml(p) {
   // as a quiet signal that there's a choice to make once the card is opened.
   const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
   const varietyIconHtml = hasVariety ? `<i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available" aria-label="Multiple varieties available"></i>` : "";
-  // One small, tappable badge on the photo itself is the only vendor
-  // identity that belongs on the card now that the vendor name row is
-  // gone -- enough to say "this is sold by them" and jump to their
-  // storefront, without bringing back a text line.
-  const vendorBadgeHtml = p.vendor?.id ? `<button type="button" class="product-card-vendor-badge" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${esc(p.vendor.id)}'})" title="Sold by ${esc(p.vendor.business_name || "this vendor")}" aria-label="Sold by ${esc(p.vendor.business_name || "this vendor")}. View storefront">${p.vendor.logo_url ? `<img src="${esc(p.vendor.logo_url)}" alt="" loading="lazy" draggable="false">` : `<i class="fa-solid fa-store"></i>`}</button>` : "";
+  // A product with no photo of its own falls back to the vendor's logo
+  // filling the whole image slot, rather than a bare "No image" icon --
+  // every card ends up with an actual picture in it.
+  const noImageFallback = p.vendor?.logo_url
+    ? `<img src="${esc(p.vendor.logo_url)}" alt="${esc(p.vendor.business_name || "Vendor")}" loading="lazy" decoding="async" draggable="false">`
+    : "<i class='fa-solid fa-camera'></i> No image";
   return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
-      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : "<i class='fa-solid fa-camera'></i> No image"}${vendorBadgeHtml}</div>
+      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}</div>
       <h4>${esc(p.name)}</h4>
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
