@@ -16103,7 +16103,7 @@ window.renderProductDetail = async function(productId){
 };
 
 async function __levroOriginalRenderProductDetail(productId) {
-  const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(name)").eq("id", productId).maybeSingle();
+  const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", productId).maybeSingle();
   const variantsQuery = sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
   const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = await Promise.all([productQuery,variantsQuery,engagementQuery]);
@@ -16161,8 +16161,15 @@ async function __levroOriginalRenderProductDetail(productId) {
     ${productVariants.length ? `<div class="product-gallery-varieties" id="productGalleryVarieties"><div class="product-gallery-varieties-head"><strong>Varieties</strong><span class="muted" style="font-size:.68rem;">${productVariants.length} option${productVariants.length===1?'':'s'}</span></div><div class="product-gallery-varieties-list">${productVariants.map((v,i)=>{const unit=Number(v.discount_price ?? v.sale_price ?? v.rental_rate ?? 0);const photo=v.photo_url||'';return `<button type="button" class="product-gallery-variety ${i===0?'active':''}" data-gallery-variety-id="${esc(v.id)}" onclick="selectProductVariant('${esc(v.id)}',true,true)">${photo?`<img src="${esc(photo)}" alt="${esc(v.name||`Variety ${i+1}`)}" loading="lazy" decoding="async">`:`<span class="product-gallery-variety-placeholder"><i class="fa-solid fa-layer-group"></i></span>`}<strong>${esc(v.name||`Variety ${i+1}`)}</strong><small>${unit>0?naira(unit):'Price on request'}</small></button>`;}).join('')}</div></div>` : ''}
     ${productGalleryVariantMetaHtml}
     <div class="product-detail-actions">
-      ${profile?.role !== "admin" ? (product.vendor.whatsapp_visible && product.vendor.whatsapp_number ? `<div class="ms-wrap product-message-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm" type="button" onclick="toggleInlineMenu('productMessageMenu-${product.id}',event)"><i class='fa-solid fa-comment-dots'></i> Message vendor</button><div class="ms-list hidden" id="productMessageMenu-${product.id}" style="left:0;right:auto;width:max-content;min-width:190px;"><button class="ms-item" type="button" onclick="startConversationWithVendor('${product.vendor.id}');closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(product.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm" onclick="startConversationWithVendor('${product.vendor.id}')"><i class='fa-solid fa-comment-dots'></i> Message vendor</button>`) : ""}
-      ${product.vendor.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(product.vendor.phone)}" onclick="callVendorGated(event,'${esc(product.vendor.phone)}','${product.vendor.id}')"><i class='fa-solid fa-phone'></i> Call vendor</a>` : ""}
+      ${(() => {
+        if (profile?.role === "admin") return "";
+        if (!canMessageVendorNow(product.vendor)) {
+          const hs = vendorHoursStatus(product.vendor);
+          return `<span class="storefront-contact-closed" title="${esc(`${product.vendor.business_name || "This vendor"} is outside working hours right now${hs.todayText ? ` (${hs.todayLabel}: ${hs.todayText})` : ""}.`)}"><i class="fa-regular fa-clock"></i><span>Outside working hours</span></span>`;
+        }
+        return (product.vendor.whatsapp_visible && product.vendor.whatsapp_number ? `<div class="ms-wrap product-message-wrap" style="position:relative;display:inline-block;width:auto;"><button class="btn btn-sm" type="button" onclick="toggleInlineMenu('productMessageMenu-${product.id}',event)"><i class='fa-solid fa-comment-dots'></i> Message vendor</button><div class="ms-list hidden" id="productMessageMenu-${product.id}" style="left:0;right:auto;width:max-content;min-width:190px;"><button class="ms-item" type="button" onclick="startConversationWithVendor('${product.vendor.id}');closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button><a class="ms-item" href="${waLink(product.vendor.whatsapp_number)}" target="_blank" rel="noopener" onclick="closeInlineMenu('productMessageMenu-${product.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a></div></div>` : `<button class="btn btn-sm" onclick="startConversationWithVendor('${product.vendor.id}')"><i class='fa-solid fa-comment-dots'></i> Message vendor</button>`)
+             + (product.vendor.phone ? `<a class="btn btn-sm btn-outline" href="${telLink(product.vendor.phone)}" onclick="callVendorGated(event,'${esc(product.vendor.phone)}','${product.vendor.id}')"><i class='fa-solid fa-phone'></i> Call vendor</a>` : "");
+      })()}
       ${`<span class="badge ${ratingBadgeClass(Number(st.avg_rating ?? 0))}">★ ${Number(st.avg_rating ?? 0).toFixed(1)} (${Number(st.review_count ?? 0)})</span>`}
     </div>
     <div class="product-detail-info">
@@ -17117,14 +17124,23 @@ async function renderStorefront(vendorId) {
       <div class="storefront-name-row">
         <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
         <div class="storefront-name-actions">
-          ${!isOwnStorefront && profile?.role !== "admin" ? `<div class="ms-wrap storefront-contact-wrap" style="position:relative;display:inline-flex;">
+          ${!isOwnStorefront && profile?.role !== "admin" ? (() => {
+            const reachable = canMessageVendorNow(v);
+            const hoursStatus = vendorHoursStatus(v);
+            if (!reachable) {
+              return `<div class="storefront-contact-wrap storefront-contact-closed" title="${esc(`${v.business_name || "This vendor"} is outside working hours right now${hoursStatus.todayText ? ` (${hoursStatus.todayLabel}: ${hoursStatus.todayText})` : ""}.`)}">
+                <i class="fa-regular fa-clock"></i><span>Outside working hours</span>
+              </div>`;
+            }
+            return `<div class="ms-wrap storefront-contact-wrap" style="position:relative;display:inline-flex;">
             <button class="btn btn-sm storefront-social-icon storefront-contact-trigger" type="button" aria-label="Contact vendor" title="Contact vendor" onclick="toggleInlineMenu('storefrontContactMenu',event)"><i class="fa-solid fa-comment-dots"></i><span>Contact</span></button>
             <div class="ms-list hidden" id="storefrontContactMenu">
               <button type="button" class="ms-item" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i> Message</button>
               ${v.whatsapp_visible && v.whatsapp_number ? `<a class="ms-item" href="${waLink(v.whatsapp_number)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>` : ""}
               ${v.phone ? `<a class="ms-item" href="${telLink(v.phone)}" onclick="callVendorGated(event,'${esc(v.phone)}','${v.id}')"><i class='fa-solid fa-phone'></i> Call</a>` : ""}
             </div>
-          </div>` : ""}
+          </div>`;
+          })() : ""}
         </div>
       </div>
       <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${storefrontDistanceHtml(v)}${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
@@ -27020,6 +27036,7 @@ window.addEventListener("popstate", (e) => {
 
   if(session){const legalOk=await window.__levroCheckLegalConsent?.();if(legalOk===false){hideLevromartSplash();return;}}
   if(session) window.__levroCheckPayoutSetup?.();
+  if(session) window.__levroCheckCommissionDueReminder?.();
 
   const urlParams = new URLSearchParams(location.search);
   // The SPA route is also encoded in the browser URL for every ordinary view.
@@ -27303,6 +27320,37 @@ if ("serviceWorker" in navigator) {
     gate.addEventListener("click",(e)=>{if(e.target===gate)closeGate();});
   };
   sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN")setTimeout(()=>window.__levroCheckPayoutSetup?.(),400);});
+})();
+</script>
+<script id="levromart-commission-due-reminder-js">
+(function(){
+  // Gentle, dismissible heads-up before a commission charge is due -- separate
+  // from levroCommissionGate's hard paywall, which only kicks in once a charge
+  // is actually overdue. This just nudges a vendor 3 days out, 1 day out, and
+  // on the due day itself, at most once per day so it never spams.
+  window.__levroCheckCommissionDueReminder = async function(){
+    if(!session?.user?.id||!vendor?.id||profile?.role!=="vendor"||vendor.commission_paused)return;
+    try{
+      const {data:deadline}=await sb.rpc("get_vendor_commission_deadline",{p_vendor_id:vendor.id});
+      const dueAt=deadline?.[0]?.earliest_due_at;
+      if(!dueAt)return;
+      const dueDate=new Date(dueAt);
+      if(Number.isNaN(dueDate.getTime()))return;
+      const daysLeft=Math.ceil((dueDate.getTime()-Date.now())/86400000);
+      if(daysLeft<0||daysLeft>3)return;
+      const {data:owed}=await sb.rpc("get_vendor_commission_owed",{p_vendor_id:vendor.id});
+      if(!(Number(owed||0)>0))return;
+      const todayKey=new Date().toISOString().slice(0,10);
+      const seenKey=`levromart-commission-reminder-seen:${vendor.id}`;
+      let seen={};
+      try{seen=JSON.parse(localStorage.getItem(seenKey)||"{}");}catch(_){}
+      if(seen[todayKey])return;
+      try{localStorage.setItem(seenKey,JSON.stringify({[todayKey]:true}));}catch(_){}
+      const when=daysLeft<=0?"today":daysLeft===1?"tomorrow":`in ${daysLeft} days`;
+      showToast(`Commission of ${naira(Number(owed))} is due ${when}. Pay early to keep your storefront running.`,"info");
+    }catch(_){}
+  };
+  sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN")setTimeout(()=>window.__levroCheckCommissionDueReminder?.(),1200);});
 })();
 </script>
 <style id="final-system-bar-and-map-popup-polish">
@@ -37930,6 +37978,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
    buttons cluttering the name row). */
 .storefront-contact-wrap .ms-list{left:0;right:auto;width:max-content;min-width:170px;}
 .storefront-contact-wrap .ms-item{display:flex;align-items:center;gap:.5rem;}
+.storefront-contact-closed{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--muted);background:color-mix(in srgb, var(--muted) 12%, transparent);border-radius:999px;padding:.4rem .75rem;white-space:nowrap;}
+.storefront-contact-closed i{font-size:.85rem;}
 
 /* Restore the intended 2x2 grid for product-card action buttons (Edit +
    Duplicate on top, Pause/Resume + Remove below) - a later, unrelated patch
