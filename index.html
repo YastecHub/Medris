@@ -29679,10 +29679,14 @@ window.renderVendorMapRail = function(){
 .vendors-map-vendor-chip-copy{min-width:0 !important;flex:1 1 auto !important;}
 .vendors-map-vendor-chip-copy strong{font-size:.78rem !important;}
 .vendors-map-vendor-chip-copy small{font-size:.63rem !important;}
-.vendors-map-vendor-chip-action{border:1px solid color-mix(in srgb,var(--primary) 38%,var(--border)) !important;border-radius:999px !important;padding:.25rem .38rem !important;background:color-mix(in srgb,var(--primary) 8%,transparent) !important;white-space:nowrap !important;font-size:.61rem !important;}
+/* Just the pin icon now, not a "View on map" text pill -- that text was
+   eating most of this narrow card's width, truncating the vendor's own
+   name down to one or two letters. The whole card is already the tap
+   target, so the icon is a label, not a separate button. */
+.vendors-map-vendor-chip-action{border:1px solid color-mix(in srgb,var(--primary) 38%,var(--border)) !important;border-radius:50% !important;width:1.7rem !important;height:1.7rem !important;padding:0 !important;background:color-mix(in srgb,var(--primary) 8%,transparent) !important;white-space:nowrap !important;font-size:.78rem !important;flex:0 0 1.7rem !important;}
 .vendors-map-vendor-chip{cursor:pointer !important;scroll-snap-align:start !important;}
 .vendors-map-vendor-chip:focus-visible{outline:2px solid var(--primary) !important;outline-offset:2px !important;}
-.vendors-map-vendor-chip-action{display:inline-flex !important;align-items:center !important;gap:.2rem !important;}
+.vendors-map-vendor-chip-action{display:inline-flex !important;align-items:center !important;justify-content:center !important;color:var(--primary) !important;}
 
 /* CHAT — fixed WhatsApp-style header + obvious drag feedback */
 .chat-page-wrap .chat-page-header{position:sticky !important;top:0 !important;z-index:80 !important;flex:0 0 auto !important;background:var(--bg) !important;}
@@ -29749,7 +29753,7 @@ window.renderVendorMapRail = function(){
       return `<div class="vendors-map-vendor-chip" data-vendor-id="${esc(v.id)}" role="button" tabindex="0" aria-label="Show ${esc(v.business_name||'Vendor')} on map" onclick="focusVendorOnMap('${esc(v.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();focusVendorOnMap('${esc(v.id)}');}">
         ${avatar}
         <span class="vendors-map-vendor-chip-copy"><strong>${esc(v.business_name||'Vendor')}</strong><small>${esc(v.city||'Online')}${dist?' · '+esc(dist):''}</small></span>
-        <span class="vendors-map-vendor-chip-action"><i class="fa-solid fa-location-dot"></i> View on map</span>
+        <span class="vendors-map-vendor-chip-action" title="View on map" aria-label="View on map"><i class="fa-solid fa-location-dot"></i></span>
       </div>`;
     }).join('');
     return `<div class="vendors-map-vendor-rail-head"><strong>Vendors</strong>${all.length>6?`<button type="button" onclick="switchVendorsView('list')">See all →</button>`:''}</div><div class="vendors-map-vendor-rail">${chips}</div>`;
@@ -32353,19 +32357,22 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 
 /* Home's six quick-action icons: neutral gray, not brand green - the whole
    app was reading as "everything green"; these are frequent, low-emphasis
-   shortcuts and don't need the primary CTA color. Adapts across
-   light/dark/black themes instead of a fixed hex. */
+   shortcuts and don't need the primary CTA color. A theme-mixed tint kept
+   coming out too pale to read as an actual button, so this is now a fixed,
+   always-visible dark gray (the same gray used for back buttons elsewhere)
+   with a white icon on top, rather than something that fades into the
+   card/background color per theme. */
 #app .levro-home-quick-actions .levro-quick-action{--quick-solid:none !important;}
 #app .levro-home-quick-actions .levro-quick-icon{
-  background:color-mix(in srgb, var(--text) 22%, var(--card)) !important;
-  color:color-mix(in srgb, var(--text) 88%, var(--card)) !important;
+  background:#6b7280 !important;
+  color:#fff !important;
   border:0 !important;
   box-shadow:none !important;
 }
 #app .levro-home-quick-actions .levro-quick-action:hover .levro-quick-icon,
 #app .levro-home-quick-actions .levro-quick-action:focus-visible .levro-quick-icon{
-  background:color-mix(in srgb, var(--text) 30%, var(--card)) !important;
-  color:color-mix(in srgb, var(--text) 92%, var(--card)) !important;
+  background:#57606e !important;
+  color:#fff !important;
   box-shadow:none !important;
 }
 
@@ -32412,7 +32419,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   transform:translateX(-50%) scale(1) !important; opacity:1 !important; filter:none !important;
 }
 @media(max-width:720px){
-  #app .levro-home-search-wrap{padding:.24rem 0 .42rem !important;}
+  #app .levro-home-search-wrap{padding:.85rem 0 .55rem !important;}
   #app .levro-home-search-wrap .hero-search{width:100% !important;}
   #app .levro-home-search-wrap.home-search-fixed .hero-search{width:calc(100% - 1.1rem) !important;}
 }
