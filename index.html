@@ -5480,6 +5480,10 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 #app .product-card-compact-price{
   font-weight:800 !important; font-size:.82rem !important; color:var(--primary) !important;
   overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+  display:inline-flex !important; align-items:center !important; gap:.3rem !important;
+}
+#app .product-card-compact-price .product-variety-indicator{
+  font-size:.72rem !important; font-weight:600 !important; flex:0 0 auto !important;
 }
 #app .product-card-compact .card-cart-btn{
   flex:0 0 auto !important; width:1.9rem !important; height:1.9rem !important; min-width:0 !important;
@@ -9511,7 +9515,16 @@ function queueVisibleNotificationReads(){
 async function commitPendingNotificationReads(){
   if(!session?.user?.id || !pendingNotificationReads.size) return;
   const ids=[...pendingNotificationReads]; pendingNotificationReads.clear();
-  const {error}=await sb.from("notifications").update({read:true}).eq("user_id",session.user.id).in("id",ids);
+  // Viewing the "All" tab shows every notification with no category filter,
+  // so leaving it is "I've seen everything" -- but the pending-id list above
+  // is still bounded by whatever this fetch actually returned. A busy
+  // account can outpace any fixed page size, leaving genuinely-viewed rows
+  // beyond it stuck unread forever and the badge count permanently wrong no
+  // matter how often the page is opened. Mark the whole inbox read here
+  // instead of just the ids that happened to be on screen.
+  const { error } = notifViewMode === "all"
+    ? await sb.from("notifications").update({ read: true }).eq("user_id", session.user.id).eq("read", false).is("deleted_at", null)
+    : await sb.from("notifications").update({ read: true }).eq("user_id", session.user.id).in("id", ids);
   if(error){ids.forEach(id=>pendingNotificationReads.add(String(id)));console.warn("[Levromart] Notification read-state commit failed:",error);return;}
   refreshNotifications(false).catch(()=>{});
 }
@@ -12538,10 +12551,9 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span class="levro-quick-label">Request an Item</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span class="levro-quick-label">Chat Directly</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
   </section>`;
-  const offlineTopLevelCategories = categories.filter((c) => !c.parent_category_id);
-  if (offlineTopLevelCategories.length) {
+  if (sectors.length) {
     html += `<h3 class="section-title"><span><i class="fa-solid fa-grip"></i> Shop by Category</span><a class="section-title-link" onclick="openHomeCategoryBrowser()">See all <i class="fa-solid fa-arrow-right"></i></a></h3>`;
-    html += homeCategoryRailHtml(offlineTopLevelCategories);
+    html += homeCategoryRailHtml(sectors);
   }
   const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
   const trendingServices = deterministicHourlyShuffle((trending || []).filter(p => p.is_service),"trending-services");
@@ -12705,11 +12717,41 @@ function renderHomepageCarouselHtml(slides) {
   </section>`;
 }
 
+// Carousel banners are managed through a plain "Link URL" text box with no
+// documentation of the app's internal ?levro=view&section=x query-param
+// syntax -- realistically nobody types that, they type a plain destination
+// like "Vendors", "Shop Now" or "https://levromart.com/vendors". Those never
+// matched the strict same-path+query-param check below, so they fell through
+// to window.open() on every single click, which reads as (and on a PWA can
+// genuinely trigger) a full page reload instead of an in-app navigation.
+// Recognise the obvious intent first, before ever treating the link as a
+// generic external URL.
+const HOME_CAROUSEL_KEYWORD_ROUTES = [
+  [/\bvendor/, () => navigate("vendors", {}, true)],
+  [/\bproduct|\bshop\b|\bbuy\b/, () => navigate("home", {}, true).then(() => setTimeout(() => { try { switchHomeListingTab("products"); } catch (_) {} byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80))],
+  [/\bservice/, () => navigate("home", {}, true).then(() => setTimeout(() => { try { switchHomeListingTab("services"); } catch (_) {} byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80))],
+  [/\bpackage/, () => navigate("home", {}, true).then(() => setTimeout(() => { try { switchHomeListingTab("packages"); } catch (_) {} byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80))],
+  [/\border/, () => { if (!session) { showLogin(); return; } navigate(profile?.role === "admin" ? "adminFinance" : (vendor ? "vendorOrders" : "buyerOrders"), vendor ? { status: "all", perspective: "sales" } : {}, true); }],
+  [/\bcart|\bbasket/, () => navigate("cart", {}, true)],
+  [/\bmessage|\bchat/, () => { if (!session) { showLogin(); return; } navigate("messages", {}, true); }],
+  [/\bsetting/, () => { if (!session) { showLogin(); return; } navigate("settings", {}, true); }],
+  [/\bwishlist|\bfavou?rite/, () => { if (!session) { showLogin(); return; } navigate("wishlist", {}, true); }],
+  [/\brequest/, () => navigate("requestEquipment", {}, true)],
+  [/\bsupport|\bhelp\b/, () => { if (!session) { showLogin(); return; } navigate("supportRequest", {}, true); }],
+  [/\bhome\b|\bbrowse everything/, () => navigate("home", {}, true)],
+];
+function resolveHomeCarouselKeywordRoute(raw) {
+  const keyword = String(raw || "").toLowerCase().replace(/^https?:\/\/[^/]+/, "").replace(/[^a-z]+/g, " ").trim();
+  if (!keyword) return null;
+  return HOME_CAROUSEL_KEYWORD_ROUTES.find(([re]) => re.test(keyword))?.[1] || null;
+}
 function handleHomeCarouselSlideClick(event, index) {
   const slide = event.currentTarget;
   const url = slide?.dataset?.linkUrl || "";
   activateHomeCarouselSlide(index, true);
   if (!url) return;
+  const keywordAction = resolveHomeCarouselKeywordRoute(url);
+  if (keywordAction) { event.preventDefault(); keywordAction(); return; }
   try {
     const target = new URL(url, location.href);
     const sameApp = target.origin === location.origin && target.pathname === location.pathname;
@@ -13280,10 +13322,9 @@ async function renderHome() {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span class="levro-quick-label">Chat Directly</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
   </section>`;
 
-  const topLevelHomeCategories = (categories || []).filter((c) => !c.parent_category_id);
-  if (topLevelHomeCategories.length) {
+  if (sectors.length) {
     html += `<h3 class="section-title"><span><i class="fa-solid fa-grip"></i> Shop by Category</span><a class="section-title-link" onclick="openHomeCategoryBrowser()">See all <i class="fa-solid fa-arrow-right"></i></a></h3>`;
-    html += homeCategoryRailHtml(topLevelHomeCategories);
+    html += homeCategoryRailHtml(sectors);
   }
 
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
@@ -13490,20 +13531,26 @@ function scrollToBrowse(listingType) {
   byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 const LEVRO_CATEGORY_RAIL_PALETTE = ["#16a34a", "#2563eb", "#e11d48", "#f59e0b", "#7c3aed", "#0d9488", "#db2777", "#0891b2"];
-// categoryIcon()'s keyword list is tuned for specific product-level category
-// names and falls back to a generic tag for anything it doesn't recognise --
-// fine for a single badge, but it meant almost every top-level category
-// here rendered the exact same tag icon. Fall back to a cycling, still
-// visually distinct icon per position instead of repeating the tag.
-const LEVRO_CATEGORY_ICON_FALLBACKS = ["fa-bag-shopping", "fa-laptop", "fa-shirt", "fa-house", "fa-book", "fa-heart-pulse", "fa-dumbbell", "fa-gem", "fa-car", "fa-mobile-screen-button", "fa-couch", "fa-palette"];
-function homeCategoryIconClass(name, index) {
-  const hit = CATEGORY_ICONS.find(([re]) => re.test(name || ""));
-  return hit ? hit[1] : LEVRO_CATEGORY_ICON_FALLBACKS[index % LEVRO_CATEGORY_ICON_FALLBACKS.length];
-}
-function homeCategoryRailHtml(topLevelCategories) {
-  const chips = topLevelCategories.slice(0, 7).map((c, i) => `<button type="button" class="levro-home-cat-chip" style="--cat-color:${LEVRO_CATEGORY_RAIL_PALETTE[i % LEVRO_CATEGORY_RAIL_PALETTE.length]}" onclick="filterByCategory('${c.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${homeCategoryIconClass(c.name, i)}"></i></span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`).join("");
+// The rail filters by SECTOR, not by the categories table's top-level rows --
+// products are tagged with a fine-grained (usually leaf) category, and
+// filtering by a bare top-level category id never matched anything real,
+// so tapping a chip looked completely broken. Sectors are the broad,
+// vendor-facing grouping (Food & Drinks, Electronics, Fashion, ...) that
+// the existing switchSector()/activeSector plumbing already filters
+// trending + browse by correctly, and each sector already stores its own
+// icon in the database instead of needing a guess from its name.
+function homeCategoryRailHtml(sectorList) {
+  const chips = sectorList.slice(0, 7).map((s, i) => {
+    const active = String(currentSectorId || "") === String(s.id);
+    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" style="--cat-color:${LEVRO_CATEGORY_RAIL_PALETTE[i % LEVRO_CATEGORY_RAIL_PALETTE.length]}" onclick="toggleHomeSectorFilter('${s.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(s.icon || "fa-shapes")}"></i></span><span class="levro-home-cat-label">${esc(s.name)}</span></button>`;
+  }).join("");
   const more = `<button type="button" class="levro-home-cat-chip levro-home-cat-more" onclick="openHomeCategoryBrowser()"><span class="levro-home-cat-icon"><i class="fa-solid fa-ellipsis"></i></span><span class="levro-home-cat-label">More</span></button>`;
   return `<div class="levro-home-cat-rail hscroll">${chips}${more}</div>`;
+}
+function toggleHomeSectorFilter(sectorId) {
+  // Tapping the already-active sector clears the filter -- the chip itself
+  // doubles as the "clear filter" control instead of needing a separate one.
+  switchSector(String(currentSectorId || "") === String(sectorId) ? null : sectorId);
 }
 function openHomeCategoryBrowser() {
   filterByCategory(null);
@@ -13916,7 +13963,11 @@ function productPaymentPlanBadgeHtml(p){
 }
 function hydrateProductVariantIndicatorsInView(){
   // A variety indicator is intentionally tied to multiple listing photos.
-  // It belongs under the delivery line, not beside the vendor name.
+  // productCardHtml() already renders this synchronously from p.photos when
+  // it has that data; this pass is the backfill for any card rendered
+  // without it, using the photo cache populated elsewhere. It sits right
+  // next to the price now (icon only, no label) rather than under the
+  // removed delivery-summary line.
   const nodes=[...document.querySelectorAll('.product-card-wrap[data-product-id]')];
   if(!nodes.length)return;
   nodes.forEach(node=>{
@@ -13925,12 +13976,11 @@ function hydrateProductVariantIndicatorsInView(){
       : null;
     const img=node.querySelector('.product-img');
     const photoCount=photos ? photos.length : Number(img?.querySelectorAll('img').length||0);
-    const wrap=node.querySelector('.product-card-delivery-wrap');
-    if(!wrap)return;
-    let el=wrap.querySelector('.product-variety-indicator');
+    const priceEl=node.querySelector('.product-card-compact-price');
+    if(!priceEl)return;
+    let el=priceEl.querySelector('.product-variety-indicator');
     if(photoCount>1){
-      if(!el){el=document.createElement('span');el.className='product-variety-indicator';wrap.appendChild(el);}
-      el.innerHTML='<i class="fa-solid fa-layer-group"></i> Variety';
+      if(!el){el=document.createElement('i');el.className='fa-solid fa-layer-group product-variety-indicator';el.title='Multiple varieties available';el.setAttribute('aria-label','Multiple varieties available');priceEl.appendChild(el);}
     }else if(el)el.remove();
   });
 }
@@ -13960,13 +14010,20 @@ function productCardHtml(p) {
         ? `<span class="product-old-price">${naira(p.sale_price)}</span> <span class="product-current-price">${naira(p.discount_price)}</span>`
         : naira(p.sale_price))
     : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
+  // A product with more than one photo is treated as having varieties (the
+  // established proxy this app already uses elsewhere, avoiding a
+  // per-card query against product_variants just to show an icon). Icon
+  // only, no "Variety" label text -- it just needs to sit next to the price
+  // as a quiet signal that there's a choice to make once the card is opened.
+  const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
+  const varietyIconHtml = hasVariety ? `<i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available" aria-label="Multiple varieties available"></i>` : "";
   return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
       <h4>${esc(p.name)}</h4>
       <div class="product-card-compact-footer">
-        ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}</span>` : "<span></span>"}
+        ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
         ${actionHtml}
       </div>
     </div>
@@ -16569,12 +16626,19 @@ function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, 
 // correct on first paint without waiting for a JS pass after insertion.
 function deliveryInfoLineHtml(prefix, isDistance, hasVendorLoc, vendorLat, vendorLng, perKm) {
   if (!isDistance && !hasVendorLoc) return "";
-  if (!buyerLocation) return `<i class="fa-solid fa-location-crosshairs"></i> <a href="#" onclick="requestDeliveryEta('${prefix}');return false;">Share location</a> for ${isDistance ? "the fee + ETA" : "an ETA"}.`;
+  // Distance pricing should always show the actual rate (naira per km) up
+  // front, not just a final computed number with no way to see how it was
+  // worked out -- and once the buyer's location is known, show the actual
+  // multiplication (rate × distance = total), not just the total alone.
+  if (isDistance && !buyerLocation) {
+    return `<i class="fa-solid fa-truck"></i> ${naira(Number(perKm))}/km · <a href="#" onclick="requestDeliveryEta('${prefix}');return false;">Share location</a> to see your total delivery cost.`;
+  }
+  if (!buyerLocation) return `<i class="fa-solid fa-location-crosshairs"></i> <a href="#" onclick="requestDeliveryEta('${prefix}');return false;">Share location</a> for an ETA.`;
   const km = haversineKm(buyerLocation.lat, buyerLocation.lng, vendorLat, vendorLng);
   const eta = estimateDeliveryRange(km);
   if (isDistance) {
     const fee = Math.round((Number(perKm) * km) / 50) * 50;
-    return `<i class="fa-solid fa-truck"></i> ${naira(fee)} · ${formatDistanceKm(km)} · ~${eta}`;
+    return `<i class="fa-solid fa-truck"></i> ${naira(Number(perKm))}/km × ${formatDistanceKm(km)} = <strong>${naira(fee)}</strong> · ~${eta}`;
   }
   return `<i class="fa-solid fa-clock"></i> ~${eta} estimated`;
 }
@@ -22035,13 +22099,14 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const deliveryPaymentsComplete = !isDeliveryOrder || (isPayAfterDelivery ? (deliveryDepositPaid && feePaid) : feePaid);
   // Pickup keeps the existing full-payment flow. Delivery uses two stages:
   // The vendor-selected deposit percentage is paid first, then the remaining order balance.
-  // A buyer-reported manual payment flips the order to payment_unresolved,
-  // which used to fall outside this gate entirely -- the vendor lost the
-  // "confirm payment received" card right when they needed it, with only
-  // the dispute link left as an option. Once there's already an open
-  // dispute the vendor should respond to that instead of also confirming,
-  // so this only opens back up while none exists yet.
-  const canRecordPayment = isVendor && !deliveryPaymentsComplete && (order.status === "confirmed" || (isDeliveryOrder && order.status === "handed_over") || (order.status === "payment_unresolved" && !openPaymentDispute));
+  // record_offline_payment() (used below) only ever settles a *vendor-initiated*
+  // cash/transfer record against an order that's still "confirmed"/"handed_over" --
+  // it has no path back to "completed" and can't touch a buyer-reported claim.
+  // A payment_unresolved order (the buyer already tapped "I've paid") is handled
+  // by its own dedicated confirm/dispute card further down instead, which calls
+  // the matching vendor_confirm_reported_payment/vendor_dispute_reported_payment
+  // RPCs -- those are the ones that actually flip the order to completed.
+  const canRecordPayment = isVendor && !deliveryPaymentsComplete && (order.status === "confirmed" || (isDeliveryOrder && order.status === "handed_over"));
   const canPayOnline = isCustomer && !deliveryPaymentsComplete && order.status === "confirmed";
 
   let html = `<div class="card">
@@ -22201,6 +22266,23 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
+  if (isVendor && pendingReportedPayment && !openPaymentDispute) {
+    const reportedLabel = { sale_price: "sale price", rental_fee: "rental fee", deposit: "refundable deposit", delivery_deposit_20: "delivery deposit" }[String(pendingReportedPayment.payment_type || "")] || "payment";
+    html += `<div class="card" style="border-color:var(--warning);">
+      <h3 style="margin:0 0 .4rem;"><i class="fa-solid fa-hourglass-half"></i> Payment reported by customer</h3>
+      <p class="muted" style="margin:0 0 .8rem;">The customer says they paid <strong>${naira(pendingReportedPayment.amount)}</strong> (${esc(reportedLabel)}) by bank transfer. Check your account, then confirm or dispute it.</p>
+      <div id="reportedPaymentError" class="error-text hidden"></div>
+      <div class="flex" style="gap:.6rem;flex-wrap:wrap;">
+        <button class="btn btn-sm" onclick="vendorConfirmReportedPayment('${order.id}')"><i class="fa-solid fa-check-circle"></i> Confirm payment received</button>
+        <button class="btn btn-sm btn-danger" type="button" onclick="byId('reportedPaymentDisputeForm').classList.remove('hidden');this.classList.add('hidden');">Dispute this payment</button>
+      </div>
+      <div id="reportedPaymentDisputeForm" class="hidden" style="margin-top:.7rem;">
+        <textarea id="reportedPaymentDisputeReason" rows="2" placeholder="Why can't you confirm this payment?"></textarea>
+        <button class="btn btn-sm btn-danger" style="margin-top:.5rem;" onclick="vendorDisputeReportedPayment('${order.id}')">Submit dispute</button>
+      </div>
+    </div>`;
+  }
+
   html += `<div class="order-action-wrap" style="margin-top:1.35rem;display:flex;gap:.85rem;flex-wrap:wrap;align-items:center;">${orderActionButtonsHtml(order, isCustomer, isVendor, feePaid)}</div>`;
 
   if (isCustomer && order.status === "completed" && !order.review) {
@@ -22227,7 +22309,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
           <button class="btn btn-sm" onclick="submitVendorDisputeResponse('${dispute.id}','${order.id}')">${dispute.vendor_response ? "Update response" : "Submit response"}</button>
         </div>` : ""}
     </div>`;
-  } else if ((isCustomer || isVendor) && order.status !== "cancelled") {
+  } else if ((isCustomer || isVendor) && order.status !== "cancelled" && !(isVendor && pendingReportedPayment && !openPaymentDispute)) {
     html += `<div style="margin-top:1rem;">
       <a href="#" onclick="byId('disputeForm').classList.remove('hidden');this.classList.add('hidden');return false;" style="color:var(--danger);">Report an issue with this order</a>
       <div id="disputeForm" class="card hidden" style="border-color:var(--danger);margin-top:0.5rem;">
@@ -22904,6 +22986,30 @@ async function recordOfflinePayment(orderId, remainingPercent = null) {
   // Once the vendor records the remaining balance, the payment workflow is done
   // and the order is terminal. Return them directly to their Orders list.
   await navigate(isRemainingDeliveryPayment ? "vendorOrders" : "orderDetail", isRemainingDeliveryPayment ? {} : { orderId });
+}
+
+// A buyer-reported manual payment (order.status === "payment_unresolved") is
+// its own case, distinct from record_offline_payment() above: it has to
+// settle the specific claim the buyer already filed, and -- when it's the
+// final payment due -- actually flip the order to completed, which
+// record_offline_payment never does.
+async function vendorConfirmReportedPayment(orderId) {
+  const errorEl = byId("reportedPaymentError");
+  if (!(await showConfirmDialog("Confirm that you actually received this payment? This will complete the order if it's the final payment due.", { title: "Confirm payment received", okLabel: "Yes, confirm" }))) return;
+  const { data, error } = await sb.rpc("vendor_confirm_reported_payment", { p_order_id: orderId });
+  if (error) { if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); } else showToast?.(error.message, "error"); return; }
+  showToast?.(data?.order_completed ? "Payment confirmed. Order completed." : "Payment confirmed.", "success");
+  await navigate("orderDetail", { orderId }, false);
+}
+async function vendorDisputeReportedPayment(orderId) {
+  const errorEl = byId("reportedPaymentError");
+  errorEl?.classList.add("hidden");
+  const reason = byId("reportedPaymentDisputeReason")?.value.trim();
+  if (!reason) { showToast?.("Please explain why you're disputing this payment.", "error"); return; }
+  const { error } = await sb.rpc("vendor_dispute_reported_payment", { p_order_id: orderId, p_reason: reason });
+  if (error) { if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); } else showToast?.(error.message, "error"); return; }
+  showToast?.("Payment disputed. Levromart will review it.", "success");
+  await navigate("orderDetail", { orderId }, false);
 }
 
 let vendorReviewModalOrderId = null;
@@ -32786,6 +32892,18 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 #app .levro-home-cat-more .levro-home-cat-icon{
   background:color-mix(in srgb, var(--text-muted) 14%, var(--card)) !important;
   color:var(--text-muted) !important;
+}
+/* Active sector filter: fill the icon solid instead of the usual tint, and
+   bold the label, so it's obvious at a glance which category is applied
+   (and that tapping it again clears it). */
+#app .levro-home-cat-chip.active .levro-home-cat-icon{
+  background:var(--cat-color, var(--primary)) !important;
+  color:#fff !important;
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--cat-color, var(--primary)) 35%, transparent) !important;
+}
+#app .levro-home-cat-chip.active .levro-home-cat-label{
+  color:var(--cat-color, var(--primary)) !important;
+  font-weight:800 !important;
 }
 
 /* Header Messages icon: same neutral gray treatment, distinct from the
