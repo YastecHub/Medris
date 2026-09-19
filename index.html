@@ -288,20 +288,6 @@
   .ai-chat-header-logo { width: 1.4rem; height: 1.4rem; object-fit: contain; vertical-align: -0.3rem; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--primary) 55%, transparent)); }
   .header-left { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
   .header-right { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
-  .header-location-pill {
-    display: flex; align-items: center; gap: 0.35rem; min-width: 0; max-width: 9.5rem;
-    background: color-mix(in srgb, var(--primary) 8%, var(--card)); color: var(--text);
-    border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border)); border-radius: 999px;
-    padding: 0.32rem 0.7rem; font-size: 0.78rem; font-weight: 600; cursor: pointer;
-  }
-  .header-location-pill i.fa-location-dot { color: var(--primary); font-size: 0.8rem; flex: 0 0 auto; }
-  .header-location-pill span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .header-location-chevron { font-size: 0.6rem; opacity: 0.6; flex: 0 0 auto; }
-  @media (max-width: 560px) { .header-location-pill { max-width: 6.6rem; padding: 0.3rem 0.55rem; font-size: 0.72rem; } }
-  @media (max-width: 460px) {
-    .header-location-pill { max-width: none; width: 2.55rem; height: 2.55rem; padding: 0; justify-content: center; border-radius: 50%; gap: 0; }
-    .header-location-pill span, .header-location-chevron { display: none; }
-  }
   .btn { padding: 0.6rem 1.4rem; border: none; border-radius: 9999px; background: var(--primary-grad); color: white; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: filter 0.15s, transform 0.1s, box-shadow 0.15s; }
   .btn:hover { filter: brightness(1.1); box-shadow: var(--shadow-float); }
   .btn:active { transform: scale(0.97); }
@@ -1917,7 +1903,7 @@ header{
 .search-suggest{margin-top:.15rem;border-radius:14px;box-shadow:var(--ui-shadow-lg)}
 
 /* Sections / chips */
-.section-title{align-items:center;margin-top:1.9rem}
+.section-title{align-items:center;margin-top:1.1rem}
 .section-title > *{min-width:0}
 .cat-row{gap:.65rem;padding-top:.5rem}
 .cat-chip{
@@ -4356,26 +4342,30 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 #profilePanel .profile-panel-scroll > .divider { display:none !important; }
 #profilePanel .profile-nav-link-danger { border:0 !important; margin-top:.3rem !important; }
 
-/* Admin's icon-styled nav list: spread the rows out into their own cards
-   with breathing room between them, instead of a cramped edge-to-edge list. */
+/* Admin's icon-styled nav list: spread out with a plain divider between
+   each row (same demarcation pattern as the vendor/buyer plain rows) --
+   not individually boxed/bordered cards. */
 #profilePanel .admin-profile-nav-list {
   display:flex !important;
   flex-direction:column !important;
-  gap:.55rem !important;
-  padding:.3rem 1rem .9rem !important;
+  gap:0 !important;
+  padding:.2rem 1.1rem .9rem !important;
 }
 #profilePanel .admin-profile-nav-list .profile-nav-link {
   margin:0 !important;
-  padding:.85rem .9rem !important;
+  padding:.95rem .1rem !important;
   min-height:52px !important;
-  border-radius:14px !important;
-  background:color-mix(in srgb, var(--text) 4%, var(--card)) !important;
-  border:1px solid var(--border) !important;
+  border-radius:0 !important;
+  background:none !important;
+  border:0 !important;
+  border-top:1px solid var(--border) !important;
+}
+#profilePanel .admin-profile-nav-list .profile-nav-link:first-child {
+  border-top:0 !important;
 }
 #profilePanel .admin-profile-nav-list .profile-nav-link:hover,
 #profilePanel .admin-profile-nav-list .profile-nav-link:focus-visible {
-  background:color-mix(in srgb, var(--primary) 8%, var(--card)) !important;
-  border-color:color-mix(in srgb, var(--primary) 22%, var(--border)) !important;
+  background:color-mix(in srgb, var(--primary) 6%, transparent) !important;
 }
 #profilePanel .admin-profile-nav-list .profile-nav-link-danger { margin-top:.15rem !important; }
 
@@ -6822,7 +6812,10 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 </style>
 
 <style id="levromart-android-horizontal-scroll-fix-20260916">
-/* Android horizontal rails: let the browser own the gesture completely. */
+/* Android horizontal rails: let the browser own the gesture completely.
+   touch-action must allow BOTH axes here (pan-x pan-y) -- pan-x alone traps
+   a vertical drag that starts on the rail, so the page underneath it can
+   never be scrolled by touch once your finger lands on a product/vendor card. */
 #app .hscroll,
 #app .cat-row,
 #app .storefront-product-strip,
@@ -6833,7 +6826,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   overscroll-behavior-x: contain !important;
   scroll-snap-type: none !important;
   scroll-behavior: auto !important;
-  touch-action: pan-x !important;
+  touch-action: pan-x pan-y !important;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -7031,6 +7024,10 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 </script>
 <header>
   <div class="header-left">
+    <div class="icon-wrap" id="profileWrap">
+      <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="openProfileOrShop()" title="Profile"></button>
+      <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
+    </div>
     <h1 role="button" tabindex="0" onclick="fastNavigateHome(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fastNavigateHome(event)}"><span class="brand-logo-stack"><span id="brandLogoLeft" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span><img id="brandLogoCircle" class="brand-logo-layer brand-logo-circle" alt="" /><span id="brandLogoRight" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span></span><span class="sr-only">Levromart</span></h1>
     <nav class="header-nav-links">
       <a class="header-nav-link active" data-view="home" href="#" onclick="fastNavigateHome(event);return false;">Browse</a>
@@ -7038,9 +7035,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </nav>
   </div>
   <div class="header-right">
-    <button type="button" class="header-location-pill" id="headerLocationPill" onclick="openLocationPicker()" title="Set your location">
-      <i class="fa-solid fa-location-dot"></i><span id="headerLocationLabel">Set location</span><i class="fa-solid fa-chevron-down header-location-chevron"></i>
-    </button>
     <div class="icon-wrap hidden" id="notifWrap">
       <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
     </div>
@@ -7049,10 +7043,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </div>
     <div class="icon-wrap hidden" id="headerCartWrap">
       <button class="icon-btn" onclick="requireLoginThen('cart')" title="Cart"><i class='fa-solid fa-cart-shopping'></i><span id="headerCartBadge" class="notif-dot hidden">0</span></button>
-    </div>
-    <div class="icon-wrap" id="profileWrap">
-      <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="openProfileOrShop()" title="Profile"></button>
-      <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
     </div>
   </div>
 </header>
@@ -9843,10 +9833,18 @@ async function renderNotifPanel() {
   // The backend still retains archived/deleted fields for compatibility, but
   // the user-facing notification experience is now a smart activity stream.
   // We never mutate or destructively migrate those legacy fields here.
-  let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(60);
+  // This must fetch enough rows to cover every unread notification, not just
+  // a recent-history window -- the header/bottom-nav badge counts ALL unread
+  // rows with no cap, but this list is the only thing that ever marks a
+  // notification read (via queueVisibleNotificationReads()). A small limit
+  // here meant a busy account (e.g. an admin) could pile up more unread rows
+  // than this query ever fetched, so the badge could never reach zero no
+  // matter how many times the page was opened -- the backlog beyond the
+  // limit was simply never seen or marked read.
+  let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(300);
   const { data: rawItems, error } = await q;
   if (!error && Array.isArray(rawItems)) {
-    try { localStorage.setItem(notifCacheKey, JSON.stringify(rawItems.slice(0,60))); } catch (_) {}
+    try { localStorage.setItem(notifCacheKey, JSON.stringify(rawItems.slice(0,300))); } catch (_) {}
   }
   const currentVendorId=String(vendor?.id||'');
   const owners=new Map();
@@ -9934,7 +9932,7 @@ async function renderNotifPanel() {
   panel.classList.toggle("selecting", notifSelectMode);
   if (isNotificationsPage) {
     const actions = byId("notificationsPageHeaderActions");
-    if (actions) actions.innerHTML = `<button type="button" class="icon-btn" onclick="enterNotifSelectMode()" aria-label="Select notifications" title="Select notifications"><i class="fa-regular fa-square-check"></i></button>`;
+    if (actions) actions.innerHTML = "";
   }
   } catch (err) {
     console.error("Notification rendering failed", err);
@@ -10820,29 +10818,6 @@ async function hydrateAdminProfileStats() {
 
 let pendingAvatarFile = null;
 let avatarCropState = null;
-
-// Header location pill: a lightweight, on-device display preference (not
-// yet wired to actually filter listings by distance/city -- that's a
-// separate feature). Persists locally so the picked label survives reloads.
-const LEVRO_LOCATION_OPTIONS = ["Unilag, Lagos", "Yaba, Lagos", "Lekki, Lagos", "Ikeja, Lagos", "Abuja", "Ibadan", "Port Harcourt", "Enugu", "Kano"];
-function getLevromartLocation() { try { return localStorage.getItem("levromart-location") || ""; } catch (_) { return ""; } }
-function updateHeaderLocationPill() {
-  const label = byId("headerLocationLabel");
-  if (label) label.textContent = getLevromartLocation() || "Set location";
-}
-function setLevromartLocation(name) {
-  try { localStorage.setItem("levromart-location", name); } catch (_) {}
-  updateHeaderLocationPill();
-  closeMediaActionSheet();
-  showToast?.(`Location set to ${name}.`, "success");
-}
-function openLocationPicker() {
-  openMediaActionSheet("Choose your location", LEVRO_LOCATION_OPTIONS.map((name) => ({
-    label: name, icon: "fa-location-dot",
-    action: `setLevromartLocation('${name.replace(/'/g, "\\'")}')`,
-  })));
-}
-updateHeaderLocationPill();
 
 function closeMediaActionSheet(){ byId("mediaActionSheet")?.remove(); }
 function openMediaActionSheet(title, items){
@@ -13515,8 +13490,18 @@ function scrollToBrowse(listingType) {
   byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 const LEVRO_CATEGORY_RAIL_PALETTE = ["#16a34a", "#2563eb", "#e11d48", "#f59e0b", "#7c3aed", "#0d9488", "#db2777", "#0891b2"];
+// categoryIcon()'s keyword list is tuned for specific product-level category
+// names and falls back to a generic tag for anything it doesn't recognise --
+// fine for a single badge, but it meant almost every top-level category
+// here rendered the exact same tag icon. Fall back to a cycling, still
+// visually distinct icon per position instead of repeating the tag.
+const LEVRO_CATEGORY_ICON_FALLBACKS = ["fa-bag-shopping", "fa-laptop", "fa-shirt", "fa-house", "fa-book", "fa-heart-pulse", "fa-dumbbell", "fa-gem", "fa-car", "fa-mobile-screen-button", "fa-couch", "fa-palette"];
+function homeCategoryIconClass(name, index) {
+  const hit = CATEGORY_ICONS.find(([re]) => re.test(name || ""));
+  return hit ? hit[1] : LEVRO_CATEGORY_ICON_FALLBACKS[index % LEVRO_CATEGORY_ICON_FALLBACKS.length];
+}
 function homeCategoryRailHtml(topLevelCategories) {
-  const chips = topLevelCategories.slice(0, 7).map((c, i) => `<button type="button" class="levro-home-cat-chip" style="--cat-color:${LEVRO_CATEGORY_RAIL_PALETTE[i % LEVRO_CATEGORY_RAIL_PALETTE.length]}" onclick="filterByCategory('${c.id}')"><span class="levro-home-cat-icon">${categoryIcon(c.name)}</span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`).join("");
+  const chips = topLevelCategories.slice(0, 7).map((c, i) => `<button type="button" class="levro-home-cat-chip" style="--cat-color:${LEVRO_CATEGORY_RAIL_PALETTE[i % LEVRO_CATEGORY_RAIL_PALETTE.length]}" onclick="filterByCategory('${c.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${homeCategoryIconClass(c.name, i)}"></i></span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`).join("");
   const more = `<button type="button" class="levro-home-cat-chip levro-home-cat-more" onclick="openHomeCategoryBrowser()"><span class="levro-home-cat-icon"><i class="fa-solid fa-ellipsis"></i></span><span class="levro-home-cat-label">More</span></button>`;
   return `<div class="levro-home-cat-rail hscroll">${chips}${more}</div>`;
 }
@@ -13963,49 +13948,24 @@ function productCardHtml(p) {
       : ownListing
         ? `<span class="badge own-listing-badge" title="You can't buy your own listing"><i class="fa-solid fa-store"></i> Your listing</span>`
         : "";
-  // The homepage "Trending" rail wants a clean, uncluttered card -- just the
-  // photo, name, price and a quick-add button -- rather than the full
-  // vendor/availability/delivery/comment stack used everywhere else
-  // (search results, category browse, storefront, wishlist), where that
-  // extra detail still matters for the shopping decision.
-  if (String(p._cardContext || "").toLowerCase() === "trending") {
-    const priceText = p.sale_price != null
-      ? (p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price) ? naira(p.discount_price) : naira(p.sale_price))
-      : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
-    return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
-      <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
-      <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
-        <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
-        <h4>${esc(p.name)}</h4>
-        <div class="product-card-compact-footer">
-          ${commissionService ? "<span></span>" : `<span class="product-card-compact-price">${priceText}</span>`}
-          ${canQuickAdd ? `<button type="button" class="card-cart-btn" onclick="quickAddToCart(event,'${p.id}',this,'${p.vendor?.id || ""}')" title="Add to cart" aria-label="Add ${esc(p.name)} to cart"><i class="fa-solid fa-cart-plus"></i></button>` : ""}
-        </div>
-      </div>
-    </div>`;
-  }
-  return `<div class="product-card-wrap" data-product-id="${esc(p.id)}">
+  // Product cards everywhere (trending, browse everything, search, category
+  // browse) show only the photo, name and price, plus a quick-add button --
+  // no vendor row, availability, delivery summary or comment icon. All of
+  // that detail (delivery type/distance, quantity available, payment
+  // before/after delivery, etc.) still shows in full on the product detail
+  // page once it's opened -- it's just not cluttering the card itself.
+  const priceText = commissionService ? "" : p.sale_price != null
+    ? (p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price) ? naira(p.discount_price) : naira(p.sale_price))
+    : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
+  return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
       <h4>${esc(p.name)}</h4>
-      <div class="product-card-vendor-row">
-        <span class="badge">${p.is_service ? esc(p.category?.name || "Service") : p.listing_type}</span>
-        <span class="product-card-vendor" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${p.vendor?.id || ""}'})">
-          ${p.vendor?.logo_url ? profileAvatarHtml(p.vendor.logo_url, p.vendor?.business_name || "Vendor", "1rem", { extraClass: "product-vendor-initial" }) : avatarFallbackHtml(p.vendor?.business_name || "Vendor", "1rem", "product-vendor-initial", p.vendor?.business_name || "Vendor")}
-          <span>${esc(p.vendor?.business_name || "")}</span>
-        </span>
+      <div class="product-card-compact-footer">
+        ${priceText ? `<span class="product-card-compact-price">${priceText}</span>` : "<span></span>"}
+        ${actionHtml}
       </div>
-      <div class="product-card-like-row" data-product-like-id="${esc(p.id)}"><span class="product-like-indicator hidden"><i class="fa-regular fa-heart"></i> <span>0</span></span></div>
-      ${commissionService ? "" : `<div class="product-card-price-block">
-        ${p.sale_price != null ? (p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price)
-          ? `<span><strong>${p.is_service ? "Price" : "Buy"}:</strong> <span class="product-old-price">${naira(p.sale_price)}</span> <span class="product-current-price">${naira(p.discount_price)}</span>${servicePriceSuffix(p)}</span>`
-          : `<span><strong>${p.is_service ? "Price" : "Buy"}:</strong> ${naira(p.sale_price)}${servicePriceSuffix(p)}</span>`) : ""}
-        ${p.rental_rate != null ? `<span><strong>Rent:</strong> ${naira(p.rental_rate)}/${p.rental_rate_unit}</span>` : ""}
-      </div>`}
-      ${commissionService ? "" : (p.is_service ? "" : `<p class="product-availability"><i class="fa-solid fa-cubes-stacked"></i> ${Number(p.quantity_available ?? 0)} available${p.condition ? ` · ${esc((p.condition || "").replace("-", " "))}` : ""}</p>`)}
-      ${commissionService ? "" : `<div class="product-card-delivery-wrap">${productDeliverySummaryHtml(p)}</div>`}
-      <div class="product-card-action-row ${String(p._cardContext||"").toLowerCase()==="trending"?"trending-card-action-row":""}"><button type="button" class="card-comment-btn" data-product-id="${esc(p.id)}" onclick="event.stopPropagation();openProductCommentsFromCard('${esc(p.id)}')" title="Comments on ${esc(p.name)}" aria-label="Comments on ${esc(p.name)}"><i class="fa-regular fa-comment"></i><span class="product-comment-count">0</span></button>${productPaymentPlanBadgeHtml(p)}<div class="product-card-action-left">${actionHtml}</div></div>
     </div>
   </div>`;
 }
@@ -26942,12 +26902,22 @@ async function resolveLeviLocalAction(text) {
 
   // Named vendor/store/shop requests are resolved locally too. This keeps
   // obvious destinations deterministic even when the AI backend is slow.
-  const vendorMatch = q.match(/^(?:take|open|show|go to|find|visit)\s+(?:me\s+)?(?:the\s+)?(.+?)(?:\s+(?:vendor|store|shop|seller))?$/);
-  if (vendorMatch && /\b(?:vendor|store|shop|seller)\b/.test(q)) {
+  // A plain "take me to Campus Cravings" (just the business name, no
+  // "vendor"/"shop"/"store" descriptor word) used to fail this check
+  // entirely and fall through to product search instead of navigating --
+  // try resolving the phrase as a vendor name regardless of wording, and
+  // only fall through to product search when nothing matches.
+  const vendorMatch = q.match(/^(?:take|open|show|go to|find|visit)\s+(?:me\s+)?(?:to\s+)?(?:the\s+)?(.+?)(?:\s+(?:vendor|store|shop|seller))?$/);
+  if (vendorMatch) {
     const vendorTarget = vendorMatch[1].trim();
-    const vr = await resolveLeviVendor(vendorTarget);
-    if (vr.vendor) {
-      return { handled:true, reply:`I found ${vr.vendor.business_name}. I’m taking you to their shop now. [[NAV:storefront|vendorId=${vr.vendor.id}]]` };
+    if (vendorTarget.length >= 2) {
+      const vr = await resolveLeviVendor(vendorTarget);
+      if (vr.vendor) {
+        return { handled:true, reply:`I found ${vr.vendor.business_name}. I’m taking you to their shop now. [[NAV:storefront|vendorId=${vr.vendor.id}]]` };
+      }
+      if (vr.matches?.length > 1) {
+        return { handled:true, reply:`I found a few matches — which vendor do you mean: ${vr.matches.map(v=>v.business_name).join(", ")}?` };
+      }
     }
   }
 
@@ -30902,13 +30872,18 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
           // deciding off the first 1-2px sample (which is often pure noise,
           // dy=0 or dx=0 by chance) was locking the gesture into "horizontal"
           // on pure jitter, which then called preventDefault and broke
-          // ordinary vertical scrolling over messages entirely. Once there's
-          // enough movement to mean something, a plain dx > dy ratio decides
-          // direction -- reliable, and it matches how the drag actually feels
-          // (an intentional reply swipe is close to horizontal; scrolling
-          // isn't).
+          // ordinary vertical scrolling over messages entirely.
           if(adx<8 && ady<8)return;
-          if(ady>=adx){reset();return;}
+          // A real finger drag is never perfectly straight -- calling reset()
+          // (which sets tracking=false) the moment the very first sample
+          // looks even slightly more vertical than horizontal killed the
+          // gesture permanently for the rest of that touch, forcing a lift
+          // and restart. Just keep waiting instead: dx/dy are measured from
+          // the original touch-down point, so as the drag continues toward
+          // horizontal the ratio corrects itself on a later sample and the
+          // swipe still arms normally -- exactly how a natural WhatsApp-style
+          // drag feels, rather than a one-shot direction guess.
+          if(ady>adx)return;
           horizontal=true;wrap.classList.add('chat-swipe-active');
         }
         const allowed=mine?dx<0:dx>0;
@@ -32684,29 +32659,28 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   }
 }
 
-/* Home's six quick actions, matching the reference marketplace layout:
-   a 2-column grid (2 up, 3 down) of horizontal cards -- a solid green
-   circular icon chip, a bold two-line label, and a chevron at the far
-   edge -- on a pale mint card background. */
+/* Home's six quick actions: back to a 3-column grid (3 up, 3 down) of
+   compact HORIZONTAL cards -- icon, label, arrow -- per explicit correction;
+   not the 2-column layout, and not the old vertical icon-over-label style. */
 #app .levro-home-quick-actions{
-  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-  gap:.7rem !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:.5rem !important;
 }
 #app .levro-home-quick-actions .levro-quick-action{
   --quick-solid:none !important;
   display:flex !important;
   flex-direction:row !important;
   align-items:center !important;
-  gap:.7rem !important;
-  min-height:72px !important;
-  padding:.85rem .9rem !important;
-  border-radius:16px !important;
+  gap:.4rem !important;
+  min-height:52px !important;
+  padding:.55rem .5rem !important;
+  border-radius:13px !important;
   background:color-mix(in srgb, var(--primary) 8%, var(--card)) !important;
   border:1px solid color-mix(in srgb, var(--primary) 14%, var(--border)) !important;
   box-shadow:none !important;
   color:var(--text) !important;
   text-align:left !important;
-  font-size:.86rem !important;
+  font-size:.66rem !important;
   font-weight:700 !important;
 }
 #app .levro-home-quick-actions .levro-quick-action:hover,
@@ -32717,8 +32691,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 #app .levro-home-quick-actions .levro-quick-action:active{ transform:scale(.98) !important; }
 #app .levro-home-quick-actions .levro-quick-icon{
   flex:0 0 auto !important;
-  width:2.7rem !important;
-  height:2.7rem !important;
+  width:1.85rem !important;
+  height:1.85rem !important;
   border-radius:999px !important;
   display:inline-flex !important;
   align-items:center !important;
@@ -32727,24 +32701,25 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   color:#fff !important;
   border:0 !important;
   box-shadow:none !important;
-  font-size:1.05rem !important;
+  font-size:.8rem !important;
 }
 #app .levro-home-quick-actions .levro-quick-label{
   flex:1 1 auto !important;
   min-width:0 !important;
   white-space:normal !important;
-  line-height:1.22 !important;
+  line-height:1.18 !important;
 }
 #app .levro-home-quick-actions .levro-quick-arrow{
   flex:0 0 auto !important;
-  font-size:.72rem !important;
+  font-size:.58rem !important;
   color:color-mix(in srgb, var(--primary) 65%, var(--text)) !important;
   opacity:.6 !important;
 }
 @media(max-width:420px){
-  #app .levro-home-quick-actions{ gap:.55rem !important; }
-  #app .levro-home-quick-actions .levro-quick-action{ font-size:.76rem !important; padding:.7rem .75rem !important; gap:.55rem !important; min-height:64px !important; }
-  #app .levro-home-quick-actions .levro-quick-icon{ width:2.3rem !important; height:2.3rem !important; font-size:.92rem !important; }
+  #app .levro-home-quick-actions{ gap:.35rem !important; }
+  #app .levro-home-quick-actions .levro-quick-action{ font-size:.58rem !important; padding:.42rem .38rem !important; gap:.3rem !important; min-height:48px !important; }
+  #app .levro-home-quick-actions .levro-quick-icon{ width:1.6rem !important; height:1.6rem !important; font-size:.68rem !important; }
+  #app .levro-home-quick-actions .levro-quick-arrow{ display:none !important; }
 }
 
 /* Shop by Category rail: a horizontally scrolling row of circular,
