@@ -288,6 +288,20 @@
   .ai-chat-header-logo { width: 1.4rem; height: 1.4rem; object-fit: contain; vertical-align: -0.3rem; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--primary) 55%, transparent)); }
   .header-left { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
   .header-right { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+  .header-location-pill {
+    display: flex; align-items: center; gap: 0.35rem; min-width: 0; max-width: 9.5rem;
+    background: color-mix(in srgb, var(--primary) 8%, var(--card)); color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border)); border-radius: 999px;
+    padding: 0.32rem 0.7rem; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  }
+  .header-location-pill i.fa-location-dot { color: var(--primary); font-size: 0.8rem; flex: 0 0 auto; }
+  .header-location-pill span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .header-location-chevron { font-size: 0.6rem; opacity: 0.6; flex: 0 0 auto; }
+  @media (max-width: 560px) { .header-location-pill { max-width: 6.6rem; padding: 0.3rem 0.55rem; font-size: 0.72rem; } }
+  @media (max-width: 460px) {
+    .header-location-pill { max-width: none; width: 2.55rem; height: 2.55rem; padding: 0; justify-content: center; border-radius: 50%; gap: 0; }
+    .header-location-pill span, .header-location-chevron { display: none; }
+  }
   .btn { padding: 0.6rem 1.4rem; border: none; border-radius: 9999px; background: var(--primary-grad); color: white; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; transition: filter 0.15s, transform 0.1s, box-shadow 0.15s; }
   .btn:hover { filter: brightness(1.1); box-shadow: var(--shadow-float); }
   .btn:active { transform: scale(0.97); }
@@ -7017,10 +7031,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 </script>
 <header>
   <div class="header-left">
-    <div class="icon-wrap" id="profileWrap">
-      <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="openProfileOrShop()" title="Profile"></button>
-      <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
-    </div>
     <h1 role="button" tabindex="0" onclick="fastNavigateHome(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fastNavigateHome(event)}"><span class="brand-logo-stack"><span id="brandLogoLeft" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span><img id="brandLogoCircle" class="brand-logo-layer brand-logo-circle" alt="" /><span id="brandLogoRight" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span></span><span class="sr-only">Levromart</span></h1>
     <nav class="header-nav-links">
       <a class="header-nav-link active" data-view="home" href="#" onclick="fastNavigateHome(event);return false;">Browse</a>
@@ -7028,6 +7038,9 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </nav>
   </div>
   <div class="header-right">
+    <button type="button" class="header-location-pill" id="headerLocationPill" onclick="openLocationPicker()" title="Set your location">
+      <i class="fa-solid fa-location-dot"></i><span id="headerLocationLabel">Set location</span><i class="fa-solid fa-chevron-down header-location-chevron"></i>
+    </button>
     <div class="icon-wrap hidden" id="notifWrap">
       <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
     </div>
@@ -7036,6 +7049,10 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </div>
     <div class="icon-wrap hidden" id="headerCartWrap">
       <button class="icon-btn" onclick="requireLoginThen('cart')" title="Cart"><i class='fa-solid fa-cart-shopping'></i><span id="headerCartBadge" class="notif-dot hidden">0</span></button>
+    </div>
+    <div class="icon-wrap" id="profileWrap">
+      <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="openProfileOrShop()" title="Profile"></button>
+      <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
     </div>
   </div>
 </header>
@@ -10732,6 +10749,29 @@ function updateAuthUI() {
 
 let pendingAvatarFile = null;
 let avatarCropState = null;
+
+// Header location pill: a lightweight, on-device display preference (not
+// yet wired to actually filter listings by distance/city -- that's a
+// separate feature). Persists locally so the picked label survives reloads.
+const LEVRO_LOCATION_OPTIONS = ["Unilag, Lagos", "Yaba, Lagos", "Lekki, Lagos", "Ikeja, Lagos", "Abuja", "Ibadan", "Port Harcourt", "Enugu", "Kano"];
+function getLevromartLocation() { try { return localStorage.getItem("levromart-location") || ""; } catch (_) { return ""; } }
+function updateHeaderLocationPill() {
+  const label = byId("headerLocationLabel");
+  if (label) label.textContent = getLevromartLocation() || "Set location";
+}
+function setLevromartLocation(name) {
+  try { localStorage.setItem("levromart-location", name); } catch (_) {}
+  updateHeaderLocationPill();
+  closeMediaActionSheet();
+  showToast?.(`Location set to ${name}.`, "success");
+}
+function openLocationPicker() {
+  openMediaActionSheet("Choose your location", LEVRO_LOCATION_OPTIONS.map((name) => ({
+    label: name, icon: "fa-location-dot",
+    action: `setLevromartLocation('${name.replace(/'/g, "\\'")}')`,
+  })));
+}
+updateHeaderLocationPill();
 
 function closeMediaActionSheet(){ byId("mediaActionSheet")?.remove(); }
 function openMediaActionSheet(title, items){
