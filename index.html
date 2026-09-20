@@ -189,8 +189,8 @@
      the splash disappears as soon as init() has a route ready. */
   #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:var(--bg);opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease;}
   #levromartSplash.is-hidden{opacity:0;visibility:hidden;pointer-events:none;}
-  .levromart-splash-mark{width:88px;height:88px;display:flex;align-items:center;justify-content:center;border-radius:26px;background:var(--card,#fff);box-shadow:0 12px 34px rgba(15,23,42,.10);}
-  .levromart-splash-mark svg{width:56px;height:56px;display:block;}
+  .levromart-splash-mark{width:132px;height:132px;display:flex;align-items:center;justify-content:center;border-radius:34px;background:color-mix(in srgb,var(--card,#fff) 78%,transparent);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);box-shadow:0 18px 46px rgba(15,23,42,.12);}
+  .levromart-splash-mark svg{width:82px;height:82px;display:block;}
   .levro-splash-dot{fill:var(--primary,#0B6E4A);animation:levroSplashDot 1.8s ease-in-out infinite;transform-origin:32px 32px;}
   .levro-splash-arc{fill:none;stroke:var(--primary,#0B6E4A);stroke-width:8;stroke-linecap:round;stroke-dasharray:53.76 84.47;}
   .levro-splash-arc-spin{transform-origin:32px 32px;}
@@ -8050,7 +8050,7 @@ async function enablePushNotifications() {
 const HOME_TOUR_STEPS = [
   { icon: "fa-hand-sparkles", title: "Hi, I'm Levi", body: "I'll walk you through the app myself, live, on the actual site. Just follow me around.", selector: null, view: "home" },
   { icon: "fa-house", title: "This is Home", body: "Tap the Levromart logo any time, from anywhere in the app, and I'll bring you straight back here.", selector: "header h1", view: "home" },
-  { icon: "fa-magnifying-glass", title: "Search anything", body: "Products, services or a vendor by name — start typing here and results show up instantly.", selector: ".levro-home-search-wrap", view: "home" },
+  { icon: "fa-magnifying-glass", title: "Search anything", body: "Products, services or a vendor by name — tap here any time to search the whole marketplace.", selector: ".header-search-row", view: "home" },
   { icon: "fa-bolt", title: "Quick actions", body: "These six shortcuts take you straight to shopping, services, rentals, trusted vendors, item requests, and direct chat — without digging through the marketplace.", selector: ".levro-home-quick-actions", view: "home" },
   {
     icon: "fa-map-location-dot", title: "Find vendors near you", body: "Every verified vendor, plotted on a real map, closest first. Tap any pin — or any card up here — to open that vendor's storefront.",
@@ -12731,7 +12731,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     ? cache.carouselSlides
     : INITIAL_HOME_CAROUSEL_SLIDES.slice();
   let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
-  html += `<div class="hero-content levro-home-search-wrap"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" readonly placeholder="Search products, services, vendors…" onclick="this.blur();navigate('search')" autocomplete="off" /></div></div><div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
+  html += `<div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
   html += `<section class="levro-home-quick-actions" aria-label="Quick actions">
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span class="levro-quick-label">Shop Products</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span class="levro-quick-label">Book Services</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
@@ -13539,13 +13539,7 @@ async function renderHome() {
   }).slice(0, 6);
   const hasPersonalPackageMatch = recommendedPackages.some((pkg) => (pkg.items || []).some((it) => favoriteIds.has(it.product?.id)));
 
-  let html = `<div class="hero-content levro-home-search-wrap">
-    <div class="hero-search flex">
-      <i class="fa-solid fa-magnifying-glass hero-search-icon"></i>
-      <input type="text" id="heroSearch" readonly placeholder="Search products, services, vendors…" onclick="this.blur();navigate('search')" autocomplete="off" />
-    </div>
-  </div>
-  <div class="hero levro-home-hero">
+  let html = `<div class="hero levro-home-hero">
     ${renderHomepageCarouselHtml(homepageCarouselSlides)}
   </div>`;
 
@@ -18201,7 +18195,7 @@ async function getSupportAttachmentHtml(attachments) {
 function renderContactUs() {
   const channels = [
     { icon: "fa-envelope", label: "Email", value: "Levromartsupport@gmail.com", href: "mailto:Levromartsupport@gmail.com" },
-    { icon: "fa-phone", label: "Phone", value: "0806 322 7669", href: "tel:+2348063227669" },
+    { icon: "fa-phone", label: "Phone", value: "+234 806 322 7669", href: "tel:+2348063227669" },
     { icon: "fa-phone", label: "Phone", value: "+234 806 063 8179", href: "tel:+2348060638179" },
   ];
   const socials = [
