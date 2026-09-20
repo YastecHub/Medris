@@ -12494,6 +12494,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   setTimeout(() => {
     try { hydrateProductCommentCountsInView(); } catch (_) {}
     if(view==="productDetail"&&params?.openComments){try{openSocialCommentSheet("product",params.productId,currentProductDetail?.name?`${currentProductDetail.name} · Comments`:"Comments")}catch(_){}}
+    if(view==="productDetail"&&params?.scrollToReviews){setTimeout(()=>document.querySelector(".product-reviews-card")?.scrollIntoView({behavior:"smooth",block:"start"}),200);}
     if(view==="packageDetail"&&params?.openComments){try{openSocialCommentSheet("package",params.packageId,"Package · Comments")}catch(_){}}
   }, 0);
   if (view !== "productDetail") stopProductCommentRealtime();
@@ -18235,9 +18236,9 @@ function renderContactUs() {
     { icon: "fa-phone", label: "Phone", value: "+234 806 063 8179", href: "tel:+2348060638179" },
   ];
   const socials = [
-    { icon: "fa-instagram", brand: true, label: "Instagram", href: "https://instagram.com/levromart" },
-    { icon: "fa-tiktok", brand: true, label: "TikTok", href: "https://tiktok.com/@levromart" },
-    { icon: "fa-linkedin", brand: true, label: "LinkedIn", href: "https://linkedin.com/company/levromart" },
+    { logo: "/social-instagram.jpg", label: "Instagram", href: "https://instagram.com/levromart" },
+    { logo: "/social-tiktok.jpg", label: "TikTok", href: "https://tiktok.com/@levromart" },
+    { logo: "/social-linkedin.png", label: "LinkedIn", href: "https://linkedin.com/company/levromart" },
   ];
   return `<div class="contact-us-page">
     <h2><i class="fa-solid fa-address-book"></i> Contact us</h2>
@@ -18247,7 +18248,7 @@ function renderContactUs() {
     </div>
     <h3 class="contact-us-socials-title">Follow us</h3>
     <div class="contact-us-socials">
-      ${socials.map((s) => `<a class="contact-us-social-btn" href="${s.href}" target="_blank" rel="noopener"><i class="fa-brands ${s.icon}"></i><span>${esc(s.label)}</span></a>`).join("")}
+      ${socials.map((s) => `<a class="contact-us-social-btn" href="${s.href}" target="_blank" rel="noopener"><img src="${s.logo}" alt="${esc(s.label)}" class="contact-us-social-logo" loading="lazy" decoding="async"><span>${esc(s.label)}</span></a>`).join("")}
     </div>
     <p class="muted contact-us-handle">@levromart on all platforms</p>
     ${!session ? `<button type="button" class="btn btn-sm btn-outline" style="margin-top:1.2rem;" onclick="navigate('home')"><i class="fa-solid fa-arrow-left"></i> Back to Levromart</button>` : ""}
@@ -22848,6 +22849,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     ${order.items.map((item, i) => `<div style="${i > 0 ? "border-top:1px solid var(--border);padding-top:0.7rem;margin-top:0.7rem;" : ""}">
       <strong>${esc(item.product?.name || "")}${item.variant?.name ? ` · ${esc(item.variant.name)}` : ""}</strong>
       <p class="muted" style="margin:0.15rem 0 0;">Qty ${item.quantity} · ${naira(item.unit_price)}${item.rental_start_date ? ` · ${item.rental_start_date} → ${item.rental_end_date}` : ""}</p>
+      ${isCustomer && order.status === "completed" && item.product_id && !order.review ? `<button type="button" class="btn btn-sm btn-outline" style="margin-top:0.4rem;" onclick="navigate('productDetail',{productId:'${item.product_id}',scrollToReviews:true})"><i class="fa-solid fa-star"></i> Rate this product</button>` : ""}
     </div>`).join("")}
     ${order.buyer_note ? `<div class="divider"></div><p style="margin:0;"><i class="fa-regular fa-message"></i> <strong>${isVendor ? "Customer's note" : "Your note"}:</strong> ${esc(order.buyer_note)}</p>` : ""}
     <div class="divider"></div>
@@ -39610,8 +39612,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .contact-us-row-arrow{margin-left:auto;color:var(--text-muted);font-size:.8rem;}
 .contact-us-socials-title{margin:1.4rem 0 .6rem;font-size:1rem;}
 .contact-us-socials{display:flex;gap:.6rem;flex-wrap:wrap;}
-.contact-us-social-btn{display:flex;align-items:center;gap:.5rem;padding:.7rem 1.1rem;border-radius:999px;background:var(--card);border:1px solid var(--border);color:var(--text);text-decoration:none;font-weight:600;font-size:.88rem;}
-.contact-us-social-btn i{color:var(--primary);font-size:1.05rem;}
+.contact-us-social-btn{display:flex;align-items:center;gap:.5rem;padding:.55rem 1.1rem .55rem .55rem;border-radius:999px;background:var(--card);border:1px solid var(--border);color:var(--text);text-decoration:none;font-weight:600;font-size:.88rem;}
+.contact-us-social-logo{width:1.9rem;height:1.9rem;border-radius:50%;object-fit:cover;flex:0 0 auto;}
 .contact-us-handle{margin-top:.7rem;font-size:.8rem;}
 
 .search-page{max-width:640px;margin:0 auto;}
