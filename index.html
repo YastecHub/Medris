@@ -7483,8 +7483,12 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </div>
     <div class="listing-engagement-settings" id="prodEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="prodLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="prodAllowComments" checked onchange="syncProductEngagementSettingsUI()"></label><div id="prodCommentAudienceWrap"><label>Who can comment</label><select id="prodCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div>
     <div id="prodQtyWrap">
-      <label>Quantity available</label>
-      <input type="number" id="prodQtyTotal" value="1" min="1" />
+      <label class="inline-toggle-row"><span>Track quantity available</span><input type="checkbox" id="prodTrackQuantity" checked onchange="toggleProdQuantityField()"></label>
+      <p class="muted" style="font-size:.76rem;margin:.2rem 0 .6rem;">Switch this off for items that aren't counted in stock, like made-to-order food -- it'll always show as available instead of running out.</p>
+      <div id="prodQtyTotalRow">
+        <label>Quantity available</label>
+        <input type="number" id="prodQtyTotal" value="1" min="1" />
+      </div>
     </div>
     <label>Display picture</label>
     <div id="prodDisplayPicture" class="product-display-picture-editor" role="button" tabindex="0" onclick="openProductDisplayPictureActions(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProductDisplayPictureActions(event)}"></div>
@@ -12449,7 +12453,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     if(view==="packageDetail"&&params?.openComments){try{openSocialCommentSheet("package",params.packageId,"Package · Comments")}catch(_){}}
   }, 0);
   if (view !== "productDetail") stopProductCommentRealtime();
-  setTimeout(()=>{hydrateProductVariantIndicatorsInView();hydrateProductLikeCountsInView();hydratePackageCommentCountsInView()},0);
+  setTimeout(()=>{hydrateProductVariantIndicatorsInView();hydrateProductLikeCountsInView();hydratePackageCommentCountsInView();hydrateProductRatingsInView()},0);
   if (view === "settings") setTimeout(hydrateSettingsPage, 0);
   // A same-view, non-history refresh (notably live order updates) must keep
   // the user's scroll position. Real navigation still starts at the top.
@@ -14259,15 +14263,28 @@ function productCardHtml(p) {
   const noImageFallback = p.vendor?.logo_url
     ? `<img src="${esc(p.vendor.logo_url)}" alt="${esc(p.vendor.business_name || "Vendor")}" loading="lazy" decoding="async" draggable="false">`
     : "<i class='fa-solid fa-camera'></i> No image";
+  // "Buy price" + the flat delivery fee, added up for you, so the number on
+  // the card is what you'd actually pay with delivery -- not just the item
+  // price with the delivery cost left to discover later. Distance-priced
+  // delivery has no fixed number to add here (it depends on where the buyer
+  // is), so that case is left off the card rather than showing a guess.
+  const cardItemPrice = hasDiscount ? Number(p.discount_price) : Number(p.sale_price);
+  const deliveryMode = String(p.delivery_fee_mode ?? p.vendor?.delivery_fee_mode ?? "free").toLowerCase();
+  const deliveryFlatFee = Number(p.delivery_fee ?? p.vendor?.delivery_fee ?? 0) || 0;
+  const totalHtml = (!commissionService && !p.is_service && p.sale_price != null && deliveryMode !== "distance")
+    ? `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice + deliveryFlatFee)}</strong></div>`
+    : "";
   return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}</div>
       <h4>${esc(p.name)}</h4>
+      <div class="product-card-rating-line" data-product-rating-id="${esc(p.id)}">${window.__productRatingCache?.has(String(p.id)) ? productRatingBadgeInnerHtml(window.__productRatingCache.get(String(p.id))) : "<span class=\"product-card-rating-empty\">…</span>"}</div>
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
         ${actionHtml}
       </div>
+      ${totalHtml}
     </div>
   </div>`;
 }
@@ -14473,7 +14490,9 @@ async function addToCart(productId, qty, variantId = null) {
   if (blockOwnVendorPurchase(currentProductDetail?.vendor?.id, "buy")) return;
   const amount = Math.max(1, Number(qty) || 1);
   const chosenVariantId = variantId || byId("selectedProductVariantId")?.value || null;
-  if(chosenVariantId){const {data:v,error}=await sb.from('product_variants').select('*').eq('id',chosenVariantId).eq('product_id',productId).single();if(error){showToast('Could not verify variety availability.','error');return;}if(variantStock(v)!=null&&amount>variantStock(v)){showToast('Requested quantity exceeds this variety’s availability.','error');return;}}
+  // Buyers are no longer blocked by a stock counter here -- see
+  // create_sale_order's own comment for why. The vendor is better placed
+  // than a raw number to say an order can't be fulfilled.
   const { error } = await sb.rpc("add_to_cart", { p_product_id: productId, p_quantity: amount, p_variant_id: chosenVariantId });
   if (error) { showToast(error.message, "error"); return; }
   showToast("Added to cart.", "success");
@@ -14503,8 +14522,6 @@ async function quickAddToCart(evt, productId, btn, vendorId = "") {
 }
 async function updateCartQty(cartItemId, newQty) {
   if (newQty < 1) return;
-  const item=[...(window.__cartByVendor?.values()||[])].flatMap(g=>g.items).find(it=>String(it.id)===String(cartItemId));
-  if(item?.variant&&variantStock(item.variant)!=null&&newQty>variantStock(item.variant)){showToast('Requested quantity exceeds this variety’s availability.','error');return;}
   const { error } = await sb.from("cart_items").update({ quantity: newQty }).eq("id", cartItemId);
   if (error) { showToast(error.message, "error"); return; }
   navigate("cart", {}, false);
@@ -16837,7 +16854,12 @@ async function __levroOriginalRenderProductDetail(productId) {
   try { syncLevromartLinkPreviewMeta('productDetail', { productId: product.id }); } catch (_) {}
 
   const statItems = [
-    !product.is_service ? { label: "Available", value: `${product.quantity_available} / ${product.quantity_total}` } : null,
+    // Skip this when the product has its own varieties -- availability is
+    // then a per-variety thing (shown in the variety picker itself), not a
+    // single base-product number. Also skip it entirely when the vendor has
+    // switched quantity tracking off for an item that isn't meant to run
+    // out (e.g. made-to-order food).
+    (!product.is_service && !productVariants.length && product.track_quantity !== false) ? { label: "Available", value: `${product.quantity_available} / ${product.quantity_total}` } : null,
     product.sale_price != null ? { label: product.is_service ? "Price" : "Buy price", value: naira(product.sale_price) + servicePriceSuffix(product) } : null,
     product.rental_rate != null ? { label: "Rent", value: `${naira(product.rental_rate)} per ${product.rental_rate_unit}` } : null,
     product.deposit_amount ? { label: "Refundable deposit", value: naira(product.deposit_amount) } : null,
@@ -16900,7 +16922,7 @@ async function __levroOriginalRenderProductDetail(productId) {
       <div class="flex">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
-          : `<input type="number" id="buyQty" value="1" min="1" max="${product.quantity_available}" placeholder="Qty" oninput="updateBuyTotalPreview(${product.sale_price ?? 0})" style="width:90px;" />`}
+          : `<input type="number" id="buyQty" value="1" min="1" placeholder="Qty" oninput="updateBuyTotalPreview(${product.sale_price ?? 0})" style="width:90px;" />`}
       </div>
       ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price}">Total: ${naira(productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price)}</p>` : ""}
       ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% first; the remaining ${paymentRemainingPercent}% is due after delivery.` : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
@@ -17216,7 +17238,8 @@ function selectProductVariant(variantId, scrollGallery = true, syncGallery = tru
   if (galleryNameEl) galleryNameEl.textContent = variant.name || "Selected variety";
   if (galleryPriceEl) galleryPriceEl.textContent = naira(unit);
   const stockEl=byId("selectedVariantStock"); if(stockEl) stockEl.textContent=variantStockLabel(variant);
-  const q=byId("buyQty");if(q){const stock=variantStock(variant);if(stock==null)q.removeAttribute("max");else q.max=String(stock);}
+  // Buyers are no longer capped to a variety's stock count -- see
+  // create_sale_order's own comment for why.
   if (scrollGallery && variant.photo_url) {
     window.__productGalleryVarietyOverride = true;
     const galleryIndex = Number(currentProductDetail?.photos?.findIndex?.(u => String(u) === String(variant.photo_url)) ?? -1);
@@ -17255,7 +17278,6 @@ async function buyNow(vendorId, productId) {
   const verb = currentProductDetail?.is_service ? "Book" : "Buy";
   const selectedVariantId = byId("selectedProductVariantId")?.value || null;
   const selectedVariant = (currentProductDetail?.variants || []).find(v => String(v.id) === String(selectedVariantId));
-  if(selectedVariant&&variantStock(selectedVariant)!=null&&qty>variantStock(selectedVariant)){errorEl.textContent="Requested quantity exceeds this variety’s availability.";errorEl.classList.remove("hidden");return;}
 
   const previewEl = byId("serviceTotalPreview");
   const totalText = previewEl ? previewEl.textContent.replace(/^Total:\s*/, "") : (currentProductDetail?.sale_price != null ? naira(currentProductDetail.sale_price * qty) : "");
@@ -18879,6 +18901,33 @@ const productCommentsLoaded=new Map(),productCommentsFetches=new Map(),packageCo
 function activeSocialCommentPanel(kind="product"){return window.__commentSheetPanel||byId(kind==="package"?"packageCommentsPanel":"productCommentsPanel")}function activeSocialCommentInput(kind="product"){return window.__commentSheetInput||byId(kind==="package"?"packageCommentInput":"productCommentInput")}
 async function hydrateProductCommentCountsInView(){const ids=[...new Set([...document.querySelectorAll(".card-comment-btn[data-product-id],#productCommentsCount[data-product-id]")].map(n=>n.dataset.productId).filter(Boolean))];if(!ids.length)return;try{const {data,error}=await sb.rpc("get_product_comment_counts",{p_product_ids:ids});if(!error)(data||[]).forEach(r=>window.__productCommentCounts.set(String(r.product_id),Number(r.comment_count||0)))}catch(_){}document.querySelectorAll(".card-comment-btn[data-product-id]").forEach(b=>{const e=b.querySelector(".product-comment-count");if(e)e.textContent=String(window.__productCommentCounts.get(String(b.dataset.productId))||0)});hydrateProductVariantIndicatorsInView()}
 async function hydratePackageCommentCountsInView(){const ids=[...new Set([...document.querySelectorAll(".package-card-comment-btn[data-package-id],#packageCommentsCount[data-package-id],.package-listing-card[data-package-id]")].map(n=>n.dataset.packageId).filter(Boolean))];if(!ids.length)return;try{const [{data:cc,error},{data:fc},{data:settings}]=await Promise.all([sb.rpc("get_package_comment_counts",{p_package_ids:ids}),sb.rpc("get_package_favorite_counts",{p_package_ids:ids}),sb.from("package_engagement_settings").select("package_id,vendor_id,like_visibility").in("package_id",ids)]);if(!error)(cc||[]).forEach(r=>window.__packageCommentCounts.set(String(r.package_id),Number(r.comment_count||0)));const fm=new Map((fc||[]).map(r=>[String(r.package_id),Number(r.favorite_count||0)]));const sm=new Map((settings||[]).map(r=>[String(r.package_id),r]));document.querySelectorAll(".package-listing-card[data-package-id]").forEach(card=>{const id=String(card.dataset.packageId),st=sm.get(id)||{},e=card.querySelector(".package-like-count"),wrap=e?.closest(".package-card-engagement-count"),visible=st.like_visibility!=="no_one";if(e)e.textContent=String(fm.get(id)||0);wrap?.classList.toggle("hidden",!visible)});}catch(_){}document.querySelectorAll(".package-card-comment-btn[data-package-id]").forEach(b=>{const e=b.querySelector(".package-comment-count");if(e)e.textContent=String(window.__packageCommentCounts.get(String(b.dataset.packageId))||0)})}
+// Products didn't have their own rating before -- only the vendor's overall
+// rating showed anywhere. product_rating_stats aggregates each product's own
+// reviews (via its order history); this patches the placeholder every card
+// already renders with the real stars/count once it arrives.
+window.__productRatingCache = window.__productRatingCache || new Map();
+function productRatingBadgeInnerHtml(stats) {
+  if (!stats || !stats.review_count) return `<span class="product-card-rating-empty">No ratings yet</span>`;
+  return `★ ${Number(stats.avg_rating).toFixed(1)} <span class="product-card-rating-count">(${stats.review_count})</span>`;
+}
+async function hydrateProductRatingsInView(){
+  const ids=[...new Set([...document.querySelectorAll("[data-product-rating-id]")].map(n=>n.dataset.productRatingId).filter(Boolean))];
+  if(!ids.length)return;
+  const uncached=ids.filter(id=>!window.__productRatingCache.has(id));
+  if(uncached.length){
+    try{
+      const {data,error}=await sb.from("product_rating_stats").select("product_id,avg_rating,review_count").in("product_id",uncached);
+      if(error)throw error;
+      const found=new Set();
+      (data||[]).forEach(r=>{window.__productRatingCache.set(String(r.product_id),{avg_rating:r.avg_rating,review_count:r.review_count});found.add(String(r.product_id))});
+      uncached.forEach(id=>{if(!found.has(id))window.__productRatingCache.set(id,{avg_rating:0,review_count:0})});
+    }catch(error){console.warn("[Levromart] Product ratings refresh failed:",error);return}
+  }
+  document.querySelectorAll("[data-product-rating-id]").forEach(n=>{
+    const stats=window.__productRatingCache.get(String(n.dataset.productRatingId));
+    if(stats)n.innerHTML=productRatingBadgeInnerHtml(stats);
+  });
+}
 async function hydrateProductLikeCountsInView(){const ids=[...new Set([...document.querySelectorAll("[data-product-like-id]")].map(n=>n.dataset.productLikeId).filter(Boolean))];if(!ids.length)return;try{const [{data:counts,error:countError},{data:settings,error:settingsError}]=await Promise.all([sb.rpc("get_favorite_counts",{p_product_ids:ids}),sb.from("product_engagement_settings").select("product_id,vendor_id,like_visibility").in("product_id",ids)]);if(countError||settingsError)throw countError||settingsError;const cm=new Map((counts||[]).map(r=>[String(r.product_id),Number(r.favorite_count??r.count??0)]));const sm=new Map((settings||[]).map(r=>[String(r.product_id),r]));const followed=new Set();const vids=[...(settings||[]).map(r=>r.vendor_id).filter(Boolean)];if(session?.user?.id&&vids.length){const {data:fs}=await sb.from("vendor_follows").select("vendor_id").eq("follower_id",session.user.id).in("vendor_id",[...new Set(vids)]);(fs||[]).forEach(r=>followed.add(String(r.vendor_id)));}document.querySelectorAll("[data-product-like-id]").forEach(n=>{const id=String(n.dataset.productLikeId),st=sm.get(id)||{},visible=st.like_visibility!=="no_one"&&(st.like_visibility!=="followers"||followed.has(String(st.vendor_id))||isOwnVendorId(st.vendor_id));const e=n.querySelector(".product-like-indicator");if(!e)return;if(visible){e.classList.remove("hidden");e.querySelector("span").textContent=String(cm.get(id)||0)}else e.classList.add("hidden")})}catch(error){console.warn("[Levromart] Like counts refresh failed:",error)}
 }
 function openProductCommentsFromCard(id){navigate("productDetail",{productId:id,openComments:true})}function openPackageCommentsFromCard(id){navigate("packageDetail",{packageId:id,openComments:true})}
@@ -20220,7 +20269,7 @@ async function renderVendorProducts() {
         <td>${esc(p.category?.name || "Uncategorized")}</td>
         <td>${p.variants?.length || 0}</td>
         <td>${p.sale_price != null ? naira(p.sale_price) + servicePriceSuffix(p) : ""}${p.sale_price != null && p.rental_rate != null ? " / " : ""}${p.rental_rate != null ? naira(p.rental_rate) + "/" + p.rental_rate_unit : ""}</td>
-        <td>${p.is_service ? "-" : `${p.quantity_available} / ${p.quantity_total}`}</td>
+        <td>${p.is_service ? "-" : p.track_quantity === false ? "Untracked" : (p.variants?.length ? "Per variety" : `${p.quantity_available} / ${p.quantity_total}`)}</td>
         <td>${p.view_count || 0}</td>
         <td>${favCountByProduct[p.id] ?? 0}</td>
         <td>${naira(revenueByProduct[p.id] || 0)}</td>
@@ -20249,7 +20298,7 @@ async function renderVendorProducts() {
       // here -- just moved behind a tap on the card into a details popup,
       // so the surface only shows the photo, name and the action buttons.
       vendorProductDetailsMap[p.id] = { name: p.name, html: `
-        <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.quantity_available}/${p.quantity_total} available`} · ${p.status}${p.billing_model === "monthly" && p.billing_paid_until ? listingExpiryMarkup(p) : ""}</p>
+        <p class="muted">${p.is_service ? "Service" : `${p.listing_type} · ${p.track_quantity === false ? "always available" : `${p.quantity_available}/${p.quantity_total} available`}`} · ${p.status}${p.billing_model === "monthly" && p.billing_paid_until ? listingExpiryMarkup(p) : ""}</p>
         ${p.billing_model === "monthly" && pendingMonthlyProductIds.has(String(p.id)) ? `<p class="muted monthly-vendor-pending-note"><i class="fa-solid fa-clock"></i> Receipt submitted · awaiting admin approval</p>` : p.billing_model === "monthly" && p.billing_status === "cancelled" ? `<p class="muted monthly-vendor-rejected-note"><i class="fa-solid fa-circle-exclamation"></i> Monthly listing deactivated. Submit a new ₦1,000 receipt to restore it.</p>` : ""}
         <p class="muted"><i class='fa-solid fa-eye'></i> ${p.view_count || 0} views · <i class='fa-solid fa-heart'></i> ${favCount} saved · <i class="fa-solid fa-sack-dollar"></i> ${naira(revenueByProduct[p.id] || 0)}</p>
         ${Array.isArray(p.variants) && p.variants.length ? `<p class="muted vendor-product-variety-summary"><i class="fa-solid fa-layer-group"></i> ${p.variants.length} variet${p.variants.length===1?'y':'ies'} · ${p.variants.slice(0,3).map(v=>esc(v.name)).join(', ')}${p.variants.length>3?'…':''}</p>` : ''}
@@ -20383,7 +20432,9 @@ async function openDuplicateProductModal(productId) {
     byId("prodRentalRate").value = source.rental_rate ?? "";
     byId("prodRateUnit").value = source.rental_rate_unit || "day";
     byId("prodDeposit").value = source.deposit_amount ?? "";
-    byId("prodQtyTotal").value = source.quantity_total ?? 1;
+    byId("prodTrackQuantity").checked = source.track_quantity !== false;
+    byId("prodQtyTotal").value = source.track_quantity === false ? 1 : (source.quantity_total ?? 1);
+    toggleProdQuantityField();
     byId("prodIsService").checked = !!source.is_service;
     byId("prodServiceUnit").value = source.service_price_unit || "flat";
     byId("prodBillingModel").value = source.billing_model || "commission";
@@ -20534,7 +20585,9 @@ async function showProductModal() {
     byId("prodDeliveryPerKm").value = p.delivery_fee_per_km ?? 0;
     byId("prodRateUnit").value = p.rental_rate_unit || "day";
     byId("prodDeposit").value = p.deposit_amount ?? "";
-    byId("prodQtyTotal").value = p.quantity_total;
+    byId("prodTrackQuantity").checked = p.track_quantity !== false;
+    byId("prodQtyTotal").value = p.track_quantity === false ? 1 : p.quantity_total;
+    toggleProdQuantityField();
     byId("prodIsService").checked = !!p.is_service;
     byId("prodServiceUnit").value = p.service_price_unit || "flat";
     if (byId("prodPaymentTiming")) byId("prodPaymentTiming").value = p.payment_timing === "pay_after" ? "pay_after" : "pay_before";
@@ -20559,7 +20612,9 @@ async function showProductModal() {
     updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = 0;
     byId("prodDeliveryPerKm").value = 0;
+    byId("prodTrackQuantity").checked = true;
     byId("prodQtyTotal").value = 1;
+    toggleProdQuantityField();
     byId("prodCondition").value = "new";
     byId("prodListingType").value = "sale";
     if (byId("prodBillingModel")) byId("prodBillingModel").value = "commission";
@@ -20793,6 +20848,10 @@ function updateProductSaveButtonLabel(){
   btn.textContent = `Save to ${type}`;
 }
 
+function toggleProdQuantityField() {
+  const tracking = !!byId("prodTrackQuantity")?.checked;
+  byId("prodQtyTotalRow")?.classList.toggle("hidden", !tracking);
+}
 function updateProductFormFields() {
   const isService = byId("prodIsService").checked;
   byId("prodConditionWrap").classList.toggle("hidden", isService);
@@ -21307,7 +21366,13 @@ async function saveProduct() {
     const listing_type = is_service ? "sale" : byId("prodListingType").value;
     const billing_model = byId("prodBillingModel")?.value || "commission";
     const name = byId("prodName").value.trim();
-    const quantity_total = is_service ? 999 : parseInt(byId("prodQtyTotal").value) || 1;
+    // Some listings (food, made-to-order items) genuinely have no fixed
+    // stock count -- forcing a number onto them meant they'd eventually hit
+    // "0 available" and look permanently sold out. When the vendor switches
+    // quantity tracking off, treat the item as effectively unlimited instead
+    // of asking for a number that doesn't mean anything for it.
+    const track_quantity = is_service ? false : !!byId("prodTrackQuantity")?.checked;
+    const quantity_total = is_service ? 999 : (track_quantity ? (parseInt(byId("prodQtyTotal").value) || 1) : 999999);
     const sale_price = byId("prodSalePrice").value ? Number(byId("prodSalePrice").value) : null;
     const discount_price = is_service && billing_model === "commission" ? null : (byId("prodDiscountPrice").value ? Number(byId("prodDiscountPrice").value) : null);
     const rental_rate = is_service ? null : (byId("prodRentalRate").value ? Number(byId("prodRentalRate").value) : null);
@@ -21369,6 +21434,7 @@ async function saveProduct() {
       rental_rate_unit: listing_type === "sale" ? null : rental_rate_unit,
       deposit_amount: is_service ? null : (byId("prodDeposit").value ? Number(byId("prodDeposit").value) : null),
       quantity_total,
+      track_quantity,
       billing_model
     };
     if (originalProductId) {
@@ -39315,4 +39381,24 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   .vendor-profile-header-avatar{width:3.8rem;height:3.8rem;}
   .vendor-profile-header-avatar-row{margin-top:.75rem;}
 }
+
+/* Browse Everything + Trending: show each product photo in full instead of
+   cropping it to fill a fixed box, closer to how marketplace apps like
+   Temu lay theirs out -- the image is the point, not a cropped sliver of
+   it. object-fit:contain keeps the whole photo visible inside the same
+   card footprint, with a neutral backdrop filling any letterboxed edge. */
+#app .grid:has(> .product-card-wrap) .product-img img,
+#app .hscroll.trending-scroll .product-img img{
+  object-fit:contain !important;
+  background:color-mix(in srgb,var(--primary) 3%,var(--card)) !important;
+}
+#app .grid:has(> .product-card-wrap) .product-img,
+#app .hscroll.trending-scroll .product-img{
+  background:color-mix(in srgb,var(--primary) 3%,var(--card)) !important;
+}
+.product-card-rating-line{display:flex;align-items:center;gap:.3rem;font-size:.78rem;color:var(--text-muted);margin:.15rem 0;}
+.product-card-rating-line .product-card-rating-count{color:var(--text-muted);}
+.product-card-rating-empty{font-size:.76rem;color:var(--text-muted);opacity:.75;}
+.product-card-total-line{font-size:.72rem;color:var(--text-muted);margin-top:.1rem;}
+.product-card-total-line strong{color:var(--text);}
 </style>
