@@ -94,10 +94,10 @@
 
 <link id="faviconLink" rel="icon" type="image/webp" href="">
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#f5f7fa">
+<meta name="theme-color" content="#0c3323">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Levromart">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -187,12 +187,23 @@
      logo masks, or empty navigation while the first route is being prepared.
      The user sees only the real Levromart mark on the normal app surface;
      the splash disappears as soon as init() has a route ready. */
-  #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:var(--bg);opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease;}
+  #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.15rem;
+    background-color:#0c3323;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% 28%, rgba(255,255,255,.10), transparent 60%),
+      radial-gradient(ellipse 90% 70% at 50% 108%, rgba(0,0,0,.42), transparent 65%),
+      linear-gradient(160deg,#134a32 0%,#0c3323 55%,#061f14 100%),
+      url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMjAiIGhlaWdodD0iMjIwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC44IiBudW1PY3RhdmVzPSIyIiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ibWF0cml4IiB2YWx1ZXM9IjAgMCAwIDAgMSAgMCAwIDAgMCAxICAwIDAgMCAwIDEgIDAgMCAwIDAuMDUgMCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCUyM24pIi8+PC9zdmc+");
+    background-repeat:no-repeat,no-repeat,no-repeat,repeat;
+    background-size:cover,cover,cover,220px 220px;
+    opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease;}
   #levromartSplash.is-hidden{opacity:0;visibility:hidden;pointer-events:none;}
-  .levromart-splash-mark{width:132px;height:132px;display:flex;align-items:center;justify-content:center;border-radius:34px;background:color-mix(in srgb,var(--card,#fff) 78%,transparent);backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);box-shadow:0 18px 46px rgba(15,23,42,.12);}
+  .levromart-splash-mark{width:132px;height:132px;display:flex;align-items:center;justify-content:center;border-radius:34px;background:rgba(255,255,255,.05);box-shadow:0 18px 46px rgba(0,0,0,.35);}
   .levromart-splash-mark svg{width:82px;height:82px;display:block;}
-  .levro-splash-dot{fill:var(--primary,#0B6E4A);animation:levroSplashDot 1.8s ease-in-out infinite;transform-origin:32px 32px;}
-  .levro-splash-arc{fill:none;stroke:var(--primary,#0B6E4A);stroke-width:8;stroke-linecap:round;stroke-dasharray:53.76 84.47;}
+  .levromart-splash-wordmark{color:#fff;font-size:1.65rem;font-weight:800;letter-spacing:.01em;}
+  .levromart-splash-tagline{color:rgba(255,255,255,.72);font-size:.72rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;}
+  .levro-splash-dot{fill:#fff;animation:levroSplashDot 1.8s ease-in-out infinite;transform-origin:32px 32px;}
+  .levro-splash-arc{fill:none;stroke:#fff;stroke-width:8;stroke-linecap:round;stroke-dasharray:53.76 84.47;}
   .levro-splash-arc-spin{transform-origin:32px 32px;}
   .levro-splash-arc-spin-left{animation:levroArcJamLeft 1.8s cubic-bezier(.34,1.56,.64,1) infinite;}
   .levro-splash-arc-spin-right{animation:levroArcJamRight 1.8s cubic-bezier(.34,1.56,.64,1) infinite;}
@@ -7091,7 +7102,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   <g class="levro-splash-arc-spin levro-splash-arc-spin-left"><circle class="levro-splash-arc" cx="32" cy="32" r="22" transform="rotate(135 32 32)"/></g>
   <g class="levro-splash-arc-spin levro-splash-arc-spin-right"><circle class="levro-splash-arc" cx="32" cy="32" r="22" transform="rotate(315 32 32)"/></g>
   <circle class="levro-splash-dot" cx="32" cy="32" r="6.5"/>
-</svg></div></div>
+</svg></div><div class="levromart-splash-wordmark">LevroMart</div><div class="levromart-splash-tagline">Buy · Sell · Rent · Connect</div></div>
 <script id="levromart-splash-watchdog">
 (function(){
   // This watchdog intentionally lives before the large application bundle.
@@ -12236,6 +12247,11 @@ async function navigate(view, params = {}, pushHistory = true) {
   // treatment (see #dedicated-chat-page-fix); the conversation list and
   // the admin's read-only viewer keep the normal in-app layout.
   document.body.classList.toggle("chat-full-page", view === "messages" && !!(params && params.conversationId) && profile?.role !== "admin");
+  // The dedicated search page has its own back-button + input bar, so the
+  // persistent header's search pill above it is a redundant second search
+  // box -- hide the header entirely while this view is open (see
+  // #dedicated-search-page-fix).
+  document.body.classList.toggle("search-full-page", view === "search");
   document.body.classList.toggle("product-detail-view", view === "productDetail" || view === "packageDetail");
   if (view !== "productDetail") window.__lastRenderedProductPreview = null;
   // Instant paint: if we already have this conversation's name/photo from
@@ -39660,6 +39676,12 @@ header{flex-direction:column !important;align-items:stretch !important;gap:.6rem
    would overlap the top of whatever page is open. */
 body{padding-top:calc(112px + env(safe-area-inset-top,0px)) !important;}
 @media (max-width:720px){body{padding-top:calc(104px + env(safe-area-inset-top,0px)) !important;}}
+/* #dedicated-search-page-fix: the search page supplies its own back
+   button + input row, so showing the persistent header's search pill
+   above it looked like two stacked search bars -- hide the header (and
+   reclaim the space it left) while the search view is open. */
+body.search-full-page > header{display:none !important;}
+body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !important;}
 /* Anchor scrolls (jump-to-reviews, back-to-section links, etc.) that
    compute how far to leave clear above the fixed header were tuned to its
    old, shorter height -- bump them by the same amount the header grew, or
