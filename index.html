@@ -4534,6 +4534,13 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 @keyframes tourFadeOnly{from{opacity:0}to{opacity:1}}
 #tourSpotlightHole{transition:top .20s ease,left .20s ease,width .20s ease,height .20s ease,opacity .16s ease !important;}
 #tourSpotlightHole.centered{opacity:0 !important;}
+/* Covers the page with a plain, opaque surface for the moment a step needs
+   to jump the scroll position, so that jump is never actually visible --
+   the hole/callout stay hidden and are repositioned while still covered,
+   only reappearing once already correctly placed on the new spot. */
+#tourModal.tour-covering{background:var(--bg) !important;}
+#tourModal.tour-covering #tourSpotlightHole{opacity:0 !important;transition:none !important;box-shadow:none !important;}
+#tourModal.tour-covering #tourCallout{opacity:0 !important;transition:none !important;}
 .cart-page-title{margin:0 0 1.15rem !important;padding:0 .1rem !important;line-height:1.2 !important;}
 .cart-vendor-card{margin-top:.15rem !important;}
 @media(max-width:720px){.cart-page-title{margin-bottom:1.25rem !important}.cart-vendor-card{margin-top:.1rem !important}}
@@ -8148,7 +8155,14 @@ async function showTour() {
   modal?.classList.remove("hidden");
   trackModalOpened("tourModal");
   try {
-    if (currentView !== "home") await navigate("home", {});
+    // Always start from a clean, freshly-rendered Home scrolled to the very
+    // top -- starting from wherever the user happened to be (mid-scroll, or
+    // a different page entirely) meant the first couple of steps had to
+    // visibly jump the page around just to reach a known position before
+    // the tour could even properly begin.
+    window.scrollTo(0, 0);
+    await navigate("home", {}, false);
+    window.scrollTo(0, 0);
     if (token !== liveTourRunToken) return;
     await runTourStep(token);
   } finally {
@@ -8186,6 +8200,8 @@ async function runTourStep(token = liveTourRunToken) {
   await new Promise(requestAnimationFrame);
   if (token !== liveTourRunToken) return;
 
+  const tourModalEl = byId("tourModal");
+  let coveredForScroll = false;
   let el = null;
   if (step.selector) {
     el = await waitForTourTarget(step.selector, 5000);
@@ -8194,6 +8210,17 @@ async function runTourStep(token = liveTourRunToken) {
       const cs = getComputedStyle(el);
       const isFixed = cs.position === "fixed" || cs.position === "sticky" || el === byId("bottomNav");
       if (!isFixed) {
+        // Jumping the scroll position while the spotlight hole and callout
+        // stayed visible at their old coordinates meant the page content
+        // visibly shifted underneath them for a frame or two before the
+        // hole caught up -- exactly what read as "scrolling" instead of a
+        // clean step-to-step transition. Cover the whole page with a plain,
+        // opaque surface for the duration of the jump so nothing moves in
+        // view; the hole/callout only reappear once already correctly
+        // positioned on the new spot.
+        coveredForScroll = true;
+        tourModalEl?.classList.add("tour-covering");
+        await new Promise(requestAnimationFrame);
         el.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
         await new Promise(requestAnimationFrame);
         await new Promise(requestAnimationFrame);
@@ -8243,6 +8270,10 @@ async function runTourStep(token = liveTourRunToken) {
   void callout.offsetWidth;
   callout.classList.remove("tour-switching");
   callout.classList.add("tour-enter");
+  if (coveredForScroll) {
+    void tourModalEl?.offsetWidth;
+    tourModalEl?.classList.remove("tour-covering");
+  }
 }
 
 function positionTourSpotlight(rect, forceAbove = false) {
@@ -14360,9 +14391,14 @@ function productCardHtml(p) {
   const cardItemPrice = hasDiscount ? Number(p.discount_price) : Number(p.sale_price);
   const deliveryMode = String(p.delivery_fee_mode ?? p.vendor?.delivery_fee_mode ?? "free").toLowerCase();
   const deliveryFlatFee = Number(p.delivery_fee ?? p.vendor?.delivery_fee ?? 0) || 0;
+  // Always render this line, even when it has nothing to show (rental,
+  // service, or distance-priced delivery) -- letting it appear only on
+  // some cards was exactly what made cards in the same row end up
+  // different heights again, the same bug fixed earlier this session for
+  // a different reason.
   const totalHtml = (!commissionService && !p.is_service && p.sale_price != null && deliveryMode !== "distance")
     ? `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice + deliveryFlatFee)}</strong></div>`
-    : "";
+    : `<div class="product-card-total-line" style="visibility:hidden;">&nbsp;</div>`;
   return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
