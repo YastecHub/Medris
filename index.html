@@ -7351,7 +7351,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <label>Confirm password</label>
       <input type="password" id="loginPasswordConfirm" placeholder="Retype your password" />
     </div>
-    <p id="forgotPasswordMsg" class="muted hidden" style="font-size:0.85rem;">Enter your account email. A password-reset request will be sent to the admin dashboard for approval.</p>
+    <p id="forgotPasswordMsg" class="muted hidden" style="font-size:0.85rem;">Enter your account email and we'll send you a link to reset your password.</p>
     <p id="authAgreementMsg" class="muted hidden" style="font-size:0.78rem;">By creating an account you agree to Levromart's <a href="#" onclick="hideLogin();navigate('terms');return false;">Terms of Service</a> and <a href="#" onclick="hideLogin();navigate('privacy');return false;">Privacy Policy</a>.</p>
 
     <div class="flex" style="justify-content: space-between; margin-top: 0.8rem;">
@@ -11561,7 +11561,7 @@ function applyAuthMode() {
   byId("forgotPasswordMsg").classList.toggle("hidden", !isForgot);
   byId("authAgreementMsg").classList.toggle("hidden", !isRegister);
   byId("forgotPasswordLinkWrap").classList.toggle("hidden", isRegister || isForgot);
-  byId("authSubmitBtn").textContent = isForgot ? "Request password reset" : isRegister ? "Create account" : "Login";
+  byId("authSubmitBtn").textContent = isForgot ? "Send reset link" : isRegister ? "Create account" : "Login";
   byId("authToggleLink").textContent = "Back to login";
   byId("authToggleLink").onclick = (e) => { e.preventDefault(); isForgot ? setAuthMode("login") : toggleAuthMode(); };
   byId("authToggleLink").parentElement?.classList.toggle("hidden", !isForgot);
@@ -11625,16 +11625,18 @@ async function submitAuth() {
     const btn = byId("authSubmitBtn");
     btn.disabled = true;
     try {
-      const { data, error } = await sb.rpc("request_manual_password_reset", { p_email: email });
+      // Resend is now wired in as Supabase Auth's SMTP provider, so the
+      // native emailed-link flow (handled by the PASSWORD_RECOVERY listener
+      // above) is reliable again -- no more routing this through an admin
+      // for manual approval.
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname,
+      });
       if (error) throw error;
-      if (!data?.request_id || !data?.token) throw new Error("Could not create the reset request.");
-      const resetState = { request_id: data.request_id, token: data.token, email: email.toLowerCase() };
-      localStorage.setItem("levromart_manual_password_reset", JSON.stringify(resetState));
       hideLogin();
-      showManualResetWaiting(resetState.email);
-      startManualResetWatcher();
+      showToast("If an account exists for that email, we've sent a link to reset your password.", "success");
     } catch (err) {
-      errorEl.textContent = err.message || "Could not submit the password reset request.";
+      errorEl.textContent = err.message || "Could not send the password reset email.";
       errorEl.classList.remove("hidden");
     } finally {
       btn.disabled = false;
