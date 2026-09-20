@@ -7105,28 +7105,33 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 })();
 </script>
 <header>
-  <div class="header-left">
-    <div class="icon-wrap" id="profileWrap">
-      <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="openProfileOrShop()" title="Profile"></button>
-      <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
+  <div class="header-top-row">
+    <div class="header-left">
+      <div class="icon-wrap" id="profileWrap">
+        <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="openProfileOrShop()" title="Profile"></button>
+        <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
+      </div>
+      <h1 role="button" tabindex="0" onclick="fastNavigateHome(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fastNavigateHome(event)}"><span class="brand-logo-stack"><span id="brandLogoLeft" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span><img id="brandLogoCircle" class="brand-logo-layer brand-logo-circle" alt="" /><span id="brandLogoRight" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span></span><span class="sr-only">Levromart</span></h1>
+      <nav class="header-nav-links">
+        <a class="header-nav-link active" data-view="home" href="#" onclick="fastNavigateHome(event);return false;">Browse</a>
+        <a class="header-nav-link" data-view="vendors" href="#" onclick="navigate('vendors');return false;">Vendors</a>
+      </nav>
     </div>
-    <h1 role="button" tabindex="0" onclick="fastNavigateHome(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fastNavigateHome(event)}"><span class="brand-logo-stack"><span id="brandLogoLeft" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span><img id="brandLogoCircle" class="brand-logo-layer brand-logo-circle" alt="" /><span id="brandLogoRight" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span></span><span class="sr-only">Levromart</span></h1>
-    <nav class="header-nav-links">
-      <a class="header-nav-link active" data-view="home" href="#" onclick="fastNavigateHome(event);return false;">Browse</a>
-      <a class="header-nav-link" data-view="vendors" href="#" onclick="navigate('vendors');return false;">Vendors</a>
-    </nav>
+    <div class="header-right">
+      <div class="icon-wrap hidden" id="notifWrap">
+        <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
+      </div>
+      <div class="icon-wrap hidden" id="messagesWrap">
+        <button class="icon-btn" onclick="navigate('messages')" title="Messages"><i class='fa-solid fa-comment-dots'></i><span id="messagesDot" class="notif-dot hidden">0</span></button>
+      </div>
+      <div class="icon-wrap hidden" id="headerCartWrap">
+        <button class="icon-btn" onclick="requireLoginThen('cart')" title="Cart"><i class='fa-solid fa-cart-shopping'></i><span id="headerCartBadge" class="notif-dot hidden">0</span></button>
+      </div>
+    </div>
   </div>
-  <div class="header-right">
-    <div class="icon-wrap hidden" id="notifWrap">
-      <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
-    </div>
-    <div class="icon-wrap hidden" id="messagesWrap">
-      <button class="icon-btn" onclick="navigate('messages')" title="Messages"><i class='fa-solid fa-comment-dots'></i><span id="messagesDot" class="notif-dot hidden">0</span></button>
-    </div>
-    <div class="icon-wrap hidden" id="headerCartWrap">
-      <button class="icon-btn" onclick="requireLoginThen('cart')" title="Cart"><i class='fa-solid fa-cart-shopping'></i><span id="headerCartBadge" class="notif-dot hidden">0</span></button>
-    </div>
-  </div>
+  <button type="button" class="header-search-row" onclick="navigate('search')" aria-label="Search products, services, vendors">
+    <i class="fa-solid fa-magnifying-glass"></i><span>Search products, services, vendors…</span>
+  </button>
 </header>
 
 <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeAllPanels()"></div>
@@ -10810,6 +10815,7 @@ function updateAuthUI() {
       links.push({ label: `Suggestions${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('adminFeedback')", profileKey: "suggestions" });
       links.push({ label: `Feedback`, action: "navigate('adminFeedback')" });
       links.push({ label: "Link Library", action: "navigate('adminLinkLibrary')" });
+      links.push({ label: "Contact us", action: "navigate('contactUs')" });
       links.push({ label: "Settings &amp; Privacy", action: "navigate('settings')" });
     }
 
@@ -10849,6 +10855,7 @@ function updateAuthUI() {
         { label: `Requests${requestOfferBadgeCount > 0 ? ` (${requestOfferBadgeCount > 9 ? "9+" : requestOfferBadgeCount})` : ""}`, action: "navigate('vendorRequests')" },
         { label: `Suggestions${unreadSuggestionCount > 0 ? ` (${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount})` : ""}`, action: "navigate('vendorSuggestionsInbox')" },
         { label: "Support", action: "navigate('supportRequest')" },
+        { label: "Contact us", action: "navigate('contactUs')" },
         { label: "Take the tour", action: "showTour()" },
       ];
     } else if (profile.role !== "admin") {
@@ -10864,6 +10871,7 @@ function updateAuthUI() {
         { label: "Vendors you follow", action: "navigate('customerFollowing')" },
         { label: "Request an item", action: "navigate('requestEquipment')" },
         { label: "Support", action: "navigate('supportRequest')" },
+        { label: "Contact us", action: "navigate('contactUs')" },
         { label: "Take the tour", action: "showTour()" },
       ];
     }
@@ -10898,7 +10906,7 @@ function updateAuthUI() {
         <hr class="vendor-profile-divider" />
         <div class="admin-profile-nav-list">${links.map((l) => {
           const raw = String(l.label).replace(/<[^>]*>/g, '').trim().toLowerCase();
-          const icon = raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('link library') ? 'fa-link' : raw.includes('disputes') ? 'fa-scale-balanced' : raw.includes('monthly listing') ? 'fa-receipt' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
+          const icon = raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('link library') ? 'fa-link' : raw.includes('disputes') ? 'fa-scale-balanced' : raw.includes('monthly listing') ? 'fa-receipt' : raw.includes('contact us') ? 'fa-address-book' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
           const profileKeyAttr = l.profileKey ? ` data-profile-key="${esc(l.profileKey)}"` : "";
           return `<a class="profile-nav-link"${profileKeyAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
         }).join("")}</div>` : `
@@ -12013,8 +12021,8 @@ function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
 function navigationShellHtml(view) {
-  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package"};
-  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user",storefront:"fa-store",productDetail:"fa-box",packageDetail:"fa-boxes-stacked"};
+  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package",contactUs:"Contact us",search:"Search"};
+  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user",storefront:"fa-store",productDetail:"fa-box",packageDetail:"fa-boxes-stacked",contactUs:"fa-address-book",search:"fa-magnifying-glass"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
   // Never expose a background-refresh message as the page itself. If no real
@@ -12321,6 +12329,8 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "notifications": html = renderNotificationsPage(); break;
       case "requestEquipment": html = await renderRequestEquipment(); break;
       case "supportRequest": html = await renderSupportRequest(); break;
+      case "contactUs": html = renderContactUs(); break;
+      case "search": html = renderSearchPage(); break;
       case "vendorRequests": html = await renderVendorRequests(); break;
       case "terms": html = renderTerms(); break;
       case "privacy": html = renderPrivacy(); break;
@@ -12443,7 +12453,10 @@ async function navigate(view, params = {}, pushHistory = true) {
   document.querySelectorAll("#app .cat-row, #app .hscroll, #app .storefront-product-strip").forEach((el) => {
     if (horizontalBrowseEnabled) setupAutoScroll(el);
   });
-  initHomeSearchScrollMotion();
+  // initHomeSearchScrollMotion() used to pin the hero search bar under the
+  // header once you scrolled past it. Now that the header itself always
+  // shows a search bar, pinning a second one there too would just stack
+  // two search bars on top of each other while scrolling.
   initHomepageCarousel();
   initGallerySwipeSurfaces();
   initDeliveryFieldsOnPage();
@@ -12455,6 +12468,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (view !== "productDetail") stopProductCommentRealtime();
   setTimeout(()=>{hydrateProductVariantIndicatorsInView();hydrateProductLikeCountsInView();hydratePackageCommentCountsInView();hydrateProductRatingsInView()},0);
   if (view === "settings") setTimeout(hydrateSettingsPage, 0);
+  if (view === "search") setTimeout(() => byId("searchPageInput")?.focus(), 60);
   // A same-view, non-history refresh (notably live order updates) must keep
   // the user's scroll position. Real navigation still starts at the top.
   if (preserveSameViewScroll) {
@@ -12717,7 +12731,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     ? cache.carouselSlides
     : INITIAL_HOME_CAROUSEL_SLIDES.slice();
   let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
-  html += `<div class="hero-content levro-home-search-wrap"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" /></div></div><div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
+  html += `<div class="hero-content levro-home-search-wrap"><div class="hero-search flex"><i class="fa-solid fa-magnifying-glass hero-search-icon"></i><input type="text" id="heroSearch" readonly placeholder="Search products, services, vendors…" onclick="this.blur();navigate('search')" autocomplete="off" /></div></div><div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
   html += `<section class="levro-home-quick-actions" aria-label="Quick actions">
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span class="levro-quick-label">Shop Products</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span class="levro-quick-label">Book Services</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
@@ -13528,8 +13542,7 @@ async function renderHome() {
   let html = `<div class="hero-content levro-home-search-wrap">
     <div class="hero-search flex">
       <i class="fa-solid fa-magnifying-glass hero-search-icon"></i>
-      <input type="text" id="heroSearch" placeholder="Search products, services, vendors…" oninput="syncHeroSearch()" onfocus="if(this.value.trim())fetchSearchSuggestions(this.value.trim())" onblur="setTimeout(hideSearchSuggestions,150)" onkeydown="if(event.key==='Enter')submitHeroSearch();" autocomplete="off" />
-      <div id="heroSearchSuggest" class="search-suggest hidden"></div>
+      <input type="text" id="heroSearch" readonly placeholder="Search products, services, vendors…" onclick="this.blur();navigate('search')" autocomplete="off" />
     </div>
   </div>
   <div class="hero levro-home-hero">
@@ -13808,58 +13821,140 @@ function filterByCategory(catId) {
   }
   refreshHomeCategorySelection();
 }
-let searchSuggestTimer = null;
-function syncHeroSearch() {
-  const val = byId("heroSearch").value;
-  const target = byId("searchInput");
-  if (target) { target.value = val; filterHomeProducts(); }
-  // No auto-scroll here - the suggestions dropdown already shows matches
-  // right under the search bar as you type; jumping the whole page down on
-  // every keystroke was disorienting. Only Enter (submitHeroSearch) jumps
-  // to the full results, as a deliberate action.
-
-  clearTimeout(searchSuggestTimer);
-  const term = val.trim();
-  if (!term || browserLooksOffline()) { hideSearchSuggestions(); return; }
-  searchSuggestTimer = setTimeout(() => fetchSearchSuggestions(term), 220);
+// ---------- DEDICATED SEARCH PAGE ----------
+// Replaces the old hero-search dropdown, which quietly broke on every
+// product result: its click handler called saveHistory(...) as a bare
+// global, but saveHistory only ever existed inside an unrelated closure
+// further down this file -- never on window. That threw a ReferenceError
+// the instant a product result was tapped, which aborted the handler
+// before the navigate(...) statement after it ever ran. Vendor/package
+// results (which didn't call saveHistory) worked; product results silently
+// did nothing. A full page sidesteps that whole class of bug: results are
+// ordinary list items with a plain onclick, not a floating dropdown that
+// has to survive an input's blur event.
+const SEARCH_HISTORY_KEY = "levromart-search-history-v1";
+const SEARCH_HISTORY_MAX = 8;
+function readSearchHistory() {
+  try { const list = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || "[]"); return Array.isArray(list) ? list : []; } catch (_) { return []; }
 }
-function submitHeroSearch() {
-  hideSearchSuggestions();
-  byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+function writeSearchHistory(term) {
+  const q = String(term || "").trim();
+  if (!q) return;
+  try {
+    const existing = readSearchHistory().filter((x) => x.toLowerCase() !== q.toLowerCase());
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify([q, ...existing].slice(0, SEARCH_HISTORY_MAX)));
+  } catch (_) {}
 }
-
-async function fetchSearchSuggestions(term) {
-  const box = byId("heroSearchSuggest");
-  if (!box) return;
-  // Search products, vendors and packages together so the hero search is a
-  // real marketplace search rather than a product-only shortcut.
+function clearSearchHistory() {
+  try { localStorage.removeItem(SEARCH_HISTORY_KEY); } catch (_) {}
+  const list = byId("searchPageHistory");
+  if (list) list.innerHTML = "";
+}
+function renderSearchPage() {
+  const history = readSearchHistory();
+  return `<div class="search-page">
+    <div class="search-page-bar">
+      <button type="button" class="search-page-back" onclick="navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+      <div class="search-page-input-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="search" id="searchPageInput" placeholder="Search products, services, vendors…" autocomplete="off" oninput="scheduleSearchPageQuery()" onkeydown="if(event.key==='Enter'){event.preventDefault();runSearchPageQuery(this.value.trim(),true);}" />
+        <button type="button" class="search-page-clear hidden" id="searchPageClearBtn" onclick="clearSearchPageInput()" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div id="searchPageResults" class="search-page-results">
+      <div class="search-page-history-block" id="searchPageHistoryBlock" ${history.length ? "" : "hidden"}>
+        <div class="search-page-history-head"><span>Recent searches</span><button type="button" onclick="clearSearchHistory()">Clear</button></div>
+        <div class="search-page-history-chips" id="searchPageHistory">${history.map((q) => `<button type="button" class="search-page-chip" onclick="runSearchFromChip('${esc(q).replace(/'/g, "&#39;")}')">${esc(q)}</button>`).join("")}</div>
+      </div>
+    </div>
+  </div>`;
+}
+function runSearchFromChip(term) {
+  const input = byId("searchPageInput");
+  if (input) input.value = term;
+  runSearchPageQuery(term, true);
+}
+function clearSearchPageInput() {
+  const input = byId("searchPageInput");
+  if (input) { input.value = ""; input.focus(); }
+  byId("searchPageClearBtn")?.classList.add("hidden");
+  const historyBlock = byId("searchPageHistoryBlock");
+  if (historyBlock) historyBlock.hidden = readSearchHistory().length === 0;
+  const results = byId("searchPageResults");
+  document.querySelectorAll(".search-page-section, .search-page-empty").forEach((el) => el.remove());
+}
+let searchPageTimer = null;
+let searchPageSeq = 0;
+function scheduleSearchPageQuery() {
+  const input = byId("searchPageInput");
+  const term = input?.value.trim() || "";
+  byId("searchPageClearBtn")?.classList.toggle("hidden", !term);
+  clearTimeout(searchPageTimer);
+  if (!term) { clearSearchPageInput(); return; }
+  // Deliberately short -- results should feel like they're appearing as
+  // you type, not after a pause.
+  searchPageTimer = setTimeout(() => runSearchPageQuery(term, false), 120);
+}
+async function runSearchPageQuery(term, saveToHistory) {
+  term = String(term || "").trim();
+  if (!term) return;
+  const mySeq = ++searchPageSeq;
+  const historyBlock = byId("searchPageHistoryBlock");
+  if (historyBlock) historyBlock.hidden = true;
+  if (saveToHistory) writeSearchHistory(term);
   const [{ data: idRows }, { data: vends }, { data: packageRows }] = await Promise.all([
     sb.rpc("search_product_ids", { p_query: term }),
-    sb.from("vendors").select("id,business_name").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(3),
-    sb.from("vendor_packages").select("id,name,price,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(4),
+    sb.from("vendors").select("id,business_name,logo_url,city").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(6),
+    sb.from("vendor_packages").select("id,name,price,photos,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(6),
   ]);
-  // still typing? don't flash a stale list
-  if (byId("heroSearch")?.value.trim() !== term) return;
+  if (mySeq !== searchPageSeq) return; // a newer keystroke already superseded this query
 
-  const topIds = (idRows || []).slice(0, 5).map((r) => r.id);
+  const topIds = (idRows || []).slice(0, 20).map((r) => r.id);
   let prods = [];
   if (topIds.length) {
-    const { data } = await sb.from("products").select("id,name,vendor:vendors!inner(business_name,verification_status)")
+    const { data } = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,vendor:vendors!inner(business_name,verification_status,is_active)")
       .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).in("id", topIds);
     prods = (data || []).sort((a, b) => topIds.indexOf(a.id) - topIds.indexOf(b.id));
   }
-  if (byId("heroSearch")?.value.trim() !== term) return;
+  if (mySeq !== searchPageSeq) return;
 
-  const items = [
-    ...(prods || []).map((p) => `<div class="search-suggest-item" onmousedown="event.preventDefault();saveHistory('${esc(p.name).replace("'","&#39;")}');navigate('productDetail',{productId:'${p.id}'})"><i class='fa-solid fa-magnifying-glass'></i><span class="ss-name">${esc(p.name)}</span><span class="ss-meta">${esc(p.vendor?.business_name || "")}</span></div>`),
-    ...(packageRows || []).map((pkg) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('packageDetail',{packageId:'${pkg.id}'})"><i class='fa-solid fa-box-open'></i><span class="ss-name">${esc(pkg.name)}</span><span class="ss-meta">Package · ${naira(pkg.price)}</span></div>`),
-    ...(vends || []).map((v) => `<div class="search-suggest-item" onmousedown="event.preventDefault();navigate('storefront',{vendorId:'${v.id}'})"><i class='fa-solid fa-store'></i><span class="ss-name">${esc(v.business_name)}</span><span class="ss-meta">Vendor</span></div>`),
-  ];
-  if (!items.length) { hideSearchSuggestions(); return; }
-  box.innerHTML = items.join("");
-  box.classList.remove("hidden");
+  const results = byId("searchPageResults");
+  if (!results) return;
+  document.querySelectorAll(".search-page-section, .search-page-empty").forEach((el) => el.remove());
+
+  const productRowHtml = (p) => {
+    const price = p.is_service ? "" : p.sale_price != null
+      ? naira(p.discount_price != null && p.discount_price > 0 && p.discount_price < p.sale_price ? p.discount_price : p.sale_price)
+      : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
+    const img = p.photos?.[0];
+    return `<button type="button" class="search-result-row" onclick="navigate('productDetail',{productId:'${p.id}'})">
+      <span class="search-result-thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</span>
+      <span class="search-result-copy"><strong>${esc(p.name)}</strong><span class="muted">${esc(p.vendor?.business_name || "")}</span></span>
+      ${price ? `<span class="search-result-price">${price}</span>` : ""}
+    </button>`;
+  };
+  const vendorRowHtml = (v) => `<button type="button" class="search-result-row" onclick="navigate('storefront',{vendorId:'${v.id}'})">
+      <span class="search-result-thumb search-result-thumb-round">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-store"></i>`}</span>
+      <span class="search-result-copy"><strong>${esc(v.business_name)}</strong><span class="muted">${esc(v.city || "Vendor")}</span></span>
+    </button>`;
+  const packageRowHtml = (pkg) => `<button type="button" class="search-result-row" onclick="navigate('packageDetail',{packageId:'${pkg.id}'})">
+      <span class="search-result-thumb">${pkg.photos?.[0] ? `<img src="${esc(pkg.photos[0])}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-box-open"></i>`}</span>
+      <span class="search-result-copy"><strong>${esc(pkg.name)}</strong><span class="muted">${esc(pkg.vendor?.business_name || "Package")}</span></span>
+      <span class="search-result-price">${naira(pkg.price)}</span>
+    </button>`;
+
+  const sections = [
+    prods.length ? { title: `Products (${prods.length})`, rows: prods.map(productRowHtml) } : null,
+    (vends || []).length ? { title: `Vendors (${vends.length})`, rows: vends.map(vendorRowHtml) } : null,
+    (packageRows || []).length ? { title: `Packages (${packageRows.length})`, rows: packageRows.map(packageRowHtml) } : null,
+  ].filter(Boolean);
+
+  if (!sections.length) {
+    results.insertAdjacentHTML("beforeend", `<div class="search-page-empty"><i class="fa-solid fa-magnifying-glass"></i><p>No matches for "${esc(term)}". Try a different word.</p></div>`);
+    return;
+  }
+  results.insertAdjacentHTML("beforeend", sections.map((s) => `<div class="search-page-section"><h3>${esc(s.title)}</h3>${s.rows.join("")}</div>`).join(""));
 }
-function hideSearchSuggestions() { byId("heroSearchSuggest")?.classList.add("hidden"); }
 
 const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
 
@@ -18100,6 +18195,31 @@ async function getSupportAttachmentHtml(attachments) {
     return supportAttachmentHtml(a, signedUrl);
   }));
   return `<div class="support-request-attachments">${rendered.join('')}</div>`;
+}
+function renderContactUs() {
+  const channels = [
+    { icon: "fa-envelope", label: "Email", value: "Levromartsupport@gmail.com", href: "mailto:Levromartsupport@gmail.com" },
+    { icon: "fa-phone", label: "Phone", value: "0806 322 7669", href: "tel:+2348063227669" },
+    { icon: "fa-phone", label: "Phone", value: "+234 806 063 8179", href: "tel:+2348060638179" },
+  ];
+  const socials = [
+    { icon: "fa-instagram", brand: true, label: "Instagram", href: "https://instagram.com/levromart" },
+    { icon: "fa-tiktok", brand: true, label: "TikTok", href: "https://tiktok.com/@levromart" },
+    { icon: "fa-linkedin", brand: true, label: "LinkedIn", href: "https://linkedin.com/company/levromart" },
+  ];
+  return `<div class="contact-us-page">
+    <h2><i class="fa-solid fa-address-book"></i> Contact us</h2>
+    <p class="muted">We're happy to help. Reach us directly or find us on social media.</p>
+    <div class="card contact-us-card">
+      ${channels.map((c) => `<a class="contact-us-row" href="${c.href}"><span class="contact-us-row-icon"><i class="fa-solid ${c.icon}"></i></span><span class="contact-us-row-copy"><span class="contact-us-row-label">${esc(c.label)}</span><strong>${esc(c.value)}</strong></span><i class="fa-solid fa-chevron-right contact-us-row-arrow"></i></a>`).join("")}
+    </div>
+    <h3 class="contact-us-socials-title">Follow us</h3>
+    <div class="contact-us-socials">
+      ${socials.map((s) => `<a class="contact-us-social-btn" href="${s.href}" target="_blank" rel="noopener"><i class="fa-brands ${s.icon}"></i><span>${esc(s.label)}</span></a>`).join("")}
+    </div>
+    <p class="muted contact-us-handle">@levromart on all platforms</p>
+    ${!session ? `<button type="button" class="btn btn-sm btn-outline" style="margin-top:1.2rem;" onclick="navigate('home')"><i class="fa-solid fa-arrow-left"></i> Back to Levromart</button>` : ""}
+  </div>`;
 }
 async function renderSupportRequest() {
   if (!session) return '<div class="empty-state">Please log in to contact Levromart support.</div>';
@@ -26508,10 +26628,10 @@ async function searchFromLeviMenu() {
   const q = await showTextPromptDialog("Search Levromart", "Search products, services, vendors or packages.", { placeholder: "What are you looking for?", okLabel: "Search" });
   if (!q || !q.trim()) return;
   toggleAiChat();
-  await navigate("home", {}, true);
+  await navigate("search", {}, true);
   setTimeout(() => {
-    const input = byId("heroSearch");
-    if (input) { input.value = q.trim(); handleHeroSearchInput(q.trim()); input.focus(); }
+    const input = byId("searchPageInput");
+    if (input) { input.value = q.trim(); runSearchPageQuery(q.trim(), true); }
   }, 120);
 }
 
@@ -28136,7 +28256,7 @@ window.addEventListener("popstate", (e) => {
   // the browser still knows exactly which Levromart screen was open.
   const persistedUrlView = urlParams.get("appView");
   if (persistedUrlView) {
-    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
+    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","contactUs","search","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
     let persistedParams = {};
     try { persistedParams = JSON.parse(urlParams.get("appParams") || "{}"); } catch (_) {}
     if (allowedPersistedViews.has(persistedUrlView)) {
@@ -39401,4 +39521,68 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .product-card-rating-empty{font-size:.76rem;color:var(--text-muted);opacity:.75;}
 .product-card-total-line{font-size:.72rem;color:var(--text-muted);margin-top:.1rem;}
 .product-card-total-line strong{color:var(--text);}
+
+.contact-us-page{max-width:520px;margin:0 auto;}
+.contact-us-card{padding:.4rem;}
+.contact-us-row{display:flex;align-items:center;gap:.85rem;padding:.85rem .6rem;border-bottom:1px solid var(--border);color:var(--text);text-decoration:none;}
+.contact-us-row:last-child{border-bottom:0;}
+.contact-us-row-icon{width:2.5rem;height:2.5rem;flex:0 0 auto;border-radius:50%;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.05rem;}
+.contact-us-row-copy{display:flex;flex-direction:column;min-width:0;}
+.contact-us-row-label{font-size:.76rem;color:var(--text-muted);}
+.contact-us-row-arrow{margin-left:auto;color:var(--text-muted);font-size:.8rem;}
+.contact-us-socials-title{margin:1.4rem 0 .6rem;font-size:1rem;}
+.contact-us-socials{display:flex;gap:.6rem;flex-wrap:wrap;}
+.contact-us-social-btn{display:flex;align-items:center;gap:.5rem;padding:.7rem 1.1rem;border-radius:999px;background:var(--card);border:1px solid var(--border);color:var(--text);text-decoration:none;font-weight:600;font-size:.88rem;}
+.contact-us-social-btn i{color:var(--primary);font-size:1.05rem;}
+.contact-us-handle{margin-top:.7rem;font-size:.8rem;}
+
+.search-page{max-width:640px;margin:0 auto;}
+.search-page-bar{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;}
+.search-page-back{width:2.5rem;height:2.5rem;flex:0 0 auto;border-radius:50%;border:0;background:var(--card);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;}
+.search-page-input-wrap{flex:1;min-width:0;position:relative;display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:0 .9rem;height:2.9rem;gap:.55rem;}
+.search-page-input-wrap i{color:var(--text-muted);}
+.search-page-input-wrap input{flex:1;min-width:0;border:0;background:transparent;outline:0;font:inherit;color:var(--text);height:100%;}
+.search-page-clear{border:0;background:none;color:var(--text-muted);cursor:pointer;padding:.2rem;flex:0 0 auto;}
+.search-page-history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem;font-size:.85rem;color:var(--text-muted);}
+.search-page-history-head button{background:none;border:0;color:var(--primary);font-weight:600;cursor:pointer;font-size:.82rem;}
+.search-page-history-chips{display:flex;flex-wrap:wrap;gap:.5rem;}
+.search-page-chip{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:.45rem .95rem;font-size:.85rem;cursor:pointer;}
+.search-page-section{margin-top:1.1rem;}
+.search-page-section h3{font-size:.85rem;color:var(--text-muted);margin:0 0 .5rem;text-transform:uppercase;letter-spacing:.03em;}
+.search-result-row{display:flex;align-items:center;gap:.75rem;width:100%;text-align:left;border:0;background:none;padding:.7rem .2rem;border-bottom:1px solid var(--border);cursor:pointer;color:var(--text);font:inherit;}
+.search-result-row:last-child{border-bottom:0;}
+.search-result-thumb{width:2.9rem;height:2.9rem;flex:0 0 auto;border-radius:10px;overflow:hidden;background:var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted);}
+.search-result-thumb img{width:100%;height:100%;object-fit:cover;}
+.search-result-thumb-round{border-radius:50%;}
+.search-result-copy{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;}
+.search-result-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.search-result-copy .muted{font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.search-result-price{flex:0 0 auto;font-weight:700;font-size:.88rem;}
+.search-page-empty{text-align:center;padding:3rem 1rem;color:var(--text-muted);}
+.search-page-empty i{font-size:1.8rem;margin-bottom:.6rem;display:block;}
+
+/* Header search bar, Jumia-style: a tappable bar under the logo row that
+   opens the dedicated search page, rather than a search box buried further
+   down the Home page under the hero banner. */
+header{flex-direction:column !important;align-items:stretch !important;gap:.6rem !important;}
+.header-top-row{display:flex !important;justify-content:space-between !important;align-items:center !important;width:100% !important;gap:.8rem !important;}
+.header-search-row{
+  display:flex !important;align-items:center !important;gap:.6rem !important;width:100% !important;
+  background:var(--card) !important;border:1px solid var(--border) !important;border-radius:999px !important;
+  padding:.62rem 1rem !important;color:var(--text-muted) !important;font:inherit !important;font-size:.86rem !important;
+  cursor:pointer !important;text-align:left !important;
+}
+.header-search-row i{color:var(--text-muted) !important;}
+.header-search-row span{overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}
+/* The header grew a second row, so the fixed-position offset every page's
+   content sits below needs to grow by the same amount, or the search row
+   would overlap the top of whatever page is open. */
+body{padding-top:calc(112px + env(safe-area-inset-top,0px)) !important;}
+@media (max-width:720px){body{padding-top:calc(104px + env(safe-area-inset-top,0px)) !important;}}
+/* Anchor scrolls (jump-to-reviews, back-to-section links, etc.) that
+   compute how far to leave clear above the fixed header were tuned to its
+   old, shorter height -- bump them by the same amount the header grew, or
+   the target lands partly hidden behind the new second row. */
+.container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:130px !important;}
+@media (max-width:720px){.container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:120px !important;}}
 </style>
