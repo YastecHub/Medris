@@ -5562,7 +5562,15 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 #app .product-card-compact-price .product-variety-indicator{
   font-size:.72rem !important; font-weight:600 !important; flex:0 0 auto !important;
 }
+/* Older grid-view rules elsewhere pin .card-cart-btn absolutely to the
+   card's bottom-right corner (a leftover from before this compact layout
+   existed) which then overlapped the total-with-delivery line sitting at
+   the bottom of the card. This selector out-specifies those rules to put
+   the button back in normal flow, inline with the price where the compact
+   footer already lays it out. */
+#app .grid:has(> .product-card-wrap) > .product-card-wrap.product-card-compact > .card .card-cart-btn,
 #app .product-card-compact .card-cart-btn{
+  position:static !important; top:auto !important; left:auto !important; right:auto !important; bottom:auto !important;
   flex:0 0 auto !important; width:1.9rem !important; height:1.9rem !important; min-width:0 !important;
   border-radius:999px !important; display:inline-flex !important; align-items:center !important; justify-content:center !important;
   background:var(--primary) !important; color:#fff !important; border:0 !important; font-size:.78rem !important; padding:0 !important;
