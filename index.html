@@ -14374,7 +14374,7 @@ function productCardHtml(p) {
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}</div>
       <h4>${esc(p.name)}</h4>
-      <div class="product-card-rating-line" data-product-rating-id="${esc(p.id)}">${window.__productRatingCache?.has(String(p.id)) ? productRatingBadgeInnerHtml(window.__productRatingCache.get(String(p.id))) : "<span class=\"product-card-rating-empty\">…</span>"}</div>
+      <div class="product-card-rating-line" data-product-rating-id="${esc(p.id)}">${window.__productRatingCache?.has(String(p.id)) ? productRatingBadgeInnerHtml(window.__productRatingCache.get(String(p.id))) : `<span class="product-card-rating-empty">${"☆".repeat(5)}</span>`}</div>
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
         ${actionHtml}
@@ -17040,7 +17040,9 @@ async function __levroOriginalRenderProductDetail(productId) {
       <div class="owner-listing-actions"><button type="button" class="btn btn-sm" onclick="openEditProductModal('${product.id}')"><i class="fa-solid fa-pen"></i> Edit</button>${product.status === "active" ? `<button type="button" class="btn btn-sm btn-outline" onclick="setProductStatus('${product.id}','paused')">Pause</button>` : ownerPaid ? `<button type="button" class="btn btn-sm" onclick="setProductStatus('${product.id}','active')">Activate</button>` : `<button type="button" class="btn btn-sm" onclick="startListingMonthlyPayment('product','${product.id}')"><i class="fa-solid fa-credit-card"></i> Pay ₦1,000</button>`}<button type="button" class="btn btn-sm btn-danger" onclick="removeProduct('${product.id}')"><i class="fa-solid fa-trash"></i> Remove</button></div>
       ${product.variants?.length ? `<p class="muted owner-listing-variant-note"><i class="fa-solid fa-layer-group"></i> ${product.variants.length} variety${product.variants.length===1?"":"ies"} configured.</p>` : ""}</div>`;
   }
+  html += `<div class="card product-reviews-card"><h3 style="margin-top:0;"><i class="fa-solid fa-star"></i> Ratings &amp; reviews</h3><div id="productReviewsBody-${esc(product.id)}" class="product-reviews-body"><p class="muted">Loading reviews…</p></div></div>`;
   html += `<div class="card product-comments-card" data-product-comments-id="${esc(product.id)}"><button type="button" class="product-comments-toggle ${productEngagement?.allow_comments===false?"disabled":""}" onclick="${productEngagement?.allow_comments===false?"":"toggleProductComments('"+esc(product.id)+"')"}" aria-expanded="false" aria-label="${productEngagement?.allow_comments===false?"Comments disabled":"Show product comments"}"><span><i class="fa-regular fa-comment"></i><strong id="productCommentsCount" data-product-id="${esc(product.id)}">0</strong></span><i class="fa-solid fa-chevron-down"></i></button><div id="productCommentsPanel" class="product-comments-panel hidden"></div></div>`;
+  setTimeout(() => hydrateProductReviewSection(product.id), 0);
   const relatedNames = RELATED_EQUIPMENT[product.category?.name] || [];
   if (relatedNames.length) {
     const { data: related } = await sb.from("products")
@@ -19027,8 +19029,9 @@ async function hydratePackageCommentCountsInView(){const ids=[...new Set([...doc
 // already renders with the real stars/count once it arrives.
 window.__productRatingCache = window.__productRatingCache || new Map();
 function productRatingBadgeInnerHtml(stats) {
-  if (!stats || !stats.review_count) return `<span class="product-card-rating-empty">No ratings yet</span>`;
-  return `★ ${Number(stats.avg_rating).toFixed(1)} <span class="product-card-rating-count">(${stats.review_count})</span>`;
+  if (!stats || !stats.review_count) return `<span class="product-card-rating-empty">${"☆".repeat(5)}</span>`;
+  const rounded = Math.round(Number(stats.avg_rating));
+  return `<span class="product-card-rating-stars">${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}</span> <span class="product-card-rating-count">(${stats.review_count})</span>`;
 }
 async function hydrateProductRatingsInView(){
   const ids=[...new Set([...document.querySelectorAll("[data-product-rating-id]")].map(n=>n.dataset.productRatingId).filter(Boolean))];
@@ -23809,6 +23812,57 @@ async function submitReview(orderId, vendorId) {
   window.__reviewPromptDismissedOrderId=String(orderId);
   window.__closeLevromartReviewPrompt?.();
   navigate("orderDetail", { orderId });
+}
+
+// ---------- PRODUCT RATINGS ----------
+// Reviews were only ever collectible from the order page, tied to the
+// whole order -- there was no way to rate a product from the product page
+// itself, even though that's the one place every buyer actually lands to
+// leave feedback on what they bought. This reuses the same reviews table
+// (a buyer's completed, paid order for this product, one review per
+// order) but surfaces it right on the product they're looking at.
+function productReviewListHtml(reviews) {
+  if (!reviews.length) return `<p class="muted">No reviews yet for this product.</p>`;
+  return `<div class="product-review-list">${reviews.map((r) => `<div class="card review-card">${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.3rem;height:2.3rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.3rem", "", r.buyer_name || "Customer")}<div><div class="flex" style="justify-content:space-between;gap:1rem;"><strong>${esc(r.buyer_name || "A buyer")}</strong><span class="star-display">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span></div>${r.comment ? `<p style="margin:0.3rem 0 0;">${esc(r.comment)}</p>` : ""}<p class="muted" style="font-size:0.75rem;margin-top:0.2rem;">${new Date(r.created_at).toLocaleDateString()}</p></div></div>`).join("")}</div>`;
+}
+async function hydrateProductReviewSection(productId) {
+  const body = byId(`productReviewsBody-${productId}`);
+  if (!body) return;
+  const [{ data: reviews, error: reviewsError }, eligible] = await Promise.all([
+    sb.rpc("get_product_reviews", { p_product_id: productId }),
+    session?.user?.id ? sb.rpc("get_reviewable_order_for_product", { p_product_id: productId }).then((r) => r.data?.[0] || null).catch(() => null) : Promise.resolve(null),
+  ]);
+  if (byId(`productReviewsBody-${productId}`) !== body) return; // navigated away before this resolved
+  const rows = reviewsError ? [] : (reviews || []);
+  const avg = rows.length ? rows.reduce((sum, r) => sum + r.rating, 0) / rows.length : 0;
+  const summaryHtml = rows.length
+    ? `<div class="product-review-summary"><span class="product-review-summary-score">${avg.toFixed(1)}</span><span class="star-display">${"★".repeat(Math.round(avg))}${"☆".repeat(5 - Math.round(avg))}</span><span class="muted">${rows.length} review${rows.length === 1 ? "" : "s"}</span></div>`
+    : "";
+  const formHtml = eligible
+    ? `<div class="product-review-form" id="productReviewForm-${productId}">
+        <strong>Rate this product</strong>
+        <div id="productReviewError-${productId}" class="error-text hidden"></div>
+        ${starRatingWidgetHtml(5)}
+        <input type="hidden" id="reviewRating" value="5" />
+        <textarea id="productReviewComment-${productId}" rows="3" placeholder="Share your experience with this product (optional)"></textarea>
+        <button type="button" class="btn btn-sm" onclick="submitProductReview('${eligible.order_id}','${eligible.vendor_id}','${productId}')"><i class="fa-solid fa-paper-plane"></i> Submit rating</button>
+      </div>`
+    : "";
+  body.innerHTML = `${summaryHtml}${formHtml}${productReviewListHtml(rows)}`;
+}
+async function submitProductReview(orderId, vendorId, productId) {
+  if (!session) { showLogin(); return; }
+  const errorEl = byId(`productReviewError-${productId}`);
+  const { error } = await sb.from("reviews").insert({
+    order_id: orderId, buyer_id: session.user.id, vendor_id: vendorId,
+    rating: Number(byId("reviewRating")?.value || 5),
+    comment: byId(`productReviewComment-${productId}`)?.value.trim() || null,
+  });
+  if (error) { if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); } return; }
+  showToast("Thanks for rating this product!", "success");
+  window.__productRatingCache?.delete(String(productId));
+  await hydrateProductReviewSection(productId);
+  hydrateProductRatingsInView();
 }
 
 async function submitVendorDisputeResponse(disputeId, orderId) {
@@ -39502,23 +39556,17 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   .vendor-profile-header-avatar-row{margin-top:.75rem;}
 }
 
-/* Browse Everything + Trending: show each product photo in full instead of
-   cropping it to fill a fixed box, closer to how marketplace apps like
-   Temu lay theirs out -- the image is the point, not a cropped sliver of
-   it. object-fit:contain keeps the whole photo visible inside the same
-   card footprint, with a neutral backdrop filling any letterboxed edge. */
-#app .grid:has(> .product-card-wrap) .product-img img,
-#app .hscroll.trending-scroll .product-img img{
-  object-fit:contain !important;
-  background:color-mix(in srgb,var(--primary) 3%,var(--card)) !important;
-}
-#app .grid:has(> .product-card-wrap) .product-img,
-#app .hscroll.trending-scroll .product-img{
-  background:color-mix(in srgb,var(--primary) 3%,var(--card)) !important;
-}
 .product-card-rating-line{display:flex;align-items:center;gap:.3rem;font-size:.78rem;color:var(--text-muted);margin:.15rem 0;}
 .product-card-rating-line .product-card-rating-count{color:var(--text-muted);}
-.product-card-rating-empty{font-size:.76rem;color:var(--text-muted);opacity:.75;}
+.product-card-rating-stars,.product-card-rating-empty{font-size:.82rem;letter-spacing:.05em;color:#f5a623;}
+
+.product-reviews-body{margin-top:.6rem;}
+.product-review-summary{display:flex;align-items:center;gap:.6rem;margin-bottom:.9rem;}
+.product-review-summary-score{font-size:1.6rem;font-weight:800;}
+.product-review-form{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:1rem;}
+.product-review-form strong{display:block;margin-bottom:.3rem;}
+.product-review-form textarea{width:100%;margin:.5rem 0;}
+.product-review-list{display:flex;flex-direction:column;gap:.6rem;}
 .product-card-total-line{font-size:.72rem;color:var(--text-muted);margin-top:.1rem;}
 .product-card-total-line strong{color:var(--text);}
 
