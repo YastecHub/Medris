@@ -177,7 +177,7 @@
       if(img.dataset.levroTransformed==='1')return;
       const src=img.getAttribute('src'); if(!src)return;
       let opts={width:800,height:800,quality:76,resize:'contain'};
-      if(img.closest('.home-promotional-slide')) opts={width:1600,height:700,quality:78,resize:'cover'};
+      if(img.closest('.home-promotional-slide')) opts={width:1200,height:630,quality:78,resize:'cover'};
       else if(img.closest('.product-card-wrap,.product-img')) opts={width:520,height:520,quality:74,resize:'cover'};
       else if(img.closest('.product-gallery-thumb')) opts={width:180,height:180,quality:70,resize:'cover'};
       else if(img.closest('.product-gallery-slide,.package-detail-gallery-slide')) opts={width:1200,height:1200,quality:82,resize:'contain'};
@@ -5742,7 +5742,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 <style id="levromart-home-carousel-admin">
   /* Promotional homepage carousel */
   .home-promotional-carousel{position:relative;width:100%;margin:0 0 1.05rem;border-radius:18px;overflow:hidden;background:var(--card);border:1px solid var(--ui-border,var(--border));box-shadow:0 10px 30px rgba(15,23,42,.08);isolation:isolate}
-  .home-promotional-viewport{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;touch-action:pan-y pinch-zoom;cursor:grab}
+  .home-promotional-viewport{position:relative;width:100%;aspect-ratio:1200/630;overflow:hidden;touch-action:pan-y pinch-zoom;cursor:grab}
   .home-promotional-viewport:active{cursor:grabbing}
   .home-promotional-track{display:flex;width:100%;height:100%;transform:translate3d(0,0,0);transition:transform .45s cubic-bezier(.22,.8,.2,1);will-change:transform}
   .home-promotional-slide{flex:0 0 100%;width:100%;height:100%;position:relative;display:block;border:0;padding:0;background:none;cursor:pointer}
@@ -7316,6 +7316,105 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 #app .follow-btn {
   box-shadow: none !important;
 }
+</style>
+<style id="levromart-final-ui-and-session-fix-20260922">
+/* FINAL LIGHT UI: selection controls should look like WhatsApp-style outlined
+   controls, not solid green buttons. This deliberately covers every tab/filter
+   state while leaving true destructive/payment/primary CTAs alone. */
+#app .btn-outline,
+#app .btn-outline.active,
+#app .segmented-tabs button.active,
+#app .catalog-type-tab.active,
+#app .vendor-request-tab.active,
+#app .vendor-listing-tab.active,
+#app .vendors-filters-toggle.active,
+#app .admin-people-role-tab.active,
+#app .range-tab.active,
+#app .notif-tab.active,
+#app .storefront-catalog-tab.active,
+#app .sector-chip.active,
+#app .cat-chip.active,
+#app .admin-payment-issue-tab.active,
+#app .vendor-dashboard-icon-action.active,
+#app .vendor-card-follow-btn.following {
+  background: color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
+  background-image: none !important;
+  color: var(--primary) !important;
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border)) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+#app .vendor-request-tab.active,
+#app .vendor-listing-tab.active,
+#app .admin-people-role-tab.active,
+#app .range-tab.active,
+#app .notif-tab.active,
+#app .storefront-catalog-tab.active,
+#app .admin-payment-issue-tab.active {
+  border-radius: 999px !important;
+}
+#app .vendor-request-tab.active span,
+#app .admin-people-role-tab.active strong,
+#app .admin-payment-issue-tab.active strong {
+  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+  color: var(--primary) !important;
+}
+#app .segmented-tabs button.active { border-radius: 999px !important; }
+#app .vendor-request-tabs,
+#app .vendor-listing-tabs,
+#app .admin-people-role-tabs {
+  background: color-mix(in srgb, var(--primary) 2%, var(--card)) !important;
+  border-color: color-mix(in srgb, var(--primary) 16%, var(--border)) !important;
+  box-shadow: none !important;
+}
+/* Homepage quick actions: light cards and light outlined icon circles. */
+#app .levro-quick-action {
+  background: color-mix(in srgb, var(--primary) 2%, var(--card)) !important;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border)) !important;
+  box-shadow: none !important;
+}
+#app .levro-home-quick-actions .levro-quick-icon {
+  background: color-mix(in srgb, var(--primary) 7%, var(--card)) !important;
+  color: var(--primary) !important;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border)) !important;
+  box-shadow: none !important;
+}
+/* Category icon selection: no more deep filled circles. */
+#app .levro-home-cat-chip.active .levro-home-cat-icon {
+  background: color-mix(in srgb, var(--cat-color, var(--primary)) 8%, var(--card)) !important;
+  color: var(--cat-color, var(--primary)) !important;
+  border: 1px solid color-mix(in srgb, var(--cat-color, var(--primary)) 25%, var(--border)) !important;
+  box-shadow: none !important;
+}
+/* Search page: the input itself must not become a second box when focused. */
+#app .search-page-input-wrap,
+#app .search-page-input-wrap:focus-within {
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: var(--card) !important;
+}
+#app .search-page-input-wrap input,
+#app .search-page-input-wrap input:focus,
+#app .search-page-input-wrap input:focus-visible {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+/* Carousel: preserve the banner's native 1200:630 composition so its lower
+   artwork is never cropped by a taller 16:9 viewport. */
+#app .home-promotional-carousel,
+#app .home-promotional-viewport {
+  aspect-ratio: 1200 / 630 !important;
+}
+#app .home-promotional-viewport { height: auto !important; }
+#app .home-promotional-slide,
+#app .home-promotional-slide img {
+  width: 100% !important;
+  height: 100% !important;
+}
+#app .home-promotional-slide img { object-fit: cover !important; object-position: center !important; }
 </style>
 </head>
 <body>
@@ -10831,14 +10930,14 @@ async function refreshAuthState() {
   // user before treating that cached session as a real login.
   if (session) {
     const { data: verifiedUser, error: verifyError } = await sb.auth.getUser();
-    if (verifyError || !verifiedUser?.user) {
-      session = null;
-      profile = null;
-      vendor = null;
-      favoriteIds = new Set();
-      packageFavoriteIds = new Set();
-      manualLogout = true;
-      await sb.auth.signOut({ scope: "local" }).catch(() => {});
+    // Do NOT automatically sign the customer out because this verification
+    // request failed. A transient network/API error must never become an
+    // involuntary logout. Supabase's own session refresh machinery remains
+    // responsible for genuinely invalid/expired sessions.
+    if (verifyError) {
+      console.warn("[Levromart] Session verification failed; preserving the existing session:", verifyError);
+    } else if (!verifiedUser?.user) {
+      console.warn("[Levromart] Session verification returned no user; preserving the existing session.");
     }
   }
 
@@ -13183,7 +13282,7 @@ function renderHomepageCarouselHtml(slides) {
   if (!usable.length) return "";
   homeCarouselSlides = usable;
   homeCarouselIndex = 0;
-  const slidesHtml = usable.map((s, i) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(levroStorageImageUrl(s.image_url,{width:1600,height:700,quality:78,resize:"cover"}))}" alt="${esc(s.alt_text || "Levromart promotion")}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`).join("");
+  const slidesHtml = usable.map((s, i) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(levroStorageImageUrl(s.image_url,{width:1200,height:630,quality:78,resize:"cover"}))}" alt="${esc(s.alt_text || "Levromart promotion")}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`).join("");
   const dots = usable.map((s, i) => `<button type="button" class="home-promotional-dot ${i === 0 ? "active" : ""}" onclick="activateHomeCarouselSlide(${i},true)" aria-label="Go to slide ${i + 1}"></button>`).join("");
   return `<section class="home-promotional-carousel" id="homePromotionalCarousel" aria-label="Levromart promotions">
     <div class="home-promotional-viewport" id="homePromotionalViewport">
