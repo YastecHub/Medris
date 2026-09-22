@@ -14360,6 +14360,7 @@ function renderSearchPage() {
         <button type="button" class="search-page-clear hidden" id="searchPageClearBtn" onclick="clearSearchPageInput()" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
+    <div id="searchPageSuggestions" class="search-page-suggestions hidden" aria-live="polite"></div>
     <div id="searchPageResults" class="search-page-results">
       <div class="search-page-history-block" id="searchPageHistoryBlock" ${history.length ? "" : "hidden"}>
         <div class="search-page-history-head"><span>Recent searches</span><button type="button" onclick="clearSearchHistory()">Clear</button></div>
@@ -14390,14 +14391,222 @@ function scheduleSearchPageQuery() {
   byId("searchPageClearBtn")?.classList.toggle("hidden", !term);
   clearTimeout(searchPageTimer);
   if (!term) { clearSearchPageInput(); return; }
-  // Deliberately short -- results should feel like they're appearing as
-  // you type, not after a pause.
-  searchPageTimer = setTimeout(() => runSearchPageQuery(term, false), 120);
+  // Recommendations paint immediately from the local catalogue, then refine
+  // from Supabase in the background. The actual result list follows almost
+  // immediately after so the search never feels like it is waiting on Enter.
+  try { renderSearchPageSuggestions(term); } catch (_) {}
+  try { warmSearchLocationForSearch(); } catch (_) {}
+  searchPageTimer = setTimeout(() => runSearchPageQuery(term, false), 70);
 }
+
+let searchLocationWarmupStarted = false;
+let searchSuggestionsSeq = 0;
+
+function searchDistanceKm(vendorRow) {
+  try {
+    const loc = typeof buyerLocation !== "undefined" ? buyerLocation : null;
+    const lat = Number(vendorRow?.lat), lng = Number(vendorRow?.lng);
+    if (!loc || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return haversineKm(Number(loc.lat), Number(loc.lng), lat, lng);
+  } catch (_) { return null; }
+}
+
+function warmSearchLocationForSearch() {
+  if (searchLocationWarmupStarted) return;
+  searchLocationWarmupStarted = true;
+  if (typeof getCustomerLocation !== "function") return;
+  Promise.resolve(getCustomerLocation(false)).then(() => {
+    const q = byId("searchPageInput")?.value.trim() || "";
+    if (!q) return;
+    const current = ++searchPageSeq;
+    runSearchPageQuery(q, false).catch(() => {});
+    void current;
+    try { renderSearchPageSuggestions(q); } catch (_) {}
+  }).catch(() => {});
+}
+
+function searchNormalise(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function searchLevenshtein(a, b) {
+  a = searchNormalise(a); b = searchNormalise(b);
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 0; i < a.length; i++) {
+    const cur = [i + 1];
+    for (let j = 0; j < b.length; j++) {
+      cur[j + 1] = Math.min(
+        cur[j] + 1,
+        prev[j + 1] + 1,
+        prev[j] + (a[i] === b[j] ? 0 : 1)
+      );
+    }
+    for (let j = 0; j < cur.length; j++) prev[j] = cur[j];
+  }
+  return prev[b.length];
+}
+
+function searchCandidateScore(query, candidate) {
+  const q = searchNormalise(query);
+  const c = searchNormalise(candidate);
+  if (!q || !c) return 0;
+  if (c === q) return 100;
+  if (c.startsWith(q)) return 95;
+  if (c.includes(q)) return 88;
+  const qTokens = q.split(" ").filter(Boolean);
+  const cTokens = c.split(" ").filter(Boolean);
+  let best = 0;
+  for (const qt of qTokens) {
+    for (const ct of cTokens) {
+      if (ct.startsWith(qt)) best = Math.max(best, 82);
+      const maxLen = Math.max(qt.length, ct.length);
+      const d = searchLevenshtein(qt, ct);
+      if (maxLen <= 5 && d <= 1) best = Math.max(best, 78);
+      else if (maxLen > 5 && d <= 2) best = Math.max(best, 72);
+    }
+  }
+  return best;
+}
+
+function searchEffectivePrice(p) {
+  const sale = Number(p?.sale_price);
+  const discount = Number(p?.discount_price);
+  const rent = Number(p?.rental_rate);
+  if (Number.isFinite(discount) && discount > 0 && Number.isFinite(sale) && discount < sale) return discount;
+  if (Number.isFinite(sale) && sale > 0) return sale;
+  if (Number.isFinite(rent) && rent > 0) return rent;
+  return Infinity;
+}
+
+async function renderSearchPageSuggestions(term) {
+  const box = byId("searchPageSuggestions");
+  if (!box) return;
+  const q = String(term || "").trim();
+  if (!q) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+  const seq = ++searchSuggestionsSeq;
+
+  // Paint immediately from the on-device catalogue.
+  const local = Array.isArray(window.__homeBrowseCatalog) ? window.__homeBrowseCatalog : (getOfflineHomeCache()?.browseProducts || []);
+  const localItems = (local || []).map(p => {
+    const haystack = [p?.name, p?.description, p?.vendor?.business_name, p?.category?.name, p?.sector?.name].filter(Boolean).join(" ");
+    return {
+      id:p?.id, name:p?.name, vendor:p?.vendor, photos:p?.photos, category:p?.category,
+      __score:searchCandidateScore(q, haystack) + searchCandidateScore(q, p?.name || "") * 0.3,
+      __price:searchEffectivePrice(p), __distance:searchDistanceKm(p?.vendor)
+    };
+  }).filter(x => x.id && x.__score >= 55);
+
+  localItems.sort((a,b) => (b.__score-a.__score) || (a.__price-b.__price) || ((a.__distance ?? Infinity)-(b.__distance ?? Infinity)));
+
+  const renderRows = items => {
+    const unique = [];
+    const seen = new Set();
+    for (const item of items) {
+      const id = String(item.id || "");
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      unique.push(item);
+      if (unique.length >= 6) break;
+    }
+    if (!unique.length) {
+      box.classList.add("hidden");
+      box.innerHTML = "";
+      return;
+    }
+    box.classList.remove("hidden");
+    box.innerHTML = `<div class="search-page-suggestions-head"><strong>Suggestions</strong><span>Closest + cheapest first</span></div>` +
+      unique.map(p => {
+        const d = p.__distance != null ? formatDistanceKm(p.__distance) : "Location unavailable";
+        const price = Number.isFinite(p.__price) ? naira(p.__price) : "Price on request";
+        const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
+        return `<button type="button" class="search-page-suggestion-row" data-id="${esc(p.id)}">
+          <span class="search-page-suggestion-thumb">${p.photos?.[0] ? `<img src="${esc(p.photos[0])}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-box"></i>`}</span>
+          <span class="search-page-suggestion-copy"><strong>${esc(p.name || "Listing")}${hasVariety ? ` <i class="fa-solid fa-layer-group search-result-variety" title="Multiple varieties"></i>` : ""}</strong><small>${esc(p.vendor?.business_name || "Vendor")} · <i class="fa-solid fa-location-dot"></i> ${esc(d)}</small></span>
+          <span class="search-page-suggestion-price">${esc(price)}</span>
+        </button>`;
+      }).join("");
+    box.querySelectorAll(".search-page-suggestion-row").forEach(btn => btn.addEventListener("click", () => {
+      saveSearchPageSuggestionHistory(btn.querySelector("strong")?.textContent || q);
+      navigate("productDetail", { productId: btn.dataset.id });
+      box.classList.add("hidden");
+    }));
+  };
+
+  renderRows(localItems);
+
+  if (typeof sb === "undefined") return;
+  try {
+    const t = q.toLowerCase().replace(/\s+/g, " ");
+    const [{ data }, { data: categoryMatches }, { data: sectorMatches }] = await Promise.all([
+      sb.from("products")
+        .select("id,name,description,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,vendor:vendors!inner(id,business_name,city,lat,lng,verification_status,is_active),category:categories(id,name,sector_id)")
+        .eq("status", "active")
+        .eq("vendor.verification_status", "verified")
+        .eq("vendor.is_active", true)
+        .or(`name.ilike.%${t}%,description.ilike.%${t}%`)
+        .limit(20),
+      sb.from("categories").select("id,name").ilike("name", `%${t}%`).limit(4),
+      sb.from("sectors").select("id,name").ilike("name", `%${t}%`).limit(4)
+    ]);
+    if (seq !== searchSuggestionsSeq || byId("searchPageInput")?.value.trim() !== q) return;
+    const serverItems = (data || []).map(p => {
+      const candidateText = [p.name,p.description,p.vendor?.business_name,p.category?.name].filter(Boolean).join(" ");
+      return {...p,__score:searchCandidateScore(q,candidateText)+searchCandidateScore(q,p.name||"")*0.3,__price:searchEffectivePrice(p),__distance:searchDistanceKm(p.vendor)};
+    }).filter(x => x.__score >= 55);
+    serverItems.sort((a,b) => (b.__score-a.__score) || (a.__price-b.__price) || ((a.__distance ?? Infinity)-(b.__distance ?? Infinity)));
+    renderRows([...serverItems,...localItems]);
+
+    const related = [
+      ...(sectorMatches || []).map(s => ({kind:"sector",id:s.id,name:s.name})),
+      ...(categoryMatches || []).map(c => ({kind:"category",id:c.id,name:c.name}))
+    ].slice(0,5);
+    if (related.length && byId("searchPageInput")?.value.trim() === q) {
+      const relatedHtml = `<div class="search-page-related-head">Related</div><div class="search-page-related-chips">${
+        related.map(r => `<button type="button" class="search-page-related-chip" data-kind="${r.kind}" data-id="${esc(r.id)}">${esc(r.name)}</button>`).join("")
+      }</div>`;
+      box.insertAdjacentHTML("beforeend", relatedHtml);
+      box.querySelectorAll(".search-page-related-chip").forEach(btn => btn.addEventListener("click", () => {
+        const kind = btn.dataset.kind, id = btn.dataset.id;
+        box.classList.add("hidden");
+        if (kind === "sector" && typeof switchSector === "function") {
+          navigate("home", {}, false).then(() => switchSector(id)).catch(() => switchSector(id));
+        } else if (kind === "category" && typeof filterByCategory === "function") {
+          navigate("home", {}, false).then(() => filterByCategory(id)).catch(() => filterByCategory(id));
+        }
+      }));
+    }
+  } catch (_) {
+    // Local suggestions remain visible.
+  }
+}
+
+function saveSearchPageSuggestionHistory(term) {
+  const q = String(term || "").trim();
+  if (!q) return;
+  try {
+    const list = typeof readSearchHistory === "function" ? readSearchHistory() : [];
+    const next = [q, ...(Array.isArray(list) ? list : []).filter(x => String(x).toLowerCase() !== q.toLowerCase())].slice(0, SEARCH_HISTORY_MAX || 8);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+  } catch (_) {}
+}
+
 async function runSearchPageQuery(term, saveToHistory) {
   term = String(term || "").trim();
   if (!term) return;
   const mySeq = ++searchPageSeq;
+  const liveSuggest = byId("searchPageSuggestions");
+  if (saveToHistory && liveSuggest) { liveSuggest.classList.add("hidden"); liveSuggest.innerHTML = ""; }
   const historyBlock = byId("searchPageHistoryBlock");
   if (historyBlock) historyBlock.hidden = true;
   if (saveToHistory) writeSearchHistory(term);
@@ -14411,9 +14620,24 @@ async function runSearchPageQuery(term, saveToHistory) {
   const topIds = (idRows || []).slice(0, 20).map((r) => r.id);
   let prods = [];
   if (topIds.length) {
-    const { data } = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,vendor:vendors!inner(business_name,verification_status,is_active)")
+    const { data } = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,vendor:vendors!inner(id,business_name,city,lat,lng,verification_status,is_active),category:categories(id,name,sector_id)")
       .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).in("id", topIds);
-    prods = (data || []).sort((a, b) => topIds.indexOf(a.id) - topIds.indexOf(b.id));
+    prods = (data || []).map((p) => {
+      const effectivePrice = Number(
+        p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price ?? Infinity)
+          ? p.discount_price
+          : (p.sale_price != null ? p.sale_price : (p.rental_rate != null ? p.rental_rate : Infinity))
+      );
+      const distanceKm = searchDistanceKm(p.vendor);
+      return { ...p, __searchPrice: Number.isFinite(effectivePrice) ? effectivePrice : Infinity,
+        __searchDistance: distanceKm == null ? Infinity : distanceKm,
+        __searchMatchRank: topIds.indexOf(p.id) };
+    }).sort((a, b) => {
+      // Search ordering: cheapest listings first; ties are broken by distance.
+      if (a.__searchPrice !== b.__searchPrice) return a.__searchPrice - b.__searchPrice;
+      if (a.__searchDistance !== b.__searchDistance) return a.__searchDistance - b.__searchDistance;
+      return a.__searchMatchRank - b.__searchMatchRank;
+    });
   }
   if (mySeq !== searchPageSeq) return;
 
@@ -14422,13 +14646,19 @@ async function runSearchPageQuery(term, saveToHistory) {
   document.querySelectorAll(".search-page-section, .search-page-empty").forEach((el) => el.remove());
 
   const productRowHtml = (p) => {
-    const price = p.is_service ? "" : p.sale_price != null
-      ? naira(p.discount_price != null && p.discount_price > 0 && p.discount_price < p.sale_price ? p.discount_price : p.sale_price)
-      : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
+    const price = p.__searchPrice !== Infinity
+      ? (p.rental_rate != null && p.sale_price == null ? `${naira(p.__searchPrice)}/${p.rental_rate_unit}` : naira(p.__searchPrice))
+      : "";
+    const distance = p.__searchDistance !== Infinity ? formatDistanceKm(p.__searchDistance) : "Location unavailable";
     const img = p.photos?.[0];
+    const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
+    const typeLabel = p.is_service ? "Service" : (p.listing_type === "rent" ? "Rental" : "Product");
     return `<button type="button" class="search-result-row" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <span class="search-result-thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</span>
-      <span class="search-result-copy"><strong>${esc(p.name)}</strong><span class="muted">${esc(p.vendor?.business_name || "")}</span></span>
+      <span class="search-result-copy">
+        <strong>${esc(p.name)}${hasVariety ? ` <i class="fa-solid fa-layer-group search-result-variety" title="Multiple varieties available" aria-label="Multiple varieties available"></i>` : ""}</strong>
+        <span class="muted">${esc(p.vendor?.business_name || "")} · ${typeLabel} · <i class="fa-solid fa-location-dot"></i> ${esc(distance)}</span>
+      </span>
       ${price ? `<span class="search-result-price">${price}</span>` : ""}
     </button>`;
   };
@@ -25795,6 +26025,130 @@ function exportFinancePdf() {
 .profile-own-storefront-header:active{transform:scale(.99)!important;}
 .profile-own-storefront-header:focus-visible{outline:2px solid var(--primary)!important;outline-offset:2px!important;}
 </style>
+
+<style id="levromart-final-contrast-search-20260922">
+/* Final visual calibration: light controls, but readable. */
+#app .levro-home-quick-actions .levro-quick-icon,
+#app .levro-quick-action .levro-quick-icon{
+  background:color-mix(in srgb,var(--primary) 9%,var(--card))!important;
+  color:#0B6E4A!important;
+  border:1px solid color-mix(in srgb,var(--primary) 34%,var(--border))!important;
+  box-shadow:none!important;
+  opacity:1!important;
+}
+#app .levro-home-quick-actions .levro-quick-icon i,
+#app .levro-quick-action .levro-quick-icon i{color:#0B6E4A!important;opacity:1!important;}
+#app .levro-home-quick-actions .levro-quick-label{color:#1e293b!important;font-weight:700!important;}
+#app .levro-home-quick-actions .levro-quick-arrow{color:#0B6E4A!important;opacity:1!important;}
+
+/* Every tab: no heavy fill, no white text. */
+#app .vendor-listing-tab,
+#app .vendor-request-tab,
+#app .admin-people-role-tab,
+#app .catalog-type-tab,
+#app .range-tab,
+#app .storefront-catalog-tab,
+#app .vendor-products-unified-tabs button,
+#app .segmented-tabs button{
+  background:color-mix(in srgb,var(--primary) 4%,var(--card))!important;
+  color:#334155!important;
+  border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border))!important;
+  box-shadow:none!important;
+  font-weight:700!important;
+}
+#app .vendor-listing-tab.active,
+#app .vendor-request-tab.active,
+#app .admin-people-role-tab.active,
+#app .catalog-type-tab.active,
+#app .range-tab.active,
+#app .storefront-catalog-tab.active,
+#app .vendor-products-unified-tabs button.active,
+#app .segmented-tabs button.active{
+  background:color-mix(in srgb,var(--primary) 9%,var(--card))!important;
+  color:#0B6E4A!important;
+  border-color:color-mix(in srgb,var(--primary) 32%,var(--border))!important;
+  box-shadow:none!important;
+}
+#app .vendor-listing-tabs,
+#app .vendor-request-tabs,
+#app .admin-people-role-tabs,
+#app .catalog-type-tabs,
+#app .home-catalog-type-tabs,
+#app .segmented-tabs{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+#app .vendor-listing-tab i,
+#app .vendor-request-tab i,
+#app .catalog-type-tab i,
+#app .vendor-products-unified-tabs button i{color:inherit!important;opacity:1!important;}
+
+/* Product/service/package storefront tabs use the same treatment. */
+#app .vendor-products-unified-tabs button,
+#app .vendor-products-unified-tabs button.active{
+  border-radius:10px!important;
+}
+
+/* Cart/service quick actions remain light but have clear contrast. */
+#app .card-cart-btn,
+#app .card-service-btn{
+  background:color-mix(in srgb,var(--primary) 9%,var(--card))!important;
+  color:#0B6E4A!important;
+  border:1px solid color-mix(in srgb,var(--primary) 31%,var(--border))!important;
+  box-shadow:none!important;
+  opacity:1!important;
+}
+#app .card-cart-btn i,#app .card-service-btn i{color:#0B6E4A!important;opacity:1!important;}
+#app header .header-right .icon-btn:has(.fa-cart-shopping),
+#app #headerCartWrap .icon-btn{
+  background:color-mix(in srgb,var(--primary) 8%,var(--card))!important;
+  color:#0B6E4A!important;
+  border:1px solid color-mix(in srgb,var(--primary) 28%,var(--border))!important;
+  box-shadow:none!important;
+}
+
+/* Small, uniform Add Listing control. */
+#bottomNav .bottom-nav-add,
+#bottomNav .bottom-nav-add:hover,
+#bottomNav .bottom-nav-add:active{
+  width:32px!important;height:30px!important;min-width:32px!important;min-height:30px!important;
+  border-radius:8px!important;
+  background:color-mix(in srgb,var(--primary) 7%,var(--card))!important;
+  color:#0B6E4A!important;
+  border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border))!important;
+  box-shadow:none!important;
+}
+#bottomNav .bottom-nav-add i{color:#0B6E4A!important;font-size:.82rem!important;opacity:1!important;}
+
+/* Search result/suggestion contrast and information density. */
+.search-result-variety{color:#0B6E4A!important;font-size:.7em!important;margin-left:.18rem;}
+.search-result-copy .muted{color:#64748b!important;}
+.search-result-price,.search-page-suggestion-price{color:#1e293b!important;font-weight:800!important;}
+.search-page-suggestions{margin:.55rem 0 .7rem;background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.search-page-suggestions-head{display:flex;align-items:center;justify-content:space-between;padding:.6rem .75rem;border-bottom:1px solid var(--border);font-size:.78rem;color:#334155;}
+.search-page-suggestions-head span{font-size:.68rem;color:#0B6E4A;font-weight:700;}
+.search-page-suggestion-row{display:flex;align-items:center;gap:.65rem;width:100%;padding:.62rem .7rem;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);text-align:left;cursor:pointer;font:inherit;}
+.search-page-suggestion-row:last-child{border-bottom:0;}
+.search-page-suggestion-row:hover{background:color-mix(in srgb,var(--primary) 4%,var(--card));}
+.search-page-suggestion-thumb{width:38px;height:38px;flex:0 0 38px;border-radius:9px;overflow:hidden;background:var(--border);display:flex;align-items:center;justify-content:center;color:#64748b;}
+.search-page-suggestion-thumb img{width:100%;height:100%;object-fit:cover;}
+.search-page-suggestion-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:.12rem;}
+.search-page-suggestion-copy strong{font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1e293b;}
+.search-page-suggestion-copy small{font-size:.69rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.search-page-suggestion-price{flex:0 0 auto;font-size:.78rem;white-space:nowrap;}
+@media(max-width:520px){
+  .search-page-suggestion-row{padding:.58rem .62rem;}
+  .search-page-suggestion-copy strong{font-size:.8rem;}
+  .search-page-suggestion-copy small{font-size:.65rem;}
+}
+</style>
+
+
+.search-page-related-head{padding:.5rem .7rem .25rem;font-size:.7rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;}
+.search-page-related-chips{display:flex;flex-wrap:wrap;gap:.4rem;padding:.2rem .7rem .65rem;}
+.search-page-related-chip{border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));background:color-mix(in srgb,var(--primary) 5%,var(--card));color:#0B6E4A;border-radius:999px;padding:.38rem .62rem;font:inherit;font-size:.7rem;font-weight:700;cursor:pointer;}
+
 </body>
 
 
