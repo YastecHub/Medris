@@ -7416,139 +7416,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 }
 #app .home-promotional-slide img { object-fit: cover !important; object-position: center !important; }
 </style>
-
-<style id="levromart-light-controls-and-follow-final-20260922">
-/* FINAL LIGHT CONTROL PASS
-   Navigation/selection controls use the same restrained treatment throughout:
-   transparent surface, thin outline, tiny tint, no heavy green fill. */
-#app .vendor-listing-tab,
-#app .vendor-listing-tab.active,
-#app .vendor-request-tab,
-#app .vendor-request-tab.active,
-#app #vendorsViewListBtn,
-#app #vendorsViewMapBtn,
-#app #vendorsViewListBtn.active,
-#app #vendorsViewMapBtn.active,
-#app .storefront-view-buttons .btn.active,
-#app .storefront-view-buttons .btn-outline.active,
-#app .vendor-dashboard-icon-action,
-#app .vendor-dashboard-icon-action.active,
-#app .admin-people-role-tab,
-#app .admin-people-role-tab.active {
-  background: color-mix(in srgb,var(--primary) 3%,var(--card)) !important;
-  background-image: none !important;
-  color: var(--primary) !important;
-  border: 1px solid color-mix(in srgb,var(--primary) 22%,var(--border)) !important;
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
-#app .vendor-listing-tab:hover,
-#app .vendor-request-tab:hover,
-#app #vendorsViewListBtn:hover,
-#app #vendorsViewMapBtn:hover,
-#app .storefront-view-buttons .btn:hover,
-#app .vendor-dashboard-icon-action:hover {
-  background: color-mix(in srgb,var(--primary) 6%,var(--card)) !important;
-  border-color: color-mix(in srgb,var(--primary) 32%,var(--border)) !important;
-}
-#app .vendor-listing-tab.active,
-#app .vendor-request-tab.active,
-#app #vendorsViewListBtn.active,
-#app #vendorsViewMapBtn.active,
-#app .storefront-view-buttons .btn.active,
-#app .vendor-dashboard-icon-action.active,
-#app .admin-people-role-tab.active {
-  background: color-mix(in srgb,var(--primary) 7%,var(--card)) !important;
-  color: var(--primary) !important;
-  border-color: color-mix(in srgb,var(--primary) 30%,var(--border)) !important;
-}
-#app .vendor-listing-tabs,
-#app .vendor-request-tabs,
-#app .admin-people-role-tabs {
-  background: color-mix(in srgb,var(--primary) 1.5%,var(--card)) !important;
-  border: 1px solid color-mix(in srgb,var(--primary) 14%,var(--border)) !important;
-  box-shadow: none !important;
-}
-
-/* Follow buttons: light outlined state in both Follow and Following states. */
-#app .vendor-card-follow-btn,
-#app .vendor-card-follow-btn.following,
-#app .follow-btn,
-#app .follow-btn.following {
-  background: color-mix(in srgb,var(--primary) 3%,var(--card)) !important;
-  color: var(--primary) !important;
-  border: 1px solid color-mix(in srgb,var(--primary) 24%,var(--border)) !important;
-  box-shadow: none !important;
-  transition: background-color .12s ease,border-color .12s ease,color .12s ease !important;
-}
-#app .vendor-card-follow-btn:hover,
-#app .vendor-card-follow-btn.following:hover,
-#app .follow-btn:hover,
-#app .follow-btn.following:hover {
-  background: color-mix(in srgb,var(--primary) 7%,var(--card)) !important;
-}
-#app .vendor-card-follow-btn[data-follow-busy="1"] { opacity: 1 !important; }
-
-/* Add-listing control: small neutral icon matching the other bottom-nav icons,
-   with the label underneath instead of a large attention-grabbing circle. */
-@media(max-width:720px){
-  #bottomNav .bottom-nav-add {
-    position:relative !important; inset:auto !important;
-    width:46px !important; height:46px !important; min-width:46px !important; min-height:46px !important;
-    padding:0 !important; margin:0 !important; border:0 !important; border-radius:8px !important;
-    background:transparent !important; color:var(--text-muted) !important; box-shadow:none !important;
-    display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:center !important;
-    gap:2px !important; font-size:.56rem !important; font-weight:600 !important; line-height:1 !important;
-  }
-  #bottomNav .bottom-nav-add i {
-    width:30px !important; height:30px !important; min-width:30px !important; min-height:30px !important;
-    display:grid !important; place-items:center !important;
-    border:1px solid color-mix(in srgb,var(--primary) 25%,var(--border)) !important;
-    border-radius:8px !important;
-    background:color-mix(in srgb,var(--primary) 4%,var(--card)) !important;
-    color:var(--primary) !important; font-size:.9rem !important;
-  }
-  #bottomNav .bottom-nav-add::after { content:"Add listing"; color:var(--text-muted) !important; white-space:nowrap !important; }
-}
-
-/* Product-card quick add: integrate with the card rather than using a deep
-   green floating circle. */
-#app .card-cart-btn,
-#app .card-service-btn {
-  background: color-mix(in srgb,var(--primary) 4%,var(--card)) !important;
-  background-image:none !important;
-  color:var(--primary) !important;
-  border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border)) !important;
-  box-shadow:none !important;
-}
-#app .card-cart-btn:hover,
-#app .card-service-btn:hover { background:color-mix(in srgb,var(--primary) 8%,var(--card)) !important; }
-
-/* Header cart: same restrained outlined icon treatment; message icon is not
-   changed by this selector. */
-#app header button.icon-btn[onclick*="requireLoginThen('cart')"] {
-  background:color-mix(in srgb,var(--primary) 3%,var(--card)) !important;
-  color:var(--primary) !important;
-  border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border)) !important;
-  box-shadow:none !important;
-}
-#app header button.icon-btn[onclick*="requireLoginThen('cart')"] i { color:var(--primary) !important; }
-
-/* Six homepage actions: keep the iconography light and consistent with the
-   healthcare-style category icons. */
-#app .levro-home-quick-actions .levro-quick-action {
-  background:color-mix(in srgb,var(--primary) 1.5%,var(--card)) !important;
-  border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border)) !important;
-  box-shadow:none !important;
-}
-#app .levro-home-quick-actions .levro-quick-icon {
-  background:color-mix(in srgb,var(--primary) 7%,var(--card)) !important;
-  color:var(--primary) !important;
-  border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border)) !important;
-  box-shadow:none !important;
-}
-</style>
-
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
@@ -35862,26 +35729,56 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       const t=q.toLowerCase().replace(/\s+/g," ");
       const [ids,vendors,packages,cats,sectors] = await Promise.all([
         sb.rpc("search_product_ids",{p_query:t}),
-        sb.from("vendors").select("id,business_name,city").eq("verification_status","verified").eq("is_active",true).ilike("business_name",`%${t}%`).limit(4),
-        sb.from("vendor_packages").select("id,name,price,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).or(`name.ilike.%${t}%,description.ilike.%${t}%`).limit(4),
-        sb.from("categories").select("id,name").ilike("name",`%${t}%`).limit(4),
-        sb.from("sectors").select("id,name").ilike("name",`%${t}%`).limit(4)
+        sb.from("vendors").select("id,business_name,city,lat,lng").eq("verification_status","verified").eq("is_active",true).ilike("business_name",`%${t}%`).limit(6),
+        sb.from("vendor_packages").select("id,name,price,vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).or(`name.ilike.%${t}%,description.ilike.%${t}%`).limit(8),
+        sb.from("categories").select("id,name").ilike("name",`%${t}%`).limit(6),
+        sb.from("sectors").select("id,name").ilike("name",`%${t}%`).limit(6)
       ]);
-      const idList=(ids.data||[]).slice(0,6).map(x=>x.id).filter(Boolean);
+      const idList=(ids.data||[]).map(x=>x.id).filter(Boolean).slice(0,18);
       let products=[];
       if(idList.length){
-        const r=await sb.from("products").select("id,name,is_service,vendor:vendors!inner(business_name,verification_status,is_active)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).in("id",idList);
-        products=(r.data||[]).sort((a,b)=>idList.indexOf(a.id)-idList.indexOf(b.id));
+        const r=await sb.from("products").select("id,name,is_service,sale_price,discount_price,rental_rate,rental_rate_unit,photos,listing_type,vendor:vendors!inner(id,business_name,city,lat,lng,verification_status,is_active),category:categories(id,name,sector_id)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).in("id",idList);
+        products=(r.data||[]).map(p=>{
+          const price=Number(p.discount_price||p.sale_price||p.rental_rate||0);
+          const distance=(typeof vendorDistanceKm==='function')?vendorDistanceKm(p.vendor):null;
+          return {...p,__searchPrice:Number.isFinite(price)?price:Infinity,__searchDistance:distance==null?Infinity:distance,__matchRank:idList.indexOf(p.id)};
+        });
+        // Relevance is used to decide what belongs in the recommendation set;
+        // once selected, nearby vendors come first, then lower-priced listings.
+        products.sort((a,b)=>{
+          const da=a.__searchDistance, db=b.__searchDistance;
+          if(da!==db) return da-db;
+          if(a.__searchPrice!==b.__searchPrice) return a.__searchPrice-b.__searchPrice;
+          return a.__matchRank-b.__matchRank;
+        });
       }
+      const distanceText=(v)=>{
+        const km=(typeof vendorDistanceKm==='function')?vendorDistanceKm(v):null;
+        return km==null ? "Location unavailable" : formatDistanceKm(km);
+      };
+      const productRows=products.slice(0,8).map(p=>{
+        const hasVariety=Array.isArray(p.photos)&&p.photos.length>1;
+        const price=p.__searchPrice!==Infinity ? naira(p.__searchPrice) : "Price on request";
+        const kind=p.is_service?"Service":(p.listing_type==='rent'?"Rental":"Product");
+        return `<button type="button" class="levro-smart-result" data-action="product" data-id="${escText(p.id)}">
+          <i class="fa-solid ${p.is_service?'fa-hand-holding-heart':'fa-box'}"></i>
+          <span><strong>${escText(p.name)} ${hasVariety?'<i class="fa-solid fa-layer-group levro-smart-variety" title="Multiple varieties"></i>':''}</strong>
+          <small>${escText(p.vendor?.business_name||"Listing")} · ${kind} · ${escText(distanceText(p.vendor))} · ${escText(price)}</small></span>
+        </button>`;
+      });
+      const packageRows=(packages.data||[]).map(p=>{
+        const km=(typeof vendorDistanceKm==='function')?vendorDistanceKm(p.vendor):null;
+        return {...p,__distance:km==null?Infinity:km,__price:Number(p.price||0)};
+      }).sort((a,b)=>a.__distance-b.__distance||a.__price-b.__price).slice(0,4).map(p=>`<button type="button" class="levro-smart-result" data-action="package" data-id="${escText(p.id)}"><i class="fa-solid fa-box-open"></i><span><strong>${escText(p.name)}</strong><small>${escText(p.vendor?.business_name||"Package")} · ${p.__distance===Infinity?'Location unavailable':escText(formatDistanceKm(p.__distance))} · ${escText(naira(p.__price))}</small></span></button>`);
       const rows=[
-        ...products.map(p=>`<button type="button" class="levro-smart-result" data-action="product" data-id="${escText(p.id)}"><i class="fa-solid ${p.is_service?'fa-hand-holding-heart':'fa-box'}"></i><span><strong>${escText(p.name)}</strong><small>${escText(p.vendor?.business_name||"Listing")}</small></span></button>`),
-        ...(packages.data||[]).map(p=>`<button type="button" class="levro-smart-result" data-action="package" data-id="${escText(p.id)}"><i class="fa-solid fa-box-open"></i><span><strong>${escText(p.name)}</strong><small>Package · ₦${Number(p.price||0).toLocaleString()}</small></span></button>`),
-        ...(vendors.data||[]).map(v=>`<button type="button" class="levro-smart-result" data-action="vendor" data-id="${escText(v.id)}"><i class="fa-solid fa-store"></i><span><strong>${escText(v.business_name)}</strong><small>Vendor · ${escText(v.city||"")}</small></span></button>`),
-        ...(cats.data||[]).map(c=>`<button type="button" class="levro-smart-result" data-action="category" data-id="${escText(c.id)}"><i class="fa-solid fa-tags"></i><span><strong>${escText(c.name)}</strong><small>Category</small></span></button>`),
-        ...(sectors.data||[]).map(s=>`<button type="button" class="levro-smart-result" data-action="sector" data-id="${escText(s.id)}"><i class="fa-solid fa-layer-group"></i><span><strong>${escText(s.name)}</strong><small>Sector</small></span></button>`)
+        ...productRows,
+        ...packageRows,
+        ...(vendors.data||[]).map(v=>`<button type="button" class="levro-smart-result" data-action="vendor" data-id="${escText(v.id)}"><i class="fa-solid fa-store"></i><span><strong>${escText(v.business_name)}</strong><small>Vendor · ${escText(v.city||"")} · ${escText(distanceText(v))}</small></span></button>`),
+        ...(cats.data||[]).map(c=>`<button type="button" class="levro-smart-result" data-action="category" data-id="${escText(c.id)}"><i class="fa-solid fa-tags"></i><span><strong>${escText(c.name)}</strong><small>Category · related listings</small></span></button>`),
+        ...(sectors.data||[]).map(s=>`<button type="button" class="levro-smart-result" data-action="sector" data-id="${escText(s.id)}"><i class="fa-solid fa-layer-group"></i><span><strong>${escText(s.name)}</strong><small>Sector · related listings</small></span></button>`)
       ];
       return rows.slice(0,12).join("") || `<div class="levro-search-no-results">No matching listings yet. Press Enter to search the marketplace.</div>`;
-    }catch(e){ return `<div class="levro-search-no-results">Press Enter to search the marketplace.</div>`; }
+    }catch(e){ console.warn("[Levromart] smart search failed",e); return `<div class="levro-search-no-results">Press Enter to search the marketplace.</div>`; }
   }
 
   function routeSearch(q){
@@ -36125,19 +36022,19 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     if(!btn||btn.disabled)return;
     const next=!btn.classList.contains("following");
     const matches=document.querySelectorAll(`.vendor-card-follow-btn[data-vendor-id="${CSS.escape(String(vendorId))}"]`);
-    // Optimistic UI: change the visible state immediately and use a local
-    // busy flag rather than disabling the control, so the visual state never
-    // appears stuck or dimmed while Supabase completes the write.
-    matches.forEach(b=>{b.dataset.followBusy="1";b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";b.setAttribute("aria-pressed",String(next));});
+    // Flip the button the instant it's tapped -- waiting on the round trip
+    // before showing "Following" reads as stalling. Reconcile with the
+    // server after; on failure, flip it back and say why.
+    matches.forEach(b=>{b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";b.disabled=true;});
     try{
       const r=await sb.rpc("toggle_vendor_follow",{p_vendor_id:vendorId,p_following:next});
       if(r.error)throw r.error;
       showToast?.(next?"Following vendor.":"Unfollowed vendor.","success");
     }catch(e){
-      matches.forEach(b=>{b.classList.toggle("following",!next);b.textContent=!next?"Following":"Follow";b.setAttribute("aria-pressed",String(!next));});
+      matches.forEach(b=>{b.classList.toggle("following",!next);b.textContent=!next?"Following":"Follow";});
       showToast?.(e.message||"Could not update your following list.","error");
     }
-    finally{ matches.forEach(b=>{delete b.dataset.followBusy;}); }
+    finally{ matches.forEach(b=>{b.disabled=false;}); }
   }
   window.toggleVendorCardFollow=toggleVendorCardFollow;
   async function hydrateVendorCardFollowState(){
@@ -40145,3 +40042,141 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 .container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:130px !important;}
 @media (max-width:720px){.container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:120px !important;}}
 </style>
+
+
+<style id="levromart-clean-ui-final-20260922">
+/* Final clean-control pass: tabs are individual light controls, never a boxed
+   segmented container, and active states use only a faint tint + thin outline. */
+#app .vendor-listing-tabs,
+#app .vendor-request-tabs,
+#app .admin-people-role-tabs,
+#app .vendor-listing-tabs[role="tablist"]{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+  padding:0!important;
+  margin:.85rem 0 1rem!important;
+  display:flex!important;
+  justify-content:flex-start!important;
+  align-items:center!important;
+  gap:.35rem!important;
+  flex-wrap:wrap!important;
+}
+#app .vendor-listing-tab,
+#app .vendor-request-tab,
+#app .admin-people-role-tab{
+  background:transparent!important;
+  color:var(--text-muted)!important;
+  border:1px solid var(--border)!important;
+  box-shadow:none!important;
+  border-radius:10px!important;
+  padding:.48rem .72rem!important;
+  font-weight:650!important;
+}
+#app .vendor-listing-tab.active,
+#app .vendor-request-tab.active,
+#app .admin-people-role-tab.active{
+  background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;
+  color:var(--primary)!important;
+  border:1px solid color-mix(in srgb,var(--primary) 26%,var(--border))!important;
+  box-shadow:none!important;
+}
+/* Grid/list/map controls use the same quiet icon-button language. */
+#app #vendorsViewListBtn,
+#app #vendorsViewMapBtn,
+#app #storefrontViewGridBtn,
+#app #storefrontViewTableBtn,
+#app .vendor-view-toggle,
+#app .vendors-view-toggle{
+  background:transparent!important;
+  color:var(--text-muted)!important;
+  border:1px solid var(--border)!important;
+  box-shadow:none!important;
+  border-radius:10px!important;
+}
+#app #vendorsViewListBtn.active,
+#app #vendorsViewMapBtn.active,
+#app #storefrontViewGridBtn.active,
+#app #storefrontViewTableBtn.active,
+#app .vendor-view-toggle.active,
+#app .vendors-view-toggle.active{
+  background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;
+  color:var(--primary)!important;
+  border-color:color-mix(in srgb,var(--primary) 26%,var(--border))!important;
+}
+/* Add Listing: same footprint and visual language as the other bottom-nav icons. */
+#bottomNav .bottom-nav-add{
+  position:relative!important; inset:auto!important;
+  width:32px!important;height:28px!important;min-width:32px!important;min-height:28px!important;
+  flex:0 0 32px!important;margin:0!important;
+  border-radius:8px!important;
+  border:1px solid color-mix(in srgb,var(--primary) 28%,var(--border))!important;
+  background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;
+  color:var(--primary)!important;
+  box-shadow:none!important;
+  font-size:.9rem!important;
+  align-self:center!important;justify-self:center!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+}
+#bottomNav .bottom-nav-add i{font-size:.82rem!important;line-height:1!important;}
+#bottomNav .bottom-nav-add::after{
+  content:"Add listing";
+  position:absolute!important;
+  top:calc(100% + 2px)!important;
+  left:50%!important;transform:translateX(-50%)!important;
+  white-space:nowrap!important;
+  color:var(--text-muted)!important;
+  font-size:.61rem!important;font-weight:600!important;
+  pointer-events:none!important;
+}
+#bottomNav.has-add{padding-bottom:12px!important;}
+/* Quick actions: quiet outlined icons, matching the healthcare/category treatment. */
+#app .levro-home-quick-actions .levro-quick-icon,
+#app .levro-quick-action .levro-quick-icon{
+  width:2.45rem!important;height:2.45rem!important;
+  border-radius:10px!important;
+  background:color-mix(in srgb,var(--primary) 6%,var(--card))!important;
+  color:var(--primary)!important;
+  border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border))!important;
+  box-shadow:none!important;
+}
+/* Product cards: cart/service affordances become small, light, outlined controls. */
+#app .card-cart-btn,
+#app .card-service-btn{
+  background:color-mix(in srgb,var(--primary) 6%,var(--card))!important;
+  color:var(--primary)!important;
+  border:1px solid color-mix(in srgb,var(--primary) 25%,var(--border))!important;
+  box-shadow:none!important;
+}
+#app .card-cart-btn.added{background:color-mix(in srgb,var(--success) 7%,var(--card))!important;color:var(--success)!important;border-color:color-mix(in srgb,var(--success) 25%,var(--border))!important;}
+/* Header cart: same quiet outlined language as the rest of the header. */
+#app header .header-right .icon-btn:has(.fa-cart-shopping),
+#app #headerCartWrap .icon-btn{
+  background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;
+  color:var(--primary)!important;
+  border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border))!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+/* Keep the smart-search rows compact but give the buyer the information they
+   asked for: vendor, distance, price, and variety when available. */
+#app .levro-smart-result{padding:.68rem .55rem!important;border:0!important;box-shadow:none!important;}
+#app .levro-smart-result small{display:block!important;white-space:normal!important;line-height:1.35!important;}
+#app .levro-smart-variety{color:var(--primary)!important;font-size:.68em!important;margin-left:.18rem!important;}
+</style>
+<script id="levromart-clean-ui-search-final-20260922">
+/* Re-apply the light add-listing state after any bottom-nav rerender. */
+(function(){
+  const sync=()=>{
+    const b=document.querySelector('#bottomNav .bottom-nav-add');
+    if(!b)return;
+    b.title='Add listing';
+    b.setAttribute('aria-label','Add listing');
+    b.innerHTML='<i class="fa-solid fa-plus" aria-hidden="true"></i>';
+  };
+  document.addEventListener('click',()=>setTimeout(sync,0),true);
+  new MutationObserver(()=>sync()).observe(document.body,{subtree:true,childList:true});
+  sync();
+})();
+</script>
