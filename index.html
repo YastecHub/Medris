@@ -106,107 +106,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';"></script>
 <script src="/lib/compress-image.js"></script>
-<script>
-/* LevroMart image delivery/upload optimization layer.
-   - New uploads are resized in-browser and encoded as WebP where supported.
-   - Existing Supabase public images are served through Storage Image Transformations
-     at the size appropriate to their UI slot, so the browser does not download
-     multi-megabyte originals for 160px cards.
-   - Falls back to the original URL if a URL is not a Supabase public image. */
-(function(){
-  "use strict";
-  const SUPA_PUBLIC_RE=/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/;
-  function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
-  window.levroStorageImageUrl=function(url,opts){
-    if(!url || typeof url!=="string") return url||"";
-    if(url.startsWith("data:") || url.startsWith("blob:")) return url;
-    let clean=url;
-    try{clean=clean.split("?")[0].split("#")[0];}catch(_){}
-    const m=clean.match(SUPA_PUBLIC_RE);
-    if(!m) return url;
-    const bucket=m[1], path=m[2];
-    const width=Math.round(clamp(Number(opts?.width||800),1,2500));
-    const height=opts?.height?Math.round(clamp(Number(opts.height),1,2500)):null;
-    const quality=Math.round(clamp(Number(opts?.quality||78),20,100));
-    const resize=opts?.resize||"contain";
-    return `${clean.replace("/storage/v1/object/public/","/storage/v1/render/image/public/")}?width=${width}${height?`&height=${height}`:""}&resize=${encodeURIComponent(resize)}&quality=${quality}`;
-  };
-
-  window.levroOptimizeImage=async function(file,opts={}){
-    if(!file || !String(file.type||"").startsWith("image/")) return file;
-    const maxWidth=Number(opts.maxWidth||1600), maxHeight=Number(opts.maxHeight||1600);
-    const quality=Number(opts.quality||0.78);
-    /* Avoid touching tiny images. */
-    if(file.size && file.size<120*1024 && !opts.force) return file;
-    if(typeof createImageBitmap!=="function" && typeof Image==="undefined") return file;
-    try{
-      let source;
-      if(typeof createImageBitmap==="function") source=await createImageBitmap(file);
-      else { source=await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=URL.createObjectURL(file);}); }
-      const sw=source.width||source.naturalWidth, sh=source.height||source.naturalHeight;
-      if(!sw||!sh) return file;
-      const scale=Math.min(1,maxWidth/sw,maxHeight/sh);
-      const w=Math.max(1,Math.round(sw*scale)), h=Math.max(1,Math.round(sh*scale));
-      /* If already small and reasonably sized, retain it. */
-      if(scale===1 && file.size<350*1024 && !opts.force){try{source.close?.();}catch(_){} return file;}
-      const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
-      const ctx=canvas.getContext("2d",{alpha:true});
-      if(!ctx) return file;
-      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
-      ctx.drawImage(source,0,0,w,h);
-      try{source.close?.();}catch(_){}
-      let blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",quality));
-      /* WebP is supported by all current LevroMart target browsers, but retain a
-         JPEG fallback for older environments and photographs with no alpha need. */
-      if(!blob || !blob.size){blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",quality));}
-      if(!blob || !blob.size) return file;
-      if(blob.size>=file.size && scale===1 && !opts.force) return file;
-      return blob;
-    }catch(_){return file;}
-  };
-  window.levroImageExtension=function(blob,original){
-    const type=String(blob?.type||original?.type||"").toLowerCase();
-    if(type.includes("webp"))return "webp";
-    if(type.includes("png"))return "png";
-    if(type.includes("jpeg")||type.includes("jpg"))return "jpg";
-    return (String(original?.name||"jpg").split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
-  };
-  window.levroOptimizeStorageImages=function(root){
-    const scope=root||document;
-    scope.querySelectorAll?.('img[src*="/storage/v1/object/public/"]').forEach(img=>{
-      if(img.dataset.levroTransformed==='1')return;
-      const src=img.getAttribute('src'); if(!src)return;
-      let opts={width:800,height:800,quality:76,resize:'contain'};
-      if(img.closest('.home-promotional-slide')) opts={width:1200,height:630,quality:78,resize:'cover'};
-      else if(img.closest('.product-card-wrap,.product-img')) opts={width:520,height:520,quality:74,resize:'cover'};
-      else if(img.closest('.product-gallery-thumb')) opts={width:180,height:180,quality:70,resize:'cover'};
-      else if(img.closest('.product-gallery-slide,.package-detail-gallery-slide')) opts={width:1200,height:1200,quality:82,resize:'contain'};
-      else if(img.closest('.vendor-directory-logo,.avatar-circle,.vendor-profile-header-avatar')) opts={width:220,height:220,quality:74,resize:'cover'};
-      const transformed=window.levroStorageImageUrl(src,opts);
-      if(transformed&&transformed!==src){
-        img.dataset.levroOriginalSrc=src;
-        img.dataset.levroTransformed='1';
-        img.onerror=function(){
-          const original=this.dataset.levroOriginalSrc;
-          if(original&&this.src!==original){this.onerror=null;this.src=original;return;}
-          this.onerror=null;
-        };
-        img.src=transformed;
-      }
-    });
-  };
-  let levroImageObserverTimer=0;
-  const scheduleImageOptimization=()=>{
-    if(levroImageObserverTimer)return;
-    levroImageObserverTimer=setTimeout(()=>{levroImageObserverTimer=0;try{window.levroOptimizeStorageImages(document);}catch(_){}},0);
-  };
-  if(typeof MutationObserver!=='undefined'){
-    const mo=new MutationObserver(scheduleImageOptimization);
-    const start=()=>{if(document.body)mo.observe(document.body,{subtree:true,childList:true});scheduleImageOptimization();};
-    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-  }
-})();
-</script>
 <style>
 
   /* Clean page-heading rhythm: headings must never visually collide with the
@@ -5742,7 +5641,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
 <style id="levromart-home-carousel-admin">
   /* Promotional homepage carousel */
   .home-promotional-carousel{position:relative;width:100%;margin:0 0 1.05rem;border-radius:18px;overflow:hidden;background:var(--card);border:1px solid var(--ui-border,var(--border));box-shadow:0 10px 30px rgba(15,23,42,.08);isolation:isolate}
-  .home-promotional-viewport{position:relative;width:100%;aspect-ratio:1200/630;overflow:hidden;touch-action:pan-y pinch-zoom;cursor:grab}
+  .home-promotional-viewport{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;touch-action:pan-y pinch-zoom;cursor:grab}
   .home-promotional-viewport:active{cursor:grabbing}
   .home-promotional-track{display:flex;width:100%;height:100%;transform:translate3d(0,0,0);transition:transform .45s cubic-bezier(.22,.8,.2,1);will-change:transform}
   .home-promotional-slide{flex:0 0 100%;width:100%;height:100%;position:relative;display:block;border:0;padding:0;background:none;cursor:pointer}
@@ -7201,353 +7100,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #app .vendor-dashboard-icon-action{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;border-radius:11px!important;}
   #app .vendor-product-actions{grid-template-columns:repeat(2,46px)!important;grid-auto-rows:46px!important;gap:.48rem!important;padding-top:.65rem!important;}
   #app .vendor-card-icon-action{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;}
-}
-</style>
-
-
-<style id="levromart-light-control-system">
-/* Final light control system: tabs/chips/status controls should feel like
-   modern outlined UI, not filled green pills. Keep true primary CTAs untouched. */
-#app .btn-outline,
-#app .btn-outline.active,
-#app .segmented-tabs button.active,
-#app .catalog-type-tab.active,
-#app .vendor-request-tab.active,
-#app .vendor-listing-tab.active,
-#app .vendors-filters-toggle.active,
-#app .admin-people-role-tab.active,
-#app .range-tab.active {
-  background: color-mix(in srgb, var(--primary) 7%, var(--card)) !important;
-  color: var(--primary) !important;
-  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border)) !important;
-  box-shadow: none !important;
-  font-weight: 600;
-}
-
-#app .btn-outline:hover,
-#app .segmented-tabs button:hover,
-#app .catalog-type-tab:hover,
-#app .vendor-request-tab:hover,
-#app .vendor-listing-tab:hover,
-#app .vendors-filters-toggle:hover {
-  background: color-mix(in srgb, var(--primary) 9%, var(--card)) !important;
-  color: var(--primary) !important;
-  box-shadow: none !important;
-}
-
-/* Segmented/tab containers stay quiet; only the active tab gets a very light
-   tint and hairline outline. */
-#app .segmented-tabs {
-  background: color-mix(in srgb, var(--primary) 2%, var(--card)) !important;
-  border: 1px solid var(--border) !important;
-  box-shadow: none !important;
-  padding: .18rem !important;
-  gap: .1rem !important;
-}
-#app .segmented-tabs button {
-  background: transparent !important;
-  color: var(--text-muted) !important;
-  border: 1px solid transparent !important;
-  box-shadow: none !important;
-  font-weight: 600;
-}
-#app .segmented-tabs button.active {
-  background: color-mix(in srgb, var(--primary) 7%, var(--card)) !important;
-  border-color: color-mix(in srgb, var(--primary) 28%, var(--border)) !important;
-}
-
-/* Browse Products / Services / Packages and similar catalogue tabs. */
-#app .catalog-type-tab,
-#app .vendor-request-tab,
-#app .vendor-listing-tab,
-#app .vendors-filters-toggle,
-#app .admin-people-role-tab,
-#app .range-tab,
-#app .storefront-catalog-tab.active {
-  background: transparent !important;
-  color: var(--text-muted) !important;
-  border: 1px solid transparent !important;
-  box-shadow: none !important;
-}
-#app .catalog-type-tab.active,
-#app .vendor-request-tab.active,
-#app .vendor-listing-tab.active,
-#app .vendors-filters-toggle.active,
-#app .admin-people-role-tab.active,
-#app .range-tab.active,
-#app .storefront-catalog-tab.active {
-  background: color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
-  color: var(--primary) !important;
-  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border)) !important;
-  box-shadow: none !important;
-}
-
-/* Vendor Following button: subtle outline instead of a heavy green fill. */
-#app .vendor-card-follow-btn.following,
-#app .follow-btn.following,
-#app .following-btn,
-#app button[aria-pressed="true"].follow-btn {
-  background: color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
-  color: var(--primary) !important;
-  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border)) !important;
-  box-shadow: none !important;
-}
-
-/* Generic active chips/toggles: light tint + outline, never a solid block. */
-#app .sector-chip.active,
-#app .cat-chip.active,
-#app .filter-chip.active,
-#app .settings-inline-btn.active {
-  background: color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
-  color: var(--primary) !important;
-  border-color: color-mix(in srgb, var(--primary) 28%, var(--border)) !important;
-  box-shadow: none !important;
-}
-
-/* Keep controls visually slim. */
-#app .catalog-type-tab,
-#app .vendor-request-tab,
-#app .vendor-listing-tab,
-#app .vendors-filters-toggle,
-#app .admin-people-role-tab,
-#app .range-tab,
-#app .storefront-catalog-tab,
-#app .vendor-card-follow-btn,
-#app .follow-btn {
-  box-shadow: none !important;
-}
-</style>
-<style id="levromart-final-ui-and-session-fix-20260922">
-/* FINAL LIGHT UI: selection controls should look like WhatsApp-style outlined
-   controls, not solid green buttons. This deliberately covers every tab/filter
-   state while leaving true destructive/payment/primary CTAs alone. */
-#app .btn-outline,
-#app .btn-outline.active,
-#app .segmented-tabs button.active,
-#app .catalog-type-tab.active,
-#app .vendor-request-tab.active,
-#app .vendor-listing-tab.active,
-#app .vendors-filters-toggle.active,
-#app .admin-people-role-tab.active,
-#app .range-tab.active,
-#app .notif-tab.active,
-#app .storefront-catalog-tab.active,
-#app .sector-chip.active,
-#app .cat-chip.active,
-#app .admin-payment-issue-tab.active,
-#app .vendor-dashboard-icon-action.active,
-#app .vendor-card-follow-btn.following {
-  background: color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
-  background-image: none !important;
-  color: var(--primary) !important;
-  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border)) !important;
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
-#app .vendor-request-tab.active,
-#app .vendor-listing-tab.active,
-#app .admin-people-role-tab.active,
-#app .range-tab.active,
-#app .notif-tab.active,
-#app .storefront-catalog-tab.active,
-#app .admin-payment-issue-tab.active {
-  border-radius: 999px !important;
-}
-#app .vendor-request-tab.active span,
-#app .admin-people-role-tab.active strong,
-#app .admin-payment-issue-tab.active strong {
-  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
-  color: var(--primary) !important;
-}
-#app .segmented-tabs button.active { border-radius: 999px !important; }
-#app .vendor-request-tabs,
-#app .vendor-listing-tabs,
-#app .admin-people-role-tabs {
-  background: color-mix(in srgb, var(--primary) 2%, var(--card)) !important;
-  border-color: color-mix(in srgb, var(--primary) 16%, var(--border)) !important;
-  box-shadow: none !important;
-}
-/* Homepage quick actions: light cards and light outlined icon circles. */
-#app .levro-quick-action {
-  background: color-mix(in srgb, var(--primary) 2%, var(--card)) !important;
-  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border)) !important;
-  box-shadow: none !important;
-}
-#app .levro-home-quick-actions .levro-quick-icon {
-  background: color-mix(in srgb, var(--primary) 7%, var(--card)) !important;
-  color: var(--primary) !important;
-  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border)) !important;
-  box-shadow: none !important;
-}
-/* Category icon selection: no more deep filled circles. */
-#app .levro-home-cat-chip.active .levro-home-cat-icon {
-  background: color-mix(in srgb, var(--cat-color, var(--primary)) 8%, var(--card)) !important;
-  color: var(--cat-color, var(--primary)) !important;
-  border: 1px solid color-mix(in srgb, var(--cat-color, var(--primary)) 25%, var(--border)) !important;
-  box-shadow: none !important;
-}
-/* Search page: the input itself must not become a second box when focused. */
-#app .search-page-input-wrap,
-#app .search-page-input-wrap:focus-within {
-  border: 1px solid var(--border) !important;
-  box-shadow: none !important;
-  outline: none !important;
-  background: var(--card) !important;
-}
-#app .search-page-input-wrap input,
-#app .search-page-input-wrap input:focus,
-#app .search-page-input-wrap input:focus-visible {
-  border: 0 !important;
-  outline: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-/* Carousel: preserve the banner's native 1200:630 composition so its lower
-   artwork is never cropped by a taller 16:9 viewport. */
-#app .home-promotional-carousel,
-#app .home-promotional-viewport {
-  aspect-ratio: 1200 / 630 !important;
-}
-#app .home-promotional-viewport { height: auto !important; }
-#app .home-promotional-slide,
-#app .home-promotional-slide img {
-  width: 100% !important;
-  height: 100% !important;
-}
-#app .home-promotional-slide img { object-fit: cover !important; object-position: center !important; }
-</style>
-
-<style id="levromart-universal-light-tabs-final-20260922">
-/* UNIVERSAL LIGHT TAB SYSTEM
-   Every selection/navigation tab uses the same quiet, outlined treatment.
-   No solid green active fills and no white-on-green tab text. */
-#app .vendor-request-tabs,
-#app .vendor-listing-tabs,
-#app .storefront-catalog-tabs,
-#app .segmented-tabs,
-#app .catalog-type-tabs {
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-}
-
-#app .vendor-request-tab,
-#app .vendor-listing-tab,
-#app .storefront-catalog-tab,
-#app .segmented-tabs button,
-#app .catalog-type-tab,
-#app .notif-tab,
-#app .range-tab,
-#app .admin-people-role-tab,
-#app .admin-payment-issue-tab {
-  background: transparent !important;
-  background-image: none !important;
-  color: var(--text-muted) !important;
-  border: 1px solid transparent !important;
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
-
-/* Active = subtle tint + thin outline + readable green/dark text. */
-#app .vendor-request-tab.active,
-#app .vendor-listing-tab.active,
-#app .storefront-catalog-tab.active,
-#app .segmented-tabs button.active,
-#app .catalog-type-tab.active,
-#app .notif-tab.active,
-#app .range-tab.active,
-#app .admin-people-role-tab.active,
-#app .admin-payment-issue-tab.active {
-  background: color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
-  background-image: none !important;
-  color: var(--primary) !important;
-  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border)) !important;
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
-
-/* Prevent nested count/badge elements from becoming white-on-green. */
-#app .vendor-request-tab.active span,
-#app .vendor-listing-tab.active span,
-#app .storefront-catalog-tab.active span,
-#app .segmented-tabs button.active span,
-#app .catalog-type-tab.active span,
-#app .notif-tab.active span,
-#app .range-tab.active span,
-#app .admin-people-role-tab.active span,
-#app .admin-people-role-tab.active strong,
-#app .admin-payment-issue-tab.active span,
-#app .admin-payment-issue-tab.active strong {
-  color: var(--primary) !important;
-  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
-}
-
-/* Remove the old "pill tray" around vendor filters/tabs. */
-#app .vendor-request-tabs,
-#app .vendor-listing-tabs {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: .45rem !important;
-  flex-wrap: wrap !important;
-  margin: .8rem auto 1rem !important;
-  max-width: 100% !important;
-  overflow-x: auto !important;
-  border-radius: 0 !important;
-}
-
-/* Individual vendor tabs are still softly rounded, but are not boxed into a
-   second container and never become a solid green block. */
-#app .vendor-request-tab,
-#app .vendor-listing-tab,
-#app .storefront-catalog-tab,
-#app .segmented-tabs button,
-#app .catalog-type-tab {
-  border-radius: 10px !important;
-  font-weight: 650 !important;
-}
-
-/* Keep the storefront Products / Services / Packages tabs consistent. */
-#app .storefront-catalog-tabs {
-  gap: .45rem !important;
-  overflow-x: auto !important;
-  border-bottom: 0 !important;
-}
-#app .storefront-catalog-tab {
-  min-height: 40px !important;
-  padding: .5rem .82rem !important;
-}
-#app .storefront-catalog-tab.active {
-  color: var(--primary) !important;
-}
-
-/* The vendor page view controls (grid/list/map) stay quiet too. */
-#app #vendorsViewGridBtn,
-#app #vendorsViewListBtn,
-#app #vendorsViewMapBtn,
-#app #storefrontViewGridBtn,
-#app #storefrontViewTableBtn,
-#app .vendor-view-toggle,
-#app .vendors-view-toggle,
-#app .vendor-dashboard-icon-action {
-  background: transparent !important;
-  background-image: none !important;
-  color: var(--text-muted) !important;
-  border: 1px solid var(--border) !important;
-  box-shadow: none !important;
-}
-#app #vendorsViewGridBtn.active,
-#app #vendorsViewListBtn.active,
-#app #vendorsViewMapBtn.active,
-#app #storefrontViewGridBtn.active,
-#app #storefrontViewTableBtn.active,
-#app .vendor-view-toggle.active,
-#app .vendors-view-toggle.active,
-#app .vendor-dashboard-icon-action.active {
-  background: color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
-  color: var(--primary) !important;
-  border-color: color-mix(in srgb, var(--primary) 28%, var(--border)) !important;
 }
 </style>
 
@@ -11065,14 +10617,14 @@ async function refreshAuthState() {
   // user before treating that cached session as a real login.
   if (session) {
     const { data: verifiedUser, error: verifyError } = await sb.auth.getUser();
-    // Do NOT automatically sign the customer out because this verification
-    // request failed. A transient network/API error must never become an
-    // involuntary logout. Supabase's own session refresh machinery remains
-    // responsible for genuinely invalid/expired sessions.
-    if (verifyError) {
-      console.warn("[Levromart] Session verification failed; preserving the existing session:", verifyError);
-    } else if (!verifiedUser?.user) {
-      console.warn("[Levromart] Session verification returned no user; preserving the existing session.");
+    if (verifyError || !verifiedUser?.user) {
+      session = null;
+      profile = null;
+      vendor = null;
+      favoriteIds = new Set();
+      packageFavoriteIds = new Set();
+      manualLogout = true;
+      await sb.auth.signOut({ scope: "local" }).catch(() => {});
     }
   }
 
@@ -11576,7 +11128,7 @@ async function saveVendorCoverCrop(){
     if(!blob){showToast("Could not prepare that header.","error");return;}
     try{
       const path=`${vendor.id}/cover.jpg`;
-      const {error:upErr}=await sb.storage.from("vendor-logos").upload(path,blob,{upsert:true,contentType:"image/jpeg",cacheControl:"31536000"});if(upErr)throw upErr;
+      const {error:upErr}=await sb.storage.from("vendor-logos").upload(path,blob,{upsert:true,contentType:"image/jpeg"});if(upErr)throw upErr;
       const {data:pub}=sb.storage.from("vendor-logos").getPublicUrl(path);const url=`${pub.publicUrl}?t=${Date.now()}`;
       const {error}=await sb.from("vendors").update({cover_url:url}).eq("id",vendor.id);if(error)throw error;
       vendor.cover_url=url;closeVendorCoverCropModal();showToast("Storefront header updated.","success");
@@ -11656,7 +11208,7 @@ async function saveAvatarCrop(){
   canvas.toBlob(async (blob)=>{
     if(!blob){showToast('Could not prepare that photo.','error');return;}
     const path=`${session.user.id}/avatar.jpg`;
-    const {error:upErr}=await sb.storage.from('avatars').upload(path,blob,{upsert:true,contentType:'image/jpeg',cacheControl:'31536000'});
+    const {error:upErr}=await sb.storage.from('avatars').upload(path,blob,{upsert:true,contentType:'image/jpeg'});
     if(upErr){showToast(upErr.message,'error');return;}
     const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
     const url=`${pub.publicUrl}?t=${Date.now()}`;
@@ -13417,7 +12969,7 @@ function renderHomepageCarouselHtml(slides) {
   if (!usable.length) return "";
   homeCarouselSlides = usable;
   homeCarouselIndex = 0;
-  const slidesHtml = usable.map((s, i) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(levroStorageImageUrl(s.image_url,{width:1200,height:630,quality:78,resize:"cover"}))}" alt="${esc(s.alt_text || "Levromart promotion")}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`).join("");
+  const slidesHtml = usable.map((s, i) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(s.image_url)}" alt="${esc(s.alt_text || "Levromart promotion")}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`).join("");
   const dots = usable.map((s, i) => `<button type="button" class="home-promotional-dot ${i === 0 ? "active" : ""}" onclick="activateHomeCarouselSlide(${i},true)" aria-label="Go to slide ${i + 1}"></button>`).join("");
   return `<section class="home-promotional-carousel" id="homePromotionalCarousel" aria-label="Levromart promotions">
     <div class="home-promotional-viewport" id="homePromotionalViewport">
@@ -13822,7 +13374,7 @@ async function addAdminCarouselSlide() {
   try {
     const path = carouselStoragePathForUpload(file);
     let uploadBlob = file;
-    try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 1920, maxHeight: 1080, quality: 0.82 }); } catch (_) {}
+    try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
     const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false });
     if (uploadError) throw uploadError;
     const { data: publicData } = sb.storage.from("homepage-carousel").getPublicUrl(path);
@@ -13863,7 +13415,7 @@ async function replaceAdminCarouselImage(event, id) {
     if (oldError) throw oldError;
     const newPath = carouselStoragePathForUpload(file);
     let uploadBlob = file;
-    try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 1920, maxHeight: 1080, quality: 0.82 }); } catch (_) {}
+    try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
     const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(newPath, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false });
     if (uploadError) throw uploadError;
     const { data: publicData } = sb.storage.from("homepage-carousel").getPublicUrl(newPath);
@@ -14360,7 +13912,6 @@ function renderSearchPage() {
         <button type="button" class="search-page-clear hidden" id="searchPageClearBtn" onclick="clearSearchPageInput()" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
-    <div id="searchPageSuggestions" class="search-page-suggestions hidden" aria-live="polite"></div>
     <div id="searchPageResults" class="search-page-results">
       <div class="search-page-history-block" id="searchPageHistoryBlock" ${history.length ? "" : "hidden"}>
         <div class="search-page-history-head"><span>Recent searches</span><button type="button" onclick="clearSearchHistory()">Clear</button></div>
@@ -14391,222 +13942,14 @@ function scheduleSearchPageQuery() {
   byId("searchPageClearBtn")?.classList.toggle("hidden", !term);
   clearTimeout(searchPageTimer);
   if (!term) { clearSearchPageInput(); return; }
-  // Recommendations paint immediately from the local catalogue, then refine
-  // from Supabase in the background. The actual result list follows almost
-  // immediately after so the search never feels like it is waiting on Enter.
-  try { renderSearchPageSuggestions(term); } catch (_) {}
-  try { warmSearchLocationForSearch(); } catch (_) {}
-  searchPageTimer = setTimeout(() => runSearchPageQuery(term, false), 70);
+  // Deliberately short -- results should feel like they're appearing as
+  // you type, not after a pause.
+  searchPageTimer = setTimeout(() => runSearchPageQuery(term, false), 120);
 }
-
-let searchLocationWarmupStarted = false;
-let searchSuggestionsSeq = 0;
-
-function searchDistanceKm(vendorRow) {
-  try {
-    const loc = typeof buyerLocation !== "undefined" ? buyerLocation : null;
-    const lat = Number(vendorRow?.lat), lng = Number(vendorRow?.lng);
-    if (!loc || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    return haversineKm(Number(loc.lat), Number(loc.lng), lat, lng);
-  } catch (_) { return null; }
-}
-
-function warmSearchLocationForSearch() {
-  if (searchLocationWarmupStarted) return;
-  searchLocationWarmupStarted = true;
-  if (typeof getCustomerLocation !== "function") return;
-  Promise.resolve(getCustomerLocation(false)).then(() => {
-    const q = byId("searchPageInput")?.value.trim() || "";
-    if (!q) return;
-    const current = ++searchPageSeq;
-    runSearchPageQuery(q, false).catch(() => {});
-    void current;
-    try { renderSearchPageSuggestions(q); } catch (_) {}
-  }).catch(() => {});
-}
-
-function searchNormalise(value) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function searchLevenshtein(a, b) {
-  a = searchNormalise(a); b = searchNormalise(b);
-  if (a === b) return 0;
-  if (!a.length) return b.length;
-  if (!b.length) return a.length;
-  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  for (let i = 0; i < a.length; i++) {
-    const cur = [i + 1];
-    for (let j = 0; j < b.length; j++) {
-      cur[j + 1] = Math.min(
-        cur[j] + 1,
-        prev[j + 1] + 1,
-        prev[j] + (a[i] === b[j] ? 0 : 1)
-      );
-    }
-    for (let j = 0; j < cur.length; j++) prev[j] = cur[j];
-  }
-  return prev[b.length];
-}
-
-function searchCandidateScore(query, candidate) {
-  const q = searchNormalise(query);
-  const c = searchNormalise(candidate);
-  if (!q || !c) return 0;
-  if (c === q) return 100;
-  if (c.startsWith(q)) return 95;
-  if (c.includes(q)) return 88;
-  const qTokens = q.split(" ").filter(Boolean);
-  const cTokens = c.split(" ").filter(Boolean);
-  let best = 0;
-  for (const qt of qTokens) {
-    for (const ct of cTokens) {
-      if (ct.startsWith(qt)) best = Math.max(best, 82);
-      const maxLen = Math.max(qt.length, ct.length);
-      const d = searchLevenshtein(qt, ct);
-      if (maxLen <= 5 && d <= 1) best = Math.max(best, 78);
-      else if (maxLen > 5 && d <= 2) best = Math.max(best, 72);
-    }
-  }
-  return best;
-}
-
-function searchEffectivePrice(p) {
-  const sale = Number(p?.sale_price);
-  const discount = Number(p?.discount_price);
-  const rent = Number(p?.rental_rate);
-  if (Number.isFinite(discount) && discount > 0 && Number.isFinite(sale) && discount < sale) return discount;
-  if (Number.isFinite(sale) && sale > 0) return sale;
-  if (Number.isFinite(rent) && rent > 0) return rent;
-  return Infinity;
-}
-
-async function renderSearchPageSuggestions(term) {
-  const box = byId("searchPageSuggestions");
-  if (!box) return;
-  const q = String(term || "").trim();
-  if (!q) {
-    box.classList.add("hidden");
-    box.innerHTML = "";
-    return;
-  }
-  const seq = ++searchSuggestionsSeq;
-
-  // Paint immediately from the on-device catalogue.
-  const local = Array.isArray(window.__homeBrowseCatalog) ? window.__homeBrowseCatalog : (getOfflineHomeCache()?.browseProducts || []);
-  const localItems = (local || []).map(p => {
-    const haystack = [p?.name, p?.description, p?.vendor?.business_name, p?.category?.name, p?.sector?.name].filter(Boolean).join(" ");
-    return {
-      id:p?.id, name:p?.name, vendor:p?.vendor, photos:p?.photos, category:p?.category,
-      __score:searchCandidateScore(q, haystack) + searchCandidateScore(q, p?.name || "") * 0.3,
-      __price:searchEffectivePrice(p), __distance:searchDistanceKm(p?.vendor)
-    };
-  }).filter(x => x.id && x.__score >= 55);
-
-  localItems.sort((a,b) => (b.__score-a.__score) || (a.__price-b.__price) || ((a.__distance ?? Infinity)-(b.__distance ?? Infinity)));
-
-  const renderRows = items => {
-    const unique = [];
-    const seen = new Set();
-    for (const item of items) {
-      const id = String(item.id || "");
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      unique.push(item);
-      if (unique.length >= 6) break;
-    }
-    if (!unique.length) {
-      box.classList.add("hidden");
-      box.innerHTML = "";
-      return;
-    }
-    box.classList.remove("hidden");
-    box.innerHTML = `<div class="search-page-suggestions-head"><strong>Suggestions</strong><span>Closest + cheapest first</span></div>` +
-      unique.map(p => {
-        const d = p.__distance != null ? formatDistanceKm(p.__distance) : "Location unavailable";
-        const price = Number.isFinite(p.__price) ? naira(p.__price) : "Price on request";
-        const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
-        return `<button type="button" class="search-page-suggestion-row" data-id="${esc(p.id)}">
-          <span class="search-page-suggestion-thumb">${p.photos?.[0] ? `<img src="${esc(p.photos[0])}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-box"></i>`}</span>
-          <span class="search-page-suggestion-copy"><strong>${esc(p.name || "Listing")}${hasVariety ? ` <i class="fa-solid fa-layer-group search-result-variety" title="Multiple varieties"></i>` : ""}</strong><small>${esc(p.vendor?.business_name || "Vendor")} · <i class="fa-solid fa-location-dot"></i> ${esc(d)}</small></span>
-          <span class="search-page-suggestion-price">${esc(price)}</span>
-        </button>`;
-      }).join("");
-    box.querySelectorAll(".search-page-suggestion-row").forEach(btn => btn.addEventListener("click", () => {
-      saveSearchPageSuggestionHistory(btn.querySelector("strong")?.textContent || q);
-      navigate("productDetail", { productId: btn.dataset.id });
-      box.classList.add("hidden");
-    }));
-  };
-
-  renderRows(localItems);
-
-  if (typeof sb === "undefined") return;
-  try {
-    const t = q.toLowerCase().replace(/\s+/g, " ");
-    const [{ data }, { data: categoryMatches }, { data: sectorMatches }] = await Promise.all([
-      sb.from("products")
-        .select("id,name,description,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,vendor:vendors!inner(id,business_name,city,lat,lng,verification_status,is_active),category:categories(id,name,sector_id)")
-        .eq("status", "active")
-        .eq("vendor.verification_status", "verified")
-        .eq("vendor.is_active", true)
-        .or(`name.ilike.%${t}%,description.ilike.%${t}%`)
-        .limit(20),
-      sb.from("categories").select("id,name").ilike("name", `%${t}%`).limit(4),
-      sb.from("sectors").select("id,name").ilike("name", `%${t}%`).limit(4)
-    ]);
-    if (seq !== searchSuggestionsSeq || byId("searchPageInput")?.value.trim() !== q) return;
-    const serverItems = (data || []).map(p => {
-      const candidateText = [p.name,p.description,p.vendor?.business_name,p.category?.name].filter(Boolean).join(" ");
-      return {...p,__score:searchCandidateScore(q,candidateText)+searchCandidateScore(q,p.name||"")*0.3,__price:searchEffectivePrice(p),__distance:searchDistanceKm(p.vendor)};
-    }).filter(x => x.__score >= 55);
-    serverItems.sort((a,b) => (b.__score-a.__score) || (a.__price-b.__price) || ((a.__distance ?? Infinity)-(b.__distance ?? Infinity)));
-    renderRows([...serverItems,...localItems]);
-
-    const related = [
-      ...(sectorMatches || []).map(s => ({kind:"sector",id:s.id,name:s.name})),
-      ...(categoryMatches || []).map(c => ({kind:"category",id:c.id,name:c.name}))
-    ].slice(0,5);
-    if (related.length && byId("searchPageInput")?.value.trim() === q) {
-      const relatedHtml = `<div class="search-page-related-head">Related</div><div class="search-page-related-chips">${
-        related.map(r => `<button type="button" class="search-page-related-chip" data-kind="${r.kind}" data-id="${esc(r.id)}">${esc(r.name)}</button>`).join("")
-      }</div>`;
-      box.insertAdjacentHTML("beforeend", relatedHtml);
-      box.querySelectorAll(".search-page-related-chip").forEach(btn => btn.addEventListener("click", () => {
-        const kind = btn.dataset.kind, id = btn.dataset.id;
-        box.classList.add("hidden");
-        if (kind === "sector" && typeof switchSector === "function") {
-          navigate("home", {}, false).then(() => switchSector(id)).catch(() => switchSector(id));
-        } else if (kind === "category" && typeof filterByCategory === "function") {
-          navigate("home", {}, false).then(() => filterByCategory(id)).catch(() => filterByCategory(id));
-        }
-      }));
-    }
-  } catch (_) {
-    // Local suggestions remain visible.
-  }
-}
-
-function saveSearchPageSuggestionHistory(term) {
-  const q = String(term || "").trim();
-  if (!q) return;
-  try {
-    const list = typeof readSearchHistory === "function" ? readSearchHistory() : [];
-    const next = [q, ...(Array.isArray(list) ? list : []).filter(x => String(x).toLowerCase() !== q.toLowerCase())].slice(0, SEARCH_HISTORY_MAX || 8);
-    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
-  } catch (_) {}
-}
-
 async function runSearchPageQuery(term, saveToHistory) {
   term = String(term || "").trim();
   if (!term) return;
   const mySeq = ++searchPageSeq;
-  const liveSuggest = byId("searchPageSuggestions");
-  if (saveToHistory && liveSuggest) { liveSuggest.classList.add("hidden"); liveSuggest.innerHTML = ""; }
   const historyBlock = byId("searchPageHistoryBlock");
   if (historyBlock) historyBlock.hidden = true;
   if (saveToHistory) writeSearchHistory(term);
@@ -14620,24 +13963,9 @@ async function runSearchPageQuery(term, saveToHistory) {
   const topIds = (idRows || []).slice(0, 20).map((r) => r.id);
   let prods = [];
   if (topIds.length) {
-    const { data } = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,vendor:vendors!inner(id,business_name,city,lat,lng,verification_status,is_active),category:categories(id,name,sector_id)")
+    const { data } = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,vendor:vendors!inner(business_name,verification_status,is_active)")
       .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).in("id", topIds);
-    prods = (data || []).map((p) => {
-      const effectivePrice = Number(
-        p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price ?? Infinity)
-          ? p.discount_price
-          : (p.sale_price != null ? p.sale_price : (p.rental_rate != null ? p.rental_rate : Infinity))
-      );
-      const distanceKm = searchDistanceKm(p.vendor);
-      return { ...p, __searchPrice: Number.isFinite(effectivePrice) ? effectivePrice : Infinity,
-        __searchDistance: distanceKm == null ? Infinity : distanceKm,
-        __searchMatchRank: topIds.indexOf(p.id) };
-    }).sort((a, b) => {
-      // Search ordering: cheapest listings first; ties are broken by distance.
-      if (a.__searchPrice !== b.__searchPrice) return a.__searchPrice - b.__searchPrice;
-      if (a.__searchDistance !== b.__searchDistance) return a.__searchDistance - b.__searchDistance;
-      return a.__searchMatchRank - b.__searchMatchRank;
-    });
+    prods = (data || []).sort((a, b) => topIds.indexOf(a.id) - topIds.indexOf(b.id));
   }
   if (mySeq !== searchPageSeq) return;
 
@@ -14646,19 +13974,13 @@ async function runSearchPageQuery(term, saveToHistory) {
   document.querySelectorAll(".search-page-section, .search-page-empty").forEach((el) => el.remove());
 
   const productRowHtml = (p) => {
-    const price = p.__searchPrice !== Infinity
-      ? (p.rental_rate != null && p.sale_price == null ? `${naira(p.__searchPrice)}/${p.rental_rate_unit}` : naira(p.__searchPrice))
-      : "";
-    const distance = p.__searchDistance !== Infinity ? formatDistanceKm(p.__searchDistance) : "Location unavailable";
+    const price = p.is_service ? "" : p.sale_price != null
+      ? naira(p.discount_price != null && p.discount_price > 0 && p.discount_price < p.sale_price ? p.discount_price : p.sale_price)
+      : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
     const img = p.photos?.[0];
-    const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
-    const typeLabel = p.is_service ? "Service" : (p.listing_type === "rent" ? "Rental" : "Product");
     return `<button type="button" class="search-result-row" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <span class="search-result-thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</span>
-      <span class="search-result-copy">
-        <strong>${esc(p.name)}${hasVariety ? ` <i class="fa-solid fa-layer-group search-result-variety" title="Multiple varieties available" aria-label="Multiple varieties available"></i>` : ""}</strong>
-        <span class="muted">${esc(p.vendor?.business_name || "")} · ${typeLabel} · <i class="fa-solid fa-location-dot"></i> ${esc(distance)}</span>
-      </span>
+      <span class="search-result-copy"><strong>${esc(p.name)}</strong><span class="muted">${esc(p.vendor?.business_name || "")}</span></span>
       ${price ? `<span class="search-result-price">${price}</span>` : ""}
     </button>`;
   };
@@ -15085,7 +14407,7 @@ function productCardHtml(p) {
   // filling the whole image slot, rather than a bare "No image" icon --
   // every card ends up with an actual picture in it.
   const noImageFallback = p.vendor?.logo_url
-    ? `<img src="${esc(levroStorageImageUrl(p.vendor.logo_url,{width:160,height:160,quality:72,resize:"cover"}))}" alt="${esc(p.vendor.business_name || "Vendor")}" loading="lazy" decoding="async" draggable="false">`
+    ? `<img src="${esc(p.vendor.logo_url)}" alt="${esc(p.vendor.business_name || "Vendor")}" loading="lazy" decoding="async" draggable="false">`
     : "<i class='fa-solid fa-camera'></i> No image";
   // "Buy price" + the flat delivery fee, added up for you, so the number on
   // the card is what you'd actually pay with delivery -- not just the item
@@ -15106,7 +14428,7 @@ function productCardHtml(p) {
   return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
-      <div class="product-img">${img ? `<img src="${esc(levroStorageImageUrl(img,{width:520,height:520,quality:74,resize:"cover"}))}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}</div>
+      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}</div>
       <h4>${esc(p.name)}</h4>
       <div class="product-card-rating-line" data-product-rating-id="${esc(p.id)}">${window.__productRatingCache?.has(String(p.id)) ? productRatingBadgeInnerHtml(window.__productRatingCache.get(String(p.id))) : `<span class="product-card-rating-empty">${"☆".repeat(5)}</span>`}</div>
       <div class="product-card-compact-footer">
@@ -17228,7 +16550,7 @@ async function sendPreparedChatImage(conversationId, prepared, replyToId, replyT
   // an image, etc); if the utility script failed to load for any reason,
   // fall back to uploading the original rather than failing the send.
   let uploadBlob = prepared.blob;
-  try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(prepared.blob, { maxWidth: 1600, maxHeight: 1600, quality: 0.76 }); } catch (_) {}
+  try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(prepared.blob, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
   const {error:upErr}=await sb.storage.from("chat-attachments").upload(path,uploadBlob,{contentType:uploadBlob.type||"image/jpeg",upsert:false});
   if(upErr) throw upErr;
   const {data,error}=await sb.from("messages").insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||"",reply_to_id:replyToId,attachment_url:path,attachment_name:prepared.name||"photo.jpg",attachment_type:uploadBlob.type||"image/jpeg",attachment_size:uploadBlob.size}).select("*").single();
@@ -17602,7 +16924,7 @@ async function renderCommissionServiceDetail(product,priceHint,offers){
   let html=`<div class="card service-detail-card" data-service-detail-id="${esc(product.id)}">
     <div class="product-detail-top-actions"><button class="fav-btn ${favoriteIds.has(product.id)?'active':''}" onclick="toggleFavorite(event,'${product.id}')" aria-label="Save to wishlist">${favoriteIds.has(product.id)?"<i class='fa-solid fa-heart'></i>":"<i class='fa-regular fa-heart'></i>"}</button><button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share service"><i class="fa-solid fa-share-nodes"></i></button></div>
     <h2 class="product-detail-title">${esc(product.name)} <span class="badge">Service</span></h2>
-    ${image?`<div class="product-detail-media"><div class="product-gallery"><div class="product-gallery-main"><img src="${esc(levroStorageImageUrl(image,{width:1200,height:1200,quality:82,resize:"contain"}))}" alt="${esc(product.name)}" loading="eager" decoding="async" /></div></div></div>`:''}
+    ${image?`<div class="product-detail-media"><div class="product-gallery"><div class="product-gallery-main"><img src="${esc(image)}" alt="${esc(product.name)}" loading="eager" /></div></div></div>`:''}
     <div class="service-vendor-info-block"><div class="service-vendor-info-head"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating">★ ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div><div class="service-vendor-contact-actions">${vendor.phone?`<a class="btn btn-sm btn-outline" href="${telLink(vendor.phone)}" onclick="callVendorGated(event,'${esc(vendor.phone)}','${vendor.id}')"><i class="fa-solid fa-phone"></i> Call vendor</a>`:''}<button type="button" class="btn btn-sm" onclick="startConversationWithVendor('${vendor.id}')"><i class="fa-solid fa-comment-dots"></i> Message vendor</button></div></div>
     <div class="service-description-block"><h3>About this service</h3><p>${esc(stripProductVariantMeta(product.description||'No description provided.'))}</p></div>
     ${priceHint?`<div class="service-price-hint"><i class="fa-solid fa-chart-line"></i> <strong>Past agreed prices:</strong> ${naira(priceHint.min)}${priceHint.min!==priceHint.max?' – '+naira(priceHint.max):''} <span>(last ${priceHint.count} completed bookings)</span></div>`:''}
@@ -17667,10 +16989,10 @@ async function __levroOriginalRenderProductDetail(productId) {
   const photosHtml = productPhotos.length
     ? `<div class="product-gallery product-gallery-carousel">
         <div class="product-gallery-main product-gallery-track" id="productGalleryTrack" aria-label="Product photos">
-          ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(levroStorageImageUrl(u,{width:1200,height:1200,quality:82,resize:"contain"}))}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
+          ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
           ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
-        ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(levroStorageImageUrl(u,{width:180,height:180,quality:70,resize:"cover"}))}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
+        ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
         <button type="button" id="productGalleryReturnMain" class="product-gallery-return-main hidden" onclick="restoreProductGalleryMainImage()" aria-label="Return to main product image"><i class="fa-solid fa-arrow-left"></i> Main image</button>
       </div>`
     : `<div class="product-img" style="height:220px;"><i class='fa-solid fa-camera'></i> No image</div>`;
@@ -19058,7 +18380,7 @@ async function submitSupportRequest() {
   try {
     for (const file of files) {
       let uploadBlob = file;
-      try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.78 }); } catch (_) {}
+      try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
       const ext = (uploadBlob.name || file.name || '').split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
       const path = `${session.user.id}/${request.id}/${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await sb.storage.from('support-attachments').upload(path, uploadBlob, { upsert: false, contentType: uploadBlob.type || file.type || 'application/octet-stream' });
@@ -20886,8 +20208,8 @@ async function uploadVendorLogo(event) {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const path = `${vendor.id}/logo.${ext}`;
   let uploadBlob = file;
-  try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.78 }); } catch (_) {}
-  const { error: upErr } = await sb.storage.from("vendor-logos").upload(path, uploadBlob, { upsert: true, contentType: uploadBlob.type || file.type, cacheControl: "31536000" });
+  try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 800, maxHeight: 800 }); } catch (_) {}
+  const { error: upErr } = await sb.storage.from("vendor-logos").upload(path, uploadBlob, { upsert: true, contentType: uploadBlob.type || file.type });
   if (upErr) { showToast(upErr.message, "error"); return; }
   const { data: pub } = sb.storage.from("vendor-logos").getPublicUrl(path);
   const url = `${pub.publicUrl}?t=${Date.now()}`;
@@ -21824,11 +21146,10 @@ async function selectVarietyImage(input){return handleProductVariantPhotoChange(
 async function uploadVarietyImages(){
   persistVisibleVariantOrder();
   await Promise.all((window.__productVariants||[]).map(async v=>{
-    if(!v._imageFile)return;const file=v._imageFile;
+    if(!v._imageFile)return;const file=v._imageFile,path=`${vendor.id}/variants/${crypto.randomUUID()}.${(file.name.split('.').pop()||'jpg').toLowerCase()}`;
     let uploadBlob=file;
-    try{if(typeof window.levroOptimizeImage==="function")uploadBlob=await window.levroOptimizeImage(file,{maxWidth:1600,maxHeight:1600,quality:0.78});}catch(_){}
-    const path=`${vendor.id}/variants/${crypto.randomUUID()}.${window.levroImageExtension(uploadBlob,file)}`;
-    const {error}=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type,cacheControl:"31536000"});if(error)throw error;
+    try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}
+    const {error}=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type});if(error)throw error;
     v.photo_url=sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl;
     const row=[...document.querySelectorAll('#productVariantPricing .variant-price-row')].find(r=>r.dataset.variantKey===String(v.id||v._localKey));
     if(row){
@@ -22336,11 +21657,11 @@ async function saveProduct() {
     const variantSourceByKey = new Map((window.__productVariants || []).map(v => [String(v.id || v._localKey || ""), v]));
 
     const uploadOne = async (file, folder) => {
-      let uploadBlob = file;
-      try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.78 }); } catch (_) {}
-      const ext = window.levroImageExtension(uploadBlob, file);
+      const ext = (file.name?.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
       const path = `${vendor.id}/${folder ? folder + "/" : ""}${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type || "image/jpeg", cacheControl: "31536000", upsert: false });
+      let uploadBlob = file;
+      try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type || "image/jpeg", upsert: false });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
       uploadedStoragePaths.push(path);
       const { data: urlData } = sb.storage.from("product-photos").getPublicUrl(path);
@@ -22850,11 +22171,11 @@ async function savePackage() {
 
     const newFiles = [...(window.__newPackagePhotoFiles || byId("pkgPhotoFiles")?.files || [])];
     const newPhotoUrls = await Promise.all(newFiles.map(async (file) => {
-      let uploadBlob = file;
-      try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.78 }); } catch (_) {}
-      const ext = window.levroImageExtension(uploadBlob, file);
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${vendor.id}/packages/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type, cacheControl: "31536000" });
+      let uploadBlob = file;
+      try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
       return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
     }));
@@ -26025,130 +25346,6 @@ function exportFinancePdf() {
 .profile-own-storefront-header:active{transform:scale(.99)!important;}
 .profile-own-storefront-header:focus-visible{outline:2px solid var(--primary)!important;outline-offset:2px!important;}
 </style>
-
-<style id="levromart-final-contrast-search-20260922">
-/* Final visual calibration: light controls, but readable. */
-#app .levro-home-quick-actions .levro-quick-icon,
-#app .levro-quick-action .levro-quick-icon{
-  background:color-mix(in srgb,var(--primary) 9%,var(--card))!important;
-  color:#0B6E4A!important;
-  border:1px solid color-mix(in srgb,var(--primary) 34%,var(--border))!important;
-  box-shadow:none!important;
-  opacity:1!important;
-}
-#app .levro-home-quick-actions .levro-quick-icon i,
-#app .levro-quick-action .levro-quick-icon i{color:#0B6E4A!important;opacity:1!important;}
-#app .levro-home-quick-actions .levro-quick-label{color:#1e293b!important;font-weight:700!important;}
-#app .levro-home-quick-actions .levro-quick-arrow{color:#0B6E4A!important;opacity:1!important;}
-
-/* Every tab: no heavy fill, no white text. */
-#app .vendor-listing-tab,
-#app .vendor-request-tab,
-#app .admin-people-role-tab,
-#app .catalog-type-tab,
-#app .range-tab,
-#app .storefront-catalog-tab,
-#app .vendor-products-unified-tabs button,
-#app .segmented-tabs button{
-  background:color-mix(in srgb,var(--primary) 4%,var(--card))!important;
-  color:#334155!important;
-  border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border))!important;
-  box-shadow:none!important;
-  font-weight:700!important;
-}
-#app .vendor-listing-tab.active,
-#app .vendor-request-tab.active,
-#app .admin-people-role-tab.active,
-#app .catalog-type-tab.active,
-#app .range-tab.active,
-#app .storefront-catalog-tab.active,
-#app .vendor-products-unified-tabs button.active,
-#app .segmented-tabs button.active{
-  background:color-mix(in srgb,var(--primary) 9%,var(--card))!important;
-  color:#0B6E4A!important;
-  border-color:color-mix(in srgb,var(--primary) 32%,var(--border))!important;
-  box-shadow:none!important;
-}
-#app .vendor-listing-tabs,
-#app .vendor-request-tabs,
-#app .admin-people-role-tabs,
-#app .catalog-type-tabs,
-#app .home-catalog-type-tabs,
-#app .segmented-tabs{
-  background:transparent!important;
-  border:0!important;
-  box-shadow:none!important;
-}
-#app .vendor-listing-tab i,
-#app .vendor-request-tab i,
-#app .catalog-type-tab i,
-#app .vendor-products-unified-tabs button i{color:inherit!important;opacity:1!important;}
-
-/* Product/service/package storefront tabs use the same treatment. */
-#app .vendor-products-unified-tabs button,
-#app .vendor-products-unified-tabs button.active{
-  border-radius:10px!important;
-}
-
-/* Cart/service quick actions remain light but have clear contrast. */
-#app .card-cart-btn,
-#app .card-service-btn{
-  background:color-mix(in srgb,var(--primary) 9%,var(--card))!important;
-  color:#0B6E4A!important;
-  border:1px solid color-mix(in srgb,var(--primary) 31%,var(--border))!important;
-  box-shadow:none!important;
-  opacity:1!important;
-}
-#app .card-cart-btn i,#app .card-service-btn i{color:#0B6E4A!important;opacity:1!important;}
-#app header .header-right .icon-btn:has(.fa-cart-shopping),
-#app #headerCartWrap .icon-btn{
-  background:color-mix(in srgb,var(--primary) 8%,var(--card))!important;
-  color:#0B6E4A!important;
-  border:1px solid color-mix(in srgb,var(--primary) 28%,var(--border))!important;
-  box-shadow:none!important;
-}
-
-/* Small, uniform Add Listing control. */
-#bottomNav .bottom-nav-add,
-#bottomNav .bottom-nav-add:hover,
-#bottomNav .bottom-nav-add:active{
-  width:32px!important;height:30px!important;min-width:32px!important;min-height:30px!important;
-  border-radius:8px!important;
-  background:color-mix(in srgb,var(--primary) 7%,var(--card))!important;
-  color:#0B6E4A!important;
-  border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border))!important;
-  box-shadow:none!important;
-}
-#bottomNav .bottom-nav-add i{color:#0B6E4A!important;font-size:.82rem!important;opacity:1!important;}
-
-/* Search result/suggestion contrast and information density. */
-.search-result-variety{color:#0B6E4A!important;font-size:.7em!important;margin-left:.18rem;}
-.search-result-copy .muted{color:#64748b!important;}
-.search-result-price,.search-page-suggestion-price{color:#1e293b!important;font-weight:800!important;}
-.search-page-suggestions{margin:.55rem 0 .7rem;background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
-.search-page-suggestions-head{display:flex;align-items:center;justify-content:space-between;padding:.6rem .75rem;border-bottom:1px solid var(--border);font-size:.78rem;color:#334155;}
-.search-page-suggestions-head span{font-size:.68rem;color:#0B6E4A;font-weight:700;}
-.search-page-suggestion-row{display:flex;align-items:center;gap:.65rem;width:100%;padding:.62rem .7rem;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);text-align:left;cursor:pointer;font:inherit;}
-.search-page-suggestion-row:last-child{border-bottom:0;}
-.search-page-suggestion-row:hover{background:color-mix(in srgb,var(--primary) 4%,var(--card));}
-.search-page-suggestion-thumb{width:38px;height:38px;flex:0 0 38px;border-radius:9px;overflow:hidden;background:var(--border);display:flex;align-items:center;justify-content:center;color:#64748b;}
-.search-page-suggestion-thumb img{width:100%;height:100%;object-fit:cover;}
-.search-page-suggestion-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:.12rem;}
-.search-page-suggestion-copy strong{font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1e293b;}
-.search-page-suggestion-copy small{font-size:.69rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.search-page-suggestion-price{flex:0 0 auto;font-size:.78rem;white-space:nowrap;}
-@media(max-width:520px){
-  .search-page-suggestion-row{padding:.58rem .62rem;}
-  .search-page-suggestion-copy strong{font-size:.8rem;}
-  .search-page-suggestion-copy small{font-size:.65rem;}
-}
-</style>
-
-
-.search-page-related-head{padding:.5rem .7rem .25rem;font-size:.7rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;}
-.search-page-related-chips{display:flex;flex-wrap:wrap;gap:.4rem;padding:.2rem .7rem .65rem;}
-.search-page-related-chip{border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border));background:color-mix(in srgb,var(--primary) 5%,var(--card));color:#0B6E4A;border-radius:999px;padding:.38rem .62rem;font:inherit;font-size:.7rem;font-weight:700;cursor:pointer;}
-
 </body>
 
 
@@ -30291,7 +29488,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
      --------------------------------------------------------------- */
   window.vendorCardHtml = function (v) {
     const logo = v.logo_url
-      ? `<img src="${esc(levroStorageImageUrl(v.logo_url,{width:160,height:160,quality:72,resize:"cover"}))}" alt="" class="avatar-circle vendor-directory-logo" loading="lazy" decoding="async" />`
+      ? `<img src="${esc(v.logo_url)}" alt="" class="avatar-circle vendor-directory-logo" />`
       : avatarFallbackHtml(v.business_name || "Vendor", "3.1rem", "vendor-directory-logo", v.business_name || "Vendor");
     const distance = (typeof buyerLocation !== "undefined" && buyerLocation && v.lat != null && v.lng != null)
       ? `<span class="badge"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>`
@@ -31716,7 +30913,7 @@ window.renderVendorMapRail = function(){
     const avatar = v?.logo_url || v?.user_avatar_url || "";
     const name = v?.business_name || "Vendor";
     const avatarHtml = avatar
-      ? `<img src="${esc(levroStorageImageUrl(avatar,{width:160,height:160,quality:72,resize:"cover"}))}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name)}','3.1rem','vendor-directory-logo','${esc(name)}')))" />`
+      ? `<img src="${esc(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name)}','3.1rem','vendor-directory-logo','${esc(name)}')))" />`
       : avatarFallbackHtml(name, '3.1rem', 'vendor-directory-logo', name);
     const sectorName = (Array.isArray(sectors) ? sectors : []).find(sec => String(sec.id) === String(v?.sector_id))?.name || "";
     const knownLine = `<p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${esc(sectorName || "Sector not listed")}</p>`;
@@ -33257,8 +32454,8 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     if(!groupId)return originalSendPrepared(conversationId,prepared,replyToId,replyTargetSnapshot);
     const path=`conv/${conversationId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeFilename(prepared.name||'photo.jpg')}`;
     let uploadBlob=prepared.blob;
-    try{if(typeof window.levroOptimizeImage==="function")uploadBlob=await window.levroOptimizeImage(prepared.blob,{maxWidth:1600,maxHeight:1600,quality:0.76});}catch(_){}
-    const {error:upErr}=await sb.storage.from('chat-attachments').upload(path,uploadBlob,{contentType:uploadBlob.type||'image/jpeg',cacheControl:'31536000',upsert:false});if(upErr)throw upErr;
+    try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(prepared.blob,{maxWidth:1600,maxHeight:1600});}catch(_){}
+    const {error:upErr}=await sb.storage.from('chat-attachments').upload(path,uploadBlob,{contentType:uploadBlob.type||'image/jpeg',upsert:false});if(upErr)throw upErr;
     const markedName=`${GROUP_PREFIX}${groupId}__|${prepared.name||'photo.jpg'}`;
     const {data,error}=await sb.from('messages').insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||'',reply_to_id:replyToId,attachment_url:path,attachment_name:markedName,attachment_type:uploadBlob.type||'image/jpeg',attachment_size:uploadBlob.size}).select('*').single();if(error)throw error;
     if(replyTargetSnapshot)data.reply_to={id:replyTargetSnapshot.id,body:replyTargetSnapshot.body,attachment_name:replyTargetSnapshot.attachment,sender_id:document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains('mine')?session.user.id:''};
@@ -33450,7 +32647,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
   window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
-  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){let uploadBlob=file;try{if(typeof window.levroOptimizeImage==="function")uploadBlob=await window.levroOptimizeImage(file,{maxWidth:1600,maxHeight:1600,quality:0.78});}catch(_){}const ext=window.levroImageExtension(uploadBlob,file),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type,cacheControl:"31536000"});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
+  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;let uploadBlob=file;try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}const up=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
   async function renderUnifiedEnhancements(){
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading)return;
@@ -36218,56 +35415,26 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       const t=q.toLowerCase().replace(/\s+/g," ");
       const [ids,vendors,packages,cats,sectors] = await Promise.all([
         sb.rpc("search_product_ids",{p_query:t}),
-        sb.from("vendors").select("id,business_name,city,lat,lng").eq("verification_status","verified").eq("is_active",true).ilike("business_name",`%${t}%`).limit(6),
-        sb.from("vendor_packages").select("id,name,price,vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).or(`name.ilike.%${t}%,description.ilike.%${t}%`).limit(8),
-        sb.from("categories").select("id,name").ilike("name",`%${t}%`).limit(6),
-        sb.from("sectors").select("id,name").ilike("name",`%${t}%`).limit(6)
+        sb.from("vendors").select("id,business_name,city").eq("verification_status","verified").eq("is_active",true).ilike("business_name",`%${t}%`).limit(4),
+        sb.from("vendor_packages").select("id,name,price,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).or(`name.ilike.%${t}%,description.ilike.%${t}%`).limit(4),
+        sb.from("categories").select("id,name").ilike("name",`%${t}%`).limit(4),
+        sb.from("sectors").select("id,name").ilike("name",`%${t}%`).limit(4)
       ]);
-      const idList=(ids.data||[]).map(x=>x.id).filter(Boolean).slice(0,18);
+      const idList=(ids.data||[]).slice(0,6).map(x=>x.id).filter(Boolean);
       let products=[];
       if(idList.length){
-        const r=await sb.from("products").select("id,name,is_service,sale_price,discount_price,rental_rate,rental_rate_unit,photos,listing_type,vendor:vendors!inner(id,business_name,city,lat,lng,verification_status,is_active),category:categories(id,name,sector_id)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).in("id",idList);
-        products=(r.data||[]).map(p=>{
-          const price=Number(p.discount_price||p.sale_price||p.rental_rate||0);
-          const distance=(typeof vendorDistanceKm==='function')?vendorDistanceKm(p.vendor):null;
-          return {...p,__searchPrice:Number.isFinite(price)?price:Infinity,__searchDistance:distance==null?Infinity:distance,__matchRank:idList.indexOf(p.id)};
-        });
-        // Relevance is used to decide what belongs in the recommendation set;
-        // once selected, nearby vendors come first, then lower-priced listings.
-        products.sort((a,b)=>{
-          const da=a.__searchDistance, db=b.__searchDistance;
-          if(da!==db) return da-db;
-          if(a.__searchPrice!==b.__searchPrice) return a.__searchPrice-b.__searchPrice;
-          return a.__matchRank-b.__matchRank;
-        });
+        const r=await sb.from("products").select("id,name,is_service,vendor:vendors!inner(business_name,verification_status,is_active)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).in("id",idList);
+        products=(r.data||[]).sort((a,b)=>idList.indexOf(a.id)-idList.indexOf(b.id));
       }
-      const distanceText=(v)=>{
-        const km=(typeof vendorDistanceKm==='function')?vendorDistanceKm(v):null;
-        return km==null ? "Location unavailable" : formatDistanceKm(km);
-      };
-      const productRows=products.slice(0,8).map(p=>{
-        const hasVariety=Array.isArray(p.photos)&&p.photos.length>1;
-        const price=p.__searchPrice!==Infinity ? naira(p.__searchPrice) : "Price on request";
-        const kind=p.is_service?"Service":(p.listing_type==='rent'?"Rental":"Product");
-        return `<button type="button" class="levro-smart-result" data-action="product" data-id="${escText(p.id)}">
-          <i class="fa-solid ${p.is_service?'fa-hand-holding-heart':'fa-box'}"></i>
-          <span><strong>${escText(p.name)} ${hasVariety?'<i class="fa-solid fa-layer-group levro-smart-variety" title="Multiple varieties"></i>':''}</strong>
-          <small>${escText(p.vendor?.business_name||"Listing")} · ${kind} · ${escText(distanceText(p.vendor))} · ${escText(price)}</small></span>
-        </button>`;
-      });
-      const packageRows=(packages.data||[]).map(p=>{
-        const km=(typeof vendorDistanceKm==='function')?vendorDistanceKm(p.vendor):null;
-        return {...p,__distance:km==null?Infinity:km,__price:Number(p.price||0)};
-      }).sort((a,b)=>a.__distance-b.__distance||a.__price-b.__price).slice(0,4).map(p=>`<button type="button" class="levro-smart-result" data-action="package" data-id="${escText(p.id)}"><i class="fa-solid fa-box-open"></i><span><strong>${escText(p.name)}</strong><small>${escText(p.vendor?.business_name||"Package")} · ${p.__distance===Infinity?'Location unavailable':escText(formatDistanceKm(p.__distance))} · ${escText(naira(p.__price))}</small></span></button>`);
       const rows=[
-        ...productRows,
-        ...packageRows,
-        ...(vendors.data||[]).map(v=>`<button type="button" class="levro-smart-result" data-action="vendor" data-id="${escText(v.id)}"><i class="fa-solid fa-store"></i><span><strong>${escText(v.business_name)}</strong><small>Vendor · ${escText(v.city||"")} · ${escText(distanceText(v))}</small></span></button>`),
-        ...(cats.data||[]).map(c=>`<button type="button" class="levro-smart-result" data-action="category" data-id="${escText(c.id)}"><i class="fa-solid fa-tags"></i><span><strong>${escText(c.name)}</strong><small>Category · related listings</small></span></button>`),
-        ...(sectors.data||[]).map(s=>`<button type="button" class="levro-smart-result" data-action="sector" data-id="${escText(s.id)}"><i class="fa-solid fa-layer-group"></i><span><strong>${escText(s.name)}</strong><small>Sector · related listings</small></span></button>`)
+        ...products.map(p=>`<button type="button" class="levro-smart-result" data-action="product" data-id="${escText(p.id)}"><i class="fa-solid ${p.is_service?'fa-hand-holding-heart':'fa-box'}"></i><span><strong>${escText(p.name)}</strong><small>${escText(p.vendor?.business_name||"Listing")}</small></span></button>`),
+        ...(packages.data||[]).map(p=>`<button type="button" class="levro-smart-result" data-action="package" data-id="${escText(p.id)}"><i class="fa-solid fa-box-open"></i><span><strong>${escText(p.name)}</strong><small>Package · ₦${Number(p.price||0).toLocaleString()}</small></span></button>`),
+        ...(vendors.data||[]).map(v=>`<button type="button" class="levro-smart-result" data-action="vendor" data-id="${escText(v.id)}"><i class="fa-solid fa-store"></i><span><strong>${escText(v.business_name)}</strong><small>Vendor · ${escText(v.city||"")}</small></span></button>`),
+        ...(cats.data||[]).map(c=>`<button type="button" class="levro-smart-result" data-action="category" data-id="${escText(c.id)}"><i class="fa-solid fa-tags"></i><span><strong>${escText(c.name)}</strong><small>Category</small></span></button>`),
+        ...(sectors.data||[]).map(s=>`<button type="button" class="levro-smart-result" data-action="sector" data-id="${escText(s.id)}"><i class="fa-solid fa-layer-group"></i><span><strong>${escText(s.name)}</strong><small>Sector</small></span></button>`)
       ];
       return rows.slice(0,12).join("") || `<div class="levro-search-no-results">No matching listings yet. Press Enter to search the marketplace.</div>`;
-    }catch(e){ console.warn("[Levromart] smart search failed",e); return `<div class="levro-search-no-results">Press Enter to search the marketplace.</div>`; }
+    }catch(e){ return `<div class="levro-search-no-results">Press Enter to search the marketplace.</div>`; }
   }
 
   function routeSearch(q){
@@ -40531,141 +39698,3 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 .container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:130px !important;}
 @media (max-width:720px){.container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:120px !important;}}
 </style>
-
-
-<style id="levromart-clean-ui-final-20260922">
-/* Final clean-control pass: tabs are individual light controls, never a boxed
-   segmented container, and active states use only a faint tint + thin outline. */
-#app .vendor-listing-tabs,
-#app .vendor-request-tabs,
-#app .admin-people-role-tabs,
-#app .vendor-listing-tabs[role="tablist"]{
-  background:transparent!important;
-  border:0!important;
-  box-shadow:none!important;
-  border-radius:0!important;
-  padding:0!important;
-  margin:.85rem 0 1rem!important;
-  display:flex!important;
-  justify-content:flex-start!important;
-  align-items:center!important;
-  gap:.35rem!important;
-  flex-wrap:wrap!important;
-}
-#app .vendor-listing-tab,
-#app .vendor-request-tab,
-#app .admin-people-role-tab{
-  background:transparent!important;
-  color:var(--text-muted)!important;
-  border:1px solid var(--border)!important;
-  box-shadow:none!important;
-  border-radius:10px!important;
-  padding:.48rem .72rem!important;
-  font-weight:650!important;
-}
-#app .vendor-listing-tab.active,
-#app .vendor-request-tab.active,
-#app .admin-people-role-tab.active{
-  background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;
-  color:var(--primary)!important;
-  border:1px solid color-mix(in srgb,var(--primary) 26%,var(--border))!important;
-  box-shadow:none!important;
-}
-/* Grid/list/map controls use the same quiet icon-button language. */
-#app #vendorsViewListBtn,
-#app #vendorsViewMapBtn,
-#app #storefrontViewGridBtn,
-#app #storefrontViewTableBtn,
-#app .vendor-view-toggle,
-#app .vendors-view-toggle{
-  background:transparent!important;
-  color:var(--text-muted)!important;
-  border:1px solid var(--border)!important;
-  box-shadow:none!important;
-  border-radius:10px!important;
-}
-#app #vendorsViewListBtn.active,
-#app #vendorsViewMapBtn.active,
-#app #storefrontViewGridBtn.active,
-#app #storefrontViewTableBtn.active,
-#app .vendor-view-toggle.active,
-#app .vendors-view-toggle.active{
-  background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;
-  color:var(--primary)!important;
-  border-color:color-mix(in srgb,var(--primary) 26%,var(--border))!important;
-}
-/* Add Listing: same footprint and visual language as the other bottom-nav icons. */
-#bottomNav .bottom-nav-add{
-  position:relative!important; inset:auto!important;
-  width:32px!important;height:28px!important;min-width:32px!important;min-height:28px!important;
-  flex:0 0 32px!important;margin:0!important;
-  border-radius:8px!important;
-  border:1px solid color-mix(in srgb,var(--primary) 28%,var(--border))!important;
-  background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;
-  color:var(--primary)!important;
-  box-shadow:none!important;
-  font-size:.9rem!important;
-  align-self:center!important;justify-self:center!important;
-  display:flex!important;align-items:center!important;justify-content:center!important;
-}
-#bottomNav .bottom-nav-add i{font-size:.82rem!important;line-height:1!important;}
-#bottomNav .bottom-nav-add::after{
-  content:"Add listing";
-  position:absolute!important;
-  top:calc(100% + 2px)!important;
-  left:50%!important;transform:translateX(-50%)!important;
-  white-space:nowrap!important;
-  color:var(--text-muted)!important;
-  font-size:.61rem!important;font-weight:600!important;
-  pointer-events:none!important;
-}
-#bottomNav.has-add{padding-bottom:12px!important;}
-/* Quick actions: quiet outlined icons, matching the healthcare/category treatment. */
-#app .levro-home-quick-actions .levro-quick-icon,
-#app .levro-quick-action .levro-quick-icon{
-  width:2.45rem!important;height:2.45rem!important;
-  border-radius:10px!important;
-  background:color-mix(in srgb,var(--primary) 6%,var(--card))!important;
-  color:var(--primary)!important;
-  border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border))!important;
-  box-shadow:none!important;
-}
-/* Product cards: cart/service affordances become small, light, outlined controls. */
-#app .card-cart-btn,
-#app .card-service-btn{
-  background:color-mix(in srgb,var(--primary) 6%,var(--card))!important;
-  color:var(--primary)!important;
-  border:1px solid color-mix(in srgb,var(--primary) 25%,var(--border))!important;
-  box-shadow:none!important;
-}
-#app .card-cart-btn.added{background:color-mix(in srgb,var(--success) 7%,var(--card))!important;color:var(--success)!important;border-color:color-mix(in srgb,var(--success) 25%,var(--border))!important;}
-/* Header cart: same quiet outlined language as the rest of the header. */
-#app header .header-right .icon-btn:has(.fa-cart-shopping),
-#app #headerCartWrap .icon-btn{
-  background:color-mix(in srgb,var(--primary) 5%,var(--card))!important;
-  color:var(--primary)!important;
-  border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border))!important;
-  box-shadow:none!important;
-  filter:none!important;
-}
-/* Keep the smart-search rows compact but give the buyer the information they
-   asked for: vendor, distance, price, and variety when available. */
-#app .levro-smart-result{padding:.68rem .55rem!important;border:0!important;box-shadow:none!important;}
-#app .levro-smart-result small{display:block!important;white-space:normal!important;line-height:1.35!important;}
-#app .levro-smart-variety{color:var(--primary)!important;font-size:.68em!important;margin-left:.18rem!important;}
-</style>
-<script id="levromart-clean-ui-search-final-20260922">
-/* Re-apply the light add-listing state after any bottom-nav rerender. */
-(function(){
-  const sync=()=>{
-    const b=document.querySelector('#bottomNav .bottom-nav-add');
-    if(!b)return;
-    b.title='Add listing';
-    b.setAttribute('aria-label','Add listing');
-    b.innerHTML='<i class="fa-solid fa-plus" aria-hidden="true"></i>';
-  };
-  document.addEventListener('click',()=>setTimeout(sync,0),true);
-  new MutationObserver(()=>sync()).observe(document.body,{subtree:true,childList:true});
-  sync();
-})();
-</script>
