@@ -7416,6 +7416,141 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 }
 #app .home-promotional-slide img { object-fit: cover !important; object-position: center !important; }
 </style>
+
+<style id="levromart-universal-light-tabs-final-20260922">
+/* UNIVERSAL LIGHT TAB SYSTEM
+   Every selection/navigation tab uses the same quiet, outlined treatment.
+   No solid green active fills and no white-on-green tab text. */
+#app .vendor-request-tabs,
+#app .vendor-listing-tabs,
+#app .storefront-catalog-tabs,
+#app .segmented-tabs,
+#app .catalog-type-tabs {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+#app .vendor-request-tab,
+#app .vendor-listing-tab,
+#app .storefront-catalog-tab,
+#app .segmented-tabs button,
+#app .catalog-type-tab,
+#app .notif-tab,
+#app .range-tab,
+#app .admin-people-role-tab,
+#app .admin-payment-issue-tab {
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--text-muted) !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Active = subtle tint + thin outline + readable green/dark text. */
+#app .vendor-request-tab.active,
+#app .vendor-listing-tab.active,
+#app .storefront-catalog-tab.active,
+#app .segmented-tabs button.active,
+#app .catalog-type-tab.active,
+#app .notif-tab.active,
+#app .range-tab.active,
+#app .admin-people-role-tab.active,
+#app .admin-payment-issue-tab.active {
+  background: color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
+  background-image: none !important;
+  color: var(--primary) !important;
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border)) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Prevent nested count/badge elements from becoming white-on-green. */
+#app .vendor-request-tab.active span,
+#app .vendor-listing-tab.active span,
+#app .storefront-catalog-tab.active span,
+#app .segmented-tabs button.active span,
+#app .catalog-type-tab.active span,
+#app .notif-tab.active span,
+#app .range-tab.active span,
+#app .admin-people-role-tab.active span,
+#app .admin-people-role-tab.active strong,
+#app .admin-payment-issue-tab.active span,
+#app .admin-payment-issue-tab.active strong {
+  color: var(--primary) !important;
+  background: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+}
+
+/* Remove the old "pill tray" around vendor filters/tabs. */
+#app .vendor-request-tabs,
+#app .vendor-listing-tabs {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: .45rem !important;
+  flex-wrap: wrap !important;
+  margin: .8rem auto 1rem !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  border-radius: 0 !important;
+}
+
+/* Individual vendor tabs are still softly rounded, but are not boxed into a
+   second container and never become a solid green block. */
+#app .vendor-request-tab,
+#app .vendor-listing-tab,
+#app .storefront-catalog-tab,
+#app .segmented-tabs button,
+#app .catalog-type-tab {
+  border-radius: 10px !important;
+  font-weight: 650 !important;
+}
+
+/* Keep the storefront Products / Services / Packages tabs consistent. */
+#app .storefront-catalog-tabs {
+  gap: .45rem !important;
+  overflow-x: auto !important;
+  border-bottom: 0 !important;
+}
+#app .storefront-catalog-tab {
+  min-height: 40px !important;
+  padding: .5rem .82rem !important;
+}
+#app .storefront-catalog-tab.active {
+  color: var(--primary) !important;
+}
+
+/* The vendor page view controls (grid/list/map) stay quiet too. */
+#app #vendorsViewGridBtn,
+#app #vendorsViewListBtn,
+#app #vendorsViewMapBtn,
+#app #storefrontViewGridBtn,
+#app #storefrontViewTableBtn,
+#app .vendor-view-toggle,
+#app .vendors-view-toggle,
+#app .vendor-dashboard-icon-action {
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+#app #vendorsViewGridBtn.active,
+#app #vendorsViewListBtn.active,
+#app #vendorsViewMapBtn.active,
+#app #storefrontViewGridBtn.active,
+#app #storefrontViewTableBtn.active,
+#app .vendor-view-toggle.active,
+#app .vendors-view-toggle.active,
+#app .vendor-dashboard-icon-action.active {
+  background: color-mix(in srgb, var(--primary) 6%, var(--card)) !important;
+  color: var(--primary) !important;
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border)) !important;
+}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
