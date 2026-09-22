@@ -106,6 +106,107 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';"></script>
 <script src="/lib/compress-image.js"></script>
+<script>
+/* LevroMart image delivery/upload optimization layer.
+   - New uploads are resized in-browser and encoded as WebP where supported.
+   - Existing Supabase public images are served through Storage Image Transformations
+     at the size appropriate to their UI slot, so the browser does not download
+     multi-megabyte originals for 160px cards.
+   - Falls back to the original URL if a URL is not a Supabase public image. */
+(function(){
+  "use strict";
+  const SUPA_PUBLIC_RE=/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/;
+  function clamp(n,min,max){return Math.max(min,Math.min(max,n));}
+  window.levroStorageImageUrl=function(url,opts){
+    if(!url || typeof url!=="string") return url||"";
+    if(url.startsWith("data:") || url.startsWith("blob:")) return url;
+    let clean=url;
+    try{clean=clean.split("?")[0].split("#")[0];}catch(_){}
+    const m=clean.match(SUPA_PUBLIC_RE);
+    if(!m) return url;
+    const bucket=m[1], path=m[2];
+    const width=Math.round(clamp(Number(opts?.width||800),1,2500));
+    const height=opts?.height?Math.round(clamp(Number(opts.height),1,2500)):null;
+    const quality=Math.round(clamp(Number(opts?.quality||78),20,100));
+    const resize=opts?.resize||"contain";
+    return `${clean.replace("/storage/v1/object/public/","/storage/v1/render/image/public/")}?width=${width}${height?`&height=${height}`:""}&resize=${encodeURIComponent(resize)}&quality=${quality}`;
+  };
+
+  window.levroOptimizeImage=async function(file,opts={}){
+    if(!file || !String(file.type||"").startsWith("image/")) return file;
+    const maxWidth=Number(opts.maxWidth||1600), maxHeight=Number(opts.maxHeight||1600);
+    const quality=Number(opts.quality||0.78);
+    /* Avoid touching tiny images. */
+    if(file.size && file.size<120*1024 && !opts.force) return file;
+    if(typeof createImageBitmap!=="function" && typeof Image==="undefined") return file;
+    try{
+      let source;
+      if(typeof createImageBitmap==="function") source=await createImageBitmap(file);
+      else { source=await new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=URL.createObjectURL(file);}); }
+      const sw=source.width||source.naturalWidth, sh=source.height||source.naturalHeight;
+      if(!sw||!sh) return file;
+      const scale=Math.min(1,maxWidth/sw,maxHeight/sh);
+      const w=Math.max(1,Math.round(sw*scale)), h=Math.max(1,Math.round(sh*scale));
+      /* If already small and reasonably sized, retain it. */
+      if(scale===1 && file.size<350*1024 && !opts.force){try{source.close?.();}catch(_){} return file;}
+      const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext("2d",{alpha:true});
+      if(!ctx) return file;
+      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";
+      ctx.drawImage(source,0,0,w,h);
+      try{source.close?.();}catch(_){}
+      let blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",quality));
+      /* WebP is supported by all current LevroMart target browsers, but retain a
+         JPEG fallback for older environments and photographs with no alpha need. */
+      if(!blob || !blob.size){blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",quality));}
+      if(!blob || !blob.size) return file;
+      if(blob.size>=file.size && scale===1 && !opts.force) return file;
+      return blob;
+    }catch(_){return file;}
+  };
+  window.levroImageExtension=function(blob,original){
+    const type=String(blob?.type||original?.type||"").toLowerCase();
+    if(type.includes("webp"))return "webp";
+    if(type.includes("png"))return "png";
+    if(type.includes("jpeg")||type.includes("jpg"))return "jpg";
+    return (String(original?.name||"jpg").split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
+  };
+  window.levroOptimizeStorageImages=function(root){
+    const scope=root||document;
+    scope.querySelectorAll?.('img[src*="/storage/v1/object/public/"]').forEach(img=>{
+      if(img.dataset.levroTransformed==='1')return;
+      const src=img.getAttribute('src'); if(!src)return;
+      let opts={width:800,height:800,quality:76,resize:'contain'};
+      if(img.closest('.home-promotional-slide')) opts={width:1600,height:700,quality:78,resize:'cover'};
+      else if(img.closest('.product-card-wrap,.product-img')) opts={width:520,height:520,quality:74,resize:'cover'};
+      else if(img.closest('.product-gallery-thumb')) opts={width:180,height:180,quality:70,resize:'cover'};
+      else if(img.closest('.product-gallery-slide,.package-detail-gallery-slide')) opts={width:1200,height:1200,quality:82,resize:'contain'};
+      else if(img.closest('.vendor-directory-logo,.avatar-circle,.vendor-profile-header-avatar')) opts={width:220,height:220,quality:74,resize:'cover'};
+      const transformed=window.levroStorageImageUrl(src,opts);
+      if(transformed&&transformed!==src){
+        img.dataset.levroOriginalSrc=src;
+        img.dataset.levroTransformed='1';
+        img.onerror=function(){
+          const original=this.dataset.levroOriginalSrc;
+          if(original&&this.src!==original){this.onerror=null;this.src=original;return;}
+          this.onerror=null;
+        };
+        img.src=transformed;
+      }
+    });
+  };
+  let levroImageObserverTimer=0;
+  const scheduleImageOptimization=()=>{
+    if(levroImageObserverTimer)return;
+    levroImageObserverTimer=setTimeout(()=>{levroImageObserverTimer=0;try{window.levroOptimizeStorageImages(document);}catch(_){}},0);
+  };
+  if(typeof MutationObserver!=='undefined'){
+    const mo=new MutationObserver(scheduleImageOptimization);
+    const start=()=>{if(document.body)mo.observe(document.body,{subtree:true,childList:true});scheduleImageOptimization();};
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+  }
+})();
+</script>
 <style>
 
   /* Clean page-heading rhythm: headings must never visually collide with the
@@ -11128,7 +11229,7 @@ async function saveVendorCoverCrop(){
     if(!blob){showToast("Could not prepare that header.","error");return;}
     try{
       const path=`${vendor.id}/cover.jpg`;
-      const {error:upErr}=await sb.storage.from("vendor-logos").upload(path,blob,{upsert:true,contentType:"image/jpeg"});if(upErr)throw upErr;
+      const {error:upErr}=await sb.storage.from("vendor-logos").upload(path,blob,{upsert:true,contentType:"image/jpeg",cacheControl:"31536000"});if(upErr)throw upErr;
       const {data:pub}=sb.storage.from("vendor-logos").getPublicUrl(path);const url=`${pub.publicUrl}?t=${Date.now()}`;
       const {error}=await sb.from("vendors").update({cover_url:url}).eq("id",vendor.id);if(error)throw error;
       vendor.cover_url=url;closeVendorCoverCropModal();showToast("Storefront header updated.","success");
@@ -11208,7 +11309,7 @@ async function saveAvatarCrop(){
   canvas.toBlob(async (blob)=>{
     if(!blob){showToast('Could not prepare that photo.','error');return;}
     const path=`${session.user.id}/avatar.jpg`;
-    const {error:upErr}=await sb.storage.from('avatars').upload(path,blob,{upsert:true,contentType:'image/jpeg'});
+    const {error:upErr}=await sb.storage.from('avatars').upload(path,blob,{upsert:true,contentType:'image/jpeg',cacheControl:'31536000'});
     if(upErr){showToast(upErr.message,'error');return;}
     const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
     const url=`${pub.publicUrl}?t=${Date.now()}`;
@@ -12969,7 +13070,7 @@ function renderHomepageCarouselHtml(slides) {
   if (!usable.length) return "";
   homeCarouselSlides = usable;
   homeCarouselIndex = 0;
-  const slidesHtml = usable.map((s, i) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(s.image_url)}" alt="${esc(s.alt_text || "Levromart promotion")}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`).join("");
+  const slidesHtml = usable.map((s, i) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(levroStorageImageUrl(s.image_url,{width:1600,height:700,quality:78,resize:"cover"}))}" alt="${esc(s.alt_text || "Levromart promotion")}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`).join("");
   const dots = usable.map((s, i) => `<button type="button" class="home-promotional-dot ${i === 0 ? "active" : ""}" onclick="activateHomeCarouselSlide(${i},true)" aria-label="Go to slide ${i + 1}"></button>`).join("");
   return `<section class="home-promotional-carousel" id="homePromotionalCarousel" aria-label="Levromart promotions">
     <div class="home-promotional-viewport" id="homePromotionalViewport">
@@ -13374,7 +13475,7 @@ async function addAdminCarouselSlide() {
   try {
     const path = carouselStoragePathForUpload(file);
     let uploadBlob = file;
-    try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
+    try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 1920, maxHeight: 1080, quality: 0.82 }); } catch (_) {}
     const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false });
     if (uploadError) throw uploadError;
     const { data: publicData } = sb.storage.from("homepage-carousel").getPublicUrl(path);
@@ -13415,7 +13516,7 @@ async function replaceAdminCarouselImage(event, id) {
     if (oldError) throw oldError;
     const newPath = carouselStoragePathForUpload(file);
     let uploadBlob = file;
-    try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
+    try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 1920, maxHeight: 1080, quality: 0.82 }); } catch (_) {}
     const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(newPath, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false });
     if (uploadError) throw uploadError;
     const { data: publicData } = sb.storage.from("homepage-carousel").getPublicUrl(newPath);
@@ -14407,7 +14508,7 @@ function productCardHtml(p) {
   // filling the whole image slot, rather than a bare "No image" icon --
   // every card ends up with an actual picture in it.
   const noImageFallback = p.vendor?.logo_url
-    ? `<img src="${esc(p.vendor.logo_url)}" alt="${esc(p.vendor.business_name || "Vendor")}" loading="lazy" decoding="async" draggable="false">`
+    ? `<img src="${esc(levroStorageImageUrl(p.vendor.logo_url,{width:160,height:160,quality:72,resize:"cover"}))}" alt="${esc(p.vendor.business_name || "Vendor")}" loading="lazy" decoding="async" draggable="false">`
     : "<i class='fa-solid fa-camera'></i> No image";
   // "Buy price" + the flat delivery fee, added up for you, so the number on
   // the card is what you'd actually pay with delivery -- not just the item
@@ -14428,7 +14529,7 @@ function productCardHtml(p) {
   return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
-      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}</div>
+      <div class="product-img">${img ? `<img src="${esc(levroStorageImageUrl(img,{width:520,height:520,quality:74,resize:"cover"}))}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}</div>
       <h4>${esc(p.name)}</h4>
       <div class="product-card-rating-line" data-product-rating-id="${esc(p.id)}">${window.__productRatingCache?.has(String(p.id)) ? productRatingBadgeInnerHtml(window.__productRatingCache.get(String(p.id))) : `<span class="product-card-rating-empty">${"☆".repeat(5)}</span>`}</div>
       <div class="product-card-compact-footer">
@@ -16550,7 +16651,7 @@ async function sendPreparedChatImage(conversationId, prepared, replyToId, replyT
   // an image, etc); if the utility script failed to load for any reason,
   // fall back to uploading the original rather than failing the send.
   let uploadBlob = prepared.blob;
-  try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(prepared.blob, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
+  try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(prepared.blob, { maxWidth: 1600, maxHeight: 1600, quality: 0.76 }); } catch (_) {}
   const {error:upErr}=await sb.storage.from("chat-attachments").upload(path,uploadBlob,{contentType:uploadBlob.type||"image/jpeg",upsert:false});
   if(upErr) throw upErr;
   const {data,error}=await sb.from("messages").insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||"",reply_to_id:replyToId,attachment_url:path,attachment_name:prepared.name||"photo.jpg",attachment_type:uploadBlob.type||"image/jpeg",attachment_size:uploadBlob.size}).select("*").single();
@@ -16924,7 +17025,7 @@ async function renderCommissionServiceDetail(product,priceHint,offers){
   let html=`<div class="card service-detail-card" data-service-detail-id="${esc(product.id)}">
     <div class="product-detail-top-actions"><button class="fav-btn ${favoriteIds.has(product.id)?'active':''}" onclick="toggleFavorite(event,'${product.id}')" aria-label="Save to wishlist">${favoriteIds.has(product.id)?"<i class='fa-solid fa-heart'></i>":"<i class='fa-regular fa-heart'></i>"}</button><button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share service"><i class="fa-solid fa-share-nodes"></i></button></div>
     <h2 class="product-detail-title">${esc(product.name)} <span class="badge">Service</span></h2>
-    ${image?`<div class="product-detail-media"><div class="product-gallery"><div class="product-gallery-main"><img src="${esc(image)}" alt="${esc(product.name)}" loading="eager" /></div></div></div>`:''}
+    ${image?`<div class="product-detail-media"><div class="product-gallery"><div class="product-gallery-main"><img src="${esc(levroStorageImageUrl(image,{width:1200,height:1200,quality:82,resize:"contain"}))}" alt="${esc(product.name)}" loading="eager" decoding="async" /></div></div></div>`:''}
     <div class="service-vendor-info-block"><div class="service-vendor-info-head"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating">★ ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div><div class="service-vendor-contact-actions">${vendor.phone?`<a class="btn btn-sm btn-outline" href="${telLink(vendor.phone)}" onclick="callVendorGated(event,'${esc(vendor.phone)}','${vendor.id}')"><i class="fa-solid fa-phone"></i> Call vendor</a>`:''}<button type="button" class="btn btn-sm" onclick="startConversationWithVendor('${vendor.id}')"><i class="fa-solid fa-comment-dots"></i> Message vendor</button></div></div>
     <div class="service-description-block"><h3>About this service</h3><p>${esc(stripProductVariantMeta(product.description||'No description provided.'))}</p></div>
     ${priceHint?`<div class="service-price-hint"><i class="fa-solid fa-chart-line"></i> <strong>Past agreed prices:</strong> ${naira(priceHint.min)}${priceHint.min!==priceHint.max?' – '+naira(priceHint.max):''} <span>(last ${priceHint.count} completed bookings)</span></div>`:''}
@@ -16989,10 +17090,10 @@ async function __levroOriginalRenderProductDetail(productId) {
   const photosHtml = productPhotos.length
     ? `<div class="product-gallery product-gallery-carousel">
         <div class="product-gallery-main product-gallery-track" id="productGalleryTrack" aria-label="Product photos">
-          ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
+          ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(levroStorageImageUrl(u,{width:1200,height:1200,quality:82,resize:"contain"}))}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
           ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
-        ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
+        ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(levroStorageImageUrl(u,{width:180,height:180,quality:70,resize:"cover"}))}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
         <button type="button" id="productGalleryReturnMain" class="product-gallery-return-main hidden" onclick="restoreProductGalleryMainImage()" aria-label="Return to main product image"><i class="fa-solid fa-arrow-left"></i> Main image</button>
       </div>`
     : `<div class="product-img" style="height:220px;"><i class='fa-solid fa-camera'></i> No image</div>`;
@@ -18380,7 +18481,7 @@ async function submitSupportRequest() {
   try {
     for (const file of files) {
       let uploadBlob = file;
-      try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
+      try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.78 }); } catch (_) {}
       const ext = (uploadBlob.name || file.name || '').split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
       const path = `${session.user.id}/${request.id}/${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await sb.storage.from('support-attachments').upload(path, uploadBlob, { upsert: false, contentType: uploadBlob.type || file.type || 'application/octet-stream' });
@@ -20208,8 +20309,8 @@ async function uploadVendorLogo(event) {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const path = `${vendor.id}/logo.${ext}`;
   let uploadBlob = file;
-  try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 800, maxHeight: 800 }); } catch (_) {}
-  const { error: upErr } = await sb.storage.from("vendor-logos").upload(path, uploadBlob, { upsert: true, contentType: uploadBlob.type || file.type });
+  try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.78 }); } catch (_) {}
+  const { error: upErr } = await sb.storage.from("vendor-logos").upload(path, uploadBlob, { upsert: true, contentType: uploadBlob.type || file.type, cacheControl: "31536000" });
   if (upErr) { showToast(upErr.message, "error"); return; }
   const { data: pub } = sb.storage.from("vendor-logos").getPublicUrl(path);
   const url = `${pub.publicUrl}?t=${Date.now()}`;
@@ -21146,10 +21247,11 @@ async function selectVarietyImage(input){return handleProductVariantPhotoChange(
 async function uploadVarietyImages(){
   persistVisibleVariantOrder();
   await Promise.all((window.__productVariants||[]).map(async v=>{
-    if(!v._imageFile)return;const file=v._imageFile,path=`${vendor.id}/variants/${crypto.randomUUID()}.${(file.name.split('.').pop()||'jpg').toLowerCase()}`;
+    if(!v._imageFile)return;const file=v._imageFile;
     let uploadBlob=file;
-    try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}
-    const {error}=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type});if(error)throw error;
+    try{if(typeof window.levroOptimizeImage==="function")uploadBlob=await window.levroOptimizeImage(file,{maxWidth:1600,maxHeight:1600,quality:0.78});}catch(_){}
+    const path=`${vendor.id}/variants/${crypto.randomUUID()}.${window.levroImageExtension(uploadBlob,file)}`;
+    const {error}=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type,cacheControl:"31536000"});if(error)throw error;
     v.photo_url=sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl;
     const row=[...document.querySelectorAll('#productVariantPricing .variant-price-row')].find(r=>r.dataset.variantKey===String(v.id||v._localKey));
     if(row){
@@ -21657,11 +21759,11 @@ async function saveProduct() {
     const variantSourceByKey = new Map((window.__productVariants || []).map(v => [String(v.id || v._localKey || ""), v]));
 
     const uploadOne = async (file, folder) => {
-      const ext = (file.name?.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-      const path = `${vendor.id}/${folder ? folder + "/" : ""}${crypto.randomUUID()}.${ext}`;
       let uploadBlob = file;
-      try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type || "image/jpeg", upsert: false });
+      try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.78 }); } catch (_) {}
+      const ext = window.levroImageExtension(uploadBlob, file);
+      const path = `${vendor.id}/${folder ? folder + "/" : ""}${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type || "image/jpeg", cacheControl: "31536000", upsert: false });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
       uploadedStoragePaths.push(path);
       const { data: urlData } = sb.storage.from("product-photos").getPublicUrl(path);
@@ -22171,11 +22273,11 @@ async function savePackage() {
 
     const newFiles = [...(window.__newPackagePhotoFiles || byId("pkgPhotoFiles")?.files || [])];
     const newPhotoUrls = await Promise.all(newFiles.map(async (file) => {
-      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `${vendor.id}/packages/${crypto.randomUUID()}.${ext}`;
       let uploadBlob = file;
-      try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type });
+      try { if (typeof window.levroOptimizeImage === "function") uploadBlob = await window.levroOptimizeImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.78 }); } catch (_) {}
+      const ext = window.levroImageExtension(uploadBlob, file);
+      const path = `${vendor.id}/packages/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type, cacheControl: "31536000" });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
       return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
     }));
@@ -29488,7 +29590,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
      --------------------------------------------------------------- */
   window.vendorCardHtml = function (v) {
     const logo = v.logo_url
-      ? `<img src="${esc(v.logo_url)}" alt="" class="avatar-circle vendor-directory-logo" />`
+      ? `<img src="${esc(levroStorageImageUrl(v.logo_url,{width:160,height:160,quality:72,resize:"cover"}))}" alt="" class="avatar-circle vendor-directory-logo" loading="lazy" decoding="async" />`
       : avatarFallbackHtml(v.business_name || "Vendor", "3.1rem", "vendor-directory-logo", v.business_name || "Vendor");
     const distance = (typeof buyerLocation !== "undefined" && buyerLocation && v.lat != null && v.lng != null)
       ? `<span class="badge"><i class="fa-solid fa-location-dot"></i> ${formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng))}</span>`
@@ -30913,7 +31015,7 @@ window.renderVendorMapRail = function(){
     const avatar = v?.logo_url || v?.user_avatar_url || "";
     const name = v?.business_name || "Vendor";
     const avatarHtml = avatar
-      ? `<img src="${esc(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name)}','3.1rem','vendor-directory-logo','${esc(name)}')))" />`
+      ? `<img src="${esc(levroStorageImageUrl(avatar,{width:160,height:160,quality:72,resize:"cover"}))}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name)}','3.1rem','vendor-directory-logo','${esc(name)}')))" />`
       : avatarFallbackHtml(name, '3.1rem', 'vendor-directory-logo', name);
     const sectorName = (Array.isArray(sectors) ? sectors : []).find(sec => String(sec.id) === String(v?.sector_id))?.name || "";
     const knownLine = `<p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${esc(sectorName || "Sector not listed")}</p>`;
@@ -32454,8 +32556,8 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     if(!groupId)return originalSendPrepared(conversationId,prepared,replyToId,replyTargetSnapshot);
     const path=`conv/${conversationId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeFilename(prepared.name||'photo.jpg')}`;
     let uploadBlob=prepared.blob;
-    try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(prepared.blob,{maxWidth:1600,maxHeight:1600});}catch(_){}
-    const {error:upErr}=await sb.storage.from('chat-attachments').upload(path,uploadBlob,{contentType:uploadBlob.type||'image/jpeg',upsert:false});if(upErr)throw upErr;
+    try{if(typeof window.levroOptimizeImage==="function")uploadBlob=await window.levroOptimizeImage(prepared.blob,{maxWidth:1600,maxHeight:1600,quality:0.76});}catch(_){}
+    const {error:upErr}=await sb.storage.from('chat-attachments').upload(path,uploadBlob,{contentType:uploadBlob.type||'image/jpeg',cacheControl:'31536000',upsert:false});if(upErr)throw upErr;
     const markedName=`${GROUP_PREFIX}${groupId}__|${prepared.name||'photo.jpg'}`;
     const {data,error}=await sb.from('messages').insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||'',reply_to_id:replyToId,attachment_url:path,attachment_name:markedName,attachment_type:uploadBlob.type||'image/jpeg',attachment_size:uploadBlob.size}).select('*').single();if(error)throw error;
     if(replyTargetSnapshot)data.reply_to={id:replyTargetSnapshot.id,body:replyTargetSnapshot.body,attachment_name:replyTargetSnapshot.attachment,sender_id:document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains('mine')?session.user.id:''};
@@ -32647,7 +32749,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
   window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
-  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;let uploadBlob=file;try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}const up=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
+  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){let uploadBlob=file;try{if(typeof window.levroOptimizeImage==="function")uploadBlob=await window.levroOptimizeImage(file,{maxWidth:1600,maxHeight:1600,quality:0.78});}catch(_){}const ext=window.levroImageExtension(uploadBlob,file),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;const up=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type,cacheControl:"31536000"});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
   async function renderUnifiedEnhancements(){
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading)return;
