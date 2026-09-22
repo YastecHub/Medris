@@ -7416,6 +7416,139 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 }
 #app .home-promotional-slide img { object-fit: cover !important; object-position: center !important; }
 </style>
+
+<style id="levromart-light-controls-and-follow-final-20260922">
+/* FINAL LIGHT CONTROL PASS
+   Navigation/selection controls use the same restrained treatment throughout:
+   transparent surface, thin outline, tiny tint, no heavy green fill. */
+#app .vendor-listing-tab,
+#app .vendor-listing-tab.active,
+#app .vendor-request-tab,
+#app .vendor-request-tab.active,
+#app #vendorsViewListBtn,
+#app #vendorsViewMapBtn,
+#app #vendorsViewListBtn.active,
+#app #vendorsViewMapBtn.active,
+#app .storefront-view-buttons .btn.active,
+#app .storefront-view-buttons .btn-outline.active,
+#app .vendor-dashboard-icon-action,
+#app .vendor-dashboard-icon-action.active,
+#app .admin-people-role-tab,
+#app .admin-people-role-tab.active {
+  background: color-mix(in srgb,var(--primary) 3%,var(--card)) !important;
+  background-image: none !important;
+  color: var(--primary) !important;
+  border: 1px solid color-mix(in srgb,var(--primary) 22%,var(--border)) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+#app .vendor-listing-tab:hover,
+#app .vendor-request-tab:hover,
+#app #vendorsViewListBtn:hover,
+#app #vendorsViewMapBtn:hover,
+#app .storefront-view-buttons .btn:hover,
+#app .vendor-dashboard-icon-action:hover {
+  background: color-mix(in srgb,var(--primary) 6%,var(--card)) !important;
+  border-color: color-mix(in srgb,var(--primary) 32%,var(--border)) !important;
+}
+#app .vendor-listing-tab.active,
+#app .vendor-request-tab.active,
+#app #vendorsViewListBtn.active,
+#app #vendorsViewMapBtn.active,
+#app .storefront-view-buttons .btn.active,
+#app .vendor-dashboard-icon-action.active,
+#app .admin-people-role-tab.active {
+  background: color-mix(in srgb,var(--primary) 7%,var(--card)) !important;
+  color: var(--primary) !important;
+  border-color: color-mix(in srgb,var(--primary) 30%,var(--border)) !important;
+}
+#app .vendor-listing-tabs,
+#app .vendor-request-tabs,
+#app .admin-people-role-tabs {
+  background: color-mix(in srgb,var(--primary) 1.5%,var(--card)) !important;
+  border: 1px solid color-mix(in srgb,var(--primary) 14%,var(--border)) !important;
+  box-shadow: none !important;
+}
+
+/* Follow buttons: light outlined state in both Follow and Following states. */
+#app .vendor-card-follow-btn,
+#app .vendor-card-follow-btn.following,
+#app .follow-btn,
+#app .follow-btn.following {
+  background: color-mix(in srgb,var(--primary) 3%,var(--card)) !important;
+  color: var(--primary) !important;
+  border: 1px solid color-mix(in srgb,var(--primary) 24%,var(--border)) !important;
+  box-shadow: none !important;
+  transition: background-color .12s ease,border-color .12s ease,color .12s ease !important;
+}
+#app .vendor-card-follow-btn:hover,
+#app .vendor-card-follow-btn.following:hover,
+#app .follow-btn:hover,
+#app .follow-btn.following:hover {
+  background: color-mix(in srgb,var(--primary) 7%,var(--card)) !important;
+}
+#app .vendor-card-follow-btn[data-follow-busy="1"] { opacity: 1 !important; }
+
+/* Add-listing control: small neutral icon matching the other bottom-nav icons,
+   with the label underneath instead of a large attention-grabbing circle. */
+@media(max-width:720px){
+  #bottomNav .bottom-nav-add {
+    position:relative !important; inset:auto !important;
+    width:46px !important; height:46px !important; min-width:46px !important; min-height:46px !important;
+    padding:0 !important; margin:0 !important; border:0 !important; border-radius:8px !important;
+    background:transparent !important; color:var(--text-muted) !important; box-shadow:none !important;
+    display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:center !important;
+    gap:2px !important; font-size:.56rem !important; font-weight:600 !important; line-height:1 !important;
+  }
+  #bottomNav .bottom-nav-add i {
+    width:30px !important; height:30px !important; min-width:30px !important; min-height:30px !important;
+    display:grid !important; place-items:center !important;
+    border:1px solid color-mix(in srgb,var(--primary) 25%,var(--border)) !important;
+    border-radius:8px !important;
+    background:color-mix(in srgb,var(--primary) 4%,var(--card)) !important;
+    color:var(--primary) !important; font-size:.9rem !important;
+  }
+  #bottomNav .bottom-nav-add::after { content:"Add listing"; color:var(--text-muted) !important; white-space:nowrap !important; }
+}
+
+/* Product-card quick add: integrate with the card rather than using a deep
+   green floating circle. */
+#app .card-cart-btn,
+#app .card-service-btn {
+  background: color-mix(in srgb,var(--primary) 4%,var(--card)) !important;
+  background-image:none !important;
+  color:var(--primary) !important;
+  border:1px solid color-mix(in srgb,var(--primary) 24%,var(--border)) !important;
+  box-shadow:none !important;
+}
+#app .card-cart-btn:hover,
+#app .card-service-btn:hover { background:color-mix(in srgb,var(--primary) 8%,var(--card)) !important; }
+
+/* Header cart: same restrained outlined icon treatment; message icon is not
+   changed by this selector. */
+#app header button.icon-btn[onclick*="requireLoginThen('cart')"] {
+  background:color-mix(in srgb,var(--primary) 3%,var(--card)) !important;
+  color:var(--primary) !important;
+  border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border)) !important;
+  box-shadow:none !important;
+}
+#app header button.icon-btn[onclick*="requireLoginThen('cart')"] i { color:var(--primary) !important; }
+
+/* Six homepage actions: keep the iconography light and consistent with the
+   healthcare-style category icons. */
+#app .levro-home-quick-actions .levro-quick-action {
+  background:color-mix(in srgb,var(--primary) 1.5%,var(--card)) !important;
+  border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border)) !important;
+  box-shadow:none !important;
+}
+#app .levro-home-quick-actions .levro-quick-icon {
+  background:color-mix(in srgb,var(--primary) 7%,var(--card)) !important;
+  color:var(--primary) !important;
+  border:1px solid color-mix(in srgb,var(--primary) 20%,var(--border)) !important;
+  box-shadow:none !important;
+}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
@@ -35992,19 +36125,19 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     if(!btn||btn.disabled)return;
     const next=!btn.classList.contains("following");
     const matches=document.querySelectorAll(`.vendor-card-follow-btn[data-vendor-id="${CSS.escape(String(vendorId))}"]`);
-    // Flip the button the instant it's tapped -- waiting on the round trip
-    // before showing "Following" reads as stalling. Reconcile with the
-    // server after; on failure, flip it back and say why.
-    matches.forEach(b=>{b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";b.disabled=true;});
+    // Optimistic UI: change the visible state immediately and use a local
+    // busy flag rather than disabling the control, so the visual state never
+    // appears stuck or dimmed while Supabase completes the write.
+    matches.forEach(b=>{b.dataset.followBusy="1";b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";b.setAttribute("aria-pressed",String(next));});
     try{
       const r=await sb.rpc("toggle_vendor_follow",{p_vendor_id:vendorId,p_following:next});
       if(r.error)throw r.error;
       showToast?.(next?"Following vendor.":"Unfollowed vendor.","success");
     }catch(e){
-      matches.forEach(b=>{b.classList.toggle("following",!next);b.textContent=!next?"Following":"Follow";});
+      matches.forEach(b=>{b.classList.toggle("following",!next);b.textContent=!next?"Following":"Follow";b.setAttribute("aria-pressed",String(!next));});
       showToast?.(e.message||"Could not update your following list.","error");
     }
-    finally{ matches.forEach(b=>{b.disabled=false;}); }
+    finally{ matches.forEach(b=>{delete b.dataset.followBusy;}); }
   }
   window.toggleVendorCardFollow=toggleVendorCardFollow;
   async function hydrateVendorCardFollowState(){
