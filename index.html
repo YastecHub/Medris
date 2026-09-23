@@ -10959,6 +10959,7 @@ function updateAuthUI() {
         { label: "Vendors followed", value: Number(buyerFollowingCount || 0), action: "navigate('customerFollowing')" },
       ];
       plainLinks = [
+        { label: "Apply to be a vendor", action: "navigate('vendorApply')" },
         { label: `My orders${Number(buyerPendingOrderCount || 0) > 0 ? ` (${buyerPendingOrderCount})` : ""}`, action: "navigate('buyerOrders')" },
         { label: "Wishlist", action: "navigate('wishlist')" },
         { label: "Vendors you follow", action: "navigate('customerFollowing')" },
