@@ -12537,7 +12537,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (view !== "productDetail") stopProductCommentRealtime();
   setTimeout(()=>{hydrateProductVariantIndicatorsInView();hydrateProductLikeCountsInView();hydratePackageCommentCountsInView();hydrateProductRatingsInView()},0);
   if (view === "settings") setTimeout(hydrateSettingsPage, 0);
-  if (view === "search") setTimeout(() => byId("searchPageInput")?.focus(), 60);
+  if (view === "search") { setTimeout(() => byId("searchPageInput")?.focus(), 60); renderSearchPageSuggestions(); }
   // A same-view, non-history refresh (notably live order updates) must keep
   // the user's scroll position. Real navigation still starts at the top.
   if (preserveSameViewScroll) {
@@ -13943,8 +13943,8 @@ function clearSearchPageInput() {
   byId("searchPageClearBtn")?.classList.add("hidden");
   const historyBlock = byId("searchPageHistoryBlock");
   if (historyBlock) historyBlock.hidden = readSearchHistory().length === 0;
-  const results = byId("searchPageResults");
   document.querySelectorAll(".search-page-section, .search-page-empty").forEach((el) => el.remove());
+  renderSearchPageSuggestions();
 }
 let searchPageTimer = null;
 let searchPageSeq = 0;
@@ -13986,6 +13986,43 @@ function sortSearchResultsByPriceThenDistance(rows, priceOf) {
     return 0;
   });
 }
+function searchDistanceMetaHtml(vendorLatLng) {
+  const km = searchResultDistanceKm(vendorLatLng);
+  return km == null ? "" : ` · ${esc(formatDistanceKm(km))}`;
+}
+function searchProductRowHtml(p) {
+  const price = p.is_service ? "" : p.sale_price != null
+    ? naira(p.discount_price != null && p.discount_price > 0 && p.discount_price < p.sale_price ? p.discount_price : p.sale_price)
+    : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
+  const img = p.photos?.[0];
+  const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
+  return `<button type="button" class="search-result-row" onclick="navigate('productDetail',{productId:'${p.id}'})">
+    <span class="search-result-thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</span>
+    <span class="search-result-copy"><strong>${esc(p.name)}${hasVariety ? ` <i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available"></i>` : ""}</strong><span class="muted">${esc(p.vendor?.business_name || "")}${searchDistanceMetaHtml(p.vendor)}</span></span>
+    ${price ? `<span class="search-result-price">${price}</span>` : ""}
+  </button>`;
+}
+// Nothing typed yet doesn't have to mean nothing shown -- surface the most
+// popular active listings (view_count) so the page never opens to a blank
+// screen. Same price-then-distance ordering as an actual search.
+let searchSuggestionsLoaded = false;
+async function renderSearchPageSuggestions() {
+  const results = byId("searchPageResults");
+  if (!results || byId("searchPageInput")?.value.trim()) return;
+  const { data } = await sb.from("products")
+    .select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,vendor:vendors!inner(business_name,verification_status,is_active,lat,lng)")
+    .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
+    .order("view_count", { ascending: false }).limit(12);
+  if (byId("searchPageInput")?.value.trim()) return; // typing started while this was in flight
+  const prods = sortSearchResultsByPriceThenDistance(data || [], searchResultEffectivePrice);
+  if (!prods.length) return;
+  searchSuggestionsLoaded = true;
+  document.querySelectorAll(".search-page-section, .search-page-empty").forEach((el) => el.remove());
+  results.insertAdjacentHTML("beforeend", `<div class="search-page-section"><h3>Suggested for you</h3>${prods.map(searchProductRowHtml).join("")}</div>`);
+  if (!buyerLocation) {
+    getCustomerLocation().then(() => { if (!byId("searchPageInput")?.value.trim()) renderSearchPageSuggestions(); }).catch(() => {});
+  }
+}
 async function runSearchPageQuery(term, saveToHistory) {
   term = String(term || "").trim();
   if (!term) return;
@@ -14021,34 +14058,18 @@ async function runSearchPageQuery(term, saveToHistory) {
   if (!results) return;
   document.querySelectorAll(".search-page-section, .search-page-empty").forEach((el) => el.remove());
 
-  const distanceMetaHtml = (vendorLatLng) => {
-    const km = searchResultDistanceKm(vendorLatLng);
-    return km == null ? "" : ` · ${esc(formatDistanceKm(km))}`;
-  };
-  const productRowHtml = (p) => {
-    const price = p.is_service ? "" : p.sale_price != null
-      ? naira(p.discount_price != null && p.discount_price > 0 && p.discount_price < p.sale_price ? p.discount_price : p.sale_price)
-      : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
-    const img = p.photos?.[0];
-    const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
-    return `<button type="button" class="search-result-row" onclick="navigate('productDetail',{productId:'${p.id}'})">
-      <span class="search-result-thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</span>
-      <span class="search-result-copy"><strong>${esc(p.name)}${hasVariety ? ` <i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available"></i>` : ""}</strong><span class="muted">${esc(p.vendor?.business_name || "")}${distanceMetaHtml(p.vendor)}</span></span>
-      ${price ? `<span class="search-result-price">${price}</span>` : ""}
-    </button>`;
-  };
   const vendorRowHtml = (v) => `<button type="button" class="search-result-row" onclick="navigate('storefront',{vendorId:'${v.id}'})">
       <span class="search-result-thumb search-result-thumb-round">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-store"></i>`}</span>
-      <span class="search-result-copy"><strong>${esc(v.business_name)}</strong><span class="muted">${esc(v.city || "Vendor")}${distanceMetaHtml(v)}</span></span>
+      <span class="search-result-copy"><strong>${esc(v.business_name)}</strong><span class="muted">${esc(v.city || "Vendor")}${searchDistanceMetaHtml(v)}</span></span>
     </button>`;
   const packageRowHtml = (pkg) => `<button type="button" class="search-result-row" onclick="navigate('packageDetail',{packageId:'${pkg.id}'})">
       <span class="search-result-thumb">${pkg.photos?.[0] ? `<img src="${esc(pkg.photos[0])}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-box-open"></i>`}</span>
-      <span class="search-result-copy"><strong>${esc(pkg.name)}</strong><span class="muted">${esc(pkg.vendor?.business_name || "Package")}${distanceMetaHtml(pkg.vendor)}</span></span>
+      <span class="search-result-copy"><strong>${esc(pkg.name)}</strong><span class="muted">${esc(pkg.vendor?.business_name || "Package")}${searchDistanceMetaHtml(pkg.vendor)}</span></span>
       <span class="search-result-price">${naira(pkg.price)}</span>
     </button>`;
 
   const sections = [
-    prods.length ? { title: `Products (${prods.length})`, rows: prods.map(productRowHtml) } : null,
+    prods.length ? { title: `Products (${prods.length})`, rows: prods.map(searchProductRowHtml) } : null,
     vendList.length ? { title: `Vendors (${vendList.length})`, rows: vendList.map(vendorRowHtml) } : null,
     packageList.length ? { title: `Packages (${packageList.length})`, rows: packageList.map(packageRowHtml) } : null,
   ].filter(Boolean);
