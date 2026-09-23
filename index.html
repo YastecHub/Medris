@@ -36052,7 +36052,14 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       // Admins are people too -- there's no reason they can't follow a vendor's
       // shop from the Featured Vendors rail like any other account can.
       const showFollow=!(typeof isOwnVendorId==="function" && isOwnVendorId(v?.id));
-      const followBtn=showFollow?`<button type="button" class="vendor-card-follow-btn" data-vendor-id="${escText(v?.id||"")}" onclick="event.stopPropagation();toggleVendorCardFollow('${escText(v?.id||"")}',event)">Follow</button>`:"";
+      // A card rebuilt right after a tap (filter change, cache-then-refresh
+      // repaint, another hydrate pass) has no way to know about that tap
+      // until a fresh network round trip catches up -- so without this it
+      // silently reverts to "Follow" and the user has to tap twice. Trust
+      // whatever was tapped most recently for a few seconds instead.
+      const recentFollow=window.__vendorCardFollowRecent?.get(String(v?.id||""));
+      const isFollowingNow=!!(recentFollow && (Date.now()-recentFollow.at<15000) && recentFollow.following);
+      const followBtn=showFollow?`<button type="button" class="vendor-card-follow-btn${isFollowingNow?" following":""}" data-vendor-id="${escText(v?.id||"")}" onclick="event.stopPropagation();toggleVendorCardFollow('${escText(v?.id||"")}',event)">${isFollowingNow?"Following":"Follow"}</button>`:"";
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
         ${avatarHtml}<div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
           <strong class="vendor-directory-name">${escText(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
@@ -36073,12 +36080,15 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     // Flip the button the instant it's tapped -- waiting on the round trip
     // before showing "Following" reads as stalling. Reconcile with the
     // server after; on failure, flip it back and say why.
+    window.__vendorCardFollowRecent=window.__vendorCardFollowRecent||new Map();
+    window.__vendorCardFollowRecent.set(String(vendorId),{following:next,at:Date.now()});
     matches.forEach(b=>{b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";b.disabled=true;});
     try{
       const r=await sb.rpc("toggle_vendor_follow",{p_vendor_id:vendorId,p_following:next});
       if(r.error)throw r.error;
       showToast?.(next?"Following vendor.":"Unfollowed vendor.","success");
     }catch(e){
+      window.__vendorCardFollowRecent.set(String(vendorId),{following:!next,at:Date.now()});
       matches.forEach(b=>{b.classList.toggle("following",!next);b.textContent=!next?"Following":"Follow";});
       showToast?.(e.message||"Could not update your following list.","error");
     }
@@ -36092,6 +36102,11 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     try{
       const results=await Promise.all(ids.map(id=>sb.rpc("get_vendor_follow_state",{p_vendor_id:id}).then(r=>[id,r.error?null:(r.data?.[0]||null)]).catch(()=>[id,null])));
       results.forEach(([id,st])=>{
+        // A tap in the last 15s wins over this fetch -- the fetch may have
+        // been in flight since before that tap landed, and reflecting a
+        // stale answer over it is exactly the "needs two taps" bug.
+        const recent=window.__vendorCardFollowRecent?.get(String(id));
+        if(recent && (Date.now()-recent.at<15000))return;
         if(!st?.following)return;
         document.querySelectorAll(`.vendor-card-follow-btn[data-vendor-id="${CSS.escape(id)}"]`).forEach(btn=>{btn.classList.add("following");btn.textContent="Following";});
       });
@@ -37169,14 +37184,25 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 #app .vendors-directory-view-buttons .btn[aria-pressed="true"],
 #app #vendorsViewGridBtn.active,
 #app #vendorsViewListBtn.active,
-#app #vendorsViewMapBtn.active,
-#app .follow-btn:not(.btn-outline),
-#app .vendor-card-follow-btn.following{
+#app #vendorsViewMapBtn.active{
   background-color:color-mix(in srgb,var(--primary) 12%,var(--card)) !important;
   background-image:none !important;
   color:var(--primary) !important;
   -webkit-text-fill-color:var(--primary) !important;
   border:1px solid color-mix(in srgb,var(--primary) 40%,var(--border)) !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
+}
+/* Following state reads as a distinct light "on" state -- blue, not another
+   shade of green -- so it's obviously different from Follow (light green)
+   and from every other light-green active/selected control on screen. */
+#app .follow-btn:not(.btn-outline),
+#app .vendor-card-follow-btn.following{
+  background-color:color-mix(in srgb,var(--info) 14%,var(--card)) !important;
+  background-image:none !important;
+  color:var(--info) !important;
+  -webkit-text-fill-color:var(--info) !important;
+  border:1px solid color-mix(in srgb,var(--info) 40%,var(--border)) !important;
   box-shadow:none !important;
   text-shadow:none !important;
 }
