@@ -10616,8 +10616,20 @@ async function refreshAuthState() {
   // token can remain readable locally until it expires. Validate the current
   // user before treating that cached session as a real login.
   if (session) {
-    const { data: verifiedUser, error: verifyError } = await sb.auth.getUser();
-    if (verifyError || !verifiedUser?.user) {
+    let verifiedUser = null, verifyError = null;
+    try {
+      const r = await sb.auth.getUser();
+      verifiedUser = r.data; verifyError = r.error;
+    } catch (networkErr) {
+      verifyError = networkErr;
+    }
+    // Only a real rejection of the token (expired/invalid/user gone) means the
+    // account is actually gone -- a transient network/server hiccup talking to
+    // Supabase must not be treated the same way, or a flaky connection forces
+    // a perfectly valid session to sign out.
+    const status = verifyError?.status ?? verifyError?.originalError?.status;
+    const isAuthRejection = status === 401 || status === 403 || /user.?not.?found|session.?not.?found|invalid.*token|jwt/i.test(verifyError?.message || "");
+    if (isAuthRejection || (!verifyError && !verifiedUser?.user)) {
       session = null;
       profile = null;
       vendor = null;
@@ -11414,7 +11426,7 @@ function renderBottomNav() {
     nav.classList.remove("buyer-no-add");
     nav.classList.add("has-add");
     nav.innerHTML = `<div class="bn-group bn-group-left">${items.slice(0, 2).map(itemHtml).join("")}</div>
-      <button class="bottom-nav-add" onclick="openAddChooser()" title="Add listing"><i class="fa-solid fa-plus"></i></button>
+      <button class="bottom-nav-add" onclick="openAddChooser()" title="Add listing"><span class="bn-icon"><i class="fa-solid fa-plus"></i></span><span>Add listing</span></button>
       <div class="bn-group bn-group-right">${items.slice(2, 4).map(itemHtml).join("")}</div>`;
   } else if (session && profile?.role === "admin") {
     nav.classList.remove("has-add", "buyer-no-add");
@@ -13946,6 +13958,34 @@ function scheduleSearchPageQuery() {
   // you type, not after a pause.
   searchPageTimer = setTimeout(() => runSearchPageQuery(term, false), 120);
 }
+// Search-result distance/price ordering: closest+cheapest listings should be
+// the first thing a buyer sees, so results are sorted cheapest-first with
+// distance as the tie-breaker (items missing a usable value sort last rather
+// than crashing the comparison).
+function searchResultDistanceKm(vendorLatLng) {
+  if (!buyerLocation || vendorLatLng?.lat == null || vendorLatLng?.lng == null) return null;
+  return haversineKm(buyerLocation.lat, buyerLocation.lng, vendorLatLng.lat, vendorLatLng.lng);
+}
+function searchResultEffectivePrice(p) {
+  if (p.is_service) return p.price ?? null;
+  if (p.sale_price != null) {
+    return p.discount_price != null && p.discount_price > 0 && p.discount_price < p.sale_price ? p.discount_price : p.sale_price;
+  }
+  return p.rental_rate ?? p.price ?? null;
+}
+function sortSearchResultsByPriceThenDistance(rows, priceOf) {
+  return [...rows].sort((a, b) => {
+    const pa = priceOf(a), pb = priceOf(b);
+    if (pa != null && pb != null && pa !== pb) return pa - pb;
+    if (pa == null && pb != null) return 1;
+    if (pa != null && pb == null) return -1;
+    const da = searchResultDistanceKm(a.vendor || a), db = searchResultDistanceKm(b.vendor || b);
+    if (da != null && db != null && da !== db) return da - db;
+    if (da == null && db != null) return 1;
+    if (da != null && db == null) return -1;
+    return 0;
+  });
+}
 async function runSearchPageQuery(term, saveToHistory) {
   term = String(term || "").trim();
   if (!term) return;
@@ -13955,56 +13995,77 @@ async function runSearchPageQuery(term, saveToHistory) {
   if (saveToHistory) writeSearchHistory(term);
   const [{ data: idRows }, { data: vends }, { data: packageRows }] = await Promise.all([
     sb.rpc("search_product_ids", { p_query: term }),
-    sb.from("vendors").select("id,business_name,logo_url,city").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(6),
-    sb.from("vendor_packages").select("id,name,price,photos,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(6),
+    sb.from("vendors").select("id,business_name,logo_url,city,lat,lng").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(6),
+    sb.from("vendor_packages").select("id,name,price,photos,vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(6),
   ]);
   if (mySeq !== searchPageSeq) return; // a newer keystroke already superseded this query
 
   const topIds = (idRows || []).slice(0, 20).map((r) => r.id);
   let prods = [];
   if (topIds.length) {
-    const { data } = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,vendor:vendors!inner(business_name,verification_status,is_active)")
+    const { data } = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,vendor:vendors!inner(business_name,verification_status,is_active,lat,lng)")
       .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).in("id", topIds);
-    prods = (data || []).sort((a, b) => topIds.indexOf(a.id) - topIds.indexOf(b.id));
+    prods = sortSearchResultsByPriceThenDistance(data || [], searchResultEffectivePrice);
   }
   if (mySeq !== searchPageSeq) return;
+  const vendList = buyerLocation ? [...(vends || [])].sort((a, b) => {
+    const da = searchResultDistanceKm(a), db = searchResultDistanceKm(b);
+    if (da == null && db == null) return 0;
+    if (da == null) return 1;
+    if (db == null) return -1;
+    return da - db;
+  }) : (vends || []);
+  const packageList = sortSearchResultsByPriceThenDistance(packageRows || [], (pkg) => pkg.price ?? null);
 
   const results = byId("searchPageResults");
   if (!results) return;
   document.querySelectorAll(".search-page-section, .search-page-empty").forEach((el) => el.remove());
 
+  const distanceMetaHtml = (vendorLatLng) => {
+    const km = searchResultDistanceKm(vendorLatLng);
+    return km == null ? "" : ` · ${esc(formatDistanceKm(km))}`;
+  };
   const productRowHtml = (p) => {
     const price = p.is_service ? "" : p.sale_price != null
       ? naira(p.discount_price != null && p.discount_price > 0 && p.discount_price < p.sale_price ? p.discount_price : p.sale_price)
       : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
     const img = p.photos?.[0];
+    const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
     return `<button type="button" class="search-result-row" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <span class="search-result-thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</span>
-      <span class="search-result-copy"><strong>${esc(p.name)}</strong><span class="muted">${esc(p.vendor?.business_name || "")}</span></span>
+      <span class="search-result-copy"><strong>${esc(p.name)}${hasVariety ? ` <i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available"></i>` : ""}</strong><span class="muted">${esc(p.vendor?.business_name || "")}${distanceMetaHtml(p.vendor)}</span></span>
       ${price ? `<span class="search-result-price">${price}</span>` : ""}
     </button>`;
   };
   const vendorRowHtml = (v) => `<button type="button" class="search-result-row" onclick="navigate('storefront',{vendorId:'${v.id}'})">
       <span class="search-result-thumb search-result-thumb-round">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-store"></i>`}</span>
-      <span class="search-result-copy"><strong>${esc(v.business_name)}</strong><span class="muted">${esc(v.city || "Vendor")}</span></span>
+      <span class="search-result-copy"><strong>${esc(v.business_name)}</strong><span class="muted">${esc(v.city || "Vendor")}${distanceMetaHtml(v)}</span></span>
     </button>`;
   const packageRowHtml = (pkg) => `<button type="button" class="search-result-row" onclick="navigate('packageDetail',{packageId:'${pkg.id}'})">
       <span class="search-result-thumb">${pkg.photos?.[0] ? `<img src="${esc(pkg.photos[0])}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-box-open"></i>`}</span>
-      <span class="search-result-copy"><strong>${esc(pkg.name)}</strong><span class="muted">${esc(pkg.vendor?.business_name || "Package")}</span></span>
+      <span class="search-result-copy"><strong>${esc(pkg.name)}</strong><span class="muted">${esc(pkg.vendor?.business_name || "Package")}${distanceMetaHtml(pkg.vendor)}</span></span>
       <span class="search-result-price">${naira(pkg.price)}</span>
     </button>`;
 
   const sections = [
     prods.length ? { title: `Products (${prods.length})`, rows: prods.map(productRowHtml) } : null,
-    (vends || []).length ? { title: `Vendors (${vends.length})`, rows: vends.map(vendorRowHtml) } : null,
-    (packageRows || []).length ? { title: `Packages (${packageRows.length})`, rows: packageRows.map(packageRowHtml) } : null,
+    vendList.length ? { title: `Vendors (${vendList.length})`, rows: vendList.map(vendorRowHtml) } : null,
+    packageList.length ? { title: `Packages (${packageList.length})`, rows: packageList.map(packageRowHtml) } : null,
   ].filter(Boolean);
 
   if (!sections.length) {
     results.insertAdjacentHTML("beforeend", `<div class="search-page-empty"><i class="fa-solid fa-magnifying-glass"></i><p>No matches for "${esc(term)}". Try a different word.</p></div>`);
-    return;
+  } else {
+    results.insertAdjacentHTML("beforeend", sections.map((s) => `<div class="search-page-section"><h3>${esc(s.title)}</h3>${s.rows.join("")}</div>`).join(""));
   }
-  results.insertAdjacentHTML("beforeend", sections.map((s) => `<div class="search-page-section"><h3>${esc(s.title)}</h3>${s.rows.join("")}</div>`).join(""));
+
+  // Distances are only shown once we actually have the buyer's position.
+  // Kick off (or reuse) that request in the background and quietly re-run
+  // this exact query once it resolves, rather than blocking the first paint
+  // on a GPS fix.
+  if (!buyerLocation) {
+    getCustomerLocation().then(() => { if (mySeq === searchPageSeq) runSearchPageQuery(term, false); }).catch(() => {});
+  }
 }
 
 const PRODUCT_LIST_SELECT = "id, name, category_id, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, payment_timing, payment_deposit_percent, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng), category:categories(sector_id)";
@@ -36762,6 +36823,88 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 <style id="levromart-calm-final-guard">html[data-levro-motion="calm"] *,html[data-levro-motion="calm"] *::before,html[data-levro-motion="calm"] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}html[data-levro-motion="calm"] .product-card-wrap:hover,html[data-levro-motion="calm"] .vendor-card:hover{transform:none!important}html[data-levro-motion="calm"] .ai-chat-fab.scroll-faded,html[data-levro-motion="calm"] #cartFab.scroll-faded{opacity:1!important;transform:none!important}html[data-levro-motion="calm"] .nav-scroll-hide,html[data-levro-motion="calm"] .nav-scroll-shrink{transform:none!important;opacity:1!important}html[data-levro-motion="calm"] .home-search-fixed,html[data-levro-motion="calm"] .home-search-scrolling{transform:none!important}</style><script id="levromart-calm-final-state">applyLevromartMotionPreference(getLevromartMotionPreference());</script>
 <style id="levromart-inventory-accordion-final">.admin-inventory-accordion-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem}.admin-inventory-accordion-summary .admin-inventory-stat{padding:0;min-width:0;background:var(--card)!important;color:var(--text);border:1px solid var(--border);overflow:hidden}.admin-inventory-stat summary{list-style:none;display:flex;align-items:center;gap:.5rem;justify-content:space-between;padding:.75rem .8rem;cursor:pointer}.admin-inventory-stat summary::-webkit-details-marker{display:none}.admin-inventory-stat summary span{font-size:.75rem;font-weight:700;color:var(--text-muted)}.admin-inventory-stat summary strong{font-size:1.15rem;color:var(--text)}.admin-inventory-stat summary i{font-size:.7rem;color:var(--text-muted);transition:transform .15s}.admin-inventory-stat[open] summary i{transform:rotate(180deg)}.admin-inventory-stat-body{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.65rem .8rem;border-top:1px solid var(--border);font-size:.72rem;color:var(--text-muted)}@media(max-width:620px){.admin-inventory-accordion-summary{grid-template-columns:1fr}.admin-inventory-stat-body{padding:.55rem .7rem}}</style>
+<style id="levromart-light-controls-final">
+/* Selection/filter/toggle controls (tabs, follow, quick-action icons,
+   add-to-cart) get a light tint + thin outline for their "on" state instead
+   of a solid filled block -- that treatment stays reserved for genuine
+   primary actions (Pay, Save, Submit, the chat/cart FABs) elsewhere in the
+   app. This is the very last style block in the document specifically so it
+   wins over the older solid-fill rules earlier in this file. */
+#app .vendor-listing-tab.active,
+#app .vendor-request-tab.active,
+#app .storefront-catalog-tab.active,
+#app .vendors-directory-view-buttons .btn.active,
+#app .vendors-directory-view-buttons .btn[aria-pressed="true"],
+#app #vendorsViewGridBtn.active,
+#app #vendorsViewListBtn.active,
+#app #vendorsViewMapBtn.active,
+#app .follow-btn:not(.btn-outline),
+#app .vendor-card-follow-btn.following{
+  background-color:color-mix(in srgb,var(--primary) 12%,var(--card)) !important;
+  background-image:none !important;
+  color:var(--primary) !important;
+  -webkit-text-fill-color:var(--primary) !important;
+  border:1px solid color-mix(in srgb,var(--primary) 40%,var(--border)) !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
+}
+#app .storefront-catalog-tab.active .tab-count{
+  background:color-mix(in srgb,var(--primary) 18%,transparent) !important;
+  color:var(--primary) !important;
+  -webkit-text-fill-color:var(--primary) !important;
+}
+/* Six homepage quick-action icons: a light tinted circle with a readable
+   colored icon, matching the existing Healthcare-category look, not a
+   solid green disc. */
+#app .levro-quick-icon{
+  background-color:color-mix(in srgb,var(--primary) 13%,var(--card)) !important;
+  background-image:none !important;
+  color:var(--primary) !important;
+  -webkit-text-fill-color:var(--primary) !important;
+  box-shadow:none !important;
+  border:1px solid color-mix(in srgb,var(--primary) 10%,transparent) !important;
+}
+/* Add-to-cart controls: light outlined circle instead of a solid disc.
+   (Also re-targets the higher-specificity compact-card selector added
+   earlier for the button-overlap fix, which still hardcodes solid green.) */
+#app .card-cart-btn,#app .card-service-btn,
+#app .product-card-compact .card-cart-btn,
+#app .grid:has(> .product-card-wrap) > .product-card-wrap.product-card-compact > .card .card-cart-btn{
+  background-color:color-mix(in srgb,var(--primary) 12%,var(--card)) !important;
+  background-image:none !important;
+  color:var(--primary) !important;
+  -webkit-text-fill-color:var(--primary) !important;
+  border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border)) !important;
+  box-shadow:none !important;
+}
+#app .card-cart-btn.added{
+  background-color:color-mix(in srgb,var(--success,#16a34a) 16%,var(--card)) !important;
+  color:var(--success,#16a34a) !important;
+  -webkit-text-fill-color:var(--success,#16a34a) !important;
+  border-color:color-mix(in srgb,var(--success,#16a34a) 40%,var(--border)) !important;
+}
+/* Add-listing: a normal small nav icon like its siblings, not an oversized
+   floating solid-green circle. */
+#bottomNav.has-add .bottom-nav-add,
+#bottomNav .bottom-nav-add{
+  position:static !important;top:auto !important;margin:0 !important;
+  width:auto !important;height:auto !important;min-width:0 !important;min-height:0 !important;
+  flex:0 0 auto !important;flex-basis:auto !important;
+  background:none !important;background-image:none !important;
+  border:0 !important;box-shadow:none !important;color:var(--text) !important;
+  display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;
+  gap:.15rem !important;font-size:.6rem !important;padding:.2rem .15rem !important;transform:none !important;
+}
+#bottomNav.has-add .bottom-nav-add .bn-icon,
+#bottomNav .bottom-nav-add .bn-icon{
+  width:auto !important;height:auto !important;border-radius:.6rem !important;
+  background:color-mix(in srgb,var(--primary) 13%,var(--card)) !important;
+  color:var(--primary) !important;font-size:1.05rem !important;line-height:1 !important;
+  display:flex !important;align-items:center !important;justify-content:center !important;
+  padding:.32rem .55rem !important;
+}
+#bottomNav .bottom-nav-add:active{transform:scale(.94) !important;}
+</style>
 </html>
 <style id="levromart-final-manual-monthly-ui-20260913">
 .manual-monthly-payment-modal-content{max-height:min(90vh,760px);overflow:auto}
@@ -39648,6 +39791,11 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .search-page-input-wrap{flex:1;min-width:0;position:relative;display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:0 .9rem;height:2.9rem;gap:.55rem;}
 .search-page-input-wrap i{color:var(--text-muted);}
 .search-page-input-wrap input{flex:1;min-width:0;border:0;background:transparent;outline:0;font:inherit;color:var(--text);height:100%;}
+/* The global input:focus rule (a soft ring around the field) was rendering
+   as a visible second box nested inside this pill; the whole pill is
+   already the visual "search bar", so the inner field shouldn't draw its
+   own focus box on top of it. */
+.search-page-input-wrap input:focus{box-shadow:none !important;}
 .search-page-clear{border:0;background:none;color:var(--text-muted);cursor:pointer;padding:.2rem;flex:0 0 auto;}
 .search-page-history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem;font-size:.85rem;color:var(--text-muted);}
 .search-page-history-head button{background:none;border:0;color:var(--primary);font-weight:600;cursor:pointer;font-size:.82rem;}
