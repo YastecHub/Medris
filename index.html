@@ -14040,21 +14040,34 @@ function searchProductRowHtml(p) {
 // popular active listings (view_count) so the page never opens to a blank
 // screen. Same price-then-distance ordering as an actual search.
 let searchSuggestionsLoaded = false;
-async function renderSearchPageSuggestions() {
+// Two modes: with no argument, this is the page's own empty-input default
+// (only ever shows while the box is empty). With forceWithTerm, it's the
+// "no real matches" fallback from runSearchPageQuery -- a search must never
+// dead-end on a bare "no results" screen, so a typed query that matched
+// nothing still gets a popularity-ranked list underneath the honest "no
+// matches" note, rather than nothing at all.
+async function renderSearchPageSuggestions(forceWithTerm) {
   const results = byId("searchPageResults");
-  if (!results || byId("searchPageInput")?.value.trim()) return;
+  if (!results) return;
+  const stillCurrent = () => {
+    const t = byId("searchPageInput")?.value.trim() || "";
+    return forceWithTerm ? t === forceWithTerm : !t;
+  };
+  if (!stillCurrent()) return;
   const { data } = await sb.from("products")
     .select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,vendor:vendors!inner(business_name,verification_status,is_active,lat,lng)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
     .order("view_count", { ascending: false }).limit(12);
-  if (byId("searchPageInput")?.value.trim()) return; // typing started while this was in flight
+  if (!stillCurrent()) return; // typing moved on while this was in flight
   const prods = sortSearchResultsByPriceThenDistance(data || [], searchResultEffectivePrice);
   if (!prods.length) return;
   searchSuggestionsLoaded = true;
-  document.querySelectorAll(".search-page-section, .search-page-empty").forEach((el) => el.remove());
-  results.insertAdjacentHTML("beforeend", `<div class="search-page-section"><h3>Suggested for you</h3>${prods.map(searchProductRowHtml).join("")}</div>`);
+  // Forced mode keeps the "no matches" note in place above the fallback
+  // list; the default empty-input mode has no such note to preserve.
+  document.querySelectorAll(forceWithTerm ? ".search-page-section" : ".search-page-section, .search-page-empty").forEach((el) => el.remove());
+  results.insertAdjacentHTML("beforeend", `<div class="search-page-section"><h3>${forceWithTerm ? "Popular right now" : "Suggested for you"}</h3>${prods.map(searchProductRowHtml).join("")}</div>`);
   if (!buyerLocation) {
-    getCustomerLocation().then(() => { if (!byId("searchPageInput")?.value.trim()) renderSearchPageSuggestions(); }).catch(() => {});
+    getCustomerLocation().then(() => { if (stillCurrent()) renderSearchPageSuggestions(forceWithTerm); }).catch(() => {});
   }
 }
 async function runSearchPageQuery(term, saveToHistory) {
@@ -14109,7 +14122,12 @@ async function runSearchPageQuery(term, saveToHistory) {
   ].filter(Boolean);
 
   if (!sections.length) {
-    results.insertAdjacentHTML("beforeend", `<div class="search-page-empty"><i class="fa-solid fa-magnifying-glass"></i><p>No matches for "${esc(term)}". Try a different word.</p></div>`);
+    // A dead end here (an empty screen with nothing to tap) is worse than an
+    // honest "no exact match" note followed by something -- so this always
+    // falls through to the same popularity-ranked list the page opens with,
+    // clearly labeled as not a match rather than dressed up as one.
+    results.insertAdjacentHTML("beforeend", `<div class="search-page-empty"><i class="fa-solid fa-magnifying-glass"></i><p>No matches for "${esc(term)}". Here's what's popular right now.</p></div>`);
+    await renderSearchPageSuggestions(term);
   } else {
     results.insertAdjacentHTML("beforeend", sections.map((s) => `<div class="search-page-section"><h3>${esc(s.title)}</h3>${s.rows.join("")}</div>`).join(""));
   }
