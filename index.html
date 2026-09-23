@@ -8416,6 +8416,7 @@ let buyerPendingOrderCount = 0;
 let buyerFollowingCount = 0;
 let buyerTotalOrderCount = 0;
 let vendorProductCount = 0;
+let vendorProfileViewsToday = 0;
 // Only orders still awaiting the vendor's own action (accept, then hand
 // over) keep the nav badge lit -- once it's handed over/returned/disputed,
 // the ball is in the customer's (or admin's) court, not something that needs
@@ -9949,6 +9950,12 @@ async function refreshNotifications(renderPanel = true) {
   const unreadQ = sb.from("notifications").select("id").eq("user_id", session.user.id).eq("archived", false).eq("read", false).is("deleted_at", null);
   const vendorQ = vendor ? sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES) : Promise.resolve({ count: 0 });
   const vendorProductCountQ = vendor ? sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id) : Promise.resolve({ count: 0 });
+  // "Today" is computed in the viewer's own local time (matches the same
+  // toDateString() approach vendorEarningsInPeriod already uses for its
+  // "today" filter) rather than a UTC day boundary, so a vendor in Lagos
+  // sees today's views reset at their own midnight, not at 1am WAT.
+  const todayStartLocal = new Date(); todayStartLocal.setHours(0, 0, 0, 0);
+  const vendorProfileViewsTodayQ = vendor ? sb.from("vendor_profile_view_events").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).gte("viewed_at", todayStartLocal.toISOString()) : Promise.resolve({ count: 0 });
   const buyerQ = sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES);
   const followingQ = profile?.role !== "admin" ? sb.from("vendor_follows").select("id", { count: "exact", head: true }).eq("follower_id", session.user.id) : Promise.resolve({ count: 0 });
   const totalOrdersQ = profile?.role !== "admin" ? sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve({ count: 0 });
@@ -9958,10 +9965,11 @@ async function refreshNotifications(renderPanel = true) {
   let requestSeenAt = ""; try { requestSeenAt = sessionStorage.getItem("levromart-request-offers-seen-at") || ""; } catch (_) {}
   const requestOfferQ = profile?.role !== "admin" ? sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("type", "new_offer").eq("read", false).eq("archived", false).is("deleted_at", null).gt("created_at", requestSeenAt || "1970-01-01T00:00:00.000Z") : Promise.resolve({ count: 0 });
 
-  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes, followingRes, totalOrdersRes] = await Promise.all([
-    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ, vendorProductCountQ, followingQ, totalOrdersQ
+  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes, followingRes, totalOrdersRes, vendorProfileViewsTodayRes] = await Promise.all([
+    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ, vendorProductCountQ, followingQ, totalOrdersQ, vendorProfileViewsTodayQ
   ]);
   vendorProductCount = vendor ? (vendorProductCountRes?.count || 0) : 0;
+  vendorProfileViewsToday = vendor ? (vendorProfileViewsTodayRes?.count || 0) : 0;
 
   notifCount = (unreadRes?.data || []).length;
   const dot = byId("notifDot");
@@ -10910,7 +10918,7 @@ function updateAuthUI() {
         { label: "Pending orders", value: Number(vendorPendingOrderCount || 0), action: "navigate('vendorOrders',{status:'all',perspective:'sales'})" },
         { label: "Suggestions", value: Number(unreadSuggestionCount || 0), action: "navigate('vendorSuggestionsInbox')" },
         { label: "Number of listings", value: Number(vendorProductCount || 0), action: "navigate('vendorProducts')" },
-        { label: "Profile views", value: Number(vendor?.profile_view_count || 0), action: "navigate('vendorDashboard')" },
+        { label: "Profile views today", value: Number(vendorProfileViewsToday || 0), action: "navigate('vendorDashboard')" },
       ];
       plainLinks = [
         { label: `Requests${requestOfferBadgeCount > 0 ? ` (${requestOfferBadgeCount > 9 ? "9+" : requestOfferBadgeCount})` : ""}`, action: "navigate('vendorRequests')" },
