@@ -8367,25 +8367,47 @@ window.addEventListener("resize", () => {
   requestAnimationFrame(tourReposition);
 });
 
+// A step that switches views (map, vendor dashboard) does a real navigation
+// and data fetch -- with no visible change until that resolves, tapping Next
+// read as frozen for a second or more, not just slow. Showing a spinner the
+// instant it's tapped doesn't make the wait shorter, but it stops it looking
+// broken. runTourStep() already restores the correct label once the step
+// actually lands, so this only needs to force the spinner on and guarantee
+// the button is never left stuck disabled if something goes wrong.
 async function tourNext() {
   if (liveTourBusy) return;
-  try { await LIVE_TOUR_STEPS[liveTourStep]?.onExit?.(); } catch (_) {}
-  if (liveTourStep >= LIVE_TOUR_STEPS.length - 1) { finishTour(); return; }
-  liveTourBusy = true;
-  const token = ++liveTourRunToken;
-  liveTourStep += 1;
-  try { await runTourStep(token); }
-  finally { if (token === liveTourRunToken) liveTourBusy = false; }
+  const btn = byId("tourNextBtn");
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+  try {
+    try { await LIVE_TOUR_STEPS[liveTourStep]?.onExit?.(); } catch (_) {}
+    if (liveTourStep >= LIVE_TOUR_STEPS.length - 1) { finishTour(); return; }
+    liveTourBusy = true;
+    const token = ++liveTourRunToken;
+    liveTourStep += 1;
+    await runTourStep(token);
+    if (token === liveTourRunToken) liveTourBusy = false;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 async function tourBack() {
   if (liveTourBusy || liveTourStep <= 0) return;
-  try { await LIVE_TOUR_STEPS[liveTourStep]?.onExit?.(); } catch (_) {}
-  liveTourBusy = true;
-  const token = ++liveTourRunToken;
-  liveTourStep -= 1;
-  try { await runTourStep(token); }
-  finally { if (token === liveTourRunToken) liveTourBusy = false; }
+  const btn = byId("tourNextBtn");
+  if (btn) { btn.disabled = true; }
+  const back = byId("tourBackBtn");
+  if (back) back.style.opacity = "0.5";
+  try {
+    try { await LIVE_TOUR_STEPS[liveTourStep]?.onExit?.(); } catch (_) {}
+    liveTourBusy = true;
+    const token = ++liveTourRunToken;
+    liveTourStep -= 1;
+    await runTourStep(token);
+    if (token === liveTourRunToken) liveTourBusy = false;
+  } finally {
+    if (btn) btn.disabled = false;
+    if (back) back.style.opacity = "";
+  }
 }
 
 function finishTour() {
@@ -29771,6 +29793,14 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     vendorDirectoryExpanded = true;
     vendorDirectoryMode = "map";
     vendorDirectorySort = "alphabetical";
+    // The "Rent Items" quick action sets this to 'rent' before navigating
+    // here -- but nothing ever reset it back, so it silently stayed 'rent'
+    // (or 'buy'/'both') on every later visit to this tab, even a plain tap
+    // from the bottom nav. The tab bar below always paints "All vendors" as
+    // active regardless, so it looked like no filter was picked while one
+    // quietly still was -- exactly what a page refresh (which resets this
+    // variable along with everything else) happened to fix.
+    vendorsListingFilter = "all";
     let html = `<div class="flex" style="justify-content:space-between;align-items:center;gap:.55rem;flex-wrap:wrap;">
       <div>
         <h2 style="margin:0;"><i class="fa-solid fa-store"></i> All vendors</h2>
@@ -33748,8 +33778,11 @@ body.chat-full-page > #app{
         return;
       }
       if(action==='rent'){
-        if(typeof vendorsListingFilter!=='undefined') vendorsListingFilter='rent';
+        // renderVendorsDirectory() now resets vendorsListingFilter to 'all'
+        // on every visit -- set the pre-filter after navigating there,
+        // not before, or the reset stomps it back to 'all' immediately.
         await navigate('vendors');
+        if(typeof vendorsListingFilter!=='undefined') vendorsListingFilter='rent';
         return;
       }
       if(action==='vendors'){
