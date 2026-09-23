@@ -14025,9 +14025,11 @@ function scheduleSearchPageQuery() {
   byId("searchPageClearBtn")?.classList.toggle("hidden", !term);
   clearTimeout(searchPageTimer);
   if (!term) { clearSearchPageInput(); return; }
-  // Deliberately short -- results should feel like they're appearing as
-  // you type, not after a pause.
-  searchPageTimer = setTimeout(() => runSearchPageQuery(term, false), 120);
+  // Short enough to feel like results are appearing as you type, but long
+  // enough that a normal typing cadence doesn't fire a full search for
+  // every half-typed word -- each one of those on a slow connection just
+  // queues up and delays the query for what was actually typed.
+  searchPageTimer = setTimeout(() => runSearchPageQuery(term, false), 220);
 }
 // Search-result distance/price ordering: closest+cheapest listings should be
 // the first thing a buyer sees, so results are sorted cheapest-first with
@@ -14107,28 +14109,41 @@ async function renderSearchPageSuggestions(forceWithTerm) {
     getCustomerLocation().then(() => { if (stillCurrent()) renderSearchPageSuggestions(forceWithTerm); }).catch(() => {});
   }
 }
+let searchPageAbortController = null;
 async function runSearchPageQuery(term, saveToHistory) {
   term = String(term || "").trim();
   if (!term) return;
   const mySeq = ++searchPageSeq;
+  // Abort whatever the previous keystroke's still-in-flight request was --
+  // on a slow/high-latency connection, letting superseded requests keep
+  // running just competes with this one for bandwidth and connection slots,
+  // making the result the user actually wants arrive even later.
+  searchPageAbortController?.abort();
+  const controller = new AbortController();
+  searchPageAbortController = controller;
   const historyBlock = byId("searchPageHistoryBlock");
   if (historyBlock) historyBlock.hidden = true;
   if (saveToHistory) writeSearchHistory(term);
-  const [{ data: idRows }, { data: vends }, { data: packageRows }] = await Promise.all([
-    sb.rpc("search_product_ids", { p_query: term }),
-    sb.from("vendors").select("id,business_name,logo_url,city,lat,lng").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(6),
-    sb.from("vendor_packages").select("id,name,price,photos,vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(6),
-  ]);
-  if (mySeq !== searchPageSeq) return; // a newer keystroke already superseded this query
-
-  const topIds = (idRows || []).slice(0, 20).map((r) => r.id);
-  let prods = [];
-  if (topIds.length) {
-    const { data } = await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,vendor:vendors!inner(business_name,verification_status,is_active,lat,lng)")
-      .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).in("id", topIds);
-    prods = sortSearchResultsByPriceThenDistance(data || [], searchResultEffectivePrice);
+  let fullRows, vends, packageRows;
+  try {
+    // A single RPC now returns full product+vendor fields directly instead
+    // of ids that then need a second round trip to hydrate -- one less
+    // network hop per search.
+    [{ data: fullRows }, { data: vends }, { data: packageRows }] = await Promise.all([
+      sb.rpc("search_products_full", { p_query: term, p_limit: 20 }).abortSignal(controller.signal),
+      sb.from("vendors").select("id,business_name,logo_url,city,lat,lng").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(6).abortSignal(controller.signal),
+      sb.from("vendor_packages").select("id,name,price,photos,vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(6).abortSignal(controller.signal),
+    ]);
+  } catch (err) {
+    if (controller.signal.aborted) return; // superseded by a newer keystroke
+    throw err;
   }
   if (mySeq !== searchPageSeq) return;
+  const prods = sortSearchResultsByPriceThenDistance((fullRows || []).map((r) => ({
+    id: r.id, name: r.name, photos: r.photos, sale_price: r.sale_price, discount_price: r.discount_price,
+    rental_rate: r.rental_rate, rental_rate_unit: r.rental_rate_unit, is_service: r.is_service,
+    vendor: { business_name: r.vendor_business_name, lat: r.vendor_lat, lng: r.vendor_lng },
+  })), searchResultEffectivePrice);
   const vendList = buyerLocation ? [...(vends || [])].sort((a, b) => {
     const da = searchResultDistanceKm(a), db = searchResultDistanceKm(b);
     if (da == null && db == null) return 0;
