@@ -12526,7 +12526,25 @@ async function navigate(view, params = {}, pushHistory = true) {
     // text they are composing.
     return;
   }
+  // Storefront follow button: this same cache-then-refresh swap can land
+  // moments after the user taps Follow/Unfollow, fully replacing the page
+  // (including that button) with a fresh render that always starts back at
+  // its own disabled loading spinner until its own hydration resolves --
+  // clobbering an already-confirmed tap and reading as the button
+  // "twitching" back off. Carry the live wrap's content across the swap
+  // when it's already a real, interactive button for this same vendor.
+  let liveStorefrontFollowHtml = null;
+  if (view === "storefront" && params?.vendorId) {
+    const liveWrap = byId("storefrontFollowWrap");
+    if (liveWrap && liveWrap.dataset.followVendorId === String(params.vendorId) && !liveWrap.querySelector(".follow-btn[disabled]")) {
+      liveStorefrontFollowHtml = liveWrap.innerHTML;
+    }
+  }
   app.innerHTML = html;
+  if (liveStorefrontFollowHtml) {
+    const freshFollowWrap = byId("storefrontFollowWrap");
+    if (freshFollowWrap) freshFollowWrap.innerHTML = liveStorefrontFollowHtml;
+  }
   if (!__levroRouteHadRenderError) hideLevromartSplash();
   if (view === "notifications") void renderNotifPanel();
   if (view === "home") setTimeout(() => { try { filterHomeProducts(); } catch (_) {} }, 0);
@@ -18170,7 +18188,18 @@ function hydrateStorefrontExtras(v, listingCount, stats, reviews, packages, foll
   if (statsLine) statsLine.innerHTML = storefrontStatsInnerHtml(listingCount, stats, followState);
   if (!isOwnStorefront) {
     const followWrap = byId("storefrontFollowWrap");
-    if (followWrap) followWrap.innerHTML = storefrontFollowWrapInnerHtml(v, followState);
+    if (followWrap) {
+      // This followState snapshot was fetched in parallel with the rest of
+      // the page, so it can predate a follow/unfollow tap the user made
+      // while this fetch was still in flight. Trust that more recent local
+      // action over a stale server read, rather than letting this
+      // hydration silently flip the button back -- the "twitching" bug.
+      const recent = window.__followRecentAction;
+      const effectiveState = (recent && recent.vendorId === String(v.id) && Date.now() - recent.at < 10000)
+        ? [{ ...(followState?.[0] || {}), following: recent.following }]
+        : followState;
+      followWrap.innerHTML = storefrontFollowWrapInnerHtml(v, effectiveState);
+    }
   }
   const packagesCount = byId("storefrontPackagesCount");
   if (packagesCount) packagesCount.textContent = `(${packages?.length || 0})`;
@@ -32722,11 +32751,18 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
     btn.disabled=true;
     applyFollowUiState(wrap,next);
     bumpFollowCount(next?1:-1);
+    // A storefront's own background refresh can still be mid-flight from
+    // before this tap, carrying a pre-click follow-state snapshot that
+    // would otherwise land moments later and silently flip this back --
+    // the exact "twitching"/needs-two-taps bug. Recording the action here
+    // lets that in-flight hydration defer to it instead of overwriting it.
+    window.__followRecentAction={vendorId:String(vendorId),following:next,at:Date.now()};
     try{
       const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});
       if(r.error)throw r.error;
       if(typeof showToast==='function')showToast(next?'Following vendor.':'Unfollowed vendor.','success')
     }catch(e){
+      window.__followRecentAction=null;
       applyFollowUiState(wrap,wasFollowing);
       bumpFollowCount(wasFollowing?1:-1);
       showToast?.(e.message||'Could not update your following list.','error')
@@ -39850,12 +39886,26 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .search-page-back{width:2.5rem;height:2.5rem;flex:0 0 auto;border-radius:50%;border:0;background:var(--card);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;}
 .search-page-input-wrap{flex:1;min-width:0;position:relative;display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:0 .9rem;height:2.9rem;gap:.55rem;}
 .search-page-input-wrap i{color:var(--text-muted);}
-.search-page-input-wrap input{flex:1;min-width:0;border:0;background:transparent;outline:0;font:inherit;color:var(--text);height:100%;-webkit-appearance:none;appearance:none;border-radius:0;}
-/* The global input:focus rule (a soft ring around the field) was rendering
-   as a visible second box nested inside this pill; the whole pill is
-   already the visual "search bar", so the inner field shouldn't draw its
-   own focus box on top of it. */
-.search-page-input-wrap input:focus{box-shadow:none !important;}
+/* A global "input,select,textarea{border:1px solid var(--ui-border)
+   !important;background:...!important;border-radius:12px
+   !important;padding:...!important}" base rule elsewhere in this file was
+   winning over this wrap's own (non-!important) reset, on every state --
+   not just focus -- because !important always beats a plain declaration
+   regardless of selector specificity. That's what was rendering as a
+   second, separately-bordered box nested inside the pill. Every property
+   that base rule sets has to be matched here with !important too, or it
+   keeps winning. */
+.search-page-input-wrap input,
+.search-page-input-wrap input:hover,
+.search-page-input-wrap input:focus{
+  flex:1 !important;min-width:0 !important;
+  border:0 !important;box-shadow:none !important;
+  background:transparent !important;outline:0 !important;
+  font:inherit !important;color:var(--text) !important;
+  height:100% !important;min-height:0 !important;
+  padding:0 !important;border-radius:0 !important;
+  -webkit-appearance:none;appearance:none;
+}
 .search-page-clear{border:0;background:none;color:var(--text-muted);cursor:pointer;padding:.2rem;flex:0 0 auto;}
 .search-page-history-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem;font-size:.85rem;color:var(--text-muted);}
 .search-page-history-head button{background:none;border:0;color:var(--primary);font-weight:600;cursor:pointer;font-size:.82rem;}
