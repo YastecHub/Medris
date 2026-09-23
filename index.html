@@ -38764,6 +38764,21 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       <label>About your business <span class="muted">(optional)</span></label>
       <textarea id="vaBio" rows="3" placeholder="Tell buyers briefly what your business offers."></textarea>
 
+      <label>Working hours <span class="muted">(optional)</span></label>
+      <select id="vaHoursPreset" onchange="toggleVendorApplyCustomHours()">
+        <option value="">I'll set this later</option>
+        <option value="daily_9_6">Every day, 9:00 AM – 6:00 PM</option>
+        <option value="daily_8_8">Every day, 8:00 AM – 8:00 PM</option>
+        <option value="weekdays_9_6">Mon–Fri, 9:00 AM – 6:00 PM (closed weekends)</option>
+        <option value="mon_sat_9_7">Mon–Sat, 9:00 AM – 7:00 PM (closed Sunday)</option>
+        <option value="24_7">Open 24/7</option>
+        <option value="custom">Custom, day by day…</option>
+      </select>
+      <div id="vaCustomHoursWrap" class="hidden" style="margin-top:.6rem;">
+        <div id="vaHoursRows">${HOURS_DAYS.map(d=>hoursDayRowHtml(d.key,d.label,{closed:false,open:"09:00",close:"18:00"})).join("")}</div>
+        <button type="button" class="btn btn-sm btn-outline" style="margin-top:.5rem;" onclick="copyMondayHoursToAll()"><i class="fa-solid fa-copy"></i> Use Monday's hours for every day</button>
+      </div>
+
       <div class="vendor-application-actions">
         <button type="button" class="btn vendor-application-cancel" onclick="cancelVendorApply()"><i class="fa-solid fa-xmark"></i> Cancel</button>
         <button type="button" class="btn" id="vendorApplySubmitBtn" onclick="submitVendorApply()"><i class="fa-solid fa-paper-plane"></i> Submit application</button>
@@ -38772,6 +38787,28 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   };
 
   let vendorApplyBusy=false;
+
+  // Presets keep the application form to one dropdown instead of the full
+  // day-by-day editor Edit Profile uses -- "Custom" reveals that same
+  // editor (collectBusinessHoursFromForm etc., shared with Edit Profile)
+  // only for the applicants who actually need it.
+  window.toggleVendorApplyCustomHours=function(){
+    const preset=byId("vaHoursPreset")?.value;
+    byId("vaCustomHoursWrap")?.classList.toggle("hidden",preset!=="custom");
+  };
+  function vendorApplyHoursPresetToJson(preset){
+    const allDay=(open,close)=>Object.fromEntries(HOURS_DAYS.map(d=>[d.key,{closed:false,open,close}]));
+    const weekdaysOnly=(open,close)=>Object.fromEntries(HOURS_DAYS.map(d=>[d.key,(d.key==="sat"||d.key==="sun")?{closed:true}:{closed:false,open,close}]));
+    const monSat=(open,close)=>Object.fromEntries(HOURS_DAYS.map(d=>[d.key,d.key==="sun"?{closed:true}:{closed:false,open,close}]));
+    switch(preset){
+      case "daily_9_6": return allDay("09:00","18:00");
+      case "daily_8_8": return allDay("08:00","20:00");
+      case "weekdays_9_6": return weekdaysOnly("09:00","18:00");
+      case "mon_sat_9_7": return monSat("09:00","19:00");
+      case "24_7": return allDay("00:00","23:59");
+      default: return null;
+    }
+  }
 
   window.cancelVendorApply=function(){
     if(vendorApplyBusy)return;
@@ -38796,6 +38833,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     const bankName=String(byId("vaBankPickerLabel")?.textContent||"").trim();
     const accountNumber=String(byId("vaAccountNumber")?.value||"").trim();
     const accountName=String(byId("vaAccountName")?.value||"").trim();
+    const hoursPreset=String(byId("vaHoursPreset")?.value||"").trim();
+    const business_hours=hoursPreset==="custom"?collectBusinessHoursFromForm():vendorApplyHoursPresetToJson(hoursPreset);
 
     if(!sectorSelection){errorEl.textContent="Please select your business sector.";errorEl.classList.remove("hidden");return;}
     if(sectorSelection==="__other__"&&!customSector){errorEl.textContent="Please enter your business sector.";errorEl.classList.remove("hidden");openVendorApplyOtherSector();return;}
@@ -38849,6 +38888,15 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       // A successful RPC means the application and notification are already
       // committed. Never wait for Storage, Paystack, auth refresh, or navigation.
       showToast("Application submitted successfully. Your application is now awaiting review.","success");
+
+      // Working hours aren't part of submit_vendor_application -- same
+      // "secondary, never blocks the submit" treatment as the CAC document
+      // below. Whatever's saved here is what the storefront, product pages,
+      // and order details already read straight off the vendor row.
+      if(business_hours){
+        sb.from("vendors").update({business_hours,opening_hours:summarizeBusinessHours(business_hours)||null}).eq("id",vendorId).eq("user_id",session.user.id)
+          .then(({error})=>{if(error)console.warn("[Levromart] Saving working hours failed:",error);});
+      }
 
       // Optional document upload is deliberately secondary to application
       // submission. It can never make the Submit button appear stuck.
@@ -40219,3 +40267,31 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 .container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:130px !important;}
 @media (max-width:720px){.container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:120px !important;}}
 </style>
+
+<script id="levromart-global-broken-image-fallback">
+/* Product photos, chat attachments, cover images, package photos etc. all
+   render a plain <img src="..."> with no per-call-site error handling --
+   a dead/expired storage URL just shows the browser's ugly broken-image
+   icon. A few call sites (avatars) already handle their own onerror with a
+   smarter fallback (initials, vendor logo) -- this only steps in for the
+   many that don't, one listener instead of patching every template. */
+(function () {
+  "use strict";
+  var PLACEHOLDER = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">' +
+    '<rect width="120" height="120" fill="#e9edf1"/>' +
+    '<path d="M35 78l16-20 12 14 10-12 18 22z" fill="#c4ccd4"/>' +
+    '<circle cx="46" cy="46" r="8" fill="#c4ccd4"/>' +
+    '</svg>'
+  );
+  document.addEventListener("error", function (e) {
+    var img = e.target;
+    if (!img || img.tagName !== "IMG") return;
+    if (img.dataset.levroBrokenHandled) return;
+    if (img.getAttribute("onerror")) return; // has its own smarter fallback already
+    img.dataset.levroBrokenHandled = "1";
+    img.src = PLACEHOLDER;
+    if (!img.alt) img.alt = "Image unavailable";
+  }, true);
+})();
+</script>
