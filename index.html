@@ -11654,7 +11654,11 @@ function togglePasswordVisibility(inputId, button) {
 
 function friendlyAuthErrorMessage(err) {
   const raw = String(err?.message || "").toLowerCase();
-  if (raw.includes("invalid login credentials")) return "Incorrect email/phone or password. Please try again.";
+  // The single biggest cause of a genuinely correct password still failing
+  // here is an account that has no password at all -- it was created via
+  // Google, which never sets one. The generic message left people typing
+  // the same (nonexistent) password over and over with no way to know why.
+  if (raw.includes("invalid login credentials")) return "Incorrect email/phone or password. If you signed up with Google, tap \"Continue with Google\" below instead, or use \"Forgot password?\" to set one for the first time.";
   if (raw.includes("email not confirmed")) return "This email hasn't been confirmed yet.";
   if (raw.includes("user already registered") || raw.includes("already registered")) return "An account with this email or phone already exists.";
   return err?.message || "Something went wrong. Please try again.";
