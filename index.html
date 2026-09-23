@@ -7704,6 +7704,17 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   </div>
 </div>
 
+<div id="vendorPayoutNudgeModal" class="modal hidden">
+  <div class="modal-content" style="max-width:400px;">
+    <h3><i class="fa-solid fa-money-bill-transfer"></i> Set up your payout account</h3>
+    <p class="muted" style="margin:0.6rem 0 1rem;">You haven't added a bank account yet, so Levromart can't pay you for any sales. It only takes a minute, and you won't be asked again once it's set up.</p>
+    <div class="flex" style="flex-direction:column;gap:0.6rem;">
+      <button class="btn" onclick="openVendorPayoutSetup()"><i class="fa-solid fa-arrow-right"></i> Set up now</button>
+      <button class="btn btn-outline" onclick="dismissVendorPayoutNudge()">Remind me later</button>
+    </div>
+  </div>
+</div>
+
 <div id="setPasswordModal" class="modal hidden">
   <div class="modal-content" style="max-width:400px;">
     <h3><i class="fa-solid fa-key"></i> Set a password</h3>
@@ -10826,9 +10837,22 @@ async function runPostAuthChecks() {
     return;
   }
   if (profile.has_password === false) { byId("setPasswordModal")?.classList.remove("hidden"); return; }
+  // A vendor (pending or approved) with no payout account can't actually be
+  // paid for any sale. This isn't a hard block like the checks above --
+  // "Remind me later" just closes it for this session -- but it comes back
+  // on every fresh login until paystack_subaccount_code is actually set,
+  // at which point this condition is simply false and it never shows again.
+  if (vendor && !vendor.paystack_subaccount_code) { byId("vendorPayoutNudgeModal")?.classList.remove("hidden"); return; }
   // Admin sign-in no longer requires the extra 6-digit email code -- removed
   // per request. checkOtpRequirement()/the otpModal are left in place but
   // unused rather than deleted, in case this needs to come back.
+}
+function openVendorPayoutSetup() {
+  byId("vendorPayoutNudgeModal")?.classList.add("hidden");
+  navigate("vendorEarnings");
+}
+function dismissVendorPayoutNudge() {
+  byId("vendorPayoutNudgeModal")?.classList.add("hidden");
 }
 // One shared identity re-check for every path that can land someone in the
 // app: password login, Google OAuth, and simply reopening the app after
@@ -19432,7 +19456,8 @@ async function submitVendorApply() {
     if (error) throw new Error(error.message);
 
     await refreshAuthState();
-    navigate("vendorDashboard");
+    showToast("Application submitted. Let's set up how you get paid.", "success");
+    navigate("vendorEarnings");
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.classList.remove("hidden");
