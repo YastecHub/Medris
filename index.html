@@ -13421,7 +13421,7 @@ async function addAdminCarouselSlide() {
     const path = carouselStoragePathForUpload(file);
     let uploadBlob = file;
     try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
-    const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false });
+    const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false, cacheControl: "31536000" });
     if (uploadError) throw uploadError;
     const { data: publicData } = sb.storage.from("homepage-carousel").getPublicUrl(path);
     const payload = { storage_path: path, image_url: publicData.publicUrl, alt_text: String(byId("adminCarouselNewAlt")?.value || file.name).trim().slice(0,180), link_url: String(byId("adminCarouselNewLink")?.value || "").trim() || null, sort_order: Math.max(0, Number(byId("adminCarouselNewOrder")?.value || 100)), is_active: true, created_by: session.user.id };
@@ -13462,7 +13462,7 @@ async function replaceAdminCarouselImage(event, id) {
     const newPath = carouselStoragePathForUpload(file);
     let uploadBlob = file;
     try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
-    const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(newPath, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false });
+    const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(newPath, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false, cacheControl: "31536000" });
     if (uploadError) throw uploadError;
     const { data: publicData } = sb.storage.from("homepage-carousel").getPublicUrl(newPath);
     const { error: updateError } = await sb.from("homepage_carousel_slides").update({ storage_path: newPath, image_url: publicData.publicUrl, updated_at: new Date().toISOString() }).eq("id", id);
@@ -16667,7 +16667,7 @@ async function sendPreparedChatImage(conversationId, prepared, replyToId, replyT
   // fall back to uploading the original rather than failing the send.
   let uploadBlob = prepared.blob;
   try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(prepared.blob, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
-  const {error:upErr}=await sb.storage.from("chat-attachments").upload(path,uploadBlob,{contentType:uploadBlob.type||"image/jpeg",upsert:false});
+  const {error:upErr}=await sb.storage.from("chat-attachments").upload(path,uploadBlob,{contentType:uploadBlob.type||"image/jpeg",upsert:false,cacheControl:"31536000"});
   if(upErr) throw upErr;
   const {data,error}=await sb.from("messages").insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||"",reply_to_id:replyToId,attachment_url:path,attachment_name:prepared.name||"photo.jpg",attachment_type:uploadBlob.type||"image/jpeg",attachment_size:uploadBlob.size}).select("*").single();
   if(error) throw error;
@@ -18244,7 +18244,13 @@ async function renderStorefrontInner(vendorId) {
   if (!v.is_active) return '<div class="empty-state"><i class="fa-solid fa-store-slash" style="font-size:1.6rem;display:block;margin-bottom:0.6rem;"></i>This shop is currently paused. Check back later.</div>';
   updateStorefrontSocialMeta(v);
 
-  const extrasPromise = Promise.all([
+  // allSettled, not all: these four are independent panels (stats, reviews,
+  // packages, follow state). Promise.all fails atomically, so one flaky
+  // query used to leave every one of them stuck on its loading placeholder
+  // forever -- most visibly the follow button's spinner, which never got
+  // replaced with a real, clickable button. Each panel now hydrates (or
+  // stays gracefully empty) independently of whether the others succeeded.
+  const extrasPromise = Promise.allSettled([
     sb.rpc("get_vendor_stats", { p_vendor_id: v.id }),
     sb.from("reviews").select("id, rating, comment, buyer_name, buyer_avatar_url, created_at").eq("vendor_id", v.id).order("created_at", { ascending: false }).limit(10),
     sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", v.id).eq("status", "active").order("created_at", { ascending: false }),
@@ -18350,9 +18356,16 @@ async function renderStorefrontInner(vendorId) {
 
   storefrontViewMode = "grid";
   if (allProducts.length) setTimeout(filterStorefrontProducts, 0);
-  extrasPromise.then(([{ data: stats }, { data: reviews }, { data: packages }, { data: followState }]) => {
+  extrasPromise.then((results) => {
+    const labels = ["stats", "reviews", "packages", "follow state"];
+    const pick = (r, i) => {
+      if (r.status !== "fulfilled") { console.warn(`[Levromart] Storefront ${labels[i]} failed to load:`, r.reason); return null; }
+      if (r.value?.error) { console.warn(`[Levromart] Storefront ${labels[i]} failed to load:`, r.value.error); return null; }
+      return r.value?.data ?? null;
+    };
+    const [stats, reviews, packages, followState] = results.map(pick);
     hydrateStorefrontExtras(v, allProducts.length, stats, reviews, packages, followState, isOwnStorefront);
-  }).catch((err) => console.warn("[Levromart] Storefront extras failed to load:", err));
+  });
   return html;
 }
 
@@ -21297,7 +21310,7 @@ async function uploadVarietyImages(){
     if(!v._imageFile)return;const file=v._imageFile,path=`${vendor.id}/variants/${crypto.randomUUID()}.${(file.name.split('.').pop()||'jpg').toLowerCase()}`;
     let uploadBlob=file;
     try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}
-    const {error}=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type});if(error)throw error;
+    const {error}=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type,cacheControl:"31536000"});if(error)throw error;
     v.photo_url=sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl;
     const row=[...document.querySelectorAll('#productVariantPricing .variant-price-row')].find(r=>r.dataset.variantKey===String(v.id||v._localKey));
     if(row){
@@ -21809,7 +21822,7 @@ async function saveProduct() {
       const path = `${vendor.id}/${folder ? folder + "/" : ""}${crypto.randomUUID()}.${ext}`;
       let uploadBlob = file;
       try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type || "image/jpeg", upsert: false });
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type || "image/jpeg", upsert: false, cacheControl: "31536000" });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
       uploadedStoragePaths.push(path);
       const { data: urlData } = sb.storage.from("product-photos").getPublicUrl(path);
@@ -22323,7 +22336,7 @@ async function savePackage() {
       const path = `${vendor.id}/packages/${crypto.randomUUID()}.${ext}`;
       let uploadBlob = file;
       try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type });
+      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type, cacheControl: "31536000" });
       if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
       return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
     }));
@@ -32603,7 +32616,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     const path=`conv/${conversationId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeFilename(prepared.name||'photo.jpg')}`;
     let uploadBlob=prepared.blob;
     try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(prepared.blob,{maxWidth:1600,maxHeight:1600});}catch(_){}
-    const {error:upErr}=await sb.storage.from('chat-attachments').upload(path,uploadBlob,{contentType:uploadBlob.type||'image/jpeg',upsert:false});if(upErr)throw upErr;
+    const {error:upErr}=await sb.storage.from('chat-attachments').upload(path,uploadBlob,{contentType:uploadBlob.type||'image/jpeg',upsert:false,cacheControl:"31536000"});if(upErr)throw upErr;
     const markedName=`${GROUP_PREFIX}${groupId}__|${prepared.name||'photo.jpg'}`;
     const {data,error}=await sb.from('messages').insert({conversation_id:conversationId,sender_id:session.user.id,body:prepared.caption||'',reply_to_id:replyToId,attachment_url:path,attachment_name:markedName,attachment_type:uploadBlob.type||'image/jpeg',attachment_size:uploadBlob.size}).select('*').single();if(error)throw error;
     if(replyTargetSnapshot)data.reply_to={id:replyTargetSnapshot.id,body:replyTargetSnapshot.body,attachment_name:replyTargetSnapshot.attachment,sender_id:document.querySelector(`.chat-bubble[data-msg-id="${replyTargetSnapshot.id}"]`)?.classList.contains('mine')?session.user.id:''};
