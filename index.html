@@ -12478,7 +12478,23 @@ async function navigate(view, params = {}, pushHistory = true) {
         html = renderOfflineHomeFromCache({ categories:[], sectors:[], trending:[], browseProducts:[], topVendors:[], recentProducts:[], packages:[], carouselSlides:[] }, { showOfflineNotice:false }) || `<div class="empty-state" style="min-height:40vh;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-shop" style="font-size:2rem;color:var(--primary);"></i></div>`;
       }
       lastRenderError = null;
-    } else if (view === "home" || view === "storefront") {
+    } else if (view === "storefront") {
+      // A network blip inside renderStorefront (or its queries rejecting
+      // outright, which supabase-js does for true connectivity failures)
+      // used to leave this branch quietly re-painting whatever loading
+      // shell was already on screen -- a permanent spinner with no error
+      // and no way forward except a manual page reload. Give it the same
+      // explicit retry affordance vendorApply already has below.
+      html = `<div class="card" style="max-width:480px;margin:2rem auto;text-align:center;">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;color:var(--primary);margin-bottom:.65rem;"></i>
+        <h2 style="margin:.1rem 0 .45rem;">Couldn't load this storefront</h2>
+        <p class="muted" style="margin:0 auto 1rem;">Check your connection and try again.</p>
+        <div class="flex" style="justify-content:center;gap:.5rem;flex-wrap:wrap;">
+          <button type="button" class="btn" onclick="navigate('storefront',${JSON.stringify(params || {})},false)"><i class="fa-solid fa-rotate-right"></i> Try again</button>
+          <button type="button" class="btn btn-outline" onclick="navigate('home')">Go to marketplace</button>
+        </div>
+      </div>`;
+    } else if (view === "home") {
       html = app?.innerHTML?.trim() ? app.innerHTML : '<div class="empty-state">Please try again.</div>';
     } else if (view === "vendorApply") {
       html = `<div class="card" style="max-width:480px;margin:0 auto;text-align:center;">
@@ -18164,6 +18180,27 @@ function hydrateStorefrontExtras(v, listingCount, stats, reviews, packages, foll
   if (reviewsSection) reviewsSection.innerHTML = storefrontReviewsInnerHtml(st, reviews);
 }
 async function renderStorefront(vendorId) {
+  // A network blip on either query used to bubble all the way up as an
+  // uncaught rejection, which navigate()'s outer catch could only respond
+  // to by re-painting the loading shell that was already on screen --
+  // a stuck spinner with no error and no way forward short of a manual
+  // reload. Catching it here returns a real retry state directly instead.
+  try {
+    return await renderStorefrontInner(vendorId);
+  } catch (err) {
+    console.warn("[Levromart] Storefront failed to load:", err);
+    return `<div class="card" style="max-width:480px;margin:2rem auto;text-align:center;">
+      <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;color:var(--primary);margin-bottom:.65rem;"></i>
+      <h2 style="margin:.1rem 0 .45rem;">Couldn't load this storefront</h2>
+      <p class="muted" style="margin:0 auto 1rem;">Check your connection and try again.</p>
+      <div class="flex" style="justify-content:center;gap:.5rem;flex-wrap:wrap;">
+        <button type="button" class="btn" onclick="navigate('storefront',{vendorId:'${esc(vendorId)}'},false)"><i class="fa-solid fa-rotate-right"></i> Try again</button>
+        <button type="button" class="btn btn-outline" onclick="navigate('home')">Go to marketplace</button>
+      </div>
+    </div>`;
+  }
+}
+async function renderStorefrontInner(vendorId) {
   // Fire the vendor lookup and the product catalogue at the same time.
   // The products query only ever needed the vendorId that was already
   // passed into this function -- nothing from the vendor row itself --
