@@ -13920,7 +13920,7 @@ function renderSearchPage() {
       <button type="button" class="search-page-back" onclick="navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
       <div class="search-page-input-wrap">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="search" id="searchPageInput" placeholder="Search products, services, vendors…" autocomplete="off" oninput="scheduleSearchPageQuery()" onkeydown="if(event.key==='Enter'){event.preventDefault();runSearchPageQuery(this.value.trim(),true);}" />
+        <input type="text" inputmode="search" enterkeyhint="search" id="searchPageInput" placeholder="Search products, services, vendors…" autocomplete="off" oninput="scheduleSearchPageQuery()" onkeydown="if(event.key==='Enter'){event.preventDefault();runSearchPageQuery(this.value.trim(),true);}" />
         <button type="button" class="search-page-clear hidden" id="searchPageClearBtn" onclick="clearSearchPageInput()" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
@@ -39813,7 +39813,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .search-page-back{width:2.5rem;height:2.5rem;flex:0 0 auto;border-radius:50%;border:0;background:var(--card);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;}
 .search-page-input-wrap{flex:1;min-width:0;position:relative;display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:0 .9rem;height:2.9rem;gap:.55rem;}
 .search-page-input-wrap i{color:var(--text-muted);}
-.search-page-input-wrap input{flex:1;min-width:0;border:0;background:transparent;outline:0;font:inherit;color:var(--text);height:100%;}
+.search-page-input-wrap input{flex:1;min-width:0;border:0;background:transparent;outline:0;font:inherit;color:var(--text);height:100%;-webkit-appearance:none;appearance:none;border-radius:0;}
 /* The global input:focus rule (a soft ring around the field) was rendering
    as a visible second box nested inside this pill; the whole pill is
    already the visual "search bar", so the inner field shouldn't draw its
