@@ -25823,44 +25823,6 @@ function exportFinancePdf() {
       .stat{border:1px solid #e2e8f0;border-radius:8px;padding:.8rem 1.2rem;}
       .stat b{display:block;font-size:1.3rem;color:#0B6E4A;}
     </style>
-<style id="levromart-auto-commission-dispute-ui">
-.vendor-commission-auto-note{margin-top:.7rem;padding:.6rem .7rem;border-radius:10px;background:rgba(245,158,11,.10);color:#92400e;font-size:.84rem;line-height:1.35;}
-.vendor-commission-dispute-btn{margin-top:.55rem;border-color:var(--danger,#ef4444)!important;color:var(--danger,#ef4444)!important;background:#fff!important;}
-</style>
-
-<style id="levromart-vendor-card-actions-final-2x2">
-/* Final vendor listing action layout: exactly two buttons per row. */
-#app .vendor-product-actions{
-  display:grid!important;
-  grid-template-columns:repeat(2,minmax(46px,48px))!important;
-  grid-template-rows:repeat(2,minmax(46px,48px))!important;
-  grid-auto-flow:row!important;
-  justify-content:center!important;
-  align-items:center!important;
-  justify-items:center!important;
-  gap:.55rem!important;
-  width:100%!important;
-  max-width:112px!important;
-  margin:.8rem auto 0!important;
-  padding:.75rem 0 0!important;
-  border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)!important;
-  flex-wrap:unset!important;
-}
-#app .vendor-product-actions>.vendor-edit-action{grid-column:1!important;grid-row:1!important;}
-#app .vendor-product-actions>.vendor-duplicate-action{grid-column:2!important;grid-row:1!important;}
-#app .vendor-product-actions>.vendor-pause-action,
-#app .vendor-product-actions>.vendor-resume-action,
-#app .vendor-product-actions>.vendor-pending-action{grid-column:1!important;grid-row:2!important;}
-#app .vendor-product-actions>.vendor-remove-action{grid-column:2!important;grid-row:2!important;}
-#app .vendor-product-actions>.vendor-card-icon-action{
-  width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;
-  margin:0!important;flex:none!important;
-}
-@media(max-width:430px){
-  #app .vendor-product-actions{grid-template-columns:repeat(2,46px)!important;grid-template-rows:repeat(2,46px)!important;gap:.48rem!important;max-width:106px!important;padding-top:.65rem!important;}
-  #app .vendor-product-actions>.vendor-card-icon-action{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;}
-}
-</style>
 </head><body>
     <h1>Levromart Transactions</h1>
     <p class="muted">Range: ${rangeLabel(adminFinanceRange)} · Generated ${new Date().toLocaleString()}</p>
@@ -25872,86 +25834,7 @@ function exportFinancePdf() {
     <table><thead><tr><th>Date</th><th>Customer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th></tr></thead>
     <tbody>${filtered.map((t) => `<tr><td>${new Date(t.created_at).toLocaleString()}</td><td>${esc(t.buyer_name || "")}</td><td>${esc(t.vendor_name || "")}</td><td>${esc((t.payment_type || "").replace("_", " "))}</td><td>${naira(t.amount)}</td><td>${esc(t.method || "")}</td><td>${esc(t.status || "")}</td><td>${naira(t.platform_cut)}</td></tr>`).join("")}</tbody></table>
     ${"<scr"}ipt>window.onload = () => window.print();<\/script>
-  <style id="levromart-storefront-sector-social-notification-fix">
-.storefront-avatar-fallback-button{background:transparent!important;background-image:none!important;border:0!important;box-shadow:none!important;padding:0!important;}
-.storefront-avatar-fallback-button .avatar-fallback{width:100%!important;height:100%!important;border:0!important;box-shadow:none!important;background-image:none!important;}
-.vendor-application-form #vaSectorSearch{margin:.35rem 0 .45rem;}
-.vendor-application-form #vaSector{width:100%;}
-.product-gallery-variant-meta{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.2rem .7rem;align-items:center;margin:.55rem 0 .9rem;padding:.72rem .82rem;border:1px solid var(--border);border-radius:.75rem;background:var(--card);}
-.product-gallery-variant-meta .muted{grid-column:1/-1;font-size:.72rem;}
-.product-gallery-variant-meta strong:last-child{white-space:nowrap;}
-.product-card-action-row{display:flex!important;gap:.45rem;align-items:center;flex-wrap:wrap;}
-.card-comment-btn{border:0;background:transparent;color:var(--muted);font:inherit;font-size:.76rem;font-weight:700;display:inline-flex;align-items:center;gap:.24rem;padding:.2rem 0;cursor:pointer;}
-.card-comment-btn:hover{color:var(--primary);}
-.product-comments-card{margin-top:.8rem;}
-.product-comments-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;gap:.6rem;border:0;background:transparent;color:var(--text);font:inherit;font-weight:800;padding:.1rem 0;cursor:pointer;text-align:left;}
-.product-comments-panel{margin-top:.75rem;display:flex;flex-direction:column;gap:.55rem;max-height:30rem;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
-.product-comments-panel.hidden{display:none;}
-.product-comment-row{display:flex;gap:.55rem;align-items:flex-start;padding:.55rem 0;border-top:1px solid var(--border);}
-.product-comment-main{min-width:0;flex:1;}
-.product-comment-head{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;font-size:.82rem;}
-.product-comment-head .muted{font-size:.7rem;}
-.product-comment-body{margin-top:.2rem;line-height:1.45;overflow-wrap:anywhere;}
-.product-comment-actions{display:flex;gap:.55rem;align-items:center;margin-top:.28rem;flex-wrap:wrap;}
-.product-comment-action{border:0;background:transparent;color:var(--muted);padding:.08rem 0;font:inherit;font-size:.72rem;cursor:pointer;display:inline-flex;align-items:center;gap:.22rem;}
-.product-comment-action.active{color:#ef4444!important;}
-.product-comment-action.danger{color:var(--danger)!important;}
-.product-comment-composer{border-top:1px solid var(--border);padding-top:.65rem;position:sticky;bottom:0;background:var(--card);}
-.product-comment-compose-row{display:flex;gap:.45rem;align-items:flex-end;}
-.product-comment-compose-row textarea{flex:1;min-height:2.75rem;resize:vertical;margin:0;}
-.product-comments-empty,.product-comments-loading{text-align:center;padding:.7rem 0;color:var(--muted);font-size:.82rem;}
-.notifications-page-shell{max-width:760px;margin:0 auto;padding:1rem .9rem calc(1.25rem + env(safe-area-inset-bottom,0px));}
-.notifications-page-heading{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:.75rem;}
-.notifications-page-heading h2{margin:0;}.notifications-page-heading p{margin:.15rem 0 0;font-size:.82rem;}
-.notifications-page-host{display:flex;flex-direction:column;min-height:20rem;}
-.notifications-page-host .notif-tabs{display:flex;gap:.35rem;overflow-x:auto;padding:.15rem 0 .65rem;scrollbar-width:none;}
-.notifications-page-host .notif-tabs::-webkit-scrollbar{display:none;}
-.notifications-page-tools{display:flex;justify-content:space-between;gap:.75rem;align-items:center;padding:.25rem 0 .65rem;}
-.notifications-page-tools .notif-header-actions{display:flex;align-items:center;gap:.4rem;}
-.notifications-page-host .notif-list-scroll{display:flex;flex-direction:column;gap:.42rem;max-height:none!important;overflow:visible!important;}
-.notifications-page-host .notif-item-wrap{margin:0!important;}
-.notifications-page-host .notif-item{border-radius:.8rem;background:var(--card);border:1px solid var(--border);}
-.notifications-page-host .notif-item.unread{background:color-mix(in srgb,var(--primary) 8%,var(--card));}
-.notifications-page-host .notification-avatar-fallback{flex:none;}
-@media(max-width:720px){.notifications-page-shell{padding-left:.75rem;padding-right:.75rem;}.notifications-page-tools{align-items:flex-start;}}
-</style>
-
-
-<style id="levromart-instant-route-skeleton-fix">
-.instant-route-opening{min-height:22rem;}
-.instant-route-skeleton{display:flex;flex-direction:column;gap:.7rem;max-width:680px;margin:1.2rem auto 0;opacity:.65;}
-.instant-route-skeleton span{display:block;height:3.4rem;border-radius:1rem;background:color-mix(in srgb,var(--card) 88%,var(--border));border:1px solid var(--border);animation:levroRoutePulse 1.15s ease-in-out infinite;}
-.instant-route-skeleton span:nth-child(2){width:88%;}
-.instant-route-skeleton span:nth-child(3){width:72%;}
-@keyframes levroRoutePulse{0%,100%{opacity:.48}50%{opacity:.85}}
-</style>
-<style id="levromart-own-storefront-profile-link-20260917">
-.profile-own-storefront-header{cursor:pointer!important;border-radius:16px!important;transition:background .16s ease,transform .16s ease!important;}
-.profile-own-storefront-header:hover{background:color-mix(in srgb,var(--primary) 6%,transparent)!important;}
-.profile-own-storefront-header:active{transform:scale(.99)!important;}
-.profile-own-storefront-header:focus-visible{outline:2px solid var(--primary)!important;outline-offset:2px!important;}
-</style>
-</body>
-
-
-
-<style id="levromart-final-scope-overrides">
-/* Final specificity override for the public vendor storefront fallback only. */
-.storefront-profile .storefront-avatar-fallback-button{
-  background:transparent!important;
-  background-image:none!important;
-  border:0!important;
-  box-shadow:none!important;
-  padding:0!important;
-}
-.storefront-profile .storefront-avatar-fallback-button .avatar-fallback{
-  width:100%!important;height:100%!important;
-  background-image:none!important;
-  border:0!important;
-  box-shadow:none!important;
-}
-</style>
-</html>`);
+  </body></html>`);
   w.document.close();
 }
 
@@ -40509,3 +40392,118 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   }, true);
 })();
 </script>
+
+<style id="levromart-auto-commission-dispute-ui">
+.vendor-commission-auto-note{margin-top:.7rem;padding:.6rem .7rem;border-radius:10px;background:rgba(245,158,11,.10);color:#92400e;font-size:.84rem;line-height:1.35;}
+.vendor-commission-dispute-btn{margin-top:.55rem;border-color:var(--danger,#ef4444)!important;color:var(--danger,#ef4444)!important;background:#fff!important;}
+</style>
+
+<style id="levromart-vendor-card-actions-final-2x2">
+/* Final vendor listing action layout: exactly two buttons per row. */
+#app .vendor-product-actions{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(46px,48px))!important;
+  grid-template-rows:repeat(2,minmax(46px,48px))!important;
+  grid-auto-flow:row!important;
+  justify-content:center!important;
+  align-items:center!important;
+  justify-items:center!important;
+  gap:.55rem!important;
+  width:100%!important;
+  max-width:112px!important;
+  margin:.8rem auto 0!important;
+  padding:.75rem 0 0!important;
+  border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)!important;
+  flex-wrap:unset!important;
+}
+#app .vendor-product-actions>.vendor-edit-action{grid-column:1!important;grid-row:1!important;}
+#app .vendor-product-actions>.vendor-duplicate-action{grid-column:2!important;grid-row:1!important;}
+#app .vendor-product-actions>.vendor-pause-action,
+#app .vendor-product-actions>.vendor-resume-action,
+#app .vendor-product-actions>.vendor-pending-action{grid-column:1!important;grid-row:2!important;}
+#app .vendor-product-actions>.vendor-remove-action{grid-column:2!important;grid-row:2!important;}
+#app .vendor-product-actions>.vendor-card-icon-action{
+  width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;
+  margin:0!important;flex:none!important;
+}
+@media(max-width:430px){
+  #app .vendor-product-actions{grid-template-columns:repeat(2,46px)!important;grid-template-rows:repeat(2,46px)!important;gap:.48rem!important;max-width:106px!important;padding-top:.65rem!important;}
+  #app .vendor-product-actions>.vendor-card-icon-action{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;}
+}
+</style>
+
+<style id="levromart-storefront-sector-social-notification-fix">
+.storefront-avatar-fallback-button{background:transparent!important;background-image:none!important;border:0!important;box-shadow:none!important;padding:0!important;}
+.storefront-avatar-fallback-button .avatar-fallback{width:100%!important;height:100%!important;border:0!important;box-shadow:none!important;background-image:none!important;}
+.vendor-application-form #vaSectorSearch{margin:.35rem 0 .45rem;}
+.vendor-application-form #vaSector{width:100%;}
+.product-gallery-variant-meta{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.2rem .7rem;align-items:center;margin:.55rem 0 .9rem;padding:.72rem .82rem;border:1px solid var(--border);border-radius:.75rem;background:var(--card);}
+.product-gallery-variant-meta .muted{grid-column:1/-1;font-size:.72rem;}
+.product-gallery-variant-meta strong:last-child{white-space:nowrap;}
+.product-card-action-row{display:flex!important;gap:.45rem;align-items:center;flex-wrap:wrap;}
+.card-comment-btn{border:0;background:transparent;color:var(--muted);font:inherit;font-size:.76rem;font-weight:700;display:inline-flex;align-items:center;gap:.24rem;padding:.2rem 0;cursor:pointer;}
+.card-comment-btn:hover{color:var(--primary);}
+.product-comments-card{margin-top:.8rem;}
+.product-comments-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;gap:.6rem;border:0;background:transparent;color:var(--text);font:inherit;font-weight:800;padding:.1rem 0;cursor:pointer;text-align:left;}
+.product-comments-panel{margin-top:.75rem;display:flex;flex-direction:column;gap:.55rem;max-height:30rem;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+.product-comments-panel.hidden{display:none;}
+.product-comment-row{display:flex;gap:.55rem;align-items:flex-start;padding:.55rem 0;border-top:1px solid var(--border);}
+.product-comment-main{min-width:0;flex:1;}
+.product-comment-head{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;font-size:.82rem;}
+.product-comment-head .muted{font-size:.7rem;}
+.product-comment-body{margin-top:.2rem;line-height:1.45;overflow-wrap:anywhere;}
+.product-comment-actions{display:flex;gap:.55rem;align-items:center;margin-top:.28rem;flex-wrap:wrap;}
+.product-comment-action{border:0;background:transparent;color:var(--muted);padding:.08rem 0;font:inherit;font-size:.72rem;cursor:pointer;display:inline-flex;align-items:center;gap:.22rem;}
+.product-comment-action.active{color:#ef4444!important;}
+.product-comment-action.danger{color:var(--danger)!important;}
+.product-comment-composer{border-top:1px solid var(--border);padding-top:.65rem;position:sticky;bottom:0;background:var(--card);}
+.product-comment-compose-row{display:flex;gap:.45rem;align-items:flex-end;}
+.product-comment-compose-row textarea{flex:1;min-height:2.75rem;resize:vertical;margin:0;}
+.product-comments-empty,.product-comments-loading{text-align:center;padding:.7rem 0;color:var(--muted);font-size:.82rem;}
+.notifications-page-shell{max-width:760px;margin:0 auto;padding:1rem .9rem calc(1.25rem + env(safe-area-inset-bottom,0px));}
+.notifications-page-heading{display:flex;align-items:flex-start;gap:.7rem;margin-bottom:.75rem;}
+.notifications-page-heading h2{margin:0;}.notifications-page-heading p{margin:.15rem 0 0;font-size:.82rem;}
+.notifications-page-host{display:flex;flex-direction:column;min-height:20rem;}
+.notifications-page-host .notif-tabs{display:flex;gap:.35rem;overflow-x:auto;padding:.15rem 0 .65rem;scrollbar-width:none;}
+.notifications-page-host .notif-tabs::-webkit-scrollbar{display:none;}
+.notifications-page-tools{display:flex;justify-content:space-between;gap:.75rem;align-items:center;padding:.25rem 0 .65rem;}
+.notifications-page-tools .notif-header-actions{display:flex;align-items:center;gap:.4rem;}
+.notifications-page-host .notif-list-scroll{display:flex;flex-direction:column;gap:.42rem;max-height:none!important;overflow:visible!important;}
+.notifications-page-host .notif-item-wrap{margin:0!important;}
+.notifications-page-host .notif-item{border-radius:.8rem;background:var(--card);border:1px solid var(--border);}
+.notifications-page-host .notif-item.unread{background:color-mix(in srgb,var(--primary) 8%,var(--card));}
+.notifications-page-host .notification-avatar-fallback{flex:none;}
+@media(max-width:720px){.notifications-page-shell{padding-left:.75rem;padding-right:.75rem;}.notifications-page-tools{align-items:flex-start;}}
+</style>
+
+<style id="levromart-instant-route-skeleton-fix">
+.instant-route-opening{min-height:22rem;}
+.instant-route-skeleton{display:flex;flex-direction:column;gap:.7rem;max-width:680px;margin:1.2rem auto 0;opacity:.65;}
+.instant-route-skeleton span{display:block;height:3.4rem;border-radius:1rem;background:color-mix(in srgb,var(--card) 88%,var(--border));border:1px solid var(--border);animation:levroRoutePulse 1.15s ease-in-out infinite;}
+.instant-route-skeleton span:nth-child(2){width:88%;}
+.instant-route-skeleton span:nth-child(3){width:72%;}
+@keyframes levroRoutePulse{0%,100%{opacity:.48}50%{opacity:.85}}
+</style>
+<style id="levromart-own-storefront-profile-link-20260917">
+.profile-own-storefront-header{cursor:pointer!important;border-radius:16px!important;transition:background .16s ease,transform .16s ease!important;}
+.profile-own-storefront-header:hover{background:color-mix(in srgb,var(--primary) 6%,transparent)!important;}
+.profile-own-storefront-header:active{transform:scale(.99)!important;}
+.profile-own-storefront-header:focus-visible{outline:2px solid var(--primary)!important;outline-offset:2px!important;}
+</style>
+
+<style id="levromart-final-scope-overrides">
+/* Final specificity override for the public vendor storefront fallback only. */
+.storefront-profile .storefront-avatar-fallback-button{
+  background:transparent!important;
+  background-image:none!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+}
+.storefront-profile .storefront-avatar-fallback-button .avatar-fallback{
+  width:100%!important;height:100%!important;
+  background-image:none!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+</style>
