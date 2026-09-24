@@ -16593,10 +16593,49 @@ function resetChatInput(el) {
   el.style.height = "";
 }
 
+// Contact-info bypass guard: a phone number, +234 number, or "message me on
+// WhatsApp" style phrase has no legitimate reason to be needed before an
+// order between this exact buyer and vendor has actually completed -- that
+// is precisely the pattern of arranging to take a sale off-platform to
+// avoid commission. Once a real completed order exists between them, the
+// commission on THAT sale is already locked in, and contact info genuinely
+// helps real delivery coordination -- so the guard lifts automatically
+// rather than staying on forever.
+const CONTACT_INFO_PATTERNS = [
+  /(\+?234|0)[\d\s().-]{8,14}\d/,                    // 08012345678, 0801 234 5678, +234 801 234 5678, etc.
+  /\bwhatsapp\b/i,
+  /\b(call|text|reach|dm|message)\s*(me)?\s*(on|at|via)\b/i,
+  /\bmy\s+(number|phone|whats\s*app|ig|instagram|handle)\s+is\b/i,
+  /\badd\s+me\s+on\b/i,
+  /\b(instagram|ig|snapchat|telegram)\s*[:@]/i,
+];
+function messageLooksLikeContactBypass(text) {
+  return CONTACT_INFO_PATTERNS.some((re) => re.test(text));
+}
+const __convCompletedOrderCache = new Map();
+async function conversationHasCompletedOrder(conversationId) {
+  if (__convCompletedOrderCache.has(conversationId)) return __convCompletedOrderCache.get(conversationId);
+  try {
+    const { data: conv } = await sb.from("conversations").select("buyer_id, vendor_id").eq("id", conversationId).maybeSingle();
+    if (!conv) return false;
+    const { count } = await sb.from("orders").select("id", { count: "exact", head: true })
+      .eq("buyer_id", conv.buyer_id).eq("vendor_id", conv.vendor_id).eq("status", "completed").limit(1);
+    const has = Number(count || 0) > 0;
+    __convCompletedOrderCache.set(conversationId, has);
+    return has;
+  } catch (_) {
+    return false; // A failed check should never be the reason a real bypass slips through, but also never block a legitimate message on a network hiccup -- err toward not blocking.
+  }
+}
+
 async function sendChatMessage(conversationId) {
   const input = byId("chatInput");
   const body = input.value.trim();
   if (!body) return;
+  if (messageLooksLikeContactBypass(body) && !(await conversationHasCompletedOrder(conversationId))) {
+    showToast("For your safety, phone numbers and outside contact details can't be shared here until an order between you has completed. Keep the conversation and payment in-app.", "error");
+    return;
+  }
   if (msgListening || msgVoicePaused) { stopMsgVoiceRecording(); }
   clearTimeout(typingStopTimer);
   publishChatTyping(false);
@@ -16751,6 +16790,12 @@ function bindChatImageEditorPointer(){
 }
 
 async function sendPreparedChatImage(conversationId, prepared, replyToId, replyTargetSnapshot) {
+  if (prepared.caption && messageLooksLikeContactBypass(prepared.caption) && !(await conversationHasCompletedOrder(conversationId))) {
+    // Every caller already wraps this call in try/catch and toasts
+    // err.message on failure -- throwing here (rather than also toasting
+    // directly) avoids a duplicate, uglier second toast.
+    throw new Error("Phone numbers and outside contact details can't be shared here until an order between you has completed.");
+  }
   const path=`conv/${conversationId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeFilename(prepared.name||"photo.jpg")}`;
   // Chat photos are the highest-volume image upload in the app -- compress
   // before it ever reaches Supabase Storage. compressImage() is a safe
@@ -26619,6 +26664,9 @@ async function sendAiDraftMessage(vendorId, btn) {
       ({ data: conversationId, error } = await sb.rpc("get_or_create_conversation", { p_vendor_id: vendorId }));
     }
     if (error) throw new Error("We couldn't start this conversation. Please try again.");
+    if (messageLooksLikeContactBypass(text) && !(await conversationHasCompletedOrder(conversationId))) {
+      throw new Error("Phone numbers and outside contact details can't be shared here until an order between you has completed.");
+    }
     const { error: msgErr } = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: session.user.id, body: text });
     if (msgErr) throw new Error(msgErr.message);
     card.innerHTML = `<div class="ai-chat-draft-label"><i class="fa-solid fa-check"></i> Sent</div>`;
