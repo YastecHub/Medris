@@ -39276,6 +39276,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 }
 .admin-inventory-controls input{flex:1 1 280px}
 .admin-inventory-controls select{flex:0 1 220px}
+.admin-inventory-controls .admin-inventory-status-select{flex:0 1 200px;font-weight:700}
+.admin-inventory-controls .btn{flex:0 0 auto;min-height:46px}
 .admin-inventory-table-wrap{overflow-x:auto;border:1px solid rgba(128,128,128,.2);border-radius:16px}
 .admin-inventory-table{width:100%;border-collapse:collapse;min-width:760px}
 .admin-inventory-table th,.admin-inventory-table td{padding:.75rem .7rem;border-bottom:1px solid rgba(128,128,128,.16);text-align:left}
@@ -39451,17 +39453,15 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     const visible=all.filter(p=>window.__adminInventoryStatus==="all" || String(p.status)===window.__adminInventoryStatus);
     return `<h2><i class="fa-solid fa-boxes-stacked"></i> Inventory</h2>${adminNavHtml("adminInventory")}
       ${stale?`<div class="muted" style="margin:.35rem 0;">Showing your most recent inventory snapshot.</div>`:""}
-      <div class="admin-inventory-summary admin-inventory-accordion-summary">
-        ${[["Total product records",total,"all"],["Active products",active,"active"],["Removed products",removed,"removed"]].map(([label,count,status])=>`<details class="admin-inventory-stat"><summary><span>${esc(label)}</span><strong>${count}</strong><i class="fa-solid fa-chevron-down"></i></summary><div class="admin-inventory-stat-body"><span>${count} ${status==="all"?"product records":status+" products"}</span><button type="button" class="btn btn-sm btn-outline" onclick="setAdminInventoryStatus('${status}')">View</button></div></details>`).join("")}
-      </div>
-      <div class="admin-inventory-status-tabs" role="tablist" aria-label="Inventory status">
-        <button type="button" role="tab" aria-selected="${window.__adminInventoryStatus==="all"}" class="admin-inventory-status-tab ${window.__adminInventoryStatus==="all"?"active":""}" onclick="setAdminInventoryStatus('all')"><span>All products</span><strong>${total}</strong></button>
-        <button type="button" role="tab" aria-selected="${window.__adminInventoryStatus==="active"}" class="admin-inventory-status-tab ${window.__adminInventoryStatus==="active"?"active":""}" onclick="setAdminInventoryStatus('active')"><span>Active</span><strong>${active}</strong></button>
-        <button type="button" role="tab" aria-selected="${window.__adminInventoryStatus==="removed"}" class="admin-inventory-status-tab ${window.__adminInventoryStatus==="removed"?"active":""}" onclick="setAdminInventoryStatus('removed')"><span>Removed</span><strong>${removed}</strong></button>
-      </div>
       <div class="admin-inventory-controls">
+        <select id="adminInventoryStatusSelect" class="admin-inventory-status-select" onchange="setAdminInventoryStatus(this.value)" aria-label="Inventory status">
+          <option value="all" ${window.__adminInventoryStatus==="all"?"selected":""}>All products — ${total}</option>
+          <option value="active" ${window.__adminInventoryStatus==="active"?"selected":""}>Active — ${active}</option>
+          <option value="removed" ${window.__adminInventoryStatus==="removed"?"selected":""}>Removed — ${removed}</option>
+        </select>
         <input id="adminInventorySearch" type="search" placeholder="Search product or vendor…" oninput="filterAdminInventory()">
         <select id="adminInventorySector" onchange="filterAdminInventory()"><option value="">All sectors</option>${sectorOptions}</select>
+        <button type="button" class="btn btn-outline btn-sm" onclick="exportInventoryPdf()"><i class="fa-solid fa-file-pdf"></i> Download PDF report</button>
       </div>
       <div class="muted" id="adminInventoryCount" style="margin:.35rem 0 .65rem;">Showing ${visible.length} ${statusLabel.toLowerCase()}</div>
       <div class="admin-inventory-table-wrap">
@@ -39477,6 +39477,80 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
         </div>
       </details>`;
   }
+
+  window.exportInventoryPdf=function(){
+    const all=window.__adminInventoryAll||[];
+    if(!all.length){showToast("No inventory to export yet.","error");return;}
+    const total=all.length;
+    const active=all.filter(p=>String(p.status)==="active").length;
+    const removed=all.filter(p=>String(p.status)==="removed").length;
+    const priceLabel=p=>(p.price===null||p.price===undefined||p.price==="")?"—":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
+
+    const bySector=new Map();
+    all.forEach(p=>{
+      const sector=p.sector_name||"Unassigned";
+      const category=p.category_name||"Uncategorized";
+      if(!bySector.has(sector))bySector.set(sector,new Map());
+      const cats=bySector.get(sector);
+      if(!cats.has(category))cats.set(category,[]);
+      cats.get(category).push(p);
+    });
+    const sortedSectors=[...bySector.keys()].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:"base"}));
+
+    const sectorSummaryRows=sortedSectors.map(sector=>{
+      const cats=bySector.get(sector);
+      let sectorTotal=0,sectorActive=0;
+      cats.forEach(list=>{sectorTotal+=list.length;sectorActive+=list.filter(p=>String(p.status)==="active").length;});
+      return `<tr><td>${esc(sector)}</td><td class="num">${cats.size}</td><td class="num">${sectorTotal}</td><td class="num">${sectorActive}</td></tr>`;
+    }).join("");
+
+    let n=0;
+    const listingSections=sortedSectors.map(sector=>{
+      const cats=bySector.get(sector);
+      const sortedCats=[...cats.keys()].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:"base"}));
+      const catBlocks=sortedCats.map(cat=>{
+        const items=[...cats.get(cat)].sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),undefined,{sensitivity:"base",numeric:true}));
+        const rows=items.map(p=>{
+          n++;
+          return `<tr><td>${n}</td><td>${esc(p.name||"Unnamed product")}</td><td>${esc(p.vendor_name||"Unknown vendor")}</td><td>${priceLabel(p)}</td><td>${esc(String(p.status||"unknown"))}</td></tr>`;
+        }).join("");
+        return `<h4>${esc(cat)} <span class="muted">(${items.length})</span></h4><table><thead><tr><th>#</th><th>Product</th><th>Vendor</th><th>Price</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }).join("");
+      return `<h3>${esc(sector)}</h3>${catBlocks}`;
+    }).join("");
+
+    const w=window.open("","_blank");
+    if(!w){showToast("Please allow pop-ups to export the PDF.","error");return;}
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Levromart Inventory Report</title>
+    <style>
+      body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#0d201c;padding:2rem;}
+      h1{color:#0B6E4A;margin:0 0 .2rem;} .muted{color:#5c7269;margin-top:0;}
+      h3{margin:1.5rem 0 .35rem;color:#0B6E4A;border-bottom:2px solid #0B6E4A;padding-bottom:.25rem;}
+      h4{margin:.9rem 0 .3rem;font-size:.95rem;color:#0d201c;}
+      table{width:100%;border-collapse:collapse;margin-top:.3rem;font-size:.82rem;}
+      th,td{padding:.4rem .55rem;text-align:left;border-bottom:1px solid #e2e8f0;}
+      th{background:#f3f8f7;} td.num,th.num{text-align:right;}
+      .stats{display:flex;gap:1.2rem;margin:1.2rem 0;flex-wrap:wrap;}
+      .stat{border:1px solid #e2e8f0;border-radius:8px;padding:.7rem 1.1rem;}
+      .stat b{display:block;font-size:1.3rem;color:#0B6E4A;}
+      @media print{h3{page-break-after:avoid;}h4{page-break-after:avoid;}tr{page-break-inside:avoid;}}
+    </style>
+    </head><body>
+    <h1>Levromart Inventory Report</h1>
+    <p class="muted">Generated ${new Date().toLocaleString()}</p>
+    <div class="stats">
+      <div class="stat"><b>${total}</b>Total products</div>
+      <div class="stat"><b>${active}</b>Active</div>
+      <div class="stat"><b>${removed}</b>Removed</div>
+      <div class="stat"><b>${sortedSectors.length}</b>Sectors</div>
+    </div>
+    <h3>Products by sector</h3>
+    <table><thead><tr><th>Sector</th><th class="num">Categories</th><th class="num">Products</th><th class="num">Active</th></tr></thead><tbody>${sectorSummaryRows}</tbody></table>
+    ${listingSections}
+    ${"<scr"}ipt>window.onload = () => window.print();<\/script>
+    </body></html>`);
+    w.document.close();
+  };
 
   function renderAdminInventoryRows(rows){
     return rows.map((p,i)=>{
@@ -39504,8 +39578,13 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       const total=window.__adminInventoryAll.length;
       const active=window.__adminInventoryAll.filter(p=>String(p.status)==='active').length;
       const removed=window.__adminInventoryAll.filter(p=>String(p.status)==='removed').length;
-      document.querySelectorAll('.admin-inventory-stat strong').forEach((el,i)=>{el.textContent=String([total,active,removed][i]??0)});
-      document.querySelectorAll('.admin-inventory-status-tab').forEach(btn=>{const label=(btn.querySelector('span')?.textContent||'').toLowerCase();const n=label.includes('all')?total:label.includes('active')?active:removed;const badge=btn.querySelector('strong');if(badge)badge.textContent=String(n);});
+      const statusSel=document.getElementById('adminInventoryStatusSelect');
+      if(statusSel){
+        const opts=statusSel.options;
+        if(opts[0])opts[0].textContent=`All products — ${total}`;
+        if(opts[1])opts[1].textContent=`Active — ${active}`;
+        if(opts[2])opts[2].textContent=`Removed — ${removed}`;
+      }
       showToast(data.permanent?`${productName} permanently deleted.`:`${productName} removed from inventory; order history preserved.`,'success');
     }catch(err){
       console.error('[Levromart] Admin inventory delete failed:',err);
@@ -39517,7 +39596,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   window.setAdminInventoryStatus=function(status){
     window.__adminInventoryStatus=["all","active","removed"].includes(status)?status:"all";
     filterAdminInventory();
-    document.querySelectorAll('.admin-inventory-status-tab').forEach(btn=>{const selected=btn.classList.contains(window.__adminInventoryStatus)||btn.querySelector('span')?.textContent?.toLowerCase().startsWith(window.__adminInventoryStatus);btn.classList.toggle('active',selected);btn.setAttribute('aria-selected',selected?'true':'false');});
+    const statusSel=document.getElementById('adminInventoryStatusSelect');
+    if(statusSel) statusSel.value=window.__adminInventoryStatus;
   };
 
   window.filterAdminInventory=function(){
