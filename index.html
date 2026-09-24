@@ -9381,6 +9381,25 @@ function waLink(raw, text) {
   return `https://wa.me/${digits}${text ? "?text=" + encodeURIComponent(text) : ""}`;
 }
 function telLink(raw) { return `tel:${(raw || "").replace(/\s+/g, "")}`; }
+// Uploads a blob straight to R2 via a short-lived presigned URL (see
+// /api/r2-upload) instead of Supabase Storage -- product photos, avatars,
+// vendor logos, and the homepage carousel only. `key` must start with one
+// of those four folder names; the server rejects anything else. Returns the
+// final public URL to store on the row, same shape as the old
+// sb.storage.from(...).getPublicUrl(...).data.publicUrl call it replaces.
+async function uploadToR2(blob, key, contentType) {
+  const type = contentType || blob.type || "application/octet-stream";
+  const presignRes = await fetch("/api/r2-upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accessToken: session.access_token, key, contentType: type }),
+  });
+  const presignJson = await presignRes.json().catch(() => ({}));
+  if (!presignRes.ok) throw new Error(presignJson.error || "Could not start the upload.");
+  const putRes = await fetch(presignJson.uploadUrl, { method: "PUT", headers: { "Content-Type": type }, body: blob });
+  if (!putRes.ok) throw new Error("Upload to storage failed. Please try again.");
+  return presignJson.publicUrl;
+}
 function yearsSince(dateStr) {
   if (!dateStr) return null;
   const years = (Date.now() - new Date(dateStr).getTime()) / (365.25 * 24 * 3600 * 1000);
@@ -11194,9 +11213,8 @@ async function saveVendorCoverCrop(){
   canvas.toBlob(async blob=>{
     if(!blob){showToast("Could not prepare that header.","error");return;}
     try{
-      const path=`${vendor.id}/cover.jpg`;
-      const {error:upErr}=await sb.storage.from("vendor-logos").upload(path,blob,{upsert:true,contentType:"image/jpeg"});if(upErr)throw upErr;
-      const {data:pub}=sb.storage.from("vendor-logos").getPublicUrl(path);const url=`${pub.publicUrl}?t=${Date.now()}`;
+      const path=`vendor-logos/${vendor.id}/cover.jpg`;
+      const url=`${await uploadToR2(blob,path,"image/jpeg")}?t=${Date.now()}`;
       const {error}=await sb.from("vendors").update({cover_url:url}).eq("id",vendor.id);if(error)throw error;
       vendor.cover_url=url;closeVendorCoverCropModal();showToast("Storefront header updated.","success");
       if(currentView==="vendorEditProfile")await navigate("vendorEditProfile",{},false);else if(currentView==="storefront")await navigate("storefront",{vendorId:vendor.id},false);
@@ -11274,11 +11292,11 @@ async function saveAvatarCrop(){
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
   canvas.toBlob(async (blob)=>{
     if(!blob){showToast('Could not prepare that photo.','error');return;}
-    const path=`${session.user.id}/avatar.jpg`;
-    const {error:upErr}=await sb.storage.from('avatars').upload(path,blob,{upsert:true,contentType:'image/jpeg'});
-    if(upErr){showToast(upErr.message,'error');return;}
-    const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
-    const url=`${pub.publicUrl}?t=${Date.now()}`;
+    const path=`avatars/${session.user.id}/avatar.jpg`;
+    let publicUrl;
+    try{ publicUrl=await uploadToR2(blob,path,'image/jpeg'); }
+    catch(upErr){ showToast(upErr.message,'error'); return; }
+    const url=`${publicUrl}?t=${Date.now()}`;
     const {error}=await sb.from('users').update({avatar_url:url}).eq('id',session.user.id);
     if(error){showToast(error.message,'error');return;}
     profile.avatar_url=url;
@@ -12286,7 +12304,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "settings","supportRequest","wishlist","buyerOrders","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
     "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
-    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing","buyerProfile"
+    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing","buyerProfile","adminR2Migration"
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
     try {
@@ -12435,6 +12453,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "leaveReview": html = await renderLeaveReview(params.orderId); break;
       case "adminPanel": html = await renderAdminPanel(params.status); break;
       case "adminCarousel": html = await renderAdminCarousel(); break;
+      case "adminR2Migration": html = renderAdminR2Migration(); break;
       case "adminLinkLibrary": html = renderAdminLinkLibrary(); break;
       case "adminDisputes": html = await renderAdminDisputes(); break;
       case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
@@ -13477,15 +13496,13 @@ async function addAdminCarouselSlide() {
   if (!file.type?.startsWith("image/")) { showToast("Please choose an image file.", "error"); return; }
   const btn = byId("adminCarouselAddBtn"); if (btn) btn.disabled = true;
   try {
-    const path = carouselStoragePathForUpload(file);
+    const path = `homepage-carousel/${carouselStoragePathForUpload(file)}`;
     let uploadBlob = file;
     try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
-    const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false, cacheControl: "31536000" });
-    if (uploadError) throw uploadError;
-    const { data: publicData } = sb.storage.from("homepage-carousel").getPublicUrl(path);
-    const payload = { storage_path: path, image_url: publicData.publicUrl, alt_text: String(byId("adminCarouselNewAlt")?.value || file.name).trim().slice(0,180), link_url: String(byId("adminCarouselNewLink")?.value || "").trim() || null, sort_order: Math.max(0, Number(byId("adminCarouselNewOrder")?.value || 100)), is_active: true, created_by: session.user.id };
+    const publicUrl = await uploadToR2(uploadBlob, path, uploadBlob.type || file.type);
+    const payload = { storage_path: path, image_url: publicUrl, alt_text: String(byId("adminCarouselNewAlt")?.value || file.name).trim().slice(0,180), link_url: String(byId("adminCarouselNewLink")?.value || "").trim() || null, sort_order: Math.max(0, Number(byId("adminCarouselNewOrder")?.value || 100)), is_active: true, created_by: session.user.id };
     const { error } = await sb.from("homepage_carousel_slides").insert(payload);
-    if (error) { await sb.storage.from("homepage-carousel").remove([path]); throw error; }
+    if (error) throw error;
     showToast("Banner added.", "success");
     navigate("adminCarousel", {}, { replace: true });
   } catch (e) { console.error(e); showToast(e?.message || "Could not add banner.", "error"); }
@@ -13518,15 +13535,12 @@ async function replaceAdminCarouselImage(event, id) {
   try {
     const { data: old, error: oldError } = await sb.from("homepage_carousel_slides").select("storage_path").eq("id", id).maybeSingle();
     if (oldError) throw oldError;
-    const newPath = carouselStoragePathForUpload(file);
+    const newPath = `homepage-carousel/${carouselStoragePathForUpload(file)}`;
     let uploadBlob = file;
     try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
-    const { error: uploadError } = await sb.storage.from("homepage-carousel").upload(newPath, uploadBlob, { contentType: uploadBlob.type || file.type, upsert: false, cacheControl: "31536000" });
-    if (uploadError) throw uploadError;
-    const { data: publicData } = sb.storage.from("homepage-carousel").getPublicUrl(newPath);
-    const { error: updateError } = await sb.from("homepage_carousel_slides").update({ storage_path: newPath, image_url: publicData.publicUrl, updated_at: new Date().toISOString() }).eq("id", id);
-    if (updateError) { await sb.storage.from("homepage-carousel").remove([newPath]); throw updateError; }
-    if (old?.storage_path) await sb.storage.from("homepage-carousel").remove([old.storage_path]);
+    const publicUrl = await uploadToR2(uploadBlob, newPath, uploadBlob.type || file.type);
+    const { error: updateError } = await sb.from("homepage_carousel_slides").update({ storage_path: newPath, image_url: publicUrl, updated_at: new Date().toISOString() }).eq("id", id);
+    if (updateError) throw updateError;
     showToast("Banner image replaced.", "success");
     navigate("adminCarousel", {}, { replace: true });
   } catch (e) { console.error(e); showToast(e?.message || "Could not replace banner image.", "error"); }
@@ -20645,13 +20659,13 @@ async function uploadVendorLogo(event) {
   const file = event.target.files[0];
   if (!file || !vendor) return;
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${vendor.id}/logo.${ext}`;
+  const path = `vendor-logos/${vendor.id}/logo.${ext}`;
   let uploadBlob = file;
   try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 800, maxHeight: 800 }); } catch (_) {}
-  const { error: upErr } = await sb.storage.from("vendor-logos").upload(path, uploadBlob, { upsert: true, contentType: uploadBlob.type || file.type });
-  if (upErr) { showToast(upErr.message, "error"); return; }
-  const { data: pub } = sb.storage.from("vendor-logos").getPublicUrl(path);
-  const url = `${pub.publicUrl}?t=${Date.now()}`;
+  let publicUrl;
+  try { publicUrl = await uploadToR2(uploadBlob, path, uploadBlob.type || file.type); }
+  catch (upErr) { showToast(upErr.message, "error"); return; }
+  const url = `${publicUrl}?t=${Date.now()}`;
   const { error } = await sb.from("vendors").update({ logo_url: url }).eq("id", vendor.id);
   if (error) { showToast(error.message, "error"); return; }
   vendor.logo_url = url;
@@ -21585,11 +21599,10 @@ async function selectVarietyImage(input){return handleProductVariantPhotoChange(
 async function uploadVarietyImages(){
   persistVisibleVariantOrder();
   await Promise.all((window.__productVariants||[]).map(async v=>{
-    if(!v._imageFile)return;const file=v._imageFile,path=`${vendor.id}/variants/${crypto.randomUUID()}.${(file.name.split('.').pop()||'jpg').toLowerCase()}`;
+    if(!v._imageFile)return;const file=v._imageFile,path=`product-photos/${vendor.id}/variants/${crypto.randomUUID()}.${(file.name.split('.').pop()||'jpg').toLowerCase()}`;
     let uploadBlob=file;
     try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}
-    const {error}=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type,cacheControl:"31536000"});if(error)throw error;
-    v.photo_url=sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl;
+    v.photo_url=await uploadToR2(uploadBlob,path,uploadBlob.type||file.type);
     const row=[...document.querySelectorAll('#productVariantPricing .variant-price-row')].find(r=>r.dataset.variantKey===String(v.id||v._localKey));
     if(row){
       row.dataset.photoUrl=v.photo_url;
@@ -22097,15 +22110,14 @@ async function saveProduct() {
 
     const uploadOne = async (file, folder) => {
       const ext = (file.name?.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-      const path = `${vendor.id}/${folder ? folder + "/" : ""}${crypto.randomUUID()}.${ext}`;
+      const path = `product-photos/${vendor.id}/${folder ? folder + "/" : ""}${crypto.randomUUID()}.${ext}`;
       let uploadBlob = file;
       try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type || "image/jpeg", upsert: false, cacheControl: "31536000" });
-      if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
+      let publicUrl;
+      try { publicUrl = await uploadToR2(uploadBlob, path, uploadBlob.type || file.type || "image/jpeg"); }
+      catch (upErr) { throw new Error(`Photo upload failed: ${upErr.message}`); }
       uploadedStoragePaths.push(path);
-      const { data: urlData } = sb.storage.from("product-photos").getPublicUrl(path);
-      if (!urlData?.publicUrl) throw new Error("Photo uploaded, but its public URL could not be created.");
-      return urlData.publicUrl;
+      return publicUrl;
     };
 
     const mainUrls = [];
@@ -22611,12 +22623,11 @@ async function savePackage() {
     const newFiles = [...(window.__newPackagePhotoFiles || byId("pkgPhotoFiles")?.files || [])];
     const newPhotoUrls = await Promise.all(newFiles.map(async (file) => {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `${vendor.id}/packages/${crypto.randomUUID()}.${ext}`;
+      const path = `product-photos/${vendor.id}/packages/${crypto.randomUUID()}.${ext}`;
       let uploadBlob = file;
       try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
-      const { error: upErr } = await sb.storage.from("product-photos").upload(path, uploadBlob, { contentType: uploadBlob.type || file.type, cacheControl: "31536000" });
-      if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
-      return sb.storage.from("product-photos").getPublicUrl(path).data.publicUrl;
+      try { return await uploadToR2(uploadBlob, path, uploadBlob.type || file.type); }
+      catch (upErr) { throw new Error(`Photo upload failed: ${upErr.message}`); }
     }));
     const photos = [...(window.__existingPackagePhotos || []), ...newPhotoUrls];
     const billing_model = byId("pkgBillingModel")?.value || "commission";
@@ -24393,7 +24404,8 @@ const SUPER_ADMIN_ONLY_VIEWS = new Set([
   "adminPasswordResets",
   "adminLog",
   "adminInventory",
-  "adminUsers"
+  "adminUsers",
+  "adminR2Migration"
 ]);
 // Login logs are the one exception: sub-admins can see them, only Reset
 // Password / Inventory / everything else in this set is super-admin-only.
@@ -24412,8 +24424,82 @@ function adminNavHtml(active) {
     ["adminAuthLogs", "fa-right-to-bracket", "Login logs"],
     ["adminUsers", "fa-user-shield", "Admins"],
     ["adminCarousel", "fa-images", "Carousel"],
+    ["adminR2Migration", "fa-cloud-arrow-up", "R2 migration"],
   ].filter(([view]) => isSuperAdmin() || !SUPER_ADMIN_ONLY_VIEWS.has(view));
   return `<div class="dash-tabs admin-dash-tabs"><div class="admin-dash-tabs-inner">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : view === "adminPasswordResets" && Number(window.__passwordResetPendingCount||0) > 0 ? `<span class="dash-tab-dot password-reset-admin-badge">${Number(window.__passwordResetPendingCount||0) > 9 ? "9+" : Number(window.__passwordResetPendingCount||0)}</span>` : ""}</button>`).join("")}</div></div>`;
+}
+
+// ---------- ADMIN: one-time R2 migration ----------
+// Walks every file already sitting in the four public Supabase Storage
+// buckets and copies each one over to R2 via /api/r2-migrate. Does not
+// touch the database or delete anything from Supabase -- rewriting
+// products/vendors/users rows to point at the new R2 URLs is a deliberately
+// separate step, run once every file has actually landed.
+async function listAllStorageFiles(bucket, prefix = "", depth = 0) {
+  if (depth > 6) return [];
+  const { data, error } = await sb.storage.from(bucket).list(prefix, { limit: 1000, sortBy: { column: "name", order: "asc" } });
+  if (error || !data) return [];
+  let files = [];
+  for (const entry of data) {
+    const fullPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.id === null) {
+      // A folder placeholder entry has no object metadata -- recurse into it.
+      files = files.concat(await listAllStorageFiles(bucket, fullPath, depth + 1));
+    } else {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+async function runR2Migration() {
+  const btn = byId("r2MigrateBtn");
+  const log = byId("r2MigrateLog");
+  if (!log || !btn) return;
+  btn.disabled = true;
+  const buckets = ["product-photos", "homepage-carousel", "avatars", "vendor-logos"];
+  let totalMigrated = 0, totalSkipped = 0, totalFailed = 0;
+  const setStatus = (msg) => { log.textContent = msg; };
+  try {
+    for (const bucket of buckets) {
+      setStatus(`Listing files in ${bucket}…`);
+      const files = await listAllStorageFiles(bucket);
+      for (let i = 0; i < files.length; i++) {
+        setStatus(`${bucket}: ${i + 1}/${files.length}  —  migrated ${totalMigrated}, already there ${totalSkipped}, failed ${totalFailed}`);
+        try {
+          const r = await fetch("/api/r2-migrate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accessToken: session.access_token, bucket, key: files[i] }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(j.error || "Request failed");
+          if (j.migrated) totalMigrated++; else totalSkipped++;
+        } catch (e) {
+          totalFailed++;
+          console.warn(`[R2 migration] ${bucket}/${files[i]} failed:`, e.message);
+        }
+      }
+    }
+    setStatus(`Done. Migrated ${totalMigrated}, already there ${totalSkipped}, failed ${totalFailed}.`);
+    showToast("R2 migration finished — see the log on this page for the count.", totalFailed ? "warning" : "success");
+  } catch (e) {
+    setStatus(`Stopped early: ${e.message}`);
+    showToast(`Migration stopped early: ${e.message}`, "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+window.runR2Migration = runR2Migration;
+function renderAdminR2Migration() {
+  if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
+  let html = `<h2><i class="fa-solid fa-cloud-arrow-up"></i> Migrate images to R2</h2>`;
+  html += adminNavHtml("adminR2Migration");
+  html += `<div class="card" style="max-width:560px;">
+    <p class="muted">Copies every existing file in product-photos, homepage-carousel, avatars and vendor-logos over to Cloudflare R2. Doesn't touch the database or delete anything from Supabase, and it's safe to run more than once — anything already copied is skipped, not re-uploaded.</p>
+    <button class="btn" id="r2MigrateBtn" onclick="runR2Migration()"><i class="fa-solid fa-play"></i> Start migration</button>
+    <p id="r2MigrateLog" class="muted" style="margin-top:.8rem;white-space:pre-wrap;font-size:.85rem;"></p>
+  </div>`;
+  return html;
 }
 
 async function refreshMonthlyPendingCount(){
@@ -33104,7 +33190,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.payListingDraft=async function(draftId){if(!session?.access_token)return false;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'prepare-listing-payment',draftId,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.authorization_url)throw new Error(d.error||'Could not start the ₦1,000 payment.');window.location.assign(d.authorization_url);return true}catch(e){showToast?.(e.message||'Could not start payment.','error');return false}}
   window.saveListingDraftServer=async function(draft){if(!session?.access_token)return null;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'save-listing-draft',kind:draft.kind,draft,accessToken:session.access_token})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not save draft.');return d}catch(e){showToast?.(e.message||'Could not save draft.','error');return null}}
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
-  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path=vendor.id+'/'+crypto.randomUUID()+'.'+ext;let uploadBlob=file;try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}const up=await sb.storage.from('product-photos').upload(path,uploadBlob,{contentType:uploadBlob.type||file.type});if(up.error)throw up.error;urls.push(sb.storage.from('product-photos').getPublicUrl(path).data.publicUrl)}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
+  window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path='product-photos/'+vendor.id+'/'+crypto.randomUUID()+'.'+ext;let uploadBlob=file;try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}urls.push(await uploadToR2(uploadBlob,path,uploadBlob.type||file.type))}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
   async function renderUnifiedEnhancements(){
     const heading=document.querySelector('.vendor-products-heading');
     if(!heading)return;

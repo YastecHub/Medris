@@ -1,3 +1,25 @@
+// ---------- R2 (Cloudflare) object storage ----------
+// Public, high-traffic images only (product photos, avatars, vendor logos,
+// homepage carousel) -- chat/support attachments and vendor verification
+// docs stay on Supabase Storage's private signed-URL system, deliberately.
+// Moving those to a public R2 bucket would make private files permanently,
+// publicly guessable-URL accessible with no expiry -- a real security
+// regression for a small bandwidth saving that isn't worth it.
+function getR2Client() {
+  const { S3Client } = require("@aws-sdk/client-s3");
+  return new S3Client({
+    region: "auto",
+    endpoint: `https://${env("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: env("R2_ACCESS_KEY_ID"),
+      secretAccessKey: env("R2_SECRET_ACCESS_KEY"),
+    },
+  });
+}
+function r2PublicUrl(key) {
+  return `${env("R2_PUBLIC_URL").replace(/\/$/, "")}/${key}`;
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let data = "";
@@ -305,4 +327,4 @@ function esc(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-module.exports = { readBody, env, settleReference, sendNotificationEmail, releaseOrderPayout, refundOrderPayout, esc };
+module.exports = { readBody, env, settleReference, sendNotificationEmail, releaseOrderPayout, refundOrderPayout, esc, getR2Client, r2PublicUrl };
