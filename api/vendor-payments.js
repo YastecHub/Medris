@@ -4,7 +4,82 @@
 // live in multiple Vercel functions. Keeping listing activation in this file
 // avoids adding a 13th serverless function on Vercel while preserving
 // the existing /api/vendor-payments contract.
-const { readBody, env } = require("./_util");
+const { readBody, env, getR2Client, r2PublicUrl } = require("./_util");
+const { PutObjectCommand, HeadObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+
+const R2_ALLOWED_FOLDERS = ["product-photos", "homepage-carousel", "avatars", "vendor-logos"];
+
+async function r2VerifiedUser(accessToken) {
+  const SUPABASE_URL = env("SUPABASE_URL");
+  const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
+  const meRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` },
+  });
+  const me = await meRes.json();
+  if (!meRes.ok || !me?.id) return null;
+  return me;
+}
+
+// Issues a short-lived presigned PUT URL so the browser uploads straight to
+// R2 -- this never sees the file itself, only a filename and content type.
+async function r2PresignUpload({ accessToken, key, contentType }, res) {
+  if (!accessToken || !key || !contentType) {
+    return res.status(400).json({ error: "accessToken, key and contentType are required" });
+  }
+  const folder = String(key).split("/")[0];
+  if (!R2_ALLOWED_FOLDERS.includes(folder)) return res.status(400).json({ error: "Unknown upload folder." });
+  if (/\.\.|\/\/|^\/|\0/.test(key)) return res.status(400).json({ error: "Invalid key." });
+
+  const me = await r2VerifiedUser(accessToken);
+  if (!me) return res.status(401).json({ error: "Invalid session" });
+
+  const client = getR2Client();
+  const command = new PutObjectCommand({ Bucket: env("R2_BUCKET_NAME"), Key: key, ContentType: contentType });
+  const uploadUrl = await getSignedUrl(client, command, { expiresIn: 120 });
+  res.status(200).json({ uploadUrl, publicUrl: r2PublicUrl(key) });
+}
+
+// Admin-only: copies one existing Supabase Storage object into R2. Skips
+// (HeadObject check) anything already copied, so the admin panel's
+// migration button can call this once per file and safely resume/re-run.
+async function r2MigrateFile({ accessToken, bucket, key }, res) {
+  if (!accessToken || !bucket || !key) {
+    return res.status(400).json({ error: "accessToken, bucket and key are required" });
+  }
+  if (!R2_ALLOWED_FOLDERS.includes(bucket)) return res.status(400).json({ error: "Unknown bucket." });
+  if (/\.\.|\0/.test(key)) return res.status(400).json({ error: "Invalid key." });
+
+  const me = await r2VerifiedUser(accessToken);
+  if (!me) return res.status(401).json({ error: "Invalid session" });
+
+  const SUPABASE_URL = env("SUPABASE_URL");
+  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+  const roleRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${me.id}&select=role`, {
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+  });
+  const [roleRow] = await roleRes.json();
+  if (roleRow?.role !== "admin") return res.status(403).json({ error: "Admin access required." });
+
+  const r2Key = `${bucket}/${key}`;
+  const client = getR2Client();
+  const bucketName = env("R2_BUCKET_NAME");
+
+  try {
+    await client.send(new HeadObjectCommand({ Bucket: bucketName, Key: r2Key }));
+    return res.status(200).json({ migrated: false, alreadyExisted: true, publicUrl: r2PublicUrl(r2Key) });
+  } catch (_) {
+    // Not found -- proceed to copy it.
+  }
+
+  const srcRes = await fetch(`${SUPABASE_URL}/storage/v1/object/public/${bucket}/${key}`);
+  if (!srcRes.ok) return res.status(404).json({ error: `Source object not found: ${key}` });
+  const contentType = srcRes.headers.get("content-type") || "application/octet-stream";
+  const bodyBuffer = Buffer.from(await srcRes.arrayBuffer());
+
+  await client.send(new PutObjectCommand({ Bucket: bucketName, Key: r2Key, Body: bodyBuffer, ContentType: contentType }));
+  res.status(200).json({ migrated: true, alreadyExisted: false, publicUrl: r2PublicUrl(r2Key) });
+}
 
 const MONTHLY_LISTING_NAIRA = 1000;
 const MONTHLY_LISTING_KOBO = MONTHLY_LISTING_NAIRA * 100;
@@ -81,6 +156,17 @@ module.exports = async function handler(req, res) {
         });
       }
       return startListingPayment(req, res, { ...body, id: body.listingId });
+    }
+
+    // R2 image storage (product photos, avatars, vendor logos, homepage
+    // carousel) lives here too, same reason as everything else in this
+    // file: a 13th/14th Vercel function is a Hobby-plan build failure, not
+    // a new API file.
+    if (body.action === "r2-presign-upload") {
+      return r2PresignUpload(body, res);
+    }
+    if (body.action === "r2-migrate-file") {
+      return r2MigrateFile(body, res);
     }
 
     res.status(400).json({
