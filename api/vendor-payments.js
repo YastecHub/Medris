@@ -162,11 +162,21 @@ module.exports = async function handler(req, res) {
     // carousel) lives here too, same reason as everything else in this
     // file: a 13th/14th Vercel function is a Hobby-plan build failure, not
     // a new API file.
+    //
+    // These two MUST be awaited, not just returned -- `return fn()` inside
+    // a try block does not let that try's catch see a later rejection from
+    // fn(), only a synchronous throw. An awaited call's rejection surfaces
+    // at the `await` itself, inside the try, where catch can actually see
+    // it. Without the await, any error here became an unhandled rejection
+    // that Vercel's own runtime turned into a bare, bodyless 500 -- not the
+    // res.status(500).json({error}) this file's catch block is supposed to
+    // send, which is exactly why the migration button's error log was
+    // showing "HTTP 500" with no actual message.
     if (body.action === "r2-presign-upload") {
-      return r2PresignUpload(body, res);
+      return await r2PresignUpload(body, res);
     }
     if (body.action === "r2-migrate-file") {
-      return r2MigrateFile(body, res);
+      return await r2MigrateFile(body, res);
     }
 
     res.status(400).json({
