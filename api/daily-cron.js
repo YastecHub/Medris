@@ -53,9 +53,33 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    // Day-level (3/2/1 days out) heads-up before a vendor's storefront gets
+    // paused for overdue commission. The finer hour-level countdown (10h/5h/1h)
+    // runs from the vendor's own session heartbeat instead -- Vercel's daily
+    // cron can't land on an exact hour, only once a day.
+    let commissionReminders = null;
+    try {
+      const commissionRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/rpc/process_commission_deadline_reminders`,
+        {
+          method: "POST",
+          headers: {
+            apikey: SERVICE_KEY,
+            Authorization: `Bearer ${SERVICE_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: "{}"
+        }
+      );
+      commissionReminders = await commissionRes.json().catch(() => null);
+    } catch (err) {
+      console.error("[daily-cron] commission deadline reminders failed:", err);
+    }
+
     res.status(200).json({
       ok: true,
-      ...data
+      ...data,
+      commissionReminders
     });
   } catch (err) {
     console.error("[daily-cron]", err);

@@ -14746,17 +14746,16 @@ async function renderVendorFollowers(){
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   let html=`<div class="customer-following-page"><div class="customer-following-head"><button type="button" class="icon-btn" onclick="navigate('vendorDashboard')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><h2 style="margin:0;"><i class="fa-solid fa-user-group"></i> Your followers</h2><p class="muted" style="margin:.25rem 0 0;">People following ${esc(v.business_name||"your shop")}.</p></div></div>`;
   try{
-    const { data, error } = await sb.from("vendor_follows").select("created_at, follower:users(id,name,avatar_url)").eq("vendor_id", v.id).order("created_at", { ascending: false });
+    const { data, error } = await sb.rpc("get_vendor_followers", { p_vendor_id: v.id });
     if (error) throw error;
-    const rows = (data||[]).filter(r=>r.follower);
+    const rows = data||[];
     if(!rows.length){
       html+=`<div class="empty-state"><i class="fa-solid fa-user-group" style="font-size:1.7rem;display:block;margin-bottom:.6rem;"></i><strong>No followers yet.</strong><p class="muted">Customers who follow your shop will show up here.</p></div>`;
     } else {
       html+=`<div class="vendor-followers-list">${rows.map(r=>{
-        const f=r.follower;
-        const name=f.name||"Levromart user";
-        const when=r.created_at?new Date(r.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):"";
-        return `<div class="vendor-follower-row">${profileAvatarHtml(f.avatar_url,name,"2.6rem")}<div class="vendor-follower-copy"><strong>${esc(name)}</strong>${when?`<span class="muted">Following since ${esc(when)}</span>`:""}</div></div>`;
+        const name=r.name||"Levromart user";
+        const when=r.followed_at?new Date(r.followed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):"";
+        return `<div class="vendor-follower-row">${profileAvatarHtml(r.avatar_url,name,"2.6rem")}<div class="vendor-follower-copy"><strong>${esc(name)}</strong>${when?`<span class="muted">Following since ${esc(when)}</span>`:""}</div></div>`;
       }).join("")}</div>`;
     }
   }catch(e){
@@ -32437,10 +32436,15 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     if(!session||profile?.role!=='vendor'||!vendor?.id)return;
     try{
       await sb.rpc('enforce_commission_deadlines',{p_vendor_id:vendor.id});
+      // Hour-level heads-up (10h/5h/1h before pause) inside the final day.
+      // Cheap and self-deduping server-side, so just fire-and-forget each tick.
+      sb.rpc('process_vendor_commission_hour_reminders',{p_vendor_id:vendor.id}).catch(()=>{});
       const {data:deadline}=await sb.rpc('get_vendor_commission_deadline',{p_vendor_id:vendor.id});
       const dueAt=deadline?.[0]?.earliest_due_at||null;
       const {data:owed}=await sb.rpc('get_vendor_commission_owed',{p_vendor_id:vendor.id});
-      const hasOverdue=!!dueAt && new Date(dueAt).getTime()<=Date.now() && Number(owed||0)>0;
+      // Paystack won't transfer under ₦100, so pausing over a smaller balance
+      // than that just locks a vendor out for nothing collectible yet.
+      const hasOverdue=!!dueAt && new Date(dueAt).getTime()<=Date.now() && Number(owed||0)>=100;
       if(hasOverdue){
         vendor.is_active=false;vendor.commission_paused=true;vendor.commission_pause_reason='commission_overdue';
         showCommissionOverdueModal();
