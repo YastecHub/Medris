@@ -7944,6 +7944,9 @@ function maybeShowInstallPrompt() {
   if (localStorage.getItem("medris-install-dismissed")) return;
   const modal = byId("installPromptModal");
   if (!modal || !modal.classList.contains("hidden")) return;
+  // Same reasoning as the banner's own check on this modal: never show both
+  // at once, they'd just be two separate ways to ask for the same tap.
+  if (byId("levroInstallBanner")?.classList.contains("is-visible")) return;
   if (deferredInstallPrompt) {
     byId("installModalActionBtn").classList.remove("hidden");
     byId("installModalIosMsg").classList.add("hidden");
@@ -10542,6 +10545,21 @@ function subscribeNotifications() {
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'notifications',filter:`user_id=eq.${session.user.id}`},()=>refreshNotifications().catch(err=>console.warn('Notification refresh failed',err)))
     .subscribe(status=>{window.__notificationRealtimeStatus=status;if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Notification realtime unavailable',status);});
 }
+// Mobile browsers commonly suspend a backgrounded tab's websocket, and
+// Postgres-changes realtime has no history to replay on reconnect -- any
+// notification that arrived while the app was backgrounded is just gone
+// from the live channel's point of view. That's why a notification could
+// sit unseen until the person happened to open the notifications page
+// (which does its own fresh fetch) instead of showing up the moment it
+// was created. Catch up with a real fetch, and force a fresh channel
+// (the stale one may still look "connected" while actually dead), every
+// time the app comes back to the foreground.
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden||!session)return;
+  refreshNotifications(false).catch(()=>{});
+  notifChannelUserId=null;
+  subscribeNotifications();
+},{passive:true});
 
 function invalidateMarketplaceState(){
   routeHtmlCache.clear();window.__homeBrowseCatalog=[];window.__allHomePackages=[];window.__homePackages=[];
@@ -12633,6 +12651,16 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (liveStorefrontFollowHtml) {
     const freshFollowWrap = byId("storefrontFollowWrap");
     if (freshFollowWrap) freshFollowWrap.innerHTML = liveStorefrontFollowHtml;
+  }
+  // Now that this view's HTML is actually in the DOM, it's safe to apply the
+  // storefront's stats/reviews/packages/follow-state hydration -- doing it
+  // any earlier (back inside renderStorefrontInner) was a race that often
+  // lost, leaving the follow button spinning forever. See the comment on
+  // window.__storefrontExtrasPending.
+  if (view === "storefront" && params?.vendorId && window.__storefrontExtrasPending?.vendorId === String(params.vendorId)) {
+    const pending = window.__storefrontExtrasPending;
+    window.__storefrontExtrasPending = null;
+    void pending.apply().catch((e) => console.warn("[Levromart] Storefront extras hydration failed:", e));
   }
   if (!__levroRouteHadRenderError) hideLevromartSplash();
   if (view === "notifications") void renderNotifPanel();
@@ -18504,16 +18532,30 @@ async function renderStorefrontInner(vendorId) {
 
   storefrontViewMode = "grid";
   if (allProducts.length) setTimeout(filterStorefrontProducts, 0);
-  extrasPromise.then((results) => {
-    const labels = ["stats", "reviews", "packages", "follow state"];
-    const pick = (r, i) => {
-      if (r.status !== "fulfilled") { console.warn(`[Levromart] Storefront ${labels[i]} failed to load:`, r.reason); return null; }
-      if (r.value?.error) { console.warn(`[Levromart] Storefront ${labels[i]} failed to load:`, r.value.error); return null; }
-      return r.value?.data ?? null;
-    };
-    const [stats, reviews, packages, followState] = results.map(pick);
-    hydrateStorefrontExtras(v, allProducts.length, stats, reviews, packages, followState, isOwnStorefront);
-  });
+  // extrasPromise was already in flight for as long as the vendor/products
+  // queries above took, so by the time this function returns it has often
+  // already settled -- firing hydrateStorefrontExtras() right here would
+  // frequently run it against DOM that either doesn't exist yet or is about
+  // to be thrown away, since navigate() doesn't insert this returned html
+  // into the page until a bit later. That one-shot .then() never fires
+  // again, so losing that race left the follow button (and stats/reviews/
+  // packages) stuck on their loading placeholders permanently. Hand the
+  // promise to navigate() instead, which applies it right after the HTML
+  // this function returned actually lands in the DOM.
+  window.__storefrontExtrasPending = {
+    vendorId: String(v.id),
+    apply: async () => {
+      const results = await extrasPromise;
+      const labels = ["stats", "reviews", "packages", "follow state"];
+      const pick = (r, i) => {
+        if (r.status !== "fulfilled") { console.warn(`[Levromart] Storefront ${labels[i]} failed to load:`, r.reason); return null; }
+        if (r.value?.error) { console.warn(`[Levromart] Storefront ${labels[i]} failed to load:`, r.value.error); return null; }
+        return r.value?.data ?? null;
+      };
+      const [stats, reviews, packages, followState] = results.map(pick);
+      hydrateStorefrontExtras(v, allProducts.length, stats, reviews, packages, followState, isOwnStorefront);
+    },
+  };
   return html;
 }
 
@@ -38358,51 +38400,13 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     setTimeout(()=>document.getElementById("vaBankSearch")?.focus(),30);
   };
 
-  /* ---------- Browser install strip ---------- */
-  let bannerReady=false;
-  function installDismissed(){return localStorage.getItem("medris-install-banner-dismissed")==="1";}
-  function standalone(){return window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;}
-  function ios(){return /iPhone|iPad|iPod/.test(navigator.userAgent)&&!window.MSStream;}
-
-  function ensureBanner(){
-    if(document.getElementById("levroInstallBanner"))return document.getElementById("levroInstallBanner");
-    const banner=document.createElement("div");
-    banner.id="levroInstallBanner";
-    banner.innerHTML=`<div class="levro-install-icon"><img src="${typeof MEDRIS_LOGO!=="undefined"?MEDRIS_LOGO:""}" alt="Levromart"></div>
-      <div class="levro-install-copy"><strong>Install Levromart</strong><span id="levroInstallBannerText">Get the faster app-like experience.</span></div>
-      <div class="levro-install-actions"><button type="button" class="levro-install-btn" id="levroInstallBannerAction">Install</button><button type="button" class="levro-install-close" id="levroInstallBannerClose" aria-label="Dismiss">×</button></div>`;
-    const header=document.querySelector("header")||document.body.firstElementChild;
-    if(header?.parentNode)header.parentNode.insertBefore(banner,header.nextSibling); else document.body.prepend(banner);
-    banner.querySelector("#levroInstallBannerClose")?.addEventListener("click",()=>{banner.classList.remove("is-visible");localStorage.setItem("medris-install-banner-dismissed","1");});
-    banner.querySelector("#levroInstallBannerAction")?.addEventListener("click",async()=>{
-      if(typeof deferredInstallPrompt!=="undefined"&&deferredInstallPrompt){
-        try{deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;}catch(_){ }
-        deferredInstallPrompt=null;
-        banner.classList.remove("is-visible");
-      }else if(ios()){
-        const t=banner.querySelector("#levroInstallBannerText");
-        if(t)t.textContent='Tap Share, then “Add to Home Screen”.';
-      }
-    });
-    bannerReady=true;
-    return banner;
-  }
-
-  function showBannerIfPossible(){
-    if(standalone()||installDismissed())return;
-    const banner=ensureBanner();
-    if(typeof deferredInstallPrompt!=="undefined"&&deferredInstallPrompt){
-      banner.classList.add("is-visible");
-    }else if(ios()){
-      const t=banner.querySelector("#levroInstallBannerText");
-      if(t)t.textContent='Add Levromart to your Home Screen for quick access.';
-      banner.classList.add("is-visible");
-    }
-  }
-
-  window.addEventListener("beforeinstallprompt",()=>setTimeout(showBannerIfPossible,50));
-  window.addEventListener("appinstalled",()=>{const b=document.getElementById("levroInstallBanner");b?.classList.remove("is-visible");});
-  setTimeout(showBannerIfPossible,1800);
+  // The browser install strip lives in one place now -- see
+  // addInstallBanner()/showInstallBanner() further down. A second, earlier
+  // copy of this same banner used to live here, sharing the exact same
+  // element id; whichever one's timer fired first silently "won" the DOM
+  // element and its own (weaker) click handler, while the other's improved
+  // per-platform fallback text never actually got attached. That's why
+  // tapping Install sometimes did nothing at all with no feedback.
 })();
 </script>
 
@@ -38700,6 +38704,11 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
   function showInstallBanner(){
     if(isStandalone()) return;
+    // The install modal covers the same job (asking to install, or giving
+    // iOS instructions) -- both showing at once just doubles up on the same
+    // ask and, since they share one deferred prompt, made it look like
+    // whichever the visitor didn't tap first had simply stopped working.
+    if(!document.getElementById("installPromptModal")?.classList.contains("hidden")) return;
     const banner=addInstallBanner();
     if(!banner) return;
 
@@ -40702,3 +40711,68 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   box-shadow:none!important;
 }
 </style>
+
+<script id="levromart-notif-longpress-full-text">
+/* A notification row's body text is CSS-clipped to keep the list compact,
+   but the full text is still sitting right there in the DOM -- long-pressing
+   just needs to reveal it, not fetch anything. One delegated listener
+   covers every notification list in the app (there's more than one markup
+   copy of this row), instead of wiring this into each one separately. */
+(function () {
+  "use strict";
+  let pressTimer = null, longPressed = false, startX = 0, startY = 0;
+  const HOLD_MS = 480, MOVE_TOLERANCE = 10;
+
+  function showFullNotifText(item) {
+    const title = item.querySelector("strong")?.textContent?.trim() || "Notification";
+    const body = item.querySelector(".muted")?.textContent?.trim() || "";
+    if (!body) return; // nothing hidden beyond what's already visible
+    let modal = document.getElementById("notifFullTextModal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "notifFullTextModal";
+      modal.className = "modal hidden";
+      modal.innerHTML =
+        '<div class="modal-content" style="max-width:420px;">' +
+        '<div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;">' +
+        '<h3 style="margin:0;" id="notifFullTextTitle"></h3>' +
+        '<button class="icon-btn" type="button" aria-label="Close" onclick="document.getElementById(\'notifFullTextModal\').classList.add(\'hidden\')"><i class="fa-solid fa-xmark"></i></button>' +
+        "</div>" +
+        '<p id="notifFullTextBody" style="margin:.7rem 0 0;white-space:pre-wrap;line-height:1.45;"></p>' +
+        "</div>";
+      document.body.appendChild(modal);
+    }
+    modal.querySelector("#notifFullTextTitle").textContent = title;
+    modal.querySelector("#notifFullTextBody").textContent = body;
+    modal.classList.remove("hidden");
+  }
+  function clearPressTimer() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+
+  document.addEventListener("touchstart", (e) => {
+    const item = e.target.closest?.(".notif-item");
+    if (!item) return;
+    longPressed = false;
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    pressTimer = setTimeout(() => {
+      longPressed = true;
+      try { navigator.vibrate?.(12); } catch (_) {}
+      showFullNotifText(item);
+    }, HOLD_MS);
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (!pressTimer) return;
+    const t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > MOVE_TOLERANCE || Math.abs(t.clientY - startY) > MOVE_TOLERANCE) clearPressTimer();
+  }, { passive: true });
+  document.addEventListener("touchend", clearPressTimer, { passive: true });
+  document.addEventListener("touchcancel", clearPressTimer, { passive: true });
+  // A long-press still fires a synthetic click on release -- swallow just
+  // that one so it doesn't also navigate away from the notification.
+  document.addEventListener("click", (e) => {
+    if (!longPressed) return;
+    longPressed = false;
+    if (e.target.closest?.(".notif-item")) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+})();
+</script>
