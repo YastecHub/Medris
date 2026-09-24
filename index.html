@@ -9400,7 +9400,13 @@ async function uploadToR2(blob, key, contentType) {
   });
   const presignJson = await presignRes.json().catch(() => ({}));
   if (!presignRes.ok) throw new Error(presignJson.error || "Could not start the upload.");
-  const putRes = await fetch(presignJson.uploadUrl, { method: "PUT", headers: { "Content-Type": type }, body: blob });
+  // The presigned URL was signed with this exact Cache-Control included, so the
+  // PUT must send the same header back or the signature won't validate. It's
+  // what lets a browser (and Cloudflare's edge) reuse this image indefinitely
+  // instead of re-fetching it from storage on every repeat view.
+  const putHeaders = { "Content-Type": type };
+  if (presignJson.cacheControl) putHeaders["Cache-Control"] = presignJson.cacheControl;
+  const putRes = await fetch(presignJson.uploadUrl, { method: "PUT", headers: putHeaders, body: blob });
   if (!putRes.ok) throw new Error("Upload to storage failed. Please try again.");
   return presignJson.publicUrl;
 }
@@ -12308,7 +12314,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     "settings","supportRequest","wishlist","buyerOrders","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
     "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
-    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing","buyerProfile","adminR2Migration"
+    "adminFinance","adminLog","adminMonthlyListings","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing","buyerProfile","adminR2Migration","adminR2Optimize"
   ]);
   if (protectedRouteViews.has(view) && (!session || !profile)) {
     try {
@@ -12458,6 +12464,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "adminPanel": html = await renderAdminPanel(params.status); break;
       case "adminCarousel": html = await renderAdminCarousel(); break;
       case "adminR2Migration": html = renderAdminR2Migration(); break;
+      case "adminR2Optimize": html = renderAdminR2Optimize(); break;
       case "adminLinkLibrary": html = renderAdminLinkLibrary(); break;
       case "adminDisputes": html = await renderAdminDisputes(); break;
       case "adminSupportRequests": html = await renderAdminSupportRequests(); break;
@@ -24408,7 +24415,8 @@ const SUPER_ADMIN_ONLY_VIEWS = new Set([
   "adminLog",
   "adminInventory",
   "adminUsers",
-  "adminR2Migration"
+  "adminR2Migration",
+  "adminR2Optimize"
 ]);
 // Login logs are the one exception: sub-admins can see them, only Reset
 // Password / Inventory / everything else in this set is super-admin-only.
@@ -24428,6 +24436,7 @@ function adminNavHtml(active) {
     ["adminUsers", "fa-user-shield", "Admins"],
     ["adminCarousel", "fa-images", "Carousel"],
     ["adminR2Migration", "fa-cloud-arrow-up", "R2 migration"],
+    ["adminR2Optimize", "fa-compress", "R2 image size"],
   ].filter(([view]) => isSuperAdmin() || !SUPER_ADMIN_ONLY_VIEWS.has(view));
   return `<div class="dash-tabs admin-dash-tabs"><div class="admin-dash-tabs-inner">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : view === "adminPasswordResets" && Number(window.__passwordResetPendingCount||0) > 0 ? `<span class="dash-tab-dot password-reset-admin-badge">${Number(window.__passwordResetPendingCount||0) > 9 ? "9+" : Number(window.__passwordResetPendingCount||0)}</span>` : ""}</button>`).join("")}</div></div>`;
 }
@@ -24557,6 +24566,108 @@ function renderAdminR2Migration() {
     <p class="muted">Copies every existing file in product-photos, homepage-carousel, avatars and vendor-logos over to Cloudflare R2. Doesn't touch the database or delete anything from Supabase, and it's safe to run more than once — anything already copied is skipped, not re-uploaded.</p>
     <button class="btn" id="r2MigrateBtn" onclick="runR2Migration()"><i class="fa-solid fa-play"></i> Start migration</button>
     <p id="r2MigrateLog" class="muted" style="margin-top:.8rem;white-space:pre-wrap;font-size:.85rem;"></p>
+  </div>`;
+  return html;
+}
+
+// ---------- ADMIN: one-time R2 image size pass ----------
+// Walks the same four buckets (the Supabase Storage listing is still the
+// source of truth for which keys exist -- migration only ever copied,
+// never deleted). For each one already sitting in R2: resizes it down if
+// it's larger than a normal product photo needs to be, re-compresses it,
+// and stamps it with a long, cache-forever header either way. New uploads
+// already get compressed on the way in and carry this header from day one
+// (see uploadToR2/lib/compress-image.js) -- this is only for the backlog
+// that landed in R2 before that existed, or was copied over as-is by the
+// migration above.
+async function optimizeOneR2File(bucket, key) {
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const r = await fetch("/api/vendor-payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "r2-optimize-file", accessToken: session.access_token, bucket, key }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      return j;
+    } catch (e) {
+      lastErr = e;
+      if (attempt < 3) await new Promise((res) => setTimeout(res, attempt * 600));
+    }
+  }
+  throw lastErr;
+}
+const R2_OPTIMIZE_DONE_KEY = "levromart_r2_optimized_keys_v1";
+function loadR2OptimizeDoneSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(R2_OPTIMIZE_DONE_KEY) || "[]")); }
+  catch (e) { return new Set(); }
+}
+function saveR2OptimizeDoneSet(doneSet) {
+  try { localStorage.setItem(R2_OPTIMIZE_DONE_KEY, JSON.stringify([...doneSet])); }
+  catch (e) { /* not fatal -- resuming just re-checks from scratch */ }
+}
+async function runR2Optimize() {
+  const btn = byId("r2OptimizeBtn");
+  const log = byId("r2OptimizeLog");
+  if (!log || !btn) return;
+  btn.disabled = true;
+  const buckets = ["product-photos", "homepage-carousel", "avatars", "vendor-logos"];
+  const doneSet = loadR2OptimizeDoneSet();
+  let totalShrunk = 0, totalUnchanged = 0, totalFailed = 0, consecutiveFailed = 0, lastError = "";
+  let bytesBefore = 0, bytesAfter = 0, sinceSave = 0;
+  const setStatus = (msg) => { log.textContent = msg; };
+  const savedLabel = () => bytesBefore > bytesAfter ? `, saved ${((bytesBefore - bytesAfter) / 1048576).toFixed(1)} MB so far` : "";
+  try {
+    for (const bucket of buckets) {
+      setStatus(`Listing files in ${bucket}…`);
+      const files = await listAllStorageFiles(bucket);
+      for (let i = 0; i < files.length; i++) {
+        const doneKey = `${bucket}/${files[i]}`;
+        if (doneSet.has(doneKey)) { totalUnchanged++; continue; }
+        setStatus(`${bucket}: ${i + 1}/${files.length}  —  shrunk ${totalShrunk}, already small ${totalUnchanged}, failed ${totalFailed}${savedLabel()}${lastError ? `\nLast error: ${lastError}` : ""}`);
+        try {
+          const j = await optimizeOneR2File(bucket, files[i]);
+          if (j.recompressed) { totalShrunk++; bytesBefore += Number(j.originalSize || 0); bytesAfter += Number(j.newSize || 0); }
+          else totalUnchanged++;
+          consecutiveFailed = 0;
+          doneSet.add(doneKey);
+          if (++sinceSave >= 20) { saveR2OptimizeDoneSet(doneSet); sinceSave = 0; }
+        } catch (e) {
+          totalFailed++;
+          consecutiveFailed++;
+          lastError = `${bucket}/${files[i]}: ${e.message}`;
+          console.warn(`[R2 optimize] ${bucket}/${files[i]} failed after 3 attempts:`, e.message);
+          if (consecutiveFailed >= 3) {
+            saveR2OptimizeDoneSet(doneSet);
+            setStatus(`Stopped after ${consecutiveFailed} failures in a row so this is easy to read:\n${lastError}`);
+            showToast("Image size pass stopped — several files in a row failed the same way. Screenshot the log and send it over.", "error");
+            return;
+          }
+        }
+      }
+      saveR2OptimizeDoneSet(doneSet);
+    }
+    setStatus(`Done. Shrunk ${totalShrunk}, already small ${totalUnchanged}, failed ${totalFailed}${savedLabel()}.${lastError ? `\nLast error: ${lastError}` : ""}`);
+    showToast("R2 image size pass finished — see the log on this page for the count.", totalFailed ? "warning" : "success");
+  } catch (e) {
+    setStatus(`Stopped early: ${e.message}`);
+    showToast(`Image size pass stopped early: ${e.message}`, "error");
+  } finally {
+    saveR2OptimizeDoneSet(doneSet);
+    btn.disabled = false;
+  }
+}
+window.runR2Optimize = runR2Optimize;
+function renderAdminR2Optimize() {
+  if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
+  let html = `<h2><i class="fa-solid fa-compress"></i> R2 image size</h2>`;
+  html += adminNavHtml("adminR2Optimize");
+  html += `<div class="card" style="max-width:560px;">
+    <p class="muted">Shrinks every image already in R2 that's larger than it needs to be for the app (resized and re-compressed), and makes sure every file -- images or not -- is set to cache indefinitely in the browser and at Cloudflare's edge, so repeat views never have to be re-served from storage. New uploads already get this automatically; this is a one-time pass for what's already there. Safe to run more than once.</p>
+    <button class="btn" id="r2OptimizeBtn" onclick="runR2Optimize()"><i class="fa-solid fa-play"></i> Start image size pass</button>
+    <p id="r2OptimizeLog" class="muted" style="margin-top:.8rem;white-space:pre-wrap;font-size:.85rem;"></p>
   </div>`;
   return html;
 }

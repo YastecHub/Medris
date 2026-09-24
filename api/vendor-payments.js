@@ -5,10 +5,21 @@
 // avoids adding a 13th serverless function on Vercel while preserving
 // the existing /api/vendor-payments contract.
 const { readBody, env, getR2Client, r2PublicUrl } = require("./_util");
-const { PutObjectCommand, HeadObjectCommand } = require("@aws-sdk/client-s3");
+const { PutObjectCommand, HeadObjectCommand, GetObjectCommand, CopyObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const sharp = require("sharp");
 
 const R2_ALLOWED_FOLDERS = ["product-photos", "homepage-carousel", "avatars", "vendor-logos"];
+// These are uploaded once under a fresh UUID/random key and never overwritten
+// in place -- safe to cache aggressively, both at Cloudflare's edge and in
+// each visitor's own browser, so a repeat view never has to re-fetch them.
+const R2_IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+
+async function streamToBuffer(stream) {
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  return Buffer.concat(chunks);
+}
 
 async function r2VerifiedUser(accessToken) {
   const SUPABASE_URL = env("SUPABASE_URL");
@@ -35,9 +46,9 @@ async function r2PresignUpload({ accessToken, key, contentType }, res) {
   if (!me) return res.status(401).json({ error: "Invalid session" });
 
   const client = getR2Client();
-  const command = new PutObjectCommand({ Bucket: env("R2_BUCKET_NAME"), Key: key, ContentType: contentType });
+  const command = new PutObjectCommand({ Bucket: env("R2_BUCKET_NAME"), Key: key, ContentType: contentType, CacheControl: R2_IMAGE_CACHE_CONTROL });
   const uploadUrl = await getSignedUrl(client, command, { expiresIn: 120 });
-  res.status(200).json({ uploadUrl, publicUrl: r2PublicUrl(key) });
+  res.status(200).json({ uploadUrl, publicUrl: r2PublicUrl(key), cacheControl: R2_IMAGE_CACHE_CONTROL });
 }
 
 // Admin-only: copies one existing Supabase Storage object into R2. Skips
@@ -77,8 +88,83 @@ async function r2MigrateFile({ accessToken, bucket, key }, res) {
   const contentType = srcRes.headers.get("content-type") || "application/octet-stream";
   const bodyBuffer = Buffer.from(await srcRes.arrayBuffer());
 
-  await client.send(new PutObjectCommand({ Bucket: bucketName, Key: r2Key, Body: bodyBuffer, ContentType: contentType }));
+  await client.send(new PutObjectCommand({ Bucket: bucketName, Key: r2Key, Body: bodyBuffer, ContentType: contentType, CacheControl: R2_IMAGE_CACHE_CONTROL }));
   res.status(200).json({ migrated: true, alreadyExisted: false, publicUrl: r2PublicUrl(r2Key) });
+}
+
+// Admin-only: shrinks one already-migrated R2 image in place (resize + a
+// compressed re-encode via sharp, matching the same targets the client-side
+// upload compressor uses) and stamps it with a long-lived Cache-Control.
+// Skips re-encoding non-images and anything already small enough, but still
+// makes sure it carries the Cache-Control header either way.
+async function r2OptimizeFile({ accessToken, bucket, key }, res) {
+  if (!accessToken || !bucket || !key) {
+    return res.status(400).json({ error: "accessToken, bucket and key are required" });
+  }
+  if (!R2_ALLOWED_FOLDERS.includes(bucket)) return res.status(400).json({ error: "Unknown bucket." });
+  if (/\.\.|\0/.test(key)) return res.status(400).json({ error: "Invalid key." });
+
+  const me = await r2VerifiedUser(accessToken);
+  if (!me) return res.status(401).json({ error: "Invalid session" });
+
+  const SUPABASE_URL = env("SUPABASE_URL");
+  const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+  const roleRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${me.id}&select=role`, {
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+  });
+  const [roleRow] = await roleRes.json();
+  if (roleRow?.role !== "admin") return res.status(403).json({ error: "Admin access required." });
+
+  const r2Key = `${bucket}/${key}`;
+  const client = getR2Client();
+  const bucketName = env("R2_BUCKET_NAME");
+
+  const head = await client.send(new HeadObjectCommand({ Bucket: bucketName, Key: r2Key })).catch(() => null);
+  if (!head) return res.status(404).json({ error: `Object not found: ${r2Key}` });
+
+  const originalSize = Number(head.ContentLength || 0);
+  const contentType = head.ContentType || "application/octet-stream";
+  const alreadyCached = head.CacheControl === R2_IMAGE_CACHE_CONTROL;
+  const isImage = /^image\/(jpeg|png|webp)$/.test(contentType);
+
+  if (!isImage) {
+    if (!alreadyCached) {
+      await client.send(new CopyObjectCommand({
+        Bucket: bucketName, Key: r2Key, CopySource: `${bucketName}/${encodeURIComponent(r2Key)}`,
+        MetadataDirective: "REPLACE", ContentType: contentType, CacheControl: R2_IMAGE_CACHE_CONTROL,
+      }));
+    }
+    return res.status(200).json({ optimized: false, recompressed: false, originalSize, newSize: originalSize });
+  }
+
+  const obj = await client.send(new GetObjectCommand({ Bucket: bucketName, Key: r2Key }));
+  const original = await streamToBuffer(obj.Body);
+
+  const img = sharp(original, { failOn: "none" }).rotate();
+  const meta = await img.metadata();
+  const maxDim = 1600;
+  const needsResize = (meta.width || 0) > maxDim || (meta.height || 0) > maxDim;
+  let output = img;
+  if (needsResize) output = output.resize({ width: maxDim, height: maxDim, fit: "inside", withoutEnlargement: true });
+  if (contentType === "image/png") output = output.png({ quality: 80, compressionLevel: 9 });
+  else if (contentType === "image/webp") output = output.webp({ quality: 78 });
+  else output = output.jpeg({ quality: 78, mozjpeg: true });
+  const optimized = await output.toBuffer();
+
+  // Only replace the stored bytes when it's a real win -- otherwise just make
+  // sure Cache-Control is set and leave the original alone.
+  const worthReplacing = optimized.length < originalSize * 0.9;
+  if (worthReplacing) {
+    await client.send(new PutObjectCommand({ Bucket: bucketName, Key: r2Key, Body: optimized, ContentType: contentType, CacheControl: R2_IMAGE_CACHE_CONTROL }));
+    return res.status(200).json({ optimized: true, recompressed: true, originalSize, newSize: optimized.length });
+  }
+  if (!alreadyCached) {
+    await client.send(new CopyObjectCommand({
+      Bucket: bucketName, Key: r2Key, CopySource: `${bucketName}/${encodeURIComponent(r2Key)}`,
+      MetadataDirective: "REPLACE", ContentType: contentType, CacheControl: R2_IMAGE_CACHE_CONTROL,
+    }));
+  }
+  return res.status(200).json({ optimized: true, recompressed: false, originalSize, newSize: originalSize });
 }
 
 const MONTHLY_LISTING_NAIRA = 1000;
@@ -177,6 +263,9 @@ module.exports = async function handler(req, res) {
     }
     if (body.action === "r2-migrate-file") {
       return await r2MigrateFile(body, res);
+    }
+    if (body.action === "r2-optimize-file") {
+      return await r2OptimizeFile(body, res);
     }
 
     res.status(400).json({
