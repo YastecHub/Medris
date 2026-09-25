@@ -1021,8 +1021,11 @@
   .conv-list-item .conv-meta { flex: 1; min-width: 0; }
   .conv-list-item .conv-preview { color: var(--text-muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .conv-unread-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
-  .conv-unread-badge { min-width: 1.3rem; height: 1.3rem; padding: 0 0.35rem; border-radius: 999px; background: var(--primary); color: #fff; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .conv-unread-badge { min-width: 1.3rem; height: 1.3rem; padding: 0 0.35rem; border-radius: 999px; background: var(--danger); color: #fff; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .conv-date-sep { text-align: center; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); margin: 0.7rem auto; padding: 0.25rem 0.75rem; background: var(--card); border-radius: 999px; width: fit-content; }
+  .conv-list-item.conv-long-pressing { background: color-mix(in srgb, var(--text) 6%, var(--card)); }
+  .conv-row-menu { position: fixed !important; width: 200px; z-index: 10950; }
+  .conv-row-menu .ms-item { display: flex; align-items: center; gap: .55rem; width: 100%; text-align: left; white-space: nowrap; }
   .chat-thread { display: flex; flex-direction: column; height: calc(100vh - 13rem); min-height: 420px; max-height: none; border: none; border-radius: 0.9rem 0.9rem 0 0; overflow: hidden; background: var(--card); }
   @media (max-width: 760px) { .chat-thread { height: calc(100dvh - 11rem); border-radius: 0; } }
   /* Chunky desktop scrollbars (Windows/Linux Chrome, unlike macOS's overlay
@@ -5613,7 +5616,7 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
   gap:.4rem !important; margin-top:auto !important; padding-top:.35rem !important;
 }
 #app .product-card-compact-price{
-  font-weight:800 !important; font-size:.82rem !important; color:var(--primary) !important;
+  font-weight:800 !important; font-size:.82rem !important; color:var(--text) !important;
   overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
   display:inline-flex !important; align-items:center !important; gap:.3rem !important;
 }
@@ -13389,8 +13392,12 @@ function initHomepageCarousel() {
     if (!dragging) return;
     const dx = e.clientX - startX, dy = e.clientY - startY;
     if (!moved) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      if (Math.abs(dy) > Math.abs(dx) * 1.15) { dragging = false; track.style.transition = ""; return; }
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      // A real horizontal swipe rarely comes in perfectly straight -- this
+      // used to cancel out to a vertical scroll on the slightest diagonal
+      // drift, making the carousel feel unresponsive to swipe. Only give up
+      // on it when the gesture is clearly more vertical than horizontal.
+      if (Math.abs(dy) > Math.abs(dx) * 1.6) { dragging = false; track.style.transition = ""; return; }
       moved = true;
     }
     // Rubber-band at the ends instead of dragging the track past the first
@@ -13404,7 +13411,7 @@ function initHomepageCarousel() {
     if (!dragging) return;
     dragging = false;
     track.style.transition = "";
-    if (moved && Math.abs(dragDx) > 48) {
+    if (moved && Math.abs(dragDx) > 34) {
       homeCarouselJustDragged = true;
       setTimeout(() => { homeCarouselJustDragged = false; }, 250);
       changeHomeCarouselSlide(dragDx < 0 ? 1 : -1, true);
@@ -15384,8 +15391,13 @@ function convRowHtml(c) {
   const pinned = isConversationPinned(c);
   const selected = msgSelectMode && msgSelectedIds.has(c.conversation_id);
   const timeLabel = convRowTimeLabel(c.updated_at || c.last_message_at || c.created_at);
+  // Pin/archive/add-to-list/mark-unread used to sit as three permanent
+  // buttons on every row -- cluttered, and mostly-unused actions competing
+  // for space with the actual message preview. They now live in a menu a
+  // long press opens (openConvRowMenu), same as the rest of the app's
+  // long-press-for-actions pattern.
   return `<div class="conv-row-wrap ${selected ? "selected" : ""}">
-    <div class="conv-list-item ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}" onclick="handleConvRowClick(event,'${c.conversation_id}')">
+    <div class="conv-list-item ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}" data-pinned="${pinned ? "1" : "0"}" data-archived="${archived ? "1" : "0"}" data-unread="${isUnread ? "1" : "0"}" onclick="handleConvRowClick(event,'${c.conversation_id}')">
       ${msgSelectMode ? `<span class="conv-select-check ${selected ? "active" : ""}" aria-hidden="true"><i class="fa-solid fa-check"></i></span>` : ""}
       ${profileAvatarHtml(c.other_avatar, name, "2.6rem", { lightbox: !!c.other_avatar && !msgSelectMode })}
       <div class="conv-meta">
@@ -15393,13 +15405,90 @@ function convRowHtml(c) {
         <div class="conv-preview">${c.last_message ? esc(c.last_message) : "No messages yet"}</div>
       </div>
       ${isUnread ? `<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count > 99 ? "99+" : c.unread_count}</span>` : ""}
-      ${!msgSelectMode ? `
-        <button class="icon-btn" style="flex-shrink:0;" title="Add to a list" onclick="event.stopPropagation();openChatListPicker('${c.conversation_id}')"><i class="fa-solid fa-layer-group" style="${myChatLists.some((l) => l.conversation_ids.includes(c.conversation_id)) ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
-        <button class="icon-btn" style="flex-shrink:0;" title="${archived ? "Restore chat" : "Archive chat"}" onclick="event.stopPropagation();toggleChatArchived('${c.conversation_id}')"><i class="fa-solid ${archived ? "fa-box-open" : "fa-box-archive"}" style="${archived ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
-        <button class="icon-btn" style="flex-shrink:0;" title="${pinned ? "Unpin chat" : "Pin chat"}" onclick="event.stopPropagation();togglePinConversation('${c.conversation_id}')"><i class="fa-solid fa-thumbtack" style="${pinned ? "color:var(--primary);" : "opacity:0.35;"}"></i></button>
-      ` : ""}
     </div>
   </div>`;
+}
+// Long press on a conversation row -> Add to list / Archive / Pin / Mark
+// read-unread, replacing the three buttons that used to sit permanently on
+// every row. One shared .ms-list menu instance (repositioned per row) --
+// the existing global outside-click handler already closes any open
+// .ms-list, so this gets dismiss-on-outside-tap for free.
+function openConvRowMenu(conversationId, rowEl) {
+  document.querySelectorAll(".conv-row-menu").forEach((m) => m.remove());
+  if (!rowEl) return;
+  const pinned = rowEl.dataset.pinned === "1";
+  const archived = rowEl.dataset.archived === "1";
+  const unread = rowEl.dataset.unread === "1";
+  const menu = document.createElement("div");
+  menu.className = "ms-list conv-row-menu";
+  menu.innerHTML = `
+    <button type="button" class="ms-item" onclick="closeConvRowMenu();openChatListPicker('${conversationId}')"><i class="fa-solid fa-layer-group"></i> Add to a list</button>
+    <button type="button" class="ms-item" onclick="closeConvRowMenu();togglePinConversation('${conversationId}')"><i class="fa-solid fa-thumbtack"></i> ${pinned ? "Unpin chat" : "Pin chat"}</button>
+    <button type="button" class="ms-item" onclick="closeConvRowMenu();toggleChatArchived('${conversationId}')"><i class="fa-solid ${archived ? "fa-box-open" : "fa-box-archive"}"></i> ${archived ? "Restore chat" : "Archive chat"}</button>
+    <button type="button" class="ms-item" onclick="closeConvRowMenu();toggleConvReadState('${conversationId}')"><i class="fa-solid ${unread ? "fa-envelope-open" : "fa-envelope"}"></i> Mark as ${unread ? "read" : "unread"}</button>
+  `;
+  document.body.appendChild(menu);
+  const r = rowEl.getBoundingClientRect();
+  const menuWidth = 200;
+  let left = Math.min(r.left + 16, window.innerWidth - menuWidth - 12);
+  left = Math.max(12, left);
+  menu.style.left = `${left}px`;
+  const spaceBelow = window.innerHeight - r.bottom;
+  if (spaceBelow > 190) menu.style.top = `${r.bottom + 4}px`;
+  else menu.style.top = `${Math.max(8, r.top - 176)}px`;
+  menu.classList.remove("hidden");
+  setTimeout(() => {
+    document.addEventListener("click", function onOutsideClick(e) {
+      if (!menu.isConnected) return;
+      if (e.target.closest(".conv-row-menu")) return;
+      closeConvRowMenu();
+      document.removeEventListener("click", onOutsideClick);
+    }, { once: false });
+  }, 0);
+}
+function closeConvRowMenu() { document.querySelectorAll(".conv-row-menu").forEach((m) => m.remove()); }
+async function toggleConvReadState(conversationId) {
+  const convs = window.__conversations || [];
+  const c = convs.find((x) => x.conversation_id === conversationId);
+  const currentlyUnread = Number(c?.unread_count || 0) > 0;
+  if (c) c.unread_count = currentlyUnread ? 0 : 1;
+  filterMsgList(); renderBottomNav();
+  try {
+    const { error } = await sb.rpc("toggle_conversation_unread", { p_conversation_id: conversationId });
+    if (error) throw error;
+  } catch (err) {
+    if (c) c.unread_count = currentlyUnread ? 1 : 0;
+    filterMsgList(); renderBottomNav();
+    showToast(err.message || "Could not update this chat.", "error");
+  }
+}
+function bindConvListLongPress(wrap) {
+  if (!wrap || wrap.dataset.longPressBound === "1") return;
+  wrap.dataset.longPressBound = "1";
+  let timer = null, sx = 0, sy = 0, moved = false, row = null;
+  const MOVE_TOLERANCE = 14, LONG_PRESS_MS = 460;
+  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } row?.classList.remove("conv-long-pressing"); row = null; };
+  wrap.addEventListener("pointerdown", (e) => {
+    if (msgSelectMode || (e.pointerType === "mouse" && e.button !== 0)) return;
+    row = e.target.closest?.(".conv-list-item");
+    if (!row) return;
+    sx = e.clientX || 0; sy = e.clientY || 0; moved = false;
+    timer = setTimeout(() => {
+      if (moved || !row) return;
+      if (navigator.vibrate) navigator.vibrate(12);
+      openConvRowMenu(row.dataset.conversationId, row);
+      row.classList.remove("conv-long-pressing");
+      timer = null;
+    }, LONG_PRESS_MS);
+    row.classList.add("conv-long-pressing");
+  }, { passive: true });
+  wrap.addEventListener("pointermove", (e) => {
+    if (!timer) return;
+    if (Math.abs((e.clientX || 0) - sx) > MOVE_TOLERANCE || Math.abs((e.clientY || 0) - sy) > MOVE_TOLERANCE) { moved = true; clear(); }
+  }, { passive: true });
+  wrap.addEventListener("pointerup", clear, { passive: true });
+  wrap.addEventListener("pointercancel", clear, { passive: true });
+  wrap.addEventListener("contextmenu", (e) => { if (e.target.closest(".conv-list-item")) e.preventDefault(); });
 }
 // A compact WhatsApp-style timestamp: clock time for today, weekday name
 // for the last week, short date otherwise.
@@ -15585,6 +15674,7 @@ function filterMsgList() {
   if (q) shown = shown.filter((c) => (c.other_name || "").toLowerCase().includes(q) || (c.last_message || "").toLowerCase().includes(q));
   shown = [...shown].sort((a,b) => Number(isConversationPinned(b)) - Number(isConversationPinned(a)));
   wrap.innerHTML = shown.length ? shown.map(convRowHtml).join("") : `<div class="empty-state">${q ? "No conversations match that search." : emptyReason}</div>`;
+  bindConvListLongPress(wrap);
 }
 
 // Refresh the cached conversation list without blocking navigation.
@@ -29476,7 +29566,15 @@ if ("serviceWorker" in navigator) {
   function showGate(view="terms"){if(!session?.user?.id)return;if(!gate){gate=document.createElement("div");gate.className="levromart-legal-consent-backdrop";gate.setAttribute("role","dialog");gate.setAttribute("aria-modal","true");gate.innerHTML=`<div class="levromart-legal-consent-card"><div class="levromart-legal-consent-head"><h2>Before you continue</h2><p class="muted" style="margin:0;font-size:.82rem;">Please review Levromart's current Terms of Service, Privacy Policy, and Refund &amp; Cancellation Policy. You need to accept the current agreement to continue using your account.</p><div class="levromart-legal-consent-links"><button type="button" data-legal="terms">Terms of Service</button><button type="button" data-legal="privacy">Privacy Policy</button><button type="button" data-legal="refundPolicy">Refund &amp; Cancellation Policy</button></div></div><div id="levroLegalGateBody" class="levromart-legal-consent-body"></div><div class="levromart-legal-consent-foot"><div id="levroLegalGateError" class="error-text hidden"></div><button type="button" id="levroLegalGateAgree" class="btn"><i class="fa-solid fa-check"></i> Agree &amp; Continue</button></div></div>`;document.body.appendChild(gate);gate.querySelectorAll("[data-legal]").forEach(b=>b.addEventListener("click",()=>showGate(b.dataset.legal)));gate.querySelector("#levroLegalGateAgree").addEventListener("click",accept);}
     gate.querySelector("#levroLegalGateBody").innerHTML=bodyFor(view);gate.classList.remove("hidden");document.documentElement.classList.add("levromart-legal-gated");}
   async function accept(){if(busy)return;busy=true;const b=gate?.querySelector("#levroLegalGateAgree"),e=gate?.querySelector("#levroLegalGateError");if(b)b.disabled=true;if(e)e.classList.add("hidden");try{const {data,error}=await sb.rpc("accept_legal_terms");if(error)throw error;if(!data?.accepted||String(data.version)!==CURRENT_LEGAL_VERSION)throw new Error("The legal agreement could not be recorded.");if(profile){profile.legal_terms_version=CURRENT_LEGAL_VERSION;profile.legal_terms_accepted_at=data.accepted_at||new Date().toISOString();}gate.remove();gate=null;document.documentElement.classList.remove("levromart-legal-gated");}catch(err){console.error("[Levromart] Legal consent failed:",err);if(e){e.textContent=err?.message||"Could not record your acceptance. Please try again.";e.classList.remove("hidden");}}finally{busy=false;if(b)b.disabled=false;}}
-  window.__levroCheckLegalConsent=async function(){if(!session?.user?.id)return true;try{const {data,error}=await sb.rpc("get_legal_terms_consent");if(error)throw error;if(data?.accepted===true)return true;showGate();return false;}catch(err){console.error("[Levromart] Legal consent check failed:",err);showGate();const e=gate?.querySelector("#levroLegalGateError");if(e){e.textContent="We couldn't verify your legal agreement right now. Please try again.";e.classList.remove("hidden");}return false;}};
+  window.__levroCheckLegalConsent=async function(){if(!session?.user?.id)return true;try{const {data,error}=await sb.rpc("get_legal_terms_consent");if(error)throw error;if(data?.accepted===true)return true;showGate();return false;}catch(err){
+    // A network blip on this one check must never lock an already-agreed
+    // user out of the app they were already using -- that's what "pops up
+    // every time" turned out to mean. Fail open: skip silently and let the
+    // next successful check (next app open, or a retry) verify for real,
+    // instead of showing the gate on every connectivity hiccup.
+    console.warn("[Levromart] Legal consent check failed (network?), skipping gate this time:",err);
+    return true;
+  }};
   // This script is intentionally loaded after the main init bundle. Run the
   // account-based check after that bundle has restored the session, and again
   // when a later sign-in occurs. No localStorage-only consent is accepted.
@@ -29682,7 +29780,7 @@ body::before { background: var(--system-bar-shade) !important; }
 
 /* Also fix catalogue hearts in light mode without touching their geometry. */
 .fav-btn {
-  color: var(--primary) !important;
+  color: var(--text) !important;
   border: 0 !important;
   outline: 0 !important;
   -webkit-appearance: none !important;
@@ -37368,7 +37466,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
   display:inline-flex!important;
   align-items:center!important;
   gap:.22rem!important;
-  color:var(--primary)!important;
+  color:var(--text-muted)!important;
   font-size:.64rem!important;
   font-weight:800!important;
   line-height:1.2!important;
@@ -40881,7 +40979,7 @@ header{flex-direction:column !important;align-items:stretch !important;}
 .header-search-row{
   display:flex !important;align-items:center !important;gap:.5rem !important;
   flex:1 1 auto !important;width:auto !important;min-width:0 !important;
-  background:var(--card) !important;border:1px solid var(--border) !important;border-radius:999px !important;
+  background:var(--card) !important;border:1.5px solid color-mix(in srgb,var(--text) 38%,var(--border)) !important;border-radius:999px !important;
   padding:.55rem .9rem !important;color:var(--text-muted) !important;font:inherit !important;font-size:.84rem !important;
   cursor:pointer !important;text-align:left !important;
 }
