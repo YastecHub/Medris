@@ -37787,10 +37787,12 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
 #aiChatFab.hidden{display:none!important}
 #aiChatFab.dragging{cursor:grabbing!important}
 #aiChatFab .ai-chat-fab-logo{opacity:1!important;visibility:visible!important;pointer-events:none!important}
-/* A bright, flat green -- the earlier textured/paper-grain background with
-   a dark corner shadow read as dull and "too dark" against the rest of the
-   app's brighter accent colors. */
-#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;overflow:hidden!important;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.3),transparent 42%),#22c55e!important;opacity:1!important;z-index:1!important;pointer-events:none!important}
+/* A subtle diagonal gradient anchored to the app's own brand green
+   (var(--primary)), not a generic flat bright green -- the earlier
+   textured/paper-grain version read too dark, but a single flat bright
+   green read as too loud and disconnected from the rest of the app's
+   shade. This sits between the two. */
+#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;overflow:hidden!important;background:radial-gradient(circle at 32% 26%,rgba(255,255,255,.24),transparent 46%),linear-gradient(155deg,color-mix(in srgb, var(--primary) 72%, #22c55e),var(--primary))!important;opacity:1!important;z-index:1!important;pointer-events:none!important}
 #aiChatFab::after{content:none!important;display:none!important}
 
 .levro-route-neon-core{filter:drop-shadow(0 0 2px rgba(34,197,94,.24)) drop-shadow(0 0 5px rgba(34,197,94,.07))!important}
@@ -41703,26 +41705,9 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   box-shadow:none!important;
 }
 
-/* "Fill the whole top" hero treatment for the home promotional carousel --
-   edge-to-edge at the very top of the page (breaking out of the
-   container's own padding/max-width via the standard 50%-50vw full-bleed
-   trick), square corners all the way round rather than a rounded curve
-   cutting into the banner. The storefront cover was tried with this same
-   treatment and asked back the way it was -- left alone here, so it keeps
-   whatever the base .storefront-cover rules already give it. */
-#app .levro-home-hero{
-  width:100vw !important;
-  max-width:100vw !important;
-  margin:0 0 .9rem calc(50% - 50vw) !important;
-  padding:0 !important;
-}
-#app .levro-home-hero .home-promotional-carousel{
-  width:100% !important;
-  margin:0 !important;
-  border:0 !important;
-  border-radius:0 !important;
-  box-shadow:0 14px 30px rgba(0,0,0,.16) !important;
-}
+/* Tried a "fill the whole top" full-bleed treatment on the home
+   promotional carousel; asked back the way it was, so this space
+   deliberately leaves the base .home-promotional-carousel rules alone. */
 
 /* Orders page: quick single-tap status pills, scrolling horizontally so they
    never wrap into an unreadable jumble on narrow screens. */
@@ -41794,7 +41779,7 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
    cart button). Packages use a different, more content-dense card and
    are handled separately. */
 #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
-  padding:0 0 2.3rem !important;
+  padding:0 0 .65rem !important;
   overflow:hidden !important;
 }
 #app .grid:has(> .product-card-wrap) .product-img{
@@ -41802,8 +41787,14 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   margin:0 !important;
 }
 #app .grid:has(> .product-card-wrap) .product-card-wrap h4{ margin:.5rem .55rem .15rem !important; }
-#app .grid:has(> .product-card-wrap) .product-card-compact-footer{ padding:0 .55rem !important; }
-#app .grid:has(> .product-card-wrap) .product-card-total-line{ padding:0 .55rem .3rem !important; margin-top:.4rem !important; }
+/* The card is already a flex column at full height (an earlier rule) --
+   pinning the price/cart row to the bottom with margin-top:auto (instead
+   of reserving fixed padding for a total-with-delivery line that isn't
+   always there) means the gap lands between the title and the price
+   instead of as dead space under a hidden placeholder, and the price row
+   itself sits flush with the card's bottom on every card, uniformly. */
+#app .grid:has(> .product-card-wrap) .product-card-compact-footer{ padding:0 .55rem !important; margin-top:auto !important; }
+#app .grid:has(> .product-card-wrap) .product-card-total-line{ padding:.3rem .55rem 0 !important; margin-top:0 !important; }
 
 /* Same edge-to-edge treatment for vendor cards: the vendor's photo (or
    initials fallback, same styling either way) fills the top of the card
