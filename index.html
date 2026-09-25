@@ -8558,6 +8558,7 @@ let favoriteIds = new Set();
 let packageFavoriteIds = new Set();
 let homeListingTab = "products";
 let storefrontCatalogTab = "products";
+let storefrontCategoryFilter = "";
 
 // ---------- UTILS ----------
 // ---------- AUTH IDENTIFIER HELPERS ----------
@@ -19077,9 +19078,8 @@ async function renderStorefrontInner(vendorId) {
 
   html += `<section class="storefront-products-shell" id="storefrontProductsShell">
     <div class="storefront-section-head"><h3>Products & services</h3></div>
-    ${allProducts.length ? `<div class="storefront-products-toolbar"><div class="storefront-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="storefrontSearch" placeholder="Search this shop" oninput="filterStorefrontProducts()" /></div><div class="storefront-view-buttons"><button class="btn btn-sm btn-outline active" id="storefrontViewGridBtn" onclick="switchStorefrontView('grid')" title="Grid view"><i class="fa-solid fa-grip"></i></button><button class="btn btn-sm btn-outline" id="storefrontViewTableBtn" onclick="switchStorefrontView('table')" title="List view"><i class="fa-solid fa-list"></i></button></div></div>` : ""}
+    ${allProducts.length ? `<div class="storefront-products-toolbar"><div class="storefront-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="storefrontSearch" placeholder="Search this shop" oninput="filterStorefrontProducts()" /></div></div><div class="storefront-category-chips" id="storefrontCategoryChips"></div>` : ""}
     <div id="storefrontGrid" class="grid">${allProducts.length ? "<p class='muted'>Loading…</p>" : '<div class="empty-state">No products or services listed yet.</div>'}</div>
-    <div id="storefrontTable" class="hidden" style="overflow-x:auto;max-height:30rem;overflow-y:auto;"></div>
     <div class="storefront-view-more" id="storefrontViewMoreWrap"></div>
   </section>`;
 
@@ -19858,6 +19858,7 @@ function switchStorefrontCatalogTab(tab) {
     }
   });
   window.__storefrontExpanded = false;
+  storefrontCategoryFilter = "";
   const productsShell = byId("storefrontProductsShell");
   const packagesSection = byId("storefrontPackagesSection");
   if (productsShell) productsShell.classList.toggle("storefront-tab-panel-hidden", storefrontCatalogTab === "packages");
@@ -19866,18 +19867,30 @@ function switchStorefrontCatalogTab(tab) {
   if (storefrontCatalogTab === "packages") filterStorefrontPackages();
 }
 
+function setStorefrontCategoryFilter(name) {
+  storefrontCategoryFilter = name || "";
+  filterStorefrontProducts();
+}
 function filterStorefrontProducts() {
   const q = (byId("storefrontSearch")?.value || "").trim().toLowerCase();
   const all = window.__storefrontProducts || [];
   const products = all.filter(p => !p.is_service);
   const services = all.filter(p => !!p.is_service);
   const current = storefrontCatalogTab === "services" ? services : products;
-  const filtered = q ? current.filter((p) => `${p.name || ""} ${(p.category?.name || "")}`.toLowerCase().includes(q)) : current;
+  // The vendor's own real category names, in the order they first appear --
+  // never a hardcoded list, so a shop with "Snacks/Drinks/Bundles" gets
+  // exactly those chips and nothing else.
+  const categoryNames = [...new Set(current.map((p) => p.category?.name).filter(Boolean))];
+  if (storefrontCategoryFilter && !categoryNames.includes(storefrontCategoryFilter)) storefrontCategoryFilter = "";
+  const chipsEl = byId("storefrontCategoryChips");
+  if (chipsEl) {
+    chipsEl.innerHTML = categoryNames.length ? `<button type="button" class="storefront-category-chip ${storefrontCategoryFilter === "" ? "active" : ""}" onclick="setStorefrontCategoryFilter('')">All</button>${categoryNames.map((name) => `<button type="button" class="storefront-category-chip ${storefrontCategoryFilter === name ? "active" : ""}" onclick="setStorefrontCategoryFilter('${esc(name).replace(/'/g, "&#39;")}')">${esc(name)}</button>`).join("")}` : "";
+  }
+  let filtered = storefrontCategoryFilter ? current.filter((p) => p.category?.name === storefrontCategoryFilter) : current;
+  filtered = q ? filtered.filter((p) => `${p.name || ""} ${(p.category?.name || "")}`.toLowerCase().includes(q)) : filtered;
   const visible = filtered;
   const gridEl = byId("storefrontGrid");
   if (gridEl) gridEl.innerHTML = visible.length ? visible.map(productCardHtml).join("") : `<div class="empty-state">No ${storefrontCatalogTab} found${q ? ` for “${esc(q)}”` : ""}.</div>`;
-  const tableEl = byId("storefrontTable");
-  if (tableEl) tableEl.innerHTML = visible.length ? storefrontTableHtml(visible) : `<div class="empty-state">No ${storefrontCatalogTab} found.</div>`;
   const pCount = byId("storefrontProductsCount"), sCount = byId("storefrontServicesCount");
   if (pCount) pCount.textContent = `(${products.length})`;
   if (sCount) sCount.textContent = `(${services.length})`;
@@ -41797,6 +41810,37 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 #app .top-rated-vendors-scroll .vendor-directory-copy,
 #app .top-rated-vendors-scroll .vendor-home-copy{
   padding:.4rem .4rem 0 !important;
+}
+
+/* Storefront catalogue tabs: a clean green underline on the active tab
+   instead of a filled pill, matching a modern marketplace nav bar rather
+   than a row of buttons. */
+#app .storefront-catalog-tab{
+  border-radius:0 !important; background:transparent !important; border:0 !important;
+  border-bottom:2px solid transparent !important; padding:.6rem .85rem .5rem !important;
+}
+#app .storefront-catalog-tab:hover{ background:transparent !important; color:var(--text) !important; }
+#app .storefront-catalog-tab.active{
+  color:var(--text) !important; background:transparent !important;
+  border-bottom-color:var(--primary) !important;
+}
+#app .storefront-catalog-tabs{ border-bottom:1px solid var(--border) !important; }
+
+/* Storefront category chips: the vendor's own real categories, replacing
+   the grid/list view toggle as the way to narrow down their catalogue. */
+#app .storefront-category-chips{
+  display:flex !important; gap:.4rem !important; overflow-x:auto !important;
+  scrollbar-width:none !important; -webkit-overflow-scrolling:touch !important;
+  padding:.1rem .05rem .8rem !important; margin:-.35rem 0 0 !important;
+}
+#app .storefront-category-chips::-webkit-scrollbar{ display:none !important; }
+#app .storefront-category-chip{
+  flex:0 0 auto !important; padding:.42rem .9rem !important; border-radius:999px !important;
+  border:1px solid var(--border) !important; background:var(--card) !important; color:var(--text) !important;
+  font-size:.78rem !important; font-weight:700 !important; white-space:nowrap !important; cursor:pointer !important;
+}
+#app .storefront-category-chip.active{
+  background:var(--primary) !important; color:#fff !important; border-color:var(--primary) !important;
 }
 </style>
 
