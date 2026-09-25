@@ -5193,8 +5193,18 @@ body.product-detail-view #aiChatFab{right:.7rem !important;bottom:.65rem !import
 }
 .vendor-card-follow-btn:hover{ background:color-mix(in srgb, var(--text) 8%, var(--card)); }
 .vendor-card-follow-btn.following{ background:var(--primary); color:#fff; }
-.vendor-card-follower-stat{ display:block; margin-top:.3rem; font-size:.68rem; color:var(--text-muted); white-space:nowrap; }
+.vendor-card-follower-stat{ display:block; font-size:.68rem; color:var(--text-muted); white-space:nowrap; }
 .vendor-card-follower-stat i{ margin-right:.22rem; opacity:.7; }
+/* Follower count and rating share one row at the bottom of the card
+   instead of each getting a full row of their own. */
+.vendor-card-meta-row{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:.4rem; width:100%; margin-top:.35rem;
+}
+.vendor-card-rating-corner{
+  display:inline-flex; flex:0 0 auto;
+  font-size:.62rem; padding:.1rem .38rem; line-height:1.3;
+}
 /* Product listings must actually occupy their grid tracks. */
 .storefront-products-shell #storefrontGrid,
 .storefront-products-shell #storefrontGrid .product-card-wrap,
@@ -9305,10 +9315,26 @@ document.addEventListener("click", (e) => {
 }, true);
 
 // ---------- TOASTS + CONFIRM DIALOG (replace native alert/confirm) ----------
+// A raw browser/JS error ("TypeError: Load failed", "Failed to fetch") is
+// meaningless to a buyer and reads as the app being broken -- dozens of
+// catch blocks across the app pass error.message straight through here, so
+// this is the one place that can catch all of them and swap in something a
+// person actually understands, while the real error still goes to console
+// for anyone debugging.
+function sanitizeToastMessage(message, type) {
+  const raw = String(message ?? "").trim();
+  const looksTechnical = !raw
+    || /^(TypeError|ReferenceError|SyntaxError|RangeError|Error|DOMException|AbortError)\s*:/i.test(raw)
+    || /load failed|failed to fetch|network\s*error|networkerror|is not defined|is not a function|cannot read propert|undefined is not|null is not/i.test(raw);
+  if (!looksTechnical) return raw;
+  if (raw) console.warn("[Levromart] Technical error shown to user, sanitized:", raw);
+  return type === "error" ? "Something went wrong. Check your connection and try again." : raw || "Something went wrong.";
+}
 function showToast(message, type = "info") {
   playSound(type === "error" ? "error" : "notify");
   const wrap = byId("toastStack");
   if (!wrap) return;
+  const displayMessage = sanitizeToastMessage(message, type);
   const icon = type === "error" ? "fa-circle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info";
   let el = window.__activeToast;
   if (!el || !el.isConnected) {
@@ -9322,7 +9348,7 @@ function showToast(message, type = "info") {
     el.classList.remove("show");
   }
   el.className = `toast toast-${type}`;
-  el.innerHTML = `<i class="fa-solid ${icon}"></i><span>${esc(message)}</span>`;
+  el.innerHTML = `<i class="fa-solid ${icon}"></i><span>${esc(displayMessage)}</span>`;
   requestAnimationFrame(() => el.classList.add("show"));
   window.__activeToastTimer = setTimeout(() => {
     el.classList.remove("show");
@@ -30087,7 +30113,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   width:100% !important;
 }
 .vendors-directory-grid:not(.vendors-list-mode) .vendor-card-follow-btn,
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-card-follower-stat{
+.vendors-directory-grid:not(.vendors-list-mode) .vendor-card-meta-row{
   align-self:center !important;
 }
 @media (max-width:390px) {
@@ -36600,18 +36626,19 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       const recentFollow=window.__vendorCardFollowRecent?.get(String(v?.id||""));
       const isFollowingNow=!!(recentFollow && (Date.now()-recentFollow.at<15000) && recentFollow.following);
       const followBtn=showFollow?`<button type="button" class="vendor-card-follow-btn${isFollowingNow?" following":""}" data-vendor-id="${escText(v?.id||"")}" onclick="event.stopPropagation();toggleVendorCardFollow('${escText(v?.id||"")}',event)">${isFollowingNow?"Following":"Follow"}</button>`:"";
-      // Instagram-style: the follower count is a quiet stat sitting right
-      // under the follow action, not another loud badge competing with the
-      // star rating for attention.
+      // Fewer stacked rows: rating and follower count now share one row at
+      // the bottom of the card instead of each getting its own, and
+      // city/distance share one line instead of two.
       const followerStat=`<span class="vendor-card-follower-stat"><i class="fa-solid fa-user-group" aria-hidden="true"></i> <span class="vendor-follower-count">${count}</span> follower${Number(v?.follower_count||0)===1?'':'s'}</span>`;
+      const distanceHtml = vendorDistanceHtml(v);
+      const ratingInline = `<span class="vendor-card-rating-corner badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}">★ ${Number(v?.avg_rating||0).toFixed(1)}</span>`;
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
         ${avatarHtml}<div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
           <strong class="vendor-directory-name">${escText(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
-          <p class="muted vendor-directory-city" style="margin:.15rem 0;">${escText(v?.city||"Online")}</p>${vendorDistanceHtml(v)}
+          <p class="muted vendor-directory-city" style="margin:.15rem 0;">${escText(v?.city||"Online")}${distanceHtml ? ` · ${distanceHtml}` : ""}</p>
           <p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${escText(sectorName)}</p>
-          <div class="vendor-card-footer"><span class="badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}">★ ${Number(v?.avg_rating||0).toFixed(1)} (${Number(v?.review_count||0)})</span></div>
           ${followBtn}
-          ${followerStat}
+          <div class="vendor-card-meta-row">${followerStat}${ratingInline}</div>
         </div></div>`;
     };
   }
