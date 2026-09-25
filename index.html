@@ -370,7 +370,12 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.2rem; }
   .flex { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; }
   .flex + .btn, .flex + button.btn, p + .btn, p + button.btn { margin-top: 0.8rem; }
-  .badge { padding: 0.2rem 0.8rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500; background: color-mix(in srgb, var(--primary) 16%, transparent); color: var(--primary); text-transform: capitalize; }
+  /* Neutral by default -- green is reserved for badges that actually mean
+     something good (.success), same as .warning/.danger/.info below. A badge
+     with no semantic modifier (follower counts, category tags, generic
+     labels) is just information, not a status, so it shouldn't compete with
+     real accents for attention. */
+  .badge { padding: 0.2rem 0.8rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500; background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text-muted); text-transform: capitalize; }
   .badge.success { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
   .badge.warning { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); }
   .badge.danger { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
@@ -663,7 +668,12 @@
   .icon-btn { position: relative; width: 2.3rem; height: 2.3rem; border-radius: 50%; border: none; background: none; color: var(--primary); font-size: 1.1rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.15s, filter 0.15s; filter: drop-shadow(0 0 0 transparent); }
   .icon-btn:hover, .icon-btn:active { background: color-mix(in srgb, var(--primary) 12%, transparent); }
   .icon-btn:hover { background: color-mix(in srgb, var(--primary) 22%, transparent); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 45%, transparent)); }
-  .notif-dot { position: absolute; top: -2px; right: -2px; background: var(--danger); color: white; font-size: 0.65rem; font-weight: 700; min-width: 1.1rem; height: 1.1rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center; padding: 0 0.25rem; box-shadow: 0 0 0 2px var(--primary); }
+  /* Header-right utility icons (bell, messages, cart) are plain navigation,
+     not brand accents -- like a standard marketplace app, only the unread
+     badge on top of them needs to draw the eye, not the icon itself. */
+  #notifWrap .icon-btn, #messagesWrap .icon-btn, #headerCartWrap .icon-btn { color: var(--text) !important; }
+  #notifWrap .icon-btn:hover, #messagesWrap .icon-btn:hover, #headerCartWrap .icon-btn:hover { background: color-mix(in srgb, var(--text) 10%, transparent); filter: none; }
+  .notif-dot { position: absolute; top: -2px; right: -2px; background: var(--danger); color: white; font-size: 0.65rem; font-weight: 700; min-width: 1.1rem; height: 1.1rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center; padding: 0 0.25rem; box-shadow: 0 0 0 2px var(--card); }
 
   /* ---- slide-in drawers (settings / notifications / profile) ---- */
   .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 10900; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; }
@@ -2223,6 +2233,9 @@ h2 + .grid, h3 + .grid, .section-title + .grid{margin-top:.8rem}
 
 /* Profile header stays still while only the menu beneath it scrolls. */
 #profilePanel{overflow:hidden !important;}
+/* Full-bleed, square-cornered panel -- covers the whole page like a proper
+   screen instead of a narrow rounded drawer peeking in from the edge. */
+#profilePanel{width:100vw !important;max-width:100vw !important;border-radius:0 !important;}
 #profilePanel .profile-panel-static{
   flex:0 0 auto;
   position:relative;
@@ -2244,6 +2257,8 @@ h2 + .grid, h3 + .grid, .section-title + .grid{margin-top:.8rem}
 #profilePanel .profile-panel-scroll::-webkit-scrollbar{width:4px}
 #profilePanel .profile-panel-scroll::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--text-muted) 28%,transparent);border-radius:999px}
 #profilePanel .drawer-header{margin-bottom:.55rem}
+#profilePanel .profile-panel-fullscreen-header{justify-content:flex-start !important;gap:.65rem !important;}
+#profilePanel .profile-panel-back-btn{order:-1;}
 #profilePanel .profile-panel-header{padding:.45rem 0 1rem !important;align-items:center !important;}
 #profilePanel .profile-panel-header .avatar-lg{width:60px !important;height:60px !important;}
 #profilePanel .profile-nav-link{
@@ -2365,10 +2380,14 @@ h2 + .grid, h3 + .grid, .section-title + .grid{margin-top:.8rem}
    touch-hover jumps, search icon collisions, and viewport-safe sheets.
    ================================================================ */
 #settingsPanel,
-#profilePanel,
 #notifPanel {
   width: min(304px, 78vw) !important;
   max-width: 304px !important;
+  min-width: 0 !important;
+}
+#profilePanel {
+  width: 100vw !important;
+  max-width: 100vw !important;
   min-width: 0 !important;
 }
 
@@ -2591,7 +2610,8 @@ html { scroll-padding-top: 86px !important; }
 .ai-chat-panel .drawer-header { cursor: default !important; user-select: none !important; -webkit-user-select:none !important; }
 
 @media (max-width: 720px) {
-  #settingsPanel, #profilePanel, #notifPanel { width: min(304px,78vw) !important; max-width: 304px !important; }
+  #settingsPanel, #notifPanel { width: min(304px,78vw) !important; max-width: 304px !important; }
+  #profilePanel { width: 100vw !important; max-width: 100vw !important; }
   .profile-panel-header { grid-template-columns: 56px minmax(0,1fr) !important; }
   #profilePanel .profile-panel-header .avatar-lg { width: 56px !important; height: 56px !important; }
   .hero-search input { padding-left: 2.9rem !important; }
@@ -2832,9 +2852,14 @@ html { scroll-padding-top: 86px !important; }
 
 /* Compact, consistent sheet width on phones. */
 @media (max-width:720px) {
-  #notifPanel, #settingsPanel, #profilePanel {
+  #notifPanel, #settingsPanel {
     width:min(304px,78vw) !important;
     max-width:304px !important;
+    min-width:0 !important;
+  }
+  #profilePanel {
+    width:100vw !important;
+    max-width:100vw !important;
     min-width:0 !important;
   }
   #notifPanel { padding-left:14px !important; padding-right:14px !important; }
@@ -4080,8 +4105,13 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 }
 
 /* Profile drawer gesture zone must not create a horizontal page overflow. */
-#profilePanel, #settingsPanel, #notifPanel {
+#settingsPanel, #notifPanel {
   max-width:86vw !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+}
+#profilePanel {
+  max-width:100vw !important;
   min-width:0 !important;
   box-sizing:border-box !important;
 }
@@ -5160,6 +5190,8 @@ body.product-detail-view #aiChatFab{right:.7rem !important;bottom:.65rem !import
 }
 .vendor-card-follow-btn:hover{ background:color-mix(in srgb, var(--primary) 22%, var(--card)); }
 .vendor-card-follow-btn.following{ background:var(--primary); color:#fff; }
+.vendor-card-follower-stat{ display:block; margin-top:.3rem; font-size:.68rem; color:var(--text-muted); white-space:nowrap; }
+.vendor-card-follower-stat i{ margin-right:.22rem; opacity:.7; }
 /* Product listings must actually occupy their grid tracks. */
 .storefront-products-shell #storefrontGrid,
 .storefront-products-shell #storefrontGrid .product-card-wrap,
@@ -11089,7 +11121,7 @@ function updateAuthUI() {
 
     panel.innerHTML = `
       <div class="profile-panel-static">
-        <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn" onclick="closeAllPanels()" aria-label="Close profile"><i class='fa-solid fa-xmark'></i></button></div>
+        <div class="drawer-header profile-panel-fullscreen-header"><button class="drawer-close-btn profile-panel-back-btn" onclick="closeAllPanels()" aria-label="Back"><i class='fa-solid fa-arrow-left'></i></button><h4>Profile</h4></div>
 
         <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('vendorDashboard')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('vendorDashboard')}"` : profile.role !== 'admin' ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('buyerProfile')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('buyerProfile')}"` : ''}>
           <div class="avatar-edit-wrap">
@@ -30085,9 +30117,15 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       const visible = all;
       grid.classList.remove("hidden");
       grid.classList.toggle("vendors-list-mode", vendorDirectoryMode === "list");
+      // window.__allVendors is only set once the initial fetch resolves. A
+      // grid/list toggle tapped before that finishes used to see the same
+      // empty array a real zero-result filter would, and wrongly claimed "no
+      // vendors match" while the directory was simply still loading.
       grid.innerHTML = visible.length
         ? visible.map(vendorCardHtml).join("")
-        : '<div class="empty-state" style="grid-column:1/-1;">No vendors match those filters.</div>';
+        : Array.isArray(window.__allVendors)
+          ? '<div class="empty-state" style="grid-column:1/-1;">No vendors match those filters.</div>'
+          : '<p class="muted" style="grid-column:1/-1;">Loading…</p>';
     }
 
     const more = byId("vendorsDirectoryMoreBtn");
@@ -31710,7 +31748,7 @@ window.renderVendorMapRail = function(){
      --------------------------------------------------------------- */
   function vendorRailHtmlV2(){
     const all=Array.isArray(window.__filteredVendors)?window.__filteredVendors:[];
-    if(!all.length) return '<div class="vendors-map-vendor-rail-head"><strong>Vendors</strong></div><div class="muted" style="padding:.2rem 0 .7rem;font-size:.8rem;">No vendors match these filters.</div>';
+    if(!all.length) return `<div class="vendors-map-vendor-rail-head"><strong>Vendors</strong></div><div class="muted" style="padding:.2rem 0 .7rem;font-size:.8rem;">${Array.isArray(window.__allVendors) ? "No vendors match these filters." : "Loading vendors…"}</div>`;
     const chips=all.map(v=>{
       const avatar=v?.logo_url
         ? `<img class="vendor-directory-logo" src="${esc(v.logo_url)}" alt="" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(v.business_name||'Vendor')}','2.9rem','vendor-directory-logo','${esc(v.business_name||'Vendor')}')))">`
@@ -31726,7 +31764,22 @@ window.renderVendorMapRail = function(){
     return `<div class="vendors-map-vendor-rail-head"><strong>Vendors</strong>${all.length>6?`<button type="button" onclick="switchVendorsView('list')">See all →</button>`:''}</div><div class="vendors-map-vendor-rail">${chips}</div>`;
   }
 
-  if(typeof window.renderVendorMapRail==='function') window.renderVendorMapRail=function(){const wrap=byId('vendorsMapVendorRail');if(wrap){wrap.innerHTML=vendorRailHtmlV2();const rail=wrap.querySelector('.vendors-map-vendor-rail');if(rail&&horizontalBrowseEnabled)setupAutoScroll(rail);hydrateFollowerCounts();}};
+  if(typeof window.renderVendorMapRail==='function') window.renderVendorMapRail=function(){
+    const wrap=byId('vendorsMapVendorRail');
+    if(!wrap) return;
+    // Re-rendering the rail (e.g. after tapping a chip to focus a vendor on
+    // the map) used to wholesale-replace its innerHTML, which silently reset
+    // horizontal scroll to the start every time -- losing the buyer's place
+    // in a long vendor list right when they'd just found what they clicked.
+    const prevScroll = wrap.querySelector('.vendors-map-vendor-rail')?.scrollLeft || 0;
+    wrap.innerHTML=vendorRailHtmlV2();
+    const rail=wrap.querySelector('.vendors-map-vendor-rail');
+    if(rail){
+      rail.scrollLeft = prevScroll;
+      if(horizontalBrowseEnabled)setupAutoScroll(rail);
+    }
+    hydrateFollowerCounts();
+  };
 
   /* Open the Vendors map for a storefront distance click, then focus the exact vendor and trace the road route. */
   window.openVendorDistanceMap=async function(vendorId){
@@ -36454,13 +36507,18 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       const recentFollow=window.__vendorCardFollowRecent?.get(String(v?.id||""));
       const isFollowingNow=!!(recentFollow && (Date.now()-recentFollow.at<15000) && recentFollow.following);
       const followBtn=showFollow?`<button type="button" class="vendor-card-follow-btn${isFollowingNow?" following":""}" data-vendor-id="${escText(v?.id||"")}" onclick="event.stopPropagation();toggleVendorCardFollow('${escText(v?.id||"")}',event)">${isFollowingNow?"Following":"Follow"}</button>`:"";
+      // Instagram-style: the follower count is a quiet stat sitting right
+      // under the follow action, not another loud badge competing with the
+      // star rating for attention.
+      const followerStat=`<span class="vendor-card-follower-stat"><i class="fa-solid fa-user-group" aria-hidden="true"></i> <span class="vendor-follower-count">${count}</span> follower${Number(v?.follower_count||0)===1?'':'s'}</span>`;
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
         ${avatarHtml}<div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
           <strong class="vendor-directory-name">${escText(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
           <p class="muted vendor-directory-city" style="margin:.15rem 0;">${escText(v?.city||"Online")}</p>${vendorDistanceHtml(v)}
           <p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${escText(sectorName)}</p>
-          <div class="vendor-card-footer"><span class="badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}">★ ${Number(v?.avg_rating||0).toFixed(1)} (${Number(v?.review_count||0)})</span><span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> <span class="vendor-follower-count">${count}</span> follower${Number(v?.follower_count||0)===1?'':'s'}</span></div>
+          <div class="vendor-card-footer"><span class="badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}">★ ${Number(v?.avg_rating||0).toFixed(1)} (${Number(v?.review_count||0)})</span></div>
           ${followBtn}
+          ${followerStat}
         </div></div>`;
     };
   }
