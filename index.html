@@ -13085,9 +13085,13 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span class="levro-quick-label">Request an Item</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span class="levro-quick-label">Chat Directly</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
   </section>`;
-  if (sectors.length) {
+  // Cached from the last live load (renderHome) so the fast local repaint
+  // used on every category tap doesn't have to guess -- falls back to the
+  // full list only for a cache written before this field existed.
+  const sectorsWithListings = Array.isArray(cache.sectorsWithListings) ? cache.sectorsWithListings : sectors;
+  if (sectorsWithListings.length) {
     html += `<h3 class="section-title"><span><i class="fa-solid fa-grip"></i> Shop by Category</span><a class="section-title-link" onclick="openHomeCategoryBrowser()">See all <i class="fa-solid fa-arrow-right"></i></a></h3>`;
-    html += homeCategoryRailHtml(sectors);
+    html += homeCategoryRailHtml(sectorsWithListings);
   }
   const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
   const trendingServices = deterministicHourlyShuffle((trending || []).filter(p => p.is_service),"trending-services");
@@ -13873,6 +13877,40 @@ async function renderHome() {
   const rotatedBrowseProducts = deterministicBrowseVisibilityShuffle(stableBrowseProducts, `browse:${activeSector?.id||"all"}`);
   window.__homeBrowseCatalog = rotatedBrowseProducts;
   window.__homeBrowseRotationKey = Math.floor(Date.now() / 600000);
+  // Which sectors actually have a real, buyable listing right now -- the
+  // "Shop by Category" rail should only ever offer a tap that leads
+  // somewhere, not a sector nobody has listed anything under yet.
+  const activeSectorIds = await (async () => {
+    const cacheKey = "active-sector-ids";
+    const cached = getCachedCatalog(cacheKey);
+    if (cached) return cached;
+    let ids;
+    if (!activeSector && !activeCategory) {
+      // The unfiltered browse catalogue was already fetched above -- reuse
+      // it instead of scanning the whole product table a second time.
+      ids = new Set(stableBrowseProducts.map(p => p.category?.sector_id).filter(Boolean).map(String));
+    } else {
+      const rows = [];
+      const pageSize = 500;
+      try {
+        for (let offset = 0; ; offset += pageSize) {
+          const { data, error } = await sb.from("products")
+            .select("category:categories!inner(sector_id), vendor:vendors!inner(verification_status,is_active)")
+            .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
+            .range(offset, offset + pageSize - 1);
+          if (error) throw error;
+          rows.push(...(data || []));
+          if (!data || data.length < pageSize) break;
+        }
+        ids = new Set(rows.map(r => r.category?.sector_id).filter(Boolean).map(String));
+      } catch (err) {
+        console.warn("[Levromart] Could not compute sectors with listings:", err);
+        return null;
+      }
+    }
+    setCachedCatalog(cacheKey, ids);
+    return ids;
+  })();
   const homepageCarouselSlides = await loadHomepageCarouselSlides();
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
@@ -13892,6 +13930,7 @@ async function renderHome() {
   writeOfflineHomeCache({
     categories: Array.isArray(categories) && categories.length ? categories : (cacheBase.categories || []),
     sectors: Array.isArray(sectors) && sectors.length ? sectors : (cacheBase.sectors || sectorsData || []),
+    sectorsWithListings: activeSectorIds ? sectors.filter((s) => activeSectorIds.has(String(s.id))) : (cacheBase.sectorsWithListings || sectors),
     trending: safeTrendingForCache,
     browseProducts: safeBrowseForCache,
     topVendors: safeTopVendorsForCache,
@@ -13927,9 +13966,14 @@ async function renderHome() {
     <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span class="levro-quick-label">Chat Directly</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
   </section>`;
 
-  if (sectors.length) {
+  // null means the lookup itself failed (e.g. offline mid-request) -- fall
+  // back to showing every sector rather than an empty rail in that case;
+  // an empty Set (lookup succeeded, genuinely nothing found yet) does mean
+  // "show nothing".
+  const sectorsWithListings = activeSectorIds ? sectors.filter((s) => activeSectorIds.has(String(s.id))) : sectors;
+  if (sectorsWithListings.length) {
     html += `<h3 class="section-title"><span><i class="fa-solid fa-grip"></i> Shop by Category</span><a class="section-title-link" onclick="openHomeCategoryBrowser()">See all <i class="fa-solid fa-arrow-right"></i></a></h3>`;
-    html += homeCategoryRailHtml(sectors);
+    html += homeCategoryRailHtml(sectorsWithListings);
   }
 
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
@@ -13991,9 +14035,15 @@ function paintHomeFromLocalCatalog(showOfflineNotice = false) {
   const rendered = renderOfflineHomeFromCache(cache, { showOfflineNotice });
   if (!rendered || !app) return false;
   // Repainting the cached homepage is intentionally silent. It must never
-  // yank a user back to the top while they are browsing the catalogue.
+  // yank a user back to the top while they are browsing the catalogue --
+  // and tapping a category chip in the rail itself must not snap that
+  // rail's own horizontal scroll back to the start either (the same class
+  // of bug already fixed for the vendor map rail).
   const previousScrollY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+  const previousCatRailScroll = byId("app")?.querySelector(".levro-home-cat-rail")?.scrollLeft || 0;
   app.innerHTML = rendered;
+  const catRail = app.querySelector(".levro-home-cat-rail");
+  if (catRail) catRail.scrollLeft = previousCatRailScroll;
   syncLeviFabVisibility();
   updateHeaderNavActive();
   clearAutoScrollTimers();
@@ -14001,6 +14051,9 @@ function paintHomeFromLocalCatalog(showOfflineNotice = false) {
   requestAnimationFrame(() => {
     if (Math.abs((window.scrollY || document.documentElement.scrollTop || 0) - previousScrollY) > 1) {
       window.scrollTo({ top: previousScrollY, behavior: "auto" });
+    }
+    if (catRail && Math.abs(catRail.scrollLeft - previousCatRailScroll) > 1) {
+      catRail.scrollLeft = previousCatRailScroll;
     }
   });
   return true;
@@ -37353,7 +37406,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
 #aiChatFab.hidden{display:none!important}
 #aiChatFab.dragging{cursor:grabbing!important}
 #aiChatFab .ai-chat-fab-logo{opacity:1!important;visibility:visible!important;pointer-events:none!important}
-#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;overflow:hidden!important;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.16),transparent 28%),radial-gradient(circle at 72% 76%,rgba(0,0,0,.14),transparent 45%),var(--levro-paper-texture),color-mix(in srgb,var(--primary) 92%,#084F36)!important;background-repeat:no-repeat,no-repeat,no-repeat,no-repeat!important;background-size:cover,cover,cover,cover!important;background-position:center,center,center,center!important;opacity:.96!important;z-index:1!important;pointer-events:none!important}
+#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;overflow:hidden!important;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.22),transparent 28%),radial-gradient(circle at 72% 76%,rgba(0,0,0,.08),transparent 45%),var(--levro-paper-texture),#16a34a!important;background-repeat:no-repeat,no-repeat,no-repeat,no-repeat!important;background-size:cover,cover,cover,cover!important;background-position:center,center,center,center!important;opacity:.96!important;z-index:1!important;pointer-events:none!important}
 #aiChatFab::after{content:none!important;display:none!important}
 
 .levro-route-neon-core{filter:drop-shadow(0 0 2px rgba(34,197,94,.24)) drop-shadow(0 0 5px rgba(34,197,94,.07))!important}
