@@ -13000,8 +13000,11 @@ function setupAutoScroll(container, { interval = 30, pauseAfterInteraction = 650
   // The category rail is a persistent filter selector, not a browse-more
   // showcase -- auto-scrolling it made the tapped category chip silently
   // drift out of view and eventually wrap back to "All" a few seconds
-  // after every tap, looking like the selection had reset itself.
-  if (container.matches(".trending-scroll, .top-rated-vendors-scroll, .cat-row")) return;
+  // after every tap, looking like the selection had reset itself. This
+  // exclusion referenced the rail's old class name (.cat-row), which no
+  // longer exists -- it's .levro-home-cat-rail now -- so it silently
+  // stopped excluding anything.
+  if (container.matches(".trending-scroll, .top-rated-vendors-scroll, .levro-home-cat-rail")) return;
   if (container.__levroAutoScrollTimer) return;
   let paused = false;
   let pauseTimeout = null;
