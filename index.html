@@ -15028,7 +15028,7 @@ const __productImageTapState = new Map();
 function handleProductImageTap(evt, productId) {
   evt.stopPropagation();
   const now = Date.now();
-  const DOUBLE_TAP_MS = 320;
+  const DOUBLE_TAP_MS = 400;
   const state = __productImageTapState.get(productId);
   if (state?.lastTap && now - state.lastTap < DOUBLE_TAP_MS) {
     clearTimeout(state.timer);
@@ -15055,6 +15055,10 @@ async function toggleFavoriteViaDoubleTap(imgContainer, productId) {
   // failure instead.
   if (wasFav) favoriteIds.delete(productId); else favoriteIds.add(productId);
   playProductWishBounce(imgContainer, !wasFav);
+  // The bounce animation alone wasn't a reliable enough confirmation (easy
+  // to miss, or silently not render) -- a toast says outright what just
+  // happened regardless of whether the animation is visible.
+  showToast(wasFav ? "Removed from wishlist." : "Added to wishlist.", "success");
   try {
     const { error } = wasFav
       ? await sb.from("favorites").delete().eq("buyer_id", session.user.id).eq("product_id", productId)
@@ -17734,7 +17738,7 @@ async function renderCommissionServiceDetail(product,priceHint,offers){
     <div class="product-detail-top-actions"><button class="fav-btn ${favoriteIds.has(product.id)?'active':''}" onclick="toggleFavorite(event,'${product.id}')" aria-label="Save to wishlist">${favoriteIds.has(product.id)?"<i class='fa-solid fa-heart'></i>":"<i class='fa-regular fa-heart'></i>"}</button><button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share service"><i class="fa-solid fa-share-nodes"></i></button></div>
     <h2 class="product-detail-title">${esc(product.name)} <span class="badge">Service</span></h2>
     ${image?`<div class="product-detail-media"><div class="product-gallery"><div class="product-gallery-main"><img src="${esc(image)}" alt="${esc(product.name)}" loading="eager" /></div></div></div>`:''}
-    <div class="service-vendor-info-block"><div class="service-vendor-info-head"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating">★ ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div><div class="service-vendor-contact-actions">${vendor.phone?`<a class="btn btn-sm btn-outline" href="${telLink(vendor.phone)}" onclick="callVendorGated(event,'${esc(vendor.phone)}','${vendor.id}')"><i class="fa-solid fa-phone"></i> Call vendor</a>`:''}<button type="button" class="btn btn-sm" onclick="startConversationWithVendor('${vendor.id}')"><i class="fa-solid fa-comment-dots"></i> Message vendor</button></div></div>
+    <div class="service-vendor-info-block"><div class="service-vendor-info-head" role="button" tabindex="0" style="cursor:pointer;" onclick="navigate('storefront',{vendorId:'${vendor.id}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${vendor.id}'})}"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating">★ ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div><div class="service-vendor-contact-actions"><button type="button" class="btn btn-sm" onclick="startConversationWithVendor('${vendor.id}')"><i class="fa-solid fa-comment-dots"></i> Message vendor</button></div></div>
     <div class="service-description-block"><h3>About this service</h3><p>${esc(stripProductVariantMeta(product.description||'No description provided.'))}</p></div>
     ${priceHint?`<div class="service-price-hint"><i class="fa-solid fa-chart-line"></i> <strong>Past agreed prices:</strong> ${naira(priceHint.min)}${priceHint.min!==priceHint.max?' – '+naira(priceHint.max):''} <span>(last ${priceHint.count} completed bookings)</span></div>`:''}
   </div>`;
@@ -37783,7 +37787,10 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
 #aiChatFab.hidden{display:none!important}
 #aiChatFab.dragging{cursor:grabbing!important}
 #aiChatFab .ai-chat-fab-logo{opacity:1!important;visibility:visible!important;pointer-events:none!important}
-#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;overflow:hidden!important;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.22),transparent 28%),radial-gradient(circle at 72% 76%,rgba(0,0,0,.08),transparent 45%),var(--levro-paper-texture),#16a34a!important;background-repeat:no-repeat,no-repeat,no-repeat,no-repeat!important;background-size:cover,cover,cover,cover!important;background-position:center,center,center,center!important;opacity:.96!important;z-index:1!important;pointer-events:none!important}
+/* A bright, flat green -- the earlier textured/paper-grain background with
+   a dark corner shadow read as dull and "too dark" against the rest of the
+   app's brighter accent colors. */
+#aiChatFab::before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;overflow:hidden!important;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.3),transparent 42%),#22c55e!important;opacity:1!important;z-index:1!important;pointer-events:none!important}
 #aiChatFab::after{content:none!important;display:none!important}
 
 .levro-route-neon-core{filter:drop-shadow(0 0 2px rgba(34,197,94,.24)) drop-shadow(0 0 5px rgba(34,197,94,.07))!important}
@@ -41597,6 +41604,17 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   background-color:color-mix(in srgb,var(--text) 8%,var(--card)) !important;
   border-color:color-mix(in srgb,var(--text) 16%,var(--border)) !important;
 }
+/* The per-card add-to-cart icon looked identical to every other neutral
+   gray icon on the card -- a light, brighter green reads as an action
+   button again instead of blending in. */
+#app .card-cart-btn:not(.added),
+#app .product-card-compact .card-cart-btn:not(.added),
+#app .grid:has(> .product-card-wrap) > .product-card-wrap.product-card-compact > .card .card-cart-btn:not(.added){
+  color:color-mix(in srgb, var(--primary) 75%, #17c964) !important;
+  -webkit-text-fill-color:color-mix(in srgb, var(--primary) 75%, #17c964) !important;
+  background-color:color-mix(in srgb, var(--primary) 14%, var(--card)) !important;
+  border-color:color-mix(in srgb, var(--primary) 32%, var(--border)) !important;
+}
 /* Home's six quick-action cards: soft pastel "premium quick-action card"
    treatment (icon badge, title, one-line description, corner arrow)
    instead of the old dark compact icon+label rows. Colors are fixed light
@@ -41685,12 +41703,13 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   box-shadow:none!important;
 }
 
-/* "Fill the whole top, curvy edges underneath" hero treatment -- edge-to-
-   edge at the very top of the page (breaking out of the container's own
-   padding/max-width via the standard 50%-50vw full-bleed trick) with a
-   rounded-only bottom edge, instead of a small rounded rectangle sitting
-   inside the page's normal padding. Applied to both the home promotional
-   carousel and the storefront's own cover banner so they match. */
+/* "Fill the whole top" hero treatment for the home promotional carousel --
+   edge-to-edge at the very top of the page (breaking out of the
+   container's own padding/max-width via the standard 50%-50vw full-bleed
+   trick), square corners all the way round rather than a rounded curve
+   cutting into the banner. The storefront cover was tried with this same
+   treatment and asked back the way it was -- left alone here, so it keeps
+   whatever the base .storefront-cover rules already give it. */
 #app .levro-home-hero{
   width:100vw !important;
   max-width:100vw !important;
@@ -41701,14 +41720,8 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   width:100% !important;
   margin:0 !important;
   border:0 !important;
-  border-radius:0 0 28px 28px !important;
+  border-radius:0 !important;
   box-shadow:0 14px 30px rgba(0,0,0,.16) !important;
-}
-#app .storefront-profile .storefront-cover{
-  width:100vw !important;
-  max-width:100vw !important;
-  margin:0 0 0 calc(50% - 50vw) !important;
-  border-radius:0 0 28px 28px !important;
 }
 
 /* Orders page: quick single-tap status pills, scrolling horizontally so they
@@ -41790,7 +41803,7 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 }
 #app .grid:has(> .product-card-wrap) .product-card-wrap h4{ margin:.5rem .55rem .15rem !important; }
 #app .grid:has(> .product-card-wrap) .product-card-compact-footer{ padding:0 .55rem !important; }
-#app .grid:has(> .product-card-wrap) .product-card-total-line{ padding:0 .55rem .3rem !important; margin-top:0 !important; }
+#app .grid:has(> .product-card-wrap) .product-card-total-line{ padding:0 .55rem .3rem !important; margin-top:.4rem !important; }
 
 /* Same edge-to-edge treatment for vendor cards: the vendor's photo (or
    initials fallback, same styling either way) fills the top of the card
