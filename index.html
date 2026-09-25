@@ -12389,7 +12389,10 @@ async function levroCommissionGate(view) {
     if (deadlineError || !deadline?.[0]?.earliest_due_at) return false;
     if (new Date(deadline[0].earliest_due_at).getTime() > Date.now()) return false;
     const { data: owed, error } = await sb.rpc("get_vendor_commission_owed", { p_vendor_id: vendor.id });
-    if (error || Number(owed || 0) <= 0) return false;
+    // Paystack won't transfer under ₦100, so gating a vendor's daily tools
+    // over a smaller balance than that just locks them out for nothing
+    // collectible yet -- let them keep working until it actually reaches ₦100.
+    if (error || Number(owed || 0) < 100) return false;
     vendor.is_active = false;
     vendor.commission_paused = true;
     vendor.commission_pause_reason = "commission_overdue";
@@ -14199,12 +14202,12 @@ const LEVRO_CATEGORY_RAIL_PALETTE = ["#16a34a", "#2563eb", "#e11d48", "#f59e0b",
 // path and the offline-cache fast-repaint path) can never drift apart.
 function homeQuickActionsHtml() {
   const actions = [
-    { key: "products", icon: "fa-bag-shopping", tone: "mint", title: "Shop Products", desc: "Buy quality items from verified vendors" },
-    { key: "services", icon: "fa-screwdriver-wrench", tone: "peach", title: "Book Services", desc: "Find and book trusted service providers" },
-    { key: "rent", icon: "fa-key", tone: "lavender", title: "Rent Items", desc: "Access items you need without buying" },
-    { key: "vendors", icon: "fa-store", tone: "pink", title: "Explore Verified Vendors", desc: "Discover trusted businesses near you" },
-    { key: "request", icon: "fa-hand", tone: "aqua", title: "Request an Item", desc: "Can't find it? Send a request to vendors" },
-    { key: "chat", icon: "fa-comment-dots", tone: "blue", title: "Chat Directly", desc: "Talk to vendors and get quick answers" },
+    { key: "products", icon: "fa-bag-shopping", tone: "mint", title: "Shop Products", desc: "Verified vendors" },
+    { key: "services", icon: "fa-screwdriver-wrench", tone: "peach", title: "Book Services", desc: "Trusted providers" },
+    { key: "rent", icon: "fa-key", tone: "lavender", title: "Rent Items", desc: "No need to buy" },
+    { key: "vendors", icon: "fa-store", tone: "pink", title: "All Vendors", desc: "Discover nearby" },
+    { key: "request", icon: "fa-hand", tone: "aqua", title: "Request Item", desc: "Let vendors find it" },
+    { key: "chat", icon: "fa-comment-dots", tone: "blue", title: "Chat Directly", desc: "Get quick answers" },
   ];
   return `<section class="levro-home-quick-actions" aria-label="Quick actions">${actions.map((a) => `<button type="button" class="levro-quick-action levro-quick-${a.tone}" onclick="openHomeQuickAction('${a.key}')"><span class="levro-quick-icon"><i class="fa-solid ${a.icon}"></i></span><span class="levro-quick-body"><strong class="levro-quick-title">${a.title}</strong><span class="levro-quick-desc">${a.desc}</span></span><span class="levro-quick-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></button>`).join("")}</section>`;
 }
@@ -20286,7 +20289,9 @@ async function toggleVendorActive(currentlyActive) {
     if (dueAt && new Date(dueAt).getTime() <= Date.now()) {
       const { data: owed, error: owedError } = await sb.rpc("get_vendor_commission_owed", { p_vendor_id: vendor.id });
       if (owedError) { showToast(owedError.message, "error"); return; }
-      if (Number(owed || 0) > 0) {
+      // Same ₦100 floor as the rest of the commission-pause logic -- Paystack
+      // won't transfer under that anyway.
+      if (Number(owed || 0) >= 100) {
         vendor.is_active = false; vendor.commission_paused = true; vendor.commission_pause_reason = "commission_overdue";
         showCommissionPaywall(Number(owed || 0));
         return;
@@ -30206,11 +30211,11 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   gap:.18rem !important;
 }
 .vendors-directory-grid.vendors-list-mode .vendor-card {
-  min-height:96px !important;
+  min-height:0 !important;
   height:auto !important;
-  flex-direction:row !important;
+  flex-direction:column !important;
   align-items:center !important;
-  gap:.65rem !important;
+  gap:.18rem !important;
 }
 .vendor-directory-card-main { min-width:0 !important; flex:1 1 auto !important; }
 .vendors-directory-grid .vendor-card .vendor-directory-logo {
@@ -30219,7 +30224,6 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   margin:0 0 .3rem !important;
   flex:0 0 auto !important;
 }
-.vendors-directory-grid.vendors-list-mode .vendor-card .vendor-directory-logo { margin:0 !important; }
 .vendors-directory-grid .vendor-directory-name {
   display:block !important;
   font-size:.86rem !important;
@@ -30261,24 +30265,24 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   width:100% !important;
   margin:.75rem 0 0 !important;
 }
-/* Grid mode (not list/row mode): everything centered on the card instead of
+/* Grid and list mode alike: everything centered on the card instead of
    left-aligned against a small top-left logo -- avatar, name, city, sector,
    rating, follow button and follower count all share one visual axis so the
    card reads as one tidy unit instead of scattered pieces. */
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-card{
+.vendors-directory-grid .vendor-card{
   align-items:center !important;
   text-align:center !important;
 }
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-directory-copy{
+.vendors-directory-grid .vendor-directory-copy{
   width:100% !important;
   display:flex !important;
   flex-direction:column !important;
   align-items:center !important;
 }
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-directory-logo{
+.vendors-directory-grid .vendor-card .vendor-directory-logo{
   margin:0 0 .35rem !important;
 }
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-directory-name{
+.vendors-directory-grid .vendor-directory-name{
   width:100% !important;
   white-space:normal !important;
   display:-webkit-box !important;
@@ -30287,17 +30291,17 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   overflow:hidden !important;
   text-overflow:ellipsis !important;
 }
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-directory-city,
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-directory-categories{
+.vendors-directory-grid .vendor-directory-city,
+.vendors-directory-grid .vendor-directory-categories{
   width:100% !important;
   white-space:normal !important;
 }
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-card-footer{
+.vendors-directory-grid .vendor-card-footer{
   justify-content:center !important;
   width:100% !important;
 }
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-card-follow-btn,
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-card-meta-row{
+.vendors-directory-grid .vendor-card-follow-btn,
+.vendors-directory-grid .vendor-card-meta-row{
   align-self:center !important;
 }
 @media (max-width:390px) {
@@ -31636,19 +31640,30 @@ window.renderVendorMapRail = function(){
 }
 @media(max-width:560px){#vendorsGrid .vendor-card{padding:.62rem !important}.vendor-directory-logo{width:2.65rem !important;height:2.65rem !important;min-width:2.65rem !important;min-height:2.65rem !important;}}
 
-/* Final vendor-card sizing. List mode: compact row with a modest avatar.
-   Grid mode: a social-profile-card layout with the avatar large and
-   centered on top, name/location/category/follow stacked below it. */
+/* Final vendor-card sizing: the same social-profile-card layout (large
+   centered avatar on top, name/location/category/follow stacked below)
+   in both grid and list mode -- list mode differs only in that
+   grid-template-columns collapses to one column, so each card just runs
+   full width instead of sharing a row with a second card. */
 .vendor-card-avatar-wrap{position:relative !important;display:inline-flex !important;flex:0 0 auto !important;}
 .vendor-card-verified-badge{position:absolute !important;right:-.08rem !important;bottom:-.08rem !important;width:1.1rem !important;height:1.1rem !important;border-radius:50% !important;background:var(--card) !important;box-shadow:0 0 0 2px var(--card) !important;display:flex !important;align-items:center !important;justify-content:center !important;font-size:.72rem !important;}
 .vendor-card-verified-badge i{color:#16a34a !important;}
-.vendors-directory-grid.vendors-list-mode .vendor-card{min-height:86px !important;padding:.55rem !important;display:flex !important;flex-direction:row !important;align-items:center !important;gap:.65rem !important;}
+.vendors-directory-grid .vendor-card{min-height:0 !important;padding:.75rem .65rem .65rem !important;display:flex !important;flex-direction:column !important;align-items:center !important;gap:.18rem !important;}
+.vendors-directory-grid .vendor-card .vendor-card-avatar-wrap,
+.vendors-directory-grid .vendor-card .vendor-directory-logo{width:3.7rem !important;height:3.7rem !important;min-width:3.7rem !important;min-height:3.7rem !important;margin:0 0 .32rem !important;flex:0 0 3.7rem !important;font-size:1.3rem !important;}
+.vendors-directory-grid .vendor-directory-name{font-size:.88rem !important;margin-top:0 !important;}
 .vendors-directory-grid.vendors-list-mode .vendor-card .vendor-card-avatar-wrap,
-.vendors-directory-grid.vendors-list-mode .vendor-card .vendor-directory-logo{width:3.05rem !important;height:3.05rem !important;min-width:3.05rem !important;min-height:3.05rem !important;margin:0 !important;flex:0 0 3.05rem !important;font-size:1.12rem !important;}
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-card{min-height:230px !important;padding:1rem .8rem .85rem !important;display:flex !important;flex-direction:column !important;align-items:center !important;gap:.3rem !important;}
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-card-avatar-wrap,
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-directory-logo{width:4.4rem !important;height:4.4rem !important;min-width:4.4rem !important;min-height:4.4rem !important;margin:0 0 .5rem !important;flex:0 0 4.4rem !important;font-size:1.55rem !important;}
-.vendors-directory-grid:not(.vendors-list-mode) .vendor-directory-name{font-size:.94rem !important;margin-top:.1rem !important;}
+.vendors-directory-grid.vendors-list-mode .vendor-card .vendor-directory-logo{width:4.4rem !important;height:4.4rem !important;min-width:4.4rem !important;min-height:4.4rem !important;flex:0 0 4.4rem !important;font-size:1.55rem !important;}
+.vendors-directory-grid.vendors-list-mode .vendor-directory-name{font-size:.98rem !important;}
+/* The outer card already spaces its children with a flex gap -- these
+   components' own default margins were compounding on top of it, leaving
+   noticeably more air between the follow button/meta row and everything
+   around them than between any other two lines on the card. */
+.vendors-directory-grid .vendor-card-follow-btn{margin-top:.1rem !important;padding:.26rem .8rem !important;font-size:.68rem !important;}
+.vendors-directory-grid .vendor-card-meta-row{margin-top:.1rem !important;}
+.vendors-directory-grid .vendor-directory-city,
+.vendors-directory-grid .vendor-directory-categories{margin:0 !important;}
+.vendors-directory-grid.vendors-list-mode .vendor-card-meta-row{max-width:280px !important;}
 /* legacy Top-rated Vendor sizing removed */
 /* legacy Top-rated Vendor row layout removed */
 .vendors-map-vendor-chip{flex-basis:196px !important;min-width:196px !important;padding:.55rem .62rem !important;}
@@ -41268,11 +41283,11 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   flex-direction:column !important;
   align-items:flex-start !important;
   justify-content:flex-start !important;
-  gap:.4rem !important;
+  gap:.26rem !important;
   position:relative !important;
-  min-height:112px !important;
-  padding:.8rem .75rem 2.1rem !important;
-  border-radius:16px !important;
+  min-height:0 !important;
+  padding:.55rem .55rem 1.35rem !important;
+  border-radius:14px !important;
   border:1px solid rgba(0,0,0,.05) !important;
   box-shadow:none !important;
   text-align:left !important;
@@ -41284,26 +41299,26 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 #app .levro-home-quick-actions .levro-quick-action:hover,
 #app .levro-home-quick-actions .levro-quick-action:focus-visible{ filter:brightness(.97) !important; }
 #app .levro-home-quick-actions .levro-quick-icon{
-  width:2.2rem !important; height:2.2rem !important;
-  border-radius:10px !important;
+  width:1.7rem !important; height:1.7rem !important;
+  border-radius:8px !important;
   display:inline-flex !important; align-items:center !important; justify-content:center !important;
-  font-size:.95rem !important;
+  font-size:.76rem !important;
   background:rgba(255,255,255,.55) !important;
   color:#1f2937 !important;
   border:0 !important; box-shadow:none !important;
   flex:0 0 auto !important;
 }
-#app .levro-home-quick-actions .levro-quick-body{ display:flex !important; flex-direction:column !important; gap:.16rem !important; width:100% !important; min-width:0 !important; }
-#app .levro-home-quick-actions .levro-quick-title{ display:block !important; font-size:.78rem !important; font-weight:800 !important; line-height:1.2 !important; color:#111827 !important; }
-#app .levro-home-quick-actions .levro-quick-desc{ display:block !important; font-size:.63rem !important; font-weight:500 !important; line-height:1.32 !important; color:rgba(17,24,39,.62) !important; }
+#app .levro-home-quick-actions .levro-quick-body{ display:flex !important; flex-direction:column !important; gap:.05rem !important; width:100% !important; min-width:0 !important; }
+#app .levro-home-quick-actions .levro-quick-title{ display:block !important; font-size:.68rem !important; font-weight:800 !important; line-height:1.15 !important; color:#111827 !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+#app .levro-home-quick-actions .levro-quick-desc{ display:block !important; font-size:.58rem !important; font-weight:500 !important; line-height:1.2 !important; color:rgba(17,24,39,.62) !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
 #app .levro-home-quick-actions .levro-quick-arrow{
-  position:absolute !important; bottom:.65rem !important; right:.65rem !important;
-  width:1.5rem !important; height:1.5rem !important;
+  position:absolute !important; bottom:.42rem !important; right:.45rem !important;
+  width:1.05rem !important; height:1.05rem !important;
   border-radius:50% !important;
   display:inline-flex !important; align-items:center !important; justify-content:center !important;
   background:rgba(255,255,255,.55) !important;
   color:#111827 !important;
-  font-size:.58rem !important;
+  font-size:.46rem !important;
 }
 #app .levro-home-quick-actions .levro-quick-mint{ background:#c9ecd9 !important; }
 #app .levro-home-quick-actions .levro-quick-peach{ background:#fbe1c6 !important; }
@@ -41312,10 +41327,10 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 #app .levro-home-quick-actions .levro-quick-aqua{ background:#c8ede7 !important; }
 #app .levro-home-quick-actions .levro-quick-blue{ background:#d0e1f8 !important; }
 @media (max-width:400px){
-  #app .levro-home-quick-actions{ gap:.45rem !important; }
-  #app .levro-home-quick-actions .levro-quick-action{ min-height:100px !important; padding:.7rem .6rem 1.9rem !important; }
-  #app .levro-home-quick-actions .levro-quick-title{ font-size:.72rem !important; }
-  #app .levro-home-quick-actions .levro-quick-desc{ font-size:.58rem !important; }
+  #app .levro-home-quick-actions{ gap:.4rem !important; }
+  #app .levro-home-quick-actions .levro-quick-action{ padding:.48rem .48rem 1.2rem !important; }
+  #app .levro-home-quick-actions .levro-quick-title{ font-size:.64rem !important; }
+  #app .levro-home-quick-actions .levro-quick-desc{ font-size:.54rem !important; }
 }
 /* Final specificity override for the public vendor storefront fallback only. */
 .storefront-profile .storefront-avatar-fallback-button{
