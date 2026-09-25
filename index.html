@@ -92,7 +92,9 @@
 <meta name="twitter:image" content="https://ovklnoroyxobijgvsyfp.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png">
 <meta name="twitter:image:alt" content="Levromart — Support Local Businesses">
 
+<link rel="icon" href="/favicon.ico" sizes="any">
 <link id="faviconLink" rel="icon" type="image/png" href="/icon-192.png">
+<link rel="shortcut icon" href="/favicon.ico">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0c3323">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -2250,9 +2252,9 @@ h2 + .grid, h3 + .grid, .section-title + .grid{margin-top:.8rem}
 
 /* Profile header stays still while only the menu beneath it scrolls. */
 #profilePanel{overflow:hidden !important;}
-/* Full-bleed, square-cornered panel -- covers the whole page like a proper
-   screen instead of a narrow rounded drawer peeking in from the edge. */
-#profilePanel{width:100vw !important;max-width:100vw !important;border-radius:0 !important;}
+/* Still a normal sliding drawer -- just squared-off corners instead of
+   rounded, matching Claude/ChatGPT-style panels. */
+#profilePanel{border-radius:0 !important;}
 #profilePanel .profile-panel-static{
   flex:0 0 auto;
   position:relative;
@@ -2274,8 +2276,6 @@ h2 + .grid, h3 + .grid, .section-title + .grid{margin-top:.8rem}
 #profilePanel .profile-panel-scroll::-webkit-scrollbar{width:4px}
 #profilePanel .profile-panel-scroll::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--text-muted) 28%,transparent);border-radius:999px}
 #profilePanel .drawer-header{margin-bottom:.55rem}
-#profilePanel .profile-panel-fullscreen-header{justify-content:flex-start !important;gap:.65rem !important;}
-#profilePanel .profile-panel-back-btn{order:-1;}
 #profilePanel .profile-panel-header{padding:.45rem 0 1rem !important;align-items:center !important;}
 #profilePanel .profile-panel-header .avatar-lg{width:60px !important;height:60px !important;}
 #profilePanel .profile-nav-link{
@@ -2397,14 +2397,10 @@ h2 + .grid, h3 + .grid, .section-title + .grid{margin-top:.8rem}
    touch-hover jumps, search icon collisions, and viewport-safe sheets.
    ================================================================ */
 #settingsPanel,
+#profilePanel,
 #notifPanel {
   width: min(304px, 78vw) !important;
   max-width: 304px !important;
-  min-width: 0 !important;
-}
-#profilePanel {
-  width: 100vw !important;
-  max-width: 100vw !important;
   min-width: 0 !important;
 }
 
@@ -2627,8 +2623,7 @@ html { scroll-padding-top: 86px !important; }
 .ai-chat-panel .drawer-header { cursor: default !important; user-select: none !important; -webkit-user-select:none !important; }
 
 @media (max-width: 720px) {
-  #settingsPanel, #notifPanel { width: min(304px,78vw) !important; max-width: 304px !important; }
-  #profilePanel { width: 100vw !important; max-width: 100vw !important; }
+  #settingsPanel, #profilePanel, #notifPanel { width: min(304px,78vw) !important; max-width: 304px !important; }
   .profile-panel-header { grid-template-columns: 56px minmax(0,1fr) !important; }
   #profilePanel .profile-panel-header .avatar-lg { width: 56px !important; height: 56px !important; }
   .hero-search input { padding-left: 2.9rem !important; }
@@ -2869,14 +2864,9 @@ html { scroll-padding-top: 86px !important; }
 
 /* Compact, consistent sheet width on phones. */
 @media (max-width:720px) {
-  #notifPanel, #settingsPanel {
+  #notifPanel, #settingsPanel, #profilePanel {
     width:min(304px,78vw) !important;
     max-width:304px !important;
-    min-width:0 !important;
-  }
-  #profilePanel {
-    width:100vw !important;
-    max-width:100vw !important;
     min-width:0 !important;
   }
   #notifPanel { padding-left:14px !important; padding-right:14px !important; }
@@ -4122,13 +4112,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
 }
 
 /* Profile drawer gesture zone must not create a horizontal page overflow. */
-#settingsPanel, #notifPanel {
+#profilePanel, #settingsPanel, #notifPanel {
   max-width:86vw !important;
-  min-width:0 !important;
-  box-sizing:border-box !important;
-}
-#profilePanel {
-  max-width:100vw !important;
   min-width:0 !important;
   box-sizing:border-box !important;
 }
@@ -7212,12 +7197,14 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
         <button class="icon-btn avatar-btn hidden" id="avatarBtn" onclick="openProfileOrShop()" title="Profile"></button>
         <button class="icon-btn" id="loginBtn" onclick="showLogin()" title="Login / Register"><i class='fa-solid fa-user'></i></button>
       </div>
-      <h1 role="button" tabindex="0" onclick="fastNavigateHome(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();fastNavigateHome(event)}"><span class="brand-logo-stack"><span id="brandLogoLeft" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span><img id="brandLogoCircle" class="brand-logo-layer brand-logo-circle" alt="" /><span id="brandLogoRight" class="brand-logo-layer brand-logo-text" aria-hidden="true"></span></span><span class="sr-only">Levromart</span></h1>
       <nav class="header-nav-links">
         <a class="header-nav-link active" data-view="home" href="#" onclick="fastNavigateHome(event);return false;">Browse</a>
         <a class="header-nav-link" data-view="vendors" href="#" onclick="navigate('vendors');return false;">Vendors</a>
       </nav>
     </div>
+    <button type="button" class="header-search-row" onclick="navigate('search')" aria-label="Search products, services, vendors">
+      <i class="fa-solid fa-magnifying-glass"></i><span>Search…</span>
+    </button>
     <div class="header-right">
       <div class="icon-wrap hidden" id="notifWrap">
         <button class="icon-btn" onclick="toggleNotifPanel()" title="Notifications"><i class='fa-solid fa-bell'></i><span id="notifDot" class="notif-dot hidden">0</span></button>
@@ -7230,9 +7217,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       </div>
     </div>
   </div>
-  <button type="button" class="header-search-row" onclick="navigate('search')" aria-label="Search products, services, vendors">
-    <i class="fa-solid fa-magnifying-glass"></i><span>Search products, services, vendors…</span>
-  </button>
 </header>
 
 <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeAllPanels()"></div>
@@ -7973,7 +7957,8 @@ function setLogoMask(el, url) {
   el.style.maskImage = val;
 }
 setLogoMask(document.getElementById("brandLogoLeft"), LEVROMART_LOGO_LEFT);
-document.getElementById("brandLogoCircle").src = LEVROMART_LOGO_CIRCLE;
+const brandLogoCircleEl = document.getElementById("brandLogoCircle");
+if (brandLogoCircleEl) brandLogoCircleEl.src = LEVROMART_LOGO_CIRCLE;
 // Branded loading indicator -- the logo sits still in the middle while two
 // arcs chase each other around it, used anywhere the app is waiting on
 // something (page navigation, payment confirmation) instead of plain
@@ -8167,7 +8152,7 @@ async function enablePushNotifications() {
 // strings, resolved to a real step (or dropped) per-role in showTour().
 const HOME_TOUR_STEPS = [
   { icon: "fa-hand-sparkles", title: "Hi, I'm Levi", body: "I'll walk you through the app myself, live, on the actual site. Just follow me around.", selector: null, view: "home" },
-  { icon: "fa-house", title: "This is Home", body: "Tap the Levromart logo any time, from anywhere in the app, and I'll bring you straight back here.", selector: "header h1", view: "home" },
+  { icon: "fa-house", title: "This is Home", body: "Tap Home in the bottom bar any time, from anywhere in the app, and I'll bring you straight back here.", selector: `#bottomNav .bottom-nav-item[onclick*="navigate('home')"]`, view: "home" },
   { icon: "fa-magnifying-glass", title: "Search anything", body: "Products, services or a vendor by name — tap here any time to search the whole marketplace.", selector: ".header-search-row", view: "home" },
   { icon: "fa-bolt", title: "Quick actions", body: "These six shortcuts take you straight to shopping, services, rentals, trusted vendors, item requests, and direct chat — without digging through the marketplace.", selector: ".levro-home-quick-actions", view: "home" },
   {
@@ -8219,7 +8204,7 @@ function tourIsVisible(el) {
   return cs.display !== "none" && cs.visibility !== "hidden" && Number(cs.opacity || 1) > 0 && r.width > 0 && r.height > 0;
 }
 
-async function waitForTourTarget(selector, maxMs = 5000) {
+async function waitForTourTarget(selector, maxMs = 2500) {
   if (!selector) return null;
   const started = performance.now();
   while (performance.now() - started < maxMs) {
@@ -8315,7 +8300,7 @@ async function runTourStep(token = liveTourRunToken) {
   let coveredForScroll = false;
   let el = null;
   if (step.selector) {
-    el = await waitForTourTarget(step.selector, 5000);
+    el = await waitForTourTarget(step.selector, 2500);
     if (token !== liveTourRunToken) return;
     if (el) {
       const cs = getComputedStyle(el);
@@ -11151,7 +11136,7 @@ function updateAuthUI() {
 
     panel.innerHTML = `
       <div class="profile-panel-static">
-        <div class="drawer-header profile-panel-fullscreen-header"><button class="drawer-close-btn profile-panel-back-btn" onclick="closeAllPanels()" aria-label="Back"><i class='fa-solid fa-arrow-left'></i></button><h4>Profile</h4></div>
+        <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn" onclick="closeAllPanels()" aria-label="Close profile"><i class='fa-solid fa-xmark'></i></button></div>
 
         <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('vendorDashboard')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('vendorDashboard')}"` : profile.role !== 'admin' ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('buyerProfile')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('buyerProfile')}"` : ''}>
           <div class="avatar-edit-wrap">
@@ -40820,33 +40805,37 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 /* Header search bar, Jumia-style: a tappable bar under the logo row that
    opens the dedicated search page, rather than a search box buried further
    down the Home page under the hero banner. */
-header{flex-direction:column !important;align-items:stretch !important;gap:.6rem !important;}
-.header-top-row{display:flex !important;justify-content:space-between !important;align-items:center !important;width:100% !important;gap:.8rem !important;}
+/* Single row: avatar, then the search pill filling the remaining space,
+   then the bell/messages/cart cluster -- LinkedIn-style, no separate
+   logo/wordmark row and no second search row underneath. */
+header{flex-direction:column !important;align-items:stretch !important;}
+.header-top-row{display:flex !important;align-items:center !important;width:100% !important;gap:.6rem !important;}
+.header-left{flex:0 0 auto !important;}
+.header-right{flex:0 0 auto !important;}
 .header-search-row{
-  display:flex !important;align-items:center !important;gap:.6rem !important;width:100% !important;
+  display:flex !important;align-items:center !important;gap:.5rem !important;
+  flex:1 1 auto !important;width:auto !important;min-width:0 !important;
   background:var(--card) !important;border:1px solid var(--border) !important;border-radius:999px !important;
-  padding:.62rem 1rem !important;color:var(--text-muted) !important;font:inherit !important;font-size:.86rem !important;
+  padding:.55rem .9rem !important;color:var(--text-muted) !important;font:inherit !important;font-size:.84rem !important;
   cursor:pointer !important;text-align:left !important;
 }
-.header-search-row i{color:var(--text-muted) !important;}
-.header-search-row span{overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}
-/* The header grew a second row, so the fixed-position offset every page's
-   content sits below needs to grow by the same amount, or the search row
-   would overlap the top of whatever page is open. */
-body{padding-top:calc(112px + env(safe-area-inset-top,0px)) !important;}
-@media (max-width:720px){body{padding-top:calc(104px + env(safe-area-inset-top,0px)) !important;}}
+.header-search-row i{color:var(--text-muted) !important;flex:0 0 auto !important;}
+.header-search-row span{overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;min-width:0 !important;}
+/* Back to a single-row header height now that the search bar sits inline
+   instead of on its own row underneath. */
+body{padding-top:calc(76px + env(safe-area-inset-top,0px)) !important;}
+@media (max-width:720px){body{padding-top:calc(72px + env(safe-area-inset-top,0px)) !important;}}
 /* #dedicated-search-page-fix: the search page supplies its own back
    button + input row, so showing the persistent header's search pill
    above it looked like two stacked search bars -- hide the header (and
    reclaim the space it left) while the search view is open. */
 body.search-full-page > header{display:none !important;}
 body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !important;}
-/* Anchor scrolls (jump-to-reviews, back-to-section links, etc.) that
-   compute how far to leave clear above the fixed header were tuned to its
-   old, shorter height -- bump them by the same amount the header grew, or
-   the target lands partly hidden behind the new second row. */
-.container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:130px !important;}
-@media (max-width:720px){.container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:120px !important;}}
+/* Anchor scrolls (jump-to-reviews, back-to-section links, etc.) leave clear
+   space above the fixed single-row header so a jump target never lands
+   partly hidden behind it. */
+.container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:80px !important;}
+@media (max-width:720px){.container,.storefront-products-shell,#app>*:first-child{scroll-margin-top:72px !important;}}
 </style>
 
 <script id="levromart-global-broken-image-fallback">
