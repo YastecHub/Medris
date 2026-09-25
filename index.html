@@ -12430,6 +12430,17 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   try { window.closeLevromartTransientFilters?.(); } catch (_) {}
   const app = byId("app");
+  // Re-rendering the whole page on every admin tab tap wipes the horizontal
+  // scroll position of the admin tab rail itself, snapping it back to the
+  // start instead of staying where the admin scrolled to find that tab.
+  // Captured once up front since the page can go through more than one
+  // app.innerHTML swap below (an instant shell, then the real content).
+  const __adminTabsScrollLeft = app?.querySelector(".admin-dash-tabs-inner")?.scrollLeft || 0;
+  const restoreAdminTabsScroll = () => {
+    if (!__adminTabsScrollLeft) return;
+    const rail = app?.querySelector(".admin-dash-tabs-inner");
+    if (rail) rail.scrollLeft = __adminTabsScrollLeft;
+  };
   // Accept both the historical boolean and the newer {replace:true} form so
   // every internal destination still uses one router without accidental
   // duplicate browser-history entries.
@@ -12453,6 +12464,10 @@ async function navigate(view, params = {}, pushHistory = true) {
   const navToken = ++navigationGeneration;
   const previousView = currentView;
   const homeStartScroll = view === "home" ? window.scrollY : null;
+  // Remember exactly where the user was scrolled to on Home before leaving
+  // it (to view a product, open a vendor, etc.) so a Back navigation can
+  // return them to that same spot instead of snapping back to the top.
+  if (previousView === "home" && view !== "home") window.__levroHomeScrollY = window.scrollY;
 
   // Protected routes must never render their access guard while Supabase is
   // still restoring the cached session/profile in the background. This is the
@@ -12571,12 +12586,14 @@ async function navigate(view, params = {}, pushHistory = true) {
     // multi-second "stall" after tapping a vendor card. Every other route
     // already gets an instant shell; storefront now does too.
     app.innerHTML = instantRouteHtml || navigationShellHtml(view);
+    restoreAdminTabsScroll();
     syncLeviFabVisibility();
     hideLevromartSplash();
     clearAutoScrollTimers();
   } else if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view === "home" && cachedRouteHtml) {
     // Reuse a previously rendered real page while the original renderer refreshes it.
     app.innerHTML = cachedRouteHtml;
+    restoreAdminTabsScroll();
     syncLeviFabVisibility();
     hideLevromartSplash();
     clearAutoScrollTimers();
@@ -12785,6 +12802,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     const freshFollowWrap = byId("storefrontFollowWrap");
     if (freshFollowWrap) freshFollowWrap.innerHTML = liveStorefrontFollowHtml;
   }
+  restoreAdminTabsScroll();
   // Now that this view's HTML is actually in the DOM, it's safe to apply the
   // storefront's stats/reviews/packages/follow-state hydration -- doing it
   // any earlier (back inside renderStorefrontInner) was a race that often
@@ -12826,6 +12844,12 @@ async function navigate(view, params = {}, pushHistory = true) {
   // the user's scroll position. Real navigation still starts at the top.
   if (preserveSameViewScroll) {
     requestAnimationFrame(() => window.scrollTo({ top: sameViewScrollY, behavior: "auto" }));
+  } else if (!pushHistory && view === "home" && previousView !== "home" && Number.isFinite(window.__levroHomeScrollY)) {
+    // Landing back on Home via Back (not a fresh tap of the Home tab) --
+    // return to the exact spot the user scrolled to before they left,
+    // instead of snapping back up to the top.
+    const y = window.__levroHomeScrollY;
+    requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
   } else if (pushHistory || previousView !== view) {
     // Real in-app navigation starts at the top. A browser/PWA reload is
     // different: init() calls navigate(..., false), and the persisted route
@@ -24868,7 +24892,6 @@ function adminNavHtml(active) {
     ["adminMonthlyListings", "fa-receipt", "Monthly listings"],
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
     ["adminSupportRequests", "fa-headset", "Support"],
-    ["adminPasswordResets", "fa-key", "Password resets"],
     ["adminInventory", "fa-boxes-stacked", "Inventory"],
     ["adminFeedback", "fa-comment-medical", "Feedback"],
     ["adminLog", "fa-clock-rotate-left", "Admin log"],
@@ -24878,7 +24901,7 @@ function adminNavHtml(active) {
     ["adminR2Migration", "fa-cloud-arrow-up", "R2 migration"],
     ["adminR2Optimize", "fa-compress", "R2 image size"],
   ].filter(([view]) => isSuperAdmin() || !SUPER_ADMIN_ONLY_VIEWS.has(view));
-  return `<div class="dash-tabs admin-dash-tabs"><div class="admin-dash-tabs-inner">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : view === "adminPasswordResets" && Number(window.__passwordResetPendingCount||0) > 0 ? `<span class="dash-tab-dot password-reset-admin-badge">${Number(window.__passwordResetPendingCount||0) > 9 ? "9+" : Number(window.__passwordResetPendingCount||0)}</span>` : ""}</button>`).join("")}</div></div>`;
+  return `<div class="dash-tabs admin-dash-tabs"><div class="admin-dash-tabs-inner">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : ""}</button>`).join("")}</div></div>`;
 }
 
 // ---------- ADMIN: one-time R2 migration ----------
@@ -35669,6 +35692,13 @@ html[data-theme="black"] #app .order-filter-clear-btn{
   let lastPermissionReminder = 0;
   async function leviPermissionReminder(force = false) {
     if (!session) return;
+    // Once the user has dismissed this nudge (or a notification/location
+    // modal) once, it should not keep coming back. This used to be "enforced"
+    // by patching window.leviPermissionReminder from another script, but that
+    // function is only ever reachable as this local closure binding -- the
+    // patch silently never took effect, so the nudge kept firing every few
+    // minutes forever regardless of dismissal. Check the same flag directly.
+    try { if (localStorage.getItem("levromart-permission-nudge-seen-v2") === "1") return; } catch (_) {}
     if (Date.now() - lastPermissionReminder < 4 * 60 * 1000 && !force) return;
     const notifState = (typeof Notification !== "undefined") ? Notification.permission : "unsupported";
     let locationState = "unknown";
@@ -35712,7 +35742,7 @@ html[data-theme="black"] #app .order-filter-clear-btn{
     permissionReminderTimer = setTimeout(async () => {
       await leviPermissionReminder();
       schedulePermissionReminder();
-    }, 5 * 60 * 1000);
+    }, 6 * 60 * 60 * 1000);
   }
   setTimeout(() => { leviPermissionReminder(true).catch(() => {}); schedulePermissionReminder(); }, 12_000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) leviPermissionReminder().catch(() => {}); });
@@ -41305,6 +41335,7 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   font-size:.76rem !important;
   background:rgba(255,255,255,.55) !important;
   color:#1f2937 !important;
+  -webkit-text-fill-color:#1f2937 !important;
   border:0 !important; box-shadow:none !important;
   flex:0 0 auto !important;
 }
