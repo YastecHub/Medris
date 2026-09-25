@@ -10703,6 +10703,41 @@ async function refreshAuthState() {
   // still exists. After a hard account deletion, an already-issued access
   // token can remain readable locally until it expires. Validate the current
   // user before treating that cached session as a real login.
+  //
+  // That verification call and the profile-repair/role-sync work further
+  // down used to run strictly back to back -- four full network round trips
+  // in a row on every single login and session restore, which is most of
+  // why logging in could visibly sit there for several seconds on a slow
+  // connection. Neither of them actually needs verification to finish
+  // first: they already have everything they need from this same cached
+  // JWT, and a genuinely invalid token gets rejected on its own at the
+  // database layer regardless of call order. Start them together and only
+  // decide what to keep once verification resolves.
+  let ensureProfileAndRoleSync = Promise.resolve(null);
+  if (session) {
+    ensureProfileAndRoleSync = (async () => {
+      // A deleted account can be recreated with a brand-new Auth UUID. Repair
+      // the public.users anchor before any buyer_id/vendor_id FK reads or writes.
+      await ensureCustomerProfile();
+      // Resolve the account role from the authoritative database state on every
+      // session restore. This prevents a stale local/profile role from leaving an
+      // approved vendor looking like a buyer until they log out and back in.
+      // Pending/rejected vendor applications resolve back to buyer by design.
+      try {
+        const { data: resolvedRole, error: roleSyncError } = await sb.rpc("sync_current_account_role");
+        if (!roleSyncError && resolvedRole) return resolvedRole;
+        if (roleSyncError) console.warn("[Levromart] Authoritative role sync failed; using profile row:", roleSyncError);
+      } catch (roleSyncException) {
+        console.warn("[Levromart] Authoritative role sync exception:", roleSyncException);
+      }
+      return null;
+    })();
+    // Runs in the background regardless of what verification below decides;
+    // its own console.warn calls are the only reporting it needs, so a
+    // rejection here must never surface as an unhandled promise rejection.
+    ensureProfileAndRoleSync.catch(() => {});
+  }
+
   if (session) {
     let verifiedUser = null, verifyError = null;
     try {
@@ -10735,28 +10770,16 @@ async function refreshAuthState() {
   if (session) {
     const userId = session.user.id;
 
-    // A deleted account can be recreated with a brand-new Auth UUID. Repair
-    // the public.users anchor before any buyer_id/vendor_id FK reads or writes.
-    await ensureCustomerProfile();
-
-    // Resolve the account role from the authoritative database state on every
-    // session restore. This prevents a stale local/profile role from leaving an
-    // approved vendor looking like a buyer until they log out and back in.
-    // Pending/rejected vendor applications resolve back to buyer by design.
-    try {
-      const { data: resolvedRole, error: roleSyncError } = await sb.rpc("sync_current_account_role");
-      if (!roleSyncError && resolvedRole) {
-        // The subsequent users query below is still the source of the complete
-        // profile object; this local assignment only prevents a stale value
-        // from being used by code that runs between the two requests.
-        profile = profile || {};
-        profile.role = resolvedRole;
-        profile.role_selected = true;
-      } else if (roleSyncError) {
-        console.warn("[Levromart] Authoritative role sync failed; using profile row:", roleSyncError);
-      }
-    } catch (roleSyncException) {
-      console.warn("[Levromart] Authoritative role sync exception:", roleSyncException);
+    // Almost always already settled by now, since it's been running since
+    // right before the getUser() round trip above.
+    const resolvedRole = await ensureProfileAndRoleSync;
+    if (resolvedRole) {
+      // The subsequent users query below is still the source of the complete
+      // profile object; this local assignment only prevents a stale value
+      // from being used by code that runs between the two requests.
+      profile = profile || {};
+      profile.role = resolvedRole;
+      profile.role_selected = true;
     }
 
     const [profileRes, vendorRes, favsRes, pkgFavsRes] = await Promise.all([
