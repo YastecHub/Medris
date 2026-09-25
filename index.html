@@ -92,7 +92,7 @@
 <meta name="twitter:image" content="https://ovklnoroyxobijgvsyfp.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png">
 <meta name="twitter:image:alt" content="Levromart — Support Local Businesses">
 
-<link id="faviconLink" rel="icon" type="image/webp" href="">
+<link id="faviconLink" rel="icon" type="image/png" href="/icon-192.png">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0c3323">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -7919,7 +7919,10 @@ document.getElementById("loginModalLogo").src = MEDRIS_LOGO;
 document.getElementById("aiChatFabLogo").src = MEDRIS_LOGO;
 document.getElementById("tourLeviLogo").src = MEDRIS_LOGO;
 document.getElementById("aiChatHeaderLogo").src = MEDRIS_LOGO;
-document.getElementById("faviconLink").href = MEDRIS_LOGO;
+// The favicon (and app icon, for search engines and browser tabs) uses the
+// branded /icon-192.png set in the <head> instead -- MEDRIS_LOGO is a
+// transparent glyph meant to sit on top of the app's own background, which
+// looks washed out as a small tab icon against a plain white/dark backdrop.
 document.getElementById("installModalLogo").src = MEDRIS_LOGO;
 
 // ---------- "INSTALL AS APP" PROMPT ----------
@@ -8094,7 +8097,7 @@ const HOME_TOUR_STEPS = [
   {
     icon: "fa-map-location-dot", title: "Find vendors near you", body: "Every verified vendor, plotted on a real map, closest first. Tap any pin — or any card up here — to open that vendor's storefront.",
     selector: "#vendorsMapWrap, .vendors-map-vendor-rail", view: "vendors",
-    onEnter: () => { try { switchVendorsView("map"); } catch (_) {} },
+    onEnter: async () => { try { await switchVendorsView("map"); } catch (_) {} },
   },
   { icon: "fa-compass", title: "Get around from here", body: "The bottom bar is always one tap away, wherever you are on the site.", selector: "#bottomNav", view: "home" },
   "MESSAGES_TOUR_STEP",
@@ -18021,7 +18024,14 @@ function switchVendorsView(mode) {
   mapBtn?.setAttribute("aria-pressed", String(mode === "map"));
   byId("vendorsGrid")?.classList.toggle("hidden", mode !== "list");
   byId("vendorsMapWrap")?.classList.toggle("hidden", mode !== "map");
-  if (mode === "map") renderVendorsMap();
+  // renderVendorsMap() loads Leaflet and builds the map asynchronously.
+  // Returning that promise lets a caller that actually needs the map ready
+  // (the tour's onEnter, in particular) await it instead of moving on
+  // while it's still mid-flight -- which is exactly what let the tour
+  // race ahead to a later step and then have this step's map try to
+  // attach to a #vendorsMap element that had already been torn down,
+  // throwing Leaflet's "Map container not found".
+  if (mode === "map") return renderVendorsMap();
 }
 
 function addVendorsMapRecenterControl(map) {
@@ -40805,5 +40815,29 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
     longPressed = false;
     if (e.target.closest?.(".notif-item")) { e.preventDefault(); e.stopPropagation(); }
   }, true);
+})();
+</script>
+
+<script id="levromart-modal-backdrop-dismiss">
+/* Tapping outside a popup to close it is standard, expected behaviour that
+   most of this app's ~70 individual modals never got wired up for one by
+   one. Rather than touch each one, this triggers whichever close button a
+   modal already has (same aria-label="Close"/×-icon convention used
+   throughout) when the tap lands on the backdrop itself -- e.target is only
+   the modal element for a direct hit, never for a tap on its content, so
+   this can't fire from clicking inside the popup. A modal with no close
+   button at all (the "storefront paused, pay to continue" lock, the admin
+   login-code prompt) is deliberately not dismissible, and finding nothing
+   to click here correctly leaves it alone instead of inventing a way to
+   close it. */
+(function () {
+  "use strict";
+  document.addEventListener("click", (e) => {
+    const modal = e.target;
+    if (!(modal instanceof Element) || !modal.classList.contains("modal") || modal.classList.contains("hidden")) return;
+    const closer = modal.querySelector('[aria-label="Close" i]') ||
+      [...modal.querySelectorAll("button")].find((b) => b.querySelector(".fa-xmark"));
+    if (closer) closer.click();
+  });
 })();
 </script>
