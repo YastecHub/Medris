@@ -1028,7 +1028,16 @@
   .conv-row-menu-backdrop.open { background: rgba(0,0,0,.45); }
   .conv-row-menu-sheet { width: 100%; max-width: 480px; background: var(--card); border: 1px solid var(--border); border-bottom: 0; border-radius: 18px 18px 0 0; padding: .5rem .5rem calc(.6rem + env(safe-area-inset-bottom,0px)); box-shadow: 0 -10px 32px rgba(0,0,0,.28); transform: translateY(100%); transition: transform .2s cubic-bezier(.22,1,.36,1); }
   .conv-row-menu-backdrop.open .conv-row-menu-sheet { transform: translateY(0); }
-  .conv-row-menu-sheet .ms-item { display: flex; align-items: center; gap: .65rem; width: 100%; text-align: left; padding: .85rem .9rem; font-size: .9rem; border-radius: 10px; }
+  .conv-row-menu-sheet .ms-item {
+    display: flex; align-items: center; gap: .75rem; width: 100%; text-align: left;
+    padding: .85rem .9rem; font-size: .92rem; font-weight: 600; border-radius: 12px;
+    appearance: none; -webkit-appearance: none; border: 0; outline: 0;
+    background: transparent; color: var(--text); box-shadow: none; text-decoration: none;
+    font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .conv-row-menu-sheet .ms-item:active,
+  .conv-row-menu-sheet .ms-item:hover { background: color-mix(in srgb, var(--text) 7%, transparent); }
+  .conv-row-menu-sheet .ms-item i { width: 1.4rem; text-align: center; color: var(--text-muted); flex: 0 0 auto; font-size: .95rem; }
   .chat-thread { display: flex; flex-direction: column; height: calc(100vh - 13rem); min-height: 420px; max-height: none; border: none; border-radius: 0.9rem 0.9rem 0 0; overflow: hidden; background: var(--card); }
   @media (max-width: 760px) { .chat-thread { height: calc(100dvh - 11rem); border-radius: 0; } }
   /* Chunky desktop scrollbars (Windows/Linux Chrome, unlike macOS's overlay
@@ -15052,15 +15061,22 @@ async function toggleFavoriteViaDoubleTap(imgContainer, productId) {
   if (favoriteMutations.has(productId)) return;
   favoriteMutations.add(productId);
   const wasFav = favoriteIds.has(productId);
+  // Play the heart the instant the double tap is detected, not after the
+  // network round trip -- waiting for that first meant the animation
+  // showed up hundreds of milliseconds (or more, on a slow connection)
+  // after the tap, by which point it read as "nothing happened" next to
+  // the browser's instant tap-highlight flash. Roll back quietly on
+  // failure instead.
+  if (wasFav) favoriteIds.delete(productId); else favoriteIds.add(productId);
+  playProductWishBounce(imgContainer, !wasFav);
   try {
     const { error } = wasFav
       ? await sb.from("favorites").delete().eq("buyer_id", session.user.id).eq("product_id", productId)
       : await sb.from("favorites").insert({ buyer_id: session.user.id, product_id: productId });
     if (error) throw error;
-    if (wasFav) favoriteIds.delete(productId); else favoriteIds.add(productId);
-    playProductWishBounce(imgContainer, !wasFav);
     await hydrateProductLikeCountsInView();
   } catch (err) {
+    if (wasFav) favoriteIds.add(productId); else favoriteIds.delete(productId);
     showToast(err.message || "Could not update wishlist.", "error");
   } finally {
     favoriteMutations.delete(productId);
@@ -30119,8 +30135,19 @@ body::before { background: var(--system-bar-shade) !important; }
 
 /* Double-tap-to-wishlist heart, Instagram-style: hidden until a double tap
    plays it, then bounces in and fades back out. Filled red on add, a fading
-   outline heart on remove so the two read differently at a glance. */
-.product-img { position: relative; }
+   outline heart on remove so the two read differently at a glance.
+   The div itself has no default tap-highlight suppression (that global
+   rule only covers <button>/<a>/[role=button], and this is a plain div
+   with an onclick) -- without this, every tap flashed the browser's
+   default blue tap-highlight rectangle instead of the heart, which read
+   as "nothing happened, just a blue flash". */
+.product-img {
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
 .product-wish-bounce {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   pointer-events: none; opacity: 0; z-index: 3;
@@ -41701,6 +41728,76 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 #app .hscroll.trending-scroll .product-card-wrap h4{ margin:.5rem .65rem .15rem !important; }
 #app .hscroll.trending-scroll .product-card-compact-footer{ padding:.35rem .65rem .6rem !important; margin-top:auto !important; }
 #app .hscroll.trending-scroll .product-card-total-line{ padding:0 .65rem .55rem !important; margin-top:0 !important; }
+
+/* Same treatment for every other product/service grid card -- Browse
+   Everything and the vendor storefront's product grid both render through
+   this same #app .grid:has(> .product-card-wrap) shape, so one fix covers
+   both (and services, which use the same card with a badge instead of a
+   cart button). Packages use a different, more content-dense card and
+   are handled separately. */
+#app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{
+  padding:0 0 2.3rem !important;
+  overflow:hidden !important;
+}
+#app .grid:has(> .product-card-wrap) .product-img{
+  border-radius:0 !important;
+  margin:0 !important;
+}
+#app .grid:has(> .product-card-wrap) .product-card-wrap h4{ margin:.5rem .55rem .15rem !important; }
+#app .grid:has(> .product-card-wrap) .product-card-compact-footer{ padding:0 .55rem !important; }
+#app .grid:has(> .product-card-wrap) .product-card-total-line{ padding:0 .55rem .3rem !important; margin-top:0 !important; }
+
+/* Same edge-to-edge treatment for vendor cards: the vendor's photo (or
+   initials fallback, same styling either way) fills the top of the card
+   as a flush square instead of a small centered circle, with name/
+   location/category/follow/stats below. Grid mode only -- list mode
+   keeps its existing centered-circle layout as asked. Covers both the
+   Vendors directory grid and the homepage Featured Vendors rail, since
+   both render through the same vendorCardHtml markup. */
+.vendors-directory-grid:not(.vendors-list-mode) .vendor-card{
+  padding:0 0 .6rem !important;
+  overflow:hidden !important;
+}
+.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-card-avatar-wrap{
+  width:100% !important; height:auto !important; aspect-ratio:1 / 1 !important;
+  min-width:0 !important; min-height:0 !important; margin:0 !important; flex:0 0 auto !important;
+  display:block !important;
+}
+.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-directory-logo{
+  width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important;
+  border-radius:0 !important; margin:0 !important; font-size:1.9rem !important;
+  display:flex !important; align-items:center !important; justify-content:center !important;
+}
+.vendors-directory-grid:not(.vendors-list-mode) .vendor-card-verified-badge{
+  right:.4rem !important; bottom:auto !important; top:.4rem !important;
+}
+.vendors-directory-grid:not(.vendors-list-mode) .vendor-directory-copy{
+  padding:.55rem .55rem 0 !important;
+}
+#app .top-rated-vendors-scroll > .vendor-card,
+#app .top-rated-vendors-scroll > .homepage-vendor-card{
+  padding:0 0 .5rem !important;
+  overflow:hidden !important;
+}
+#app .top-rated-vendors-scroll .vendor-card-avatar-wrap{
+  width:100% !important; height:auto !important; aspect-ratio:1 / 1 !important;
+  min-width:0 !important; margin:0 !important; flex:0 0 auto !important; display:block !important;
+}
+#app .top-rated-vendors-scroll .vendor-card .vendor-directory-logo,
+#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-directory-logo,
+#app .top-rated-vendors-scroll .homepage-vendor-card .vendor-home-avatar,
+#app .top-rated-vendors-scroll .vendor-directory-logo,
+#app .top-rated-vendors-scroll .vendor-home-avatar{
+  width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important;
+  border-radius:0 !important; margin:0 !important; font-size:1.3rem !important;
+}
+#app .top-rated-vendors-scroll .vendor-card-verified-badge{
+  right:.3rem !important; bottom:auto !important; top:.3rem !important;
+}
+#app .top-rated-vendors-scroll .vendor-directory-copy,
+#app .top-rated-vendors-scroll .vendor-home-copy{
+  padding:.4rem .4rem 0 !important;
+}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
