@@ -13709,7 +13709,25 @@ async function renderHome() {
   // Keep the initial marketplace paint to one parallel batch. Packages are
   // first-class marketplace listings now, so they load alongside products
   // rather than causing a second visible page refresh.
+  //
+  // Both loaders below page through the ENTIRE eligible catalogue (every
+  // active product, every verified vendor) so the fairness rotation further
+  // down has the full set to rotate through -- unavoidably heavy, but there
+  // is no reason to pay that cost again on every single tap back to Home in
+  // the same short browsing session. A brief in-memory cache, keyed by the
+  // active sector/category filter, skips straight to the last full fetch
+  // when it's still fresh.
+  window.__homeCatalogCache = window.__homeCatalogCache || new Map();
+  const HOME_CATALOG_CACHE_MS = 90 * 1000;
+  const getCachedCatalog = (key) => {
+    const hit = window.__homeCatalogCache.get(key);
+    return hit && Date.now() - hit.at < HOME_CATALOG_CACHE_MS ? hit.data : null;
+  };
+  const setCachedCatalog = (key, data) => window.__homeCatalogCache.set(key, { data, at: Date.now() });
   const loadTopVendors = async () => {
+    const cacheKey = `vendors:${activeSector?.id || "all"}`;
+    const cached = getCachedCatalog(cacheKey);
+    if (cached) return { data: cached };
     const rows = [];
     const pageSize = 500;
     const orderedQuery = topVendorsQuery.order("avg_rating", { ascending: false }).order("id");
@@ -13720,9 +13738,14 @@ async function renderHome() {
       if (!data || data.length < pageSize) break;
     }
     const uniqueRows = [...new Map(rows.map(v => [String(v.id), v])).values()];
-    return { data: await attachVendorFollowerCounts(uniqueRows) };
+    const result = await attachVendorFollowerCounts(uniqueRows);
+    setCachedCatalog(cacheKey, result);
+    return { data: result };
   };
   const loadBrowseCatalogue = async () => {
+    const cacheKey = `browse:${activeSector?.id || "all"}:${activeCategory?.id || "all"}`;
+    const cached = getCachedCatalog(cacheKey);
+    if (cached) return { data: cached };
     const rows = [];
     const pageSize = 500;
     for (let offset = 0; ; offset += pageSize) {
@@ -13734,7 +13757,9 @@ async function renderHome() {
       rows.push(...(data || []));
       if (!data || data.length < pageSize) break;
     }
-    return { data: [...new Map(rows.map(p => [String(p.id), p])).values()] };
+    const result = [...new Map(rows.map(p => [String(p.id), p])).values()];
+    setCachedCatalog(cacheKey, result);
+    return { data: result };
   };
   const [{ data: trending, error: trendingError }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
     vendorQuery.order("view_count", { ascending: false }),
@@ -14209,12 +14234,18 @@ async function renderSearchPageSuggestions(forceWithTerm) {
     return forceWithTerm ? t === forceWithTerm : !t;
   };
   if (!stillCurrent()) return;
+  // Pull a wider pool than what's actually shown, then run it through the
+  // same fairness shuffle Browse Everything uses (a new arrangement every
+  // 10 minutes) instead of always ranking by raw view_count -- otherwise
+  // the same already-popular handful of listings owns this slot forever,
+  // and everything else never gets a turn at it.
   const { data } = await sb.from("products")
-    .select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,vendor:vendors!inner(business_name,verification_status,is_active,lat,lng)")
+    .select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,category:categories(sector_id),vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
-    .order("view_count", { ascending: false }).limit(12);
+    .order("view_count", { ascending: false }).limit(60);
   if (!stillCurrent()) return; // typing moved on while this was in flight
-  const prods = sortSearchResultsByPriceThenDistance(data || [], searchResultEffectivePrice);
+  const pool = deterministicBrowseVisibilityShuffle(data || [], "search-suggestions").slice(0, 12);
+  const prods = sortSearchResultsByPriceThenDistance(pool, searchResultEffectivePrice);
   if (!prods.length) return;
   searchSuggestionsLoaded = true;
   // Forced mode keeps the "no matches" note in place above the fallback
@@ -16694,6 +16725,37 @@ const CONTACT_INFO_PATTERNS = [
 function messageLooksLikeContactBypass(text) {
   return CONTACT_INFO_PATTERNS.some((re) => re.test(text));
 }
+// A single message rarely spells out a whole phone number once someone
+// notices the check above catches that -- splitting it across several
+// short, otherwise-meaningless digit-only messages ("080", "6322", "7669")
+// gets round it, since none of those three alone looks like a phone
+// number. Track a short rolling window of recent bare-digit-and-separator
+// messages per conversation and catch the same pattern once enough of them
+// stack up to read as a number. A price or quantity breaks the streak
+// immediately, since real prices are written with a ₦, "naira", or
+// comma-thousands (none of which are bare digits/separators), and any
+// message that isn't purely digits/spaces/dashes/dots resets the buffer.
+const __chatDigitFragments = new Map(); // conversationId -> [{digits, at}]
+const DIGIT_FRAGMENT_WINDOW_MS = 3 * 60 * 1000;
+const DIGIT_FRAGMENT_THRESHOLD = 7;
+function messageContinuesDigitFragmentPattern(conversationId, text) {
+  const trimmed = text.trim();
+  const isBareDigits = /\d/.test(trimmed) && /^[\d\s().-]+$/.test(trimmed);
+  const now = Date.now();
+  const entries = (__chatDigitFragments.get(conversationId) || []).filter((e) => now - e.at < DIGIT_FRAGMENT_WINDOW_MS);
+  if (!isBareDigits) {
+    __chatDigitFragments.set(conversationId, []);
+    return false;
+  }
+  entries.push({ digits: trimmed.replace(/\D/g, ""), at: now });
+  const combinedLength = entries.reduce((sum, e) => sum + e.digits.length, 0);
+  if (combinedLength >= DIGIT_FRAGMENT_THRESHOLD) {
+    __chatDigitFragments.set(conversationId, []); // reset so the next unrelated message isn't blocked too
+    return true;
+  }
+  __chatDigitFragments.set(conversationId, entries);
+  return false;
+}
 const __convCompletedOrderCache = new Map();
 async function conversationHasCompletedOrder(conversationId) {
   if (__convCompletedOrderCache.has(conversationId)) return __convCompletedOrderCache.get(conversationId);
@@ -16714,7 +16776,7 @@ async function sendChatMessage(conversationId) {
   const input = byId("chatInput");
   const body = input.value.trim();
   if (!body) return;
-  if (messageLooksLikeContactBypass(body) && !(await conversationHasCompletedOrder(conversationId))) {
+  if ((messageLooksLikeContactBypass(body) || messageContinuesDigitFragmentPattern(conversationId, body)) && !(await conversationHasCompletedOrder(conversationId))) {
     showToast("For your safety, phone numbers and outside contact details can't be shared here until an order between you has completed. Keep the conversation and payment in-app.", "error");
     return;
   }
@@ -16872,7 +16934,7 @@ function bindChatImageEditorPointer(){
 }
 
 async function sendPreparedChatImage(conversationId, prepared, replyToId, replyTargetSnapshot) {
-  if (prepared.caption && messageLooksLikeContactBypass(prepared.caption) && !(await conversationHasCompletedOrder(conversationId))) {
+  if (prepared.caption && (messageLooksLikeContactBypass(prepared.caption) || messageContinuesDigitFragmentPattern(conversationId, prepared.caption)) && !(await conversationHasCompletedOrder(conversationId))) {
     // Every caller already wraps this call in try/catch and toasts
     // err.message on failure -- throwing here (rather than also toasting
     // directly) avoids a duplicate, uglier second toast.
@@ -19366,8 +19428,7 @@ function filterStorefrontProducts() {
   const services = all.filter(p => !!p.is_service);
   const current = storefrontCatalogTab === "services" ? services : products;
   const filtered = q ? current.filter((p) => `${p.name || ""} ${(p.category?.name || "")}`.toLowerCase().includes(q)) : current;
-  const expanded = Boolean(window.__storefrontExpanded) || Boolean(q);
-  const visible = expanded ? filtered : filtered.slice(0, 6);
+  const visible = filtered;
   const gridEl = byId("storefrontGrid");
   if (gridEl) gridEl.innerHTML = visible.length ? visible.map(productCardHtml).join("") : `<div class="empty-state">No ${storefrontCatalogTab} found${q ? ` for “${esc(q)}”` : ""}.</div>`;
   const tableEl = byId("storefrontTable");
@@ -19376,11 +19437,7 @@ function filterStorefrontProducts() {
   if (pCount) pCount.textContent = `(${products.length})`;
   if (sCount) sCount.textContent = `(${services.length})`;
   const wrap = byId("storefrontViewMoreWrap");
-  if (wrap) {
-    if (storefrontCatalogTab === "packages") { wrap.innerHTML = ""; return; }
-    if (!q && filtered.length > 6) wrap.innerHTML = `<button class="btn btn-outline" onclick="toggleStorefrontProducts()">${expanded ? `Show fewer ${storefrontCatalogTab}` : `View more ${storefrontCatalogTab} (${filtered.length - 6})`}</button>`;
-    else wrap.innerHTML = "";
-  }
+  if (wrap) wrap.innerHTML = "";
 }
 
 function toggleStorefrontProducts() {
@@ -23476,13 +23533,9 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       ${addr ? `<p>${addr}</p>` : `<p class="muted">This vendor hasn't listed a pickup address yet. Message them to confirm where to collect your order.</p>`}
       ${order.vendor?.opening_hours ? `<p class="muted" style="font-size:0.85rem;"><i class="fa-solid fa-clock"></i> ${esc(order.vendor.opening_hours)}</p>` : ""}
       <div class="order-vendor-message-wrap pickup-message-vendor-wrap">
-        <button class="btn btn-sm order-message-vendor-btn" type="button" onclick="toggleInlineMenu('pickupVendorMessageMenu-${order.id}',event)" aria-label="Message vendor to confirm pickup" title="Message vendor to confirm pickup">
-          <i class="fa-solid fa-comment-dots"></i> Message vendor to confirm pickup <i class="fa-solid fa-chevron-down" style="font-size:.68em;margin-left:.15rem;"></i>
+        <button class="btn btn-sm order-message-vendor-btn" type="button" data-draft="${esc(pickupMessageDraft(order))}" onclick="startConversationWithVendor('${order.vendor.id}', this.dataset.draft)" aria-label="Message vendor to confirm pickup" title="Message vendor to confirm pickup">
+          <i class="fa-solid fa-comment-dots"></i> Message vendor to confirm pickup
         </button>
-        <div class="ms-list hidden order-vendor-message-menu" id="pickupVendorMessageMenu-${order.id}">
-          <button class="ms-item" type="button" data-draft="${esc(pickupMessageDraft(order))}" onclick="startConversationWithVendor('${order.vendor.id}', this.dataset.draft);closeInlineMenu('pickupVendorMessageMenu-${order.id}')"><i class="fa-solid fa-comment-dots"></i> Message in app</button>
-          ${order.vendor.whatsapp_visible && order.vendor.whatsapp_number ? `<a class="ms-item" href="${waLink(order.vendor.whatsapp_number, pickupMessageDraft(order))}" target="_blank" rel="noopener" onclick="closeInlineMenu('pickupVendorMessageMenu-${order.id}')"><i class="fa-brands fa-whatsapp"></i> Message on WhatsApp</a>` : ""}
-        </div>
       </div>
     </div>`;
   }
@@ -26880,7 +26933,7 @@ async function sendAiDraftMessage(vendorId, btn) {
       ({ data: conversationId, error } = await sb.rpc("get_or_create_conversation", { p_vendor_id: vendorId }));
     }
     if (error) throw new Error("We couldn't start this conversation. Please try again.");
-    if (messageLooksLikeContactBypass(text) && !(await conversationHasCompletedOrder(conversationId))) {
+    if ((messageLooksLikeContactBypass(text) || messageContinuesDigitFragmentPattern(conversationId, text)) && !(await conversationHasCompletedOrder(conversationId))) {
       throw new Error("Phone numbers and outside contact details can't be shared here until an order between you has completed.");
     }
     const { error: msgErr } = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: session.user.id, body: text });
