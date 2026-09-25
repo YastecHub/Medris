@@ -1023,21 +1023,6 @@
   .conv-unread-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
   .conv-unread-badge { min-width: 1.3rem; height: 1.3rem; padding: 0 0.35rem; border-radius: 999px; background: var(--danger); color: #fff; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .conv-date-sep { text-align: center; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); margin: 0.7rem auto; padding: 0.25rem 0.75rem; background: var(--card); border-radius: 999px; width: fit-content; }
-  .conv-list-item.conv-long-pressing { background: color-mix(in srgb, var(--text) 6%, var(--card)); }
-  .conv-row-menu-backdrop { position: fixed; inset: 0; z-index: 10950; background: rgba(0,0,0,0); display: flex; align-items: flex-end; justify-content: center; transition: background-color .18s ease; }
-  .conv-row-menu-backdrop.open { background: rgba(0,0,0,.45); }
-  .conv-row-menu-sheet { width: 100%; max-width: 480px; background: var(--card); border: 1px solid var(--border); border-bottom: 0; border-radius: 18px 18px 0 0; padding: .5rem .5rem calc(.6rem + env(safe-area-inset-bottom,0px)); box-shadow: 0 -10px 32px rgba(0,0,0,.28); transform: translateY(100%); transition: transform .2s cubic-bezier(.22,1,.36,1); }
-  .conv-row-menu-backdrop.open .conv-row-menu-sheet { transform: translateY(0); }
-  .conv-row-menu-sheet .ms-item {
-    display: flex; align-items: center; gap: .75rem; width: 100%; text-align: left;
-    padding: .85rem .9rem; font-size: .92rem; font-weight: 600; border-radius: 12px;
-    appearance: none; -webkit-appearance: none; border: 0; outline: 0;
-    background: transparent; color: var(--text); box-shadow: none; text-decoration: none;
-    font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
-  }
-  .conv-row-menu-sheet .ms-item:active,
-  .conv-row-menu-sheet .ms-item:hover { background: color-mix(in srgb, var(--text) 7%, transparent); }
-  .conv-row-menu-sheet .ms-item i { width: 1.4rem; text-align: center; color: var(--text-muted); flex: 0 0 auto; font-size: .95rem; }
   .chat-thread { display: flex; flex-direction: column; height: calc(100vh - 13rem); min-height: 420px; max-height: none; border: none; border-radius: 0.9rem 0.9rem 0 0; overflow: hidden; background: var(--card); }
   @media (max-width: 760px) { .chat-thread { height: calc(100dvh - 11rem); border-radius: 0; } }
   /* Chunky desktop scrollbars (Windows/Linux Chrome, unlike macOS's overlay
@@ -15621,9 +15606,9 @@ function convRowHtml(c) {
   const timeLabel = convRowTimeLabel(c.updated_at || c.last_message_at || c.created_at);
   // Pin/archive/add-to-list/mark-unread used to sit as three permanent
   // buttons on every row -- cluttered, and mostly-unused actions competing
-  // for space with the actual message preview. They now live in a menu a
-  // long press opens (openConvRowMenu), same as the rest of the app's
-  // long-press-for-actions pattern.
+  // for space with the actual message preview. A long press now enters the
+  // multi-select mode (checkboxes, see setupBatchLongPressSelection) and
+  // those actions live in the selection toolbar / a single chat's own menu.
   return `<div class="conv-row-wrap ${selected ? "selected" : ""}">
     <div class="conv-list-item ${selected ? "selected" : ""}" data-conversation-id="${c.conversation_id}" data-pinned="${pinned ? "1" : "0"}" data-archived="${archived ? "1" : "0"}" data-unread="${isUnread ? "1" : "0"}" onclick="handleConvRowClick(event,'${c.conversation_id}')">
       ${msgSelectMode ? `<span class="conv-select-check ${selected ? "active" : ""}" aria-hidden="true"><i class="fa-solid fa-check"></i></span>` : ""}
@@ -15636,35 +15621,6 @@ function convRowHtml(c) {
     </div>
   </div>`;
 }
-// Long press on a conversation row -> Add to list / Archive / Pin / Mark
-// read-unread, replacing the three buttons that used to sit permanently on
-// every row. One shared .ms-list menu instance (repositioned per row) --
-// the existing global outside-click handler already closes any open
-// .ms-list, so this gets dismiss-on-outside-tap for free.
-// A bottom sheet instead of a positioned popover -- the popover version
-// computed its own top/left from the row's on-screen position and could
-// land in the wrong place (e.g. up near the header) depending on where in
-// the list the row happened to be. A sheet anchored to the bottom of the
-// screen needs none of that math and is always exactly where expected.
-function openConvRowMenu(conversationId, rowEl) {
-  closeConvRowMenu();
-  if (!rowEl) return;
-  const pinned = rowEl.dataset.pinned === "1";
-  const archived = rowEl.dataset.archived === "1";
-  const unread = rowEl.dataset.unread === "1";
-  const backdrop = document.createElement("div");
-  backdrop.className = "conv-row-menu-backdrop";
-  backdrop.onclick = (e) => { if (e.target === backdrop) closeConvRowMenu(); };
-  backdrop.innerHTML = `<div class="conv-row-menu-sheet">
-    <button type="button" class="ms-item" onclick="closeConvRowMenu();openChatListPicker('${conversationId}')"><i class="fa-solid fa-layer-group"></i> Add to a list</button>
-    <button type="button" class="ms-item" onclick="closeConvRowMenu();togglePinConversation('${conversationId}')"><i class="fa-solid fa-thumbtack"></i> ${pinned ? "Unpin chat" : "Pin chat"}</button>
-    <button type="button" class="ms-item" onclick="closeConvRowMenu();toggleChatArchived('${conversationId}')"><i class="fa-solid ${archived ? "fa-box-open" : "fa-box-archive"}"></i> ${archived ? "Restore chat" : "Archive chat"}</button>
-    <button type="button" class="ms-item" onclick="closeConvRowMenu();toggleConvReadState('${conversationId}')"><i class="fa-solid ${unread ? "fa-envelope-open" : "fa-envelope"}"></i> Mark as ${unread ? "read" : "unread"}</button>
-  </div>`;
-  document.body.appendChild(backdrop);
-  requestAnimationFrame(() => backdrop.classList.add("open"));
-}
-function closeConvRowMenu() { document.querySelectorAll(".conv-row-menu-backdrop").forEach((m) => m.remove()); }
 async function toggleConvReadState(conversationId) {
   const convs = window.__conversations || [];
   const c = convs.find((x) => x.conversation_id === conversationId);
@@ -15679,34 +15635,6 @@ async function toggleConvReadState(conversationId) {
     filterMsgList(); renderBottomNav();
     showToast(err.message || "Could not update this chat.", "error");
   }
-}
-function bindConvListLongPress(wrap) {
-  if (!wrap || wrap.dataset.longPressBound === "1") return;
-  wrap.dataset.longPressBound = "1";
-  let timer = null, sx = 0, sy = 0, moved = false, row = null;
-  const MOVE_TOLERANCE = 14, LONG_PRESS_MS = 460;
-  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } row?.classList.remove("conv-long-pressing"); row = null; };
-  wrap.addEventListener("pointerdown", (e) => {
-    if (msgSelectMode || (e.pointerType === "mouse" && e.button !== 0)) return;
-    row = e.target.closest?.(".conv-list-item");
-    if (!row) return;
-    sx = e.clientX || 0; sy = e.clientY || 0; moved = false;
-    timer = setTimeout(() => {
-      if (moved || !row) return;
-      if (navigator.vibrate) navigator.vibrate(12);
-      openConvRowMenu(row.dataset.conversationId, row);
-      row.classList.remove("conv-long-pressing");
-      timer = null;
-    }, LONG_PRESS_MS);
-    row.classList.add("conv-long-pressing");
-  }, { passive: true });
-  wrap.addEventListener("pointermove", (e) => {
-    if (!timer) return;
-    if (Math.abs((e.clientX || 0) - sx) > MOVE_TOLERANCE || Math.abs((e.clientY || 0) - sy) > MOVE_TOLERANCE) { moved = true; clear(); }
-  }, { passive: true });
-  wrap.addEventListener("pointerup", clear, { passive: true });
-  wrap.addEventListener("pointercancel", clear, { passive: true });
-  wrap.addEventListener("contextmenu", (e) => { if (e.target.closest(".conv-list-item")) e.preventDefault(); });
 }
 // A compact WhatsApp-style timestamp: clock time for today, weekday name
 // for the last week, short date otherwise.
@@ -15833,6 +15761,8 @@ function msgSelectionHeaderHtml() {
     <button type="button" class="icon-btn" onclick="exitMsgSelectMode()" aria-label="Cancel selection"><i class="fa-solid fa-xmark"></i></button>
     <strong>${msgSelectedIds.size} selected</strong>
     <button type="button" class="icon-btn" onclick="toggleSelectAllChats()" aria-label="Select all"><i class="fa-solid ${allVisible ? "fa-square-minus" : "fa-square-check"}"></i></button>
+    ${msgSelectedIds.size === 1 ? `<button type="button" class="icon-btn" onclick="togglePinConversation('${[...msgSelectedIds][0]}')" aria-label="Pin chat"><i class="fa-solid fa-thumbtack"></i></button>
+    <button type="button" class="icon-btn" onclick="openChatListPicker('${[...msgSelectedIds][0]}')" aria-label="Add to a list"><i class="fa-solid fa-layer-group"></i></button>` : ""}
     <button type="button" class="icon-btn" onclick="batchMarkChatsRead(true)" ${msgSelectedIds.size ? "" : "disabled"} aria-label="Mark read"><i class="fa-solid fa-envelope-open"></i></button>
     <button type="button" class="icon-btn" onclick="batchMarkChatsRead(false)" ${msgSelectedIds.size ? "" : "disabled"} aria-label="Mark unread"><i class="fa-solid fa-envelope"></i></button>
     <button type="button" class="icon-btn" onclick="batchArchiveChats()" ${msgSelectedIds.size ? "" : "disabled"} aria-label="${msgListFilter === "archived" ? "Restore" : "Archive"}"><i class="fa-solid ${msgListFilter === "archived" ? "fa-box-open" : "fa-box-archive"}"></i></button>
@@ -15892,7 +15822,6 @@ function filterMsgList() {
   if (q) shown = shown.filter((c) => (c.other_name || "").toLowerCase().includes(q) || (c.last_message || "").toLowerCase().includes(q));
   shown = [...shown].sort((a,b) => Number(isConversationPinned(b)) - Number(isConversationPinned(a)));
   wrap.innerHTML = shown.length ? shown.map(convRowHtml).join("") : `<div class="empty-state">${q ? "No conversations match that search." : emptyReason}</div>`;
-  bindConvListLongPress(wrap);
 }
 
 // Refresh the cached conversation list without blocking navigation.
@@ -16172,6 +16101,7 @@ async function renderMessages(conversationId) {
   if (conv.vendor?.id) {
     chatMenuItems.push(`<button type="button" onclick="openChatVendorStorefront(event,'${conv.vendor.id}')"><i class="fa-solid fa-store"></i><span>View storefront</span></button>`);
   }
+  chatMenuItems.push(`<button onclick="closeChatMenu();togglePinConversation('${conversationId}')"><i class="fa-solid fa-thumbtack"></i><span>${isConversationPinned(cachedConv) ? "Unpin chat" : "Pin chat"}</span></button>`);
   chatMenuItems.push(`<button onclick="closeChatMenu();openChatListPicker('${conversationId}')"><i class="fa-solid fa-layer-group"></i><span>Add to a list</span></button>`);
   chatMenuItems.push(`<button onclick="closeChatMenu();toggleChatArchived('${conversationId}')"><i class="fa-solid ${chatArchived ? "fa-box-open" : "fa-box-archive"}"></i><span>${chatArchived ? "Restore chat" : "Archive chat"}</span></button>`);
   chatMenuItems.push(`<button onclick="closeChatMenu();deleteChatConversation('${conversationId}')"><i class="fa-solid fa-trash-can"></i><span>Delete chat</span></button>`);
@@ -17139,6 +17069,53 @@ function messageLooksLikeContactBypass(text) {
   if (CONTACT_INFO_PATTERNS.some((re) => re.test(text))) return true;
   return messageHasObfuscatedPhoneNumber(text);
 }
+// Numbers long enough to be a phone or bank account number get hashed out
+// (Roblox-style: "0801#######" instead of refusing to send at all) rather
+// than blocking the whole message -- masks the digits in place so the rest
+// of the sentence around them still sends normally.
+function maskSensitiveNumbers(text) {
+  const str = String(text || "");
+  const maskIndices = new Set();
+
+  // Clean phone-shaped numbers (leading 0 or +234, with spaces/dashes/dots
+  // allowed between digits).
+  for (const m of str.matchAll(/(\+?234|0)[\d\s().-]{8,14}\d/g)) {
+    for (let i = m.index; i < m.index + m[0].length; i++) {
+      if (/\d/.test(str[i])) maskIndices.add(i);
+    }
+  }
+  // Any other standalone run of 10+ digits -- covers a bank account number
+  // that doesn't start with 0 or +234.
+  for (const m of str.matchAll(/\d{10,}/g)) {
+    for (let i = m.index; i < m.index + m[0].length; i++) maskIndices.add(i);
+  }
+  // Digits deliberately broken up with a word or two in between -- the same
+  // gap-tolerant scan used to detect the pattern, but this time recording
+  // exactly which characters formed the run so only those get masked, not
+  // the words sitting between them.
+  const MAX_GAP = 15;
+  let digitPositions = [];
+  let gap = 0;
+  for (let i = 0; i < str.length; i++) {
+    if (/\d/.test(str[i])) { digitPositions.push(i); gap = 0; }
+    else { gap++; if (gap > MAX_GAP) digitPositions = []; }
+    const digitsSoFar = digitPositions.map((idx) => str[idx]).join("");
+    if (/0\d{10}/.test(digitsSoFar)) digitPositions.slice(-11).forEach((idx) => maskIndices.add(idx));
+  }
+
+  if (!maskIndices.size) return str;
+  return [...str].map((ch, i) => (maskIndices.has(i) ? "#" : ch)).join("");
+}
+// Runs the masking above, then re-checks what's left for anything masking
+// can't fix (a bare "message me on whatsapp" with no actual number in it) --
+// that still has to be blocked since there's nothing to hash out. Returns
+// the text to actually send, or null to block, exactly as the three chat
+// send paths already expect from messageLooksLikeContactBypass.
+function maskOrBlockContactInfo(text) {
+  const masked = maskSensitiveNumbers(text);
+  if (CONTACT_INFO_PATTERNS.some((re) => re.test(masked))) return null;
+  return masked;
+}
 // A single message rarely spells out a whole phone number once someone
 // notices the check above catches that -- splitting it across several
 // short, otherwise-meaningless digit-only messages ("080", "6322", "7669")
@@ -17188,11 +17165,25 @@ async function conversationHasCompletedOrder(conversationId) {
 
 async function sendChatMessage(conversationId) {
   const input = byId("chatInput");
-  const body = input.value.trim();
+  let body = input.value.trim();
   if (!body) return;
-  if ((messageLooksLikeContactBypass(body) || messageContinuesDigitFragmentPattern(conversationId, body)) && !(await conversationHasCompletedOrder(conversationId))) {
-    showToast("For your safety, phone numbers and outside contact details can't be shared here until an order between you has completed. Keep the conversation and payment in-app.", "error");
-    return;
+  if (!(await conversationHasCompletedOrder(conversationId))) {
+    // Digits deliberately split across several separate messages have no
+    // single number in any one message to mask, so that specific evasion
+    // pattern still has to be blocked outright.
+    if (messageContinuesDigitFragmentPattern(conversationId, body)) {
+      showToast("For your safety, phone numbers and outside contact details can't be shared here until an order between you has completed. Keep the conversation and payment in-app.", "error");
+      return;
+    }
+    const masked = maskOrBlockContactInfo(body);
+    if (masked === null) {
+      showToast("For your safety, phone numbers and outside contact details can't be shared here until an order between you has completed. Keep the conversation and payment in-app.", "error");
+      return;
+    }
+    if (masked !== body) {
+      showToast("Phone/account numbers are hidden automatically to keep you safe. Keep payment and contact details in-app.", "info");
+      body = masked;
+    }
   }
   if (msgListening || msgVoicePaused) { stopMsgVoiceRecording(); }
   clearTimeout(typingStopTimer);
@@ -17348,11 +17339,18 @@ function bindChatImageEditorPointer(){
 }
 
 async function sendPreparedChatImage(conversationId, prepared, replyToId, replyTargetSnapshot) {
-  if (prepared.caption && (messageLooksLikeContactBypass(prepared.caption) || messageContinuesDigitFragmentPattern(conversationId, prepared.caption)) && !(await conversationHasCompletedOrder(conversationId))) {
+  if (prepared.caption && !(await conversationHasCompletedOrder(conversationId))) {
     // Every caller already wraps this call in try/catch and toasts
     // err.message on failure -- throwing here (rather than also toasting
     // directly) avoids a duplicate, uglier second toast.
-    throw new Error("Phone numbers and outside contact details can't be shared here until an order between you has completed.");
+    if (messageContinuesDigitFragmentPattern(conversationId, prepared.caption)) {
+      throw new Error("Phone numbers and outside contact details can't be shared here until an order between you has completed.");
+    }
+    const masked = maskOrBlockContactInfo(prepared.caption);
+    if (masked === null) {
+      throw new Error("Phone numbers and outside contact details can't be shared here until an order between you has completed.");
+    }
+    prepared.caption = masked;
   }
   const path=`conv/${conversationId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeFilename(prepared.name||"photo.jpg")}`;
   // Chat photos are the highest-volume image upload in the app -- compress
@@ -27474,7 +27472,7 @@ async function applyAiRemoveCartItems(items) {
 }
 async function sendAiDraftMessage(vendorId, btn) {
   const card = btn.closest(".ai-chat-draft-card");
-  const text = card.querySelector(".ai-chat-draft-text").value.trim();
+  let text = card.querySelector(".ai-chat-draft-text").value.trim();
   if (!text) return;
   btn.disabled = true;
   try {
@@ -27496,8 +27494,15 @@ async function sendAiDraftMessage(vendorId, btn) {
       ({ data: conversationId, error } = await sb.rpc("get_or_create_conversation", { p_vendor_id: vendorId }));
     }
     if (error) throw new Error("We couldn't start this conversation. Please try again.");
-    if ((messageLooksLikeContactBypass(text) || messageContinuesDigitFragmentPattern(conversationId, text)) && !(await conversationHasCompletedOrder(conversationId))) {
-      throw new Error("Phone numbers and outside contact details can't be shared here until an order between you has completed.");
+    if (!(await conversationHasCompletedOrder(conversationId))) {
+      if (messageContinuesDigitFragmentPattern(conversationId, text)) {
+        throw new Error("Phone numbers and outside contact details can't be shared here until an order between you has completed.");
+      }
+      const masked = maskOrBlockContactInfo(text);
+      if (masked === null) {
+        throw new Error("Phone numbers and outside contact details can't be shared here until an order between you has completed.");
+      }
+      text = masked;
     }
     const { error: msgErr } = await sb.from("messages").insert({ conversation_id: conversationId, sender_id: session.user.id, body: text });
     if (msgErr) throw new Error(msgErr.message);
@@ -35224,10 +35229,6 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   font-weight:800 !important;
 }
 
-/* Header Messages icon: same neutral gray treatment, distinct from the
-   green Notifications/primary buttons elsewhere. */
-#messagesWrap .icon-btn{ color:color-mix(in srgb, var(--text) 62%, var(--card)) !important; }
-
 /* The Home search bar (above the carousel) had a transparent background and
    no border, so it was functionally invisible against the page background -
    just a floating icon and faint placeholder, easy to miss entirely. Give
@@ -41664,12 +41665,17 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   #app .levro-home-quick-actions .levro-quick-title{ font-size:.64rem !important; }
   #app .levro-home-quick-actions .levro-quick-desc{ font-size:.54rem !important; }
 }
-/* Final specificity override for the public vendor storefront fallback only. */
+/* Final specificity override for the public vendor storefront avatar --
+   the white/card-colored ring border used to sit on top of the hero banner
+   like a frame around the photo; flush it out to match the rest of the
+   edge-flush card treatment, keeping only a soft shadow for separation. */
+.storefront-profile .storefront-avatar,
+.storefront-profile .storefront-avatar-button,
 .storefront-profile .storefront-avatar-fallback-button{
   background:transparent!important;
   background-image:none!important;
   border:0!important;
-  box-shadow:none!important;
+  box-shadow:0 2px 10px rgba(0,0,0,.22)!important;
   padding:0!important;
 }
 .storefront-profile .storefront-avatar-fallback-button .avatar-fallback{
@@ -41677,6 +41683,32 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   background-image:none!important;
   border:0!important;
   box-shadow:none!important;
+}
+
+/* "Fill the whole top, curvy edges underneath" hero treatment -- edge-to-
+   edge at the very top of the page (breaking out of the container's own
+   padding/max-width via the standard 50%-50vw full-bleed trick) with a
+   rounded-only bottom edge, instead of a small rounded rectangle sitting
+   inside the page's normal padding. Applied to both the home promotional
+   carousel and the storefront's own cover banner so they match. */
+#app .levro-home-hero{
+  width:100vw !important;
+  max-width:100vw !important;
+  margin:0 0 .9rem calc(50% - 50vw) !important;
+  padding:0 !important;
+}
+#app .levro-home-hero .home-promotional-carousel{
+  width:100% !important;
+  margin:0 !important;
+  border:0 !important;
+  border-radius:0 0 28px 28px !important;
+  box-shadow:0 14px 30px rgba(0,0,0,.16) !important;
+}
+#app .storefront-profile .storefront-cover{
+  width:100vw !important;
+  max-width:100vw !important;
+  margin:0 0 0 calc(50% - 50vw) !important;
+  border-radius:0 0 28px 28px !important;
 }
 
 /* Orders page: quick single-tap status pills, scrolling horizontally so they
@@ -41822,7 +41854,8 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 #app .storefront-catalog-tab:hover{ background:transparent !important; color:var(--text) !important; }
 #app .storefront-catalog-tab.active{
   color:var(--text) !important; background:transparent !important;
-  border-bottom-color:var(--primary) !important;
+  border:0 !important; border-bottom:2px solid var(--primary) !important;
+  border-radius:0 !important;
 }
 #app .storefront-catalog-tabs{ border-bottom:1px solid var(--border) !important; }
 
