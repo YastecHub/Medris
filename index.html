@@ -691,8 +691,8 @@
   /* Header-right utility icons (bell, messages, cart) are plain navigation,
      not brand accents -- like a standard marketplace app, only the unread
      badge on top of them needs to draw the eye, not the icon itself. */
-  #notifWrap .icon-btn, #messagesWrap .icon-btn, #headerCartWrap .icon-btn { color: var(--text) !important; }
-  #notifWrap .icon-btn:hover, #messagesWrap .icon-btn:hover, #headerCartWrap .icon-btn:hover { background: color-mix(in srgb, var(--text) 10%, transparent); filter: none; }
+  #notifWrap .icon-btn, #messagesWrap .icon-btn, #headerCartWrap .icon-btn { color: var(--text) !important; background: transparent !important; border-color: transparent !important; }
+  #notifWrap .icon-btn:hover, #messagesWrap .icon-btn:hover, #headerCartWrap .icon-btn:hover { background: color-mix(in srgb, var(--text) 10%, transparent) !important; filter: none; }
   .notif-dot { position: absolute; top: -2px; right: -2px; background: var(--danger); color: white; font-size: 0.65rem; font-weight: 700; min-width: 1.1rem; height: 1.1rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center; padding: 0 0.25rem; box-shadow: 0 0 0 2px var(--card); }
 
   /* ---- slide-in drawers (settings / notifications / profile) ---- */
@@ -1024,8 +1024,11 @@
   .conv-unread-badge { min-width: 1.3rem; height: 1.3rem; padding: 0 0.35rem; border-radius: 999px; background: var(--danger); color: #fff; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .conv-date-sep { text-align: center; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); margin: 0.7rem auto; padding: 0.25rem 0.75rem; background: var(--card); border-radius: 999px; width: fit-content; }
   .conv-list-item.conv-long-pressing { background: color-mix(in srgb, var(--text) 6%, var(--card)); }
-  .conv-row-menu { position: fixed !important; width: 200px; z-index: 10950; }
-  .conv-row-menu .ms-item { display: flex; align-items: center; gap: .55rem; width: 100%; text-align: left; white-space: nowrap; }
+  .conv-row-menu-backdrop { position: fixed; inset: 0; z-index: 10950; background: rgba(0,0,0,0); display: flex; align-items: flex-end; justify-content: center; transition: background-color .18s ease; }
+  .conv-row-menu-backdrop.open { background: rgba(0,0,0,.45); }
+  .conv-row-menu-sheet { width: 100%; max-width: 480px; background: var(--card); border: 1px solid var(--border); border-bottom: 0; border-radius: 18px 18px 0 0; padding: .5rem .5rem calc(.6rem + env(safe-area-inset-bottom,0px)); box-shadow: 0 -10px 32px rgba(0,0,0,.28); transform: translateY(100%); transition: transform .2s cubic-bezier(.22,1,.36,1); }
+  .conv-row-menu-backdrop.open .conv-row-menu-sheet { transform: translateY(0); }
+  .conv-row-menu-sheet .ms-item { display: flex; align-items: center; gap: .65rem; width: 100%; text-align: left; padding: .85rem .9rem; font-size: .9rem; border-radius: 10px; }
   .chat-thread { display: flex; flex-direction: column; height: calc(100vh - 13rem); min-height: 420px; max-height: none; border: none; border-radius: 0.9rem 0.9rem 0 0; overflow: hidden; background: var(--card); }
   @media (max-width: 760px) { .chat-thread { height: calc(100dvh - 11rem); border-radius: 0; } }
   /* Chunky desktop scrollbars (Windows/Linux Chrome, unlike macOS's overlay
@@ -5196,16 +5199,18 @@ body.product-detail-view #aiChatFab{right:.7rem !important;bottom:.65rem !import
 }
 .vendor-card-follow-btn:hover{ background:color-mix(in srgb, var(--text) 8%, var(--card)); }
 .vendor-card-follow-btn.following{ background:var(--primary); color:#fff; }
-.vendor-card-follower-stat{ display:block; font-size:.68rem; color:var(--text-muted); white-space:nowrap; }
+.vendor-card-follower-stat{ display:block; font-size:.68rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .vendor-card-follower-stat i{ margin-right:.22rem; opacity:.7; }
 /* Follower count and rating share one row at the bottom of the card
-   instead of each getting a full row of their own. */
+   instead of each getting a full row of their own. The follower text is
+   the one allowed to shrink/truncate -- the rating badge must always stay
+   fully visible, never pushed past the card's edge and clipped off. */
 .vendor-card-meta-row{
   display:flex; align-items:center; justify-content:space-between;
-  gap:.4rem; width:100%; margin-top:.35rem;
+  gap:.4rem; width:100%; margin-top:.35rem; min-width:0;
 }
 .vendor-card-rating-corner{
-  display:inline-flex; flex:0 0 auto;
+  display:inline-flex; flex:0 0 auto; white-space:nowrap;
   font-size:.62rem; padding:.1rem .38rem; line-height:1.3;
 }
 /* Product listings must actually occupy their grid tracks. */
@@ -13077,14 +13082,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     : INITIAL_HOME_CAROUSEL_SLIDES.slice();
   let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
   html += `<div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
-  html += `<section class="levro-home-quick-actions" aria-label="Quick actions">
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span class="levro-quick-label">Shop Products</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span class="levro-quick-label">Book Services</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('rent')"><span class="levro-quick-icon"><i class="fa-solid fa-key"></i></span><span class="levro-quick-label">Rent Items</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('vendors')"><span class="levro-quick-icon"><i class="fa-solid fa-store"></i></span><span class="levro-quick-label">Explore Verified Vendors</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span class="levro-quick-label">Request an Item</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span class="levro-quick-label">Chat Directly</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-  </section>`;
+  html += homeQuickActionsHtml();
   // Cached from the last live load (renderHome) so the fast local repaint
   // used on every category tap doesn't have to guess -- falls back to the
   // full list only for a cache written before this field existed.
@@ -13955,16 +13953,7 @@ async function renderHome() {
     ${renderHomepageCarouselHtml(homepageCarouselSlides)}
   </div>`;
 
-  // The homepage now uses six high-value actions instead of the old scrolling
-  // sector/category rails. Each action stays inside the SPA; no hard reloads.
-  html += `<section class="levro-home-quick-actions" aria-label="Quick actions">
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('products')"><span class="levro-quick-icon"><i class="fa-solid fa-bag-shopping"></i></span><span class="levro-quick-label">Shop Products</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('services')"><span class="levro-quick-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span><span class="levro-quick-label">Book Services</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('rent')"><span class="levro-quick-icon"><i class="fa-solid fa-key"></i></span><span class="levro-quick-label">Rent Items</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('vendors')"><span class="levro-quick-icon"><i class="fa-solid fa-store"></i></span><span class="levro-quick-label">Explore Verified Vendors</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('request')"><span class="levro-quick-icon"><i class="fa-solid fa-hand"></i></span><span class="levro-quick-label">Request an Item</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-    <button type="button" class="levro-quick-action" onclick="openHomeQuickAction('chat')"><span class="levro-quick-icon"><i class="fa-solid fa-comment-dots"></i></span><span class="levro-quick-label">Chat Directly</span><i class="fa-solid fa-chevron-right levro-quick-arrow"></i></button>
-  </section>`;
+  html += homeQuickActionsHtml();
 
   // null means the lookup itself failed (e.g. offline mid-request) -- fall
   // back to showing every sector rather than an empty rail in that case;
@@ -14205,6 +14194,20 @@ const LEVRO_CATEGORY_RAIL_PALETTE = ["#16a34a", "#2563eb", "#e11d48", "#f59e0b",
 // the existing switchSector()/activeSector plumbing already filters
 // trending + browse by correctly, and each sector already stores its own
 // icon in the database instead of needing a guess from its name.
+// Six quick-action cards: icon, title, one-line description, arrow. Kept
+// as one shared function so the two places Home can render from (the live
+// path and the offline-cache fast-repaint path) can never drift apart.
+function homeQuickActionsHtml() {
+  const actions = [
+    { key: "products", icon: "fa-bag-shopping", tone: "mint", title: "Shop Products", desc: "Buy quality items from verified vendors" },
+    { key: "services", icon: "fa-screwdriver-wrench", tone: "peach", title: "Book Services", desc: "Find and book trusted service providers" },
+    { key: "rent", icon: "fa-key", tone: "lavender", title: "Rent Items", desc: "Access items you need without buying" },
+    { key: "vendors", icon: "fa-store", tone: "pink", title: "Explore Verified Vendors", desc: "Discover trusted businesses near you" },
+    { key: "request", icon: "fa-hand", tone: "aqua", title: "Request an Item", desc: "Can't find it? Send a request to vendors" },
+    { key: "chat", icon: "fa-comment-dots", tone: "blue", title: "Chat Directly", desc: "Talk to vendors and get quick answers" },
+  ];
+  return `<section class="levro-home-quick-actions" aria-label="Quick actions">${actions.map((a) => `<button type="button" class="levro-quick-action levro-quick-${a.tone}" onclick="openHomeQuickAction('${a.key}')"><span class="levro-quick-icon"><i class="fa-solid ${a.icon}"></i></span><span class="levro-quick-body"><strong class="levro-quick-title">${a.title}</strong><span class="levro-quick-desc">${a.desc}</span></span><span class="levro-quick-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></button>`).join("")}</section>`;
+}
 function homeCategoryRailHtml(sectorList) {
   // "All" always comes first and always means "clear the sector filter",
   // not toggle -- distinct from every sector chip, which is why it gets
@@ -15466,40 +15469,30 @@ function convRowHtml(c) {
 // every row. One shared .ms-list menu instance (repositioned per row) --
 // the existing global outside-click handler already closes any open
 // .ms-list, so this gets dismiss-on-outside-tap for free.
+// A bottom sheet instead of a positioned popover -- the popover version
+// computed its own top/left from the row's on-screen position and could
+// land in the wrong place (e.g. up near the header) depending on where in
+// the list the row happened to be. A sheet anchored to the bottom of the
+// screen needs none of that math and is always exactly where expected.
 function openConvRowMenu(conversationId, rowEl) {
-  document.querySelectorAll(".conv-row-menu").forEach((m) => m.remove());
+  closeConvRowMenu();
   if (!rowEl) return;
   const pinned = rowEl.dataset.pinned === "1";
   const archived = rowEl.dataset.archived === "1";
   const unread = rowEl.dataset.unread === "1";
-  const menu = document.createElement("div");
-  menu.className = "ms-list conv-row-menu";
-  menu.innerHTML = `
+  const backdrop = document.createElement("div");
+  backdrop.className = "conv-row-menu-backdrop";
+  backdrop.onclick = (e) => { if (e.target === backdrop) closeConvRowMenu(); };
+  backdrop.innerHTML = `<div class="conv-row-menu-sheet">
     <button type="button" class="ms-item" onclick="closeConvRowMenu();openChatListPicker('${conversationId}')"><i class="fa-solid fa-layer-group"></i> Add to a list</button>
     <button type="button" class="ms-item" onclick="closeConvRowMenu();togglePinConversation('${conversationId}')"><i class="fa-solid fa-thumbtack"></i> ${pinned ? "Unpin chat" : "Pin chat"}</button>
     <button type="button" class="ms-item" onclick="closeConvRowMenu();toggleChatArchived('${conversationId}')"><i class="fa-solid ${archived ? "fa-box-open" : "fa-box-archive"}"></i> ${archived ? "Restore chat" : "Archive chat"}</button>
     <button type="button" class="ms-item" onclick="closeConvRowMenu();toggleConvReadState('${conversationId}')"><i class="fa-solid ${unread ? "fa-envelope-open" : "fa-envelope"}"></i> Mark as ${unread ? "read" : "unread"}</button>
-  `;
-  document.body.appendChild(menu);
-  const r = rowEl.getBoundingClientRect();
-  const menuWidth = 200;
-  let left = Math.min(r.left + 16, window.innerWidth - menuWidth - 12);
-  left = Math.max(12, left);
-  menu.style.left = `${left}px`;
-  const spaceBelow = window.innerHeight - r.bottom;
-  if (spaceBelow > 190) menu.style.top = `${r.bottom + 4}px`;
-  else menu.style.top = `${Math.max(8, r.top - 176)}px`;
-  menu.classList.remove("hidden");
-  setTimeout(() => {
-    document.addEventListener("click", function onOutsideClick(e) {
-      if (!menu.isConnected) return;
-      if (e.target.closest(".conv-row-menu")) return;
-      closeConvRowMenu();
-      document.removeEventListener("click", onOutsideClick);
-    }, { once: false });
-  }, 0);
+  </div>`;
+  document.body.appendChild(backdrop);
+  requestAnimationFrame(() => backdrop.classList.add("open"));
 }
-function closeConvRowMenu() { document.querySelectorAll(".conv-row-menu").forEach((m) => m.remove()); }
+function closeConvRowMenu() { document.querySelectorAll(".conv-row-menu-backdrop").forEach((m) => m.remove()); }
 async function toggleConvReadState(conversationId) {
   const convs = window.__conversations || [];
   const c = convs.find((x) => x.conversation_id === conversationId);
@@ -16949,8 +16942,30 @@ const CONTACT_INFO_PATTERNS = [
   /\badd\s+me\s+on\b/i,
   /\b(instagram|ig|snapchat|telegram)\s*[:@]/i,
 ];
+// The regex list above only tolerates digits and simple separators (spaces,
+// dashes, dots, parens) between the digits of a number -- inserting a word
+// or two instead ("0801 my line is 2345678") slips right past it. Scan the
+// message digit by digit, allowing short non-digit gaps (a word or two)
+// between them without breaking the run, but reset once a gap gets long
+// enough that the digits on either side are clearly unrelated numbers
+// (prices, dates, order refs) rather than one number someone broke up on
+// purpose. Bare digit concatenation with no gap limit was tried first and
+// false-positived on ordinary messages with several unrelated numbers in
+// it once their digit counts added up to 11+.
+function messageHasObfuscatedPhoneNumber(text) {
+  const MAX_GAP = 15;
+  let digits = "";
+  let gap = 0;
+  for (const ch of String(text || "")) {
+    if (/\d/.test(ch)) { digits += ch; gap = 0; }
+    else { gap++; if (gap > MAX_GAP) digits = ""; }
+    if (/0\d{10}/.test(digits)) return true;
+  }
+  return false;
+}
 function messageLooksLikeContactBypass(text) {
-  return CONTACT_INFO_PATTERNS.some((re) => re.test(text));
+  if (CONTACT_INFO_PATTERNS.some((re) => re.test(text))) return true;
+  return messageHasObfuscatedPhoneNumber(text);
 }
 // A single message rarely spells out a whole phone number once someone
 // notices the check above catches that -- splitting it across several
@@ -41206,6 +41221,73 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 #app .grid:has(> .product-card-wrap) > .product-card-wrap.product-card-compact > .card .card-cart-btn:not(.added){
   background-color:color-mix(in srgb,var(--text) 8%,var(--card)) !important;
   border-color:color-mix(in srgb,var(--text) 16%,var(--border)) !important;
+}
+/* Home's six quick-action cards: soft pastel "premium quick-action card"
+   treatment (icon badge, title, one-line description, corner arrow)
+   instead of the old dark compact icon+label rows. Colors are fixed light
+   pastels on purpose (not theme-driven) -- they're meant to read as light
+   cards sitting on the page regardless of light/dark/black mode, matching
+   how a modern marketplace app's quick-action tiles usually work. */
+#app .levro-home-quick-actions{
+  display:grid !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:.6rem !important;
+  margin:.7rem auto 1.1rem !important;
+  width:100% !important;
+}
+#app .levro-home-quick-actions .levro-quick-action{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:flex-start !important;
+  justify-content:flex-start !important;
+  gap:.4rem !important;
+  position:relative !important;
+  min-height:112px !important;
+  padding:.8rem .75rem 2.1rem !important;
+  border-radius:16px !important;
+  border:1px solid rgba(0,0,0,.05) !important;
+  box-shadow:none !important;
+  text-align:left !important;
+  cursor:pointer !important;
+  transition:transform .12s ease !important;
+  -webkit-tap-highlight-color:transparent !important;
+}
+#app .levro-home-quick-actions .levro-quick-action:active{ transform:scale(.97) !important; }
+#app .levro-home-quick-actions .levro-quick-action:hover,
+#app .levro-home-quick-actions .levro-quick-action:focus-visible{ filter:brightness(.97) !important; }
+#app .levro-home-quick-actions .levro-quick-icon{
+  width:2.2rem !important; height:2.2rem !important;
+  border-radius:10px !important;
+  display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  font-size:.95rem !important;
+  background:rgba(255,255,255,.55) !important;
+  color:#1f2937 !important;
+  border:0 !important; box-shadow:none !important;
+  flex:0 0 auto !important;
+}
+#app .levro-home-quick-actions .levro-quick-body{ display:flex !important; flex-direction:column !important; gap:.16rem !important; width:100% !important; min-width:0 !important; }
+#app .levro-home-quick-actions .levro-quick-title{ display:block !important; font-size:.78rem !important; font-weight:800 !important; line-height:1.2 !important; color:#111827 !important; }
+#app .levro-home-quick-actions .levro-quick-desc{ display:block !important; font-size:.63rem !important; font-weight:500 !important; line-height:1.32 !important; color:rgba(17,24,39,.62) !important; }
+#app .levro-home-quick-actions .levro-quick-arrow{
+  position:absolute !important; bottom:.65rem !important; right:.65rem !important;
+  width:1.5rem !important; height:1.5rem !important;
+  border-radius:50% !important;
+  display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  background:rgba(255,255,255,.55) !important;
+  color:#111827 !important;
+  font-size:.58rem !important;
+}
+#app .levro-home-quick-actions .levro-quick-mint{ background:#c9ecd9 !important; }
+#app .levro-home-quick-actions .levro-quick-peach{ background:#fbe1c6 !important; }
+#app .levro-home-quick-actions .levro-quick-lavender{ background:#ddd7f8 !important; }
+#app .levro-home-quick-actions .levro-quick-pink{ background:#f6d4da !important; }
+#app .levro-home-quick-actions .levro-quick-aqua{ background:#c8ede7 !important; }
+#app .levro-home-quick-actions .levro-quick-blue{ background:#d0e1f8 !important; }
+@media (max-width:400px){
+  #app .levro-home-quick-actions{ gap:.45rem !important; }
+  #app .levro-home-quick-actions .levro-quick-action{ min-height:100px !important; padding:.7rem .6rem 1.9rem !important; }
+  #app .levro-home-quick-actions .levro-quick-title{ font-size:.72rem !important; }
+  #app .levro-home-quick-actions .levro-quick-desc{ font-size:.58rem !important; }
 }
 /* Final specificity override for the public vendor storefront fallback only. */
 .storefront-profile .storefront-avatar-fallback-button{
