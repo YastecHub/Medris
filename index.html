@@ -975,6 +975,13 @@
   .delivery-fee-inline { color:var(--primary); }
   .delivery-fee-line { font-size:.86rem; color:var(--text); opacity:1; }
   .delivery-fee-line strong { color:var(--primary); }
+  .price-breakdown-table { margin-top:.6rem; padding:.65rem .75rem; border:1px solid var(--border); border-radius:10px; background:var(--surface-2, rgba(127,127,127,.06)); display:flex; flex-direction:column; gap:.3rem; }
+  .price-breakdown-table:empty { display:none; margin:0; padding:0; border:0; }
+  .price-breakdown-row { display:flex; justify-content:space-between; align-items:baseline; gap:.6rem; font-size:.86rem; color:var(--text); }
+  .price-breakdown-row span:first-child { color:var(--text-muted); }
+  .price-breakdown-free { color:var(--primary); font-weight:600; }
+  .price-breakdown-total { border-top:1px dashed var(--border); padding-top:.45rem; margin-top:.1rem; }
+  .price-breakdown-total span, .price-breakdown-total strong { color:var(--text) !important; font-weight:700; font-size:.98rem; }
   .product-description-block { margin:.6rem 0; line-height:1.5; }
   .read-more-text.clamped { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
   .read-more-toggle { background:none; border:0; padding:0; margin-top:.2rem; color:var(--primary); font-weight:600; font-size:.85rem; cursor:pointer; display:inline-block; }
@@ -17234,7 +17241,7 @@ async function renderPackageDetail(packageId) {
     html += `<div class="card own-purchase-block"><p style="margin:0;"><i class="fa-solid fa-circle-info"></i> This is your own package. You can manage it from your vendor dashboard, but you can't buy it from your own shop.</p></div>`;
   } else {
     html += `<div class="card"><h3 style="margin-top:0;"><i class="fa-solid fa-cart-shopping"></i> Buy this package</h3>
-      ${deliveryFieldsHtml("pkgdetail", v.delivery_fee, v.lat, v.lng, v.delivery_fee_mode, v.delivery_fee_per_km, "Pickup")}
+      ${deliveryFieldsHtml("pkgdetail", v.delivery_fee, v.lat, v.lng, v.delivery_fee_mode, v.delivery_fee_per_km, "Pickup", pkg.price)}
       <button class="btn" style="width:100%;justify-content:center;" onclick="buyPackageFromDetail('${pkg.id}')">Buy package · ${naira(pkg.price)}</button>
       <p id="packageDetailBuyError" class="error-text hidden"></p>
     </div>`;
@@ -17528,7 +17535,7 @@ const RELATED_EQUIPMENT = {
   "Ultrasound Machine": ["ECG Machine"],
 };
 
-function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, perKm, pickupLabel) {
+function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, perKm, pickupLabel, fixedItemTotal) {
   const fee = Number(deliveryFee) || 0;
   const isDistance = feeMode === "distance" && Number(perKm) > 0 && vendorLat != null && vendorLng != null;
   const hasVendorLoc = vendorLat != null && vendorLng != null;
@@ -17536,13 +17543,39 @@ function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, 
       <label style="display:flex;align-items:center;gap:0.35rem;margin:0;font-weight:400;"><input type="radio" name="${prefix}DeliveryMethod" value="delivery" checked onchange="toggleDeliveryFields('${prefix}')" style="width:auto;margin:0;" /> Delivery${isDistance ? " (by distance)" : fee > 0 ? ` <strong class="delivery-fee-inline">(+${naira(fee)})</strong>` : " (free)"}</label>
       <label style="display:flex;align-items:center;gap:0.35rem;margin:0;font-weight:400;"><input type="radio" name="${prefix}DeliveryMethod" value="pickup" onchange="toggleDeliveryFields('${prefix}')" style="width:auto;margin:0;" /> ${esc(pickupLabel || "Pickup")}</label>
     </div>
-    <div id="${prefix}DeliveryFields" class="dyn-delivery-fields" style="margin-bottom:0.9rem;" data-vendor-lat="${vendorLat ?? ""}" data-vendor-lng="${vendorLng ?? ""}" data-fee="${fee}" data-fee-mode="${esc(feeMode || "flat")}" data-per-km="${Number(perKm) || 0}">
+    <div id="${prefix}DeliveryFields" class="dyn-delivery-fields" style="margin-bottom:0.9rem;" data-vendor-lat="${vendorLat ?? ""}" data-vendor-lng="${vendorLng ?? ""}" data-fee="${fee}" data-fee-mode="${esc(feeMode || "flat")}" data-per-km="${Number(perKm) || 0}" data-pickup-label="${esc(pickupLabel || "Pickup")}" data-item-total="${fixedItemTotal != null ? Number(fixedItemTotal) : ""}">
       <input type="text" id="${prefix}Address" placeholder="Delivery address" value="${esc(profile?.address || "")}" />
       <input type="tel" id="${prefix}Phone" placeholder="Phone number (so the vendor can reach you)" value="${esc(profile?.phone || "")}" />
       ${!isDistance && fee > 0 ? `<p class="delivery-fee-line" style="margin:0.35rem 0 0;"><i class="fa-solid fa-truck"></i> <strong>${naira(fee)}</strong> delivery fee</p>` : ""}
       ${isDistance || hasVendorLoc ? `<p class="delivery-fee-line" style="margin:0.35rem 0 0;" id="${prefix}FeeLine">${deliveryInfoLineHtml(prefix, isDistance, hasVendorLoc, vendorLat, vendorLng, perKm)}</p>` : ""}
+      <div id="${prefix}PriceBreakdown" class="price-breakdown-table" aria-live="polite"></div>
       <p class="muted" style="font-size:0.76rem;margin-top:0.25rem;">Wrong? <a href="#" onclick="navigate('editProfile');return false;">Fix in profile</a>.</p>
     </div>`;
+}
+// A always-visible item + delivery-fee + total breakdown so buyers can't miss
+// what they'll actually pay -- reads the item subtotal from whichever live
+// preview element applies (buy/service or rent) or, for a fixed-price
+// listing like a package, from data-item-total set at render time.
+function refreshPriceBreakdown(prefix) {
+  const wrap = byId(`${prefix}DeliveryFields`);
+  const box = byId(`${prefix}PriceBreakdown`);
+  if (!wrap || !box) return;
+  const method = document.querySelector(`input[name="${prefix}DeliveryMethod"]:checked`)?.value || "delivery";
+  let itemTotal = wrap.dataset.itemTotal !== "" ? Number(wrap.dataset.itemTotal) : null;
+  if (itemTotal == null) {
+    const previewEl = byId(prefix === "rent" ? "rentTotalPreview" : "serviceTotalPreview");
+    itemTotal = previewEl?.dataset.rawTotal != null ? Number(previewEl.dataset.rawTotal) : null;
+  }
+  if (itemTotal == null) { box.innerHTML = ""; return; }
+  const pickupLabel = wrap.dataset.pickupLabel || "Pickup";
+  const { fee, known } = computeDeliveryFeeForPrefix(prefix, method);
+  const feeLabel = method !== "delivery" ? `<span class="price-breakdown-free">Free</span>` : known ? (fee > 0 ? naira(fee) : `<span class="price-breakdown-free">Free</span>`) : `<span class="muted">Share location to see fee</span>`;
+  const total = method !== "delivery" ? itemTotal : (known ? itemTotal + fee : null);
+  box.innerHTML = `
+    <div class="price-breakdown-row"><span>Item price</span><strong>${naira(itemTotal)}</strong></div>
+    <div class="price-breakdown-row"><span>${method === "delivery" ? "Delivery fee" : pickupLabel}</span><strong>${feeLabel}</strong></div>
+    ${total != null ? `<div class="price-breakdown-row price-breakdown-total"><span>You'll pay</span><strong>${naira(total)}</strong></div>` : `<div class="price-breakdown-row"><span class="muted">Full total shown once your location is shared</span></div>`}
+  `;
 }
 // Delivery defaults ON (most buyers want it) -- this renders that default
 // info line synchronously from data already known at render time, so it's
@@ -17593,6 +17626,7 @@ async function ensureDeliveryLocation(prefix) {
 async function toggleDeliveryFields(prefix) {
   const method = document.querySelector(`input[name="${prefix}DeliveryMethod"]:checked`)?.value;
   byId(`${prefix}DeliveryFields`)?.classList.toggle("hidden", method !== "delivery");
+  refreshPriceBreakdown(prefix);
   if (method !== "delivery") return;
   ensureDeliveryLocation(prefix);
 }
@@ -17605,6 +17639,7 @@ function initDeliveryFieldsOnPage() {
   document.querySelectorAll(".dyn-delivery-fields").forEach((wrap) => {
     const prefix = wrap.id.replace(/DeliveryFields$/, "");
     ensureDeliveryLocation(prefix);
+    refreshPriceBreakdown(prefix);
   });
 }
 function updateDeliveryEta(prefix) {
@@ -17616,6 +17651,7 @@ function updateDeliveryEta(prefix) {
   if (isNaN(vLat) || isNaN(vLng)) return;
   const isDistance = wrap.dataset.feeMode === "distance" && Number(wrap.dataset.perKm) > 0;
   feeEl.innerHTML = deliveryInfoLineHtml(prefix, isDistance, true, vLat, vLng, wrap.dataset.perKm);
+  refreshPriceBreakdown(prefix);
 }
 async function requestDeliveryEta(prefix) {
   try {
@@ -17742,11 +17778,13 @@ function updateServiceTotalPreview(rate, unit) {
   const qty = parseInt(byId("buyQty").value) || 0;
   const el = byId("serviceTotalPreview");
   if (el) { el.textContent = `Total: ${naira(rate * qty)} (${qty} ${unit}${qty === 1 ? "" : "s"} × ${naira(rate)}/${unit})`; el.dataset.rawTotal = String(rate * qty); }
+  refreshPriceBreakdown("buy");
 }
 function updateBuyTotalPreview(rate) {
   const qty = parseInt(byId("buyQty").value) || 0;
   const el = byId("serviceTotalPreview");
   if (el) { el.textContent = `Total: ${naira(rate * qty)} (${qty} × ${naira(rate)})`; el.dataset.rawTotal = String(rate * qty); }
+  refreshPriceBreakdown("buy");
 }
 function updateRentTotalPreview(rate, unit) {
   const start = byId("rentStart")?.value;
@@ -17754,11 +17792,12 @@ function updateRentTotalPreview(rate, unit) {
   const qty = parseInt(byId("rentQty")?.value) || 0;
   const el = byId("rentTotalPreview");
   if (!el) return;
-  if (!start || !end) { el.textContent = "Pick your dates to see the total."; delete el.dataset.rawTotal; return; }
+  if (!start || !end) { el.textContent = "Pick your dates to see the total."; delete el.dataset.rawTotal; refreshPriceBreakdown("rent"); return; }
   const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000) + 1);
   const units = unit === "week" ? Math.ceil(days / 7) : days;
   el.textContent = `Total: ${naira(rate * units * qty)} (${qty} × ${units} ${unit}${units === 1 ? "" : "s"} × ${naira(rate)}/${unit})`;
   el.dataset.rawTotal = String(rate * units * qty);
+  refreshPriceBreakdown("rent");
 }
 
 function variantStock(v){const x=v?.quantity_available;if(x==null||x==='')return null;const n=Number(x);return Number.isFinite(n)&&n>=0?n:null;}
