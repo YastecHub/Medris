@@ -10918,6 +10918,7 @@ async function refreshAuthState() {
   subscribeOrderUpdates();
   subscribeMarketplaceUpdates();
   window.__monthlyPendingCount=0;void refreshMonthlyPendingCount();
+  window.__lockedVendorCount=0;void refreshLockedVendorCount();
   loadAiVoices();
   // Google sign-in creates the account straight away with no chance to
   // pick buyer vs vendor first (unlike the manual signup form, which asks
@@ -24901,7 +24902,7 @@ function adminNavHtml(active) {
     ["adminR2Migration", "fa-cloud-arrow-up", "R2 migration"],
     ["adminR2Optimize", "fa-compress", "R2 image size"],
   ].filter(([view]) => isSuperAdmin() || !SUPER_ADMIN_ONLY_VIEWS.has(view));
-  return `<div class="dash-tabs admin-dash-tabs"><div class="admin-dash-tabs-inner">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : ""}</button>`).join("")}</div></div>`;
+  return `<div class="dash-tabs admin-dash-tabs"><div class="admin-dash-tabs-inner">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : view === "adminPanel" ? `<span class="dash-tab-dot locked-vendors-admin-badge ${Number(window.__lockedVendorCount||0)?'':'hidden'}">${Number(window.__lockedVendorCount || 0) > 9 ? "9+" : Number(window.__lockedVendorCount || 0)}</span>` : ""}</button>`).join("")}</div></div>`;
 }
 
 // ---------- ADMIN: one-time R2 migration ----------
@@ -25135,6 +25136,17 @@ function renderAdminR2Optimize() {
   return html;
 }
 
+async function refreshLockedVendorCount(){
+  if(!session||profile?.role!=='admin')return 0;
+  try{
+    const {data,error}=await sb.rpc('admin_list_locked_vendors');
+    if(error)throw error;
+    const n=(data||[]).length;
+    window.__lockedVendorCount=n;
+    document.querySelectorAll('.locked-vendors-admin-badge').forEach(el=>{el.textContent=n>9?'9+':String(n);el.classList.toggle('hidden',!n)});
+    return n;
+  }catch(err){console.warn('Locked vendor badge refresh failed',err);return Number(window.__lockedVendorCount||0);}
+}
 async function refreshMonthlyPendingCount(){
   if(!session||(!vendor&&profile?.role!=='admin'))return 0;
   try{let q=sb.from('monthly_listing_submissions').select('id,kind,listing_id,vendor_id').eq('status','pending');if(profile.role!=='admin')q=q.eq('vendor_id',vendor.id);
@@ -25367,7 +25379,9 @@ async function saveSupportRequest(id) {
 
 async function renderAdminPanel(status) {
   if (!session || !isSuperAdmin()) return '<div class="empty-state">Access denied.</div>';
-  status = ["all", "pending", "verified", "rejected", "recycle"].includes(status) ? status : "pending";
+  status = ["all", "pending", "verified", "rejected", "recycle", "locked"].includes(status) ? status : "pending";
+
+  if (status === "locked") return renderAdminLockedVendors();
 
   let vendors = [];
   let vendorError = null;
@@ -25396,6 +25410,7 @@ async function renderAdminPanel(status) {
       <a class="${status === "pending" ? "active" : ""}" onclick="navigate('adminPanel',{status:'pending'})">pending</a>
       <a class="${status === "verified" ? "active" : ""}" onclick="navigate('adminPanel',{status:'verified'})">verified</a>
       <a class="${status === "rejected" ? "active" : ""}" onclick="navigate('adminPanel',{status:'rejected'})">rejected</a>
+      <a class="${status === "locked" ? "active" : ""}" onclick="navigate('adminPanel',{status:'locked'})"><i class="fa-solid fa-lock"></i> Locked${Number(window.__lockedVendorCount||0) ? ` <span class="badge danger" style="margin-left:.25rem;">${Number(window.__lockedVendorCount||0) > 9 ? "9+" : Number(window.__lockedVendorCount||0)}</span>` : ""}</a>
       <a class="${status === "recycle" ? "active" : ""}" onclick="navigate('adminPanel',{status:'recycle'})"><i class="fa-solid fa-trash-can"></i> Recycle Bin</a>
     </div>`;
 
@@ -25431,6 +25446,78 @@ async function renderAdminPanel(status) {
     </details>`;
   });
   return html+"</div>";
+}
+
+// Vendors whose storefront is currently paused -- either automatically
+// over an overdue commission balance, or manually by an admin. Previously
+// there was no way to see this list at all short of scrolling the full
+// vendor list and checking each one individually.
+async function renderAdminLockedVendors() {
+  // Fetched before adminNavHtml()/the tab row are built below, so the
+  // "Vendor" tab badge they bake into the returned HTML already reflects
+  // the current count instead of whatever was set at the last page load.
+  const { data: locked, error } = await sb.rpc("admin_list_locked_vendors");
+  window.__lockedVendorCount = (locked || []).length;
+
+  let html = `<h2><i class='fa-solid fa-gear'></i> Admin: Vendor applications</h2>`;
+  html += adminNavHtml("adminPanel");
+  html += `<div class="tabs">
+      <a onclick="navigate('adminPanel',{status:'all'})">all</a>
+      <a onclick="navigate('adminPanel',{status:'pending'})">pending</a>
+      <a onclick="navigate('adminPanel',{status:'verified'})">verified</a>
+      <a onclick="navigate('adminPanel',{status:'rejected'})">rejected</a>
+      <a class="active" onclick="navigate('adminPanel',{status:'locked'})"><i class="fa-solid fa-lock"></i> Locked</a>
+      <a onclick="navigate('adminPanel',{status:'recycle'})"><i class="fa-solid fa-trash-can"></i> Recycle Bin</a>
+    </div>`;
+
+  if (error) return html + errorStateHtml(error);
+  if (!locked || !locked.length) {
+    return html + `<div class="card empty-state"><i class="fa-solid fa-lock-open"></i><p>No vendors are currently locked.</p></div>`;
+  }
+
+  html += `<div id="adminLockedVendorCards">${locked.map((v) => {
+    const reason = v.admin_paused ? "Manually paused by an admin" : v.commission_pause_reason === "commission_overdue" ? "Commission overdue" : "Paused";
+    return `<div id="adminLockedVendor-${esc(v.vendor_id)}" class="card admin-vendor-card">
+      <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.5rem;">
+        <strong>${esc(v.business_name || "Vendor")}</strong>
+        <span class="badge danger">Locked</span>
+      </div>
+      <p class="muted" style="margin:0.3rem 0;">${esc(reason)}</p>
+      <p class="muted" style="margin:0.3rem 0;">Applicant: ${esc(v.applicant_name || "")} ${v.applicant_email ? `(${esc(v.applicant_email)})` : ""}</p>
+      ${v.city ? `<p class="muted" style="margin:0.3rem 0;">${esc(v.city)}</p>` : ""}
+      <p style="margin:0.4rem 0;">Commission owed: <strong>${naira(Number(v.commission_owed || 0))}</strong></p>
+      <div class="flex" style="margin-top:0.5rem;gap:.5rem;flex-wrap:wrap;">
+        <button type="button" class="btn btn-sm" onclick="adminUnlockVendor('${esc(v.vendor_id)}')"><i class="fa-solid fa-unlock"></i> Unlock</button>
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+  return html;
+}
+
+async function adminUnlockVendor(vendorId) {
+  if (!vendorId) return;
+  const btn = document.querySelector(`#adminLockedVendor-${CSS.escape(vendorId)} button`);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Unlocking…'; }
+  try {
+    const { data, error } = await sb.rpc("admin_force_unlock_vendor", { p_vendor_id: vendorId });
+    if (error) throw error;
+    const stillOwed = Number(data?.vendor?.commission_owed || 0);
+    showToast(stillOwed > 0 ? `Storefront unlocked. ₦${stillOwed.toLocaleString()} commission remains owed.` : "Storefront unlocked.", "success");
+    const card = byId(`adminLockedVendor-${vendorId}`);
+    card?.remove();
+    window.__lockedVendorCount = Math.max(0, Number(window.__lockedVendorCount || 0) - 1);
+    document.querySelectorAll(".locked-vendors-admin-badge").forEach((el) => {
+      el.textContent = window.__lockedVendorCount > 9 ? "9+" : String(window.__lockedVendorCount);
+      el.classList.toggle("hidden", !window.__lockedVendorCount);
+    });
+    if (!document.querySelector("#adminLockedVendorCards .admin-vendor-card")) {
+      const wrap = byId("adminLockedVendorCards");
+      if (wrap) wrap.outerHTML = `<div class="card empty-state"><i class="fa-solid fa-lock-open"></i><p>No vendors are currently locked.</p></div>`;
+    }
+  } catch (err) {
+    showToast(err.message || "Could not unlock this vendor.", "error");
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-unlock"></i> Unlock'; }
+  }
 }
 
 function filterAdminVendorCards(){
