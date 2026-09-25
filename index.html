@@ -31618,10 +31618,19 @@ window.renderVendorMapRail = function(){
 }
 @media(max-width:560px){#vendorsGrid .vendor-card{padding:.62rem !important}.vendor-directory-logo{width:2.65rem !important;height:2.65rem !important;min-width:2.65rem !important;min-height:2.65rem !important;}}
 
-/* Final vendor-card sizing: smaller cards, but a genuinely large uniform profile circle. */
-.vendors-directory-grid .vendor-card{min-height:118px !important;padding:.55rem !important;display:flex !important;flex-direction:row !important;align-items:center !important;gap:.65rem !important;}
-.vendors-directory-grid .vendor-card .vendor-directory-logo{width:3.05rem !important;height:3.05rem !important;min-width:3.05rem !important;min-height:3.05rem !important;margin:0 !important;flex:0 0 3.05rem !important;font-size:1.12rem !important;}
-.vendors-directory-grid.vendors-list-mode .vendor-card{min-height:86px !important;}
+/* Final vendor-card sizing. List mode: compact row with a modest avatar.
+   Grid mode: a social-profile-card layout with the avatar large and
+   centered on top, name/location/category/follow stacked below it. */
+.vendor-card-avatar-wrap{position:relative !important;display:inline-flex !important;flex:0 0 auto !important;}
+.vendor-card-verified-badge{position:absolute !important;right:-.08rem !important;bottom:-.08rem !important;width:1.1rem !important;height:1.1rem !important;border-radius:50% !important;background:var(--card) !important;box-shadow:0 0 0 2px var(--card) !important;display:flex !important;align-items:center !important;justify-content:center !important;font-size:.72rem !important;}
+.vendor-card-verified-badge i{color:#16a34a !important;}
+.vendors-directory-grid.vendors-list-mode .vendor-card{min-height:86px !important;padding:.55rem !important;display:flex !important;flex-direction:row !important;align-items:center !important;gap:.65rem !important;}
+.vendors-directory-grid.vendors-list-mode .vendor-card .vendor-card-avatar-wrap,
+.vendors-directory-grid.vendors-list-mode .vendor-card .vendor-directory-logo{width:3.05rem !important;height:3.05rem !important;min-width:3.05rem !important;min-height:3.05rem !important;margin:0 !important;flex:0 0 3.05rem !important;font-size:1.12rem !important;}
+.vendors-directory-grid:not(.vendors-list-mode) .vendor-card{min-height:230px !important;padding:1rem .8rem .85rem !important;display:flex !important;flex-direction:column !important;align-items:center !important;gap:.3rem !important;}
+.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-card-avatar-wrap,
+.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-directory-logo{width:4.4rem !important;height:4.4rem !important;min-width:4.4rem !important;min-height:4.4rem !important;margin:0 0 .5rem !important;flex:0 0 4.4rem !important;font-size:1.55rem !important;}
+.vendors-directory-grid:not(.vendors-list-mode) .vendor-directory-name{font-size:.94rem !important;margin-top:.1rem !important;}
 /* legacy Top-rated Vendor sizing removed */
 /* legacy Top-rated Vendor row layout removed */
 .vendors-map-vendor-chip{flex-basis:196px !important;min-width:196px !important;padding:.55rem .62rem !important;}
@@ -36798,9 +36807,10 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       const followerStat=`<span class="vendor-card-follower-stat"><i class="fa-solid fa-user-group" aria-hidden="true"></i> <span class="vendor-follower-count">${count}</span> follower${Number(v?.follower_count||0)===1?'':'s'}</span>`;
       const distanceHtml = vendorDistanceHtml(v);
       const ratingInline = `<span class="vendor-card-rating-corner badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}">★ ${Number(v?.avg_rating||0).toFixed(1)}</span>`;
+      const verifiedBadge = `<span class="vendor-card-verified-badge" aria-label="Verified vendor" title="Verified vendor"><i class="fa-solid fa-circle-check"></i></span>`;
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
-        ${avatarHtml}<div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
-          <strong class="vendor-directory-name">${escText(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
+        <span class="vendor-card-avatar-wrap">${avatarHtml}${verifiedBadge}</span><div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
+          <strong class="vendor-directory-name">${escText(name)}</strong>
           <p class="muted vendor-directory-city" style="margin:.15rem 0;">${escText(v?.city||"Online")}${distanceHtml ? ` · ${distanceHtml}` : ""}</p>
           <p class="muted vendor-directory-categories"><i class="fa-solid fa-layer-group"></i> ${escText(sectorName)}</p>
           ${followBtn}
