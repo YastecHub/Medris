@@ -187,14 +187,16 @@
      logo masks, or empty navigation while the first route is being prepared.
      The user sees only the real Levromart mark on the normal app surface;
      the splash disappears as soon as init() has a route ready. */
-  #levromartSplash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.15rem;
+  #levromartSplash, #levromartOfflineOverlay{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.15rem;text-align:center;padding:0 2rem;
     background-color:#0c3323;
     /* The crumpled-paper green texture is the same artwork now used for the
        app icon, inlined here (small, ~10KB WebP) so the very first paint of
        the app never waits on a network request for it. Two gradients ride
        on top: the first fades the texture toward the edges so it doesn't
        compete with the mark/wordmark, the second keeps the same bottom-heavy
-       vignette the plain-gradient version had, for legibility either way. */
+       vignette the plain-gradient version had, for legibility either way.
+       The offline overlay reuses this exact branded surface rather than
+       shipping a second copy of the same ~28KB texture. */
     background-image:
       radial-gradient(ellipse 85% 65% at 50% 30%, rgba(12,51,35,.25), rgba(6,31,20,.82) 70%),
       radial-gradient(ellipse 90% 70% at 50% 108%, rgba(0,0,0,.5), transparent 65%),
@@ -202,8 +204,23 @@
     background-repeat:no-repeat,no-repeat,no-repeat;
     background-size:cover,cover,cover;
     background-position:center,center,center;
-    opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease;}
+    transition:opacity .22s ease,visibility .22s ease;}
+  #levromartSplash{opacity:1;visibility:visible;pointer-events:auto;}
   #levromartSplash.is-hidden{opacity:0;visibility:hidden;pointer-events:none;}
+  #levromartOfflineOverlay{opacity:0;visibility:hidden;pointer-events:none;z-index:100050;}
+  #levromartOfflineOverlay.show{opacity:1;visibility:visible;pointer-events:auto;}
+  .levromart-offline-mark{position:relative;width:112px;height:112px;display:flex;align-items:center;justify-content:center;}
+  .levromart-offline-mark svg{width:82px;height:82px;display:block;opacity:.45;}
+  .levro-offline-arc{fill:none;stroke:#fff;stroke-width:8;stroke-linecap:round;stroke-dasharray:53.76 84.47;}
+  .levro-offline-dot{fill:#fff;}
+  .levromart-offline-mark .levromart-offline-badge{position:absolute;bottom:-2px;right:-2px;width:2.1rem;height:2.1rem;border-radius:50%;background:#0c3323;border:3px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.95rem;}
+  .levromart-offline-title{color:#fff;font-size:1.28rem;font-weight:800;margin:0;}
+  .levromart-offline-text{color:rgba(255,255,255,.75);font-size:.88rem;line-height:1.5;max-width:22rem;margin:0;}
+  .levromart-offline-retry{background:#fff !important;color:#0c3323 !important;font-weight:700 !important;padding:.7rem 1.6rem !important;border-radius:999px !important;border:0 !important;margin-top:.3rem;}
+  .levromart-offline-retry:active{transform:scale(.97);}
+  .levromart-offline-retry.levro-offline-shake{animation:levroOfflineShake .4s ease;}
+  @keyframes levroOfflineShake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+  @media(prefers-reduced-motion:reduce){#levromartOfflineOverlay{transition:none}.levromart-offline-retry.levro-offline-shake{animation:none;}}
   .levromart-splash-mark{width:132px;height:132px;display:flex;align-items:center;justify-content:center;border-radius:34px;background:rgba(255,255,255,.05);box-shadow:0 18px 46px rgba(0,0,0,.35);}
   .levromart-splash-mark svg{width:82px;height:82px;display:block;}
   .levromart-splash-wordmark{color:#fff;font-size:1.65rem;font-weight:800;letter-spacing:.01em;}
@@ -7156,6 +7173,19 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   <g class="levro-splash-arc-spin levro-splash-arc-spin-right"><circle class="levro-splash-arc" cx="32" cy="32" r="22" transform="rotate(315 32 32)"/></g>
   <circle class="levro-splash-dot" cx="32" cy="32" r="6.5"/>
 </svg></div><div class="levromart-splash-wordmark">LevroMart</div><div class="levromart-splash-tagline">Buy · Sell · Connect</div></div>
+<div id="levromartOfflineOverlay" role="alert" aria-live="assertive" aria-hidden="true">
+  <div class="levromart-offline-mark" aria-hidden="true">
+    <svg viewBox="0 0 64 64" role="img">
+      <circle class="levro-offline-arc" cx="32" cy="32" r="22" transform="rotate(135 32 32)"/>
+      <circle class="levro-offline-arc" cx="32" cy="32" r="22" transform="rotate(315 32 32)"/>
+      <circle class="levro-offline-dot" cx="32" cy="32" r="6.5"/>
+    </svg>
+    <span class="levromart-offline-badge"><i class="fa-solid fa-wifi-slash" aria-hidden="true"></i></span>
+  </div>
+  <h2 class="levromart-offline-title">No internet connection</h2>
+  <p class="levromart-offline-text">Check your Wi-Fi or mobile data and try again. Your cart, orders and saved items are all still here.</p>
+  <button type="button" class="btn levromart-offline-retry" onclick="retryLevromartConnection()"><i class="fa-solid fa-rotate-right"></i> Try again</button>
+</div>
 <script id="levromart-splash-watchdog">
 (function(){
   // This watchdog intentionally lives before the large application bundle.
@@ -13700,6 +13730,10 @@ let sectors = [];
 async function renderHome() {
   const cachedHome = getOfflineHomeCache();
   if (browserLooksOffline()) {
+    // Home already has its own graceful offline experience (a cached
+    // browseable copy, or a clear "come back once you're online" notice) --
+    // the full-screen offline takeover would only get in the way here.
+    hideLevromartOfflineOverlay?.();
     if (cachedHome) return renderOfflineHomeFromCache(cachedHome);
     return `<div class="offline-browse-notice"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Connect once to load Levromart's marketplace, then the app will keep a browseable copy available for your next offline visit.</span></div><div class="empty-state"><i class="fa-solid fa-shop" style="display:block;font-size:1.8rem;margin-bottom:.55rem;"></i>Levromart is ready. Your marketplace will appear here after the first online load.</div>`;
   }
@@ -29346,21 +29380,56 @@ window.addEventListener("popstate", (e) => {
 })();
 
 
+// Full-screen branded takeover for genuine no-connectivity (the browser's
+// own online/offline signal -- airplane mode, no SIM data, Wi-Fi off), kept
+// completely separate from ordinary slow-request handling so a weak signal
+// never triggers it, only an actually-dead one. Home is the one page with
+// a real offline experience of its own (a cached browseable copy), so it
+// steps aside there instead of covering it -- see renderHome().
+function showLevromartOfflineOverlay(){
+  const el = byId("levromartOfflineOverlay");
+  if (!el) return;
+  el.classList.add("show");
+  el.setAttribute("aria-hidden", "false");
+}
+function hideLevromartOfflineOverlay(){
+  const el = byId("levromartOfflineOverlay");
+  if (!el) return;
+  el.classList.remove("show");
+  el.setAttribute("aria-hidden", "true");
+}
+window.retryLevromartConnection = function(ev){
+  if (navigator.onLine) {
+    hideLevromartOfflineOverlay();
+    navigate(currentView || "home", {}, false).catch(()=>{});
+    return;
+  }
+  const btn = ev?.currentTarget;
+  if (btn) {
+    btn.classList.add("levro-offline-shake");
+    setTimeout(() => btn.classList.remove("levro-offline-shake"), 420);
+  }
+  showToast("Still no connection -- check your Wi-Fi or mobile data.", "info");
+};
+
 // Offline/online state: if a connection returns after an offline browse,
 // quietly refresh Home in the background without making the tap wait.
 (function(){
   let offlineWasShown = false;
   function refreshOfflineState(){
     if (navigator.onLine) {
+      hideLevromartOfflineOverlay();
       if (offlineWasShown && currentView === "home") navigate("home", {}, false).catch(()=>{});
       offlineWasShown = false;
       return;
     }
     offlineWasShown = true;
+    if (currentView !== "home") showLevromartOfflineOverlay();
   }
   window.addEventListener("online", () => { __levroOfflineEventSeen = false; refreshOfflineState(); }, { passive:true });
   window.addEventListener("offline", () => { __levroOfflineEventSeen = true; refreshOfflineState(); }, { passive:true });
   if (navigator.onLine === false) __levroOfflineEventSeen = true;
+  refreshOfflineState();
 })();
 
 document.addEventListener("visibilitychange", () => {
@@ -37645,19 +37714,32 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   box-shadow:none !important;
   text-shadow:none !important;
 }
-/* Following state reads as a distinct light "on" state -- blue, not another
-   shade of green -- so it's obviously different from Follow (light green)
-   and from every other light-green active/selected control on screen. */
+/* Follow/Following, the storefront's bell and "..." menu, and the Message
+   button are all plain navigation/utility controls, not brand accents --
+   neutral in both states so they don't compete with real accent color. */
 #app .follow-btn:not(.btn-outline),
 #app .vendor-card-follow-btn.following{
-  background-color:color-mix(in srgb,var(--info) 14%,var(--card)) !important;
+  background-color:var(--text) !important;
   background-image:none !important;
-  color:var(--info) !important;
-  -webkit-text-fill-color:var(--info) !important;
-  border:1px solid color-mix(in srgb,var(--info) 40%,var(--border)) !important;
+  color:var(--card) !important;
+  -webkit-text-fill-color:var(--card) !important;
+  border:1px solid var(--text) !important;
   box-shadow:none !important;
   text-shadow:none !important;
 }
+#app .follow-btn.btn-outline,
+#app .follow-settings-btn,
+#app .storefront-more-icon,
+#app .btn.storefront-social-icon{
+  background-color:transparent !important;
+  background-image:none !important;
+  color:var(--text) !important;
+  -webkit-text-fill-color:var(--text) !important;
+  border:1px solid color-mix(in srgb,var(--text) 30%,var(--border)) !important;
+  box-shadow:none !important;
+  text-shadow:none !important;
+}
+#app .follow-settings-btn[disabled]{ opacity:.45 !important; }
 #app .storefront-catalog-tab.active .tab-count{
   background:color-mix(in srgb,var(--primary) 18%,transparent) !important;
   color:var(--primary) !important;
