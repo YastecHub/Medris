@@ -3348,7 +3348,7 @@ html { scroll-padding-top: 86px !important; }
   width:1.25rem;
   flex:0 0 1.25rem;
   text-align:center;
-  color:var(--primary);
+  color:var(--text);
   font-size:.95rem;
 }
 .settings-section-note{
@@ -3465,7 +3465,7 @@ html { scroll-padding-top: 86px !important; }
   gap:.7rem;
   min-height:54px;
 }
-.settings-toggle-row > i:first-child,.settings-simple-row > i:first-child{color:var(--primary);font-size:.92rem;text-align:center;}
+.settings-toggle-row > i:first-child,.settings-simple-row > i:first-child{color:var(--text);font-size:.92rem;text-align:center;}
 .settings-inline-btn{
   min-width:58px;
   min-height:34px;
@@ -3841,7 +3841,7 @@ img, svg, video, canvas, iframe { max-width:100%; }
   font-weight:750 !important;
   white-space:nowrap !important;
 }
-.settings-status-pill.active { color:var(--primary) !important; border-color:color-mix(in srgb,var(--primary) 45%,var(--border)) !important; background:color-mix(in srgb,var(--primary) 9%,transparent) !important; }
+.settings-status-pill.active { color:var(--text) !important; border-color:color-mix(in srgb,var(--text) 22%,var(--border)) !important; background:color-mix(in srgb,var(--text) 8%,transparent) !important; }
 
 @media (max-width:600px) {
   .settings-page { padding-left:.75rem !important; padding-right:.75rem !important; }
@@ -5187,11 +5187,11 @@ body.product-detail-view #aiChatFab{right:.7rem !important;bottom:.65rem !import
 .vendor-card .vendor-card-footer .badge{margin-left:0 !important;}
 .vendor-card-follow-btn{
   margin-top:.55rem; display:inline-flex; align-items:center; justify-content:center;
-  padding:.32rem .95rem; border-radius:999px; border:0; cursor:pointer;
+  padding:.32rem .95rem; border-radius:999px; border:1px solid color-mix(in srgb,var(--text) 22%,var(--border)); cursor:pointer;
   font-size:.72rem; font-weight:700;
-  background:color-mix(in srgb, var(--primary) 14%, var(--card)); color:var(--primary);
+  background:transparent; color:var(--text);
 }
-.vendor-card-follow-btn:hover{ background:color-mix(in srgb, var(--primary) 22%, var(--card)); }
+.vendor-card-follow-btn:hover{ background:color-mix(in srgb, var(--text) 8%, var(--card)); }
 .vendor-card-follow-btn.following{ background:var(--primary); color:#fff; }
 .vendor-card-follower-stat{ display:block; margin-top:.3rem; font-size:.68rem; color:var(--text-muted); white-space:nowrap; }
 .vendor-card-follower-stat i{ margin-right:.22rem; opacity:.7; }
@@ -14822,7 +14822,6 @@ function productCardHtml(p) {
     <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
       <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}</div>
       <h4>${esc(p.name)}</h4>
-      <div class="product-card-rating-line" data-product-rating-id="${esc(p.id)}">${window.__productRatingCache?.has(String(p.id)) ? productRatingBadgeInnerHtml(window.__productRatingCache.get(String(p.id))) : `<span class="product-card-rating-empty">${"☆".repeat(5)}</span>`}</div>
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
         ${actionHtml}
