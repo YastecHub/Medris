@@ -37140,7 +37140,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       const avatar=v?.logo_url||v?.user_avatar_url||"";
       const sectorName=v?.sector_name || (Array.isArray(sectors)?sectors.find(sec=>String(sec.id)===String(v?.sector_id))?.name:"") || "Sector not listed";
       const count=Number(v?.follower_count||0).toLocaleString();
-      const avatarHtml=avatar?`<img src="${escText(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false">`:avatarFallbackHtml(name,'3.1rem','vendor-directory-logo',name);
+      const avatarHtml=avatar?`<img src="${escText(avatar)}" alt="" class="vendor-directory-logo" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${escText(name)}','3.1rem','vendor-directory-logo','${escText(name)}')))">`:avatarFallbackHtml(name,'3.1rem','vendor-directory-logo',name);
       // Admins are people too -- there's no reason they can't follow a vendor's
       // shop from the Featured Vendors rail like any other account can.
       const showFollow=!(typeof isOwnVendorId==="function" && isOwnVendorId(v?.id));
