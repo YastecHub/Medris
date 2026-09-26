@@ -37125,11 +37125,29 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   // -----------------------------------------------------------------------
   // Public follower counts. The RPC is SECURITY DEFINER and returns the count
   // without exposing follower identities. Update every visible vendor card.
+  //
+  // Both this and hydrateVendorCardFollowState below are re-run by a
+  // MutationObserver on essentially any DOM change anywhere in the app (see
+  // the observer near the bottom of this IIFE) -- a toast, a badge count, a
+  // chat preview, anything. Without a "nothing actually changed" guard that
+  // re-fires the RPC dozens of times a minute per session for the exact same
+  // set of visible vendor cards; across every concurrent user that's what
+  // ran this project's Supabase egress quota into the ground. The guard
+  // below skips the network round trip entirely when the same vendor-id set
+  // was already hydrated within the last 10 seconds.
   // -----------------------------------------------------------------------
+  const __vendorHydrateCache={followerCounts:{key:"",at:0},followState:{key:"",at:0}};
+  function __vendorHydrateShouldSkip(cache,ids){
+    const key=ids.slice().sort().join(",");
+    if(cache.key===key && Date.now()-cache.at<10000)return true;
+    cache.key=key;cache.at=Date.now();
+    return false;
+  }
   async function hydrateFollowerCounts(){
     if(typeof sb === "undefined")return;
     const ids=[...new Set([...document.querySelectorAll("[data-vendor-id]")].map(el=>el.dataset.vendorId).filter(Boolean))];
     if(!ids.length)return;
+    if(__vendorHydrateShouldSkip(__vendorHydrateCache.followerCounts,ids))return;
     try{
       const {data,error}=await sb.rpc("get_vendor_follower_counts",{p_vendor_ids:ids});
       if(error)throw error;
@@ -37203,9 +37221,18 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     if(!session||typeof sb==="undefined")return;
     const ids=[...new Set([...document.querySelectorAll(".vendor-card-follow-btn[data-vendor-id]")].map(el=>el.dataset.vendorId).filter(Boolean))];
     if(!ids.length)return;
+    if(__vendorHydrateShouldSkip(__vendorHydrateCache.followState,ids))return;
     try{
-      const results=await Promise.all(ids.map(id=>sb.rpc("get_vendor_follow_state",{p_vendor_id:id}).then(r=>[id,r.error?null:(r.data?.[0]||null)]).catch(()=>[id,null])));
-      results.forEach(([id,st])=>{
+      // One batched RPC call for every visible card instead of one call per
+      // card -- this used to fire get_vendor_follow_state once per vendor id
+      // on every single hydration pass, which combined with how often the
+      // pass itself re-ran (see the guard above) was firing well over a
+      // million times a day across all sessions.
+      const {data,error}=await sb.rpc("get_vendor_follow_states",{p_vendor_ids:ids});
+      if(error)throw error;
+      (data||[]).forEach((st)=>{
+        const id=st?.vendor_id;
+        if(!id)return;
         // A tap in the last 15s wins over this fetch -- the fetch may have
         // been in flight since before that tap landed, and reflecting a
         // stale answer over it is exactly the "needs two taps" bug.
