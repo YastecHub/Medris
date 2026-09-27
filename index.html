@@ -82,14 +82,14 @@
 <meta property="og:title" content="Levromart">
 <meta property="og:description" content="Rent or buy from verified vendors across Lagos: healthcare equipment, food, electronics, and more.">
 <meta property="og:url" content="https://levromart.vercel.app/">
-<meta property="og:image" content="https://vgiaogxsekpteqbxkolf.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png">
+<meta property="og:image" content="https://ovklnoroyxobijgvsyfp.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Levromart — Support Local Businesses">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Levromart">
 <meta name="twitter:description" content="Rent or buy from verified vendors across Lagos: healthcare equipment, food, electronics, and more.">
-<meta name="twitter:image" content="https://vgiaogxsekpteqbxkolf.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png">
+<meta name="twitter:image" content="https://ovklnoroyxobijgvsyfp.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png">
 <meta name="twitter:image:alt" content="Levromart — Support Local Businesses">
 
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -7885,8 +7885,8 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 // Security on every table is what actually protects the data; this key
 // alone cannot bypass it. Never put the service-role key or a payment
 // provider's secret key in client-side code like this file.
-const SUPABASE_URL = "https://vgiaogxsekpteqbxkolf.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_YbqLr_QiL8VzOd-YpRLh8Q__VIqzfst";
+const SUPABASE_URL = "https://ovklnoroyxobijgvsyfp.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_SjOSMDFWO-u9t5sKRp1sXQ_GsnrO2a7";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ---------- ACCOUNT INTEGRITY ----------
@@ -9429,7 +9429,7 @@ function syncLevromartLinkPreviewMeta(view = currentView, params = currentViewPa
   const isProduct = view === 'productDetail' && productId && product?.id === productId;
   const title = isProduct ? `${product.name} | Levromart` : 'Levromart';
   const description = isProduct ? (String(product.description || '').trim().slice(0, 180) || 'Shop this product on Levromart.') : 'Rent or buy from verified vendors across Lagos: healthcare equipment, food, electronics, and more.';
-  const image = isProduct && product.photos?.[0] ? product.photos[0] : 'https://vgiaogxsekpteqbxkolf.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png';
+  const image = isProduct && product.photos?.[0] ? product.photos[0] : 'https://ovklnoroyxobijgvsyfp.supabase.co/storage/v1/object/public/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png';
   const url = isProduct ? `${origin}${location.pathname}?product=${encodeURIComponent(productId)}` : `${origin}${location.pathname}`;
   setMeta('meta[property="og:title"]', title); setMeta('meta[property="og:description"]', description); setMeta('meta[property="og:url"]', url); setMeta('meta[property="og:image"]', image);
   setMeta('meta[name="twitter:title"]', title); setMeta('meta[name="twitter:description"]', description); setMeta('meta[name="twitter:image"]', image);
