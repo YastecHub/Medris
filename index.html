@@ -23549,7 +23549,7 @@ function orderFiltersDropdownHtml(route, status, type, payment, dateFrom, dateTo
   const r = String(route || "buyerOrders").replace(/'/g, "\\'");
   const p = String(perspective || "").replace(/'/g, "\\'");
   return `<div class="order-filters-wrap">
-    <button type="button" class="order-filters-trigger" aria-expanded="false" onclick="toggleOrderFilters(this)">
+    <button type="button" class="order-filters-trigger${(type !== "all" || payment !== "all" || dateFrom || dateTo) ? " has-filters" : ""}" aria-expanded="false" aria-label="Filters" title="Filters" onclick="toggleOrderFilters(this)">
       <span><i class="fa-solid fa-sliders"></i> Filters</span>
       <small>${esc([statusLabel,typeLabel,paymentLabel,dateLabel].join(" · "))}</small>
       <i class="fa-solid fa-chevron-down order-filters-chevron"></i>
@@ -23767,11 +23767,11 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   // instead of an accordion and a button stuck under the list.
   window.__orderHistoryHtml = orderHistoryAccordionHtml(historyCustomerOrders, true, embeddedVendorOrders ? "purchases" : null);
   window.__orderHistoryEmpty = !historyCustomerOrders.length;
-  const topActions = `<div class="orders-top-actions">${historyCustomerOrders.length ? `<button type="button" class="orders-top-btn" onclick="openOrderHistory()" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span><b>${historyCustomerOrders.length}</b></button>` : ""}<button type="button" class="orders-top-btn" onclick="navigate('home')" title="Continue shopping"><i class="fa-solid fa-bag-shopping"></i><span>Shop</span></button></div>`;
-  let html = `<div class="orders-title-row">${embeddedVendorOrders ? `<h2><i class='fa-solid fa-clipboard-list'></i> Orders</h2>` : `<h2><i class='fa-solid fa-clipboard-list'></i> My Orders</h2>`}${topActions}</div>`;
+  const filtersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}<div class="orders-search-slot"></div></div>`;
+  const moreMenu = `<div class="orders-more-wrap"><button type="button" class="orders-icon-btn" onclick="toggleOrdersMore(this)" aria-label="More" aria-expanded="false" title="More"><i class="fa-solid fa-ellipsis"></i></button><div class="orders-more-menu hidden">${historyCustomerOrders.length ? `<button type="button" onclick="toggleOrdersMore(this);openOrderHistory()"><i class="fa-solid fa-clock-rotate-left"></i> Order history <b>${historyCustomerOrders.length}</b></button>` : ""}<button type="button" onclick="navigate('home')"><i class="fa-solid fa-bag-shopping"></i> Continue shopping</button></div></div>`;
+  let html = `<div class="orders-title-row"><h2>${embeddedVendorOrders ? "Orders" : "My Orders"}</h2><div class="orders-top-actions">${filtersRow}${moreMenu}</div></div>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
   html += orderStatusPillsHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective);
-  html += `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}<div class="orders-search-slot"></div></div>`;
   orderListViewMode = "cards";
   orderListExpanded = false;
   window.__orderListOrders = activeCustomerOrders;
@@ -23887,6 +23887,19 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
     <div class="accordion-body">${inner}</div>
   </div>`;
 }
+
+function toggleOrdersMore(btn) {
+  const wrap = btn?.closest?.(".orders-more-wrap");
+  const menu = wrap?.querySelector(".orders-more-menu");
+  if (!menu) return;
+  const open = menu.classList.contains("hidden");
+  menu.classList.toggle("hidden", !open);
+  wrap.querySelector(".orders-icon-btn")?.setAttribute("aria-expanded", String(open));
+}
+document.addEventListener("click", (e) => {
+  if (e.target.closest?.(".orders-more-wrap")) return;
+  document.querySelectorAll(".orders-more-menu:not(.hidden)").forEach((m) => m.classList.add("hidden"));
+});
 
 function openOrderHistory() {
   document.getElementById("orderHistoryModal")?.remove();
@@ -42371,6 +42384,66 @@ html[data-theme="black"] .avatar-fallback{
 #leviAskBubble{position:fixed;z-index:99990;max-width:15rem;background:var(--card);color:var(--text);border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border));border-radius:16px 16px 4px 16px;padding:.6rem .8rem;font-size:.86rem;font-weight:700;box-shadow:0 10px 28px rgba(0,0,0,.18);cursor:pointer;opacity:0;transform:translateY(6px) scale(.96);transition:opacity .25s ease,transform .25s ease}
 #leviAskBubble.show{opacity:1;transform:none}
 #leviAskBubble small{display:block;font-weight:500;color:var(--text-muted);margin-top:.1rem}
+
+/* ===== Compact toolbar buttons (filters / search / more) ===== */
+.orders-title-row{position:relative;flex-wrap:nowrap}
+.orders-title-row h2{font-size:1.35rem}
+.orders-top-actions{display:flex;align-items:center;gap:.4rem;margin-left:auto}
+#app .orders-title-row .orders-filter-search-row{display:flex !important;align-items:center !important;gap:.4rem !important;margin:0 !important;width:auto !important;flex:0 0 auto !important}
+.orders-icon-btn,
+#app .order-filters-trigger,
+#app .vendors-filters-toggle,
+#app .browse-filter-trigger{
+  width:42px !important;height:42px !important;min-width:42px !important;min-height:42px !important;max-width:42px !important;
+  padding:0 !important;border-radius:50% !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;
+  background:var(--card) !important;background-image:none !important;border:1px solid var(--border) !important;box-shadow:none !important;
+  color:var(--text-muted) !important;-webkit-text-fill-color:var(--text-muted) !important;
+  font-size:0 !important;line-height:1 !important;gap:0 !important;position:relative;cursor:pointer;
+}
+.orders-icon-btn i,
+#app .order-filters-trigger i,
+#app .vendors-filters-toggle i,
+#app .browse-filter-trigger i{font-size:1rem !important;color:var(--text-muted) !important;-webkit-text-fill-color:var(--text-muted) !important;margin:0 !important}
+#app .order-filters-trigger small,
+#app .order-filters-trigger .order-filters-chevron,
+#app .vendors-filters-toggle .vendors-filters-chevron,
+#app .browse-filter-trigger .browse-filter-chevron{display:none !important}
+#app .order-filters-trigger>span{font-size:0 !important;color:var(--text-muted) !important;-webkit-text-fill-color:var(--text-muted) !important}
+#app .order-filters-trigger.active,
+#app .vendors-filters-toggle.active,
+#app .browse-filter-trigger.active{
+  background:color-mix(in srgb,var(--primary) 14%,var(--card)) !important;
+  border-color:color-mix(in srgb,var(--primary) 50%,var(--border)) !important;
+}
+#app .order-filters-trigger.has-filters::after{content:"";position:absolute;top:7px;right:7px;width:9px;height:9px;border-radius:50%;background:var(--primary);border:2px solid var(--card)}
+#app .order-filters-wrap{flex:0 0 auto !important;width:auto !important;position:relative !important}
+#app .orders-filter-search-row .order-filters-wrap,
+#app .orders-filter-search-row>.order-filters-wrap{flex:0 0 auto !important;width:auto !important;min-width:0 !important}
+#app .order-filters-panel{left:auto !important;right:0 !important;width:min(330px,calc(100vw - 1.4rem)) !important}
+#app .orders-title-row .order-filters-wrap,#app .orders-title-row .orders-filter-search-row{position:static !important}
+#app .orders-title-row .order-filters-panel{top:calc(100% + .35rem) !important}
+#app .orders-title-row .order-search-wrap{flex:0 0 42px !important;width:42px !important;min-height:42px !important}
+#app .orders-title-row .order-search-wrap .order-search-toggle{width:42px !important;height:42px !important;border-radius:50% !important;border:1px solid var(--border) !important;background:var(--card) !important}
+/* While the search box is open it takes over the whole row. */
+#app .orders-title-row:has(.final-order-open) h2,
+#app .orders-title-row:has(.final-order-open) .orders-more-wrap,
+#app .orders-title-row:has(.final-order-open) .order-filters-wrap{display:none !important}
+#app .orders-title-row:has(.final-order-open) .orders-top-actions,
+#app .orders-title-row:has(.final-order-open) .orders-filter-search-row{flex:1 1 100% !important;width:100% !important}
+#app .orders-title-row .order-search-wrap.final-order-open{flex:1 1 auto !important;width:100% !important}
+.orders-more-wrap{position:relative}
+.orders-more-menu{position:absolute;right:0;top:calc(100% + .4rem);z-index:520;min-width:13rem;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.3rem;box-shadow:0 14px 34px rgba(15,23,42,.16)}
+.orders-more-menu.hidden{display:none}
+.orders-more-menu button{display:flex;align-items:center;gap:.6rem;width:100%;border:0;background:transparent;color:var(--text);font:inherit;font-size:.88rem;font-weight:600;padding:.65rem .7rem;border-radius:10px;cursor:pointer;text-align:left}
+.orders-more-menu button i{color:var(--text-muted);width:1.1rem;text-align:center}
+.orders-more-menu button b{margin-left:auto;font-size:.72rem;background:color-mix(in srgb,var(--primary) 16%,var(--card));border-radius:999px;padding:.05rem .45rem}
+/* Vendors + Browse: the toolbars become a right-aligned row of small buttons. */
+#app .vendors-directory-controls{display:flex !important;justify-content:flex-end !important;align-items:center !important;gap:.4rem !important;margin:.1rem 0 .4rem !important}
+#app .browse-filter-toolbar{grid-template-columns:42px minmax(0,1fr) !important}
+
+#app .levro-final-search-toggle,
+#app .levro-compact-search-toggle{width:42px !important;height:42px !important;min-width:42px !important;border-radius:50% !important;border:1px solid var(--border) !important;background:var(--card) !important;box-shadow:none !important;color:var(--text-muted) !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;padding:0 !important}
+#app .levro-final-search-toggle i,#app .levro-compact-search-toggle i{color:var(--text-muted) !important}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
