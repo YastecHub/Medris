@@ -1,0 +1,53 @@
+name: Nightly database backup
+
+# Dumps the public schema (structure + data) and the auth users/identities
+# data, encrypts it with BACKUP_PASSPHRASE, and keeps it as a workflow
+# artifact for 30 days. Needs two repo secrets:
+#   SUPABASE_DB_URL   Session-pooler URI (port 5432), from Supabase
+#                     Project Settings > Database > Connection string
+#   BACKUP_PASSPHRASE Any long random string; without it a backup can't be opened
+# Restore: gpg -d backup.tar.gz.gpg | tar xz, then pg_restore the .dump files.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Dump database
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          mkdir out
+          /usr/lib/postgresql/17/bin/pg_dump "$DB_URL" -Fc --no-owner --no-acl -n public -f out/public.dump
+          /usr/lib/postgresql/17/bin/pg_dump "$DB_URL" -Fc --no-owner --no-acl --data-only -t auth.users -t auth.identities -f out/auth.dump
+          test "$(stat -c %s out/public.dump)" -gt 100000
+          test "$(stat -c %s out/auth.dump)" -gt 10000
+
+      - name: Encrypt
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          tar czf - -C out . | gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" --cipher-algo AES256 -c -o backup.tar.gz.gpg
+          rm -rf out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backup.tar.gz.gpg
+          retention-days: 30
+          if-no-files-found: error
