@@ -23615,9 +23615,107 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   }
   // Hydrate item summaries separately from the base order query. This keeps a
   // restrictive nested relationship from blocking the whole Orders page.
+  try {
+    const orderIds = (safeAllOrders || []).map(o => o.id).filter(Boolean);
+    if (orderIds.length) {
+      const { data: orderItems } = await withRouteTimeout(
+        sb.from("order_items").select("order_id,product_id,quantity,unit_price,product:products(id,is_service,name,photos)").in("order_id", orderIds),
+        2500, { data: [], error: null }
+      );
+      const byOrder = new Map();
+      (orderItems || []).forEach(it => { if (!byOrder.has(it.order_id)) byOrder.set(it.order_id, []); byOrder.get(it.order_id).push(it); });
+      (safeAllOrders || []).forEach(o => { if (!Array.isArray(o.items) || !o.items.length) o.items = byOrder.get(o.id) || []; });
+    }
+  } catch (_) {}
+
+  let orders = type === "all" ? safeAllOrders : (safeAllOrders || []).filter((o) => orderCategory(o) === type);
+  if (payment !== "all") orders = (orders || []).filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
+
+  // The orders relation can return the order while hiding the nested users row
+  // under RLS. Resolve the customer's display name through the existing secure
+  // buyer-contact RPC so every vendor card can identify the customer.
+  try {
+    await Promise.all((safeAllOrders || []).map(async (o) => {
+      if (o.buyer?.name || !o.id) return;
+      const r = await withRouteTimeout(sb.rpc("get_order_buyer_contact", { p_order_id: o.id }), 2200, { data: [] });
+      const c = Array.isArray(r?.data) ? r.data[0] : null;
+      if (c?.name) o.buyer = { ...(o.buyer || {}), name: c.name };
+    }));
+  } catch (_) {}
+  // Customers stay anonymous to the vendor until the order is accepted.
+  (safeAllOrders || []).forEach((o) => { if (["pending", "cancelled"].includes(String(o.status || ""))) o.buyer = null; });
+
+  let safeStatsOrders = statsOrders || [];
+  if (statsError) {
+    const { data: fallbackStats } = await sb.from("orders").select("status, created_at").eq("vendor_id", vendor.id);
+    safeStatsOrders = fallbackStats || [];
+  }
+  window.__orderStatsOrders = safeStatsOrders;
+
+  // Refresh both perspective counts while the Orders page is open so the
+  // two perspective badges and the bottom-nav badge never depend on a stale
+  // previous screen.
+  try {
+    const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
+      sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+      sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+    ]);
+    vendorPendingOrderCount = salesCount || 0;
+    buyerPendingOrderCount = purchaseCount || 0;
+    renderBottomNav();
+  } catch (_) {}
+  // Three rows of tab pills used to wrap into an unreadable jumble on
+  // narrow screens - compact dropdowns plus a date range say the same
+  // thing in a fraction of the space.
+  let html = `<h2>Orders</h2>`;
+  html += vendorOrdersTabsHtml("sales");
+  html += orderStatsHtml(safeStatsOrders);
+  html += orderStatusPillsHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales");
+  html += `<div class="orders-filter-search-row">${orderFiltersDropdownHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales")}<div class="orders-search-slot"></div></div>`;
+  orderListViewMode = "cards";
+  orderListExpanded = false;
+  const sortedOrders = sortOrdersForList(orders);
+  const { active: activeVendorOrders, history: historyVendorOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
+  window.__orderListOrders = activeVendorOrders;
+  window.__orderListIsCustomer = false;
+  window.__orderListSourcePerspective = "sales";
+  html += orderListControlsHtml(activeVendorOrders.length);
+  html += `<div id="orderListWrap">${orderListHtml(activeVendorOrders, false, "sales")}</div>`;
+  html += orderHistoryAccordionHtml(historyVendorOrders, false, "sales");
+  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('vendorDashboard')"><i class='fa-solid fa-arrow-left'></i> Back to Dashboard</button>`;
+  setTimeout(() => { enhanceSelectsIn(byId("app")); renderOrderStatsBody(); }, 0);
+  return html;
+}
+
+async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, embeddedVendorOrders = false) {
+  const ordersRoute = embeddedVendorOrders ? "vendorOrders" : "buyerOrders";
+  const ordersPerspective = embeddedVendorOrders ? "purchases" : "";
+  if (!session) return '<div class="empty-state">Please log in.</div>';
+  status = ORDER_TABS.includes(status) ? status : "all";
+  type = ORDER_TYPE_TABS.some((t) => t.value === type) ? type : "all";
+  payment = ["all", "paid", "unpaid"].includes(payment) ? payment : "all";
+  dateFrom = dateFrom || "";
+  dateTo = dateTo || "";
+
+  // order_items(*) is intentionally used here rather than naming columns,
+  // so this stays resilient to schema changes on order_items.
+  let query = sb.from("orders").select("*, vendor:vendors(business_name,city,logo_url), items:order_items(*,product:products(id,is_service,name,photos)), payments(payment_type,status)").eq("buyer_id", session.user.id);
+  if (status !== "all") query = query.eq("status", status);
+  if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
+  if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
+  const { data: allOrders, error: allOrdersError } = await withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") });
+  let safeAllOrders = allOrders;
+  if (allOrdersError) {
+    console.warn("Rich buyer order query failed; using compatibility query", allOrdersError);
+    let fallback = sb.from("orders").select("*").eq("buyer_id", session.user.id);
+    if (status !== "all") fallback = fallback.eq("status", status);
+    if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
+    if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
+    const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: [], error: null });
+    safeAllOrders = r.data || [];
+  }
   // Fill in anything the rich query didn't return (items / vendor) in ONE
-  // parallel round instead of sequential waits, so a just-placed order shows
-  // its product and vendor right away rather than a bare row.
+  // parallel round instead of sequential waits.
   try {
     const rows = safeAllOrders || [];
     const orderIds = rows.filter(o => !Array.isArray(o.items) || !o.items.length).map(o => o.id).filter(Boolean);
