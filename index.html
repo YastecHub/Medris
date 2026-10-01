@@ -34101,18 +34101,20 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
     // the exact "twitching"/needs-two-taps bug. Recording the action here
     // lets that in-flight hydration defer to it instead of overwriting it.
     window.__followRecentAction={vendorId:String(vendorId),following:next,at:Date.now()};
+    window.rememberVendorFollow?.(vendorId,next);
     try{
       const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});
       if(r.error)throw r.error;
       if(typeof showToast==='function')showToast(next?'Following vendor.':'Unfollowed vendor.','success')
     }catch(e){
       window.__followRecentAction=null;
+      window.rememberVendorFollow?.(vendorId,wasFollowing);
       applyFollowUiState(wrap,wasFollowing);
       bumpFollowCount(wasFollowing?1:-1);
       showToast?.(e.message||'Could not update your following list.','error')
     }finally{btn.disabled=false}
   }
-  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;const st=await followState(vendorId);if(!st)return;const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following — tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
+  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;let st=await followState(vendorId);if(st)window.rememberVendorFollow?.(vendorId,!!st.following);else st={following:!!window.followedVendorSet?.().has(String(vendorId)),mute_mode:'none'};const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following — tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count&&st.follower_count!=null){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
   async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const open=menu.classList.toggle('hidden')===false;bell.setAttribute('aria-expanded',String(open));if(open)await refreshFollow(vendorId)}
   window.toggleLevromartVendorFollow=toggleFollow;window.toggleLevromartFollowNotifications=toggleFollowBell;
   async function saveFollowPrefsFromWrap(wrap,muteModeOverride){const id=wrap?.dataset.followVendorId;if(!id)return;const checked=k=>!!wrap.querySelector('[data-pref="'+k+'"]')?.checked;let muteMode=muteModeOverride;if(muteMode==null){const active=wrap.querySelector('.follow-mute-grid button.active');muteMode=active?.dataset.mute||'none';}try{const r=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:muteMode,p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')});if(r.error)throw r.error;wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===muteMode));showToast?.(muteMode==='none'?'Vendor notifications turned on.':muteMode==='always'?'Vendor notifications muted until you turn them back on.':`Vendor notifications muted for ${muteMode==='1h'?'1 hour':'8 hours'}.`,'success');}catch(e){showToast?.(e.message||'Could not update vendor notifications.','error')}}
@@ -37154,6 +37156,38 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   // below skips the network round trip entirely when the same vendor-id set
   // was already hydrated within the last 10 seconds.
   // -----------------------------------------------------------------------
+  // Remembered follow list: kept in memory and in localStorage (per user) so
+  // a card that is rebuilt, or a page that is refreshed before the network
+  // answers (or when it fails), still shows "Following" for a vendor the
+  // user follows instead of briefly/permanently falling back to "Follow".
+  const __followKey=()=>"levromart_followed_vendors:"+(session?.user?.id||"anon");
+  function followedVendorSet(){
+    const uid=session?.user?.id||"anon";
+    if(window.__followedVendorSet && window.__followedVendorSetUid===uid)return window.__followedVendorSet;
+    let arr=[];try{arr=JSON.parse(localStorage.getItem(__followKey())||"[]");}catch(_){}
+    window.__followedVendorSet=new Set(Array.isArray(arr)?arr.map(String):[]);
+    window.__followedVendorSetUid=uid;
+    return window.__followedVendorSet;
+  }
+  function rememberVendorFollow(id,following){
+    if(!id)return;
+    const set=followedVendorSet();
+    if(following)set.add(String(id));else set.delete(String(id));
+    try{localStorage.setItem(__followKey(),JSON.stringify([...set]));}catch(_){}
+  }
+  window.rememberVendorFollow=rememberVendorFollow;
+  window.followedVendorSet=followedVendorSet;
+  function paintRememberedFollows(){
+    if(!session)return;
+    const set=followedVendorSet();
+    document.querySelectorAll(".vendor-card-follow-btn[data-vendor-id]").forEach(btn=>{
+      const id=String(btn.dataset.vendorId||"");
+      const recent=window.__vendorCardFollowRecent?.get(id);
+      if(recent && Date.now()-recent.at<15000)return;
+      const on=set.has(id);
+      if(on!==btn.classList.contains("following")){btn.classList.toggle("following",on);btn.textContent=on?"Following":"Follow";}
+    });
+  }
   const __vendorHydrateCache={followerCounts:{key:"",at:0},followState:{key:"",at:0}};
   function __vendorHydrateShouldSkip(cache,ids){
     const key=ids.slice().sort().join(",");
@@ -37191,7 +37225,8 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       // silently reverts to "Follow" and the user has to tap twice. Trust
       // whatever was tapped most recently for a few seconds instead.
       const recentFollow=window.__vendorCardFollowRecent?.get(String(v?.id||""));
-      const isFollowingNow=!!(recentFollow && (Date.now()-recentFollow.at<15000) && recentFollow.following);
+      const recentFresh=!!(recentFollow && (Date.now()-recentFollow.at<15000));
+      const isFollowingNow=recentFresh ? !!recentFollow.following : !!(session && followedVendorSet().has(String(v?.id||"")));
       const followBtn=showFollow?`<button type="button" class="vendor-card-follow-btn${isFollowingNow?" following":""}" data-vendor-id="${escText(v?.id||"")}" onclick="event.stopPropagation();toggleVendorCardFollow('${escText(v?.id||"")}',event)">${isFollowingNow?"Following":"Follow"}</button>`:"";
       // Fewer stacked rows: rating and follower count now share one row at
       // the bottom of the card instead of each getting its own, and
@@ -37222,6 +37257,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     // server after; on failure, flip it back and say why.
     window.__vendorCardFollowRecent=window.__vendorCardFollowRecent||new Map();
     window.__vendorCardFollowRecent.set(String(vendorId),{following:next,at:Date.now()});
+    rememberVendorFollow(vendorId,next);
     matches.forEach(b=>{b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";b.disabled=true;});
     try{
       const r=await sb.rpc("toggle_vendor_follow",{p_vendor_id:vendorId,p_following:next});
@@ -37229,6 +37265,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       showToast?.(next?"Following vendor.":"Unfollowed vendor.","success");
     }catch(e){
       window.__vendorCardFollowRecent.set(String(vendorId),{following:!next,at:Date.now()});
+      rememberVendorFollow(vendorId,!next);
       matches.forEach(b=>{b.classList.toggle("following",!next);b.textContent=!next?"Following":"Follow";});
       showToast?.(e.message||"Could not update your following list.","error");
     }
@@ -37237,6 +37274,23 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   window.toggleVendorCardFollow=toggleVendorCardFollow;
   async function hydrateVendorCardFollowState(){
     if(!session||typeof sb==="undefined")return;
+    // Paint what we already know right away (no network needed).
+    paintRememberedFollows();
+    // Once per session, pull the full follow list (one small query) so every
+    // card is right even before it has been individually hydrated.
+    if(window.__followListLoadedFor!==session.user.id && !window.__followListLoading){
+      window.__followListLoading=true;
+      try{
+        const {data:rows,error:listErr}=await sb.from("vendor_follows").select("vendor_id").eq("follower_id",session.user.id).limit(2000);
+        if(!listErr && Array.isArray(rows)){
+          const set=followedVendorSet();set.clear();rows.forEach(r=>r?.vendor_id&&set.add(String(r.vendor_id)));
+          try{localStorage.setItem(__followKey(),JSON.stringify([...set]));}catch(_){}
+          window.__followListLoadedFor=session.user.id;
+          paintRememberedFollows();
+        }
+      }catch(_){}
+      finally{window.__followListLoading=false;}
+    }
     const ids=[...new Set([...document.querySelectorAll(".vendor-card-follow-btn[data-vendor-id]")].map(el=>el.dataset.vendorId).filter(Boolean))];
     if(!ids.length)return;
     if(__vendorHydrateShouldSkip(__vendorHydrateCache.followState,ids))return;
@@ -37256,6 +37310,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
         // stale answer over it is exactly the "needs two taps" bug.
         const recent=window.__vendorCardFollowRecent?.get(String(id));
         if(recent && (Date.now()-recent.at<15000))return;
+        rememberVendorFollow(id,!!st?.following);
         if(!st?.following)return;
         document.querySelectorAll(`.vendor-card-follow-btn[data-vendor-id="${CSS.escape(id)}"]`).forEach(btn=>{btn.classList.add("following");btn.textContent="Following";});
       });
@@ -42037,6 +42092,17 @@ html[data-theme="black"] .avatar-fallback{
   box-shadow:inset 0 0 0 1.5px hsl(var(--av-h,160) 35% 36%) !important;
 }
 #vendorsGrid.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-directory-logo.avatar-fallback{box-shadow:none !important;}
+
+/* "Following" state: soft light-green tint + ring (neutral text) instead of gray. */
+#app .vendor-card-follow-btn.following,
+#app .follow-btn:not(.btn-outline){
+  background-color:color-mix(in srgb,var(--primary) 16%,var(--card)) !important;
+  background-image:none !important;
+  border:1.5px solid color-mix(in srgb,var(--primary) 50%,var(--border)) !important;
+  color:var(--text) !important;
+  -webkit-text-fill-color:var(--text) !important;
+  box-shadow:none !important;
+}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
@@ -42125,5 +42191,37 @@ html[data-theme="black"] .avatar-fallback{
       [...modal.querySelectorAll("button")].find((b) => b.querySelector(".fa-xmark"));
     if (closer) closer.click();
   });
+})();
+
+// Vendor "logos" that are really the owner's Google sign-in photo (often
+// Google's auto-generated coloured-letter avatar) look out of place on shop
+// cards, so cards show the soft initials avatar for those instead.
+(function(){
+  const GOOGLE_PHOTO=/^https?:\/\/[a-z0-9-]+\.googleusercontent\.com\//i;
+  function swap(img){
+    if(!img || img.dataset.googleSwapped)return;
+    if(!GOOGLE_PHOTO.test(img.getAttribute("src")||""))return;
+    const card=img.closest(".vendor-card, .vendors-map-vendor-chip, .vendor-card-avatar-wrap");
+    if(!card)return;
+    const nameEl=card.closest(".vendor-card, .vendors-map-vendor-chip")?.querySelector(".vendor-directory-name, .vendor-home-copy strong, .vendor-directory-copy strong, strong");
+    const name=(img.alt||nameEl?.textContent||"Vendor").trim();
+    img.dataset.googleSwapped="1";
+    const cls=String(img.className||"").replace(/\bavatar-circle\b/g,"").trim();
+    const tpl=document.createElement("template");
+    tpl.innerHTML=avatarFallbackHtml(name,"3rem",cls,name);
+    img.replaceWith(tpl.content);
+  }
+  function scan(root){
+    if(!root)return;
+    if(root.nodeType===1){
+      if(root.tagName==="IMG")swap(root);
+      root.querySelectorAll?.("img[src*='googleusercontent.com']").forEach(swap);
+    }
+  }
+  const start=()=>{
+    scan(document.body);
+    new MutationObserver((muts)=>{for(const m of muts)m.addedNodes.forEach(scan);}).observe(document.body,{childList:true,subtree:true});
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start);else start();
 })();
 </script>
