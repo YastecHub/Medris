@@ -15675,7 +15675,7 @@ function convRowHtml(c) {
       ${profileAvatarHtml(c.other_avatar, name, "2.6rem", { lightbox: !!c.other_avatar && !msgSelectMode })}
       <div class="conv-meta">
         <div class="conv-name-row"><strong>${pinned ? `<i class="fa-solid fa-thumbtack conv-pinned-icon"></i> ` : ""}${esc(name)}</strong><span class="conv-time">${esc(timeLabel)}</span></div>
-        <div class="conv-preview">${c.last_message ? esc(stickerPlainText(maskSensitiveNumbers(c.last_message))) : "No messages yet"}</div>
+        <div class="conv-preview">${c.last_message ? esc(maskSensitiveNumbers(c.last_message)) : "No messages yet"}</div>
       </div>
       ${isUnread ? `<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count > 99 ? "99+" : c.unread_count}</span>` : ""}
     </div>
@@ -16032,7 +16032,6 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
     <div class="chat-thread">
       <div class="chat-messages" id="chatMessages">${messagesArea}</div>
       <div class="chat-input-row">
-        <button type="button" class="btn btn-sm chat-sticker-btn" onclick="toggleChatStickerPanel('${conversationId}')" title="Stickers" aria-label="Stickers"><i class="fa-regular fa-face-smile"></i></button>
         <textarea id="chatInput" rows="1" placeholder="Type a message…" oninput="window.__chatFastPaintDirty=true;autoGrowChatInput(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}')}" ></textarea>
         <button class="btn btn-sm" onclick="sendChatMessage('${conversationId}')" aria-label="Send message"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
@@ -16207,7 +16206,6 @@ async function renderMessages(conversationId) {
       ${isBlockedByMe ? `<div class="chat-blocked-banner"><i class="fa-solid fa-user-slash"></i><span>You blocked ${esc(otherName)}.</span><button type="button" onclick="toggleBlockChatUser('${otherUserId}','${esc(otherName).replace(/'/g, "\\'")}','${conversationId}')">Unblock</button></div>` : `
       <div class="chat-input-row">
         ${AiSpeechRecognition ? `<button class="ai-chat-mic-btn" id="msgMicBtn" onclick="toggleMsgMic()" title="Tap to talk"><i class="fa-solid fa-microphone"></i></button>` : ""}
-        <button type="button" class="btn btn-sm chat-sticker-btn" onclick="toggleChatStickerPanel('${conversationId}')" title="Stickers" aria-label="Stickers"><i class="fa-regular fa-face-smile"></i></button>
         <textarea id="chatInput" rows="1" placeholder="Type a message…" maxlength="2000" oninput="handleChatTyping('${conversationId}');autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}');}"></textarea>
         <button class="btn btn-sm" onclick="sendChatMessage('${conversationId}')"><i class="fa-solid fa-paper-plane"></i></button>
       </div>`}
@@ -16353,7 +16351,7 @@ function replyQuoteHtml(m) {
   const r = m?.reply_to;
   if (!r) return "";
   const who = r.sender_id === session?.user?.id ? "You" : "Reply";
-  const text = r.deleted_at ? "This message was deleted" : (stickerPlainText(maskSensitiveNumbers(r.body || "")) || r.attachment_name || "Attachment");
+  const text = r.deleted_at ? "This message was deleted" : (maskSensitiveNumbers(r.body || "") || r.attachment_name || "Attachment");
   return `<button type="button" class="chat-reply-quote" data-reply-target-id="${esc(r.id || m.reply_to_id || "")}" onclick="jumpToRepliedMessage(event,this)"><span class="reply-quote-label">${esc(who)}</span><span class="reply-quote-text">${esc(text)}</span></button>`;
 }
 function jumpToRepliedMessage(event, quote) {
@@ -16374,38 +16372,6 @@ function jumpToRepliedMessage(event, quote) {
     setTimeout(() => { target.classList.remove("chat-message-jump-highlight"); quote.classList.remove("chat-reply-jump"); }, 1400);
   });
 }
-// ---- Chat stickers (emoji-based; sent as a plain "[[sticker:😂]]" body so no
-// storage/schema change is needed and old clients just see the token text) ----
-const CHAT_STICKERS = ["😂","🤣","😍","🥰","😎","🤩","😊","🙂","😉","😅","😭","😢","😡","🤔","🙄","😴","🥳","🤝","👍","👎","👏","🙏","💪","🔥","💯","❤️","💔","🎉","✅","❌","🙌","👀","🤗","😇","🤑","💸","📦","🚚","🛍️","⏰","🙈","😬","🫡","🤞"];
-function stickerEmojiFromBody(body) {
-  const m = /^\s*\[\[sticker:([^\]]{1,16})\]\]\s*$/.exec(String(body || ""));
-  return m ? m[1] : "";
-}
-function stickerPlainText(text) {
-  const e = stickerEmojiFromBody(text);
-  return e ? `${e} Sticker` : text;
-}
-function toggleChatStickerPanel(conversationId) {
-  const row = document.querySelector(".chat-input-row");
-  if (!row) return;
-  const existing = byId("chatStickerPanel");
-  if (existing) { existing.remove(); return; }
-  const panel = document.createElement("div");
-  panel.id = "chatStickerPanel";
-  panel.className = "chat-sticker-panel";
-  panel.innerHTML = CHAT_STICKERS.map((e) => `<button type="button" class="chat-sticker-pick" onclick="sendChatSticker('${conversationId}','${e}')" aria-label="Send sticker ${e}">${e}</button>`).join("");
-  row.parentNode.insertBefore(panel, row);
-}
-async function sendChatSticker(conversationId, emoji) {
-  const input = byId("chatInput");
-  if (!input || !CHAT_STICKERS.includes(emoji)) return;
-  byId("chatStickerPanel")?.remove();
-  const draft = input.value, token = `[[sticker:${emoji}]]`;
-  input.value = token;
-  try { await sendChatMessage(conversationId); }
-  finally { if (input.value === token) input.value = draft; }
-}
-
 function linkifyChatText(text) {
   const safe = esc(text || "");
   return safe.replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, (match) => {
@@ -16424,7 +16390,7 @@ function chatBubbleHtml(m) {
   }
   const editedTag = m.edited_at ? `<span class="muted" style="font-size:0.7rem;">(edited)</span>` : "";
   return `<div class="chat-bubble-wrap ${mine ? "mine" : "theirs"}" data-msg-wrap-id="${m.id}">
-    <div class="chat-bubble ${mine ? "mine" : "theirs"}${m.attachment_url && String(m.attachment_type || "").startsWith("image/") && !m.body ? " photo-only" : ""}" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}">${replyQuoteHtml(m)}${attachmentHtml(m)}${m.body ? (stickerEmojiFromBody(m.body) ? `<span class="chat-sticker">${esc(stickerEmojiFromBody(m.body))}</span>` : `<span class="chat-bubble-text">${linkifyChatText(maskSensitiveNumbers(m.body))}</span>`) : ""}<span class="chat-time">${editedTag}<span class="chat-time-text">${time}${mine ? messageTicksHtml(m) : ""}</span></span></div>
+    <div class="chat-bubble ${mine ? "mine" : "theirs"}${m.attachment_url && String(m.attachment_type || "").startsWith("image/") && !m.body ? " photo-only" : ""}" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}">${replyQuoteHtml(m)}${attachmentHtml(m)}${m.body ? `<span class="chat-bubble-text">${linkifyChatText(maskSensitiveNumbers(m.body))}</span>` : ""}<span class="chat-time">${editedTag}<span class="chat-time-text">${time}${mine ? messageTicksHtml(m) : ""}</span></span></div>
     <div class="msg-reactions-row" data-reactions-for="${m.id}">${reactionsRowHtml(m)}</div>
   </div>`;
 }
@@ -42046,12 +42012,6 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 #app #vendorsViewListBtn.active i,
 #app #vendorsViewMapBtn.active i{ color:var(--text-muted) !important; }
 
-.chat-sticker-btn{background:transparent !important;color:var(--text-muted) !important;border:0 !important;box-shadow:none !important;padding:.5rem .45rem !important;font-size:1.25rem}
-.chat-sticker-panel{display:grid;grid-template-columns:repeat(auto-fill,minmax(2.6rem,1fr));gap:.2rem;padding:.55rem;border-top:1px solid var(--border);background:var(--card);max-height:12rem;overflow-y:auto}
-.chat-sticker-pick{border:0;background:transparent;font-size:1.9rem;line-height:1;padding:.3rem;border-radius:10px;cursor:pointer}
-.chat-sticker-pick:active{background:color-mix(in srgb,var(--primary) 14%,var(--card))}
-#app .chat-bubble:has(> .chat-sticker){background:transparent !important;box-shadow:none !important;border:0 !important;padding:.1rem .2rem !important}
-.chat-sticker{display:block;font-size:3.6rem;line-height:1.1}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
