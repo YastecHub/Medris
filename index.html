@@ -9497,10 +9497,17 @@ function greetingWord() {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 function initials(name, email) {
-  const s = (name || email || "?").trim();
-  const parts = s.split(/\s+/);
-  const ini = ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase();
-  return ini || s[0]?.toUpperCase() || "?";
+  // NFKC folds fancy "script"/bold/full-width lookalike letters (common in
+  // shop names) back to plain ones, and matching whole letters/digits keeps
+  // us from slicing an emoji or surrogate pair in half (which showed as "?").
+  const raw = String(name || email || "").trim();
+  let s = raw;
+  try { s = raw.normalize("NFKC"); } catch (_) {}
+  const words = s.split(/\s+/).map((w) => (w.match(/[\p{L}\p{N}]/u) || [""])[0]).filter(Boolean);
+  const ini = (words[0] || "") + (words[1] || "");
+  if (ini) return ini.toUpperCase();
+  const first = Array.from(raw)[0];
+  return first ? first.toUpperCase() : "U";
 }
 
 function stableAvatarHue(value) {
@@ -9514,7 +9521,7 @@ function avatarFallbackHtml(name, size = "2.6rem", extraClass = "", label = "", 
   const title = label || safeName;
   const initialsText = initials(safeName);
   const hue = stableAvatarHue(stableKey || safeName);
-  return `<span class="avatar-circle avatar-fallback ${extraClass}" title="${esc(title)}" aria-label="${esc(title)}" style="width:${size};height:${size};background-color:hsl(${hue} 58% 43%) !important;background-image:none !important;color:#fff !important;"><span aria-hidden="true">${esc(initialsText)}</span></span>`;
+  return `<span class="avatar-circle avatar-fallback ${extraClass}" title="${esc(title)}" aria-label="${esc(title)}" style="width:${size};height:${size};--av-h:${hue};"><span aria-hidden="true">${esc(initialsText)}</span></span>`;
 }
 function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
   const safeName = String(name || "User").trim() || "User";
@@ -42012,6 +42019,24 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 #app #vendorsViewListBtn.active i,
 #app #vendorsViewMapBtn.active i{ color:var(--text-muted) !important; }
 
+
+/* Default avatars (initials): a soft tinted fill with a darker tint of the
+   same hue for the letters and a thin ring, instead of a solid block. */
+.avatar-fallback{
+  background-color:hsl(var(--av-h,160) 55% 91%) !important;
+  background-image:none !important;
+  color:hsl(var(--av-h,160) 55% 26%) !important;
+  -webkit-text-fill-color:hsl(var(--av-h,160) 55% 26%) !important;
+  box-shadow:inset 0 0 0 1.5px hsl(var(--av-h,160) 45% 74%) !important;
+}
+html[data-theme="dark"] .avatar-fallback,
+html[data-theme="black"] .avatar-fallback{
+  background-color:hsl(var(--av-h,160) 35% 20%) !important;
+  color:hsl(var(--av-h,160) 70% 84%) !important;
+  -webkit-text-fill-color:hsl(var(--av-h,160) 70% 84%) !important;
+  box-shadow:inset 0 0 0 1.5px hsl(var(--av-h,160) 35% 36%) !important;
+}
+#vendorsGrid.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-directory-logo.avatar-fallback{box-shadow:none !important;}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
