@@ -10684,6 +10684,17 @@ function subscribeNotifications() {
   if (!session) return;
   notifChannel = sb.channel(`notifications-${session.user.id}`)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` }, (payload) => {
+      // A new-message notification for the chat that is already open on screen:
+      // no pop-up, no sound (like WhatsApp) -- just pull the message into the
+      // thread right away and quietly mark the notification as read.
+      const nParams = payload.new.target_params || {};
+      if (String(payload.new.type || "") === "new_message" && currentView === "messages" && !document.hidden
+          && activeConversationId && String(nParams.conversationId || "") === String(activeConversationId)) {
+        try { window.__levroReconcileChatNow?.(); } catch (_) {}
+        Promise.resolve(sb.from("notifications").update({ read: true }).eq("id", payload.new.id)).catch(() => {});
+        refreshNotifications(false);
+        return;
+      }
       playNotificationSound(payload.new);
       showToast(payload.new.title, "info");
       refreshNotifications();
@@ -15478,7 +15489,7 @@ async function startConversationWithVendor(vendorId, draftText) {
       ({ data: conversationId, error } = await sb.rpc("get_or_create_conversation", { p_vendor_id: vendorId }));
     }
   }
-  if (error) { showToast("We couldn't start this conversation. Please try again.", "error"); return; }
+  if (error) { showToast(/once you have placed an order/i.test(error.message || "") ? error.message : "We couldn't start this conversation. Please try again.", /once you have placed an order/i.test(error.message || "") ? "info" : "error"); return; }
   await navigate("messages", { conversationId });
   if (draftText) {
     const input = byId("chatInput");
@@ -16029,9 +16040,8 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
     <div class="chat-page-header">
       <button class="chat-header-back" onclick="navigate('messages')" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
       ${profileAvatarHtml(avatar, name, "2.35rem", { extraClass: "chat-header-avatar", lightbox: false })}
-      <div class="chat-header-name-wrap"><strong class="chat-header-name">${esc(name)}</strong></div>
+      <div class="chat-header-name-wrap"><strong class="chat-header-name">${esc(name)}</strong><span class="chat-header-presence" id="chatHeaderPresence" aria-live="polite"></span></div>
       <div class="chat-header-actions">
-        <button class="chat-header-icon-btn" style="opacity:0.4;" disabled title="Call"><i class="fa-solid fa-phone"></i></button>
         <button class="chat-header-icon-btn" style="opacity:0.4;" disabled title="More options"><i class="fa-solid fa-ellipsis-vertical"></i></button>
       </div>
     </div>
@@ -16193,7 +16203,7 @@ async function renderMessages(conversationId) {
       <div class="chat-header-person">${otherAvatar
         ? `<span class="chat-header-avatar-wrap"><img src="${esc(otherAvatar)}" class="chat-header-avatar" alt="${esc(otherName)}" draggable="false" /></span>`
         : `<span class="chat-header-avatar-wrap">${avatarFallbackHtml(otherName, "2.35rem", "chat-header-avatar", otherName)}</span>`}
-        <div class="chat-header-name-wrap">${conv.vendor?.id ? `<button type="button" class="chat-header-name-link" onclick="openChatVendorStorefront(event,'${conv.vendor.id}')" title="View storefront"><strong class="chat-header-name">${esc(otherName)}</strong></button>` : `<strong class="chat-header-name">${esc(otherName)}</strong>`}</div>
+        <div class="chat-header-name-wrap">${conv.vendor?.id ? `<button type="button" class="chat-header-name-link" onclick="openChatVendorStorefront(event,'${conv.vendor.id}')" title="View storefront"><strong class="chat-header-name">${esc(otherName)}</strong></button>` : `<strong class="chat-header-name">${esc(otherName)}</strong>`}<span class="chat-header-presence" id="chatHeaderPresence" aria-live="polite"></span></div>
       </div>
       <div class="chat-header-actions">
         <button class="chat-header-icon-btn" id="chatMenuBtn" onclick="toggleChatMenu(event)" title="More options"><i class="fa-solid fa-ellipsis-vertical"></i></button>
@@ -17865,12 +17875,13 @@ async function __levroOriginalRenderProductDetail(productId) {
   if(!ownListing && (product.status!=="active" || product.vendor?.verification_status!=="verified" || !product.vendor?.is_active)) return '<div class="empty-state">This product is not currently available.</div>';
   if(variantsError)console.warn("[Levromart] Product varieties could not be loaded:",variantsError);
   product.variants=loadedProductVariants||[]; currentProductDetail=product;
-  // The vendor can only be messaged from a product page once the customer has an order for it.
+  // The vendor can only be messaged from a product page while the customer has an
+  // accepted, still-open order for it (or within 24h of one being completed).
   let hasOrderedThisProduct=false;
   if(session?.user?.id && !ownListing && profile?.role!=="admin"){
     try{
-      const {data:orderedRows}=await sb.from("order_items").select("id, order:orders!inner(buyer_id,status)").eq("product_id",productId).eq("order.buyer_id",session.user.id).neq("order.status","cancelled").limit(1);
-      hasOrderedThisProduct=!!(orderedRows&&orderedRows.length);
+      const {data:orderedRows}=await sb.from("order_items").select("id, order:orders!inner(buyer_id,status,completed_at,status_changed_at,created_at)").eq("product_id",productId).eq("order.buyer_id",session.user.id).in("order.status",["confirmed","handed_over","returned","payment_unresolved","disputed","completed"]).limit(20);
+      hasOrderedThisProduct=(orderedRows||[]).some((r)=>{const o=r.order||{};if(o.status!=="completed")return true;const t=new Date(o.completed_at||o.status_changed_at||o.created_at||0).getTime();return Date.now()-t<24*3600*1000;});
     }catch(_){}
   }
   sb.rpc("increment_product_view",{p_product_id:productId}).then(()=>{}).catch(()=>{});
@@ -17967,7 +17978,7 @@ async function __levroOriginalRenderProductDetail(productId) {
     </div>`;
   }
   if (profile?.role !== "admin" && canBuy) {
-    const buyLabel = product.is_service ? "Book Now" : "Buy Now";
+    const buyLabel = product.is_service ? "Book Now" : "Place order";
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
       ${productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><span class="variety-choice-image">${v.photo_url?`<img src="${esc(v.photo_url)}" alt="${esc(v.name)}"><span class="variety-image-position">${productVariants.filter(x=>x.photo_url).findIndex(x=>x.id===v.id)+1}/${productVariants.filter(x=>x.photo_url).length}</span>`:""}</span><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
@@ -24086,6 +24097,8 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     // After accepting, only the name and in-app messaging are shown; phone
     // numbers are never shown to vendors at all.
     const accepted = !["pending", "declined", "cancelled", "rejected"].includes(String(order.status || ""));
+    // Chats close 24h after an order completes, so no new in-app message after that.
+    const chatWindowOpen = order.status !== "completed" || (Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000);
     let c = {};
     if (accepted) {
       const { data: contact } = await sb.rpc("get_order_buyer_contact", { p_order_id: orderId });
@@ -24093,9 +24106,9 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     }
     html += `<div class="card order-buyer-card"><h3><i class="fa-solid fa-address-card"></i> Customer</h3>
       ${accepted ? `<p style="margin-bottom:.45rem;">${esc(c.name || "Customer")}</p>
-      <div class="flex order-buyer-contact-actions" style="gap:.6rem;flex-wrap:wrap;align-items:center;">
+      ${chatWindowOpen ? `<div class="flex order-buyer-contact-actions" style="gap:.6rem;flex-wrap:wrap;align-items:center;">
         <button class="order-contact-icon-btn order-contact-message-btn" type="button" onclick="messageCustomerFromOrder('${orderId}')" title="Message customer" aria-label="Message customer"><i class="fa-solid fa-comment-dots"></i><span>Message</span></button>
-      </div>` : (order.status === "pending" ? `<p class="muted" style="margin:0 0 .45rem;">A customer has placed this order. Accept it to see who they are and message them in the app.</p>` : `<p class="muted" style="margin:0 0 .45rem;">Customer details are not available for this order.</p>`)}
+      </div>` : ""}` : (order.status === "pending" ? `<p class="muted" style="margin:0 0 .45rem;">A customer has placed this order. Accept it to see who they are and message them in the app.</p>` : `<p class="muted" style="margin:0 0 .45rem;">Customer details are not available for this order.</p>`)}
       ${isDeliveryOrder && (order.status === "pending" || order.status === "confirmed") && order.buyer_lat != null && order.buyer_lng != null && order.vendor?.lat != null && order.vendor?.lng != null ? `<button class="btn btn-sm btn-outline order-buyer-location-btn order-buyer-location-btn-yellow" type="button" data-order-id="${order.id}" onclick="showOrderBuyerLocation('${order.id}',${Number(order.buyer_lat)},${Number(order.buyer_lng)},${Number(order.vendor.lat)},${Number(order.vendor.lng)})"><i class="fa-solid fa-map-location-dot"></i> <span class="order-buyer-location-btn-label">View customer location</span> <span class="muted" style="font-size:.8em;">(~${formatDistanceKm(haversineKm(Number(order.buyer_lat),Number(order.buyer_lng),Number(order.vendor.lat),Number(order.vendor.lng)))})</span> <i class="order-buyer-location-chevron fa-solid fa-chevron-down" style="font-size:.75em;"></i></button>` : ""}
       ${isDeliveryOrder && isVendor && order.buyer_lat != null && order.buyer_lng != null ? `<div id="orderBuyerLocationWrap-${order.id}" class="order-buyer-location-wrap hidden"><div class="flex" style="justify-content:space-between;gap:.6rem;align-items:center;"><strong><i class="fa-solid fa-location-dot"></i> Delivery location</strong><span id="orderBuyerLocationStatus-${order.id}" class="muted"></span></div><div id="orderBuyerLocationMap-${order.id}" class="order-buyer-location-map"></div></div>` : ""}
     </div>`;
@@ -27607,7 +27620,7 @@ async function sendAiDraftMessage(vendorId, btn) {
       }).catch(() => {});
       ({ data: conversationId, error } = await sb.rpc("get_or_create_conversation", { p_vendor_id: vendorId }));
     }
-    if (error) throw new Error("We couldn't start this conversation. Please try again.");
+    if (error) throw new Error(/once you have placed an order/i.test(error.message || "") ? error.message : "We couldn't start this conversation. Please try again.");
     if (!(await conversationHasCompletedOrder(conversationId))) {
       if (messageContinuesDigitFragmentPattern(conversationId, text)) {
         throw new Error("Phone numbers and outside contact details can't be shared here until an order between you has completed.");
@@ -29583,13 +29596,20 @@ function setupDraggableFab(fab, storageKey, onTap) {
 
   function clamp(x, y) {
     const margin = 10;
+    // Bounds come from the bars' fixed sizes, not where they happen to be on
+    // screen right now, so they hold even while a bar is scrolled out of view.
     const header = document.querySelector("header");
-    const minY = Math.max(margin, (header?.getBoundingClientRect().bottom || 0) + margin);
+    const headerH = header ? Math.max(header.offsetHeight || 0, header.getBoundingClientRect().bottom || 0) : 0;
+    const minY = Math.max(margin, headerH + margin);
     const maxX = Math.max(margin, window.innerWidth - fab.offsetWidth - margin);
     // Keep the button between the top bar and the bottom nav so it can never
     // sit on top of the nav icons (Orders, Notifications, Messages...).
     const nav = document.getElementById("bottomNav");
-    const navTop = nav && nav.offsetHeight > 0 ? nav.getBoundingClientRect().top : window.innerHeight;
+    let navTop = window.innerHeight;
+    if (nav && nav.offsetHeight > 0) {
+      const navBottomGap = parseFloat(getComputedStyle(nav).bottom) || 0;
+      navTop = window.innerHeight - nav.offsetHeight - navBottomGap;
+    }
     const maxY = Math.max(minY, Math.min(window.innerHeight, navTop) - fab.offsetHeight - margin);
     return {
       x: Math.min(Math.max(Number.isFinite(x) ? x : maxX, margin), maxX),
@@ -29670,7 +29690,11 @@ function setupDraggableFab(fab, storageKey, onTap) {
     resizeSettleTimer = setTimeout(() => {
       if (!fab.isConnected || fab.classList.contains("hidden")) return;
       if (!fab.style.left && !fab.style.top) return;
+      // Not currently rendered (e.g. a full-page chat hides it): its rect is
+      // all zeros, and clamping that used to fling it to the top-left corner.
+      if (!fab.offsetWidth || !fab.offsetHeight || getComputedStyle(fab).display === "none") return;
       const rect = fab.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
       const pos = clamp(rect.left, rect.top);
       if (Math.abs(pos.x - rect.left) > 1 || Math.abs(pos.y - rect.top) > 1) {
         applyPosition(pos.x, pos.y, false);
@@ -38966,11 +38990,21 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     pollConversation=null; pollBusy=false;
   }
   async function reconcileLatestChatMessages(conversationId){
-    if(pollBusy || !session || activeConversationId!==conversationId || currentView!=='messages') return;
+    if(pollBusy || !session || activeConversationId!==conversationId || currentView!=='messages' || document.hidden) return;
     const el=byId('chatMessages'); if(!el) return;
     pollBusy=true;
     try{
-      const {data,error}=await sb.from('messages').select('*').eq('conversation_id',conversationId).order('created_at',{ascending:false}).limit(20);
+      /* Only ask for messages newer than the newest real (server) bubble on
+         screen, minus a few seconds of slack -- an empty answer costs almost
+         nothing, versus re-downloading the last 20 messages every tick. */
+      let newest=0;
+      el.querySelectorAll('.chat-bubble[data-msg-id][data-created-at]').forEach(b=>{
+        if(!/^[0-9a-f-]{36}$/i.test(b.dataset.msgId||'')) return;
+        const t=Date.parse(b.dataset.createdAt||''); if(t>newest) newest=t;
+      });
+      let q=sb.from('messages').select('*').eq('conversation_id',conversationId);
+      if(newest) q=q.gt('created_at',new Date(newest-5000).toISOString());
+      const {data,error}=await q.order('created_at',{ascending:false}).limit(20);
       if(error || !Array.isArray(data) || activeConversationId!==conversationId) return;
       const missing=data.filter(m=>!el.querySelector(`.chat-bubble[data-msg-id="${CSS.escape(String(m.id))}"]`)).reverse();
       if(!missing.length) return;
@@ -38989,8 +39023,12 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     if(!conversationId) return;
     pollConversation=String(conversationId);
     reconcileLatestChatMessages(pollConversation);
-    pollTimer=setInterval(()=>reconcileLatestChatMessages(pollConversation),2000);
+    pollTimer=setInterval(()=>reconcileLatestChatMessages(pollConversation),3000);
   };
+  /* Pull right now (called when a new-message notification arrives, or the app comes back to the foreground). */
+  window.__levroReconcileChatNow=function(){ if(pollConversation) return reconcileLatestChatMessages(pollConversation); };
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) window.__levroReconcileChatNow?.(); },{passive:true});
+  window.addEventListener('online',()=>window.__levroReconcileChatNow?.(),{passive:true});
   window.__levroStopChatMessageFallback=stopChatMessageFallback;
 
   /* Start the fallback whenever the existing conversation subscription is
@@ -42201,6 +42239,11 @@ html[data-theme="black"] .avatar-fallback{
   -webkit-text-fill-color:var(--text) !important;
   box-shadow:none !important;
 }
+
+.chat-header-name-wrap{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.chat-header-presence{display:block;font-size:.72rem;line-height:1.2;color:var(--text-muted);min-height:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-header-presence.online{color:#16a34a;font-weight:700}
+.chat-header-presence.online::before{content:"";display:inline-block;width:.46rem;height:.46rem;border-radius:50%;background:#22c55e;margin-right:.3rem;vertical-align:.04rem}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
@@ -42321,5 +42364,82 @@ html[data-theme="black"] .avatar-fallback{
     new MutationObserver((muts)=>{for(const m of muts)m.addedNodes.forEach(scan);}).observe(document.body,{childList:true,subtree:true});
   };
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start);else start();
+})();
+
+// ---- Online / last seen ----
+// Every signed-in, foreground session pings touch_last_seen about every 45s
+// (and once more as it goes to the background), so "online" means "seen in the
+// last ~90s" and "last seen" is the last ping. Inside a chat, the other person
+// shows as online instantly if they are in the same conversation channel.
+(function(){
+  const PING_MS=45000, ONLINE_WINDOW_MS=90000;
+  let lastPing=0;
+  function ping(force){
+    try{
+      if(typeof session==="undefined"||!session||typeof sb==="undefined")return;
+      if(!force&&Date.now()-lastPing<20000)return;
+      lastPing=Date.now();
+      Promise.resolve(sb.rpc("touch_last_seen")).catch(()=>{});
+    }catch(_){}
+  }
+  setInterval(()=>{if(!document.hidden)ping(false);},PING_MS);
+  setTimeout(()=>ping(true),4000);
+  document.addEventListener("visibilitychange",()=>ping(true),{passive:true});
+  window.addEventListener("pagehide",()=>ping(true),{passive:true});
+
+  function whenText(iso){
+    const d=new Date(iso);if(isNaN(d))return "";
+    const now=new Date();
+    const time=d.toLocaleTimeString("en-GB",{hour:"numeric",minute:"2-digit",hour12:true});
+    const startOf=(x)=>new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime();
+    const days=Math.round((startOf(now)-startOf(d))/86400000);
+    if(days<=0)return `last seen today at ${time}`;
+    if(days===1)return `last seen yesterday at ${time}`;
+    return `last seen ${d.toLocaleDateString("en-GB",{day:"numeric",month:"short"})} at ${time}`;
+  }
+  let timer=null,activeFor=null,lastSeenIso=null,fetching=false;
+  function otherIsInChannel(){
+    try{
+      const st=window.activeMsgChannel?.presenceState?.()||(typeof activeMsgChannel!=="undefined"&&activeMsgChannel?.presenceState?.())||{};
+      const me=session?.user?.id;
+      return Object.keys(st).some((k)=>k&&k!==me);
+    }catch(_){return false;}
+  }
+  function paint(){
+    const el=document.getElementById("chatHeaderPresence");
+    if(!el)return;
+    const online=otherIsInChannel()||(lastSeenIso&&Date.now()-new Date(lastSeenIso).getTime()<ONLINE_WINDOW_MS);
+    if(online){el.textContent="Online";el.classList.add("online");}
+    else{el.classList.remove("online");el.textContent=lastSeenIso?whenText(lastSeenIso):"";}
+  }
+  async function load(){
+    if(fetching||!activeFor||document.hidden)return;
+    fetching=true;
+    try{
+      const {data,error}=await sb.rpc("get_conversation_presence",{p_conversation_id:activeFor});
+      if(!error&&data)lastSeenIso=data;
+    }catch(_){}finally{fetching=false;}
+    paint();
+  }
+  window.__levroStartChatPresence=function(conversationId){
+    clearInterval(timer);activeFor=String(conversationId);lastSeenIso=null;
+    paint();load();
+    let tick=0;
+    timer=setInterval(()=>{
+      tick++;
+      if(typeof activeConversationId==="undefined"||String(activeConversationId)!==activeFor||typeof currentView==="undefined"||currentView!=="messages"){clearInterval(timer);timer=null;activeFor=null;return;}
+      paint();
+      if(tick%7===0)load(); // network check roughly every 20s
+    },3000);
+  };
+  const wrapSub=window.subscribeToConversation;
+  if(typeof wrapSub==="function"&&!window.__levroPresenceWrapped){
+    window.__levroPresenceWrapped=true;
+    window.subscribeToConversation=async function(conversationId){
+      const r=await wrapSub.apply(this,arguments);
+      try{window.__levroStartChatPresence(conversationId);}catch(_){}
+      return r;
+    };
+  }
 })();
 </script>
