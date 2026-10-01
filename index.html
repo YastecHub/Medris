@@ -41875,6 +41875,33 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
   padding:.4rem .4rem 0 !important;
 }
 
+/* iPhone/Safari fix for the flush vendor cards. #vendorsGrid's own padding
+   rules (ID specificity) were beating the edge-to-edge ones above, leaving
+   the photo inset; and a percent-height child inside an aspect-ratio box
+   resolves unreliably in WebKit, which stretched initials-only cards to the
+   full row height. A padding-bottom:100% square with an absolutely filled
+   child is definite everywhere. */
+#vendorsGrid.vendors-directory-grid:not(.vendors-list-mode) .vendor-card{
+  padding:0 0 .6rem !important; overflow:hidden !important; min-height:0 !important;
+}
+#vendorsGrid.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-card-avatar-wrap,
+#app .top-rated-vendors-scroll .vendor-card .vendor-card-avatar-wrap{
+  position:relative !important; display:block !important; width:100% !important;
+  height:0 !important; min-height:0 !important; padding:0 0 100% !important;
+  aspect-ratio:auto !important; margin:0 !important; flex:0 0 auto !important; overflow:hidden !important;
+}
+#vendorsGrid.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-directory-logo,
+#app .top-rated-vendors-scroll .vendor-card .vendor-card-avatar-wrap > .vendor-directory-logo,
+#app .top-rated-vendors-scroll .vendor-card .vendor-card-avatar-wrap > .vendor-home-avatar{
+  position:absolute !important; top:0 !important; left:0 !important; right:0 !important; bottom:0 !important;
+  width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important;
+  max-width:none !important; max-height:none !important; margin:0 !important;
+  border-radius:0 !important; object-fit:cover !important;
+  display:flex !important; align-items:center !important; justify-content:center !important;
+}
+#vendorsGrid.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-directory-logo{ font-size:1.9rem !important; }
+#app .top-rated-vendors-scroll .vendor-card .vendor-card-avatar-wrap > .vendor-directory-logo{ font-size:1.3rem !important; }
+
 /* Storefront catalogue tabs: a clean green underline on the active tab
    instead of a filled pill, matching a modern marketplace nav bar rather
    than a row of buttons. */
