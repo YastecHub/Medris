@@ -4100,9 +4100,18 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
   text-align:left !important;
 }
 .messages-selection-toolbar strong {
-  flex:1 !important;
-  min-width:0 !important;
+  flex:1 1 auto !important;
+  min-width:max-content !important;
+  white-space:nowrap !important;
+  font-size:.92rem !important;
+  margin:0 .3rem 0 .15rem !important;
 }
+.messages-selection-toolbar { gap:.2rem !important; }
+.messages-selection-toolbar .icon-btn {
+  flex:0 0 auto !important;
+  width:2.3rem !important; height:2.3rem !important; min-width:2.3rem !important;
+}
+.messages-selection-toolbar .icon-btn:disabled { opacity:.35 !important; }
 
 /* Cart must always sit ABOVE Levi's floating button. */
 .cart-fab {
@@ -15619,7 +15628,7 @@ function convRowHtml(c) {
       ${profileAvatarHtml(c.other_avatar, name, "2.6rem", { lightbox: !!c.other_avatar && !msgSelectMode })}
       <div class="conv-meta">
         <div class="conv-name-row"><strong>${pinned ? `<i class="fa-solid fa-thumbtack conv-pinned-icon"></i> ` : ""}${esc(name)}</strong><span class="conv-time">${esc(timeLabel)}</span></div>
-        <div class="conv-preview">${c.last_message ? esc(c.last_message) : "No messages yet"}</div>
+        <div class="conv-preview">${c.last_message ? esc(maskSensitiveNumbers(c.last_message)) : "No messages yet"}</div>
       </div>
       ${isUnread ? `<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count > 99 ? "99+" : c.unread_count}</span>` : ""}
     </div>
@@ -15761,15 +15770,19 @@ function msgSelectionHeaderHtml() {
   }
   const visibleIds = getVisibleChatIds();
   const allVisible = visibleIds.length > 0 && visibleIds.every((id) => msgSelectedIds.has(id));
+  const hasSel = msgSelectedIds.size > 0;
+  const single = msgSelectedIds.size === 1;
+  const onlyId = single ? [...msgSelectedIds][0] : "";
+  const selConvs = (window.__conversations || []).filter((c) => msgSelectedIds.has(c.conversation_id));
+  const anyUnread = selConvs.some((c) => Number(c.unread_count || 0) > 0);
   return `<div class="messages-selection-toolbar">
     <button type="button" class="icon-btn" onclick="exitMsgSelectMode()" aria-label="Cancel selection"><i class="fa-solid fa-xmark"></i></button>
-    <strong>${msgSelectedIds.size} selected</strong>
+    <strong class="msg-sel-count">${msgSelectedIds.size} selected</strong>
     <button type="button" class="icon-btn" onclick="toggleSelectAllChats()" aria-label="Select all"><i class="fa-solid ${allVisible ? "fa-square-minus" : "fa-square-check"}"></i></button>
-    ${msgSelectedIds.size === 1 ? `<button type="button" class="icon-btn" onclick="togglePinConversation('${[...msgSelectedIds][0]}')" aria-label="Pin chat"><i class="fa-solid fa-thumbtack"></i></button>
-    <button type="button" class="icon-btn" onclick="openChatListPicker('${[...msgSelectedIds][0]}')" aria-label="Add to a list"><i class="fa-solid fa-layer-group"></i></button>` : ""}
-    <button type="button" class="icon-btn" onclick="batchMarkChatsRead(true)" ${msgSelectedIds.size ? "" : "disabled"} aria-label="Mark read"><i class="fa-solid fa-envelope-open"></i></button>
-    <button type="button" class="icon-btn" onclick="batchMarkChatsRead(false)" ${msgSelectedIds.size ? "" : "disabled"} aria-label="Mark unread"><i class="fa-solid fa-envelope"></i></button>
-    <button type="button" class="icon-btn" onclick="batchArchiveChats()" ${msgSelectedIds.size ? "" : "disabled"} aria-label="${msgListFilter === "archived" ? "Restore" : "Archive"}"><i class="fa-solid ${msgListFilter === "archived" ? "fa-box-open" : "fa-box-archive"}"></i></button>
+    <button type="button" class="icon-btn" ${single ? `onclick="togglePinConversation('${onlyId}')"` : "disabled"} aria-label="Pin chat" title="${single ? "Pin chat" : "Select one chat to pin"}"><i class="fa-solid fa-thumbtack"></i></button>
+    <button type="button" class="icon-btn" ${single ? `onclick="openChatListPicker('${onlyId}')"` : "disabled"} aria-label="Add to a list" title="${single ? "Add to a list" : "Select one chat to add to a list"}"><i class="fa-solid fa-layer-group"></i></button>
+    <button type="button" class="icon-btn" onclick="batchMarkChatsRead(${anyUnread ? "true" : "false"})" ${hasSel ? "" : "disabled"} aria-label="${anyUnread ? "Mark as read" : "Mark as unread"}" title="${anyUnread ? "Mark as read" : "Mark as unread"}"><i class="fa-solid ${anyUnread ? "fa-envelope-open" : "fa-envelope"}"></i></button>
+    <button type="button" class="icon-btn" onclick="batchArchiveChats()" ${hasSel ? "" : "disabled"} aria-label="${msgListFilter === "archived" ? "Restore" : "Archive"}"><i class="fa-solid ${msgListFilter === "archived" ? "fa-box-open" : "fa-box-archive"}"></i></button>
   </div>`;
 }
 
@@ -15972,7 +15985,6 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
     <div class="chat-thread">
       <div class="chat-messages" id="chatMessages">${messagesArea}</div>
       <div class="chat-input-row">
-        <button class="msg-attach-btn" disabled style="opacity:0.4;"><i class="fa-solid fa-paperclip"></i></button>
         <textarea id="chatInput" rows="1" placeholder="Type a message…" oninput="window.__chatFastPaintDirty=true;autoGrowChatInput(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}')}" ></textarea>
         <button class="btn btn-sm" onclick="sendChatMessage('${conversationId}')" aria-label="Send message"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
@@ -16057,7 +16069,7 @@ async function renderMessages(conversationId) {
       const isCustomer = m.sender_id === p.buyer_id;
       const senderName = isCustomer ? (p.buyer_name || "Customer") : (p.vendor_name || "Vendor");
       const time = new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      return `<div class="chat-bubble ${isCustomer ? "theirs" : "mine"}"><strong style="display:block;font-size:0.72rem;opacity:0.8;">${esc(senderName)}</strong>${esc(m.body)}<span class="chat-time">${time}</span></div>`;
+      return `<div class="chat-bubble ${isCustomer ? "theirs" : "mine"}"><strong style="display:block;font-size:0.72rem;opacity:0.8;">${esc(senderName)}</strong>${esc(maskSensitiveNumbers(m.body))}<span class="chat-time">${time}</span></div>`;
     }).join("")}</div></div>`;
     return html;
   }
@@ -16146,8 +16158,6 @@ async function renderMessages(conversationId) {
       </div>
       ${isBlockedByMe ? `<div class="chat-blocked-banner"><i class="fa-solid fa-user-slash"></i><span>You blocked ${esc(otherName)}.</span><button type="button" onclick="toggleBlockChatUser('${otherUserId}','${esc(otherName).replace(/'/g, "\\'")}','${conversationId}')">Unblock</button></div>` : `
       <div class="chat-input-row">
-        <input type="file" id="chatFileInput" class="chat-file-input" accept="image/*,.heic,.heif,.webp" onchange="handleChatFileSelected(event,'${conversationId}')" />
-        <button class="msg-attach-btn" onclick="byId('chatFileInput').click()" title="Attach a file (max 10MB)"><i class="fa-solid fa-paperclip"></i></button>
         ${AiSpeechRecognition ? `<button class="ai-chat-mic-btn" id="msgMicBtn" onclick="toggleMsgMic()" title="Tap to talk"><i class="fa-solid fa-microphone"></i></button>` : ""}
         <textarea id="chatInput" rows="1" placeholder="Type a message…" maxlength="2000" oninput="handleChatTyping('${conversationId}');autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}');}"></textarea>
         <button class="btn btn-sm" onclick="sendChatMessage('${conversationId}')"><i class="fa-solid fa-paper-plane"></i></button>
@@ -16294,7 +16304,7 @@ function replyQuoteHtml(m) {
   const r = m?.reply_to;
   if (!r) return "";
   const who = r.sender_id === session?.user?.id ? "You" : "Reply";
-  const text = r.deleted_at ? "This message was deleted" : (r.body || r.attachment_name || "Attachment");
+  const text = r.deleted_at ? "This message was deleted" : (maskSensitiveNumbers(r.body || "") || r.attachment_name || "Attachment");
   return `<button type="button" class="chat-reply-quote" data-reply-target-id="${esc(r.id || m.reply_to_id || "")}" onclick="jumpToRepliedMessage(event,this)"><span class="reply-quote-label">${esc(who)}</span><span class="reply-quote-text">${esc(text)}</span></button>`;
 }
 function jumpToRepliedMessage(event, quote) {
@@ -16333,7 +16343,7 @@ function chatBubbleHtml(m) {
   }
   const editedTag = m.edited_at ? `<span class="muted" style="font-size:0.7rem;">(edited)</span>` : "";
   return `<div class="chat-bubble-wrap ${mine ? "mine" : "theirs"}" data-msg-wrap-id="${m.id}">
-    <div class="chat-bubble ${mine ? "mine" : "theirs"}${m.attachment_url && String(m.attachment_type || "").startsWith("image/") && !m.body ? " photo-only" : ""}" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}">${replyQuoteHtml(m)}${attachmentHtml(m)}${m.body ? `<span class="chat-bubble-text">${linkifyChatText(m.body)}</span>` : ""}<span class="chat-time">${editedTag}<span class="chat-time-text">${time}${mine ? messageTicksHtml(m) : ""}</span></span></div>
+    <div class="chat-bubble ${mine ? "mine" : "theirs"}${m.attachment_url && String(m.attachment_type || "").startsWith("image/") && !m.body ? " photo-only" : ""}" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}">${replyQuoteHtml(m)}${attachmentHtml(m)}${m.body ? `<span class="chat-bubble-text">${linkifyChatText(maskSensitiveNumbers(m.body))}</span>` : ""}<span class="chat-time">${editedTag}<span class="chat-time-text">${time}${mine ? messageTicksHtml(m) : ""}</span></span></div>
     <div class="msg-reactions-row" data-reactions-for="${m.id}">${reactionsRowHtml(m)}</div>
   </div>`;
 }
@@ -16504,7 +16514,7 @@ function renderChatReplyPreview() {
   const box = byId("chatReplyPreview");
   if (!box) return;
   if (!chatReplyTarget) { box.classList.add("hidden"); box.innerHTML = ""; return; }
-  const text = chatReplyTarget.body || chatReplyTarget.attachment || "Attachment";
+  const text = maskSensitiveNumbers(chatReplyTarget.body || "") || chatReplyTarget.attachment || "Attachment";
   box.innerHTML = `<span class="reply-accent"></span><div class="reply-copy"><div class="reply-label">Replying to ${document.querySelector(`.chat-bubble[data-msg-id="${chatReplyTarget.id}"]`)?.classList.contains("mine") ? "yourself" : "message"}</div><div class="reply-text">${esc(text)}</div></div><button class="reply-close" type="button" aria-label="Cancel reply" onclick="clearChatReplyTarget()"><i class="fa-solid fa-xmark"></i></button>`;
   box.classList.remove("hidden");
 }
@@ -17092,6 +17102,14 @@ function maskSensitiveNumbers(text) {
   // that doesn't start with 0 or +234.
   for (const m of str.matchAll(/\d{10,}/g)) {
     for (let i = m.index; i < m.index + m[0].length; i++) maskIndices.add(i);
+  }
+  // Any run of 9+ digits split by single spaces, dashes, dots or brackets
+  // (e.g. 0062-1234-5678, 123 456 7890). ISO dates are left alone.
+  for (const m of str.matchAll(/\d(?:[\s().-]?\d){8,}/g)) {
+    if (/^\d{4}-\d{2}-\d{2}/.test(m[0])) continue;
+    for (let i = m.index; i < m.index + m[0].length; i++) {
+      if (/\d/.test(str[i])) maskIndices.add(i);
+    }
   }
   // Digits deliberately broken up with a word or two in between -- the same
   // gap-tolerant scan used to detect the pattern, but this time recording
@@ -35082,6 +35100,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   // falling back to the older single-file handleChatFileSelected only if
   // that snapshot somehow wasn't captured.
   window.handleChatFileSelected = window.__handleChatFileSelectedGrouped || handleChatFileSelected;
+  // Photo sending in chat is switched off: no attach button exists, and anything that still reaches this handler is ignored.
+  window.handleChatFileSelected = function(evt){ try{ if(evt?.target) evt.target.value=''; }catch(_){} showToast('Sending photos in chat is not available.','info'); };
 
   /* If the page is genuinely offline, the banner remains valid. If it is
      online, remove any stale offline notice that may have been rendered by a
