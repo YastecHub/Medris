@@ -23523,11 +23523,27 @@ function clearOrderDateFilters(view,status,type,payment,perspective=""){ navigat
 // onto extra rows (a prior wrapping layout was replaced with the compact
 // dropdown filters above -- this rides alongside that dropdown rather than
 // bringing that problem back).
-function orderStatusPillsHtml(view, status, type, payment, dateFrom, dateTo, perspective = "") {
+const ORDER_BADGE_STATUSES = ["pending", "confirmed", "payment_unresolved"];
+function orderStatusCountsFrom(rows) {
+  const counts = { pending: 0, confirmed: 0, payment_unresolved: 0, all: 0 };
+  (rows || []).forEach((o) => { const st = String(o?.status || ""); if (ORDER_BADGE_STATUSES.includes(st)) { counts[st]++; counts.all++; } });
+  return counts;
+}
+async function fetchBuyerOrderStatusCounts() {
+  try {
+    const { data } = await withRouteTimeout(
+      sb.from("orders").select("status").eq("buyer_id", session.user.id).in("status", ORDER_BADGE_STATUSES).limit(500),
+      3000, { data: [] }
+    );
+    return orderStatusCountsFrom(data);
+  } catch (_) { return orderStatusCountsFrom([]); }
+}
+function orderStatusPillsHtml(view, status, type, payment, dateFrom, dateTo, perspective = "", counts = null) {
   // Handed over / Returned aren't separate filters any more (still reachable
   // from the dropdown); they only show here if one is the active filter.
   const pillTabs = ORDER_TABS.filter((t) => !["handed_over", "returned"].includes(t) || t === status);
-  return `<div class="order-status-pills-rail">${pillTabs.map((t) => `<button type="button" data-status="${t}" class="order-status-pill ${t === status ? "active" : ""}" onclick="navigate('${view}',{status:'${t}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}',${perspective ? `perspective:'${perspective}'` : ""}})">${t === "all" ? "All" : esc(t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}</button>`).join("")}</div>`;
+  const badge = (t) => { const n = Number(counts?.[t] || 0); return n > 0 ? `<span class="order-tab-badge" aria-label="${n} ${t.replace(/_/g, " ")}">${n > 99 ? "99+" : n}</span>` : ""; };
+  return `<div class="order-status-pills-rail">${pillTabs.map((t) => `<button type="button" data-status="${t}" class="order-status-pill ${t === status ? "active" : ""}" onclick="window.__ordersRailPending=true;navigate('${view}',{status:'${t}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}',${perspective ? `perspective:'${perspective}'` : ""}})">${t === "all" ? "All" : esc(t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}${badge(t)}</button>`).join("")}</div>`;
 }
 
 function vendorOrdersTabsHtml(active) {
@@ -23690,7 +23706,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   let html = `<h2>Orders</h2>`;
   html += vendorOrdersTabsHtml("sales");
   html += orderStatsHtml(safeStatsOrders);
-  html += orderStatusPillsHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales");
+  html += orderStatusPillsHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales", orderStatusCountsFrom(safeStatsOrders));
   html += `<div class="orders-filter-search-row">${orderFiltersDropdownHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales")}<div class="orders-search-slot"></div></div>`;
   orderListViewMode = "cards";
   orderListExpanded = false;
@@ -23702,7 +23718,6 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   html += orderListControlsHtml(activeVendorOrders.length);
   html += `<div id="orderListWrap">${orderListHtml(activeVendorOrders, false, "sales")}</div>`;
   html += orderHistoryAccordionHtml(historyVendorOrders, false, "sales");
-  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('vendorDashboard')"><i class='fa-solid fa-arrow-left'></i> Back to Dashboard</button>`;
   setTimeout(() => { enhanceSelectsIn(byId("app")); renderOrderStatsBody(); }, 0);
   return html;
 }
@@ -23771,7 +23786,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   const moreMenu = `<div class="orders-more-wrap"><button type="button" class="orders-icon-btn" onclick="toggleOrdersMore(this)" aria-label="More" aria-expanded="false" title="More"><i class="fa-solid fa-ellipsis"></i></button><div class="orders-more-menu hidden">${historyCustomerOrders.length ? `<button type="button" onclick="toggleOrdersMore(this);openOrderHistory()"><i class="fa-solid fa-clock-rotate-left"></i> Order history <b>${historyCustomerOrders.length}</b></button>` : ""}<button type="button" onclick="navigate('home')"><i class="fa-solid fa-bag-shopping"></i> Continue shopping</button></div></div>`;
   let html = `<div class="orders-title-row"><h2>${embeddedVendorOrders ? "Orders" : "My Orders"}</h2><div class="orders-top-actions">${filtersRow}${moreMenu}</div></div>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
-  html += orderStatusPillsHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective);
+  html += orderStatusPillsHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective, await fetchBuyerOrderStatusCounts());
   orderListViewMode = "cards";
   orderListExpanded = false;
   window.__orderListOrders = activeCustomerOrders;
@@ -42444,6 +42459,11 @@ html[data-theme="black"] .avatar-fallback{
 #app .levro-final-search-toggle,
 #app .levro-compact-search-toggle{width:42px !important;height:42px !important;min-width:42px !important;border-radius:50% !important;border:1px solid var(--border) !important;background:var(--card) !important;box-shadow:none !important;color:var(--text-muted) !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;padding:0 !important}
 #app .levro-final-search-toggle i,#app .levro-compact-search-toggle i{color:var(--text-muted) !important}
+
+/* Status tabs: red count badges for the ones that need action; a fixed-height rail that never clips or drifts. */
+.order-tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:1.15rem;height:1.15rem;padding:0 .32rem;margin-left:.4rem;border-radius:999px;background:#ef4444;color:#fff !important;-webkit-text-fill-color:#fff !important;font-size:.68rem;font-weight:800;line-height:1;vertical-align:.08rem}
+#app .order-status-pills-rail{overflow-y:hidden !important;overscroll-behavior-x:contain;min-height:46px;align-items:flex-end !important;animation:none !important;transition:none !important}
+#app .order-status-pill{animation:none !important;transition:none !important}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
@@ -42747,5 +42767,39 @@ function hideLeviFromPanel() {
     else if(tries>40)clearInterval(t);
   },500);
   byId("aiChatFab")?.addEventListener("pointerdown",removeBubble,{passive:true});
+})();
+
+// ---- Keep the order tab row exactly where the user scrolled it ----
+// Tapping a tab re-renders the page (a brand-new tab row), which used to reset
+// its horizontal scroll back to "All". Remember the scroll position as the row
+// is scrolled and put it back the instant a new row appears.
+(function(){
+  let last=0;
+  document.addEventListener("scroll",(e)=>{
+    const t=e.target;
+    if(t&&t.classList&&t.classList.contains("order-status-pills-rail")) last=t.scrollLeft;
+  },true);
+  function restore(rail){
+    if(!rail||rail.dataset.railRestored)return;
+    rail.dataset.railRestored="1";
+    if(last>0) rail.scrollLeft=last;
+  }
+  const mo=new MutationObserver((muts)=>{
+    for(const m of muts)for(const n of m.addedNodes){
+      if(n.nodeType!==1)continue;
+      if(n.classList?.contains("order-status-pills-rail")) restore(n);
+      else n.querySelectorAll?.(".order-status-pills-rail").forEach(restore);
+    }
+  });
+  mo.observe(document.body,{childList:true,subtree:true});
+  // A fresh visit to the orders page from elsewhere starts at the left again.
+  const origNavigate=window.navigate;
+  if(typeof origNavigate==="function"&&!window.__ordersRailNavWrapped){
+    window.__ordersRailNavWrapped=true;
+    window.navigate=function(view){
+      if(!["buyerOrders","vendorOrders"].includes(view)) last=0;
+      return origNavigate.apply(this,arguments);
+    };
+  }
 })();
 </script>
