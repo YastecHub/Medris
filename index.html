@@ -16237,6 +16237,12 @@ async function renderMessages(conversationId) {
 
   setTimeout(() => { scrollChatToBottom(); resolveVisibleAttachments(byId("chatMessages")); resolveVisibleAttachments(byId("chatPinnedStrip")); setupMessageInteractions(byId("chatMessages")); renderChatReplyPreview(); }, 0);
   subscribeToConversation(conversationId);
+  // Start the live-sync fallback and the online/last-seen line right away,
+  // instead of waiting on the realtime channel to finish (re)connecting.
+  setTimeout(() => {
+    try { window.__levroStartChatMessageFallback?.(String(conversationId)); } catch (_) {}
+    try { window.__levroStartChatPresence?.(conversationId); } catch (_) {}
+  }, 300);
   return html;
 }
 
@@ -17029,7 +17035,8 @@ function refreshChatTypingIndicator() {
 async function subscribeToConversation(conversationId) {
   // Navigation already returned control to the user. Only the Realtime
   // subscription waits for the previous channel to finish closing.
-  try { await messageChannelClosePromise; } catch (_) {}
+  // Never let a slow/stalled close of the previous channel hold up this one.
+  try { await Promise.race([messageChannelClosePromise, new Promise((r) => setTimeout(r, 1200))]); } catch (_) {}
   if (activeConversationId !== conversationId || !session) return;
   clearTimeout(typingStopTimer);
   typingChannelConversationId = conversationId;
@@ -42464,6 +42471,11 @@ html[data-theme="black"] .avatar-fallback{
 .order-tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:1.15rem;height:1.15rem;padding:0 .32rem;margin-left:.4rem;border-radius:999px;background:#ef4444;color:#fff !important;-webkit-text-fill-color:#fff !important;font-size:.68rem;font-weight:800;line-height:1;vertical-align:.08rem}
 #app .order-status-pills-rail{overflow-y:hidden !important;overscroll-behavior-x:contain;min-height:46px;align-items:flex-end !important;animation:none !important;transition:none !important}
 #app .order-status-pill{animation:none !important;transition:none !important}
+
+/* Edit-message buttons sit on the green "mine" bubble: make both readable. */
+.chat-bubble.mine .chat-edit-actions .btn{border:1.5px solid rgba(255,255,255,.85) !important;background:transparent !important;background-image:none !important;color:#fff !important;-webkit-text-fill-color:#fff !important;box-shadow:none !important;font-weight:700 !important;opacity:1 !important;visibility:visible !important}
+.chat-bubble.mine .chat-edit-actions .btn:last-child{background:#fff !important;color:#0B6E4A !important;-webkit-text-fill-color:#0B6E4A !important;border-color:#fff !important}
+.chat-bubble .chat-edit-actions .btn{min-width:4.2rem}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
