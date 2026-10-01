@@ -9342,6 +9342,41 @@ function sanitizeToastMessage(message, type) {
   if (raw) console.warn("[Levromart] Technical error shown to user, sanitized:", raw);
   return type === "error" ? "Something went wrong. Check your connection and try again." : raw || "Something went wrong.";
 }
+// Distinct icon + colour per notification type, replacing the generic "i".
+function notificationSystemIconHtml(n) {
+  const T = String(n?.type || ""), title = String(n?.title || "");
+  const G = "#0b6e4a", B = "#2563eb", R = "#dc2626", A = "#d97706", V = "#7c3aed", GR = "#64748b";
+  const map = {
+    order_placed: ["fa-bag-shopping", G], new_order: ["fa-cart-plus", G],
+    order_cancelled_by_vendor: ["fa-ban", R], request_cancelled: ["fa-ban", R],
+    order_reminder: ["fa-clock", A], order_updated: ["fa-pen-to-square", B],
+    payment_received: ["fa-money-bill-wave", "#16a34a"], payment_confirmed: ["fa-circle-check", "#16a34a"],
+    manual_payment_reported: ["fa-hand-holding-dollar", A], service_payment_reported: ["fa-hand-holding-dollar", A],
+    payment_unresolved_24h: ["fa-hourglass-half", R], new_dispute: ["fa-scale-balanced", R],
+    new_message: ["fa-message", B], admin_alert: ["fa-shield-halved", V], admin_action_alert: ["fa-shield-halved", V],
+    admin_inventory_product_deleted: ["fa-trash-can", R],
+    vendor_approved: ["fa-store", "#16a34a"], vendor_rejected: ["fa-store-slash", R], vendor_deleted: ["fa-store-slash", R],
+    vendor_renamed: ["fa-signature", B], new_vendor: ["fa-store", B], vendor_application_submitted: ["fa-file-signature", B],
+    new_review: ["fa-star", "#f59e0b"], new_request: ["fa-hand", V], new_offer: ["fa-handshake", B],
+    offer_accepted: ["fa-circle-check", "#16a34a"], offer_declined: ["fa-circle-xmark", R],
+    service_offer_new: ["fa-handshake", B], service_offer_countered: ["fa-right-left", A],
+    service_offer_accepted: ["fa-circle-check", "#16a34a"], service_offer_completed: ["fa-flag-checkered", "#16a34a"],
+    monthly_listing_approved: ["fa-calendar-check", "#16a34a"], monthly_listing_submitted: ["fa-calendar-plus", B],
+    account_suspended: ["fa-user-lock", R], account_unsuspended: ["fa-user-check", "#16a34a"],
+    appeal_submitted: ["fa-envelope-open-text", A], password_reset_request: ["fa-key", A], promoted_admin: ["fa-user-shield", V],
+    stock_alert: ["fa-box-open", A], product_wishlisted: ["fa-heart", R], product_comment: ["fa-comment", B],
+    comment_liked: ["fa-thumbs-up", B], comment_reply: ["fa-reply", B], vendor_follow: ["fa-user-plus", B],
+    vendor_follow_update: ["fa-bullhorn", G],
+  };
+  let hit = map[T];
+  if (T === "order_status_changed") {
+    hit = /cancel/i.test(title) ? ["fa-ban", R] : /complet/i.test(title) ? ["fa-circle-check", "#16a34a"]
+      : /confirm/i.test(title) ? ["fa-clipboard-check", "#16a34a"] : /hand|deliver/i.test(title) ? ["fa-truck-fast", B]
+      : /return/i.test(title) ? ["fa-rotate-left", A] : /dispute/i.test(title) ? ["fa-scale-balanced", R] : ["fa-arrows-rotate", B];
+  }
+  if (!hit) hit = ["fa-bell", GR];
+  return `<span class="notification-system-icon notif-type-icon" style="--nti:${hit[1]}"><i class="fa-solid ${hit[0]}"></i></span>`;
+}
 function showToast(message, type = "info") {
   playSound(type === "error" ? "error" : "notify");
   const wrap = byId("toastStack");
@@ -10194,8 +10229,8 @@ async function renderNotifPanel() {
   const cachedTabsHtml=`<div class="notif-tabs" role="tablist" aria-label="Notification categories">${cachedNotificationTabs.map(([key,label])=>`<button type="button" role="tab" aria-selected="${notifViewMode===key?"true":"false"}" class="notif-tab ${notifViewMode===key?"active":""}" onclick="switchNotifView('${key}')">${label}</button>`).join('')}</div>`;
   if (Array.isArray(cachedNotifItems) && cachedNotifItems.length) {
     const cachedList = cachedNotifItems.map(n => {
-      const avatar = n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.15rem;height:2.15rem;object-fit:cover;flex:none;" alt="" draggable="false" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.15rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<span class="notification-system-icon"><i class="fa-solid fa-circle-info"></i></span>`;
-      return `<div class="notif-item-wrap" data-id="${esc(n.id)}"><button type="button" class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}" data-view="${esc(n.target_view || 'home')}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || '')}" data-actor-avatar="${esc(n.actor_avatar_url || '')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">${avatar}<span class="notif-copy"><strong>${esc(n.title || 'Notification')}</strong>${n.body ? `<span class="muted" style="font-size:.8rem;">${esc(n.notification_category === 'new_follower' ? (n.actor_name || n.body) : n.body)}</span>` : ''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span></button></div>`;
+      const avatar = n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.15rem;height:2.15rem;object-fit:cover;flex:none;" alt="" draggable="false" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.15rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : notificationSystemIconHtml(n);
+      return `<div class="notif-item-wrap" data-id="${esc(n.id)}"><button type="button" class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}" data-view="${esc(n.target_view || 'home')}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || '')}" data-actor-avatar="${esc(n.actor_avatar_url || '')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">${avatar}<span class="notif-copy"><strong>${esc(n.title || 'Notification')}</strong>${n.body ? `<span class="muted" style="font-size:.8rem;">${esc(n.notification_category === 'new_follower' ? (n.actor_name || n.body) : maskSensitiveNumbers(n.body))}</span>` : ''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span></button></div>`;
     }).join('');
     panel.innerHTML = currentView === "notifications" ? cachedTabsHtml + cachedList : cachedList;
   } else {
@@ -10298,8 +10333,8 @@ async function renderNotifPanel() {
     ? items.map((n) => `<div class="notif-item-wrap" data-id="${n.id}">
         <button type="button" class="notif-item ${n.read ? "" : "unread"} ${notifSelectMode && notifSelectedIds.has(n.id) ? "selected" : ""}" data-id="${n.id}" data-view="${esc(n.target_view || "home")}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || "")}" data-actor-avatar="${esc(n.actor_avatar_url || "")}" aria-selected="${notifSelectMode && notifSelectedIds.has(n.id) ? "true" : "false"}" onclick="handleNotifItemClick(event,'${n.id}')">
           ${notifSelectMode ? `<span class="notif-select-check"><i class="fa-solid fa-check"></i></span>` : ""}
-          ${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;flex:none;" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.1rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : `<span class="notification-system-icon"><i class='fa-solid fa-circle-info'></i></span>`}
-          <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : n.body)}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
+          ${n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.1rem;height:2.1rem;object-fit:cover;flex:none;" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.1rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : notificationSystemIconHtml(n)}
+          <span class="notif-copy"><strong style="display:block;">${esc(n.title)}</strong>${n.body ? `<span class="muted" style="font-size:0.8rem;">${esc(n.notification_category === "new_follower" ? (n.actor_name || n.body) : maskSensitiveNumbers(n.body))}</span><br/>` : ""}<span class="muted" style="font-size:0.72rem;">${timeAgo(n.created_at)}</span></span>
         </button>
       </div>`).join("")
     : `<p class="muted" style="padding:0.4rem;">${emptyMsg}</p>`;
@@ -15628,7 +15663,7 @@ function convRowHtml(c) {
       ${profileAvatarHtml(c.other_avatar, name, "2.6rem", { lightbox: !!c.other_avatar && !msgSelectMode })}
       <div class="conv-meta">
         <div class="conv-name-row"><strong>${pinned ? `<i class="fa-solid fa-thumbtack conv-pinned-icon"></i> ` : ""}${esc(name)}</strong><span class="conv-time">${esc(timeLabel)}</span></div>
-        <div class="conv-preview">${c.last_message ? esc(maskSensitiveNumbers(c.last_message)) : "No messages yet"}</div>
+        <div class="conv-preview">${c.last_message ? esc(stickerPlainText(maskSensitiveNumbers(c.last_message))) : "No messages yet"}</div>
       </div>
       ${isUnread ? `<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count > 99 ? "99+" : c.unread_count}</span>` : ""}
     </div>
@@ -15985,6 +16020,7 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
     <div class="chat-thread">
       <div class="chat-messages" id="chatMessages">${messagesArea}</div>
       <div class="chat-input-row">
+        <button type="button" class="btn btn-sm chat-sticker-btn" onclick="toggleChatStickerPanel('${conversationId}')" title="Stickers" aria-label="Stickers"><i class="fa-regular fa-face-smile"></i></button>
         <textarea id="chatInput" rows="1" placeholder="Type a message…" oninput="window.__chatFastPaintDirty=true;autoGrowChatInput(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}')}" ></textarea>
         <button class="btn btn-sm" onclick="sendChatMessage('${conversationId}')" aria-label="Send message"><i class="fa-solid fa-paper-plane"></i></button>
       </div>
@@ -16159,6 +16195,7 @@ async function renderMessages(conversationId) {
       ${isBlockedByMe ? `<div class="chat-blocked-banner"><i class="fa-solid fa-user-slash"></i><span>You blocked ${esc(otherName)}.</span><button type="button" onclick="toggleBlockChatUser('${otherUserId}','${esc(otherName).replace(/'/g, "\\'")}','${conversationId}')">Unblock</button></div>` : `
       <div class="chat-input-row">
         ${AiSpeechRecognition ? `<button class="ai-chat-mic-btn" id="msgMicBtn" onclick="toggleMsgMic()" title="Tap to talk"><i class="fa-solid fa-microphone"></i></button>` : ""}
+        <button type="button" class="btn btn-sm chat-sticker-btn" onclick="toggleChatStickerPanel('${conversationId}')" title="Stickers" aria-label="Stickers"><i class="fa-regular fa-face-smile"></i></button>
         <textarea id="chatInput" rows="1" placeholder="Type a message…" maxlength="2000" oninput="handleChatTyping('${conversationId}');autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendChatMessage('${conversationId}');}"></textarea>
         <button class="btn btn-sm" onclick="sendChatMessage('${conversationId}')"><i class="fa-solid fa-paper-plane"></i></button>
       </div>`}
@@ -16304,7 +16341,7 @@ function replyQuoteHtml(m) {
   const r = m?.reply_to;
   if (!r) return "";
   const who = r.sender_id === session?.user?.id ? "You" : "Reply";
-  const text = r.deleted_at ? "This message was deleted" : (maskSensitiveNumbers(r.body || "") || r.attachment_name || "Attachment");
+  const text = r.deleted_at ? "This message was deleted" : (stickerPlainText(maskSensitiveNumbers(r.body || "")) || r.attachment_name || "Attachment");
   return `<button type="button" class="chat-reply-quote" data-reply-target-id="${esc(r.id || m.reply_to_id || "")}" onclick="jumpToRepliedMessage(event,this)"><span class="reply-quote-label">${esc(who)}</span><span class="reply-quote-text">${esc(text)}</span></button>`;
 }
 function jumpToRepliedMessage(event, quote) {
@@ -16325,6 +16362,38 @@ function jumpToRepliedMessage(event, quote) {
     setTimeout(() => { target.classList.remove("chat-message-jump-highlight"); quote.classList.remove("chat-reply-jump"); }, 1400);
   });
 }
+// ---- Chat stickers (emoji-based; sent as a plain "[[sticker:😂]]" body so no
+// storage/schema change is needed and old clients just see the token text) ----
+const CHAT_STICKERS = ["😂","🤣","😍","🥰","😎","🤩","😊","🙂","😉","😅","😭","😢","😡","🤔","🙄","😴","🥳","🤝","👍","👎","👏","🙏","💪","🔥","💯","❤️","💔","🎉","✅","❌","🙌","👀","🤗","😇","🤑","💸","📦","🚚","🛍️","⏰","🙈","😬","🫡","🤞"];
+function stickerEmojiFromBody(body) {
+  const m = /^\s*\[\[sticker:([^\]]{1,16})\]\]\s*$/.exec(String(body || ""));
+  return m ? m[1] : "";
+}
+function stickerPlainText(text) {
+  const e = stickerEmojiFromBody(text);
+  return e ? `${e} Sticker` : text;
+}
+function toggleChatStickerPanel(conversationId) {
+  const row = document.querySelector(".chat-input-row");
+  if (!row) return;
+  const existing = byId("chatStickerPanel");
+  if (existing) { existing.remove(); return; }
+  const panel = document.createElement("div");
+  panel.id = "chatStickerPanel";
+  panel.className = "chat-sticker-panel";
+  panel.innerHTML = CHAT_STICKERS.map((e) => `<button type="button" class="chat-sticker-pick" onclick="sendChatSticker('${conversationId}','${e}')" aria-label="Send sticker ${e}">${e}</button>`).join("");
+  row.parentNode.insertBefore(panel, row);
+}
+async function sendChatSticker(conversationId, emoji) {
+  const input = byId("chatInput");
+  if (!input || !CHAT_STICKERS.includes(emoji)) return;
+  byId("chatStickerPanel")?.remove();
+  const draft = input.value, token = `[[sticker:${emoji}]]`;
+  input.value = token;
+  try { await sendChatMessage(conversationId); }
+  finally { if (input.value === token) input.value = draft; }
+}
+
 function linkifyChatText(text) {
   const safe = esc(text || "");
   return safe.replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, (match) => {
@@ -16343,7 +16412,7 @@ function chatBubbleHtml(m) {
   }
   const editedTag = m.edited_at ? `<span class="muted" style="font-size:0.7rem;">(edited)</span>` : "";
   return `<div class="chat-bubble-wrap ${mine ? "mine" : "theirs"}" data-msg-wrap-id="${m.id}">
-    <div class="chat-bubble ${mine ? "mine" : "theirs"}${m.attachment_url && String(m.attachment_type || "").startsWith("image/") && !m.body ? " photo-only" : ""}" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}">${replyQuoteHtml(m)}${attachmentHtml(m)}${m.body ? `<span class="chat-bubble-text">${linkifyChatText(maskSensitiveNumbers(m.body))}</span>` : ""}<span class="chat-time">${editedTag}<span class="chat-time-text">${time}${mine ? messageTicksHtml(m) : ""}</span></span></div>
+    <div class="chat-bubble ${mine ? "mine" : "theirs"}${m.attachment_url && String(m.attachment_type || "").startsWith("image/") && !m.body ? " photo-only" : ""}" data-msg-id="${m.id}" data-created-at="${esc(m.created_at)}">${replyQuoteHtml(m)}${attachmentHtml(m)}${m.body ? (stickerEmojiFromBody(m.body) ? `<span class="chat-sticker">${esc(stickerEmojiFromBody(m.body))}</span>` : `<span class="chat-bubble-text">${linkifyChatText(maskSensitiveNumbers(m.body))}</span>`) : ""}<span class="chat-time">${editedTag}<span class="chat-time-text">${time}${mine ? messageTicksHtml(m) : ""}</span></span></div>
     <div class="msg-reactions-row" data-reactions-for="${m.id}">${reactionsRowHtml(m)}</div>
   </div>`;
 }
@@ -17100,12 +17169,17 @@ function maskSensitiveNumbers(text) {
   }
   // Any other standalone run of 10+ digits -- covers a bank account number
   // that doesn't start with 0 or +234.
-  for (const m of str.matchAll(/\d{10,}/g)) {
+  // Five or more digits in a row are hidden, so a number can't be passed on
+  // in two halves. Amounts written with a currency marker are left alone.
+  for (const m of str.matchAll(/\d{5,}/g)) {
+    const before = str.slice(Math.max(0, m.index - 5), m.index);
+    const after = str.slice(m.index + m[0].length, m.index + m[0].length + 8);
+    if (/(?:[₦$£€]|\bN|\bNGN)\s*$/i.test(before) || /^\s*(?:naira|ngn)\b/i.test(after)) continue;
     for (let i = m.index; i < m.index + m[0].length; i++) maskIndices.add(i);
   }
-  // Any run of 9+ digits split by single spaces, dashes, dots or brackets
+  // Any run of 7+ digits split by single spaces, dashes, dots or brackets
   // (e.g. 0062-1234-5678, 123 456 7890). ISO dates are left alone.
-  for (const m of str.matchAll(/\d(?:[\s().-]?\d){8,}/g)) {
+  for (const m of str.matchAll(/\d(?:[\s().-]?\d){6,}/g)) {
     if (/^\d{4}-\d{2}-\d{2}/.test(m[0])) continue;
     for (let i = m.index; i < m.index + m[0].length; i++) {
       if (/\d/.test(str[i])) maskIndices.add(i);
@@ -17806,6 +17880,14 @@ async function __levroOriginalRenderProductDetail(productId) {
   if(!ownListing && (product.status!=="active" || product.vendor?.verification_status!=="verified" || !product.vendor?.is_active)) return '<div class="empty-state">This product is not currently available.</div>';
   if(variantsError)console.warn("[Levromart] Product varieties could not be loaded:",variantsError);
   product.variants=loadedProductVariants||[]; currentProductDetail=product;
+  // The vendor can only be messaged from a product page once the customer has an order for it.
+  let hasOrderedThisProduct=false;
+  if(session?.user?.id && !ownListing && profile?.role!=="admin"){
+    try{
+      const {data:orderedRows}=await sb.from("order_items").select("id, order:orders!inner(buyer_id,status)").eq("product_id",productId).eq("order.buyer_id",session.user.id).neq("order.status","cancelled").limit(1);
+      hasOrderedThisProduct=!!(orderedRows&&orderedRows.length);
+    }catch(_){}
+  }
   sb.rpc("increment_product_view",{p_product_id:productId}).then(()=>{}).catch(()=>{});
   const st={avg_rating:product.vendor?.avg_rating??0,review_count:product.vendor?.review_count??0};
   setTimeout(async()=>{try{const {data:stats}=await sb.rpc("get_vendor_stats",{p_vendor_id:product.vendor.id});const row=(stats&&stats[0])||{};const root=document.querySelector(`.product-detail-card[data-product-detail-id="${CSS.escape(String(productId))}"]`);if(!root)return;root.querySelector("[data-owner-stat=saved]")?.replaceChildren(document.createTextNode(Number(row.favorites_count??0).toLocaleString()));root.querySelector("[data-owner-stat=revenue]")?.replaceChildren(document.createTextNode(naira(Number(row.revenue??0))));root.querySelector("[data-owner-stat=sales]")?.replaceChildren(document.createTextNode(Number(row.sales_count??0).toLocaleString()));}catch(_){}},0);
@@ -17861,6 +17943,7 @@ async function __levroOriginalRenderProductDetail(productId) {
     <div class="product-detail-actions">
       ${(() => {
         if (profile?.role === "admin") return "";
+        if (!hasOrderedThisProduct) return "";
         if (!canMessageVendorNow(product.vendor)) {
           const hs = vendorHoursStatus(product.vendor);
           return `<span class="storefront-contact-closed" title="${esc(`${product.vendor.business_name || "This vendor"} is outside working hours right now${hs.todayText ? ` (${hs.todayLabel}: ${hs.todayText})` : ""}.`)}"><i class="fa-regular fa-clock"></i><span>Outside working hours</span></span>`;
@@ -23547,116 +23630,26 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   }
   // Hydrate item summaries separately from the base order query. This keeps a
   // restrictive nested relationship from blocking the whole Orders page.
+  // Fill in anything the rich query didn't return (items / vendor) in ONE
+  // parallel round instead of sequential waits, so a just-placed order shows
+  // its product and vendor right away rather than a bare row.
   try {
-    const orderIds = (safeAllOrders || []).map(o => o.id).filter(Boolean);
-    if (orderIds.length) {
-      const { data: orderItems } = await withRouteTimeout(
-        sb.from("order_items").select("order_id,product_id,quantity,unit_price,product:products(id,is_service,name,photos)").in("order_id", orderIds),
-        2500, { data: [], error: null }
-      );
-      const byOrder = new Map();
-      (orderItems || []).forEach(it => { if (!byOrder.has(it.order_id)) byOrder.set(it.order_id, []); byOrder.get(it.order_id).push(it); });
-      (safeAllOrders || []).forEach(o => { if (!Array.isArray(o.items) || !o.items.length) o.items = byOrder.get(o.id) || []; });
-    }
-  } catch (_) {}
-
-  let orders = type === "all" ? safeAllOrders : (safeAllOrders || []).filter((o) => orderCategory(o) === type);
-  if (payment !== "all") orders = (orders || []).filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
-
-  // The orders relation can return the order while hiding the nested users row
-  // under RLS. Resolve the customer's display name through the existing secure
-  // buyer-contact RPC so every vendor card can identify the customer.
-  try {
-    await Promise.all((safeAllOrders || []).map(async (o) => {
-      if (o.buyer?.name || !o.id) return;
-      const r = await withRouteTimeout(sb.rpc("get_order_buyer_contact", { p_order_id: o.id }), 2200, { data: [] });
-      const c = Array.isArray(r?.data) ? r.data[0] : null;
-      if (c?.name) o.buyer = { ...(o.buyer || {}), name: c.name };
-    }));
-  } catch (_) {}
-  // Customers stay anonymous to the vendor until the order is accepted.
-  (safeAllOrders || []).forEach((o) => { if (["pending", "cancelled"].includes(String(o.status || ""))) o.buyer = null; });
-
-  let safeStatsOrders = statsOrders || [];
-  if (statsError) {
-    const { data: fallbackStats } = await sb.from("orders").select("status, created_at").eq("vendor_id", vendor.id);
-    safeStatsOrders = fallbackStats || [];
-  }
-  window.__orderStatsOrders = safeStatsOrders;
-
-  // Refresh both perspective counts while the Orders page is open so the
-  // two perspective badges and the bottom-nav badge never depend on a stale
-  // previous screen.
-  try {
-    const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
-      sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES),
-      sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+    const rows = safeAllOrders || [];
+    const orderIds = rows.filter(o => !Array.isArray(o.items) || !o.items.length).map(o => o.id).filter(Boolean);
+    const vendorIds = [...new Set(rows.filter(o => !o.vendor).map(o => o.vendor_id).filter(Boolean))];
+    const [itemsRes, vendorsRes] = await Promise.all([
+      orderIds.length
+        ? withRouteTimeout(sb.from("order_items").select("order_id,product_id,quantity,unit_price,product:products(id,is_service,name,photos)").in("order_id", orderIds), 4000, { data: [], error: null })
+        : Promise.resolve({ data: [] }),
+      vendorIds.length
+        ? withRouteTimeout(sb.from("vendors").select("id,business_name,city,logo_url").in("id", vendorIds), 4000, { data: [], error: null })
+        : Promise.resolve({ data: [] }),
     ]);
-    vendorPendingOrderCount = salesCount || 0;
-    buyerPendingOrderCount = purchaseCount || 0;
-    renderBottomNav();
-  } catch (_) {}
-  // Three rows of tab pills used to wrap into an unreadable jumble on
-  // narrow screens - compact dropdowns plus a date range say the same
-  // thing in a fraction of the space.
-  let html = `<h2>Orders</h2>`;
-  html += vendorOrdersTabsHtml("sales");
-  html += orderStatsHtml(safeStatsOrders);
-  html += orderStatusPillsHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales");
-  html += `<div class="orders-filter-search-row">${orderFiltersDropdownHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales")}<div class="orders-search-slot"></div></div>`;
-  orderListViewMode = "cards";
-  orderListExpanded = false;
-  const sortedOrders = sortOrdersForList(orders);
-  const { active: activeVendorOrders, history: historyVendorOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
-  window.__orderListOrders = activeVendorOrders;
-  window.__orderListIsCustomer = false;
-  window.__orderListSourcePerspective = "sales";
-  html += orderListControlsHtml(activeVendorOrders.length);
-  html += `<div id="orderListWrap">${orderListHtml(activeVendorOrders, false, "sales")}</div>`;
-  html += orderHistoryAccordionHtml(historyVendorOrders, false, "sales");
-  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('vendorDashboard')"><i class='fa-solid fa-arrow-left'></i> Back to Dashboard</button>`;
-  setTimeout(() => { enhanceSelectsIn(byId("app")); renderOrderStatsBody(); }, 0);
-  return html;
-}
-
-async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, embeddedVendorOrders = false) {
-  const ordersRoute = embeddedVendorOrders ? "vendorOrders" : "buyerOrders";
-  const ordersPerspective = embeddedVendorOrders ? "purchases" : "";
-  if (!session) return '<div class="empty-state">Please log in.</div>';
-  status = ORDER_TABS.includes(status) ? status : "all";
-  type = ORDER_TYPE_TABS.some((t) => t.value === type) ? type : "all";
-  payment = ["all", "paid", "unpaid"].includes(payment) ? payment : "all";
-  dateFrom = dateFrom || "";
-  dateTo = dateTo || "";
-
-  // order_items(*) is intentionally used here rather than naming columns,
-  // so this stays resilient to schema changes on order_items.
-  let query = sb.from("orders").select("*, vendor:vendors(business_name,city,logo_url), items:order_items(*,product:products(id,is_service,name,photos)), payments(payment_type,status)").eq("buyer_id", session.user.id);
-  if (status !== "all") query = query.eq("status", status);
-  if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
-  if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
-  const { data: allOrders, error: allOrdersError } = await withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") });
-  let safeAllOrders = allOrders;
-  if (allOrdersError) {
-    console.warn("Rich buyer order query failed; using compatibility query", allOrdersError);
-    let fallback = sb.from("orders").select("*").eq("buyer_id", session.user.id);
-    if (status !== "all") fallback = fallback.eq("status", status);
-    if (dateFrom) fallback = fallback.gte("created_at", `${dateFrom}T00:00:00`);
-    if (dateTo) fallback = fallback.lte("created_at", `${dateTo}T23:59:59`);
-    const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: [], error: null });
-    safeAllOrders = r.data || [];
-  }
-  try {
-    const orderIds = (safeAllOrders || []).map(o => o.id).filter(Boolean);
-    if (orderIds.length) {
-      const { data: orderItems } = await withRouteTimeout(
-        sb.from("order_items").select("order_id,product_id,quantity,unit_price,product:products(id,is_service,name,photos)").in("order_id", orderIds),
-        2500, { data: [], error: null }
-      );
-      const byOrder = new Map();
-      (orderItems || []).forEach(it => { if (!byOrder.has(it.order_id)) byOrder.set(it.order_id, []); byOrder.get(it.order_id).push(it); });
-      (safeAllOrders || []).forEach(o => { if (!Array.isArray(o.items) || !o.items.length) o.items = byOrder.get(o.id) || []; });
-    }
+    const byOrder = new Map();
+    (itemsRes.data || []).forEach(it => { if (!byOrder.has(it.order_id)) byOrder.set(it.order_id, []); byOrder.get(it.order_id).push(it); });
+    rows.forEach(o => { if (!Array.isArray(o.items) || !o.items.length) o.items = byOrder.get(o.id) || []; });
+    const vById = new Map((vendorsRes.data || []).map(v => [String(v.id), v]));
+    rows.forEach(o => { if (!o.vendor && vById.has(String(o.vendor_id))) o.vendor = vById.get(String(o.vendor_id)); });
   } catch (_) {}
   // Build the buyer's order list before applying the payment filter.
   // A previous precision patch accidentally referenced `orders` before it was
@@ -23664,14 +23657,6 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   // fall back to the bare "Order" shell.
   let orders = type === "all" ? (safeAllOrders || []) : (safeAllOrders || []).filter((o) => orderCategory(o) === type);
   if (payment !== "all") orders = orders.filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
-  try {
-    const vendorIds = [...new Set((safeAllOrders || []).map(o => o.vendor_id).filter(Boolean))];
-    if (vendorIds.length) {
-      const { data: vendorRows } = await withRouteTimeout(sb.from("vendors").select("id,business_name,city,logo_url").in("id", vendorIds), 2200, { data: [], error: null });
-      const byId = new Map((vendorRows || []).map(v => [String(v.id), v]));
-      (safeAllOrders || []).forEach(o => { if (!o.vendor && byId.has(String(o.vendor_id))) o.vendor = byId.get(String(o.vendor_id)); });
-    }
-  } catch (_) {}
 
   let html = embeddedVendorOrders ? `<h2><i class='fa-solid fa-clipboard-list'></i> Orders</h2>` : `<h2><i class='fa-solid fa-clipboard-list'></i> My Orders</h2>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
@@ -38765,12 +38750,12 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   const notificationAvatarHtml = (n) => {
     if(n?.actor_avatar_url) return `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.15rem;height:2.15rem;object-fit:cover;flex:none;" alt="" draggable="false" />`;
     if(n?.actor_name) return avatarFallbackHtml(n.actor_name,"2.15rem","notification-avatar-fallback",n.actor_name,n.actor_id||n.actor_name);
-    return `<span class="notification-system-icon"><i class="fa-solid fa-circle-info"></i></span>`;
+    return notificationSystemIconHtml(n);
   };
   const notificationRowHtml = (n) => `<div class="notif-item-wrap" data-id="${esc(n.id)}">
     <button type="button" class="notif-item ${n.read?'':'unread'}" data-id="${esc(n.id)}" data-view="${esc(n.target_view||'home')}" data-params='${esc(JSON.stringify(n.target_params||{}))}' data-actor-name="${esc(n.actor_name||'')}" data-actor-avatar="${esc(n.actor_avatar_url||'')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">
       ${notificationAvatarHtml(n)}
-      <span class="notif-copy"><strong>${esc(n.title||'Notification')}</strong>${n.body?`<span class="muted" style="font-size:.8rem;">${esc(n.notification_category==='new_follower'?(n.actor_name||n.body):n.body)}</span>`:''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span>
+      <span class="notif-copy"><strong>${esc(n.title||'Notification')}</strong>${n.body?`<span class="muted" style="font-size:.8rem;">${esc(n.notification_category==='new_follower'?(n.actor_name||n.body):maskSensitiveNumbers(n.body))}</span>`:''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span>
     </button>
   </div>`;
   window.__levroNotificationRowHtml=notificationRowHtml;
@@ -41286,6 +41271,9 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .vendor-profile-plain-row:first-child{border-top:none;}
 .vendor-profile-settings-row{display:flex;align-items:center;gap:.5rem;color:var(--text-muted);}
 .settings-logout-row,.settings-logout-row i{color:var(--danger) !important;}
+.notif-type-icon{display:inline-flex !important;align-items:center !important;justify-content:center !important;border-radius:50% !important;
+  background:color-mix(in srgb,var(--nti,#64748b) 15%,transparent) !important;color:var(--nti,#64748b) !important;font-size:.95rem !important;}
+.notif-type-icon i{color:var(--nti,#64748b) !important;}
 #confirmModalOk.btn-danger{background:#dc2626 !important;background-image:none !important;border-color:#dc2626 !important;color:#fff !important;}
 .profile-panel-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:.5rem;margin:1rem 1.1rem 0;padding:.8rem;border-radius:14px;background:var(--card);border:1px solid var(--border);}
 .profile-panel-stat{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.15rem;min-width:0;}
@@ -41980,6 +41968,58 @@ body.search-full-page{padding-top:calc(18px + env(safe-area-inset-top,0px)) !imp
 #app .storefront-category-chip.active{
   background:var(--primary) !important; color:#fff !important; border-color:var(--primary) !important;
 }
+
+/* Filter pills & tab rows: light-green outline / fill carries the state;
+   the text and icons stay neutral (black in light mode, white in dark). */
+#app .order-status-pill,
+#app .vendor-listing-tab,
+#app .order-status-pill.active,
+#app .vendor-listing-tab.active{
+  color:var(--text) !important; -webkit-text-fill-color:var(--text) !important;
+}
+#app .catalog-type-tab,
+#app .vendor-products-unified-tabs button,
+#app .storefront-catalog-tab{
+  color:var(--text-muted) !important; -webkit-text-fill-color:var(--text-muted) !important;
+}
+#app .catalog-type-tab.active,
+#app .vendor-products-unified-tabs button.active,
+#app .storefront-catalog-tab.active{
+  background:color-mix(in srgb,var(--primary) 16%,var(--card)) !important;
+  background-color:color-mix(in srgb,var(--primary) 16%,var(--card)) !important;
+  background-image:none !important;
+  border:1.5px solid color-mix(in srgb,var(--primary) 55%,var(--border)) !important;
+  border-radius:999px !important;
+  color:var(--text) !important; -webkit-text-fill-color:var(--text) !important;
+  box-shadow:none !important;
+}
+#app .vendor-products-unified-tabs button.active{ border-radius:12px !important; }
+#app .storefront-catalog-tab.active .tab-count{
+  background:color-mix(in srgb,var(--primary) 22%,transparent) !important;
+  color:var(--text) !important; -webkit-text-fill-color:var(--text) !important;
+}
+#app .vendors-directory-view-buttons .btn.active,
+#app .vendors-directory-view-buttons .btn[aria-pressed="true"],
+#app #vendorsViewGridBtn.active,
+#app #vendorsViewListBtn.active,
+#app #vendorsViewMapBtn.active{
+  background:color-mix(in srgb,var(--primary) 20%,var(--card)) !important;
+  background-color:color-mix(in srgb,var(--primary) 20%,var(--card)) !important;
+  background-image:none !important;
+  border:1.5px solid color-mix(in srgb,var(--primary) 55%,var(--border)) !important;
+  color:var(--text-muted) !important; -webkit-text-fill-color:var(--text-muted) !important;
+}
+#app .vendors-directory-view-buttons .btn.active i,
+#app #vendorsViewGridBtn.active i,
+#app #vendorsViewListBtn.active i,
+#app #vendorsViewMapBtn.active i{ color:var(--text-muted) !important; }
+
+.chat-sticker-btn{background:transparent !important;color:var(--text-muted) !important;border:0 !important;box-shadow:none !important;padding:.5rem .45rem !important;font-size:1.25rem}
+.chat-sticker-panel{display:grid;grid-template-columns:repeat(auto-fill,minmax(2.6rem,1fr));gap:.2rem;padding:.55rem;border-top:1px solid var(--border);background:var(--card);max-height:12rem;overflow-y:auto}
+.chat-sticker-pick{border:0;background:transparent;font-size:1.9rem;line-height:1;padding:.3rem;border-radius:10px;cursor:pointer}
+.chat-sticker-pick:active{background:color-mix(in srgb,var(--primary) 14%,var(--card))}
+#app .chat-bubble:has(> .chat-sticker){background:transparent !important;box-shadow:none !important;border:0 !important;padding:.1rem .2rem !important}
+.chat-sticker{display:block;font-size:3.6rem;line-height:1.1}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
