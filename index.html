@@ -1221,6 +1221,9 @@
   .toast-undo-btn { background: none; border: none; color: var(--primary); font-weight: 700; cursor: pointer; font-size: 0.85rem; flex-shrink: 0; pointer-events: auto; font-family: inherit; }
   .vendor-map-pin-inner { width: 32px; height: 32px; border-radius: 50% 50% 50% 0; background: var(--primary-grad); transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 10px rgba(0,0,0,0.35); border: 2px solid #fff; }
   .vendor-map-pin-inner i { transform: rotate(45deg); color: #fff; font-size: 0.85rem; }
+  .customer-map-pin-inner { width: 32px; height: 32px; border-radius: 50% 50% 50% 0; background: #2563eb; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 10px rgba(37,99,235,.4); border: 2px solid #fff; box-sizing: border-box; }
+  .customer-map-pin-inner i { transform: rotate(45deg); color: #fff; font-size: 0.85rem; }
+  .order-map-distance-label{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:999px;font-weight:700;font-size:.72rem;padding:.12rem .5rem;box-shadow:0 2px 8px rgba(0,0,0,.15);}
   /* Map polish: keep required OSM attribution discreet, while removing the
      unnecessary Leaflet branding. The attribution itself must remain visible
      when using OSM tiles. */
@@ -8914,6 +8917,15 @@ function addBasemapTileLayer(map) {
 }
 // A rounded teardrop pin in the site's own accent color with a shop icon,
 // instead of Leaflet's default generic blue marker.
+function customerMapIcon() {
+  return window.L.divIcon({
+    className: "customer-map-pin",
+    html: `<div class="customer-map-pin-inner"><i class="fa-solid fa-user"></i></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -28],
+  });
+}
 function vendorMapIcon() {
   return window.L.divIcon({
     className: "vendor-map-pin",
@@ -18736,7 +18748,7 @@ async function renderVendorsMap() {
 
   if (buyerLocation) {
     const primaryColor = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim() || "#0B6E4A";
-    const me = window.L.circleMarker([buyerLocation.lat, buyerLocation.lng], { radius: 8, color: "#fff", weight: 2, fillColor: primaryColor, fillOpacity: 1 }).addTo(vendorsMap);
+    const me = window.L.circleMarker([buyerLocation.lat, buyerLocation.lng], { radius: 8, color: "#fff", weight: 2, fillColor: "#2563eb", fillOpacity: 1 }).addTo(vendorsMap);
     me.bindPopup("You are here");
     vendorsMapMarkers.push(me);
   }
@@ -24013,7 +24025,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <div class="flex order-buyer-contact-actions" style="gap:.6rem;flex-wrap:wrap;align-items:center;">
         <button class="order-contact-icon-btn order-contact-message-btn" type="button" onclick="messageCustomerFromOrder('${orderId}')" title="Message customer" aria-label="Message customer"><i class="fa-solid fa-comment-dots"></i><span>Message</span></button>
       </div>` : (order.status === "pending" ? `<p class="muted" style="margin:0 0 .45rem;">A customer has placed this order. Accept it to see who they are and message them in the app.</p>` : `<p class="muted" style="margin:0 0 .45rem;">Customer details are not available for this order.</p>`)}
-      ${isDeliveryOrder && (order.status === "pending" || order.status === "confirmed") && order.buyer_lat != null && order.buyer_lng != null && order.vendor?.lat != null && order.vendor?.lng != null ? `<button class="btn btn-sm btn-outline order-buyer-location-btn order-buyer-location-btn-yellow" type="button" onclick="showOrderBuyerLocation('${order.id}',${Number(order.buyer_lat)},${Number(order.buyer_lng)},${Number(order.vendor.lat)},${Number(order.vendor.lng)})"><i class="fa-solid fa-map-location-dot"></i> View customer location <span class="muted" style="font-size:.8em;">(~${formatDistanceKm(haversineKm(Number(order.buyer_lat),Number(order.buyer_lng),Number(order.vendor.lat),Number(order.vendor.lng)))})</span></button>` : ""}
+      ${isDeliveryOrder && (order.status === "pending" || order.status === "confirmed") && order.buyer_lat != null && order.buyer_lng != null && order.vendor?.lat != null && order.vendor?.lng != null ? `<button class="btn btn-sm btn-outline order-buyer-location-btn order-buyer-location-btn-yellow" type="button" data-order-id="${order.id}" onclick="showOrderBuyerLocation('${order.id}',${Number(order.buyer_lat)},${Number(order.buyer_lng)},${Number(order.vendor.lat)},${Number(order.vendor.lng)})"><i class="fa-solid fa-map-location-dot"></i> <span class="order-buyer-location-btn-label">View customer location</span> <span class="muted" style="font-size:.8em;">(~${formatDistanceKm(haversineKm(Number(order.buyer_lat),Number(order.buyer_lng),Number(order.vendor.lat),Number(order.vendor.lng)))})</span> <i class="order-buyer-location-chevron fa-solid fa-chevron-down" style="font-size:.75em;"></i></button>` : ""}
       ${isDeliveryOrder && isVendor && order.buyer_lat != null && order.buyer_lng != null ? `<div id="orderBuyerLocationWrap-${order.id}" class="order-buyer-location-wrap hidden"><div class="flex" style="justify-content:space-between;gap:.6rem;align-items:center;"><strong><i class="fa-solid fa-location-dot"></i> Delivery location</strong><span id="orderBuyerLocationStatus-${order.id}" class="muted"></span></div><div id="orderBuyerLocationMap-${order.id}" class="order-buyer-location-map"></div></div>` : ""}
     </div>`;
   }
@@ -24279,7 +24291,21 @@ async function showOrderBuyerLocation(orderId, buyerLat, buyerLng, vendorLat, ve
   const mapEl = byId(`orderBuyerLocationMap-${orderId}`);
   const statusEl = byId(`orderBuyerLocationStatus-${orderId}`);
   if (!wrap || !mapEl) return;
+  // Tapping the button again folds the map back up so it doesn't take over the page.
+  const toggleBtn = document.querySelector(`.order-buyer-location-btn[data-order-id="${orderId}"]`);
+  const setToggleLabel = (open) => {
+    const lbl = toggleBtn?.querySelector(".order-buyer-location-btn-label");
+    if (lbl) lbl.textContent = open ? "Hide customer location" : "View customer location";
+    const chev = toggleBtn?.querySelector(".order-buyer-location-chevron");
+    if (chev) chev.className = `order-buyer-location-chevron fa-solid ${open ? "fa-chevron-up" : "fa-chevron-down"}`;
+  };
+  if (!wrap.classList.contains("hidden")) {
+    wrap.classList.add("hidden");
+    setToggleLabel(false);
+    return;
+  }
   wrap.classList.remove("hidden");
+  setToggleLabel(true);
   await loadLeaflet();
 
   const customerPoint = [Number(buyerLat), Number(buyerLng)];
@@ -24318,7 +24344,7 @@ async function showOrderBuyerLocation(orderId, buyerLat, buyerLng, vendorLat, ve
     });
   }
 
-  const buyerMarker = window.L.marker(customerPoint).addTo(map);
+  const buyerMarker = window.L.marker(customerPoint, { icon: customerMapIcon() }).addTo(map);
   buyerMarker.bindPopup("Customer delivery location").openPopup();
   const points = [customerPoint];
   if (vendorPoint) {
@@ -24332,6 +24358,8 @@ async function showOrderBuyerLocation(orderId, buyerLat, buyerLng, vendorLat, ve
       color: "#0B6E4A", weight: 4, opacity: .82, lineCap: "round", lineJoin: "round", dashArray: "10 8", className: "order-buyer-route"
     }).addTo(map);
     mapEl._levroOrderBuyerRoute = routeLine;
+    const lineKm = haversineKm(vendorPoint[0], vendorPoint[1], customerPoint[0], customerPoint[1]);
+    routeLine.bindTooltip(formatDistanceKm(lineKm), { permanent: true, direction: "center", className: "order-map-distance-label" });
     try {
       const url = `https://router.project-osrm.org/route/v1/driving/${vendorPoint[1]},${vendorPoint[0]};${customerPoint[1]},${customerPoint[0]}?overview=full&geometries=geojson`;
       const controller = new AbortController();
@@ -29487,7 +29515,11 @@ function setupDraggableFab(fab, storageKey, onTap) {
     const header = document.querySelector("header");
     const minY = Math.max(margin, (header?.getBoundingClientRect().bottom || 0) + margin);
     const maxX = Math.max(margin, window.innerWidth - fab.offsetWidth - margin);
-    const maxY = Math.max(minY, window.innerHeight - fab.offsetHeight - margin);
+    // Keep the button between the top bar and the bottom nav so it can never
+    // sit on top of the nav icons (Orders, Notifications, Messages...).
+    const nav = document.getElementById("bottomNav");
+    const navTop = nav && nav.offsetHeight > 0 ? nav.getBoundingClientRect().top : window.innerHeight;
+    const maxY = Math.max(minY, Math.min(window.innerHeight, navTop) - fab.offsetHeight - margin);
     return {
       x: Math.min(Math.max(Number.isFinite(x) ? x : maxX, margin), maxX),
       y: Math.min(Math.max(Number.isFinite(y) ? y : maxY, minY), maxY)
@@ -38560,18 +38592,18 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 
 <style id="levromart-order-payment-flat-colors-final">
 /* Final order-payment controls: use the requested solid colors with no brand texture. */
-#app .order-remind-btn,
-#app .order-remind-btn:hover,
-#app .order-remind-btn:focus,
-#app .order-remind-btn:active {
-  background:#dc2626 !important;
-  background-color:#dc2626 !important;
+#app .btn.btn-sm.order-remind-btn,
+#app .btn.btn-sm.order-remind-btn:hover,
+#app .btn.btn-sm.order-remind-btn:focus,
+#app .btn.btn-sm.order-remind-btn:active {
+  background:#2563eb !important;
+  background-color:#2563eb !important;
   background-image:none !important;
   background-blend-mode:normal !important;
-  border-color:#dc2626 !important;
+  border-color:#2563eb !important;
   color:#fff !important;
   -webkit-text-fill-color:#fff !important;
-  box-shadow:0 5px 14px rgba(220,38,38,.24) !important;
+  box-shadow:0 5px 14px rgba(37,99,235,.24) !important;
 }
 #app .delivery-balance-direct-btn,
 #app .delivery-balance-direct-btn:hover,
