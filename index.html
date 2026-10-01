@@ -4607,7 +4607,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #aiChatFab::after{conten
    to jump the scroll position, so that jump is never actually visible --
    the hole/callout stay hidden and are repositioned while still covered,
    only reappearing once already correctly placed on the new spot. */
-#tourModal.tour-covering{background:var(--bg) !important;}
+/* Same dim as the spotlight itself, not an opaque page-coloured sheet (that read as a white flash on every Next). */
+#tourModal.tour-covering{background:rgba(0,0,0,.72) !important;}
 #tourModal.tour-covering #tourSpotlightHole{opacity:0 !important;transition:none !important;box-shadow:none !important;}
 #tourModal.tour-covering #tourCallout{opacity:0 !important;transition:none !important;}
 .cart-page-title{margin:0 0 1.15rem !important;padding:0 .1rem !important;line-height:1.2 !important;}
@@ -7866,11 +7867,15 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 <div id="aiChatPanel" class="ai-chat-panel hidden">
   <div class="drawer-header">
     <h4><img id="aiChatHeaderLogo" class="ai-chat-header-logo" alt="" /> Levi</h4>
-    <div class="flex" style="gap:0.3rem;">
-      <button class="icon-btn" onclick="shareCurrentAiChat()" title="Share this chat"><i class="fa-solid fa-share-nodes"></i></button>
-      <button class="icon-btn" onclick="startNewAiChat()" title="New chat"><i class="fa-solid fa-plus"></i></button>
-      <button class="icon-btn" id="aiChatHistoryToggleBtn" onclick="toggleAiChatHistory()" title="Recent chats"><i class="fa-solid fa-clock-rotate-left"></i></button>
-      <button class="icon-btn" id="aiChatExpandBtn" onclick="toggleAiChatExpanded()" title="Expand"><i class="fa-solid fa-expand"></i></button>
+    <div class="flex levi-header-actions" style="gap:0.3rem;">
+      <div class="levi-tools" id="leviTools">
+        <button class="icon-btn" onclick="shareCurrentAiChat()" title="Share this chat"><i class="fa-solid fa-share-nodes"></i></button>
+        <button class="icon-btn" onclick="startNewAiChat()" title="New chat"><i class="fa-solid fa-plus"></i></button>
+        <button class="icon-btn" id="aiChatHistoryToggleBtn" onclick="toggleAiChatHistory()" title="Recent chats"><i class="fa-solid fa-clock-rotate-left"></i></button>
+        <button class="icon-btn" id="aiChatExpandBtn" onclick="toggleAiChatExpanded()" title="Expand"><i class="fa-solid fa-expand"></i></button>
+        <button class="icon-btn" onclick="hideLeviFromPanel()" title="Hide Levi"><i class="fa-solid fa-eye-slash"></i></button>
+      </div>
+      <button class="icon-btn levi-tools-toggle" id="leviToolsToggle" onclick="toggleLeviTools()" title="More" aria-expanded="false" aria-controls="leviTools"><i class="fa-solid fa-chevron-left"></i></button>
       <button class="drawer-close-btn" onclick="toggleAiChat()"><i class="fa-solid fa-xmark"></i></button>
     </div>
   </div>
@@ -9320,7 +9325,7 @@ function toggleLeviVisible() {
   if (!leviVisible) { byId("aiChatPanel")?.classList.add("hidden"); }
   applyLeviVisibility();
   renderLeviVisibleToggle();
-  showToast(leviVisible ? "Levi is back." : "Levi is hidden. Turn this back on here any time.", "success");
+  showToast(leviVisible ? "Levi is back." : "Levi is hidden. Triple-tap anywhere on the page to bring him back.", "success");
 }
 function applyLeviVisibility() { syncLeviFabVisibility(); }
 function renderLeviVisibleToggle() {
@@ -12190,6 +12195,7 @@ async function resendLoginOtp() {
 async function logout() {
   if (!(await showConfirmDialog("Log out of Levromart?", { title: "Log out", okLabel: "Log out", danger: true }))) return;
   manualLogout = true;
+  try { localStorage.removeItem("levromart_levi_ask_last"); } catch (_) {}
   try { window.__levromartClearPersistedRoute?.(); } catch (_) {}
   await recordAuthActivity("logout");
   await sb.auth.signOut();
@@ -23518,7 +23524,10 @@ function clearOrderDateFilters(view,status,type,payment,perspective=""){ navigat
 // dropdown filters above -- this rides alongside that dropdown rather than
 // bringing that problem back).
 function orderStatusPillsHtml(view, status, type, payment, dateFrom, dateTo, perspective = "") {
-  return `<div class="order-status-pills-rail">${ORDER_TABS.map((t) => `<button type="button" class="order-status-pill ${t === status ? "active" : ""}" onclick="navigate('${view}',{status:'${t}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}',${perspective ? `perspective:'${perspective}'` : ""}})">${t === "all" ? "All" : esc(t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}</button>`).join("")}</div>`;
+  // Handed over / Returned aren't separate filters any more (still reachable
+  // from the dropdown); they only show here if one is the active filter.
+  const pillTabs = ORDER_TABS.filter((t) => !["handed_over", "returned"].includes(t) || t === status);
+  return `<div class="order-status-pills-rail">${pillTabs.map((t) => `<button type="button" data-status="${t}" class="order-status-pill ${t === status ? "active" : ""}" onclick="navigate('${view}',{status:'${t}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}',${perspective ? `perspective:'${perspective}'` : ""}})">${t === "all" ? "All" : esc(t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}</button>`).join("")}</div>`;
 }
 
 function vendorOrdersTabsHtml(active) {
@@ -23752,21 +23761,24 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   let orders = type === "all" ? (safeAllOrders || []) : (safeAllOrders || []).filter((o) => orderCategory(o) === type);
   if (payment !== "all") orders = orders.filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
 
-  let html = embeddedVendorOrders ? `<h2><i class='fa-solid fa-clipboard-list'></i> Orders</h2>` : `<h2><i class='fa-solid fa-clipboard-list'></i> My Orders</h2>`;
+  const sortedOrders = sortOrdersForList(orders);
+  const { active: activeCustomerOrders, history: historyCustomerOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
+  // History and "continue shopping" live as two small buttons beside the title
+  // instead of an accordion and a button stuck under the list.
+  window.__orderHistoryHtml = orderHistoryAccordionHtml(historyCustomerOrders, true, embeddedVendorOrders ? "purchases" : null);
+  window.__orderHistoryEmpty = !historyCustomerOrders.length;
+  const topActions = `<div class="orders-top-actions">${historyCustomerOrders.length ? `<button type="button" class="orders-top-btn" onclick="openOrderHistory()" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span><b>${historyCustomerOrders.length}</b></button>` : ""}<button type="button" class="orders-top-btn" onclick="navigate('home')" title="Continue shopping"><i class="fa-solid fa-bag-shopping"></i><span>Shop</span></button></div>`;
+  let html = `<div class="orders-title-row">${embeddedVendorOrders ? `<h2><i class='fa-solid fa-clipboard-list'></i> Orders</h2>` : `<h2><i class='fa-solid fa-clipboard-list'></i> My Orders</h2>`}${topActions}</div>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
   html += orderStatusPillsHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective);
   html += `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}<div class="orders-search-slot"></div></div>`;
   orderListViewMode = "cards";
   orderListExpanded = false;
-  const sortedOrders = sortOrdersForList(orders);
-  const { active: activeCustomerOrders, history: historyCustomerOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
   window.__orderListOrders = activeCustomerOrders;
   window.__orderListIsCustomer = true;
   window.__orderListSourcePerspective = embeddedVendorOrders ? "purchases" : null;
   html += orderListControlsHtml(activeCustomerOrders.length);
   html += `<div id="orderListWrap">${orderListHtml(activeCustomerOrders, true, embeddedVendorOrders ? "purchases" : null)}</div>`;
-  html += orderHistoryAccordionHtml(historyCustomerOrders, true, embeddedVendorOrders ? "purchases" : null);
-  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('home')"><i class='fa-solid fa-arrow-left'></i> Continue shopping</button>`;
   setTimeout(() => enhanceSelectsIn(byId("app")), 0);
   return html;
 }
@@ -23876,6 +23888,21 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
   </div>`;
 }
 
+function openOrderHistory() {
+  document.getElementById("orderHistoryModal")?.remove();
+  const doc = new DOMParser().parseFromString(window.__orderHistoryHtml || "", "text/html");
+  const inner = doc.querySelector(".accordion-body")?.innerHTML || '<div class="empty-state">No finished orders yet.</div>';
+  const modal = document.createElement("div");
+  modal.id = "orderHistoryModal";
+  modal.className = "modal";
+  modal.innerHTML = `<div class="modal-content order-history-modal"><div class="modal-header"><h3><i class="fa-solid fa-clock-rotate-left"></i> Order history</h3><button type="button" class="icon-btn" aria-label="Close" onclick="document.getElementById('orderHistoryModal')?.remove()"><i class="fa-solid fa-xmark"></i></button></div><div class="order-history-modal-body">${inner}</div></div>`;
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) modal.remove();
+    else if (e.target.closest(".order-history-card")) setTimeout(() => modal.remove(), 0);
+  });
+  document.body.appendChild(modal);
+}
+
 function orderListControlsHtml(total) {
   if (!total) return "";
   return `<div class="flex order-list-view-controls" aria-label="Order view controls">
@@ -23901,7 +23928,10 @@ function renderOrderListWrap() {
   );
 }
 function orderListHtml(orders, isCustomerView, sourcePerspective = null) {
-  if (!orders || orders.length === 0) return '<div class="empty-state">No orders here.</div>';
+  if (!orders || orders.length === 0) {
+    const onlyHistory = isCustomerView && window.__orderHistoryEmpty === false;
+    return `<div class="empty-state orders-empty"><span class="orders-empty-icon"><i class="fa-solid fa-box-open"></i></span><strong>${onlyHistory ? "No active orders" : "No orders yet"}</strong><span class="muted">${onlyHistory ? "Finished orders are under History." : "Orders you place will show up here."}</span></div>`;
+  }
   const total = orders.length;
   const shown = orderListExpanded ? orders : orders.slice(0, ORDER_LIST_PAGE_SIZE);
   const moreBtn = total > ORDER_LIST_PAGE_SIZE
@@ -29586,12 +29616,13 @@ function resetFloatingFabPositions(target = "all") {
   if (target === "cart" || target === "all") resetOne(byId("cartFab"), "levromart_cart_fab_pos");
 }
 
-function setupDraggableFab(fab, storageKey, onTap) {
+function setupDraggableFab(fab, storageKey, onTap, onLongPress) {
   if (!fab || fab.dataset.dragControllerReady === "1") return;
   fab.dataset.dragControllerReady = "1";
 
   const MOVE_THRESHOLD = 6;
   let dragging = false, moved = false, pointerId = null;
+  let longTimer = null, longFired = false;
   let startClientX = 0, startClientY = 0, startLeft = 0, startTop = 0;
 
   function clamp(x, y) {
@@ -29645,6 +29676,13 @@ function setupDraggableFab(fab, storageKey, onTap) {
     if (fab.classList.contains("hidden")) return;
     dragging = true;
     moved = false;
+    longFired = false;
+    clearTimeout(longTimer);
+    if (onLongPress) {
+      longTimer = setTimeout(() => {
+        if (dragging && !moved) { longFired = true; try { navigator.vibrate?.(25); } catch (_) {} onLongPress(); }
+      }, 650);
+    }
     pointerId = e.pointerId;
     startClientX = e.clientX;
     startClientY = e.clientY;
@@ -29660,6 +29698,7 @@ function setupDraggableFab(fab, storageKey, onTap) {
     const dy = e.clientY - startClientY;
     if (!moved && Math.hypot(dx, dy) > MOVE_THRESHOLD) {
       moved = true;
+      clearTimeout(longTimer);
       fab.classList.add("dragging");
     }
     if (!moved) return;
@@ -29670,8 +29709,10 @@ function setupDraggableFab(fab, storageKey, onTap) {
   function endDrag(e) {
     if (!dragging || (e && e.pointerId !== pointerId)) return;
     dragging = false;
+    clearTimeout(longTimer);
     fab.classList.remove("dragging");
-    if (!moved) onTap?.();
+    if (!moved && !longFired) onTap?.();
+    longFired = false;
     pointerId = null;
   }
 
@@ -29708,7 +29749,7 @@ function setupDraggableFab(fab, storageKey, onTap) {
 (function setupLeviFab() {
   const fab = byId("aiChatFab");
   if (!fab) return;
-  setupDraggableFab(fab, "levromart_ai_fab_pos", () => { toggleAiChat(); });
+  setupDraggableFab(fab, "levromart_ai_fab_pos", () => { toggleAiChat(); }, () => { if (leviVisible) toggleLeviVisible(); });
   applyLeviFabSize();
 })();
 setupDraggableFab(byId("cartFab"), "levromart_cart_fab_pos", () => { navigate("cart"); });
@@ -30919,6 +30960,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 
   window.switchVendorsView = function (mode) {
     vendorDirectoryMode = ["grid", "list", "map"].includes(mode) ? mode : "map";
+    try { localStorage.setItem("levromart_vendors_view", vendorDirectoryMode); } catch (_) {}
     renderVendorDirectoryCards();
     if (vendorDirectoryMode === "map") {
       byId("vendorsMapWrap")?.classList.remove("hidden");
@@ -30935,6 +30977,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     // presented side-by-side, rather than inheriting the list/map mode.
     vendorDirectoryExpanded = true;
     vendorDirectoryMode = "grid";
+    try { localStorage.setItem("levromart_vendors_view", "grid"); } catch (_) {}
     renderVendorDirectoryCards();
     requestAnimationFrame(() => {
       const grid = byId("vendorsGrid");
@@ -30950,7 +30993,12 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 
   window.renderVendorsDirectory = function () {
     vendorDirectoryExpanded = true;
-    vendorDirectoryMode = "map";
+    // Remember the view the person last picked (grid / list / map) across
+    // refreshes and revisits instead of snapping back to the map.
+    try {
+      const savedView = localStorage.getItem("levromart_vendors_view");
+      vendorDirectoryMode = ["grid", "list", "map"].includes(savedView) ? savedView : "map";
+    } catch (_) { vendorDirectoryMode = "map"; }
     vendorDirectorySort = "alphabetical";
     // The "Rent Items" quick action sets this to 'rent' before navigating
     // here -- but nothing ever reset it back, so it silently stayed 'rent'
@@ -42244,6 +42292,85 @@ html[data-theme="black"] .avatar-fallback{
 .chat-header-presence{display:block;font-size:.72rem;line-height:1.2;color:var(--text-muted);min-height:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chat-header-presence.online{color:#16a34a;font-weight:700}
 .chat-header-presence.online::before{content:"";display:inline-block;width:.46rem;height:.46rem;border-radius:50%;background:#22c55e;margin-right:.3rem;vertical-align:.04rem}
+
+/* ===== Underline tabs =====
+   Tab rows (vendors type, home Products/Services/Packages, vendor dashboard,
+   My Orders status, notifications) use a plain text label with a coloured line
+   under the active one and a thin divider under the whole row -- no pills. */
+#app .vendor-listing-tabs,
+#app .catalog-type-tabs,
+#app .vendor-products-unified-tabs,
+#app .order-status-pills-rail,
+#app .notif-tabs,
+#notifPanel .notif-tabs{
+  display:flex !important; gap:.15rem !important; overflow-x:auto !important; scrollbar-width:none !important;
+  -webkit-overflow-scrolling:touch !important;
+  background:transparent !important; border:0 !important; border-bottom:1px solid var(--border) !important;
+  border-radius:0 !important; box-shadow:none !important; padding:0 !important; margin:.7rem 0 .9rem !important;
+}
+#app .vendor-listing-tabs::-webkit-scrollbar,
+#app .catalog-type-tabs::-webkit-scrollbar,
+#app .vendor-products-unified-tabs::-webkit-scrollbar,
+#app .order-status-pills-rail::-webkit-scrollbar,
+#app .notif-tabs::-webkit-scrollbar{display:none !important;}
+#app .vendor-listing-tab,
+#app .catalog-type-tab,
+#app .vendor-products-unified-tabs button,
+#app .order-status-pill,
+#app .notif-tab,
+#notifPanel .notif-tab{
+  --tab-color:var(--primary);
+  flex:0 0 auto !important; min-height:0 !important; min-width:0 !important;
+  background:transparent !important; background-image:none !important; box-shadow:none !important;
+  border:0 !important; border-bottom:3px solid transparent !important; border-radius:0 !important;
+  margin:0 0 -1px !important; padding:.65rem .85rem .55rem !important;
+  color:var(--text-muted) !important; -webkit-text-fill-color:var(--text-muted) !important;
+  font-size:.86rem !important; font-weight:700 !important; white-space:nowrap !important;
+}
+#app .vendor-listing-tab.active,
+#app .catalog-type-tab.active,
+#app .vendor-products-unified-tabs button.active,
+#app .order-status-pill.active,
+#app .notif-tab.active,
+#notifPanel .notif-tab.active,
+#app .vendor-listing-tab[aria-selected="true"],
+#app .notif-tab[aria-selected="true"]{
+  background:transparent !important; background-color:transparent !important; box-shadow:none !important;
+  border:0 !important; border-bottom:3px solid var(--tab-color) !important; border-radius:0 !important;
+  color:var(--text) !important; -webkit-text-fill-color:var(--text) !important; font-weight:800 !important;
+}
+#app .catalog-type-tab{ flex:1 1 0 !important; text-align:center !important; }
+#app .order-status-pill[data-status="pending"]{ --tab-color:#f59e0b; }
+#app .order-status-pill[data-status="confirmed"]{ --tab-color:#2563eb; }
+#app .order-status-pill[data-status="payment_unresolved"]{ --tab-color:#9333ea; }
+#app .order-status-pill[data-status="handed_over"]{ --tab-color:#0891b2; }
+#app .order-status-pill[data-status="returned"]{ --tab-color:#64748b; }
+#app .order-status-pill[data-status="completed"]{ --tab-color:#16a34a; }
+#app .order-status-pill[data-status="cancelled"]{ --tab-color:#991b1b; }
+#app .order-status-pill[data-status="disputed"]{ --tab-color:#eab308; }
+
+.orders-title-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.2rem}
+.orders-title-row h2{margin:0}
+.orders-top-actions{display:flex;gap:.45rem;align-items:center}
+.orders-top-btn{display:inline-flex;align-items:center;gap:.4rem;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:.42rem .8rem;font:inherit;font-size:.8rem;font-weight:700;cursor:pointer}
+.orders-top-btn i{color:var(--text-muted)}
+.orders-top-btn b{background:color-mix(in srgb,var(--primary) 18%,var(--card));border-radius:999px;font-size:.7rem;padding:.05rem .4rem}
+.orders-empty{display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:2.2rem 1rem !important;text-align:center}
+.orders-empty-icon{display:inline-flex;align-items:center;justify-content:center;width:4.2rem;height:4.2rem;border-radius:50%;background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--text-muted);font-size:1.7rem}
+.order-history-modal{max-height:82vh;display:flex;flex-direction:column}
+.order-history-modal-body{overflow-y:auto;padding:.2rem 0 .6rem}
+
+/* Levi header: the extra tools fold into one chevron. */
+.levi-header-actions{align-items:center}
+.levi-header-actions{position:static}
+#aiChatPanel .drawer-header{position:relative}
+.levi-tools{display:none;align-items:center;gap:.25rem;position:absolute;top:calc(100% - .2rem);right:.6rem;z-index:5;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.25rem .35rem;box-shadow:0 10px 26px rgba(0,0,0,.18)}
+.levi-tools.open{display:flex}
+.levi-tools-toggle i{transition:transform .18s ease}
+.levi-tools-toggle[aria-expanded="true"] i{transform:rotate(180deg)}
+#leviAskBubble{position:fixed;z-index:99990;max-width:15rem;background:var(--card);color:var(--text);border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border));border-radius:16px 16px 4px 16px;padding:.6rem .8rem;font-size:.86rem;font-weight:700;box-shadow:0 10px 28px rgba(0,0,0,.18);cursor:pointer;opacity:0;transform:translateY(6px) scale(.96);transition:opacity .25s ease,transform .25s ease}
+#leviAskBubble.show{opacity:1;transform:none}
+#leviAskBubble small{display:block;font-weight:500;color:var(--text-muted);margin-top:.1rem}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
@@ -42441,5 +42568,111 @@ html[data-theme="black"] .avatar-fallback{
       return r;
     };
   }
+})();
+
+// ---- Keep the keyboard up while chatting ----
+// Tapping Send used to pull focus off the message box, so the keyboard dropped
+// after every message. Stop the button from taking focus, and put focus back on
+// the box right after sending (inside the same tap, which iOS requires).
+(function(){
+  const stopFocusSteal=(e)=>{
+    const btn=e.target.closest?.(".chat-input-row .btn[onclick*='sendChatMessage']");
+    if(btn && document.activeElement===byId("chatInput")) e.preventDefault();
+  };
+  document.addEventListener("mousedown",stopFocusSteal,true);
+  document.addEventListener("pointerdown",(e)=>{ if(e.pointerType==="mouse") stopFocusSteal(e); },true);
+  const orig=window.sendChatMessage;
+  if(typeof orig==="function" && !window.__levroKeepKeyboard){
+    window.__levroKeepKeyboard=true;
+    window.sendChatMessage=function(){
+      const input=byId("chatInput");
+      const wasFocused=input && (document.activeElement===input || window.__chatInputWasFocused);
+      const result=orig.apply(this,arguments);
+      if(input && wasFocused){ try{ input.focus({preventScroll:true}); }catch(_){} }
+      return result;
+    };
+    document.addEventListener("focusin",(e)=>{ if(e.target?.id==="chatInput") window.__chatInputWasFocused=true; },true);
+    document.addEventListener("focusout",(e)=>{
+      if(e.target?.id!=="chatInput") return;
+      // Only forget focus if it moved somewhere that isn't the send button.
+      setTimeout(()=>{ if(document.activeElement && document.activeElement!==document.body && !document.activeElement.closest?.(".chat-input-row")) window.__chatInputWasFocused=false; },0);
+    },true);
+  }
+})();
+
+// ---- Levi: collapsed tools, long-press to hide, triple-tap to bring back, "Ask me" nudge ----
+function toggleLeviTools(force) {
+  const tools = byId("leviTools"), btn = byId("leviToolsToggle");
+  if (!tools || !btn) return;
+  const open = typeof force === "boolean" ? force : !tools.classList.contains("open");
+  tools.classList.toggle("open", open);
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+}
+function hideLeviFromPanel() {
+  byId("aiChatPanel")?.classList.add("hidden");
+  toggleLeviTools(false);
+  if (leviVisible) toggleLeviVisible(); else syncLeviFabVisibility();
+}
+(function(){
+  byId("aiChatFab")?.addEventListener("contextmenu",(e)=>e.preventDefault());
+  const origToggleAi=window.toggleAiChat;
+  if(typeof origToggleAi==="function"&&!window.__leviToolsCollapseWrapped){
+    window.__leviToolsCollapseWrapped=true;
+    window.toggleAiChat=function(){ toggleLeviTools(false); return origToggleAi.apply(this,arguments); };
+  }
+
+  // Triple-tap anywhere on the page to bring a hidden Levi back.
+  let taps=[];
+  document.addEventListener("click",(e)=>{
+    if(leviVisible)return;
+    const now=Date.now();
+    taps=taps.filter((t)=>now-t.at<650);
+    taps.push({at:now,x:e.clientX,y:e.clientY});
+    if(taps.length>=3){
+      const a=taps[0],b=taps[taps.length-1];
+      if(Math.hypot(a.x-b.x,a.y-b.y)<60){
+        taps=[];
+        toggleLeviVisible();
+      }
+    }
+  },true);
+
+  // A small "Ask me" nudge from Levi: only after a fresh login (or a long gap),
+  // never while Levi is hidden or his chat is open, and it fades by itself.
+  const ASK_KEY="levromart_levi_ask_last", ASK_GAP_MS=8*3600*1000;
+  function removeBubble(){const b=byId("leviAskBubble");if(b){b.classList.remove("show");setTimeout(()=>b.remove(),300);}}
+  function showAskBubble(){
+    const fab=byId("aiChatFab"),panel=byId("aiChatPanel");
+    if(!fab||!leviVisible||fab.classList.contains("hidden")||(panel&&!panel.classList.contains("hidden")))return;
+    if(!fab.offsetWidth||document.hidden)return;
+    if(typeof session==="undefined"||!session)return;
+    try{localStorage.setItem(ASK_KEY,String(Date.now()));}catch(_){}
+    document.getElementById("leviAskBubble")?.remove();
+    const b=document.createElement("div");
+    b.id="leviAskBubble";
+    b.innerHTML='Ask me anything 👋<small>Products, vendors, how things work</small>';
+    document.body.appendChild(b);
+    const r=fab.getBoundingClientRect();
+    const w=b.offsetWidth,h=b.offsetHeight;
+    let left=Math.min(window.innerWidth-w-10,Math.max(10,r.right-w));
+    let top=r.top-h-10; if(top<10) top=r.bottom+10;
+    b.style.left=left+"px"; b.style.top=top+"px";
+    requestAnimationFrame(()=>b.classList.add("show"));
+    b.addEventListener("click",()=>{removeBubble();try{toggleAiChat();}catch(_){}});
+    setTimeout(removeBubble,7000);
+  }
+  function maybeAsk(){
+    let last=0;try{last=Number(localStorage.getItem(ASK_KEY)||0);}catch(_){}
+    if(Date.now()-last<ASK_GAP_MS)return;
+    showAskBubble();
+  }
+  // Wait for the app to be signed in and settled, then nudge once.
+  let tries=0;
+  const t=setInterval(()=>{
+    tries++;
+    if(typeof session!=="undefined"&&session&&typeof currentView!=="undefined"&&currentView){clearInterval(t);setTimeout(maybeAsk,2500);}
+    else if(tries>40)clearInterval(t);
+  },500);
+  byId("aiChatFab")?.addEventListener("pointerdown",removeBubble,{passive:true});
 })();
 </script>
