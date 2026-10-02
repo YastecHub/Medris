@@ -7332,7 +7332,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
         <a class="header-nav-link" data-view="vendors" href="#" onclick="navigate('vendors');return false;">Vendors</a>
       </nav>
     </div>
-    <button type="button" class="header-search-row" onclick="navigate('search')" aria-label="Search products, services, vendors">
+    <button type="button" class="header-search-row" onclick="openSearchFromHeader()" aria-label="Search products, services, vendors">
       <i class="fa-solid fa-magnifying-glass"></i><span>Search…</span>
     </button>
     <div class="header-right">
@@ -8754,6 +8754,21 @@ function priceHeroInner(o, suffix) {
   const now = effectivePrice(o), was = Number(o?.sale_price);
   const off = now != null && Number.isFinite(was) && now < was;
   return `<span class="pph-now">${naira(now)}${esc(suffix || "")}</span>${off ? `<span class="pph-was">${naira(was)}</span><span class="pph-save">Save ${naira(was - now)} · ${Math.round((1 - now / was) * 100)}% off</span>` : ""}`;
+}
+// iPhones only open the keyboard for a focus() made inside the tap itself. The search page
+// doesn't exist yet at that moment, so focus a throw-away input first, then hand focus over
+// to the real search box the instant it renders -- one tap, keyboard up.
+function openSearchFromHeader() {
+  let temp = null;
+  try {
+    temp = document.createElement("input");
+    temp.type = "search"; temp.setAttribute("aria-hidden", "true"); temp.tabIndex = -1;
+    temp.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;border:0;padding:0;pointer-events:none";
+    document.body.appendChild(temp); temp.focus({ preventScroll: true });
+  } catch (_) {}
+  const finish = () => { const real = byId("searchPageInput"); if (real) { real.focus(); try { real.setSelectionRange(real.value.length, real.value.length); } catch (_) {} } try { temp?.remove(); } catch (_) {} };
+  Promise.resolve(navigate("search")).then(() => { finish(); setTimeout(finish, 120); }).catch(finish);
+  setTimeout(() => { try { temp?.remove(); } catch (_) {} }, 3000);
 }
 function servicePriceSuffix(p) { return p.is_service && p.service_price_unit && p.service_price_unit !== "flat" ? "/" + p.service_price_unit : ""; }
 function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
@@ -12957,7 +12972,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (view !== "productDetail") stopProductCommentRealtime();
   setTimeout(()=>{hydrateProductVariantIndicatorsInView();hydrateProductLikeCountsInView();hydratePackageCommentCountsInView();hydrateProductRatingsInView()},0);
   if (view === "settings") setTimeout(hydrateSettingsPage, 0);
-  if (view === "search") { setTimeout(() => byId("searchPageInput")?.focus(), 60); renderSearchPageSuggestions(); bindSearchResultLongPress(byId("searchPageResults")); }
+  if (view === "search") { byId("searchPageInput")?.focus(); setTimeout(() => byId("searchPageInput")?.focus(), 60); renderSearchPageSuggestions(); bindSearchResultLongPress(byId("searchPageResults")); }
   // A same-view, non-history refresh (notably live order updates) must keep
   // the user's scroll position. Real navigation still starts at the top.
   if (preserveSameViewScroll) {
@@ -15818,8 +15833,16 @@ async function checkoutCartVendor(vendorId) {
   if (!delivery) return;
 
   const items = group.items.map((it) => ({ product_id: it.product.id, quantity: it.quantity, variant_id: it.variant?.id || null }));
-  const confirmMsg = `Check out ${items.length} item${items.length === 1 ? "" : "s"} from ${group.vendor.business_name}, with ${delivery.method === "delivery" ? "delivery" : "pickup"}?`;
-  if (!(await showConfirmDialog(confirmMsg, { title: "Confirm checkout", okLabel: "Checkout" }))) return;
+  // Same itemised breakdown the product page shows: each item, the delivery fee and the real total.
+  let cartItemsTotal = 0;
+  const cartLines = group.items.map((it) => {
+    const unit = Number(effectivePrice(it.variant && it.variant.sale_price != null ? it.variant : it.product) ?? 0);
+    cartItemsTotal += unit * it.quantity;
+    return `${it.quantity}× ${it.product.name}${it.variant?.name ? ` (${it.variant.name})` : ""} — ${naira(unit * it.quantity)}`;
+  });
+  const { fee: cartFee, known: cartFeeKnown } = computeDeliveryFeeForPrefix(`cart-${vendorId}`, delivery.method);
+  const confirmHtml = `<p style="margin:0 0 .6rem;">${esc(group.vendor.business_name)}</p>` + orderSummaryConfirmHtml({ itemLines: cartLines, method: delivery.method, pickupLabel: "Pickup", deliveryFee: cartFee, feeKnown: cartFeeKnown, itemTotal: cartItemsTotal });
+  if (!(await showConfirmDialog(confirmHtml, { title: "Confirm checkout", okLabel: "Checkout", html: true }))) return;
 
   const { data: orderId, error } = await sb.rpc("create_cart_order", {
     p_vendor_id: vendorId,
@@ -18517,8 +18540,8 @@ async function __levroOriginalRenderProductDetail(productId) {
     </div>
     <div class="product-detail-info">
       <p><strong>Vendor:</strong> <a class="product-detail-vendor-link" href="#" onclick="navigate('storefront',{vendorId:'${product.vendor.id}'});return false;">${product.vendor.logo_url ? `<img src="${esc(product.vendor.logo_url)}" alt="" class="product-detail-vendor-logo" loading="lazy" decoding="async" draggable="false">` : ""}<span>${vendorNameWithFormerly(product.vendor)}</span></a></p>
-      ${product.is_service ? "" : `<p><strong>Condition:</strong> ${esc((product.condition || "").replace("-", " "))}</p>`}
-      <div class="product-description-block"><strong>About</strong> ${readMoreHtml(`productDescText-${product.id}`, cleanDescription || "No description provided.")}</div>
+      ${product.is_service || !product.condition ? "" : `<p class="pd-condition"><strong>Condition:</strong> <span class="pd-chip">${esc((product.condition || "").replace("-", " "))}</span></p>`}
+      <details class="pd-about"><summary><span><i class="fa-solid fa-circle-info"></i> About this ${product.is_service ? "service" : "product"}</span><i class="fa-solid fa-chevron-down pd-about-chev"></i></summary><div class="pd-about-body">${readMoreHtml(`productDescText-${product.id}`, cleanDescription || "No description provided.")}</div></details>
     </div>
     ${(product.sale_price != null && !product.is_service) ? `<div class="product-price-hero" id="productPriceHero"><div class="pph-label">${productVariants.length ? "Price · selected variety" : "Buy price"}</div><div class="pph-row" id="productPriceHeroBody">${priceHeroInner(productVariants.length ? productVariants[0] : product)}</div></div>` : ""}
     ${statItems.length ? `<div class="product-detail-stats">${statItems.map((s) => `<div><span class="muted">${esc(s.label)}</span><strong>${s.value}</strong></div>`).join("")}</div>` : ""}
@@ -44610,6 +44633,17 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .selected-variant-summary>strong{font-size:1.15rem;font-weight:900;color:var(--primary,#0B6E4A);white-space:nowrap}
 #serviceTotalPreview{font-size:1rem;font-weight:700;color:var(--text)!important;padding:.55rem .75rem;border-radius:12px;background:color-mix(in srgb,var(--text) 5%,transparent)}
 .product-variant-choice small{font-weight:800;color:var(--primary,#0B6E4A)}
+/* Product page: calmer info block, About folded into a dropdown. */
+.product-detail-info{display:flex;flex-direction:column;gap:.45rem;margin-top:.5rem}
+.product-detail-info>p{margin:0}
+.pd-chip{display:inline-block;padding:.1rem .6rem;border-radius:999px;font-size:.8rem;font-weight:700;text-transform:capitalize;background:color-mix(in srgb,var(--primary,#0B6E4A) 12%,var(--card));color:var(--primary,#0B6E4A)}
+.pd-about{border:1px solid var(--border);border-radius:14px;background:color-mix(in srgb,var(--text) 3%,var(--card));overflow:hidden}
+.pd-about>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.7rem .85rem;font-weight:800;font-size:.92rem}
+.pd-about>summary::-webkit-details-marker{display:none}
+.pd-about>summary i:first-child{color:var(--primary,#0B6E4A);margin-right:.35rem}
+.pd-about-chev{transition:transform .2s;color:var(--text-muted)}
+.pd-about[open] .pd-about-chev{transform:rotate(180deg)}
+.pd-about-body{padding:0 .85rem .8rem;line-height:1.55;font-size:.92rem}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
