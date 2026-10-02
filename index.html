@@ -12908,6 +12908,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     }
   }
   app.innerHTML = html;
+  try { setTimeout(() => window.maybePromptLevromartReview?.(), 900); } catch (_) {}
   if (liveStorefrontFollowHtml) {
     const freshFollowWrap = byId("storefrontFollowWrap");
     if (freshFollowWrap) freshFollowWrap.innerHTML = liveStorefrontFollowHtml;
@@ -24286,13 +24287,23 @@ function orderStatusCountsFrom(rows) {
   (rows || []).forEach((o) => { const st = String(o?.status || ""); if (ORDER_BADGE_STATUSES.includes(st)) { counts[st]++; counts.all++; } });
   return counts;
 }
+// Tapping an order-status pill used to re-download every order (2-3 s). Within 45 s of the
+// last load the pill reuses the rows already fetched and just filters them on the device.
+const __ordersTabCache = new Map();
+function ordersTabCached(key, run) {
+  const hit = __ordersTabCache.get(key);
+  if (hit && Date.now() - hit.at < 45000 && Date.now() - (window.__ordersRailAt || 0) < 2500) return Promise.resolve(hit.value);
+  return Promise.resolve(run()).then((value) => { if (value && value.error) return value; __ordersTabCache.set(key, { at: Date.now(), value }); if (__ordersTabCache.size > 12) __ordersTabCache.delete(__ordersTabCache.keys().next().value); return value; });
+}
 async function fetchBuyerOrderStatusCounts() {
   try {
+    return await ordersTabCached("bcounts:" + session.user.id, async () => {
     const { data } = await withRouteTimeout(
       sb.from("orders").select("status").eq("buyer_id", session.user.id).in("status", ORDER_BADGE_STATUSES).limit(500),
       3000, { data: [] }
     );
     return orderStatusCountsFrom(data);
+    });
   } catch (_) { return orderStatusCountsFrom([]); }
 }
 function orderStatusPillsHtml(view, status, type, payment, dateFrom, dateTo, perspective = "", counts = null) {
@@ -24300,7 +24311,7 @@ function orderStatusPillsHtml(view, status, type, payment, dateFrom, dateTo, per
   // from the dropdown); they only show here if one is the active filter.
   const pillTabs = ORDER_TABS.filter((t) => !["handed_over", "returned"].includes(t) || t === status);
   const badge = (t) => { const n = Number(counts?.[t] || 0); return n > 0 ? `<span class="order-tab-badge" aria-label="${n} ${t.replace(/_/g, " ")}">${n > 99 ? "99+" : n}</span>` : ""; };
-  return `<div class="order-status-pills-rail">${pillTabs.map((t) => `<button type="button" data-status="${t}" class="order-status-pill ${t === status ? "active" : ""}" onclick="window.__ordersRailPending=true;navigate('${view}',{status:'${t}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}',${perspective ? `perspective:'${perspective}'` : ""}})">${t === "all" ? "All" : esc(t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}${badge(t)}</button>`).join("")}</div>`;
+  return `<div class="order-status-pills-rail">${pillTabs.map((t) => `<button type="button" data-status="${t}" class="order-status-pill ${t === status ? "active" : ""}" onclick="window.__ordersRailPending=true;window.__ordersRailAt=Date.now();navigate('${view}',{status:'${t}',type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}',${perspective ? `perspective:'${perspective}'` : ""}})">${t === "all" ? "All" : esc(t.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}${badge(t)}</button>`).join("")}</div>`;
 }
 
 function vendorOrdersTabsHtml(active) {
@@ -24389,16 +24400,16 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // Use order_items(*) rather than naming columns, so a schema change to
   // order_items can't make the entire Orders page look empty.
   let query = sb.from("orders").select("*, buyer:users(name), items:order_items(*,product:products(id,is_service,name,photos)), payments(payment_type,status)").eq("vendor_id", vendor.id);
-  if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
   // Stats always reflect the vendor's full order history, not whatever
   // status/type/payment/date filters the list below happens to be set to
   // -- run both queries together instead of one after the other.
-  const [{ data: allOrders, error: allOrdersError }, { data: statsOrders, error: statsError }] = await Promise.all([
-    withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") }),
-    withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, updated_at").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") }),
+  const [{ data: allOrdersRaw, error: allOrdersError }, { data: statsOrders, error: statsError }] = await Promise.all([
+    ordersTabCached(`vo:${vendor.id}:${dateFrom}:${dateTo}`, () => withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") })),
+    ordersTabCached(`vs:${vendor.id}`, () => withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, updated_at").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") })),
   ]);
+  const allOrders = allOrdersRaw && status !== "all" ? allOrdersRaw.filter((o) => o.status === status) : allOrdersRaw;
   // If the timestamp migration has not been run yet, fall back to the base
   // order query instead of rendering an empty page.
   let safeAllOrders = allOrders;
@@ -24507,10 +24518,10 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   // order_items(*) is intentionally used here rather than naming columns,
   // so this stays resilient to schema changes on order_items.
   let query = sb.from("orders").select("*, vendor:vendors(business_name,city,logo_url), items:order_items(*,product:products(id,is_service,name,photos)), payments(payment_type,status)").eq("buyer_id", session.user.id);
-  if (status !== "all") query = query.eq("status", status);
   if (dateFrom) query = query.gte("created_at", `${dateFrom}T00:00:00`);
   if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59`);
-  const { data: allOrders, error: allOrdersError } = await withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") });
+  const { data: allOrdersRaw, error: allOrdersError } = await ordersTabCached(`bo:${session.user.id}:${dateFrom}:${dateTo}`, () => withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") }));
+  const allOrders = allOrdersRaw && status !== "all" ? allOrdersRaw.filter((o) => o.status === status) : allOrdersRaw;
   let safeAllOrders = allOrders;
   if (allOrdersError) {
     console.warn("Rich buyer order query failed; using compatibility query", allOrdersError);
@@ -35812,7 +35823,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
     const {data:orders,error}=await sb.from('orders').select('id,vendor_id,completed_at,status_changed_at,created_at,order_type,vendor:vendors(id,business_name,logo_url),items:order_items(product:products(name,photos)),payments(payment_type,status)').eq('buyer_id',session.user.id).eq('status','completed').order('created_at',{ascending:false}).limit(15);
     if(error||!orders?.length)return null;
     const when=(o)=>new Date(o.completed_at||o.status_changed_at||o.created_at||0).getTime();
-    const candidates=orders.filter(o=>{const fee=o.order_type==='rental'?'rental_fee':'sale_price';return Date.now()-when(o)<RECENT_MS&&(o.payments||[]).some(p=>String(p.payment_type||'').toLowerCase()===fee&&p.status==='paid');}).filter(o=>!reviewCompletedLocally(o.id)&&!dismissed(o.id)&&!snoozed(o.id)).sort((a,b)=>when(b)-when(a));
+    const candidates=orders.filter(o=>{const fee=o.order_type==='rental'?'rental_fee':'sale_price';return Date.now()-when(o)<RECENT_MS;}).filter(o=>!reviewCompletedLocally(o.id)&&!dismissed(o.id)&&!snoozed(o.id)).sort((a,b)=>when(b)-when(a));
     if(!candidates.length)return null;
     const {data:reviews,error:reviewsError}=await sb.from('reviews').select('order_id').eq('buyer_id',session.user.id).in('order_id',candidates.map(o=>o.id));
     if(reviewsError)return null;
