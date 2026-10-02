@@ -7620,17 +7620,22 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <h3 id="productModalTitle">Add New Product</h3>
     <div id="productDuplicateNotice" class="product-duplicate-notice hidden" role="status" aria-live="polite"></div>
     <div id="productError" class="error-text hidden"></div>
-    <label>Product name</label>
-    <input type="text" id="prodName" placeholder="e.g. BP Monitor, or Hair Braiding" />
+    <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-pen-to-square"></i></span><div><strong>Basics</strong><small>Name it and describe it</small></div></div>
+    <label>Name</label>
+    <input type="text" id="prodName" placeholder="e.g. BP Monitor or Hair Braiding" />
     <label style="display:flex;align-items:center;gap:0.5rem;font-weight:400;"><input type="checkbox" id="prodIsService" onchange="updateProductFormFields();updateProductSaveButtonLabel()" style="width:auto;margin:0;" /> This is a service, not a physical product (e.g. hairdressing, baking, repairs)</label>
     <label>Description</label>
-    <textarea id="prodDesc" placeholder="Description" rows="2"></textarea>
+    <textarea id="prodDesc" placeholder="Tell buyers what makes it good" rows="3"></textarea>
+    </div>
+    <div class="lm-sec lm-violet"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-layer-group"></i></span><div><strong>Where it belongs</strong><small>Helps buyers find it</small></div></div>
     <label>Sector</label>
     <select id="prodSector" onchange="loadProdCategoriesForSector()"></select>
     <input type="text" id="prodSectorOther" class="hidden" placeholder="Name your sector (e.g. Beauty &amp; Wellness)" />
     <label>Category</label>
     <select id="prodCategory" onchange="toggleProdCategoryOther()"><option value="">Uncategorized</option></select>
     <input type="text" id="prodCategoryOther" class="hidden" placeholder="Name your category (e.g. Wound Care)" />
+    </div>
+    <div class="lm-sec lm-green"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-tag"></i></span><div><strong>Price and type</strong></div></div>
     <div class="flex">
       <div style="flex:1;" id="prodConditionWrap">
         <label>Condition</label>
@@ -7644,8 +7649,8 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <div id="prodBillingModelWrap" class="listing-billing-choice">
       <label>How do you want to pay Levromart for this listing?</label>
       <select id="prodBillingModel" onchange="syncListingBillingUI()">
-        <option value="commission">Commission-based — pay Levromart from each completed sale</option>
-        <option value="monthly">Monthly — ₦1,000 per listing / month</option>
+        <option value="commission">Commission based: pay Levromart from each completed sale</option>
+        <option value="monthly">Monthly: ₦1,000 per listing a month</option>
       </select>
       <p id="prodBillingHint" class="muted" style="font-size:.74rem;margin:.35rem 0 0;"></p>
     </div>
@@ -7657,6 +7662,8 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     </div>
     <div id="prodRateUnitWrap"><label>Per</label><select id="prodRateUnit"><option value="day">Day</option><option value="week">Week</option></select></div>
     <div id="prodDepositWrap"><label>Refundable deposit (₦, optional)</label><input type="number" id="prodDeposit" step="0.01" /></div>
+    </div>
+    <div class="lm-sec lm-amber"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-truck-fast"></i></span><div><strong>Delivery and payment</strong></div></div>
     <div id="prodDeliverySettings" class="prod-delivery-settings">
       <label style="margin:0;">Delivery for this product</label>
       <select id="prodDeliveryMode" onchange="updateProductDeliveryFields()">
@@ -7692,15 +7699,19 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       </div>
       <p id="prodPaymentTimingHint" class="muted payment-timing-hint"></p>
     </div>
-    <div class="listing-engagement-settings" id="prodEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="prodLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="prodAllowComments" checked onchange="syncProductEngagementSettingsUI()"></label><div id="prodCommentAudienceWrap"><label>Who can comment</label><select id="prodCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div>
+    </div>
+    <details class="lm-more"><summary><i class="fa-solid fa-sliders"></i> More options <small>likes and comments</small></summary><div class="listing-engagement-settings" id="prodEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="prodLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="prodAllowComments" checked onchange="syncProductEngagementSettingsUI()"></label><div id="prodCommentAudienceWrap"><label>Who can comment</label><select id="prodCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div></details>
+    <div class="lm-sec lm-teal"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-boxes-stacked"></i></span><div><strong>Stock</strong></div></div>
     <div id="prodQtyWrap">
       <label class="inline-toggle-row"><span>Track quantity available</span><input type="checkbox" id="prodTrackQuantity" checked onchange="toggleProdQuantityField()"></label>
-      <p class="muted" style="font-size:.76rem;margin:.2rem 0 .6rem;">Switch this off for items that aren't counted in stock, like made-to-order food -- it'll always show as available instead of running out.</p>
+      <p class="muted" style="font-size:.76rem;margin:.2rem 0 .6rem;">Switch this off for items that aren't counted in stock, like made-to-order food so it always shows as available instead of running out.</p>
       <div id="prodQtyTotalRow">
         <label>Quantity available</label>
         <input type="number" id="prodQtyTotal" value="1" min="1" />
       </div>
     </div>
+    </div>
+    <div class="lm-sec lm-pink"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-image"></i></span><div><strong>Photos</strong><small>The display picture shows on the listing card</small></div></div>
     <label>Display picture</label>
     <div id="prodDisplayPicture" class="product-display-picture-editor" role="button" tabindex="0" onclick="openProductDisplayPictureActions(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProductDisplayPictureActions(event)}"></div>
     <label>Additional photos</label>
@@ -7712,9 +7723,12 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <input type="file" id="prodPhotoFiles" accept="image/*" multiple class="hidden" onchange="previewNewProductPhotos()" />
     <div class="photo-grid" id="prodExistingPhotos"></div>
     <div class="photo-grid" id="prodNewPhotoPreviews"></div>
+    </div>
+    <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-shapes"></i></span><div><strong>Varieties</strong><small>Sizes, colours or options with their own price</small></div></div>
     <div class="product-variant-pricing" id="productVariantPricing"></div>
     <button type="button" class="btn btn-outline btn-sm" style="margin-top:.7rem;" onclick="addProductVarietyDraft()"><i class="fa-solid fa-plus"></i> Add variety</button>
-    <div class="flex" style="justify-content: flex-end; margin-top:0.8rem;">
+    </div>
+    <div class="flex lm-actions">
       <button type="button" class="btn btn-sm" style="background:#6b7280;" onclick="clearNewListingDraft('product');closeProductModal()">Cancel</button>
       <button class="btn btn-outline hidden" id="saveProductDraftBtn" onclick="saveProductAsDraft()"><i class="fa-solid fa-file-lines"></i> Save draft</button>
       <button type="button" class="btn" id="saveProductBtn" onclick="saveProduct()">Save to Product</button>
@@ -7731,36 +7745,40 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   <div class="modal-content" style="max-width:520px;">
     <h3 id="packageModalTitle">Add New Package</h3>
     <div id="packageError" class="error-text hidden"></div>
+    <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-box-open"></i></span><div><strong>Basics</strong><small>Name, story and price</small></div></div>
     <label>Package name</label>
     <input type="text" id="pkgName" placeholder="e.g. Basic Outreach Kit" />
     <label>Description (optional)</label>
     <textarea id="pkgDesc" rows="2" placeholder="What's included, who it's for…"></textarea>
     <label>Package price (₦)</label>
     <input type="number" id="pkgPrice" step="0.01" placeholder="e.g. 5000" />
-    <div class="listing-engagement-settings" id="pkgEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="pkgLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="pkgAllowComments" checked onchange="syncPackageEngagementSettingsUI()"></label><div id="pkgCommentAudienceWrap"><label>Who can comment</label><select id="pkgCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div>
+    </div>
+    <details class="lm-more"><summary><i class="fa-solid fa-sliders"></i> More options <small>likes and comments</small></summary><div class="listing-engagement-settings" id="pkgEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="pkgLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="pkgAllowComments" checked onchange="syncPackageEngagementSettingsUI()"></label><div id="pkgCommentAudienceWrap"><label>Who can comment</label><select id="pkgCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div></details>
+    <div class="lm-sec lm-green"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-receipt"></i></span><div><strong>Billing</strong></div></div>
     <div class="listing-billing-choice">
       <label>How do you want to pay Levromart for this package?</label>
       <select id="pkgBillingModel" onchange="syncPackageBillingUI()">
-        <option value="commission">Commission-based — pay Levromart from completed sales</option>
-        <option value="monthly">Monthly — ₦1,000 per package / month</option>
+        <option value="commission">Commission based: pay Levromart from completed sales</option>
+        <option value="monthly">Monthly: ₦1,000 per package a month</option>
       </select>
       <p id="pkgBillingHint" class="muted" style="font-size:.74rem;margin:.35rem 0 0;"></p>
     </div>
+    </div>
 
-    <label>Package photos</label>
+    <div class="lm-sec lm-pink"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-image"></i></span><div><strong>Photos</strong><small>The first photo is the main image</small></div></div>
     <div class="photo-grid" id="pkgExistingPhotos"></div>
     <label class="photo-dropzone" id="packagePhotoDropzone" for="pkgPhotoFiles">
       <i class="fa-solid fa-cloud-arrow-up"></i>
       <strong>Add package photos</strong>
-      <span class="muted">First photo is the main package image. Add other photos to show the contents.</span>
+      <span class="muted">Add photos that show what is inside</span>
     </label>
     <input type="file" id="pkgPhotoFiles" accept="image/*" multiple class="hidden" onchange="previewNewPackagePhotos()" />
     <div class="photo-grid" id="pkgNewPhotoPreviews"></div>
-
-    <label>Items in this package</label>
+    </div>
+    <div class="lm-sec lm-violet"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-list-check"></i></span><div><strong>What is inside</strong><small>Only products listed for sale can go in a package</small></div></div>
     <div id="pkgItemsList" class="pkg-items-list"></div>
-    <p class="muted" style="font-size:0.8rem;">Only your products listed for sale can go in a package. The photos above are the package/gallery images customers see.</p>
-    <div class="flex" style="justify-content: flex-end; margin-top:0.8rem;">
+    </div>
+    <div class="flex lm-actions">
       <button type="button" class="btn btn-sm" style="background:#6b7280;" onclick="clearNewListingDraft('package');closePackageModal()">Cancel</button>
       <button class="btn" id="savePackageBtn" onclick="savePackage()">Save Package</button>
     </div>
@@ -8340,11 +8358,11 @@ const HOME_TOUR_STEPS = [
   { icon: "fa-hand-sparkles", title: "Hi, I'm Levi", body: "I'll walk you through the app myself, live, on the actual site. Just follow me around.", selector: null, view: "home" },
   { icon: "fa-house", title: "This is Home", body: "Tap Home in the bottom bar any time, from anywhere in the app, and I'll bring you straight back here.", selector: `#bottomNav .bottom-nav-item[onclick*="navigate('home')"]`, view: "home" },
   { icon: "fa-magnifying-glass", title: "Search anything", body: "Tap here to search the whole marketplace, then narrow it with the All, Products, Vendors, Services and Packages tabs. Recent searches are remembered for you.", selector: ".header-search-row", view: "home" },
-  { icon: "fa-shapes", title: "Browse by category", body: "These are the categories vendors are actually selling in right now. Tap one and everything below — trending items, vendors, services, packages and Browse everything — narrows to it. Tap it again to go back to normal.", selector: ".levro-home-cat-rail", view: "home" },
-  { icon: "fa-images", title: "Offers and news", body: "Swipe the banners left or right, or just wait — they move along on their own and pause the moment you touch them.", selector: ".home-promotional-carousel", view: "home" },
-  { icon: "fa-bolt", title: "Quick actions", body: "These six shortcuts take you straight to shopping, services, rentals, trusted vendors, item requests, and direct chat — without digging through the marketplace.", selector: ".levro-home-quick-actions", view: "home" },
+  { icon: "fa-shapes", title: "Browse by category", body: "These are the categories vendors are actually selling in right now. Tap one and everything below, trending items, vendors, services, packages and Browse everything, narrows to it. Tap it again to go back to normal.", selector: ".levro-home-cat-rail", view: "home" },
+  { icon: "fa-images", title: "Offers and news", body: "Swipe the banners left or right, or just wait, they move along on their own and pause the moment you touch them.", selector: ".home-promotional-carousel", view: "home" },
+  { icon: "fa-bolt", title: "Quick actions", body: "These six shortcuts take you straight to shopping, services, rentals, trusted vendors, item requests, and direct chat, without digging through the marketplace.", selector: ".levro-home-quick-actions", view: "home" },
   {
-    icon: "fa-map-location-dot", title: "Find vendors near you", body: "Every verified vendor, plotted on a real map, closest first. Tap any pin — or any card up here — to open that vendor's storefront.",
+    icon: "fa-map-location-dot", title: "Find vendors near you", body: "Every verified vendor, plotted on a real map, closest first. Tap any pin, or any card up here, to open that vendor's storefront.",
     selector: "#vendorsMapWrap, .vendors-map-vendor-rail", view: "vendors",
     onEnter: async () => { try { await switchVendorsView("map"); } catch (_) {} },
   },
@@ -8352,7 +8370,7 @@ const HOME_TOUR_STEPS = [
   "ORDERS_TOUR_STEP",
   "MESSAGES_TOUR_STEP",
   {
-    icon: "fa-user", title: "Your profile, one tap away", body: "Your account, your orders, your saved items and settings — all live in this panel, wherever you are in the app.",
+    icon: "fa-user", title: "Your profile, one tap away", body: "Your account, your orders, your saved items and settings, all live in this panel, wherever you are in the app.",
     selector: "#profilePanel", view: "home",
     onEnter: () => { try { toggleProfilePanel(); } catch (_) {} },
     onExit: () => { try { closeAllPanels(); } catch (_) {} },
@@ -8362,7 +8380,7 @@ const HOME_TOUR_STEPS = [
 ];
 function buildMessagesTourStep() {
   if (!session || profile?.role === "admin") return null;
-  return { icon: "fa-comment-dots", title: "Message a vendor directly", body: "Chat opens with a vendor once they accept your order, so you can sort out the details together. You can also call them in-app with the phone button — your number is never shared. The chat closes 24 hours after the order is completed; your messages are kept and return if you order from that vendor again.", selector: "#messagesWrap", view: "home" };
+  return { icon: "fa-comment-dots", title: "Message a vendor directly", body: "Chat opens with a vendor once they accept your order, so you can sort out the details together. You can also call them in-app with the phone button, your number is never shared. The chat closes 24 hours after the order is completed; your messages are kept and return if you order from that vendor again.", selector: "#messagesWrap", view: "home" };
 }
 function buildOrdersTourStep() {
   if (!session || profile?.role === "admin") return null;
@@ -8373,7 +8391,7 @@ function buildNotificationsTourStep() {
   if (profile?.role === "admin") {
     return { icon: "fa-bell", title: "Your notifications", body: "Tap the bell up here any time to see orders, disputes and platform activity as they happen.", selector: "#notifWrap", view: "home" };
   }
-  return { icon: "fa-bell", title: "Stay in the loop", body: "Notifications live in your bottom bar — tap here any time to see orders, offers and updates.", selector: `#bottomNav .bottom-nav-item[onclick*="navigate('notifications')"]`, view: "home" };
+  return { icon: "fa-bell", title: "Stay in the loop", body: "Notifications live in your bottom bar, tap here any time to see orders, offers and updates.", selector: `#bottomNav .bottom-nav-item[onclick*="navigate('notifications')"]`, view: "home" };
 }
 function resolveTourSteps(steps) {
   return steps.map((s) => s === "ORDERS_TOUR_STEP" ? buildOrdersTourStep() : s === "MESSAGES_TOUR_STEP" ? buildMessagesTourStep() : s === "NOTIFICATIONS_TOUR_STEP" ? buildNotificationsTourStep() : s).filter(Boolean);
@@ -8381,7 +8399,7 @@ function resolveTourSteps(steps) {
 // Shown only to vendors, appended after the shared home steps: your full
 // profile page carries the same at-a-glance stats (listings, reviews,
 // rating, followers) that customers see on your public storefront.
-const VENDOR_TOUR_STEP = { icon: "fa-store", title: "Your shop, at a glance", body: "Your full profile shows your listings, reviews, rating and followers — the same numbers customers see when they visit your storefront. When you owe commission, the amount and the days left show right here, and we remind you 5, 3, 2 and 1 days before the deadline so nothing gets paused.", selector: ".commission-card, .storefront-stats", view: "vendorDashboard" };
+const VENDOR_TOUR_STEP = { icon: "fa-store", title: "Your shop, at a glance", body: "Your full profile shows your listings, reviews, rating and followers, the same numbers customers see when they visit your storefront. When you owe commission, the amount and the days left show right here, and we remind you 5, 3, 2 and 1 days before the deadline so nothing gets paused.", selector: ".commission-card, .storefront-stats", view: "vendorDashboard" };
 // Placeholder only -- showTour() rebuilds this with resolveTourSteps() once
 // session/profile/vendor (declared with let further down this same script)
 // are actually live; calling resolveTourSteps() here at parse time would hit
@@ -12930,6 +12948,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   app.innerHTML = html;
   try { setTimeout(() => window.maybePromptLevromartReview?.(), 900); } catch (_) {}
+  try { if (vendor?.id && !window.__prodRefs) setTimeout(() => warmProductModalRefs(), 1200); } catch (_) {}
   if (liveStorefrontFollowHtml) {
     const freshFollowWrap = byId("storefrontFollowWrap");
     if (freshFollowWrap) freshFollowWrap.innerHTML = liveStorefrontFollowHtml;
@@ -14521,7 +14540,7 @@ function levroStableSectorOrder(list) {
 }
 function homeCategoryRailHtml(categoryList) {
   // "All" always comes first and clears the category filter.
-  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentHomeCategoryId && !currentSectorId ? "active" : ""}" style="--cat-color:var(--primary)" onclick="clearHomeCategoryFilter()"><span class="levro-home-cat-icon"><i class="fa-solid fa-border-all"></i></span><span class="levro-home-cat-label">All</span></button>`;
+  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentHomeCategoryId && !currentSectorId ? "active" : ""}" style="--cat-color:var(--primary)" onclick="clearHomeCategoryFilter()"><span class="levro-home-cat-icon"><i class="fa-solid fa-grip"></i></span><span class="levro-home-cat-label">All</span></button>`;
   const chips = levroStableSectorOrder(categoryList).map((c) => {
     const active = String(currentHomeCategoryId || "") === String(c.id);
     return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" data-cat="${c.id}" style="--cat-color:${levroSectorColor(c)}" onclick="toggleHomeCategoryFilter('${c.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(levroSectorIconClass(c))}"></i></span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`;
@@ -15838,7 +15857,7 @@ async function checkoutCartVendor(vendorId) {
   const cartLines = group.items.map((it) => {
     const unit = Number(effectivePrice(it.variant && it.variant.sale_price != null ? it.variant : it.product) ?? 0);
     cartItemsTotal += unit * it.quantity;
-    return `${it.quantity}× ${it.product.name}${it.variant?.name ? ` (${it.variant.name})` : ""} — ${naira(unit * it.quantity)}`;
+    return `${it.quantity}× ${it.product.name}${it.variant?.name ? ` (${it.variant.name})` : ""} · ${naira(unit * it.quantity)}`;
   });
   const { fee: cartFee, known: cartFeeKnown } = computeDeliveryFeeForPrefix(`cart-${vendorId}`, delivery.method);
   const confirmHtml = `<p style="margin:0 0 .6rem;">${esc(group.vendor.business_name)}</p>` + orderSummaryConfirmHtml({ itemLines: cartLines, method: delivery.method, pickupLabel: "Pickup", deliveryFee: cartFee, feeKnown: cartFeeKnown, itemTotal: cartItemsTotal });
@@ -18863,7 +18882,7 @@ async function confirmRental(vendorId, productId) {
   const rentPreviewEl = byId("rentTotalPreview");
   const itemTotal = rentPreviewEl?.dataset.rawTotal != null ? Number(rentPreviewEl.dataset.rawTotal) : null;
   const { fee: deliveryFee, known: feeKnown } = computeDeliveryFeeForPrefix("rent", delivery.method);
-  const itemLine = `${qty > 1 ? qty + "× " : ""}${productName} — ${fmtDate(start)} to ${fmtDate(end)}${itemTotal != null ? ` (${naira(itemTotal)})` : ""}`;
+  const itemLine = `${qty > 1 ? qty + "× " : ""}${productName} · ${fmtDate(start)} to ${fmtDate(end)}${itemTotal != null ? ` (${naira(itemTotal)})` : ""}`;
   const summaryHtml = orderSummaryConfirmHtml({
     itemLines: [itemLine],
     method: delivery.method,
@@ -18994,7 +19013,7 @@ async function buyNow(vendorId, productId) {
   const totalText = previewEl ? [...previewEl.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").replace(/^Total:\s*/, "").trim() : (currentProductDetail?.sale_price != null ? naira(effectivePrice(currentProductDetail) * qty) : "");
   const itemTotal = previewEl?.dataset.rawTotal != null ? Number(previewEl.dataset.rawTotal) : (currentProductDetail?.sale_price != null ? effectivePrice(currentProductDetail) * qty : null);
   const { fee: deliveryFee, known: feeKnown } = computeDeliveryFeeForPrefix("buy", delivery.method);
-  const itemLine = `${qty > 1 && !previewEl ? qty + "× " : ""}${productName}${totalText ? ` — ${totalText}` : ""}`;
+  const itemLine = `${qty > 1 && !previewEl ? qty + "× " : ""}${productName}${totalText ? ` · ${totalText}` : ""}`;
   const summaryHtml = orderSummaryConfirmHtml({
     itemLines: [itemLine],
     method: delivery.method,
@@ -19648,7 +19667,7 @@ function storefrontStatsLoadingInnerHtml(listingCount) {
 function storefrontFollowWrapInnerHtml(v, followState) {
   const following = !!followState?.[0]?.following;
   return `<div class="storefront-follow-controls">
-      <button type="button" class="btn btn-sm follow-btn follow-btn-icon ${following ? "" : "btn-outline"}" aria-pressed="${following ? "true" : "false"}" aria-label="${following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${following ? "Following — tap to unfollow" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${following ? "fa-check" : "fa-user-plus"}"></i></button>
+      <button type="button" class="btn btn-sm follow-btn follow-btn-icon ${following ? "" : "btn-outline"}" aria-pressed="${following ? "true" : "false"}" aria-label="${following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${following ? "Following, tap to unfollow" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${following ? "fa-check" : "fa-user-plus"}"></i></button>
       <button type="button" class="btn btn-sm btn-outline follow-settings-btn" ${following ? "" : "disabled"} aria-expanded="false" aria-label="Notification preferences" title="${following ? "Notification preferences" : "Follow this vendor to manage notifications"}" onclick="window.toggleLevromartFollowNotifications?.('${v.id}',event)"><i class="fa-solid fa-bell"></i></button>
     </div>
     <div class="follow-menu hidden" role="dialog" aria-label="Vendor notification preferences">
@@ -19899,11 +19918,11 @@ function supportStatusLabel(status) {
 }
 function supportStatusNote(status) {
   return ({
-    open: 'Received — waiting for a support/admin response.',
+    open: 'Received, waiting for a support/admin response.',
     in_progress: 'A support/admin member is handling this request.',
     resolved: 'Support has marked this issue as resolved.',
     closed: 'This support request has been closed.'
-  })[status] || 'Received — waiting for a support/admin response.';
+  })[status] || 'Received, waiting for a support/admin response.';
 }
 function supportAttachmentHtml(a, signedUrl) {
   const name = esc(a?.name || 'Attachment');
@@ -20374,7 +20393,7 @@ async function renderVendorRequests() {
   const deliveryFee = Number(vendor.delivery_fee) || 0;
   let html = `<div class="vendor-requests-page">
     <div class="vendor-requests-heading-row">
-      <div><h2><i class='fa-solid fa-hand'></i> Requests ${infoPopoverHtml("vendorRequestsInfo", "As a vendor, you can respond to customer requests. You can also request products or services yourself — vendors are customers too.")}</h2></div>
+      <div><h2><i class='fa-solid fa-hand'></i> Requests ${infoPopoverHtml("vendorRequestsInfo", "As a vendor, you can respond to customer requests. You can also request products or services yourself, vendors are customers too.")}</h2></div>
       <button class="btn btn-sm" type="button" onclick="navigate('requestEquipment')"><i class="fa-solid fa-plus"></i> Post request</button>
     </div>
     <div class="vendor-request-tabs" role="tablist" aria-label="Requests">
@@ -20536,7 +20555,7 @@ async function setVendorRequestInterest(requestId, state) {
     interestRow.replaceWith(composer);
   }
   setTimeout(() => byId(`offerPrice-${requestId}`)?.focus(), 0);
-  showToast("You're interested — add your price and message to send an offer.", "success");
+  showToast("You're interested, add your price and message to send an offer.", "success");
 }
 
 function applyOfferProductPrice(requestId, requestType) {
@@ -22669,17 +22688,30 @@ async function openDuplicateProductModal(productId) {
 // its "sector" is just whatever sector that category belongs to.
 let productModalCategories = [];
 let productModalSectors = [];
+async function warmProductModalRefs(force) {
+  const ref = window.__prodRefs;
+  if (ref?.promise && !force) return ref.promise;
+  const promise = (async () => {
+    try {
+      const needVendor = vendor?.id && (vendor.delivery_fee_mode === undefined || vendor.delivery_fee === undefined);
+      const [vd, cats, secs] = await Promise.all([
+        needVendor ? sb.from("vendors").select("id, sector_id, delivery_fee, delivery_fee_mode, delivery_fee_per_km").eq("id", vendor.id).maybeSingle() : Promise.resolve({ data: null }),
+        sb.from("categories").select("*").order("name"),
+        sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
+      ]);
+      if (vd?.data) vendor = { ...vendor, ...vd.data };
+      if (!sectors.length) sectors = secs?.data || [];
+      window.__prodRefs.categories = cats?.data || [];
+    } catch (_) { window.__prodRefs = null; }
+  })();
+  window.__prodRefs = { promise, categories: [] };
+  return promise;
+}
 async function showProductModal() {
-  if (vendor?.id && (vendor.delivery_fee_mode === undefined || vendor.delivery_fee === undefined)) {
-    const { data: vendorDefaults } = await sb.from("vendors").select("id, sector_id, delivery_fee, delivery_fee_mode, delivery_fee_per_km").eq("id", vendor.id).maybeSingle();
-    if (vendorDefaults) vendor = { ...vendor, ...vendorDefaults };
-  }
-  const [{ data: categories }, { data: sectorsData }] = await Promise.all([
-    sb.from("categories").select("*").order("name"),
-    sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
-  ]);
-  productModalCategories = categories || [];
-  if (!sectors.length) sectors = sectorsData || [];
+  // Categories, sectors and the vendor's delivery defaults are loaded once and reused, so the
+  // Add / Edit card opens instantly. warmProductModalRefs() fetches them in the background.
+  await warmProductModalRefs();
+  productModalCategories = window.__prodRefs?.categories || [];
   productModalSectors = sectors;
 
   const sectorSelect = byId("prodSector");
@@ -23572,6 +23604,7 @@ async function saveProduct() {
       const { data: newSectorId, error: sectorErr } = await sb.rpc("create_vendor_sector", { p_name: customSectorName });
       if (sectorErr) throw new Error(`Couldn't create that sector: ${sectorErr.message}`);
       chosenSectorId = newSectorId;
+      sectors = []; window.__prodRefs = null;
     }
 
     let category_id = byId("prodCategory").value || null;
@@ -23583,6 +23616,7 @@ async function saveProduct() {
       const { data: newCategoryId, error: catErr } = await sb.rpc("create_vendor_category", { p_name: customName, p_sector_id: chosenSectorId, p_parent_category_id: otherParent.id });
       if (catErr) throw new Error(`Couldn't create that category: ${catErr.message}`);
       category_id = newCategoryId;
+      window.__prodRefs = null;
     }
 
     const fields = {
@@ -24016,8 +24050,12 @@ async function showPackageModal() {
   window.__existingPackagePhotos = [];
   window.__newPackagePhotoFiles = [];
 
-  const { data: myProducts } = await sb.from("products").select("id, name, sale_price")
-    .eq("vendor_id", vendor.id).eq("status", "active").not("sale_price", "is", null).order("name");
+  // The product list for the picker is cached briefly and fetched alongside everything else, so the
+  // card opens straight away instead of waiting on the network first.
+  const cachedPkgProducts = window.__pkgProductsCache && Date.now() - window.__pkgProductsCache.at < 120000 ? window.__pkgProductsCache.rows : null;
+  const productsP = Promise.resolve(sb.from("products").select("id, name, sale_price")
+    .eq("vendor_id", vendor.id).eq("status", "active").not("sale_price", "is", null).order("name"))
+    .then(({ data }) => { const rows = data || []; window.__pkgProductsCache = { at: Date.now(), rows }; return rows; }).catch(() => cachedPkgProducts || []);
 
   let selectedQty = {};
   if (editingPackageId) {
@@ -24042,17 +24080,26 @@ async function showPackageModal() {
     byId("pkgPrice").value = "";
   }
 
-  byId("pkgItemsList").innerHTML = (myProducts && myProducts.length)
-    ? myProducts.map((p) => `<div class="pkg-item-row">
+  const renderPkgItems = (myProducts) => {
+    byId("pkgItemsList").innerHTML = (myProducts && myProducts.length)
+      ? myProducts.map((p) => `<div class="pkg-item-row">
         <input type="checkbox" class="pkg-item-check" id="pkgCheck-${p.id}" ${selectedQty[p.id] ? "checked" : ""} onchange="togglePkgItemQty('${p.id}')" />
         <span style="flex:1;">${esc(p.name)} <span class="muted">(${naira(p.sale_price)})</span></span>
         <input type="number" id="pkgQty-${p.id}" value="${selectedQty[p.id] || 1}" min="1" class="${selectedQty[p.id] ? "" : "hidden"}" />
       </div>`).join("")
-    : `<p class="muted" style="margin:0;">You don't have any sellable products yet. Add one first from My Products.</p>`;
-
+      : `<p class="muted" style="margin:0;">You don't have any sellable products yet. Add one first from My Products.</p>`;
+  };
+  if (cachedPkgProducts) renderPkgItems(cachedPkgProducts);
+  else byId("pkgItemsList").innerHTML = `<p class="muted" style="margin:0;">Loading your products…</p>`;
   syncPackageEngagementSettingsUI();
   byId("packageModal").classList.remove("hidden");
   trackModalOpened("packageModal");
+  const freshRows = await productsP;
+  const sameList = cachedPkgProducts && cachedPkgProducts.length === freshRows.length && cachedPkgProducts.every((r, i) => r.id === freshRows[i].id);
+  if (!sameList && !byId("packageModal").classList.contains("hidden")) {
+    document.querySelectorAll("#pkgItemsList .pkg-item-check").forEach((c) => { if (c.checked) { const id = c.id.replace("pkgCheck-", ""); selectedQty[id] = Number(byId("pkgQty-" + id)?.value) || 1; } });
+    renderPkgItems(freshRows);
+  }
 }
 function renderExistingPackagePhotos() {
   const wrap = byId("pkgExistingPhotos");
@@ -26096,7 +26143,7 @@ async function loadCommissionBreakdown(){
         ${autoDispute}
       </div></div>`;
     }).join("");
-    box.innerHTML=`<div class="vendor-commission-breakdown-head"><span class="vc-ico"><i class="fa-solid fa-chart-pie"></i></span><span class="vc-label">Outstanding commission — ${groups.size} sale${groups.size===1?"":"s"}</span><span class="vc-pill">${groups.size} sale${groups.size===1?"":"s"}</span></div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span class="vc-ico"><i class="fa-solid fa-coins"></i></span><div class="vc-top-text"><span>Total commission owed</span><small>From ${groups.size} sale${groups.size===1?"":"s"}</small></div><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
+    box.innerHTML=`<div class="vendor-commission-breakdown-head"><span class="vc-ico"><i class="fa-solid fa-chart-pie"></i></span><span class="vc-label">Outstanding commission: ${groups.size} sale${groups.size===1?"":"s"}</span><span class="vc-pill">${groups.size} sale${groups.size===1?"":"s"}</span></div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span class="vc-ico"><i class="fa-solid fa-coins"></i></span><div class="vc-top-text"><span>Total commission owed</span><small>From ${groups.size} sale${groups.size===1?"":"s"}</small></div><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
   }catch(err){
     box.innerHTML=`<div class="vendor-commission-breakdown-head" style="color:var(--danger,#ef4444)">Could not load the commission breakdown. ${esc(err?.message||"Please try again.")}</div>`;
   }
@@ -26587,7 +26634,7 @@ async function runR2Migration() {
           totalSkipped++;
           continue;
         }
-        setStatus(`${bucket}: ${i + 1}/${files.length}  —  migrated ${totalMigrated}, already there ${totalSkipped}, failed ${totalFailed}${lastError ? `\nLast error: ${lastError}` : ""}`);
+        setStatus(`${bucket}: ${i + 1}/${files.length}, migrated ${totalMigrated}, already there ${totalSkipped}, failed ${totalFailed}${lastError ? `\nLast error: ${lastError}` : ""}`);
         try {
           const j = await migrateOneR2File(bucket, files[i]);
           if (j.migrated) totalMigrated++; else totalSkipped++;
@@ -26607,7 +26654,7 @@ async function runR2Migration() {
           if (consecutiveFailed >= 3) {
             saveR2MigrationDoneSet(doneSet);
             setStatus(`Stopped after ${consecutiveFailed} failures in a row so this is easy to read:\n${lastError}`);
-            showToast("Migration stopped — several files in a row failed the same way. Screenshot the log and send it over.", "error");
+            showToast("Migration stopped, several files in a row failed the same way. Screenshot the log and send it over.", "error");
             return;
           }
         }
@@ -26615,7 +26662,7 @@ async function runR2Migration() {
       saveR2MigrationDoneSet(doneSet);
     }
     setStatus(`Done. Migrated ${totalMigrated}, already there ${totalSkipped}, failed ${totalFailed}.${lastError ? `\nLast error: ${lastError}` : ""}`);
-    showToast("R2 migration finished — see the log on this page for the count.", totalFailed ? "warning" : "success");
+    showToast("R2 migration finished, see the log on this page for the count.", totalFailed ? "warning" : "success");
   } catch (e) {
     setStatus(`Stopped early: ${e.message}`);
     showToast(`Migration stopped early: ${e.message}`, "error");
@@ -26630,7 +26677,7 @@ function renderAdminR2Migration() {
   let html = `<h2><i class="fa-solid fa-cloud-arrow-up"></i> Migrate images to R2</h2>`;
   html += adminNavHtml("adminR2Migration");
   html += `<div class="card" style="max-width:560px;">
-    <p class="muted">Copies every existing file in product-photos, homepage-carousel, avatars and vendor-logos over to Cloudflare R2. Doesn't touch the database or delete anything from Supabase, and it's safe to run more than once — anything already copied is skipped, not re-uploaded.</p>
+    <p class="muted">Copies every existing file in product-photos, homepage-carousel, avatars and vendor-logos over to Cloudflare R2. Doesn't touch the database or delete anything from Supabase, and it's safe to run more than once, anything already copied is skipped, not re-uploaded.</p>
     <button class="btn" id="r2MigrateBtn" onclick="runR2Migration()"><i class="fa-solid fa-play"></i> Start migration</button>
     <p id="r2MigrateLog" class="muted" style="margin-top:.8rem;white-space:pre-wrap;font-size:.85rem;"></p>
   </div>`;
@@ -26693,7 +26740,7 @@ async function runR2Optimize() {
       for (let i = 0; i < files.length; i++) {
         const doneKey = `${bucket}/${files[i]}`;
         if (doneSet.has(doneKey)) { totalUnchanged++; continue; }
-        setStatus(`${bucket}: ${i + 1}/${files.length}  —  shrunk ${totalShrunk}, already small ${totalUnchanged}, failed ${totalFailed}${savedLabel()}${lastError ? `\nLast error: ${lastError}` : ""}`);
+        setStatus(`${bucket}: ${i + 1}/${files.length}, shrunk ${totalShrunk}, already small ${totalUnchanged}, failed ${totalFailed}${savedLabel()}${lastError ? `\nLast error: ${lastError}` : ""}`);
         try {
           const j = await optimizeOneR2File(bucket, files[i]);
           if (j.recompressed) { totalShrunk++; bytesBefore += Number(j.originalSize || 0); bytesAfter += Number(j.newSize || 0); }
@@ -26709,7 +26756,7 @@ async function runR2Optimize() {
           if (consecutiveFailed >= 3) {
             saveR2OptimizeDoneSet(doneSet);
             setStatus(`Stopped after ${consecutiveFailed} failures in a row so this is easy to read:\n${lastError}`);
-            showToast("Image size pass stopped — several files in a row failed the same way. Screenshot the log and send it over.", "error");
+            showToast("Image size pass stopped, several files in a row failed the same way. Screenshot the log and send it over.", "error");
             return;
           }
         }
@@ -26717,7 +26764,7 @@ async function runR2Optimize() {
       saveR2OptimizeDoneSet(doneSet);
     }
     setStatus(`Done. Shrunk ${totalShrunk}, already small ${totalUnchanged}, failed ${totalFailed}${savedLabel()}.${lastError ? `\nLast error: ${lastError}` : ""}`);
-    showToast("R2 image size pass finished — see the log on this page for the count.", totalFailed ? "warning" : "success");
+    showToast("R2 image size pass finished, see the log on this page for the count.", totalFailed ? "warning" : "success");
   } catch (e) {
     setStatus(`Stopped early: ${e.message}`);
     showToast(`Image size pass stopped early: ${e.message}`, "error");
@@ -30020,7 +30067,7 @@ async function leviOfflineFallback(text) {
     const result = await resolveLeviProduct(q);
     if (result?.product) {
       navigate("productDetail", { productId: result.product.id });
-      return `I found ${result.product.name}${result.product.vendor?.business_name ? ` from ${result.product.vendor.business_name}` : ""} — opening it for you now.`;
+      return `I found ${result.product.name}${result.product.vendor?.business_name ? ` from ${result.product.vendor.business_name}` : ""}, opening it for you now.`;
     }
   } catch (_) {}
   if (/\b(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(q)) {
@@ -30414,7 +30461,7 @@ async function resolveLeviCatalogueRequest(text){
       const rating=p.vendor?.review_count>0?` · ${Number(p.vendor.avg_rating).toFixed(1)}★ (${p.vendor.review_count} reviews)`:'';
       const stock=p.quantity_available==null?'':` · ${p.quantity_available} available`;
       const variants=(p.variants||[]).map(v=>`${v.name}: ${v.sale_price==null?'price not provided':naira(Number(v.discount_price??v.sale_price))}${variantStock(v)==null?'':` (${variantStock(v)} available)`}`).join('; ');
-      return `${p.name} — ${price} (${p._kind}) from ${p.vendor.business_name}${rating}${distance==null?'':` · ${distance.toFixed(1)} km away`}${stock}.${p.description?' '+String(p.description).slice(0,160):''}${variants?' Varieties: '+variants+'.':''} [[NAV:${p._kind==='Package'?'packageDetail|packageId':'productDetail|productId'}=${p.id}]]`;
+      return `${p.name}, ${price} (${p._kind}) from ${p.vendor.business_name}${rating}${distance==null?'':` · ${distance.toFixed(1)} km away`}${stock}.${p.description?' '+String(p.description).slice(0,160):''}${variants?' Varieties: '+variants+'.':''} [[NAV:${p._kind==='Package'?'packageDetail|packageId':'productDetail|productId'}=${p.id}]]`;
     });
     return {handled:true,reply:`${vendorId?'Here are this vendor’s current listings':'These current listings match your request'}:\n${lines.join('\n')}\n${ranked.length>chosen.length?'Showing '+chosen.length+' of '+ranked.length+' matches in these results. ':''}${/\bnear\b/.test(q)&&!buyerLocation?'Distance is unavailable until you enable location.':''}`};
   }catch(err){console.warn('Levi catalogue lookup failed',err);return {handled:true,reply:'I couldn’t refresh the catalogue just now. Please try again; I won’t guess prices or availability.'};}
@@ -30460,7 +30507,7 @@ async function resolveLeviQuickDiscovery(text) {
     const top=vendors.slice(0,5);
     const lines=top.map((v,i)=>{
       const rating=v.review_count>0?` · ${Number(v.avg_rating||0).toFixed(1)}★ (${v.review_count} reviews)`:"";
-      return `${i+1}. ${v.business_name} — ${formatDistanceKm(v.distance)}${rating}`;
+      return `${i+1}. ${v.business_name}, ${formatDistanceKm(v.distance)}${rating}`;
     });
     const intro=productPhrase
       ? (matchedProduct
@@ -30478,7 +30525,7 @@ async function resolveLeviQuickDiscovery(text) {
     try{
       const {data}=await sb.from("vendors").select("id,business_name,city,avg_rating,review_count").eq("verification_status","verified").eq("is_active",true).limit(300);
       const rows=(data||[]).filter(v=>minRating==null||Number(v.avg_rating||0)>=minRating).sort((a,b)=>Number(b.avg_rating||0)-Number(a.avg_rating||0)||Number(b.review_count||0)-Number(a.review_count||0)).slice(0,8);
-      if(rows.length) return {handled:true,reply:`Here are the ${minRating?`${minRating}-star-and-up `:"highest-rated "}vendors I found: ${rows.map((v,i)=>`${i+1}. ${v.business_name} — ${Number(v.avg_rating||0).toFixed(1)}★ (${Number(v.review_count||0)} reviews)`).join("; ")}.`};
+      if(rows.length) return {handled:true,reply:`Here are the ${minRating?`${minRating}-star-and-up `:"highest-rated "}vendors I found: ${rows.map((v,i)=>`${i+1}. ${v.business_name}, ${Number(v.avg_rating||0).toFixed(1)}★ (${Number(v.review_count||0)} reviews)`).join("; ")}.`};
     }catch(_){}
   }
 
@@ -30552,7 +30599,7 @@ async function resolveLeviLocalAction(text) {
   const q = leviNormaliseText(text);
   if (leviPendingProductRequest && /^(no|nope|not that|not this|that'?s not it|none|neither|wrong|different|something else|not what i want|i don'?t want that|i need something else)\b/.test(q)) {
     const target=leviPendingProductRequest; leviPendingProductRequest=null;
-    return {handled:true,reply:`No problem — [[NAV:requestEquipment|prefill=${encodeURIComponent(target)}]]`};
+    return {handled:true,reply:`No problem, [[NAV:requestEquipment|prefill=${encodeURIComponent(target)}]]`};
   }
   if (!session) return null;
 
@@ -30577,17 +30624,17 @@ async function resolveLeviLocalAction(text) {
   ];
   if (/^(open|show|take me to|go to|view)\s+(my\s+)?orders?$/.test(q)) {
     return { handled:true, reply: vendor
-      ? "Sure — [[NAV:vendorOrders|status=all|type=all|payment=all|perspective=sales]]"
-      : "Sure — [[NAV:buyerOrders]]" };
+      ? "Sure, [[NAV:vendorOrders|status=all|type=all|payment=all|perspective=sales]]"
+      : "Sure, [[NAV:buyerOrders]]" };
   }
   if (vendor && /^(open|show|take me to|go to|view)\s+(my\s+)?shop$/.test(q)) {
-    return { handled:true, reply:"Sure — [[NAV:vendorDashboard]]" };
+    return { handled:true, reply:"Sure, [[NAV:vendorDashboard]]" };
   }
   if (vendor && /^(open|show|take me to|go to|view)\s+(edit\s+business\s+profile|business\s+profile)$/.test(q)) {
-    return { handled:true, reply:"Sure — [[NAV:vendorEditProfile]]" };
+    return { handled:true, reply:"Sure, [[NAV:vendorEditProfile]]" };
   }
   for (const [re, nav] of directRoutes) {
-    if (re.test(q)) return { handled:true, reply:`Sure — [[NAV:${nav.view}]]` };
+    if (re.test(q)) return { handled:true, reply:`Sure, [[NAV:${nav.view}]]` };
   }
 
   const agentIntentRoutes = [
@@ -30601,7 +30648,7 @@ async function resolveLeviLocalAction(text) {
   ];
   for (const [re, target] of agentIntentRoutes) {
     if (re.test(q)) {
-      return {handled:true, reply: target[1] ? `Done — [[NAV:${target[0]}|section=${target[1]}]]` : `Done — [[NAV:${target[0]}]]`};
+      return {handled:true, reply: target[1] ? `Done, [[NAV:${target[0]}|section=${target[1]}]]` : `Done, [[NAV:${target[0]}]]`};
     }
   }
 
@@ -30613,7 +30660,7 @@ async function resolveLeviLocalAction(text) {
     [/(open support|show support|go to support|take me to support)/, "supportRequest", ""],
   ];
   for (const [re, view, section] of catalogRouteMap) {
-    if (re.test(q)) return { handled:true, reply: section ? `Sure — [[NAV:${view}|section=${section}]]` : `Sure — [[NAV:${view}]]` };
+    if (re.test(q)) return { handled:true, reply: section ? `Sure, [[NAV:${view}|section=${section}]]` : `Sure, [[NAV:${view}]]` };
   }
 
   // Named vendor/store/shop requests are resolved locally too. This keeps
@@ -30632,7 +30679,7 @@ async function resolveLeviLocalAction(text) {
         return { handled:true, reply:`I found ${vr.vendor.business_name}. I’m taking you to their shop now. [[NAV:storefront|vendorId=${vr.vendor.id}]]` };
       }
       if (vr.matches?.length > 1) {
-        return { handled:true, reply:`I found a few matches — which vendor do you mean: ${vr.matches.map(v=>v.business_name).join(", ")}?` };
+        return { handled:true, reply:`I found a few matches, which vendor do you mean: ${vr.matches.map(v=>v.business_name).join(", ")}?` };
       }
     }
   }
@@ -31365,7 +31412,7 @@ window.addEventListener("popstate", (e) => {
       // Final first-paint guard: a failed Home render must never leave the
       // user with an empty app shell or a permanent splash screen.
       const app = byId("app");
-      if (app) app.innerHTML = homeFallbackHtml("We could not load the marketplace right now. Your data is safe — try again.");
+      if (app) app.innerHTML = homeFallbackHtml("We could not load the marketplace right now. Your data is safe, try again.");
       console.error("[Levromart] Initial Home navigation failed:", e);
     }
   }
@@ -33373,7 +33420,7 @@ window.renderVendorMapRail = function(){
   }
 
   /* ---------------------------------------------------------------
-     4. ADD (+) BUTTON — one clear chooser for Product, Service, Package.
+     4. ADD (+) BUTTON, one clear chooser for Product, Service, Package.
      The product modal's existing service checkbox remains available when
      editing; the chooser simply makes the three listing types explicit.
      --------------------------------------------------------------- */
@@ -34185,7 +34232,7 @@ window.renderVendorMapRail = function(){
         const top=products.slice(0,3);
         const lines=top.map(p=>{
           const price=p.discount_price!=null&&Number(p.discount_price)>0&&Number(p.discount_price)<Number(p.sale_price)?`${naira(p.discount_price)} (was ${naira(p.sale_price)})`:p.sale_price!=null?naira(p.sale_price):p.rental_rate!=null?`${naira(p.rental_rate)}/${p.rental_rate_unit||'day'}`:'price on request';
-          return `${p.name} — ${price} from ${p.vendor?.business_name||'a vendor'}`;
+          return `${p.name}, ${price} from ${p.vendor?.business_name||'a vendor'}`;
         });
         const first=top[0];
         if(top.length===1)navigate('productDetail',{productId:first.id});
@@ -35617,7 +35664,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   // if the RPC fails.
   function applyFollowUiState(wrap,following){
     const btn=wrap.querySelector('.follow-btn');
-    if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following — tap to unfollow':'Follow vendor';}
+    if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following, tap to unfollow':'Follow vendor';}
     const bell=wrap.querySelector('.follow-settings-btn');
     if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications';}
   }
@@ -35660,7 +35707,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
       showToast?.(e.message||'Could not update your following list.','error')
     }finally{btn.disabled=false}
   }
-  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;let st=await followState(vendorId);if(st)window.rememberVendorFollow?.(vendorId,!!st.following);else st={following:!!window.followedVendorSet?.().has(String(vendorId)),mute_mode:'none'};const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following — tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count&&st.follower_count!=null){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
+  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;let st=await followState(vendorId);if(st)window.rememberVendorFollow?.(vendorId,!!st.following);else st={following:!!window.followedVendorSet?.().has(String(vendorId)),mute_mode:'none'};const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following, tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count&&st.follower_count!=null){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
   async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const open=menu.classList.toggle('hidden')===false;bell.setAttribute('aria-expanded',String(open));if(open)await refreshFollow(vendorId)}
   window.toggleLevromartVendorFollow=toggleFollow;window.toggleLevromartFollowNotifications=toggleFollowBell;
   async function saveFollowPrefsFromWrap(wrap,muteModeOverride){const id=wrap?.dataset.followVendorId;if(!id)return;const checked=k=>!!wrap.querySelector('[data-pref="'+k+'"]')?.checked;let muteMode=muteModeOverride;if(muteMode==null){const active=wrap.querySelector('.follow-mute-grid button.active');muteMode=active?.dataset.mute||'none';}try{const r=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:muteMode,p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')});if(r.error)throw r.error;wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===muteMode));showToast?.(muteMode==='none'?'Vendor notifications turned on.':muteMode==='always'?'Vendor notifications muted until you turn them back on.':`Vendor notifications muted for ${muteMode==='1h'?'1 hour':'8 hours'}.`,'success');}catch(e){showToast?.(e.message||'Could not update vendor notifications.','error')}}
@@ -41701,7 +41748,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
             console.warn("[Levromart] Background vendor document upload failed:",e);
             void sb.rpc("create_notification",{
               p_user_id:session.user.id,p_type:"vendor_application_document_action_needed",
-              p_title:"Application submitted — document needs attention",
+              p_title:"Application submitted, document needs attention",
               p_body:"Your vendor application was submitted successfully, but the optional verification document could not be uploaded. Please add it from your vendor profile if required.",
               p_target_view:"home",p_target_params:{vendorId},p_actor_id:null
             }).catch(()=>{});
@@ -42142,9 +42189,9 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       ${stale?`<div class="muted" style="margin:.35rem 0;">Showing your most recent inventory snapshot.</div>`:""}
       <div class="admin-inventory-controls">
         <select id="adminInventoryStatusSelect" class="admin-inventory-status-select" onchange="setAdminInventoryStatus(this.value)" aria-label="Inventory status">
-          <option value="all" ${window.__adminInventoryStatus==="all"?"selected":""}>All products — ${total}</option>
-          <option value="active" ${window.__adminInventoryStatus==="active"?"selected":""}>Active — ${active}</option>
-          <option value="removed" ${window.__adminInventoryStatus==="removed"?"selected":""}>Removed — ${removed}</option>
+          <option value="all" ${window.__adminInventoryStatus==="all"?"selected":""}>All products: ${total}</option>
+          <option value="active" ${window.__adminInventoryStatus==="active"?"selected":""}>Active: ${active}</option>
+          <option value="removed" ${window.__adminInventoryStatus==="removed"?"selected":""}>Removed: ${removed}</option>
         </select>
         <input id="adminInventorySearch" type="search" placeholder="Search product or vendor…" oninput="filterAdminInventory()">
         <select id="adminInventorySector" onchange="filterAdminInventory()"><option value="">All sectors</option>${sectorOptions}</select>
@@ -42268,9 +42315,9 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       const statusSel=document.getElementById('adminInventoryStatusSelect');
       if(statusSel){
         const opts=statusSel.options;
-        if(opts[0])opts[0].textContent=`All products — ${total}`;
-        if(opts[1])opts[1].textContent=`Active — ${active}`;
-        if(opts[2])opts[2].textContent=`Removed — ${removed}`;
+        if(opts[0])opts[0].textContent=`All products: ${total}`;
+        if(opts[1])opts[1].textContent=`Active: ${active}`;
+        if(opts[2])opts[2].textContent=`Removed: ${removed}`;
       }
       showToast(data.permanent?`${productName} permanently deleted.`:`${productName} removed from inventory; order history preserved.`,'success');
     }catch(err){
@@ -44716,6 +44763,34 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 #buyDeliveryFields .delivery-fee-line{display:none}
 #buyDeliveryFields .price-breakdown-table{margin-top:.9rem}
 .dyn-delivery-fields>p.muted{margin:.5rem 0 0}
+/* Home category rail: a more polished "All" chip. */
+#app .levro-home-cat-chip.levro-home-cat-all{padding:0 1rem 0 .4rem!important;gap:.5rem!important;border:1px solid color-mix(in srgb,var(--primary,#0B6E4A) 40%,var(--border))!important;background:color-mix(in srgb,var(--primary,#0B6E4A) 9%,var(--card))!important}
+#app .levro-home-cat-all .levro-home-cat-icon{width:1.9rem!important;height:1.9rem!important;border-radius:50%!important;background:linear-gradient(135deg,#16a34a,var(--primary,#0B6E4A))!important;color:#fff!important;font-size:.85rem!important;box-shadow:0 2px 6px color-mix(in srgb,var(--primary,#0B6E4A) 35%,transparent)!important}
+#app .levro-home-cat-all .levro-home-cat-label{color:var(--primary,#0B6E4A)!important;font-weight:800!important;letter-spacing:.01em}
+#app .levro-home-cat-chip.levro-home-cat-all.active{background:linear-gradient(135deg,#16a34a,var(--primary,#0B6E4A))!important;border-color:transparent!important;box-shadow:0 4px 12px color-mix(in srgb,var(--primary,#0B6E4A) 32%,transparent)!important}
+#app .levro-home-cat-all.active .levro-home-cat-icon{background:rgba(255,255,255,.22)!important;box-shadow:none!important;color:#fff!important}
+#app .levro-home-cat-all.active .levro-home-cat-label{color:#fff!important}
+/* Add / edit listing cards: sectioned, coloured, calmer. */
+#productModal .modal-content,#packageModal .modal-content{padding:1rem .9rem 0}
+#productModal h3,#packageModal h3{font-size:1.25rem;margin:.1rem 0 .6rem}
+.lm-sec{--lm:#3b82f6;margin:.75rem 0;padding:.85rem .85rem .9rem;border-radius:18px;border:1px solid color-mix(in srgb,var(--lm) 28%,var(--border));background:color-mix(in srgb,var(--lm) 5%,var(--card))}
+.lm-blue{--lm:#3b82f6}.lm-violet{--lm:#8b5cf6}.lm-green{--lm:#16a34a}.lm-amber{--lm:#f59e0b}.lm-pink{--lm:#ec4899}.lm-teal{--lm:#14b8a6}
+.lm-sec-head{display:flex;align-items:center;gap:.65rem;margin-bottom:.5rem}
+.lm-sec-head strong{display:block;font-size:.98rem}
+.lm-sec-head small{display:block;color:var(--text-muted);font-size:.74rem;margin-top:.05rem}
+.lm-ico{flex:none;width:2.2rem;height:2.2rem;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:.95rem;background:color-mix(in srgb,var(--lm) 18%,var(--card));color:var(--lm)}
+.lm-sec label{font-size:.8rem;font-weight:700}
+.lm-sec .listing-billing-choice,.lm-sec .prod-delivery-settings,.lm-sec .listing-payment-timing-settings{margin-top:.5rem}
+.lm-more{margin:.75rem 0;border:1px dashed var(--border);border-radius:16px;padding:.1rem .85rem}
+.lm-more>summary{list-style:none;cursor:pointer;padding:.7rem 0;font-weight:800;font-size:.92rem;display:flex;align-items:center;gap:.5rem}
+.lm-more>summary::-webkit-details-marker{display:none}
+.lm-more>summary i{color:var(--primary,#0B6E4A)}
+.lm-more>summary small{margin-left:auto;font-weight:500;color:var(--text-muted)}
+.lm-more[open]>summary{border-bottom:1px solid var(--border);margin-bottom:.6rem}
+.lm-actions{position:sticky;bottom:0;z-index:3;justify-content:flex-end;gap:.6rem;margin:.9rem -.9rem 0!important;padding:.75rem .9rem calc(.75rem + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--card) 82%,transparent);border-top:1px solid var(--border)}
+.lm-actions .btn{min-height:2.8rem;border-radius:12px}
+.lm-sec .listing-billing-choice,.lm-sec .prod-delivery-settings,.lm-sec .listing-payment-timing-settings{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important}
+.lm-sec .prod-delivery-settings,.lm-sec .listing-payment-timing-settings{margin-top:.7rem}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
