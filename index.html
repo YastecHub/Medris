@@ -8537,7 +8537,7 @@ window.addEventListener("resize", () => {
 async function tourNext() {
   if (liveTourBusy) return;
   const btn = byId("tourNextBtn");
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+  if (btn) { btn.disabled = true; }  // no spinner: the label stays put while the spotlight glides
   try {
     try { await LIVE_TOUR_STEPS[liveTourStep]?.onExit?.(); } catch (_) {}
     if (liveTourStep >= LIVE_TOUR_STEPS.length - 1) { finishTour(); return; }
@@ -12698,6 +12698,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // return them to that same spot instead of snapping back to the top.
   if (previousView === "home" && view !== "home") window.__levroHomeScrollY = window.scrollY;
   if (previousView !== view && (previousView === "buyerProfile" || previousView === "vendorDashboard")) (window.__levroProfScroll ||= {})[previousView] = window.scrollY;
+  window.__levroProfCurrentY = window.scrollY;
 
   // Protected routes must never render their access guard while Supabase is
   // still restoring the cached session/profile in the background. This is the
@@ -13080,6 +13081,11 @@ async function navigate(view, params = {}, pushHistory = true) {
   // the user's scroll position. Real navigation still starts at the top.
   if (preserveSameViewScroll) {
     requestAnimationFrame(() => window.scrollTo({ top: sameViewScrollY, behavior: "auto" }));
+  } else if ((view === "buyerProfile" || view === "vendorDashboard") && previousView === view) {
+    // Re-opening the profile you are already on must not throw you back to the top.
+    const y0 = window.__levroProfCurrentY ?? 0;
+    requestAnimationFrame(() => window.scrollTo({ top: y0, behavior: "auto" }));
+    setTimeout(() => window.scrollTo({ top: y0, behavior: "auto" }), 300);
   } else if ((view === "buyerProfile" || view === "vendorDashboard") && previousView !== view && Number.isFinite(window.__levroProfScroll?.[view])) {
     // Profile pages keep the spot the user scrolled to instead of jumping back to the top.
     const y = window.__levroProfScroll[view];
@@ -44634,6 +44640,8 @@ body:has(.od-page) #app{padding-bottom:0!important}
 .contact-us-tag{text-align:center;margin:1.6rem 0 .5rem;font-weight:800;letter-spacing:.18em;font-size:.78rem;color:var(--text-muted)}
 body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibility:visible!important}
 #tourModal.tour-tracking #tourSpotlightHole{transition:none!important}
+#app .contact-us-help .vl-add,.contact-us-help .vl-add{background:var(--primary,#0B6E4A)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important;opacity:1!important}
+.contact-us-help .vl-add i{color:#fff!important}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
