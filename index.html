@@ -19119,8 +19119,10 @@ function vendorDirectoryCardHtml(v) {
   const following = recent && Date.now() - recent.at < 15000 ? !!recent.following : !!(session && window.followedVendorSet?.().has(id));
   const rating = Number(v?.avg_rating || 0), reviews = Number(v?.review_count || 0);
   const open = `navigate('storefront',{vendorId:'${esc(id)}'})`;
-  const media = v?.logo_url
-    ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onload="vdImgLoad(this)" onerror="vdImgFail(this)">`
+  // Aura luxe hub: show her initials instead of her uploaded logo (her request).
+  const hideLogo = /^aura\s+lux/i.test(String(name).trim());
+  const media = v?.logo_url && !hideLogo
+    ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onerror="vdImgFail(this)">`
     : vdInitialsHtml(name, id);
   return `<div class="vd-card" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
     <div class="vd-cover">${media}<span class="vd-verified" title="Verified vendor" aria-label="Verified vendor"><i class="fa-solid fa-check"></i></span></div>
@@ -44574,7 +44576,6 @@ body:has(.od-page) #app{padding-bottom:0!important}
 #app .vendor-discarded-bulkbar label span{position:static!important;display:inline!important;white-space:nowrap}
 #app .vendor-discarded-bulkbar #discardedSelectedCount{position:static!important;flex:1 1 auto;white-space:nowrap}
 #app .vendor-discarded-bulkbar .btn{margin-left:auto!important}
-.vd-cover img.vd-logo-fit{object-fit:contain;padding:.7rem;background:color-mix(in srgb,var(--primary,#0B6E4A) 10%,var(--card))}
 #app .browse-filter-toolbar>button#browseFilterTrigger{order:2!important;flex:0 0 auto!important;width:auto!important;min-width:6rem!important;height:3rem!important;min-height:3rem!important;padding:0 1rem!important;border-radius:16px!important;box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:.45rem!important;white-space:nowrap!important;overflow:visible!important}
 #app .browse-filter-toolbar>input#searchInput{font-size:.95rem!important;text-overflow:ellipsis}
 /* Order history page + its search / tabs. */
