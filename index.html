@@ -11306,12 +11306,20 @@ function updateAuthUI() {
         { label: "Number of listings", value: Number(vendorProductCount || 0), action: "navigate('vendorProducts')" },
         { label: "Profile views today", value: Number(vendorProfileViewsToday || 0), action: "navigate('vendorDashboard')" },
       ];
+      const pend = Number(vendorPendingOrderCount || 0);
       plainLinks = [
-        { label: `Requests${requestOfferBadgeCount > 0 ? ` (${requestOfferBadgeCount > 9 ? "9+" : requestOfferBadgeCount})` : ""}`, action: "navigate('vendorRequests')" },
-        { label: `Suggestions${unreadSuggestionCount > 0 ? ` (${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount})` : ""}`, action: "navigate('vendorSuggestionsInbox')" },
-        { label: "Support", action: "navigate('supportRequest')" },
-        { label: "Contact us", action: "navigate('contactUs')" },
-        { label: "Take the tour", action: "showTour()" },
+        { icon: "fa-store", tone: "green", label: "My shop", action: "navigate('vendorDashboard')" },
+        { icon: "fa-boxes-stacked", tone: "blue", label: "My listings", action: "navigate('vendorProducts')" },
+        { icon: "fa-receipt", tone: "amber", label: "Orders", badge: pend, action: "navigate('vendorOrders',{status:'all',perspective:'sales'})" },
+        { icon: "fa-chart-line", tone: "green", label: "Earnings", action: "navigate('vendorEarnings')" },
+        { icon: "fa-user-group", tone: "violet", label: "Followers", action: "navigate('vendorFollowers')" },
+        { icon: "fa-comment-dots", tone: "blue", label: "Messages", action: "navigate('messages')" },
+        { icon: "fa-hand", tone: "pink", label: "Requests", badge: Number(requestOfferBadgeCount || 0), action: "navigate('vendorRequests')" },
+        { icon: "fa-lightbulb", tone: "amber", label: "Suggestions", badge: Number(unreadSuggestionCount || 0), action: "navigate('vendorSuggestionsInbox')" },
+        { icon: "fa-bag-shopping", tone: "violet", label: "My purchases", action: "navigate('vendorOrders',{status:'all',perspective:'purchases'})" },
+        { icon: "fa-headset", tone: "teal", label: "Support", action: "navigate('supportRequest')" },
+        { icon: "fa-phone", tone: "teal", label: "Contact us", action: "navigate('contactUs')" },
+        { icon: "fa-compass", tone: "slate", label: "Take the tour", action: "showTour()" },
       ];
     } else if (profile.role !== "admin") {
       miniStats = [
@@ -11321,14 +11329,17 @@ function updateAuthUI() {
         { label: "Vendors followed", value: Number(buyerFollowingCount || 0), action: "navigate('customerFollowing')" },
       ];
       plainLinks = [
-        { label: "Apply to be a vendor", action: "navigate('vendorApply')" },
-        { label: `My orders${Number(buyerPendingOrderCount || 0) > 0 ? ` (${buyerPendingOrderCount})` : ""}`, action: "navigate('buyerOrders')" },
-        { label: "Wishlist", action: "navigate('wishlist')" },
-        { label: "Vendors you follow", action: "navigate('customerFollowing')" },
-        { label: "Request an item", action: "navigate('requestEquipment')" },
-        { label: "Support", action: "navigate('supportRequest')" },
-        { label: "Contact us", action: "navigate('contactUs')" },
-        { label: "Take the tour", action: "showTour()" },
+        { icon: "fa-store", tone: "green", label: "Apply to be a vendor", action: "navigate('vendorApply')" },
+        { icon: "fa-receipt", tone: "amber", label: "My orders", badge: Number(buyerPendingOrderCount || 0), action: "navigate('buyerOrders')" },
+        { icon: "fa-heart", tone: "pink", label: "Wishlist", action: "navigate('wishlist')" },
+        { icon: "fa-user-group", tone: "violet", label: "Vendors you follow", action: "navigate('customerFollowing')" },
+        { icon: "fa-comment-dots", tone: "blue", label: "Messages", action: "navigate('messages')" },
+        { icon: "fa-bell", tone: "amber", label: "Notifications", action: "navigate('notifications')" },
+        { icon: "fa-box-open", tone: "green", label: "Request an item", action: "navigate('requestEquipment')" },
+        { icon: "fa-shop", tone: "blue", label: "Browse vendors", action: "navigate('vendors')" },
+        { icon: "fa-headset", tone: "teal", label: "Support", action: "navigate('supportRequest')" },
+        { icon: "fa-phone", tone: "teal", label: "Contact us", action: "navigate('contactUs')" },
+        { icon: "fa-compass", tone: "slate", label: "Take the tour", action: "showTour()" },
       ];
     }
 
@@ -11373,11 +11384,11 @@ function updateAuthUI() {
         </div>
         <hr class="vendor-profile-divider" />
         <div class="vendor-profile-plain-rows">
-          ${plainLinks.map(l => `<button type="button" class="vendor-profile-plain-row" onclick="closeAllPanels();${l.action}">${l.label}</button>`).join("")}
+          ${plainLinks.map(l => `<button type="button" class="vendor-profile-plain-row vp-row" onclick="closeAllPanels();${l.action}"><span class="vp-ico vp-${l.tone || "slate"}"><i class="fa-solid ${l.icon || "fa-circle"}"></i></span><span class="vp-text">${l.label}</span>${l.badge > 0 ? `<span class="vp-badge">${l.badge > 9 ? "9+" : l.badge}</span>` : ""}<i class="fa-solid fa-chevron-right vp-arrow"></i></button>`).join("")}
         </div>
         <hr class="vendor-profile-divider" />
         <div class="vendor-profile-plain-rows">
-          <button type="button" class="vendor-profile-plain-row vendor-profile-settings-row" onclick="closeAllPanels();navigate('settings')"><i class="fa-solid fa-gear"></i> Settings &amp; Privacy</button>
+          <button type="button" class="vendor-profile-plain-row vendor-profile-settings-row vp-row" onclick="closeAllPanels();navigate('settings')"><span class="vp-ico vp-slate"><i class="fa-solid fa-gear"></i></span><span class="vp-text">Settings &amp; Privacy</span><i class="fa-solid fa-chevron-right vp-arrow"></i></button>
         </div>`}
       </div>
     `;
@@ -44981,6 +44992,14 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 #app .vd-grid.vendors-list-mode .vd-card .vd-body{align-items:flex-start;flex:1}
 #app .vd-grid.vendors-list-mode .vd-card .vd-loc,#app .vd-grid.vendors-list-mode .vd-card .vd-cat{justify-content:flex-start}
 #app .vd-grid.vendors-list-mode .vd-card .vd-follow{align-self:flex-start;width:auto;padding:0 1.4rem}
+/* Profile drawer rows: coloured icon tile, label, badge, chevron. */
+#profilePanel .vp-row,.profile-panel-scroll .vp-row{display:flex!important;align-items:center;gap:.8rem;width:100%;min-height:3.3rem;padding:.55rem .35rem!important;border:0;border-bottom:1px solid var(--border);background:transparent;text-align:left;font-size:1rem;font-weight:700;color:var(--text)!important}
+.profile-panel-scroll .vp-row:last-child{border-bottom:0}
+.vp-ico{--vp:#64748b;flex:none;width:2.3rem;height:2.3rem;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:.95rem;background:color-mix(in srgb,var(--vp) 15%,var(--card));color:var(--vp)}
+.vp-green{--vp:#16a34a}.vp-blue{--vp:#3b82f6}.vp-amber{--vp:#f59e0b}.vp-violet{--vp:#8b5cf6}.vp-pink{--vp:#ec4899}.vp-teal{--vp:#14b8a6}.vp-slate{--vp:#64748b}
+.vp-text{flex:1;min-width:0}
+.vp-badge{flex:none;min-width:1.4rem;height:1.4rem;padding:0 .4rem;border-radius:999px;background:var(--danger,#ef4444);color:#fff;font-size:.74rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.vp-arrow{flex:none;color:var(--text-muted);font-size:.8rem}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
