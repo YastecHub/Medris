@@ -91,6 +91,18 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    // The caller's app asks for the call alert to be repeated while it is still ringing.
+    if (body.ringAgain) {
+      const callId = n.type === "incoming_call" && n.target_params && n.target_params.callId;
+      const [call] = callId ? await (await fetch(`${SUPABASE_URL}/rest/v1/voice_calls?id=eq.${callId}&select=status,created_at`, { headers: svcHeaders })).json() : [];
+      if (!call || call.status !== "ringing" || Date.now() - new Date(call.created_at).getTime() > 50000) {
+        res.status(200).json({ push: { sent: 0 }, skipped: "not ringing" });
+        return;
+      }
+      res.status(200).json({ push: await sendPush(SUPABASE_URL, svcHeaders, n) });
+      return;
+    }
+
     // Calls are time-critical and pointless in an inbox: push only, no email.
     const callType = n.type === "incoming_call" || n.type === "missed_call";
     const [email, push] = await Promise.all([
@@ -195,6 +207,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
   // and the push expires after 45s so a stale "ringing" never shows up late.
   const isIncomingCall = n.type === "incoming_call";
   const callId = isIncomingCall ? (n.target_params && n.target_params.callId) : null;
+  const callerFace = isIncomingCall && n.target_params && /^https:\/\//.test(String(n.target_params.callerAvatar || "")) ? String(n.target_params.callerAvatar) : null;
   const callActions = isIncomingCall ? [
     { action: "answer", title: "Answer" },
     { action: "decline", title: "Decline" }
@@ -210,14 +223,14 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
     target_params: n.target_params || {},
     requireInteraction: isIncomingCall,
     tag: isIncomingCall ? "levromart-incoming-call" : `levromart-${n.id}`,
-    icon: '/levromart-notification-icon.png',
+    icon: callerFace || '/levromart-notification-icon.png',
     badge: '/levromart-badge.png',
     silent: false,
     web_push: 8030,
     notification: {
       title: n.title,
       body: n.body,
-      icon: '/levromart-notification-icon.png',
+      icon: callerFace || '/levromart-notification-icon.png',
       badge: '/levromart-badge.png',
       silent: false,
       tag: isIncomingCall ? "levromart-incoming-call" : `levromart-${n.id}`,

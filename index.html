@@ -11668,6 +11668,7 @@ async function renderBuyerProfile() {
 
   // Customers have no public storefront, so no cover banner either.
   let html = `<div class="vendor-profile-header-card buyer-profile-card">
+    <button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings"><i class="fa-solid fa-gear"></i></button>
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "4.4rem", "vendor-profile-header-avatar", profile.name || profile.email)}
@@ -12741,7 +12742,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     syncLeviFabVisibility();
     hideLevromartSplash();
     clearAutoScrollTimers();
-  } else if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view === "home" && cachedRouteHtml) {
+  } else if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view === "home" && cachedRouteHtml && !window.__levroCategorySwitch) {
     // Reuse a previously rendered real page while the original renderer refreshes it.
     app.innerHTML = cachedRouteHtml;
     try { initHomepageCarousel(); } catch (_) {}
@@ -12755,7 +12756,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // below still refreshes the data in the background and replaces this content
   // only when the fresh render is ready. This prevents the Home fallback/loading
   // state from ever becoming the visible result of a slow or transient request.
-  if (view === "home" && app && !routeHtmlCache.has(cacheKey)) {
+  if (view === "home" && app && !routeHtmlCache.has(cacheKey) && !window.__levroCategorySwitch) {
     try { paintHomeFromLocalCatalog(false); } catch (_) {}
   }
   let html;
@@ -14087,12 +14088,17 @@ async function renderHome() {
     let rows = [];
     if (activeCategory) {
       // Only the vendors that really sell in this category.
-      const { data: sellers, error: sellersError } = await sb.from("products")
-        .select("vendor_id, vendor:vendors!inner(id)")
-        .eq("status", "active").eq("category_id", activeCategory.id)
-        .eq("vendor.verification_status", "verified").eq("vendor.is_active", true).limit(1000);
-      if (sellersError) return { data: null, error: sellersError };
-      const ids = [...new Set((sellers || []).map((r) => r.vendor_id).filter(Boolean))];
+      let ids;
+      if (Array.isArray(window.__homeFullIndex)) {
+        ids = [...new Set(window.__homeFullIndex.filter((x) => String(x.category_id) === String(activeCategory.id)).map((x) => x.vendor_id).filter(Boolean))];
+      } else {
+        const { data: sellers, error: sellersError } = await sb.from("products")
+          .select("vendor_id, vendor:vendors!inner(id)")
+          .eq("status", "active").eq("category_id", activeCategory.id)
+          .eq("vendor.verification_status", "verified").eq("vendor.is_active", true).limit(1000);
+        if (sellersError) return { data: null, error: sellersError };
+        ids = [...new Set((sellers || []).map((r) => r.vendor_id).filter(Boolean))];
+      }
       if (ids.length) {
         const { data, error } = await sb.from("vendors").select(VENDOR_COLS).in("id", ids).eq("verification_status", "verified").eq("is_active", true).is("deleted_at", null);
         if (error) return { data: null, error };
@@ -14127,6 +14133,7 @@ async function renderHome() {
     loadBrowseFirstPage(),
   ]);
   window.__homeBrowseIndex = Array.isArray(browseIndex) ? browseIndex : (window.__homeBrowseIndex || null);
+  if (!activeSector && !activeCategory && Array.isArray(browseIndex)) window.__homeFullIndex = browseIndex;
   // Never discard a previously good Browse Everything catalogue just because
   // this refresh returned null/empty data for a moment. The homepage is
   // cache-first: a successful catalogue already on this device remains the
@@ -14149,10 +14156,10 @@ async function renderHome() {
     const cached = getCachedCatalog(cacheKey);
     if (cached) return cached;
     let ids;
-    if (!activeSector && !activeCategory) {
-      // The unfiltered browse catalogue was already fetched above -- reuse
-      // it instead of scanning the whole product table a second time.
-      const idxRows = Array.isArray(browseIndex) && browseIndex.length ? browseIndex : stableBrowseProducts;
+    if ((!activeSector && !activeCategory) || Array.isArray(window.__homeFullIndex)) {
+      // The full catalogue index is already on hand (this load or an earlier one) -- reuse
+      // it instead of scanning the whole product table again.
+      const idxRows = (!activeSector && !activeCategory) ? (Array.isArray(browseIndex) && browseIndex.length ? browseIndex : stableBrowseProducts) : window.__homeFullIndex;
       ids = new Set(idxRows.map(p => p.category?.sector_id).filter(Boolean).map(String));
       ids.categoryIds = new Set(idxRows.map(p => p.category_id).filter(Boolean).map(String));
     } else {
@@ -14531,19 +14538,33 @@ function homeCategoryRailHtml(categoryList) {
   const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentHomeCategoryId && !currentSectorId ? "active" : ""}" style="--cat-color:var(--primary)" onclick="clearHomeCategoryFilter()"><span class="levro-home-cat-icon"><i class="fa-solid fa-border-all"></i></span><span class="levro-home-cat-label">All</span></button>`;
   const chips = levroStableSectorOrder(categoryList).map((c) => {
     const active = String(currentHomeCategoryId || "") === String(c.id);
-    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" style="--cat-color:${levroSectorColor(c)}" onclick="toggleHomeCategoryFilter('${c.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(levroSectorIconClass(c))}"></i></span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`;
+    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" data-cat="${c.id}" style="--cat-color:${levroSectorColor(c)}" onclick="toggleHomeCategoryFilter('${c.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(levroSectorIconClass(c))}"></i></span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`;
   }).join("");
   return `<div class="levro-home-cat-rail hscroll">${allChip}${chips}</div>`;
 }
 // A category tap re-renders Home against the database for that category, so
 // Trending, Featured Vendors, Services, Packages and Browse Everything all
 // show only what belongs to it; tapping it again (or All) returns to normal.
-function applyHomeCategory(catId) {
+let homeCategoryBusy = false;
+async function applyHomeCategory(catId) {
+  if (homeCategoryBusy) return;          // ignore extra taps while a category is loading
+  homeCategoryBusy = true;
   window.__levroRailScroll = byId("app")?.querySelector(".levro-home-cat-rail")?.scrollLeft || 0;
   currentHomeCategoryId = catId || null;
   currentSectorId = null;
-  if (browserLooksOffline() && paintHomeFromLocalCatalog(false)) return;
-  navigate("home", {}, false);
+  // Instant feedback: highlight the tapped pill and dim what is about to be replaced.
+  document.querySelectorAll("#app .levro-home-cat-chip").forEach((c) => c.classList.toggle("active", catId ? c.dataset.cat === String(catId) : c.classList.contains("levro-home-cat-all")));
+  const content = byId("app");
+  content?.classList.add("home-switching");
+  try {
+    if (browserLooksOffline() && paintHomeFromLocalCatalog(false)) return;
+    window.__levroCategorySwitch = true;   // don't flash the previous page's cached copy
+    await navigate("home", {}, false);
+  } finally {
+    window.__levroCategorySwitch = false;
+    content?.classList.remove("home-switching");
+    homeCategoryBusy = false;
+  }
 }
 function toggleHomeCategoryFilter(catId) {
   applyHomeCategory(String(currentHomeCategoryId || "") === String(catId) ? null : catId);
@@ -15128,6 +15149,12 @@ async function loadBrowseIndex(activeSector, activeCategory) {
   const key = `levro-browse-idx:${slot}:${activeSector?.id || "all"}:${activeCategory?.id || "all"}`;
   window.__homeBrowseIdxMem = window.__homeBrowseIdxMem || new Map();
   if (window.__homeBrowseIdxMem.has(key)) return window.__homeBrowseIdxMem.get(key);
+  // A category is a subset of the full catalogue index we already hold -- no request needed.
+  if (activeCategory && Array.isArray(window.__homeFullIndex)) {
+    const subset = deterministicBrowseVisibilityShuffle(window.__homeFullIndex.filter((x) => String(x.category_id) === String(activeCategory.id)), `browse:all`);
+    window.__homeBrowseIdxMem.set(key, subset);
+    return subset;
+  }
   try { const saved = JSON.parse(sessionStorage.getItem(key) || "null"); if (Array.isArray(saved)) { window.__homeBrowseIdxMem.set(key, saved); return saved; } } catch (_) {}
   const rows = [];
   const pageSize = 1000;
@@ -16636,8 +16663,9 @@ async function renderMessages(conversationId) {
 
   const isVendorSide = conv.vendor?.user_id === session.user.id;
   const op = (other && other[0]) || {};
-  const otherName = op.name || (isVendorSide ? "Customer" : conv.vendor?.business_name || "Vendor");
-  const otherAvatar = op.avatar_url || (isVendorSide ? null : conv.vendor?.logo_url);
+  // A customer talks to the shop (its name and logo), a vendor to the customer.
+  const otherName = isVendorSide ? (op.name || "Customer") : (conv.vendor?.business_name || op.name || "Vendor");
+  const otherAvatar = isVendorSide ? (op.avatar_url || null) : (conv.vendor?.logo_url || op.avatar_url || null);
   const otherPhone = op.phone || "";
   const otherUserId = op.id || "";
   const isBlockedByMe = otherUserId ? (bundle.blocked || []).includes(otherUserId) : false;
@@ -43313,6 +43341,22 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 #vendorsGrid.vendors-directory-grid:not(.vendors-list-mode) .vendor-card{padding-bottom:.5rem !important}
 #vendorsGrid.vendors-directory-grid:not(.vendors-list-mode) .vendor-directory-copy{padding-top:.4rem !important}
 
+/* Call screen: the other person's photo (shop logo for a vendor) when there is one. */
+#levroCallOverlay .lc-avatar{overflow:hidden}
+#levroCallOverlay .lc-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* While a category is loading the old content stays but is softly dimmed (no flash of stale data). */
+#app.home-switching > :not(.levro-home-cat-rail){opacity:.45;transition:opacity .15s;pointer-events:none}
+
+/* Customer profile: a settings gear in the top-right corner. */
+.buyer-profile-card{position:relative}
+.buyer-profile-settings-btn{position:absolute;top:.55rem;right:.55rem;z-index:3;width:2.5rem;height:2.5rem;border:0;border-radius:50%;background:transparent;color:var(--text);font-size:1.15rem;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.buyer-profile-settings-btn:active{background:color-mix(in srgb,var(--text) 10%,transparent)}
+
+/* Settings: just the arrow, no grey circle. */
+#app .settings-page-header .settings-back-btn{background:transparent !important;border:0 !important;box-shadow:none !important;color:var(--text) !important;width:2.4rem !important;min-width:2.4rem !important;height:2.4rem !important;padding:0 !important;border-radius:0 !important;font-size:1.25rem !important}
+#app .settings-page-header .settings-back-btn:active{opacity:.6;transform:none !important}
+
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
@@ -43770,7 +43814,7 @@ function hideLeviFromPanel() {
 (function(){
   const ICE=[{urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"]}].concat(window.LEVROMART_TURN_SERVERS||[]);
   const RING_TIMEOUT_MS=45000;
-  let call=null, ringTimer=null, ringtone=null, pollTimer=null, tickTimer=null;
+  let call=null, ringTimer=null, ringtone=null, pollTimer=null, tickTimer=null, ringAgainTimer=null;
 
   const uid=()=>session?.user?.id;
   const sig=(payload)=>{try{call?.channel?.send({type:"broadcast",event:"sig",payload});}catch(_){}};
@@ -43803,11 +43847,12 @@ function hideLeviFromPanel() {
   }
   function ringStop(){try{ringtone?.stop();}catch(_){} ringtone=null;}
 
-  function overlay(kind,name){
+  function overlay(kind,name,avatar){
     document.getElementById("levroCallOverlay")?.remove();
     const el=document.createElement("div"); el.id="levroCallOverlay";
     const initial=(String(name||"?").trim()[0]||"?").toUpperCase();
-    el.innerHTML=`<div class="lc-avatar">${esc(initial)}</div><div class="lc-name">${esc(name||"Levromart call")}</div><div class="lc-status" id="lcStatus">${kind==="incoming"?"Incoming voice call…":"Calling…"}</div>
+    const face=avatar?`<img src="${esc(avatar)}" alt="" onerror="this.replaceWith(document.createTextNode('${esc(initial)}'))">`:esc(initial);
+    el.innerHTML=`<div class="lc-avatar">${face}</div><div class="lc-name">${esc(name||"Levromart call")}</div><div class="lc-status" id="lcStatus">${kind==="incoming"?"Incoming voice call…":"Calling…"}</div>
       <div class="lc-actions">${kind==="incoming"
         ? `<button class="lc-btn decline" id="lcDecline" aria-label="Decline"><i class="fa-solid fa-phone-slash"></i></button><button class="lc-btn accept" id="lcAccept" aria-label="Answer"><i class="fa-solid fa-phone"></i></button>`
         : `<button class="lc-btn" id="lcMute" aria-label="Mute"><i class="fa-solid fa-microphone"></i></button><button class="lc-btn end" id="lcEnd" aria-label="End call"><i class="fa-solid fa-phone-slash"></i></button>`}</div>
@@ -43836,6 +43881,7 @@ function hideLeviFromPanel() {
   }
 
   function cleanup(){
+    clearInterval(ringAgainTimer);
     clearTimeout(ringTimer); clearInterval(tickTimer); clearInterval(pollTimer); ringStop();
     try{call?.stream?.getTracks().forEach(t=>t.stop());}catch(_){}
     try{call?.pc?.close();}catch(_){}
@@ -43925,9 +43971,12 @@ function hideLeviFromPanel() {
   window.startVoiceCall=async function(conversationId){
     if(call){ showToast("You're already on a call.","info"); return; }
     if(!session){ showLogin(); return; }
-    const name=document.querySelector(".chat-header-name")?.textContent?.trim()||"Levromart call";
+    let party={name:document.querySelector(".chat-header-name")?.textContent?.trim()||"Levromart call",avatar:document.querySelector(".chat-header-avatar")?.getAttribute?.("src")||null};
+    const partyReq=Promise.resolve(sb.rpc("get_call_party",{p_conversation_id:conversationId})).then(({data})=>{const r=Array.isArray(data)?data[0]:data;if(r?.name)party={name:r.name,avatar:r.avatar_url||party.avatar};}).catch(()=>{});
     let stream;
     try{ stream=await getMic(); }catch(e){ showToast(e.message,"error"); return; }
+    await Promise.race([partyReq,new Promise(r=>setTimeout(r,800))]);
+    const name=party.name;
     let started;
     try{
       const {data,error}=await sb.rpc("start_voice_call",{p_conversation_id:conversationId});
@@ -43935,7 +43984,7 @@ function hideLeviFromPanel() {
       if(!started?.call_id)throw new Error("Couldn't start the call.");
     }catch(e){ stream.getTracks().forEach(t=>t.stop()); showToast(e.message||"Couldn't start the call.","error"); return; }
     call={id:started.call_id,role:"caller",stream,conversationId};
-    overlay("outgoing",name);
+    overlay("outgoing",name,party.avatar);
     makePeer();
     call.channel=await joinChannel(call.id,onSignal);
     if(!call)return;
@@ -43944,15 +43993,22 @@ function hideLeviFromPanel() {
     document.getElementById("lcMute")?.addEventListener("click",(e)=>{const b=e.currentTarget;const t=call?.stream?.getAudioTracks?.()[0];if(!t)return;t.enabled=!t.enabled;b.classList.toggle("on",!t.enabled);b.innerHTML=`<i class="fa-solid ${t.enabled?"fa-microphone":"fa-microphone-slash"}"></i>`;});
     watchStatus();
     ringTimer=setTimeout(()=>{ if(call&&!document.getElementById("levroCallOverlay")?.classList.contains("lc-connected"))endCall(true,"No answer.","missed"); },RING_TIMEOUT_MS);
+    // Keep the other phone alerting: push the "incoming call" again every ~8s while it rings (max 5).
+    const myCall=call.id; let again=0;
+    clearInterval(ringAgainTimer);
+    ringAgainTimer=setInterval(()=>{
+      if(!call||call.id!==myCall||document.getElementById("levroCallOverlay")?.classList.contains("lc-connected")||++again>5){clearInterval(ringAgainTimer);return;}
+      Promise.resolve(sb.rpc("ring_callee_again",{p_call_id:myCall})).catch(()=>{});
+    },8000);
   };
 
   window.__levroIncomingCall=function(n){
     try{
       const p=n?.target_params||{}; const id=p.callId; if(!id||call)return;
       if(Date.now()-new Date(n.created_at||Date.now()).getTime()>RING_TIMEOUT_MS)return;
-      const name=String(n.body||"").replace(/ is calling you\.?$/,"")||"Someone";
+      const name=p.callerName||String(n.body||"").replace(/ is calling you\.?$/,"")||"Someone";
       call={id,role:"callee",conversationId:p.conversationId,incoming:true};
-      overlay("incoming",name); ringStart("incoming"); watchStatus();
+      overlay("incoming",name,p.callerAvatar||null); ringStart("incoming"); watchStatus();
       ringTimer=setTimeout(()=>{ if(call&&call.incoming&&!call.answeredByMe){ cleanup(); } },RING_TIMEOUT_MS);
       document.getElementById("lcDecline")?.addEventListener("click",async()=>{
         try{await sb.rpc("update_voice_call",{p_call_id:id,p_status:"declined"});}catch(_){}
@@ -43981,9 +44037,9 @@ function hideLeviFromPanel() {
       const since=new Date(Date.now()-RING_TIMEOUT_MS).toISOString();
       const {data}=await sb.from("voice_calls").select("id,conversation_id,created_at,caller_id").eq("callee_id",uid()).eq("status","ringing").gt("created_at",since).limit(1);
       if(data&&data[0]){
-        let who="Someone";
-        try{const {data:o}=await sb.rpc("get_conversation_other_party",{p_conversation_id:data[0].conversation_id});if(o&&o[0]?.name)who=o[0].name;}catch(_){}
-        window.__levroIncomingCall({created_at:data[0].created_at,body:`${who} is calling you.`,target_params:{callId:data[0].id,conversationId:data[0].conversation_id}});
+        let who="Someone",face=null;
+        try{const {data:o}=await sb.rpc("get_call_party",{p_conversation_id:data[0].conversation_id});if(o&&o[0]?.name){who=o[0].name;face=o[0].avatar_url||null;}}catch(_){}
+        window.__levroIncomingCall({created_at:data[0].created_at,body:`${who} is calling you.`,target_params:{callId:data[0].id,conversationId:data[0].conversation_id,callerName:who,callerAvatar:face}});
       }
     }catch(_){}
   }
