@@ -20438,11 +20438,11 @@ async function renderVendorRequests() {
 
   const deliveryFee = Number(vendor.delivery_fee) || 0;
   let html = `<div class="vendor-requests-page">
-    <div class="vendor-requests-heading-row">
+    <div class="vendor-requests-heading-row vr-page-head">
       <div><h2><i class='fa-solid fa-hand'></i> Requests ${infoPopoverHtml("vendorRequestsInfo", "As a vendor, you can respond to customer requests. You can also request products or services yourself, vendors are customers too.")}</h2></div>
-      <button class="btn btn-sm" type="button" onclick="navigate('requestEquipment')"><i class="fa-solid fa-plus"></i> Post request</button>
+      <button class="btn btn-sm vr-cta" type="button" onclick="navigate('requestEquipment')"><i class="fa-solid fa-plus"></i> Post request</button>
     </div>
-    <div class="vendor-request-tabs" role="tablist" aria-label="Requests">
+    <div class="vendor-request-tabs vr-tabs" role="tablist" aria-label="Requests">
       <button type="button" class="vendor-request-tab active" data-request-tab="customers" onclick="switchVendorRequestTab('customers')"><i class="fa-solid fa-users"></i> Customer requests${visibleRequests.length ? ` <span data-request-customer-count>${visibleRequests.length}</span>` : ""}</button>
       <button type="button" class="vendor-request-tab" data-request-tab="mine" onclick="switchVendorRequestTab('mine')"><i class="fa-solid fa-list-check"></i> My requests${myRequests?.length ? ` <span>${myRequests.length}</span>` : ""}</button>
     </div>
@@ -20473,18 +20473,25 @@ async function renderVendorRequests() {
       ${deliveryFee > 0 ? `<p class="muted vendor-offer-note"><i class="fa-solid fa-circle-info"></i> Your ${naira(deliveryFee)} delivery fee is shown to the customer automatically when delivery is needed.</p>` : ""}
     </div>`;
 
-    html += `<article class="card vendor-request-card" id="vendorRequestCard-${r.id}">
-      <div class="vendor-request-person">
-        ${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.55rem;height:2.55rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.55rem", "", r.buyer_name || "Customer")}
-        <div class="vendor-request-identity-copy">
-          <strong class="vendor-request-title">${esc(r.title)}</strong>
-          <span class="muted vendor-request-buyer">${esc(r.buyer_name || "A buyer")}</span>
-          <span class="muted vendor-request-city">${esc(r.city || "Lagos")}</span>
-        </div>
-      </div>
-      <div class="vendor-request-right">
-        <span class="badge vendor-request-type-badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span>
-        ${r.description ? `<p class="muted vendor-request-description">${esc(r.description)}</p>` : ""}
+    const vrAgo = (d) => { const m = Math.max(0, (Date.now() - new Date(d).getTime()) / 60000); if (m < 1) return "just now"; if (m < 60) { const n = Math.floor(m); return `${n} minute${n === 1 ? "" : "s"} ago`; } if (m < 1440) { const n = Math.floor(m / 60); return `${n} hour${n === 1 ? "" : "s"} ago`; } const n = Math.floor(m / 1440); return `${n} day${n === 1 ? "" : "s"} ago`; };
+    const vrAvatar = r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle vr-avatar" alt="" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.9rem", "vr-avatar", r.buyer_name || "Customer");
+    const vrOpen = interest === "interested" && !mine;
+    html += `<article class="vr-item vendor-request-card-item ${vrOpen ? "vr-expanded" : ""}" id="vendorRequestCard-${r.id}">
+      <button type="button" class="vr-head" aria-expanded="${vrOpen ? "true" : "false"}" onclick="toggleVendorRequestCard('${r.id}')">
+        ${vrAvatar}
+        <span class="vr-main">
+          <strong class="vr-title">${esc(r.title)}</strong>
+          ${r.description ? `<span class="vr-desc">${esc(r.description)}</span>` : ""}
+          <span class="vr-meta"><span><i class="fa-regular fa-clock"></i> ${esc(vrAgo(r.created_at))}</span><span><i class="fa-solid fa-location-dot"></i> ${esc(r.city || "Lagos")}</span></span>
+        </span>
+        <span class="vr-side"><span class="vr-status ${mine ? "vr-prog" : "vr-open"}">${mine ? "In progress" : "Open"}</span><i class="fa-solid fa-chevron-right vr-chev"></i></span>
+      </button>
+      <div class="vr-body">
+        <div class="vr-body-meta"><span class="badge vendor-request-type-badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span><span class="muted">Posted by ${esc(r.buyer_name || "a buyer")}</span></div>
+        ${r.description ? `<p class="vr-full-desc">${esc(r.description)}</p>` : ""}
+
+        
+        
         ${mine
           ? `<div class="vendor-interest-row">
                <button type="button" class="btn btn-sm vendor-interest-btn" disabled><i class="fa-solid fa-heart"></i> Interested</button>
@@ -20497,6 +20504,7 @@ async function renderVendorRequests() {
                 <button type="button" class="btn btn-sm vendor-interest-btn" onclick="setVendorRequestInterest('${r.id}','interested')"><i class="fa-solid fa-heart"></i> Interested</button>
                 <button type="button" class="btn btn-sm btn-outline vendor-not-interest-btn" onclick="setVendorRequestInterest('${r.id}','not-interested')"><i class="fa-solid fa-xmark"></i> Not interested</button>
               </div>`}
+      
       </div>
     </article>`;
   };
@@ -20504,7 +20512,7 @@ async function renderVendorRequests() {
   // Keep the request area compact while making the request list explicitly
   // collapsible. It opens by default so the current request remains visible.
   if (visibleRequests.length) {
-    html += `<details class="vendor-more-requests" open><summary><span><i class="fa-solid fa-chevron-down"></i> ${visibleRequests.length} customer request${visibleRequests.length === 1 ? "" : "s"}</span><small>Collapse / expand</small></summary><div class="vendor-more-requests-body">`;
+    html += `<details class="vr-section" open><summary><span><i class="fa-solid fa-chevron-down"></i> ${visibleRequests.length} customer request${visibleRequests.length === 1 ? "" : "s"}</span><small>Collapse / expand</small></summary><div class="vr-list">`;
     visibleRequests.forEach(requestRender);
     html += `</div></details>`;
   }
@@ -20525,7 +20533,7 @@ async function renderVendorRequests() {
           ${r.description ? `<p class="muted">${esc(r.description)}</p>` : ""}
         </div>
         <div class="vendor-my-request-actions">
-          <span class="badge ${r.status === "fulfilled" ? "success" : r.status === "cancelled" ? "danger" : ""}">${esc(r.status || "open")}</span>
+          <span class="vr-status ${r.status === "fulfilled" ? "vr-prog" : r.status === "cancelled" ? "vr-closed" : "vr-open"}">${esc(r.status === "fulfilled" ? "Fulfilled" : r.status === "cancelled" ? "Closed" : "Open")}</span>
           ${r.status === "open" ? `<button type="button" class="btn btn-sm btn-outline" onclick="cancelEquipmentRequest('${r.id}')"><i class="fa-solid fa-ban"></i> Cancel</button>` : ""}
         </div>
       </div>
@@ -20536,6 +20544,12 @@ async function renderVendorRequests() {
   return html;
 }
 
+function toggleVendorRequestCard(id) {
+  const card = byId(`vendorRequestCard-${id}`);
+  if (!card) return;
+  const open = card.classList.toggle("vr-expanded");
+  card.querySelector(".vr-head")?.setAttribute("aria-expanded", String(open));
+}
 function switchVendorRequestTab(tab) {
   const target = tab === "mine" ? "mine" : "customers";
   document.querySelectorAll("#app .vendor-request-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.requestTab === target));
@@ -20571,7 +20585,7 @@ async function setVendorRequestInterest(requestId, state) {
     try { localStorage.removeItem(interestKey); } catch (_) {}
     card?.remove();
     const countEl = document.querySelector('[data-request-customer-count]');
-    const remaining = document.querySelectorAll('#vendorCustomerRequestsTab .vendor-more-requests-body .vendor-request-card').length;
+    const remaining = document.querySelectorAll('#vendorCustomerRequestsTab .vr-list .vr-item').length;
     if (countEl) { countEl.textContent = remaining ? String(remaining) : ''; countEl.classList.toggle('hidden', remaining === 0); }
     const tabBtn = document.querySelector('#vendorCustomerRequestsTab')?.closest('.vendor-requests-page')?.querySelector('[data-request-tab="customers"]');
     if (tabBtn) {
@@ -45032,6 +45046,43 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 #vendorsMap .vendor-map-popup-link{margin-top:.6rem;padding:.5rem .9rem;border-radius:12px;background:color-mix(in srgb,var(--primary,#0B6E4A) 14%,var(--card));justify-content:center;width:100%;box-sizing:border-box;text-decoration:none!important}
 #vendorsMap .leaflet-control-attribution{border-radius:8px 0 0 0}
 @media (prefers-reduced-motion:reduce){.vmp-me-pulse{animation:none}}
+/* Requests page (vendor): calm header, compact green CTA, segmented tabs, spacious request rows. */
+#app .vendor-requests-page{max-width:680px;margin:0 auto;padding:.4rem .15rem 1.5rem}
+#app .vendor-requests-heading-row.vr-page-head{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:1rem!important;margin:.4rem 0 1.1rem!important}
+#app .vr-page-head h2{margin:0;font-size:1.85rem;display:flex;align-items:center;gap:.7rem}
+#app .vr-page-head .vr-cta{align-self:center;min-height:3rem;padding:0 1.8rem;border-radius:16px;font-size:1rem;font-weight:800;background:var(--primary)!important;color:#fff!important;box-shadow:0 8px 20px color-mix(in srgb,var(--primary) 26%,transparent)}
+#app .vendor-request-tabs.vr-tabs{display:grid!important;grid-template-columns:1fr 1fr;gap:.3rem!important;width:100%!important;max-width:none!important;margin:0 0 1.1rem!important;padding:.3rem!important;border-radius:18px!important;border:1px solid var(--border)!important;background:var(--card)!important;overflow:visible!important}
+#app .vendor-request-tabs.vr-tabs .vendor-request-tab{font-size:.9rem;display:flex!important;align-items:center;justify-content:center;gap:.5rem;min-height:3rem;padding:.4rem .6rem!important;border-radius:14px!important;border:1.5px solid transparent!important;background:transparent!important;color:var(--text-muted)!important;font-weight:700;box-shadow:none!important;flex:1 1 auto!important}
+#app .vendor-request-tabs.vr-tabs .vendor-request-tab.active{background:color-mix(in srgb,var(--primary) 10%,var(--card))!important;border-color:var(--primary)!important;color:var(--primary)!important}
+#app .vendor-request-tabs.vr-tabs .vendor-request-tab span{background:color-mix(in srgb,var(--primary) 16%,transparent)!important;color:var(--primary)!important;border-radius:999px;padding:0 .45rem;font-size:.75rem}
+.vr-section{margin:0}
+.vr-section>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.7rem .95rem;margin-bottom:.9rem;border-radius:16px;background:color-mix(in srgb,var(--primary) 7%,var(--card));border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border));font-weight:800}
+.vr-section>summary::-webkit-details-marker{display:none}
+.vr-section>summary i{margin-right:.4rem;transition:transform .2s;color:var(--primary)}
+.vr-section:not([open])>summary i{transform:rotate(-90deg)}
+.vr-section>summary small{color:var(--primary);font-weight:600;font-size:.82rem}
+.vr-list{display:flex;flex-direction:column;gap:.8rem}
+.vr-item{border-radius:18px;background:var(--card);border:1px solid var(--border);box-shadow:0 2px 10px rgba(15,23,42,.05);overflow:hidden}
+.vr-head{display:flex;align-items:center;gap:.85rem;width:100%;padding:1rem .95rem;border:0;background:transparent;text-align:left;color:var(--text);cursor:pointer;font:inherit}
+.vr-avatar{flex:none;width:2.9rem!important;height:2.9rem!important;border-radius:50%!important;object-fit:cover}
+.vr-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:.22rem}
+.vr-title{font-size:1rem;line-height:1.25;overflow-wrap:anywhere}
+.vr-desc{font-size:.86rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vr-meta{display:flex;flex-wrap:wrap;gap:.25rem .9rem;font-size:.78rem;color:var(--text-muted)}
+.vr-meta i{margin-right:.3rem}
+.vr-side{flex:none;align-self:stretch;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:.4rem}
+.vr-chev{color:var(--text-muted);font-size:.85rem;margin:auto 0;transition:transform .2s}
+.vr-expanded .vr-chev{transform:rotate(90deg)}
+.vr-status{display:inline-flex;align-items:center;padding:.22rem .7rem;border-radius:999px;font-size:.76rem;font-weight:700;white-space:nowrap;background:color-mix(in srgb,#16a34a 14%,var(--card));color:#15803d}
+.vr-prog{background:color-mix(in srgb,#3b82f6 14%,var(--card));color:#1d4ed8}
+.vr-closed{background:color-mix(in srgb,#f97316 14%,var(--card));color:#c2410c}
+:root[data-theme="dark"] .vr-status,:root[data-theme="black"] .vr-status{color:#86efac}
+:root[data-theme="dark"] .vr-prog,:root[data-theme="black"] .vr-prog{color:#93c5fd}
+:root[data-theme="dark"] .vr-closed,:root[data-theme="black"] .vr-closed{color:#fdba74}
+.vr-body{display:none;padding:0 .95rem 1rem;border-top:1px dashed var(--border)}
+.vr-expanded .vr-body{display:block}
+.vr-body-meta{display:flex;align-items:center;gap:.6rem;margin:.8rem 0 .4rem;font-size:.82rem}
+.vr-full-desc{margin:.2rem 0 .6rem;line-height:1.5;font-size:.92rem}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
