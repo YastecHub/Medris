@@ -45178,6 +45178,12 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .catalog-type-tabs,.storefront-catalog-tabs,.vl-tabs,.vendor-listing-tabs{scrollbar-width:none}
 .storefront-catalog-tabs{height:auto!important;max-height:none!important;min-height:3rem;align-items:center;padding-bottom:.35rem!important;flex-wrap:nowrap}
 .storefront-catalog-tab{flex:0 0 auto}
+/* Vendors page filter tabs: clean underline tabs instead of pills. */
+#app .vendor-listing-tabs{display:flex!important;gap:1.6rem!important;margin:.4rem 0 1rem!important;padding:0!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow-x:auto!important;scrollbar-width:none}
+#app .vendor-listing-tabs::-webkit-scrollbar{display:none}
+#app .vendor-listing-tab{flex:0 0 auto!important;position:relative;min-height:0!important;padding:.2rem 0 .8rem!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--text-muted)!important;font-size:.95rem!important;font-weight:600!important;white-space:nowrap}
+#app .vendor-listing-tab.active{color:var(--text)!important;font-weight:800!important}
+#app .vendor-listing-tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--primary,#0B6E4A)}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
