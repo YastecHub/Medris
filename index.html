@@ -10825,6 +10825,8 @@ function subscribeNotifications() {
       try { if (!document.hidden) navigator.vibrate?.([150, 80, 150]); } catch (_) {}
       showToast(payload.new.title, "info");
       refreshNotifications();
+      // An order was just completed: ask for the review right away.
+      if (String(payload.new.type || "") === "order_status_changed") setTimeout(() => { try { window.maybePromptLevromartReview?.(true); } catch (_) {} }, 1500);
       // Vendor approval/rejection and admin promotion/demotion change the
       // account's authoritative role. Refresh it immediately so the user does
       // not have to close/reopen the app before navigation and permissions
@@ -14687,7 +14689,8 @@ function clearSearchHistory() {
 function renderSearchPage() {
   const history = readSearchHistory();
   searchPageFilter = "all";
-  const filterBtn = (id, label) => `<button type="button" class="search-page-filter ${id === "all" ? "active" : ""}" data-filter="${id}" onclick="setSearchPageFilter('${id}')">${label}</button>`;
+  const filterIcons = { all: "", products: "fa-bag-shopping", vendors: "fa-store", services: "fa-user-gear", packages: "fa-box-open" };
+  const filterBtn = (id, label) => `<button type="button" class="search-page-filter ${id === "all" ? "active" : ""}" data-filter="${id}" role="tab" onclick="setSearchPageFilter('${id}')">${filterIcons[id] ? `<i class="fa-solid ${filterIcons[id]}" aria-hidden="true"></i>` : ""}${label}</button>`;
   return `<div class="search-page">
     <div class="search-page-head">
     <div class="search-page-bar">
@@ -14728,11 +14731,11 @@ let searchPageFilter = "all";
 // Raw server results are kept for a minute per query+kind so flipping between
 // tabs (or the location-ready re-run) never repeats a request that just ran.
 const searchResultCache = new Map();
-async function searchCached(key, run, signal) {
+async function searchCached(key, run, signal, strict) {
   const hit = searchResultCache.get(key);
   if (hit && Date.now() - hit.at < 60000) return hit.value;
   const res = await run();
-  if (res?.error) { if (signal?.aborted) throw res.error; return []; } // errors are never cached
+  if (res?.error) { if (signal?.aborted || strict) throw res.error; return []; } // errors are never cached
   const value = res?.data || [];
   if (searchResultCache.size > 40) searchResultCache.delete(searchResultCache.keys().next().value);
   searchResultCache.set(key, { at: Date.now(), value });
@@ -14788,21 +14791,68 @@ function searchDistanceMetaHtml(vendorLatLng) {
   const km = searchResultDistanceKm(vendorLatLng);
   return km == null ? "" : ` · <span class="search-result-distance"><i class="fa-solid fa-location-dot"></i> ${esc(formatDistanceKm(km))}</span>`;
 }
+function searchRatingHtml(avg, count) {
+  const a = Number(avg || 0), n = Number(count || 0);
+  return n > 0 && a > 0 ? `<span class="sr-rating"><i class="fa-solid fa-star" aria-hidden="true"></i> ${a.toFixed(1)} <small>(${n})</small></span>` : "";
+}
+function searchRowOpen(onclick) {
+  return `onclick="${onclick}" role="link" tabindex="0" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${onclick}}"`;
+}
+function searchThumbHtml(src, icon, round) {
+  return `<span class="sr-thumb${round ? " sr-thumb-round" : ""}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid ${icon}'}))">` : `<i class="fa-solid ${icon}" aria-hidden="true"></i>`}</span>`;
+}
 function searchProductRowHtml(p) {
-  const price = p.is_service ? "" : p.sale_price != null
-    ? naira(p.discount_price != null && p.discount_price > 0 && p.discount_price < p.sale_price ? p.discount_price : p.sale_price)
-    : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "";
-  const img = p.photos?.[0];
-  const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
-  // Long-pressing a row shows a quick preview without navigating away --
-  // cache the full row object so that preview can be built instantly from
-  // what's already been fetched, no extra round trip.
+  const hasDiscount = p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price ?? Infinity);
+  const unit = p.rental_rate_unit ? `/${esc(p.rental_rate_unit)}` : "";
+  const price = p.is_service
+    ? (p.sale_price != null ? naira(p.sale_price) + servicePriceSuffix(p) : "")
+    : p.sale_price != null ? naira(hasDiscount ? p.discount_price : p.sale_price)
+    : p.rental_rate != null ? `${naira(p.rental_rate)}${unit}` : "";
+  const v = p.vendor || {};
+  // Long-pressing a row shows a quick preview without navigating away -- cache the
+  // full row object so that preview can be built instantly from what's already fetched.
   (window.__searchResultProducts ||= new Map()).set(String(p.id), p);
-  return `<button type="button" class="search-result-row" data-product-id="${esc(p.id)}" onclick="navigate('productDetail',{productId:'${p.id}'})">
-    <span class="search-result-thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</span>
-    <span class="search-result-copy"><strong>${esc(p.name)}${hasVariety ? ` <i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available"></i>` : ""}</strong><span class="muted">${esc(p.vendor?.business_name || "")}${searchDistanceMetaHtml(p.vendor)}</span></span>
-    ${price ? `<span class="search-result-price">${price}</span>` : ""}
-  </button>`;
+  const hasVariety = Array.isArray(p.photos) && p.photos.length > 1;
+  const canCart = !p.is_service && v.id && ["sale", "both"].includes(String(p.listing_type || "")) && !isOwnVendorId(v.id) && profile?.role !== "admin";
+  const typeLabel = p.is_service ? "Service" : String(p.listing_type || "") === "rent" ? "Rental" : "Product";
+  return `<div class="search-result-row sr-row" data-product-id="${esc(p.id)}" ${searchRowOpen(`navigate('productDetail',{productId:'${esc(p.id)}'})`)} aria-label="${esc(p.name)}">
+    ${searchThumbHtml(p.photos?.[0], p.is_service ? "fa-hand-holding-heart" : "fa-camera")}
+    <div class="sr-main"><strong class="sr-name">${esc(p.name)}${hasVariety ? ` <i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available"></i>` : ""}</strong>
+      <span class="sr-vendor"><span class="sr-vendor-name">${esc(v.business_name || "")}</span><i class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i>${searchDistanceMetaHtml(v)}</span>
+      <span class="sr-meta"><em class="sr-type${p.is_service ? " sr-type-service" : ""}">${typeLabel}</em>${searchRatingHtml(v.avg_rating, v.review_count)}</span></div>
+    <div class="sr-side">${price ? `<b class="sr-price">${price}</b>` : ""}${canCart ? `<button type="button" class="sr-cart" onclick="quickAddToCart(event,'${esc(p.id)}',this,'${esc(v.id)}')" title="Add to cart" aria-label="Add ${esc(p.name)} to cart"><i class="fa-solid fa-cart-plus"></i></button>` : ""}</div>
+  </div>`;
+}
+function searchVendorRowHtml(v) {
+  const name = v.business_name || "Vendor";
+  const sectorName = v.sector_name || (Array.isArray(sectors) ? sectors.find((s) => String(s.id) === String(v.sector_id))?.name : "") || "";
+  const count = Number(v.follower_count || 0);
+  const own = isOwnVendorId(v.id);
+  const recent = window.__vendorCardFollowRecent?.get(String(v.id));
+  const following = recent && Date.now() - recent.at < 15000 ? !!recent.following : !!(session && window.followedVendorSet?.().has(String(v.id)));
+  const loc = [v.city, null].filter(Boolean).map(esc).join("");
+  return `<div class="search-result-row sr-row sr-vendor-row" data-vendor-id="${esc(v.id)}" ${searchRowOpen(`navigate('storefront',{vendorId:'${esc(v.id)}'})`)} aria-label="${esc(name)}">
+    <span class="sr-thumb sr-thumb-round">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid fa-store'}))">` : avatarFallbackHtml(name, "100%", "sr-avatar", name, v.id)}</span>
+    <div class="sr-main"><strong class="sr-name">${esc(name)} <i class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i></strong>
+      <span class="sr-vendor"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${loc || "Online"}${searchDistanceMetaHtml(v).replace(/<i class="fa-solid fa-location-dot"><\/i> /, "")}</span>
+      <span class="sr-meta"><em class="sr-type">Vendor</em>${sectorName ? `<span class="sr-sector">${esc(sectorName)}</span>` : ""}</span>
+      <span class="sr-meta">${searchRatingHtml(v.avg_rating, v.review_count)}<span class="sr-followers"><i class="fa-solid fa-user-group" aria-hidden="true"></i> <span class="vendor-follower-count">${count.toLocaleString()}</span> follower${count === 1 ? "" : "s"}</span></span></div>
+    <div class="sr-side">${own ? "" : `<button type="button" class="vendor-card-follow-btn sr-follow${following ? " following" : ""}" data-vendor-id="${esc(v.id)}" onclick="event.stopPropagation();toggleVendorCardFollow('${esc(v.id)}',event)">${following ? "Following" : "Follow"}</button>`}</div>
+  </div>`;
+}
+function searchPackageRowHtml(pkg) {
+  const v = pkg.vendor || {};
+  const n = Array.isArray(pkg.items) ? pkg.items.length : 0;
+  return `<div class="search-result-row sr-row" ${searchRowOpen(`navigate('packageDetail',{packageId:'${esc(pkg.id)}'})`)} aria-label="${esc(pkg.name)}">
+    ${searchThumbHtml(pkg.photos?.[0], "fa-box-open")}
+    <div class="sr-main"><strong class="sr-name">${esc(pkg.name)}</strong>
+      <span class="sr-vendor"><span class="sr-vendor-name">${esc(v.business_name || "")}</span><i class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i>${searchDistanceMetaHtml(v)}</span>
+      <span class="sr-meta"><em class="sr-type sr-type-package">Package</em>${n ? `<span class="sr-sector">${n} item${n === 1 ? "" : "s"}</span>` : ""}${searchRatingHtml(v.avg_rating, v.review_count)}</span></div>
+    <div class="sr-side"><b class="sr-price">${naira(pkg.price)}</b></div>
+  </div>`;
+}
+function searchSkeletonHtml() {
+  return `<div class="search-page-section sr-skel" aria-hidden="true">${Array.from({ length: 5 }, () => `<div class="sr-row"><span class="sr-thumb"></span><div class="sr-main"><span class="sr-skel-line sr-w70"></span><span class="sr-skel-line sr-w50"></span><span class="sr-skel-line sr-w40"></span></div></div>`).join("")}</div>`;
 }
 // Long-pressing a search result row shows a quick preview (photo, name,
 // price, vendor, distance) without leaving the search page -- tapping the
@@ -14890,7 +14940,7 @@ async function renderSearchPageSuggestions(forceWithTerm) {
   // the same already-popular handful of listings owns this slot forever,
   // and everything else never gets a turn at it.
   const { data } = await sb.from("products")
-    .select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,category:categories(sector_id),vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng)")
+    .select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,service_price_unit,category:categories(sector_id),vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng,avg_rating,review_count)")
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
     .order("view_count", { ascending: false }).limit(60);
   if (!stillCurrent()) return; // typing moved on while this was in flight
@@ -14927,25 +14977,42 @@ async function runSearchPageQuery(term, saveToHistory) {
   const wantPackages = kind === "all" || kind === "packages";
   let fullRows = [], vends = [], packageRows = [];
   const enc = term.toLowerCase();
+  const resultsEl = byId("searchPageResults");
+  if (resultsEl && !resultsEl.querySelector(".search-page-section:not(.sr-skel)")) {
+    resultsEl.querySelectorAll(".search-page-empty, .search-page-error, .sr-skel").forEach((el) => el.remove());
+    resultsEl.insertAdjacentHTML("beforeend", searchSkeletonHtml());
+  }
   try {
     // Only the entity types the active tab needs are requested. A single RPC
     // returns full product+vendor fields (no second hydration round trip);
     // Products/Services ask for a wider page and keep their own kind.
     [fullRows, vends, packageRows] = await Promise.all([
-      wantProducts ? searchCached(`p:${kind === "all" ? 20 : 60}:${enc}`, () => sb.rpc("search_products_full", { p_query: term, p_limit: kind === "all" ? 20 : 60 }).abortSignal(controller.signal), controller.signal) : [],
-      wantVendors ? searchCached(`v:${kind === "all" ? 6 : 30}:${enc}`, () => sb.from("vendors").select("id,business_name,logo_url,city,lat,lng").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(kind === "all" ? 6 : 30).abortSignal(controller.signal), controller.signal) : [],
-      wantPackages ? searchCached(`k:${kind === "all" ? 6 : 30}:${enc}`, () => sb.from("vendor_packages").select("id,name,price,photos,vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(kind === "all" ? 6 : 30).abortSignal(controller.signal), controller.signal) : [],
+      wantProducts ? searchCached(`p2:${kind === "all" ? 20 : 60}:${enc}`, async () => {
+        const args = { p_query: term, p_limit: kind === "all" ? 20 : 60 };
+        const r = await sb.rpc("search_products_full_v2", args).abortSignal(controller.signal);
+        // Older database without the richer function: fall back to the original one.
+        return r.error && !controller.signal.aborted ? sb.rpc("search_products_full", args).abortSignal(controller.signal) : r;
+      }, controller.signal, true) : [],
+      wantVendors ? searchCached(`v:${kind === "all" ? 6 : 30}:${enc}`, () => sb.from("vendors").select("id,business_name,logo_url,city,lat,lng,avg_rating,review_count,sector_id").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(kind === "all" ? 6 : 30).abortSignal(controller.signal), controller.signal, true) : [],
+      wantPackages ? searchCached(`k:${kind === "all" ? 6 : 30}:${enc}`, () => sb.from("vendor_packages").select("id,name,price,photos,items:package_items(quantity),vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng,avg_rating,review_count)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(kind === "all" ? 6 : 30).abortSignal(controller.signal), controller.signal, true) : [],
     ]);
   } catch (err) {
     if (controller.signal.aborted) return; // superseded by a newer keystroke
-    throw err;
+    if (mySeq !== searchPageSeq) return;
+    const box = byId("searchPageResults");
+    if (box) {
+      box.querySelectorAll(".search-page-section, .search-page-empty, .search-page-error").forEach((el) => el.remove());
+      box.insertAdjacentHTML("beforeend", `<div class="search-page-error" role="alert"><i class="fa-solid fa-triangle-exclamation"></i><strong>Couldn't search right now.</strong><p>Check your connection and try again.</p><button type="button" class="vl-add sr-retry" onclick="runSearchPageQuery(${JSON.stringify(term).replace(/"/g, "&quot;")},false)"><i class="fa-solid fa-rotate-right"></i> Try again</button></div>`);
+    }
+    return;
   }
   if (mySeq !== searchPageSeq) return;
   const productRows = (fullRows || []).filter((r) => kind === "products" ? !r.is_service : kind === "services" ? !!r.is_service : true).slice(0, kind === "all" ? 20 : 30);
   const prods = sortSearchResultsByPriceThenDistance(productRows.map((r) => ({
     id: r.id, name: r.name, photos: r.photos, sale_price: r.sale_price, discount_price: r.discount_price,
     rental_rate: r.rental_rate, rental_rate_unit: r.rental_rate_unit, is_service: r.is_service,
-    vendor: { business_name: r.vendor_business_name, lat: r.vendor_lat, lng: r.vendor_lng },
+    listing_type: r.listing_type, service_price_unit: r.service_price_unit,
+    vendor: { id: r.vendor_id, business_name: r.vendor_business_name, lat: r.vendor_lat, lng: r.vendor_lng, avg_rating: r.vendor_avg_rating, review_count: r.vendor_review_count },
   })), searchResultEffectivePrice);
   const vendList = buyerLocation ? [...(vends || [])].sort((a, b) => {
     const da = searchResultDistanceKm(a), db = searchResultDistanceKm(b);
@@ -14958,23 +15025,16 @@ async function runSearchPageQuery(term, saveToHistory) {
 
   const results = byId("searchPageResults");
   if (!results) return;
-  document.querySelectorAll(".search-page-section, .search-page-empty").forEach((el) => el.remove());
-
-  const vendorRowHtml = (v) => `<button type="button" class="search-result-row" onclick="navigate('storefront',{vendorId:'${v.id}'})">
-      <span class="search-result-thumb search-result-thumb-round">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-store"></i>`}</span>
-      <span class="search-result-copy"><strong>${esc(v.business_name)}</strong><span class="muted">${esc(v.city || "Vendor")}${searchDistanceMetaHtml(v)}</span></span>
-    </button>`;
-  const packageRowHtml = (pkg) => `<button type="button" class="search-result-row" onclick="navigate('packageDetail',{packageId:'${pkg.id}'})">
-      <span class="search-result-thumb">${pkg.photos?.[0] ? `<img src="${esc(pkg.photos[0])}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-box-open"></i>`}</span>
-      <span class="search-result-copy"><strong>${esc(pkg.name)}</strong><span class="muted">${esc(pkg.vendor?.business_name || "Package")}${searchDistanceMetaHtml(pkg.vendor)}</span></span>
-      <span class="search-result-price">${naira(pkg.price)}</span>
-    </button>`;
+  // Follower counts for the vendors shown (memoised for 3 minutes, one RPC at most).
+  const vendListHydrated = vendList.length ? await attachVendorFollowerCounts(vendList) : [];
+  if (mySeq !== searchPageSeq) return;
+  document.querySelectorAll(".search-page-section, .search-page-empty, .search-page-error").forEach((el) => el.remove());
 
   const single = kind !== "all";
   const sections = [
     prods.length ? { title: single ? "" : `Products (${prods.length})`, rows: prods.map(searchProductRowHtml) } : null,
-    vendList.length ? { title: single ? "" : `Vendors (${vendList.length})`, rows: vendList.map(vendorRowHtml) } : null,
-    packageList.length ? { title: single ? "" : `Packages (${packageList.length})`, rows: packageList.map(packageRowHtml) } : null,
+    vendList.length ? { title: single ? "" : `Vendors (${vendList.length})`, rows: vendListHydrated.map(searchVendorRowHtml) } : null,
+    packageList.length ? { title: single ? "" : `Packages (${packageList.length})`, rows: packageList.map(searchPackageRowHtml) } : null,
   ].filter(Boolean);
 
   if (!sections.length) {
@@ -14984,7 +15044,7 @@ async function runSearchPageQuery(term, saveToHistory) {
     // clearly labeled as not a match rather than dressed up as one.
     const popularFallback = kind === "all" || kind === "products";
     const noun = { all: "results", products: "products", vendors: "vendors", services: "services", packages: "packages" }[kind];
-    results.insertAdjacentHTML("beforeend", `<div class="search-page-empty"><i class="fa-solid fa-magnifying-glass"></i><p>No ${noun} match "${esc(term)}".${popularFallback ? " Here's what's popular right now." : ""}</p></div>`);
+    results.insertAdjacentHTML("beforeend", `<div class="search-page-empty"><i class="fa-solid fa-magnifying-glass"></i><strong>No results found</strong><p>No ${noun} match "${esc(term)}". Try another search or browse our marketplace.</p><div class="search-empty-actions"><button type="button" class="vl-add sr-retry" onclick="navigate('vendors')"><i class="fa-solid fa-store"></i> Browse vendors</button><button type="button" class="sr-secondary" onclick="navigate('home')"><i class="fa-solid fa-table-cells-large"></i> Browse categories</button></div>${popularFallback ? `<p class="search-empty-note">Here's what's popular right now.</p>` : ""}</div>`);
     if (popularFallback) await renderSearchPageSuggestions(term);
   } else {
     results.insertAdjacentHTML("beforeend", sections.map((s) => `<div class="search-page-section">${s.title ? `<h3>${esc(s.title)}</h3>` : ""}${s.rows.join("")}</div>`).join(""));
@@ -18987,9 +19047,48 @@ async function buyNow(vendorId, productId) {
 
 // ---------- VENDORS DIRECTORY ----------
 let vendorsListingFilter = "all";
+// ---------- VENDORS PAGE: card + empty state ----------
+function vendorDirectoryCardHtml(v) {
+  const id = String(v?.id || "");
+  const name = v?.business_name || "Vendor";
+  const sectorName = v?.sector_name || (Array.isArray(sectors) ? sectors.find((s) => String(s.id) === String(v?.sector_id))?.name : "") || "";
+  const count = Number(v?.follower_count || 0);
+  const km = typeof vendorDistanceKm === "function" ? vendorDistanceKm(v) : null;
+  const dist = km == null ? "" : km < 1 ? `${Math.round(km * 1000)} m away` : `${km.toFixed(1)} km away`;
+  const showFollow = !(typeof isOwnVendorId === "function" && isOwnVendorId(v?.id));
+  const recent = window.__vendorCardFollowRecent?.get(id);
+  const following = recent && Date.now() - recent.at < 15000 ? !!recent.following : !!(session && window.followedVendorSet?.().has(id));
+  const rating = Number(v?.avg_rating || 0), reviews = Number(v?.review_count || 0);
+  const open = `navigate('storefront',{vendorId:'${esc(id)}'})`;
+  const media = v?.logo_url
+    ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name).replace(/'/g, "&#39;")}','100%','vd-fallback','${esc(name).replace(/'/g, "&#39;")}')))">`
+    : avatarFallbackHtml(name, "100%", "vd-fallback", name, id);
+  return `<div class="vd-card" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
+    <div class="vd-cover">${media}<span class="vd-verified" title="Verified vendor" aria-label="Verified vendor"><i class="fa-solid fa-check"></i></span></div>
+    <div class="vd-body">
+      <strong class="vd-name">${esc(name)}</strong>
+      <span class="vd-loc"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${esc(v?.city || "Online")}${dist ? ` <b>·</b> ${esc(dist)}` : ""}</span>
+      ${sectorName ? `<span class="vd-cat"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> ${esc(sectorName)}</span>` : ""}
+      ${showFollow ? `<button type="button" class="vendor-card-follow-btn vd-follow${following ? " following" : ""}" data-vendor-id="${esc(id)}" onclick="event.stopPropagation();toggleVendorCardFollow('${esc(id)}',event)">${following ? "Following" : "Follow"}</button>` : ""}
+      <div class="vd-meta"><span class="vd-followers"><i class="fa-solid fa-user-group" aria-hidden="true"></i> <span class="vendor-follower-count">${count.toLocaleString()}</span> follower${count === 1 ? "" : "s"}</span><span class="vd-rating"><i class="fa-solid fa-star" aria-hidden="true"></i> ${rating.toFixed(1)}${reviews ? ` <small>(${reviews})</small>` : ""}</span></div>
+    </div>
+  </div>`;
+}
+function vendorDirectorySkeletonHtml() {
+  return Array.from({ length: 6 }, () => `<div class="vd-card vd-skel" aria-hidden="true"><div class="vd-cover"></div><div class="vd-body"><span class="vd-skel-line"></span><span class="vd-skel-line vd-w60"></span><span class="vd-skel-line vd-w40"></span></div></div>`).join("");
+}
+function vendorDirectoryEmptyHtml(filtered) {
+  return `<div class="vd-empty" aria-live="polite"><span class="vd-empty-ico"><i class="fa-solid fa-store"></i></span><strong>No vendors found</strong><p>Try changing your filters or search area.</p>${filtered ? `<button type="button" class="vd-clear" onclick="clearVendorsDirectoryFilters()">Clear filters</button>` : ""}</div>`;
+}
+function clearVendorsDirectoryFilters() {
+  const input = byId("vendorSearchInput"); if (input) input.value = "";
+  ["vendorSectorFilter", "vendorCityFilter", "vendorCategoryFilter"].forEach((id) => { const el = byId(id); if (el) el.value = ""; });
+  setVendorsListingFilter("all");
+}
+
 function setVendorsListingFilter(filter) {
   vendorsListingFilter = ["all", "buy", "rent", "both"].includes(filter) ? filter : "all";
-  document.querySelectorAll("#vendorsListingTabs .vendor-listing-tab").forEach((btn) => {
+  document.querySelectorAll("#vendorsListingTabs [data-filter]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.filter === vendorsListingFilter);
   });
   filterVendorsDirectory();
@@ -25903,6 +26002,7 @@ async function confirmReceiveOrder(orderId) {
     }
   } catch (err) { showToast(err.message, "error"); }
   navigate("orderDetail", { orderId });
+  setTimeout(() => { try { window.maybePromptLevromartReview?.(true); } catch (_) {} }, 900);
 }
 
 
@@ -32146,10 +32246,10 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       // empty array a real zero-result filter would, and wrongly claimed "no
       // vendors match" while the directory was simply still loading.
       grid.innerHTML = visible.length
-        ? visible.map(vendorCardHtml).join("")
+        ? visible.map(vendorDirectoryCardHtml).join("")
         : Array.isArray(window.__allVendors)
-          ? '<div class="empty-state" style="grid-column:1/-1;">No vendors match those filters.</div>'
-          : '<p class="muted" style="grid-column:1/-1;">Loading…</p>';
+          ? vendorDirectoryEmptyHtml(true)
+          : vendorDirectorySkeletonHtml();
     }
 
     const more = byId("vendorsDirectoryMoreBtn");
@@ -32226,32 +32326,25 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     // quietly still was -- exactly what a page refresh (which resets this
     // variable along with everything else) happened to fix.
     vendorsListingFilter = "all";
-    let html = `<div class="flex" style="justify-content:space-between;align-items:center;gap:.55rem;flex-wrap:wrap;">
-      <div>
-        <h2 style="margin:0;"><i class="fa-solid fa-store"></i> All vendors</h2>
-        
-      </div>
-      <div class="vendors-directory-view-buttons">
-        <button class="btn btn-sm btn-outline" id="vendorsViewGridBtn" onclick="switchVendorsView('grid')" title="Grid view" aria-label="Grid view"><i class="fa-solid fa-grip"></i></button>
-        <button class="btn btn-sm btn-outline" id="vendorsViewListBtn" onclick="switchVendorsView('list')" title="List view" aria-label="List view"><i class="fa-solid fa-list"></i></button>
-        <button class="btn btn-sm btn-outline" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view" aria-label="Map view"><i class="fa-solid fa-map-location-dot"></i></button>
+    let html = `<div class="vd-page"><div class="vd-head">
+      <div class="vd-title"><span class="vd-title-ico"><i class="fa-solid fa-store"></i></span><div><h2>All vendors</h2><p>Discover businesses and sellers on LevroMart.</p></div></div>
+      <div class="vd-views" role="group" aria-label="View mode">
+        <button type="button" class="vd-view" id="vendorsViewGridBtn" onclick="switchVendorsView('grid')" title="Grid view" aria-label="Grid view"><i class="fa-solid fa-table-cells-large"></i></button>
+        <button type="button" class="vd-view" id="vendorsViewListBtn" onclick="switchVendorsView('list')" title="List view" aria-label="List view"><i class="fa-solid fa-list"></i></button>
+        <button type="button" class="vd-view" id="vendorsViewMapBtn" onclick="switchVendorsView('map')" title="Map view" aria-label="Map view"><i class="fa-solid fa-map-location-dot"></i></button>
       </div>
     </div>
-    <div class="vendor-listing-tabs" id="vendorsListingTabs" role="tablist" aria-label="Vendor type">
-      <button type="button" class="vendor-listing-tab active" data-filter="all" onclick="setVendorsListingFilter('all')">All vendors</button>
-      <button type="button" class="vendor-listing-tab" data-filter="buy" onclick="setVendorsListingFilter('buy')">Buy</button>
-      <button type="button" class="vendor-listing-tab" data-filter="rent" onclick="setVendorsListingFilter('rent')">Rent</button>
-      <button type="button" class="vendor-listing-tab" data-filter="both" onclick="setVendorsListingFilter('both')">Buy &amp; Rent</button>
+    <div class="vd-seg" id="vendorsListingTabs" role="tablist" aria-label="Vendor type">
+      <button type="button" class="vd-tab active" role="tab" data-filter="all" onclick="setVendorsListingFilter('all')">All vendors</button>
+      <button type="button" class="vd-tab" role="tab" data-filter="buy" onclick="setVendorsListingFilter('buy')">Buy</button>
+      <button type="button" class="vd-tab" role="tab" data-filter="rent" onclick="setVendorsListingFilter('rent')">Rent</button>
+      <button type="button" class="vd-tab" role="tab" data-filter="both" onclick="setVendorsListingFilter('both')">Buy &amp; Rent</button>
     </div>
-    <div class="vendors-directory-controls">
-      <button type="button" class="btn btn-sm btn-outline vendors-filters-toggle" id="vendorsFiltersToggle" aria-expanded="false" onclick="toggleVendorsFilters()">
-        <i class="fa-solid fa-sliders"></i> Filters <i class="fa-solid fa-chevron-down vendors-filters-chevron"></i>
-      </button>
+    <div class="vd-tools">
+      <label class="vd-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="vendorSearchInput" placeholder="Search vendors…" oninput="filterVendorsDirectory()" autocomplete="off" enterkeyhint="search" aria-label="Search vendors or products" /></label>
+      <button type="button" class="vd-filter-btn" id="vendorsFiltersToggle" aria-expanded="false" onclick="toggleVendorsFilters()"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Filter</button>
     </div>
-    <div class="vendors-directory-search">
-      <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" autocomplete="off" aria-label="Search vendors or products" />
-    </div>
-    <div class="vendors-filters-panel hidden" id="vendorsFiltersPanel">
+    <div class="vendors-filters-panel vd-panel hidden" id="vendorsFiltersPanel">
       <div class="vendors-filter-grid">
         <label>Sector<select id="vendorSectorFilter" onchange="filterVendorsDirectory()"><option value="">All sectors</option></select></label>
         <label>City<select id="vendorCityFilter" onchange="filterVendorsDirectory()"><option value="">All cities</option></select></label>
@@ -32263,12 +32356,12 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         </select></label>
       </div>
     </div>
-    <div class="vendors-directory-grid" id="vendorsGrid"><p class="muted">Loading…</p></div>
+    <div class="vd-grid" id="vendorsGrid">${vendorDirectorySkeletonHtml()}</div>
     
     <div id="vendorsMapWrap" class="hidden">
       <p class="muted" id="vendorsMapStatus" style="font-size:.82rem;margin:0 0 1rem;line-height:1.45;"></p>
       <div id="vendorsMap" style="height:min(60vh,420px);border-radius:.9rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;"></div>
-    </div>`;
+    </div></div>`;
     setTimeout(async () => {
       try {
         await loadVendorsDirectory();
@@ -32280,8 +32373,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         if (grid) {
           const cached = Array.isArray(window.__filteredVendors) ? window.__filteredVendors : [];
           grid.innerHTML = cached.length
-            ? cached.map(vendorCardHtml).join("")
-            : '<div class="vendors-directory-soft-empty" aria-live="polite"><i class="fa-solid fa-store" aria-hidden="true"></i><span>Vendor listings are loading…</span></div>';
+            ? cached.map(vendorDirectoryCardHtml).join("")
+            : vendorDirectorySkeletonHtml();
         }
         updateVendorsLocationUI();
         setTimeout(() => {
@@ -32306,7 +32399,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     if (city) list = list.filter((v) => v.city === city);
     if (category) list = list.filter((v) => (v.categories || []).includes(category));
     window.__filteredVendors = vendorDirectorySortList(list);
-    document.querySelectorAll("#vendorsListingTabs .vendor-listing-tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.filter === vendorsListingFilter));
+    document.querySelectorAll("#vendorsListingTabs [data-filter]").forEach((btn) => btn.classList.toggle("active", btn.dataset.filter === vendorsListingFilter));
     renderVendorDirectoryCards();
     if (vendorDirectoryMode === "map" && typeof renderVendorsMap === "function") renderVendorsMap();
   };
@@ -33830,7 +33923,7 @@ window.renderVendorMapRail = function(){
       rail.scrollLeft = prevScroll;
       if(horizontalBrowseEnabled)setupAutoScroll(rail);
     }
-    hydrateFollowerCounts();
+    if(typeof hydrateFollowerCounts==='function')hydrateFollowerCounts();
   };
 
   /* Open the Vendors map for a storefront distance click, then focus the exact vendor and trace the road route. */
@@ -35705,6 +35798,16 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
 .levro-review-prompt-card{width:min(520px,calc(100vw - 2rem));background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:22px;padding:1.15rem;box-shadow:0 24px 80px rgba(0,0,0,.35)}
 .levro-review-prompt-icon{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 12%,var(--card));color:var(--primary);font-size:1.35rem;margin:0 auto .7rem}
 .levro-review-prompt-actions{display:flex;gap:.55rem;justify-content:center;flex-wrap:wrap;margin-top:1rem}
+.lrp-card{text-align:center;display:flex;flex-direction:column;align-items:center;gap:.5rem}
+.lrp-logo{width:3.6rem;height:3.6rem;border-radius:50%;object-fit:cover}
+.lrp-copy h2{margin:0;font-size:1.2rem}
+.lrp-copy p{margin:.3rem 0 0;color:var(--text-muted);font-size:.9rem}
+.lrp-stars{display:flex;gap:.35rem;justify-content:center;margin:.3rem 0}
+.lrp-star{width:2.9rem;height:2.9rem;border:0;background:transparent;font-size:1.9rem;line-height:1;color:color-mix(in srgb,var(--text) 22%,transparent);cursor:pointer;-webkit-tap-highlight-color:transparent;padding:0}
+.lrp-star.on{color:#f59e0b}
+.lrp-comment{width:100%;resize:none}
+.lrp-error{color:#dc2626;font-size:.85rem}
+
 </style>
 <script id="levromart-review-prompt-20260917">
 (function(){
@@ -35719,40 +35822,59 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   function rememberReviewCompleted(orderId){try{const a=JSON.parse(localStorage.getItem(REVIEW_COMPLETED_KEY)||'[]');const id=String(orderId);if(!a.includes(id)){a.push(id);localStorage.setItem(REVIEW_COMPLETED_KEY,JSON.stringify(a.slice(-250)));}}catch(_){} }
   function closePrompt(){document.getElementById('levroReviewPromptModal')?.remove();}
   window.__closeLevromartReviewPrompt=closePrompt;
+  const SNOOZE_KEY='levromart_review_snooze_v2';
+  const SNOOZE_MS=12*3600*1000, MAX_SNOOZES=3, RECENT_MS=14*24*3600*1000;
+  function snoozeMap(){try{return JSON.parse(localStorage.getItem(SNOOZE_KEY)||'{}')||{};}catch(_){return {};}}
+  function snoozed(orderId){const s=snoozeMap()[String(orderId)];return !!s&&(s.n>=MAX_SNOOZES||Date.now()-s.at<SNOOZE_MS);}
+  function snooze(orderId){try{const m=snoozeMap(),id=String(orderId);m[id]={at:Date.now(),n:(m[id]?.n||0)+1};const keys=Object.keys(m);if(keys.length>100)delete m[keys[0]];localStorage.setItem(SNOOZE_KEY,JSON.stringify(m));}catch(_){} }
+  // One review per completed order: every delivery gets its own prompt until it has a review.
   async function findEligibleReview(){
     if(!session?.user?.id || profile?.role==='admin') return null;
-    const {data:orders,error}=await sb.from('orders').select('id,vendor_id,completed_at,created_at,order_type,vendor:vendors(id,business_name),payments(payment_type,status)').eq('buyer_id',session.user.id).eq('status','completed').order('completed_at',{ascending:false}).limit(25);
+    const {data:orders,error}=await sb.from('orders').select('id,vendor_id,completed_at,status_changed_at,created_at,order_type,vendor:vendors(id,business_name,logo_url),items:order_items(product:products(name,photos)),payments(payment_type,status)').eq('buyer_id',session.user.id).eq('status','completed').order('created_at',{ascending:false}).limit(15);
     if(error||!orders?.length)return null;
-    const candidates=orders.filter(o=>{const fee=o.order_type==='rental'?'rental_fee':'sale_price';return (o.payments||[]).some(p=>String(p.payment_type||'').toLowerCase()===fee&&p.status==='paid');});
+    const when=(o)=>new Date(o.completed_at||o.status_changed_at||o.created_at||0).getTime();
+    const candidates=orders.filter(o=>{const fee=o.order_type==='rental'?'rental_fee':'sale_price';return Date.now()-when(o)<RECENT_MS&&(o.payments||[]).some(p=>String(p.payment_type||'').toLowerCase()===fee&&p.status==='paid');}).filter(o=>!reviewCompletedLocally(o.id)&&!dismissed(o.id)&&!snoozed(o.id)).sort((a,b)=>when(b)-when(a));
     if(!candidates.length)return null;
-    const unmarked=candidates.filter(o=>!reviewCompletedLocally(o.id));
-    if(!unmarked.length)return null;
-    // A customer only needs to review a given vendor once - check by vendor,
-    // not by this specific order, so a second completed order from a vendor
-    // they already reviewed doesn't prompt again.
-    const vendorIds=[...new Set(unmarked.map(o=>o.vendor_id).filter(Boolean))];
-    const {data:reviews,error:reviewsError}=await sb.from('reviews').select('vendor_id').in('vendor_id',vendorIds).eq('buyer_id',session.user.id);
+    const {data:reviews,error:reviewsError}=await sb.from('reviews').select('order_id').eq('buyer_id',session.user.id).in('order_id',candidates.map(o=>o.id));
     if(reviewsError)return null;
-    const reviewedVendors=new Set((reviews||[]).map(r=>String(r.vendor_id)));
-    unmarked.filter(o=>reviewedVendors.has(String(o.vendor_id))).forEach(o=>rememberReviewCompleted(o.id));
-    return unmarked.find(o=>!reviewedVendors.has(String(o.vendor_id)))||null;
+    const reviewed=new Set((reviews||[]).map(r=>String(r.order_id)));
+    candidates.filter(o=>reviewed.has(String(o.id))).forEach(o=>rememberReviewCompleted(o.id));
+    return candidates.find(o=>!reviewed.has(String(o.id)))||null;
   }
   function showPrompt(order){
-    if(!order||document.getElementById('levroReviewPromptModal')||(window.__reviewPromptDismissedOrderId===String(order.id)||dismissed(order.id))||currentView==='leaveReview')return;
-    const modal=document.createElement('div');modal.id='levroReviewPromptModal';modal.className='levro-review-prompt-backdrop';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
-    const name=esc(order.vendor?.business_name||'this vendor');
-    modal.innerHTML=`<div class="levro-review-prompt-card"><div class="levro-review-prompt-icon"><i class="fa-solid fa-star"></i></div><div style="text-align:center;"><h2 style="margin:0;">Give ${name} a review</h2><p class="muted" style="margin:.4rem 0 0;">Your payment has been verified and this order is complete. Tell us how your experience was.</p></div><div class="levro-review-prompt-actions"><button type="button" class="btn btn-sm btn-outline" id="levroReviewPromptLater">Not now</button><button type="button" class="btn btn-sm" id="levroReviewPromptNow"><i class="fa-solid fa-star"></i> Review now</button></div></div>`;
+    if(!order||document.getElementById('levroReviewPromptModal')||window.__reviewPromptDismissedOrderId===String(order.id)||snoozed(order.id)||currentView==='leaveReview')return;
+    const modal=document.createElement('div');modal.id='levroReviewPromptModal';modal.className='levro-review-prompt-backdrop';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-labelledby','lrpTitle');
+    const v=order.vendor||{},name=v.business_name||'this vendor';
+    const item=(order.items||[]).map(i=>i.product?.name).filter(Boolean)[0]||'';
+    const logo=v.logo_url?`<img class="lrp-logo" src="${esc(v.logo_url)}" alt="" decoding="async">`:avatarFallbackHtml(name,'3.6rem','lrp-logo',name);
+    modal.innerHTML=`<div class="levro-review-prompt-card lrp-card">${logo}<div class="lrp-copy"><h2 id="lrpTitle">How was ${esc(name)}?</h2><p>Your order${item?` (${esc(item)})`:''} is complete. Tap a star to rate this delivery.</p></div>
+      <div class="lrp-stars" role="radiogroup" aria-label="Rating">${[1,2,3,4,5].map(n=>`<button type="button" class="lrp-star" role="radio" aria-checked="false" aria-label="${n} star${n>1?'s':''}" data-star="${n}"><i class="fa-solid fa-star"></i></button>`).join('')}</div>
+      <textarea class="lrp-comment hidden" id="lrpComment" rows="2" maxlength="500" placeholder="Add a comment (optional)"></textarea>
+      <div class="lrp-error hidden" id="lrpError" role="alert"></div>
+      <div class="levro-review-prompt-actions"><button type="button" class="btn btn-sm btn-outline" id="levroReviewPromptLater">Not now</button><button type="button" class="btn btn-sm" id="levroReviewPromptNow" disabled><i class="fa-solid fa-paper-plane"></i> Submit review</button></div></div>`;
     document.body.appendChild(modal);
-    modal.querySelector('#levroReviewPromptLater')?.addEventListener('click',()=>{window.__reviewPromptDismissedOrderId=String(order.id);rememberDismissed(order.id);closePrompt();});
-    modal.querySelector('#levroReviewPromptNow')?.addEventListener('click',async()=>{window.__reviewPromptDismissedOrderId=String(order.id);rememberDismissed(order.id);closePrompt();await navigate('leaveReview',{orderId:order.id},true);});
-    modal.addEventListener('click',e=>{if(e.target===modal){window.__reviewPromptDismissedOrderId=String(order.id);rememberDismissed(order.id);closePrompt();}});
+    let rating=0;
+    const later=()=>{window.__reviewPromptDismissedOrderId=String(order.id);snooze(order.id);closePrompt();};
+    modal.querySelectorAll('.lrp-star').forEach(b=>b.addEventListener('click',()=>{rating=Number(b.dataset.star);modal.querySelectorAll('.lrp-star').forEach(x=>{const on=Number(x.dataset.star)<=rating;x.classList.toggle('on',on);x.setAttribute('aria-checked',String(Number(x.dataset.star)===rating));});modal.querySelector('#lrpComment').classList.remove('hidden');modal.querySelector('#levroReviewPromptNow').disabled=false;try{playSound('click');}catch(_){}}));
+    modal.querySelector('#levroReviewPromptLater')?.addEventListener('click',later);
+    modal.addEventListener('click',e=>{if(e.target===modal)later();});
+    modal.querySelector('#levroReviewPromptNow')?.addEventListener('click',async(e)=>{
+      const btn=e.currentTarget;if(!rating||btn.disabled)return;btn.disabled=true;
+      const err=modal.querySelector('#lrpError');err.classList.add('hidden');
+      const {error}=await sb.from('reviews').insert({order_id:order.id,buyer_id:session.user.id,vendor_id:order.vendor_id,rating,comment:(modal.querySelector('#lrpComment').value||'').trim()||null});
+      if(error){err.textContent=error.message||'Could not save your review.';err.classList.remove('hidden');btn.disabled=false;return;}
+      rememberReviewCompleted(order.id);window.__reviewPromptDismissedOrderId=String(order.id);closePrompt();
+      showToast?.('Thanks for your review!','success');
+      try{invalidateMarketplaceState?.();}catch(_){}
+      setTimeout(()=>window.maybePromptLevromartReview?.(true),600);
+    });
   }
   let lastReviewCheck=0;
-  window.maybePromptLevromartReview=async function(){
+  window.maybePromptLevromartReview=async function(force){
     if(promptBusy||!session?.user?.id||profile?.role==='admin'||currentView==='leaveReview')return;
-    // This runs a join over every completed order, so run it at most every 3 minutes
-    // (it used to run on every navigation AND every 15 seconds).
-    if(Date.now()-lastReviewCheck<180000)return;
+    // The check reads a handful of recent orders; outside a forced check (a completion
+    // notification just arrived) run it at most every 3 minutes.
+    if(force!==true&&Date.now()-lastReviewCheck<180000)return;
     lastReviewCheck=Date.now();
     promptBusy=true;
     try{const order=await findEligibleReview();if(order)showPrompt(order);}catch(e){console.warn('[Levromart] Review prompt check failed:',e);}finally{promptBusy=false;}
@@ -43946,7 +44068,7 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 .od-deposit-note i{margin-right:.3rem}
 /* no big gap above the bottom navigation */
 .od-page{padding-bottom:.35rem!important}
-body:has(.od-page) #app{padding-bottom:calc(4.75rem + env(safe-area-inset-bottom,0px))!important}
+body:has(.od-page) #app{padding-bottom:.4rem!important}
 /* dark theme: tone pills must not glow */
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .od-pill{background:color-mix(in srgb,var(--od-tone) 26%,var(--card));color:var(--text)}}
 :root[data-theme="dark"] .od-pill,:root[data-theme="black"] .od-pill{background:color-mix(in srgb,var(--od-tone) 26%,var(--card));color:var(--text)}
@@ -44040,6 +44162,121 @@ body:has(.od-page) #app{padding-bottom:calc(4.75rem + env(safe-area-inset-bottom
 @media(prefers-reduced-motion:reduce){.vl-skel-line,.vl-skel-block{animation:none}}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .vl-page{--vl-gt:#4ade80}}
 :root[data-theme="dark"] .vl-page,:root[data-theme="black"] .vl-page{--vl-gt:#4ade80}
+/* ================= Vendors directory + Search results (redesign) ================= */
+.vd-page,.search-page{--vd-g:var(--primary,#0B6E4A);--vd-gt:var(--vd-g);--vd-line:color-mix(in srgb,var(--text) 10%,transparent);--vd-muted:var(--text-muted,#64748b)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .vd-page,:root:not([data-theme="light"]) .search-page{--vd-gt:#4ade80}}
+:root[data-theme="dark"] .vd-page,:root[data-theme="black"] .vd-page,:root[data-theme="dark"] .search-page,:root[data-theme="black"] .search-page{--vd-gt:#4ade80}
+.vd-page *{box-sizing:border-box}
+.vd-head{display:flex;align-items:center;justify-content:space-between;gap:.7rem;margin:.2rem 0 .9rem}
+.vd-title{display:flex;align-items:center;gap:.7rem;min-width:0}
+.vd-title-ico{flex:0 0 auto;width:2.7rem;height:2.7rem;border-radius:14px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--vd-g) 12%,var(--card));color:var(--vd-gt);font-size:1.15rem}
+.vd-title h2{margin:0;font-size:1.55rem;line-height:1.1;letter-spacing:-.01em}
+.vd-title p{margin:.15rem 0 0;font-size:.8rem;color:var(--vd-muted);line-height:1.3}
+.vd-views{display:flex;gap:.4rem;flex:0 0 auto}
+.vd-view{width:2.6rem;height:2.6rem;border-radius:12px;border:1px solid var(--vd-line);background:var(--card);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.vd-view.active{background:color-mix(in srgb,var(--vd-g) 13%,var(--card));border-color:var(--vd-g);color:var(--vd-gt)}
+/* segmented control */
+.vd-seg{display:grid;grid-template-columns:repeat(4,auto);gap:.2rem;padding:.25rem;border-radius:16px;background:color-mix(in srgb,var(--text) 6%,var(--card));border:1px solid var(--vd-line);margin:0 0 .8rem}
+.vd-tab{min-height:2.6rem;padding:0 .4rem;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--vd-muted);font:inherit;font-size:.86rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .18s,color .18s;-webkit-tap-highlight-color:transparent}
+#app .vd-tab.active{background:var(--card)!important;border-color:var(--vd-g)!important;color:var(--vd-gt)!important;-webkit-text-fill-color:var(--vd-gt)!important;box-shadow:0 1px 6px rgba(15,23,42,.08)}
+/* search + filter */
+.vd-tools{display:flex;gap:.55rem;margin:0 0 .8rem}
+.vd-search{flex:1;min-width:0;display:flex;align-items:center;gap:.6rem;min-height:3rem;padding:0 .95rem;border-radius:16px;border:1.5px solid color-mix(in srgb,var(--vd-g) 28%,var(--vd-line));background:var(--card);color:var(--vd-muted)}
+.vd-search:focus-within{border-color:var(--vd-g);box-shadow:0 0 0 3px color-mix(in srgb,var(--vd-g) 15%,transparent)}
+.vd-search input{flex:1;min-width:0;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;margin:0!important;height:auto!important;font:inherit;font-size:.98rem;color:var(--text)}
+.vd-filter-btn{flex:0 0 auto;display:inline-flex;align-items:center;gap:.45rem;min-height:3rem;padding:0 1rem;border-radius:16px;border:1px solid var(--vd-line);background:var(--card);color:var(--text);font:inherit;font-weight:700;font-size:.9rem;cursor:pointer}
+.vd-filter-btn.active{border-color:var(--vd-g);color:var(--vd-gt);background:color-mix(in srgb,var(--vd-g) 10%,var(--card))}
+.vd-panel{margin:0 0 .9rem}
+/* grid + cards */
+.vd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+.vd-grid.hidden{display:none}
+@media(min-width:700px){.vd-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}}
+@media(min-width:1000px){.vd-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.vd-card{display:flex;flex-direction:column;min-width:0;border-radius:18px;background:var(--card);border:1px solid var(--vd-line);overflow:hidden;cursor:pointer;box-shadow:0 2px 10px rgba(15,23,42,.05);-webkit-tap-highlight-color:transparent;transition:box-shadow .18s,transform .18s}
+.vd-card:active{transform:scale(.99)}
+.vd-cover{position:relative;aspect-ratio:4/3;background:color-mix(in srgb,var(--text) 6%,var(--card));overflow:hidden}
+.vd-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.vd-cover .vd-fallback{width:100%!important;height:100%!important;border-radius:0!important;font-size:2.2rem}
+.vd-verified{position:absolute;right:.5rem;top:.5rem;width:1.5rem;height:1.5rem;border-radius:50%;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.72rem;box-shadow:0 0 0 2px #fff}
+.vd-body{display:flex;flex-direction:column;gap:.22rem;padding:.65rem .7rem .7rem;min-width:0;flex:1}
+.vd-name{font-size:.98rem;line-height:1.25;font-weight:800;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.vd-loc,.vd-cat{font-size:.78rem;color:var(--vd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vd-loc i,.vd-cat i{margin-right:.2rem;opacity:.85}
+.vd-loc b{font-weight:400}
+.vd-follow{margin:.35rem 0 .2rem;align-self:stretch;min-height:2.4rem;padding:0 .6rem;border-radius:999px;border:1.5px solid var(--vd-g);background:transparent;color:var(--vd-gt);font:inherit;font-weight:800;font-size:.86rem;cursor:pointer;transition:background .18s,color .18s}
+.vd-follow.following{background:color-mix(in srgb,var(--vd-g) 12%,var(--card));border-color:color-mix(in srgb,var(--vd-g) 45%,transparent)}
+.vd-follow:disabled{opacity:.65}
+.vd-meta{display:flex;align-items:center;justify-content:space-between;gap:.4rem;margin-top:auto;font-size:.76rem;color:var(--vd-muted);flex-wrap:wrap}
+.vd-rating{display:inline-flex;align-items:center;gap:.25rem;padding:.15rem .5rem;border-radius:999px;background:color-mix(in srgb,#f59e0b 14%,var(--card));color:var(--text);font-weight:700}
+.vd-rating i{color:#f59e0b;font-size:.7rem}
+.vd-rating small{color:var(--vd-muted);font-weight:500}
+/* list mode */
+.vd-grid.vendors-list-mode{grid-template-columns:1fr}
+.vd-grid.vendors-list-mode .vd-card{flex-direction:row;align-items:stretch}
+.vd-grid.vendors-list-mode .vd-cover{flex:0 0 7rem;aspect-ratio:auto;min-height:7.5rem}
+.vd-grid.vendors-list-mode .vd-body{padding:.7rem .8rem}
+.vd-grid.vendors-list-mode .vd-follow{align-self:flex-start;padding:0 1.2rem}
+/* skeleton + empty */
+.vd-skel{cursor:default;pointer-events:none}
+.vd-skel .vd-cover{animation:vdPulse 1.2s ease-in-out infinite}
+.vd-skel-line{display:block;height:.8rem;border-radius:6px;background:color-mix(in srgb,var(--text) 9%,transparent);margin:.2rem 0;animation:vdPulse 1.2s ease-in-out infinite}
+.vd-w60{width:60%}.vd-w40{width:40%}
+@keyframes vdPulse{50%{opacity:.5}}
+@media(prefers-reduced-motion:reduce){.vd-skel .vd-cover,.vd-skel-line{animation:none}}
+.vd-empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:.4rem;padding:2.4rem 1rem;border:1px dashed var(--vd-line);border-radius:18px;background:var(--card)}
+.vd-empty strong{font-size:1.05rem}
+.vd-empty p{margin:0 0 .5rem;color:var(--vd-muted);font-size:.9rem}
+.vd-empty-ico{width:3.6rem;height:3.6rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--vd-g) 12%,var(--card));color:var(--vd-gt);font-size:1.4rem}
+.vd-clear{min-height:2.8rem;padding:0 1.3rem;border-radius:14px;border:0;background:var(--vd-g);color:#fff;font:inherit;font-weight:800;cursor:pointer}
+@media(max-width:350px){.vd-title p{display:none}.vd-seg{grid-template-columns:repeat(2,1fr)}}
+/* ---- search results page ---- */
+.search-page-filters{gap:.5rem!important;padding:.15rem 0 .75rem!important}
+.search-page-filter{display:inline-flex!important;align-items:center;gap:.4rem;min-height:2.6rem!important;padding:0 1rem!important;border-radius:999px!important;font-size:.88rem!important;font-weight:700!important;transition:background .18s,border-color .18s}
+.search-page-filter i{font-size:.85rem;color:var(--vd-muted)}
+.search-page-filter.active{background:color-mix(in srgb,var(--vd-g) 13%,var(--card))!important;border-color:var(--vd-g)!important;color:var(--vd-gt)!important}
+.search-page-filter.active i{color:var(--vd-gt)}
+.search-page-section h3{font-size:1.15rem!important;color:var(--text)!important;text-transform:none!important;letter-spacing:0!important;font-weight:800;margin:0 0 .6rem!important}
+.sr-row{display:flex;align-items:center;gap:.8rem;width:100%;padding:.7rem;margin:0 0 .55rem;border-radius:16px;background:var(--card);border:1px solid var(--vd-line);cursor:pointer;text-align:left;color:var(--text);-webkit-tap-highlight-color:transparent;box-shadow:0 1px 6px rgba(15,23,42,.04)}
+.search-result-row.sr-row{border-bottom:1px solid var(--vd-line);padding:.7rem}
+.sr-row:active{background:color-mix(in srgb,var(--text) 4%,var(--card))}
+.sr-thumb{flex:0 0 auto;width:4.6rem;height:4.6rem;border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--text) 7%,var(--card));display:flex;align-items:center;justify-content:center;color:var(--vd-muted);font-size:1.3rem}
+.sr-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.sr-thumb-round{border-radius:50%}
+.sr-thumb .sr-avatar{width:100%!important;height:100%!important}
+.sr-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:.18rem}
+.sr-name{font-size:1rem;line-height:1.25;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-vendor{font-size:.8rem;color:var(--vd-muted);display:flex;align-items:center;gap:.25rem;min-width:0;white-space:nowrap;overflow:hidden}
+.sr-vendor-name{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sr-vendor .search-result-distance{display:inline-flex;align-items:center;gap:.2rem;white-space:nowrap}
+.sr-verified{color:#16a34a;font-size:.78rem;flex:0 0 auto}
+.sr-meta{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem;font-size:.76rem;color:var(--vd-muted)}
+.sr-type{font-style:normal;font-weight:700;padding:.12rem .55rem;border-radius:999px;background:color-mix(in srgb,var(--vd-g) 12%,var(--card));color:var(--vd-gt)}
+.sr-type-service{background:color-mix(in srgb,#2563eb 12%,var(--card));color:#2563eb}
+.sr-type-package{background:color-mix(in srgb,#7c3aed 12%,var(--card));color:#7c3aed}
+:root[data-theme="dark"] .sr-type-service,:root[data-theme="black"] .sr-type-service{color:#93c5fd}
+:root[data-theme="dark"] .sr-type-package,:root[data-theme="black"] .sr-type-package{color:#c4b5fd}
+.sr-rating{display:inline-flex;align-items:center;gap:.2rem;font-weight:700;color:var(--text)}
+.sr-rating i{color:#f59e0b;font-size:.72rem}
+.sr-rating small{font-weight:500;color:var(--vd-muted)}
+.sr-followers i{margin-right:.15rem}
+.sr-side{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;align-self:stretch;gap:.4rem}
+.sr-price{font-size:1.02rem;color:var(--text);white-space:nowrap}
+.sr-cart{width:2.6rem;height:2.6rem;border-radius:50%;border:0;background:color-mix(in srgb,var(--vd-g) 13%,var(--card));color:var(--vd-gt);font-size:1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:auto;-webkit-tap-highlight-color:transparent}
+.sr-cart:active{transform:scale(.94)}
+.sr-cart.added{background:var(--vd-g);color:#fff}
+.sr-follow{min-height:2.4rem;padding:0 1rem;border-radius:999px;border:1.5px solid var(--vd-g);background:transparent;color:var(--vd-gt);font:inherit;font-weight:800;font-size:.85rem;cursor:pointer;margin:auto 0}
+.sr-follow.following{background:color-mix(in srgb,var(--vd-g) 12%,var(--card))}
+.sr-skel .sr-thumb{animation:vdPulse 1.2s ease-in-out infinite}
+.sr-skel-line{display:block;height:.8rem;border-radius:6px;background:color-mix(in srgb,var(--text) 9%,transparent);animation:vdPulse 1.2s ease-in-out infinite}
+.sr-w70{width:70%}.sr-w50{width:50%}.sr-w40{width:40%}
+.search-page-empty strong,.search-page-error strong{display:block;font-size:1.1rem;margin-bottom:.2rem;color:var(--text)}
+.search-page-empty p,.search-page-error p{margin:.2rem 0 .8rem}
+.search-page-error{text-align:center;padding:2.5rem 1rem;color:var(--vd-muted)}
+.search-page-error>i{font-size:1.8rem;display:block;margin-bottom:.6rem;color:#d97706}
+.search-empty-actions{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center}
+.sr-secondary{display:inline-flex;align-items:center;gap:.5rem;min-height:3rem;padding:0 1.1rem;border-radius:14px;border:1.5px solid var(--vd-g);background:transparent;color:var(--vd-gt);font:inherit;font-weight:800;cursor:pointer}
+.search-empty-note{font-size:.85rem;margin-top:1rem!important}
+@media(max-width:350px){.sr-thumb{width:3.8rem;height:3.8rem}}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
