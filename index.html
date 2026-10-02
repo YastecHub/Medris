@@ -44532,6 +44532,32 @@ body:has(.od-page) #app{padding-bottom:0!important}
 .sr-thumb{position:relative}
 .sr-thumb .vd-initials{font-size:1.5rem}
 :root[data-theme="dark"] .vd-initials,:root[data-theme="black"] .vd-initials{background:hsl(var(--av-h,150) 30% 24%);color:hsl(var(--av-h,150) 60% 82%)}
+/* ---- Browse everything: search and filter side by side ---- */
+#app .browse-filter-toolbar,#app .browse-filter-toolbar.final-search-open,#app .browse-filter-toolbar.search-open{display:flex!important;flex-wrap:wrap!important;align-items:center!important;justify-content:flex-start!important;gap:.55rem!important}
+#app .browse-filter-toolbar>input#searchInput,#app .browse-filter-toolbar.final-search-open>input#searchInput,#app .browse-filter-toolbar.search-open>input#searchInput{display:block!important;order:1!important;flex:1 1 0!important;min-width:0!important;width:auto!important;grid-column:auto!important;grid-row:auto!important;min-height:3rem!important;border-radius:16px!important;margin:0!important;padding:0 1rem!important}
+#app .browse-filter-toolbar>.levro-final-search-toggle,#app .browse-filter-toolbar.final-search-open>.levro-final-search-toggle{display:none!important}
+#app .browse-filter-toolbar>.browse-filter-trigger{order:2!important;flex:0 0 auto!important;width:auto!important;min-height:3rem!important;padding:0 1rem!important;border-radius:16px!important;display:inline-flex!important;align-items:center;gap:.45rem}
+#app .browse-filter-toolbar>.browse-filter-trigger .browse-filter-chevron{display:none}
+#app .browse-filter-toolbar>.browse-filter-trigger::after{content:"Filter";font-weight:700;font-size:.9rem}
+/* ---- Featured vendors rail: compact cards (about product-card size) ---- */
+#app .top-rated-vendors-scroll{display:flex!important;gap:.6rem!important;align-items:stretch!important}
+#app .top-rated-vendors-scroll>.vd-card{flex:0 0 9.4rem!important;width:9.4rem!important;min-width:0!important;max-width:9.4rem!important}
+#app .top-rated-vendors-scroll .vd-cover{aspect-ratio:16/10}
+#app .top-rated-vendors-scroll .vd-body{padding:.5rem .55rem .55rem;gap:.15rem}
+#app .top-rated-vendors-scroll .vd-name{font-size:.88rem}
+#app .top-rated-vendors-scroll .vd-loc,#app .top-rated-vendors-scroll .vd-cat{font-size:.72rem}
+#app .top-rated-vendors-scroll .vd-follow{min-height:2.1rem;font-size:.78rem;margin:.25rem 0 .1rem}
+#app .top-rated-vendors-scroll .vd-meta{font-size:.7rem}
+/* initials: brand-green tint, same on every vendor */
+.vd-initials{background:color-mix(in srgb,var(--primary,#0B6E4A) 16%,var(--card))!important;color:var(--primary,#0B6E4A)!important}
+:root[data-theme="dark"] .vd-initials,:root[data-theme="black"] .vd-initials{color:#3fb97f!important}
+/* discarded items: select-all bar no longer overlaps */
+#app .vendor-discarded-bulkbar{display:flex!important;flex-wrap:wrap;align-items:center;gap:.6rem .8rem}
+#app .vendor-discarded-bulkbar label{display:inline-flex!important;align-items:center;gap:.5rem;position:static!important;white-space:nowrap}
+#app .vendor-discarded-bulkbar label input{position:static!important;flex:0 0 auto;width:1.3rem!important;height:1.3rem!important;margin:0!important}
+#app .vendor-discarded-bulkbar label span{position:static!important;display:inline!important;white-space:nowrap}
+#app .vendor-discarded-bulkbar #discardedSelectedCount{position:static!important;flex:1 1 auto;white-space:nowrap}
+#app .vendor-discarded-bulkbar .btn{margin-left:auto!important}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
