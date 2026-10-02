@@ -11587,8 +11587,8 @@ async function renderBuyerProfile() {
   const wishlistCount = (favoriteIds?.size || 0) + (packageFavoriteIds?.size || 0);
   const memberSince = profile.created_at ? new Date(profile.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "";
 
-  let html = `<div class="vendor-profile-header-card">
-    <div class="vendor-profile-header-cover"></div>
+  // Customers have no public storefront, so no cover banner either.
+  let html = `<div class="vendor-profile-header-card buyer-profile-card">
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "4.4rem", "vendor-profile-header-avatar", profile.name || profile.email)}
@@ -17838,7 +17838,7 @@ async function renderCommissionServiceDetail(product,priceHint,offers){
     <div class="product-detail-top-actions"><button class="fav-btn ${favoriteIds.has(product.id)?'active':''}" onclick="toggleFavorite(event,'${product.id}')" aria-label="Save to wishlist">${favoriteIds.has(product.id)?"<i class='fa-solid fa-heart'></i>":"<i class='fa-regular fa-heart'></i>"}</button><button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share service"><i class="fa-solid fa-share-nodes"></i></button></div>
     <h2 class="product-detail-title">${esc(product.name)} <span class="badge">Service</span></h2>
     ${image?`<div class="product-detail-media"><div class="product-gallery"><div class="product-gallery-main"><img src="${esc(image)}" alt="${esc(product.name)}" loading="eager" /></div></div></div>`:''}
-    <div class="service-vendor-info-block"><div class="service-vendor-info-head" role="button" tabindex="0" style="cursor:pointer;" onclick="navigate('storefront',{vendorId:'${vendor.id}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${vendor.id}'})}"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating">★ ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div><div class="service-vendor-contact-actions"><button type="button" class="btn btn-sm" onclick="startConversationWithVendor('${vendor.id}')"><i class="fa-solid fa-comment-dots"></i> Message vendor</button></div></div>
+    <div class="service-vendor-info-block"><div class="service-vendor-info-head" role="button" tabindex="0" style="cursor:pointer;" onclick="navigate('storefront',{vendorId:'${vendor.id}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${vendor.id}'})}"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating">★ ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div></div>
     <div class="service-description-block"><h3>About this service</h3><p>${esc(stripProductVariantMeta(product.description||'No description provided.'))}</p></div>
     ${priceHint?`<div class="service-price-hint"><i class="fa-solid fa-chart-line"></i> <strong>Past agreed prices:</strong> ${naira(priceHint.min)}${priceHint.min!==priceHint.max?' – '+naira(priceHint.max):''} <span>(last ${priceHint.count} completed bookings)</span></div>`:''}
   </div>`;
@@ -19146,18 +19146,7 @@ async function renderStorefrontInner(vendorId) {
       <div class="storefront-name-row">
         <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
         <div class="storefront-name-actions">
-          ${!isOwnStorefront && profile?.role !== "admin" ? (() => {
-            const reachable = canMessageVendorNow(v);
-            const hoursStatus = vendorHoursStatus(v);
-            if (!reachable) {
-              return `<div class="storefront-contact-wrap storefront-contact-closed" title="${esc(`${v.business_name || "This vendor"} is outside working hours right now${hoursStatus.todayText ? ` (${hoursStatus.todayLabel}: ${hoursStatus.todayText})` : ""}.`)}">
-                <i class="fa-regular fa-clock"></i><span>Outside working hours</span>
-              </div>`;
-            }
-            // In-app messaging only -- see the product-detail page's same
-            // change for why WhatsApp/Call are gone from here too.
-            return `<button class="btn btn-sm storefront-social-icon" type="button" onclick="startConversationWithVendor('${v.id}')"><i class='fa-solid fa-comment-dots'></i><span>Message</span></button>`;
-          })() : ""}
+          ${"" /* No Message button on a storefront: customers can only message a vendor from an accepted order. */}
         </div>
       </div>
       <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${storefrontDistanceHtml(v)}${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
@@ -19669,7 +19658,6 @@ async function renderRequestEquipment() {
             <div class="flex">
               ${o.price != null ? `<strong>${naira(o.price)}</strong>` : ""}
               <span class="badge ${o.status === "accepted" ? "success" : o.status === "declined" ? "danger" : ""}">${esc(o.status)}</span>
-              <button class="btn btn-sm btn-outline" type="button" onclick="startConversationWithVendor('${o.vendor_id}')" title="Message vendor" aria-label="Message vendor"><i class='fa-solid fa-comment-dots'></i></button>
               ${r.status === "open" && o.status === "pending" ? `<button class="btn btn-sm" onclick="acceptOffer('${o.id}')">Accept</button><button class="btn btn-sm btn-danger" onclick="declineOffer('${o.id}')">Decline</button>` : ""}
             </div>
           </div>
@@ -24258,11 +24246,11 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     html += `<div class="card"><h3><i class="fa-solid fa-location-dot"></i> Pickup location</h3>
       ${addr ? `<p>${addr}</p>` : `<p class="muted">This vendor hasn't listed a pickup address yet. Message them to confirm where to collect your order.</p>`}
       ${order.vendor?.opening_hours ? `<p class="muted" style="font-size:0.85rem;"><i class="fa-solid fa-clock"></i> ${esc(order.vendor.opening_hours)}</p>` : ""}
-      <div class="order-vendor-message-wrap pickup-message-vendor-wrap">
+      ${["confirmed", "payment_unresolved", "handed_over", "returned", "disputed"].includes(String(order.status || "")) ? `<div class="order-vendor-message-wrap pickup-message-vendor-wrap">
         <button class="btn btn-sm order-message-vendor-btn" type="button" data-draft="${esc(pickupMessageDraft(order))}" onclick="startConversationWithVendor('${order.vendor.id}', this.dataset.draft)" aria-label="Message vendor to confirm pickup" title="Message vendor to confirm pickup">
           <i class="fa-solid fa-comment-dots"></i> Message vendor to confirm pickup
         </button>
-      </div>
+      </div>` : ""}
     </div>`;
   }
 
@@ -33216,7 +33204,7 @@ window.renderVendorMapRail = function(){
         const row=document.createElement('button'); row.type='button';
         row.className='notif-message-summary'+(unread?' unread':'');
         const av=avatar ? `<img class="notif-summary-avatar" src="${esc(avatar)}" alt="">` : `<span class="notif-summary-avatar">${esc(initials(sender))}</span>`;
-        row.innerHTML=`${av}<span class="notif-message-summary-copy"><span class="notif-message-summary-title">New message from ${esc(sender)}</span><span class="notif-message-summary-count">${groupRows.length} multiple messages${unread?` · ${unread} unread`:''}</span><span class="notif-message-summary-sub">${esc(latest)}</span></span><i class="fa-solid fa-chevron-right" style="color:var(--text-muted);font-size:.72rem;"></i>`;
+        row.innerHTML=`${av}<span class="notif-message-summary-copy"><span class="notif-message-summary-title">New message from ${esc(sender)}</span>${unread>1?`<span class="notif-message-summary-count">${unread} new messages</span>`:''}<span class="notif-message-summary-sub">${esc(latest)}</span></span><i class="fa-solid fa-chevron-right" style="color:var(--text-muted);font-size:.72rem;"></i>`;
         row.addEventListener('click',async()=>{
           if(ids.length){
             await sb.from('notifications').update({read:true}).in('id',ids);
@@ -42580,6 +42568,22 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 #bottomNav .bottom-nav-item[onclick*="rders"]:has(.bn-badge) .bn-icon > i,
 #bottomNav .bottom-nav-item[onclick*="rders"]:has(.bn-badge) .bn-icon > svg{animation:levroBulge 1.6s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){#messagesWrap .icon-btn > i,#bottomNav .bn-icon > i,#bottomNav .bn-icon > svg{animation:none !important}}
+
+/* Storefront catalogue tabs: underline, not a rounded highlight. */
+#app .storefront-catalog-tabs{display:flex !important;gap:.15rem !important;border-bottom:1px solid var(--border) !important;background:transparent !important;border-radius:0 !important;padding:0 !important;margin:.8rem 0 .9rem !important}
+#app .storefront-catalog-tab,
+#app .storefront-catalog-tab:hover{background:transparent !important;background-image:none !important;border:0 !important;border-bottom:3px solid transparent !important;border-radius:0 !important;box-shadow:none !important;margin:0 0 -1px !important;padding:.65rem .85rem .55rem !important;color:var(--text-muted) !important;-webkit-text-fill-color:var(--text-muted) !important;font-weight:700 !important}
+#app .storefront-catalog-tab.active{background:transparent !important;background-color:transparent !important;border:0 !important;border-bottom:3px solid var(--primary) !important;border-radius:0 !important;color:var(--text) !important;-webkit-text-fill-color:var(--text) !important;font-weight:800 !important}
+/* Customer profile has no cover banner. */
+.buyer-profile-card .vendor-profile-header-body{padding-top:1rem !important}
+.buyer-profile-card .vendor-profile-header-avatar-row{margin-top:0 !important}
+/* Browse everything: filter on the left, search on the right. */
+#app .browse-filter-toolbar{display:flex !important;align-items:center !important;justify-content:space-between !important;gap:.55rem !important;flex-wrap:wrap}
+#app .browse-filter-toolbar > .browse-filter-trigger{order:1}
+#app .browse-filter-toolbar > .levro-final-search-toggle{order:2;margin-left:auto}
+#app .browse-filter-toolbar > #searchInput,#app .browse-filter-toolbar > .levro-compact-search-wrap{order:3}
+#app .browse-filter-toolbar.final-search-open > #searchInput{flex:1 1 100% !important;order:5 !important;width:100% !important}
+#app .browse-filter-toolbar.final-search-open > .levro-final-search-toggle{order:2 !important;margin-left:auto !important;position:static !important}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
