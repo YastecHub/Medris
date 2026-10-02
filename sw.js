@@ -1,5 +1,5 @@
-const CACHE = 'levromart-shell-v8';
-const RUNTIME = 'levromart-runtime-v8';
+const CACHE = 'levromart-shell-v9';
+const RUNTIME = 'levromart-runtime-v9';
 const OFFLINE_FALLBACK = '/';
 
 self.addEventListener('install', event => {
@@ -224,8 +224,12 @@ self.addEventListener('push', event => {
 
           badge,
 
+          // Incoming calls get Answer / Decline buttons right on the notification.
+          actions: Array.isArray(data.actions) ? data.actions : (Array.isArray(declarative?.actions) ? declarative.actions : undefined),
+
           data: {
             url,
+            call: data.call || null,
             // Carried straight through from the push payload so a tap can
             // route the already-open app in-app (see notificationclick
             // below) instead of only ever having a bare URL to work with.
@@ -280,6 +284,18 @@ self.addEventListener('notificationclick', event => {
 
   const notifData = event.notification?.data || {};
   const target = notifData.url || '/';
+
+  // "Decline" on an incoming call: reject it without opening the app.
+  if (event.action === 'decline' && notifData.call && notifData.call.id) {
+    event.waitUntil(
+      fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'decline-call', callId: notifData.call.id, token: notifData.call.token })
+      }).catch(() => {})
+    );
+    return;
+  }
 
 
   event.waitUntil(

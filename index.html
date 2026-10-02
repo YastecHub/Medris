@@ -7762,7 +7762,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 <div id="requiredBuyerPhoneModal" class="modal hidden" data-lock="true">
   <div class="modal-content" style="max-width:400px;">
     <h3><i class="fa-solid fa-phone"></i> Add your phone number</h3>
-    <p class="muted" style="margin:.6rem 0 1rem;">A phone number is required for every customer account on Levromart. It helps vendors contact you about your order and delivery.</p>
+    <p class="muted" style="margin:.6rem 0 1rem;">A phone number is required for every customer account on Levromart. It helps keep your account secure and lets Levromart reach you about your orders. It is not shown to vendors.</p>
     <div id="requiredBuyerPhoneError" class="error-text hidden"></div>
     <label for="requiredBuyerPhoneInput">Phone number *</label>
     <input type="tel" id="requiredBuyerPhoneInput" inputmode="tel" autocomplete="tel" placeholder="e.g. 08012345678" />
@@ -7997,7 +7997,7 @@ function brandSpinnerHtml(label) {
   </div></div>`;
 }
 setLogoMask(document.getElementById("brandLogoRight"), LEVROMART_LOGO_RIGHT);
-document.getElementById("loginModalLogo").src = MEDRIS_LOGO;
+document.getElementById("loginModalLogo").src = "icon-192.png";
 document.getElementById("aiChatFabLogo").src = MEDRIS_LOGO;
 document.getElementById("tourLeviLogo").src = MEDRIS_LOGO;
 document.getElementById("aiChatHeaderLogo").src = MEDRIS_LOGO;
@@ -8174,7 +8174,9 @@ async function enablePushNotifications() {
 const HOME_TOUR_STEPS = [
   { icon: "fa-hand-sparkles", title: "Hi, I'm Levi", body: "I'll walk you through the app myself, live, on the actual site. Just follow me around.", selector: null, view: "home" },
   { icon: "fa-house", title: "This is Home", body: "Tap Home in the bottom bar any time, from anywhere in the app, and I'll bring you straight back here.", selector: `#bottomNav .bottom-nav-item[onclick*="navigate('home')"]`, view: "home" },
-  { icon: "fa-magnifying-glass", title: "Search anything", body: "Products, services or a vendor by name — tap here any time to search the whole marketplace.", selector: ".header-search-row", view: "home" },
+  { icon: "fa-magnifying-glass", title: "Search anything", body: "Tap here to search the whole marketplace, then narrow it with the All, Products, Vendors, Services and Packages tabs. Recent searches are remembered for you.", selector: ".header-search-row", view: "home" },
+  { icon: "fa-shapes", title: "Browse by category", body: "These are the categories vendors are actually selling in right now. Tap one and everything below — trending items, vendors, services, packages and Browse everything — narrows to it. Tap it again to go back to normal.", selector: ".levro-home-cat-rail", view: "home" },
+  { icon: "fa-images", title: "Offers and news", body: "Swipe the banners left or right, or just wait — they move along on their own and pause the moment you touch them.", selector: ".home-promotional-carousel", view: "home" },
   { icon: "fa-bolt", title: "Quick actions", body: "These six shortcuts take you straight to shopping, services, rentals, trusted vendors, item requests, and direct chat — without digging through the marketplace.", selector: ".levro-home-quick-actions", view: "home" },
   {
     icon: "fa-map-location-dot", title: "Find vendors near you", body: "Every verified vendor, plotted on a real map, closest first. Tap any pin — or any card up here — to open that vendor's storefront.",
@@ -8182,6 +8184,7 @@ const HOME_TOUR_STEPS = [
     onEnter: async () => { try { await switchVendorsView("map"); } catch (_) {} },
   },
   { icon: "fa-compass", title: "Get around from here", body: "The bottom bar is always one tap away, wherever you are on the site.", selector: "#bottomNav", view: "home" },
+  "ORDERS_TOUR_STEP",
   "MESSAGES_TOUR_STEP",
   {
     icon: "fa-user", title: "Your profile, one tap away", body: "Your account, your orders, your saved items and settings — all live in this panel, wherever you are in the app.",
@@ -8189,12 +8192,16 @@ const HOME_TOUR_STEPS = [
     onEnter: () => { try { toggleProfilePanel(); } catch (_) {} },
     onExit: () => { try { closeAllPanels(); } catch (_) {} },
   },
-  { icon: "fa-comments", title: "That's me, right there", body: "Tap this any time to talk to me. Ask what to buy, and I'll point you straight to a vendor, or explain how anything on here works.", selector: "#aiChatFab", view: "home" },
+  { icon: "fa-comments", title: "That's me, right there", body: "Tap this any time to talk to me. Ask what to buy, and I'll point you straight to a vendor, or explain how anything on here works. In my way? Long-press me to hide me, and triple-tap anywhere on the page to bring me back.", selector: "#aiChatFab", view: "home" },
   "NOTIFICATIONS_TOUR_STEP",
 ];
 function buildMessagesTourStep() {
   if (!session || profile?.role === "admin") return null;
-  return { icon: "fa-comment-dots", title: "Message a vendor directly", body: "Every conversation with every vendor lives here — ask a question before you buy, or sort out an order after.", selector: "#messagesWrap", view: "home" };
+  return { icon: "fa-comment-dots", title: "Message a vendor directly", body: "Chat opens with a vendor once they accept your order, so you can sort out the details together. You can also call them in-app with the phone button — your number is never shared. The chat is removed 24 hours after the order is completed.", selector: "#messagesWrap", view: "home" };
+}
+function buildOrdersTourStep() {
+  if (!session || profile?.role === "admin") return null;
+  return { icon: "fa-receipt", title: "Your orders", body: "Follow every order from here. Finished and cancelled orders sit under the history button, where you can search by product or shop and filter by Completed or Cancelled.", selector: `#bottomNav .bottom-nav-item[onclick*="Orders"]`, view: "home" };
 }
 function buildNotificationsTourStep() {
   if (!session) return null;
@@ -8204,12 +8211,12 @@ function buildNotificationsTourStep() {
   return { icon: "fa-bell", title: "Stay in the loop", body: "Notifications live in your bottom bar — tap here any time to see orders, offers and updates.", selector: `#bottomNav .bottom-nav-item[onclick*="navigate('notifications')"]`, view: "home" };
 }
 function resolveTourSteps(steps) {
-  return steps.map((s) => s === "MESSAGES_TOUR_STEP" ? buildMessagesTourStep() : s === "NOTIFICATIONS_TOUR_STEP" ? buildNotificationsTourStep() : s).filter(Boolean);
+  return steps.map((s) => s === "ORDERS_TOUR_STEP" ? buildOrdersTourStep() : s === "MESSAGES_TOUR_STEP" ? buildMessagesTourStep() : s === "NOTIFICATIONS_TOUR_STEP" ? buildNotificationsTourStep() : s).filter(Boolean);
 }
 // Shown only to vendors, appended after the shared home steps: your full
 // profile page carries the same at-a-glance stats (listings, reviews,
 // rating, followers) that customers see on your public storefront.
-const VENDOR_TOUR_STEP = { icon: "fa-store", title: "Your shop, at a glance", body: "Your full profile shows your listings, reviews, rating and followers — the same numbers customers see when they visit your storefront.", selector: ".storefront-stats", view: "vendorDashboard" };
+const VENDOR_TOUR_STEP = { icon: "fa-store", title: "Your shop, at a glance", body: "Your full profile shows your listings, reviews, rating and followers — the same numbers customers see when they visit your storefront. When you owe commission, the amount and the days left show right here, and we remind you 5, 3, 2 and 1 days before the deadline so nothing gets paused.", selector: ".commission-card, .storefront-stats", view: "vendorDashboard" };
 // Placeholder only -- showTour() rebuilds this with resolveTourSteps() once
 // session/profile/vendor (declared with let further down this same script)
 // are actually live; calling resolveTourSteps() here at parse time would hit
@@ -18318,7 +18325,7 @@ function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, 
     </div>
     <div id="${prefix}DeliveryFields" class="dyn-delivery-fields" style="margin-bottom:0.9rem;" data-vendor-lat="${vendorLat ?? ""}" data-vendor-lng="${vendorLng ?? ""}" data-fee="${fee}" data-fee-mode="${esc(feeMode || "flat")}" data-per-km="${Number(perKm) || 0}" data-pickup-label="${esc(pickupLabel || "Pickup")}" data-item-total="${fixedItemTotal != null ? Number(fixedItemTotal) : ""}">
       <input type="text" id="${prefix}Address" placeholder="Delivery address" value="${esc(profile?.address || "")}" />
-      <input type="tel" id="${prefix}Phone" placeholder="Phone number (so the vendor can reach you)" value="${esc(profile?.phone || "")}" />
+      <input type="tel" id="${prefix}Phone" placeholder="Phone number (kept private, used for your order)" value="${esc(profile?.phone || "")}" />
       ${!isDistance && fee > 0 ? `<p class="delivery-fee-line" style="margin:0.35rem 0 0;"><i class="fa-solid fa-truck"></i> <strong>${naira(fee)}</strong> delivery fee</p>` : ""}
       ${isDistance || hasVendorLoc ? `<p class="delivery-fee-line" style="margin:0.35rem 0 0;" id="${prefix}FeeLine">${deliveryInfoLineHtml(prefix, isDistance, hasVendorLoc, vendorLat, vendorLng, perKm)}</p>` : ""}
       <div id="${prefix}PriceBreakdown" class="price-breakdown-table" aria-live="polite"></div>
@@ -26694,9 +26701,12 @@ async function adminExportPeople(role, format) {
   const people = adminPeopleRowsForExport(role);
   const label = role === "vendor" ? "vendors" : "buyers";
   if (!people.length) { showToast(`No ${label} to export.`, "info"); return; }
-  const rows = people.map((p,i) => [i+1,p.name||"-",p.email||"-",p.role||"-",p.city||"-",p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}) : "-",p.suspended_at ? "Suspended" : "Active"]);
+  const joined = (p) => p.created_at ? new Date(p.created_at).toLocaleString("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "-";
+  // Every column of the People table, phone numbers included.
+  const head = ["#","Name","Email","Phone","City","Role","Joined","Status"];
+  const rows = people.map((p,i) => [i+1,p.name||"-",p.email||"-",p.phone||"-",p.city||"-",p.role||"-",joined(p),p.suspended_at ? "Suspended" : "Active"]);
   if (format === "csv") {
-    const csv = [["#","Name","Email","Role","City","Joined","Status"], ...rows].map(r => r.map(adminCsvEscape).join(",")).join("\r\n");
+    const csv = [head, ...rows].map(r => r.map(adminCsvEscape).join(",")).join("\r\n");
     const blob = new Blob(["\ufeff",csv], {type:"text/csv;charset=utf-8"});
     const a = document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`levromart-${label}-${new Date().toISOString().slice(0,10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
     showToast(`${label[0].toUpperCase()+label.slice(1)} CSV downloaded.`, "success"); return;
@@ -26704,12 +26714,32 @@ async function adminExportPeople(role, format) {
   try {
     const jsPDF = await ensureAdminJsPdf();
     const doc = new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
-    const margin=12, pageW=297, pageH=210, rowH=8, cols=[10,42,78,18,34,38,32];
-    let y=16;
-    const title=label[0].toUpperCase()+label.slice(1);
-    const drawHeader=()=>{ doc.setFontSize(14); doc.text(`Levromart — ${title}`,margin,y); y+=6; doc.setFontSize(8); doc.text(`Downloaded ${new Date().toLocaleString("en-GB")}`,margin,y); y+=7; doc.setFontSize(7); let x=margin; ["#","Name","Email","Role","City","Joined","Status"].forEach((h,i)=>{doc.setFont(undefined,"bold");doc.text(h,x,y);x+=cols[i];}); y+=4; doc.setFont(undefined,"normal"); };
+    // Real (selectable) PDF text, so names, emails and phone numbers can be copied.
+    // Long values wrap instead of being cut off; the standard PDF font only covers
+    // Latin characters, so anything outside that range is dropped from the PDF copy.
+    const clean = (v) => String(v ?? "").replace(/[^\u0020-\u00FF]/g, "").trim() || "-";
+    const margin = 10, pageH = 210, lineH = 4.2, cols = [9, 46, 66, 30, 30, 16, 36, 22];
+    const title = label[0].toUpperCase() + label.slice(1);
+    let y = 16;
+    const drawHeader = () => {
+      doc.setFont(undefined, "bold"); doc.setFontSize(14); doc.text(`Levromart - ${title} (${people.length})`, margin, y); y += 6;
+      doc.setFont(undefined, "normal"); doc.setFontSize(8); doc.text(`Downloaded ${new Date().toLocaleString("en-GB")}`, margin, y); y += 7;
+      doc.setFont(undefined, "bold"); doc.setFontSize(8);
+      let x = margin; head.forEach((h, i) => { doc.text(h, x, y); x += cols[i]; });
+      y += 2; doc.setDrawColor(150); doc.line(margin, y, margin + cols.reduce((a, c) => a + c, 0), y); y += 4.5;
+      doc.setFont(undefined, "normal");
+    };
     drawHeader();
-    rows.forEach((r)=>{ if(y>pageH-12){doc.addPage();y=16;drawHeader();} let x=margin; r.forEach((v,i)=>{let text=String(v); const max=Math.max(10,cols[i]-2); const approx=Math.floor(max*1.65); if(text.length>approx) text=text.slice(0,Math.max(0,approx-1))+"…"; doc.text(text,x,y); x+=cols[i];}); y+=rowH; });
+    doc.setFontSize(8);
+    rows.forEach((r) => {
+      const cells = r.map((v, i) => doc.splitTextToSize(clean(v), cols[i] - 2));
+      const h = Math.max(...cells.map((c) => c.length)) * lineH;
+      if (y + h > pageH - 10) { doc.addPage(); y = 16; drawHeader(); doc.setFontSize(8); }
+      let x = margin;
+      cells.forEach((lines, i) => { doc.text(lines, x, y); x += cols[i]; });
+      y += h + 1.6;
+      doc.setDrawColor(225); doc.line(margin, y - 1.2, margin + cols.reduce((a, c) => a + c, 0), y - 1.2);
+    });
     doc.save(`levromart-${label}-${new Date().toISOString().slice(0,10)}.pdf`); showToast(`${title} PDF downloaded.`, "success");
   } catch(err) { showToast(err?.message || "Could not create PDF.", "error"); }
 }
@@ -27403,12 +27433,13 @@ function refreshAuthStateOnce() {
 function renderTerms() {
   return `<div class="legal-page">
     <h2>Terms of Service</h2>
-    <p class="muted">Last updated: 17 September 2026</p>
+    <p class="muted">Last updated: 2 October 2026</p>
     <p>Levromart is an online marketplace that connects buyers with independent vendors across Lagos, including healthcare equipment, food, electronics, packages/bundles, and other goods and services, for both rental and outright purchase. By creating an account or using Levromart, you agree to these terms.</p>
 
     <h3>1. What Levromart is (and isn't)</h3>
     <p>Levromart is a marketplace and transaction-facilitation platform. We provide the technology, vendor onboarding/verification, payment and order records, messaging, and dispute process. We are not the seller or renter of record for a vendor's listing. Every product, service, or package is supplied by the independent vendor shown on the listing, and that vendor is responsible for the legality, authenticity, condition, safety, availability, accuracy, and fulfilment of what they offer.</p>
     <p>Vendor verification means that Levromart has completed the verification checks required for that account; it is not a guarantee that every future transaction or listing by that vendor will be problem-free.</p>
+    <p>Only categories that currently have live listings from verified vendors are shown when you browse by category; the marketplace, its promotions and its search results change as vendors add or remove listings.</p>
 
     <h3>2. Accounts</h3>
     <p>You must provide accurate information when registering. A phone number and password are required; an email address is optional. You're responsible for keeping your password secure and for all activity under your account. Vendor accounts additionally require identity/business verification before their storefront goes live.</p>
@@ -27420,24 +27451,34 @@ function renderTerms() {
       <li>Rentals may require a refundable deposit. If there's a dispute over damage or non-return, Levromart's dispute resolution process decides how it's handled, including a refund from Levromart where warranted.</li>
       <li>Vendors set their own prices. Eligible listings may use commission-based billing or a monthly listing fee; monthly listings require a ₦1,000 activation payment before they go live and the fee covers one month.</li>
       <li>Some vendors accept offline payment (cash/transfer) on handover. Levromart still tracks any commission owed on commission-based listings.</li>
+      <li><strong>Commission payment window:</strong> commission on a completed sale is due within a 7-day payment window. Your dashboard shows the amount owed and the time left, and we send reminders 5, 3, 2 and 1 days before the deadline. If the balance is still unpaid after the deadline, Levromart may pause the vendor's storefront until it is settled.</li>
     </ul>
 
-    <h3>4. Cancellations, scams &amp; disputes</h3>
+    <h3>4. Messaging, calls &amp; chat history</h3>
+    <ul>
+      <li>Customers and vendors can message each other only while they have an accepted order together. A vendor cannot see a customer's name until the order is accepted.</li>
+      <li>In-app voice calls are available in the same conversations. Calls run through the Levromart app and your internet connection; your phone number is not shown to the other person. Levromart does not record call audio.</li>
+      <li>When an order is completed, the conversation stays available for 24 hours and is then removed so the two sides do not keep communicating outside an order. A copy of the messages is kept in a restricted archive for up to 30 days so that a late dispute can still be judged; only Levromart administrators can open it.</li>
+      <li>Keep conversations and calls about the order. Do not use them to harass anyone, to share personal phone numbers, or to move a sale off Levromart to avoid commission or payment protections. Levromart administrators may review a conversation when a report or dispute is raised, and may restrict messaging or calling for accounts that break these rules.</li>
+      <li>Calls need microphone permission. You can allow incoming-call notifications in your device and Levromart settings; if they are off you may miss a call.</li>
+    </ul>
+
+    <h3>5. Cancellations, scams &amp; disputes</h3>
     <p>See our <a href="#" onclick="navigate('refundPolicy');return false;">Refund &amp; Cancellation Policy</a> for cancellation windows. If a customer believes they have been scammed, received a counterfeit or materially misrepresented item, paid for an order that was not fulfilled, or otherwise suffered a transaction problem, they should report it through the order's dispute process as soon as possible and provide payment records, messages, photos, delivery/handover evidence, and any other relevant evidence.</p>
     <p>The vendor is the primary party responsible for the goods, services, package contents, representations, and fulfilment of the transaction. Levromart may pause the vendor, restrict the account, preserve relevant records, investigate the complaint, and direct a refund or other remedy where the platform's policies and the available evidence support it. Levromart may also cooperate with lawful requests from regulators or law-enforcement authorities.</p>
     <p>Nothing in these terms removes any right or remedy that cannot lawfully be excluded or limited under Nigerian law.</p>
 
-    <h3>5. Prohibited use</h3>
-    <p>No listing or sale of counterfeit, unsafe, expired, stolen, or unlicensed goods, including medical equipment that requires regulatory approval, food that doesn't meet basic safety standards, or any item Nigerian law restricts the sale of. No harassment of other users. No attempting to circumvent Levromart payments to avoid commission. This undermines the customer protections (verified vendors, dispute resolution, payment records) that come with paying through the platform.</p>
+    <h3>6. Prohibited use</h3>
+    <p>No listing or sale of counterfeit, unsafe, expired, stolen, or unlicensed goods, including medical equipment that requires regulatory approval, food that doesn't meet basic safety standards, or any item Nigerian law restricts the sale of. No harassment of other users. No attempting to circumvent Levromart payments to avoid commission, and no using chat or calls to take a sale off the platform. This undermines the customer protections (verified vendors, dispute resolution, payment records) that come with paying through the platform.</p>
 
-    <h3>6. Account suspension</h3>
+    <h3>7. Account suspension</h3>
     <p>Levromart may pause or suspend a vendor's storefront or a user's account for violations of these terms, fraud, or repeated disputes, with notice where practical.</p>
 
-    <h3>7. Liability</h3>
+    <h3>8. Liability</h3>
     <p>To the extent permitted by law, Levromart is not responsible for a vendor's independent acts, omissions, representations, goods, services, package contents, or fulfilment. However, Levromart remains responsible for obligations that the law places on Levromart itself, including obligations arising from services that Levromart directly provides. Any limitation of liability in these terms applies only to the extent it is lawful and was properly brought to the user's attention.</p>
     <p>Nothing here prevents a customer from using the dispute process, seeking a refund where the applicable policy allows it, or exercising rights available under Nigerian consumer-protection or other applicable law. Always inspect goods before accepting them, and consult a licensed healthcare provider for clinical use questions about medical equipment.</p>
 
-    <h3>8. Contact</h3>
+    <h3>9. Contact</h3>
     <p>Questions about these terms can be raised through your account, or with a Levromart admin via a <a href="#" class="legal-inline-link" onclick="navigate('supportRequest');return false;">support request</a>.</p>
   </div>`;
 }
@@ -27445,7 +27486,7 @@ function renderTerms() {
 function renderPrivacy() {
   return `<div class="legal-page">
     <h2>Privacy Policy</h2>
-    <p class="muted">Last updated: 17 September 2026</p>
+    <p class="muted">Last updated: 2 October 2026</p>
     <p>This explains what personal data Levromart collects, why, and how it's protected.</p>
 
     <h3>1. What we collect</h3>
@@ -27454,10 +27495,14 @@ function renderPrivacy() {
       <li><strong>Order data:</strong> what you bought/rented, delivery address, order status, and payment status (not your card number; that's handled entirely by Paystack).</li>
       <li><strong>Usage data:</strong> product/package views, wishlist saves, searches, and interactions, used to improve search relevance and show relevant listings or package recommendations.</li>
       <li><strong>Photos:</strong> profile pictures, vendor product photos, and package/gallery photos you choose to upload.</li>
+      <li><strong>Messages and call records:</strong> the messages you send in order conversations, and basic call records (who called whom, when, and whether it was answered, declined or missed). Call audio travels directly between the two devices and is not recorded or stored by Levromart.</li>
+      <li><strong>Online status:</strong> while you are using the app we note when you were last active so the person you are chatting with can see that you are online or when you were last seen.</li>
+      <li><strong>Notifications:</strong> if you allow them, a push-notification address for your device so we can alert you about orders, messages, incoming calls and commission reminders.</li>
+      <li><strong>Location:</strong> if you turn on Location sharing in Settings, your device location is used to show nearby vendors and distances. You can turn it off at any time. Vendors publish their shop location so customers can find them.</li>
     </ul>
 
     <h3>2. How we use it</h3>
-    <p>To run the marketplace: process orders and payments, verify vendors, show buyers and vendors each other's contact details once an order is placed, send order/notification updates, improve search relevance, and make marketplace/package recommendations that are relevant to your activity. We do not sell your personal data to third parties.</p>
+    <p>To run the marketplace: process orders and payments, verify vendors, let a customer and a vendor message and call each other once an order is accepted (a vendor sees the customer's name only after accepting, and phone numbers are not shown to the other party), send order, call and commission-reminder notifications, improve search relevance, and make marketplace/package recommendations that are relevant to your activity. We do not sell your personal data to third parties.</p>
 
     <h3>3. Who it's shared with</h3>
     <ul>
@@ -27465,11 +27510,14 @@ function renderPrivacy() {
       <li><strong>Supabase:</strong> our database and file storage provider, which hosts the data described above.</li>
       <li><strong>Google Gemini:</strong> powers the in-app AI assistant; only the text of your chat messages is sent, never your account or order data.</li>
       <li>The vendor or buyer on an order you're part of, so they can fulfill/receive it.</li>
+      <li><strong>Cloudflare:</strong> serves public listing, banner and profile images.</li>
+      <li><strong>Browser push services and call-connection servers:</strong> deliver notifications and help two devices connect for a voice call; they handle connection details, not call audio content.</li>
     </ul>
+    <p><strong>How long we keep conversations:</strong> an order conversation is removed 24 hours after the order is completed. A copy is kept in a restricted archive for up to 30 days, readable only by Levromart administrators, so that a late dispute can be reviewed, and is then deleted. Records needed for payments, disputes, fraud prevention and legal compliance may be kept longer.</p>
     <p>Your conversations with Levi are saved to your account so they're there when you come back, and are visible only to you: searchable, and deletable any time from the chat panel. Levromart's team does not read them unless you turn on "Help improve Levi" in Settings, which is off by default.</p>
 
     <h3>4. Your choices</h3>
-    <p>You can edit your profile information from your account settings. If you want to close your Levromart account, contact Levromart Support; closure is subject to necessary legal, transaction, dispute, payment, fraud-prevention, and audit retention requirements. Operational records are not necessarily erased simply because an account is closed.</p>
+    <p>You can edit your profile information from your account settings. If you want to close your Levromart account, contact Levromart Support; you can also hide the Levi assistant, switch off location sharing and manage notifications in Settings. Closure is subject to necessary legal, transaction, dispute, payment, fraud-prevention, and audit retention requirements. Operational records are not necessarily erased simply because an account is closed.</p>
 
     <h3>5. Security</h3>
     <p>Passwords are never stored in plain text (handled by Supabase Auth). Every account, including ones created with Google, has a password on file so account actions that require it (like deleting your account) work consistently. Access to vendor verification documents and payment records is restricted to the account owner and admins.</p>
@@ -27483,7 +27531,7 @@ function renderPrivacy() {
 function renderRefundPolicy() {
   return `<div class="legal-page">
     <h2>Refund &amp; Cancellation Policy</h2>
-    <p class="muted">Last updated: 17 September 2026</p>
+    <p class="muted">Last updated: 2 October 2026</p>
 
     <h3>1. Before a vendor confirms your order</h3>
     <p>You can cancel freely from your Orders page. Any payment already made online is refunded in full to your original payment method via Paystack (refunds typically reflect within 5 - 10 business days, per Paystack's processing time).</p>
@@ -27500,7 +27548,10 @@ function renderRefundPolicy() {
     <h3>5. Vendor no-shows or non-delivery</h3>
     <p>If a vendor fails to deliver/hand over confirmed equipment, the customer is entitled to a full refund of any amount paid online through Levromart.</p>
 
-    <h3>6. How refunds are paid</h3>
+    <h3>6. Chat and calls after an order</h3>
+    <p>You can message and call the vendor while your order is accepted and in progress, for example to arrange delivery or raise a problem. Once an order is completed the chat stays open for 24 hours and then closes. If something is wrong with a completed order, raise it as a dispute from the order page within the time limit in section 4 rather than through chat, so that your evidence is recorded.</p>
+
+    <h3>7. How refunds are paid</h3>
     <p>Refunds for online payments are issued back through Paystack to your original payment method. For orders paid offline (cash/transfer directly to the vendor), any refund is arranged directly between buyer and vendor, with Levromart admins available to mediate a dispute.</p>
   </div>`;
 }
@@ -30572,11 +30623,11 @@ if ("serviceWorker" in navigator) {
 </style>
 <script id="levromart-legal-consent-final-js">
 (function(){
-  const CURRENT_LEGAL_VERSION="2026-09-17"; let gate=null,busy=false;
+  const CURRENT_LEGAL_VERSION="2026-10-02"; let gate=null,busy=false;
   function bodyFor(view){return view==="privacy"?renderPrivacy():view==="refundPolicy"?renderRefundPolicy():renderTerms();}
   function showGate(view="terms"){if(!session?.user?.id)return;if(!gate){gate=document.createElement("div");gate.className="levromart-legal-consent-backdrop";gate.setAttribute("role","dialog");gate.setAttribute("aria-modal","true");gate.innerHTML=`<div class="levromart-legal-consent-card"><div class="levromart-legal-consent-head"><h2>Before you continue</h2><p class="muted" style="margin:0;font-size:.82rem;">Please review Levromart's current Terms of Service, Privacy Policy, and Refund &amp; Cancellation Policy. You need to accept the current agreement to continue using your account.</p><div class="levromart-legal-consent-links"><button type="button" data-legal="terms">Terms of Service</button><button type="button" data-legal="privacy">Privacy Policy</button><button type="button" data-legal="refundPolicy">Refund &amp; Cancellation Policy</button></div></div><div id="levroLegalGateBody" class="levromart-legal-consent-body"></div><div class="levromart-legal-consent-foot"><div id="levroLegalGateError" class="error-text hidden"></div><button type="button" id="levroLegalGateAgree" class="btn"><i class="fa-solid fa-check"></i> Agree &amp; Continue</button></div></div>`;document.body.appendChild(gate);gate.querySelectorAll("[data-legal]").forEach(b=>b.addEventListener("click",()=>showGate(b.dataset.legal)));gate.querySelector("#levroLegalGateAgree").addEventListener("click",accept);}
     gate.querySelector("#levroLegalGateBody").innerHTML=bodyFor(view);gate.classList.remove("hidden");document.documentElement.classList.add("levromart-legal-gated");}
-  async function accept(){if(busy)return;busy=true;const b=gate?.querySelector("#levroLegalGateAgree"),e=gate?.querySelector("#levroLegalGateError");if(b)b.disabled=true;if(e)e.classList.add("hidden");try{const {data,error}=await sb.rpc("accept_legal_terms");if(error)throw error;if(!data?.accepted||String(data.version)!==CURRENT_LEGAL_VERSION)throw new Error("The legal agreement could not be recorded.");if(profile){profile.legal_terms_version=CURRENT_LEGAL_VERSION;profile.legal_terms_accepted_at=data.accepted_at||new Date().toISOString();}gate.remove();gate=null;document.documentElement.classList.remove("levromart-legal-gated");}catch(err){console.error("[Levromart] Legal consent failed:",err);if(e){e.textContent=err?.message||"Could not record your acceptance. Please try again.";e.classList.remove("hidden");}}finally{busy=false;if(b)b.disabled=false;}}
+  async function accept(){if(busy)return;busy=true;const b=gate?.querySelector("#levroLegalGateAgree"),e=gate?.querySelector("#levroLegalGateError");if(b)b.disabled=true;if(e)e.classList.add("hidden");try{const {data,error}=await sb.rpc("accept_legal_terms");if(error)throw error;if(!data?.accepted)throw new Error("The legal agreement could not be recorded.");if(profile){profile.legal_terms_version=CURRENT_LEGAL_VERSION;profile.legal_terms_accepted_at=data.accepted_at||new Date().toISOString();}gate.remove();gate=null;document.documentElement.classList.remove("levromart-legal-gated");}catch(err){console.error("[Levromart] Legal consent failed:",err);if(e){e.textContent=err?.message||"Could not record your acceptance. Please try again.";e.classList.remove("hidden");}}finally{busy=false;if(b)b.disabled=false;}}
   window.__levroCheckLegalConsent=async function(){if(!session?.user?.id)return true;let __lk="";try{__lk="levro_legal_ok_"+session.user.id;if(sessionStorage.getItem(__lk)==="1")return true;}catch(_){ __lk="";}try{const {data,error}=await sb.rpc("get_legal_terms_consent");if(error)throw error;if(data?.accepted===true){try{if(__lk)sessionStorage.setItem(__lk,"1");}catch(_){ }return true;}showGate();return false;}catch(err){
     // A network blip on this one check must never lock an already-agreed
     // user out of the app they were already using -- that's what "pops up
@@ -43015,6 +43066,9 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 .commission-soon .commission-card-bar span{background:#f59e0b;opacity:1}
 .commission-overdue .commission-card-bar span{background:#dc2626;opacity:1}
 .commission-card-copy{margin:0 0 .75rem;font-size:.85rem;color:var(--text-muted)}
+
+/* Login / sign-up: the real Levromart app icon, clean and un-glowed. */
+#loginModal .login-modal-logo{width:4.2rem !important;height:4.2rem !important;border-radius:20px !important;object-fit:cover !important;background:none !important;padding:0 !important;filter:none !important;-webkit-filter:none !important;box-shadow:0 10px 26px rgba(0,0,0,.2) !important;margin:0 auto .9rem !important}
 
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}

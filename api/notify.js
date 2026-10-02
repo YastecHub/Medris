@@ -9,7 +9,13 @@
 // one webhook call per notification now instead of two).
 
 const webpush = require("web-push");
+const crypto = require("crypto");
 const { readBody, env, sendNotificationEmail } = require("./_util");
+
+// Per-call, per-callee token (HMAC with the service key, never sent anywhere else).
+function callToken(secret, callId, calleeId) {
+  return crypto.createHmac("sha256", secret).update(`call:${callId}:${calleeId}`).digest("hex");
+}
 
 const VAPID_PUBLIC_KEY = "BJ7h-JVsXaOpYXY5st5L7esSDOPjhRROincFPTT013a1ZY3U62WIKPAoFEDzBgFB8g3H2DBNX1iRw8GzdPWR88k";
 
@@ -20,12 +26,37 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    const body = JSON.parse(await readBody(req));
+
+    // "Decline" button on an incoming-call notification, pressed while the app is
+    // closed. The service worker has no login, so it sends the one-time token that
+    // was minted for this exact call + callee when the push was created.
+    if (body.action === "decline-call") {
+      const SUPABASE_URL = env("SUPABASE_URL");
+      const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+      const svc = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
+      const callId = String(body.callId || "");
+      if (!/^[0-9a-f-]{36}$/i.test(callId)) { res.status(400).json({ error: "bad call id" }); return; }
+      const [call] = await (await fetch(`${SUPABASE_URL}/rest/v1/voice_calls?id=eq.${callId}&select=id,callee_id,status`, { headers: svc })).json();
+      if (!call || !callToken(SERVICE_KEY, call.id, call.callee_id) || callToken(SERVICE_KEY, call.id, call.callee_id) !== String(body.token || "")) {
+        res.status(401).json({ error: "Unauthorized" }); return;
+      }
+      if (call.status === "ringing") {
+        await fetch(`${SUPABASE_URL}/rest/v1/voice_calls?id=eq.${callId}&status=eq.ringing`, {
+          method: "PATCH", headers: { ...svc, Prefer: "return=minimal" },
+          body: JSON.stringify({ status: "declined", ended_at: new Date().toISOString() }),
+        });
+      }
+      res.status(200).json({ ok: true });
+      return;
+    }
+
     if (req.headers["x-webhook-secret"] !== env("EMAIL_WEBHOOK_SECRET")) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
 
-    const { notificationId } = JSON.parse(await readBody(req));
+    const { notificationId } = body;
 
     if (!notificationId) {
       res.status(400).json({ error: "notificationId required" });
@@ -163,7 +194,15 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
   // An incoming call stays on screen until it is tapped (or the caller gives up),
   // and the push expires after 45s so a stale "ringing" never shows up late.
   const isIncomingCall = n.type === "incoming_call";
+  const callId = isIncomingCall ? (n.target_params && n.target_params.callId) : null;
+  const callActions = isIncomingCall ? [
+    { action: "answer", title: "Answer" },
+    { action: "decline", title: "Decline" }
+  ] : undefined;
+  const declineToken = callId ? callToken(env("SUPABASE_SERVICE_ROLE_KEY"), callId, n.user_id) : undefined;
   const payload = JSON.stringify({
+    actions: callActions,
+    call: callId ? { id: callId, token: declineToken } : undefined,
     title: n.title,
     body: n.body,
     url,
@@ -184,6 +223,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
       tag: isIncomingCall ? "levromart-incoming-call" : `levromart-${n.id}`,
       renotify: true,
       requireInteraction: isIncomingCall,
+      actions: callActions,
       navigate: url
     }
   });
