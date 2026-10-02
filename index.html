@@ -8336,6 +8336,10 @@ async function showTour() {
   liveTourBusy = true;
   clearTourTargetLock();
   closeAllPanels();
+  // Start from a clean state: bottom bar visible, no keyboard/search mode, page at the top.
+  document.body.classList.remove("search-input-active", "levro-kbd-open");
+  document.body.classList.add("tour-active");
+  byId("bottomNav")?.classList.remove("nav-scroll-hide", "nav-scroll-shrink");
   const modal = byId("tourModal");
   modal?.classList.remove("hidden");
   trackModalOpened("tourModal");
@@ -8403,27 +8407,27 @@ async function runTourStep(token = liveTourRunToken) {
         // opaque surface for the duration of the jump so nothing moves in
         // view; the hole/callout only reappear once already correctly
         // positioned on the new spot.
-        coveredForScroll = true;
-        tourModalEl?.classList.add("tour-covering");
-        await new Promise(requestAnimationFrame);
-        el.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
-        await new Promise(requestAnimationFrame);
-        await new Promise(requestAnimationFrame);
-        // Centering the target can leave too little room above AND below for
-        // the callout, forcing it to fall back to dead-centre and overlap the
-        // spotlight hole instead of sitting cleanly next to it. If the target
-        // itself is short enough to fit the callout beside it, nudge the
-        // scroll so it sits nearer the top of the viewport, freeing up room
-        // below instead.
-        const r0 = el.getBoundingClientRect();
-        const vh0 = window.innerHeight;
-        const approxCalloutH = Math.min(vh0 * 0.46, 320) + 32;
-        if (r0.top < approxCalloutH && (vh0 - r0.bottom) < approxCalloutH && r0.height < vh0 - approxCalloutH - 40) {
-          const headerH = document.querySelector("header")?.getBoundingClientRect().height || 64;
-          window.scrollBy({ top: r0.top - (headerH + 24), left: 0, behavior: "auto" });
+        // Glide to the target: scroll smoothly while the spotlight follows the element
+        // every frame, so nothing disappears and reappears between steps.
+        tourModalEl?.classList.add("tour-tracking");
+        const holeEl = byId("tourSpotlightHole");
+        holeEl?.classList.remove("centered");
+        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        const t0 = performance.now();
+        let last = null, still = 0;
+        while (performance.now() - t0 < 1100) {
           await new Promise(requestAnimationFrame);
-          await new Promise(requestAnimationFrame);
+          if (token !== liveTourRunToken) return;
+          const r = el.getBoundingClientRect();
+          if (holeEl && r.width > 0) {
+            const pad = 8;
+            holeEl.style.top = `${Math.max(5, r.top - pad)}px`; holeEl.style.left = `${Math.max(5, r.left - pad)}px`;
+            holeEl.style.width = `${Math.max(1, r.width + pad * 2)}px`; holeEl.style.height = `${Math.max(1, r.height + pad * 2)}px`;
+          }
+          if (last !== null && Math.abs(r.top - last) < 0.5) { if (++still > 5) break; } else still = 0;
+          last = r.top;
         }
+        tourModalEl?.classList.remove("tour-tracking");
       }
       lockTourTarget(el);
     }
@@ -8567,6 +8571,7 @@ async function tourBack() {
 }
 
 function finishTour() {
+  document.body.classList.remove("tour-active");
   try { LIVE_TOUR_STEPS[liveTourStep]?.onExit?.(); } catch (_) {}
   cancelTourTransition();
   clearTourTargetLock();
@@ -12692,6 +12697,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // it (to view a product, open a vendor, etc.) so a Back navigation can
   // return them to that same spot instead of snapping back to the top.
   if (previousView === "home" && view !== "home") window.__levroHomeScrollY = window.scrollY;
+  if (previousView !== view && (previousView === "buyerProfile" || previousView === "vendorDashboard")) (window.__levroProfScroll ||= {})[previousView] = window.scrollY;
 
   // Protected routes must never render their access guard while Supabase is
   // still restoring the cached session/profile in the background. This is the
@@ -13074,6 +13080,11 @@ async function navigate(view, params = {}, pushHistory = true) {
   // the user's scroll position. Real navigation still starts at the top.
   if (preserveSameViewScroll) {
     requestAnimationFrame(() => window.scrollTo({ top: sameViewScrollY, behavior: "auto" }));
+  } else if ((view === "buyerProfile" || view === "vendorDashboard") && previousView !== view && Number.isFinite(window.__levroProfScroll?.[view])) {
+    // Profile pages keep the spot the user scrolled to instead of jumping back to the top.
+    const y = window.__levroProfScroll[view];
+    requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
+    setTimeout(() => window.scrollTo({ top: y, behavior: "auto" }), 300);
   } else if (!pushHistory && view === "home" && previousView !== "home" && Number.isFinite(window.__levroHomeScrollY)) {
     // Landing back on Home via Back (not a fresh tap of the Home tab) --
     // return to the exact spot the user scrolled to before they left,
@@ -20005,7 +20016,7 @@ function renderContactUs() {
   ];
   return `<div class="contact-us-page">
     <h2><i class="fa-solid fa-address-book"></i> Contact us</h2>
-    <p class="muted">We're happy to help. Reach us directly or find us on social media.</p>
+    <p class="muted contact-us-sub">We're happy to help. Reach us directly or find us on social media.</p>
     <div class="card contact-us-card">
       ${channels.map((c) => `<a class="contact-us-row" href="${c.href}"><span class="contact-us-row-icon"><i class="fa-solid ${c.icon}"></i></span><span class="contact-us-row-copy"><span class="contact-us-row-label">${esc(c.label)}</span><strong>${esc(c.value)}</strong></span><i class="fa-solid fa-chevron-right contact-us-row-arrow"></i></a>`).join("")}
     </div>
@@ -20014,7 +20025,12 @@ function renderContactUs() {
       ${socials.map((s) => `<a class="contact-us-social-btn" href="${s.href}" target="_blank" rel="noopener"><img src="${s.logo}" alt="${esc(s.label)}" class="contact-us-social-logo" loading="lazy" decoding="async"><span>${esc(s.label)}</span></a>`).join("")}
     </div>
     <p class="muted contact-us-handle">@levromart on all platforms</p>
-
+    <div class="contact-us-help">
+      <span class="contact-us-help-ico"><i class="fa-solid fa-headset"></i></span>
+      <div><strong>Need help with an order or your account?</strong><p>Send us a support request and our team will reply inside the app.</p></div>
+      <button type="button" class="vl-add" onclick="navigate('supportRequest')"><i class="fa-solid fa-paper-plane"></i> Send a request</button>
+    </div>
+    <p class="contact-us-tag">BUY • SELL • CONNECT</p>
   </div>`;
 }
 async function renderSupportRequest() {
@@ -21222,7 +21238,7 @@ async function renderVendorDashboard() {
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(profile?.name || v.business_name || "Vendor", "4.4rem", "vendor-profile-header-avatar", profile?.name || v.business_name || "Vendor")}
-        <button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('vendorEditProfile')" title="Edit profile" aria-label="Edit profile"><i class="fa-solid fa-pen"></i> Edit</button>
+        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('vendorEditProfile')" title="Edit profile" aria-label="Edit profile"><i class="fa-solid fa-pen"></i> Edit</button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings"><i class="fa-solid fa-gear"></i></button></span>
       </div>
       <h2 class="vendor-profile-header-name">${esc(v.business_name)} ${verifiedTick}</h2>
       ${profile?.name ? `<p class="vendor-profile-header-personal">${esc(profile.name)}</p>` : ""}
@@ -21380,6 +21396,11 @@ async function renderVendorEarnings() {
     .eq("vendor_id", v.id).eq("payout_status", "released").not("payout_released_at", "is", null)
     .order("payout_released_at", { ascending: false });
   window.__vendorEarningsOrders = orders || [];
+  // Completed sales (what the vendor has actually made), independent of payout timing.
+  const { data: soldOrders } = await sb.from("orders")
+    .select("id, total_amount, order_type, completed_at, status_changed_at, created_at, items:order_items(quantity, product:products(name))")
+    .eq("vendor_id", v.id).eq("status", "completed").order("created_at", { ascending: false }).limit(1000);
+  window.__vendorSoldOrders = (soldOrders || []).map((o) => ({ ...o, soldAt: o.completed_at || o.status_changed_at || o.created_at }));
 
   let html = `<h2 style="text-align:center;"><i class="fa-solid fa-sack-dollar"></i> Earnings</h2>
   <p class="muted" style="text-align:center;max-width:420px;margin:0 auto 1rem;">In and out, at a glance. Check this against your own records.</p>`;
@@ -21409,10 +21430,20 @@ function renderVendorEarningsBody() {
   const filtered = withDates.filter((o) => vendorEarningsInPeriod(o.payoutDate, vendorEarningsPeriod));
   const commissionPct = Number(vendor.commission_pct ?? 3);
 
-  if (!filtered.length) { body.innerHTML = `<div class="empty-state">No payouts in this period yet.</div>`; return; }
+  // ---- Sales summary + chart for the selected period (completed orders)
+  const sales = (window.__vendorSoldOrders || []).filter((o) => vendorEarningsInPeriod(o.soldAt, vendorEarningsPeriod));
+  const salesTotal = sales.reduce((n, o) => n + Number(o.total_amount || 0), 0);
+  const periodLabel = VENDOR_EARNINGS_PERIODS[vendorEarningsPeriod];
+  const chartRange = vendorEarningsPeriod === "all" ? "all" : vendorEarningsPeriod;
+  const salesHtml = `<div class="earn-stats"><div class="earn-stat"><span>Sales · ${esc(periodLabel.toLowerCase())}</span><b>${naira(salesTotal)}</b></div><div class="earn-stat"><span>Completed orders</span><b>${sales.length}</b></div></div>
+    <div id="earnChart" class="earn-chart"></div>
+    ${sales.length ? `<h3 class="earn-h">Completed sales</h3><div class="earn-list">${sales.slice(0, 60).map((o) => { const names = (o.items || []).map((it) => `${esc(it.product?.name || "Item")} ×${it.quantity}`).join(", ") || (o.order_type === "rental" ? "Rental" : "Sale"); return `<button type="button" class="earn-row" onclick="navigate('orderDetail',{orderId:'${o.id}',source:'sales'})"><span class="earn-row-main"><strong>${names}</strong><small>${esc(new Date(o.soldAt).toLocaleDateString("en-NG", { weekday: "short", month: "short", day: "numeric" }))}</small></span><b>${naira(o.total_amount)}</b></button>`; }).join("")}</div>` : `<div class="empty-state">No sales in this period yet.</div>`}`;
+  const drawChart = () => { const host = byId("earnChart"); if (host) host.appendChild(buildRevenueChart(sales.map((o) => ({ created_at: o.soldAt, total_amount: o.total_amount })), chartRange, { field: "total_amount", label: `Sales · ${periodLabel.toLowerCase()}` })); };
+
+  if (!filtered.length) { body.innerHTML = salesHtml; drawChart(); return; }
 
   const periodTotal = filtered.reduce((s, o) => s + vendorEarningsNet(o.total_amount, commissionPct), 0);
-  let html = `<div class="stat" style="max-width:280px;margin:0 auto 1.4rem;"><div class="n">${naira(periodTotal)}</div><div class="muted">Paid to you · ${VENDOR_EARNINGS_PERIODS[vendorEarningsPeriod].toLowerCase()}</div></div>`;
+  let html = salesHtml + `<h3 class="earn-h">Payouts</h3><div class="stat" style="max-width:280px;margin:0 auto 1.4rem;"><div class="n">${naira(periodTotal)}</div><div class="muted">Paid to you · ${VENDOR_EARNINGS_PERIODS[vendorEarningsPeriod].toLowerCase()}</div></div>`;
 
   const byDate = new Map();
   filtered.forEach((o) => {
@@ -21442,6 +21473,7 @@ function renderVendorEarningsBody() {
 
   html += `<p class="muted" style="font-size:0.76rem;text-align:center;margin-top:0.8rem;">Estimated amounts, after Levromart's ${commissionPct}% commission, before Paystack's own fee, so the actual amount may be a touch lower.</p>`;
   body.innerHTML = html;
+  drawChart();
 }
 function formatEarningsDateTime(dateStr) {
   return new Date(dateStr).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -44567,8 +44599,8 @@ body:has(.od-page) #app{padding-bottom:0!important}
 #app .top-rated-vendors-scroll .vd-follow{min-height:2.1rem;font-size:.78rem;margin:.25rem 0 .1rem}
 #app .top-rated-vendors-scroll .vd-meta{font-size:.7rem}
 /* initials: brand-green tint, same on every vendor */
-.vd-initials{background:color-mix(in srgb,var(--primary,#0B6E4A) 16%,var(--card))!important;color:var(--primary,#0B6E4A)!important}
-:root[data-theme="dark"] .vd-initials,:root[data-theme="black"] .vd-initials{color:#3fb97f!important}
+.vd-initials{background:hsl(var(--av-h,150) 52% 42%)!important;color:#fff!important}
+:root[data-theme="dark"] .vd-initials,:root[data-theme="black"] .vd-initials{background:hsl(var(--av-h,150) 45% 38%)!important;color:#fff!important}
 /* discarded items: select-all bar no longer overlaps */
 #app .vendor-discarded-bulkbar{display:flex!important;flex-wrap:wrap;align-items:center;gap:.6rem .8rem}
 #app .vendor-discarded-bulkbar label{display:inline-flex!important;align-items:center;gap:.5rem;position:static!important;white-space:nowrap}
@@ -44578,6 +44610,30 @@ body:has(.od-page) #app{padding-bottom:0!important}
 #app .vendor-discarded-bulkbar .btn{margin-left:auto!important}
 #app .browse-filter-toolbar>button#browseFilterTrigger{order:2!important;flex:0 0 auto!important;width:auto!important;min-width:6rem!important;height:3rem!important;min-height:3rem!important;padding:0 1rem!important;border-radius:16px!important;box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:.45rem!important;white-space:nowrap!important;overflow:visible!important}
 #app .browse-filter-toolbar>input#searchInput{font-size:.95rem!important;text-overflow:ellipsis}
+.earn-stats{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin:0 0 .9rem}
+.earn-stat{padding:.9rem;border-radius:16px;background:var(--card);border:1px solid color-mix(in srgb,var(--text) 10%,transparent);display:flex;flex-direction:column;gap:.2rem}
+.earn-stat span{font-size:.78rem;color:var(--text-muted)}
+.earn-stat b{font-size:1.35rem;color:var(--primary)}
+.earn-chart{margin:0 0 1rem}
+.earn-h{margin:1rem 0 .5rem;font-size:1.05rem}
+.earn-list{display:flex;flex-direction:column;gap:.45rem}
+.earn-row{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:.75rem .9rem;border-radius:14px;border:1px solid color-mix(in srgb,var(--text) 10%,transparent);background:var(--card);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.earn-row-main{display:flex;flex-direction:column;min-width:0}
+.earn-row-main strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem}
+.earn-row-main small{color:var(--text-muted)}
+.contact-us-sub{margin:.3rem 0 1rem!important;line-height:1.45}
+.contact-us-page h2{margin-bottom:.1rem}
+.contact-us-card{margin-bottom:1.3rem!important}
+.contact-us-socials-title{margin:1.4rem 0 .7rem}
+.contact-us-handle{margin:.9rem 0 1.4rem!important}
+.contact-us-help{display:flex;flex-direction:column;align-items:flex-start;gap:.7rem;padding:1.1rem;border-radius:18px;border:1px solid color-mix(in srgb,var(--primary) 25%,transparent);background:color-mix(in srgb,var(--primary) 7%,var(--card))}
+.contact-us-help-ico{width:2.8rem;height:2.8rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--primary);color:#fff}
+.contact-us-help strong{display:block;font-size:1.02rem}
+.contact-us-help p{margin:.2rem 0 0;color:var(--text-muted);font-size:.88rem;line-height:1.4}
+.contact-us-help .vl-add{width:100%;min-height:3rem}
+.contact-us-tag{text-align:center;margin:1.6rem 0 .5rem;font-weight:800;letter-spacing:.18em;font-size:.78rem;color:var(--text-muted)}
+body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibility:visible!important}
+#tourModal.tour-tracking #tourSpotlightHole{transition:none!important}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
