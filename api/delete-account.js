@@ -429,7 +429,27 @@ async function deleteAccount(body, res) {
   return res.status(200).json({ deleted: true });
 }
 
+
+// ---- TURN servers for voice calls (GET /api/turn, rewritten to ?turn=1 in vercel.json) ----
+// Lives here so the project stays within Vercel Hobby's 12-function limit.
+const TURN_OPEN_RELAY = [
+  { urls: ["stun:openrelay.metered.ca:80"] },
+  { urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turns:openrelay.metered.ca:443?transport=tcp"], username: "openrelayproject", credential: "openrelayproject" },
+];
+async function turnServers(req, res) {
+  res.setHeader("Cache-Control", "private, max-age=600");
+  const key = process.env.METERED_API_KEY, domain = process.env.METERED_DOMAIN;
+  if (key && domain) {
+    try {
+      const r = await fetch(`https://${domain}/api/v1/turn/credentials?apiKey=${encodeURIComponent(key)}`);
+      if (r.ok) { const list = await r.json(); if (Array.isArray(list) && list.length) { res.status(200).json({ iceServers: list }); return; } }
+    } catch (_) {}
+  }
+  res.status(200).json({ iceServers: TURN_OPEN_RELAY });
+}
+
 module.exports = async function handler(req, res) {
+  if (req.method === "GET" && /(?:^|[?&])turn=1(?:&|$)/.test(String(req.url || ""))) return turnServers(req, res);
   if (req.method === "GET") return shareMetaPreview(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed." });
 

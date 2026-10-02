@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/turn",
+      "destination": "/api/delete-account?turn=1"
+    },
+    {
       "source": "/api/register",
       "destination": "/api/delete-account"
     },
