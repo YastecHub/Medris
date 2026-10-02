@@ -24851,6 +24851,120 @@ function customerOrderTopHtml(order, ctx) {
   }
   return h;
 }
+// ---------- VENDOR ORDER DETAILS (redesigned page) ----------
+// Same data, same privacy rules and same actions as before: the customer stays anonymous
+// until the vendor accepts, no phone numbers, no earnings maths here. Only the layout is new.
+function vendorOrderTopHtml(order, ctx) {
+  const isDelivery = order.delivery_method === "delivery";
+  const isService = !!order.service_offer_id || (order.items || []).some((it) => it.product?.is_service);
+  const isPackage = !!order.package_id;
+  const isRental = order.order_type === "rental";
+  const tone = odTone(order);
+  const shortId = `#${String(order.id || "").slice(0, 8).toUpperCase()}`;
+  const stageIdx = odStageIndex(order);
+  const st = String(order.status || "");
+  const v = order.vendor || {};
+  const items = order.items || [];
+  const img = (item) => {
+    const src = item.product?.photos?.[0];
+    return src ? `<img class="od-item-img" src="${esc(src)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'od-item-img od-item-img-empty',innerHTML:'<i class=&quot;fa-solid fa-image&quot;></i>'}))">`
+      : `<span class="od-item-img od-item-img-empty"><i class="fa-solid ${item.product?.is_service ? "fa-hand-holding-heart" : "fa-image"}"></i></span>`;
+  };
+  const typeLabel = isService ? "Service order" : isPackage ? "Package order" : isRental ? "Rental order" : "Sale order";
+  // ---- header
+  let h = `<div class="od-header"><button type="button" class="od-back" onclick="navigate('vendorOrders',{status:'all'})" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+    <div class="od-header-title"><strong>Order Details</strong><span>${esc(shortId)}</span></div>
+    <div class="od-menu-wrap"><button type="button" class="od-more" onclick="toggleOrderDetailMenu(event)" aria-label="More"><i class="fa-solid fa-ellipsis"></i></button>
+      <div class="od-menu hidden" id="odMenu"><button type="button" onclick="copyOrderId('${esc(order.id)}')"><i class="fa-regular fa-copy"></i> Copy order ID</button><button type="button" onclick="openOrderIssueForm()"><i class="fa-solid fa-flag"></i> Report an issue</button></div></div></div>`;
+  // ---- status card
+  h += `<section class="od-card od-status od-tone-${tone}"><div class="od-status-icon"><i class="fa-solid ${tone === "cancelled" ? "fa-ban" : tone === "done" ? "fa-circle-check" : tone === "pending" ? "fa-hourglass-half" : "fa-box-open"}"></i></div>
+    <div class="od-status-copy"><span class="od-kicker">Order Status</span><strong class="od-status-name">${esc(odStatusLabel(order))}</strong>${order.created_at ? `<span class="od-placed">${esc(typeLabel)} · ${esc(orderDateTimeStr(order.created_at))}</span>` : `<span class="od-placed">${esc(typeLabel)}</span>`}</div>
+    <span class="od-pill od-pill-${tone}">${esc(odStatusLabel(order))}</span></section>`;
+  // ---- state alert
+  const alerts = {
+    pending: { icon: "fa-hourglass-half", head: "Customer is waiting for your confirmation", body: "Confirm the order to see who they are and message them in the app, or decline it if you can't fulfil it." },
+    confirmed: { icon: "fa-circle-check", head: "You accepted this order", body: ctx.feePaid ? "Payment is in. Get the order ready and hand it over." : "Waiting for the customer to pay you and report the payment." },
+    handed_over: { icon: "fa-truck-fast", head: isDelivery ? "Order is out for delivery" : "Order handed over", body: isRental ? "Mark it returned once the equipment is back with you." : "The order completes once the customer confirms and payment is settled." },
+    returned: { icon: "fa-rotate-left", head: "Equipment returned", body: "Waiting for the customer to confirm so the order can complete." },
+    completed: { icon: "fa-circle-check", head: "Order completed", body: "This order is done. Thank you for selling on Levromart." },
+    cancelled: { icon: "fa-circle-xmark", head: "This order was cancelled", body: "No further action is needed." },
+    disputed: { icon: "fa-scale-balanced", head: "An issue was reported", body: "An admin is reviewing this order. Add your side of the story below." },
+    payment_unresolved: { icon: "fa-hourglass-half", head: "Payment needs your attention", body: "Check your account and confirm or dispute the reported payment below." },
+  };
+  const al = order.__paymentUnresolved && st !== "cancelled" && st !== "completed" ? alerts.payment_unresolved : alerts[st];
+  if (al) h += `<section class="od-info od-vendor-alert od-tone-${order.__paymentUnresolved && st !== "cancelled" && st !== "completed" ? "unresolved" : tone}" role="status"><span class="od-info-icon"><i class="fa-solid ${al.icon}"></i></span><div><strong>${esc(al.head)}</strong><p>${esc(al.body)}</p></div></section>`;
+  // ---- main actions (same handlers as before)
+  if (st === "pending") {
+    h += `<div class="od-actions od-actions-pair"><button type="button" class="od-btn od-btn-danger" onclick="vendorDeclineOrder('${esc(order.id)}','pending')"><i class="fa-regular fa-circle-xmark"></i> Decline Order</button><button type="button" class="od-btn od-btn-confirm" onclick="confirmOrderAsVendor('${esc(order.id)}')"><i class="fa-solid fa-check"></i> Confirm Order</button></div>`;
+  } else if (st === "confirmed") {
+    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="vendorDeclineOrder('${esc(order.id)}','confirmed')"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button></div>`;
+  } else if (st === "handed_over" && isRental) {
+    h += `<div class="od-actions"><button type="button" class="od-btn od-btn-primary" onclick="updateOrderStatus('${esc(order.id)}','returned')"><i class="fa-solid fa-rotate-left"></i> Mark Returned</button></div>`;
+  }
+  // ---- customer information (anonymous until accepted)
+  const mapReady = isDelivery && ctx.canSeeLocation && order.buyer_lat != null && order.buyer_lng != null;
+  const distTxt = mapReady && v.lat != null && v.lng != null ? formatDistanceKm(haversineKm(Number(order.buyer_lat), Number(order.buyer_lng), Number(v.lat), Number(v.lng))) : "";
+  h += `<section class="od-card order-buyer-card"><h3><i class="fa-solid fa-user"></i> Customer Information</h3>`;
+  if (ctx.accepted) {
+    const nm = ctx.contact?.name || "Customer";
+    h += `<div class="od-vendor">${avatarFallbackHtml(nm, "3.4rem", "od-vendor-logo", nm, order.buyer_id || nm)}
+      <div class="od-vendor-copy"><strong>${esc(nm)}</strong><span class="od-muted">${isDelivery ? "Delivery" : "Pickup"} customer</span></div></div>`;
+    h += `<div class="od-cust-actions">${ctx.chatWindowOpen ? `<button type="button" class="od-btn od-btn-light od-btn-small" onclick="messageCustomerFromOrder('${esc(order.id)}')" aria-label="Message customer"><i class="fa-regular fa-comment-dots"></i> Message</button>
+      <button type="button" class="od-btn od-btn-light od-btn-small" onclick="callCustomerFromOrder('${esc(order.id)}')" aria-label="Call customer"><i class="fa-solid fa-phone"></i> Call</button>` : ""}
+      ${mapReady && v.lat != null && v.lng != null ? `<button type="button" class="od-btn od-btn-light od-btn-small order-buyer-location-btn" data-order-id="${esc(order.id)}" onclick="showOrderBuyerLocation('${esc(order.id)}',${Number(order.buyer_lat)},${Number(order.buyer_lng)},${Number(v.lat)},${Number(v.lng)})"><i class="fa-solid fa-location-dot"></i> <span class="order-buyer-location-btn-label">View Location</span>${distTxt ? ` <small class="od-dist">${esc(distTxt)}</small>` : ""}<i class="order-buyer-location-chevron fa-solid fa-chevron-down" style="font-size:.7em"></i></button>` : ""}</div>`;
+    if (!ctx.chatWindowOpen) h += `<p class="od-muted od-closed-note"><i class="fa-regular fa-clock"></i> The in-app chat for this order closed 24 hours after completion.</p>`;
+  } else if (st === "pending") {
+    h += `<div class="od-anon"><span class="od-anon-ico"><i class="fa-solid fa-user-lock"></i></span><p>A customer has placed this order. Accept it to see who they are and message them in the app.</p></div>`;
+    if (mapReady && v.lat != null && v.lng != null) h += `<div class="od-cust-actions"><button type="button" class="od-btn od-btn-light od-btn-small order-buyer-location-btn" data-order-id="${esc(order.id)}" onclick="showOrderBuyerLocation('${esc(order.id)}',${Number(order.buyer_lat)},${Number(order.buyer_lng)},${Number(v.lat)},${Number(v.lng)})"><i class="fa-solid fa-location-dot"></i> <span class="order-buyer-location-btn-label">View Location</span>${distTxt ? ` <small class="od-dist">${esc(distTxt)}</small>` : ""}<i class="order-buyer-location-chevron fa-solid fa-chevron-down" style="font-size:.7em"></i></button></div>`;
+  } else {
+    h += `<p class="od-muted" style="margin:0">Customer details are not available for this order.</p>`;
+  }
+  if (mapReady) h += `<div id="orderBuyerLocationWrap-${esc(order.id)}" class="order-buyer-location-wrap hidden"><div class="flex" style="justify-content:space-between;gap:.6rem;align-items:center;"><strong><i class="fa-solid fa-location-dot"></i> Delivery location</strong><span id="orderBuyerLocationStatus-${esc(order.id)}" class="muted"></span></div><div id="orderBuyerLocationMap-${esc(order.id)}" class="order-buyer-location-map"></div></div>`;
+  h += `</section>`;
+  // ---- progress tracker
+  if (stageIdx >= 0) {
+    h += `<section class="od-card od-tracker" aria-label="Order progress">${OD_STAGES.map((s, i) => `<div class="od-step ${i < stageIdx ? "is-done" : i === stageIdx ? "is-current" : ""}"><span class="od-step-dot"><i class="fa-solid ${s.icon}"></i></span><span class="od-step-label">${esc(s.label(isDelivery))}</span>${i === 0 && order.created_at ? `<small>${esc(new Date(order.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</small>` : ""}</div>`).join("")}</section>`;
+  }
+  if (order.payout_status && order.payout_status !== "not_applicable") {
+    h += `<section class="od-strip od-strip-card"><i class="fa-solid fa-shield-halved"></i><span>${esc(PAYOUT_STATUS_SHORT_LABEL[order.payout_status] || (typeof PAYOUT_STATUS_HELP[order.payout_status] === "function" ? PAYOUT_STATUS_HELP[order.payout_status](order.auto_release_at ? new Date(order.auto_release_at).toLocaleDateString("en-GB") : "the release date") : order.payout_status))}</span></section>`;
+  }
+  // ---- items (package / service orders get a row too)
+  const rows = items.length ? items.map((item) => `<div class="od-item">${img(item)}<div class="od-item-copy"><strong>${esc(item.product?.name || "Item")}${item.variant?.name ? ` · ${esc(item.variant.name)}` : ""}</strong><span class="od-muted">Qty: ${Number(item.quantity || 1)}${item.rental_start_date ? ` · ${esc(item.rental_start_date)} → ${esc(item.rental_end_date)}` : ""}</span><b class="od-price">${naira(item.unit_price)}</b></div></div>`).join("")
+    : `<div class="od-item"><span class="od-item-img od-item-img-empty"><i class="fa-solid ${isService ? "fa-hand-holding-heart" : "fa-box-open"}"></i></span><div class="od-item-copy"><strong>${esc(order.package?.name || (isService ? "Service" : "Order"))}</strong><span class="od-muted">${esc(typeLabel)}</span><b class="od-price">${naira(order.total_amount)}</b></div></div>`;
+  h += `<section class="od-card"><div class="od-card-head"><h3>${isService ? "Service" : "Items"} (${items.length || 1})</h3></div>${rows}</section>`;
+  // ---- order summary
+  const paid = (order.payments || []).filter((p) => p.status === "paid");
+  const reported = (order.payments || []).some((p) => p.status === "pending" && ["buyer_report", "service_offer_report"].includes(String(p.provider_reference || "").trim().toLowerCase()));
+  const methodLabel = (() => {
+    const m = String(paid[0]?.method || "").toLowerCase();
+    if (m === "cash") return "Cash";
+    if (m === "transfer") return "Bank transfer";
+    if (m === "card") return "Card";
+    if (paid.length) return "Paid";
+    if (reported) return "Bank transfer (reported)";
+    return ["pending", "cancelled"].includes(st) ? "Not paid yet" : "Customer pays you directly";
+  })();
+  const itemsSubtotal = Math.max(0, Number(order.total_amount || 0) - Number(order.delivery_fee || 0));
+  h += `<section class="od-card"><h3>Order Summary</h3><div class="od-pay-grid">
+    ${order.delivery_fee > 0 ? `<div><span class="od-muted">${isRental ? "Rental cost" : "Items"}</span><b>${naira(itemsSubtotal)}</b></div><div><span class="od-muted">Delivery fee</span><b>${naira(order.delivery_fee)}</b></div>` : ""}
+    <div><span class="od-muted">Total</span><b class="od-price">${naira(order.total_amount)}</b></div>
+    ${order.deposit_amount > 0 ? `<div><span class="od-muted">Refundable Deposit</span><b class="od-price">${naira(order.deposit_amount)}</b></div>` : ""}
+    <div><span class="od-muted">Payment Method</span><b>${esc(methodLabel)}</b></div></div></section>`;
+  // ---- delivery / pickup
+  if (isDelivery) {
+    const hasPin = order.buyer_lat != null && order.buyer_lng != null;
+    const mapHref = hasPin ? `https://www.google.com/maps/search/?api=1&query=${order.buyer_lat},${order.buyer_lng}` : (order.delivery_address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address)}` : "");
+    h += `<section class="od-card"><div class="od-card-head"><h3><i class="fa-solid fa-location-dot"></i> Delivery Details</h3>${mapHref ? `<a class="od-link" href="${esc(mapHref)}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-map"></i> View on Map <i class="fa-solid fa-chevron-right"></i></a>` : ""}</div>
+      <div class="od-delivery"><div><span class="od-muted">Delivery to</span><strong>${esc(order.delivery_address || "Address not provided")}</strong></div>${distTxt ? `<div><span class="od-muted">Distance from your shop</span><strong>${esc(distTxt.replace(/ away$/, ""))}</strong></div>` : ""}</div></section>`;
+  } else {
+    const addr = [v.address, v.city].filter(Boolean).map(esc).join(", ");
+    h += `<section class="od-card"><div class="od-card-head"><h3><i class="fa-solid fa-store"></i> ${isService ? "Service Delivery" : "Pickup Details"}</h3></div>
+      <div class="od-delivery"><div><span class="od-muted">${isService ? "Where it happens" : "Customer collects from"}</span><strong>${addr || "Your shop address isn't set yet"}</strong></div></div></section>`;
+  }
+  // ---- customer note (only when there is one)
+  if (order.buyer_note) h += `<section class="od-card od-note-card"><h3><i class="fa-regular fa-message"></i> Customer Note</h3><p>${esc(order.buyer_note)}</p></section>`;
+  return h;
+}
 function toggleOrderDetailMenu(e) { e?.stopPropagation?.(); byId("odMenu")?.classList.toggle("hidden"); }
 document.addEventListener("click", (e) => { if (!e.target.closest?.(".od-menu-wrap")) byId("odMenu")?.classList.add("hidden"); });
 async function copyOrderId(id) {
@@ -24867,7 +24981,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (!session) return '<div class="empty-state">Please log in.</div>';
   const { data: order, error } = await sb
     .from("orders")
-    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng, logo_url, avg_rating, review_count, verification_status), items:order_items(*,variant:product_variants(name),product:products(name,photos)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at, raised_by), package:vendor_packages(name)")
+    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng, logo_url, avg_rating, review_count, verification_status), items:order_items(*,variant:product_variants(name),product:products(name,photos,is_service)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at, raised_by), package:vendor_packages(name)")
     .eq("id", orderId)
     .maybeSingle();
   if (error || !order) return '<div class="empty-state">Order not found.</div>';
@@ -24987,6 +25101,15 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const newView = isCustomer && !isVendor && profile?.role !== "admin";
   const chatOpenStates = ["confirmed", "payment_unresolved", "handed_over", "returned", "disputed"].includes(String(order.status || "")) || (order.status === "completed" && Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000);
   if (newView) html = customerOrderTopHtml(order, { isCustomer, sourcePerspective, contactAllowed: chatOpenStates && !!order.vendor_id });
+  // Vendors get the matching redesign. Privacy is unchanged: anonymous until accepted, name only after.
+  const newVendorView = isVendor && !isCustomer && profile?.role !== "admin";
+  const vAccepted = !["pending", "declined", "cancelled", "rejected"].includes(String(order.status || ""));
+  const vChatWindowOpen = order.status !== "completed" || (Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000);
+  let vContact = {};
+  if (isVendor && vAccepted) {
+    try { const { data: contact } = await sb.rpc("get_order_buyer_contact", { p_order_id: orderId }); vContact = (contact && contact[0]) || {}; } catch (_) { vContact = {}; }
+  }
+  if (newVendorView) html = vendorOrderTopHtml(order, { accepted: vAccepted, chatWindowOpen: vChatWindowOpen, contact: vContact, feePaid, canSeeLocation: ["pending", "confirmed"].includes(String(order.status || "")) });
 
   if(order.__serviceOffer?.status==='payment_reported' && isVendor){
     html += `<div class="card service-payment-confirm-card"><h3><i class="fa-solid fa-hand-holding-dollar"></i> Service payment reported</h3><p class="muted">The buyer has reported a bank transfer of <strong>${naira(order.__serviceOffer.current_price)}</strong>. Check your account and either confirm receipt or dispute the payment.</p><div class="flex" style="gap:.55rem;flex-wrap:wrap;"><button type="button" class="btn btn-sm" onclick="confirmServiceOfferPayment('${order.__serviceOffer.id}')"><i class="fa-solid fa-check"></i> Confirm payment received</button><button type="button" class="btn btn-sm btn-danger" onclick="disputeServiceOfferPayment('${order.__serviceOffer.id}')"><i class="fa-solid fa-triangle-exclamation"></i> Dispute payment</button></div></div>`;
@@ -25001,19 +25124,15 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     html += `<div class="card payment-reported-customer-card"><div class="flex" style="gap:.55rem;align-items:flex-start;"><i class="fa-solid fa-hourglass-half" style="margin-top:.15rem;"></i><div><strong>Payment reported</strong><p class="muted" style="margin:.25rem 0 0;">Your payment of <strong>${naira(buyerReportedPayment.amount)}</strong> has been reported to the vendor. The order is now <strong>Payment unresolved</strong> until the vendor confirms receipt or raises a dispute.</p>${order.vendor_id ? `<div class="order-contact-row"><button type="button" class="btn btn-sm order-action-neutral order-message-vendor-btn" onclick="startConversationWithVendor('${order.vendor_id}')"><i class="fa-solid fa-message"></i> Message vendor</button><button type="button" class="btn btn-sm order-call-btn" onclick="callVendorFromOrder('${order.vendor_id}')"><i class="fa-solid fa-phone"></i> Call</button></div>` : ""}</div></div></div>`;
   }
 
-  if (isVendor) {
+  if (isVendor && !newVendorView) {
     // Until the vendor accepts, the customer stays anonymous: no name, no
     // phone, no messaging -- just that an order exists and where it's going.
     // After accepting, only the name and in-app messaging are shown; phone
     // numbers are never shown to vendors at all.
-    const accepted = !["pending", "declined", "cancelled", "rejected"].includes(String(order.status || ""));
+    const accepted = vAccepted;
     // Chats close 24h after an order completes, so no new in-app message after that.
-    const chatWindowOpen = order.status !== "completed" || (Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000);
-    let c = {};
-    if (accepted) {
-      const { data: contact } = await sb.rpc("get_order_buyer_contact", { p_order_id: orderId });
-      c = (contact && contact[0]) || {};
-    }
+    const chatWindowOpen = vChatWindowOpen;
+    const c = vContact;
     html += `<div class="card order-buyer-card"><h3><i class="fa-solid fa-address-card"></i> Customer</h3>
       ${accepted ? `<p style="margin-bottom:.45rem;">${esc(c.name || "Customer")}</p>
       ${chatWindowOpen ? `<div class="flex order-buyer-contact-actions order-contact-row" style="gap:.6rem;align-items:center;">
@@ -25121,7 +25240,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     const parts = orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, { parts: true });
     if (parts.main) html += `<div class="order-action-wrap od-action-wrap">${parts.main}</div>`;
     odBottomBar = parts.bottom ? `<div class="od-bottom-bar">${parts.bottom}</div>` : "";
-  } else {
+  } else if (!newVendorView) {
     html += `<div class="order-action-wrap" style="margin-top:1.35rem;display:flex;gap:.85rem;flex-wrap:wrap;align-items:center;">${orderActionButtonsHtml(order, isCustomer, isVendor, feePaid)}</div>`;
   }
 
@@ -25162,7 +25281,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
 
   const orderBackView = isVendor ? "vendorDashboard" : "buyerOrders";
   const orderBackParams = {};
-  if (newView) return `<div class="od-page">${html}${odBottomBar}</div>`;
+  if (newView || newVendorView) return `<div class="od-page">${html}${odBottomBar}</div>`;
   return html;
 }
 
@@ -43695,6 +43814,23 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 .od-bottom-bar .od-btn{flex:1;min-height:3.2rem}
 .od-action-wrap{display:flex;flex-direction:column;gap:.6rem;margin:0 0 .9rem}
 .od-action-wrap .btn{width:100%;min-height:3.1rem;justify-content:center}
+/* ---- vendor order details additions */
+.od-actions-pair{grid-template-columns:1fr 1fr}
+.od-actions-pair .od-btn{grid-column:auto;min-height:3.4rem;font-size:1rem}
+.od-btn-confirm{background:#16a34a;color:#fff}
+.od-btn-outline-danger{background:var(--card);color:#dc2626;border-color:color-mix(in srgb,#dc2626 45%,transparent);grid-column:1/-1}
+.od-vendor-alert{align-items:flex-start}
+.od-cust-actions{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:.8rem}
+.od-cust-actions .od-btn{flex:1 1 auto;min-width:6.5rem}
+.od-cust-actions .order-buyer-location-btn{width:auto!important;max-width:none!important;margin:0!important;display:inline-flex!important;flex:1 1 100%;border-color:color-mix(in srgb,var(--od-green) 40%,transparent);color:var(--od-green)}
+.od-dist{opacity:.75;font-weight:600}
+.od-anon{display:flex;gap:.8rem;align-items:center}
+.od-anon p{margin:0;font-size:.9rem;color:var(--od-muted);line-height:1.45}
+.od-anon-ico{flex:0 0 auto;width:3.2rem;height:3.2rem;border-radius:50%;background:color-mix(in srgb,var(--text) 8%,var(--card));color:var(--od-muted);display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.od-closed-note{margin:.7rem 0 0}
+.od-note-card p{margin:0;font-size:.95rem;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
+.od-page .order-buyer-location-wrap{margin-top:.8rem}
+.od-page .order-buyer-card{margin-bottom:.8rem!important}
 @media(max-width:360px){.od-status{grid-template-columns:auto 1fr}.od-pill{grid-column:1/-1;justify-self:start}.od-step-label{font-size:.7rem}}
 
 /* Order history page + its search / tabs. */
