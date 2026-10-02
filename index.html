@@ -9341,10 +9341,6 @@ function playReminderChime(){
   });
 }
 function playSound() {}
-function toggleSound() {}
-function renderSoundToggle() {}
-function setSoundStyle() {}
-function renderSoundStyleOptions() {}
 function initSound() {
   if(!window.__notificationAudioBound){
     window.__notificationAudioBound=true;
@@ -9600,16 +9596,6 @@ function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
   }
   return avatarFallbackHtml(safeName, size, opts.extraClass || "", safeName, opts.stableKey || safeName);
 }
-function toWhatsappDigits(raw) {
-  let digits = (raw || "").replace(/\D/g, "");
-  if (digits.startsWith("0")) digits = "234" + digits.slice(1);
-  return digits;
-}
-function waLink(raw, text) {
-  const digits = toWhatsappDigits(raw);
-  return `https://wa.me/${digits}${text ? "?text=" + encodeURIComponent(text) : ""}`;
-}
-function telLink(raw) { return `tel:${(raw || "").replace(/\s+/g, "")}`; }
 // Uploads a blob straight to R2 via a short-lived presigned URL (issued by
 // /api/vendor-payments' r2-presign-upload action -- a dedicated /api/r2-upload
 // file would have pushed this project's Vercel function count to 13, over
@@ -9691,10 +9677,6 @@ const CATEGORY_ICONS = [
   [/repair|maintenance/i, "fa-screwdriver-wrench"],
   [/cleaning/i, "fa-broom"],
 ];
-function categoryIcon(name) {
-  const hit = CATEGORY_ICONS.find(([re]) => re.test(name || ""));
-  return `<i class='fa-solid ${hit ? hit[1] : "fa-tag"}'></i>`;
-}
 
 // ---------- THEME ----------
 function syncSystemBarColorForTheme(theme) {
@@ -9773,14 +9755,6 @@ const ACCENT_PALETTE = [
 ];
 const DEFAULT_ACCENT_INDEX = 1;
 let currentAccentIndex = DEFAULT_ACCENT_INDEX;
-function lightenHex(hex, amt) {
-  const n = parseInt(hex.slice(1), 16);
-  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  r = Math.round(r + (255 - r) * amt);
-  g = Math.round(g + (255 - g) * amt);
-  b = Math.round(b + (255 - b) * amt);
-  return `#${[r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")}`;
-}
 function hexHue(hex) {
   const n=parseInt(String(hex||"#0B6E4A").replace("#",""),16);
   let r=((n>>16)&255)/255,g=((n>>8)&255)/255,b=(n&255)/255;
@@ -9826,33 +9800,6 @@ function setAccent() {
   currentAccentIndex = DEFAULT_ACCENT_INDEX;
   try { localStorage.removeItem("medris-accent"); } catch (e) {}
   applyAccent(DEFAULT_ACCENT_INDEX);
-}
-function renderAccentSwatches(targetId = "accentSwatches") {
-  const wrap = byId(targetId);
-  if (!wrap) return;
-  const groups = [...new Set(ACCENT_PALETTE.map((p) => p.group))];
-  wrap.innerHTML = groups.map((group) => {
-    const items = ACCENT_PALETTE.map((p, i) => ({ p, i })).filter(({ p }) => p.group === group);
-    return `<div class="accent-palette-row"><span class="accent-palette-label">${esc(group)}</span><div class="accent-palette-row-swatches">${items.map(({ p, i }) => `<button type="button" class="accent-swatch ${i === currentAccentIndex ? "active" : ""}" style="background:${p.base};" title="${esc(p.name)}" aria-label="${esc(p.name)}" onclick="setAccent(${i})"></button>`).join("")}</div></div>`;
-  }).join("");
-}
-function toggleAccentPalette() {
-  const body = byId("accentPaletteBody");
-  const chevron = byId("accentPaletteChevron");
-  if (!body) return;
-  const opening = body.classList.contains("hidden");
-  body.classList.toggle("hidden", !opening);
-  if (chevron) chevron.classList.toggle("open", opening);
-}
-function toggleAccentPalettePage() {
-  const body = byId("accentPalettePageBody");
-  const chevron = byId("accentPalettePageChevron");
-  const trigger = document.querySelector(".accent-page-dropdown-trigger");
-  if (!body) return;
-  const opening = body.classList.contains("hidden");
-  body.classList.toggle("hidden", !opening);
-  if (chevron) chevron.classList.toggle("open", opening);
-  trigger?.setAttribute("aria-expanded", String(opening));
 }
 function initAccent() {
   /* One Levromart brand accent only; ignore and clear any legacy custom accent. */
@@ -10010,7 +9957,6 @@ function openProfileOrShop() {
   toggleProfilePanel();
 }
 
-function setupDrawerSwipe(drawer, side) { return; }
 
 // Backdrop/centre swipe gestures for the two right-hand drawers. Opening:
 // swipe right -> profile, swipe left -> notifications. Closing an open drawer:
@@ -10643,169 +10589,12 @@ async function batchMarkNotifsRead(read) {
     refreshNotifications(false).catch(() => {});
   }
 }
-// ---- inbox <-> archive ----
-// Single-item quick actions below keep their undo-toast (fast, low-risk,
-// trivially reversible one at a time). Batch actions on a multi-select
-// don't have a batch-undo though, so a mis-tap here affects everyone
-// selected with no easy way back -- hence a confirm first, sized to the
-// actual count involved.
-async function batchArchiveOrRestoreSelected() {
-  const ids = [...notifSelectedIds].map(String);
-  if (!ids.length) { showToast("Select at least one notification first.", "info"); return; }
-  notifRenderEpoch++;
-  const restoring = notifViewMode === "archived";
-  const verb = restoring ? "Restore" : "Archive";
-  const { error } = await sb.from("notifications").update({ archived: !restoring }).in("id", ids);
-  if (error) { showToast(error.message || `Couldn't ${verb.toLowerCase()} notifications.`, "error"); return; }
-  const panel = getNotifHost();
-  ids.forEach(id => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)?.closest(".notif-item-wrap")?.remove());
-  window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
-  const count = ids.length;
-  exitNotifSelectMode(false);
-  // Re-query the active view after the DB mutation so the UI is driven by the
-  // persisted state, not only by manual DOM removal. This prevents archived
-  // items from reappearing after the drawer is closed/reopened.
-  await renderNotifPanel();
-  await refreshNotifications(false);
-  showToast(restoring ? `${count} restored.` : `${count} archived.`, "success");
-}
-async function quickArchiveNotif(id) {
-  const { error } = await sb.from("notifications").update({ archived: true }).eq("id", id);
-  if (error) { showToast(error.message || "Couldn’t archive notification.", "error"); return; }
-  await refreshNotifications();
-  showUndoToast("Notification archived.", async () => {
-    const { error: undoError } = await sb.from("notifications").update({ archived: false }).eq("id", id);
-    if (undoError) { showToast(undoError.message || "Couldn’t restore notification.", "error"); return; }
-    await refreshNotifications();
-  });
-}
-async function quickUnarchiveNotif(id) {
-  const { error } = await sb.from("notifications").update({ archived: false }).eq("id", id);
-  if (error) { showToast(error.message || "Couldn’t restore notification.", "error"); return; }
-  await refreshNotifications();
-  showUndoToast("Notification restored.", async () => {
-    const { error: undoError } = await sb.from("notifications").update({ archived: true }).eq("id", id);
-    if (undoError) { showToast(undoError.message || "Couldn’t archive notification.", "error"); return; }
-    await refreshNotifications();
-  });
-}
 
-// ---- inbox/archive -> trash (soft delete) ----
-async function batchTrashSelected() {
-  const ids = [...notifSelectedIds].map(String);
-  if (!ids.length) { showToast("Select at least one notification first.", "info"); return; }
-  notifRenderEpoch++;
-  const now = new Date().toISOString();
-  const { error } = await sb.from("notifications").update({ deleted_at: now }).in("id", ids);
-  if (error) { showToast(error.message || "Couldn't move notifications to trash.", "error"); return; }
-  const panel = getNotifHost();
-  ids.forEach(id => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)?.closest(".notif-item-wrap")?.remove());
-  window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
-  const count = ids.length;
-  // Clear the selection and rebuild the visible Inbox immediately. The previous
-  // implementation only refreshed badge/count data here, which left the old
-  // notification DOM alive until a later render and made deleted notifications
-  // appear again when the drawer was closed/reopened.
-  exitNotifSelectMode(false);
-  await renderNotifPanel();
-  refreshNotifications(false).catch(() => {});
-  showToast(`${count} moved to trash.`, "success");
-}
-async function quickTrashNotif(id) {
-  const { error } = await sb.from("notifications").update({ deleted_at: new Date().toISOString() }).eq("id", id);
-  if (error) { showToast(error.message || "Couldn’t move notification to trash.", "error"); return; }
-  await refreshNotifications();
-  showUndoToast("Notification moved to trash.", async () => {
-    const { error: undoError } = await sb.from("notifications").update({ deleted_at: null }).eq("id", id);
-    if (undoError) { showToast(undoError.message || "Couldn’t restore notification.", "error"); return; }
-    await refreshNotifications();
-  });
-}
 
-// ---- trash -> restore ----
-async function batchRestoreSelected() {
-  const ids = [...notifSelectedIds].map(String);
-  if (!ids.length) { showToast("Select at least one notification first.", "info"); return; }
-  notifRenderEpoch++;
-  const { error } = await sb.from("notifications").update({ deleted_at: null }).in("id", ids);
-  if (error) { showToast(error.message || "Couldn't restore notifications.", "error"); return; }
-  const panel = getNotifHost();
-  ids.forEach(id => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)?.closest(".notif-item-wrap")?.remove());
-  window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
-  const count = ids.length;
-  exitNotifSelectMode(false);
-  await renderNotifPanel();
-  await refreshNotifications(false);
-  showToast(`${count} restored.`, "success");
-}
-async function quickRestoreFromTrash(id) {
-  const { error } = await sb.from("notifications").update({ deleted_at: null }).eq("id", id);
-  if (error) { showToast(error.message || "Couldn’t restore notification.", "error"); return; }
-  await refreshNotifications();
-  showToast("Notification restored.", "success");
-}
 
-// ---- trash -> gone forever (irreversible: always confirm) ----
-async function confirmPurgeOne(id) {
-  if (!(await showConfirmDialog("Delete this notification permanently? This can't be undone.", { title: "Delete forever", okLabel: "Delete forever", danger: true }))) { renderNotifPanel(); return; }
-  const { error } = await sb.from("notifications").delete().eq("id", id);
-  if (error) { showToast(error.message || "Couldn’t delete notification.", "error"); return; }
-  await refreshNotifications();
-  showToast("Notification deleted permanently.", "success");
-}
-async function batchPurgeSelected() {
-  const ids = [...notifSelectedIds].map(String);
-  if (!ids.length) { showToast("Select at least one notification first.", "info"); return; }
-  if (!(await showConfirmDialog(`Permanently delete ${ids.length} notification${ids.length === 1 ? "" : "s"}? This can't be undone.`, { title: "Delete forever", okLabel: "Delete forever", danger: true }))) return;
-  notifRenderEpoch++;
-  const { error } = await sb.from("notifications").delete().in("id", ids);
-  if (error) { showToast(error.message || "Couldn't delete notifications.", "error"); return; }
-  const panel = getNotifHost();
-  ids.forEach(id => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)?.closest(".notif-item-wrap")?.remove());
-  window.__notifPanelIds = getVisibleNotifIds().filter(id => !ids.includes(String(id)));
-  const count = ids.length;
-  exitNotifSelectMode(false);
-  await renderNotifPanel();
-  await refreshNotifications(false);
-  showToast(`${count} deleted permanently.`, "success");
-}
 
-function showUndoToast(message, undoFn) {
-  playSound("notify");
-  const wrap = byId("toastStack");
-  if (!wrap) return;
-  clearTimeout(window.__activeToastTimer);
-  clearTimeout(window.__activeToastRemoveTimer);
-  let el = window.__activeToast;
-  if (!el || !el.isConnected) {
-    el = document.createElement("div");
-    wrap.replaceChildren(el);
-    window.__activeToast = el;
-  }
-  el.className = "toast toast-info";
-  el.innerHTML = `<i class="fa-solid fa-circle-info"></i><span style="flex:1;">${esc(message)}</span><button class="toast-undo-btn">Undo</button>`;
-  requestAnimationFrame(() => el.classList.add("show"));
-  let done = false;
-  const dismiss = () => {
-    if (done) return;
-    done = true;
-    el.classList.remove("show");
-    window.__activeToastRemoveTimer = setTimeout(() => { if (el === window.__activeToast) window.__activeToast = null; el.remove(); }, 300);
-  };
-  el.querySelector(".toast-undo-btn").addEventListener("click", () => { undoFn(); dismiss(); });
-  window.__activeToastTimer = setTimeout(dismiss, 5000);
-}
 
 let markAllNotifsBusy=false;
-async function markAllNotifsRead(){
-  if(!session||markAllNotifsBusy)return;markAllNotifsBusy=true;
-  try{
-    if(!(await showConfirmDialog('Mark every notification as read?',{title:'Mark all as read',okLabel:'Mark all read'})))return;
-    const {error}=await sb.from('notifications').update({read:true}).eq('user_id',session.user.id).eq('read',false).is('deleted_at',null);if(error)throw error;
-    await refreshNotifications();showToast('All marked as read.','success');
-  }catch(err){showToast(err.message||'Could not mark notifications as read.','error');}
-  finally{markAllNotifsBusy=false;}
-}
 async function markSingleNotifRead(id) { return queueNotificationRead(id); }
 
 let notifChannelUserId=null;
@@ -12048,12 +11837,6 @@ function applyAuthMode() {
 // the onAuthStateChange listener below for the "signed out elsewhere"
 // message that fires when that happens).
 let manualLogout = false;
-async function enforceSingleSession() {
-  // Intentionally disabled: do not revoke another browser/session after login.
-  // This prevents a fresh login from racing the auth-state listener and
-  // leaving the current tab looking logged in while its session is invalid.
-  return true;
-}
 
 // Redirects away to Google and back -- Supabase picks the returned session
 // up automatically (detectSessionInUrl is on by default), which fires the
@@ -12504,9 +12287,6 @@ let messageChannelClosePromise = Promise.resolve();
 // page is instant. Fresh Supabase data still refreshes it in the background.
 const routeHtmlCache = new Map();
 const ORDER_ROUTE_SNAPSHOT_PREFIX = "levromart-order-route-v1:";
-function orderRouteSnapshotKey(view, params = {}) {
-  return `${ORDER_ROUTE_SNAPSHOT_PREFIX}${routeCacheKey(view, params)}`;
-}
 // Persist the last REAL rendered page, not a loading shell. This makes navigation
 // cache-first across reloads so users see the page they asked for immediately
 // while the live renderer silently reconciles fresh Supabase data underneath.
@@ -12536,12 +12316,6 @@ function persistRouteHtml(view, params = {}, html) {
   } catch (_) {
     // Quota pressure should never block navigation. Keep the in-memory cache.
   }
-}
-function getPersistedOrderRouteHtml(view, params = {}) {
-  return getPersistedRouteHtml(view, params);
-}
-function persistOrderRouteHtml(view, params = {}, html) {
-  persistRouteHtml(view, params, html);
 }
 function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
@@ -12574,10 +12348,6 @@ function withRouteTimeout(promise, ms = 7000, timeoutValue = null) {
   ]).finally(() => clearTimeout(timer));
 }
 
-function navigationLoadingHtml(view) {
-  const label = view === "messages" ? "Opening messages…" : view === "cart" ? "Opening cart…" : "Loading…";
-  return `<div class="page-loading-shell" aria-live="polite"><span class="page-loading-spinner"><i class="fa-solid fa-spinner fa-spin"></i></span><span>${label}</span></div>`;
-}
 
 function homeFallbackHtml(message = "The marketplace is taking a moment to load. Please try again.") {
   const safeMessage = typeof esc === "function" ? esc(message) : String(message).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c] || c));
@@ -13104,7 +12874,7 @@ async function navigate(view, params = {}, pushHistory = true) {
     if(view !== "home" || window.scrollY === homeStartScroll) window.scrollTo(0, 0);
   }
   if (!pushHistory && !preserveSameViewScroll) {
-    try { window.__levromartRestoreScroll?.(view); } catch (err) {console.warn("Scroll restoration failed",err);} 
+    try { window.__levromartRestoreScroll?.(view); } catch (err) {console.warn("Scroll restoration failed",err);}
   }
 }
 
@@ -14660,27 +14430,6 @@ function toggleHomeCategoryFilter(catId) {
   applyHomeCategory(String(currentHomeCategoryId || "") === String(catId) ? null : catId);
 }
 function clearHomeCategoryFilter() { applyHomeCategory(null); }
-function toggleHomeSectorFilter(sectorId) {
-  // Tapping the already-active sector clears the filter -- the chip itself
-  // doubles as the "clear filter" control instead of needing a separate one.
-  switchSector(String(currentSectorId || "") === String(sectorId) ? null : sectorId);
-}
-function openHomeCategoryBrowser() {
-  filterByCategory(null);
-  toggleBrowseFilters(true);
-  setTimeout(() => byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
-}
-function filterByCategory(catId) {
-  currentHomeCategoryId = catId || null;
-  const painted = paintHomeFromLocalCatalog(false);
-  if (!painted) {
-    const sel = byId("filterCategory");
-    if (sel) sel.value = catId || "";
-    byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
-  }
-  refreshHomeCategorySelection();
-}
 // ---------- DEDICATED SEARCH PAGE ----------
 // Replaces the old hero-search dropdown, which quietly broke on every
 // product result: its click handler called saveHistory(...) as a bare
@@ -15500,33 +15249,7 @@ async function filterHomeProducts() {
   }
   paintBrowsePaged(grid, first, loadMore, () => more, generation);
 }
-function productDeliverySummaryHtml(p) {
-  const v = p?.vendor || {};
-  const mode = String(p?.delivery_fee_mode ?? v.delivery_fee_mode ?? "free").toLowerCase();
-  const flat = Number(p?.delivery_fee ?? v.delivery_fee ?? 0) || 0;
-  const perKm = Number(p?.delivery_fee_per_km ?? v.delivery_fee_per_km ?? 0) || 0;
-  if (mode === "distance" && perKm > 0) {
-    if (buyerLocation && v.lat != null && v.lng != null) {
-      const km = haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng);
-      const fee = Math.round((perKm * km) / 50) * 50;
-      return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: distance-based · ${naira(perKm)}/km · est. ${naira(fee)} · ${formatDistanceKm(km)}</p>`;
-    }
-    return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: distance-based · ${naira(perKm)}/km</p>`;
-  }
-  if (flat > 0) return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Delivery: flat fee · ${naira(flat)}</p>`;
-  return `<p class="product-delivery-summary"><i class="fa-solid fa-truck"></i> Free delivery</p>`;
-}
 
-function productPaymentPlanBadgeHtml(p){
-  if (!p || p.is_service) return "";
-  const timing = p.payment_timing === "pay_after" ? "pay_after" : "pay_before";
-  const depositPercent = Math.max(1, Math.min(99, Number(p.payment_deposit_percent ?? 20) || 20));
-  const label = timing === "pay_after" ? `${depositPercent}% PAD` : "PBD";
-  const title = timing === "pay_after"
-    ? `Pay ${depositPercent}% before delivery; remaining ${100 - depositPercent}% after delivery`
-    : "Pay before delivery";
-  return `<span class="product-card-payment-plan ${timing === "pay_after" ? "pay-after" : "pay-before"}" title="${title}" aria-label="${title}">${label}</span>`;
-}
 function hydrateProductVariantIndicatorsInView(){
   // A variety indicator is intentionally tied to multiple listing photos.
   // productCardHtml() already renders this synchronously from p.photos when
@@ -16021,16 +15744,6 @@ let activeConversationId = null;
 // still in flight underneath.
 const lastSeenMessagesByConv = new Map();
 
-async function callVendorGated(event, phone, vendorId) {
-  event.preventDefault();
-  const { data: v } = await sb.from("vendors").select("business_name, business_hours, allow_after_hours_messages").eq("id", vendorId).maybeSingle();
-  if (v && !canMessageVendorNow(v)) {
-    const status = vendorHoursStatus(v);
-    showToast(`${v.business_name || "This vendor"} is outside working hours right now${status.todayText ? ` (${status.todayLabel}: ${status.todayText})` : ""}. Try calling during their working hours.`, "info");
-    return;
-  }
-  window.location.href = telLink(phone);
-}
 async function callVendorFromOrder(vendorId) {
   if (!session) { showLogin(); return; }
   try {
@@ -16205,11 +15918,6 @@ function isChatArchived(id) { return getArchivedChatIds().has(id); }
 function chatDeletedKey() { return `levromart-deleted-chats:${session?.user?.id || "guest"}`; }
 function getDeletedChatIds() { try { const x = JSON.parse(localStorage.getItem(chatDeletedKey()) || "[]"); return new Set(Array.isArray(x) ? x : []); } catch (e) { return new Set(); } }
 function setDeletedChatIds(set) { try { localStorage.setItem(chatDeletedKey(), JSON.stringify([...set])); } catch (e) {} }
-function isChatDeleted(id) { return getDeletedChatIds().has(id); }
-function undeleteChatOnNewMessage(conversationId) {
-  const ids = getDeletedChatIds();
-  if (ids.delete(String(conversationId))) setDeletedChatIds(ids);
-}
 async function deleteChatConversation(conversationId) {
   const confirmed = await showConfirmDialog("Delete this chat? It will be removed from your messages. It comes back automatically if the other person sends a new message.", { title: "Delete chat", okLabel: "Delete", danger: true });
   if (!confirmed) return;
@@ -16286,21 +15994,6 @@ function convRowHtml(c) {
       <i class="fa-solid fa-chevron-right conv-chev" aria-hidden="true"></i>
     </div>
   </div>`;
-}
-async function toggleConvReadState(conversationId) {
-  const convs = window.__conversations || [];
-  const c = convs.find((x) => x.conversation_id === conversationId);
-  const currentlyUnread = Number(c?.unread_count || 0) > 0;
-  if (c) c.unread_count = currentlyUnread ? 0 : 1;
-  filterMsgList(); renderBottomNav();
-  try {
-    const { error } = await sb.rpc("toggle_conversation_unread", { p_conversation_id: conversationId });
-    if (error) throw error;
-  } catch (err) {
-    if (c) c.unread_count = currentlyUnread ? 1 : 0;
-    filterMsgList(); renderBottomNav();
-    showToast(err.message || "Could not update this chat.", "error");
-  }
 }
 // A compact WhatsApp-style timestamp: clock time for today, weekday name
 // for the last week, short date otherwise.
@@ -16950,16 +16643,6 @@ function toggleChatMenu(evt) {
   byId("chatMenuDropdown")?.classList.toggle("hidden");
 }
 function closeChatMenu() { byId("chatMenuDropdown")?.classList.add("hidden"); }
-function callChatParty(event, phone) {
-  event?.preventDefault?.();
-  closeChatMenu();
-  if (!phone) { chatNoCallNumber("buyer"); return; }
-  window.location.href = telLink(phone);
-}
-function chatNoCallNumber(who) {
-  closeChatMenu();
-  showToast(who === "vendor" ? "This vendor hasn't added a phone number yet." : "This buyer hasn't shared a phone number for calls.", "info");
-}
 document.addEventListener("click", (e) => {
   const menu = byId("chatMenuDropdown");
   if (menu && !menu.classList.contains("hidden") && !e.target.closest("#chatMenuDropdown, #chatMenuBtn")) menu.classList.add("hidden");
@@ -25638,10 +25321,6 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
-  if (false && (isCustomer || isVendor) && profile?.role !== "admin") {
-    html += `<div class="card order-notes-card hidden" id="orderNotesCard" data-order-id="${esc(order.id)}" data-is-customer="${isCustomer ? "1" : "0"}" data-open="${["completed", "cancelled"].includes(String(order.status || "")) ? "0" : "1"}"></div>`;
-    setTimeout(() => hydrateOrderNotes(order.id), 0);
-  }
   let odBottomBar = "";
   if (newView) {
     const parts = orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, { parts: true });
@@ -25686,8 +25365,6 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
-  const orderBackView = isVendor ? "vendorDashboard" : "buyerOrders";
-  const orderBackParams = {};
   if (newView || newVendorView) return `<div class="od-page">${html}${odBottomBar}</div>`;
   return html;
 }
@@ -32555,7 +32232,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       </div>
     </div>
     <div class="vd-grid" id="vendorsGrid">${vendorDirectorySkeletonHtml()}</div>
-    
+
     <div id="vendorsMapWrap" class="hidden">
       <p class="muted" id="vendorsMapStatus" style="font-size:.82rem;margin:0 0 1rem;line-height:1.45;"></p>
       <div id="vendorsMap" style="height:min(60vh,420px);border-radius:.9rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;"></div>
@@ -35504,7 +35181,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
     }
     if(item.crop?.w>1 && item.crop?.h>1){
       const c=item.crop;
-      ctx.save();ctx.fillStyle='rgba(0,0,0,.48)';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.clearRect(c.x,c.y,c.w,c.h);ctx.drawImage(item.sourceCanvas,0,0,canvas.width,canvas.height); 
+      ctx.save();ctx.fillStyle='rgba(0,0,0,.48)';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.clearRect(c.x,c.y,c.w,c.h);ctx.drawImage(item.sourceCanvas,0,0,canvas.width,canvas.height);
       item.strokes.forEach(s=>{ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=s.color;ctx.lineWidth=s.width;ctx.globalAlpha=s.alpha||1;ctx.beginPath();s.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.restore();});
       ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.setLineDash([7,5]);ctx.strokeRect(c.x,c.y,c.w,c.h);ctx.restore();
     }
