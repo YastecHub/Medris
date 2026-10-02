@@ -34,7 +34,8 @@ module.exports = async function handler(req, res) {
     const repeatCutoff = new Date(Date.now() - REPEAT_MINUTES * 60000).toISOString();
 
     const ordersRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/orders?status=in.(pending,confirmed,handed_over,returned)` +
+      `${SUPABASE_URL}/rest/v1/orders?status=in.(confirmed,handed_over,returned)` +  // pending orders are handled by the DB job remind_unattended_orders() (10 min, then every 30 min)
+        
         `&created_at=lte.${graceCutoff}` +
         `&or=(last_reminder_sent_at.is.null,last_reminder_sent_at.lte.${repeatCutoff})` +
         `&select=id,order_type,status,delivery_method,buyer_id,vendor:vendors(id,business_name,user_id)`,

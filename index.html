@@ -24227,7 +24227,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     const paymentLabel=buyerReportedPayment.payment_type==='delivery_deposit_20' ? 'delivery deposit' : buyerReportedPayment.payment_type==='rental_fee' ? 'rental fee' : buyerReportedPayment.payment_type==='deposit' ? 'refundable deposit' : 'payment';
     html += `<div class="card payment-confirmation-card"><div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.7rem;"><div><h3 style="margin:0;"><i class="fa-solid fa-building-columns"></i> Payment reported</h3><p class="muted" style="margin:.35rem 0 0;">The customer says they transferred <strong>${naira(buyerReportedPayment.amount)}</strong> for the ${esc(paymentLabel)}. Check your bank account before confirming.</p></div><span class="badge payment-reported-badge">Awaiting confirmation</span></div><div class="payment-confirmation-actions"><button type="button" class="btn btn-sm payment-confirm-btn" onclick="confirmBuyerReportedPayment('${order.id}')"><i class="fa-solid fa-check"></i> Confirm payment</button><button type="button" class="btn btn-sm btn-danger" onclick="openBuyerPaymentDispute('${order.id}')"><i class="fa-solid fa-triangle-exclamation"></i> Raise dispute</button></div></div>`;
   } else if(buyerReportedPayment && isCustomer){
-    html += `<div class="card payment-reported-customer-card"><div class="flex" style="gap:.55rem;align-items:flex-start;"><i class="fa-solid fa-hourglass-half" style="margin-top:.15rem;"></i><div><strong>Payment reported</strong><p class="muted" style="margin:.25rem 0 0;">Your payment of <strong>${naira(buyerReportedPayment.amount)}</strong> has been reported to the vendor. The order is now <strong>Payment unresolved</strong> until the vendor confirms receipt or raises a dispute.</p></div></div></div>`;
+    html += `<div class="card payment-reported-customer-card"><div class="flex" style="gap:.55rem;align-items:flex-start;"><i class="fa-solid fa-hourglass-half" style="margin-top:.15rem;"></i><div><strong>Payment reported</strong><p class="muted" style="margin:.25rem 0 0;">Your payment of <strong>${naira(buyerReportedPayment.amount)}</strong> has been reported to the vendor. The order is now <strong>Payment unresolved</strong> until the vendor confirms receipt or raises a dispute.</p>${order.vendor_id ? `<button type="button" class="btn btn-sm order-action-neutral order-message-vendor-btn" style="margin-top:.6rem;" onclick="startConversationWithVendor('${order.vendor_id}')"><i class="fa-solid fa-message"></i> Message vendor</button>` : ""}</div></div></div>`;
   }
 
   if (isVendor) {
@@ -24332,7 +24332,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
-  if (isVendor && pendingReportedPayment && !openPaymentDispute) {
+  if (isVendor && pendingReportedPayment && !openPaymentDispute && !buyerReportedPayment) {
     const reportedLabel = { sale_price: "sale price", rental_fee: "rental fee", deposit: "refundable deposit", delivery_deposit_20: "delivery deposit" }[String(pendingReportedPayment.payment_type || "")] || "payment";
     html += `<div class="card" style="border-color:var(--warning);">
       <h3 style="margin:0 0 .4rem;"><i class="fa-solid fa-hourglass-half"></i> Payment reported by customer</h3>
@@ -24349,7 +24349,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
-  if ((isCustomer || isVendor) && profile?.role !== "admin") {
+  if (false && (isCustomer || isVendor) && profile?.role !== "admin") {
     html += `<div class="card order-notes-card hidden" id="orderNotesCard" data-order-id="${esc(order.id)}" data-is-customer="${isCustomer ? "1" : "0"}" data-open="${["completed", "cancelled"].includes(String(order.status || "")) ? "0" : "1"}"></div>`;
     setTimeout(() => hydrateOrderNotes(order.id), 0);
   }
@@ -24621,6 +24621,9 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
     // still needs to exist though, in case the vendor confirmed by mistake.
     if (order.status === "confirmed") buttons.push(`<button class="btn btn-sm btn-danger order-action-decline" onclick="vendorDeclineOrder('${order.id}','confirmed')">Cancel order</button>`);
     if (order.status === "handed_over" && order.order_type === "rental") buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="updateOrderStatus('${order.id}','returned')">Mark returned</button>`);
+  }
+  if (isCustomer && order.vendor_id && (["confirmed", "payment_unresolved", "handed_over", "returned", "disputed"].includes(String(order.status || "")) || (order.status === "completed" && Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000))) {
+    buttons.push(`<button class="btn btn-sm order-action-neutral order-message-vendor-btn" type="button" onclick="startConversationWithVendor('${order.vendor_id}')"><i class="fa-solid fa-message"></i> Message vendor</button>`);
   }
   if (isCustomer && order.status === "pending") {
     if (order.order_type !== "sale" || !order.package_id) buttons.push(`<button class="btn btn-sm order-action-edit" onclick="openEditOrderModal('${order.id}')"><i class="fa-solid fa-pen"></i> Edit order</button>`);
@@ -32367,7 +32370,7 @@ window.renderVendorMapRail = function(){
         <div class="manual-payment-account-row"><span class="muted">Account number</span><strong>${esc(order.vendor?.account_number||"Not provided")}</strong>${order.vendor?.account_number?`<button type="button" class="icon-btn manual-payment-copy-btn" title="Copy account number" aria-label="Copy account number" onclick="navigator.clipboard?.writeText('${esc(order.vendor.account_number)}').then(()=>showToast('Account number copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i></button>`:""}</div>
       </div>
       ${!hasAccount ? `<div class="banner banner-warning" style="margin-top:.7rem;"><strong>Vendor payment details are not saved yet.</strong> Please contact the vendor before transferring.</div>` : ""}
-      <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}<button type="button" class="btn btn-sm btn-outline" onclick="openOrderNoteBox('${order.id}')"><i class="fa-regular fa-note-sticky"></i> Send a note to vendor</button></div>
+      <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}<button type="button" class="btn btn-sm btn-outline" onclick="byId('manualVendorPaymentModal')?.remove();startConversationWithVendor('${order.vendor_id}')"><i class="fa-solid fa-message"></i> Message vendor</button></div>
       <p class="muted" style="font-size:.78rem;margin-top:.9rem;"><strong>Once you’ve made the transfer, tap “I’ve made the payment”.</strong> This lets the vendor know your payment is on the way so they can start preparing your order.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount},'${esc(paymentLabel)}')"><i class="fa-solid fa-check"></i> I’ve made the payment</button></div>`;
     document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
   };
@@ -38550,8 +38553,8 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .payment-confirmation-actions{display:flex;gap:.55rem;flex-wrap:wrap;margin-top:.8rem;}
 .payment-reported-badge{background:rgba(245,158,11,.13);color:#d97706;}
 [data-theme="dark"] .payment-reported-badge{color:#fbbf24;}
-.order-status-badge-payment-unresolved{background:rgba(239,68,68,.12)!important;color:#dc2626!important;border:1px solid rgba(239,68,68,.2)!important;}
-[data-theme="dark"] .order-status-badge-payment-unresolved{color:#fca5a5!important;}
+.order-status-badge-payment-unresolved{background:rgba(147,51,234,.12)!important;color:#7e22ce!important;border:1px solid rgba(147,51,234,.28)!important;-webkit-text-fill-color:#7e22ce!important;}
+[data-theme="dark"] .order-status-badge-payment-unresolved{color:#d8b4fe!important;-webkit-text-fill-color:#d8b4fe!important;}
 .payment-reason-modal{position:fixed;inset:0;z-index:100800;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);}
 .payment-reason-modal.hidden{display:none;}
 .payment-reason-card{width:min(540px,calc(100vw - 2rem));background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:20px;padding:1rem;box-shadow:0 24px 80px rgba(0,0,0,.38);}
@@ -42565,6 +42568,18 @@ html[data-theme="black"] .avatar-fallback{
 /* Payment unresolved = purple, cancelled = red, disputed = amber. */
 #app .badge.unresolved,.badge.unresolved{background:#ede9fe !important;color:#6d28d9 !important;-webkit-text-fill-color:#6d28d9 !important;border-color:#c4b5fd !important}
 html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unresolved{background:#3b2a6b !important;color:#ddd6fe !important;-webkit-text-fill-color:#ddd6fe !important}
+
+/* Danger buttons stay red (the global green button rule was winning). */
+#app .btn.btn-danger,#app .btn.btn-sm.btn-danger,#app .payment-confirmation-actions .btn.btn-danger{background:#dc2626 !important;background-color:#dc2626 !important;background-image:none !important;border-color:#dc2626 !important;color:#fff !important;-webkit-text-fill-color:#fff !important}
+
+/* Attention motion: the header Messages icon wiggles while it has an unread
+   badge, and the Orders tab icon pulses while it has a pending-order badge. */
+@keyframes levroWiggle{0%,60%,100%{transform:rotate(0) scale(1)}10%{transform:rotate(-14deg) scale(1.12)}20%{transform:rotate(12deg) scale(1.12)}30%{transform:rotate(-9deg) scale(1.08)}40%{transform:rotate(7deg)}50%{transform:rotate(-3deg)}}
+@keyframes levroBulge{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}
+#messagesWrap .icon-btn:has(#messagesDot:not(.hidden)) > i{animation:levroWiggle 2.4s ease-in-out infinite;transform-origin:50% 60%}
+#bottomNav .bottom-nav-item[onclick*="rders"]:has(.bn-badge) .bn-icon > i,
+#bottomNav .bottom-nav-item[onclick*="rders"]:has(.bn-badge) .bn-icon > svg{animation:levroBulge 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){#messagesWrap .icon-btn > i,#bottomNav .bn-icon > i,#bottomNav .bn-icon > svg{animation:none !important}}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
