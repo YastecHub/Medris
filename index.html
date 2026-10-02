@@ -42560,14 +42560,19 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 /* Danger buttons stay red (the global green button rule was winning). */
 #app .btn.btn-danger,#app .btn.btn-sm.btn-danger,#app .payment-confirmation-actions .btn.btn-danger{background:#dc2626 !important;background-color:#dc2626 !important;background-image:none !important;border-color:#dc2626 !important;color:#fff !important;-webkit-text-fill-color:#fff !important}
 
-/* Attention motion: the header Messages icon wiggles while it has an unread
-   badge, and the Orders tab icon pulses while it has a pending-order badge. */
-@keyframes levroWiggle{0%,60%,100%{transform:rotate(0) scale(1)}10%{transform:rotate(-14deg) scale(1.12)}20%{transform:rotate(12deg) scale(1.12)}30%{transform:rotate(-9deg) scale(1.08)}40%{transform:rotate(7deg)}50%{transform:rotate(-3deg)}}
-@keyframes levroBulge{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}
-#messagesWrap .icon-btn:has(#messagesDot:not(.hidden)) > i{animation:levroWiggle 2.4s ease-in-out infinite;transform-origin:50% 60%}
-#bottomNav .bottom-nav-item[onclick*="rders"]:has(.bn-badge) .bn-icon > i,
-#bottomNav .bottom-nav-item[onclick*="rders"]:has(.bn-badge) .bn-icon > svg{animation:levroBulge 1.6s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){#messagesWrap .icon-btn > i,#bottomNav .bn-icon > i,#bottomNav .bn-icon > svg{animation:none !important}}
+/* Attention motion: an icon that has a badge keeps moving so it is hard to miss.
+   A JS helper adds .attn (no :has() needed, so it works on older Android
+   browsers too). These deliberately do not switch off under "reduce motion"
+   (Android battery saver turns that on by itself); the movement is small. */
+@keyframes levroWiggle{0%,55%,100%{transform:rotate(0) scale(1)}8%{transform:rotate(-16deg) scale(1.15)}16%{transform:rotate(14deg) scale(1.15)}24%{transform:rotate(-10deg) scale(1.1)}32%{transform:rotate(8deg)}40%{transform:rotate(-4deg)}}
+@keyframes levroRing{0%,55%,100%{transform:rotate(0)}8%{transform:rotate(20deg)}16%{transform:rotate(-18deg)}24%{transform:rotate(14deg)}32%{transform:rotate(-10deg)}40%{transform:rotate(5deg)}}
+@keyframes levroBulge{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+@keyframes levroBounce{0%,60%,100%{transform:translateY(0)}15%{transform:translateY(-5px)}30%{transform:translateY(0)}42%{transform:translateY(-3px)}}
+.icon-btn.attn > i,#bottomNav .bottom-nav-item.attn .bn-icon > i,#cartFab.attn > i{display:inline-block !important}
+#messagesWrap .icon-btn.attn > i{animation:levroWiggle 2.4s ease-in-out infinite !important;transform-origin:50% 60%}
+#notifWrap .icon-btn.attn > i,#bottomNav .bottom-nav-item.attn[onclick*="otification"] .bn-icon > i{animation:levroRing 2.6s ease-in-out infinite !important;transform-origin:50% 12%}
+#headerCartWrap .icon-btn.attn > i,#cartFab.attn > i{animation:levroBounce 2.2s ease-in-out infinite !important}
+#bottomNav .bottom-nav-item.attn[onclick*="rders"] .bn-icon > i{animation:levroBulge 1.6s ease-in-out infinite !important}
 
 /* Storefront catalogue tabs: underline, not a rounded highlight. */
 #app .storefront-catalog-tabs{display:flex !important;gap:.15rem !important;border-bottom:1px solid var(--border) !important;background:transparent !important;border-radius:0 !important;padding:0 !important;margin:.8rem 0 .9rem !important}
@@ -42921,5 +42926,28 @@ function hideLeviFromPanel() {
       return origNavigate.apply(this,arguments);
     };
   }
+})();
+
+// ---- Mark icons that have a badge so CSS can animate them ----
+(function(){
+  const dots=[["messagesDot","#messagesWrap .icon-btn"],["notifDot","#notifWrap .icon-btn"],["headerCartBadge","#headerCartWrap .icon-btn"]];
+  function visible(d){return !!d && !d.classList.contains("hidden") && String(d.textContent||"").trim()!=="" && String(d.textContent).trim()!=="0";}
+  function sync(){
+    try{
+      dots.forEach(([id,sel])=>{const btn=document.querySelector(sel);if(btn)btn.classList.toggle("attn",visible(document.getElementById(id)));});
+      document.querySelectorAll("#bottomNav .bottom-nav-item").forEach((it)=>it.classList.toggle("attn",!!it.querySelector(".bn-badge")));
+      const fab=document.getElementById("cartFab");
+      if(fab)fab.classList.toggle("attn",visible(document.getElementById("cartFabBadge")));
+    }catch(_){}
+  }
+  let queued=false;
+  const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;sync();});};
+  const watch=()=>{
+    const mo=new MutationObserver(queue);
+    ["header","#bottomNav","#cartFab"].forEach((sel)=>{const el=document.querySelector(sel);if(el)mo.observe(el,{childList:true,subtree:true,attributes:true,attributeFilter:["class"],characterData:true});});
+    sync();
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",watch);else watch();
+  setInterval(sync,3000);
 })();
 </script>
