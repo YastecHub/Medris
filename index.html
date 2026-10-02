@@ -19929,7 +19929,7 @@ async function renderStorefrontInner(vendorId) {
   if (allProducts.length) {
     const featured = allProducts.slice(0, 6);
     html += `<section class="storefront-featured">
-      <div class="storefront-section-head"><h3>Latest from ${esc(v.business_name || "this shop")}</h3>${allProducts.length > 6 ? `<button class="btn btn-sm btn-outline" onclick="document.getElementById('storefrontProductsShell')?.scrollIntoView({behavior:'smooth',block:'start'})">View products</button>` : ""}</div>
+      <div class="storefront-section-head"><h3>Latest from ${esc(v.business_name || "this shop")}</h3></div>
       <div class="storefront-product-strip">${featured.map((p) => {
         const img = p.photos?.[0];
         const price = p.is_service ? `${naira(p.sale_price)}${servicePriceSuffix(p)}` : p.sale_price != null ? naira(p.sale_price) : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "View details";
@@ -45173,6 +45173,11 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .oqp-card{border-color:var(--border)!important;background:var(--card)!important}
 .oqp-ico,.oqp-wait .oqp-ico{background:color-mix(in srgb,var(--text) 7%,var(--card))!important;color:var(--text)!important}
 .pph-save{background:color-mix(in srgb,var(--text) 7%,var(--card))!important;color:var(--text)!important;border-color:var(--border)!important}
+/* Tab rails and chip rows scroll sideways only: no vertical wobble, no drifting out of place. */
+.storefront-catalog-tabs,[class*="catalog-type-tabs"],.vl-tabs,.vendor-listing-tabs,.order-status-pills-rail,.levro-home-cat-rail,.vendor-request-tabs,.storefront-category-chips,.cat-row,.hscroll{overflow-y:hidden!important;overscroll-behavior-x:contain}
+.catalog-type-tabs,.storefront-catalog-tabs,.vl-tabs,.vendor-listing-tabs{scrollbar-width:none}
+.storefront-catalog-tabs{height:auto!important;max-height:none!important;min-height:3rem;align-items:center;padding-bottom:.35rem!important;flex-wrap:nowrap}
+.storefront-catalog-tab{flex:0 0 auto}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
