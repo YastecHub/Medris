@@ -15774,20 +15774,20 @@ function cartItemRowHtml(it) {
   const variant = it.variant || null;
   const effectivePrice = Number(variant?.discount_price ?? variant?.sale_price ?? p.discount_price ?? p.sale_price ?? 0);
   const img = variant?.photo_url || (p.photos && p.photos[0]);
-  return `<div class="flex" style="justify-content:space-between;align-items:center;gap:0.6rem;padding:0.5rem 0;border-top:1px solid var(--border);">
-    <div class="flex" style="gap:0.6rem;align-items:center;min-width:0;">
-      ${img ? `<img src="${esc(img)}" style="width:2.6rem;height:2.6rem;border-radius:0.5rem;object-fit:cover;flex-shrink:0;" />` : `<div class="avatar-circle" style="flex-shrink:0;"><i class="fa-solid fa-box"></i></div>`}
-      <div style="min-width:0;">
-        <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:11rem;">${esc(p.name)}</strong>
-        ${variant ? `<span style="display:block;font-size:.78rem;font-weight:600;">${esc(variant.name)}</span>` : ""}
-        <span class="muted" style="font-size:0.82rem;">${naira(effectivePrice)} each</span>
+  return `<div class="cart-item">
+    ${img ? `<img class="cart-item-img" src="${esc(img)}" alt="" loading="lazy" decoding="async" />` : `<span class="cart-item-img cart-item-img-empty"><i class="fa-solid fa-box"></i></span>`}
+    <div class="cart-item-main">
+      <strong class="cart-item-name">${esc(p.name)}</strong>
+      ${variant ? `<span class="cart-item-variant">${esc(variant.name)}</span>` : ""}
+      <span class="cart-item-price">${naira(effectivePrice)} <small>each</small></span>
+      <div class="cart-item-controls">
+        <div class="cart-qty" role="group" aria-label="Quantity">
+          <button type="button" aria-label="Decrease quantity" onclick="updateCartQty('${it.id}',${it.quantity - 1})" ${it.quantity <= 1 ? "disabled" : ""}><i class="fa-solid fa-minus"></i></button>
+          <span aria-live="polite">${it.quantity}</span>
+          <button type="button" aria-label="Increase quantity" onclick="updateCartQty('${it.id}',${it.quantity + 1})" ${it.quantity >= p.quantity_available ? "disabled" : ""}><i class="fa-solid fa-plus"></i></button>
+        </div>
+        <button type="button" class="cart-remove" title="Remove" aria-label="Remove ${esc(p.name)} from cart" onclick="removeFromCart('${it.id}')"><i class="fa-solid fa-trash"></i></button>
       </div>
-    </div>
-    <div class="flex" style="align-items:center;gap:0.4rem;flex-shrink:0;">
-      <button class="icon-btn" onclick="updateCartQty('${it.id}',${it.quantity - 1})" ${it.quantity <= 1 ? "disabled" : ""}><i class="fa-solid fa-minus"></i></button>
-      <span style="min-width:1.4rem;text-align:center;">${it.quantity}</span>
-      <button class="icon-btn" onclick="updateCartQty('${it.id}',${it.quantity + 1})" ${it.quantity >= p.quantity_available ? "disabled" : ""}><i class="fa-solid fa-plus"></i></button>
-      <button class="icon-btn" title="Remove" onclick="removeFromCart('${it.id}')"><i class="fa-solid fa-trash" style="color:var(--danger);"></i></button>
     </div>
   </div>`;
 }
@@ -15806,9 +15806,10 @@ async function renderCart() {
   const { data: items, error } = cartResult || { data: null, error: new Error("Your cart could not be loaded.") };
   if (error) return `<h2 class="cart-page-title"><i class="fa-solid fa-cart-shopping"></i> Your Cart</h2>${errorStateHtml(error)}<button class="btn btn-outline" onclick="navigate('cart',{},false)"><i class="fa-solid fa-rotate-right"></i> Try again</button>`;
 
-  let html = `<h2 class="cart-page-title"><i class="fa-solid fa-cart-shopping"></i> Your Cart</h2>`;
+  const cartHead = (n) => `<div class="cart-head"><button type="button" class="cart-back" onclick="history.length>1?history.back():navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h2 class="cart-page-title"><i class="fa-solid fa-cart-shopping"></i> My Cart${n ? ` <span class="cart-count">(${n})</span>` : ""}</h2>${n ? `<button type="button" class="cart-clear" onclick="openClearCartSheet()"><i class="fa-solid fa-trash-can"></i> Clear Cart</button>` : ""}</div>`;
+  let html = "";
   if (!items || items.length === 0) {
-    return html + `<div class="empty-state">Your cart is empty. Add items from any product page, or tell Levi what you want and it'll add them for you.</div>`;
+    return `<div class="cart-page">${cartHead(0)}<div class="vd-empty"><span class="vd-empty-ico"><i class="fa-solid fa-cart-shopping"></i></span><strong>Your cart is empty</strong><p>Add items from any product page, or tell Levi what you want and it'll add them for you.</p><button type="button" class="vl-add" onclick="navigate('home')"><i class="fa-solid fa-bag-shopping"></i> Start shopping</button></div></div>`;
   }
 
   const valid = items.filter((it) => it.product && it.product.status === "active" && it.product.vendor?.verification_status === "verified" && it.product.vendor?.is_active);
@@ -15834,20 +15835,24 @@ async function renderCart() {
   [...byVendor.values()].forEach(({ vendor: v, items: vItems }) => {
     const subtotal = vItems.reduce((s, it) => s + Number(it.variant?.discount_price ?? it.variant?.sale_price ?? it.product.discount_price ?? it.product.sale_price ?? 0) * it.quantity, 0);
     const ownCartVendor = isOwnVendorId(v.id);
-    html += `<div class="card cart-vendor-card ${ownCartVendor ? "own-cart-vendor" : ""}" style="margin-bottom:1rem;">
-      <h3 style="margin-top:0;"><a href="#" onclick="navigate('storefront',{vendorId:'${v.id}'});return false;">${vendorNameWithFormerly(v)}</a></h3>
-      ${ownCartVendor ? `<p class="error-text" style="margin:.35rem 0 .6rem;"><i class="fa-solid fa-ban"></i> Your own products can't be purchased from your shop.</p>` : ""}
-      ${vItems.map(cartItemRowHtml).join("")}
-      <div class="divider"></div>
-      <p class="flex" style="justify-content:space-between;margin:0 0 0.6rem;"><span class="muted">Subtotal</span><strong>${naira(subtotal)}</strong></p>
-      ${deliveryFieldsHtml(`cart-${v.id}`, v.delivery_fee, v.lat, v.lng, v.delivery_fee_mode, v.delivery_fee_per_km)}
-      <div style="margin:0.7rem 0;">
-        <label style="margin:0;">Note for the vendor <span class="muted" style="font-weight:400;">(optional)</span></label>
-        <textarea id="cartNote-${v.id}" rows="2" placeholder="e.g. I'd like the blue one, or a size 42" style="margin-top:0.3rem;"></textarea>
-      </div>
-      ${ownCartVendor ? `<button class="btn btn-outline" style="width:100%;" disabled title="You can't purchase from your own shop"><i class="fa-solid fa-ban"></i> Checkout unavailable</button>` : `<button class="btn" style="width:100%;" onclick="checkoutCartVendor('${v.id}')"><i class="fa-solid fa-bag-shopping"></i> Checkout · ${esc(v.business_name)}</button>`}
-      <p id="cartError-${v.id}" class="error-text hidden"></p>
-    </div>`;
+    const deliveryHtml = deliveryFieldsHtml(`cart-${v.id}`, v.delivery_fee, v.lat, v.lng, v.delivery_fee_mode, v.delivery_fee_per_km, "", subtotal);
+    // The live item / delivery / total breakdown lives in its own Order summary card.
+    const breakdownRe = new RegExp(`<div id="cart-${v.id}PriceBreakdown"[^>]*></div>`);
+    const deliveryNoBreakdown = deliveryHtml.replace(breakdownRe, "");
+    const itemCount = vItems.reduce((n, it) => n + it.quantity, 0);
+    html += `<section class="cart-vendor-card ${ownCartVendor ? "own-cart-vendor" : ""}" data-cart-vendor="${esc(v.id)}">
+      <a href="#" class="cart-vendor-head" onclick="navigate('storefront',{vendorId:'${v.id}'});return false;"><i class="fa-solid fa-store"></i><span>${vendorNameWithFormerly(v)}</span><i class="fa-solid fa-chevron-right cart-chev"></i></a>
+      ${ownCartVendor ? `<p class="error-text" style="margin:.5rem .9rem;"><i class="fa-solid fa-ban"></i> Your own products can't be purchased from your shop.</p>` : ""}
+      <div class="cart-items">${vItems.map(cartItemRowHtml).join("")}</div>
+    </section>
+    <section class="cart-card cart-summary"><div class="cart-card-head"><h3><i class="fa-solid fa-receipt"></i> Order summary</h3><strong>${naira(subtotal)}</strong></div>
+      <div class="cart-summary-row"><span>Subtotal (${itemCount} item${itemCount === 1 ? "" : "s"})</span><strong>${naira(subtotal)}</strong></div>
+      <div id="cart-${v.id}PriceBreakdown" class="price-breakdown-table" aria-live="polite"></div></section>
+    <section class="cart-card cart-delivery"><h3><i class="fa-solid fa-truck-fast"></i> Delivery option</h3>${deliveryNoBreakdown}</section>
+    <section class="cart-card cart-note"><label for="cartNote-${v.id}">Note for the vendor <span>(optional)</span></label>
+      <textarea id="cartNote-${v.id}" rows="3" maxlength="200" placeholder="e.g. I'd like the blue one, or a size 42" oninput="this.nextElementSibling.textContent=this.value.length+'/200'"></textarea><small class="cart-note-count">0/200</small></section>
+    ${ownCartVendor ? `<button class="btn btn-outline" style="width:100%;" disabled title="You can't purchase from your own shop"><i class="fa-solid fa-ban"></i> Checkout unavailable</button>` : `<button type="button" class="cart-checkout" onclick="checkoutCartVendor('${v.id}')"><i class="fa-solid fa-bag-shopping"></i><span class="cart-checkout-label">Checkout · ${esc(v.business_name)}</span><b id="cart-${v.id}CheckoutTotal">${naira(subtotal)}</b></button>`}
+    <p id="cartError-${v.id}" class="error-text hidden"></p>`;
   });
 
   if (ownItems.length) {
@@ -15857,7 +15862,32 @@ async function renderCart() {
     window.__staleCartIds = stale.filter((it) => !ownItems.includes(it)).map((it) => it.id);
     html += `<p class="muted" style="font-size:0.85rem;"><i class="fa-solid fa-circle-info"></i> ${stale.length - ownItems.length} item${stale.length - ownItems.length === 1 ? "" : "s"} in your cart ${stale.length - ownItems.length === 1 ? "is" : "are"} no longer available and won't be included at checkout. <a href="#" onclick="clearStaleCartItems();return false;">Remove ${stale.length - ownItems.length === 1 ? "it" : "them"}</a>.</p>`;
   }
-  return html;
+  return `<div class="cart-page">${cartHead([...byVendor.values()].reduce((n, g) => n + g.items.length, 0))}${html}</div>`;
+}
+function openClearCartSheet() {
+  if (byId("clearCartSheet")) return;
+  const wrap = document.createElement("div");
+  wrap.id = "clearCartSheet";
+  wrap.className = "cc-backdrop";
+  wrap.innerHTML = `<div class="cc-sheet" role="dialog" aria-modal="true" aria-labelledby="ccTitle"><button type="button" class="cc-x" aria-label="Close" data-cc="close"><i class="fa-solid fa-xmark"></i></button>
+    <span class="cc-ico"><i class="fa-solid fa-trash-can"></i></span><h3 id="ccTitle">Clear cart?</h3><p>This will remove all items from your cart. This action cannot be undone.</p>
+    <div class="cc-actions"><button type="button" class="cc-cancel" data-cc="close">Cancel</button><button type="button" class="cc-confirm" data-cc="ok"><i class="fa-solid fa-trash-can"></i> Clear Cart</button></div></div>`;
+  document.body.appendChild(wrap);
+  requestAnimationFrame(() => wrap.classList.add("open"));
+  const close = () => { wrap.classList.remove("open"); setTimeout(() => wrap.remove(), 180); };
+  wrap.addEventListener("click", async (e) => {
+    if (e.target === wrap || e.target.closest('[data-cc="close"]')) return close();
+    const ok = e.target.closest('[data-cc="ok"]');
+    if (!ok) return;
+    ok.disabled = true;
+    const { error } = await sb.from("cart_items").delete().eq("buyer_id", session.user.id);
+    if (error) { ok.disabled = false; showToast(error.message || "Couldn't clear your cart.", "error"); return; }
+    close();
+    showToast("Cart cleared.", "success");
+    try { updateCartFab(); } catch (_) {}
+    refreshNotifications();
+    navigate("cart", {}, false);
+  });
 }
 async function addToCart(productId, qty, variantId = null) {
   if (!session) { showLogin(); return; }
@@ -18714,6 +18744,8 @@ function refreshPriceBreakdown(prefix) {
   const { fee, known } = computeDeliveryFeeForPrefix(prefix, method);
   const feeLabel = method !== "delivery" ? `<span class="price-breakdown-free">Free</span>` : known ? (fee > 0 ? naira(fee) : `<span class="price-breakdown-free">Free</span>`) : `<span class="muted">Share location to see fee</span>`;
   const total = method !== "delivery" ? itemTotal : (known ? itemTotal + fee : null);
+  const ckTotal = byId(`${prefix}CheckoutTotal`);
+  if (ckTotal) ckTotal.textContent = naira(method !== "delivery" ? itemTotal : (known ? itemTotal + fee : itemTotal));
   box.innerHTML = `
     <div class="price-breakdown-row"><span>Item price</span><strong>${naira(itemTotal)}</strong></div>
     <div class="price-breakdown-row"><span>${method === "delivery" ? "Delivery fee" : pickupLabel}</span><strong>${feeLabel}</strong></div>
@@ -22215,43 +22247,66 @@ function vlImage(src, alt, icon) {
   return src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" draggable="false" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'vl-img-empty',innerHTML:'<i class=&quot;fa-solid ${icon}&quot;></i>'}))">`
     : `<span class="vl-img-empty"><i class="fa-solid ${icon}"></i></span>`;
 }
+function vlMenuItem(icon, label, onclick, extra = "") {
+  return `<button type="button" role="menuitem" ${onclick ? `onclick="event.stopPropagation();vlCloseMenus();${onclick}"` : ""} ${extra}><i class="fa-solid ${icon}" aria-hidden="true"></i> ${label}</button>`;
+}
+function vlMenu(items) {
+  return `<div class="vl-more-wrap"><button type="button" class="vl-card-more" aria-haspopup="menu" aria-expanded="false" aria-label="More actions" onclick="event.stopPropagation();vlToggleMenu(this)"><i class="fa-solid fa-ellipsis-vertical"></i></button><div class="vl-menu hidden" role="menu">${items.join("")}</div></div>`;
+}
+function vlToggleMenu(btn) {
+  const menu = btn.nextElementSibling;
+  const open = menu.classList.contains("hidden");
+  vlCloseMenus();
+  if (open) { menu.classList.remove("hidden"); btn.setAttribute("aria-expanded", "true"); btn.closest(".vl-card")?.classList.add("vl-menu-open"); }
+}
+function vlCloseMenus() {
+  document.querySelectorAll(".vl-menu").forEach((m) => m.classList.add("hidden"));
+  document.querySelectorAll(".vl-card-more").forEach((b) => b.setAttribute("aria-expanded", "false"));
+  document.querySelectorAll(".vl-menu-open").forEach((c) => c.classList.remove("vl-menu-open"));
+}
+document.addEventListener("click", (e) => { if (!e.target.closest?.(".vl-more-wrap")) vlCloseMenus(); });
 function vlProductCardHtml(p, ctx) {
   const catName = p.category?.name || "Uncategorized";
   const hasPendingOrder = ctx.pendingProductIds.has(p.id);
   const lt = String(p.listing_type || "sale");
   const typeLabel = p.is_service ? "Service" : lt === "rent" ? "Rental" : lt === "both" ? "Buy & Rent" : "Product";
   const variants = Array.isArray(p.variants) ? p.variants.length : 0;
-  const stock = p.is_service ? "" : p.track_quantity === false ? "Always available" : variants ? `${variants} variet${variants === 1 ? "y" : "ies"}` : `Stock: ${Number(p.quantity_available ?? 0)}`;
+  const stock = p.is_service ? "" : p.track_quantity === false ? "" : variants ? `${variants} variet${variants === 1 ? "y" : "ies"}` : `Stock: ${Number(p.quantity_available ?? 0)}`;
+  const views = Number(p.view_count || 0), orders = Number(ctx.ordersByProduct?.[p.id] || 0);
   const pid = esc(p.id), name = esc(p.name);
-  let toggle = "";
-  if (p.status === "active") toggle = vlBtn("vl-btn-pause", "fa-pause", "Pause", `setProductStatus('${pid}','paused')`, `aria-label="Pause ${name}"`);
+  const items = [vlMenuItem("fa-copy", "Duplicate", `openDuplicateProductModal('${pid}')`)];
+  if (p.status === "active") items.push(vlMenuItem("fa-pause", "Pause listing", `setProductStatus('${pid}','paused')`));
   else if (p.status === "paused") {
     if (p.billing_model === "monthly") {
-      if (listingActivationValid(p)) toggle = vlBtn("vl-btn-resume", "fa-play", "Resume", `setProductStatus('${pid}','active')`, `aria-label="Resume ${name}"`);
-      else if (ctx.pendingMonthlyProductIds.has(String(p.id))) toggle = vlBtn("vl-btn-pending", "fa-clock", "Receipt sent", "", `disabled aria-label="Receipt submitted"`);
-      else { const l = p.billing_status === "pending_payment" ? "Submit receipt" : "Renew ₦1,000"; toggle = vlBtn("vl-btn-resume", "fa-receipt", l, `startListingMonthlyPayment('product','${pid}')`, `aria-label="${l}"`); }
-    } else toggle = vlBtn("vl-btn-resume", "fa-play", "Activate", `setProductStatus('${pid}','active')`, `aria-label="Activate ${name}"`);
+      if (listingActivationValid(p)) items.push(vlMenuItem("fa-play", "Resume listing", `setProductStatus('${pid}','active')`));
+      else if (ctx.pendingMonthlyProductIds.has(String(p.id))) items.push(vlMenuItem("fa-clock", "Receipt submitted", "", "disabled"));
+      else items.push(vlMenuItem("fa-receipt", p.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000", `startListingMonthlyPayment('product','${pid}')`));
+    } else items.push(vlMenuItem("fa-play", "Activate listing", `setProductStatus('${pid}','active')`));
   }
-  const removeBtn = vlBtn("vl-btn-delete", "fa-trash", "Delete", `removeProduct('${pid}')`, hasPendingOrder ? `disabled title="Can't remove: this product has a pending order" aria-label="Delete ${name} (unavailable: pending order)"` : `aria-label="Remove ${name}"`);
+  const delBtn = `<button type="button" class="vl-btn vl-btn-delete" onclick="event.stopPropagation();removeProduct('${pid}')" ${hasPendingOrder ? `disabled title="Can't remove: this product has a pending order" aria-label="Delete ${name} (unavailable: pending order)"` : `aria-label="Delete ${name}"`}><i class="fa-solid fa-trash" aria-hidden="true"></i><span>Delete</span></button>`;
   return `<article class="vl-card" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}" data-vp-status="${esc(p.status || "")}" data-vp-mode="${p.is_service ? "" : lt}" data-vp-price="${vlPriceValue(p)}" onclick="showVendorProductDetails('${pid}')" role="button" tabindex="0" aria-label="Open ${name}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();showVendorProductDetails('${pid}');}">
-    <div class="vl-media">${vlImage(p.photos?.[0], p.name, p.is_service ? "fa-hand-holding-heart" : "fa-camera")}<span class="vl-type">${typeLabel}</span></div>
-    <div class="vl-body"><h4 class="vl-name">${name}</h4><div class="vl-price-row"><b class="vl-price">${vlPrice(p)}</b>${stock ? `<span class="vl-stock">${esc(stock)}</span>` : ""}</div>${vlStatusPill(p.status)}</div>
-    <div class="vl-actions">${vlBtn("vl-btn-edit", "fa-pen", "Edit", `openEditProductModal('${pid}')`, `aria-label="Edit ${name}"`)}${vlBtn("vl-btn-dup", "fa-copy", "Duplicate", `openDuplicateProductModal('${pid}')`, `aria-label="Duplicate ${name}"`)}${toggle}${removeBtn}</div>
+    <div class="vl-media">${vlImage(p.photos?.[0], p.name, p.is_service ? "fa-hand-holding-heart" : "fa-camera")}</div>
+    <div class="vl-body"><div class="vl-top"><h4 class="vl-name">${name}</h4>${vlStatusPill(p.status)}${vlMenu(items)}</div>
+      <b class="vl-price">${vlPrice(p)}</b>
+      <span class="vl-meta"><span class="vl-kind"><i class="fa-solid ${p.is_service ? "fa-hand-holding-heart" : "fa-box"}" aria-hidden="true"></i> ${typeLabel}</span><span><i class="fa-solid fa-chart-simple" aria-hidden="true"></i> ${views.toLocaleString()} view${views === 1 ? "" : "s"}</span><span><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> ${orders.toLocaleString()} order${orders === 1 ? "" : "s"}</span>${stock ? `<span>${esc(stock)}</span>` : ""}</span>
+      <div class="vl-actions">${vlBtn("vl-btn-edit", "fa-pen", "Edit", `openEditProductModal('${pid}')`, `aria-label="Edit ${name}"`)}${vlBtn("vl-btn-view", "fa-eye", "View", `navigate('productDetail',{productId:'${pid}'})`, `aria-label="View ${name}"`)}${delBtn}</div></div>
   </article>`;
 }
 function vlPackageCardHtml(pkg, pendingIds) {
   const pid = esc(pkg.id), name = esc(pkg.name);
   const items = pkg.items || [];
-  let toggle;
-  if (pkg.status === "active") toggle = vlBtn("vl-btn-pause", "fa-pause", "Pause", `setPackageStatus('${pid}','paused')`, `aria-label="Pause ${name}"`);
+  const menu = [];
+  if (pkg.status === "active") menu.push(vlMenuItem("fa-pause", "Pause listing", `setPackageStatus('${pid}','paused')`));
   else if (pkg.billing_model === "monthly") {
-    if (pendingIds.has(String(pkg.id))) toggle = vlBtn("vl-btn-pending", "fa-clock", "Receipt sent", "", `disabled aria-label="Receipt submitted"`);
-    else { const l = pkg.billing_status === "pending_payment" ? "Submit receipt" : "Renew ₦1,000"; toggle = vlBtn("vl-btn-resume", "fa-receipt", l, `startListingMonthlyPayment('package','${pid}')`, `aria-label="${l}"`); }
-  } else toggle = vlBtn("vl-btn-resume", "fa-play", "Activate", `setPackageStatus('${pid}','active')`, `aria-label="Activate ${name}"`);
+    if (pendingIds.has(String(pkg.id))) menu.push(vlMenuItem("fa-clock", "Receipt submitted", "", "disabled"));
+    else menu.push(vlMenuItem("fa-receipt", pkg.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000", `startListingMonthlyPayment('package','${pid}')`));
+  } else menu.push(vlMenuItem("fa-play", "Activate listing", `setPackageStatus('${pid}','active')`));
   return `<article class="vl-card vl-card-pkg" data-vp-created="${esc(pkg.created_at || "")}" data-vp-kind="packages" data-vp-name="${esc((pkg.name || "").toLowerCase())}" data-vp-cat="package" data-vp-status="${esc(pkg.status || "")}" data-vp-mode="" data-vp-price="${Number(pkg.price || 0)}" onclick="navigate('packageDetail',{packageId:'${pid}'})" role="button" tabindex="0" aria-label="Open ${name}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();navigate('packageDetail',{packageId:'${pid}'});}">
-    <div class="vl-media">${vlImage(Array.isArray(pkg.photos) ? pkg.photos[0] : null, pkg.name, "fa-box-open")}<span class="vl-type">Package</span></div>
-    <div class="vl-body"><h4 class="vl-name">${name}</h4><div class="vl-price-row"><b class="vl-price">${naira(pkg.price)}</b><span class="vl-stock">${items.length} item${items.length === 1 ? "" : "s"}</span></div>${vlStatusPill(pkg.status)}</div>
-    <div class="vl-actions vl-actions-3">${vlBtn("vl-btn-edit", "fa-pen", "Edit", `openEditPackageModal('${pid}')`, `aria-label="Edit ${name}"`)}${toggle}${vlBtn("vl-btn-delete", "fa-trash", "Delete", `deletePackage('${pid}')`, `aria-label="Delete ${name}"`)}</div>
+    <div class="vl-media">${vlImage(Array.isArray(pkg.photos) ? pkg.photos[0] : null, pkg.name, "fa-box-open")}</div>
+    <div class="vl-body"><div class="vl-top"><h4 class="vl-name">${name}</h4>${vlStatusPill(pkg.status)}${vlMenu(menu)}</div>
+      <b class="vl-price">${naira(pkg.price)}</b>
+      <span class="vl-meta"><span class="vl-kind"><i class="fa-solid fa-box-open" aria-hidden="true"></i> Package</span><span>${items.length} item${items.length === 1 ? "" : "s"}</span></span>
+      <div class="vl-actions">${vlBtn("vl-btn-edit", "fa-pen", "Edit", `openEditPackageModal('${pid}')`, `aria-label="Edit ${name}"`)}${vlBtn("vl-btn-view", "fa-eye", "View", `navigate('packageDetail',{packageId:'${pid}'})`, `aria-label="View ${name}"`)}${vlBtn("vl-btn-delete", "fa-trash", "Delete", `deletePackage('${pid}')`, `aria-label="Delete ${name}"`)}</div></div>
   </article>`;
 }
 async function vlFetchPackages(vendorId) {
@@ -22273,6 +22328,7 @@ function vlRefreshEmpty() {
   const tab = document.querySelector("#vendorProductsTypeTabs .active")?.dataset.tab || "products";
   const cards = [...document.querySelectorAll("#app .vl-card")].filter((c) => tab === "all" || c.dataset.vpKind === tab);
   const visible = cards.filter((c) => !c.classList.contains("vl-filtered"));
+  const cnt = byId("vlCount"); if (cnt) cnt.textContent = `(${visible.length})`;
   empty.classList.toggle("hidden", visible.length > 0);
   if (visible.length) return;
   if (!cards.length) {
@@ -22329,9 +22385,11 @@ async function renderVendorProducts() {
   const favCountByProduct = {};
   (favCountRows || []).forEach((r) => { favCountByProduct[r.product_id] = r.count; });
   const revenueByProduct = {};
+  const ordersByProduct = {};
   const pendingProductIds = new Set();
   const PENDING_ORDER_STATUSES = new Set(["pending", "confirmed", "handed_over", "returned", "disputed"]);
   (orderItems || []).forEach((oi) => {
+    ordersByProduct[oi.product_id] = (ordersByProduct[oi.product_id] || 0) + 1;
     if (oi.order?.status === "completed") revenueByProduct[oi.product_id] = (revenueByProduct[oi.product_id] || 0) + oi.quantity * oi.unit_price;
     if (PENDING_ORDER_STATUSES.has(oi.order?.status)) pendingProductIds.add(oi.product_id);
   });
@@ -22341,16 +22399,16 @@ async function renderVendorProducts() {
   const vlServices = products.filter((x) => x.is_service).length;
   const vlPackages = pkgResult.packages.length;
   let html = `<div class="vl-page"><div class="vl-head">
-    <div class="vl-head-top"><span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
-      <div class="vendor-products-menu-wrap vendor-products-top-menu"><button type="button" class="vl-more" aria-label="More listing options" title="More listing options" onclick="toggleVendorProductsMenu(event)"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-        <div id="vendorProductsMenu" class="vendor-products-menu hidden"><button type="button" onclick="toggleVendorDiscarded(event)"><i class="fa-solid fa-trash-can"></i> Discarded items <span>${removedProducts.length}</span></button></div></div></div>
+    <div class="vl-head-top"><span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span></div>
     <div class="vl-head-row"><div class="vl-head-copy"><h2>My Listings</h2><p>Manage your products, services and packages in one place.</p></div>
-      <button type="button" class="vl-add" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add Listing</button></div>
-  </div>`;
+      </div>
+  </div>
+  <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add Listing</button>`;
   if (v.verification_status !== "verified") html += `<p class="vl-note"><i class="fa-solid fa-circle-info"></i> Listings won't appear publicly until your vendor account is verified.</p>`;
 
   const vlTab = (tab, icon, label, n) => `<button type="button" data-tab="${tab}" role="tab" onclick="switchVendorListingTab('${tab}')"><i class="fa-solid ${icon}" aria-hidden="true"></i><span>${label}</span><em>${n}</em></button>`;
-  html += `<div class="vl-tabs" id="vendorProductsTypeTabs" role="tablist" aria-label="Listing type">${vlTab("all", "fa-table-cells-large", "All Listings", vlProducts + vlServices + vlPackages)}${vlTab("products", "fa-box", "Products", vlProducts)}${vlTab("services", "fa-hand-holding-heart", "Services", vlServices)}${vlTab("packages", "fa-box-open", "Packages", vlPackages)}</div>`;
+  html += `<div class="vl-tabs" id="vendorProductsTypeTabs" role="tablist" aria-label="Listing type">${vlTab("all", "fa-table-cells-large", "All Listings", vlProducts + vlServices + vlPackages)}${vlTab("products", "fa-box", "Products", vlProducts)}${vlTab("services", "fa-hand-holding-heart", "Services", vlServices)}${vlTab("packages", "fa-box-open", "Packages", vlPackages)}</div>
+  <div class="vl-discarded"><span class="vl-discarded-ico"><i class="fa-solid fa-trash-can"></i></span><div><strong>Discarded items${removedProducts.length ? ` (${removedProducts.length})` : ""}</strong><p>Products removed from your live catalogue stay here when order history prevents permanent deletion.</p></div><button type="button" onclick="toggleVendorDiscarded(event,true)" aria-label="View discarded items">View <i class="fa-solid fa-chevron-right"></i></button></div>`;
 
   html += `<div id="vendorDiscardedPanel" class="vendor-discarded-panel hidden">
     <div class="vendor-discarded-head"><div><strong>Discarded items</strong><span class="muted">Products removed from your live catalogue stay here when order history prevents permanent deletion.</span></div><button type="button" class="icon-btn" aria-label="Close discarded items" onclick="toggleVendorDiscarded(event,false)"><i class="fa-solid fa-xmark"></i></button></div>
@@ -22359,12 +22417,13 @@ async function renderVendorProducts() {
 
   const packageSection = "";
   html += `<div class="vl-tools">
-    <label class="vl-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="vendorProductSearch" placeholder="Search your listings..." autocomplete="off" enterkeyhint="search" aria-label="Search your listings" oninput="filterVendorProducts()" /></label>
+    <h3 class="vl-listtitle">Your listings <span id="vlCount"></span></h3>
     <label class="vl-select vl-select-filter"><i class="fa-solid fa-filter" aria-hidden="true"></i><span id="vlFilterLabel">Filter</span><i class="fa-solid fa-chevron-down vl-chev" aria-hidden="true"></i>
       <select id="vendorProductFilter" aria-label="Filter listings" onchange="vlOnFilterChange()"><option value="all">All listings</option><option value="active">Active</option><option value="paused">Paused</option><option value="sale">Buy</option><option value="rent">Rent</option><option value="removed">Removed (${removedProducts.length})</option></select></label>
     <label class="vl-select vl-select-sort"><i class="fa-solid fa-arrow-up-wide-short" aria-hidden="true"></i><span id="vlSortLabel">Newest first</span><i class="fa-solid fa-chevron-down vl-chev" aria-hidden="true"></i>
       <select id="vendorProductSort" aria-label="Sort listings" onchange="filterVendorProducts()"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="price_low">Price: Low to High</option><option value="price_high">Price: High to Low</option><option value="az">Name A–Z</option><option value="za">Name Z–A</option></select></label>
-  </div>`;
+  </div>
+  <label class="vl-search vl-search-row"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="vendorProductSearch" placeholder="Search your listings..." autocomplete="off" enterkeyhint="search" aria-label="Search your listings" oninput="filterVendorProducts()" /></label>`;
 
   if (vendorProductsView === "table" && products && products.length > 0) {
     const totalRevenue = Object.values(revenueByProduct).reduce((s, n) => s + n, 0);
@@ -22425,7 +22484,7 @@ async function renderVendorProducts() {
         ${topRegion ? `<p class="muted"><i class="fa-solid fa-map-location-dot"></i> Sells best in <a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count} order${topRegion.order_count === 1 ? "" : "s"})</a></p>` : ""}
         ${hasPendingOrder ? `<p class="muted" style="color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
       ` };
-      html += vlProductCardHtml(p, { pendingProductIds, pendingMonthlyProductIds });
+      html += vlProductCardHtml(p, { pendingProductIds, pendingMonthlyProductIds, ordersByProduct });
     });
   pkgResult.packages.forEach((pkg) => { html += vlPackageCardHtml(pkg, pkgResult.pendingIds); });
   html += `</div><div class="vl-empty hidden" id="vlEmpty" role="status"></div>${pkgResult.error ? `<p class="vl-note vl-note-bad"><i class="fa-solid fa-triangle-exclamation"></i> Couldn't load your packages. <a href="#" onclick="navigate('vendorProducts',{},false);return false;">Try again</a></p>` : ""}</div>`;
@@ -44043,7 +44102,7 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 .od-vendor-actions{grid-column:1/-1;display:flex;gap:.55rem}
 .od-vendor-actions .od-btn{flex:1}
 /* bottom bar */
-.od-bottom-bar{position:sticky;bottom:calc(74px + env(safe-area-inset-bottom));z-index:20;display:flex;gap:.7rem;padding:.55rem 0 .3rem;background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.od-bottom-bar{position:sticky;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:20;display:flex;gap:.7rem;padding:.55rem 0 0;margin-bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent)}
 .od-bottom-bar .od-btn{flex:1;min-height:3.2rem}
 .od-action-wrap{display:flex;flex-direction:column;gap:.6rem;margin:0 0 .9rem}
 .od-action-wrap .btn{width:100%;min-height:3.1rem;justify-content:center}
@@ -44067,8 +44126,8 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 .od-deposit-note{margin:.7rem 0 0;font-size:.8rem;line-height:1.4;color:var(--od-muted)}
 .od-deposit-note i{margin-right:.3rem}
 /* no big gap above the bottom navigation */
-.od-page{padding-bottom:.35rem!important}
-body:has(.od-page) #app{padding-bottom:.4rem!important}
+.od-page{padding-bottom:0!important}
+body:has(.od-page) #app{padding-bottom:0!important}
 /* dark theme: tone pills must not glow */
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .od-pill{background:color-mix(in srgb,var(--od-tone) 26%,var(--card));color:var(--text)}}
 :root[data-theme="dark"] .od-pill,:root[data-theme="black"] .od-pill{background:color-mix(in srgb,var(--od-tone) 26%,var(--card));color:var(--text)}
@@ -44277,6 +44336,116 @@ body:has(.od-page) #app{padding-bottom:.4rem!important}
 .sr-secondary{display:inline-flex;align-items:center;gap:.5rem;min-height:3rem;padding:0 1.1rem;border-radius:14px;border:1.5px solid var(--vd-g);background:transparent;color:var(--vd-gt);font:inherit;font-weight:800;cursor:pointer}
 .search-empty-note{font-size:.85rem;margin-top:1rem!important}
 @media(max-width:350px){.sr-thumb{width:3.8rem;height:3.8rem}}
+/* ================= Cart (redesign) ================= */
+.cart-page{max-width:640px;margin:0 auto;--ct-g:var(--primary,#0B6E4A);--ct-gt:var(--ct-g);--ct-line:color-mix(in srgb,var(--text) 10%,transparent);--ct-muted:var(--text-muted,#64748b)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .cart-page{--ct-gt:#4ade80}}
+:root[data-theme="dark"] .cart-page,:root[data-theme="black"] .cart-page{--ct-gt:#4ade80}
+.cart-page *{box-sizing:border-box}
+.cart-head{display:flex;align-items:center;gap:.6rem;margin:0 0 .9rem}
+.cart-back{flex:0 0 auto;width:2.5rem;height:2.5rem;border:0;background:transparent;color:var(--text);font-size:1.15rem;border-radius:50%;cursor:pointer}
+.cart-head .cart-page-title{flex:1;min-width:0;margin:0!important;padding:0!important;font-size:1.5rem;display:flex;align-items:center;gap:.5rem;white-space:nowrap}
+.cart-head .cart-page-title>i{color:var(--ct-gt);font-size:1.3rem}
+.cart-count{font-size:1rem;font-weight:600;color:var(--ct-muted)}
+.cart-clear{flex:0 0 auto;display:inline-flex;align-items:center;gap:.4rem;min-height:2.6rem;padding:0 .9rem;border-radius:12px;border:1px solid color-mix(in srgb,#dc2626 40%,transparent);background:color-mix(in srgb,#dc2626 8%,var(--card));color:#dc2626;font:inherit;font-weight:700;font-size:.85rem;cursor:pointer}
+:root[data-theme="dark"] .cart-clear,:root[data-theme="black"] .cart-clear{color:#f87171}
+.cart-vendor-card,.cart-card{background:var(--card);border:1px solid var(--ct-line);border-radius:18px;margin:0 0 .8rem!important;box-shadow:0 2px 10px rgba(15,23,42,.04);overflow:hidden}
+.cart-card{padding:1rem}
+.cart-card h3{margin:0 0 .6rem;font-size:1.02rem;display:flex;align-items:center;gap:.5rem}
+.cart-card h3 i{color:var(--ct-gt)}
+.cart-vendor-head{display:flex;align-items:center;gap:.6rem;padding:.8rem 1rem;border-bottom:1px solid var(--ct-line);color:var(--ct-gt);font-weight:800;font-size:1.02rem;text-decoration:none}
+.cart-vendor-head span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cart-chev{font-size:.8rem;opacity:.7}
+.cart-items{padding:.3rem 1rem}
+.cart-item{display:flex;gap:.8rem;padding:.7rem 0}
+.cart-item+.cart-item{border-top:1px solid var(--ct-line)}
+.cart-item-img{flex:0 0 auto;width:5.2rem;height:5.2rem;border-radius:14px;object-fit:cover;background:color-mix(in srgb,var(--text) 7%,var(--card));display:block}
+.cart-item-img-empty{display:flex;align-items:center;justify-content:center;color:var(--ct-muted);font-size:1.4rem}
+.cart-item-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:.15rem}
+.cart-item-name{font-size:1rem;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cart-item-variant{font-size:.8rem;color:var(--ct-muted)}
+.cart-item-price{color:var(--ct-gt);font-weight:800}
+.cart-item-price small{font-weight:500;color:var(--ct-muted)}
+.cart-item-controls{display:flex;align-items:center;gap:.6rem;margin-top:.35rem}
+.cart-qty{display:inline-flex;align-items:center;border:1px solid var(--ct-line);border-radius:12px;overflow:hidden}
+.cart-qty button{width:2.6rem;height:2.6rem;border:0;background:transparent;color:var(--text);font-size:.9rem;cursor:pointer}
+.cart-qty button:disabled{opacity:.35}
+.cart-qty span{min-width:2rem;text-align:center;font-weight:700}
+.cart-remove{width:2.6rem;height:2.6rem;border-radius:12px;border:0;background:color-mix(in srgb,#dc2626 10%,var(--card));color:#dc2626;font-size:.95rem;cursor:pointer}
+.cart-card-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;border-bottom:1px solid var(--ct-line);padding-bottom:.6rem;margin-bottom:.6rem}
+.cart-card-head h3{margin:0}
+.cart-card-head strong{color:var(--ct-gt);font-size:1.15rem}
+.cart-summary-row{display:flex;justify-content:space-between;gap:.6rem;font-size:.95rem}
+.cart-summary .price-breakdown-table{margin-top:.35rem}
+.cart-summary .price-breakdown-table:empty{display:none}
+.cart-summary .price-breakdown-row:first-child{display:none}
+.cart-delivery .delivery-method-row{display:grid!important;grid-template-columns:1fr;gap:.55rem;margin:.2rem 0 .9rem!important}
+.cart-delivery .delivery-method-row label{display:flex!important;align-items:center;gap:.7rem!important;min-height:3.4rem;padding:.6rem .85rem;border-radius:14px;border:1.5px solid var(--ct-line);background:var(--card);font-weight:700!important;cursor:pointer}
+.cart-delivery .delivery-method-row label:has(input:checked){border-color:var(--ct-g);background:color-mix(in srgb,var(--ct-g) 9%,var(--card))}
+.cart-delivery .delivery-method-row label{color:var(--text)!important;font-size:.95rem}
+.cart-delivery .delivery-method-row input[type=radio]{accent-color:var(--ct-g);width:1.25rem!important;height:1.25rem}
+.cart-delivery .dyn-delivery-fields input[type=text],.cart-delivery .dyn-delivery-fields input[type=tel]{min-height:3.1rem;border-radius:14px}
+.cart-note label{display:block;font-weight:800;margin:0 0 .4rem}
+.cart-note label span{font-weight:500;color:var(--ct-muted)}
+.cart-note textarea{width:100%;border-radius:14px;resize:none}
+.cart-note-count{display:block;text-align:right;color:var(--ct-muted);font-size:.75rem;margin-top:.2rem}
+.cart-checkout{display:flex;align-items:center;gap:.7rem;width:100%;min-height:3.6rem;padding:0 1.1rem;border:0;border-radius:16px;background:var(--ct-g);color:#fff;font:inherit;font-weight:800;font-size:1rem;cursor:pointer;margin:0 0 .6rem;box-shadow:0 6px 16px color-mix(in srgb,var(--ct-g) 28%,transparent);-webkit-tap-highlight-color:transparent}
+.cart-checkout-label{flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cart-checkout:active{opacity:.9}
+/* clear cart sheet */
+.cc-backdrop{position:fixed;inset:0;z-index:100950;background:rgba(15,23,42,.5);display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .18s}
+.cc-backdrop.open{opacity:1}
+.cc-sheet{position:relative;width:100%;max-width:560px;background:var(--card);color:var(--text);border-radius:24px 24px 0 0;padding:1.4rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom,0px));text-align:center;display:flex;flex-direction:column;align-items:center;gap:.4rem;transform:translateY(24px);transition:transform .2s}
+.cc-backdrop.open .cc-sheet{transform:none}
+.cc-x{position:absolute;right:1rem;top:1rem;width:2.4rem;height:2.4rem;border-radius:50%;border:0;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text);cursor:pointer}
+.cc-ico{width:4rem;height:4rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,#dc2626 12%,var(--card));color:#dc2626;font-size:1.5rem}
+.cc-sheet h3{margin:.3rem 0 0;font-size:1.45rem}
+.cc-sheet p{margin:0 0 .8rem;color:var(--text-muted);font-size:.95rem;line-height:1.4}
+.cc-actions{display:grid;grid-template-columns:1fr 1.15fr;gap:.7rem;width:100%}
+.cc-cancel,.cc-confirm{min-height:3.4rem;border:0;border-radius:16px;font:inherit;font-weight:800;font-size:1rem;cursor:pointer}
+.cc-cancel{background:color-mix(in srgb,var(--text) 8%,var(--card));color:var(--text)}
+.cc-confirm{background:#dc2626;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:.5rem}
+.cc-confirm:disabled{opacity:.6}
+/* ---- My Listings: horizontal cards (reference layout) ---- */
+.vl-head-row{align-items:flex-start}
+.vl-add-wide{width:100%;margin:.9rem 0 0;min-height:3.4rem;font-size:1.05rem}
+.vl-grid{grid-template-columns:1fr!important;gap:.65rem}
+@media(min-width:900px){.vl-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+.vl-card{flex-direction:row!important;align-items:flex-start;gap:.8rem;padding:.7rem;overflow:visible!important;position:relative}
+.vl-card.vl-menu-open{z-index:40}
+.vl-media{flex:0 0 6.4rem;width:6.4rem;aspect-ratio:1/1!important;border-radius:14px}
+.vl-body{padding:0!important;gap:.28rem;min-width:0;flex:1}
+.vl-top{display:flex;align-items:flex-start;gap:.4rem}
+.vl-top .vl-name{flex:1;min-height:0!important;font-size:1.02rem}
+.vl-top .vl-status{flex:0 0 auto;margin-top:.1rem}
+.vl-more-wrap{position:relative;flex:0 0 auto}
+.vl-card-more{width:2rem;height:2rem;border:0;background:transparent;color:var(--vl-muted);border-radius:50%;cursor:pointer;font-size:1rem}
+.vl-card-more:active{background:color-mix(in srgb,var(--text) 8%,transparent)}
+.vl-menu{position:absolute;right:0;top:calc(100% + .2rem);z-index:50;min-width:12rem;background:var(--card);border:1px solid var(--vl-line);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:.3rem}
+.vl-menu.hidden{display:none}
+.vl-menu button{display:flex;align-items:center;gap:.6rem;width:100%;min-height:2.7rem;border:0;background:none;color:var(--text);font:inherit;font-size:.9rem;padding:0 .7rem;border-radius:10px;cursor:pointer;text-align:left}
+.vl-menu button i{width:1.1rem;color:var(--vl-gt)}
+.vl-menu button:disabled{opacity:.5}
+.vl-price{font-size:1.1rem}
+.vl-meta{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem .7rem;font-size:.78rem;color:var(--vl-muted)}
+.vl-meta i{margin-right:.25rem;opacity:.85}
+.vl-actions{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:.4rem;padding:0!important;margin-top:.4rem}
+.vl-actions-3 .vl-btn-delete{grid-column:auto!important}
+.vl-btn-view{background:var(--card);color:var(--text)}
+.vl-btn{min-height:2.6rem}
+/* discarded notice */
+.vl-discarded{display:flex;align-items:center;gap:.8rem;margin:0 0 1rem;padding:.8rem .9rem;border-radius:16px;border:1px solid color-mix(in srgb,#f59e0b 35%,transparent);background:color-mix(in srgb,#f59e0b 9%,var(--card))}
+.vl-discarded-ico{flex:0 0 auto;width:2.8rem;height:2.8rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,#f97316 15%,var(--card));color:#ea580c;font-size:1.1rem}
+.vl-discarded>div{flex:1;min-width:0}
+.vl-discarded strong{display:block;font-size:.98rem}
+.vl-discarded p{margin:.1rem 0 0;font-size:.78rem;line-height:1.35;color:var(--vl-muted)}
+.vl-discarded button{flex:0 0 auto;border:0;background:none;color:var(--vl-gt);font:inherit;font-weight:800;cursor:pointer;min-height:2.6rem;padding:0 .2rem;white-space:nowrap}
+/* list toolbar */
+.vl-tools{display:flex!important;flex-wrap:wrap;align-items:center;gap:.5rem;margin:0 0 .6rem!important}
+.vl-listtitle{flex:1 1 0;min-width:8rem;margin:0;font-size:1.05rem;white-space:nowrap}
+.vl-listtitle span{font-weight:500;color:var(--vl-muted);font-size:1rem}
+.vl-tools .vl-select{flex:0 0 auto;min-height:2.8rem;padding:0 .65rem;gap:.35rem;font-size:.82rem}
+.vl-search-row{margin:0 0 .9rem}
+.vl-search{min-height:2.9rem}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
