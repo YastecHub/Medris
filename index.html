@@ -26024,19 +26024,19 @@ async function loadCommissionBreakdown(){
       total+=g.commission_amount;
       const date=g.sold_at?new Date(g.sold_at).toLocaleString([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Date unavailable";
       const lines=g.products.length
-        ? g.products.map(x=>`<li><span>${esc(x.qty+"× "+x.name)}</span><span>${naira(x.qty*x.unit)}</span></li>`).join("")
-        : '<li><span>Order items unavailable</span><span>—</span></li>';
+        ? g.products.map(x=>`<li>${'<span class="vc-ico"><i class="fa-solid fa-cart-shopping"></i></span>'}<span class="vc-label">${esc(x.qty+"× "+x.name)}</span><span class="vc-amt">${naira(x.qty*x.unit)}</span></li>`).join("")
+        : '<li><span class="vc-ico"><i class="fa-solid fa-cart-shopping"></i></span><span class="vc-label">Order items unavailable</span><span class="vc-amt">—</span></li>';
       const autoDispute = g.auto_completed_at ? `<button type="button" class="btn btn-sm btn-outline vendor-commission-dispute-btn" onclick="openCommissionDispute('${esc(g.order_id||"")}')"><i class="fa-solid fa-scale-balanced"></i> Raise dispute</button>` : "";
       return `<div class="vendor-commission-item">
-        <div class="vendor-commission-item-top"><div><div class="vendor-commission-item-title">${g.products.length===1?esc(g.products[0].name):g.products.length>1?`${g.products.length} products`:"Sale"}</div><div class="vendor-commission-item-date">Completed ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div>
-        <div class="vendor-commission-buyer"><i class="fa-solid fa-user"></i><span>Buyer</span><strong>${esc(g.buyer_name||"Buyer")}</strong></div>
+        <div class="vendor-commission-item-top"><span class="vc-ico"><i class="fa-solid fa-store"></i></span><div class="vc-top-text"><div class="vendor-commission-item-title">${g.products.length===1?esc(g.products[0].name):g.products.length>1?`${g.products.length} products`:"Sale"}</div><div class="vendor-commission-item-date">Completed ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong></div>
+        <div class="vendor-commission-buyer"><span class="vc-ico"><i class="fa-solid fa-user"></i></span><span>Buyer</span><strong>${esc(g.buyer_name||"Buyer")}</strong></div>
         <ul class="vendor-commission-products">${lines}</ul>
-        <div class="vendor-commission-math"><span>Total sale + transportation</span><strong>${naira(g.payment_amount)}</strong></div>
-        <div class="vendor-commission-math"><span>Commission calculation</span><strong>3% × ${naira(g.payment_amount)} = ${naira(g.commission_amount)}</strong></div>
+        <div class="vendor-commission-math vc-transport"><span class="vc-ico"><i class="fa-solid fa-truck"></i></span><span class="vc-label">Total sale + transportation</span><strong>${naira(g.payment_amount)}</strong></div>
+        <div class="vendor-commission-math vc-commission"><span class="vc-ico"><i class="fa-solid fa-percent"></i></span><span class="vc-label">Commission calculation</span><strong>3% × ${naira(g.payment_amount)} = ${naira(g.commission_amount)}</strong></div>
         ${autoDispute}
       </div>`;
     }).join("");
-    box.innerHTML=`<div class="vendor-commission-breakdown-head">Outstanding commission — ${groups.size} sale${groups.size===1?"":"s"}</div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span>Total commission owed</span><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
+    box.innerHTML=`<div class="vendor-commission-breakdown-head"><span class="vc-ico"><i class="fa-solid fa-chart-pie"></i></span><span class="vc-label">Outstanding commission — ${groups.size} sale${groups.size===1?"":"s"}</span><span class="vc-pill">${groups.size} sale${groups.size===1?"":"s"}</span></div><div class="vendor-commission-breakdown-list">${cards}</div><div class="vendor-commission-total"><span class="vc-ico"><i class="fa-solid fa-coins"></i></span><div class="vc-top-text"><span>Total commission owed</span><small>From ${groups.size} sale${groups.size===1?"":"s"}</small></div><strong>${naira(total)}</strong></div><button type="button" class="btn btn-sm vendor-commission-pay-now" onclick="payCommission()"><i class="fa-solid fa-credit-card"></i> Continue to pay ${naira(total)}</button>`;
   }catch(err){
     box.innerHTML=`<div class="vendor-commission-breakdown-head" style="color:var(--danger,#ef4444)">Could not load the commission breakdown. ${esc(err?.message||"Please try again.")}</div>`;
   }
@@ -44514,6 +44514,46 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 #profilePanel .profile-nav-link .profile-item-icon{flex:0 0 2rem!important;width:2rem!important;height:2rem!important;display:inline-flex!important;align-items:center;justify-content:center;margin:0!important}
 #profilePanel .profile-nav-link .profile-item-icon i{font-size:1.15rem!important;width:auto!important;color:var(--text)!important}
 #profilePanel .profile-nav-link .profile-nav-text{flex:1;min-width:0;margin-left:.8rem}
+/* Commission breakdown: colour-coded rows (green sale, blue buyer, purple product, amber transport, pink commission). */
+.vendor-commission-breakdown{padding:.7rem;display:flex;flex-direction:column;gap:.65rem;border-radius:20px}
+.vendor-commission-breakdown>.vendor-commission-breakdown-head{border:0;padding:.7rem .75rem;border-radius:14px;display:flex;align-items:center;gap:.6rem;font-size:.86rem;font-weight:800;background:color-mix(in srgb,#22c55e 12%,var(--card))}
+.vendor-commission-breakdown-head .vc-label{flex:1;min-width:0}
+.vc-pill{flex:none;padding:.22rem .6rem;border-radius:999px;font-size:.72rem;font-weight:700;background:color-mix(in srgb,#22c55e 18%,var(--card));color:var(--primary)}
+.vc-ico{flex:none;width:2.1rem;height:2.1rem;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;background:color-mix(in srgb,#22c55e 18%,var(--card));color:#15803d}
+.vendor-commission-breakdown-list{max-height:none;overflow:visible;display:flex;flex-direction:column;gap:.7rem}
+.vendor-commission-item{padding:0;border:1px solid color-mix(in srgb,#22c55e 22%,var(--border))!important;border-radius:16px;background:var(--card);overflow:hidden}
+.vendor-commission-item-top{align-items:center;padding:.75rem .8rem;background:color-mix(in srgb,#22c55e 11%,var(--card));gap:.65rem}
+.vendor-commission-item-top .vc-top-text{flex:1;min-width:0}
+.vendor-commission-item-top .vc-ico{width:2.6rem;height:2.6rem;font-size:1.05rem;border-radius:13px}
+.vendor-commission-item-title{font-size:.98rem;overflow-wrap:anywhere}
+.vendor-commission-item-top>strong{flex:none;padding:.3rem .65rem;border-radius:999px;font-size:.92rem;background:color-mix(in srgb,#22c55e 20%,var(--card));color:#166534;white-space:nowrap}
+.vendor-commission-buyer,.vendor-commission-products li,.vendor-commission-math{display:flex;align-items:center;gap:.6rem;margin:.5rem .65rem 0;padding:.45rem .55rem;border-radius:12px;border-top:0;font-size:.82rem}
+.vendor-commission-item>:last-child{margin-bottom:.65rem}
+.vendor-commission-buyer{background:color-mix(in srgb,#3b82f6 11%,var(--card))}
+.vendor-commission-buyer .vc-ico{background:color-mix(in srgb,#3b82f6 18%,var(--card));color:#1d4ed8}
+.vendor-commission-buyer strong{min-width:0;overflow-wrap:anywhere;padding:.15rem .55rem;border-radius:999px;background:color-mix(in srgb,#3b82f6 14%,var(--card))}
+.vendor-commission-products{margin:0}
+.vendor-commission-products li{background:transparent;border-bottom:1px dashed var(--border);border-radius:0;padding:.35rem .1rem;margin:.5rem .65rem 0}
+.vendor-commission-products li .vc-ico{background:color-mix(in srgb,#8b5cf6 16%,var(--card));color:#6d28d9}
+.vendor-commission-math.vc-transport{background:transparent;border-bottom:1px dashed var(--border);border-radius:0;padding:.35rem .1rem}
+.vendor-commission-math.vc-transport .vc-ico{background:color-mix(in srgb,#f59e0b 18%,var(--card));color:#b45309}
+.vendor-commission-math.vc-commission{background:color-mix(in srgb,#f43f5e 11%,var(--card))}
+.vendor-commission-math.vc-commission .vc-ico{background:color-mix(in srgb,#f43f5e 17%,var(--card));color:#be123c}
+.vendor-commission-math.vc-commission strong{color:#be123c;text-align:right;font-weight:800}
+.vendor-commission-math .vc-label,.vendor-commission-products .vc-label{flex:1;min-width:0;overflow-wrap:anywhere}
+.vendor-commission-products .vc-amt,.vendor-commission-math.vc-transport>strong{font-weight:800;white-space:nowrap;margin-left:auto}
+.vendor-commission-math.vc-commission{flex-wrap:wrap;justify-content:flex-start;font-size:.78rem}.vendor-commission-math.vc-commission .vc-label{flex:1 1 auto;overflow-wrap:normal;white-space:nowrap;text-align:left}.vendor-commission-math.vc-commission>strong{white-space:nowrap;flex:0 0 auto;margin-left:auto}
+.vendor-commission-total{display:flex;align-items:center;gap:.7rem;padding:.8rem .85rem;border-radius:16px;background:color-mix(in srgb,#22c55e 17%,var(--card));border:1px solid color-mix(in srgb,#22c55e 26%,var(--border))}
+.vendor-commission-total .vc-top-text{flex:1;min-width:0;display:flex;flex-direction:column}
+.vendor-commission-total .vc-top-text span{font-size:.92rem;font-weight:800}
+.vendor-commission-total small{font-size:.76rem;font-weight:500;color:var(--text-muted)}
+.vendor-commission-total .vc-ico{width:2.6rem;height:2.6rem;font-size:1.05rem;border-radius:50%}
+.vendor-commission-total>strong{flex:none;font-size:1.2rem;font-weight:900;padding:.35rem .7rem;border-radius:999px;background:color-mix(in srgb,#22c55e 24%,var(--card));color:#166534}
+.vendor-commission-pay-now{margin-top:0!important;min-height:3.2rem;font-size:1rem;border-radius:14px}
+@media(max-width:380px){.vendor-commission-total>strong{font-size:1.05rem}.vendor-commission-item-top .vc-ico{display:none}}
+:root[data-theme="dark"] .vc-ico,:root[data-theme="black"] .vc-ico{filter:brightness(1.15)}
+:root[data-theme="dark"] .vendor-commission-item-top>strong,:root[data-theme="black"] .vendor-commission-item-top>strong,:root[data-theme="dark"] .vendor-commission-total>strong,:root[data-theme="black"] .vendor-commission-total>strong{color:#86efac}
+:root[data-theme="dark"] .vendor-commission-math.vc-commission strong,:root[data-theme="black"] .vendor-commission-math.vc-commission strong{color:#fda4af}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
