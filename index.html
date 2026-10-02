@@ -12708,7 +12708,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   try { sessionStorage.setItem("medris_last_view", JSON.stringify({ view, params })); } catch (e) {}
   try { window.__levromartPersistedRoute?.(view, params); } catch (e) {}
   if (view !== "storefront") resetStorefrontSocialMeta();
-  if (view !== "home") { resetHomeSearchScrollMotion(); }
+  if (view !== "home") { resetHomeSearchScrollMotion(); if (homeCarouselTimer) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; } }
   // Paint the destination immediately. Reuse a previously rendered screen
   // when available; otherwise show a lightweight page shell. Do not block a
   // tap on Supabase and do not show a generic "Loading..." page.
@@ -13254,16 +13254,14 @@ function renderOfflineHomeFromCache(cache, options = {}) {
     ? cache.carouselSlides
     : INITIAL_HOME_CAROUSEL_SLIDES.slice();
   let html = options.showOfflineNotice === false ? "" : offlineHomeNotice();
+  // Categories sit above the promotions. Cached from the last live load
+  // (renderHome) so the fast local repaint on every category tap doesn't have
+  // to guess; with no cached list yet it shows no categories rather than
+  // every sector, because only categories that actually have listings belong.
+  const sectorsWithListings = Array.isArray(cache.sectorsWithListings) ? cache.sectorsWithListings : (window.__levroSectorsWithListings || []);
+  if (sectorsWithListings.length) html += homeCategoryRailHtml(sectorsWithListings);
   html += `<div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
   html += homeQuickActionsHtml();
-  // Cached from the last live load (renderHome) so the fast local repaint
-  // used on every category tap doesn't have to guess -- falls back to the
-  // full list only for a cache written before this field existed.
-  const sectorsWithListings = Array.isArray(cache.sectorsWithListings) ? cache.sectorsWithListings : sectors;
-  if (sectorsWithListings.length) {
-    html += `<h3 class="section-title"><span><i class="fa-solid fa-grip"></i> Shop by Category</span><a class="section-title-link" onclick="openHomeCategoryBrowser()">See all <i class="fa-solid fa-arrow-right"></i></a></h3>`;
-    html += homeCategoryRailHtml(sectorsWithListings);
-  }
   const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
   const trendingServices = deterministicHourlyShuffle((trending || []).filter(p => p.is_service),"trending-services");
   if (trendingProducts.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="scrollToBrowse('')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
@@ -13446,14 +13444,20 @@ function renderHomepageCarouselHtml(slides) {
   const usable = (slides || []).filter(s => s?.image_url).slice(0, 12);
   if (!usable.length) return "";
   homeCarouselSlides = usable;
-  homeCarouselIndex = 0;
-  const slidesHtml = usable.map((s, i) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(s.image_url)}" alt="${esc(s.alt_text || "Levromart promotion")}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`).join("");
+  const slideHtml = (s, i, clone) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" ${clone ? 'data-clone="1" tabindex="-1" aria-hidden="true"' : ""} data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(s.image_url)}" alt="${clone ? "" : esc(s.alt_text || "Levromart promotion")}" ${i === 0 && !clone ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`;
+  // With more than one banner the row is a seamless loop: a copy of the last
+  // banner sits before the first and a copy of the first after the last, so
+  // there is always a banner peeking in on BOTH sides of the one in focus.
+  const loop = usable.length > 1;
+  const slidesHtml = (loop ? slideHtml(usable[usable.length - 1], usable.length - 1, true) : "")
+    + usable.map((s, i) => slideHtml(s, i, false)).join("")
+    + (loop ? slideHtml(usable[0], 0, true) : "");
   const dots = usable.map((s, i) => `<button type="button" class="home-promotional-dot ${i === 0 ? "active" : ""}" onclick="activateHomeCarouselSlide(${i})" aria-label="Go to slide ${i + 1}"></button>`).join("");
   return `<section class="home-promotional-carousel" id="homePromotionalCarousel" aria-label="Levromart promotions">
-    <div class="home-promotional-viewport" id="homePromotionalViewport">
+    <div class="home-promotional-viewport" id="homePromotionalViewport" data-loop="${loop ? 1 : 0}">
       <div class="home-promotional-track" id="homePromotionalTrack">${slidesHtml}</div>
     </div>
-    ${usable.length > 1 ? `<div class="home-promotional-dots" id="homePromotionalDots">${dots}</div>` : ""}
+    ${loop ? `<div class="home-promotional-dots" id="homePromotionalDots">${dots}</div>` : ""}
   </section>`;
 }
 
@@ -13488,6 +13492,18 @@ function resolveHomeCarouselKeywordRoute(raw) {
 function handleHomeCarouselSlideClick(event, index) {
   if (homeCarouselJustDragged) { event.preventDefault(); return; }
   const slide = event.currentTarget;
+  // Tapping a banner that's only peeking in from the side brings it to the
+  // middle first; tapping the banner in focus follows its link.
+  const viewport = byId("homePromotionalViewport");
+  if (viewport && viewport.dataset.loop === "1") {
+    const step = homeCarouselStep(viewport);
+    const dom = Array.from(slide.parentElement.children).indexOf(slide);
+    if (step && Math.abs(viewport.scrollLeft - dom * step) > step * 0.35) {
+      event.preventDefault();
+      viewport.scrollTo({ left: dom * step, behavior: "smooth" });
+      return;
+    }
+  }
   const url = slide?.dataset?.linkUrl || "";
   if (!url) return;
   const keywordAction = resolveHomeCarouselKeywordRoute(url);
@@ -13538,47 +13554,84 @@ function handleHomeCarouselSlideClick(event, index) {
     window.open(target.href, "_blank", "noopener,noreferrer");
   } catch (_) {}
 }
-// The promotional banners are a native scroll-snap row: the browser handles the
-// touch gesture, momentum and snapping, nothing advances on its own and there
-// are no timers. The only script is a passive scroll listener that keeps the
-// small page dots in step and a mouse-drag shim for desktop pointers.
+// The promotional banners are a native scroll-snap row (the browser does the
+// touch, momentum and snapping). They advance by themselves every few seconds
+// and stop the moment a finger or mouse is on them, while the tab is hidden or
+// while the row is scrolled off-screen. Banner N is centred, with its
+// neighbours peeking in at both edges; the row loops seamlessly.
+const HOME_CAROUSEL_INTERVAL_MS = 5000;
 let homeCarouselJustDragged = false;
+let homeCarouselTimer = null;
 function homeCarouselStep(viewport) {
   const first = viewport.querySelector(".home-promotional-slide");
   const second = first?.nextElementSibling;
   if (!first) return 0;
   return second ? second.offsetLeft - first.offsetLeft : first.offsetWidth;
 }
-function activateHomeCarouselSlide(index) {
-  const count = homeCarouselSlides.length;
-  const viewport = byId("homePromotionalViewport");
-  if (!count || !viewport) return;
-  const i = Math.max(0, Math.min(count - 1, Number(index) || 0));
-  const slide = viewport.children[0]?.children?.[i];
-  if (slide) viewport.scrollTo({ left: slide.offsetLeft - (viewport.children[0].children[0]?.offsetLeft || 0), behavior: "smooth" });
+function homeCarouselGoTo(viewport, domIndex, smooth = true) {
+  const step = homeCarouselStep(viewport);
+  if (step) viewport.scrollTo({ left: domIndex * step, behavior: smooth ? "smooth" : "instant" });
 }
+function activateHomeCarouselSlide(index) {
+  const viewport = byId("homePromotionalViewport");
+  if (!viewport || !homeCarouselSlides.length) return;
+  const loop = viewport.dataset.loop === "1";
+  homeCarouselGoTo(viewport, (Number(index) || 0) + (loop ? 1 : 0));
+  homeCarouselPause(4000);
+}
+let homeCarouselResumeAt = 0;
+function homeCarouselPause(ms) { homeCarouselResumeAt = Date.now() + ms; }
 function initHomepageCarousel() {
+  if (homeCarouselTimer) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; }
   const viewport = byId("homePromotionalViewport");
   if (!viewport || viewport.dataset.carouselBound === "1") return;
   viewport.dataset.carouselBound = "1";
+  const loop = viewport.dataset.loop === "1";
+  const count = homeCarouselSlides.length;
   const dots = Array.from(document.querySelectorAll("#homePromotionalDots .home-promotional-dot"));
-  let ticking = false, current = 0;
+  let ticking = false, current = 0, settleTimer = null, visible = true;
+
+  const place = (domIndex) => {                       // instant jump, snap off for a frame
+    viewport.style.scrollSnapType = "none";
+    homeCarouselGoTo(viewport, domIndex, false);
+    requestAnimationFrame(() => { viewport.style.scrollSnapType = ""; });
+  };
+  const dotFor = (domIndex) => loop ? (domIndex - 1 + count) % count : domIndex;
   const syncDots = () => {
     ticking = false;
     const step = homeCarouselStep(viewport);
     if (!step) return;
-    const atEnd = viewport.scrollLeft + viewport.clientWidth >= viewport.scrollWidth - 2;
-    const idx = atEnd ? dots.length - 1 : Math.round(viewport.scrollLeft / step);
+    const idx = dotFor(Math.round(viewport.scrollLeft / step));
     if (idx === current) return;
     current = idx;
     dots.forEach((d, i) => d.classList.toggle("active", i === idx));
   };
-  viewport.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(syncDots); } }, { passive: true });
-  // Mouse users can't swipe: let them drag the row, without breaking taps.
+  // Once scrolling settles on a copy, jump to the identical real banner.
+  const settle = () => {
+    const step = homeCarouselStep(viewport);
+    if (!step || !loop) return;
+    const idx = Math.round(viewport.scrollLeft / step);
+    if (idx === 0) place(count);
+    else if (idx === count + 1) place(1);
+  };
+  viewport.addEventListener("scroll", () => {
+    if (!ticking) { ticking = true; requestAnimationFrame(syncDots); }
+    clearTimeout(settleTimer); settleTimer = setTimeout(settle, 110);
+  }, { passive: true });
+
+  if (loop) requestAnimationFrame(() => place(1));
+
+  // Anything the user does with the row holds autoplay off for a few seconds.
+  const hold = () => homeCarouselPause(6000);
+  viewport.addEventListener("touchstart", hold, { passive: true });
+  viewport.addEventListener("touchmove", hold, { passive: true });
+  viewport.addEventListener("wheel", hold, { passive: true });
+
+  // Mouse users can't swipe: let them drag the row, without breaking clicks.
   let down = false, sx = 0, sl = 0, moved = false;
   viewport.addEventListener("pointerdown", (e) => {
     if (e.pointerType !== "mouse") return;
-    down = true; moved = false; sx = e.clientX; sl = viewport.scrollLeft;
+    down = true; moved = false; sx = e.clientX; sl = viewport.scrollLeft; hold();
     try { viewport.setPointerCapture(e.pointerId); } catch (_) {}
   });
   viewport.addEventListener("pointermove", (e) => {
@@ -13598,9 +13651,24 @@ function initHomepageCarousel() {
       const step = homeCarouselStep(viewport);
       if (step) viewport.scrollTo({ left: Math.round(viewport.scrollLeft / step) * step, behavior: "smooth" });
     }
+    hold();
   };
   viewport.addEventListener("pointerup", stop, { passive: true });
   viewport.addEventListener("pointercancel", stop, { passive: true });
+
+  if (!loop || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver((entries) => { visible = entries[0]?.isIntersecting !== false; }, { threshold: 0.35 }).observe(viewport);
+  }
+  homeCarouselPause(HOME_CAROUSEL_INTERVAL_MS);
+  homeCarouselTimer = setInterval(() => {
+    if (!viewport.isConnected) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; return; }
+    if (document.hidden || !visible || Date.now() < homeCarouselResumeAt) return;
+    const step = homeCarouselStep(viewport);
+    if (!step) return;
+    const idx = Math.round(viewport.scrollLeft / step);
+    homeCarouselGoTo(viewport, idx + 1);
+  }, HOME_CAROUSEL_INTERVAL_MS);
 }
 
 // ---------- ADMIN LINK LIBRARY ----------
@@ -14100,7 +14168,7 @@ async function renderHome() {
   writeOfflineHomeCache({
     categories: Array.isArray(categories) && categories.length ? categories : (cacheBase.categories || []),
     sectors: Array.isArray(sectors) && sectors.length ? sectors : (cacheBase.sectors || sectorsData || []),
-    sectorsWithListings: activeSectorIds ? sectors.filter((s) => activeSectorIds.has(String(s.id))) : (cacheBase.sectorsWithListings || sectors),
+    sectorsWithListings: activeSectorIds ? sectors.filter((s) => activeSectorIds.has(String(s.id))) : (cacheBase.sectorsWithListings || []),
     trending: safeTrendingForCache,
     browseProducts: safeBrowseForCache,
     topVendors: safeTopVendorsForCache,
@@ -14121,21 +14189,19 @@ async function renderHome() {
   }).slice(0, 6);
   const hasPersonalPackageMatch = recommendedPackages.some((pkg) => (pkg.items || []).some((it) => favoriteIds.has(it.product?.id)));
 
-  let html = `<div class="hero levro-home-hero">
+  // null means the lookup itself failed (e.g. offline mid-request): keep the
+  // last list that was verified against real listings (or none) -- never
+  // every sector, since categories nobody has listed under must not show.
+  const sectorsWithListings = activeSectorIds ? sectors.filter((s) => activeSectorIds.has(String(s.id))) : (window.__levroSectorsWithListings || []);
+  if (activeSectorIds) window.__levroSectorsWithListings = sectorsWithListings;
+
+  let html = "";
+  if (sectorsWithListings.length) html += homeCategoryRailHtml(sectorsWithListings);
+  html += `<div class="hero levro-home-hero">
     ${renderHomepageCarouselHtml(homepageCarouselSlides)}
   </div>`;
 
   html += homeQuickActionsHtml();
-
-  // null means the lookup itself failed (e.g. offline mid-request) -- fall
-  // back to showing every sector rather than an empty rail in that case;
-  // an empty Set (lookup succeeded, genuinely nothing found yet) does mean
-  // "show nothing".
-  const sectorsWithListings = activeSectorIds ? sectors.filter((s) => activeSectorIds.has(String(s.id))) : sectors;
-  if (sectorsWithListings.length) {
-    html += `<h3 class="section-title"><span><i class="fa-solid fa-grip"></i> Shop by Category</span><a class="section-title-link" onclick="openHomeCategoryBrowser()">See all <i class="fa-solid fa-arrow-right"></i></a></h3>`;
-    html += homeCategoryRailHtml(sectorsWithListings);
-  }
 
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
   if (trending && trending.length) {
@@ -14383,22 +14449,35 @@ function homeQuickActionsHtml() {
 // placeholder (or none) fall back to a keyword match on the name, then to a
 // neutral shapes icon, so a brand-new vendor-created category never breaks.
 const LEVRO_SECTOR_ICON_HINTS = [
-  [/food|grocer|restaurant|cater|snack|bak/, "fa-utensils"], [/drink|beverage/, "fa-mug-hot"],
-  [/fashion|cloth|wear|tailor|shoe|footwear/, "fa-shirt"], [/beauty|cosmetic|skin|perfume|hair|spa|wellness/, "fa-wand-magic-sparkles"],
-  [/phone|mobile|tablet|telecom/, "fa-mobile-screen-button"], [/electronic|gadget|tv|audio/, "fa-microchip"],
-  [/comput|laptop|tech|software/, "fa-laptop"], [/health|pharm|medic/, "fa-kit-medical"],
-  [/home|furniture|decor|living|kitchen|appliance/, "fa-couch"], [/auto|car|vehicle/, "fa-car"],
-  [/book|stationery|education|school/, "fa-book"], [/sport|fitness|gym/, "fa-dumbbell"],
-  [/jewel|watch|gem/, "fa-gem"], [/art|craft|handmade/, "fa-palette"], [/baby|kid|toy/, "fa-baby"],
-  [/service|repair|clean|laundry/, "fa-screwdriver-wrench"], [/event|entertain|music|media|photo/, "fa-camera"],
-  [/agri|farm|pet/, "fa-seedling"], [/build|construct|hardware|tool|industrial/, "fa-helmet-safety"], [/gift/, "fa-gift"],
+  [/food|grocer|restaurant|cater|snack|bak/, "fa-utensils", "#f97316"], [/drink|beverage/, "fa-mug-hot", "#b45309"],
+  [/fashion|cloth|wear|tailor|shoe|footwear/, "fa-shirt", "#ec4899"], [/beauty|cosmetic|skin|perfume|hair|spa|wellness/, "fa-wand-magic-sparkles", "#d946ef"],
+  [/phone|mobile|tablet|telecom/, "fa-mobile-screen-button", "#3b82f6"], [/electronic|gadget|tv|audio/, "fa-microchip", "#6366f1"],
+  [/comput|laptop|tech|software/, "fa-laptop", "#0ea5e9"], [/health|pharm|medic/, "fa-kit-medical", "#ef4444"],
+  [/home|furniture|decor|living|kitchen|appliance/, "fa-couch", "#a16207"], [/auto|car|vehicle/, "fa-car", "#0d9488"],
+  [/book|stationery|education|school/, "fa-book", "#7c3aed"], [/sport|fitness|gym/, "fa-dumbbell", "#16a34a"],
+  [/jewel|watch|gem/, "fa-gem", "#06b6d4"], [/art|craft|handmade/, "fa-palette", "#f59e0b"], [/baby|kid|toy/, "fa-baby", "#f472b6"],
+  [/service|repair|clean|laundry/, "fa-screwdriver-wrench", "#0891b2"], [/event|entertain|music|media|photo/, "fa-camera", "#8b5cf6"],
+  [/agri|farm|pet/, "fa-seedling", "#65a30d"], [/build|construct|hardware|tool|industrial/, "fa-helmet-safety", "#ea580c"], [/gift/, "fa-gift", "#e11d48"],
 ];
+const LEVRO_SECTOR_FALLBACK_COLORS = ["#2563eb", "#16a34a", "#e11d48", "#f59e0b", "#7c3aed", "#0d9488", "#db2777", "#0891b2"];
+function levroSectorHint(sector) {
+  const name = String(sector?.name || "").toLowerCase();
+  return LEVRO_SECTOR_ICON_HINTS.find(([re]) => re.test(name)) || null;
+}
+// Icon: the sector's own database icon, else a keyword match on its name, else
+// a neutral shapes icon. Colour: keyword match, else a stable colour picked
+// from the name -- so a brand-new vendor-created category is never gray/blank.
 function levroSectorIconClass(sector) {
   const own = String(sector?.icon || "").trim();
   if (/^fa-[a-z0-9-]+$/.test(own) && own !== "fa-shapes") return own;
-  const name = String(sector?.name || "").toLowerCase();
-  const hit = LEVRO_SECTOR_ICON_HINTS.find(([re]) => re.test(name));
-  return hit ? hit[1] : "fa-shapes";
+  return levroSectorHint(sector)?.[1] || "fa-shapes";
+}
+function levroSectorColor(sector) {
+  const hint = levroSectorHint(sector);
+  if (hint) return hint[2];
+  const name = String(sector?.name || sector?.id || "");
+  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return LEVRO_SECTOR_FALLBACK_COLORS[h % LEVRO_SECTOR_FALLBACK_COLORS.length];
 }
 // Shuffled once per session (not per render) so the row doesn't jump around
 // when the home view repaints; categories first seen later get their own slot.
@@ -14409,12 +14488,12 @@ function levroStableSectorOrder(list) {
 }
 function homeCategoryRailHtml(sectorList) {
   // "All" always comes first and always means "clear the sector filter".
-  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentSectorId ? "active" : ""}" onclick="switchSector(null)"><span class="levro-home-cat-icon"><i class="fa-solid fa-border-all"></i></span><span class="levro-home-cat-label">All</span></button>`;
+  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentSectorId ? "active" : ""}" style="--cat-color:var(--primary)" onclick="switchSector(null)"><span class="levro-home-cat-icon"><i class="fa-solid fa-border-all"></i></span><span class="levro-home-cat-label">All</span></button>`;
   const chips = levroStableSectorOrder(sectorList).map((s) => {
     const active = String(currentSectorId || "") === String(s.id);
-    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" onclick="toggleHomeSectorFilter('${s.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(levroSectorIconClass(s))}"></i></span><span class="levro-home-cat-label">${esc(s.name)}</span></button>`;
+    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" style="--cat-color:${levroSectorColor(s)}" onclick="toggleHomeSectorFilter('${s.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(levroSectorIconClass(s))}"></i></span><span class="levro-home-cat-label">${esc(s.name)}</span></button>`;
   }).join("");
-  const more = `<button type="button" class="levro-home-cat-chip levro-home-cat-more" onclick="openHomeCategoryBrowser()"><span class="levro-home-cat-icon"><i class="fa-solid fa-ellipsis"></i></span><span class="levro-home-cat-label">More</span></button>`;
+  const more = `<button type="button" class="levro-home-cat-chip levro-home-cat-more" style="--cat-color:#8b5cf6" onclick="openHomeCategoryBrowser()"><span class="levro-home-cat-icon"><i class="fa-solid fa-ellipsis"></i></span><span class="levro-home-cat-label">More</span></button>`;
   return `<div class="levro-home-cat-rail hscroll">${allChip}${chips}${more}</div>`;
 }
 function toggleHomeSectorFilter(sectorId) {
@@ -35714,7 +35793,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
    only how they look. */
 #app .levro-home-cat-rail{
   display:flex !important; gap:.5rem !important; overflow-x:auto !important; overflow-y:hidden !important;
-  padding:.1rem .05rem .6rem !important; margin:0 !important;
+  padding:.15rem .05rem .7rem !important; margin:0 !important;
   scrollbar-width:none !important; -webkit-overflow-scrolling:touch !important;
   overscroll-behavior-x:contain; touch-action:pan-x pan-y;
 }
@@ -35728,16 +35807,16 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 #app .levro-home-cat-icon{
   width:auto !important; height:auto !important; background:none !important; border-radius:0 !important;
   display:inline-flex !important; align-items:center !important; justify-content:center !important;
-  color:var(--text-muted) !important; font-size:.95rem !important; box-shadow:none !important;
+  color:var(--cat-color, var(--primary)) !important; font-size:1rem !important; box-shadow:none !important;
 }
 #app .levro-home-cat-label{
   font-size:.82rem !important; font-weight:600 !important; white-space:nowrap !important; color:var(--text) !important;
 }
 #app .levro-home-cat-chip.active{
-  background:color-mix(in srgb, var(--primary) 12%, var(--card)) !important;
-  border-color:var(--primary) !important;
+  background:color-mix(in srgb, var(--cat-color, var(--primary)) 13%, var(--card)) !important;
+  border-color:var(--cat-color, var(--primary)) !important;
 }
-#app .levro-home-cat-chip.active .levro-home-cat-icon{ color:var(--primary) !important; background:none !important; box-shadow:none !important; }
+#app .levro-home-cat-chip.active .levro-home-cat-icon{ color:var(--cat-color, var(--primary)) !important; background:none !important; box-shadow:none !important; }
 #app .levro-home-cat-chip.active .levro-home-cat-label{ color:var(--text) !important; font-weight:700 !important; }
 
 /* The Home search bar (above the carousel) had a transparent background and
@@ -42835,12 +42914,12 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 /* Promotional banners: manual, native scroll-snap row (no autoplay). The next
    banner peeks in from the right edge; the page itself never scrolls sideways. */
 #app .home-promotional-carousel{background:transparent !important;border:0 !important;box-shadow:none !important;border-radius:0 !important;overflow:visible !important;margin:0 0 .9rem !important}
-#app .home-promotional-viewport{aspect-ratio:auto !important;overflow-x:auto !important;overflow-y:hidden !important;display:block !important;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x pan-y;scroll-padding-inline:0;cursor:auto;border-radius:0 !important}
+#app .home-promotional-viewport{--slide-w:min(82vw,520px);aspect-ratio:auto !important;overflow-x:auto !important;overflow-y:hidden !important;display:block !important;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x pan-y;cursor:auto;border-radius:0 !important}
 #app .home-promotional-viewport::-webkit-scrollbar{display:none}
 #app .home-promotional-viewport.dragging{scroll-snap-type:none;cursor:grabbing;user-select:none}
-#app .home-promotional-track{display:flex !important;gap:.6rem;width:max-content !important;height:auto !important;transform:none !important;transition:none !important;will-change:auto !important}
-#app .home-promotional-slide{flex:0 0 min(86vw,560px) !important;width:min(86vw,560px) !important;height:auto !important;aspect-ratio:16/9;scroll-snap-align:start;border-radius:16px;overflow:hidden;border:1px solid var(--ui-border,var(--border)) !important;background:var(--card) !important}
-@media(min-width:720px){#app .home-promotional-slide{flex-basis:min(60%,560px) !important;width:min(60%,560px) !important}}
+#app .home-promotional-track{display:flex !important;gap:.6rem;width:max-content !important;height:auto !important;transform:none !important;transition:none !important;will-change:auto !important;padding-inline:calc((100% - var(--slide-w)) / 2)}
+#app .home-promotional-slide{flex:0 0 var(--slide-w) !important;width:var(--slide-w) !important;height:auto !important;aspect-ratio:16/9;scroll-snap-align:center;scroll-snap-stop:always;border-radius:16px;overflow:hidden;border:1px solid var(--ui-border,var(--border)) !important;background:var(--card) !important}
+@media(min-width:720px){#app .home-promotional-viewport{--slide-w:min(60vw,520px)}}
 #app .home-promotional-carousel .home-promotional-dots{position:static !important;transform:none !important;display:flex !important;justify-content:center !important;align-items:center !important;gap:.3rem !important;margin:.5rem 0 0 !important;padding:0 !important;left:auto !important;right:auto !important;bottom:auto !important;background:transparent !important;border:0 !important;box-shadow:none !important}
 #app .home-promotional-carousel .home-promotional-dot{width:.4rem !important;height:.4rem !important;flex:0 0 .4rem !important;border-radius:999px !important;background:var(--text-muted,#94a3b8) !important;opacity:.4;padding:0 !important;border:0 !important;transition:none !important}
 #app .home-promotional-carousel .home-promotional-dot.active{width:.4rem !important;flex-basis:.4rem !important;background:var(--text,#0f172a) !important;opacity:1}
