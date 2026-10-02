@@ -44963,7 +44963,12 @@ function hideLeviFromPanel() {
 // order (checked in the database). Add TURN servers to window.LEVROMART_TURN_SERVERS
 // for calls across strict mobile networks.
 (function(){
-  const ICE=[{urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"]}].concat(window.LEVROMART_TURN_SERVERS||[]);
+  let ICE=[{urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"]},
+    {urls:["turn:openrelay.metered.ca:80","turn:openrelay.metered.ca:443","turns:openrelay.metered.ca:443?transport=tcp"],username:"openrelayproject",credential:"openrelayproject"}].concat(window.LEVROMART_TURN_SERVERS||[]);
+  // Relay (TURN) servers come from /api/turn so phones on carrier NAT can still connect.
+  let iceLoaded=null;
+  const loadIce=()=>iceLoaded||(iceLoaded=Promise.race([fetch("/api/turn").then(r=>r.json()).then(j=>{if(Array.isArray(j?.iceServers)&&j.iceServers.length)ICE=j.iceServers.concat(window.LEVROMART_TURN_SERVERS||[]);}).catch(()=>{}),new Promise(r=>setTimeout(r,2500))]));
+  setTimeout(()=>{try{loadIce();}catch(_){}},3000);
   const RING_TIMEOUT_MS=45000;
   let call=null, ringTimer=null, ringtone=null, pollTimer=null, tickTimer=null, ringAgainTimer=null;
 
@@ -45065,7 +45070,7 @@ function hideLeviFromPanel() {
     });
   }
   function makePeer(){
-    const pc=new RTCPeerConnection({iceServers:ICE});
+    const pc=new RTCPeerConnection({iceServers:ICE,iceCandidatePoolSize:2});
     call.stream.getTracks().forEach(t=>pc.addTrack(t,call.stream));
     const audio=document.createElement("audio"); audio.id="levroCallAudio"; audio.autoplay=true; audio.playsInline=true; document.body.appendChild(audio);
     pc.ontrack=(e)=>{audio.srcObject=e.streams[0]; audio.play?.().catch(()=>{});};
@@ -45127,6 +45132,7 @@ function hideLeviFromPanel() {
     const partyReq=Promise.resolve(sb.rpc("get_call_party",{p_conversation_id:conversationId})).then(({data})=>{const r=Array.isArray(data)?data[0]:data;if(r?.name)party={name:r.name,avatar:r.avatar_url||party.avatar};}).catch(()=>{});
     let stream;
     try{ stream=await getMic(); }catch(e){ showToast(e.message,"error"); return; }
+    await loadIce();
     await Promise.race([partyReq,new Promise(r=>setTimeout(r,800))]);
     const name=party.name;
     let started;
@@ -45172,6 +45178,7 @@ function hideLeviFromPanel() {
         document.getElementById("lcEnd")?.addEventListener("click",()=>endCall(true));
         try{
           call.stream=await getMic();
+          await loadIce();
           await sb.rpc("update_voice_call",{p_call_id:id,p_status:"active"});
           makePeer();
           call.channel=await joinChannel(id,onSignal);
