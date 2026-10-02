@@ -11731,11 +11731,10 @@ async function renderBuyerProfile() {
 
   // Customers have no public storefront, so no cover banner either.
   let html = `<div class="vendor-profile-header-card buyer-profile-card">
-    <button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings"><i class="fa-solid fa-gear"></i></button>
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "4.4rem", "vendor-profile-header-avatar", profile.name || profile.email)}
-        <button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('editProfile')" title="Edit my details" aria-label="Edit my details"><i class="fa-solid fa-pen"></i> Edit</button>
+        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('editProfile')" title="Edit my details" aria-label="Edit my details"><i class="fa-solid fa-pen"></i> Edit</button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings"><i class="fa-solid fa-gear"></i></button></span>
       </div>
       <h2 class="vendor-profile-header-name">${esc(profile.name || "")}</h2>
       ${memberSince ? `<p class="vendor-profile-header-personal">Member since ${memberSince}</p>` : ""}
@@ -12534,10 +12533,11 @@ function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
 function navigationShellHtml(view) {
-  const titleMap={vendorDashboard:"My Shop",vendorProducts:"Products",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package",contactUs:"Contact us",search:"Search"};
+  const titleMap={vendorDashboard:"My Shop",vendorProducts:"My Listings",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package",contactUs:"Contact us",search:"Search"};
   const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user",storefront:"fa-store",productDetail:"fa-box",packageDetail:"fa-boxes-stacked",contactUs:"fa-address-book",search:"fa-magnifying-glass"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
+  if(view==="vendorProducts")return vlSkeletonHtml();
   // Never expose a background-refresh message as the page itself. If no real
   // snapshot exists yet, use a tiny neutral skeleton; the live renderer replaces
   // it as soon as its data arrives.
@@ -22086,18 +22086,127 @@ async function saveVendorLocation() {
 let vendorProductsView = "grid"; // grid only (the list/inventory toggle was removed)
 function toggleVendorProductsView(v) { vendorProductsView = "grid"; navigate("vendorProducts"); }
 
+// ---------- MY LISTINGS (vendor catalogue page) ----------
+// One card system for products, services and packages. Presentation only: every button
+// below calls the same handler it always did.
+function vlPrice(p) {
+  if (p.is_service) return p.sale_price != null ? naira(p.sale_price) + servicePriceSuffix(p) : "";
+  const lt = String(p.listing_type || "sale");
+  const sale = p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price ?? Infinity) ? p.discount_price : p.sale_price;
+  if (lt === "rent" && p.rental_rate != null) return `${naira(p.rental_rate)}<small>/${esc(p.rental_rate_unit || "day")}</small>`;
+  if (sale != null) return naira(sale);
+  if (p.rental_rate != null) return `${naira(p.rental_rate)}<small>/${esc(p.rental_rate_unit || "day")}</small>`;
+  return "";
+}
+function vlPriceValue(p) {
+  const lt = String(p.listing_type || "sale");
+  if (lt === "rent" && p.rental_rate != null) return Number(p.rental_rate);
+  const sale = p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price ?? Infinity) ? p.discount_price : p.sale_price;
+  return Number(sale ?? p.rental_rate ?? 0) || 0;
+}
+function vlStatusPill(status) {
+  const s = String(status || "active");
+  const tone = s === "active" ? "ok" : s === "paused" ? "warn" : s === "removed" ? "bad" : "muted";
+  return `<span class="vl-status vl-status-${tone}"><i aria-hidden="true"></i>${esc(s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()))}</span>`;
+}
+function vlBtn(cls, icon, label, onclick, extra = "") {
+  return `<button type="button" class="vl-btn ${cls}" ${onclick ? `onclick="event.stopPropagation();${onclick}"` : ""} ${extra}><i class="fa-solid ${icon}" aria-hidden="true"></i><span>${label}</span></button>`;
+}
+function vlImage(src, alt, icon) {
+  return src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" draggable="false" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'vl-img-empty',innerHTML:'<i class=&quot;fa-solid ${icon}&quot;></i>'}))">`
+    : `<span class="vl-img-empty"><i class="fa-solid ${icon}"></i></span>`;
+}
+function vlProductCardHtml(p, ctx) {
+  const catName = p.category?.name || "Uncategorized";
+  const hasPendingOrder = ctx.pendingProductIds.has(p.id);
+  const lt = String(p.listing_type || "sale");
+  const typeLabel = p.is_service ? "Service" : lt === "rent" ? "Rental" : lt === "both" ? "Buy & Rent" : "Product";
+  const variants = Array.isArray(p.variants) ? p.variants.length : 0;
+  const stock = p.is_service ? "" : p.track_quantity === false ? "Always available" : variants ? `${variants} variet${variants === 1 ? "y" : "ies"}` : `Stock: ${Number(p.quantity_available ?? 0)}`;
+  const pid = esc(p.id), name = esc(p.name);
+  let toggle = "";
+  if (p.status === "active") toggle = vlBtn("vl-btn-pause", "fa-pause", "Pause", `setProductStatus('${pid}','paused')`, `aria-label="Pause ${name}"`);
+  else if (p.status === "paused") {
+    if (p.billing_model === "monthly") {
+      if (listingActivationValid(p)) toggle = vlBtn("vl-btn-resume", "fa-play", "Resume", `setProductStatus('${pid}','active')`, `aria-label="Resume ${name}"`);
+      else if (ctx.pendingMonthlyProductIds.has(String(p.id))) toggle = vlBtn("vl-btn-pending", "fa-clock", "Receipt sent", "", `disabled aria-label="Receipt submitted"`);
+      else { const l = p.billing_status === "pending_payment" ? "Submit receipt" : "Renew ₦1,000"; toggle = vlBtn("vl-btn-resume", "fa-receipt", l, `startListingMonthlyPayment('product','${pid}')`, `aria-label="${l}"`); }
+    } else toggle = vlBtn("vl-btn-resume", "fa-play", "Activate", `setProductStatus('${pid}','active')`, `aria-label="Activate ${name}"`);
+  }
+  const removeBtn = vlBtn("vl-btn-delete", "fa-trash", "Delete", `removeProduct('${pid}')`, hasPendingOrder ? `disabled title="Can't remove: this product has a pending order" aria-label="Delete ${name} (unavailable: pending order)"` : `aria-label="Remove ${name}"`);
+  return `<article class="vl-card" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}" data-vp-status="${esc(p.status || "")}" data-vp-mode="${p.is_service ? "" : lt}" data-vp-price="${vlPriceValue(p)}" onclick="showVendorProductDetails('${pid}')" role="button" tabindex="0" aria-label="Open ${name}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();showVendorProductDetails('${pid}');}">
+    <div class="vl-media">${vlImage(p.photos?.[0], p.name, p.is_service ? "fa-hand-holding-heart" : "fa-camera")}<span class="vl-type">${typeLabel}</span></div>
+    <div class="vl-body"><h4 class="vl-name">${name}</h4><div class="vl-price-row"><b class="vl-price">${vlPrice(p)}</b>${stock ? `<span class="vl-stock">${esc(stock)}</span>` : ""}</div>${vlStatusPill(p.status)}</div>
+    <div class="vl-actions">${vlBtn("vl-btn-edit", "fa-pen", "Edit", `openEditProductModal('${pid}')`, `aria-label="Edit ${name}"`)}${vlBtn("vl-btn-dup", "fa-copy", "Duplicate", `openDuplicateProductModal('${pid}')`, `aria-label="Duplicate ${name}"`)}${toggle}${removeBtn}</div>
+  </article>`;
+}
+function vlPackageCardHtml(pkg, pendingIds) {
+  const pid = esc(pkg.id), name = esc(pkg.name);
+  const items = pkg.items || [];
+  let toggle;
+  if (pkg.status === "active") toggle = vlBtn("vl-btn-pause", "fa-pause", "Pause", `setPackageStatus('${pid}','paused')`, `aria-label="Pause ${name}"`);
+  else if (pkg.billing_model === "monthly") {
+    if (pendingIds.has(String(pkg.id))) toggle = vlBtn("vl-btn-pending", "fa-clock", "Receipt sent", "", `disabled aria-label="Receipt submitted"`);
+    else { const l = pkg.billing_status === "pending_payment" ? "Submit receipt" : "Renew ₦1,000"; toggle = vlBtn("vl-btn-resume", "fa-receipt", l, `startListingMonthlyPayment('package','${pid}')`, `aria-label="${l}"`); }
+  } else toggle = vlBtn("vl-btn-resume", "fa-play", "Activate", `setPackageStatus('${pid}','active')`, `aria-label="Activate ${name}"`);
+  return `<article class="vl-card vl-card-pkg" data-vp-created="${esc(pkg.created_at || "")}" data-vp-kind="packages" data-vp-name="${esc((pkg.name || "").toLowerCase())}" data-vp-cat="package" data-vp-status="${esc(pkg.status || "")}" data-vp-mode="" data-vp-price="${Number(pkg.price || 0)}" onclick="navigate('packageDetail',{packageId:'${pid}'})" role="button" tabindex="0" aria-label="Open ${name}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();navigate('packageDetail',{packageId:'${pid}'});}">
+    <div class="vl-media">${vlImage(Array.isArray(pkg.photos) ? pkg.photos[0] : null, pkg.name, "fa-box-open")}<span class="vl-type">Package</span></div>
+    <div class="vl-body"><h4 class="vl-name">${name}</h4><div class="vl-price-row"><b class="vl-price">${naira(pkg.price)}</b><span class="vl-stock">${items.length} item${items.length === 1 ? "" : "s"}</span></div>${vlStatusPill(pkg.status)}</div>
+    <div class="vl-actions vl-actions-3">${vlBtn("vl-btn-edit", "fa-pen", "Edit", `openEditPackageModal('${pid}')`, `aria-label="Edit ${name}"`)}${toggle}${vlBtn("vl-btn-delete", "fa-trash", "Delete", `deletePackage('${pid}')`, `aria-label="Delete ${name}"`)}</div>
+  </article>`;
+}
+async function vlFetchPackages(vendorId) {
+  try {
+    const [{ data: packages, error }, { data: subs }] = await Promise.all([
+      sb.from("vendor_packages").select("*, items:package_items(quantity, product:products(name))").eq("vendor_id", vendorId).order("created_at", { ascending: false }),
+      sb.from("monthly_listing_submissions").select("listing_id,status").eq("vendor_id", vendorId).eq("kind", "package").order("submitted_at", { ascending: false }).limit(100),
+    ]);
+    return { packages: packages || [], error: error || null, pendingIds: new Set((subs || []).filter((x) => x.status === "pending").map((x) => String(x.listing_id))) };
+  } catch (error) { return { packages: [], error, pendingIds: new Set() }; }
+}
+function vlSkeletonHtml() {
+  return `<div class="vl-page vl-skel" aria-hidden="true"><div class="vl-skel-line vl-skel-w40"></div><div class="vl-skel-line vl-skel-title"></div><div class="vl-skel-tabs"><span></span><span></span><span></span></div><div class="vl-grid">${Array.from({ length: 4 }, () => `<div class="vl-card"><div class="vl-media vl-skel-block"></div><div class="vl-body"><div class="vl-skel-line vl-skel-w80"></div><div class="vl-skel-line vl-skel-w50"></div></div></div>`).join("")}</div></div>`;
+}
+const VL_LABELS = { all: "listings", products: "products", services: "services", packages: "packages" };
+function vlRefreshEmpty() {
+  const empty = byId("vlEmpty");
+  if (!empty) return;
+  const tab = document.querySelector("#vendorProductsTypeTabs .active")?.dataset.tab || "products";
+  const cards = [...document.querySelectorAll("#app .vl-card")].filter((c) => tab === "all" || c.dataset.vpKind === tab);
+  const visible = cards.filter((c) => !c.classList.contains("vl-filtered"));
+  empty.classList.toggle("hidden", visible.length > 0);
+  if (visible.length) return;
+  if (!cards.length) {
+    const noun = { all: "listings", products: "products", services: "services", packages: "packages" }[tab];
+    const cta = tab === "packages" ? ["Add Package", "openAddPackageModal()"] : tab === "services" ? ["Add Service", "openAddProductModal()"] : [tab === "all" ? "Add Listing" : "Add Product", "openAddProductModal()"];
+    empty.innerHTML = `<span class="vl-empty-ico"><i class="fa-solid ${tab === "packages" ? "fa-box-open" : tab === "services" ? "fa-hand-holding-heart" : "fa-box"}"></i></span><strong>No ${noun} yet.</strong><p>Add your first ${tab === "all" ? "listing" : noun.replace(/s$/, "")} to start selling on LevroMart.</p><button type="button" class="vl-add" onclick="${cta[1]}"><i class="fa-solid fa-plus"></i> ${cta[0]}</button>`;
+  } else {
+    empty.innerHTML = `<span class="vl-empty-ico"><i class="fa-solid fa-magnifying-glass"></i></span><strong>No listings found.</strong><p>Try a different search or filter.</p>`;
+  }
+}
+function vlSyncSelectLabels() {
+  const f = byId("vendorProductFilter"), s = byId("vendorProductSort");
+  const fl = byId("vlFilterLabel"), sl = byId("vlSortLabel");
+  if (f && fl) fl.textContent = f.value === "all" ? "Filter" : f.selectedOptions[0]?.textContent || "Filter";
+  f?.closest(".vl-select")?.classList.toggle("is-set", !!f && f.value !== "all");
+  if (s && sl) sl.textContent = s.selectedOptions[0]?.textContent || "Sort";
+}
+
 async function renderVendorProducts() {
   if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
   const { data: v } = await sb.from("vendors").select("*").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   vendor = v;
 
-  const [{ data: allVendorProducts }, { data: orderItems }, { data: regionRows }, { data: monthlyProductSubmissions }] = await Promise.all([
+  const [{ data: allVendorProducts, error: productsError }, { data: orderItems }, { data: regionRows }, { data: monthlyProductSubmissions }, pkgResult] = await Promise.all([
     sb.from("products").select("*, category:categories(name)").eq("vendor_id", v.id).order("created_at", { ascending: false }),
     sb.from("order_items").select("product_id, quantity, unit_price, order:orders!inner(status, vendor_id)").eq("order.vendor_id", v.id),
     sb.rpc("get_vendor_product_regions", { p_vendor_id: v.id }),
     sb.from("monthly_listing_submissions").select("listing_id,status,submitted_at,review_note").eq("vendor_id", v.id).order("submitted_at", { ascending: false }).limit(100),
+    vlFetchPackages(v.id),
   ]);
+  // A failed query must never look like "no listings".
+  if (productsError) return `<div class="vl-page"><div class="vl-empty"><span class="vl-empty-ico"><i class="fa-solid fa-triangle-exclamation"></i></span><strong>Couldn't load your listings.</strong><p>Please check your connection and try again.</p><button type="button" class="vl-add" onclick="navigate('vendorProducts',{},false)"><i class="fa-solid fa-rotate-right"></i> Try Again</button></div></div>`;
   const pendingMonthlyProductIds = new Set((monthlyProductSubmissions || []).filter(x => x.status === "pending").map(x => String(x.listing_id)));
   const products = (allVendorProducts || []).filter((p) => p.status !== "removed");
   const removedProducts = (allVendorProducts || []).filter((p) => p.status === "removed");
@@ -22129,44 +22238,33 @@ async function renderVendorProducts() {
   });
   window.__vendorPendingProductIds = pendingProductIds;
 
-  let html = `<div class="vendor-products-heading vendor-products-dashboard-head">
-    <div class="vendor-products-title-block">
-      <span class="vendor-products-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
-      <h2>My Products</h2>
-      <p class="vendor-products-subtitle">Manage products, services and packages from one place.</p>
-    </div>
-    <div class="vendor-products-menu-wrap vendor-products-top-menu">
-      <button type="button" class="icon-btn vendor-products-menu-btn" aria-label="More listing options" title="More listing options" onclick="toggleVendorProductsMenu(event)"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-      <div id="vendorProductsMenu" class="vendor-products-menu hidden">
-        <button type="button" onclick="toggleVendorDiscarded(event)"><i class="fa-solid fa-trash-can"></i> Discarded items <span>${removedProducts.length}</span></button>
-      </div>
-    </div>
-  </div>
-  <div class="vendor-products-dashboard-actions" aria-label="Listing controls">
-    <button type="button" class="vendor-dashboard-icon-action vendor-dashboard-add-action" onclick="openAddProductModal()" aria-label="Add product" title="Add product"><i class="fa-solid fa-plus"></i></button>
+  const vlProducts = products.filter((x) => !x.is_service).length;
+  const vlServices = products.filter((x) => x.is_service).length;
+  const vlPackages = pkgResult.packages.length;
+  let html = `<div class="vl-page"><div class="vl-head">
+    <div class="vl-head-top"><span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
+      <div class="vendor-products-menu-wrap vendor-products-top-menu"><button type="button" class="vl-more" aria-label="More listing options" title="More listing options" onclick="toggleVendorProductsMenu(event)"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+        <div id="vendorProductsMenu" class="vendor-products-menu hidden"><button type="button" onclick="toggleVendorDiscarded(event)"><i class="fa-solid fa-trash-can"></i> Discarded items <span>${removedProducts.length}</span></button></div></div></div>
+    <div class="vl-head-row"><div class="vl-head-copy"><h2>My Listings</h2><p>Manage your products, services and packages in one place.</p></div>
+      <button type="button" class="vl-add" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add Listing</button></div>
   </div>`;
-  if (v.verification_status !== "verified") html += `<p class="muted">Products won't appear publicly until your vendor account is verified.</p>`;
+  if (v.verification_status !== "verified") html += `<p class="vl-note"><i class="fa-solid fa-circle-info"></i> Listings won't appear publicly until your vendor account is verified.</p>`;
 
-  html += `<div class="vendor-products-unified-tabs" id="vendorProductsTypeTabs" aria-label="Listing type">
-    <button type="button" data-tab="all" onclick="switchVendorListingTab('all')">All listings</button>
-    <button type="button" class="active" data-tab="products" onclick="switchVendorListingTab('products')"><i class="fa-solid fa-box"></i> Products</button>
-    <button type="button" data-tab="services" onclick="switchVendorListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button>
-    <button type="button" data-tab="packages" onclick="switchVendorListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button>
-  </div>`;
+  const vlTab = (tab, icon, label, n) => `<button type="button" data-tab="${tab}" role="tab" onclick="switchVendorListingTab('${tab}')"><i class="fa-solid ${icon}" aria-hidden="true"></i><span>${label}</span><em>${n}</em></button>`;
+  html += `<div class="vl-tabs" id="vendorProductsTypeTabs" role="tablist" aria-label="Listing type">${vlTab("all", "fa-table-cells-large", "All Listings", vlProducts + vlServices + vlPackages)}${vlTab("products", "fa-box", "Products", vlProducts)}${vlTab("services", "fa-hand-holding-heart", "Services", vlServices)}${vlTab("packages", "fa-box-open", "Packages", vlPackages)}</div>`;
 
   html += `<div id="vendorDiscardedPanel" class="vendor-discarded-panel hidden">
     <div class="vendor-discarded-head"><div><strong>Discarded items</strong><span class="muted">Products removed from your live catalogue stay here when order history prevents permanent deletion.</span></div><button type="button" class="icon-btn" aria-label="Close discarded items" onclick="toggleVendorDiscarded(event,false)"><i class="fa-solid fa-xmark"></i></button></div>
     ${removedProducts.length ? `<div class="vendor-discarded-bulkbar"><label><input type="checkbox" id="discardedSelectAll" onchange="toggleAllDiscardedItems(this.checked)"> <span>Select all</span></label><span id="discardedSelectedCount" class="muted">0 selected</span><button type="button" class="btn btn-sm btn-danger" id="discardedBulkDeleteBtn" disabled onclick="deleteSelectedDiscardedItems()"><i class="fa-solid fa-trash-can"></i> Delete selected</button></div><div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-id="${esc(p.id)}" data-discarded-name="${esc((p.name||'').toLowerCase())}"><label class="discarded-select"><input type="checkbox" class="discarded-item-check" value="${esc(p.id)}" onchange="updateDiscardedSelection()" aria-label="Select ${esc(p.name)}"></label><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
   </div>`;
 
-  const packageSection = `<section data-vendor-listing-section="packages" class="vendor-unified-packages hidden">${await renderVendorPackages(true)}</section>`;
-  if (!products || products.length === 0) {
-    html += `<div class="empty-state vendor-products-empty-state" data-vendor-listing-section="products">No products yet.</div>`;
-  }
-
-  html += `<div class="vendor-products-toolbar">
-    <label class="vendor-products-sort"><span>Sort</span><select id="vendorProductSort" onchange="filterVendorProducts()"><option value="newest">Newest first</option><option value="az">A–Z</option><option value="za">Z–A</option></select></label>
-    <div class="vendor-products-search-compact"><button type="button" class="icon-btn vendor-product-search-toggle" aria-expanded="false" aria-label="Search My Products" title="Search My Products"><i class="fa-solid fa-magnifying-glass"></i></button><div class="vendor-product-search-popover"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="vendorProductSearch" placeholder="Search your products…" oninput="filterVendorProducts()" /><button type="button" class="icon-btn vendor-product-search-close" aria-label="Close search"><i class="fa-solid fa-xmark"></i></button></div></div>
+  const packageSection = "";
+  html += `<div class="vl-tools">
+    <label class="vl-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="vendorProductSearch" placeholder="Search your listings..." autocomplete="off" enterkeyhint="search" aria-label="Search your listings" oninput="filterVendorProducts()" /></label>
+    <label class="vl-select vl-select-filter"><i class="fa-solid fa-filter" aria-hidden="true"></i><span id="vlFilterLabel">Filter</span><i class="fa-solid fa-chevron-down vl-chev" aria-hidden="true"></i>
+      <select id="vendorProductFilter" aria-label="Filter listings" onchange="vlOnFilterChange()"><option value="all">All listings</option><option value="active">Active</option><option value="paused">Paused</option><option value="sale">Buy</option><option value="rent">Rent</option><option value="removed">Removed (${removedProducts.length})</option></select></label>
+    <label class="vl-select vl-select-sort"><i class="fa-solid fa-arrow-up-wide-short" aria-hidden="true"></i><span id="vlSortLabel">Newest first</span><i class="fa-solid fa-chevron-down vl-chev" aria-hidden="true"></i>
+      <select id="vendorProductSort" aria-label="Sort listings" onchange="filterVendorProducts()"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="price_low">Price: Low to High</option><option value="price_high">Price: High to Low</option><option value="az">Name A–Z</option><option value="za">Name Z–A</option></select></label>
   </div>`;
 
   if (vendorProductsView === "table" && products && products.length > 0) {
@@ -22207,7 +22305,7 @@ async function renderVendorProducts() {
     return html + packageSection;
   }
 
-  html += `<div class="grid vendor-product-card-grid">`;
+  html += `<div class="vl-grid" id="vlGrid">`;
   const vendorProductDetailsMap = {};
   products.forEach((p) => {
       const catName = p.category?.name || "Uncategorized";
@@ -22228,19 +22326,11 @@ async function renderVendorProducts() {
         ${topRegion ? `<p class="muted"><i class="fa-solid fa-map-location-dot"></i> Sells best in <a href="#" onclick="event.stopPropagation();showProductRegions('${p.id}','${esc(p.name).replace(/'/g, "\\'")}');return false;">${esc(topRegion.city)} (${topRegion.order_count} order${topRegion.order_count === 1 ? "" : "s"})</a></p>` : ""}
         ${hasPendingOrder ? `<p class="muted" style="color:var(--danger,#dc2626);"><i class="fa-solid fa-circle-exclamation"></i> Has a pending order, can't be removed until it's cleared</p>` : ""}
       ` };
-      html += `<div class="card vendor-own-product-card" data-vp-created="${esc(p.created_at || "")}" data-vp-kind="${p.is_service ? "services" : "products"}" data-vp-name="${esc((p.name || "").toLowerCase())}" data-vp-cat="${esc(catName.toLowerCase())}" onclick="showVendorProductDetails('${esc(p.id)}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showVendorProductDetails('${esc(p.id)}');}">
-        <div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : "<i class='fa-solid fa-camera'></i> No image"}</div>
-        <h4 style="margin:0.5rem 0 0.2rem;">${esc(p.name)}</h4>
-        <div class="vendor-product-actions" aria-label="Listing actions">
-          <button type="button" class="vendor-card-icon-action vendor-edit-action" onclick="event.stopPropagation();openEditProductModal('${p.id}')" aria-label="Edit ${esc(p.name)}" title="Edit"><i class='fa-solid fa-pen'></i><span class="sr-only">Edit</span></button>
-          <button type="button" class="vendor-card-icon-action vendor-duplicate-action" onclick="event.stopPropagation();openDuplicateProductModal('${p.id}')" aria-label="Duplicate ${esc(p.name)}" title="Duplicate"><i class='fa-solid fa-copy'></i><span class="sr-only">Duplicate</span></button>
-          ${p.status === "active" ? `<button type="button" class="vendor-card-icon-action vendor-pause-action" onclick="event.stopPropagation();setProductStatus('${p.id}','paused')" aria-label="Pause ${esc(p.name)}" title="Pause"><i class="fa-solid fa-pause"></i><span class="sr-only">Pause</span></button>` : ""}
-          ${p.status === "paused" ? (p.billing_model === "monthly" ? (listingActivationValid(p) ? `<button type="button" class="vendor-card-icon-action vendor-resume-action" onclick="event.stopPropagation();setProductStatus('${p.id}','active')" aria-label="Resume ${esc(p.name)}" title="Resume"><i class="fa-solid fa-play"></i><span class="sr-only">Resume</span></button>` : pendingMonthlyProductIds.has(String(p.id)) ? `<button type="button" class="vendor-card-icon-action vendor-pending-action" disabled aria-label="Receipt submitted" title="Receipt submitted"><i class="fa-solid fa-clock"></i><span class="sr-only">Receipt submitted</span></button>` : `<button type="button" class="vendor-card-icon-action vendor-resume-action" onclick="event.stopPropagation();startListingMonthlyPayment('product','${p.id}')" aria-label="${p.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000"}" title="${p.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000"}"><i class="fa-solid fa-receipt"></i><span class="sr-only">${p.billing_status === "pending_payment" ? "Submit ₦1,000 receipt" : "Renew ₦1,000"}</span></button>`) : `<button type="button" class="vendor-card-icon-action vendor-resume-action" onclick="event.stopPropagation();setProductStatus('${p.id}','active')" aria-label="Activate ${esc(p.name)}" title="Activate"><i class="fa-solid fa-play"></i><span class="sr-only">Activate</span></button>`) : ""}
-          <button type="button" class="vendor-card-icon-action vendor-remove-action" ${hasPendingOrder ? "disabled title=\"Can't remove: this product has a pending order\"" : "title=\"Remove\""} onclick="event.stopPropagation();removeProduct('${p.id}')" aria-label="Remove ${esc(p.name)}"><i class='fa-solid fa-trash'></i><span class="sr-only">Remove</span></button>
-        </div>
-      </div>`;
+      html += vlProductCardHtml(p, { pendingProductIds, pendingMonthlyProductIds });
     });
-  html += `</div>`;
+  pkgResult.packages.forEach((pkg) => { html += vlPackageCardHtml(pkg, pkgResult.pendingIds); });
+  html += `</div><div class="vl-empty hidden" id="vlEmpty" role="status"></div>${pkgResult.error ? `<p class="vl-note vl-note-bad"><i class="fa-solid fa-triangle-exclamation"></i> Couldn't load your packages. <a href="#" onclick="navigate('vendorProducts',{},false);return false;">Try again</a></p>` : ""}</div>`;
+
   window.__vendorProductCardDetails = vendorProductDetailsMap;
   return html + packageSection;
 }
@@ -22266,41 +22356,54 @@ function showProductRegions(productId, productName) {
     : `<p class="muted">No orders yet for this product.</p>`;
   byId("productRegionsModal").classList.remove("hidden");
 }
+function vlOnFilterChange() {
+  const f = byId("vendorProductFilter");
+  if (f?.value === "removed") {
+    // "Removed" lives in the Discarded items panel; show it and fall back to the previous filter.
+    f.value = f.dataset.prev || "all";
+    toggleVendorDiscarded(null, true);
+  } else if (f) f.dataset.prev = f.value;
+  filterVendorProducts();
+}
 function filterVendorProducts() {
   const q = (byId("vendorProductSearch")?.value || "").trim().toLowerCase();
   const sort = byId("vendorProductSort")?.value || "newest";
-  const compare = (a,b) => {
-    if (sort === "newest") return (Date.parse(b.dataset.vpCreated) || 0) - (Date.parse(a.dataset.vpCreated) || 0);
-    const an = String(a?.dataset?.vpName || "").trim();
-    const bn = String(b?.dataset?.vpName || "").trim();
-    return (sort === "za" ? -1 : 1) * an.localeCompare(bn, undefined, { sensitivity: "base", numeric: true });
+  const filter = byId("vendorProductFilter")?.value || "all";
+  const compare = (a, b) => {
+    const da = a.dataset, db = b.dataset;
+    if (sort === "newest") return (Date.parse(db.vpCreated) || 0) - (Date.parse(da.vpCreated) || 0);
+    if (sort === "oldest") return (Date.parse(da.vpCreated) || 0) - (Date.parse(db.vpCreated) || 0);
+    if (sort === "price_low") return (Number(da.vpPrice) || 0) - (Number(db.vpPrice) || 0);
+    if (sort === "price_high") return (Number(db.vpPrice) || 0) - (Number(da.vpPrice) || 0);
+    return (sort === "za" ? -1 : 1) * String(da.vpName || "").trim().localeCompare(String(db.vpName || "").trim(), undefined, { sensitivity: "base", numeric: true });
   };
-  document.querySelectorAll("[data-vp-name]").forEach((el) => {
-    const matches = !q || el.dataset.vpName.includes(q) || (el.dataset.vpCat || "").includes(q);
-    el.classList.toggle("hidden", !matches);
+  const okFilter = (el) => {
+    if (filter === "all") return true;
+    if (filter === "active" || filter === "paused") return el.dataset.vpStatus === filter;
+    if (filter === "sale") return ["sale", "both"].includes(el.dataset.vpMode);
+    if (filter === "rent") return ["rent", "both"].includes(el.dataset.vpMode);
+    return true;
+  };
+  // Search / filter use their own class so they never fight the tab switcher's "hidden".
+  document.querySelectorAll("#app [data-vp-name]").forEach((el) => {
+    const matches = (!q || el.dataset.vpName.includes(q) || (el.dataset.vpCat || "").includes(q)) && okFilter(el);
+    el.classList.toggle("vl-filtered", !matches);
   });
-
-  // Reorder within the existing DOM containers rather than rebuilding the page.
-  document.querySelectorAll("#app .vendor-product-card-grid").forEach(grid => {
-    [...grid.children].sort(compare).forEach(el => grid.appendChild(el));
-  });
-
-  const tbody = document.querySelector("#app .data-table tbody");
-  if (tbody && tbody.querySelector("[data-vp-name]")) {
-    [...tbody.children].sort(compare).forEach(el => tbody.appendChild(el));
-  }
+  // Reorder within the existing DOM rather than rebuilding the page.
+  const grid = byId("vlGrid");
+  if (grid) { const frag = document.createDocumentFragment(); [...grid.querySelectorAll(".vl-card")].sort(compare).forEach((el) => frag.appendChild(el)); grid.appendChild(frag); }
+  vlSyncSelectLabels();
+  vlRefreshEmpty();
 }
 
 function switchVendorListingTab(tab) {
   tab = String(tab || "products");
   if (!["all", "products", "services", "packages"].includes(tab)) tab = "products";
-  document.querySelectorAll("#vendorProductsTypeTabs [data-tab], .vendor-products-unified-tabs button[data-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
-  document.querySelectorAll("#app [data-vp-kind]").forEach(el => el.classList.toggle("hidden", tab !== "all" && el.dataset.vpKind !== tab));
-  document.querySelectorAll("#app [data-vp-group]").forEach(group => group.classList.toggle("hidden", ![...group.querySelectorAll("[data-vp-kind]")].some(el => !el.classList.contains("hidden"))));
-  document.querySelectorAll("#app [data-vendor-listing-section]").forEach(section => section.classList.toggle("hidden", tab !== "all" && (section.dataset.vendorListingSection === "packages" ? tab !== "packages" : tab === "packages")));
-  const table = document.querySelector("#app .data-table tbody");
-  if (table && tab !== "packages") [...table.children].forEach(row => row.classList.toggle("hidden", tab !== "all" && row.dataset.vpKind !== tab));
+  document.querySelectorAll("#vendorProductsTypeTabs [data-tab]").forEach((btn) => { const on = btn.dataset.tab === tab; btn.classList.toggle("active", on); btn.setAttribute("aria-selected", String(on)); });
+  document.querySelectorAll("#app [data-vp-kind]").forEach((el) => el.classList.toggle("hidden", tab !== "all" && el.dataset.vpKind !== tab));
   try { localStorage.setItem("levromart-vendor-listing-tab", tab); } catch (_) {}
+  vlSyncSelectLabels();
+  vlRefreshEmpty();
 }
 
 async function openAddProductModal() {
@@ -24789,7 +24892,7 @@ function customerOrderTopHtml(order, ctx) {
   h += `<section class="od-card od-status od-tone-${tone}"><div class="od-status-icon"><i class="fa-solid ${tone === "cancelled" ? "fa-ban" : tone === "done" ? "fa-circle-check" : "fa-box-open"}"></i></div>
     <div class="od-status-copy"><span class="od-kicker">Order Status</span><strong class="od-status-name">${esc(odStatusLabel(order))}</strong>${order.created_at ? `<span class="od-placed">Placed ${esc(orderDateTimeStr(order.created_at))}</span>` : ""}</div>
     <span class="od-pill od-pill-${tone}">${esc(odStatusLabel(order))}</span>
-    ${order.status === "pending" ? `<div class="od-strip"><i class="fa-regular fa-clock"></i><span>If the payout button does not reflect within 20–30 minutes, please contact the vendor immediately.</span></div>` : ""}
+    ${order.status === "pending" ? `<div class="od-strip"><i class="fa-regular fa-clock"></i><span>Vendor hasn’t responded after 5–10 minutes? Tap <strong>Remind vendor</strong> and we’ll nudge them.</span></div>` : ""}
   </section>`;
   // ---- main actions
   const canContact = !!ctx.contactAllowed && order.vendor_id;
@@ -24826,13 +24929,13 @@ function customerOrderTopHtml(order, ctx) {
     <div><span class="od-muted">Total Amount</span><b class="od-price">${naira(order.total_amount)}</b></div>
     ${order.delivery_fee > 0 ? `<div><span class="od-muted">Delivery fee</span><b>${naira(order.delivery_fee)}</b></div>` : ""}
     ${order.deposit_amount > 0 ? `<div><span class="od-muted">Refundable Deposit</span><b class="od-price">${naira(order.deposit_amount)}</b></div>` : ""}
-    <div><span class="od-muted">Payment Method</span><b>${esc(methodLabel)}</b></div></div></section>`;
+    <div><span class="od-muted">Payment Method</span><b>${esc(methodLabel)}</b></div></div>${order.deposit_amount > 0 ? `<p class="od-deposit-note"><i class="fa-solid fa-circle-info"></i> The deposit is a security amount held for rented equipment. It is returned in full once the equipment is back and checked.</p>` : ""}</section>`;
   // ---- delivery / pickup
   if (isDelivery) {
     const hasPin = order.buyer_lat != null && order.buyer_lng != null;
     const mapHref = hasPin ? `https://www.google.com/maps/search/?api=1&query=${order.buyer_lat},${order.buyer_lng}` : (order.delivery_address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address)}` : "");
     const hasEta = v.lat != null && v.lng != null;
-    h += `<section class="od-card"><div class="od-card-head"><h3><i class="fa-solid fa-location-dot"></i> Delivery Information</h3>${mapHref ? `<a class="od-link" href="${esc(mapHref)}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-map"></i> View on Map <i class="fa-solid fa-chevron-right"></i></a>` : ""}</div>
+    h += `<section class="od-card"><div class="od-card-head"><h3><i class="fa-solid fa-location-dot"></i> Delivery Information</h3>${hasEta && v.id ? `<a class="od-link" href="#" onclick="openVendorDistanceMap('${esc(v.id)}');return false;"><i class="fa-solid fa-map"></i> View on Map <i class="fa-solid fa-chevron-right"></i></a>` : ""}</div>
       <div class="od-delivery"><div><span class="od-muted">Delivery to</span><strong>${esc(order.delivery_address || "Address not provided")}</strong></div>
       ${hasEta ? `<div class="od-eta"><span class="od-muted">Estimated delivery</span><strong id="orderEtaLine"></strong></div>` : ""}</div></section>`;
   } else {
@@ -24949,12 +25052,12 @@ function vendorOrderTopHtml(order, ctx) {
     ${order.delivery_fee > 0 ? `<div><span class="od-muted">${isRental ? "Rental cost" : "Items"}</span><b>${naira(itemsSubtotal)}</b></div><div><span class="od-muted">Delivery fee</span><b>${naira(order.delivery_fee)}</b></div>` : ""}
     <div><span class="od-muted">Total</span><b class="od-price">${naira(order.total_amount)}</b></div>
     ${order.deposit_amount > 0 ? `<div><span class="od-muted">Refundable Deposit</span><b class="od-price">${naira(order.deposit_amount)}</b></div>` : ""}
-    <div><span class="od-muted">Payment Method</span><b>${esc(methodLabel)}</b></div></div></section>`;
+    <div><span class="od-muted">Payment Method</span><b>${esc(methodLabel)}</b></div></div>${order.deposit_amount > 0 ? `<p class="od-deposit-note"><i class="fa-solid fa-circle-info"></i> The deposit is a security amount held for rented equipment. It is returned in full once the equipment is back and checked.</p>` : ""}</section>`;
   // ---- delivery / pickup
   if (isDelivery) {
     const hasPin = order.buyer_lat != null && order.buyer_lng != null;
     const mapHref = hasPin ? `https://www.google.com/maps/search/?api=1&query=${order.buyer_lat},${order.buyer_lng}` : (order.delivery_address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address)}` : "");
-    h += `<section class="od-card"><div class="od-card-head"><h3><i class="fa-solid fa-location-dot"></i> Delivery Details</h3>${mapHref ? `<a class="od-link" href="${esc(mapHref)}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-map"></i> View on Map <i class="fa-solid fa-chevron-right"></i></a>` : ""}</div>
+    h += `<section class="od-card"><div class="od-card-head"><h3><i class="fa-solid fa-location-dot"></i> Delivery Details</h3>${mapReady && v.lat != null && v.lng != null ? `<a class="od-link" href="#" onclick="openOrderLocationInApp('${esc(order.id)}');return false;"><i class="fa-solid fa-map"></i> View on Map <i class="fa-solid fa-chevron-right"></i></a>` : ""}</div>
       <div class="od-delivery"><div><span class="od-muted">Delivery to</span><strong>${esc(order.delivery_address || "Address not provided")}</strong></div>${distTxt ? `<div><span class="od-muted">Distance from your shop</span><strong>${esc(distTxt.replace(/ away$/, ""))}</strong></div>` : ""}</div></section>`;
   } else {
     const addr = [v.address, v.city].filter(Boolean).map(esc).join(", ");
@@ -24964,6 +25067,13 @@ function vendorOrderTopHtml(order, ctx) {
   // ---- customer note (only when there is one)
   if (order.buyer_note) h += `<section class="od-card od-note-card"><h3><i class="fa-regular fa-message"></i> Customer Note</h3><p>${esc(order.buyer_note)}</p></section>`;
   return h;
+}
+// Opens the in-app customer-location map (never leaves Levromart).
+function openOrderLocationInApp(orderId) {
+  const btn = document.querySelector(`.order-buyer-location-btn[data-order-id="${orderId}"]`);
+  const wrap = byId(`orderBuyerLocationWrap-${orderId}`);
+  if (btn && wrap?.classList.contains("hidden")) btn.click();
+  setTimeout(() => (wrap || btn)?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
 }
 function toggleOrderDetailMenu(e) { e?.stopPropagation?.(); byId("odMenu")?.classList.toggle("hidden"); }
 document.addEventListener("click", (e) => { if (!e.target.closest?.(".od-menu-wrap")) byId("odMenu")?.classList.add("hidden"); });
@@ -25059,7 +25169,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <span class="badge order-status-badge ${order.__paymentUnresolved ? "order-status-badge-payment-unresolved" : `order-status-badge-${esc(order.status)} ${orderStatusBadgeClass(order.status)}`}" style="text-transform:capitalize;flex-shrink:0;">${order.__paymentUnresolved ? "Payment unresolved" : order.status.replace("_", " ")}</span>
     </div>
     ${order.created_at ? `<p class="muted" style="font-size:0.8rem;margin-top:0.7rem;"><i class="fa-solid fa-calendar-days"></i> Placed ${orderDateTimeStr(order.created_at)}</p>` : ""}
-    ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>If the payout button does not reflect within 20–30 minutes, please contact the vendor immediately.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button></div></div>`:''}
+    ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>Vendor hasn’t responded after 5–10 minutes? Tap “Remind vendor” and we’ll nudge them.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button></div></div>`:''}
     ${isVendor&&order.status==='pending'?`<div class="banner banner-warning vendor-order-waiting-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-hourglass-half"></i> Customer waiting for confirmation.</strong><span>The customer is waiting for you to confirm this order.</span></div>`:''}
     ${isCustomer&&['confirmed','handed_over'].includes(order.status)&&!feePaid?`<div class="banner banner-warning payment-not-paid-yet-banner" style="margin-top:0.6rem;"><strong><i class="fa-solid fa-circle-exclamation"></i> Not paid yet.</strong><span>Complete the transfer to the vendor, then tap <strong>“I’ve paid the vendor”</strong> so the payment can be verified.</span></div>`:''}
     ${(order.status === "completed" || order.status === "cancelled") && orderActivityIso(order) ? `<p class="muted" style="font-size:0.8rem;margin-top:0.25rem;"><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(order))}</p>` : ""}
@@ -35438,9 +35548,9 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   window.deleteListingDraft=async function(id){if(!session?.access_token)return;try{const r=await fetch('/api/vendor-payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete-listing-draft',draftId:id,accessToken:session.access_token})});if(!r.ok)throw new Error((await r.json()).error||'Could not delete draft.');navigate('vendorProducts',{},false)}catch(e){showToast?.(e.message,'error')}}
   window.saveProductAsDraft=async function(){if(!byId('prodIsService')||byId('prodIsService').checked||byId('prodBillingModel')?.value!=='monthly'){showToast?.('Drafts are available for monthly product listings.','info');return}const btn=byId('saveProductDraftBtn');if(btn)btn.disabled=true;try{const name=byId('prodName').value.trim();if(!name)throw new Error('Product name is required.');const newFiles=[...(window.__newProductPhotoFiles||[])];const urls=[];for(const file of newFiles){const ext=(file.name.split('.').pop()||'jpg').toLowerCase(),path='product-photos/'+vendor.id+'/'+crypto.randomUUID()+'.'+ext;let uploadBlob=file;try{if(typeof window.compressImage==="function")uploadBlob=await window.compressImage(file,{maxWidth:1600,maxHeight:1600});}catch(_){}urls.push(await uploadToR2(uploadBlob,path,uploadBlob.type||file.type))}const draft={kind:'product',vendor_id:vendor.id,fields:{name,description:stripProductVariantMeta(byId('prodDesc').value.trim())||null,category_id:byId('prodCategory').value||null,condition:byId('prodCondition').value,listing_type:byId('prodListingType').value,is_service:false,service_price_unit:null,sale_price:byId('prodSalePrice').value?Number(byId('prodSalePrice').value):null,discount_price:byId('prodDiscountPrice').value?Number(byId('prodDiscountPrice').value):null,delivery_fee_mode:byId('prodDeliveryMode').value||'free',delivery_fee:Number(byId('prodDeliveryFee').value)||0,delivery_fee_per_km:Number(byId('prodDeliveryPerKm').value)||0,payment_timing:byId('prodPaymentTiming')?.value==='pay_after'?'pay_after':'pay_before',payment_deposit_percent:Math.max(1,Math.min(99,Number(byId('prodPaymentDepositPercent')?.value||20))),rental_rate:byId('prodRentalRate').value?Number(byId('prodRentalRate').value):null,rental_rate_unit:byId('prodRateUnit').value,deposit_amount:byId('prodDeposit').value?Number(byId('prodDeposit').value):null,quantity_total:parseInt(byId('prodQtyTotal').value)||1,billing_model:'monthly'},photos:[...(window.__existingPhotos||[]),...urls],variantDrafts:collectProductVariantDrafts([...(window.__existingPhotos||[]),...urls])};const saved=await saveListingDraftServer(draft);if(!saved?.id)throw new Error(saved?.error||'Could not save draft.');showToast?.('Draft saved. You can pay the ₦1,000 activation fee later from My Shop.','success');closeProductModal?.();navigate('vendorProducts',{},false)}catch(e){byId('productError').textContent=e.message;byId('productError').classList.remove('hidden')}finally{if(btn)btn.disabled=false}}
   async function renderUnifiedEnhancements(){
-    const heading=document.querySelector('.vendor-products-heading');
+    const heading=document.querySelector('.vl-head');
     if(!heading)return;
-    if(!document.querySelector('.vendor-products-unified-tabs')){
+    if(!document.querySelector('.vl-tabs')){
       const rail=document.createElement('div');rail.className='vendor-products-unified-tabs';
       rail.innerHTML='<button data-tab="all" onclick="switchVendorListingTab(\'all\')">All listings</button><button data-tab="products" onclick="switchVendorListingTab(\'products\')">Products</button><button data-tab="services" onclick="switchVendorListingTab(\'services\')">Services</button><button data-tab="packages" onclick="switchVendorListingTab(\'packages\')">Packages</button>';
       heading.insertAdjacentElement('afterend',rail);
@@ -35458,11 +35568,11 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
       }catch(_){ }
     }
     // Tag every product/service card and its grid so the unified rail can filter cleanly.
-    document.querySelectorAll('.vendor-products-heading ~ .grid .card').forEach(card=>{
+    document.querySelectorAll('.vl-grid .vl-card').forEach(card=>{
       if(card.dataset.vendorListingKind)return;
       card.dataset.vendorListingKind=card.dataset.vpKind||'products';
     });
-    document.querySelectorAll('.vendor-products-heading ~ .grid').forEach(g=>{delete g.dataset.vendorListingSection;});
+    document.querySelectorAll('.vl-grid').forEach(g=>{delete g.dataset.vendorListingSection;});
     // Package state is loaded by the route renderer.
     const remembered=(()=>{try{return localStorage.getItem('levromart-vendor-listing-tab')||'products'}catch(_){return'all'}})();
     window.switchVendorListingTab(remembered);
@@ -43701,7 +43811,8 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 
 /* Customer profile: a settings gear in the top-right corner. */
 .buyer-profile-card{position:relative}
-.buyer-profile-settings-btn{position:absolute;top:.55rem;right:.55rem;z-index:3;width:2.5rem;height:2.5rem;border:0;border-radius:50%;background:transparent;color:var(--text);font-size:1.15rem;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.buyer-profile-row-actions{display:inline-flex;align-items:center;gap:.4rem;margin-left:auto;flex:0 0 auto}
+.buyer-profile-settings-btn{flex:0 0 auto;width:2.5rem;height:2.5rem;border:1px solid var(--border);border-radius:50%;background:transparent;color:var(--text);font-size:1.1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .buyer-profile-settings-btn:active{background:color-mix(in srgb,var(--text) 10%,transparent)}
 
 /* Settings: just the arrow, no grey circle. */
@@ -43810,7 +43921,7 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 .od-vendor-actions{grid-column:1/-1;display:flex;gap:.55rem}
 .od-vendor-actions .od-btn{flex:1}
 /* bottom bar */
-.od-bottom-bar{position:sticky;bottom:calc(74px + env(safe-area-inset-bottom));z-index:20;display:flex;gap:.7rem;padding:.7rem 0;background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.od-bottom-bar{position:sticky;bottom:calc(74px + env(safe-area-inset-bottom));z-index:20;display:flex;gap:.7rem;padding:.55rem 0 .3rem;background:linear-gradient(to top,var(--bg) 70%,transparent)}
 .od-bottom-bar .od-btn{flex:1;min-height:3.2rem}
 .od-action-wrap{display:flex;flex-direction:column;gap:.6rem;margin:0 0 .9rem}
 .od-action-wrap .btn{width:100%;min-height:3.1rem;justify-content:center}
@@ -43831,8 +43942,104 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 .od-note-card p{margin:0;font-size:.95rem;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
 .od-page .order-buyer-location-wrap{margin-top:.8rem}
 .od-page .order-buyer-card{margin-bottom:.8rem!important}
+.od-deposit-note{margin:.7rem 0 0;font-size:.8rem;line-height:1.4;color:var(--od-muted)}
+.od-deposit-note i{margin-right:.3rem}
+/* no big gap above the bottom navigation */
+.od-page{padding-bottom:.35rem!important}
+body:has(.od-page) #app{padding-bottom:calc(4.75rem + env(safe-area-inset-bottom,0px))!important}
+/* dark theme: tone pills must not glow */
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .od-pill{background:color-mix(in srgb,var(--od-tone) 26%,var(--card));color:var(--text)}}
+:root[data-theme="dark"] .od-pill,:root[data-theme="black"] .od-pill{background:color-mix(in srgb,var(--od-tone) 26%,var(--card));color:var(--text)}
 @media(max-width:360px){.od-status{grid-template-columns:auto 1fr}.od-pill{grid-column:1/-1;justify-self:start}.od-step-label{font-size:.7rem}}
 
+/* ================= My Listings (vendor catalogue) ================= */
+.vl-page{max-width:1100px;margin:0 auto;--vl-green:var(--primary,#0B6E4A);--vl-gt:var(--vl-green);--vl-line:color-mix(in srgb,var(--text) 10%,transparent);--vl-muted:var(--text-muted,#64748b);padding-bottom:1rem}
+.vl-page *{box-sizing:border-box}
+.vl-head-top{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.15rem}
+.vl-eyebrow{font-size:.74rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--vl-gt);display:inline-flex;align-items:center;gap:.4rem}
+.vl-more{width:2.4rem;height:2.4rem;border:1px solid var(--vl-line);background:var(--card);color:var(--text);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.vl-head-row{display:flex;align-items:flex-end;justify-content:space-between;gap:.8rem;flex-wrap:wrap}
+.vl-head-copy{min-width:0;flex:1 1 12rem}
+.vl-head-copy h2{margin:0;font-size:clamp(1.9rem,7vw,2.5rem);line-height:1.05;letter-spacing:-.02em}
+.vl-head-copy p{margin:.35rem 0 0;color:var(--vl-muted);font-size:.9rem;line-height:1.4}
+.vl-add{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:3rem;padding:0 1.15rem;border:0;border-radius:14px;background:var(--vl-green);color:#fff;font:inherit;font-weight:800;font-size:.95rem;cursor:pointer;box-shadow:0 6px 16px color-mix(in srgb,var(--vl-green) 28%,transparent);white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.vl-add:active{opacity:.9}
+@media(max-width:430px){.vl-head-row{align-items:stretch}.vl-add{width:100%}}
+.vl-note{display:flex;gap:.5rem;align-items:flex-start;margin:.8rem 0 0;padding:.65rem .8rem;border-radius:12px;background:color-mix(in srgb,#f59e0b 14%,var(--card));color:var(--text);font-size:.84rem;line-height:1.4}
+.vl-note-bad{background:color-mix(in srgb,#dc2626 12%,var(--card))}
+/* tabs */
+.vl-tabs{display:flex;gap:.55rem;overflow-x:auto;margin:1rem -1rem .85rem;padding:.2rem 1rem .35rem;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+.vl-tabs::-webkit-scrollbar{display:none}
+.vl-tabs button{flex:0 0 auto;display:inline-flex;align-items:center;gap:.5rem;min-height:2.9rem;padding:0 .95rem;border-radius:999px;border:1px solid var(--vl-line);background:var(--card);color:var(--text);font:inherit;font-size:.9rem;font-weight:700;cursor:pointer;white-space:nowrap;scroll-snap-align:start;-webkit-tap-highlight-color:transparent}
+.vl-tabs button i{color:var(--vl-muted);font-size:.95rem}
+.vl-tabs button em{font-style:normal;font-size:.78rem;font-weight:800;min-width:1.5rem;padding:.12rem .45rem;border-radius:999px;text-align:center;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--vl-muted)}
+#app .vl-tabs button.active{background:color-mix(in srgb,var(--vl-green) 12%,var(--card))!important;border-color:var(--vl-gt)!important;color:var(--vl-gt)!important;-webkit-text-fill-color:var(--vl-gt)!important}
+.vl-tabs button.active i{color:var(--vl-gt)}
+.vl-tabs button.active em{background:color-mix(in srgb,var(--vl-green) 18%,transparent);color:var(--vl-gt)}
+/* search / filter / sort */
+.vl-tools{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin:0 0 1rem}
+.vl-search{grid-column:1/-1;display:flex;align-items:center;gap:.6rem;min-height:3.2rem;padding:0 1rem;border-radius:16px;border:1.5px solid color-mix(in srgb,var(--vl-green) 30%,var(--vl-line));background:var(--card);color:var(--vl-muted)}
+.vl-search:focus-within{border-color:var(--vl-gt);box-shadow:0 0 0 3px color-mix(in srgb,var(--vl-green) 16%,transparent)}
+.vl-search input{flex:1;min-width:0;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;margin:0!important;height:auto!important;font:inherit;font-size:1rem;color:var(--text)}
+.vl-select{position:relative;display:flex;align-items:center;gap:.5rem;min-height:3.2rem;padding:0 .9rem;border-radius:16px;border:1px solid var(--vl-line);background:var(--card);color:var(--text);font-weight:700;font-size:.92rem;cursor:pointer;overflow:hidden}
+.vl-select>span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vl-select .vl-chev{font-size:.7rem;color:var(--vl-muted)}
+.vl-select.is-set{border-color:var(--vl-gt);color:var(--vl-gt)}
+.vl-select select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px;border:0;padding:0;margin:0;background:transparent;appearance:none;-webkit-appearance:none}
+@media(min-width:700px){.vl-tools{grid-template-columns:1fr 9rem 13rem}.vl-search{grid-column:auto}}
+/* grid + cards */
+.vl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+@media(min-width:700px){.vl-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}}
+@media(min-width:1000px){.vl-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.vl-card{display:flex;flex-direction:column;min-width:0;background:var(--card);border:1px solid var(--vl-line);border-radius:18px;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,.05);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.vl-card.vl-filtered{display:none}
+.vl-media{position:relative;aspect-ratio:4/3;background:color-mix(in srgb,var(--text) 7%,var(--card));overflow:hidden}
+.vl-media img{width:100%;height:100%;object-fit:cover;display:block}
+.vl-img-empty{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--vl-muted);font-size:1.8rem}
+.vl-type{position:absolute;left:.5rem;top:.5rem;padding:.2rem .55rem;border-radius:999px;font-size:.68rem;font-weight:800;background:rgba(255,255,255,.92);color:#0f172a;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.vl-body{padding:.65rem .7rem .5rem;display:flex;flex-direction:column;gap:.3rem;min-width:0;flex:1}
+.vl-name{margin:0;font-size:.95rem;line-height:1.25;font-weight:800;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:2.4em}
+.vl-price-row{display:flex;align-items:baseline;justify-content:space-between;gap:.4rem;flex-wrap:wrap}
+.vl-price{color:var(--vl-gt);font-size:1.02rem}
+.vl-price small{font-size:.7em;font-weight:600;color:var(--vl-muted)}
+.vl-stock{font-size:.74rem;color:var(--vl-muted)}
+.vl-status{align-self:flex-start;display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:999px;font-size:.74rem;font-weight:700;background:color-mix(in srgb,var(--vl-green) 13%,var(--card));color:var(--vl-gt)}
+.vl-status i{width:.5rem;height:.5rem;border-radius:50%;background:currentColor}
+.vl-status-warn{background:color-mix(in srgb,#f59e0b 18%,var(--card));color:#b45309}
+.vl-status-bad{background:color-mix(in srgb,#dc2626 14%,var(--card));color:#b91c1c}
+.vl-status-muted{background:color-mix(in srgb,var(--text) 9%,transparent);color:var(--vl-muted)}
+.vl-actions{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;padding:.2rem .55rem .65rem}
+.vl-actions-3 .vl-btn-delete{grid-column:1/-1}
+.vl-btn{display:inline-flex;align-items:center;justify-content:center;gap:.25rem;min-height:2.5rem;padding:0 .15rem;border-radius:11px;border:1px solid var(--vl-line);background:var(--card);color:var(--text);font:inherit;font-size:.72rem;letter-spacing:-.01em;font-weight:700;cursor:pointer;min-width:0;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.vl-btn i{font-size:.8rem;flex:0 0 auto}
+.vl-btn span{overflow:hidden;text-overflow:clip}
+.vl-btn-edit{background:color-mix(in srgb,var(--vl-green) 11%,var(--card));border-color:color-mix(in srgb,var(--vl-green) 35%,transparent);color:var(--vl-gt)}
+.vl-btn-dup{color:var(--vl-gt)}
+.vl-btn-pause{background:color-mix(in srgb,#f59e0b 13%,var(--card));border-color:color-mix(in srgb,#f59e0b 40%,transparent);color:#b45309}
+.vl-btn-resume{background:color-mix(in srgb,var(--vl-green) 11%,var(--card));border-color:color-mix(in srgb,var(--vl-green) 35%,transparent);color:var(--vl-gt)}
+.vl-btn-pending{color:var(--vl-muted)}
+.vl-btn-delete{background:color-mix(in srgb,#dc2626 9%,var(--card));border-color:color-mix(in srgb,#dc2626 35%,transparent);color:#dc2626}
+.vl-btn:disabled{opacity:.55;cursor:not-allowed}
+.vl-btn:active:not(:disabled){opacity:.85}
+:root[data-theme="dark"] .vl-status-warn,:root[data-theme="black"] .vl-status-warn,:root[data-theme="dark"] .vl-btn-pause,:root[data-theme="black"] .vl-btn-pause{color:#fbbf24}
+:root[data-theme="dark"] .vl-btn-delete,:root[data-theme="black"] .vl-btn-delete,:root[data-theme="dark"] .vl-status-bad,:root[data-theme="black"] .vl-status-bad{color:#f87171}
+@media(max-width:359px){.vl-btn i{display:none}}
+/* empty / error */
+.vl-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.4rem;padding:2.2rem 1rem;border:1px dashed var(--vl-line);border-radius:18px;background:var(--card)}
+.vl-empty.hidden{display:none}
+.vl-empty strong{font-size:1.05rem}
+.vl-empty p{margin:0 0 .6rem;color:var(--vl-muted);font-size:.9rem}
+.vl-empty-ico{width:3.6rem;height:3.6rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--vl-green) 12%,var(--card));color:var(--vl-gt);font-size:1.4rem}
+/* skeleton */
+.vl-skel-line{height:.9rem;border-radius:8px;background:color-mix(in srgb,var(--text) 9%,transparent);margin:.35rem 0;animation:vlPulse 1.2s ease-in-out infinite}
+.vl-skel-title{height:2.2rem;width:60%}.vl-skel-w40{width:40%}.vl-skel-w50{width:50%}.vl-skel-w80{width:80%}
+.vl-skel-tabs{display:flex;gap:.55rem;margin:1rem 0}.vl-skel-tabs span{height:2.9rem;width:7rem;border-radius:999px;background:color-mix(in srgb,var(--text) 9%,transparent)}
+.vl-skel-block{background:color-mix(in srgb,var(--text) 9%,transparent);animation:vlPulse 1.2s ease-in-out infinite}
+.vl-skel .vl-card{min-height:14rem;cursor:default}
+@keyframes vlPulse{50%{opacity:.5}}
+@media(prefers-reduced-motion:reduce){.vl-skel-line,.vl-skel-block{animation:none}}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .vl-page{--vl-gt:#4ade80}}
+:root[data-theme="dark"] .vl-page,:root[data-theme="black"] .vl-page{--vl-gt:#4ade80}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
