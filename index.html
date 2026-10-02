@@ -14832,7 +14832,7 @@ function searchVendorRowHtml(v) {
   const following = recent && Date.now() - recent.at < 15000 ? !!recent.following : !!(session && window.followedVendorSet?.().has(String(v.id)));
   const loc = [v.city, null].filter(Boolean).map(esc).join("");
   return `<div class="search-result-row sr-row sr-vendor-row" data-vendor-id="${esc(v.id)}" ${searchRowOpen(`navigate('storefront',{vendorId:'${esc(v.id)}'})`)} aria-label="${esc(name)}">
-    <span class="sr-thumb sr-thumb-round">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid fa-store'}))">` : avatarFallbackHtml(name, "100%", "sr-avatar", name, v.id)}</span>
+    <span class="sr-thumb sr-thumb-round">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" data-n="${esc(name)}" data-k="${esc(v.id)}" onerror="vdImgFail(this)">` : vdInitialsHtml(name, v.id)}</span>
     <div class="sr-main"><strong class="sr-name">${esc(name)} <i class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i></strong>
       <span class="sr-vendor"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${loc || "Online"}${searchDistanceMetaHtml(v).replace(/<i class="fa-solid fa-location-dot"><\/i> /, "")}</span>
       <span class="sr-meta"><em class="sr-type">Vendor</em>${sectorName ? `<span class="sr-sector">${esc(sectorName)}</span>` : ""}</span>
@@ -19084,11 +19084,23 @@ async function buyNow(vendorId, productId) {
 // ---------- VENDORS DIRECTORY ----------
 let vendorsListingFilter = "all";
 // ---------- VENDORS PAGE: card + empty state ----------
+// Centred initials for vendors without a logo. Absolutely positioned so iOS Safari
+// cannot push the letters down (percentage heights inside aspect-ratio boxes).
+function vdInitialsHtml(name, key) {
+  let hue = 150;
+  try { hue = stableAvatarHue(key || name); } catch (_) {}
+  return `<span class="vd-initials" style="--av-h:${hue}" aria-hidden="true"><span>${esc(initials(String(name || "V")))}</span></span>`;
+}
+function vdImgFail(img) {
+  const html = vdInitialsHtml(img.dataset.n || "", img.dataset.k || "");
+  img.insertAdjacentHTML("afterend", html);
+  img.remove();
+}
 function vendorDirectoryCardHtml(v) {
   const id = String(v?.id || "");
   const name = v?.business_name || "Vendor";
   const sectorName = v?.sector_name || (Array.isArray(sectors) ? sectors.find((s) => String(s.id) === String(v?.sector_id))?.name : "") || "";
-  const count = Number(v?.follower_count || 0);
+  const count = Number(v?.follower_count ?? window.__followerCountMemo?.get(id)?.n ?? 0);
   const km = typeof vendorDistanceKm === "function" ? vendorDistanceKm(v) : null;
   const dist = km == null ? "" : km < 1 ? `${Math.round(km * 1000)} m away` : `${km.toFixed(1)} km away`;
   const showFollow = !(typeof isOwnVendorId === "function" && isOwnVendorId(v?.id));
@@ -19097,8 +19109,8 @@ function vendorDirectoryCardHtml(v) {
   const rating = Number(v?.avg_rating || 0), reviews = Number(v?.review_count || 0);
   const open = `navigate('storefront',{vendorId:'${esc(id)}'})`;
   const media = v?.logo_url
-    ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(name).replace(/'/g, "&#39;")}','100%','vd-fallback','${esc(name).replace(/'/g, "&#39;")}')))">`
-    : avatarFallbackHtml(name, "100%", "vd-fallback", name, id);
+    ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onerror="vdImgFail(this)">`
+    : vdInitialsHtml(name, id);
   return `<div class="vd-card" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
     <div class="vd-cover">${media}<span class="vd-verified" title="Verified vendor" aria-label="Verified vendor"><i class="fa-solid fa-check"></i></span></div>
     <div class="vd-body">
@@ -38769,6 +38781,8 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     try{
       const {data,error}=await sb.rpc("get_vendor_follower_counts",{p_vendor_ids:ids});
       if(error)throw error;
+      const memo=(window.__followerCountMemo||=new Map());
+      ids.forEach(id=>{const row=(data||[]).find(r=>String(r.vendor_id)===String(id));memo.set(String(id),{n:Number(row?.follower_count||0),at:Date.now()});});
       const counts=new Map((data||[]).map(r=>[String(r.vendor_id),Number(r.follower_count||0).toLocaleString()]));
       ids.forEach(id=>document.querySelectorAll(`[data-vendor-id="${CSS.escape(id)}"] .vendor-follower-count`).forEach(el=>{el.textContent=counts.get(String(id))||"0";}));
     }catch(err){ console.warn("[Levromart] Follower count refresh failed:",err); }
@@ -44513,6 +44527,11 @@ body:has(.od-page) #app{padding-bottom:0!important}
 .top-rated-vendors-scroll{display:flex!important;gap:.7rem!important;align-items:stretch;padding-bottom:.4rem}
 .top-rated-vendors-scroll .vd-card{flex:0 0 10.6rem;width:10.6rem;scroll-snap-align:start}
 @media(max-width:380px){.top-rated-vendors-scroll .vd-card{flex-basis:9.6rem;width:9.6rem}}
+.vd-initials{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:hsl(var(--av-h,150) 45% 86%);color:hsl(var(--av-h,150) 55% 26%);font-weight:800;font-size:2.4rem;line-height:1;letter-spacing:.02em}
+.vd-initials>span{display:block;line-height:1;transform:translateZ(0)}
+.sr-thumb{position:relative}
+.sr-thumb .vd-initials{font-size:1.5rem}
+:root[data-theme="dark"] .vd-initials,:root[data-theme="black"] .vd-initials{background:hsl(var(--av-h,150) 30% 24%);color:hsl(var(--av-h,150) 60% 82%)}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
