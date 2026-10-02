@@ -8748,6 +8748,13 @@ function looksLikePhoneIdentifier(value) {
 }
 
 function naira(n) { return "₦" + Number(n ?? 0).toLocaleString(); }
+// The price a buyer actually pays: the discount when there is a real one, otherwise the normal price.
+function effectivePrice(o) { const sale = Number(o?.sale_price), disc = Number(o?.discount_price); return o?.discount_price != null && disc > 0 && (!Number.isFinite(sale) || disc < sale) ? disc : (o?.sale_price != null ? sale : null); }
+function priceHeroInner(o, suffix) {
+  const now = effectivePrice(o), was = Number(o?.sale_price);
+  const off = now != null && Number.isFinite(was) && now < was;
+  return `<span class="pph-now">${naira(now)}${esc(suffix || "")}</span>${off ? `<span class="pph-was">${naira(was)}</span><span class="pph-save">Save ${naira(was - now)} · ${Math.round((1 - now / was) * 100)}% off</span>` : ""}`;
+}
 function servicePriceSuffix(p) { return p.is_service && p.service_price_unit && p.service_price_unit !== "flat" ? "/" + p.service_price_unit : ""; }
 function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
 
@@ -18476,12 +18483,12 @@ async function __levroOriginalRenderProductDetail(productId) {
     // switched quantity tracking off for an item that isn't meant to run
     // out (e.g. made-to-order food).
     (!product.is_service && !productVariants.length && product.track_quantity !== false) ? { label: "Available", value: `${product.quantity_available} / ${product.quantity_total}` } : null,
-    product.sale_price != null ? { label: product.is_service ? "Price" : "Buy price", value: naira(product.sale_price) + servicePriceSuffix(product) } : null,
+    (product.sale_price != null && product.is_service) ? { label: "Price", value: naira(effectivePrice(product)) + servicePriceSuffix(product) } : null,
     product.rental_rate != null ? { label: "Rent", value: `${naira(product.rental_rate)} per ${product.rental_rate_unit}` } : null,
     product.deposit_amount ? { label: "Refundable deposit", value: naira(product.deposit_amount) } : null,
   ].filter(Boolean);
 
-  const productGalleryVariantMetaHtml = productVariants.length ? `<div class="product-gallery-variant-meta" id="productGalleryVariantMeta"><span class="product-gallery-variant-label">Selected variety:</span><strong id="productGalleryVariantName">${esc(productVariants[0].name || "Selected variety")}</strong><strong id="productGalleryVariantPrice">Price: ${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? productVariants[0].rental_rate ?? 0))}</strong></div>` : "";
+  const productGalleryVariantMetaHtml = productVariants.length ? `<div class="product-gallery-variant-meta" id="productGalleryVariantMeta"><span class="product-gallery-variant-label">Selected variety:</span><strong id="productGalleryVariantName">${esc(productVariants[0].name || "Selected variety")}</strong><strong id="productGalleryVariantPrice">Price: ${naira(Number(effectivePrice(productVariants[0]) ?? productVariants[0].rental_rate ?? 0))}</strong></div>` : "";
 
   let html = `<div class="card product-detail-card" data-product-detail-id="${esc(product.id)}" style="position:relative;">
     <div class="product-detail-top-actions" aria-label="Product actions">
@@ -18514,6 +18521,7 @@ async function __levroOriginalRenderProductDetail(productId) {
       ${product.is_service ? "" : `<p><strong>Condition:</strong> ${esc((product.condition || "").replace("-", " "))}</p>`}
       <div class="product-description-block"><strong>About</strong> ${readMoreHtml(`productDescText-${product.id}`, cleanDescription || "No description provided.")}</div>
     </div>
+    ${(product.sale_price != null && !product.is_service) ? `<div class="product-price-hero" id="productPriceHero"><div class="pph-label">${productVariants.length ? "Price · selected variety" : "Buy price"}</div><div class="pph-row" id="productPriceHeroBody">${priceHeroInner(productVariants.length ? productVariants[0] : product)}</div></div>` : ""}
     ${statItems.length ? `<div class="product-detail-stats">${statItems.map((s) => `<div><span class="muted">${esc(s.label)}</span><strong>${s.value}</strong></div>`).join("")}</div>` : ""}
   </div>`;
 
@@ -18538,14 +18546,14 @@ async function __levroOriginalRenderProductDetail(productId) {
     const buyLabel = product.is_service ? "Book Now" : "Place order";
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
-      ${productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><span class="variety-choice-image">${v.photo_url?`<img src="${esc(v.photo_url)}" alt="${esc(v.name)}"><span class="variety-image-position">${productVariants.filter(x=>x.photo_url).findIndex(x=>x.id===v.id)+1}/${productVariants.filter(x=>x.photo_url).length}</span>`:""}</span><strong>${esc(v.name)}</strong><small>${naira(Number(v.discount_price ?? v.sale_price ?? 0))}</small></button>`).join("")}</div></div>` : ""}
-      ${productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="product-gallery-variant-label">Selected variety:</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</small><small class="muted" style="display:block;margin-top:.16rem;">Available: <span id="selectedVariantStock">${variantStockLabel(productVariants[0])}</span></small></div><strong id="selectedVariantPrice">Price: ${naira(Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? 0))}</strong></div>` : ""}
+      ${productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><span class="variety-choice-image">${v.photo_url?`<img src="${esc(v.photo_url)}" alt="${esc(v.name)}"><span class="variety-image-position">${productVariants.filter(x=>x.photo_url).findIndex(x=>x.id===v.id)+1}/${productVariants.filter(x=>x.photo_url).length}</span>`:""}</span><strong>${esc(v.name)}</strong><small>${naira(Number(effectivePrice(v) ?? 0))}</small></button>`).join("")}</div></div>` : ""}
+      ${productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="product-gallery-variant-label">Selected variety:</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</small><small class="muted" style="display:block;margin-top:.16rem;">Available: <span id="selectedVariantStock">${variantStockLabel(productVariants[0])}</span></small></div><strong id="selectedVariantPrice">Price: ${naira(Number(effectivePrice(productVariants[0]) ?? 0))}</strong></div>` : ""}
       <div class="flex">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
-          : `<input type="number" id="buyQty" value="1" min="1" placeholder="Qty" oninput="updateBuyTotalPreview(${product.sale_price ?? 0})" style="width:90px;" />`}
+          : `<input type="number" id="buyQty" value="1" min="1" placeholder="Qty" oninput="updateBuyTotalPreview(${effectivePrice(product) ?? 0})" style="width:90px;" />`}
       </div>
-      ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price}">Total: ${naira(productVariants.length ? Number(productVariants[0].discount_price ?? productVariants[0].sale_price ?? product.sale_price) : product.sale_price)}</p>` : ""}
+      ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product)}">Total: ${naira(productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product))}</p>` : ""}
       ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% first; the remaining ${paymentRemainingPercent}% is due after delivery.` : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
       ${!product.is_service ? `<div style="margin-top:0.7rem;">
@@ -18868,6 +18876,9 @@ function updateServiceTotalPreview(rate, unit) {
   refreshPriceBreakdown("buy");
 }
 function updateBuyTotalPreview(rate) {
+  const vid = byId("selectedProductVariantId")?.value;
+  const sv = vid ? (currentProductDetail?.variants || []).find((v) => String(v.id) === String(vid)) : null;
+  if (sv && effectivePrice(sv) != null) rate = Number(effectivePrice(sv));
   const qty = parseInt(byId("buyQty").value) || 0;
   const el = byId("serviceTotalPreview");
   if (el) { el.textContent = `Total: ${naira(rate * qty)} (${qty} × ${naira(rate)})`; el.dataset.rawTotal = String(rate * qty); }
@@ -18906,7 +18917,8 @@ function selectProductVariant(variantId, scrollGallery = true, syncGallery = tru
     btn.setAttribute("aria-pressed", String(selected));
   });
   const qty = parseInt(byId("buyQty")?.value || 1) || 1;
-  const unit = Number(variant.discount_price ?? variant.sale_price ?? variant.rental_rate ?? 0);
+  const unit = Number(effectivePrice(variant) ?? variant.rental_rate ?? 0);
+  const heroBody = byId("productPriceHeroBody"); if (heroBody && effectivePrice(variant) != null) heroBody.innerHTML = priceHeroInner(variant);
   const preview = byId("serviceTotalPreview");
   if (preview && unit > 0) { preview.textContent = `Total: ${naira(unit * qty)} (${qty} × ${naira(unit)})`; preview.dataset.rawTotal = String(unit * qty); }
   const nameEl = byId("selectedVariantName"), priceEl = byId("selectedVariantPrice"), descEl = byId("selectedVariantDescription");
@@ -18959,8 +18971,8 @@ async function buyNow(vendorId, productId) {
   const selectedVariant = (currentProductDetail?.variants || []).find(v => String(v.id) === String(selectedVariantId));
 
   const previewEl = byId("serviceTotalPreview");
-  const totalText = previewEl ? previewEl.textContent.replace(/^Total:\s*/, "") : (currentProductDetail?.sale_price != null ? naira(currentProductDetail.sale_price * qty) : "");
-  const itemTotal = previewEl?.dataset.rawTotal != null ? Number(previewEl.dataset.rawTotal) : (currentProductDetail?.sale_price != null ? currentProductDetail.sale_price * qty : null);
+  const totalText = previewEl ? [...previewEl.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").replace(/^Total:\s*/, "").trim() : (currentProductDetail?.sale_price != null ? naira(effectivePrice(currentProductDetail) * qty) : "");
+  const itemTotal = previewEl?.dataset.rawTotal != null ? Number(previewEl.dataset.rawTotal) : (currentProductDetail?.sale_price != null ? effectivePrice(currentProductDetail) * qty : null);
   const { fee: deliveryFee, known: feeKnown } = computeDeliveryFeeForPrefix("buy", delivery.method);
   const itemLine = `${qty > 1 && !previewEl ? qty + "× " : ""}${productName}${totalText ? ` — ${totalText}` : ""}`;
   const summaryHtml = orderSummaryConfirmHtml({
@@ -44589,6 +44601,16 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .delivery-method-row:not(.cart-delivery *) label:has(input:checked){border-color:var(--ct-g);background:color-mix(in srgb,var(--ct-g) 9%,var(--card))}
 .delivery-method-row:not(.cart-delivery *) input[type=radio]{accent-color:var(--ct-g);width:1.25rem!important;height:1.25rem;flex:none}
 .dyn-delivery-fields:not(.cart-delivery *) input[type=text],.dyn-delivery-fields:not(.cart-delivery *) input[type=tel]{min-height:3.1rem;border-radius:14px}
+/* Product page price hero: the price you actually pay, big and clear. */
+.product-price-hero{margin:.2rem 0 .9rem;padding:.85rem 1rem;border-radius:16px;background:color-mix(in srgb,var(--primary,#0B6E4A) 9%,var(--card));border:1px solid color-mix(in srgb,var(--primary,#0B6E4A) 22%,var(--border))}
+.pph-label{font-size:.74rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted)}
+.pph-row{display:flex;align-items:baseline;flex-wrap:wrap;gap:.35rem .7rem;margin-top:.2rem}
+.pph-now{font-size:1.9rem;font-weight:900;line-height:1.1;color:var(--primary,#0B6E4A);font-variant-numeric:tabular-nums}
+.pph-was{font-size:1rem;color:var(--text-muted);text-decoration:line-through;font-weight:600}
+.pph-save{font-size:.76rem;font-weight:800;padding:.2rem .55rem;border-radius:999px;background:color-mix(in srgb,#f43f5e 14%,var(--card));color:#be123c}
+.selected-variant-summary>strong{font-size:1.15rem;font-weight:900;color:var(--primary,#0B6E4A);white-space:nowrap}
+#serviceTotalPreview{font-size:1rem;font-weight:700;color:var(--text)!important;padding:.55rem .75rem;border-radius:12px;background:color-mix(in srgb,var(--text) 5%,transparent)}
+.product-variant-choice small{font-weight:800;color:var(--primary,#0B6E4A)}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
