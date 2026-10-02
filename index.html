@@ -9368,7 +9368,7 @@ function notificationSystemIconHtml(n) {
     order_cancelled_by_vendor: ["fa-ban", R], request_cancelled: ["fa-ban", R],
     order_reminder: ["fa-clock", A], order_note: ["fa-note-sticky", B], order_updated: ["fa-pen-to-square", B],
     payment_received: ["fa-money-bill-wave", "#16a34a"], payment_confirmed: ["fa-circle-check", "#16a34a"],
-    manual_payment_reported: ["fa-hand-holding-dollar", A], service_payment_reported: ["fa-hand-holding-dollar", A],
+    manual_payment_reported: ["fa-hand-holding-dollar", V], service_payment_reported: ["fa-hand-holding-dollar", V],
     payment_unresolved_24h: ["fa-hourglass-half", R], new_dispute: ["fa-scale-balanced", R],
     new_message: ["fa-message", B], admin_alert: ["fa-shield-halved", V], admin_action_alert: ["fa-shield-halved", V],
     admin_inventory_product_deleted: ["fa-trash-can", R],
@@ -9389,7 +9389,7 @@ function notificationSystemIconHtml(n) {
   if (T === "order_status_changed") {
     hit = /cancel/i.test(title) ? ["fa-ban", R] : /complet/i.test(title) ? ["fa-circle-check", "#16a34a"]
       : /confirm/i.test(title) ? ["fa-clipboard-check", "#16a34a"] : /hand|deliver/i.test(title) ? ["fa-truck-fast", B]
-      : /return/i.test(title) ? ["fa-rotate-left", A] : /dispute/i.test(title) ? ["fa-scale-balanced", R] : ["fa-arrows-rotate", B];
+      : /return/i.test(title) ? ["fa-rotate-left", A] : /unresolved/i.test(title) ? ["fa-hourglass-half", V] : /dispute/i.test(title) ? ["fa-scale-balanced", R] : ["fa-arrows-rotate", B];
   }
   if (!hit) hit = ["fa-bell", GR];
   return `<span class="notification-system-icon notif-type-icon" style="--nti:${hit[1]}"><i class="fa-solid ${hit[0]}"></i></span>`;
@@ -23806,7 +23806,9 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
 }
 
 function orderStatusBadgeClass(status) {
-  if (status === "cancelled" || status === "disputed" || status === "payment_unresolved") return "danger";
+  if (status === "cancelled") return "danger";
+  if (status === "payment_unresolved") return "unresolved";
+  if (status === "disputed") return "warning";
   if (status === "completed") return "success";
   if (status === "handed_over" || status === "returned") return "warning";
   if (status === "confirmed") return "info";
@@ -42559,6 +42561,10 @@ html[data-theme="black"] .avatar-fallback{
 .order-note-who{font-size:.7rem;color:var(--text-muted);font-weight:700}
 .order-note-modal textarea{width:100%;margin-top:.5rem}
 .order-note-thread{max-height:34vh;overflow-y:auto}
+
+/* Payment unresolved = purple, cancelled = red, disputed = amber. */
+#app .badge.unresolved,.badge.unresolved{background:#ede9fe !important;color:#6d28d9 !important;-webkit-text-fill-color:#6d28d9 !important;border-color:#c4b5fd !important}
+html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unresolved{background:#3b2a6b !important;color:#ddd6fe !important;-webkit-text-fill-color:#ddd6fe !important}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
