@@ -11779,6 +11779,22 @@ async function submitEditProfile() {
 }
 
 // ---------- BOTTOM NAV (mobile) ----------
+// Mouse users can't swipe: let them drag horizontal rails (and shift-wheel still works natively).
+(function(){
+  let rail=null,startX=0,startLeft=0,moved=false;
+  document.addEventListener("mousedown",(e)=>{
+    if(e.button!==0)return; const r=e.target.closest?.(".hscroll"); if(!r)return;
+    rail=r;startX=e.pageX;startLeft=r.scrollLeft;moved=false;
+  });
+  document.addEventListener("mousemove",(e)=>{
+    if(!rail)return; const dx=e.pageX-startX;
+    if(!moved&&Math.abs(dx)>6){moved=true;rail.classList.add("is-dragging");}
+    if(moved){rail.scrollLeft=startLeft-dx;e.preventDefault();}
+  });
+  const end=()=>{ if(rail&&moved){const r=rail;setTimeout(()=>r.classList.remove("is-dragging"),0);} rail=null; };
+  document.addEventListener("mouseup",end); document.addEventListener("mouseleave",end);
+  document.addEventListener("click",(e)=>{ if(moved){e.stopPropagation();e.preventDefault();moved=false;} },true);
+})();
 function renderBottomNav() {
   const nav = byId("bottomNav");
   if (!nav) return;
@@ -44787,6 +44803,85 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .lm-actions .btn{min-height:2.8rem;border-radius:12px}
 .lm-sec .listing-billing-choice,.lm-sec .prod-delivery-settings,.lm-sec .listing-payment-timing-settings{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important}
 .lm-sec .prod-delivery-settings,.lm-sec .listing-payment-timing-settings{margin-top:.7rem}
+/* ==========================================================================
+   WIDE SCREENS + LANDSCAPE
+   Laptops, desktops, tablets and phones held sideways get a left navigation
+   rail (every bottom-bar item stays reachable), centred content and roomier grids.
+   ========================================================================== */
+@media (min-width:900px), (orientation:landscape) and (max-height:560px) and (min-width:560px){
+  :root{--rail:92px}
+  body{padding-left:var(--rail)!important;padding-bottom:1.5rem!important}
+  header{left:var(--rail)!important;width:auto!important;right:0!important}
+  #bottomNav,#bottomNav.has-add,#bottomNav.buyer-no-add,#bottomNav.nav-scroll-hide,#bottomNav.nav-scroll-shrink{
+    position:fixed!important;top:0!important;bottom:0!important;left:0!important;right:auto!important;
+    width:var(--rail)!important;height:100vh!important;height:100dvh!important;min-height:0!important;max-width:none!important;margin:0!important;
+    display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:stretch!important;gap:.3rem!important;
+    padding:.8rem .45rem!important;border-radius:0!important;border:0!important;border-right:1px solid var(--border)!important;
+    background:var(--card)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important;
+    transform:none!important;opacity:1!important;grid-template-columns:none!important;overflow-y:auto;z-index:210!important}
+  #bottomNav .bn-group{display:flex!important;flex-direction:column!important;justify-content:flex-start!important;flex:0 0 auto!important;gap:.3rem!important;grid-template-columns:none!important;min-width:0!important}
+  #bottomNav .bottom-nav-item,#bottomNav.has-add .bottom-nav-item{
+    width:100%!important;height:auto!important;min-height:58px!important;padding:.45rem .2rem!important;border-radius:14px!important;
+    display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:.18rem!important;
+    color:var(--text-muted)!important;background:transparent!important}
+  #bottomNav .bottom-nav-item i,#bottomNav .bottom-nav-item .bn-icon{color:inherit!important;font-size:1.2rem!important}
+  #bottomNav .bottom-nav-item>span:last-child,#bottomNav.has-add .bottom-nav-item>span:last-child{font-size:.66rem!important;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  #bottomNav .bottom-nav-item:hover{background:color-mix(in srgb,var(--text) 6%,transparent)!important}
+  #bottomNav .bottom-nav-item.active{background:color-mix(in srgb,var(--primary) 14%,transparent)!important;color:var(--primary)!important}
+  #bottomNav .bottom-nav-item.active i,#bottomNav .bottom-nav-item.active .bn-icon{color:var(--primary)!important}
+  #bottomNav .bottom-nav-add{position:static!important;top:auto!important;transform:none!important;width:100%!important;height:auto!important;min-height:64px!important;margin:.35rem 0!important;padding:.5rem .2rem!important;border-radius:16px!important;
+    display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:.15rem!important;background:var(--primary)!important;color:#fff!important;box-shadow:none!important;font-size:.62rem!important}
+  #bottomNav .bottom-nav-add .bn-icon,#bottomNav .bottom-nav-add i{color:#fff!important;font-size:1.15rem!important}
+  #bottomNav .bn-badge{right:.55rem!important}
+  #app{max-width:1400px!important;margin-left:auto!important;margin-right:auto!important}
+}
+@media (min-width:900px), (orientation:landscape) and (max-height:560px) and (min-width:560px){
+  /* Product grids: real photos, auto-fitting columns */
+  #app .grid:has(> .product-card-wrap){grid-template-columns:repeat(auto-fill,minmax(205px,1fr))!important;gap:1rem!important;grid-auto-rows:auto!important;align-items:stretch!important}
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap{aspect-ratio:auto!important;height:auto!important;display:flex!important}
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card{display:flex!important;flex-direction:column!important;grid-template-rows:none!important;aspect-ratio:auto!important;height:auto!important;max-height:none!important;flex:1 1 auto!important;padding:.6rem!important;overflow:hidden!important}
+  #app .grid:has(> .product-card-wrap) > .product-card-wrap > .card .product-img{width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;aspect-ratio:1/1!important;flex:0 0 auto!important;border-radius:12px!important;overflow:hidden!important}
+  #app .grid:has(> .product-card-wrap) .product-card-total-line{padding-right:5.2rem!important}
+  #app .grid:has(> .product-card-wrap) .product-img img{width:100%!important;height:100%!important;object-fit:cover!important}
+  #app .grid:has(> .product-card-wrap) .product-card-wrap h4{font-size:.92rem!important;line-height:1.2!important;min-height:2.2rem!important}
+  #app .grid:has(> .product-card-wrap) .product-card-compact-footer{margin-top:auto!important}
+  /* Horizontal rails: fixed card width, bigger photos, visible thin scrollbar for mouse users */
+  #app .hscroll.trending-scroll .product-card-wrap{flex:0 0 232px!important;width:232px!important}
+  #app .hscroll.trending-scroll .product-img{height:11.5rem!important;min-height:11.5rem!important;max-height:11.5rem!important;flex-basis:11.5rem!important}
+  .hscroll{scrollbar-width:thin!important;padding-bottom:.6rem!important;cursor:grab}
+  .hscroll::-webkit-scrollbar{display:block!important;height:8px!important}
+  .hscroll::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--text) 22%,transparent);border-radius:8px}
+  .hscroll.is-dragging{cursor:grabbing;scroll-snap-type:none!important}
+  .hscroll.is-dragging *{pointer-events:none}
+  /* Banner carousel: sized so it fits the screen height too */
+  #app .home-promotional-carousel,#app .home-promotional-track{--slide-w:min(760px,64vw,calc(62vh * 1.7778))!important}
+  /* Vendor cards */
+  .vd-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))!important;gap:1rem!important}
+  /* Modals and sheets: centred cards, never full-width slabs */
+  .modal-content{max-width:min(640px,92vw)}
+  /* Page families that were built as narrow phone columns now use a comfortable reading width */
+  .cart-page{max-width:760px!important}
+  .order-history-page,.od-page{max-width:900px;margin-left:auto;margin-right:auto}
+}
+@media (min-width:1500px){
+  #app .grid:has(> .product-card-wrap){grid-template-columns:repeat(auto-fill,minmax(225px,1fr))!important}
+  .vd-grid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))!important}
+}
+@media (min-width:800px){
+  /* Product page: photos and details on the left, the order card pinned on the right */
+  #app:has(> .product-detail-card){display:grid!important;grid-template-columns:minmax(0,1.15fr) minmax(320px,1fr);gap:1rem 1.25rem;align-items:start}
+  #app:has(> .product-detail-card) > *{grid-column:1 / -1}
+  #app:has(> .product-detail-card) > .product-detail-card{grid-column:1;grid-row:1 / span 3}
+  #app:has(> .product-detail-card) > .product-detail-card + .card{grid-column:2;grid-row:1}
+  #app:has(> .product-detail-card) > .product-detail-card + .card + .owner-listing-management{grid-column:2;grid-row:2}
+  .product-detail-card .product-gallery-main{max-height:min(62vh,560px)}
+}
+@media (min-width:900px), (orientation:landscape) and (max-height:560px) and (min-width:560px){
+  /* Full-screen chat hides the rail, so give the space back */
+  body.chat-full-page{padding-left:0!important}
+  body.chat-full-page header{left:0!important}
+  body.chat-full-page #app{max-width:980px!important}
+}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
