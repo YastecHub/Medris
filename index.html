@@ -12965,6 +12965,14 @@ async function navigate(view, params = {}, pushHistory = true) {
   app.innerHTML = html;
   try { setTimeout(() => window.maybePromptLevromartReview?.(), 900); } catch (_) {}
   try { if (vendor?.id && !window.__prodRefs) setTimeout(() => warmProductModalRefs(), 1200); } catch (_) {}
+  try {
+    if (session && !window.__dtTipChecked) {
+      window.__dtTipChecked = true;
+      if (localStorage.getItem("levro-dt-tip-v1") !== "1") setTimeout(() => {
+        if (document.querySelector("#app .product-card-wrap")) { showToast("Tip: double-tap any product to save it to your wishlist.", "info"); localStorage.setItem("levro-dt-tip-v1", "1"); } else window.__dtTipChecked = false;
+      }, 3500);
+    }
+  } catch (_) {}
   if (liveStorefrontFollowHtml) {
     const freshFollowWrap = byId("storefrontFollowWrap");
     if (freshFollowWrap) freshFollowWrap.innerHTML = liveStorefrontFollowHtml;
@@ -15498,8 +15506,8 @@ function productCardHtml(p) {
   const showFavBtn = p._cardContext === "wishlist";
   return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     ${showFavBtn ? `<button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>` : ""}
-    <div class="card" style="cursor:pointer;" onclick="navigate('productDetail',{productId:'${p.id}'})">
-      <div class="product-img" ${showFavBtn ? "" : `onclick="handleProductImageTap(event,'${p.id}')"`}>${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}${showFavBtn ? "" : `<span class="product-wish-bounce"><i class="fa-solid fa-heart"></i></span>`}</div>
+    <div class="card" style="cursor:pointer;" onclick="${showFavBtn ? `navigate('productDetail',{productId:'${p.id}'})` : `handleProductImageTap(event,'${p.id}')`}">
+      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}${showFavBtn ? "" : `<span class="product-wish-bounce"><i class="fa-solid fa-heart"></i></span>`}</div>
       <h4>${esc(p.name)}</h4>
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
@@ -15517,9 +15525,11 @@ function productCardHtml(p) {
 // every double-tap-to-like gesture makes.
 const __productImageTapState = new Map();
 function handleProductImageTap(evt, productId) {
+  // Buttons inside the card (add to cart, etc.) keep their own behaviour.
+  if (evt.target?.closest?.("button, a, .card-cart-btn")) return;
   evt.stopPropagation();
   const now = Date.now();
-  const DOUBLE_TAP_MS = 400;
+  const DOUBLE_TAP_MS = 320;
   const state = __productImageTapState.get(productId);
   if (state?.lastTap && now - state.lastTap < DOUBLE_TAP_MS) {
     clearTimeout(state.timer);
@@ -15549,7 +15559,7 @@ async function toggleFavoriteViaDoubleTap(imgContainer, productId) {
   // The bounce animation alone wasn't a reliable enough confirmation (easy
   // to miss, or silently not render) -- a toast says outright what just
   // happened regardless of whether the animation is visible.
-  showToast(wasFav ? "Removed from wishlist." : "Added to wishlist.", "success");
+  showToast(wasFav ? "Removed from wishlist." : "Added to your wishlist \u2764", "success");
   try {
     const { error } = wasFav
       ? await sb.from("favorites").delete().eq("buyer_id", session.user.id).eq("product_id", productId)
@@ -15692,7 +15702,7 @@ function cartItemRowHtml(it) {
         <div class="cart-qty" role="group" aria-label="Quantity">
           <button type="button" aria-label="Decrease quantity" onclick="updateCartQty('${it.id}',${it.quantity - 1})" ${it.quantity <= 1 ? "disabled" : ""}><i class="fa-solid fa-minus"></i></button>
           <span aria-live="polite">${it.quantity}</span>
-          <button type="button" aria-label="Increase quantity" onclick="updateCartQty('${it.id}',${it.quantity + 1})" ${it.quantity >= p.quantity_available ? "disabled" : ""}><i class="fa-solid fa-plus"></i></button>
+          <button type="button" aria-label="Increase quantity" onclick="updateCartQty('${it.id}',${it.quantity + 1})"><i class="fa-solid fa-plus"></i></button>
         </div>
         <button type="button" class="cart-remove" title="Remove" aria-label="Remove ${esc(p.name)} from cart" onclick="removeFromCart('${it.id}')"><i class="fa-solid fa-trash"></i></button>
       </div>
@@ -25213,9 +25223,11 @@ function vendorOrderTopHtml(order, ctx) {
     payment_unresolved: { icon: "fa-hourglass-half", head: "Payment needs your attention", body: "Check your account and confirm or dispute the reported payment below." },
   };
   const al = order.__paymentUnresolved && st !== "cancelled" && st !== "completed" ? alerts.payment_unresolved : alerts[st];
+  h += orderQtyProposalHtml(order, "vendor");
   if (al) h += `<section class="od-info od-vendor-alert od-tone-${order.__paymentUnresolved && st !== "cancelled" && st !== "completed" ? "unresolved" : tone}" role="status"><span class="od-info-icon"><i class="fa-solid ${al.icon}"></i></span><div><strong>${esc(al.head)}</strong><p>${esc(al.body)}</p></div></section>`;
   // ---- main actions (same handlers as before)
   if (st === "pending") {
+    if (orderCanSuggestQuantity(order)) h += `<div class="od-actions"><button type="button" class="od-btn od-btn-soft" onclick="openSuggestQuantity('${esc(order.id)}')"><i class="fa-solid fa-arrows-rotate"></i> Suggest quantity</button></div>`;
     h += `<div class="od-actions od-actions-pair"><button type="button" class="od-btn od-btn-danger" onclick="vendorDeclineOrder('${esc(order.id)}','pending')"><i class="fa-regular fa-circle-xmark"></i> Decline Order</button><button type="button" class="od-btn od-btn-confirm" onclick="confirmOrderAsVendor('${esc(order.id)}')"><i class="fa-solid fa-check"></i> Confirm Order</button></div>`;
   } else if (st === "confirmed") {
     h += `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="vendorDeclineOrder('${esc(order.id)}','confirmed')"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button></div>`;
@@ -25429,6 +25441,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   const newView = isCustomer && !isVendor && profile?.role !== "admin";
   const chatOpenStates = ["confirmed", "payment_unresolved", "handed_over", "returned", "disputed"].includes(String(order.status || "")) || (order.status === "completed" && Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000);
   if (newView) html = customerOrderTopHtml(order, { isCustomer, sourcePerspective, contactAllowed: chatOpenStates && !!order.vendor_id });
+  if (isCustomer) html += orderQtyProposalHtml(order, "customer");
   // Vendors get the matching redesign. Privacy is unchanged: anonymous until accepted, name only after.
   const newVendorView = isVendor && !isCustomer && profile?.role !== "admin";
   const vAccepted = !["pending", "declined", "cancelled", "rejected"].includes(String(order.status || ""));
@@ -25824,7 +25837,7 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {})
   const deliveryBalancePaid = payments.some((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
   const paymentComplete = isDeliveryOrder ? (deliveryDepositPaid && deliveryBalancePaid) : feePaid;
   if (isVendor) {
-    if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-confirm" onclick="confirmOrderAsVendor('${order.id}')">Confirm order</button>`); buttons.push(`<button class="btn btn-sm btn-danger order-action-decline" onclick="vendorDeclineOrder('${order.id}','pending')">Decline</button>`); }
+    if (order.status === "pending") { buttons.push(`<button class="btn btn-sm order-action-confirm" onclick="confirmOrderAsVendor('${order.id}')">Confirm order</button>`); if (orderCanSuggestQuantity(order)) buttons.push(`<button class="btn btn-sm btn-outline" onclick="openSuggestQuantity('${order.id}')"><i class="fa-solid fa-arrows-rotate"></i> Suggest quantity</button>`); buttons.push(`<button class="btn btn-sm btn-danger order-action-decline" onclick="vendorDeclineOrder('${order.id}','pending')">Decline</button>`); }
     // Once the vendor has confirmed the order, do NOT render another
     // "Confirm order" / handover action here. The payment card above is the
     // single source of truth for the next vendor action: mark the selected
@@ -25956,6 +25969,55 @@ async function updateOrderStatus(orderId, newStatus) {
   await navigate("orderDetail", { orderId });
 }
 
+// ---------- QUANTITY SUGGESTIONS ----------
+// A vendor who has the product but not the quantity asked for can suggest what they can supply
+// instead of declining the whole order; the customer then accepts it or keeps the original.
+function orderCanSuggestQuantity(order) {
+  return order && order.status === "pending" && order.order_type === "sale" && !order.package_id && Array.isArray(order.items) && order.items.some((it) => Number(it.quantity) > 1);
+}
+function orderQtyProposalHtml(order, role) {
+  const pr = order && order.quantity_proposal;
+  if (!pr || order.status !== "pending" || !Array.isArray(pr.items)) return "";
+  const rows = pr.items.filter((l) => Number(l.suggested) !== Number(l.requested)).map((l) => `<li><span>${esc(l.name)}</span><span><s>${Number(l.requested)}</s> <strong>${Number(l.suggested)}</strong></span></li>`).join("");
+  const note = pr.note ? `<p class="oqp-note">"${esc(pr.note)}"</p>` : "";
+  if (role === "customer") {
+    return `<section class="oqp-card"><div class="oqp-head"><span class="oqp-ico"><i class="fa-solid fa-arrows-rotate"></i></span><div><strong>The vendor suggested a different quantity</strong><small>They can supply less than you asked for.</small></div></div><ul class="oqp-list">${rows}</ul>${note}<div class="oqp-actions"><button type="button" class="od-btn od-btn-soft" onclick="respondQuantityProposal('${esc(order.id)}',false)">Keep my order</button><button type="button" class="od-btn od-btn-confirm" onclick="respondQuantityProposal('${esc(order.id)}',true)"><i class="fa-solid fa-check"></i> Accept</button></div></section>`;
+  }
+  return `<section class="oqp-card oqp-wait"><div class="oqp-head"><span class="oqp-ico"><i class="fa-solid fa-hourglass-half"></i></span><div><strong>Waiting for the customer</strong><small>You suggested a different quantity.</small></div></div><ul class="oqp-list">${rows}</ul>${note}</section>`;
+}
+async function openSuggestQuantity(orderId) {
+  byId("suggestQtyModal")?.remove();
+  const { data: order, error } = await sb.from("orders").select("id,status,items:order_items(id,quantity,product:products(name,quantity_available,track_quantity))").eq("id", orderId).maybeSingle();
+  if (error || !order) { showToast("Couldn't load this order.", "error"); return; }
+  const rows = (order.items || []).map((it) => {
+    const stock = it.product?.track_quantity === false ? null : Number(it.product?.quantity_available);
+    return `<div class="sq-row"><div class="sq-name"><strong>${esc(it.product?.name || "Item")}</strong><small>Customer asked for ${Number(it.quantity)}${stock != null && Number.isFinite(stock) ? ` · your stock shows ${stock}` : ""}</small></div><input type="number" inputmode="numeric" min="0" max="${Number(it.quantity)}" value="${Number(it.quantity)}" data-sq-item="${esc(it.id)}" data-sq-max="${Number(it.quantity)}" /></div>`;
+  }).join("");
+  const modal = document.createElement("div");
+  modal.id = "suggestQtyModal"; modal.className = "modal";
+  modal.innerHTML = `<div class="modal-content" style="max-width:460px;"><h3 style="margin:0 0 .3rem;">Suggest a quantity</h3><p class="muted" style="margin:0 0 .8rem;">Tell the customer how many you can actually supply. They can accept it or keep their original order. Nothing is cancelled.</p><div id="sqError" class="error-text hidden"></div>${rows}<label class="df-label" for="sqNote">Note for the customer <span class="df-hint">(optional)</span></label><textarea id="sqNote" rows="2" maxlength="300" placeholder="e.g. I only have 1 left, more arrives Friday"></textarea><div class="flex" style="justify-content:flex-end;gap:.6rem;margin-top:.8rem;"><button type="button" class="btn btn-sm btn-outline" onclick="byId('suggestQtyModal').remove()">Cancel</button><button type="button" class="btn btn-sm" id="sqSend" onclick="sendSuggestedQuantity('${esc(orderId)}')"><i class="fa-solid fa-paper-plane"></i> Send suggestion</button></div></div>`;
+  modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+async function sendSuggestedQuantity(orderId) {
+  const err = byId("sqError"), btn = byId("sqSend");
+  err?.classList.add("hidden");
+  const items = [...document.querySelectorAll("#suggestQtyModal [data-sq-item]")].map((i) => ({ id: i.dataset.sqItem, quantity: Math.floor(Number(i.value)), max: Number(i.dataset.sqMax) }));
+  if (items.some((i) => !Number.isFinite(i.quantity) || i.quantity < 0 || i.quantity > i.max)) { if (err) { err.textContent = "Enter a number from 0 up to what the customer asked for."; err.classList.remove("hidden"); } return; }
+  btn.disabled = true;
+  const { error } = await sb.rpc("vendor_suggest_order_quantity", { p_order_id: orderId, p_items: items.map(({ id, quantity }) => ({ id, quantity })), p_note: byId("sqNote")?.value.trim() || null });
+  if (error) { if (err) { err.textContent = error.message; err.classList.remove("hidden"); } btn.disabled = false; return; }
+  byId("suggestQtyModal")?.remove();
+  showToast("Suggestion sent to the customer.", "success");
+  navigate("orderDetail", { orderId }, false);
+}
+async function respondQuantityProposal(orderId, accept) {
+  if (!(await showConfirmDialog(accept ? "Accept the vendor's suggested quantity? Your order total will update." : "Keep your original order? The vendor can still confirm or decline it.", { title: accept ? "Accept suggestion" : "Keep my order", okLabel: accept ? "Accept" : "Keep my order" }))) return;
+  const { error } = await sb.rpc("buyer_respond_quantity_proposal", { p_order_id: orderId, p_accept: !!accept });
+  if (error) { showToast(error.message, "error"); return; }
+  showToast(accept ? "Order updated with the suggested quantity." : "Original order kept.", "success");
+  navigate("orderDetail", { orderId }, false);
+}
 async function confirmOrderAsVendor(orderId) {
   const confirmed = await showConfirmDialog(
     "Confirm this order? The customer will be notified you've accepted it and told to proceed with payment/pickup.",
@@ -30380,7 +30442,7 @@ async function addCartWithFallback(productId, quantity) {
     const { error } = await sb.from("cart_items").update({ quantity: nextQty }).eq("id", existing.id);
     return error || null;
   }
-  const { error } = await sb.from("cart_items").insert({ buyer_id: session.user.id, product_id: productId, quantity: Math.min(qty, Math.max(1, Number(p.quantity_available || 1))) });
+  const { error } = await sb.from("cart_items").insert({ buyer_id: session.user.id, product_id: productId, quantity: Math.max(1, Number(qty) || 1) });
   return error || null;
 }
 
@@ -44882,6 +44944,23 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
   body.chat-full-page header{left:0!important}
   body.chat-full-page #app{max-width:980px!important}
 }
+/* Quantity suggestion card + modal */
+.oqp-card{margin:0 0 .8rem;padding:.9rem 1rem;border-radius:18px;border:1px solid color-mix(in srgb,#3b82f6 35%,var(--border));background:color-mix(in srgb,#3b82f6 8%,var(--card))}
+.oqp-wait{border-color:color-mix(in srgb,#f59e0b 38%,var(--border));background:color-mix(in srgb,#f59e0b 8%,var(--card))}
+.oqp-head{display:flex;align-items:center;gap:.7rem}
+.oqp-head strong{display:block;font-size:.98rem}
+.oqp-head small{display:block;color:var(--text-muted);font-size:.78rem}
+.oqp-ico{flex:none;width:2.4rem;height:2.4rem;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,#3b82f6 18%,var(--card));color:#2563eb}
+.oqp-wait .oqp-ico{background:color-mix(in srgb,#f59e0b 20%,var(--card));color:#b45309}
+.oqp-list{list-style:none;margin:.7rem 0 .2rem;padding:0}
+.oqp-list li{display:flex;justify-content:space-between;gap:.6rem;padding:.4rem 0;border-bottom:1px dashed var(--border);font-size:.9rem}
+.oqp-list li:last-child{border-bottom:0}
+.oqp-list s{color:var(--text-muted)}
+.oqp-note{margin:.5rem 0 0;font-style:italic;color:var(--text-muted);font-size:.86rem}
+.oqp-actions{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.8rem}
+.sq-row{display:flex;align-items:center;gap:.7rem;padding:.55rem 0;border-bottom:1px dashed var(--border)}
+.sq-name{flex:1;min-width:0}.sq-name strong{display:block}.sq-name small{display:block;color:var(--text-muted);font-size:.76rem}
+.sq-row input{width:5rem!important;text-align:center;font-weight:800;min-height:2.8rem;border-radius:12px}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}

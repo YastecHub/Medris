@@ -124,3 +124,9 @@ value as the `EMAIL_WEBHOOK_SECRET` environment variable in Vercel.
 * Never delete chats; `conversation_is_open` hides them instead.
 * When adding an RPC that the browser calls, make it `SECURITY DEFINER`, `set search_path = public`, check
   `auth.uid()` first, and `grant execute ... to authenticated`.
+
+## Quantity suggestions (added Oct 2026)
+
+`orders.quantity_proposal` (jsonb) holds a vendor's counter-offer. `vendor_suggest_order_quantity(order, items, note)` (vendor, pending
+sale orders) stores it and notifies the buyer; `buyer_respond_quantity_proposal(order, accept)` applies or clears it and notifies the vendor.
+`create_cart_order` no longer refuses orders above the stock counter (stock is floored at zero), matching `create_sale_order`.
