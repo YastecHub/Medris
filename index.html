@@ -10234,7 +10234,8 @@ async function __refreshNotificationsNow(renderPanel = true, includeSlow = true)
   // Independent badge/count reads run concurrently so one slow table cannot
   // hold up unrelated UI state.
   const unreadQ = sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("archived", false).eq("read", false).is("deleted_at", null);
-  const vendorQ = vendor ? sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES) : Promise.resolve({ count: 0 });
+  const ordFresh = !!(window.__ordCnt && window.__ordCnt.uid === session.user.id && Date.now() - window.__ordCnt.at < 15000);
+  const vendorQ = ordFresh ? Promise.resolve({ count: window.__ordCnt.v }) : vendor ? sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES) : Promise.resolve({ count: 0 });
   const vendorProductCountQ = (vendor && includeSlow) ? sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id) : Promise.resolve(null);
   // "Today" is computed in the viewer's own local time (matches the same
   // toDateString() approach vendorEarningsInPeriod already uses for its
@@ -10242,7 +10243,7 @@ async function __refreshNotificationsNow(renderPanel = true, includeSlow = true)
   // sees today's views reset at their own midnight, not at 1am WAT.
   const todayStartLocal = new Date(); todayStartLocal.setHours(0, 0, 0, 0);
   const vendorProfileViewsTodayQ = (vendor && includeSlow) ? sb.from("vendor_profile_view_events").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).gte("viewed_at", todayStartLocal.toISOString()) : Promise.resolve(null);
-  const buyerQ = sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES);
+  const buyerQ = ordFresh ? Promise.resolve({ count: window.__ordCnt.b }) : sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES);
   // Slow-changing numbers (following count, lifetime order count, suggestions,
   // product count, profile views) are only re-read about once a minute.
   const followingQ = (profile?.role !== "admin" && includeSlow) ? sb.from("vendor_follows").select("id", { count: "exact", head: true }).eq("follower_id", session.user.id) : Promise.resolve(profile?.role !== "admin" ? null : { count: 0 });
@@ -10260,6 +10261,7 @@ async function __refreshNotificationsNow(renderPanel = true, includeSlow = true)
   const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes, followingRes, totalOrdersRes, vendorProfileViewsTodayRes] = await Promise.all([
     unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ, vendorProductCountQ, followingQ, totalOrdersQ, vendorProfileViewsTodayQ
   ]);
+  if (!ordFresh) window.__ordCnt = { at: Date.now(), uid: session.user.id, v: vendorRes?.count || 0, b: buyerRes?.count || 0 };
   if (vendorProductCountRes) vendorProductCount = vendor ? (vendorProductCountRes?.count || 0) : 0;
   else if (!vendor) vendorProductCount = 0;
   if (vendorProfileViewsTodayRes) vendorProfileViewsToday = vendor ? (vendorProfileViewsTodayRes?.count || 0) : 0;
@@ -10354,7 +10356,7 @@ async function renderNotifPanel(opts = {}) {
   if(!cachedNotificationTabs.some(([key])=>key===notifViewMode))notifViewMode='all';
   const cachedTabsHtml=`<div class="notif-tabs" role="tablist" aria-label="Notification categories">${cachedNotificationTabs.map(([key,label])=>`<button type="button" role="tab" aria-selected="${notifViewMode===key?"true":"false"}" class="notif-tab ${notifViewMode===key?"active":""}" onclick="switchNotifView('${key}')">${label}</button>`).join('')}</div>`;
   // Switching tabs reuses the list that is already on screen (no repaint without badges, no refetch).
-  const reuse = !!(opts && opts.reuse && window.__notifRaw && window.__notifRaw.uid === session.user.id && Date.now() - window.__notifRaw.at < 120000);
+  const reuse = !!(opts && opts.reuse && window.__notifRaw && window.__notifRaw.uid === session.user.id && Date.now() - window.__notifRaw.at < 300000);
   if (reuse) {
     /* keep the current DOM until the new tab is ready */
   } else if (Array.isArray(cachedNotifItems) && cachedNotifItems.length) {
@@ -10397,11 +10399,15 @@ async function renderNotifPanel(opts = {}) {
   // for both round trips back to back instead of overlapping them.
   if (reuse && window.__notifRaw.owners) window.__notifRaw.owners.forEach((v, k) => owners.set(k, v));
   else await Promise.all([['product','products'],['package','vendor_packages']].map(async ([kind,table])=>{
+    // Listing owners never change, so remember them for the whole session.
+    const ownerCache=(window.__notifOwnerCache ||= new Map());
     const ids=[...new Set((rawItems||[]).map(n=>{const p=n.target_params||{},m=n.metadata||{};return kind==='product'?(p.productId||p.product_id||m.product_id):(p.packageId||p.package_id||m.package_id)}).filter(Boolean))];
-    if(!ids.length)return;
-    const {data,error:ownerError}=await sb.from(table).select('id,vendor_id').in('id',ids);
+    ids.forEach(id=>{const c=ownerCache.get(`${kind}:${id}`);if(c)owners.set(`${kind}:${id}`,c);});
+    const missing=ids.filter(id=>!ownerCache.has(`${kind}:${id}`));
+    if(!missing.length)return;
+    const {data,error:ownerError}=await sb.from(table).select('id,vendor_id').in('id',missing);
     if(ownerError)console.warn('Notification ownership lookup failed',ownerError);
-    (data||[]).forEach(r=>owners.set(`${kind}:${r.id}`,String(r.vendor_id)));
+    (data||[]).forEach(r=>{const v=String(r.vendor_id);owners.set(`${kind}:${r.id}`,v);ownerCache.set(`${kind}:${r.id}`,v);});
   }));
   if (!reuse && Array.isArray(rawItems)) window.__notifRaw = { uid: session.user.id, at: Date.now(), items: rawItems, owners: new Map(owners) };
   const classifyNotification=n=>{
@@ -10809,6 +10815,7 @@ function subscribeNotifications() {
       // thread right away and quietly mark the notification as read.
       const nParams = payload.new.target_params || {};
       window.__convRawAt = 0;
+      window.__ordCnt = null;
       if (String(payload.new.type || "") === "incoming_call") {
         try { window.__levroIncomingCall?.(payload.new); } catch (_) {}
         refreshNotifications(false);
@@ -13350,7 +13357,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
-  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeCategory ? esc(activeCategory.name) : activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" /><button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button><div class="browse-filter-panel hidden" id="browseFilterPanel"><div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('listing')"><span>Type</span><strong id="browseListingLabel">${esc("All types")}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu hidden" id="browseListingSubmenu"><button type="button" onclick="chooseBrowseListing('', 'All types')">All types</button><button type="button" onclick="chooseBrowseListing('rent', 'Rent')">Rent</button><button type="button" onclick="chooseBrowseListing('sale', 'Buy')">Buy</button></div></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || 'All categories')}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><div id="browseCategoryOptions">${subCats.map(c => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace("'","&#39;")}')">${esc(c.name)}</button>`).join("")}</div><button type="button" onclick="chooseBrowseCategory('','All categories')">All categories</button></div></div><button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button></div><select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
+  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeCategory ? esc(activeCategory.name) : activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search marketplace…" oninput="scheduleHomeSearch()" /><button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button><div class="browse-filter-panel hidden" id="browseFilterPanel"><div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('listing')"><span>Type</span><strong id="browseListingLabel">${esc("All types")}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu hidden" id="browseListingSubmenu"><button type="button" onclick="chooseBrowseListing('', 'All types')">All types</button><button type="button" onclick="chooseBrowseListing('rent', 'Rent')">Rent</button><button type="button" onclick="chooseBrowseListing('sale', 'Buy')">Buy</button></div></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || 'All categories')}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><div id="browseCategoryOptions">${subCats.map(c => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace("'","&#39;")}')">${esc(c.name)}</button>`).join("")}</div><button type="button" onclick="chooseBrowseCategory('','All categories')">All categories</button></div></div><button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button></div><select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
   return html;
 }
@@ -14333,7 +14340,7 @@ async function renderHome() {
   html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" data-tab="products" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-box"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" data-tab="services" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" data-tab="packages" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button></div>`;
   html += `<div class="browse-filter-toolbar">
     <button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button>
-    <input type="search" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" autocomplete="off" aria-label="Search products, packages, or services" />
+    <input type="search" id="searchInput" placeholder="Search marketplace…" oninput="scheduleHomeSearch()" autocomplete="off" aria-label="Search products, packages, or services" />
     <div class="browse-filter-panel hidden" id="browseFilterPanel">
       <div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div>
       <div class="browse-filter-row-group">
@@ -19091,6 +19098,10 @@ function vdInitialsHtml(name, key) {
   try { hue = stableAvatarHue(key || name); } catch (_) {}
   return `<span class="vd-initials" style="--av-h:${hue}" aria-hidden="true"><span>${esc(initials(String(name || "V")))}</span></span>`;
 }
+// Square / tall logos are shown whole on a soft tint instead of being cropped and blown up.
+function vdImgLoad(img) {
+  if (img.naturalWidth && img.naturalHeight && img.naturalWidth / img.naturalHeight < 1.2) img.classList.add("vd-logo-fit");
+}
 function vdImgFail(img) {
   const html = vdInitialsHtml(img.dataset.n || "", img.dataset.k || "");
   img.insertAdjacentHTML("afterend", html);
@@ -19109,7 +19120,7 @@ function vendorDirectoryCardHtml(v) {
   const rating = Number(v?.avg_rating || 0), reviews = Number(v?.review_count || 0);
   const open = `navigate('storefront',{vendorId:'${esc(id)}'})`;
   const media = v?.logo_url
-    ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onerror="vdImgFail(this)">`
+    ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onload="vdImgLoad(this)" onerror="vdImgFail(this)">`
     : vdInitialsHtml(name, id);
   return `<div class="vd-card" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
     <div class="vd-cover">${media}<span class="vd-verified" title="Verified vendor" aria-label="Verified vendor"><i class="fa-solid fa-check"></i></span></div>
@@ -19209,7 +19220,7 @@ async function attachVendorFollowerCounts(vendors) {
     if (!ids.length) return rows;
     // Remember counts for 3 minutes so the same vendors are not re-counted on every render.
     const memo = (window.__followerCountMemo ||= new Map());
-    const stale = ids.filter((id) => { const h = memo.get(String(id)); return !h || Date.now() - h.at > 180000; });
+    const stale = ids.filter((id) => { const h = memo.get(String(id)); return !h || Date.now() - h.at > 600000; });
     if (stale.length) {
       const { data, error } = await sb.rpc("get_vendor_follower_counts", { p_vendor_ids: stale });
       if (error) throw error;
@@ -38777,13 +38788,17 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     if(typeof sb === "undefined")return;
     const ids=[...new Set([...document.querySelectorAll("[data-vendor-id]")].map(el=>el.dataset.vendorId).filter(Boolean))];
     if(!ids.length)return;
+    // Counts seen in the last 10 minutes are applied straight from memory (no request).
+    const memo0=(window.__followerCountMemo||=new Map());
+    const stale0=ids.filter(id=>{const h=memo0.get(String(id));return !h||Date.now()-h.at>600000;});
+    if(!stale0.length){ids.forEach(id=>document.querySelectorAll(`[data-vendor-id="${CSS.escape(id)}"] .vendor-follower-count`).forEach(el=>{el.textContent=Number(memo0.get(String(id)).n).toLocaleString();}));return;}
     if(__vendorHydrateShouldSkip(__vendorHydrateCache.followerCounts,ids))return;
     try{
-      const {data,error}=await sb.rpc("get_vendor_follower_counts",{p_vendor_ids:ids});
+      const {data,error}=await sb.rpc("get_vendor_follower_counts",{p_vendor_ids:stale0});
       if(error)throw error;
       const memo=(window.__followerCountMemo||=new Map());
-      ids.forEach(id=>{const row=(data||[]).find(r=>String(r.vendor_id)===String(id));memo.set(String(id),{n:Number(row?.follower_count||0),at:Date.now()});});
-      const counts=new Map((data||[]).map(r=>[String(r.vendor_id),Number(r.follower_count||0).toLocaleString()]));
+      stale0.forEach(id=>{const row=(data||[]).find(r=>String(r.vendor_id)===String(id));memo.set(String(id),{n:Number(row?.follower_count||0),at:Date.now()});});
+      const counts=new Map(ids.map(id=>[String(id),Number(memo.get(String(id))?.n||0).toLocaleString()]));
       ids.forEach(id=>document.querySelectorAll(`[data-vendor-id="${CSS.escape(id)}"] .vendor-follower-count`).forEach(el=>{el.textContent=counts.get(String(id))||"0";}));
     }catch(err){ console.warn("[Levromart] Follower count refresh failed:",err); }
   }
@@ -38838,6 +38853,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     window.__vendorCardFollowRecent=window.__vendorCardFollowRecent||new Map();
     window.__vendorCardFollowRecent.set(String(vendorId),{following:next,at:Date.now()});
     rememberVendorFollow(vendorId,next);
+    try{window.__followerCountMemo?.delete(String(vendorId));}catch(_){}
     matches.forEach(b=>{b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";b.disabled=true;});
     try{
       const r=await sb.rpc("toggle_vendor_follow",{p_vendor_id:vendorId,p_following:next});
@@ -44558,6 +44574,9 @@ body:has(.od-page) #app{padding-bottom:0!important}
 #app .vendor-discarded-bulkbar label span{position:static!important;display:inline!important;white-space:nowrap}
 #app .vendor-discarded-bulkbar #discardedSelectedCount{position:static!important;flex:1 1 auto;white-space:nowrap}
 #app .vendor-discarded-bulkbar .btn{margin-left:auto!important}
+.vd-cover img.vd-logo-fit{object-fit:contain;padding:.7rem;background:color-mix(in srgb,var(--primary,#0B6E4A) 10%,var(--card))}
+#app .browse-filter-toolbar>button#browseFilterTrigger{order:2!important;flex:0 0 auto!important;width:auto!important;min-width:6rem!important;height:3rem!important;min-height:3rem!important;padding:0 1rem!important;border-radius:16px!important;box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:.45rem!important;white-space:nowrap!important;overflow:visible!important}
+#app .browse-filter-toolbar>input#searchInput{font-size:.95rem!important;text-overflow:ellipsis}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
