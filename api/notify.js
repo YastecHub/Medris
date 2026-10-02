@@ -60,8 +60,10 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    // Calls are time-critical and pointless in an inbox: push only, no email.
+    const callType = n.type === "incoming_call" || n.type === "missed_call";
     const [email, push] = await Promise.all([
-      sendEmail(SUPABASE_URL, svcHeaders, n),
+      callType ? Promise.resolve({ sent: false, reason: "not emailed" }) : sendEmail(SUPABASE_URL, svcHeaders, n),
       sendPush(SUPABASE_URL, svcHeaders, n),
     ]);
 
@@ -158,11 +160,17 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
   // Declarative Web Push shape. This makes the notification user-visible
   // even if the Home Screen web app is closed and the service worker cannot
   // be started in time. Older browsers simply use the classic fields.
+  // An incoming call stays on screen until it is tapped (or the caller gives up),
+  // and the push expires after 45s so a stale "ringing" never shows up late.
+  const isIncomingCall = n.type === "incoming_call";
   const payload = JSON.stringify({
     title: n.title,
     body: n.body,
     url,
-    tag: `levromart-${n.id}`,
+    target_view: n.target_view || "home",
+    target_params: n.target_params || {},
+    requireInteraction: isIncomingCall,
+    tag: isIncomingCall ? "levromart-incoming-call" : `levromart-${n.id}`,
     icon: '/levromart-notification-icon.png',
     badge: '/levromart-badge.png',
     silent: false,
@@ -173,8 +181,9 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
       icon: '/levromart-notification-icon.png',
       badge: '/levromart-badge.png',
       silent: false,
-      tag: `levromart-${n.id}`,
+      tag: isIncomingCall ? "levromart-incoming-call" : `levromart-${n.id}`,
       renotify: true,
+      requireInteraction: isIncomingCall,
       navigate: url
     }
   });
@@ -193,7 +202,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
             }
           },
           payload,
-          { urgency: 'high', TTL: 86400 }
+          { urgency: 'high', TTL: isIncomingCall ? 45 : 86400 }
         );
 
         sent++;

@@ -246,7 +246,9 @@ self.addEventListener('push', event => {
 
           timestamp: Number(data.timestamp || Date.now()),
 
-          vibrate: [
+          vibrate: (data.requireInteraction === true || declarative?.requireInteraction === true)
+            ? [400, 200, 400, 200, 400, 200, 400]
+            : [
             100,
             50,
             100
