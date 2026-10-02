@@ -11294,7 +11294,7 @@ function updateAuthUI() {
 
     panel.innerHTML = `
       <div class="profile-panel-static">
-        <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn" onclick="closeAllPanels()" aria-label="Close profile"><i class='fa-solid fa-xmark'></i></button></div>
+        <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn profile-settings-gear" onclick="closeAllPanels();navigate('settings')" aria-label="Settings" title="Settings"><i class='fa-solid fa-gear'></i></button></div>
 
         <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('vendorDashboard')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('vendorDashboard')}"` : profile.role !== 'admin' ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('buyerProfile')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('buyerProfile')}"` : ''}>
           <div class="avatar-edit-wrap">
@@ -44498,6 +44498,7 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .chat-call-log.is-missed .chat-call-pill{color:#dc2626}
 .chat-call-log.is-missed .chat-call-pill i{color:#dc2626}
 :root[data-theme="dark"] .chat-call-log.is-missed .chat-call-pill,:root[data-theme="black"] .chat-call-log.is-missed .chat-call-pill{color:#f87171}
+#profilePanel .profile-settings-gear{border:1px solid color-mix(in srgb,var(--text) 12%,transparent)!important;background:var(--card)!important;color:var(--text)!important;border-radius:14px!important;font-size:1.15rem}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
