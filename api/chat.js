@@ -40,10 +40,6 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-function distanceText(km) {
-  if (!Number.isFinite(km)) return "";
-  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
-}
 function scoreText(query, fields) {
   const q = normalize(query);
   if (!q) return 0;
@@ -256,7 +252,6 @@ async function getCatalogOverview(args, ctx) {
 
 
 async function searchPackages(args, ctx) {
-  const catalog = await getCatalog(ctx.url, ctx.serviceHeaders);
   const q = cleanText(args.query, 120);
   const terms = relatedTerms(q);
   const res = await restJson(ctx.url, "/rest/v1/vendor_packages?status=eq.active&select=id,vendor_id,name,description,price,photos,created_at,vendor:vendors!inner(id,business_name,city,avg_rating,review_count,lat,lng,verification_status,is_active)&vendor.verification_status=eq.verified&vendor.is_active=eq.true&order=created_at.desc&limit=500", ctx.serviceHeaders);
@@ -409,15 +404,6 @@ async function getMyMessages(args, ctx) {
     return { conversation_id:c.id, vendor:c.vendor||null, buyer:vendor?c.buyer||null:null, unread:rows.filter(m=>String(m.sender_id)!==String(ctx.userId)&&!m.read_at).length, last_message:last?{body:cleanText(last.body,220),created_at:last.created_at}:null };
   }).slice(0,Number(args.limit)||20) };
 }
-async function getMyAiMemory(ctx) {
-  const convRes = await restJson(ctx.url, `/rest/v1/ai_conversations?user_id=eq.${enc(ctx.userId)}&select=id,title,updated_at&order=updated_at.desc&limit=20`, ctx.serviceHeaders);
-  if (!convRes.ok || !convRes.data?.length) return [];
-  const ids = convRes.data.map((c) => c.id).filter(Boolean);
-  const msgRes = await restJson(ctx.url, `/rest/v1/ai_messages?conversation_id=in.(${ids.join(",")})&select=conversation_id,role,content,created_at&order=created_at.desc&limit=120`, ctx.serviceHeaders);
-  if (!msgRes.ok) return [];
-  return (msgRes.data || []).slice(0, 60).reverse().map((m) => ({ role: m.role, content: cleanText(m.content, 500), created_at: m.created_at }));
-}
-
 async function getMyVendor(ctx) {
   const res = await restJson(ctx.url, `/rest/v1/vendors?user_id=eq.${enc(ctx.userId)}&deleted_at=is.null&select=id,business_name,city,address,phone,avg_rating,review_count,is_active,verification_status,commission_pct,business_hours,allow_after_hours_messages,lat,lng,sector_id`, ctx.serviceHeaders);
   return res.ok ? (res.data?.[0] || null) : null;
@@ -685,13 +671,6 @@ function appendClientDirectives(reply, toolResults) {
   const existing = directives.filter((d) => reply.includes(d));
   if (existing.length === directives.length) return reply;
   return `${reply.replace(/\s+$/g, "")} ${directives.join(" ")}`.trim();
-}
-
-async function fetchUser(meId, accessToken, url, anonKey) {
-  const res = await fetch(`${url}/auth/v1/user`, { headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` } });
-  const data = await res.json();
-  if (!res.ok || !data?.id || data.id !== meId) return null;
-  return data;
 }
 
 module.exports = async function handler(req, res) {
