@@ -9118,17 +9118,17 @@ function loadLeaflet() {
 // provider API-key requirement. The product stays keyless; keep the standard
 // OSM attribution visible as required by the tile service.
 function mapTileConfig() {
-  // CARTO's Voyager (light) and Dark Matter styles: a calmer, cleaner basemap built from OpenStreetMap data, no API key.
-  const dark = ["dark", "black"].includes(document.documentElement.getAttribute("data-theme"));
+  // OpenStreetMap's own tiles: keyless, so the map never shows an "API key required" watermark.
+  // The softer, cleaner look comes from the CSS filter on .leaflet-tile-pane (see the Vendors map styles).
   return {
-    url: `https://{s}.basemaps.cartocdn.com/rastertiles/${dark ? "dark_all" : "voyager"}/{z}/{x}/{y}{r}.png`,
-    attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
     maxZoom: 19,
   };
 }
 function addBasemapTileLayer(map) {
   const cfg = mapTileConfig();
-  return window.L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: cfg.maxZoom, subdomains: "abcd", detectRetina: false, updateWhenIdle: false, keepBuffer: 4 }).addTo(map);
+  return window.L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: cfg.maxZoom, updateWhenIdle: false, keepBuffer: 4 }).addTo(map);
 }
 // Vendors page pins: the vendor's own round logo (or a shop icon) in a green ring with a little pointer.
 function vendorDirectoryMapIcon(v) {
@@ -45083,6 +45083,8 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .vr-expanded .vr-body{display:block}
 .vr-body-meta{display:flex;align-items:center;gap:.6rem;margin:.8rem 0 .4rem;font-size:.82rem}
 .vr-full-desc{margin:.2rem 0 .6rem;line-height:1.5;font-size:.92rem}
+#vendorsMap .leaflet-tile-pane{filter:saturate(.7) contrast(.93) brightness(1.04)}
+:root[data-theme="dark"] #vendorsMap .leaflet-tile-pane,:root[data-theme="black"] #vendorsMap .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) saturate(.6) brightness(.85) contrast(.9)}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
