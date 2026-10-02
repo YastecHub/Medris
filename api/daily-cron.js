@@ -76,10 +76,24 @@ module.exports = async function handler(req, res) {
       console.error("[daily-cron] commission deadline reminders failed:", err);
     }
 
+    // Backstop for the 24h post-completion chat removal: the 30-minute scheduler
+    // (GitHub Actions -> /api/order-reminders) does this on the hour; this makes
+    // sure it still happens at least once a day if that scheduler isn't set up.
+    let purgedChats = null;
+    try {
+      const { purgeCompletedOrderChats } = require("./order-reminders");
+      const svcAuth = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+      const svcHeaders = { ...svcAuth, "Content-Type": "application/json", Prefer: "return=minimal" };
+      purgedChats = await purgeCompletedOrderChats(SUPABASE_URL, svcAuth, svcHeaders);
+    } catch (err) {
+      console.error("[daily-cron] chat purge failed:", err);
+    }
+
     res.status(200).json({
       ok: true,
       ...data,
-      commissionReminders
+      commissionReminders,
+      purgedChats
     });
   } catch (err) {
     console.error("[daily-cron]", err);

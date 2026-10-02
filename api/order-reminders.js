@@ -144,3 +144,5 @@ async function purgeCompletedOrderChats(SUPABASE_URL, svcAuth, svcHeaders) {
   }
   return purged;
 }
+
+module.exports.purgeCompletedOrderChats = purgeCompletedOrderChats;

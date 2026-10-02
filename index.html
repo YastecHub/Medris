@@ -7251,7 +7251,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   <div class="drawer-header settings-drawer-header"><div><span class="settings-kicker">Preferences</span><h4>Settings</h4></div><div class="settings-header-actions"><button class="settings-more-btn" id="settingsMoreBtn" onclick="toggleSettingsMoreMenu(event)" title="More settings"><i class='fa-solid fa-ellipsis'></i></button><button class="drawer-close-btn" onclick="closeAllPanels()" title="Close settings"><i class='fa-solid fa-xmark'></i></button></div></div>
   <div class="settings-more-menu hidden" id="settingsMoreMenu">
     <button onclick="resetLevromartPreferences()"><i class='fa-solid fa-arrow-rotate-left'></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span></button>
-    <button onclick="showLevromartAbout()"><i class='fa-solid fa-circle-info'></i><span><strong>About Levromart</strong><small>App version and platform information</small></span></button>
+    <button onclick="showLevromartAbout()"><img class="about-row-logo" src="icon-192.png" alt="" /><span><strong>About Levromart</strong><small>App version and platform information</small></span></button>
     <button onclick="toggleSettingsMoreMenu(event)"><i class='fa-solid fa-sliders'></i><span><strong>Interface preferences</strong><small>Fine-tune the experience below</small></span></button>
   </div>
   <div class="accordion-section">
@@ -7276,15 +7276,6 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <div id="settingsAiConsentRow" class="flex" style="justify-content:space-between;"></div>
     </div>
   </div>
-  <div class="accordion-section hidden" id="voiceSettingsSection">
-    <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class='fa-solid fa-volume-high'></i> Levi's voice</span><i class='fa-solid fa-chevron-down accordion-chevron'></i></button>
-    <div class="accordion-body">
-      <p class="muted" style="font-size:0.78rem;margin:0.2rem 0 0.7rem;">Picked from the voices already on this device. Quality depends on what your phone/browser offers.</p>
-      <select id="voiceSelect" onchange="setAiVoice(this.value)"></select>
-      <p class="voice-quality-hint" id="voiceQualityHint">Levi automatically prefers the most natural English voice installed on this device.</p>
-      <button class="btn btn-sm btn-outline" style="margin-top:0.6rem;width:100%;" onclick="previewAiVoice()"><i class="fa-solid fa-play"></i> Preview voice</button>
-    </div>
-  </div>
   <div class="settings-row-card"><div class="theme-option" id="locationToggleOption" onclick="toggleLocationSetting()"></div></div>
   <div class="settings-row-card"><div class="theme-option" id="leviVisibleToggleOption" onclick="toggleLeviVisible()"></div></div>
   <div class="accordion-section hidden" id="changePasswordSection">
@@ -7299,7 +7290,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <i class="fa-solid fa-chevron-down settings-more-chevron"></i>
     </button>
     <div class="settings-more-content hidden" id="settingsMoreContent">
-      <button type="button" class="settings-subrow" onclick="showLevromartAbout()"><i class="fa-solid fa-circle-info"></i><span><strong>About Levromart</strong><small>Version and app information</small></span><i class="fa-solid fa-chevron-right"></i></button>
+      <button type="button" class="settings-subrow" onclick="showLevromartAbout()"><img class="about-row-logo" src="icon-192.png" alt="" /><span><strong>About Levromart</strong><small>Version and app information</small></span><i class="fa-solid fa-chevron-right"></i></button>
       <button type="button" class="settings-subrow" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore your local interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button>
       <div class="settings-info-note"><i class="fa-solid fa-shield-halved"></i><span>Your account data and marketplace permissions are controlled separately from these device preferences.</span></div>
     </div>
@@ -7706,7 +7697,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 
 <div id="aboutLevromartModal" class="modal hidden" onclick="if(event.target===this) closeLevromartAbout()">
   <div class="modal-content about-modal-content">
-    <div class="about-brand-mark"><img src="" id="aboutLevromartLogo" alt="Levromart" /></div>
+    <div class="about-brand-mark"><img src="icon-192.png" id="aboutLevromartLogo" alt="Levromart" /></div>
     <h3>Levromart</h3>
     <p class="muted">A modern marketplace for buying, renting and requesting products - with Levi as your in-app assistant.</p>
     <div class="about-meta-grid">
@@ -11617,9 +11608,9 @@ function renderSettingsPage(){
     <section class="settings-page-section"><h3><i class="fa-solid fa-palette"></i> Appearance</h3><p class="settings-section-note">Choose how Levromart looks on this device.</p><div class="settings-choice-list"><button class="settings-choice" data-theme-choice="light" onclick="setTheme('light')"><i class="fa-solid fa-sun"></i><span><strong>Light</strong><small>Bright and clean</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-theme-choice="dark" onclick="setTheme('dark')"><i class="fa-solid fa-moon"></i><span><strong>Dark</strong><small>Comfortable for low light</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-theme-choice="black" onclick="setTheme('black')"><i class="fa-solid fa-circle"></i><span><strong>Deep black</strong><small>OLED-friendly black</small></span><i class="fa-solid fa-check settings-choice-check"></i></button></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-wand-magic-sparkles"></i> Motion</h3><p class="settings-section-note">Choose between a static low-motion interface and Levromart's existing motion effects.</p><div class="settings-choice-list"><button class="settings-choice" data-motion-choice="calm" onclick="setLevromartMotionPreference('calm')"><i class="fa-solid fa-leaf"></i><span><strong>Calm</strong><small>Static interface with decorative motion disabled</small></span><i class="fa-solid fa-check settings-choice-check"></i></button><button class="settings-choice" data-motion-choice="full" onclick="setLevromartMotionPreference('full')"><i class="fa-solid fa-wand-magic-sparkles"></i><span><strong>Full Motion</strong><small>Use existing Levromart motion effects</small></span><i class="fa-solid fa-check settings-choice-check"></i></button></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-text-height"></i> Text size</h3><p class="settings-section-note">Make Levromart easier to read. This changes the app's text scale on this device.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Font size</strong><span>Choose a comfortable size from 85% to 125%.</span></div><div class="levi-size-value" id="levroFontScaleValue">${Math.round(getLevromartFontScale()*100)}%</div><input class="levi-size-range" id="levroFontScaleRange" type="range" min="0.85" max="1.25" step="0.05" value="${getLevromartFontScale()}" aria-label="Levromart font size" oninput="setLevromartFontScale(this.value)" onchange="setLevromartFontScale(this.value)" /></div></section>
-    <section class="settings-page-section"><h3><span class="settings-levi-logo-wrap"><img class="settings-levi-logo" src="${esc(MEDRIS_LOGO)}" alt="" /></span> Levi</h3><p class="settings-section-note">Adjust Levi's size, visibility, data preference and voice.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Levi size</strong><span>Drag the scale to make Levi smaller or restore the current maximum.</span></div><div class="levi-size-value" id="leviSizeValue">${getLeviFabSize()}px</div><input class="levi-size-range" id="leviSizeRange" type="range" min="44" max="74" step="1" value="${getLeviFabSize()}" aria-label="Levi size" oninput="setLeviFabSize(this.value)" /></div><div class="settings-divider"></div><div class="settings-toggle-row" id="leviVisibleSettingRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="settingsAiConsentPageRow"></div><div class="settings-divider"></div><div class="settings-voice-wrap"><div class="settings-control-copy"><strong>Levi's voice</strong><span>Choose from the voices available on your device.</span></div><select id="voiceSelectPage" class="settings-select" aria-label="Levi voice"></select><button class="btn btn-outline settings-full-btn" onclick="previewAiVoice()"><i class="fa-solid fa-play"></i> Preview voice</button></div></section>
+    <section class="settings-page-section"><h3><span class="settings-levi-logo-wrap"><img class="settings-levi-logo" src="${esc(MEDRIS_LOGO)}" alt="" /></span> Levi</h3><p class="settings-section-note">Adjust Levi's size, visibility and data preference.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Levi size</strong><span>Drag the scale to make Levi smaller or restore the current maximum.</span></div><div class="levi-size-value" id="leviSizeValue">${getLeviFabSize()}px</div><input class="levi-size-range" id="leviSizeRange" type="range" min="44" max="74" step="1" value="${getLeviFabSize()}" aria-label="Levi size" oninput="setLeviFabSize(this.value)" /></div><div class="settings-divider"></div><div class="settings-toggle-row" id="leviVisibleSettingRow"></div><p class="settings-section-note settings-levi-hint">Tip: long-press Levi to hide him. Triple-tap anywhere on the page to bring him back.</p><div class="settings-divider"></div><div class="settings-toggle-row" id="settingsAiConsentPageRow"></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-sliders"></i> App preferences</h3><div class="settings-simple-row" id="settingsInstallPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="settingsNotifPageRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="horizontalBrowseSettingPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="locationSettingPageRow"></div></section>
-    <section class="settings-page-section"><h3><i class="fa-solid fa-lock"></i> Account</h3><button class="settings-action-row" onclick="showChangePassword()"><i class="fa-solid fa-key"></i><span><strong>Change password</strong><small>Update your account password</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showLevromartAbout()"><i class="fa-solid fa-circle-info"></i><span><strong>About Levromart</strong><small>Version and platform information</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
+    <section class="settings-page-section"><h3><i class="fa-solid fa-lock"></i> Account</h3><button class="settings-action-row" onclick="showChangePassword()"><i class="fa-solid fa-key"></i><span><strong>Change password</strong><small>Update your account password</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showLevromartAbout()"><img class="about-row-logo" src="icon-192.png" alt="" /><span><strong>About Levromart</strong><small>Version and platform information</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-circle-question"></i> Help &amp; feedback</h3><button class="settings-action-row" onclick="showTour()"><i class="fa-solid fa-compass"></i><span><strong>Take the tour</strong><small>Replay the Levromart walkthrough</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showSuggestionModal('platform')"><i class="fa-solid fa-comment-dots"></i><span><strong>Send feedback</strong><small>Tell us what could be better</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
     <section class="settings-page-section"><button class="settings-action-row settings-logout-row" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i><span><strong>Log out</strong></span></button></section>
     <button class="settings-close-page" onclick="navigate(lastNonSettingsView||'home')">Back to Levromart</button>
@@ -11638,7 +11629,6 @@ function hydrateSettingsPage(){
   if(install&&oldInstall) install.innerHTML=oldInstall.innerHTML;if(notif&&oldNotif) notif.innerHTML=oldNotif.innerHTML;
   const rail=byId("horizontalBrowseSettingPageRow");if(rail)rail.innerHTML=`<i class="fa-solid fa-arrows-left-right settings-row-icon"></i><span class="settings-row-copy"><strong>Auto-scroll horizontal products</strong><small>${horizontalBrowseEnabled?'On':'Off'} · horizontal product rails ${horizontalBrowseEnabled?'move automatically; you can still drag them.':'stay still; you can still drag them yourself.'}</small></span><button class="settings-inline-btn ${horizontalBrowseEnabled?'active':''}" onclick="setHorizontalBrowseEnabled(!horizontalBrowseEnabled)">${horizontalBrowseEnabled?'On':'Off'}</button>`;
   const loc=byId("locationSettingPageRow");if(loc)loc.innerHTML=`<i class="fa-solid ${locationSharingEnabled?'fa-location-dot':'fa-location-crosshairs'} settings-row-icon"></i><span class="settings-row-copy"><strong>Location sharing</strong><small>${locationSharingEnabled?'On':'Off'} - nearby vendors and distance sorting</small></span><button class="settings-inline-btn ${locationSharingEnabled?'active':''}" onclick="toggleLocationSetting();setTimeout(hydrateSettingsPage,0)">${locationSharingEnabled?'On':'Off'}</button>`;
-  const src=byId("voiceSelect"),page=byId("voiceSelectPage");if(src&&page){page.innerHTML=src.innerHTML;page.value=src.value||localStorage.getItem("medris-ai-voice")||"";page.onchange=function(){setAiVoice(this.value);};}
 }
 
 // ---------- MY DETAILS (any logged-in buyer/vendor's own contact info) ----------
@@ -12357,11 +12347,6 @@ async function resetLevromartPreferences() {
 function showLevromartAbout() {
   const modal = byId("aboutLevromartModal");
   if (!modal) return;
-  const logo = byId("aboutLevromartLogo");
-  if (logo) {
-    if (typeof LEVROMART_LOGO_CIRCLE !== "undefined") logo.src = LEVROMART_LOGO_CIRCLE;
-    else if (typeof MEDRIS_LOGO !== "undefined") logo.src = MEDRIS_LOGO;
-  }
   const year = byId("aboutYear");
   if (year) year.textContent = new Date().getFullYear();
   byId("settingsMoreMenu")?.classList.add("hidden");
@@ -12971,6 +12956,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // shows a search bar, pinning a second one there too would just stack
   // two search bars on top of each other while scrolling.
   initHomepageCarousel();
+  if (window.__levroRailScroll) { const r = document.querySelector("#app .levro-home-cat-rail"); if (r) r.scrollLeft = window.__levroRailScroll; window.__levroRailScroll = 0; }
   initGallerySwipeSurfaces();
   initDeliveryFieldsOnPage();
   setTimeout(() => {
@@ -13201,7 +13187,8 @@ function writeOfflineHomeCache(data) {
       topVendors: data.topVendors || [],
       recentProducts: data.recentProducts || [],
       packages: data.packages || [],
-      carouselSlides: data.carouselSlides || []
+      carouselSlides: data.carouselSlides || [],
+      categoriesWithListings: data.categoriesWithListings || []
     };
     localStorage.setItem(OFFLINE_HOME_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data: compact }));
     offlineCatalog = compact;
@@ -13258,8 +13245,8 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   // (renderHome) so the fast local repaint on every category tap doesn't have
   // to guess; with no cached list yet it shows no categories rather than
   // every sector, because only categories that actually have listings belong.
-  const sectorsWithListings = Array.isArray(cache.sectorsWithListings) ? cache.sectorsWithListings : (window.__levroSectorsWithListings || []);
-  if (sectorsWithListings.length) html += homeCategoryRailHtml(sectorsWithListings);
+  const railCategories = Array.isArray(cache.categoriesWithListings) && cache.categoriesWithListings.length ? cache.categoriesWithListings : (window.__levroRailCategories || []);
+  if (railCategories.length) html += homeCategoryRailHtml(railCategories);
   html += `<div class="hero levro-home-hero">${renderHomepageCarouselHtml(offlineCarousel)}</div>`;
   html += homeQuickActionsHtml();
   const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
@@ -13269,7 +13256,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
-  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" /><button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button><div class="browse-filter-panel hidden" id="browseFilterPanel"><div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('listing')"><span>Type</span><strong id="browseListingLabel">${esc("All types")}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu hidden" id="browseListingSubmenu"><button type="button" onclick="chooseBrowseListing('', 'All types')">All types</button><button type="button" onclick="chooseBrowseListing('rent', 'Rent')">Rent</button><button type="button" onclick="chooseBrowseListing('sale', 'Buy')">Buy</button></div></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || 'All categories')}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><div id="browseCategoryOptions">${subCats.map(c => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace("'","&#39;")}')">${esc(c.name)}</button>`).join("")}</div><button type="button" onclick="chooseBrowseCategory('','All categories')">All categories</button></div></div><button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button></div><select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
+  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeCategory ? esc(activeCategory.name) : activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search products, packages, or services…" oninput="scheduleHomeSearch()" /><button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button><div class="browse-filter-panel hidden" id="browseFilterPanel"><div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('listing')"><span>Type</span><strong id="browseListingLabel">${esc("All types")}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu hidden" id="browseListingSubmenu"><button type="button" onclick="chooseBrowseListing('', 'All types')">All types</button><button type="button" onclick="chooseBrowseListing('rent', 'Rent')">Rent</button><button type="button" onclick="chooseBrowseListing('sale', 'Buy')">Buy</button></div></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || 'All categories')}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><div id="browseCategoryOptions">${subCats.map(c => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace("'","&#39;")}')">${esc(c.name)}</button>`).join("")}</div><button type="button" onclick="chooseBrowseCategory('','All categories')">All categories</button></div></div><button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button></div><select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
   return html;
 }
@@ -14038,7 +14025,7 @@ async function renderHome() {
     .eq("vendor.verification_status", "verified")
     .eq("vendor.is_active", true)
     .order("created_at", { ascending: false })
-    .limit(16);
+    .limit(activeSector || activeCategory ? 100 : 16);
 
   // Keep the initial marketplace paint to one parallel batch. Packages are
   // first-class marketplace listings now, so they load alongside products
@@ -14127,13 +14114,14 @@ async function renderHome() {
       // The unfiltered browse catalogue was already fetched above -- reuse
       // it instead of scanning the whole product table a second time.
       ids = new Set(stableBrowseProducts.map(p => p.category?.sector_id).filter(Boolean).map(String));
+      ids.categoryIds = new Set(stableBrowseProducts.map(p => p.category_id).filter(Boolean).map(String));
     } else {
       const rows = [];
       const pageSize = 500;
       try {
         for (let offset = 0; ; offset += pageSize) {
           const { data, error } = await sb.from("products")
-            .select("category:categories!inner(sector_id), vendor:vendors!inner(verification_status,is_active)")
+            .select("category_id, category:categories!inner(sector_id), vendor:vendors!inner(verification_status,is_active)")
             .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
             .range(offset, offset + pageSize - 1);
           if (error) throw error;
@@ -14141,6 +14129,7 @@ async function renderHome() {
           if (!data || data.length < pageSize) break;
         }
         ids = new Set(rows.map(r => r.category?.sector_id).filter(Boolean).map(String));
+        ids.categoryIds = new Set(rows.map(r => r.category_id).filter(Boolean).map(String));
       } catch (err) {
         console.warn("[Levromart] Could not compute sectors with listings:", err);
         return null;
@@ -14149,6 +14138,12 @@ async function renderHome() {
     setCachedCatalog(cacheKey, ids);
     return ids;
   })();
+  // Categories that actually have a live listing right now (a lookup that
+  // failed keeps the last verified list, never every category).
+  const railCategories = activeSectorIds?.categoryIds
+    ? (categories || []).filter((c) => c.parent_category_id && activeSectorIds.categoryIds.has(String(c.id)))
+    : (window.__levroRailCategories || []);
+  if (activeSectorIds?.categoryIds) window.__levroRailCategories = railCategories;
   const homepageCarouselSlides = await loadHomepageCarouselSlides();
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
@@ -14160,7 +14155,7 @@ async function renderHome() {
         ...(trending || [])].map(p => [String(p.id), p])).values()]
       .sort((a,b) => Number(b.view_count || 0) - Number(a.view_count || 0));
   const cacheBase = cachedHome || {};
-  const safeBrowseForCache = rotatedBrowseProducts.length ? rotatedBrowseProducts : (cacheBase.browseProducts || []);
+  const safeBrowseForCache = !activeCategory && rotatedBrowseProducts.length ? rotatedBrowseProducts : (cacheBase.browseProducts || []);
   const safeTrendingForCache = cachedTrending.length ? cachedTrending : (cacheBase.trending || []);
   const safeTopVendorsForCache = Array.isArray(topVendors) && topVendors.length ? topVendors : (cacheBase.topVendors || []);
   const safeRecentForCache = Array.isArray(recentProducts) && recentProducts.length ? recentProducts : (cacheBase.recentProducts || []);
@@ -14168,7 +14163,7 @@ async function renderHome() {
   writeOfflineHomeCache({
     categories: Array.isArray(categories) && categories.length ? categories : (cacheBase.categories || []),
     sectors: Array.isArray(sectors) && sectors.length ? sectors : (cacheBase.sectors || sectorsData || []),
-    sectorsWithListings: activeSectorIds ? sectors.filter((s) => activeSectorIds.has(String(s.id))) : (cacheBase.sectorsWithListings || []),
+    categoriesWithListings: railCategories,
     trending: safeTrendingForCache,
     browseProducts: safeBrowseForCache,
     topVendors: safeTopVendorsForCache,
@@ -14181,7 +14176,9 @@ async function renderHome() {
   window.__allHomePackages = allHomePackages;
   const scopedPackages = activeCategory
     ? allHomePackages.filter(pkg => (pkg.items || []).some(it => String(it.product?.category_id) === String(activeCategory.id)))
-    : allHomePackages;
+    : activeSector
+      ? allHomePackages.filter(pkg => (pkg.items || []).some(it => String(it.product?.category?.sector_id) === String(activeSector.id)))
+      : allHomePackages;
   window.__homePackages = scopedPackages;
   const recommendedPackages = [...scopedPackages].sort((a, b) => {
     const score = (pkg) => (pkg.items || []).reduce((sum, it) => sum + (favoriteIds.has(it.product?.id) ? 10 : 0), 0);
@@ -14192,11 +14189,8 @@ async function renderHome() {
   // null means the lookup itself failed (e.g. offline mid-request): keep the
   // last list that was verified against real listings (or none) -- never
   // every sector, since categories nobody has listed under must not show.
-  const sectorsWithListings = activeSectorIds ? sectors.filter((s) => activeSectorIds.has(String(s.id))) : (window.__levroSectorsWithListings || []);
-  if (activeSectorIds) window.__levroSectorsWithListings = sectorsWithListings;
-
   let html = "";
-  if (sectorsWithListings.length) html += homeCategoryRailHtml(sectorsWithListings);
+  if (railCategories.length) html += homeCategoryRailHtml(railCategories);
   html += `<div class="hero levro-home-hero">
     ${renderHomepageCarouselHtml(homepageCarouselSlides)}
   </div>`;
@@ -14210,8 +14204,10 @@ async function renderHome() {
 
   }
 
-  if (topVendors && topVendors.length) {
-    const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors");
+  const sellersInScope = activeCategory && Array.isArray(trending) ? new Set(trending.map((p) => String(p.vendor?.id))) : null;
+  const scopedTopVendors = sellersInScope ? (topVendors || []).filter((v) => sellersInScope.has(String(v.id))) : topVendors;
+  if (scopedTopVendors && scopedTopVendors.length) {
+    const shuffledTopVendors = deterministicHourlyShuffle(scopedTopVendors,"top-rated-vendors");
     html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`;
   }
   const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
@@ -14221,7 +14217,7 @@ async function renderHome() {
     html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map((pkg) => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   }
 
-  html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
+  html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeCategory ? esc(activeCategory.name) : activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
   html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" data-tab="products" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-box"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" data-tab="services" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" data-tab="packages" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button></div>`;
   html += `<div class="browse-filter-toolbar">
     <button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button>
@@ -14237,7 +14233,7 @@ async function renderHome() {
         </div>
       </div>
       <div class="browse-filter-row-group">
-        <button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">All categories</strong><i class="fa-solid fa-chevron-down"></i></button>
+        <button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || "All categories")}</strong><i class="fa-solid fa-chevron-down"></i></button>
         <div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu">
           <input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" />
           <div id="browseCategoryOptions">${subCats.map((c) => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace(/'/g, '&#39;')}')">${esc(c.name)}</button>`).join("")}</div>
@@ -14247,7 +14243,7 @@ async function renderHome() {
       <button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button>
     </div>
     <select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select>
-    <select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
+    <select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map((c) => `<option value="${c.id}" ${activeCategory && String(activeCategory.id) === String(c.id) ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
   </div>`;
   html += `<div class="grid" id="productGrid"><p class="muted">Loading…</p></div>`;
   html += `<div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
@@ -14449,13 +14445,17 @@ function homeQuickActionsHtml() {
 // placeholder (or none) fall back to a keyword match on the name, then to a
 // neutral shapes icon, so a brand-new vendor-created category never breaks.
 const LEVRO_SECTOR_ICON_HINTS = [
-  [/food|grocer|restaurant|cater|snack|bak/, "fa-utensils", "#f97316"], [/drink|beverage/, "fa-mug-hot", "#b45309"],
-  [/fashion|cloth|wear|tailor|shoe|footwear/, "fa-shirt", "#ec4899"], [/beauty|cosmetic|skin|perfume|hair|spa|wellness/, "fa-wand-magic-sparkles", "#d946ef"],
-  [/phone|mobile|tablet|telecom/, "fa-mobile-screen-button", "#3b82f6"], [/electronic|gadget|tv|audio/, "fa-microchip", "#6366f1"],
-  [/comput|laptop|tech|software/, "fa-laptop", "#0ea5e9"], [/health|pharm|medic/, "fa-kit-medical", "#ef4444"],
-  [/home|furniture|decor|living|kitchen|appliance/, "fa-couch", "#a16207"], [/auto|car|vehicle/, "fa-car", "#0d9488"],
+  [/scarf|scarves|headwrap|ribbon/, "fa-ribbon", "#f43f5e"], [/women|dress|gown|lady|ladies/, "fa-person-dress", "#ec4899"], [/(^|\W)men|suit|male/, "fa-user-tie", "#2563eb"],
+  [/jewel|ring|necklace|earring|watch|gem/, "fa-gem", "#06b6d4"], [/fragrance|perfume|scent|cologne/, "fa-spray-can-sparkles", "#d946ef"],
+  [/shawarma|burger|meal|pizza|fast ?food/, "fa-burger", "#f97316"], [/yogurt|yoghurt|dairy|milk|ice ?cream/, "fa-ice-cream", "#fb7185"],
+  [/shoe|sneaker|footwear|sandal/, "fa-shoe-prints", "#a855f7"], [/bag|handbag|purse/, "fa-bag-shopping", "#e11d48"],
+  [/food|grocer|restaurant|cater|snack|bak/, "fa-utensils", "#f97316"], [/drink|beverage|juice|water|wine/, "fa-mug-hot", "#b45309"],
+  [/fashion|cloth|wear|tailor|fabric/, "fa-shirt", "#ec4899"], [/beauty|cosmetic|skin|hair|spa|wellness|makeup/, "fa-wand-magic-sparkles", "#d946ef"],
+  [/iphone|phone|mobile|tablet|telecom/, "fa-mobile-screen-button", "#3b82f6"], [/electronic|gadget|tv|audio|generator|power|lamp/, "fa-microchip", "#6366f1"],
+  [/comput|laptop|tech|software/, "fa-laptop", "#0ea5e9"], [/health|pharm|medic|glucometer|pressure/, "fa-kit-medical", "#ef4444"],
+  [/home|furniture|decor|living|kitchen|appliance|bottle/, "fa-couch", "#a16207"], [/auto|car|vehicle/, "fa-car", "#0d9488"],
   [/book|stationery|education|school/, "fa-book", "#7c3aed"], [/sport|fitness|gym/, "fa-dumbbell", "#16a34a"],
-  [/jewel|watch|gem/, "fa-gem", "#06b6d4"], [/art|craft|handmade/, "fa-palette", "#f59e0b"], [/baby|kid|toy/, "fa-baby", "#f472b6"],
+  [/art|craft|handmade|tattoo/, "fa-palette", "#f59e0b"], [/baby|kid|toy/, "fa-baby", "#f472b6"],
   [/service|repair|clean|laundry/, "fa-screwdriver-wrench", "#0891b2"], [/event|entertain|music|media|photo/, "fa-camera", "#8b5cf6"],
   [/agri|farm|pet/, "fa-seedling", "#65a30d"], [/build|construct|hardware|tool|industrial/, "fa-helmet-safety", "#ea580c"], [/gift/, "fa-gift", "#e11d48"],
 ];
@@ -14486,16 +14486,29 @@ function levroStableSectorOrder(list) {
   list.forEach((s) => { const k = String(s.id); if (!rank.has(k)) rank.set(k, Math.random()); });
   return list.slice().sort((a, b) => rank.get(String(a.id)) - rank.get(String(b.id)));
 }
-function homeCategoryRailHtml(sectorList) {
-  // "All" always comes first and always means "clear the sector filter".
-  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentSectorId ? "active" : ""}" style="--cat-color:var(--primary)" onclick="switchSector(null)"><span class="levro-home-cat-icon"><i class="fa-solid fa-border-all"></i></span><span class="levro-home-cat-label">All</span></button>`;
-  const chips = levroStableSectorOrder(sectorList).map((s) => {
-    const active = String(currentSectorId || "") === String(s.id);
-    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" style="--cat-color:${levroSectorColor(s)}" onclick="toggleHomeSectorFilter('${s.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(levroSectorIconClass(s))}"></i></span><span class="levro-home-cat-label">${esc(s.name)}</span></button>`;
+function homeCategoryRailHtml(categoryList) {
+  // "All" always comes first and clears the category filter.
+  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentHomeCategoryId && !currentSectorId ? "active" : ""}" style="--cat-color:var(--primary)" onclick="clearHomeCategoryFilter()"><span class="levro-home-cat-icon"><i class="fa-solid fa-border-all"></i></span><span class="levro-home-cat-label">All</span></button>`;
+  const chips = levroStableSectorOrder(categoryList).map((c) => {
+    const active = String(currentHomeCategoryId || "") === String(c.id);
+    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" style="--cat-color:${levroSectorColor(c)}" onclick="toggleHomeCategoryFilter('${c.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(levroSectorIconClass(c))}"></i></span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`;
   }).join("");
-  const more = `<button type="button" class="levro-home-cat-chip levro-home-cat-more" style="--cat-color:#8b5cf6" onclick="openHomeCategoryBrowser()"><span class="levro-home-cat-icon"><i class="fa-solid fa-ellipsis"></i></span><span class="levro-home-cat-label">More</span></button>`;
-  return `<div class="levro-home-cat-rail hscroll">${allChip}${chips}${more}</div>`;
+  return `<div class="levro-home-cat-rail hscroll">${allChip}${chips}</div>`;
 }
+// A category tap re-renders Home against the database for that category, so
+// Trending, Featured Vendors, Services, Packages and Browse Everything all
+// show only what belongs to it; tapping it again (or All) returns to normal.
+function applyHomeCategory(catId) {
+  window.__levroRailScroll = byId("app")?.querySelector(".levro-home-cat-rail")?.scrollLeft || 0;
+  currentHomeCategoryId = catId || null;
+  currentSectorId = null;
+  if (browserLooksOffline() && paintHomeFromLocalCatalog(false)) return;
+  navigate("home", {}, false);
+}
+function toggleHomeCategoryFilter(catId) {
+  applyHomeCategory(String(currentHomeCategoryId || "") === String(catId) ? null : catId);
+}
+function clearHomeCategoryFilter() { applyHomeCategory(null); }
 function toggleHomeSectorFilter(sectorId) {
   // Tapping the already-active sector clears the filter -- the chip itself
   // doubles as the "clear filter" control instead of needing a separate one.
@@ -15056,6 +15069,32 @@ function filterBrowseCategoryOptions() {
 }
 
 let homeFilterGeneration = 0;
+// Browse Everything renders a page at a time and loads the next one as you
+// scroll near the end (the list is already in memory; this keeps the DOM small).
+const BROWSE_GRID_PAGE = 24;
+let browseGridObserver = null;
+function paintBrowseGrid(grid, list) {
+  browseGridObserver?.disconnect(); browseGridObserver = null;
+  let shown = Math.min(BROWSE_GRID_PAGE, list.length);
+  grid.innerHTML = list.slice(0, shown).map(productCardHtml).join("");
+  if (shown >= list.length) return;
+  if (!("IntersectionObserver" in window)) { grid.insertAdjacentHTML("beforeend", list.slice(shown).map(productCardHtml).join("")); return; }
+  const sentinel = document.createElement("div");
+  sentinel.className = "browse-sentinel";
+  sentinel.style.cssText = "grid-column:1/-1;height:1px";
+  grid.appendChild(sentinel);
+  const io = new IntersectionObserver((entries) => {
+    if (!entries.some((e) => e.isIntersecting)) return;
+    if (!sentinel.isConnected) { io.disconnect(); return; }
+    const next = list.slice(shown, shown + BROWSE_GRID_PAGE);
+    shown += next.length;
+    sentinel.insertAdjacentHTML("beforebegin", next.map(productCardHtml).join(""));
+    if (shown >= list.length) { io.disconnect(); sentinel.remove(); return; }
+    io.unobserve(sentinel); io.observe(sentinel);   // still on screen? load the next page too
+  }, { rootMargin: "700px 0px" });
+  browseGridObserver = io;
+  io.observe(sentinel);
+}
 async function filterHomeProducts() {
   const generation = ++homeFilterGeneration;
   const search = byId("searchInput")?.value.trim() || "";
@@ -15080,9 +15119,8 @@ async function filterHomeProducts() {
     .filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
   const hasLocalCatalogue = localCatalog.length > 0;
   if (hasLocalCatalogue) {
-    grid.innerHTML = localFiltered.length
-      ? localFiltered.map(productCardHtml).join("")
-      : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+    if (localFiltered.length) paintBrowseGrid(grid, localFiltered);
+    else grid.innerHTML = `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
   }
 
   if (browserLooksOffline()) {
@@ -15170,9 +15208,8 @@ async function filterHomeProducts() {
     ? window.__homeBrowseCatalog
     : products;
   const tabProducts = displayProducts.filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
-  grid.innerHTML = tabProducts.length
-    ? tabProducts.map(productCardHtml).join("")
-    : `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+  if (tabProducts.length) paintBrowseGrid(grid, tabProducts);
+  else grid.innerHTML = `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
 }
 function productDeliverySummaryHtml(p) {
   const v = p?.vendor || {};
@@ -20637,6 +20674,27 @@ async function submitVendorApply() {
 }
 
 // ---------- VENDOR DASHBOARD ----------
+// One clear card for the vendor: how much is owed, how long is left, and a bar
+// showing how much of the 7-day window has gone. Turns amber near the end and
+// red once overdue. (The countdown text itself is filled in by the shared
+// ".levro-commission-deadline" ticker.)
+function commissionCardHtml(owed, overdue, dueAt, copy) {
+  const WINDOW = 7 * 86400000;
+  const left = dueAt ? new Date(dueAt).getTime() - Date.now() : null;
+  const used = left == null ? 0 : Math.max(0, Math.min(100, Math.round(100 * (1 - left / WINDOW))));
+  const urgency = overdue ? "overdue" : (left != null && left <= 3 * 86400000 ? "soon" : "ok");
+  return `<div class="commission-card commission-${urgency}" style="max-width:480px;margin:1rem auto 0;">
+    <div class="commission-card-top"><span class="commission-card-label"><i class="fa-solid fa-hand-holding-dollar"></i> Commission you owe</span><button type="button" class="vendor-commission-info" title="About commission" aria-label="About commission" onclick="levroCommissionInfo()"><i class="fa-solid fa-info"></i></button></div>
+    <div class="commission-card-amount">${naira(owed)}</div>
+    <div class="commission-card-clock"><i class="fa-regular fa-clock"></i><strong class="levro-commission-deadline">Calculating…</strong></div>
+    <div class="commission-card-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${used}"><span style="width:${used}%"></span></div>
+    <p class="commission-card-copy">${copy}</p>
+    <div id="commissionError" class="error-text hidden"></div>
+    <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-receipt"></i> Review commission breakdown</button>
+    <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
+  </div>`;
+}
+
 async function renderVendorDashboard() {
   if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
   const { data: v } = await sb.from("vendors").select("*").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
@@ -20724,14 +20782,7 @@ async function renderVendorDashboard() {
 
   // ---------- 3. Commission (only when owed) ----------
   if (commissionOwed > 0) {
-    html += `<div class="banner banner-${commissionIsOverdue ? "danger" : "warning"}" style="max-width:480px;margin:1rem auto 0;">
-      <h3 style="margin:0;display:flex;align-items:center;gap:.45rem;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)} <button type="button" class="vendor-commission-info" title="About commission" aria-label="About commission" onclick="levroCommissionInfo()"><i class="fa-solid fa-info"></i></button></h3>
-      <p class="muted" style="margin-top:0.35rem;">${commissionIsOverdue ? "Your 7-day payment window has elapsed and your storefront is paused until this balance is settled." : "You can pay this commission anytime within your 7-day payment window. Your storefront remains active until the deadline."}</p>
-      <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
-      <div id="commissionError" class="error-text hidden"></div>
-      <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-receipt"></i> Review commission breakdown</button>
-    <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
-    </div>`;
+    html += commissionCardHtml(commissionOwed, commissionIsOverdue, commissionDeadline?.[0]?.earliest_due_at, commissionIsOverdue ? "Your 7-day payment window has elapsed and your storefront is paused until this balance is settled." : "Pay anytime before the deadline. Your storefront stays active until then, and we will remind you 5, 3, 2 and 1 days before.");
   }
   html += statusBanner;
   if (v.verification_status === "verified" && (v.lat == null || v.lng == null)) {
@@ -21039,15 +21090,7 @@ async function renderVendorEditProfile() {
   }, 0);
   setTimeout(() => { toggleVendorDeliveryFeeMode(); updateVeDeliveryPerKmExample(); }, 0);
 
-  return `${commissionOwed > 0 ? `
-  <div class="banner banner-${commissionIsOverdue ? "danger" : "warning"}" style="max-width:480px;margin:0 auto 1rem;">
-    <h3 style="margin:0;display:flex;align-items:center;gap:.45rem;"><i class="fa-solid fa-hand-holding-dollar"></i> Commission owed: ${naira(commissionOwed)} <button type="button" class="vendor-commission-info" title="About commission" aria-label="About commission" onclick="levroCommissionInfo()"><i class="fa-solid fa-info"></i></button></h3>
-    <p class="muted" style="margin-top:0.35rem;">${commissionIsOverdue ? "Your 7-day payment window has elapsed. Your storefront is paused until this balance is settled." : "Pay anytime within your 7-day payment window. Your storefront remains active until the deadline."}</p>
-    <div class="vendor-commission-deadline-row"><span><i class="fa-regular fa-clock"></i> Payment window</span><strong class="levro-commission-deadline">Calculating…</strong></div>
-    <div id="commissionError" class="error-text hidden"></div>
-    <button class="btn btn-sm" id="payCommissionBtn" onclick="toggleCommissionBreakdown()" aria-expanded="false"><i class="fa-solid fa-receipt"></i> Review commission breakdown</button>
-    <div id="commissionBreakdown" class="vendor-commission-breakdown hidden" aria-live="polite"></div>
-  </div>` : ""}
+  return `${commissionOwed > 0 ? commissionCardHtml(commissionOwed, commissionIsOverdue, earliestCommissionDueAt, commissionIsOverdue ? "Your 7-day payment window has elapsed. Your storefront is paused until this balance is settled." : "Pay anytime before the deadline. Your storefront stays active until then, and we will remind you 5, 3, 2 and 1 days before.") : ""}
   ${v.verification_status === "verified" ? `
   <div class="dash-actions" style="max-width:480px;margin:0 auto 1rem;">
     <button class="quick-action outline" onclick="navigate('storefront',{vendorId:'${v.id}'})"><span class="quick-action-icon"><i class='fa-solid fa-store'></i></span><span>Storefront</span></button>
@@ -42923,6 +42966,55 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 #app .home-promotional-carousel .home-promotional-dots{position:static !important;transform:none !important;display:flex !important;justify-content:center !important;align-items:center !important;gap:.3rem !important;margin:.5rem 0 0 !important;padding:0 !important;left:auto !important;right:auto !important;bottom:auto !important;background:transparent !important;border:0 !important;box-shadow:none !important}
 #app .home-promotional-carousel .home-promotional-dot{width:.4rem !important;height:.4rem !important;flex:0 0 .4rem !important;border-radius:999px !important;background:var(--text-muted,#94a3b8) !important;opacity:.4;padding:0 !important;border:0 !important;transition:none !important}
 #app .home-promotional-carousel .home-promotional-dot.active{width:.4rem !important;flex-basis:.4rem !important;background:var(--text,#0f172a) !important;opacity:1}
+
+/* Quick-action cards: pressing one must not dim/darken it (a touch leaves
+   :hover/:focus stuck on, which swapped the pastel for a dark mix). Keep the
+   tone and show a light ring instead. */
+#app .levro-home-quick-actions .levro-quick-mint:hover,#app .levro-home-quick-actions .levro-quick-mint:focus,#app .levro-home-quick-actions .levro-quick-mint:focus-visible,#app .levro-home-quick-actions .levro-quick-mint:active{background:#c9ecd9 !important}
+#app .levro-home-quick-actions .levro-quick-peach:hover,#app .levro-home-quick-actions .levro-quick-peach:focus,#app .levro-home-quick-actions .levro-quick-peach:focus-visible,#app .levro-home-quick-actions .levro-quick-peach:active{background:#fbe1c6 !important}
+#app .levro-home-quick-actions .levro-quick-lavender:hover,#app .levro-home-quick-actions .levro-quick-lavender:focus,#app .levro-home-quick-actions .levro-quick-lavender:focus-visible,#app .levro-home-quick-actions .levro-quick-lavender:active{background:#ddd7f8 !important}
+#app .levro-home-quick-actions .levro-quick-pink:hover,#app .levro-home-quick-actions .levro-quick-pink:focus,#app .levro-home-quick-actions .levro-quick-pink:focus-visible,#app .levro-home-quick-actions .levro-quick-pink:active{background:#f6d4da !important}
+#app .levro-home-quick-actions .levro-quick-aqua:hover,#app .levro-home-quick-actions .levro-quick-aqua:focus,#app .levro-home-quick-actions .levro-quick-aqua:focus-visible,#app .levro-home-quick-actions .levro-quick-aqua:active{background:#c8ede7 !important}
+#app .levro-home-quick-actions .levro-quick-blue:hover,#app .levro-home-quick-actions .levro-quick-blue:focus,#app .levro-home-quick-actions .levro-quick-blue:focus-visible,#app .levro-home-quick-actions .levro-quick-blue:active{background:#d0e1f8 !important}
+#app .levro-home-quick-actions .levro-quick-action:hover,#app .levro-home-quick-actions .levro-quick-action:focus,#app .levro-home-quick-actions .levro-quick-action:focus-visible,#app .levro-home-quick-actions .levro-quick-action:active{filter:none !important;border-color:transparent !important;outline:0 !important}
+#app .levro-home-quick-actions .levro-quick-action:focus-visible,#app .levro-home-quick-actions .levro-quick-action:active{box-shadow:0 0 0 2px color-mix(in srgb,var(--text) 55%,transparent) !important}
+
+/* Vendor cards without a photo: draw a real outline around the initials block
+   so its top/left/right edges don't dissolve into the card. */
+#app .top-rated-vendors-scroll .vendor-card .vendor-card-avatar-wrap > .avatar-fallback,
+#vendorsGrid.vendors-directory-grid:not(.vendors-list-mode) .vendor-card .vendor-card-avatar-wrap > .avatar-fallback,
+#app .top-rated-vendors-scroll .vendor-card .vendor-card-avatar-wrap > .vendor-directory-logo:not(img){box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--text) 30%,transparent) !important}
+
+/* About Levromart: the real app icon, not a dot. */
+.about-brand-mark{background:none !important;box-shadow:0 10px 26px rgba(0,0,0,.22) !important}
+.about-brand-mark img{width:100% !important;height:100% !important;object-fit:cover !important;filter:none !important}
+.about-row-logo{width:1.45rem;height:1.45rem;border-radius:7px;object-fit:cover;flex:0 0 auto}
+
+/* Settings: switches and icons stay neutral (black in light, white in dark);
+   green is not used for an "on" state or for icons here. */
+.settings-inline-btn.active,#settingsAiConsentPageRow .settings-inline-btn.active{color:var(--text) !important;border-color:color-mix(in srgb,var(--text) 55%,transparent) !important;background:color-mix(in srgb,var(--text) 10%,transparent) !important;font-weight:700}
+.settings-toggle-row .btn-outline,#settingsAiConsentRow .btn,#settingsAiConsentRow .btn-outline{color:var(--text) !important;border-color:color-mix(in srgb,var(--text) 55%,transparent) !important;background:color-mix(in srgb,var(--text) 10%,transparent) !important}
+#settings-page .settings-row-icon,#settings-page .settings-action-row:not(.settings-logout-row) > i:first-child,#settings-page .settings-page-section > h3 > i,#settings-page .settings-choice > i:first-child,
+#settingsPanel .settings-more-menu button > i,#settingsPanel .settings-subrow > i:first-child,#settingsPanel .accordion-trigger i:first-child,#settingsPanel .settings-more-row i,#settingsPanel .theme-option i,
+.about-legal-links button > i:first-child{color:var(--text) !important}
+.settings-levi-hint{margin:.15rem 0 .3rem !important;font-size:.78rem !important;color:var(--text-muted) !important}
+
+/* Vendor commission card: the amount and the time left are the headline. */
+.commission-card{border:1.5px solid color-mix(in srgb,#f59e0b 55%,var(--border));background:color-mix(in srgb,#f59e0b 10%,var(--card));border-radius:18px;padding:1rem 1.1rem 1.05rem}
+.commission-card.commission-ok{border-color:var(--border);background:var(--card)}
+.commission-card.commission-overdue{border-color:#dc2626;background:color-mix(in srgb,#dc2626 9%,var(--card))}
+.commission-card-top{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.commission-card-label{font-size:.82rem;font-weight:700;color:var(--text-muted);display:inline-flex;align-items:center;gap:.4rem}
+.commission-card-amount{font-size:2.35rem;line-height:1.1;font-weight:800;letter-spacing:-.02em;color:var(--text);margin:.35rem 0 .2rem}
+.commission-card-clock{display:flex;align-items:center;gap:.45rem;font-size:1rem;color:var(--text)}
+.commission-card-clock strong{font-size:1.1rem}
+.commission-soon .commission-card-clock strong{color:#b45309}
+.commission-overdue .commission-card-clock strong{color:#dc2626}
+.commission-card-bar{height:8px;border-radius:99px;background:color-mix(in srgb,var(--text) 12%,transparent);margin:.6rem 0 .7rem;overflow:hidden}
+.commission-card-bar span{display:block;height:100%;border-radius:99px;background:var(--text);opacity:.75}
+.commission-soon .commission-card-bar span{background:#f59e0b;opacity:1}
+.commission-overdue .commission-card-bar span{background:#dc2626;opacity:1}
+.commission-card-copy{margin:0 0 .75rem;font-size:.85rem;color:var(--text-muted)}
 
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
