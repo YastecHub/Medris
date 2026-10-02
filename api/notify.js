@@ -163,6 +163,34 @@ async function sendEmail(SUPABASE_URL, svcHeaders, n) {
   };
 }
 
+// Which picture goes on the notification: the person (or shop) it is about, like WhatsApp,
+// otherwise a Levromart icon for the kind of event. The small status-bar badge stays the app mark.
+const TYPE_ICON = [
+  [/payment|paid|payout|refund|commission/, "payment"],
+  [/order|offer|request|reminder/, "order"],
+  [/follow/, "follow"],
+  [/wishlist|favou?rite|like/, "heart"],
+  [/review|comment|rating/, "review"],
+  [/admin|vendor_(approved|application|deleted|renamed)|dispute/, "admin"],
+  [/message/, "message"],
+];
+const isHttps = (u) => /^https:\/\//.test(String(u || ""));
+async function pickNotificationIcon(SUPABASE_URL, svcHeaders, n) {
+  const tp = n.target_params || {};
+  const person = tp.callerAvatar || tp.senderAvatar;
+  if (isHttps(person)) return String(person);
+  if (n.vendor_id) {
+    try {
+      const [v] = await (await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${n.vendor_id}&select=logo_url,user_id`, { headers: svcHeaders })).json();
+      if (v && v.user_id !== n.user_id && isHttps(v.logo_url)) return v.logo_url;
+    } catch (_) {}
+  }
+  if (isHttps(n.actor_avatar_url)) return n.actor_avatar_url;
+  const type = String(n.type || "").toLowerCase();
+  const hit = TYPE_ICON.find(([re]) => re.test(type));
+  return hit ? `/notif-icons/${hit[1]}.png` : "/levromart-notification-icon.png";
+}
+
 async function sendPush(SUPABASE_URL, svcHeaders, n) {
   const subsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/push_subscriptions?user_id=eq.${n.user_id}&select=*`,
@@ -207,7 +235,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
   // and the push expires after 45s so a stale "ringing" never shows up late.
   const isIncomingCall = n.type === "incoming_call";
   const callId = isIncomingCall ? (n.target_params && n.target_params.callId) : null;
-  const callerFace = isIncomingCall && n.target_params && /^https:\/\//.test(String(n.target_params.callerAvatar || "")) ? String(n.target_params.callerAvatar) : null;
+  const iconUrl = await pickNotificationIcon(SUPABASE_URL, svcHeaders, n);
   const callActions = isIncomingCall ? [
     { action: "answer", title: "Answer" },
     { action: "decline", title: "Decline" }
@@ -223,14 +251,14 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
     target_params: n.target_params || {},
     requireInteraction: isIncomingCall,
     tag: isIncomingCall ? "levromart-incoming-call" : `levromart-${n.id}`,
-    icon: callerFace || '/levromart-notification-icon.png',
+    icon: iconUrl,
     badge: '/levromart-badge.png',
     silent: false,
     web_push: 8030,
     notification: {
       title: n.title,
       body: n.body,
-      icon: callerFace || '/levromart-notification-icon.png',
+      icon: iconUrl,
       badge: '/levromart-badge.png',
       silent: false,
       tag: isIncomingCall ? "levromart-incoming-call" : `levromart-${n.id}`,

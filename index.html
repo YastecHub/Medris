@@ -8138,6 +8138,11 @@ async function refreshPushSubscription() {
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
+    // Permission is on but the browser dropped the subscription (Android does this after
+    // updates, cleared data or long idle): quietly subscribe again so pushes keep arriving.
+    if (!sub && !(isIos() && !isStandalone())) {
+      try { sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }); } catch (_) { return null; }
+    }
     if (!sub) return null;
     await syncPushSubscription(reg);
     return sub;
@@ -16450,8 +16455,9 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
     <div class="chat-page-header">
       <button class="chat-header-back" onclick="navigate('messages')" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
       ${profileAvatarHtml(avatar, name, "2.35rem", { extraClass: "chat-header-avatar", lightbox: false })}
-      <div class="chat-header-name-wrap"><strong class="chat-header-name">${esc(name)}</strong><span class="chat-header-presence" id="chatHeaderPresence" aria-live="polite"></span></div>
+      <div class="chat-header-name-wrap"><strong class="chat-header-name">${esc(name)}</strong><span class="chat-header-presence" id="chatHeaderPresence" aria-live="polite">${esc(window.__levroPresenceText?.(conversationId) || "")}</span></div>
       <div class="chat-header-actions">
+        ${window.__levroCallBtnHtml?.(conversationId) || ""}
         <button class="chat-header-icon-btn" style="opacity:0.4;" disabled title="More options"><i class="fa-solid fa-ellipsis-vertical"></i></button>
       </div>
     </div>
@@ -16713,9 +16719,10 @@ async function renderMessages(conversationId) {
       <div class="chat-header-person">${otherAvatar
         ? `<span class="chat-header-avatar-wrap"><img src="${esc(otherAvatar)}" class="chat-header-avatar" alt="${esc(otherName)}" draggable="false" /></span>`
         : `<span class="chat-header-avatar-wrap">${avatarFallbackHtml(otherName, "2.35rem", "chat-header-avatar", otherName)}</span>`}
-        <div class="chat-header-name-wrap">${conv.vendor?.id ? `<button type="button" class="chat-header-name-link" onclick="openChatVendorStorefront(event,'${conv.vendor.id}')" title="View storefront"><strong class="chat-header-name">${esc(otherName)}</strong></button>` : `<strong class="chat-header-name">${esc(otherName)}</strong>`}<span class="chat-header-presence" id="chatHeaderPresence" aria-live="polite"></span></div>
+        <div class="chat-header-name-wrap">${conv.vendor?.id ? `<button type="button" class="chat-header-name-link" onclick="openChatVendorStorefront(event,'${conv.vendor.id}')" title="View storefront"><strong class="chat-header-name">${esc(otherName)}</strong></button>` : `<strong class="chat-header-name">${esc(otherName)}</strong>`}<span class="chat-header-presence" id="chatHeaderPresence" aria-live="polite">${esc(window.__levroPresenceText?.(conversationId) || "")}</span></div>
       </div>
       <div class="chat-header-actions">
+        ${window.__levroCallBtnHtml?.(conversationId) || ""}
         <button class="chat-header-icon-btn" id="chatMenuBtn" onclick="toggleChatMenu(event)" title="More options"><i class="fa-solid fa-ellipsis-vertical"></i></button>
         <div class="chat-menu-dropdown hidden" id="chatMenuDropdown">${chatMenuItems.join("")}</div>
       </div>
@@ -22017,8 +22024,8 @@ async function saveVendorLocation() {
 }
 
 // ---------- VENDOR PRODUCTS ----------
-let vendorProductsView = "grid"; // 'grid' | 'table'
-function toggleVendorProductsView(v) { vendorProductsView = v; navigate("vendorProducts"); }
+let vendorProductsView = "grid"; // grid only (the list/inventory toggle was removed)
+function toggleVendorProductsView(v) { vendorProductsView = "grid"; navigate("vendorProducts"); }
 
 async function renderVendorProducts() {
   if (!session || profile?.role === "admin" || (profile?.role !== "vendor" && !vendor)) return '<div class="empty-state">Access denied.</div>';
@@ -22077,9 +22084,7 @@ async function renderVendorProducts() {
     </div>
   </div>
   <div class="vendor-products-dashboard-actions" aria-label="Listing controls">
-    <button type="button" class="vendor-dashboard-icon-action ${vendorProductsView === "grid" ? "active" : ""}" onclick="toggleVendorProductsView('grid')" aria-label="Grid view" title="Grid view"><i class="fa-solid fa-grip"></i></button>
     <button type="button" class="vendor-dashboard-icon-action vendor-dashboard-add-action" onclick="openAddProductModal()" aria-label="Add product" title="Add product"><i class="fa-solid fa-plus"></i></button>
-    <button type="button" class="vendor-dashboard-icon-action ${vendorProductsView === "table" ? "active" : ""}" onclick="toggleVendorProductsView('table')" aria-label="Inventory view" title="Inventory view"><i class="fa-solid fa-table-list"></i></button>
   </div>`;
   if (v.verification_status !== "verified") html += `<p class="muted">Products won't appear publicly until your vendor account is verified.</p>`;
 
@@ -43346,7 +43351,7 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 #levroCallOverlay .lc-avatar img{width:100%;height:100%;object-fit:cover;display:block}
 
 /* While a category is loading the old content stays but is softly dimmed (no flash of stale data). */
-#app.home-switching > :not(.levro-home-cat-rail){opacity:.45;transition:opacity .15s;pointer-events:none}
+#app.home-switching > :not(.levro-home-cat-rail){pointer-events:none}
 
 /* Customer profile: a settings gear in the top-right corner. */
 .buyer-profile-card{position:relative}
@@ -43593,12 +43598,17 @@ body.levro-kbd-open #aiChatFab,body.levro-kbd-open #cartFab{visibility:hidden !i
     fetching=true;
     try{
       const {data,error}=await sb.rpc("get_conversation_presence",{p_conversation_id:activeFor});
-      if(!error&&data)lastSeenIso=data;
+      if(!error&&data){lastSeenIso=data;try{localStorage.setItem("levro-seen-v1:"+activeFor,String(data));}catch(_){}}
     }catch(_){}finally{fetching=false;}
     paint();
   }
+  window.__levroPresenceText=function(conversationId){
+    try{const iso=localStorage.getItem("levro-seen-v1:"+conversationId);if(!iso)return"";return Date.now()-new Date(iso).getTime()<ONLINE_WINDOW_MS?"Online":whenText(iso);}catch(_){return"";}
+  };
   window.__levroStartChatPresence=function(conversationId){
-    clearInterval(timer);activeFor=String(conversationId);lastSeenIso=null;
+    clearInterval(timer);activeFor=String(conversationId);
+    // Start from the last value we knew, so the line is there the moment the chat opens.
+    try{lastSeenIso=localStorage.getItem("levro-seen-v1:"+activeFor)||null;}catch(_){lastSeenIso=null;}
     paint();load();
     let tick=0;
     timer=setInterval(()=>{
@@ -44053,18 +44063,30 @@ function hideLeviFromPanel() {
   try{ navigator.serviceWorker?.addEventListener("message",(e)=>{ if(e.data?.type==="PUSH_NOTIFICATION_CLICK")setTimeout(checkRinging,400); }); }catch(_){}
 
   // Phone button in the chat header (only where a call is allowed).
+  // The phone button is part of the header from the first paint (remembered per chat), then
+  // confirmed in the background -- it no longer pops in late or blinks away and back.
+  const callKey=(id)=>"levro-callok-v1:"+id;
+  const bindCallBtn=(b,conversationId)=>{ if(b.dataset.bound==="1")return; b.dataset.bound="1"; b.addEventListener("click",()=>window.startVoiceCall(conversationId)); };
+  window.__levroCallBtnHtml=function(conversationId){
+    try{ if(localStorage.getItem(callKey(conversationId))!=="1")return""; }catch(_){return"";}
+    return `<button id="chatCallBtn" class="chat-header-icon-btn" type="button" title="Voice call" aria-label="Voice call" onclick="window.startVoiceCall('${conversationId}')"><i class="fa-solid fa-phone"></i></button>`;
+  };
   window.__levroInitChatCall=async function(conversationId){
     try{
       if(!session)return;
-      const {data}=await sb.rpc("can_call_in_conversation",{p_conversation_id:conversationId});
-      if(data!==true)return;
+      const {data,error}=await sb.rpc("can_call_in_conversation",{p_conversation_id:conversationId});
+      if(error)return;                                   // keep whatever is showing
+      try{ localStorage.setItem(callKey(conversationId),data===true?"1":"0"); }catch(_){}
       if(String(activeConversationId)!==String(conversationId))return;
+      const existing=document.getElementById("chatCallBtn");
+      if(data!==true){ existing?.remove(); return; }
+      if(existing){ bindCallBtn(existing,conversationId); return; }
       const actions=document.querySelector(".chat-page-header .chat-header-actions");
-      if(!actions||document.getElementById("chatCallBtn"))return;
+      if(!actions)return;
       const b=document.createElement("button");
       b.id="chatCallBtn"; b.className="chat-header-icon-btn"; b.type="button"; b.title="Voice call"; b.setAttribute("aria-label","Voice call");
       b.innerHTML='<i class="fa-solid fa-phone"></i>';
-      b.addEventListener("click",()=>window.startVoiceCall(conversationId));
+      bindCallBtn(b,conversationId);
       actions.insertBefore(b,actions.firstChild);
     }catch(_){}
   };
