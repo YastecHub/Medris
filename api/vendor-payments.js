@@ -167,7 +167,7 @@ async function r2OptimizeFile({ accessToken, bucket, key }, res) {
   return res.status(200).json({ optimized: true, recompressed: false, originalSize, newSize: originalSize });
 }
 
-const MONTHLY_LISTING_NAIRA = 1000;
+const MONTHLY_LISTING_NAIRA = 999;
 const MONTHLY_LISTING_KOBO = MONTHLY_LISTING_NAIRA * 100;
 
 module.exports = async function handler(req, res) {
@@ -238,7 +238,7 @@ module.exports = async function handler(req, res) {
     if (body.action === "prepare-listing-payment") {
       if (!body.listingId) {
         return res.status(400).json({
-          error: "Create the listing first, then provide its listingId for the ₦1,000 activation payment."
+          error: "Create the listing first, then provide its listingId for the ₦999 activation payment."
         });
       }
       return startListingPayment(req, res, { ...body, id: body.listingId });
@@ -990,7 +990,7 @@ async function setupMonthlyBilling(
 
 
 /* =========================================================
-   INDIVIDUAL ₦1,000 LISTING PAYMENT
+   INDIVIDUAL ₦999 LISTING PAYMENT
    ========================================================= */
 
 async function startListingPayment(
@@ -1399,7 +1399,7 @@ async function startListingPayment(
 
 
 /* =========================================================
-   FINISH / VERIFY ₦1,000 LISTING PAYMENT
+   FINISH / VERIFY ₦999 LISTING PAYMENT
    ========================================================= */
 
 async function finishListingPayment(req, res, reference) {
@@ -1433,7 +1433,7 @@ async function verifyListingPayment(res, body) {
   const result = await verifyAndActivateListing(body.reference, me.id, { requireAuth: true });
   if (!result.ok) {
     return res.status(result.httpStatus || 400).json({
-      error: result.message || "Paystack has not confirmed this ₦1,000 listing payment yet.",
+      error: result.message || "Paystack has not confirmed this ₦999 listing payment yet.",
       status: result.paystackStatus || "pending"
     });
   }
@@ -1486,10 +1486,10 @@ async function paystackVerify(reference) {
     return { ok: false, reason: "verification", message: json?.message || "Paystack verification failed.", paystackStatus: tx?.status || "unknown" };
   }
   if (tx?.status !== "success") {
-    return { ok: false, reason: "pending", message: "Paystack has not confirmed this ₦1,000 listing payment yet.", paystackStatus: tx?.status || "pending" };
+    return { ok: false, reason: "pending", message: "Paystack has not confirmed this ₦999 listing payment yet.", paystackStatus: tx?.status || "pending" };
   }
   if (Number(tx.amount) !== MONTHLY_LISTING_KOBO) {
-    return { ok: false, reason: "amount", message: "The verified Paystack amount is not ₦1,000.", paystackStatus: tx.status };
+    return { ok: false, reason: "amount", message: "The verified Paystack amount is not ₦999.", paystackStatus: tx.status };
   }
   return { ok: true, tx };
 }

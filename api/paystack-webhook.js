@@ -5,7 +5,7 @@
 const crypto = require("crypto");
 const { env, settleReference } = require("./_util");
 
-const MONTHLY_LISTING_KOBO = 100000;
+const MONTHLY_LISTING_KOBO = 99900;
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") { res.status(405).end(); return; }
@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
 
       // Listing activation is handled explicitly here rather than depending on
       // the generic settlement helper. This guarantees that a successful
-      // ₦1,000 listing payment flips the exact listing active even if the
+      // ₦999 listing payment flips the exact listing active even if the
       // customer's browser is closed before the callback is reached.
       if (
         metadata?.purpose === "levromart_listing_monthly" &&
