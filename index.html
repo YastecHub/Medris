@@ -7901,6 +7901,7 @@ try {
   const __sbFrom = sb.from.bind(sb);
   sb.from = (table) => {
     const q = __sbFrom(table);
+    if (table === "notifications") ["insert", "update", "delete", "upsert"].forEach((m) => { const orig = q[m]; if (typeof orig === "function") q[m] = (...a) => { window.__notifRaw = null; return orig.apply(q, a); }; });
     if (table === "vendor_follows") ["insert", "update", "delete", "upsert"].forEach((m) => { const orig = q[m]; if (typeof orig === "function") q[m] = (...a) => { window.__followerCountMemo = null; return orig.apply(q, a); }; });
     if (table === "cart_items") ["insert", "update", "delete", "upsert"].forEach((m) => { const orig = q[m]; if (typeof orig === "function") q[m] = (...a) => { window.__cartCountAt = 0; return orig.apply(q, a); }; });
     return q;
@@ -8149,6 +8150,51 @@ async function refreshPushSubscription() {
   } catch (_) {
     return null;
   }
+}
+// ---------- Call & message alerts check (Settings) ----------
+async function levroPushStatus() {
+  if (!pushSupported()) return { ok: false, text: "This browser can't receive alerts when the app is closed." };
+  if (Notification.permission === "denied") return { ok: false, text: "Alerts are blocked for Levromart. Allow notifications in your browser's site settings, then tap the button." };
+  if (Notification.permission !== "granted") return { ok: false, text: "Alerts are off. Tap the button to turn them on." };
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    return sub ? { ok: true, text: "Alerts are on for this phone." } : { ok: false, text: "Alerts are allowed but this phone isn't registered yet. Tap the button to fix it." };
+  } catch (_) { return { ok: false, text: "Couldn't check alerts on this phone." }; }
+}
+async function levroTestPush(btn) {
+  if (!session) { showLogin(); return; }
+  if (!pushSupported()) { showToast("This browser can't receive alerts when the app is closed.", "error"); return; }
+  const label = btn?.innerHTML; if (btn) { btn.disabled = true; btn.textContent = "Working…"; }
+  try {
+    if (Notification.permission !== "granted") {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { showToast("Alerts are blocked. Allow notifications in your browser's site settings.", "info"); return; }
+    }
+    if (isIos() && !isStandalone()) { showToast("On iPhone, add Levromart to your Home Screen first.", "info"); return; }
+    const reg = await navigator.serviceWorker.ready;
+    // Start from a fresh registration so a stale one can't swallow the alert.
+    const old = await reg.pushManager.getSubscription();
+    if (old) { try { await old.unsubscribe(); } catch (_) {} }
+    await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+    await syncPushSubscription(reg);
+    const { data: { session: fresh } } = await sb.auth.getSession();
+    const res = await fetch("/api/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "test-push", accessToken: fresh?.access_token || session.access_token }) });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || "The test could not be sent.");
+    const n = out.sent || 0;
+    showToast(n ? `Test alert sent to ${n} device${n === 1 ? "" : "s"}. Lock your phone and wait a few seconds.` : "No device accepted the alert. Open Settings on this phone and try again.", n ? "success" : "error");
+  } catch (err) {
+    showToast(err?.message || "Couldn't run the check.", "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = label; }
+    levroPaintPushStatus();
+  }
+}
+async function levroPaintPushStatus() {
+  const el = byId("pushCheckStatus"); if (!el) return;
+  const st = await levroPushStatus();
+  el.textContent = st.text; el.classList.toggle("push-ok", st.ok);
 }
 async function enablePushNotifications() {
   if (!pushSupported()) { showToast("Push notifications are not supported on this browser.", "error"); return; }
@@ -10288,7 +10334,7 @@ function refreshNotifications(renderPanel = true) {
   })();
   return __notifRun;
 }
-async function renderNotifPanel() {
+async function renderNotifPanel(opts = {}) {
   const renderToken = ++notifRenderEpoch;
   const panel = getNotifHost();
   if (!panel) return;
@@ -10307,7 +10353,11 @@ async function renderNotifPanel() {
   const cachedNotificationTabs=[['all','All'],['personal','Personal'],...(profile?.role!=='admin'?[['orders',vendor?.id?'Orders & Requests':'Orders']]:[]),...(vendor?.id?[['myListings','My Listings']]:[]),['vendors','Vendors']];
   if(!cachedNotificationTabs.some(([key])=>key===notifViewMode))notifViewMode='all';
   const cachedTabsHtml=`<div class="notif-tabs" role="tablist" aria-label="Notification categories">${cachedNotificationTabs.map(([key,label])=>`<button type="button" role="tab" aria-selected="${notifViewMode===key?"true":"false"}" class="notif-tab ${notifViewMode===key?"active":""}" onclick="switchNotifView('${key}')">${label}</button>`).join('')}</div>`;
-  if (Array.isArray(cachedNotifItems) && cachedNotifItems.length) {
+  // Switching tabs reuses the list that is already on screen (no repaint without badges, no refetch).
+  const reuse = !!(opts && opts.reuse && window.__notifRaw && window.__notifRaw.uid === session.user.id && Date.now() - window.__notifRaw.at < 120000);
+  if (reuse) {
+    /* keep the current DOM until the new tab is ready */
+  } else if (Array.isArray(cachedNotifItems) && cachedNotifItems.length) {
     const cachedList = cachedNotifItems.map(n => {
       const avatar = n.actor_avatar_url ? `<img src="${esc(n.actor_avatar_url)}" class="avatar-circle" style="width:2.15rem;height:2.15rem;object-fit:cover;flex:none;" alt="" draggable="false" />` : n.actor_name ? avatarFallbackHtml(n.actor_name, "2.15rem", "notification-avatar-fallback", n.actor_name, n.actor_id || n.actor_name) : notificationSystemIconHtml(n);
       return `<div class="notif-item-wrap" data-id="${esc(n.id)}"><button type="button" class="notif-item ${n.read ? '' : 'unread'}" data-id="${esc(n.id)}" data-view="${esc(n.target_view || 'home')}" data-params='${esc(JSON.stringify(n.target_params || {}))}' data-actor-name="${esc(n.actor_name || '')}" data-actor-avatar="${esc(n.actor_avatar_url || '')}" onclick="handleNotifItemClick(event,'${esc(n.id)}')">${avatar}<span class="notif-copy"><strong>${esc(n.title || 'Notification')}</strong>${n.body ? `<span class="muted" style="font-size:.8rem;">${esc(n.notification_category === 'new_follower' ? (n.actor_name || n.body) : maskSensitiveNumbers(n.body))}</span>` : ''}<span class="muted" style="font-size:.72rem;">${timeAgo(n.created_at)}</span></span></button></div>`;
@@ -10332,22 +10382,28 @@ async function renderNotifPanel() {
   // ones, capped -- older read notifications are no longer re-downloaded on every open.
   const readSince = new Date(Date.now() - 30 * 86400000).toISOString();
   let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).or(`read.eq.false,created_at.gte.${readSince}`).order("created_at", { ascending: false }).limit(150);
-  const { data: rawItems, error } = await q;
-  if (!error && Array.isArray(rawItems)) {
-    try { localStorage.setItem(notifCacheKey, JSON.stringify(rawItems.slice(0,150))); } catch (_) {}
+  let rawItems, error;
+  if (reuse) rawItems = window.__notifRaw.items;
+  else {
+    ({ data: rawItems, error } = await q);
+    if (!error && Array.isArray(rawItems)) {
+      try { localStorage.setItem(notifCacheKey, JSON.stringify(rawItems.slice(0,150))); } catch (_) {}
+    }
   }
   const currentVendorId=String(vendor?.id||'');
   const owners=new Map();
   // These two lookups don't depend on each other -- running them one after
   // another (await inside the loop) meant every notifications open paid
   // for both round trips back to back instead of overlapping them.
-  await Promise.all([['product','products'],['package','vendor_packages']].map(async ([kind,table])=>{
+  if (reuse && window.__notifRaw.owners) window.__notifRaw.owners.forEach((v, k) => owners.set(k, v));
+  else await Promise.all([['product','products'],['package','vendor_packages']].map(async ([kind,table])=>{
     const ids=[...new Set((rawItems||[]).map(n=>{const p=n.target_params||{},m=n.metadata||{};return kind==='product'?(p.productId||p.product_id||m.product_id):(p.packageId||p.package_id||m.package_id)}).filter(Boolean))];
     if(!ids.length)return;
     const {data,error:ownerError}=await sb.from(table).select('id,vendor_id').in('id',ids);
     if(ownerError)console.warn('Notification ownership lookup failed',ownerError);
     (data||[]).forEach(r=>owners.set(`${kind}:${r.id}`,String(r.vendor_id)));
   }));
+  if (!reuse && Array.isArray(rawItems)) window.__notifRaw = { uid: session.user.id, at: Date.now(), items: rawItems, owners: new Map(owners) };
   const classifyNotification=n=>{
     const p=n.target_params||{},m=n.metadata||{},type=String(n.type||n.notification_type||n.notification_category||'').toLowerCase();
     const kind=String(m.kind||m.entity_type||n.notification_category||type).toLowerCase();
@@ -10474,7 +10530,7 @@ function switchNotifView(mode) {
   if (mode === "myListings" && !vendor?.id) mode = "personal";
   notifViewMode = mode;
   exitNotifSelectMode(false);
-  renderNotifPanel();
+  renderNotifPanel({ reuse: true });
 }
 
 function enterNotifSelectMode(id) {
@@ -11640,6 +11696,7 @@ function renderSettingsPage(){
     <section class="settings-page-section"><h3><i class="fa-solid fa-text-height"></i> Text size</h3><p class="settings-section-note">Make Levromart easier to read. This changes the app's text scale on this device.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Font size</strong><span>Choose a comfortable size from 85% to 125%.</span></div><div class="levi-size-value" id="levroFontScaleValue">${Math.round(getLevromartFontScale()*100)}%</div><input class="levi-size-range" id="levroFontScaleRange" type="range" min="0.85" max="1.25" step="0.05" value="${getLevromartFontScale()}" aria-label="Levromart font size" oninput="setLevromartFontScale(this.value)" onchange="setLevromartFontScale(this.value)" /></div></section>
     <section class="settings-page-section"><h3><span class="settings-levi-logo-wrap"><img class="settings-levi-logo" src="${esc(MEDRIS_LOGO)}" alt="" /></span> Levi</h3><p class="settings-section-note">Adjust Levi's size, visibility and data preference.</p><div class="settings-control-row levi-size-control"><div class="settings-control-copy"><strong>Levi size</strong><span>Drag the scale to make Levi smaller or restore the current maximum.</span></div><div class="levi-size-value" id="leviSizeValue">${getLeviFabSize()}px</div><input class="levi-size-range" id="leviSizeRange" type="range" min="44" max="74" step="1" value="${getLeviFabSize()}" aria-label="Levi size" oninput="setLeviFabSize(this.value)" /></div><div class="settings-divider"></div><div class="settings-toggle-row" id="leviVisibleSettingRow"></div><p class="settings-section-note settings-levi-hint">Tip: long-press Levi to hide him. Triple-tap anywhere on the page to bring him back.</p><div class="settings-divider"></div><div class="settings-toggle-row" id="settingsAiConsentPageRow"></div></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-sliders"></i> App preferences</h3><div class="settings-simple-row" id="settingsInstallPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="settingsNotifPageRow"></div><div class="settings-divider"></div><div class="settings-toggle-row" id="horizontalBrowseSettingPageRow"></div><div class="settings-divider"></div><div class="settings-simple-row" id="locationSettingPageRow"></div></section>
+    <section class="settings-page-section"><h3><i class="fa-solid fa-bell"></i> Call &amp; message alerts</h3><p class="settings-section-note" id="pushCheckStatus">Checking…</p><button type="button" class="btn btn-outline settings-full-btn" onclick="levroTestPush(this)"><i class="fa-solid fa-paper-plane"></i> Fix and send a test call alert</button><details class="settings-help"><summary>Android: alerts only show when the app is open?</summary><p>Your phone is putting Levromart to sleep to save battery, so alerts wait until you open the app. Do these once:</p><ol><li>Long-press the Levromart icon (or Chrome) → App info → Battery → choose <strong>Unrestricted</strong> (some phones call it "No restrictions" or "Don't optimise").</li><li>In the same App info page, turn on <strong>Autostart</strong> / "Run in background" if you see it.</li><li>Open your recent apps and lock Levromart (pull-down or padlock) so the phone doesn't close it.</li><li>Notifications → make sure Levromart's channel is on and set to <strong>Alert/Sound</strong>, not Silent.</li><li>Come back here and tap the button above to send yourself a test.</li></ol></details></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-lock"></i> Account</h3><button class="settings-action-row" onclick="showChangePassword()"><i class="fa-solid fa-key"></i><span><strong>Change password</strong><small>Update your account password</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="resetLevromartPreferences()"><i class="fa-solid fa-arrow-rotate-left"></i><span><strong>Reset preferences</strong><small>Restore appearance and interface defaults</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showLevromartAbout()"><img class="about-row-logo" src="icon-192.png" alt="" /><span><strong>About Levromart</strong><small>Version and platform information</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
     <section class="settings-page-section"><h3><i class="fa-solid fa-circle-question"></i> Help &amp; feedback</h3><button class="settings-action-row" onclick="showTour()"><i class="fa-solid fa-compass"></i><span><strong>Take the tour</strong><small>Replay the Levromart walkthrough</small></span><i class="fa-solid fa-chevron-right"></i></button><div class="settings-divider"></div><button class="settings-action-row" onclick="showSuggestionModal('platform')"><i class="fa-solid fa-comment-dots"></i><span><strong>Send feedback</strong><small>Tell us what could be better</small></span><i class="fa-solid fa-chevron-right"></i></button></section>
     <section class="settings-page-section"><button class="settings-action-row settings-logout-row" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i><span><strong>Log out</strong></span></button></section>
@@ -11648,6 +11705,7 @@ function renderSettingsPage(){
 }
 function hydrateSettingsPage(){
   setLevromartFontScale(getLevromartFontScale());
+  levroPaintPushStatus();
   const theme=document.documentElement.dataset.theme||localStorage.getItem("medris-theme")||"light";
   document.querySelectorAll("#settings-page .settings-choice").forEach(el=>{const on=el.dataset.themeChoice===theme;el.classList.toggle("active",on);el.dataset.active=String(on);});
   const motion=getLevromartMotionPreference(); document.querySelectorAll("#settings-page [data-motion-choice]").forEach(el=>{const on=el.dataset.motionChoice===motion;el.classList.toggle("active",on);el.dataset.active=String(on);});
@@ -12734,7 +12792,8 @@ async function navigate(view, params = {}, pushHistory = true) {
   const cachedRouteHtml = routeHtmlCache.get(cacheKey);
   const persistedRouteHtml = getPersistedRouteHtml(view, params);
   const instantRouteHtml = cachedRouteHtml || persistedRouteHtml;
-  if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home") {
+  const sameOrdersTab = previousView === view && (view === "buyerOrders" || view === "vendorOrders");
+  if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && !sameOrdersTab) {
     // Storefront used to be excluded here, on the assumption its own
     // renderer was now fast enough not to need a shell. But the very first
     // visit to any given vendor in a session has no cached HTML yet, so
@@ -24067,6 +24126,11 @@ function vendorOrdersTabsHtml(active) {
   </div>`;
 }
 
+// The orders search control is part of the page HTML itself (not injected afterwards), so
+// switching tabs never makes the filter/search icons pop in, jump or blink.
+function orderSearchWrapHtml() {
+  return `<div class="order-search-wrap final-order-search-wrap"><button type="button" class="icon-btn order-search-toggle" aria-expanded="false" aria-label="Search orders" title="Search orders"><i class="fa-solid fa-magnifying-glass"></i></button><input id="orderHistorySearch" class="order-history-search" type="search" placeholder="Search orders…" autocomplete="off" /></div>`;
+}
 function orderFiltersDropdownHtml(route, status, type, payment, dateFrom, dateTo, perspective = "") {
   const statusLabel = status === "all" ? "All statuses" : String(status).replace(/_/g, " ").replace(/^./, c => c.toUpperCase());
   const typeLabel = ORDER_TYPE_TABS.find(t => t.value === type)?.label || "All types";
@@ -24226,7 +24290,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // customer page) instead of a long accordion under the list.
   rememberOrderHistory("sales", splitActiveAndHistoryOrders(sortOrdersForList(safeAllOrders || []), "all").history, false, "sales");
   window.__orderHistoryEmpty = !historyVendorOrders.length;
-  const vendorFiltersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales")}<div class="orders-search-slot"></div></div>`;
+  const vendorFiltersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales")}${orderSearchWrapHtml()}</div>`;
   const vendorHistoryBtn = `<button type="button" class="orders-icon-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
   let html = `<div class="orders-title-row"><h2>Orders</h2><div class="orders-top-actions">${vendorFiltersRow}${vendorHistoryBtn}</div></div>`;
   html += vendorOrdersTabsHtml("sales");
@@ -24303,7 +24367,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   // instead of an accordion and a button stuck under the list.
   rememberOrderHistory(embeddedVendorOrders ? "purchases" : "", splitActiveAndHistoryOrders(sortOrdersForList(safeAllOrders || []), "all").history, true, embeddedVendorOrders ? "purchases" : null);
   window.__orderHistoryEmpty = !historyCustomerOrders.length;
-  const filtersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}<div class="orders-search-slot"></div></div>`;
+  const filtersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}${orderSearchWrapHtml()}</div>`;
   const moreMenu = `<div class="orders-more-wrap"><button type="button" class="orders-icon-btn" onclick="toggleOrdersMore(this)" aria-label="More" aria-expanded="false" title="More"><i class="fa-solid fa-ellipsis"></i></button><div class="orders-more-menu hidden">${historyCustomerOrders.length ? `<button type="button" onclick="toggleOrdersMore(this);openOrderHistory()"><i class="fa-solid fa-clock-rotate-left"></i> Order history <b>${historyCustomerOrders.length}</b></button>` : ""}<button type="button" onclick="navigate('home')"><i class="fa-solid fa-bag-shopping"></i> Continue shopping</button></div></div>`;
   let html = `<div class="orders-title-row"><h2>${embeddedVendorOrders ? "Orders" : "My Orders"}</h2><div class="orders-top-actions">${filtersRow}${moreMenu}</div></div>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
@@ -24584,15 +24648,10 @@ async function sendOrderNote(orderId, isCustomer) {
   }
 }
 
-function orderListControlsHtml(total) {
-  if (!total) return "";
-  return `<div class="flex order-list-view-controls" aria-label="Order view controls">
-    <button type="button" class="icon-btn order-view-icon ${orderListViewMode === "cards" ? "active" : ""}" onclick="setOrderListView('cards')" title="List view" aria-label="List view"><i class="fa-solid fa-list"></i></button>
-    <button type="button" class="icon-btn order-view-icon ${orderListViewMode === "table" ? "active" : ""}" onclick="setOrderListView('table')" title="Table view" aria-label="Table view"><i class="fa-solid fa-table-list"></i></button>
-  </div>`;
-}
+// The list/table switch is gone: orders are always shown as cards.
+function orderListControlsHtml(total) { return ""; }
 function setOrderListView(mode) {
-  orderListViewMode = mode;
+  orderListViewMode = "cards";
   renderOrderListWrap();
 }
 function toggleOrderListExpanded() {
@@ -24669,11 +24728,146 @@ async function messageCustomerFromOrder(orderId) {
     showToast(err.message || "Couldn't open the customer chat.", "error");
   }
 }
+
+// ---------- CUSTOMER ORDER DETAILS (redesigned page) ----------
+// Same data and the same actions as before -- only the presentation is rebuilt:
+// status first, what happens next, what was ordered, what was paid, where it goes, who sells it.
+const OD_STAGES = [
+  { key: "placed", icon: "fa-cart-shopping", label: () => "Order placed" },
+  { key: "confirmed", icon: "fa-box", label: () => "Confirmed" },
+  { key: "handed", icon: "fa-truck-fast", label: (d) => d ? "Out for delivery" : "Handed over" },
+  { key: "done", icon: "fa-circle-check", label: (d) => d ? "Delivered" : "Completed" },
+];
+function odStageIndex(order) {
+  switch (String(order.status || "")) {
+    case "pending": return 0;
+    case "confirmed": case "payment_unresolved": case "disputed": return 1;
+    case "handed_over": case "returned": return 2;
+    case "completed": return 3;
+    default: return -1;
+  }
+}
+function odTone(order) {
+  if (order.__paymentUnresolved) return "unresolved";
+  return ({ pending: "pending", confirmed: "confirmed", handed_over: "handed", returned: "handed", completed: "done", cancelled: "cancelled", disputed: "disputed", payment_unresolved: "unresolved" })[order.status] || "pending";
+}
+function odStatusLabel(order) {
+  if (order.__paymentUnresolved) return "Payment unresolved";
+  return String(order.status || "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+}
+function odInfoCard(order, isDelivery) {
+  const t = String(order.status || "");
+  if (order.__paymentUnresolved) return { icon: "fa-hourglass-half", head: "Payment needs verification", body: "The vendor is checking your payment. If they don't respond within 24 hours, Levromart steps in." };
+  if (t === "pending") return { icon: "fa-hourglass-half", head: "Your order has been placed successfully!", body: "The vendor will review it and you will be notified as soon as they accept." };
+  if (t === "confirmed") return { icon: "fa-circle-check", head: "The vendor accepted your order", body: "Pay the vendor, then tap “I’ve paid the vendor” so they can hand your order over." };
+  if (t === "handed_over") return { icon: "fa-truck-fast", head: isDelivery ? "Your order is on its way" : "Your order has been handed over", body: order.order_type === "rental" ? "Return the equipment when you're done. The vendor will mark it returned." : "Check everything, then confirm once you've received it." };
+  if (t === "returned") return { icon: "fa-rotate-left", head: "Equipment is back with the vendor", body: "Confirm to complete the order and release the deposit." };
+  if (t === "completed") return { icon: "fa-circle-check", head: "Order completed", body: "Thank you for shopping on Levromart." };
+  if (t === "cancelled") return { icon: "fa-circle-xmark", head: "This order was cancelled", body: "Any online payment is refunded to you." };
+  if (t === "disputed") return { icon: "fa-scale-balanced", head: "An issue was reported", body: "An admin is reviewing this order. We'll update you here." };
+  return null;
+}
+function customerOrderTopHtml(order, ctx) {
+  const isDelivery = order.delivery_method === "delivery";
+  const tone = odTone(order);
+  const shortId = `#${String(order.id || "").slice(0, 8).toUpperCase()}`;
+  const stageIdx = odStageIndex(order);
+  const info = odInfoCard(order, isDelivery);
+  const v = order.vendor || {};
+  const actionBack = ctx.sourcePerspective === "purchases" ? "navigate('vendorOrders',{status:'all',perspective:'purchases'})" : "navigate('buyerOrders')";
+  const img = (item) => {
+    const src = item.product?.photos?.[0];
+    return src ? `<img class="od-item-img" src="${esc(src)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'od-item-img od-item-img-empty',innerHTML:'<i class=&quot;fa-solid fa-image&quot;></i>'}))">`
+      : `<span class="od-item-img od-item-img-empty"><i class="fa-solid fa-image"></i></span>`;
+  };
+  // ---- header
+  let h = `<div class="od-header"><button type="button" class="od-back" onclick="${actionBack}" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
+    <div class="od-header-title"><strong>Order Details</strong><span>${esc(shortId)}</span></div>
+    <div class="od-menu-wrap"><button type="button" class="od-more" onclick="toggleOrderDetailMenu(event)" aria-label="More"><i class="fa-solid fa-ellipsis"></i></button>
+      <div class="od-menu hidden" id="odMenu"><button type="button" onclick="copyOrderId('${esc(order.id)}')"><i class="fa-regular fa-copy"></i> Copy order ID</button><button type="button" onclick="openOrderIssueForm()"><i class="fa-solid fa-flag"></i> Report an issue</button></div></div></div>`;
+  // ---- status card
+  h += `<section class="od-card od-status od-tone-${tone}"><div class="od-status-icon"><i class="fa-solid ${tone === "cancelled" ? "fa-ban" : tone === "done" ? "fa-circle-check" : "fa-box-open"}"></i></div>
+    <div class="od-status-copy"><span class="od-kicker">Order Status</span><strong class="od-status-name">${esc(odStatusLabel(order))}</strong>${order.created_at ? `<span class="od-placed">Placed ${esc(orderDateTimeStr(order.created_at))}</span>` : ""}</div>
+    <span class="od-pill od-pill-${tone}">${esc(odStatusLabel(order))}</span>
+    ${order.status === "pending" ? `<div class="od-strip"><i class="fa-regular fa-clock"></i><span>If the payout button does not reflect within 20–30 minutes, please contact the vendor immediately.</span></div>` : ""}
+  </section>`;
+  // ---- main actions
+  const canContact = !!ctx.contactAllowed && order.vendor_id;
+  if (order.status === "pending" || canContact) {
+    h += `<div class="od-actions">${order.status === "pending" ? `<button type="button" class="od-btn od-btn-primary" onclick="remindOrderVendor('${esc(order.id)}',this)"><i class="fa-solid fa-bell"></i> Remind vendor</button>` : ""}
+      ${canContact ? `<button type="button" class="od-btn od-btn-light" onclick="startConversationWithVendor('${esc(order.vendor_id)}')"><i class="fa-regular fa-comment-dots"></i> Message</button><button type="button" class="od-btn od-btn-light" onclick="callVendorFromOrder('${esc(order.vendor_id)}')"><i class="fa-solid fa-phone"></i> Call</button>` : ""}</div>`;
+  }
+  // ---- progress tracker
+  if (stageIdx >= 0) {
+    h += `<section class="od-card od-tracker" aria-label="Order progress">${OD_STAGES.map((st, i) => `<div class="od-step ${i < stageIdx ? "is-done" : i === stageIdx ? "is-current" : ""}"><span class="od-step-dot"><i class="fa-solid ${st.icon}"></i></span><span class="od-step-label">${esc(st.label(isDelivery))}</span>${i === 0 && order.created_at ? `<small>${esc(new Date(order.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</small>` : ""}</div>`).join("")}</section>`;
+  }
+  // ---- state information
+  if (info) h += `<section class="od-info od-tone-${tone}"><span class="od-info-icon"><i class="fa-solid ${info.icon}"></i></span><div><strong>${esc(info.head)}</strong><p>${esc(info.body)}</p></div></section>`;
+  if (order.payout_status && order.payout_status !== "not_applicable") {
+    h += `<section class="od-strip od-strip-card"><i class="fa-solid fa-shield-halved"></i><span>${esc(PAYOUT_STATUS_SHORT_LABEL[order.payout_status] || (typeof PAYOUT_STATUS_HELP[order.payout_status] === "function" ? PAYOUT_STATUS_HELP[order.payout_status](order.auto_release_at ? new Date(order.auto_release_at).toLocaleDateString("en-GB") : "the release date") : order.payout_status))}</span></section>`;
+  }
+  // ---- items
+  const items = order.items || [];
+  h += `<section class="od-card"><div class="od-card-head"><h3>Items (${items.length})</h3>${v.id ? `<a href="#" class="od-link" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'});return false;"><i class="fa-solid fa-store"></i> View Vendor Store <i class="fa-solid fa-chevron-right"></i></a>` : ""}</div>
+    ${items.map((item) => `<div class="od-item">${img(item)}<div class="od-item-copy"><strong>${esc(item.product?.name || "")}${item.variant?.name ? ` · ${esc(item.variant.name)}` : ""}</strong><span class="od-muted">Qty: ${Number(item.quantity || 1)}${item.rental_start_date ? ` · ${esc(item.rental_start_date)} → ${esc(item.rental_end_date)}` : ""}</span><b class="od-price">${naira(item.unit_price)}</b>
+      ${ctx.isCustomer && order.status === "completed" && item.product_id && !order.review ? `<button type="button" class="od-btn od-btn-light od-btn-small" onclick="navigate('productDetail',{productId:'${item.product_id}',scrollToReviews:true})"><i class="fa-solid fa-star"></i> Rate this product</button>` : ""}</div></div>`).join("")}
+    ${order.buyer_note ? `<p class="od-note"><i class="fa-regular fa-message"></i> <strong>Your note:</strong> ${esc(order.buyer_note)}</p>` : ""}
+  </section>`;
+  // ---- payment summary
+  const paid = (order.payments || []).filter((p) => p.status === "paid");
+  const methodLabel = (() => {
+    const m = String(paid[0]?.method || "").toLowerCase();
+    if (m === "cash") return "Cash";
+    if (m === "transfer") return "Bank transfer";
+    if (m === "card") return "Card";
+    return paid.length ? "Paid" : (["pending", "cancelled"].includes(order.status) ? "Not paid yet" : "Pay the vendor directly");
+  })();
+  h += `<section class="od-card"><h3>Payment Summary</h3><div class="od-pay-grid">
+    <div><span class="od-muted">Total Amount</span><b class="od-price">${naira(order.total_amount)}</b></div>
+    ${order.delivery_fee > 0 ? `<div><span class="od-muted">Delivery fee</span><b>${naira(order.delivery_fee)}</b></div>` : ""}
+    ${order.deposit_amount > 0 ? `<div><span class="od-muted">Refundable Deposit</span><b class="od-price">${naira(order.deposit_amount)}</b></div>` : ""}
+    <div><span class="od-muted">Payment Method</span><b>${esc(methodLabel)}</b></div></div></section>`;
+  // ---- delivery / pickup
+  if (isDelivery) {
+    const hasPin = order.buyer_lat != null && order.buyer_lng != null;
+    const mapHref = hasPin ? `https://www.google.com/maps/search/?api=1&query=${order.buyer_lat},${order.buyer_lng}` : (order.delivery_address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address)}` : "");
+    const hasEta = v.lat != null && v.lng != null;
+    h += `<section class="od-card"><div class="od-card-head"><h3><i class="fa-solid fa-location-dot"></i> Delivery Information</h3>${mapHref ? `<a class="od-link" href="${esc(mapHref)}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-map"></i> View on Map <i class="fa-solid fa-chevron-right"></i></a>` : ""}</div>
+      <div class="od-delivery"><div><span class="od-muted">Delivery to</span><strong>${esc(order.delivery_address || "Address not provided")}</strong></div>
+      ${hasEta ? `<div class="od-eta"><span class="od-muted">Estimated delivery</span><strong id="orderEtaLine"></strong></div>` : ""}</div></section>`;
+  } else {
+    const addr = [v.address, v.city].filter(Boolean).map(esc).join(", ");
+    h += `<section class="od-card"><div class="od-card-head"><h3><i class="fa-solid fa-location-dot"></i> Pickup Location</h3></div>
+      <div class="od-delivery"><div><span class="od-muted">Collect from</span><strong>${addr || "The vendor hasn't listed a pickup address yet"}</strong>${v.opening_hours ? `<span class="od-muted"><i class="fa-regular fa-clock"></i> ${esc(v.opening_hours)}</span>` : ""}</div></div>
+      ${ctx.contactAllowed && v.id ? `<button type="button" class="od-btn od-btn-light" style="margin-top:.7rem" data-draft="${esc(pickupMessageDraft(order))}" onclick="startConversationWithVendor('${esc(v.id)}', this.dataset.draft)"><i class="fa-regular fa-comment-dots"></i> Message vendor to confirm pickup</button>` : ""}</section>`;
+  }
+  // ---- vendor
+  if (v.id) {
+    const rating = Number(v.avg_rating || 0), reviews = Number(v.review_count || 0);
+    h += `<section class="od-card"><h3><i class="fa-solid fa-store"></i> Vendor Information</h3><div class="od-vendor">
+      ${v.logo_url ? `<img class="od-vendor-logo" src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async">` : avatarFallbackHtml(v.business_name || "Vendor", "3rem", "od-vendor-logo", v.business_name || "Vendor")}
+      <div class="od-vendor-copy"><strong>${esc(v.business_name || "Vendor")} ${v.verification_status === "verified" ? `<i class="fa-solid fa-circle-check od-verified" title="Verified vendor"></i>` : ""}</strong><span class="od-muted"><i class="fa-solid fa-star od-star"></i> ${reviews ? `${rating.toFixed(1)} (${reviews} review${reviews === 1 ? "" : "s"})` : "No reviews yet"}</span></div>
+      <div class="od-vendor-actions">${ctx.contactAllowed ? `<button type="button" class="od-btn od-btn-light od-btn-small" onclick="startConversationWithVendor('${esc(v.id)}')"><i class="fa-regular fa-comment-dots"></i> Message</button>` : ""}<button type="button" class="od-btn od-btn-light od-btn-small" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'})"><i class="fa-solid fa-store"></i> View Store</button></div></div></section>`;
+  }
+  return h;
+}
+function toggleOrderDetailMenu(e) { e?.stopPropagation?.(); byId("odMenu")?.classList.toggle("hidden"); }
+document.addEventListener("click", (e) => { if (!e.target.closest?.(".od-menu-wrap")) byId("odMenu")?.classList.add("hidden"); });
+async function copyOrderId(id) {
+  byId("odMenu")?.classList.add("hidden");
+  try { await navigator.clipboard.writeText(String(id)); showToast("Order ID copied.", "success"); } catch (_) { showToast(String(id), "info"); }
+}
+function openOrderIssueForm() {
+  byId("odMenu")?.classList.add("hidden");
+  const f = byId("disputeForm");
+  if (f) { f.classList.remove("hidden"); f.scrollIntoView({ behavior: "smooth", block: "center" }); }
+  else showToast("An issue is already open on this order.", "info");
+}
 async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (!session) return '<div class="empty-state">Please log in.</div>';
   const { data: order, error } = await sb
     .from("orders")
-    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng), items:order_items(*,variant:product_variants(name),product:products(name)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at, raised_by), package:vendor_packages(name)")
+    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng, logo_url, avg_rating, review_count, verification_status), items:order_items(*,variant:product_variants(name),product:products(name,photos)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at, raised_by), package:vendor_packages(name)")
     .eq("id", orderId)
     .maybeSingle();
   if (error || !order) return '<div class="empty-state">Order not found.</div>';
@@ -24789,6 +24983,11 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     setTimeout(updateOrderDeliveryEta, 0);
   }
 
+  // Customers get the redesigned page; vendors and admins keep the working layout below.
+  const newView = isCustomer && !isVendor && profile?.role !== "admin";
+  const chatOpenStates = ["confirmed", "payment_unresolved", "handed_over", "returned", "disputed"].includes(String(order.status || "")) || (order.status === "completed" && Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000);
+  if (newView) html = customerOrderTopHtml(order, { isCustomer, sourcePerspective, contactAllowed: chatOpenStates && !!order.vendor_id });
+
   if(order.__serviceOffer?.status==='payment_reported' && isVendor){
     html += `<div class="card service-payment-confirm-card"><h3><i class="fa-solid fa-hand-holding-dollar"></i> Service payment reported</h3><p class="muted">The buyer has reported a bank transfer of <strong>${naira(order.__serviceOffer.current_price)}</strong>. Check your account and either confirm receipt or dispute the payment.</p><div class="flex" style="gap:.55rem;flex-wrap:wrap;"><button type="button" class="btn btn-sm" onclick="confirmServiceOfferPayment('${order.__serviceOffer.id}')"><i class="fa-solid fa-check"></i> Confirm payment received</button><button type="button" class="btn btn-sm btn-danger" onclick="disputeServiceOfferPayment('${order.__serviceOffer.id}')"><i class="fa-solid fa-triangle-exclamation"></i> Dispute payment</button></div></div>`;
   } else if(order.__serviceOffer?.status==='payment_reported' && isCustomer){
@@ -24826,7 +25025,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
-  if (order.delivery_method === "pickup" && isCustomer) {
+  if (order.delivery_method === "pickup" && isCustomer && !newView) {
     const addr = [order.vendor?.address, order.vendor?.city].filter(Boolean).map(esc).join(", ");
     html += `<div class="card"><h3><i class="fa-solid fa-location-dot"></i> Pickup location</h3>
       ${addr ? `<p>${addr}</p>` : `<p class="muted">This vendor hasn't listed a pickup address yet. Message them to confirm where to collect your order.</p>`}
@@ -24917,7 +25116,14 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     html += `<div class="card order-notes-card hidden" id="orderNotesCard" data-order-id="${esc(order.id)}" data-is-customer="${isCustomer ? "1" : "0"}" data-open="${["completed", "cancelled"].includes(String(order.status || "")) ? "0" : "1"}"></div>`;
     setTimeout(() => hydrateOrderNotes(order.id), 0);
   }
-  html += `<div class="order-action-wrap" style="margin-top:1.35rem;display:flex;gap:.85rem;flex-wrap:wrap;align-items:center;">${orderActionButtonsHtml(order, isCustomer, isVendor, feePaid)}</div>`;
+  let odBottomBar = "";
+  if (newView) {
+    const parts = orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, { parts: true });
+    if (parts.main) html += `<div class="order-action-wrap od-action-wrap">${parts.main}</div>`;
+    odBottomBar = parts.bottom ? `<div class="od-bottom-bar">${parts.bottom}</div>` : "";
+  } else {
+    html += `<div class="order-action-wrap" style="margin-top:1.35rem;display:flex;gap:.85rem;flex-wrap:wrap;align-items:center;">${orderActionButtonsHtml(order, isCustomer, isVendor, feePaid)}</div>`;
+  }
 
   if (isCustomer && order.status === "completed" && !order.review) {
     html += `<div class="card"><h3>Leave a review</h3>
@@ -24956,6 +25162,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
 
   const orderBackView = isVendor ? "vendorDashboard" : "buyerOrders";
   const orderBackParams = {};
+  if (newView) return `<div class="od-page">${html}${odBottomBar}</div>`;
   return html;
 }
 
@@ -25166,8 +25373,9 @@ async function showOrderBuyerLocation(orderId, buyerLat, buyerLng, vendorLat, ve
   requestAnimationFrame(() => requestAnimationFrame(() => map?.invalidateSize(true)));
 }
 
-function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
+function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {}) {
   const buttons = [];
+  const bottom = [];   // Edit / Cancel live in the bottom bar of the redesigned page
   const isDeliveryOrder = order.delivery_method === "delivery";
   const feeType = order.order_type === "sale" ? "sale_price" : "rental_fee";
   const payments = Array.isArray(order.payments) ? order.payments : [];
@@ -25187,12 +25395,15 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
   }
   // The "Payment reported" card already carries its own Message vendor button, so skip this one then.
   const paymentReportCardShown = payments.some((p) => p.status === "pending" && String(p.provider_reference || "").trim().toLowerCase() === "buyer_report");
-  if (isCustomer && order.vendor_id && !paymentReportCardShown && (["confirmed", "payment_unresolved", "handed_over", "returned", "disputed"].includes(String(order.status || "")) || (order.status === "completed" && Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000))) {
+  if (!opts.parts && isCustomer && order.vendor_id && !paymentReportCardShown && (["confirmed", "payment_unresolved", "handed_over", "returned", "disputed"].includes(String(order.status || "")) || (order.status === "completed" && Date.now() - new Date(order.completed_at || order.status_changed_at || order.created_at || 0).getTime() < 24 * 3600 * 1000))) {
     buttons.push(`<div class="order-contact-row" style="width:100%;"><button class="btn btn-sm order-action-neutral order-message-vendor-btn" type="button" onclick="startConversationWithVendor('${order.vendor_id}')"><i class="fa-solid fa-message"></i> Message vendor</button><button class="btn btn-sm order-call-btn" type="button" onclick="callVendorFromOrder('${order.vendor_id}')"><i class="fa-solid fa-phone"></i> Call</button></div>`);
   }
   if (isCustomer && order.status === "pending") {
     const editBtn = (order.order_type !== "sale" || !order.package_id) ? `<button class="btn btn-sm order-action-edit" onclick="openEditOrderModal('${order.id}')"><i class="fa-solid fa-pen"></i> Edit order</button>` : "";
-    buttons.push(`<div class="order-action-pair"><button class="btn btn-sm btn-danger order-action-cancel" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>${editBtn}</div>`);
+    if (opts.parts) {
+      if (editBtn) bottom.push(`<button type="button" class="od-btn od-btn-soft" onclick="openEditOrderModal('${order.id}')"><i class="fa-solid fa-pen"></i> Edit Order</button>`);
+      bottom.push(`<button type="button" class="od-btn od-btn-danger" onclick="updateOrderStatus('${order.id}','cancelled')"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button>`);
+    } else buttons.push(`<div class="order-action-pair"><button class="btn btn-sm btn-danger order-action-cancel" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>${editBtn}</div>`);
   }
   if (isCustomer && order.status === "confirmed") {
     const paidRow = payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
@@ -25205,7 +25416,8 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
     if (servicePaymentReported) {
       buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Payment reported. Waiting for the vendor to confirm receipt.</p>`);
     } else if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) {
-      buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
+      if (opts.parts) bottom.push(`<button type="button" class="od-btn od-btn-danger" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button>`);
+      else buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
     } else {
       buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
     }
@@ -25229,6 +25441,7 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
     if (feePaid) { buttons.push(`<button class="btn btn-sm order-action-neutral" onclick="confirmReceiveOrder('${order.id}')"><i class="fa-solid fa-check"></i> Confirm &amp; complete</button>`); buttons.push(notReceivedButtonHtml(order)); }
     else buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Waiting on payment before this order can be completed.</p>`);
   }
+  if (opts.parts) return { main: buttons.join(""), bottom: bottom.join("") };
   return buttons.join("");
 }
 
@@ -31654,11 +31867,21 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
      Grid/list/map are separate presentation modes.
      --------------------------------------------------------------- */
   let vendorDirectoryExpanded = false;
-  let vendorDirectorySort = "alphabetical";
+  let vendorDirectorySort = "shuffled";   // mixed order by default; A-Z / closest are one tap away
   let vendorDirectoryMode = "map";
 
+  // A vendor's place in the mixed order depends on its id and the current 10-minute slot,
+  // so the order is stable while you browse and reshuffles on its own every few minutes.
+  function vendorShuffleRank(id) {
+    const seed = `${id}:${Math.floor(Date.now() / 600000)}`;
+    let h = 2166136261;
+    for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+    h ^= h >>> 13; h = Math.imul(h, 1274126177); h ^= h >>> 16;
+    return h >>> 0;
+  }
   function vendorDirectorySortList(list) {
     const out = [...(list || [])];
+    if (vendorDirectorySort === "shuffled") return out.sort((a, b) => vendorShuffleRank(a.id) - vendorShuffleRank(b.id));
     if (vendorDirectorySort === "closest" && typeof buyerLocation !== "undefined" && buyerLocation) {
       return out.sort((a, b) => {
         const da = a.lat != null && a.lng != null
@@ -31752,7 +31975,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
   };
 
   window.setVendorDirectorySort = function (mode) {
-    vendorDirectorySort = mode === "closest" ? "closest" : "alphabetical";
+    vendorDirectorySort = ["closest", "alphabetical", "shuffled"].includes(mode) ? mode : "shuffled";
     vendorDirectoryExpanded = true;
     renderVendorDirectoryCards();
   };
@@ -31765,7 +31988,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       const savedView = localStorage.getItem("levromart_vendors_view");
       vendorDirectoryMode = ["grid", "list", "map"].includes(savedView) ? savedView : "map";
     } catch (_) { vendorDirectoryMode = "map"; }
-    vendorDirectorySort = "alphabetical";
+    vendorDirectorySort = "shuffled";
     // The "Rent Items" quick action sets this to 'rent' before navigating
     // here -- but nothing ever reset it back, so it silently stayed 'rent'
     // (or 'buy'/'both') on every later visit to this tab, even a plain tap
@@ -31805,6 +32028,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         <label>City<select id="vendorCityFilter" onchange="filterVendorsDirectory()"><option value="">All cities</option></select></label>
         <label>Category<select id="vendorCategoryFilter" onchange="filterVendorsDirectory()"><option value="">Known for: anything</option></select></label>
         <label>Arrange<select id="vendorSortFilter" onchange="setVendorDirectorySort(this.value)">
+          <option value="shuffled">Mixed (changes every few minutes)</option>
           <option value="alphabetical">A–Z</option>
           <option value="closest">Closest first</option>
         </select></label>
@@ -38042,11 +38266,14 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       const filter=row.querySelector(".order-filters-wrap"); if(!filter)return;
       row.querySelectorAll(":scope > .orders-search-slot").forEach(el=>el.remove());
       let wrap=row.querySelector(":scope > .final-order-search-wrap");
-      if(wrap) return;
-      row.querySelectorAll(":scope > .order-search-wrap").forEach(el=>el.remove());
-      wrap=document.createElement("div");wrap.className="order-search-wrap final-order-search-wrap";
-      wrap.innerHTML=`<button type="button" class="icon-btn order-search-toggle" aria-expanded="false" aria-label="Search orders" title="Search orders"><i class="fa-solid fa-magnifying-glass"></i></button><input id="orderHistorySearch" class="order-history-search" type="search" placeholder="Search orders…" autocomplete="off" />`;
-      filter.insertAdjacentElement("afterend",wrap);
+      if(wrap&&wrap.dataset.bound==="1") return;
+      if(!wrap){
+        row.querySelectorAll(":scope > .order-search-wrap").forEach(el=>el.remove());
+        wrap=document.createElement("div");wrap.className="order-search-wrap final-order-search-wrap";
+        wrap.innerHTML=`<button type="button" class="icon-btn order-search-toggle" aria-expanded="false" aria-label="Search orders" title="Search orders"><i class="fa-solid fa-magnifying-glass"></i></button><input id="orderHistorySearch" class="order-history-search" type="search" placeholder="Search orders…" autocomplete="off" />`;
+        filter.insertAdjacentElement("afterend",wrap);
+      }
+      wrap.dataset.bound="1";
       const input=wrap.querySelector("input");const toggle=wrap.querySelector("button");
       // Give each row its own input id without creating duplicate IDs.
       if(document.querySelectorAll("#orderHistorySearch").length>1) input.removeAttribute("id");
@@ -43361,6 +43588,114 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 /* Settings: just the arrow, no grey circle. */
 #app .settings-page-header .settings-back-btn{background:transparent !important;border:0 !important;box-shadow:none !important;color:var(--text) !important;width:2.4rem !important;min-width:2.4rem !important;height:2.4rem !important;padding:0 !important;border-radius:0 !important;font-size:1.25rem !important}
 #app .settings-page-header .settings-back-btn:active{opacity:.6;transform:none !important}
+
+.settings-help{margin-top:.7rem;font-size:.85rem;color:var(--text-muted)}
+.settings-help summary{cursor:pointer;font-weight:700;color:var(--text)}
+.settings-help ol{padding-left:1.1rem;margin:.5rem 0 0}
+.settings-help li{margin:.3rem 0}
+#pushCheckStatus.push-ok{color:var(--text);font-weight:600}
+
+/* ================= Customer order details (redesigned) ================= */
+.od-page{max-width:560px;margin:0 auto;padding:0 0 calc(7.5rem + env(safe-area-inset-bottom));--od-green:var(--primary,#0B6E4A);--od-deep:#0b3b2b;--od-border:color-mix(in srgb,var(--text) 9%,transparent);--od-muted:var(--text-muted,#64748b)}
+.od-page *{box-sizing:border-box}
+.od-header{display:flex;align-items:center;gap:.8rem;padding:.85rem 1rem;margin:-.4rem -1rem .9rem;background:var(--od-deep);color:#fff;border-radius:0 0 22px 22px}
+.od-back,.od-more{flex:0 0 auto;width:2.5rem;height:2.5rem;border:0;border-radius:50%;background:transparent;color:#fff;font-size:1.2rem;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.od-more{background:rgba(255,255,255,.12)}
+.od-header-title{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.od-header-title strong{font-size:1.2rem}
+.od-header-title span{font-size:.82rem;color:rgba(255,255,255,.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.od-menu-wrap{position:relative}
+.od-menu{position:absolute;right:0;top:calc(100% + .35rem);z-index:30;min-width:12.5rem;background:var(--card);color:var(--text);border:1px solid var(--od-border);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:.3rem}
+.od-menu.hidden{display:none}
+.od-menu button{display:flex;align-items:center;gap:.6rem;width:100%;border:0;background:none;color:inherit;font:inherit;font-size:.9rem;padding:.65rem .7rem;border-radius:10px;cursor:pointer;text-align:left}
+.od-menu button:active{background:color-mix(in srgb,var(--text) 8%,transparent)}
+.od-card{background:var(--card);border:1px solid var(--od-border);border-radius:18px;padding:1rem;margin:0 0 .8rem;box-shadow:0 2px 10px rgba(15,23,42,.04)}
+.od-card h3{margin:0 0 .6rem;font-size:1.02rem;display:flex;align-items:center;gap:.45rem}
+.od-card-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.5rem;border-bottom:1px solid var(--od-border);padding-bottom:.55rem}
+.od-card-head h3{margin:0}
+.od-link{color:var(--od-green);font-weight:600;font-size:.86rem;text-decoration:none;white-space:nowrap;display:inline-flex;align-items:center;gap:.35rem}
+.od-link .fa-chevron-right{font-size:.7rem}
+.od-muted{color:var(--od-muted);font-size:.85rem}
+.od-price{color:var(--od-green)}
+/* status card */
+.od-status{position:relative;display:grid;grid-template-columns:auto 1fr auto;gap:.2rem .85rem;align-items:center;padding:1rem}
+.od-status-icon{width:3.4rem;height:3.4rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#fff;background:var(--od-tone)}
+.od-status-copy{display:flex;flex-direction:column;min-width:0}
+.od-kicker{font-size:.82rem;color:var(--od-muted)}
+.od-status-name{font-size:1.65rem;line-height:1.15;color:var(--od-tone-text)}
+.od-placed{font-size:.88rem;color:var(--text)}
+.od-pill{align-self:start;font-size:.78rem;font-weight:700;padding:.28rem .7rem;border-radius:999px;background:var(--od-tone-soft);color:var(--od-tone-text);white-space:nowrap}
+.od-strip{grid-column:1/-1;display:flex;gap:.6rem;align-items:flex-start;padding:.65rem .8rem;margin-top:.6rem;border-radius:12px;background:color-mix(in srgb,var(--text) 6%,transparent);font-size:.84rem;color:var(--od-muted)}
+.od-strip-card{margin:0 0 .8rem}
+.od-tone-pending{--od-tone:#f59e0b;--od-tone-text:#b45309;--od-tone-soft:#fde4b8;background:#fff6e8}
+.od-tone-confirmed{--od-tone:#2563eb;--od-tone-text:#1d4ed8;--od-tone-soft:#dbe7ff;background:#eef4ff}
+.od-tone-handed{--od-tone:#0d9488;--od-tone-text:#0f766e;--od-tone-soft:#cdeee9;background:#ecf8f6}
+.od-tone-done{--od-tone:var(--od-green);--od-tone-text:var(--od-green);--od-tone-soft:#cfeedd;background:#ecf8f1}
+.od-tone-cancelled{--od-tone:#dc2626;--od-tone-text:#b91c1c;--od-tone-soft:#fbd5d5;background:#fdeeee}
+.od-tone-disputed{--od-tone:#f59e0b;--od-tone-text:#b45309;--od-tone-soft:#fde4b8;background:#fff6e8}
+.od-tone-unresolved{--od-tone:#7c3aed;--od-tone-text:#6d28d9;--od-tone-soft:#e6dcfb;background:#f3eefe}
+@media(prefers-color-scheme:dark){.od-tone-pending,.od-tone-confirmed,.od-tone-handed,.od-tone-done,.od-tone-cancelled,.od-tone-disputed,.od-tone-unresolved{background:color-mix(in srgb,var(--od-tone) 14%,var(--card))}.od-status-name,.od-pill{color:var(--text)}}
+:root[data-theme="dark"] .od-tone-pending,:root[data-theme="dark"] .od-tone-confirmed,:root[data-theme="dark"] .od-tone-handed,:root[data-theme="dark"] .od-tone-done,:root[data-theme="dark"] .od-tone-cancelled,:root[data-theme="dark"] .od-tone-disputed,:root[data-theme="dark"] .od-tone-unresolved,:root[data-theme="black"] .od-tone-pending,:root[data-theme="black"] .od-tone-confirmed,:root[data-theme="black"] .od-tone-handed,:root[data-theme="black"] .od-tone-done,:root[data-theme="black"] .od-tone-cancelled,:root[data-theme="black"] .od-tone-disputed,:root[data-theme="black"] .od-tone-unresolved{background:color-mix(in srgb,var(--od-tone) 14%,var(--card))}
+:root[data-theme="dark"] .od-status-name,:root[data-theme="black"] .od-status-name{color:var(--text)}
+/* actions */
+.od-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem;margin:0 0 .9rem}
+.od-actions .od-btn-primary:only-child{grid-column:1/-1}
+.od-btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:3.1rem;padding:0 1rem;border-radius:14px;font:inherit;font-size:.95rem;font-weight:700;cursor:pointer;border:1px solid transparent;-webkit-tap-highlight-color:transparent}
+.od-btn-primary{background:var(--od-green);color:#fff;grid-column:span 2}
+.od-btn-light{background:var(--card);color:var(--text);border-color:var(--od-border);box-shadow:0 1px 4px rgba(15,23,42,.05)}
+.od-btn-soft{background:color-mix(in srgb,var(--od-green) 10%,var(--card));color:var(--od-green);border-color:color-mix(in srgb,var(--od-green) 35%,transparent)}
+.od-btn-danger{background:#ef3b4f;color:#fff}
+.od-btn-small{min-height:2.5rem;padding:0 .8rem;font-size:.85rem;border-radius:12px}
+.od-btn:active{transform:none;filter:none;opacity:.9}
+/* tracker */
+.od-tracker{display:grid;grid-template-columns:repeat(4,1fr);position:relative;padding:1rem .4rem}
+.od-step{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.35rem;position:relative;padding:0 .15rem}
+.od-step::before{content:"";position:absolute;top:1.35rem;left:-50%;width:100%;border-top:2px dashed var(--od-border);z-index:0}
+.od-step:first-child::before{display:none}
+.od-step.is-done::before,.od-step.is-current::before{border-top:2px solid var(--od-green)}
+.od-step-dot{position:relative;z-index:1;width:2.7rem;height:2.7rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--text) 10%,var(--card));color:var(--od-muted);font-size:1rem}
+.od-step.is-done .od-step-dot,.od-step.is-current .od-step-dot{background:var(--od-green);color:#fff}
+.od-step.is-current .od-step-dot{box-shadow:0 0 0 4px color-mix(in srgb,var(--od-green) 22%,transparent)}
+.od-step-label{font-size:.78rem;color:var(--od-muted);line-height:1.2}
+.od-step.is-done .od-step-label,.od-step.is-current .od-step-label{color:var(--od-green);font-weight:700}
+.od-step small{font-size:.7rem;color:var(--od-muted)}
+/* info */
+.od-info{display:flex;gap:.8rem;align-items:center;border:1px solid color-mix(in srgb,var(--od-tone) 22%,transparent);border-radius:18px;padding:.9rem 1rem;margin:0 0 .8rem}
+.od-info-icon{flex:0 0 auto;width:3rem;height:3rem;border-radius:50%;background:var(--od-tone);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.od-info strong{display:block;color:var(--od-tone-text);font-size:1rem}
+.od-info p{margin:.15rem 0 0;font-size:.86rem;color:var(--od-muted);line-height:1.4}
+:root[data-theme="dark"] .od-info strong,:root[data-theme="black"] .od-info strong{color:var(--text)}
+/* items */
+.od-item{display:flex;gap:.85rem;align-items:flex-start;padding:.55rem 0}
+.od-item+.od-item{border-top:1px solid var(--od-border)}
+.od-item-img{flex:0 0 auto;width:5.4rem;height:5.4rem;border-radius:14px;object-fit:cover;background:color-mix(in srgb,var(--text) 8%,var(--card));display:block}
+.od-item-img-empty{display:flex;align-items:center;justify-content:center;color:var(--od-muted);font-size:1.4rem}
+.od-item-copy{display:flex;flex-direction:column;gap:.2rem;min-width:0;flex:1}
+.od-item-copy strong{font-size:1rem;line-height:1.25;overflow-wrap:anywhere}
+.od-item-copy b{font-size:1.15rem}
+.od-note{margin:.6rem 0 0;font-size:.88rem;color:var(--od-muted)}
+/* payment + delivery */
+.od-pay-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:.9rem}
+.od-pay-grid>div{display:flex;flex-direction:column;gap:.15rem;min-width:0}
+.od-pay-grid b{font-size:1.1rem}
+.od-delivery{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.9rem}
+.od-delivery>div{display:flex;flex-direction:column;gap:.2rem;min-width:0}
+.od-delivery strong{overflow-wrap:anywhere}
+.od-eta strong{font-size:1rem}
+/* vendor */
+.od-vendor{display:grid;grid-template-columns:auto 1fr;gap:.7rem .8rem;align-items:center}
+.od-vendor-logo{width:3.4rem;height:3.4rem;border-radius:50%;object-fit:cover}
+.od-vendor-copy{display:flex;flex-direction:column;gap:.15rem;min-width:0}
+.od-verified{color:#16a34a;font-size:.9rem}
+.od-star{color:#f59e0b}
+.od-vendor-actions{grid-column:1/-1;display:flex;gap:.55rem}
+.od-vendor-actions .od-btn{flex:1}
+/* bottom bar */
+.od-bottom-bar{position:sticky;bottom:calc(74px + env(safe-area-inset-bottom));z-index:20;display:flex;gap:.7rem;padding:.7rem 0;background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.od-bottom-bar .od-btn{flex:1;min-height:3.2rem}
+.od-action-wrap{display:flex;flex-direction:column;gap:.6rem;margin:0 0 .9rem}
+.od-action-wrap .btn{width:100%;min-height:3.1rem;justify-content:center}
+@media(max-width:360px){.od-status{grid-template-columns:auto 1fr}.od-pill{grid-column:1/-1;justify-self:start}.od-step-label{font-size:.7rem}}
 
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}

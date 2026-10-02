@@ -215,7 +215,9 @@ self.addEventListener('push', event => {
       );
 
 
-      return self.registration.showNotification(
+      // If a rich option is rejected on some phones, still show a plain notification
+      // (a push that ends without showing anything is what makes alerts "disappear").
+      const showRich = () => self.registration.showNotification(
         title,
         {
           body,
@@ -259,6 +261,7 @@ self.addEventListener('push', event => {
           ]
         }
       );
+      return showRich().catch(() => self.registration.showNotification(title, { body, icon: '/levromart-notification-icon.png', requireInteraction: data.requireInteraction === true, vibrate: [400, 200, 400, 200, 400], tag: data.tag ? String(data.tag) : undefined, renotify: true, data: { url } }));
 
     })()
   );

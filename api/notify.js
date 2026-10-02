@@ -31,6 +31,22 @@ module.exports = async function handler(req, res) {
     // "Decline" button on an incoming-call notification, pressed while the app is
     // closed. The service worker has no login, so it sends the one-time token that
     // was minted for this exact call + callee when the push was created.
+    // "Send a test call alert to my phone" from Settings: proves the whole push path for this user.
+    if (body.action === "test-push") {
+      const SUPABASE_URL = env("SUPABASE_URL");
+      const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+      const svc = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+      const me = await (await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${String(body.accessToken || "")}` } })).json();
+      if (!me || !me.id) { res.status(401).json({ error: "Please log in again." }); return; }
+      const out = await sendPush(SUPABASE_URL, svc, {
+        id: "test", user_id: me.id, type: "incoming_call", title: "Test call from Levromart",
+        body: "If you can see this with the app closed, call alerts work on this phone.",
+        target_view: "home", target_params: { callerName: "Levromart" }
+      });
+      res.status(200).json(out);
+      return;
+    }
+
     if (body.action === "decline-call") {
       const SUPABASE_URL = env("SUPABASE_URL");
       const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
@@ -174,6 +190,7 @@ const TYPE_ICON = [
   [/admin|vendor_(approved|application|deleted|renamed)|dispute/, "admin"],
   [/message/, "message"],
 ];
+const pushKind = (e) => /fcm\.googleapis|android/.test(String(e)) ? "android" : /push\.apple/.test(String(e)) ? "apple" : /mozilla/.test(String(e)) ? "firefox" : "other";
 const isHttps = (u) => /^https:\/\//.test(String(u || ""));
 async function pickNotificationIcon(SUPABASE_URL, svcHeaders, n) {
   const tp = n.target_params || {};
@@ -270,6 +287,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
   });
 
   let sent = 0;
+  const results = [];
 
   await Promise.all(
     subs.map(async (s) => {
@@ -287,7 +305,9 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
         );
 
         sent++;
+        results.push({ kind: pushKind(s.endpoint), ok: true });
       } catch (err) {
+        results.push({ kind: pushKind(s.endpoint), ok: false, status: err.statusCode || 0 });
         // 404/410 = the browser unsubscribed or the subscription expired.
         // Clean it up.
         if (err.statusCode === 404 || err.statusCode === 410) {
@@ -303,5 +323,5 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
     })
   );
 
-  return { sent };
+  return { sent, results };
 }
