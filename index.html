@@ -24297,19 +24297,10 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
-  if (canRecordPayment) {
-    const manualTypeOptions = isPayAfterDelivery
-      ? `${!deliveryDepositPaid ? `<option value="delivery_deposit_20">${deliveryDepositPercent}% delivery deposit</option>` : ""}${deliveryDepositPaid && !feePaid ? `<option value="${feeType}">Remaining balance</option>` : ""}`
-      : `${!feePaid ? `<option value="${feeType}">${feeType === "sale_price" ? "Full payment" : "Rental fee"}</option>` : ""}${!depositPaid ? `<option value="deposit">Refundable deposit</option>` : ""}`;
-    const manualAmount = isPayAfterDelivery ? (deliveryDepositPaid ? deliveryBalanceAmount : deliveryDepositAmount) : (feePaid ? Number(order.deposit_amount || 0) : Number(order.total_amount || 0));
-    html += `<div class="card ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-payment-card" : ""}"><h3><i class="fa-solid fa-hand-holding-dollar"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `Record ${deliveryRemainingPercent}% payment` : "Paid outside Paystack?"} ${infoPopoverHtml("recordPaymentInfo", "Use this only when you have actually received the customer's cash or bank transfer. It settles the current payment obligation and prevents another paid record for the same obligation.")}</h3>
-      ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `<p class="muted delivery-balance-payment-copy" style="margin:.45rem 0 .8rem;"><strong>Remaining ${deliveryRemainingPercent}% payment</strong><br>Confirm the customer's remaining <strong>${naira(manualAmount)}</strong> payment after you have actually received it.</p>` : ""}
-      <div id="recordPaymentError" class="error-text hidden"></div>
-      <label>Payment for</label><select id="rpType">${manualTypeOptions}</select>
-      <label>Amount</label><input type="number" id="rpAmount" value="${manualAmount}" />
-      <label>Method</label><select id="rpMethod"><option value="transfer" selected>Transfer</option><option value="cash">Cash</option></select>
-      <button class="btn btn-sm ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? "delivery-balance-manual-btn" : ""}" style="margin-top:0.8rem;width:100%;" onclick="recordOfflinePayment('${order.id}', ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? deliveryRemainingPercent : 'null'})"><i class="fa-solid fa-check-circle"></i> ${isDeliveryOrder && deliveryDepositPaid && !feePaid ? `Confirm ${deliveryRemainingPercent}% payment received` : "Mark as paid manually"}</button>
-    </div>`;
+  if (canRecordPayment && !buyerReportedPayment && !pendingReportedPayment) {
+    // The vendor no longer records payments by hand: they wait for the customer to
+    // report their transfer, then confirm (or dispute) it from the card above.
+    html += `<div class="card payment-waiting-card"><h3 style="margin:0 0 .35rem;"><i class="fa-solid fa-hourglass-half"></i> Waiting for the customer to pay</h3><p class="muted" style="margin:0;">Once the customer sends their payment and reports it, you'll be asked to confirm it here.</p></div>`;
   }
 
   if (isVendor && pendingReportedPayment && !openPaymentDispute && !buyerReportedPayment) {
@@ -42601,6 +42592,11 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 .order-action-pair{display:flex;justify-content:space-between;align-items:center;gap:.75rem;width:100%}
 #app .order-message-vendor-btn{display:flex !important;align-items:center !important;justify-content:center !important;width:100% !important;max-width:none !important;margin:0 !important;min-height:46px;background:var(--primary) !important;background-image:none !important;border-color:var(--primary) !important;color:#fff !important;-webkit-text-fill-color:#fff !important;text-align:center}
 #app .order-message-vendor-btn i{color:#fff !important}
+
+/* Vendor order page: confirm payment is blue; message customer is wide and centred. */
+#app .payment-confirm-btn,#app .btn.payment-confirm-btn{background:#2563eb !important;background-color:#2563eb !important;background-image:none !important;border-color:#2563eb !important;color:#fff !important;-webkit-text-fill-color:#fff !important}
+#app .order-buyer-contact-actions{width:100% !important;display:flex !important;justify-content:center !important}
+#app .order-contact-message-btn{width:100% !important;max-width:none !important;justify-content:center !important;text-align:center !important;min-height:46px}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
