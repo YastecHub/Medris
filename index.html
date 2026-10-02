@@ -17765,7 +17765,6 @@ async function renderPackageDetail(packageId) {
   if (morePackages?.length) {
     html += `<h3 class="section-title"><span><i class="fa-solid fa-layer-group"></i> More packages from ${esc(v.business_name || "this vendor")}</span></h3><div class="hscroll package-recommendation-strip">${morePackages.map((p) => packageCardHtml(p, p.vendor?.delivery_fee, true)).join("")}</div>`;
   }
-  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('home')"><i class="fa-solid fa-arrow-left"></i> Back to Marketplace</button>`;
   return html;
 }
 
@@ -17850,7 +17849,6 @@ async function renderCommissionServiceDetail(product,priceHint,offers){
   if((isBuyer||isVendor)&&offers.length){
     html+=`<div class="card service-offers-card"><div class="service-offers-head"><h3><i class="fa-solid fa-comments-dollar"></i> ${isVendor?'Service requests':'Your service requests'}</h3><span class="muted">${offers.length} request${offers.length===1?'':'s'}</span></div>${renderServiceOfferList(offers,isBuyer,isVendor)}</div>`;
   }
-  html+=`<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('home')"><i class="fa-solid fa-arrow-left"></i> Back to Marketplace</button>`;
   return html;
 }
 window.submitServiceOffer=async function(listingId){
@@ -17890,13 +17888,7 @@ async function __levroOriginalRenderProductDetail(productId) {
   product.variants=loadedProductVariants||[]; currentProductDetail=product;
   // The vendor can only be messaged from a product page while the customer has an
   // accepted, still-open order for it (or within 24h of one being completed).
-  let hasOrderedThisProduct=false;
-  if(session?.user?.id && !ownListing && profile?.role!=="admin"){
-    try{
-      const {data:orderedRows}=await sb.from("order_items").select("id, order:orders!inner(buyer_id,status,completed_at,status_changed_at,created_at)").eq("product_id",productId).eq("order.buyer_id",session.user.id).in("order.status",["confirmed","handed_over","returned","payment_unresolved","disputed","completed"]).limit(20);
-      hasOrderedThisProduct=(orderedRows||[]).some((r)=>{const o=r.order||{};if(o.status!=="completed")return true;const t=new Date(o.completed_at||o.status_changed_at||o.created_at||0).getTime();return Date.now()-t<24*3600*1000;});
-    }catch(_){}
-  }
+  const hasOrderedThisProduct=false;
   sb.rpc("increment_product_view",{p_product_id:productId}).then(()=>{}).catch(()=>{});
   const st={avg_rating:product.vendor?.avg_rating??0,review_count:product.vendor?.review_count??0};
   setTimeout(async()=>{try{const {data:stats}=await sb.rpc("get_vendor_stats",{p_vendor_id:product.vendor.id});const row=(stats&&stats[0])||{};const root=document.querySelector(`.product-detail-card[data-product-detail-id="${CSS.escape(String(productId))}"]`);if(!root)return;root.querySelector("[data-owner-stat=saved]")?.replaceChildren(document.createTextNode(Number(row.favorites_count??0).toLocaleString()));root.querySelector("[data-owner-stat=revenue]")?.replaceChildren(document.createTextNode(naira(Number(row.revenue??0))));root.querySelector("[data-owner-stat=sales]")?.replaceChildren(document.createTextNode(Number(row.sales_count??0).toLocaleString()));}catch(_){}},0);
@@ -17952,7 +17944,8 @@ async function __levroOriginalRenderProductDetail(productId) {
     <div class="product-detail-actions">
       ${(() => {
         if (profile?.role === "admin") return "";
-        if (!hasOrderedThisProduct) return "";
+        // No Message vendor button on product pages at all: customers message a vendor only from an accepted order.
+        return "";
         if (!canMessageVendorNow(product.vendor)) {
           const hs = vendorHoursStatus(product.vendor);
           return `<span class="storefront-contact-closed" title="${esc(`${product.vendor.business_name || "This vendor"} is outside working hours right now${hs.todayText ? ` (${hs.todayLabel}: ${hs.todayText})` : ""}.`)}"><i class="fa-regular fa-clock"></i><span>Outside working hours</span></span>`;
@@ -18036,7 +18029,6 @@ async function __levroOriginalRenderProductDetail(productId) {
     }
   }
 
-  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('home')"><i class='fa-solid fa-arrow-left'></i> Back to Marketplace</button>`;
   return html;
 }
 
@@ -19283,7 +19275,7 @@ function renderContactUs() {
       ${socials.map((s) => `<a class="contact-us-social-btn" href="${s.href}" target="_blank" rel="noopener"><img src="${s.logo}" alt="${esc(s.label)}" class="contact-us-social-logo" loading="lazy" decoding="async"><span>${esc(s.label)}</span></a>`).join("")}
     </div>
     <p class="muted contact-us-handle">@levromart on all platforms</p>
-    ${!session ? `<button type="button" class="btn btn-sm btn-outline" style="margin-top:1.2rem;" onclick="navigate('home')"><i class="fa-solid fa-arrow-left"></i> Back to Levromart</button>` : ""}
+
   </div>`;
 }
 async function renderSupportRequest() {
@@ -24380,7 +24372,6 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
 
   const orderBackView = isVendor ? "vendorDashboard" : "buyerOrders";
   const orderBackParams = {};
-  html += `<button type="button" class="btn btn-sm" style="margin-top:1rem;" onclick='event.preventDefault();event.stopPropagation();navigate("${orderBackView}",{});return false;'><i class="fa-solid fa-arrow-left"></i> ${isVendor ? "Back to Dashboard" : "Back to Orders"}</button>`;
   return html;
 }
 
@@ -24614,8 +24605,8 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid) {
     buttons.push(`<button class="btn btn-sm order-action-neutral order-message-vendor-btn" type="button" onclick="startConversationWithVendor('${order.vendor_id}')"><i class="fa-solid fa-message"></i> Message vendor</button>`);
   }
   if (isCustomer && order.status === "pending") {
-    if (order.order_type !== "sale" || !order.package_id) buttons.push(`<button class="btn btn-sm order-action-edit" onclick="openEditOrderModal('${order.id}')"><i class="fa-solid fa-pen"></i> Edit order</button>`);
-    buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>`);
+    const editBtn = (order.order_type !== "sale" || !order.package_id) ? `<button class="btn btn-sm order-action-edit" onclick="openEditOrderModal('${order.id}')"><i class="fa-solid fa-pen"></i> Edit order</button>` : "";
+    buttons.push(`<div class="order-action-pair"><button class="btn btn-sm btn-danger order-action-cancel" onclick="updateOrderStatus('${order.id}','cancelled')">Cancel order</button>${editBtn}</div>`);
   }
   if (isCustomer && order.status === "confirmed") {
     const paidRow = payments.find((p) => String(p.payment_type || "").trim().toLowerCase() === feeType && p.status === "paid");
@@ -25221,6 +25212,17 @@ function productReviewListHtml(reviews) {
   if (!reviews.length) return `<p class="muted">No reviews yet for this product.</p>`;
   return `<div class="product-review-list">${reviews.map((r) => `<div class="card review-card">${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.3rem;height:2.3rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.3rem", "", r.buyer_name || "Customer")}<div><div class="flex" style="justify-content:space-between;gap:1rem;"><strong>${esc(r.buyer_name || "A buyer")}</strong><span class="star-display">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span></div>${r.comment ? `<p style="margin:0.3rem 0 0;">${esc(r.comment)}</p>` : ""}<p class="muted" style="font-size:0.75rem;margin-top:0.2rem;">${new Date(r.created_at).toLocaleDateString()}</p></div></div>`).join("")}</div>`;
 }
+function toggleProductReviewList(btn) {
+  const panel = btn?.nextElementSibling;
+  if (!panel) return;
+  const open = panel.classList.contains("hidden");
+  panel.classList.toggle("hidden", !open);
+  btn.setAttribute("aria-expanded", String(open));
+  const label = btn.querySelector("span");
+  if (label) label.textContent = label.textContent.replace(/^(View|Hide) all ratings/, open ? "Hide all ratings" : "View all ratings");
+  const chev = btn.querySelector("i");
+  if (chev) chev.className = `fa-solid ${open ? "fa-chevron-up" : "fa-chevron-down"}`;
+}
 async function hydrateProductReviewSection(productId) {
   const body = byId(`productReviewsBody-${productId}`);
   if (!body) return;
@@ -25244,7 +25246,10 @@ async function hydrateProductReviewSection(productId) {
         <button type="button" class="btn btn-sm" onclick="submitProductReview('${eligible.order_id}','${eligible.vendor_id}','${productId}')"><i class="fa-solid fa-paper-plane"></i> Submit rating</button>
       </div>`
     : "";
-  body.innerHTML = `${summaryHtml}${formHtml}${productReviewListHtml(rows)}`;
+  const listHtml = rows.length
+    ? `<button type="button" class="product-reviews-toggle" aria-expanded="false" onclick="toggleProductReviewList(this)"><span>View all ratings (${rows.length})</span><i class="fa-solid fa-chevron-down"></i></button><div class="product-review-collapsible hidden">${productReviewListHtml(rows)}</div>`
+    : productReviewListHtml(rows);
+  body.innerHTML = `${summaryHtml}${formHtml}${listHtml}`;
 }
 async function submitProductReview(orderId, vendorId, productId) {
   if (!session) { showLogin(); return; }
@@ -26466,7 +26471,6 @@ async function renderVendorSuggestionsInbox() {
   html += (suggestions && suggestions.length)
     ? suggestions.map(suggestionRowHtml).join("")
     : `<div class="empty-state">Nothing yet.</div>`;
-  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('vendorDashboard')"><i class='fa-solid fa-arrow-left'></i> Back to shop</button>`;
   return html;
 }
 
@@ -42589,6 +42593,14 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 #app .browse-filter-toolbar > #searchInput,#app .browse-filter-toolbar > .levro-compact-search-wrap{order:3}
 #app .browse-filter-toolbar.final-search-open > #searchInput{flex:1 1 100% !important;order:5 !important;width:100% !important}
 #app .browse-filter-toolbar.final-search-open > .levro-final-search-toggle{order:2 !important;margin-left:auto !important;position:static !important}
+
+.product-reviews-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;margin:.7rem 0 .2rem;padding:.7rem .9rem;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font:inherit;font-size:.9rem;font-weight:700;cursor:pointer}
+.product-reviews-toggle i{color:var(--text-muted);font-size:.8rem}
+.product-review-collapsible{margin-top:.5rem}
+.product-review-collapsible.hidden{display:none}
+.order-action-pair{display:flex;justify-content:space-between;align-items:center;gap:.75rem;width:100%}
+#app .order-message-vendor-btn{display:flex !important;align-items:center !important;justify-content:center !important;width:100% !important;max-width:none !important;margin:0 !important;min-height:46px;background:var(--primary) !important;background-image:none !important;border-color:var(--primary) !important;color:#fff !important;-webkit-text-fill-color:#fff !important;text-align:center}
+#app .order-message-vendor-btn i{color:#fff !important}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
@@ -42949,5 +42961,29 @@ function hideLeviFromPanel() {
   };
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",watch);else watch();
   setInterval(sync,3000);
+})();
+
+// ---- Come back to the same spot in the conversation list ----
+(function(){
+  const orig=window.navigate;
+  if(typeof orig!=="function"||window.__msgListScrollWrapped)return;
+  window.__msgListScrollWrapped=true;
+  let saved=null;
+  window.navigate=async function(view,params){
+    try{
+      const inList=typeof currentView!=="undefined"&&currentView==="messages"&&!(typeof currentViewParams!=="undefined"&&currentViewParams?.conversationId);
+      if(inList&&view==="messages"&&params?.conversationId){
+        const wrap=document.getElementById("convListWrap");
+        saved={y:window.scrollY||document.documentElement.scrollTop||0,inner:wrap?wrap.scrollTop:0};
+      }else if(view!=="messages"){saved=null;}
+    }catch(_){}
+    const restore=view==="messages"&&!params?.conversationId&&saved?{...saved}:null;
+    const result=await orig.apply(this,arguments);
+    if(restore){
+      const apply=()=>{try{window.scrollTo(0,restore.y);const w=document.getElementById("convListWrap");if(w&&restore.inner)w.scrollTop=restore.inner;}catch(_){}};
+      [0,60,160,360].forEach((t)=>setTimeout(apply,t));
+    }
+    return result;
+  };
 })();
 </script>
