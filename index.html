@@ -9366,7 +9366,7 @@ function notificationSystemIconHtml(n) {
   const map = {
     order_placed: ["fa-bag-shopping", G], new_order: ["fa-cart-plus", G],
     order_cancelled_by_vendor: ["fa-ban", R], request_cancelled: ["fa-ban", R],
-    order_reminder: ["fa-clock", A], order_updated: ["fa-pen-to-square", B],
+    order_reminder: ["fa-clock", A], order_note: ["fa-note-sticky", B], order_updated: ["fa-pen-to-square", B],
     payment_received: ["fa-money-bill-wave", "#16a34a"], payment_confirmed: ["fa-circle-check", "#16a34a"],
     manual_payment_reported: ["fa-hand-holding-dollar", A], service_payment_reported: ["fa-hand-holding-dollar", A],
     payment_unresolved_24h: ["fa-hourglass-half", R], new_dispute: ["fa-scale-balanced", R],
@@ -23923,6 +23923,78 @@ document.addEventListener("click", (e) => {
   document.querySelectorAll(".orders-more-menu:not(.hidden)").forEach((m) => m.classList.add("hidden"));
 });
 
+// ---------- ORDER NOTES ----------
+// A small, limited note channel on an order (max 500 chars, 10 per side) so a
+// customer and vendor can sort out the practical bits without an open chat.
+async function loadOrderNotes(orderId) {
+  const { data } = await sb.from("order_notes").select("id,sender_id,body,created_at").eq("order_id", orderId).order("created_at", { ascending: true }).limit(60);
+  return data || [];
+}
+function orderNoteRowsHtml(notes, isCustomer) {
+  if (!notes.length) return '<p class="muted" style="margin:.2rem 0 .6rem;font-size:.85rem;">No notes yet.</p>';
+  return `<div class="order-notes-list">${notes.map((n) => {
+    const mine = n.sender_id === session?.user?.id;
+    const who = mine ? "You" : (isCustomer ? "Vendor" : "Customer");
+    const when = new Date(n.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return `<div class="order-note ${mine ? "mine" : "theirs"}"><span class="order-note-who">${esc(who)} · ${esc(when)}</span><p>${linkifyChatText(maskSensitiveNumbers(n.body))}</p></div>`;
+  }).join("")}</div>`;
+}
+async function hydrateOrderNotes(orderId) {
+  const card = byId("orderNotesCard");
+  if (!card || card.dataset.orderId !== String(orderId)) return;
+  let notes = [];
+  try { notes = await loadOrderNotes(orderId); } catch (_) {}
+  const open = card.dataset.open === "1";
+  if (!notes.length && !open) return;
+  const isCustomer = card.dataset.isCustomer === "1";
+  card.classList.remove("hidden");
+  card.innerHTML = `<h3 style="margin-top:0;"><i class="fa-regular fa-note-sticky"></i> Notes</h3>${orderNoteRowsHtml(notes, isCustomer)}${open ? `<button type="button" class="btn btn-sm btn-outline" onclick="openOrderNoteBox('${esc(orderId)}')"><i class="fa-solid fa-pen"></i> ${notes.length ? (isCustomer ? "Add a note" : "Reply") : (isCustomer ? "Send a note to vendor" : "Send a note")}</button>` : ""}`;
+}
+async function openOrderNoteBox(orderId) {
+  if (!session) { showLogin(); return; }
+  byId("orderNoteModal")?.remove();
+  const card = byId("orderNotesCard");
+  const isCustomer = card ? card.dataset.isCustomer === "1" : true;
+  const modal = document.createElement("div");
+  modal.id = "orderNoteModal";
+  modal.className = "modal open";
+  modal.innerHTML = `<div class="modal-content order-note-modal">
+    <div class="modal-header"><h3><i class="fa-regular fa-note-sticky"></i> ${isCustomer ? "Note to vendor" : "Reply"}</h3><button type="button" class="icon-btn" aria-label="Close" onclick="byId('orderNoteModal')?.remove()"><i class="fa-solid fa-xmark"></i></button></div>
+    <div id="orderNoteThread" class="order-note-thread"><p class="muted" style="font-size:.85rem;">Loading…</p></div>
+    <textarea id="orderNoteInput" rows="3" maxlength="500" placeholder="${isCustomer ? "Write a short note for the vendor…" : "Write your reply…"}"></textarea>
+    <p id="orderNoteError" class="error-text hidden"></p>
+    <div class="flex" style="justify-content:flex-end;gap:.5rem;margin-top:.6rem;"><button type="button" class="btn btn-sm btn-outline" onclick="byId('orderNoteModal')?.remove()">Cancel</button><button type="button" class="btn btn-sm" id="orderNoteSendBtn" onclick="sendOrderNote('${esc(orderId)}',${isCustomer ? "true" : "false"})"><i class="fa-solid fa-paper-plane"></i> Send note</button></div>
+  </div>`;
+  modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+  try {
+    const notes = await loadOrderNotes(orderId);
+    const t = byId("orderNoteThread");
+    if (t) t.innerHTML = notes.length ? orderNoteRowsHtml(notes, isCustomer) : "";
+  } catch (_) { const t = byId("orderNoteThread"); if (t) t.innerHTML = ""; }
+  setTimeout(() => byId("orderNoteInput")?.focus(), 50);
+}
+async function sendOrderNote(orderId, isCustomer) {
+  const input = byId("orderNoteInput"), err = byId("orderNoteError"), btn = byId("orderNoteSendBtn");
+  if (!input || !btn) return;
+  const raw = input.value.trim();
+  err?.classList.add("hidden");
+  if (!raw) { if (err) { err.textContent = "Write something first."; err.classList.remove("hidden"); } return; }
+  const safe = maskOrBlockContactInfo(raw);
+  if (safe === null) { if (err) { err.textContent = "Please keep phone numbers and outside contact details out of notes."; err.classList.remove("hidden"); } return; }
+  btn.disabled = true;
+  try {
+    const { error } = await sb.rpc("add_order_note", { p_order_id: orderId, p_body: safe });
+    if (error) throw error;
+    byId("orderNoteModal")?.remove();
+    showToast(isCustomer ? "Note sent to the vendor." : "Reply sent.", "success");
+    hydrateOrderNotes(orderId);
+  } catch (e) {
+    if (err) { err.textContent = e.message || "Couldn't send the note. Please try again."; err.classList.remove("hidden"); }
+    btn.disabled = false;
+  }
+}
+
 function openOrderHistory() {
   document.getElementById("orderHistoryModal")?.remove();
   const doc = new DOMParser().parseFromString(window.__orderHistoryHtml || "", "text/html");
@@ -24275,6 +24347,10 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     </div>`;
   }
 
+  if ((isCustomer || isVendor) && profile?.role !== "admin") {
+    html += `<div class="card order-notes-card hidden" id="orderNotesCard" data-order-id="${esc(order.id)}" data-is-customer="${isCustomer ? "1" : "0"}" data-open="${["completed", "cancelled"].includes(String(order.status || "")) ? "0" : "1"}"></div>`;
+    setTimeout(() => hydrateOrderNotes(order.id), 0);
+  }
   html += `<div class="order-action-wrap" style="margin-top:1.35rem;display:flex;gap:.85rem;flex-wrap:wrap;align-items:center;">${orderActionButtonsHtml(order, isCustomer, isVendor, feePaid)}</div>`;
 
   if (isCustomer && order.status === "completed" && !order.review) {
@@ -32289,8 +32365,8 @@ window.renderVendorMapRail = function(){
         <div class="manual-payment-account-row"><span class="muted">Account number</span><strong>${esc(order.vendor?.account_number||"Not provided")}</strong>${order.vendor?.account_number?`<button type="button" class="icon-btn manual-payment-copy-btn" title="Copy account number" aria-label="Copy account number" onclick="navigator.clipboard?.writeText('${esc(order.vendor.account_number)}').then(()=>showToast('Account number copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i></button>`:""}</div>
       </div>
       ${!hasAccount ? `<div class="banner banner-warning" style="margin-top:.7rem;"><strong>Vendor payment details are not saved yet.</strong> Please contact the vendor before transferring.</div>` : ""}
-      <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}${order.vendor?.phone?`<a class="btn btn-sm btn-outline call-vendor-btn" href="${telLink(order.vendor.phone)}"><i class="fa-solid fa-phone"></i> Call vendor</a>`:""}</div>
-      <p class="muted" style="font-size:.78rem;margin-top:.9rem;"><strong>After you complete the transfer, you must tap “I’ve paid the vendor”.</strong> This is how Levromart records that you say you paid. The order will stay Payment unresolved until the vendor confirms receipt.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount},'${esc(paymentLabel)}')"><i class="fa-solid fa-check"></i> I’ve paid the vendor</button></div>`;
+      <div class="flex" style="gap:.55rem;margin-top:.8rem;flex-wrap:wrap;">${hasAccount?`<button type="button" class="btn btn-sm btn-outline" onclick="navigator.clipboard?.writeText('${esc(bankName)}\\n${esc(order.vendor?.account_name||"")}\\n${esc(order.vendor?.account_number||"")}').then(()=>showToast('Account details copied.','success')).catch(()=>showToast('Copy failed. Please copy it manually.','info'))"><i class="fa-regular fa-copy"></i> Copy all details</button>`:""}<button type="button" class="btn btn-sm btn-outline" onclick="openOrderNoteBox('${order.id}')"><i class="fa-regular fa-note-sticky"></i> Send a note to vendor</button></div>
+      <p class="muted" style="font-size:.78rem;margin-top:.9rem;"><strong>Once you’ve made the transfer, tap “I’ve made the payment”.</strong> This lets the vendor know your payment is on the way so they can start preparing your order.</p><div id="directPaymentError" class="error-text hidden"></div><button type="button" class="btn" id="directPaymentReportedBtn" style="width:100%;justify-content:center;margin-top:.45rem;" onclick="reportDirectVendorPayment('${order.id}',${amount},'${esc(paymentLabel)}')"><i class="fa-solid fa-check"></i> I’ve made the payment</button></div>`;
     document.body.appendChild(modal); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); requestAnimationFrame(()=>modal.classList.add("open"));
   };
   window.reportDirectVendorPayment = async function(orderId,amount,paymentStage=""){
@@ -42475,6 +42551,14 @@ html[data-theme="black"] .avatar-fallback{
 .chat-bubble.mine .chat-edit-actions .btn{border:1.5px solid rgba(255,255,255,.85) !important;background:transparent !important;background-image:none !important;color:#fff !important;-webkit-text-fill-color:#fff !important;box-shadow:none !important;font-weight:700 !important;opacity:1 !important;visibility:visible !important}
 .chat-bubble.mine .chat-edit-actions .btn:last-child{background:#fff !important;color:#0B6E4A !important;-webkit-text-fill-color:#0B6E4A !important;border-color:#fff !important}
 .chat-bubble .chat-edit-actions .btn{min-width:4.2rem}
+
+.order-notes-list{display:flex;flex-direction:column;gap:.45rem;margin:.2rem 0 .7rem}
+.order-note{border:1px solid var(--border);border-radius:12px;padding:.5rem .7rem;background:var(--card)}
+.order-note.mine{background:color-mix(in srgb,var(--primary) 9%,var(--card));border-color:color-mix(in srgb,var(--primary) 28%,var(--border))}
+.order-note p{margin:.15rem 0 0;font-size:.9rem;word-break:break-word}
+.order-note-who{font-size:.7rem;color:var(--text-muted);font-weight:700}
+.order-note-modal textarea{width:100%;margin-top:.5rem}
+.order-note-thread{max-height:34vh;overflow-y:auto}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
