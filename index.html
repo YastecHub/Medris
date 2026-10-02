@@ -10706,6 +10706,7 @@ function subscribeNotifications() {
         return;
       }
       playNotificationSound(payload.new);
+      try { if (!document.hidden) navigator.vibrate?.([150, 80, 150]); } catch (_) {}
       showToast(payload.new.title, "info");
       refreshNotifications();
       // Vendor approval/rejection and admin promotion/demotion change the
@@ -42673,6 +42674,10 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 .order-call-btn{display:inline-flex !important;align-items:center;justify-content:center;gap:.45rem;min-height:46px;border-radius:999px;border:1.5px solid var(--primary) !important;background:color-mix(in srgb,var(--primary) 10%,var(--card)) !important;color:var(--primary) !important;-webkit-text-fill-color:var(--primary) !important;font:inherit;font-weight:700;font-size:.9rem;cursor:pointer;padding:0 1rem}
 .order-call-btn i{color:var(--primary) !important}
 #app .order-buyer-contact-actions{margin-top:.6rem}
+
+#levroCallOverlay .lc-actions{gap:3.6rem !important}
+#app .order-call-btn,#app .btn.btn-sm.order-call-btn,#app .order-contact-row .order-call-btn{background:#2563eb !important;background-color:#2563eb !important;background-image:none !important;border:1.5px solid #2563eb !important;color:#fff !important;-webkit-text-fill-color:#fff !important}
+#app .order-call-btn i{color:#fff !important}
 </style>
 
 <script id="levromart-notif-longpress-full-text">
@@ -43072,13 +43077,30 @@ function hideLeviFromPanel() {
   const uid=()=>session?.user?.id;
   const sig=(payload)=>{try{call?.channel?.send({type:"broadcast",event:"sig",payload});}catch(_){}};
 
-  function ringStart(){
+  // Ring tone (incoming) / ring-back tone (outgoing), generated with the same audio
+  // context the notification chime uses (it is unlocked by the first tap in the app).
+  function ringStart(kind){
+    ringStop();
     try{
-      const Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx)return;
-      const ctx=new Ctx(); let on=true;
-      const beep=()=>{ if(!on)return; const o=ctx.createOscillator(),g=ctx.createGain(); o.frequency.value=480; g.gain.value=.08; o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+.35); };
-      beep(); const t=setInterval(beep,1400);
-      ringtone={stop:()=>{on=false;clearInterval(t);try{ctx.close();}catch(_){}}};
+      if(typeof unlockNotificationAudio==="function")unlockNotificationAudio();
+      const ctx=(typeof audioCtx!=="undefined"&&audioCtx)||null; if(!ctx)return;
+      if(ctx.state==="suspended")ctx.resume().catch(()=>{});
+      const incoming=kind!=="outgoing";
+      const burst=(at,hz,len,vol)=>{ const o=ctx.createOscillator(),g=ctx.createGain(); o.type="sine"; o.frequency.setValueAtTime(hz,at);
+        g.gain.setValueAtTime(0,at); g.gain.linearRampToValueAtTime(vol,at+.03); g.gain.setValueAtTime(vol,at+len-.05); g.gain.linearRampToValueAtTime(0,at+len);
+        o.connect(g); g.connect(ctx.destination); o.start(at); o.stop(at+len+.02); };
+      const ring=()=>{
+        if(ctx.state!=="running")return;
+        const t=ctx.currentTime+.02;
+        if(incoming){ [0,.55].forEach((d)=>{ burst(t+d,440,.4,.16); burst(t+d,480,.4,.16); }); }
+        else { burst(t,425,1.0,.07); }
+      };
+      ring();
+      const every=incoming?2800:3200;
+      const timer=setInterval(ring,every);
+      let vib=null;
+      if(incoming&&navigator.vibrate){ const v=()=>{try{navigator.vibrate([500,250,500]);}catch(_){}}; v(); vib=setInterval(v,every); }
+      ringtone={stop:()=>{clearInterval(timer);if(vib){clearInterval(vib);try{navigator.vibrate(0);}catch(_){}}}};
     }catch(_){}
   }
   function ringStop(){try{ringtone?.stop();}catch(_){} ringtone=null;}
@@ -43155,7 +43177,7 @@ function hideLeviFromPanel() {
     let lostTimer=null;
     pc.onconnectionstatechange=()=>{
       if(!call)return;
-      if(pc.connectionState==="connected"){ clearTimeout(lostTimer); clearTimeout(ringTimer); if(!document.getElementById("levroCallOverlay")?.classList.contains("lc-connected"))showActive(); }
+      if(pc.connectionState==="connected"){ clearTimeout(lostTimer); clearTimeout(ringTimer); ringStop(); if(!document.getElementById("levroCallOverlay")?.classList.contains("lc-connected"))showActive(); }
       else if(pc.connectionState==="failed"){ endCall(true,"The call dropped. Check your connection and try again."); }
       else if(pc.connectionState==="disconnected"){ clearTimeout(lostTimer); lostTimer=setTimeout(()=>{ if(call&&pc.connectionState!=="connected")endCall(true,"The call dropped."); },8000); }
     };
@@ -43214,7 +43236,7 @@ function hideLeviFromPanel() {
     makePeer();
     call.channel=await joinChannel(call.id,onSignal);
     if(!call)return;
-    setStatus("Ringing…");
+    setStatus("Ringing…"); ringStart("outgoing");
     document.getElementById("lcEnd")?.addEventListener("click",()=>endCall(true));
     document.getElementById("lcMute")?.addEventListener("click",(e)=>{const b=e.currentTarget;const t=call?.stream?.getAudioTracks?.()[0];if(!t)return;t.enabled=!t.enabled;b.classList.toggle("on",!t.enabled);b.innerHTML=`<i class="fa-solid ${t.enabled?"fa-microphone":"fa-microphone-slash"}"></i>`;});
     watchStatus();
@@ -43227,7 +43249,7 @@ function hideLeviFromPanel() {
       if(Date.now()-new Date(n.created_at||Date.now()).getTime()>RING_TIMEOUT_MS)return;
       const name=String(n.body||"").replace(/ is calling you\.?$/,"")||"Someone";
       call={id,role:"callee",conversationId:p.conversationId,incoming:true};
-      overlay("incoming",name); ringStart(); watchStatus();
+      overlay("incoming",name); ringStart("incoming"); watchStatus();
       ringTimer=setTimeout(()=>{ if(call&&call.incoming&&!call.answeredByMe){ cleanup(); } },RING_TIMEOUT_MS);
       document.getElementById("lcDecline")?.addEventListener("click",async()=>{
         try{await sb.rpc("update_voice_call",{p_call_id:id,p_status:"declined"});}catch(_){}
