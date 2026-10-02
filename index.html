@@ -8197,7 +8197,7 @@ const HOME_TOUR_STEPS = [
 ];
 function buildMessagesTourStep() {
   if (!session || profile?.role === "admin") return null;
-  return { icon: "fa-comment-dots", title: "Message a vendor directly", body: "Chat opens with a vendor once they accept your order, so you can sort out the details together. You can also call them in-app with the phone button — your number is never shared. The chat is removed 24 hours after the order is completed.", selector: "#messagesWrap", view: "home" };
+  return { icon: "fa-comment-dots", title: "Message a vendor directly", body: "Chat opens with a vendor once they accept your order, so you can sort out the details together. You can also call them in-app with the phone button — your number is never shared. The chat closes 24 hours after the order is completed; your messages are kept and return if you order from that vendor again.", selector: "#messagesWrap", view: "home" };
 }
 function buildOrdersTourStep() {
   if (!session || profile?.role === "admin") return null;
@@ -12257,6 +12257,7 @@ async function logout() {
   if (!(await showConfirmDialog("Log out of Levromart?", { title: "Log out", okLabel: "Log out", danger: true }))) return;
   manualLogout = true;
   try { localStorage.removeItem("levromart_levi_ask_last"); } catch (_) {}
+  try { chatSnapClearAll(); } catch (_) {}
   try { window.__levromartClearPersistedRoute?.(); } catch (_) {}
   await recordAuthActivity("logout");
   await sb.auth.signOut();
@@ -12669,7 +12670,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (view === "messages" && params?.conversationId && profile?.role !== "admin") {
     window.__chatFastPaintDirty = false;
     const cachedConv = (window.__conversations || []).find((c) => c.conversation_id === params.conversationId) || { conversation_id: params.conversationId, other_name: "Chat", other_avatar: null, unread_count: 0 };
-    const cachedMessages = lastSeenMessagesByConv.get(params.conversationId);
+    const cachedMessages = lastSeenMessagesByConv.get(params.conversationId) || chatSnapRead(params.conversationId)?.messages;
     // Always paint the chat surface immediately, even for a deep link where
     // the inbox has not been hydrated yet. Network hydration replaces only
     // the stale content later; there is never a central loading spinner.
@@ -15919,6 +15920,7 @@ function applyConversationsList(rows) {
     if (changed) setDeletedChatIds(deletedIds);
   }
   window.__conversations = deduped;
+  try { if (session?.user?.id) localStorage.setItem("levro-convs-v1:" + session.user.id, JSON.stringify(deduped.slice(0, 80))); } catch (_) {}
   return deduped;
 }
 async function toggleChatArchived(conversationId) {
@@ -16309,7 +16311,7 @@ function chatSkeletonHtml(conversationId, cached, cachedMessages) {
   const avatar = cached.other_avatar;
   const messagesArea = cachedMessages && cachedMessages.length
     ? chatMessagesWithDatesHtml(cachedMessages, chatBubbleHtml)
-    : `<div class="chat-fast-empty" aria-live="polite"></div>`;
+    : `<div class="chat-fast-empty" aria-live="polite"><span class="chat-loading-line"></span><span class="chat-loading-line short"></span><span class="chat-loading-line"></span></div>`;
   return `<div class="chat-page-wrap">
     <div class="chat-page-header">
       <button class="chat-header-back" onclick="navigate('messages')" title="Back"><i class="fa-solid fa-arrow-left"></i></button>
@@ -16338,6 +16340,94 @@ async function enrichMessageReplies(messages) {
   list.forEach(m => { if (m.reply_to_id) m.reply_to = byId.get(m.reply_to_id) || null; });
   return list;
 }
+// ---------- CHAT SNAPSHOTS (instant open, works without data) ----------
+// The last messages of each conversation are kept on this device, so opening a
+// chat paints its history immediately -- no waiting on the network and no blank
+// screen with poor or no mobile data. The fresh copy is fetched right after and
+// reconciled into what is on screen.
+const CHAT_SNAP_PREFIX = "levro-chat-v1:";
+const CHAT_SNAP_INDEX = "levro-chat-v1-index";
+const CHAT_SNAP_MAX_CHATS = 12, CHAT_SNAP_MAX_MSGS = 150;
+function chatSnapRead(id) {
+  try {
+    const j = JSON.parse(localStorage.getItem(CHAT_SNAP_PREFIX + id) || "null");
+    return j && session?.user?.id && j.uid === session.user.id ? j : null;
+  } catch (_) { return null; }
+}
+function chatSnapWrite(id, snap) {
+  if (!id || !session?.user?.id || !snap?.conv) return;
+  try {
+    const rec = { uid: session.user.id, at: Date.now(), other: snap.other, conv: snap.conv, pins: snap.pins || [], blocked: snap.blocked || [], messages: (snap.messages || []).slice(-CHAT_SNAP_MAX_MSGS) };
+    localStorage.setItem(CHAT_SNAP_PREFIX + id, JSON.stringify(rec));
+    let idx = []; try { idx = JSON.parse(localStorage.getItem(CHAT_SNAP_INDEX) || "[]"); } catch (_) {}
+    idx = [id, ...idx.filter((x) => x !== id)];
+    idx.slice(CHAT_SNAP_MAX_CHATS).forEach((old) => { try { localStorage.removeItem(CHAT_SNAP_PREFIX + old); } catch (_) {} });
+    localStorage.setItem(CHAT_SNAP_INDEX, JSON.stringify(idx.slice(0, CHAT_SNAP_MAX_CHATS)));
+  } catch (_) { chatSnapClearAll(); }
+}
+function chatSnapClearAll() {
+  try {
+    Object.keys(localStorage).filter((k) => k.startsWith("levro-chat-v1") || k.startsWith("levro-convs-v1")).forEach((k) => localStorage.removeItem(k));
+  } catch (_) {}
+}
+// Save what is on screen for the open chat (new live messages included).
+function chatSnapFlush() {
+  const id = activeConversationId;
+  const meta = window.__chatSnapMeta?.[id];
+  const msgs = id ? lastSeenMessagesByConv.get(id) : null;
+  if (id && meta && msgs?.length) chatSnapWrite(id, { ...meta, messages: msgs });
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) chatSnapFlush(); }, { passive: true });
+window.addEventListener("pagehide", chatSnapFlush, { passive: true });
+async function fetchChatBundle(conversationId) {
+  const uid = session.user.id;
+  const [o, c, m, pins, blocks, open] = await Promise.all([
+    sb.rpc("get_conversation_other_party", { p_conversation_id: conversationId }),
+    sb.from("conversations").select("id, buyer_id, vendor:vendors(id, business_name, logo_url, user_id, phone, whatsapp_number, whatsapp_visible)").eq("id", conversationId).maybeSingle(),
+    sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }),
+    sb.from("message_pins").select("id,conversation_id,message_id,pinned_at,expires_at").eq("conversation_id", conversationId).eq("user_id", uid).order("pinned_at", { ascending: false }).limit(4),
+    sb.from("blocked_users").select("blocked_id").eq("blocker_id", uid),
+    sb.rpc("conversation_is_open", { p_conversation_id: conversationId }),
+  ]);
+  return {
+    other: o.data, otherErr: o.error, conv: c.data, messages: m.data || [], pins: pins.data || [],
+    blocked: (blocks.data || []).map((x) => x.blocked_id),
+    open: open.error ? true : open.data !== false,
+    failed: !!(o.error || c.error || m.error),
+  };
+}
+// A chat whose order finished more than 24 hours ago: it leaves the list and can't
+// be opened or continued, but nothing is deleted. The next order with the same vendor
+// brings the whole history back.
+function chatEndedHtml() {
+  return `<div class="empty-state chat-ended-state"><span class="orders-empty-icon"><i class="fa-regular fa-comment-dots"></i></span><strong>This chat has ended</strong><span class="muted">Chats close 24 hours after an order is completed. Your earlier messages are kept, and they will be here again if you place a new order with this vendor.</span><button type="button" class="btn btn-sm" onclick="navigate('messages')">Back to chats</button></div>`;
+}
+async function levroRevalidateChat(id) {
+  try {
+    const b = await fetchChatBundle(id);
+    if (String(activeConversationId) !== String(id) || b.failed || !b.conv) return;
+    if (!b.open) { const app = byId("app"); if (app) app.innerHTML = chatEndedHtml(); return; }
+    await enrichMessageReplies(b.messages);
+    window.__chatSnapMeta = window.__chatSnapMeta || {};
+    window.__chatSnapMeta[id] = { other: b.other, conv: b.conv, pins: b.pins, blocked: b.blocked };
+    window.__chatPinsByConversation = window.__chatPinsByConversation || {};
+    window.__chatPinsByConversation[id] = (b.pins || []).filter((p) => !p.expires_at || new Date(p.expires_at).getTime() > Date.now());
+    const el = byId("chatMessages");
+    const old = lastSeenMessagesByConv.get(id) || [];
+    const sig = (ms) => ms.map((m) => `${m.id}:${m.edited_at || ""}:${m.deleted_at || ""}:${m.read_at ? 1 : 0}:${m.body?.length || 0}`).join("|");
+    const pending = el && [...el.querySelectorAll(".chat-bubble[data-msg-id]")].some((x) => !/^[0-9a-f-]{36}$/i.test(x.dataset.msgId || ""));
+    if (el && !pending && sig(old) !== sig(b.messages)) {
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+      const typing = byId("chatTypingIndicator");
+      el.innerHTML = chatMessagesWithDatesHtml(b.messages, chatBubbleHtml);
+      if (typing) el.appendChild(typing);
+      lastSeenMessagesByConv.set(id, b.messages);
+      if (atBottom) scrollChatToBottom();
+      resolveVisibleAttachments(el); setupMessageInteractions(el);
+    } else if (!pending) lastSeenMessagesByConv.set(id, b.messages);
+    chatSnapWrite(id, { ...window.__chatSnapMeta[id], messages: b.messages });
+  } catch (_) {}
+}
 async function renderMessages(conversationId) {
   if (conversationId) conversationId=String(conversationId);
   if (conversationId && !/^[a-zA-Z0-9-]+$/.test(conversationId)) return '<div class="empty-state">That conversation could not be opened.</div>';
@@ -16356,6 +16446,7 @@ async function renderMessages(conversationId) {
     } catch (_) {}
     messageChannelClosePromise = Promise.resolve(sb.removeChannel(oldChannel)).catch(() => {});
   }
+  try { chatSnapFlush(); } catch (_) {}
   typingChannelConversationId = null;
   chatReplyTarget = null;
   chatSelectionMode = false;
@@ -16366,6 +16457,10 @@ async function renderMessages(conversationId) {
 
   if (!conversationId) {
     const isVendor = !!vendor;
+    // Show the last-known chat list straight away (even offline); it is refreshed in the background.
+    if (!Array.isArray(window.__conversations) && session?.user?.id) {
+      try { const saved = JSON.parse(localStorage.getItem("levro-convs-v1:" + session.user.id) || "null"); if (Array.isArray(saved)) window.__conversations = saved; } catch (_) {}
+    }
     const hasCachedConversations = Array.isArray(window.__conversations);
     if (!hasCachedConversations) {
       const { data: convs, error } = await sb.rpc("list_my_conversations");
@@ -16381,7 +16476,7 @@ async function renderMessages(conversationId) {
 
     const convs = window.__conversations || [];
     if (convs.length === 0) {
-      return `<div id="messagesSelectionBar">${msgSelectionHeaderHtml()}</div><div class="empty-state">No conversations yet. ${isVendor ? "Customers who message you will show up here." : "Message a vendor from their storefront or a product page."}</div>`;
+      return `<div id="messagesSelectionBar">${msgSelectionHeaderHtml()}</div><div class="empty-state orders-empty chats-empty"><span class="orders-empty-icon"><i class="fa-regular fa-comments"></i></span><strong>No chats right now</strong><span class="muted">${isVendor ? "A chat opens when you accept a customer's order and closes 24 hours after it is completed." : "A chat opens when a vendor accepts your order and closes 24 hours after it is completed."} Past messages are kept and come back with your next order together.</span></div>`;
     }
 
     let html = `<div id="messagesSelectionBar">${msgSelectionHeaderHtml()}</div>`;
@@ -16412,19 +16507,25 @@ async function renderMessages(conversationId) {
     return html;
   }
 
-  // These three calls don't depend on each other, so run them together --
-  // awaiting them one at a time was most of the multi-second wait before
-  // the thread actually appeared.
-  const [{ data: other, error: otherErr }, { data: conv }, { data: messages }, { data: chatPins }] = await Promise.all([
-    sb.rpc("get_conversation_other_party", { p_conversation_id: conversationId }),
-    sb.from("conversations").select("id, buyer_id, vendor:vendors(id, business_name, logo_url, user_id, phone, whatsapp_number, whatsapp_visible)").eq("id", conversationId).maybeSingle(),
-    sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }),
-    sb.from("message_pins").select("id,conversation_id,message_id,pinned_at,expires_at").eq("conversation_id", conversationId).eq("user_id", session.user.id).order("pinned_at", { ascending: false }).limit(4),
-  ]);
-  if (!conv || otherErr) return '<div class="empty-state">Conversation not found.</div>';
-  await enrichMessageReplies(messages || []);
+  // Cached copy first (instant, works offline); otherwise one parallel round trip.
+  const snap = chatSnapRead(conversationId);
+  const fromCache = !!(snap && snap.conv);
+  let bundle;
+  if (fromCache) {
+    bundle = { other: snap.other, otherErr: null, conv: snap.conv, messages: snap.messages || [], pins: snap.pins || [], blocked: snap.blocked || [], open: true };
+  } else {
+    bundle = await fetchChatBundle(conversationId);
+    if (!bundle.conv || bundle.otherErr) return '<div class="empty-state">Conversation not found.</div>';
+    if (!bundle.open) return chatEndedHtml();
+    await enrichMessageReplies(bundle.messages);
+  }
+  const { other, conv, messages } = bundle;
+  const chatPins = bundle.pins;
   window.__chatPinsByConversation = window.__chatPinsByConversation || {};
   window.__chatPinsByConversation[conversationId] = (chatPins || []).filter(p => !p.expires_at || new Date(p.expires_at).getTime() > Date.now());
+  window.__chatSnapMeta = window.__chatSnapMeta || {};
+  window.__chatSnapMeta[conversationId] = { other, conv, pins: chatPins, blocked: bundle.blocked };
+  if (!fromCache) chatSnapWrite(conversationId, { ...window.__chatSnapMeta[conversationId], messages });
 
   const isVendorSide = conv.vendor?.user_id === session.user.id;
   const op = (other && other[0]) || {};
@@ -16432,7 +16533,7 @@ async function renderMessages(conversationId) {
   const otherAvatar = op.avatar_url || (isVendorSide ? null : conv.vendor?.logo_url);
   const otherPhone = op.phone || "";
   const otherUserId = op.id || "";
-  const isBlockedByMe = otherUserId ? await isUserBlocked(otherUserId) : false;
+  const isBlockedByMe = otherUserId ? (bundle.blocked || []).includes(otherUserId) : false;
   lastSeenMessagesByConv.set(conversationId, messages || []);
 
   // Mark the thread read immediately in the local inbox state as well as in
@@ -16512,6 +16613,7 @@ async function renderMessages(conversationId) {
     try { window.__levroStartChatPresence?.(conversationId); } catch (_) {}
     try { window.__levroInitChatCall?.(String(conversationId)); } catch (_) {}
   }, 300);
+  if (fromCache) setTimeout(() => levroRevalidateChat(conversationId), 60);
   return html;
 }
 
@@ -27458,7 +27560,7 @@ function renderTerms() {
     <ul>
       <li>Customers and vendors can message each other only while they have an accepted order together. A vendor cannot see a customer's name until the order is accepted.</li>
       <li>In-app voice calls are available in the same conversations. Calls run through the Levromart app and your internet connection; your phone number is not shown to the other person. Levromart does not record call audio.</li>
-      <li>When an order is completed, the conversation stays available for 24 hours and is then removed so the two sides do not keep communicating outside an order. A copy of the messages is kept in a restricted archive for up to 30 days so that a late dispute can still be judged; only Levromart administrators can open it.</li>
+      <li>When an order is completed, the conversation stays open for 24 hours and then closes: it leaves your chat list and can no longer be opened or continued, so the two sides do not keep communicating outside an order. The messages are not deleted. They are kept securely as a record for disputes, fraud prevention and legal requirements, and Levromart administrators can review them when needed. If you later place a new order with the same vendor, the conversation reopens with its earlier messages.</li>
       <li>Keep conversations and calls about the order. Do not use them to harass anyone, to share personal phone numbers, or to move a sale off Levromart to avoid commission or payment protections. Levromart administrators may review a conversation when a report or dispute is raised, and may restrict messaging or calling for accounts that break these rules.</li>
       <li>Calls need microphone permission. You can allow incoming-call notifications in your device and Levromart settings; if they are off you may miss a call.</li>
     </ul>
@@ -27513,7 +27615,7 @@ function renderPrivacy() {
       <li><strong>Cloudflare:</strong> serves public listing, banner and profile images.</li>
       <li><strong>Browser push services and call-connection servers:</strong> deliver notifications and help two devices connect for a voice call; they handle connection details, not call audio content.</li>
     </ul>
-    <p><strong>How long we keep conversations:</strong> an order conversation is removed 24 hours after the order is completed. A copy is kept in a restricted archive for up to 30 days, readable only by Levromart administrators, so that a late dispute can be reviewed, and is then deleted. Records needed for payments, disputes, fraud prevention and legal compliance may be kept longer.</p>
+    <p><strong>How long we keep conversations:</strong> an order conversation closes 24 hours after the order is completed and disappears from your chat list. The messages themselves are kept, as a record of what was agreed, for dispute resolution, fraud prevention and legal compliance. Only the two people in the conversation (while it is open) and Levromart administrators can read them. If you order from the same vendor again, the earlier messages reappear in the reopened chat.</p>
     <p>Your conversations with Levi are saved to your account so they're there when you come back, and are visible only to you: searchable, and deletable any time from the chat panel. Levromart's team does not read them unless you turn on "Help improve Levi" in Settings, which is off by default.</p>
 
     <h3>4. Your choices</h3>
@@ -27549,7 +27651,7 @@ function renderRefundPolicy() {
     <p>If a vendor fails to deliver/hand over confirmed equipment, the customer is entitled to a full refund of any amount paid online through Levromart.</p>
 
     <h3>6. Chat and calls after an order</h3>
-    <p>You can message and call the vendor while your order is accepted and in progress, for example to arrange delivery or raise a problem. Once an order is completed the chat stays open for 24 hours and then closes. If something is wrong with a completed order, raise it as a dispute from the order page within the time limit in section 4 rather than through chat, so that your evidence is recorded.</p>
+    <p>You can message and call the vendor while your order is accepted and in progress, for example to arrange delivery or raise a problem. Once an order is completed the chat stays open for 24 hours and then closes (the messages are kept as a record). If something is wrong with a completed order, raise it as a dispute from the order page within the time limit in section 4 rather than through chat, so that your evidence is recorded.</p>
 
     <h3>7. How refunds are paid</h3>
     <p>Refunds for online payments are issued back through Paystack to your original payment method. For orders paid offline (cash/transfer directly to the vendor), any refund is arranged directly between buyer and vendor, with Levromart admins available to mediate a dispute.</p>
@@ -43069,6 +43171,14 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 
 /* Login / sign-up: the real Levromart app icon, clean and un-glowed. */
 #loginModal .login-modal-logo{width:4.2rem !important;height:4.2rem !important;border-radius:20px !important;object-fit:cover !important;background:none !important;padding:0 !important;filter:none !important;-webkit-filter:none !important;box-shadow:0 10px 26px rgba(0,0,0,.2) !important;margin:0 auto .9rem !important}
+
+/* Chat: loading placeholders instead of a blank page. */
+.chat-fast-empty{display:flex;flex-direction:column;gap:.7rem;padding:1.2rem 1rem}
+.chat-loading-line{display:block;height:2.2rem;width:62%;border-radius:14px;background:color-mix(in srgb,var(--text) 8%,transparent);animation:chatPulse 1.2s ease-in-out infinite}
+.chat-loading-line.short{width:38%;margin-left:auto}
+@keyframes chatPulse{0%,100%{opacity:.55}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.chat-loading-line{animation:none}}
+.chat-ended-state{max-width:420px;margin:2rem auto}
 
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}

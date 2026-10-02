@@ -64,11 +64,9 @@ module.exports = async function handler(req, res) {
       reminded++;
     }
 
-    let purgedChats = 0;
-    try { purgedChats = await purgeCompletedOrderChats(SUPABASE_URL, svcAuth, svcHeaders); }
-    catch (e) { console.error("chat purge failed", e); }
-
-    res.status(200).json({ checked: due.length, reminded, purgedChats });
+    // Chats are never deleted any more: a finished order's conversation just drops
+    // out of the lists (see list_my_conversations) and every message is kept as a record.
+    res.status(200).json({ checked: due.length, reminded });
   } catch (err) {
     res.status(500).json({ error: err.message || "Server error" });
   }
@@ -109,40 +107,3 @@ function remindersForOrder(o) {
 
   return out;
 }
-
-// A customer<->vendor chat is removed 24h after their last order together was
-// completed (and only if no other order between them is still open). The
-// messages are copied into chat_archive first and kept there for 30 days,
-// admin-only, so a late dispute can still be judged.
-async function purgeCompletedOrderChats(SUPABASE_URL, svcAuth, svcHeaders) {
-  const candRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/chat_purge_candidates`, {
-    method: "POST", headers: { ...svcAuth, "Content-Type": "application/json" }, body: "{}",
-  });
-  const cands = await candRes.json();
-  if (!Array.isArray(cands) || !cands.length) return 0;
-  // Drop archive rows older than 30 days.
-  const archiveCutoff = new Date(Date.now() - 30 * 86400000).toISOString();
-  await fetch(`${SUPABASE_URL}/rest/v1/chat_archive?archived_at=lt.${archiveCutoff}`, { method: "DELETE", headers: svcHeaders });
-  let purged = 0;
-  for (const row of cands) {
-    const id = row.conversation_id;
-    if (!id) continue;
-    const [convRes, msgRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/conversations?id=eq.${id}&select=*`, { headers: svcAuth }),
-      fetch(`${SUPABASE_URL}/rest/v1/messages?conversation_id=eq.${id}&select=*&order=created_at.asc`, { headers: svcAuth }),
-    ]);
-    const conv = (await convRes.json())?.[0];
-    const msgs = await msgRes.json();
-    if (!conv || !Array.isArray(msgs)) continue;
-    const arch = await fetch(`${SUPABASE_URL}/rest/v1/chat_archive`, {
-      method: "POST", headers: svcHeaders,
-      body: JSON.stringify({ conversation_id: id, buyer_id: conv.buyer_id, vendor_id: conv.vendor_id, conversation: conv, messages: msgs }),
-    });
-    if (!arch.ok) continue; // never delete what we could not archive
-    const del = await fetch(`${SUPABASE_URL}/rest/v1/conversations?id=eq.${id}`, { method: "DELETE", headers: svcHeaders });
-    if (del.ok) purged++;
-  }
-  return purged;
-}
-
-module.exports.purgeCompletedOrderChats = purgeCompletedOrderChats;
