@@ -13346,7 +13346,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
   const trendingServices = deterministicHourlyShuffle((trending || []).filter(p => p.is_service),"trending-services");
   if (trendingProducts.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="scrollToBrowse('')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
-  if (topVendors.length) { const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors"); html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`; }
+  if (topVendors.length) { const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors"); html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorDirectoryCardHtml).join("")}</div>`; }
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
@@ -14320,7 +14320,7 @@ async function renderHome() {
   const scopedTopVendors = topVendors;
   if (scopedTopVendors && scopedTopVendors.length) {
     const shuffledTopVendors = deterministicHourlyShuffle(scopedTopVendors,"top-rated-vendors");
-    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`;
+    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorDirectoryCardHtml).join("")}</div>`;
   }
   const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
@@ -16259,6 +16259,7 @@ function convRowHtml(c) {
         <div class="conv-preview">${c.last_message ? esc(maskSensitiveNumbers(c.last_message)) : "No messages yet"}</div>
       </div>
       ${isUnread ? `<span class="conv-unread-badge" title="${c.unread_count} unread">${c.unread_count > 99 ? "99+" : c.unread_count}</span>` : ""}
+      <i class="fa-solid fa-chevron-right conv-chev" aria-hidden="true"></i>
     </div>
   </div>`;
 }
@@ -16504,16 +16505,19 @@ function archivedUnreadChatCount() {
   return (window.__conversations || []).filter(c => archivedIds.has(c.conversation_id) && Number(c.unread_count || 0) > 0).length;
 }
 function chatListTabsHtml() {
-  const listTabs = myChatLists.map((l) => `<a class="${msgListFilter === "list:" + l.id ? "active" : ""}" onclick="setMsgListFilter('list:${l.id}')">${esc(l.name)}</a>`).join("");
+  const archivedIds = getArchivedChatIds();
+  const convs = window.__conversations || [];
+  const unreadChats = convs.filter((c) => Number(c.unread_count || 0) > 0 && !archivedIds.has(c.conversation_id)).length;
+  const badge = (n) => n ? `<span class="conv-unread-badge msg-tab-badge">${n > 99 ? "99+" : n}</span>` : "";
+  const listTabs = myChatLists.map((l) => `<a role="tab" class="${msgListFilter === "list:" + l.id ? "active" : ""}" onclick="setMsgListFilter('list:${l.id}')">${esc(l.name)}</a>`).join("");
   const archivedUnread = archivedUnreadChatCount();
-  return `<div class="tabs" style="overflow-x:auto;flex-wrap:nowrap;">
-      <a class="${msgListFilter === "all" ? "active" : ""}" onclick="setMsgListFilter('all')">all</a>
-      <a class="${msgListFilter === "unread" ? "active" : ""}" onclick="setMsgListFilter('unread')">unread</a>
-      <a class="${msgListFilter === "archived" ? "active" : ""}" onclick="setMsgListFilter('archived')">archived${archivedUnread ? ` <span class="conv-unread-badge" style="display:inline-flex;vertical-align:middle;margin-left:.18rem;">${archivedUnread > 99 ? "99+" : archivedUnread}</span>` : ""}</a>
+  return `<div class="msg-tabs-row"><div class="msg-tabs" role="tablist" aria-label="Conversation filter">
+      <a role="tab" class="${msgListFilter === "all" ? "active" : ""}" onclick="setMsgListFilter('all')">All${badge(unreadChats)}</a>
+      <a role="tab" class="${msgListFilter === "unread" ? "active" : ""}" onclick="setMsgListFilter('unread')">Unread${badge(unreadChats)}</a>
+      <a role="tab" class="${msgListFilter === "archived" ? "active" : ""}" onclick="setMsgListFilter('archived')">Archived${badge(archivedUnread)}</a>
       ${listTabs}
-      <a onclick="createChatListPrompt()" title="Create a new list"><i class="fa-solid fa-plus"></i> New list</a>
-      ${msgListFilter.startsWith("list:") ? `<a onclick="deleteChatListPrompt('${msgListFilter.slice(5)}')" title="Delete this list" style="color:var(--danger);"><i class="fa-solid fa-trash"></i></a>` : ""}
-    </div>`;
+      ${msgListFilter.startsWith("list:") ? `<a onclick="deleteChatListPrompt('${msgListFilter.slice(5)}')" title="Delete this list" aria-label="Delete this list" class="msg-tab-del"><i class="fa-solid fa-trash"></i></a>` : ""}
+    </div><button type="button" class="msg-newlist" onclick="createChatListPrompt()" title="Create a new list"><i class="fa-solid fa-plus"></i> New List</button></div>`;
 }
 async function createChatListPrompt() {
   const name = await showTextPromptDialog("New chat list", "Name this list (like WhatsApp's Favorites or Groups) to organize your own chats.", { placeholder: "e.g. Regular vendors", okLabel: "Create" });
@@ -16770,7 +16774,7 @@ async function renderMessages(conversationId) {
 
     let html = `<div id="messagesSelectionBar">${msgSelectionHeaderHtml()}</div>`;
     html += chatListTabsHtml();
-    html += `<input type="text" id="msgSearchInput" class="messages-search" placeholder="Search conversations…" oninput="filterMsgList()" />`;
+    html += `<label class="msg-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="msgSearchInput" class="messages-search" placeholder="Search conversations…" oninput="filterMsgList()" autocomplete="off" aria-label="Search conversations" /></label>`;
     html += `<div id="convListWrap" class="messages-conversation-list" aria-label="Conversations"></div>`;
     setTimeout(filterMsgList, 0);
     return html;
@@ -21159,7 +21163,7 @@ async function renderVendorDashboard() {
 
   const [{ data: orders }, { data: products }, { data: owed }, { data: commissionDeadline }, { data: followerCounts }] = await Promise.all([
     sb.from("orders").select("status, total_amount, created_at").eq("vendor_id", v.id),
-    sb.from("products").select("id, view_count").eq("vendor_id", v.id),
+    sb.from("products").select("id, view_count, is_service, status").eq("vendor_id", v.id),
     sb.rpc("get_vendor_commission_owed", { p_vendor_id: v.id }),
     sb.rpc("get_vendor_commission_deadline", { p_vendor_id: v.id }),
     sb.rpc("get_vendor_follower_counts", { p_vendor_ids: [v.id] }),
@@ -21167,11 +21171,17 @@ async function renderVendorDashboard() {
   const totalOrders = orders?.length ?? 0;
   const revenue = orders?.filter((o) => o.status === "completed").reduce((s, o) => s + o.total_amount, 0) ?? 0;
   const totalViews = (products || []).reduce((s, p) => s + (p.view_count || 0), 0);
+  const liveProducts = (products || []).filter((p) => p.status !== "removed");
+  const hubProducts = liveProducts.filter((p) => !p.is_service).length;
+  const hubServices = liveProducts.filter((p) => p.is_service).length;
+  const hubDiscarded = (products || []).length - liveProducts.length;
+  let hubPackages = 0;
+  try { const { count } = await sb.from("vendor_packages").select("id", { count: "exact", head: true }).eq("vendor_id", v.id); hubPackages = count || 0; } catch (_) {}
   const { data: favCounts } = (products || []).length
     ? await sb.rpc("get_favorite_counts", { p_product_ids: products.map((p) => p.id) })
     : { data: [] };
   const totalFavorites = (favCounts || []).reduce((s, r) => s + r.count, 0);
-  const totalListings = (products || []).length;
+  const totalListings = (products || []).filter((p) => p.status !== "removed").length;
   const totalFollowers = Number(followerCounts?.[0]?.follower_count || 0);
   const commissionOwed = Number(owed || 0);
   const earliestCommissionDueAt = commissionDeadline?.[0]?.earliest_due_at || null;
@@ -21237,40 +21247,38 @@ async function renderVendorDashboard() {
     html += `<div class="banner banner-warning" style="max-width:700px;margin:1rem auto 0;"><strong><i class="fa-solid fa-location-dot"></i> Add your shop location</strong><p style="margin:.35rem 0 .65rem;">Your storefront cannot appear on the vendor map until a shop location is saved.</p><button class="btn btn-sm" onclick="navigate('vendorEditProfile')"><i class="fa-solid fa-map-location-dot"></i> Set shop location</button></div>`;
   }
 
-  // ---------- 4. My listings (+ working hours, reviews, monthly listing) ----------
+  // ---------- 4. Seller hub: listings overview, management tools, more options ----------
+  const hubRow = (icon, title, sub, value, onclick) => `<button type="button" class="vh-row" onclick="${onclick}"><span class="vh-row-ico"><i class="fa-solid ${icon}" aria-hidden="true"></i></span><span class="vh-row-copy"><strong>${title}</strong>${sub ? `<small>${sub}</small>` : ""}</span>${value ? `<span class="vh-row-val">${value}</span>` : ""}<i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
+  const goTab = (tab) => `try{localStorage.setItem('levromart-vendor-listing-tab','${tab}')}catch(_){};navigate('vendorProducts')`;
+  const hubStat = (icon, n, label, tab) => `<button type="button" class="vh-stat" onclick="${goTab(tab)}"><span class="vh-stat-ico"><i class="fa-solid ${icon}" aria-hidden="true"></i></span><span><b>${n}</b><small>${label}</small></span><i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
   html += `<hr class="vendor-profile-divider" />
-  <div class="vendor-profile-section">
-    <h3 class="vendor-profile-section-title"><i class="fa-solid fa-layer-group"></i> My listings</h3>
-    <div class="vendor-profile-listing-tabs">
-      <button type="button" class="btn btn-sm btn-outline" onclick="navigate('vendorProducts')"><i class="fa-solid fa-box"></i> Products &amp; Services</button>
-      <button type="button" class="btn btn-sm btn-outline" onclick="navigate('vendorPackages')"><i class="fa-solid fa-box-open"></i> Packages</button>
+  <div class="vh-hub">
+    <span class="vl-eyebrow"><i class="fa-solid fa-store"></i> Seller dashboard</span>
+    <h2 class="vh-title">My Listings</h2>
+    <p class="vh-sub">Manage your products, services and packages in one place.</p>
+    <button type="button" class="vl-add vl-add-wide" onclick="openAddProductModal()"><i class="fa-solid fa-plus"></i> Add New Listing</button>
+    <div class="vh-stats">${hubStat("fa-box", hubProducts, "Products", "products")}${hubStat("fa-hand-holding-heart", hubServices, "Services", "services")}${hubStat("fa-box-open", hubPackages, "Packages", "packages")}</div>
+    <div class="vh-section-head"><h3><i class="fa-solid fa-layer-group"></i> My listings</h3><button type="button" onclick="${goTab("all")}">Manage all <i class="fa-solid fa-chevron-right"></i></button></div>
+    <div class="vh-tabs" role="tablist">
+      <button type="button" role="tab" onclick="${goTab("products")}"><i class="fa-solid fa-box"></i> Products <em>${hubProducts}</em></button>
+      <button type="button" role="tab" onclick="${goTab("services")}"><i class="fa-solid fa-hand-holding-heart"></i> Services <em>${hubServices}</em></button>
+      <button type="button" role="tab" onclick="${goTab("packages")}"><i class="fa-solid fa-box-open"></i> Packages <em>${hubPackages}</em></button>
     </div>
-    <button type="button" class="vendor-profile-see-more" onclick="navigate('vendorProducts')">Manage listings <i class="fa-solid fa-chevron-right"></i></button>
-    <div class="vendor-profile-subrow" onclick="navigate('vendorEditProfile')" role="button" tabindex="0">
-      <span><i class="fa-solid fa-clock"></i> Working hours</span>
-      <span class="muted">${v.opening_hours ? esc(v.opening_hours) : "Not set"} <i class="fa-solid fa-chevron-right"></i></span>
+    <div class="vl-discarded"><span class="vl-discarded-ico"><i class="fa-solid fa-trash-can"></i></span><div><strong>Discarded items${hubDiscarded ? ` (${hubDiscarded})` : ""}</strong><p>Products removed from your live catalogue stay here when order history prevents permanent deletion.</p></div><button type="button" onclick="navigate('vendorProducts').then(()=>setTimeout(()=>toggleVendorDiscarded(null,true),250))" aria-label="View discarded items">View <i class="fa-solid fa-chevron-right"></i></button></div>
+    <h3 class="vh-group">Management tools</h3>
+    <div class="vh-list">
+      ${hubRow("fa-list-check", "Manage listings", "View, edit or delete your products, services and packages.", "", goTab("all"))}
+      ${hubRow("fa-clock", "Working hours", "Set when your store is open.", v.opening_hours ? esc(v.opening_hours) : "Not set", "navigate('vendorEditProfile')")}
+      ${hubRow("fa-star", "Reviews", "See what customers are saying about you.", `<span class="vh-star"><i class="fa-solid fa-star"></i> ${Number(v.avg_rating || 0).toFixed(1)} (${Number(v.review_count || 0)})</span>`, `navigate('storefront',{vendorId:'${v.id}'});setTimeout(()=>scrollToVendorReviews(),300)`)}
+      ${hubRow("fa-calendar-days", "Monthly listing", "Track your listing activity and performance.", monthlyPending > 0 ? `${monthlyPending} pending` : "Up to date", "navigate('vendorProducts')")}
     </div>
-    <div class="vendor-profile-subrow" onclick="navigate('storefront',{vendorId:'${v.id}'})" role="button" tabindex="0">
-      <span><i class="fa-solid fa-star"></i> Reviews</span>
-      <span class="muted">★ ${Number(v.avg_rating || 0).toFixed(1)} (${Number(v.review_count || 0)}) <i class="fa-solid fa-chevron-right"></i></span>
+    <h3 class="vh-group">More options</h3>
+    <div class="vh-list">
+      ${hubRow("fa-comments", "Requests", "View and respond to customer requests.", "", "navigate('vendorRequests')")}
+      ${hubRow("fa-lightbulb", "Suggestions", "Tips to grow your business on Levromart.", unreadSuggestionCount > 0 ? `<span class="vh-badge">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : "", "navigate('vendorSuggestionsInbox')")}
+      ${hubRow("fa-headset", "Support", "Get help or contact our support team.", "", "navigate('supportRequest')")}
     </div>
-    <div class="vendor-profile-subrow" onclick="navigate('vendorProducts')" role="button" tabindex="0">
-      <span><i class="fa-solid fa-calendar-days"></i> Monthly listing</span>
-      <span class="muted">${monthlyPending > 0 ? `${monthlyPending} pending` : "Up to date"} <i class="fa-solid fa-chevron-right"></i></span>
-    </div>
-  </div>`;
-
-  // ---------- 5. Requests / Suggestions / Support ----------
-  html += `<hr class="vendor-profile-divider" />
-  <div class="vendor-profile-plain-rows">
-    <button type="button" class="vendor-profile-plain-row" onclick="navigate('vendorRequests')">Requests</button>
-    <button type="button" class="vendor-profile-plain-row" onclick="navigate('vendorSuggestionsInbox')">Suggestions${unreadSuggestionCount > 0 ? ` (${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount})` : ""}</button>
-    <button type="button" class="vendor-profile-plain-row" onclick="navigate('supportRequest')">Support</button>
-  </div>
-
-  <hr class="vendor-profile-divider" />
-  <div class="vendor-profile-plain-rows">
-    <button type="button" class="vendor-profile-plain-row vendor-profile-settings-row" onclick="navigate('settings')"><i class="fa-solid fa-gear"></i> Settings &amp; Privacy</button>
+    <div class="vh-list vh-list-single">${hubRow("fa-gear", "Settings &amp; Privacy", "Manage your account, notifications and privacy.", "", "navigate('settings')")}</div>
   </div>`;
 
   return html;
@@ -44446,6 +44454,71 @@ body:has(.od-page) #app{padding-bottom:0!important}
 .vl-tools .vl-select{flex:0 0 auto;min-height:2.8rem;padding:0 .65rem;gap:.35rem;font-size:.82rem}
 .vl-search-row{margin:0 0 .9rem}
 .vl-search{min-height:2.9rem}
+/* ---- Seller hub (My Shop page) ---- */
+.vh-hub{--vh-g:var(--primary,#0B6E4A);--vh-gt:var(--vh-g);--vh-line:color-mix(in srgb,var(--text) 10%,transparent);--vh-muted:var(--text-muted,#64748b);max-width:680px;margin:0 auto}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .vh-hub{--vh-gt:#4ade80}}
+:root[data-theme="dark"] .vh-hub,:root[data-theme="black"] .vh-hub{--vh-gt:#4ade80}
+.vh-hub *{box-sizing:border-box}
+.vh-hub .vl-eyebrow{color:var(--vh-gt)}
+.vh-title{margin:.1rem 0 0;font-size:clamp(1.9rem,7vw,2.4rem);line-height:1.05;letter-spacing:-.02em}
+.vh-sub{margin:.35rem 0 0;color:var(--vh-muted);font-size:.9rem}
+.vh-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem;margin:1rem 0}
+.vh-stat{display:flex;align-items:center;gap:.5rem;padding:.7rem .6rem;border-radius:16px;border:1px solid var(--vh-line);background:var(--card);color:var(--text);font:inherit;text-align:left;cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,.04);min-width:0}
+.vh-stat-ico{flex:0 0 auto;width:2.4rem;height:2.4rem;border-radius:12px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--vh-g) 12%,var(--card));color:var(--vh-gt)}
+.vh-stat span:nth-child(2){display:flex;flex-direction:column;min-width:0;flex:1}
+.vh-stat b{font-size:1.25rem;line-height:1.1}
+.vh-stat small{font-size:.76rem;color:var(--vh-muted)}
+.vh-chev{font-size:.72rem;color:var(--vh-muted);flex:0 0 auto}
+.vh-section-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:1.1rem 0 .6rem}
+.vh-section-head h3{margin:0;font-size:1.2rem;display:flex;align-items:center;gap:.5rem}
+.vh-section-head h3 i{color:var(--vh-gt)}
+.vh-section-head button{border:0;background:none;color:var(--vh-gt);font:inherit;font-weight:800;cursor:pointer;min-height:2.6rem}
+.vh-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem;margin:0 0 .9rem}
+.vh-tabs button{display:flex;align-items:center;justify-content:center;gap:.35rem;min-height:3rem;padding:0 .4rem;border-radius:14px;border:1px solid var(--vh-line);background:var(--card);color:var(--text);font:inherit;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.vh-tabs button i{color:var(--vh-muted)}
+.vh-tabs button em{font-style:normal;font-size:.72rem;padding:.1rem .4rem;border-radius:999px;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--vh-muted)}
+.vh-group{margin:1.2rem 0 .55rem;font-size:1.2rem}
+.vh-list{background:var(--card);border:1px solid var(--vh-line);border-radius:18px;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+.vh-list-single{margin-top:.8rem}
+.vh-row{display:flex;align-items:center;gap:.8rem;width:100%;min-height:4.2rem;padding:.7rem .9rem;border:0;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.vh-row+.vh-row{border-top:1px solid var(--vh-line)}
+.vh-row:active{background:color-mix(in srgb,var(--text) 4%,transparent)}
+.vh-row-ico{flex:0 0 auto;width:2.8rem;height:2.8rem;border-radius:14px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--vh-g) 12%,var(--card));color:var(--vh-gt);font-size:1.05rem}
+.vh-row-copy{flex:1;min-width:0;display:flex;flex-direction:column}
+.vh-row-copy strong{font-size:.98rem}
+.vh-row-copy small{font-size:.78rem;color:var(--vh-muted);line-height:1.3}
+.vh-row-val{flex:0 0 auto;max-width:42%;text-align:right;font-size:.82rem;color:var(--vh-muted)}
+.vh-star{color:var(--text);font-weight:700}
+.vh-star i{color:#f59e0b}
+.vh-badge{display:inline-block;min-width:1.4rem;padding:.1rem .45rem;border-radius:999px;background:#ef4444;color:#fff;font-weight:800;text-align:center}
+#app .vh-hub .vl-add,#app .vl-page .vl-add{background:var(--primary,#0B6E4A)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important}
+/* ---- Messages inbox (redesign) ---- */
+.msg-tabs-row{display:flex;align-items:center;gap:.5rem;margin:.2rem 0 .7rem}
+.msg-tabs{flex:1;min-width:0;display:flex;gap:.25rem;padding:.25rem;border-radius:999px;background:var(--card);border:1px solid color-mix(in srgb,var(--text) 9%,transparent);overflow-x:auto;scrollbar-width:none}
+.msg-tabs::-webkit-scrollbar{display:none}
+#app .msg-tabs a{flex:0 0 auto;display:inline-flex;align-items:center;gap:.3rem;min-height:2.6rem;padding:0 .7rem;border-radius:999px;color:var(--text-muted)!important;font-weight:700;font-size:.85rem;cursor:pointer;text-decoration:none;white-space:nowrap;border:0!important;background:transparent!important}
+#app .msg-tabs a.active{background:var(--primary)!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+.msg-tab-badge{display:inline-flex!important;position:static!important;margin:0!important}
+.msg-newlist{flex:0 0 auto;display:inline-flex;align-items:center;gap:.4rem;min-height:3.1rem;padding:0 .9rem;border-radius:999px;border:1.5px solid var(--primary);background:transparent;color:var(--primary);font:inherit;font-weight:800;font-size:.9rem;cursor:pointer;white-space:nowrap}
+:root[data-theme="dark"] .msg-newlist,:root[data-theme="black"] .msg-newlist{color:#4ade80;border-color:#4ade80}
+.msg-search{display:flex;align-items:center;gap:.6rem;min-height:3rem;padding:0 1rem;margin:0 0 .8rem;border-radius:16px;border:1px solid color-mix(in srgb,var(--text) 10%,transparent);background:var(--card);color:var(--text-muted)}
+.msg-search:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 15%,transparent)}
+#app .msg-search input.messages-search{flex:1;min-width:0;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;margin:0!important;height:auto!important;font-size:1rem}
+#app #convListWrap{display:flex!important;flex-direction:column;gap:.55rem}
+#app #convListWrap .conv-row-wrap{background:var(--card);border:1px solid color-mix(in srgb,var(--text) 9%,transparent);border-radius:18px;overflow:hidden;box-shadow:0 1px 6px rgba(15,23,42,.04)}
+#app #convListWrap .conv-list-item{min-height:4.9rem!important;padding:.75rem .9rem!important;border-bottom:0!important;border-radius:0!important;gap:.8rem!important;align-items:center}
+#app #convListWrap .conv-list-item .avatar-circle{width:3.4rem!important;height:3.4rem!important}
+#app #convListWrap .conv-meta{flex:1;min-width:0}
+#app #convListWrap .conv-name-row strong{font-size:1.02rem}
+#app #convListWrap .conv-list-item[data-unread="1"] .conv-name-row strong,#app #convListWrap .conv-list-item[data-unread="1"] .conv-preview{font-weight:800;color:var(--text)}
+#app #convListWrap .conv-preview{font-size:.9rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app #convListWrap .conv-time{font-size:.78rem;color:var(--text-muted)}
+#app #convListWrap .conv-unread-badge{position:static!important;flex:0 0 auto}
+.conv-chev{flex:0 0 auto;font-size:.75rem;color:var(--text-muted)}
+/* Featured vendors rail on Home uses the same card as the Vendors page */
+.top-rated-vendors-scroll{display:flex!important;gap:.7rem!important;align-items:stretch;padding-bottom:.4rem}
+.top-rated-vendors-scroll .vd-card{flex:0 0 10.6rem;width:10.6rem;scroll-snap-align:start}
+@media(max-width:380px){.top-rated-vendors-scroll .vd-card{flex-basis:9.6rem;width:9.6rem}}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
