@@ -10159,7 +10159,7 @@ function updateRequestOfferBadge() {
   });
 }
 
-async function refreshNotifications(renderPanel = true) {
+async function __refreshNotificationsNow(renderPanel = true, includeSlow = true) {
   if (!session || !profile) {
     notifCount = 0;
     byId("notifWrap")?.classList.add("hidden");
@@ -10174,19 +10174,21 @@ async function refreshNotifications(renderPanel = true) {
 
   // Independent badge/count reads run concurrently so one slow table cannot
   // hold up unrelated UI state.
-  const unreadQ = sb.from("notifications").select("id").eq("user_id", session.user.id).eq("archived", false).eq("read", false).is("deleted_at", null);
+  const unreadQ = sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("archived", false).eq("read", false).is("deleted_at", null);
   const vendorQ = vendor ? sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES) : Promise.resolve({ count: 0 });
-  const vendorProductCountQ = vendor ? sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id) : Promise.resolve({ count: 0 });
+  const vendorProductCountQ = (vendor && includeSlow) ? sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id) : Promise.resolve(null);
   // "Today" is computed in the viewer's own local time (matches the same
   // toDateString() approach vendorEarningsInPeriod already uses for its
   // "today" filter) rather than a UTC day boundary, so a vendor in Lagos
   // sees today's views reset at their own midnight, not at 1am WAT.
   const todayStartLocal = new Date(); todayStartLocal.setHours(0, 0, 0, 0);
-  const vendorProfileViewsTodayQ = vendor ? sb.from("vendor_profile_view_events").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).gte("viewed_at", todayStartLocal.toISOString()) : Promise.resolve({ count: 0 });
+  const vendorProfileViewsTodayQ = (vendor && includeSlow) ? sb.from("vendor_profile_view_events").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).gte("viewed_at", todayStartLocal.toISOString()) : Promise.resolve(null);
   const buyerQ = sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES);
-  const followingQ = profile?.role !== "admin" ? sb.from("vendor_follows").select("id", { count: "exact", head: true }).eq("follower_id", session.user.id) : Promise.resolve({ count: 0 });
-  const totalOrdersQ = profile?.role !== "admin" ? sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve({ count: 0 });
-  const suggestionQ = profile?.role === "admin" ? sb.rpc("get_platform_suggestions") : vendor ? sb.rpc("get_vendor_suggestions") : Promise.resolve({ data: [] });
+  // Slow-changing numbers (following count, lifetime order count, suggestions,
+  // product count, profile views) are only re-read about once a minute.
+  const followingQ = (profile?.role !== "admin" && includeSlow) ? sb.from("vendor_follows").select("id", { count: "exact", head: true }).eq("follower_id", session.user.id) : Promise.resolve(profile?.role !== "admin" ? null : { count: 0 });
+  const totalOrdersQ = (profile?.role !== "admin" && includeSlow) ? sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve(profile?.role !== "admin" ? null : { count: 0 });
+  const suggestionQ = !includeSlow ? Promise.resolve(null) : profile?.role === "admin" ? sb.rpc("get_platform_suggestions") : vendor ? sb.rpc("get_vendor_suggestions") : Promise.resolve({ data: [] });
   const conversationsQ = sb.rpc("list_my_conversations");
   const cartQ = profile?.role !== "admin" ? sb.from("cart_items").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve({ count: 0 });
   let requestSeenAt = ""; try { requestSeenAt = sessionStorage.getItem("levromart-request-offers-seen-at") || ""; } catch (_) {}
@@ -10195,10 +10197,12 @@ async function refreshNotifications(renderPanel = true) {
   const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes, followingRes, totalOrdersRes, vendorProfileViewsTodayRes] = await Promise.all([
     unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ, vendorProductCountQ, followingQ, totalOrdersQ, vendorProfileViewsTodayQ
   ]);
-  vendorProductCount = vendor ? (vendorProductCountRes?.count || 0) : 0;
-  vendorProfileViewsToday = vendor ? (vendorProfileViewsTodayRes?.count || 0) : 0;
+  if (vendorProductCountRes) vendorProductCount = vendor ? (vendorProductCountRes?.count || 0) : 0;
+  else if (!vendor) vendorProductCount = 0;
+  if (vendorProfileViewsTodayRes) vendorProfileViewsToday = vendor ? (vendorProfileViewsTodayRes?.count || 0) : 0;
+  else if (!vendor) vendorProfileViewsToday = 0;
 
-  notifCount = (unreadRes?.data || []).length;
+  notifCount = Number(unreadRes?.count || 0);
   const dot = byId("notifDot");
   if (dot) {
     if (notifCount > 0) { dot.textContent = notifCount > 9 ? "9+" : notifCount; dot.classList.remove("hidden"); }
@@ -10206,9 +10210,9 @@ async function refreshNotifications(renderPanel = true) {
   }
   vendorPendingOrderCount = vendor ? (vendorRes?.count || 0) : 0;
   buyerPendingOrderCount = buyerRes?.count || 0;
-  buyerFollowingCount = followingRes?.count || 0;
-  buyerTotalOrderCount = totalOrdersRes?.count || 0;
-  unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => String(x.status || "").toLowerCase() === "new").length;
+  if (followingRes) buyerFollowingCount = followingRes?.count || 0;
+  if (totalOrdersRes) buyerTotalOrderCount = totalOrdersRes?.count || 0;
+  if (suggestionRes) unreadSuggestionCount = (suggestionRes?.data || []).filter((x) => String(x.status || "").toLowerCase() === "new").length;
   unreadMessageCount = (conversationsRes?.data || []).reduce((sum, c) => sum + (c.unread_count > 0 ? 1 : 0), 0);
   const messagesDot = byId("messagesDot");
   if (messagesDot) {
@@ -10220,7 +10224,11 @@ async function refreshNotifications(renderPanel = true) {
   updateRequestOfferBadge();
   updateCartFab();
 
-  sb.from("messages").update({ delivered_at: new Date().toISOString() }).is("delivered_at", null).neq("sender_id", session.user.id).then(() => {}).catch(() => {});
+  // Mark incoming messages as delivered, at most once a minute (this was a write on every refresh).
+  if (Date.now() - (window.__lastDeliveredStamp || 0) > 60000) {
+    window.__lastDeliveredStamp = Date.now();
+    sb.from("messages").update({ delivered_at: new Date().toISOString() }).is("delivered_at", null).neq("sender_id", session.user.id).then(() => {}).catch(() => {});
+  }
   renderBottomNav();
   // The profile panel's stats (pending orders, followers, etc.) are built
   // from these same globals inside updateAuthUI(), but opening the panel
@@ -10231,6 +10239,37 @@ async function refreshNotifications(renderPanel = true) {
   // simply never fetched yet at that point.
   updateAuthUI();
   if (renderPanel && getNotifHost()) await renderNotifPanel();
+}
+// refreshNotifications used to run ~13 queries on EVERY call and is called from
+// ~40 places (every incoming message, notification, order change, cart change,
+// tab focus...). It now (1) shares one in-flight run between concurrent callers,
+// (2) coalesces bursts into one trailing run, and (3) re-reads the slow-changing
+// counts only once a minute.
+let __notifRun = null, __notifAgain = false, __notifAgainPanel = false, __notifLastStart = 0, __notifLastSlow = 0, __notifTrailTimer = null;
+const NOTIF_MIN_GAP_MS = 3000, NOTIF_SLOW_EVERY_MS = 60000;
+function refreshNotifications(renderPanel = true) {
+  if (__notifRun) { __notifAgain = true; __notifAgainPanel = __notifAgainPanel || !!renderPanel; return __notifRun; }
+  const since = Date.now() - __notifLastStart;
+  if (!renderPanel && since < NOTIF_MIN_GAP_MS) {
+    // Too soon after the last one: schedule a single trailing refresh instead.
+    __notifAgain = true;
+    if (!__notifTrailTimer) __notifTrailTimer = setTimeout(() => { __notifTrailTimer = null; __notifAgain = false; refreshNotifications(false).catch(() => {}); }, NOTIF_MIN_GAP_MS - since + 50);
+    return Promise.resolve();
+  }
+  __notifLastStart = Date.now();
+  const slow = Date.now() - __notifLastSlow > NOTIF_SLOW_EVERY_MS;
+  if (slow) __notifLastSlow = Date.now();
+  __notifRun = (async () => {
+    try { return await __refreshNotificationsNow(renderPanel, slow); }
+    finally {
+      __notifRun = null;
+      if (__notifAgain && !__notifTrailTimer) {
+        const wantPanel = __notifAgainPanel; __notifAgain = false; __notifAgainPanel = false;
+        __notifTrailTimer = setTimeout(() => { __notifTrailTimer = null; refreshNotifications(wantPanel).catch(() => {}); }, NOTIF_MIN_GAP_MS);
+      }
+    }
+  })();
+  return __notifRun;
 }
 async function renderNotifPanel() {
   const renderToken = ++notifRenderEpoch;
@@ -10760,15 +10799,33 @@ async function refreshMarketplaceRegions(){
     await refreshMonthlyPendingCount();
   }while(marketplaceRefreshAgain);}catch(err){console.warn('Marketplace realtime refresh failed',err);}finally{marketplaceRefreshBusy=false;}
 }
+// Marketplace realtime fires for ANY row change by ANY user. Re-fetching on every
+// event multiplied traffic with the number of people online, so work is
+// coalesced (one run per ~4s burst) and skipped while the tab is hidden (it
+// runs once when the tab comes back).
+let __mktTimer=null; const __mktPending=new Set();
+function scheduleMarketplaceWork(kind){
+  __mktPending.add(kind);
+  if(document.hidden||__mktTimer)return;
+  __mktTimer=setTimeout(()=>{
+    __mktTimer=null;
+    const kinds=[...__mktPending]; __mktPending.clear();
+    if(kinds.includes('likes'))void hydrateProductLikeCountsInView();
+    if(kinds.includes('variants'))void hydrateProductVariantIndicatorsInView();
+    if(kinds.includes('regions'))void refreshMarketplaceRegions();
+  },4000);
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&__mktPending.size&&!__mktTimer)scheduleMarketplaceWork('flush'); },{passive:true});
 function subscribeMarketplaceUpdates(){
   const user=session?.user?.id||null;if(marketplaceLiveChannel&&marketplaceLiveUser===user)return;
   if(marketplaceLiveChannel){sb.removeChannel(marketplaceLiveChannel);marketplaceLiveChannel=null;}marketplaceLiveUser=user;if(!user)return;
   let channel=sb.channel(`marketplace-${user}`);
   for(const table of ['favorites','products','product_variants','vendor_packages','vendors','monthly_listing_submissions'])channel=channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
-    if(table==='favorites'){void hydrateProductLikeCountsInView();return;}
+    if(table==='favorites'){scheduleMarketplaceWork('likes');return;}
     invalidateMarketplaceState();
     if(table==='vendors'){const v=payload.new?.id?payload.new:payload.old;if(payload.eventType==='DELETE'||v.deleted_at||v.is_active===false)document.querySelectorAll(`[data-vendor-id="${CSS.escape(String(v.id))}"]`).forEach(el=>{if(el.classList.contains('vendor-card'))el.remove()});if(v.id===vendor?.id)refreshAuthState().catch(err=>console.warn('Vendor role refresh failed',err));}
-    if(table==='product_variants')void hydrateProductVariantIndicatorsInView();void refreshMarketplaceRegions();
+    if(table==='product_variants')scheduleMarketplaceWork('variants');
+    scheduleMarketplaceWork('regions');
   });
   marketplaceLiveChannel=channel.subscribe(status=>{window.__marketplaceRealtimeStatus=status;if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Marketplace realtime unavailable: check publication and RLS',status);});
 }
@@ -13339,15 +13396,31 @@ let homeCarouselSlides = [];
 let homeCarouselTimer = null;
 let homeCarouselIndex = 0;
 
+// Small session-scoped TTL cache for rarely-changing public data (carousel slides,
+// categories). Returns cached rows for `ttlMs`; `levroCacheClear(prefix)` drops them
+// (called after admin edits).
+function levroCacheGet(key, ttlMs) {
+  try {
+    const raw = sessionStorage.getItem("levro-cache:" + key); if (!raw) return null;
+    const o = JSON.parse(raw); if (!o || Date.now() - o.at > ttlMs) return null; return o.v;
+  } catch (_) { return null; }
+}
+function levroCacheSet(key, value) { try { sessionStorage.setItem("levro-cache:" + key, JSON.stringify({ at: Date.now(), v: value })); } catch (_) {} }
+function levroCacheClear(prefix = "") {
+  try { Object.keys(sessionStorage).filter((k) => k.startsWith("levro-cache:" + prefix)).forEach((k) => sessionStorage.removeItem(k)); } catch (_) {}
+}
 async function loadHomepageCarouselSlides({ includeInactive = false } = {}) {
   try {
+    if (!includeInactive) { const hit = levroCacheGet("carousel", 10 * 60 * 1000); if (hit) return hit; }
     let q = sb.from("homepage_carousel_slides").select("id,storage_path,image_url,link_url,alt_text,sort_order,is_active,created_by,created_at,updated_at").order("sort_order", { ascending: true }).order("created_at", { ascending: true });
     if (!includeInactive) q = q.eq("is_active", true);
     const { data, error } = await q;
     if (error) throw error;
     // An empty table is treated as the bundled launch set. This means the app
     // is immediately populated before the admins publish the initial slides.
-    return (data && data.length) ? data : INITIAL_HOME_CAROUSEL_SLIDES.slice();
+    const rows = (data && data.length) ? data : INITIAL_HOME_CAROUSEL_SLIDES.slice();
+    if (!includeInactive && data && data.length) levroCacheSet("carousel", rows);
+    return rows;
   } catch (e) {
     console.warn("[Levromart] Carousel load failed; using bundled slides.", e);
     return INITIAL_HOME_CAROUSEL_SLIDES.slice();
@@ -13785,7 +13858,7 @@ async function addAdminCarouselSlide() {
     try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
     const publicUrl = await uploadToR2(uploadBlob, path, uploadBlob.type || file.type);
     const payload = { storage_path: path, image_url: publicUrl, alt_text: String(byId("adminCarouselNewAlt")?.value || file.name).trim().slice(0,180), link_url: String(byId("adminCarouselNewLink")?.value || "").trim() || null, sort_order: Math.max(0, Number(byId("adminCarouselNewOrder")?.value || 100)), is_active: true, created_by: session.user.id };
-    const { error } = await sb.from("homepage_carousel_slides").insert(payload);
+    levroCacheClear("carousel"); const { error } = await sb.from("homepage_carousel_slides").insert(payload);
     if (error) throw error;
     showToast("Banner added.", "success");
     navigate("adminCarousel", {}, { replace: true });
@@ -13798,7 +13871,7 @@ async function saveAdminCarouselSlide(id) {
   const alt_text = String(byId(`adminCarouselAlt_${id}`)?.value || "").trim().slice(0,180) || null;
   const link_url = String(byId(`adminCarouselLink_${id}`)?.value || "").trim() || null;
   const sort_order = Math.max(0, Number(byId(`adminCarouselOrder_${id}`)?.value || 0));
-  const { error } = await sb.from("homepage_carousel_slides").update({ alt_text, link_url, sort_order, updated_at: new Date().toISOString() }).eq("id", id);
+  levroCacheClear("carousel"); const { error } = await sb.from("homepage_carousel_slides").update({ alt_text, link_url, sort_order, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) { showToast(error.message, "error"); return; }
   showToast("Banner updated.", "success");
   navigate("adminCarousel", {}, { replace: true });
@@ -13806,7 +13879,7 @@ async function saveAdminCarouselSlide(id) {
 
 async function toggleAdminCarouselSlide(id, active) {
   if (!isCarouselAdmin()) return;
-  const { error } = await sb.from("homepage_carousel_slides").update({ is_active: !!active, updated_at: new Date().toISOString() }).eq("id", id);
+  levroCacheClear("carousel"); const { error } = await sb.from("homepage_carousel_slides").update({ is_active: !!active, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) { showToast(error.message, "error"); return; }
   showToast(active ? "Banner is now visible." : "Banner hidden.", "success");
   navigate("adminCarousel", {}, { replace: true });
@@ -13836,7 +13909,7 @@ async function deleteAdminCarouselSlide(id) {
   try {
     const { data: row, error: readError } = await sb.from("homepage_carousel_slides").select("storage_path").eq("id", id).maybeSingle();
     if (readError) throw readError;
-    const { error } = await sb.from("homepage_carousel_slides").delete().eq("id", id);
+    levroCacheClear("carousel"); const { error } = await sb.from("homepage_carousel_slides").delete().eq("id", id);
     if (error) throw error;
     if (row?.storage_path) await sb.storage.from("homepage-carousel").remove([row.storage_path]);
     showToast("Banner deleted.", "success");
@@ -13872,10 +13945,12 @@ async function renderHome() {
     if (cachedHome) return renderOfflineHomeFromCache(cachedHome);
     return `<div class="offline-browse-notice"><i class="fa-solid fa-wifi-slash"></i><span>You're offline. Connect once to load Levromart's marketplace, then the app will keep a browseable copy available for your next offline visit.</span></div><div class="empty-state"><i class="fa-solid fa-shop" style="display:block;font-size:1.8rem;margin-bottom:.55rem;"></i>Levromart is ready. Your marketplace will appear here after the first online load.</div>`;
   }
+  const cachedCats = levroCacheGet("categories", 10 * 60 * 1000);
   const [{ data: categories }, { data: sectorsData }] = await Promise.all([
-    sb.from("categories").select("*").order("name"),
+    cachedCats ? Promise.resolve({ data: cachedCats }) : sb.from("categories").select("*").order("name"),
     sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
   ]);
+  if (!cachedCats && categories?.length) levroCacheSet("categories", categories);
   window.__categories = categories || [];
   if (!sectors.length) sectors = sectorsData || [];
 
@@ -23690,11 +23765,17 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // under RLS. Resolve the customer's display name through the existing secure
   // buyer-contact RPC so every vendor card can identify the customer.
   try {
+    // One RPC per order was fired on every render of the vendor list (including for
+    // pending/cancelled orders whose customer is hidden anyway). Only look up the
+    // name for accepted orders, and remember it for the session.
+    window.__buyerNameCache = window.__buyerNameCache || new Map();
     await Promise.all((safeAllOrders || []).map(async (o) => {
       if (o.buyer?.name || !o.id) return;
+      if (["pending", "cancelled"].includes(String(o.status || ""))) return;
+      if (window.__buyerNameCache.has(o.id)) { o.buyer = { ...(o.buyer || {}), name: window.__buyerNameCache.get(o.id) }; return; }
       const r = await withRouteTimeout(sb.rpc("get_order_buyer_contact", { p_order_id: o.id }), 2200, { data: [] });
       const c = Array.isArray(r?.data) ? r.data[0] : null;
-      if (c?.name) o.buyer = { ...(o.buyer || {}), name: c.name };
+      if (c?.name) { window.__buyerNameCache.set(o.id, c.name); o.buyer = { ...(o.buyer || {}), name: c.name }; }
     }));
   } catch (_) {}
   // Customers stay anonymous to the vendor until the order is accepted.
@@ -23722,21 +23803,25 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // Three rows of tab pills used to wrap into an unreadable jumble on
   // narrow screens - compact dropdowns plus a date range say the same
   // thing in a fraction of the space.
-  let html = `<h2>Orders</h2>`;
+  const sortedOrders = sortOrdersForList(orders);
+  const { active: activeVendorOrders, history: historyVendorOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
+  // Finished sales open from a History button beside the title (same as the
+  // customer page) instead of a long accordion under the list.
+  window.__orderHistoryHtml = orderHistoryAccordionHtml(historyVendorOrders, false, "sales");
+  window.__orderHistoryEmpty = !historyVendorOrders.length;
+  const vendorFiltersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales")}<div class="orders-search-slot"></div></div>`;
+  const vendorHistoryBtn = `<button type="button" class="orders-icon-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
+  let html = `<div class="orders-title-row"><h2>Orders</h2><div class="orders-top-actions">${vendorFiltersRow}${vendorHistoryBtn}</div></div>`;
   html += vendorOrdersTabsHtml("sales");
   html += orderStatsHtml(safeStatsOrders);
   html += orderStatusPillsHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales", orderStatusCountsFrom(safeStatsOrders));
-  html += `<div class="orders-filter-search-row">${orderFiltersDropdownHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales")}<div class="orders-search-slot"></div></div>`;
   orderListViewMode = "cards";
   orderListExpanded = false;
-  const sortedOrders = sortOrdersForList(orders);
-  const { active: activeVendorOrders, history: historyVendorOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
   window.__orderListOrders = activeVendorOrders;
   window.__orderListIsCustomer = false;
   window.__orderListSourcePerspective = "sales";
   html += orderListControlsHtml(activeVendorOrders.length);
   html += `<div id="orderListWrap">${orderListHtml(activeVendorOrders, false, "sales")}</div>`;
-  html += orderHistoryAccordionHtml(historyVendorOrders, false, "sales");
   setTimeout(() => { enhanceSelectsIn(byId("app")); renderOrderStatsBody(); }, 0);
   return html;
 }
@@ -27206,7 +27291,17 @@ async function recordAuthActivity(eventType) {
   try { await sb.rpc("record_auth_activity", { p_event_type: eventType, p_user_agent: navigator.userAgent || null }); } catch (_) {}
 }
 
-sb.auth.onAuthStateChange((_event) => {
+// supabase-js also emits SIGNED_IN whenever a tab regains focus with an already-valid
+// session. Treating that as a fresh login re-ran the whole auth sequence (/auth/v1/user,
+// role sync, consent check, profile + vendor reload...) on every tab switch. Decide once
+// here whether it is a genuinely new sign-in; the other listeners reuse the decision.
+window.__levroSignInIsNew = () => !(window.__signInDecision && Date.now() - window.__signInDecision.at < 3000 && window.__signInDecision.isNew === false);
+sb.auth.onAuthStateChange((_event, _sess) => {
+  if (_event === "SIGNED_IN") {
+    const same = !!(session?.user?.id && _sess?.user?.id === session.user.id && profile);
+    window.__signInDecision = { at: Date.now(), isNew: !same };
+    if (same) return;
+  }
   if (_event === "PASSWORD_RECOVERY") {
     hideLogin();
     isVoluntaryPasswordChange = false;
@@ -30276,7 +30371,7 @@ if ("serviceWorker" in navigator) {
   // account-based check after that bundle has restored the session, and again
   // when a later sign-in occurs. No localStorage-only consent is accepted.
   setTimeout(()=>{if(session?.user?.id) window.__levroCheckLegalConsent();},0);
-  sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN")setTimeout(()=>window.__levroCheckLegalConsent(),0);});
+  sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN"&&window.__levroSignInIsNew())setTimeout(()=>window.__levroCheckLegalConsent(),0);});
 })();
 </script>
 
@@ -30312,7 +30407,7 @@ if ("serviceWorker" in navigator) {
     gate.querySelector("#levroPayoutGateLaterBtn").addEventListener("click",closeGate);
     gate.addEventListener("click",(e)=>{if(e.target===gate)closeGate();});
   };
-  sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN")setTimeout(()=>window.__levroCheckPayoutSetup?.(),400);});
+  sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN"&&window.__levroSignInIsNew())setTimeout(()=>window.__levroCheckPayoutSetup?.(),400);});
 })();
 </script>
 <script id="levromart-commission-due-reminder-js">
@@ -30343,7 +30438,7 @@ if ("serviceWorker" in navigator) {
       showToast(`Commission of ${naira(Number(owed))} is due ${when}. Pay early to keep your storefront running.`,"info");
     }catch(_){}
   };
-  sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN")setTimeout(()=>window.__levroCheckCommissionDueReminder?.(),1200);});
+  sb.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN"&&window.__levroSignInIsNew())setTimeout(()=>window.__levroCheckCommissionDueReminder?.(),1200);});
 })();
 </script>
 <style id="final-system-bar-and-map-popup-polish">
@@ -34671,14 +34766,18 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
     modal.querySelector('#levroReviewPromptNow')?.addEventListener('click',async()=>{window.__reviewPromptDismissedOrderId=String(order.id);rememberDismissed(order.id);closePrompt();await navigate('leaveReview',{orderId:order.id},true);});
     modal.addEventListener('click',e=>{if(e.target===modal){window.__reviewPromptDismissedOrderId=String(order.id);rememberDismissed(order.id);closePrompt();}});
   }
+  let lastReviewCheck=0;
   window.maybePromptLevromartReview=async function(){
     if(promptBusy||!session?.user?.id||profile?.role==='admin'||currentView==='leaveReview')return;
+    // This runs a join over every completed order, so run it at most every 3 minutes
+    // (it used to run on every navigation AND every 15 seconds).
+    if(Date.now()-lastReviewCheck<180000)return;
+    lastReviewCheck=Date.now();
     promptBusy=true;
     try{const order=await findEligibleReview();if(order)showPrompt(order);}catch(e){console.warn('[Levromart] Review prompt check failed:',e);}finally{promptBusy=false;}
   };
   const run=()=>setTimeout(()=>window.maybePromptLevromartReview?.(),700);
   document.addEventListener('levromart:view-rendered',run);
-  setInterval(()=>window.maybePromptLevromartReview?.(),15000);
   // refreshAuthStateOnce is the single entry point for session restoration in this build.
   if(typeof refreshAuthStateOnce==='function'&&!window.__reviewPromptAuthWrapped){
     const original=refreshAuthStateOnce;
@@ -37513,7 +37612,10 @@ body.search-input-active{--levro-search-keyboard-active:1;}
   const __vendorHydrateCache={followerCounts:{key:"",at:0},followState:{key:"",at:0}};
   function __vendorHydrateShouldSkip(cache,ids){
     const key=ids.slice().sort().join(",");
-    if(cache.key===key && Date.now()-cache.at<10000)return true;
+    // Same set of visible vendors: don't ask again for 90s (this was 10s, and the
+    // DOM observer below fires on almost any change, so a page sitting open
+    // re-requested follower counts/follow state every ~10-15s).
+    if(cache.key===key && Date.now()-cache.at<90000)return true;
     cache.key=key;cache.at=Date.now();
     return false;
   }
@@ -37864,6 +37966,15 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       return t && t.nodeType===1 && (t.id==="productGrid" || t.closest?.("#productGrid"));
     });
     if(onlyProductGrid)return;
+    // Ignore churn that can never contain vendor cards / search toolbars: toasts,
+    // call overlay, Levi chat, chat threads, header/bottom-nav badges, carousels.
+    const IGNORE="#toastStack,#levroCallOverlay,#leviAskBubble,#aiChatPanel,#chatMessages,.chat-page-header,#bottomNav,header,.home-promotional-carousel,#homePromotionalViewport";
+    const meaningful=mutations.some(m=>{
+      const t=m.target;
+      if(!t||t.nodeType!==1)return true;
+      return !t.closest?.(IGNORE);
+    });
+    if(!meaningful)return;
     clearTimeout(window.__levroFinalUxTimer);window.__levroFinalUxTimer=setTimeout(()=>{setupCompactSearches();installVendorCardRenderer();hydrateFollowerCounts();hydrateVendorCardFollowState();syncListingBillingUI();syncPackageBillingUI();},80);
   });
   observer.observe(document.body,{childList:true,subtree:true});
@@ -39213,9 +39324,12 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       lastSeenMessagesByConv.set(conversationId,[...(lastSeenMessagesByConv.get(conversationId)||[]),...missing]);
       scrollChatToBottom();
       resolveVisibleAttachments(el); setupMessageInteractions(el);
-      missing.filter(m=>m.sender_id!==session.user.id).forEach(m=>{
-        sb.from('messages').update({read_at:new Date().toISOString(),delivered_at:new Date().toISOString()}).eq('id',m.id).catch(()=>{});
-      });
+      // One batched update for all new incoming messages (was one PATCH per message).
+      const incomingIds=missing.filter(m=>m.sender_id!==session.user.id&&!m.read_at).map(m=>m.id);
+      if(incomingIds.length){
+        const nowIso=new Date().toISOString();
+        Promise.resolve(sb.from('messages').update({read_at:nowIso,delivered_at:nowIso}).in('id',incomingIds)).then(()=>refreshNotifications(false)).catch(()=>{});
+      }
     }catch(_){}finally{pollBusy=false;}
   }
   window.__levroStartChatMessageFallback=function(conversationId){
@@ -39223,7 +39337,15 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     if(!conversationId) return;
     pollConversation=String(conversationId);
     reconcileLatestChatMessages(pollConversation);
-    pollTimer=setInterval(()=>reconcileLatestChatMessages(pollConversation),3000);
+    // Realtime is the primary path. While its channel is healthy only double-check
+    // about every 15s; if the channel is down fall back to every 3s.
+    let tick=0;
+    pollTimer=setInterval(()=>{
+      tick++;
+      const healthy=(typeof typingChannelReady!=="undefined")&&typingChannelReady===true;
+      if(healthy&&tick%5!==0)return;
+      reconcileLatestChatMessages(pollConversation);
+    },3000);
   };
   /* Pull right now (called when a new-message notification arrives, or the app comes back to the foreground). */
   window.__levroReconcileChatNow=function(){ if(pollConversation) return reconcileLatestChatMessages(pollConversation); };
@@ -41368,9 +41490,12 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     m.querySelector('#levroVendorConfirmFollowup').onclick=async()=>{if(busy)return;if(!(await showConfirmDialog('Only confirm if you have actually received the customer’s payment, including a direct bank transfer outside Levromart. This records the payment and may complete the order. If you have not received it, raise a dispute instead.',{title:'Confirm payment received',okLabel:'Yes, confirm payment'})))return;busy=true;try{const {data,error}=await sb.rpc('vendor_confirm_unreported_payment',{p_order_id:o.id});if(error)throw error;close();showToast(data?.order_completed?'Payment confirmed. Order completed.':'Payment confirmed.','success');await navigate('orderDetail',{orderId:o.id},false);setTimeout(()=>window.maybePromptLevromartReview?.(),900);}catch(e){showToast(e?.message||'Could not confirm the payment.','error');}finally{busy=false;}};
     m.querySelector('#levroVendorDisputeFollowup').onclick=async()=>{if(busy)return;const reason=window.prompt('Why can you not confirm this payment? Please give the reason for admin review.','I cannot verify receipt of the payment.');if(reason===null||!String(reason).trim())return;busy=true;try{const {data,error}=await sb.rpc('vendor_dispute_unreported_payment',{p_order_id:o.id,p_reason:String(reason).trim()});if(error)throw error;close();showToast('Payment unresolved. The issue has been sent to admin for review.','success');await navigate('orderDetail',{orderId:o.id},false);}catch(e){showToast(e?.message||'Could not raise the dispute.','error');}finally{busy=false;}};
   }
+  let lastFollowupCheck=0;
   window.maybePromptPaymentFollowup=async function(){
     if(busy||document.getElementById('levroPaymentFollowupModal')||!session?.user?.id||profile?.role==='admin')return;
     if(currentView==='leaveReview')return;
+    if(Date.now()-lastFollowupCheck<120000)return; // was: every navigation + every 30s
+    lastFollowupCheck=Date.now();
     try{
       const order=profile?.role==='buyer'?await fetchBuyerOverdue():await fetchVendorOverdue();
       if(order){if(profile?.role==='buyer')showBuyer(order);else showVendor(order);}
@@ -41378,7 +41503,6 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
   };
   document.addEventListener('levromart:view-rendered',()=>setTimeout(()=>window.maybePromptPaymentFollowup?.(),500));
   document.addEventListener('levromart:auth-ready',()=>setTimeout(()=>window.maybePromptPaymentFollowup?.(),700));
-  setInterval(()=>window.maybePromptPaymentFollowup?.(),30000);
 })();
 </script>
 
@@ -42638,6 +42762,9 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 #app .browse-filter-toolbar > #searchInput,#app .browse-filter-toolbar > .levro-compact-search-wrap{order:3}
 #app .browse-filter-toolbar.final-search-open > #searchInput{flex:1 1 100% !important;order:5 !important;width:100% !important}
 #app .browse-filter-toolbar.final-search-open > .levro-final-search-toggle{order:2 !important;margin-left:auto !important;position:static !important}
+#app .browse-filter-toolbar{position:relative !important}
+#app .browse-filter-toolbar > .levro-compact-history{order:9 !important;position:absolute !important;left:0 !important;right:0 !important;top:calc(100% + .3rem) !important;z-index:120 !important;max-height:46vh;overflow:auto;grid-column:auto !important;grid-row:auto !important}
+#app .browse-filter-toolbar > .browse-filter-panel{order:8;flex:1 1 100%}
 
 .product-reviews-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;margin:.7rem 0 .2rem;padding:.7rem .9rem;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font:inherit;font-size:.9rem;font-weight:700;cursor:pointer}
 .product-reviews-toggle i{color:var(--text-muted);font-size:.8rem}
@@ -43207,8 +43334,13 @@ function hideLeviFromPanel() {
   }
   function watchStatus(){
     clearInterval(pollTimer);
+    let tick=0;
     pollTimer=setInterval(async()=>{
       if(!call)return;
+      tick++;
+      // While ringing check every 4s; once connected the broadcast "end" message is
+      // the main signal, so only double-check about every 20s.
+      if(document.getElementById("levroCallOverlay")?.classList.contains("lc-connected")&&tick%5!==0)return;
       try{
         const {data}=await sb.from("voice_calls").select("status").eq("id",call.id).maybeSingle();
         if(data&&["ended","declined","missed"].includes(data.status)){
@@ -43285,7 +43417,9 @@ function hideLeviFromPanel() {
     }catch(_){}
   }
   window.__levroCheckIncomingCall=checkRinging;
-  setInterval(checkRinging,7000);
+  // No timer: a ringing call arrives as a realtime notification / push, and we also
+  // look when the app opens, comes back to the foreground or a push is tapped (below).
+  // (A 7s poll here was ~900 requests/day per open tab.)
   // Opened from an "Incoming call" push (or just came back to the app): look right away.
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden)setTimeout(checkRinging,300); },{passive:true});
   setTimeout(checkRinging,2500);
