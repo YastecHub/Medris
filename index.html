@@ -24388,7 +24388,8 @@ async function deletePackage(id) {
 }
 
 // ---------- VENDOR / BUYER ORDERS ----------
-const ORDER_TABS = ["all", "pending", "confirmed", "payment_unresolved", "handed_over", "returned", "completed", "cancelled", "disputed"];
+// Ordered by importance: what needs attention first, finished and cancelled last.
+const ORDER_TABS = ["all", "pending", "confirmed", "handed_over", "returned", "payment_unresolved", "disputed", "completed", "cancelled"];
 const ORDER_TYPE_TABS = [
   { value: "all", label: "All" },
   { value: "sale", label: "Sales" },
@@ -24501,7 +24502,15 @@ function orderStatusCountsFrom(rows) {
 const __ordersTabCache = new Map();
 function ordersTabCached(key, run) {
   const hit = __ordersTabCache.get(key);
-  if (hit && Date.now() - hit.at < 45000 && Date.now() - (window.__ordersRailAt || 0) < 2500) return Promise.resolve(hit.value);
+  // A status-pill tap shows what was loaded a moment ago immediately; anything older than 45 s is refreshed quietly in
+  // the background so the next tap is current, instead of making this tap wait.
+  if (hit && Date.now() - hit.at < 600000 && Date.now() - (window.__ordersRailAt || 0) < 2500) {
+    if (Date.now() - hit.at > 45000 && !hit.refreshing) {
+      hit.refreshing = true;
+      Promise.resolve(run()).then((value) => { if (!(value && value.error)) __ordersTabCache.set(key, { at: Date.now(), value }); else hit.refreshing = false; }).catch(() => { hit.refreshing = false; });
+    }
+    return Promise.resolve(hit.value);
+  }
   return Promise.resolve(run()).then((value) => { if (value && value.error) return value; __ordersTabCache.set(key, { at: Date.now(), value }); if (__ordersTabCache.size > 12) __ordersTabCache.delete(__ordersTabCache.keys().next().value); return value; });
 }
 async function fetchBuyerOrderStatusCounts() {
@@ -24634,7 +24643,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // Hydrate item summaries separately from the base order query. This keeps a
   // restrictive nested relationship from blocking the whole Orders page.
   try {
-    const orderIds = (safeAllOrders || []).map(o => o.id).filter(Boolean);
+    const orderIds = (safeAllOrders || []).filter(o => !Array.isArray(o.items) || !o.items.length).map(o => o.id).filter(Boolean);
     if (orderIds.length) {
       const { data: orderItems } = await withRouteTimeout(
         sb.from("order_items").select("order_id,product_id,quantity,unit_price,product:products(id,is_service,name,photos)").in("order_id", orderIds),
@@ -24680,12 +24689,15 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // two perspective badges and the bottom-nav badge never depend on a stale
   // previous screen.
   try {
-    const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
-      sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES),
-      sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
-    ]);
-    vendorPendingOrderCount = salesCount || 0;
-    buyerPendingOrderCount = purchaseCount || 0;
+    const counts = await ordersTabCached(`vcnt:${vendor.id}:${session.user.id}`, async () => {
+      const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
+        sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+        sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+      ]);
+      return { salesCount, purchaseCount };
+    });
+    vendorPendingOrderCount = counts.salesCount || 0;
+    buyerPendingOrderCount = counts.purchaseCount || 0;
     renderBottomNav();
   } catch (_) {}
   // Three rows of tab pills used to wrap into an unreadable jumble on
