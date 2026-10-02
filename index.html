@@ -17098,6 +17098,74 @@ function linkifyChatText(text) {
     return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" class="chat-inline-link">${match}</a>`;
   }).replace(/\n/g, "<br>");
 }
+// ---------- CALL LOG ROWS IN THE CHAT (missed / outgoing / incoming + duration) ----------
+const __callLogCache = { id: null, at: 0, rows: [] };
+function callLogLabel(c) {
+  const mine = String(c.caller_id) === String(session?.user?.id);
+  const dir = mine ? "Outgoing call" : "Incoming call";
+  const ageMs = Date.now() - new Date(c.created_at).getTime();
+  let status = c.status;
+  if (status === "ringing" && ageMs > 90000) status = "missed";
+  if (status === "ringing") return null;
+  if (c.answered_at && (status === "ended" || status === "missed")) {
+    const sec = Math.max(0, Math.round((new Date(c.ended_at || c.answered_at).getTime() - new Date(c.answered_at).getTime()) / 1000));
+    const dur = sec >= 3600 ? `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m` : sec >= 60 ? `${Math.floor(sec / 60)}m ${String(sec % 60).padStart(2, "0")}s` : `${sec}s`;
+    return { icon: mine ? "fa-phone-arrow-up-right" : "fa-phone-arrow-down-left", text: `${dir} · ${dur}`, bad: false };
+  }
+  if (status === "declined") return { icon: "fa-phone-slash", text: mine ? "Call declined" : "You declined a call", bad: true };
+  return { icon: "fa-phone-slash", text: mine ? "No answer" : "Missed call", bad: !mine };
+}
+function callLogRowHtml(c, label) {
+  const t = new Date(c.created_at).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" });
+  return `<div class="chat-call-log${label.bad ? " is-missed" : ""}" data-call-id="${esc(c.id)}" data-created-at="${esc(c.created_at)}"><span class="chat-call-pill"><i class="fa-solid ${label.icon === "fa-phone-slash" ? "fa-phone-slash" : "fa-phone"}" aria-hidden="true"></i> ${esc(label.text)} <small>${esc(t)}</small></span></div>`;
+}
+async function chatSyncCallLogs(force) {
+  const box = byId("chatMessages");
+  const convId = activeConversationId;
+  if (!box || !convId || !session?.user?.id) return;
+  if (force || __callLogCache.id !== convId || Date.now() - __callLogCache.at > 20000) {
+    try {
+      const { data, error } = await sb.from("voice_calls").select("id,caller_id,callee_id,status,created_at,answered_at,ended_at").eq("conversation_id", convId).order("created_at", { ascending: true }).limit(100);
+      if (error) throw error;
+      __callLogCache.id = convId; __callLogCache.at = Date.now(); __callLogCache.rows = data || [];
+    } catch (_) { return; }
+  }
+  if (activeConversationId !== convId) return;
+  const present = new Set([...box.querySelectorAll(".chat-call-log")].map((e) => e.dataset.callId));
+  for (const c of __callLogCache.rows) {
+    const label = callLogLabel(c);
+    const existing = box.querySelector(`.chat-call-log[data-call-id="${CSS.escape(String(c.id))}"]`);
+    if (!label) continue;
+    if (existing) { if (existing.textContent.replace(/\s+/g, " ").indexOf(label.text) === -1) existing.outerHTML = callLogRowHtml(c, label); continue; }
+    if (present.has(String(c.id))) continue;
+    const tm = new Date(c.created_at).getTime();
+    const rows = [...box.children].filter((el) => el.matches?.(".chat-bubble-wrap,.chat-call-log"));
+    let before = null;
+    for (const el of rows) {
+      const at = el.dataset?.createdAt || el.querySelector?.(".chat-bubble")?.dataset.createdAt;
+      if (at && new Date(at).getTime() > tm) { before = el; break; }
+    }
+    const tmp = document.createElement("div"); tmp.innerHTML = callLogRowHtml(c, label);
+    const node = tmp.firstElementChild;
+    if (before) box.insertBefore(node, before);
+    else box.insertBefore(node, byId("chatTypingIndicator") || null);
+  }
+}
+(function watchChatForCallLogs() {
+  let timer = null;
+  const schedule = (force) => { clearTimeout(timer); timer = setTimeout(() => chatSyncCallLogs(force === true), 150); };
+  window.chatSyncCallLogsSoon = (force) => schedule(force);
+  const attach = () => {
+    const box = byId("chatMessages");
+    if (!box || box.dataset.callObs === "1") return;
+    box.dataset.callObs = "1";
+    new MutationObserver((muts) => { if (muts.some((m) => [...m.addedNodes].some((n) => !n.classList?.contains("chat-call-log")))) schedule(); }).observe(box, { childList: true });
+    schedule(true);
+  };
+  const app = document.getElementById("app") || document.body;
+  new MutationObserver(attach).observe(app, { childList: true, subtree: true });
+  attach();
+})();
 function chatBubbleHtml(m) {
   const mine = m.sender_id === session.user.id;
   const time = new Date(m.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -44642,6 +44710,13 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 #tourModal.tour-tracking #tourSpotlightHole{transition:none!important}
 #app .contact-us-help .vl-add,.contact-us-help .vl-add{background:var(--primary,#0B6E4A)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important;opacity:1!important}
 .contact-us-help .vl-add i{color:#fff!important}
+.chat-call-log{display:flex;justify-content:center;margin:.55rem 0}
+.chat-call-pill{display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .85rem;border-radius:999px;background:color-mix(in srgb,var(--text) 7%,var(--card));color:var(--text);font-size:.8rem;font-weight:600;border:1px solid color-mix(in srgb,var(--text) 8%,transparent)}
+.chat-call-pill i{color:var(--primary);font-size:.78rem}
+.chat-call-pill small{color:var(--text-muted);font-weight:500;font-size:.72rem}
+.chat-call-log.is-missed .chat-call-pill{color:#dc2626}
+.chat-call-log.is-missed .chat-call-pill i{color:#dc2626}
+:root[data-theme="dark"] .chat-call-log.is-missed .chat-call-pill,:root[data-theme="black"] .chat-call-log.is-missed .chat-call-pill{color:#f87171}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
@@ -45186,6 +45261,7 @@ function hideLeviFromPanel() {
     const id=call.id;
     if(notify){ sig({t:"end"}); try{await sb.rpc("update_voice_call",{p_call_id:id,p_status:status});}catch(_){} }
     cleanup();
+    try{window.chatSyncCallLogsSoon?.(true);setTimeout(()=>window.chatSyncCallLogsSoon?.(true),1500);}catch(_){}
     if(reason) showToast(reason,"info");
   }
 
