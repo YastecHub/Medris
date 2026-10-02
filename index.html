@@ -12617,7 +12617,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   const protectedRouteViews = new Set([
     "cart","messages","vendorDashboard","vendorProducts","vendorPackages",
     "vendorEarnings","vendorFollowers","vendorOrders","vendorEditProfile","vendorRequests",
-    "settings","supportRequest","wishlist","buyerOrders","orderDetail","leaveReview",
+    "settings","supportRequest","wishlist","buyerOrders","orderHistory","orderDetail","leaveReview",
     "adminPanel","adminCarousel","adminLinkLibrary","adminDisputes",
     "adminSupportRequests","adminPasswordResets","adminInventory","adminPeople","adminFeedback","adminUsers",
     "adminFinance","adminLog","adminMonthlyListings","adminConversations","vendorSuggestionsInbox","requestEquipment","notifications","customerFollowing","buyerProfile","adminR2Migration","adminR2Optimize"
@@ -12708,7 +12708,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   try { sessionStorage.setItem("medris_last_view", JSON.stringify({ view, params })); } catch (e) {}
   try { window.__levromartPersistedRoute?.(view, params); } catch (e) {}
   if (view !== "storefront") resetStorefrontSocialMeta();
-  if (view !== "home") { resetHomeSearchScrollMotion(); stopHomeCarouselAutoPlay(); }
+  if (view !== "home") { resetHomeSearchScrollMotion(); }
   // Paint the destination immediately. Reuse a previously rendered screen
   // when available; otherwise show a lightweight page shell. Do not block a
   // tap on Supabase and do not show a generic "Loading..." page.
@@ -12767,6 +12767,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "vendorFollowers": html = await renderVendorFollowers(); break;
       case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
       case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
+      case "orderHistory": html = await renderOrderHistoryPage(params.perspective || ""); break;
       case "orderDetail": html = await renderOrderDetail(params.orderId, params.source); break;
       case "leaveReview": html = await renderLeaveReview(params.orderId); break;
       case "adminPanel": html = await renderAdminPanel(params.status); break;
@@ -12829,6 +12830,7 @@ async function navigate(view, params = {}, pushHistory = true) {
             case "cart": html = await renderCart(); break;
             case "wishlist": html = await renderWishlist(); break;
             case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
+            case "orderHistory": html = await renderOrderHistoryPage(params.perspective || ""); break;
             case "orderDetail": html = await renderOrderDetail(params.orderId, params.source); break;
             case "requestEquipment": html = await renderRequestEquipment(); break;
             default: break;
@@ -13393,7 +13395,6 @@ const INITIAL_HOME_CAROUSEL_SLIDES = [
   { id: "bundled-better-choices", image_url: `https://pub-bc905d4e70404264a256cb3069953205.r2.dev/homepage-carousel/slides/b6fe961f-ee94-4fd4-8a84-493fac1ddc06.png`, alt_text: "Better Choices for a Brighter Tomorrow", sort_order: 60, is_active: true, storage_path: "slides/b6fe961f-ee94-4fd4-8a84-493fac1ddc06.png", bundled: true },
 ];
 let homeCarouselSlides = [];
-let homeCarouselTimer = null;
 let homeCarouselIndex = 0;
 
 // Small session-scoped TTL cache for rarely-changing public data (carousel slides,
@@ -13447,12 +13448,12 @@ function renderHomepageCarouselHtml(slides) {
   homeCarouselSlides = usable;
   homeCarouselIndex = 0;
   const slidesHtml = usable.map((s, i) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(s.image_url)}" alt="${esc(s.alt_text || "Levromart promotion")}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`).join("");
-  const dots = usable.map((s, i) => `<button type="button" class="home-promotional-dot ${i === 0 ? "active" : ""}" onclick="activateHomeCarouselSlide(${i},true)" aria-label="Go to slide ${i + 1}"></button>`).join("");
+  const dots = usable.map((s, i) => `<button type="button" class="home-promotional-dot ${i === 0 ? "active" : ""}" onclick="activateHomeCarouselSlide(${i})" aria-label="Go to slide ${i + 1}"></button>`).join("");
   return `<section class="home-promotional-carousel" id="homePromotionalCarousel" aria-label="Levromart promotions">
     <div class="home-promotional-viewport" id="homePromotionalViewport">
       <div class="home-promotional-track" id="homePromotionalTrack">${slidesHtml}</div>
-      ${usable.length > 1 ? `<div class="home-promotional-dots" id="homePromotionalDots">${dots}</div>` : ""}
     </div>
+    ${usable.length > 1 ? `<div class="home-promotional-dots" id="homePromotionalDots">${dots}</div>` : ""}
   </section>`;
 }
 
@@ -13488,7 +13489,6 @@ function handleHomeCarouselSlideClick(event, index) {
   if (homeCarouselJustDragged) { event.preventDefault(); return; }
   const slide = event.currentTarget;
   const url = slide?.dataset?.linkUrl || "";
-  activateHomeCarouselSlide(index, true);
   if (!url) return;
   const keywordAction = resolveHomeCarouselKeywordRoute(url);
   if (keywordAction) { event.preventDefault(); keywordAction(); return; }
@@ -13538,86 +13538,69 @@ function handleHomeCarouselSlideClick(event, index) {
     window.open(target.href, "_blank", "noopener,noreferrer");
   } catch (_) {}
 }
-function stopHomeCarouselAutoPlay() {
-  if (homeCarouselTimer) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; }
-}
-function startHomeCarouselAutoPlay() {
-  stopHomeCarouselAutoPlay();
-  if (homeCarouselSlides.length < 2) return;
-  homeCarouselTimer = setInterval(() => changeHomeCarouselSlide(1, false), 6500);
-}
-function activateHomeCarouselSlide(index, userInitiated = false) {
-  const count = homeCarouselSlides.length;
-  if (!count) return;
-  homeCarouselIndex = (Number(index) + count) % count;
-  const track = byId("homePromotionalTrack");
-  if (track) track.style.transform = `translate3d(${-homeCarouselIndex * 100}%,0,0)`;
-  document.querySelectorAll("#homePromotionalDots .home-promotional-dot").forEach((dot, i) => dot.classList.toggle("active", i === homeCarouselIndex));
-  if (userInitiated) {
-    startHomeCarouselAutoPlay();
-  }
-}
-function changeHomeCarouselSlide(delta, userInitiated = true) {
-  activateHomeCarouselSlide(homeCarouselIndex + Number(delta || 0), userInitiated);
-}
-// A swipe that only decides what happened after the finger lifts (jumping
-// straight from one slide to the next with no motion in between) reads as
-// broken -- there's no feedback that a drag was even registered. Track the
-// finger in real time instead: the track follows the pointer 1:1 while
-// dragging and only snaps (with the normal CSS transition) once released.
+// The promotional banners are a native scroll-snap row: the browser handles the
+// touch gesture, momentum and snapping, nothing advances on its own and there
+// are no timers. The only script is a passive scroll listener that keeps the
+// small page dots in step and a mouse-drag shim for desktop pointers.
 let homeCarouselJustDragged = false;
-function initHomepageCarousel() {
-  stopHomeCarouselAutoPlay();
+function homeCarouselStep(viewport) {
+  const first = viewport.querySelector(".home-promotional-slide");
+  const second = first?.nextElementSibling;
+  if (!first) return 0;
+  return second ? second.offsetLeft - first.offsetLeft : first.offsetWidth;
+}
+function activateHomeCarouselSlide(index) {
+  const count = homeCarouselSlides.length;
   const viewport = byId("homePromotionalViewport");
-  const track = byId("homePromotionalTrack");
-  if (!viewport || !track || homeCarouselSlides.length < 2) { activateHomeCarouselSlide(0, false); return; }
-  let startX = 0, startY = 0, dragging = false, moved = false, dragDx = 0;
-  const onPointerDown = (e) => {
-    startX = e.clientX; startY = e.clientY; dragging = true; moved = false; dragDx = 0;
-    track.style.transition = "none";
-    stopHomeCarouselAutoPlay();
+  if (!count || !viewport) return;
+  const i = Math.max(0, Math.min(count - 1, Number(index) || 0));
+  const slide = viewport.children[0]?.children?.[i];
+  if (slide) viewport.scrollTo({ left: slide.offsetLeft - (viewport.children[0].children[0]?.offsetLeft || 0), behavior: "smooth" });
+}
+function initHomepageCarousel() {
+  const viewport = byId("homePromotionalViewport");
+  if (!viewport || viewport.dataset.carouselBound === "1") return;
+  viewport.dataset.carouselBound = "1";
+  const dots = Array.from(document.querySelectorAll("#homePromotionalDots .home-promotional-dot"));
+  let ticking = false, current = 0;
+  const syncDots = () => {
+    ticking = false;
+    const step = homeCarouselStep(viewport);
+    if (!step) return;
+    const atEnd = viewport.scrollLeft + viewport.clientWidth >= viewport.scrollWidth - 2;
+    const idx = atEnd ? dots.length - 1 : Math.round(viewport.scrollLeft / step);
+    if (idx === current) return;
+    current = idx;
+    dots.forEach((d, i) => d.classList.toggle("active", i === idx));
   };
-  const onPointerMove = (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - startX, dy = e.clientY - startY;
-    if (!moved) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      // A real horizontal swipe rarely comes in perfectly straight -- this
-      // used to cancel out to a vertical scroll on the slightest diagonal
-      // drift, making the carousel feel unresponsive to swipe. Only give up
-      // on it when the gesture is clearly more vertical than horizontal.
-      if (Math.abs(dy) > Math.abs(dx) * 1.6) { dragging = false; track.style.transition = ""; return; }
-      moved = true;
-    }
-    // Rubber-band at the ends instead of dragging the track past the first
-    // or last slide, which would otherwise expose blank space beyond it.
-    const atStart = homeCarouselIndex === 0 && dx > 0;
-    const atEnd = homeCarouselIndex === homeCarouselSlides.length - 1 && dx < 0;
-    dragDx = (atStart || atEnd) ? dx * 0.35 : dx;
-    track.style.transform = `translate3d(calc(${-homeCarouselIndex * 100}% + ${dragDx}px),0,0)`;
-  };
-  const endDrag = () => {
-    if (!dragging) return;
-    dragging = false;
-    track.style.transition = "";
-    if (moved && Math.abs(dragDx) > 34) {
+  viewport.addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(syncDots); } }, { passive: true });
+  // Mouse users can't swipe: let them drag the row, without breaking taps.
+  let down = false, sx = 0, sl = 0, moved = false;
+  viewport.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "mouse") return;
+    down = true; moved = false; sx = e.clientX; sl = viewport.scrollLeft;
+    try { viewport.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  viewport.addEventListener("pointermove", (e) => {
+    if (!down) return;
+    const dx = e.clientX - sx;
+    if (!moved && Math.abs(dx) < 6) return;
+    if (!moved) { moved = true; viewport.classList.add("dragging"); }
+    viewport.scrollLeft = sl - dx;
+  }, { passive: true });
+  const stop = () => {
+    if (!down) return;
+    down = false;
+    viewport.classList.remove("dragging");
+    if (moved) {
       homeCarouselJustDragged = true;
-      setTimeout(() => { homeCarouselJustDragged = false; }, 250);
-      changeHomeCarouselSlide(dragDx < 0 ? 1 : -1, true);
-    } else {
-      activateHomeCarouselSlide(homeCarouselIndex, false);
-      startHomeCarouselAutoPlay();
+      setTimeout(() => { homeCarouselJustDragged = false; }, 120);
+      const step = homeCarouselStep(viewport);
+      if (step) viewport.scrollTo({ left: Math.round(viewport.scrollLeft / step) * step, behavior: "smooth" });
     }
-    moved = false; dragDx = 0;
   };
-  viewport.addEventListener("pointerdown", onPointerDown, { passive: true });
-  viewport.addEventListener("pointermove", onPointerMove, { passive: true });
-  viewport.addEventListener("pointerup", endDrag, { passive: true });
-  viewport.addEventListener("pointercancel", endDrag, { passive: true });
-  viewport.addEventListener("mouseenter", stopHomeCarouselAutoPlay);
-  viewport.addEventListener("mouseleave", startHomeCarouselAutoPlay);
-  activateHomeCarouselSlide(0, false);
-  startHomeCarouselAutoPlay();
+  viewport.addEventListener("pointerup", stop, { passive: true });
+  viewport.addEventListener("pointercancel", stop, { passive: true });
 }
 
 // ---------- ADMIN LINK LIBRARY ----------
@@ -13744,7 +13727,7 @@ function handleAdminDeepLinkClick(event, href) {
       "vendorEditProfile","vendorRequests","settings","supportRequest","vendors","wishlist",
       "adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminPeople","adminFinance",
       "adminDisputes","adminSupportRequests","adminFeedback","adminUsers","adminLog",
-      "vendorSuggestionsInbox","requestEquipment","buyerOrders","productDetail","packageDetail","storefront"
+      "vendorSuggestionsInbox","requestEquipment","buyerOrders","orderHistory","productDetail","packageDetail","storefront"
     ]);
     if (!routes.has(deepView)) return false;
     if (!session && !["vendors","productDetail","packageDetail","storefront"].includes(deepView)) { showLogin(); return false; }
@@ -14374,7 +14357,6 @@ function scrollToBrowse(listingType) {
   if (sel) { sel.value = listingType; filterHomeProducts(); }
   byId("browseSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
-const LEVRO_CATEGORY_RAIL_PALETTE = ["#16a34a", "#2563eb", "#e11d48", "#f59e0b", "#7c3aed", "#0d9488", "#db2777", "#0891b2"];
 // The rail filters by SECTOR, not by the categories table's top-level rows --
 // products are tagged with a fine-grained (usually leaf) category, and
 // filtering by a bare top-level category id never matched anything real,
@@ -14397,17 +14379,40 @@ function homeQuickActionsHtml() {
   ];
   return `<section class="levro-home-quick-actions" aria-label="Quick actions">${actions.map((a) => `<button type="button" class="levro-quick-action levro-quick-${a.tone}" onclick="openHomeQuickAction('${a.key}')"><span class="levro-quick-icon"><i class="fa-solid ${a.icon}"></i></span><span class="levro-quick-body"><strong class="levro-quick-title">${a.title}</strong><span class="levro-quick-desc">${a.desc}</span></span><span class="levro-quick-arrow" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span></button>`).join("")}</section>`;
 }
+// Icon comes from the sector's own database row. Rows saved with the generic
+// placeholder (or none) fall back to a keyword match on the name, then to a
+// neutral shapes icon, so a brand-new vendor-created category never breaks.
+const LEVRO_SECTOR_ICON_HINTS = [
+  [/food|grocer|restaurant|cater|snack|bak/, "fa-utensils"], [/drink|beverage/, "fa-mug-hot"],
+  [/fashion|cloth|wear|tailor|shoe|footwear/, "fa-shirt"], [/beauty|cosmetic|skin|perfume|hair|spa|wellness/, "fa-wand-magic-sparkles"],
+  [/phone|mobile|tablet|telecom/, "fa-mobile-screen-button"], [/electronic|gadget|tv|audio/, "fa-microchip"],
+  [/comput|laptop|tech|software/, "fa-laptop"], [/health|pharm|medic/, "fa-kit-medical"],
+  [/home|furniture|decor|living|kitchen|appliance/, "fa-couch"], [/auto|car|vehicle/, "fa-car"],
+  [/book|stationery|education|school/, "fa-book"], [/sport|fitness|gym/, "fa-dumbbell"],
+  [/jewel|watch|gem/, "fa-gem"], [/art|craft|handmade/, "fa-palette"], [/baby|kid|toy/, "fa-baby"],
+  [/service|repair|clean|laundry/, "fa-screwdriver-wrench"], [/event|entertain|music|media|photo/, "fa-camera"],
+  [/agri|farm|pet/, "fa-seedling"], [/build|construct|hardware|tool|industrial/, "fa-helmet-safety"], [/gift/, "fa-gift"],
+];
+function levroSectorIconClass(sector) {
+  const own = String(sector?.icon || "").trim();
+  if (/^fa-[a-z0-9-]+$/.test(own) && own !== "fa-shapes") return own;
+  const name = String(sector?.name || "").toLowerCase();
+  const hit = LEVRO_SECTOR_ICON_HINTS.find(([re]) => re.test(name));
+  return hit ? hit[1] : "fa-shapes";
+}
+// Shuffled once per session (not per render) so the row doesn't jump around
+// when the home view repaints; categories first seen later get their own slot.
+function levroStableSectorOrder(list) {
+  const rank = window.__levroSectorRank || (window.__levroSectorRank = new Map());
+  list.forEach((s) => { const k = String(s.id); if (!rank.has(k)) rank.set(k, Math.random()); });
+  return list.slice().sort((a, b) => rank.get(String(a.id)) - rank.get(String(b.id)));
+}
 function homeCategoryRailHtml(sectorList) {
-  // "All" always comes first and always means "clear the sector filter",
-  // not toggle -- distinct from every sector chip, which is why it gets
-  // its own color (not one drawn from the cycling per-sector palette).
-  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentSectorId ? "active" : ""}" style="--cat-color:#64748b" onclick="switchSector(null)"><span class="levro-home-cat-icon"><i class="fa-solid fa-border-all"></i></span><span class="levro-home-cat-label">All</span></button>`;
-  // Show every sector as its own chip -- previously capped at 7, which
-  // meant newly-created sectors silently never got an icon on Home at all,
-  // no matter how many vendors picked them.
-  const chips = sectorList.map((s, i) => {
+  // "All" always comes first and always means "clear the sector filter".
+  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentSectorId ? "active" : ""}" onclick="switchSector(null)"><span class="levro-home-cat-icon"><i class="fa-solid fa-border-all"></i></span><span class="levro-home-cat-label">All</span></button>`;
+  const chips = levroStableSectorOrder(sectorList).map((s) => {
     const active = String(currentSectorId || "") === String(s.id);
-    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" style="--cat-color:${LEVRO_CATEGORY_RAIL_PALETTE[i % LEVRO_CATEGORY_RAIL_PALETTE.length]}" onclick="toggleHomeSectorFilter('${s.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(s.icon || "fa-shapes")}"></i></span><span class="levro-home-cat-label">${esc(s.name)}</span></button>`;
+    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" onclick="toggleHomeSectorFilter('${s.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(levroSectorIconClass(s))}"></i></span><span class="levro-home-cat-label">${esc(s.name)}</span></button>`;
   }).join("");
   const more = `<button type="button" class="levro-home-cat-chip levro-home-cat-more" onclick="openHomeCategoryBrowser()"><span class="levro-home-cat-icon"><i class="fa-solid fa-ellipsis"></i></span><span class="levro-home-cat-label">More</span></button>`;
   return `<div class="levro-home-cat-rail hscroll">${allChip}${chips}${more}</div>`;
@@ -14464,7 +14469,10 @@ function clearSearchHistory() {
 }
 function renderSearchPage() {
   const history = readSearchHistory();
+  searchPageFilter = "all";
+  const filterBtn = (id, label) => `<button type="button" class="search-page-filter ${id === "all" ? "active" : ""}" data-filter="${id}" onclick="setSearchPageFilter('${id}')">${label}</button>`;
   return `<div class="search-page">
+    <div class="search-page-head">
     <div class="search-page-bar">
       <button type="button" class="search-page-back" onclick="navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button>
       <div class="search-page-input-wrap">
@@ -14472,6 +14480,8 @@ function renderSearchPage() {
         <input type="text" inputmode="search" enterkeyhint="search" id="searchPageInput" placeholder="Search products, services, vendors…" autocomplete="off" oninput="scheduleSearchPageQuery()" onkeydown="if(event.key==='Enter'){event.preventDefault();runSearchPageQuery(this.value.trim(),true);}" />
         <button type="button" class="search-page-clear hidden" id="searchPageClearBtn" onclick="clearSearchPageInput()" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
       </div>
+    </div>
+    <div class="search-page-filters" role="tablist" aria-label="Search filters">${filterBtn("all", "All")}${filterBtn("products", "Products")}${filterBtn("vendors", "Vendors")}${filterBtn("services", "Services")}${filterBtn("packages", "Packages")}</div>
     </div>
     <div id="searchPageResults" class="search-page-results">
       <div class="search-page-history-block" id="searchPageHistoryBlock" ${history.length ? "" : "hidden"}>
@@ -14497,6 +14507,26 @@ function clearSearchPageInput() {
 }
 let searchPageTimer = null;
 let searchPageSeq = 0;
+let searchPageFilter = "all";
+// Raw server results are kept for a minute per query+kind so flipping between
+// tabs (or the location-ready re-run) never repeats a request that just ran.
+const searchResultCache = new Map();
+async function searchCached(key, run, signal) {
+  const hit = searchResultCache.get(key);
+  if (hit && Date.now() - hit.at < 60000) return hit.value;
+  const res = await run();
+  if (res?.error) { if (signal?.aborted) throw res.error; return []; } // errors are never cached
+  const value = res?.data || [];
+  if (searchResultCache.size > 40) searchResultCache.delete(searchResultCache.keys().next().value);
+  searchResultCache.set(key, { at: Date.now(), value });
+  return value;
+}
+function setSearchPageFilter(id) {
+  searchPageFilter = id;
+  document.querySelectorAll(".search-page-filter").forEach((b) => b.classList.toggle("active", b.dataset.filter === id));
+  const term = byId("searchPageInput")?.value.trim() || "";
+  if (term) runSearchPageQuery(term, false);
+}
 function scheduleSearchPageQuery() {
   const input = byId("searchPageInput");
   const term = input?.value.trim() || "";
@@ -14674,22 +14704,28 @@ async function runSearchPageQuery(term, saveToHistory) {
   const historyBlock = byId("searchPageHistoryBlock");
   if (historyBlock) historyBlock.hidden = true;
   if (saveToHistory) writeSearchHistory(term);
-  let fullRows, vends, packageRows;
+  const kind = searchPageFilter;
+  const wantProducts = kind === "all" || kind === "products" || kind === "services";
+  const wantVendors = kind === "all" || kind === "vendors";
+  const wantPackages = kind === "all" || kind === "packages";
+  let fullRows = [], vends = [], packageRows = [];
+  const enc = term.toLowerCase();
   try {
-    // A single RPC now returns full product+vendor fields directly instead
-    // of ids that then need a second round trip to hydrate -- one less
-    // network hop per search.
-    [{ data: fullRows }, { data: vends }, { data: packageRows }] = await Promise.all([
-      sb.rpc("search_products_full", { p_query: term, p_limit: 20 }).abortSignal(controller.signal),
-      sb.from("vendors").select("id,business_name,logo_url,city,lat,lng").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(6).abortSignal(controller.signal),
-      sb.from("vendor_packages").select("id,name,price,photos,vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(6).abortSignal(controller.signal),
+    // Only the entity types the active tab needs are requested. A single RPC
+    // returns full product+vendor fields (no second hydration round trip);
+    // Products/Services ask for a wider page and keep their own kind.
+    [fullRows, vends, packageRows] = await Promise.all([
+      wantProducts ? searchCached(`p:${kind === "all" ? 20 : 60}:${enc}`, () => sb.rpc("search_products_full", { p_query: term, p_limit: kind === "all" ? 20 : 60 }).abortSignal(controller.signal), controller.signal) : [],
+      wantVendors ? searchCached(`v:${kind === "all" ? 6 : 30}:${enc}`, () => sb.from("vendors").select("id,business_name,logo_url,city,lat,lng").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(kind === "all" ? 6 : 30).abortSignal(controller.signal), controller.signal) : [],
+      wantPackages ? searchCached(`k:${kind === "all" ? 6 : 30}:${enc}`, () => sb.from("vendor_packages").select("id,name,price,photos,vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(kind === "all" ? 6 : 30).abortSignal(controller.signal), controller.signal) : [],
     ]);
   } catch (err) {
     if (controller.signal.aborted) return; // superseded by a newer keystroke
     throw err;
   }
   if (mySeq !== searchPageSeq) return;
-  const prods = sortSearchResultsByPriceThenDistance((fullRows || []).map((r) => ({
+  const productRows = (fullRows || []).filter((r) => kind === "products" ? !r.is_service : kind === "services" ? !!r.is_service : true).slice(0, kind === "all" ? 20 : 30);
+  const prods = sortSearchResultsByPriceThenDistance(productRows.map((r) => ({
     id: r.id, name: r.name, photos: r.photos, sale_price: r.sale_price, discount_price: r.discount_price,
     rental_rate: r.rental_rate, rental_rate_unit: r.rental_rate_unit, is_service: r.is_service,
     vendor: { business_name: r.vendor_business_name, lat: r.vendor_lat, lng: r.vendor_lng },
@@ -14717,10 +14753,11 @@ async function runSearchPageQuery(term, saveToHistory) {
       <span class="search-result-price">${naira(pkg.price)}</span>
     </button>`;
 
+  const single = kind !== "all";
   const sections = [
-    prods.length ? { title: `Products (${prods.length})`, rows: prods.map(searchProductRowHtml) } : null,
-    vendList.length ? { title: `Vendors (${vendList.length})`, rows: vendList.map(vendorRowHtml) } : null,
-    packageList.length ? { title: `Packages (${packageList.length})`, rows: packageList.map(packageRowHtml) } : null,
+    prods.length ? { title: single ? "" : `Products (${prods.length})`, rows: prods.map(searchProductRowHtml) } : null,
+    vendList.length ? { title: single ? "" : `Vendors (${vendList.length})`, rows: vendList.map(vendorRowHtml) } : null,
+    packageList.length ? { title: single ? "" : `Packages (${packageList.length})`, rows: packageList.map(packageRowHtml) } : null,
   ].filter(Boolean);
 
   if (!sections.length) {
@@ -14728,10 +14765,12 @@ async function runSearchPageQuery(term, saveToHistory) {
     // honest "no exact match" note followed by something -- so this always
     // falls through to the same popularity-ranked list the page opens with,
     // clearly labeled as not a match rather than dressed up as one.
-    results.insertAdjacentHTML("beforeend", `<div class="search-page-empty"><i class="fa-solid fa-magnifying-glass"></i><p>No matches for "${esc(term)}". Here's what's popular right now.</p></div>`);
-    await renderSearchPageSuggestions(term);
+    const popularFallback = kind === "all" || kind === "products";
+    const noun = { all: "results", products: "products", vendors: "vendors", services: "services", packages: "packages" }[kind];
+    results.insertAdjacentHTML("beforeend", `<div class="search-page-empty"><i class="fa-solid fa-magnifying-glass"></i><p>No ${noun} match "${esc(term)}".${popularFallback ? " Here's what's popular right now." : ""}</p></div>`);
+    if (popularFallback) await renderSearchPageSuggestions(term);
   } else {
-    results.insertAdjacentHTML("beforeend", sections.map((s) => `<div class="search-page-section"><h3>${esc(s.title)}</h3>${s.rows.join("")}</div>`).join(""));
+    results.insertAdjacentHTML("beforeend", sections.map((s) => `<div class="search-page-section">${s.title ? `<h3>${esc(s.title)}</h3>` : ""}${s.rows.join("")}</div>`).join(""));
   }
 
   // Distances are only shown once we actually have the buyer's position.
@@ -23807,7 +23846,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   const { active: activeVendorOrders, history: historyVendorOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
   // Finished sales open from a History button beside the title (same as the
   // customer page) instead of a long accordion under the list.
-  window.__orderHistoryHtml = orderHistoryAccordionHtml(historyVendorOrders, false, "sales");
+  rememberOrderHistory("sales", splitActiveAndHistoryOrders(sortOrdersForList(safeAllOrders || []), "all").history, false, "sales");
   window.__orderHistoryEmpty = !historyVendorOrders.length;
   const vendorFiltersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml("vendorOrders", status, type, payment, dateFrom, dateTo, "sales")}<div class="orders-search-slot"></div></div>`;
   const vendorHistoryBtn = `<button type="button" class="orders-icon-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
@@ -23884,7 +23923,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   const { active: activeCustomerOrders, history: historyCustomerOrders } = splitActiveAndHistoryOrders(sortedOrders, status);
   // History and "continue shopping" live as two small buttons beside the title
   // instead of an accordion and a button stuck under the list.
-  window.__orderHistoryHtml = orderHistoryAccordionHtml(historyCustomerOrders, true, embeddedVendorOrders ? "purchases" : null);
+  rememberOrderHistory(embeddedVendorOrders ? "purchases" : "", splitActiveAndHistoryOrders(sortOrdersForList(safeAllOrders || []), "all").history, true, embeddedVendorOrders ? "purchases" : null);
   window.__orderHistoryEmpty = !historyCustomerOrders.length;
   const filtersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}<div class="orders-search-slot"></div></div>`;
   const moreMenu = `<div class="orders-more-wrap"><button type="button" class="orders-icon-btn" onclick="toggleOrdersMore(this)" aria-label="More" aria-expanded="false" title="More"><i class="fa-solid fa-ellipsis"></i></button><div class="orders-more-menu hidden">${historyCustomerOrders.length ? `<button type="button" onclick="toggleOrdersMore(this);openOrderHistory()"><i class="fa-solid fa-clock-rotate-left"></i> Order history <b>${historyCustomerOrders.length}</b></button>` : ""}<button type="button" onclick="navigate('home')"><i class="fa-solid fa-bag-shopping"></i> Continue shopping</button></div></div>`;
@@ -23983,8 +24022,13 @@ function orderHistoryActivityLabel(order) {
   const iso = orderActivityIso(order);
   return iso ? orderDateTimeStr(iso) : "";
 }
-function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspective = null) {
-  if (!historyOrders || !historyOrders.length) return "";
+function orderHistorySearchText(o, isCustomerView) {
+  const itemNames = (o.items || []).map((it) => it.product?.name || "").join(" ");
+  const party = isCustomerView ? (o.vendor?.business_name || "") : (o.buyer?.name || "");
+  return [itemNames, party, o.order_type, o.status, String(o.status || "").replace(/_/g, " "), o.id, String(o.id || "").slice(0, 8), o.total_amount, orderActivityLabel(o)]
+    .join(" ").toLowerCase();
+}
+function orderHistoryInnerHtml(historyOrders, isCustomerView, sourcePerspective = null) {
   const byDate = new Map();
   historyOrders.forEach((o) => {
     const key = new Date(orderActivityIso(o) || o.created_at).toLocaleDateString("en-NG", { weekday: "short", year: "numeric", month: "short", day: "numeric" });
@@ -23998,15 +24042,83 @@ function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspect
       const itemNames = (o.items || []).map((it) => `${it.product?.name || "Item"}${Number(it.quantity || 0) > 1 ? ` ×${it.quantity}` : ""}`).join(", ");
       const productIds = [...new Set((o.items || []).map((it) => it.product?.id || it.product_id).filter(Boolean))].join(", ");
       const partyName = isCustomerView ? (o.vendor?.business_name || "Vendor") : (o.buyer?.name || "Customer");
-      return `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-history-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span class="order-history-meta"><span>Order: ${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span>${!isCustomerView && itemNames ? `<span class="order-history-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-history-product-id">Product ID: ${esc(productIds)}</small>` : ""}<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${orderStatusBadgeClass(o.status)} order-history-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`;
+      return `<button type="button" class="order-history-card" onclick="navigate('orderDetail',{orderId:'${o.id}'${sourcePerspective ? `,source:'${sourcePerspective}'` : ''}})"><span class="order-history-main"><strong>${isCustomerView ? esc(partyName) : `Customer: ${esc(partyName)}`}</strong><span class="order-history-meta"><span>Order: ${esc(o.order_type)}</span><span class="order-history-separator">·</span><span>${naira(o.total_amount)}</span></span>${itemNames ? `<span class="order-history-item">Item: ${esc(itemNames)}</span>` : ""}${!isCustomerView && productIds ? `<small class="order-history-product-id">Product ID: ${esc(productIds)}</small>` : ""}<small><i class="fa-regular fa-clock"></i> ${esc(orderActivityLabel(o))}</small></span><span class="badge ${orderStatusBadgeClass(o.status)} order-history-status">${o.status === "cancelled" ? "Cancelled" : o.status === "completed" ? "Completed" : esc(o.status.replace("_", " "))}</span></button>`;
     }).join("")}</div>`;
   });
+  return inner;
+}
+function orderHistoryAccordionHtml(historyOrders, isCustomerView, sourcePerspective = null) {
+  if (!historyOrders || !historyOrders.length) return "";
+  const inner = orderHistoryInnerHtml(historyOrders, isCustomerView, sourcePerspective);
   const historyTitle = isCustomerView ? (sourcePerspective === "purchases" ? "My purchase history" : "My order history") : "Customer order history";
   const historyId = sourcePerspective === "purchases" ? "vendorPurchaseHistoryAccordion" : sourcePerspective === "sales" ? "vendorSalesHistoryAccordion" : "buyerOrderHistoryAccordion";
   return `<div class="accordion-section" id="${historyId}" style="margin-top:1.2rem;">
     <button class="accordion-trigger" onclick="toggleAccordion(this)"><span><i class="fa-solid fa-clock-rotate-left"></i> ${historyTitle} (${historyOrders.length})</span><i class="fa-solid fa-chevron-down accordion-chevron"></i></button>
     <div class="accordion-body">${inner}</div>
   </div>`;
+}
+
+// ---------- ORDER HISTORY PAGE ----------
+// A real page (not a cramped popup): search box + All / Completed / Cancelled
+// tabs over the finished orders the Orders page already loaded. Filtering is
+// done on that in-memory list, so typing never costs a request.
+function rememberOrderHistory(key, orders, isCustomerView, source) {
+  (window.__orderHistoryData ||= {})[key] = { orders: orders || [], isCustomerView, source, at: Date.now() };
+  window.__orderHistoryCtx = key;
+}
+function openOrderHistory() {
+  navigate("orderHistory", { perspective: window.__orderHistoryCtx || "" });
+}
+async function renderOrderHistoryPage(perspective) {
+  if (!session) return '<div class="empty-state">Please log in.</div>';
+  const key = perspective === "sales" || perspective === "purchases" ? perspective : "";
+  let data = window.__orderHistoryData?.[key];
+  if (!data || Date.now() - data.at > 2 * 60 * 1000) {
+    // Opened directly (refresh / deep link) or the list is stale: rebuild it
+    // with the same renderer the Orders page uses, which refills the cache.
+    try {
+      if (key === "sales") await renderVendorOrders("all", "all", "all", "", "");
+      else await renderCustomerOrders("all", "all", "all", "", "", key === "purchases");
+    } catch (_) {}
+    data = window.__orderHistoryData?.[key];
+  }
+  const orders = data?.orders || [];
+  window.__orderHistoryPage = { ...(data || { isCustomerView: true, source: null }), orders, tab: "all", term: "" };
+  let tries = 0;
+  const paintWhenReady = () => { if (byId("orderHistoryPageList")) paintOrderHistoryList(); else if (tries++ < 20) requestAnimationFrame(paintWhenReady); };
+  requestAnimationFrame(paintWhenReady);
+  const count = (st) => orders.filter((o) => (st === "all" ? true : o.status === st)).length;
+  const tab = (id, label) => `<button type="button" class="catalog-type-tab order-history-tab ${id === "all" ? "active" : ""}" data-tab="${id}" onclick="setOrderHistoryTab('${id}')">${label} <span class="tab-count">(${count(id)})</span></button>`;
+  return `<div class="order-history-page">
+    <div class="orders-title-row"><h2>Order history</h2></div>
+    <div class="order-history-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="orderHistoryPageSearch" placeholder="Search by product, shop or order…" autocomplete="off" enterkeyhint="search" oninput="scheduleOrderHistoryFilter()" /></div>
+    <div class="catalog-type-tabs order-history-tabs" role="tablist">${tab("all", "All")}${tab("completed", "Completed")}${tab("cancelled", "Cancelled")}</div>
+    <div id="orderHistoryPageList"></div>
+  </div>`;
+}
+function setOrderHistoryTab(id) {
+  if (!window.__orderHistoryPage) return;
+  window.__orderHistoryPage.tab = id;
+  document.querySelectorAll(".order-history-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === id));
+  paintOrderHistoryList();
+}
+let orderHistoryFilterTimer = null;
+function scheduleOrderHistoryFilter() {
+  clearTimeout(orderHistoryFilterTimer);
+  orderHistoryFilterTimer = setTimeout(() => {
+    if (window.__orderHistoryPage) window.__orderHistoryPage.term = String(byId("orderHistoryPageSearch")?.value || "").trim().toLowerCase();
+    paintOrderHistoryList();
+  }, 120);
+}
+function paintOrderHistoryList() {
+  const st = window.__orderHistoryPage;
+  const host = byId("orderHistoryPageList");
+  if (!st || !host) return;
+  const words = st.term.split(/\s+/).filter(Boolean);
+  const rows = st.orders.filter((o) => (st.tab === "all" || o.status === st.tab) && (!words.length || words.every((w) => orderHistorySearchText(o, st.isCustomerView).includes(w))));
+  host.innerHTML = rows.length
+    ? orderHistoryInnerHtml(rows, st.isCustomerView, st.source)
+    : `<div class="empty-state orders-empty"><span class="orders-empty-icon"><i class="fa-solid fa-clock-rotate-left"></i></span><strong>${st.orders.length ? "No matching orders" : "No finished orders yet"}</strong><span class="muted">${st.orders.length ? "Try a different word or tab." : "Completed and cancelled orders will appear here."}</span></div>`;
 }
 
 function toggleOrdersMore(btn) {
@@ -24092,21 +24204,6 @@ async function sendOrderNote(orderId, isCustomer) {
     if (err) { err.textContent = e.message || "Couldn't send the note. Please try again."; err.classList.remove("hidden"); }
     btn.disabled = false;
   }
-}
-
-function openOrderHistory() {
-  document.getElementById("orderHistoryModal")?.remove();
-  const doc = new DOMParser().parseFromString(window.__orderHistoryHtml || "", "text/html");
-  const inner = doc.querySelector(".accordion-body")?.innerHTML || '<div class="empty-state">No finished orders yet.</div>';
-  const modal = document.createElement("div");
-  modal.id = "orderHistoryModal";
-  modal.className = "modal";
-  modal.innerHTML = `<div class="modal-content order-history-modal"><div class="modal-header"><h3><i class="fa-solid fa-clock-rotate-left"></i> Order history</h3><button type="button" class="icon-btn" aria-label="Close" onclick="document.getElementById('orderHistoryModal')?.remove()"><i class="fa-solid fa-xmark"></i></button></div><div class="order-history-modal-body">${inner}</div></div>`;
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) modal.remove();
-    else if (e.target.closest(".order-history-card")) setTimeout(() => modal.remove(), 0);
-  });
-  document.body.appendChild(modal);
 }
 
 function orderListControlsHtml(total) {
@@ -30089,7 +30186,7 @@ window.addEventListener("popstate", (e) => {
   // the browser still knows exactly which Levromart screen was open.
   const persistedUrlView = urlParams.get("appView");
   if (persistedUrlView) {
-    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","contactUs","search","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
+    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","orderHistory","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","contactUs","search","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
     let persistedParams = {};
     try { persistedParams = JSON.parse(urlParams.get("appParams") || "{}"); } catch (_) {}
     if (allowedPersistedViews.has(persistedUrlView)) {
@@ -30358,7 +30455,7 @@ if ("serviceWorker" in navigator) {
   function showGate(view="terms"){if(!session?.user?.id)return;if(!gate){gate=document.createElement("div");gate.className="levromart-legal-consent-backdrop";gate.setAttribute("role","dialog");gate.setAttribute("aria-modal","true");gate.innerHTML=`<div class="levromart-legal-consent-card"><div class="levromart-legal-consent-head"><h2>Before you continue</h2><p class="muted" style="margin:0;font-size:.82rem;">Please review Levromart's current Terms of Service, Privacy Policy, and Refund &amp; Cancellation Policy. You need to accept the current agreement to continue using your account.</p><div class="levromart-legal-consent-links"><button type="button" data-legal="terms">Terms of Service</button><button type="button" data-legal="privacy">Privacy Policy</button><button type="button" data-legal="refundPolicy">Refund &amp; Cancellation Policy</button></div></div><div id="levroLegalGateBody" class="levromart-legal-consent-body"></div><div class="levromart-legal-consent-foot"><div id="levroLegalGateError" class="error-text hidden"></div><button type="button" id="levroLegalGateAgree" class="btn"><i class="fa-solid fa-check"></i> Agree &amp; Continue</button></div></div>`;document.body.appendChild(gate);gate.querySelectorAll("[data-legal]").forEach(b=>b.addEventListener("click",()=>showGate(b.dataset.legal)));gate.querySelector("#levroLegalGateAgree").addEventListener("click",accept);}
     gate.querySelector("#levroLegalGateBody").innerHTML=bodyFor(view);gate.classList.remove("hidden");document.documentElement.classList.add("levromart-legal-gated");}
   async function accept(){if(busy)return;busy=true;const b=gate?.querySelector("#levroLegalGateAgree"),e=gate?.querySelector("#levroLegalGateError");if(b)b.disabled=true;if(e)e.classList.add("hidden");try{const {data,error}=await sb.rpc("accept_legal_terms");if(error)throw error;if(!data?.accepted||String(data.version)!==CURRENT_LEGAL_VERSION)throw new Error("The legal agreement could not be recorded.");if(profile){profile.legal_terms_version=CURRENT_LEGAL_VERSION;profile.legal_terms_accepted_at=data.accepted_at||new Date().toISOString();}gate.remove();gate=null;document.documentElement.classList.remove("levromart-legal-gated");}catch(err){console.error("[Levromart] Legal consent failed:",err);if(e){e.textContent=err?.message||"Could not record your acceptance. Please try again.";e.classList.remove("hidden");}}finally{busy=false;if(b)b.disabled=false;}}
-  window.__levroCheckLegalConsent=async function(){if(!session?.user?.id)return true;const __lk="levro_legal_ok_"+session.user.id;try{if(sessionStorage.getItem(__lk)==="1")return true;}catch(_){ }try{const {data,error}=await sb.rpc("get_legal_terms_consent");if(error)throw error;if(data?.accepted===true){try{sessionStorage.setItem(__lk,"1");}catch(_){ }return true;}showGate();return false;}catch(err){
+  window.__levroCheckLegalConsent=async function(){if(!session?.user?.id)return true;let __lk="";try{__lk="levro_legal_ok_"+session.user.id;if(sessionStorage.getItem(__lk)==="1")return true;}catch(_){ __lk="";}try{const {data,error}=await sb.rpc("get_legal_terms_consent");if(error)throw error;if(data?.accepted===true){try{if(__lk)sessionStorage.setItem(__lk,"1");}catch(_){ }return true;}showGate();return false;}catch(err){
     // A network blip on this one check must never lock an already-agreed
     // user out of the app they were already using -- that's what "pops up
     // every time" turned out to mean. Fail open: skip silently and let the
@@ -35612,67 +35709,36 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   #app .levro-home-quick-actions .levro-quick-arrow{ display:none !important; }
 }
 
-/* Shop by Category rail: a horizontally scrolling row of circular,
-   differently-colored category icons under the quick actions, matching
-   the reference marketplace layout. */
+/* Shop by Category rail: compact, horizontally swipeable rounded pills
+   (icon + name). The categories themselves come from the database; this is
+   only how they look. */
 #app .levro-home-cat-rail{
-  display:flex !important;
-  gap:1.1rem !important;
-  overflow-x:auto !important;
-  padding:.15rem .1rem .7rem !important;
-  scrollbar-width:none !important;
-  -webkit-overflow-scrolling:touch !important;
+  display:flex !important; gap:.5rem !important; overflow-x:auto !important; overflow-y:hidden !important;
+  padding:.1rem .05rem .6rem !important; margin:0 !important;
+  scrollbar-width:none !important; -webkit-overflow-scrolling:touch !important;
+  overscroll-behavior-x:contain; touch-action:pan-x pan-y;
 }
 #app .levro-home-cat-rail::-webkit-scrollbar{ display:none !important; }
 #app .levro-home-cat-chip{
-  flex:0 0 auto !important;
-  display:flex !important;
-  flex-direction:column !important;
-  align-items:center !important;
-  gap:.4rem !important;
-  width:4.6rem !important;
-  background:none !important;
-  border:0 !important;
-  padding:0 !important;
-  cursor:pointer !important;
-  color:var(--text) !important;
+  flex:0 0 auto !important; display:inline-flex !important; flex-direction:row !important; align-items:center !important;
+  gap:.45rem !important; width:auto !important; min-height:40px !important; padding:0 .85rem 0 .7rem !important;
+  background:var(--card) !important; border:1px solid var(--border) !important; border-radius:12px !important;
+  cursor:pointer !important; color:var(--text) !important; box-shadow:none !important;
 }
 #app .levro-home-cat-icon{
-  width:3.1rem !important;
-  height:3.1rem !important;
-  border-radius:999px !important;
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  background:color-mix(in srgb, var(--cat-color, var(--primary)) 16%, var(--card)) !important;
-  color:var(--cat-color, var(--primary)) !important;
-  font-size:1.2rem !important;
+  width:auto !important; height:auto !important; background:none !important; border-radius:0 !important;
+  display:inline-flex !important; align-items:center !important; justify-content:center !important;
+  color:var(--text-muted) !important; font-size:.95rem !important; box-shadow:none !important;
 }
 #app .levro-home-cat-label{
-  font-size:.72rem !important;
-  font-weight:600 !important;
-  text-align:center !important;
-  white-space:nowrap !important;
-  overflow:hidden !important;
-  text-overflow:ellipsis !important;
-  max-width:100% !important;
+  font-size:.82rem !important; font-weight:600 !important; white-space:nowrap !important; color:var(--text) !important;
 }
-#app .levro-home-cat-more .levro-home-cat-icon{
-  background:color-mix(in srgb, var(--text-muted) 14%, var(--card)) !important;
-  color:var(--text-muted) !important;
+#app .levro-home-cat-chip.active{
+  background:color-mix(in srgb, var(--primary) 12%, var(--card)) !important;
+  border-color:var(--primary) !important;
 }
-/* Active sector filter: fill the icon solid instead of the usual tint, and
-   bold the label, so it's obvious at a glance which category is applied
-   (and that tapping it again clears it). */
-#app .levro-home-cat-chip.active .levro-home-cat-icon{
-  background:var(--cat-color, var(--primary)) !important;
-  color:#fff !important;
-  box-shadow:0 0 0 2px color-mix(in srgb, var(--cat-color, var(--primary)) 35%, transparent) !important;
-}
-#app .levro-home-cat-chip.active .levro-home-cat-label{
-  color:var(--cat-color, var(--primary)) !important;
-  font-weight:800 !important;
-}
+#app .levro-home-cat-chip.active .levro-home-cat-icon{ color:var(--primary) !important; background:none !important; box-shadow:none !important; }
+#app .levro-home-cat-chip.active .levro-home-cat-label{ color:var(--text) !important; font-weight:700 !important; }
 
 /* The Home search bar (above the carousel) had a transparent background and
    no border, so it was functionally invisible against the page background -
@@ -42766,6 +42832,43 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 #app .browse-filter-toolbar > .levro-compact-history{order:9 !important;position:absolute !important;left:0 !important;right:0 !important;top:calc(100% + .3rem) !important;z-index:120 !important;max-height:46vh;overflow:auto;grid-column:auto !important;grid-row:auto !important}
 #app .browse-filter-toolbar > .browse-filter-panel{order:8;flex:1 1 100%}
 
+/* Promotional banners: manual, native scroll-snap row (no autoplay). The next
+   banner peeks in from the right edge; the page itself never scrolls sideways. */
+#app .home-promotional-carousel{background:transparent !important;border:0 !important;box-shadow:none !important;border-radius:0 !important;overflow:visible !important;margin:0 0 .9rem !important}
+#app .home-promotional-viewport{aspect-ratio:auto !important;overflow-x:auto !important;overflow-y:hidden !important;display:block !important;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x pan-y;scroll-padding-inline:0;cursor:auto;border-radius:0 !important}
+#app .home-promotional-viewport::-webkit-scrollbar{display:none}
+#app .home-promotional-viewport.dragging{scroll-snap-type:none;cursor:grabbing;user-select:none}
+#app .home-promotional-track{display:flex !important;gap:.6rem;width:max-content !important;height:auto !important;transform:none !important;transition:none !important;will-change:auto !important}
+#app .home-promotional-slide{flex:0 0 min(86vw,560px) !important;width:min(86vw,560px) !important;height:auto !important;aspect-ratio:16/9;scroll-snap-align:start;border-radius:16px;overflow:hidden;border:1px solid var(--ui-border,var(--border)) !important;background:var(--card) !important}
+@media(min-width:720px){#app .home-promotional-slide{flex-basis:min(60%,560px) !important;width:min(60%,560px) !important}}
+#app .home-promotional-carousel .home-promotional-dots{position:static !important;transform:none !important;display:flex !important;justify-content:center !important;align-items:center !important;gap:.3rem !important;margin:.5rem 0 0 !important;padding:0 !important;left:auto !important;right:auto !important;bottom:auto !important;background:transparent !important;border:0 !important;box-shadow:none !important}
+#app .home-promotional-carousel .home-promotional-dot{width:.4rem !important;height:.4rem !important;flex:0 0 .4rem !important;border-radius:999px !important;background:var(--text-muted,#94a3b8) !important;opacity:.4;padding:0 !important;border:0 !important;transition:none !important}
+#app .home-promotional-carousel .home-promotional-dot.active{width:.4rem !important;flex-basis:.4rem !important;background:var(--text,#0f172a) !important;opacity:1}
+
+/* Order history page + its search / tabs. */
+#app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.order-history-page{max-width:640px;margin:0 auto}
+.order-history-search-wrap{display:flex;align-items:center;gap:.55rem;height:2.7rem;padding:0 .9rem;margin:.6rem 0 .4rem;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.order-history-search-wrap i{color:var(--text-muted)}
+.order-history-search-wrap input{flex:1;min-width:0;border:0 !important;background:transparent !important;box-shadow:none !important;outline:0;font:inherit;font-size:.92rem;color:var(--text);padding:0 !important;height:auto !important}
+.order-history-search-wrap:focus-within{border-color:var(--primary)}
+#app .order-history-tabs{display:flex !important;gap:1.1rem !important;background:transparent !important;padding:0 !important;border:0 !important;border-bottom:1px solid var(--border) !important;border-radius:0 !important;margin:.2rem 0 .6rem !important;box-shadow:none !important}
+#app .order-history-tabs .catalog-type-tab{flex:0 0 auto !important;background:transparent !important;box-shadow:none !important;color:var(--text) !important;border-radius:0 !important;border-bottom:3px solid transparent !important;padding:.55rem .1rem !important;margin-bottom:-1px}
+#app .order-history-tabs .catalog-type-tab.active{border-bottom-color:var(--primary) !important;color:var(--text) !important}
+#app .order-history-tabs .tab-count{font-weight:500;color:var(--text-muted)}
+
+/* Search page: All / Products / Vendors / Services / Packages filter pills. */
+.search-page-filters{display:flex;gap:.45rem;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;padding:.1rem 0 .7rem;margin:0}
+.search-page-filters::-webkit-scrollbar{display:none}
+.search-page-filter{flex:0 0 auto;min-height:36px;padding:0 .95rem;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font:inherit;font-size:.82rem;font-weight:600;cursor:pointer}
+.search-page-filter.active{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 12%,var(--card));font-weight:700}
+.search-page-head{position:sticky;top:0;z-index:20;background:var(--bg);padding-top:max(.2rem,env(safe-area-inset-top))}
+.search-page-results{padding-bottom:calc(var(--levro-kbd-h,0px) + 1.5rem)}
+/* Keyboard open: the bottom bar and floating buttons step out of the way. The
+   bar is moved off-screen (not display:none) so the layout never jumps. */
+body.levro-kbd-open #bottomNav{transform:translate3d(0,110%,0) !important;visibility:hidden !important;pointer-events:none !important}
+body.levro-kbd-open #aiChatFab,body.levro-kbd-open #cartFab{visibility:hidden !important;opacity:0 !important;pointer-events:none !important}
+
 .product-reviews-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;margin:.7rem 0 .2rem;padding:.7rem .9rem;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font:inherit;font-size:.9rem;font-weight:700;cursor:pointer}
 .product-reviews-toggle i{color:var(--text-muted);font-size:.8rem}
 .product-review-collapsible{margin-top:.5rem}
@@ -43441,5 +43544,39 @@ function hideLeviFromPanel() {
       actions.insertBefore(b,actions.firstChild);
     }catch(_){}
   };
+})();
+</script>
+
+<script id="levromart-keyboard-detector">
+/* Virtual-keyboard detector. A text field is focused AND the visual viewport is
+   much shorter than the tallest height seen since the keyboard last closed =>
+   the on-screen keyboard is open. Works for iOS (visual viewport shrinks) and
+   Android (visual viewport and/or layout viewport shrink). Toggles one body
+   class plus --levro-kbd-h; CSS hides the bottom bar and adds result padding. */
+(function(){
+  "use strict";
+  var vv = window.visualViewport;
+  if (!vv) return;
+  var base = Math.max(window.innerHeight, vv.height), open = false, raf = 0;
+  var EDITABLE = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=file]):not([type=color]):not([type=hidden]),textarea,[contenteditable=""],[contenteditable="true"]';
+  function editableFocused(){ var a = document.activeElement; return !!(a && a.matches && a.matches(EDITABLE)); }
+  function apply(){
+    raf = 0;
+    var h = vv.height, focused = editableFocused();
+    if (!focused) base = Math.max(h, window.innerHeight);
+    else base = Math.max(base, window.innerHeight);
+    var kbd = focused && (base - h) > 140;
+    if (kbd !== open) {
+      open = kbd;
+      document.body.classList.toggle("levro-kbd-open", kbd);
+    }
+    document.documentElement.style.setProperty("--levro-kbd-h", kbd ? Math.max(0, Math.round(base - h - vv.offsetTop)) + "px" : "0px");
+  }
+  function schedule(){ if (!raf) raf = requestAnimationFrame(apply); }
+  vv.addEventListener("resize", schedule, { passive: true });
+  document.addEventListener("focusin", function(){ setTimeout(schedule, 60); setTimeout(schedule, 350); }, true);
+  document.addEventListener("focusout", function(){ setTimeout(schedule, 60); setTimeout(schedule, 350); }, true);
+  window.addEventListener("orientationchange", function(){ base = 0; setTimeout(schedule, 300); }, { passive: true });
+  window.addEventListener("pagehide", function(){ document.body.classList.remove("levro-kbd-open"); }, { passive: true });
 })();
 </script>
