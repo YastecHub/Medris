@@ -12805,6 +12805,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "vendorPackages": html = await renderVendorPackages(); break;
       case "vendorEarnings": html = await renderVendorEarnings(); break;
       case "vendorFollowers": html = await renderVendorFollowers(); break;
+      case "vendorFollowerNetwork": html = await renderVendorFollowerNetwork(params.vendorId); break;
       case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
       case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
       case "orderHistory": html = await renderOrderHistoryPage(params.perspective || ""); break;
@@ -12862,6 +12863,7 @@ async function navigate(view, params = {}, pushHistory = true) {
             case "vendorPackages": html = await renderVendorPackages(); break;
             case "vendorEarnings": html = await renderVendorEarnings(); break;
             case "vendorFollowers": html = await renderVendorFollowers(); break;
+            case "vendorFollowerNetwork": html = await renderVendorFollowerNetwork(params.vendorId); break;
             case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
             case "vendorEditProfile": html = await renderVendorEditProfile(); break;
             case "vendorRequests": html = await renderVendorRequests(); break;
@@ -15697,6 +15699,46 @@ async function renderVendorFollowers(){
     html+=`<div class="empty-state">Could not load your followers. <button type="button" class="btn btn-outline" onclick="navigate('vendorFollowers',{},false)">Try again</button></div>`;
   }
   html+='</div>'; return html;
+}
+
+// ---------- FOLLOWER NETWORK (vendors only) ----------
+// Tapping "N followers" opens the vendors that follow this shop (customers are never listed). Each row says how
+// the viewer is connected: Following (you follow them), Mutual (a vendor you follow follows them) or
+// Wider network (reached through two steps), so people can grow their circle by following vendors they may know.
+function openFollowerNetwork(vendorId) {
+  const id = vendorId || currentViewParams?.vendorId;
+  if (id) navigate("vendorFollowerNetwork", { vendorId: id });
+}
+function followerNetworkTagHtml(r) {
+  if (r.is_me) return `<span class="fn-tag fn-me">You</span>`;
+  if (r.link_level === 1) return `<span class="fn-tag fn-following"><i class="fa-solid fa-check"></i> Following</span>`;
+  if (r.link_level === 2) return `<span class="fn-tag fn-mutual"><i class="fa-solid fa-link"></i> Mutual${r.via_name ? ` · via ${esc(r.via_name)}` : ""}</span>`;
+  if (r.link_level === 3) return `<span class="fn-tag fn-wide"><i class="fa-solid fa-diagram-project"></i> Wider network${r.via_name ? ` · via ${esc(r.via_name)}` : ""}</span>`;
+  return "";
+}
+async function renderVendorFollowerNetwork(vendorId) {
+  if (!vendorId) return '<div class="empty-state">Vendor not found.</div>';
+  const [{ data: v }, netRes] = await Promise.all([
+    sb.from("vendors").select("id,business_name").eq("id", vendorId).maybeSingle(),
+    sb.rpc("get_vendor_follower_network", { p_vendor_id: vendorId }),
+  ]);
+  const rows = netRes?.data || [];
+  const head = `<div class="fn-head"><button type="button" class="icon-btn" onclick="history.length>1?history.back():navigate('vendors')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div><h2>Followers</h2><p class="muted">Vendors following ${esc(v?.business_name || "this shop")}</p></div></div>`;
+  if (netRes?.error) return `<div class="fn-page">${head}<div class="empty-state">Could not load followers. <button type="button" class="btn btn-outline" onclick="navigate('vendorFollowerNetwork',{vendorId:'${esc(vendorId)}'},false)">Try again</button></div></div>`;
+  if (!rows.length) return `<div class="fn-page">${head}<div class="empty-state"><i class="fa-solid fa-user-group" style="font-size:1.7rem;display:block;margin-bottom:.6rem;"></i><strong>No vendor followers yet.</strong><p class="muted">Only vendors who follow this shop are shown here.</p></div></div>`;
+  const recent = window.__vendorCardFollowRecent;
+  const list = rows.map((r) => {
+    const id = String(r.vendor_id);
+    const rc = recent?.get(id);
+    const following = rc && Date.now() - rc.at < 15000 ? !!rc.following : (r.is_following || !!(session && window.followedVendorSet?.().has(id)));
+    const logo = r.logo_url ? `<img src="${esc(r.logo_url)}" alt="" class="fn-avatar" loading="lazy" decoding="async">` : avatarFallbackHtml(r.business_name || "Vendor", "3.2rem", "fn-avatar", r.business_name || "Vendor");
+    return `<div class="fn-row" onclick="navigate('storefront',{vendorId:'${esc(id)}'})" role="link" tabindex="0">
+      ${logo}
+      <div class="fn-copy"><strong>${esc(r.business_name || "Vendor")}</strong><span class="muted">${esc([r.sector_name, r.city].filter(Boolean).join(" · ") || "Vendor")}</span>${followerNetworkTagHtml(r)}</div>
+      ${r.is_me ? "" : `<button type="button" class="vendor-card-follow-btn fn-follow${following ? " following" : ""}" data-vendor-id="${esc(id)}" onclick="event.stopPropagation();toggleVendorCardFollow('${esc(id)}',event)">${following ? "Following" : "Follow"}</button>`}
+    </div>`;
+  }).join("");
+  return `<div class="fn-page">${head}<div class="fn-list">${list}</div></div>`;
 }
 
 // ---------- CART (buy-and-sale items only, grouped by vendor; add/remove actions stay on the current page) ----------
@@ -19127,7 +19169,7 @@ function vendorDirectoryCardHtml(v) {
       <span class="vd-loc"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${esc(v?.city || "Online")}${dist ? ` <b>·</b> ${esc(dist)}` : ""}</span>
       ${sectorName ? `<span class="vd-cat"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> ${esc(sectorName)}</span>` : ""}
       ${showFollow ? `<button type="button" class="vendor-card-follow-btn vd-follow${following ? " following" : ""}" data-vendor-id="${esc(id)}" onclick="event.stopPropagation();toggleVendorCardFollow('${esc(id)}',event)">${following ? "Following" : "Follow"}</button>` : ""}
-      <div class="vd-meta"><span class="vd-followers"><i class="fa-solid fa-user-group" aria-hidden="true"></i> <span class="vendor-follower-count">${count.toLocaleString()}</span> follower${count === 1 ? "" : "s"}</span><span class="vd-rating"><i class="fa-solid fa-star" aria-hidden="true"></i> ${rating.toFixed(1)}${reviews ? ` <small>(${reviews})</small>` : ""}</span></div>
+      <div class="vd-meta"><span class="vd-followers" role="button" tabindex="0" onclick="event.stopPropagation();openFollowerNetwork('${esc(id)}')"><i class="fa-solid fa-user-group" aria-hidden="true"></i> <span class="vendor-follower-count">${count.toLocaleString()}</span> follower${count === 1 ? "" : "s"}</span><span class="vd-rating"><i class="fa-solid fa-star" aria-hidden="true"></i> ${rating.toFixed(1)}${reviews ? ` <small>(${reviews})</small>` : ""}</span></div>
     </div>
   </div>`;
 }
@@ -19702,7 +19744,7 @@ function storefrontStatsInnerHtml(listingCount, stats, followState) {
   return `<span><strong>${listingCount}</strong> listing${listingCount === 1 ? "" : "s"}</span>
     <button type="button" class="storefront-stat-link" onclick="event.stopPropagation();scrollToVendorReviews()"><strong>${st.review_count || 0}</strong> review${Number(st.review_count || 0) === 1 ? "" : "s"}</button>
     <button type="button" class="storefront-stat-link" onclick="event.stopPropagation();scrollToVendorReviews()"><strong>★ ${Number(st.avg_rating ?? 0).toFixed(1)}</strong> rating</button>
-    <span data-follow-count><strong>${followerCount.toLocaleString()}</strong> follower${followerCount === 1 ? "" : "s"}</span>`;
+    <span data-follow-count class="storefront-stat-link" role="button" tabindex="0" onclick="event.stopPropagation();openFollowerNetwork()"><strong>${followerCount.toLocaleString()}</strong> follower${followerCount === 1 ? "" : "s"}</span>`;
 }
 function storefrontStatsLoadingInnerHtml(listingCount) {
   return `<span><strong>${listingCount}</strong> listing${listingCount === 1 ? "" : "s"}</span>
@@ -45085,6 +45127,39 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .vr-full-desc{margin:.2rem 0 .6rem;line-height:1.5;font-size:.92rem}
 #vendorsMap .leaflet-tile-pane{filter:saturate(.7) contrast(.93) brightness(1.04)}
 :root[data-theme="dark"] #vendorsMap .leaflet-tile-pane,:root[data-theme="black"] #vendorsMap .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) saturate(.6) brightness(.85) contrast(.9)}
+/* Vendors list cards: spread out (avatar | details | follow) instead of a stack with an empty right side. */
+#app .vd-grid.vendors-list-mode .vd-card{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto;column-gap:1rem;row-gap:.2rem;align-items:center;padding:1rem 1.1rem!important;text-align:left}
+#app .vd-grid.vendors-list-mode .vd-card .vd-cover{grid-column:1;grid-row:1 / span 4;margin:0!important}
+#app .vd-grid.vendors-list-mode .vd-card .vd-body{display:contents}
+#app .vd-grid.vendors-list-mode .vd-card .vd-name{grid-column:2;grid-row:1;font-size:1.02rem}
+#app .vd-grid.vendors-list-mode .vd-card .vd-loc{grid-column:2;grid-row:2;justify-content:flex-start}
+#app .vd-grid.vendors-list-mode .vd-card .vd-cat{grid-column:2;grid-row:3;justify-content:flex-start}
+#app .vd-grid.vendors-list-mode .vd-card .vd-meta{grid-column:2;grid-row:4;justify-content:flex-start;margin-top:.35rem}
+#app .vd-grid.vendors-list-mode .vd-card .vd-follow{grid-column:3;grid-row:1 / span 4;align-self:center;width:auto!important;min-width:6.6rem;margin:0!important;padding:0 1.2rem}
+.vd-followers[role="button"]{cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--primary) 40%,transparent);text-underline-offset:3px}
+.storefront-stat-link[data-follow-count]{cursor:pointer}
+/* Follower network page */
+.fn-page{max-width:640px;margin:0 auto;padding:.4rem .15rem 1.5rem}
+.fn-head{display:flex;align-items:center;gap:.8rem;margin:.3rem 0 1rem}
+.fn-head h2{margin:0;font-size:1.5rem}.fn-head p{margin:.1rem 0 0;font-size:.85rem}
+.fn-list{display:flex;flex-direction:column;gap:.7rem}
+.fn-row{display:flex;align-items:center;gap:.9rem;padding:.9rem 1rem;border-radius:18px;background:var(--card);border:1px solid var(--border);box-shadow:0 2px 10px rgba(15,23,42,.05);cursor:pointer}
+.fn-avatar{flex:none;width:3.2rem!important;height:3.2rem!important;border-radius:50%!important;object-fit:cover;box-shadow:0 0 0 2px var(--card),0 0 0 4px color-mix(in srgb,var(--primary) 30%,transparent)}
+.fn-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:.15rem}
+.fn-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fn-copy .muted{font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fn-tag{align-self:flex-start;margin-top:.2rem;display:inline-flex;align-items:center;gap:.3rem;padding:.15rem .6rem;border-radius:999px;font-size:.72rem;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fn-following{background:color-mix(in srgb,#16a34a 14%,var(--card));color:#15803d}
+.fn-mutual{background:color-mix(in srgb,#3b82f6 14%,var(--card));color:#1d4ed8}
+.fn-wide{background:color-mix(in srgb,#8b5cf6 14%,var(--card));color:#6d28d9}
+.fn-me{background:color-mix(in srgb,var(--text) 8%,var(--card));color:var(--text-muted)}
+:root[data-theme="dark"] .fn-following,:root[data-theme="black"] .fn-following{color:#86efac}
+:root[data-theme="dark"] .fn-mutual,:root[data-theme="black"] .fn-mutual{color:#93c5fd}
+:root[data-theme="dark"] .fn-wide,:root[data-theme="black"] .fn-wide{color:#c4b5fd}
+.fn-follow{flex:none;min-height:2.4rem;padding:0 1.1rem;border:0;border-radius:12px;background:color-mix(in srgb,var(--primary,#0B6E4A) 16%,var(--card));color:var(--primary,#0B6E4A);font-weight:800;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary,#0B6E4A) 22%,transparent)}
+.fn-follow.following{background:color-mix(in srgb,var(--text) 6%,var(--card));color:var(--text-muted);box-shadow:inset 0 0 0 1px var(--border)}
+#app .vd-grid.vendors-list-mode .vd-card .vd-name{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere}
+.fn-tag{white-space:normal;line-height:1.25}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
