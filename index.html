@@ -9118,15 +9118,22 @@ function loadLeaflet() {
 // provider API-key requirement. The product stays keyless; keep the standard
 // OSM attribution visible as required by the tile service.
 function mapTileConfig() {
+  // CARTO's Voyager (light) and Dark Matter styles: a calmer, cleaner basemap built from OpenStreetMap data, no API key.
+  const dark = ["dark", "black"].includes(document.documentElement.getAttribute("data-theme"));
   return {
-    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+    url: `https://{s}.basemaps.cartocdn.com/rastertiles/${dark ? "dark_all" : "voyager"}/{z}/{x}/{y}{r}.png`,
+    attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
     maxZoom: 19,
   };
 }
 function addBasemapTileLayer(map) {
   const cfg = mapTileConfig();
-  return window.L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: cfg.maxZoom }).addTo(map);
+  return window.L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: cfg.maxZoom, subdomains: "abcd", detectRetina: false, updateWhenIdle: false, keepBuffer: 4 }).addTo(map);
+}
+// Vendors page pins: the vendor's own round logo (or a shop icon) in a green ring with a little pointer.
+function vendorDirectoryMapIcon(v) {
+  const inner = v?.logo_url ? `<img src="${esc(v.logo_url)}" alt="" draggable="false" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid fa-shop'}))">` : `<i class="fa-solid fa-shop"></i>`;
+  return window.L.divIcon({ className: "vmp", html: `<div class="vmp-pin">${inner}</div>`, iconSize: [44, 52], iconAnchor: [22, 50], popupAnchor: [0, -46] });
 }
 // A rounded teardrop pin in the site's own accent color with a shop icon,
 // instead of Leaflet's default generic blue marker.
@@ -19185,8 +19192,10 @@ function renderVendorsDirectory() {
   </div>`;
   html += `<div class="grid" id="vendorsGrid"><p class="muted">Loading…</p></div>`;
   html += `<div id="vendorsMapWrap" class="hidden">
-    <p class="muted" id="vendorsMapStatus" style="font-size:0.82rem;margin:0 0 1rem;line-height:1.45;"></p>
-    <div id="vendorsMap" style="height:min(60vh,420px);border-radius:0.9rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;"></div>
+    <div class="vmap-card">
+      <div id="vendorsMap" style="background:var(--border);position:relative;isolation:isolate;z-index:0;"></div>
+      <p id="vendorsMapStatus" class="vmap-status"></p>
+    </div>
   </div>`;
   setTimeout(async () => {
     try {
@@ -19441,7 +19450,7 @@ async function renderVendorsMap() {
   const list = (window.__filteredVendors || []).filter((v) => v.lat != null && v.lng != null);
 
   if (!vendorsMap) {
-    vendorsMap = window.L.map("vendorsMap", { attributionControl: true, zoomControl: true, zoomControlOptions: { position: "topleft" } }).setView(center, zoom);
+    vendorsMap = window.L.map("vendorsMap", { attributionControl: true, zoomControl: true, zoomControlOptions: { position: "topleft" }, zoomSnap: 0.5, zoomDelta: 0.5, wheelPxPerZoomLevel: 90, inertia: true }).setView(center, zoom);
     // Remove the "Leaflet" attribution prefix but retain the required OSM credit.
     vendorsMap.attributionControl.setPrefix(false);
     addBasemapTileLayer(vendorsMap);
@@ -19465,14 +19474,14 @@ async function renderVendorsMap() {
 
   if (buyerLocation) {
     const primaryColor = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim() || "#0B6E4A";
-    const me = window.L.circleMarker([buyerLocation.lat, buyerLocation.lng], { radius: 8, color: "#fff", weight: 2, fillColor: "#2563eb", fillOpacity: 1 }).addTo(vendorsMap);
+    const me = window.L.marker([buyerLocation.lat, buyerLocation.lng], { icon: window.L.divIcon({ className: "vmp-me", html: '<span class="vmp-me-pulse"></span><span class="vmp-me-dot"></span>', iconSize: [24, 24], iconAnchor: [12, 12] }), zIndexOffset: 500 }).addTo(vendorsMap);
     me.bindPopup("You are here");
     vendorsMapMarkers.push(me);
   }
 
   list.forEach((v) => {
     const dist = buyerLocation ? formatDistanceKm(haversineKm(buyerLocation.lat, buyerLocation.lng, v.lat, v.lng)) : "";
-    const marker = window.L.marker([v.lat, v.lng], { icon: vendorMapIcon() }).addTo(vendorsMap);
+    const marker = window.L.marker([v.lat, v.lng], { icon: vendorDirectoryMapIcon(v), riseOnHover: true }).addTo(vendorsMap);
     marker._levromartVendorId = v.id;
     const vendorName = esc(v.business_name || "Vendor");
     const vendorLogo = v.logo_url
@@ -45000,6 +45009,29 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .vp-text{flex:1;min-width:0}
 .vp-badge{flex:none;min-width:1.4rem;height:1.4rem;padding:0 .4rem;border-radius:999px;background:var(--danger,#ef4444);color:#fff;font-size:.74rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
 .vp-arrow{flex:none;color:var(--text-muted);font-size:.8rem}
+/* Vendors map: calm basemap, rounded card, logo pins, soft popups and controls. */
+.vmap-card{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--border);box-shadow:0 10px 30px rgba(15,23,42,.12);background:var(--card)}
+#vendorsMap{height:clamp(380px,66vh,680px)!important;border-radius:0!important}
+.vmap-status{position:absolute;left:.7rem;right:3.6rem;bottom:.7rem;z-index:700;margin:0!important;padding:.5rem .8rem;border-radius:14px;font-size:.78rem!important;line-height:1.3!important;color:var(--text);background:color-mix(in srgb,var(--card) 90%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(15,23,42,.14);pointer-events:none;max-width:max-content}
+.vmap-status:empty{display:none}
+.vmp{background:none;border:0}
+.vmp-pin{position:relative;width:44px;height:44px;border-radius:50%;background:var(--primary,#0B6E4A);border:3px solid #fff;box-shadow:0 6px 16px rgba(15,23,42,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;transition:transform .15s ease}
+.vmp-pin::after{content:"";position:absolute;left:50%;bottom:-9px;width:12px;height:12px;background:var(--primary,#0B6E4A);border-right:3px solid #fff;border-bottom:3px solid #fff;transform:translateX(-50%) rotate(45deg);border-radius:0 0 4px 0;z-index:-1}
+.vmp-pin img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+.vmp:hover .vmp-pin{transform:scale(1.1)}
+.vmp-me{background:none;border:0}
+.vmp-me-dot{position:absolute;inset:5px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 2px 8px rgba(37,99,235,.55)}
+.vmp-me-pulse{position:absolute;inset:0;border-radius:50%;background:rgba(37,99,235,.28);animation:vmpPulse 2.2s ease-out infinite}
+@keyframes vmpPulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.8);opacity:0}}
+#vendorsMap .leaflet-control-zoom{border:0!important;box-shadow:0 4px 14px rgba(15,23,42,.18)!important;border-radius:14px;overflow:hidden;margin:.7rem 0 0 .7rem!important}
+#vendorsMap .leaflet-control-zoom a{width:2.4rem;height:2.4rem;line-height:2.3rem;font-size:1.2rem;color:var(--text);background:color-mix(in srgb,var(--card) 94%,transparent);border-bottom:1px solid var(--border)}
+#vendorsMap .leaflet-control-zoom a:last-child{border-bottom:0}
+#vendorsMap .leaflet-popup-content-wrapper{border-radius:18px!important;box-shadow:0 14px 34px rgba(15,23,42,.28)!important;padding:.15rem}
+#vendorsMap .leaflet-popup-content{margin:.7rem .8rem!important}
+#vendorsMap .leaflet-popup-close-button{top:.45rem!important;right:.5rem!important}
+#vendorsMap .vendor-map-popup-link{margin-top:.6rem;padding:.5rem .9rem;border-radius:12px;background:color-mix(in srgb,var(--primary,#0B6E4A) 14%,var(--card));justify-content:center;width:100%;box-sizing:border-box;text-decoration:none!important}
+#vendorsMap .leaflet-control-attribution{border-radius:8px 0 0 0}
+@media (prefers-reduced-motion:reduce){.vmp-me-pulse{animation:none}}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
