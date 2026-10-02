@@ -18570,19 +18570,16 @@ async function __levroOriginalRenderProductDetail(productId) {
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
       ${productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><span class="variety-choice-image">${v.photo_url?`<img src="${esc(v.photo_url)}" alt="${esc(v.name)}"><span class="variety-image-position">${productVariants.filter(x=>x.photo_url).findIndex(x=>x.id===v.id)+1}/${productVariants.filter(x=>x.photo_url).length}</span>`:""}</span><strong>${esc(v.name)}</strong><small>${naira(Number(effectivePrice(v) ?? 0))}</small></button>`).join("")}</div></div>` : ""}
       ${productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="product-gallery-variant-label">Selected variety:</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</small><small class="muted" style="display:block;margin-top:.16rem;">Available: <span id="selectedVariantStock">${variantStockLabel(productVariants[0])}</span></small></div><strong id="selectedVariantPrice">Price: ${naira(Number(effectivePrice(productVariants[0]) ?? 0))}</strong></div>` : ""}
-      <div class="flex">
+      <div class="pd-qty-row"><div class="pd-qty-box"><span class="df-label">Quantity</span><div class="flex" style="margin:0;">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
           : `<input type="number" id="buyQty" value="1" min="1" placeholder="Qty" oninput="updateBuyTotalPreview(${effectivePrice(product) ?? 0})" style="width:90px;" />`}
-      </div>
-      ${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product)}">Total: ${naira(productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product))}</p>` : ""}
-      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% first; the remaining ${paymentRemainingPercent}% is due after delivery.` : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
+      </div></div><div class="pd-total-box">${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product)}">Total: ${naira(productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product))}</p>` : ""}</div></div>
+      <div class="pd-step-title"><i class="fa-solid fa-truck-fast"></i> How do you want it?</div>
       ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
-      ${!product.is_service ? `<div style="margin-top:0.7rem;">
-        <label style="margin:0;">Note for the vendor <span class="muted" style="font-weight:400;">(optional)</span></label>
-        <textarea id="buyNote" rows="2" placeholder="e.g. I'd like the blue one, or a size 42" style="margin-top:0.3rem;"></textarea>
-      </div>` : ""}
-      <div class="flex">
+      ${!product.is_service ? `<div class="pd-note-box"><label class="df-label" for="buyNote"><i class="fa-regular fa-note-sticky"></i> Note for the vendor <span class="df-hint">(optional)</span></label><textarea id="buyNote" rows="2" placeholder="e.g. I'd like the blue one, or a size 42"></textarea></div>` : ""}
+      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% first; the remaining ${paymentRemainingPercent}% is due after delivery.` : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
+      <div class="flex pd-buy-actions">
         <button class="btn" onclick="buyNow('${product.vendor.id}','${product.id}')">${buyLabel}</button>
         ${!product.is_service ? `<button id="productAddToCartBtn" class="btn btn-outline" onclick="addToCart('${product.id}', parseInt(byId('buyQty').value)||1)"><i class="fa-solid fa-cart-plus"></i> Add to cart</button>` : ""}
       </div>
@@ -18636,7 +18633,9 @@ function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, 
       <label style="display:flex;align-items:center;gap:0.35rem;margin:0;font-weight:400;"><input type="radio" name="${prefix}DeliveryMethod" value="pickup" onchange="toggleDeliveryFields('${prefix}')" style="width:auto;margin:0;" /> ${esc(pickupLabel || "Pickup")}</label>
     </div>
     <div id="${prefix}DeliveryFields" class="dyn-delivery-fields" style="margin-bottom:0.9rem;" data-vendor-lat="${vendorLat ?? ""}" data-vendor-lng="${vendorLng ?? ""}" data-fee="${fee}" data-fee-mode="${esc(feeMode || "flat")}" data-per-km="${Number(perKm) || 0}" data-pickup-label="${esc(pickupLabel || "Pickup")}" data-item-total="${fixedItemTotal != null ? Number(fixedItemTotal) : ""}">
+      <label class="df-label" for="${prefix}Address"><i class="fa-solid fa-location-dot"></i> Delivery address</label>
       <input type="text" id="${prefix}Address" placeholder="Delivery address" value="${esc(profile?.address || "")}" />
+      <label class="df-label" for="${prefix}Phone"><i class="fa-solid fa-phone"></i> Phone number <span class="df-hint">(kept private)</span></label>
       <input type="tel" id="${prefix}Phone" placeholder="Phone number (kept private, used for your order)" value="${esc(profile?.phone || "")}" />
       ${!isDistance && fee > 0 ? `<p class="delivery-fee-line" style="margin:0.35rem 0 0;"><i class="fa-solid fa-truck"></i> <strong>${naira(fee)}</strong> delivery fee</p>` : ""}
       ${isDistance || hasVendorLoc ? `<p class="delivery-fee-line" style="margin:0.35rem 0 0;" id="${prefix}FeeLine">${deliveryInfoLineHtml(prefix, isDistance, hasVendorLoc, vendorLat, vendorLng, perKm)}</p>` : ""}
@@ -44653,6 +44652,27 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .vc-item-chev{flex:none;color:var(--text-muted);transition:transform .2s}
 .vendor-commission-item:not(.vc-collapsed) .vc-item-chev{transform:rotate(180deg)}
 .vendor-commission-item.vc-collapsed .vc-item-body{display:none}
+/* Delivery / order form: clearly labelled, clearly visible fields. */
+.df-label{display:flex;align-items:center;gap:.4rem;margin:.7rem 0 .3rem!important;font-size:.82rem;font-weight:800;color:var(--text)}
+.df-label i{color:var(--primary,#0B6E4A)}
+.df-hint{font-weight:500;color:var(--text-muted)}
+.dyn-delivery-fields input[type=text],.dyn-delivery-fields input[type=tel],.pd-note-box textarea{width:100%;border:1.5px solid color-mix(in srgb,var(--primary,#0B6E4A) 45%,var(--border))!important;background:color-mix(in srgb,var(--primary,#0B6E4A) 6%,var(--card))!important;border-radius:14px;color:var(--text);box-shadow:0 1px 0 color-mix(in srgb,var(--primary,#0B6E4A) 10%,transparent)}
+.dyn-delivery-fields input[type=text]::placeholder,.dyn-delivery-fields input[type=tel]::placeholder,.pd-note-box textarea::placeholder{color:color-mix(in srgb,var(--text) 45%,transparent)}
+.dyn-delivery-fields input:focus,.pd-note-box textarea:focus{outline:0;border-color:var(--primary,#0B6E4A)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--primary,#0B6E4A) 22%,transparent)}
+.pd-note-box{margin:.4rem 0 .8rem}
+.pd-note-box textarea{padding:.7rem .85rem;min-height:4.2rem}
+.pd-qty-row{display:flex;gap:.7rem;align-items:stretch;margin:.4rem 0 .9rem}
+.pd-qty-box{flex:none}
+.pd-qty-box .df-label{margin-top:0!important}
+.pd-qty-box input{width:5.2rem!important;min-height:3rem;text-align:center;font-weight:800;border-radius:14px}
+.pd-total-box{flex:1;min-width:0;display:flex;align-items:flex-end}
+.pd-total-box #serviceTotalPreview{width:100%;margin:0}
+.pd-step-title{margin:.2rem 0 .1rem;font-size:.95rem;font-weight:800;display:flex;align-items:center;gap:.45rem}
+.pd-step-title i{color:var(--primary,#0B6E4A)}
+.pd-buy-actions{gap:.6rem;margin-top:.5rem}
+.pd-buy-actions .btn{flex:1;min-height:3.1rem;justify-content:center;border-radius:14px;font-weight:800}
+.pd-buy-actions .btn:first-child{flex:1.3}
+.product-payment-plan-notice{margin:.5rem 0 .2rem!important}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
