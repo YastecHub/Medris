@@ -7896,6 +7896,16 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 const SUPABASE_URL = "https://ovklnoroyxobijgvsyfp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_SjOSMDFWO-u9t5sKRp1sXQ_GsnrO2a7";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Any write to cart_items marks the cached cart count stale, so the badge still updates at once.
+try {
+  const __sbFrom = sb.from.bind(sb);
+  sb.from = (table) => {
+    const q = __sbFrom(table);
+    if (table === "vendor_follows") ["insert", "update", "delete", "upsert"].forEach((m) => { const orig = q[m]; if (typeof orig === "function") q[m] = (...a) => { window.__followerCountMemo = null; return orig.apply(q, a); }; });
+    if (table === "cart_items") ["insert", "update", "delete", "upsert"].forEach((m) => { const orig = q[m]; if (typeof orig === "function") q[m] = (...a) => { window.__cartCountAt = 0; return orig.apply(q, a); }; });
+    return q;
+  };
+} catch (_) {}
 
 // ---------- ACCOUNT INTEGRITY ----------
 // A deleted-and-recreated Supabase Auth account gets a new UUID even when the
@@ -10187,8 +10197,12 @@ async function __refreshNotificationsNow(renderPanel = true, includeSlow = true)
   const followingQ = (profile?.role !== "admin" && includeSlow) ? sb.from("vendor_follows").select("id", { count: "exact", head: true }).eq("follower_id", session.user.id) : Promise.resolve(profile?.role !== "admin" ? null : { count: 0 });
   const totalOrdersQ = (profile?.role !== "admin" && includeSlow) ? sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve(profile?.role !== "admin" ? null : { count: 0 });
   const suggestionQ = !includeSlow ? Promise.resolve(null) : profile?.role === "admin" ? sb.rpc("get_platform_suggestions") : vendor ? sb.rpc("get_vendor_suggestions") : Promise.resolve({ data: [] });
-  const conversationsQ = sb.rpc("list_my_conversations");
-  const cartQ = profile?.role !== "admin" ? sb.from("cart_items").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve({ count: 0 });
+  // The chat list and the cart count are re-read at most every 30s unless something just
+  // changed (a new notification, a cart edit) -- they used to be fetched on every refresh.
+  const convFresh = Array.isArray(window.__convRaw) && Date.now() - (window.__convRawAt || 0) < 30000;
+  const conversationsQ = convFresh ? Promise.resolve({ data: window.__convRaw }) : sb.rpc("list_my_conversations").then((r) => { if (!r.error) { window.__convRaw = r.data; window.__convRawAt = Date.now(); } return r; });
+  const cartFresh = typeof window.__cartCountVal === "number" && Date.now() - (window.__cartCountAt || 0) < 30000;
+  const cartQ = profile?.role === "admin" ? Promise.resolve({ count: 0 }) : cartFresh ? Promise.resolve({ count: window.__cartCountVal }) : sb.from("cart_items").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).then((r) => { if (!r.error) { window.__cartCountVal = r.count || 0; window.__cartCountAt = Date.now(); } return r; });
   let requestSeenAt = ""; try { requestSeenAt = sessionStorage.getItem("levromart-request-offers-seen-at") || ""; } catch (_) {}
   const requestOfferQ = profile?.role !== "admin" ? sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("type", "new_offer").eq("read", false).eq("archived", false).is("deleted_at", null).gt("created_at", requestSeenAt || "1970-01-01T00:00:00.000Z") : Promise.resolve({ count: 0 });
 
@@ -10309,10 +10323,13 @@ async function renderNotifPanel() {
   // than this query ever fetched, so the badge could never reach zero no
   // matter how many times the page was opened -- the backlog beyond the
   // limit was simply never seen or marked read.
-  let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(300);
+  // Every unread one (so the badge can always reach zero) plus the last 30 days of read
+  // ones, capped -- older read notifications are no longer re-downloaded on every open.
+  const readSince = new Date(Date.now() - 30 * 86400000).toISOString();
+  let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).or(`read.eq.false,created_at.gte.${readSince}`).order("created_at", { ascending: false }).limit(150);
   const { data: rawItems, error } = await q;
   if (!error && Array.isArray(rawItems)) {
-    try { localStorage.setItem(notifCacheKey, JSON.stringify(rawItems.slice(0,300))); } catch (_) {}
+    try { localStorage.setItem(notifCacheKey, JSON.stringify(rawItems.slice(0,150))); } catch (_) {}
   }
   const currentVendorId=String(vendor?.id||'');
   const owners=new Map();
@@ -10730,6 +10747,7 @@ function subscribeNotifications() {
       // no pop-up, no sound (like WhatsApp) -- just pull the message into the
       // thread right away and quietly mark the notification as read.
       const nParams = payload.new.target_params || {};
+      window.__convRawAt = 0;
       if (String(payload.new.type || "") === "incoming_call") {
         try { window.__levroIncomingCall?.(payload.new); } catch (_) {}
         refreshNotifications(false);
@@ -12726,6 +12744,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   } else if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view === "home" && cachedRouteHtml) {
     // Reuse a previously rendered real page while the original renderer refreshes it.
     app.innerHTML = cachedRouteHtml;
+    try { initHomepageCarousel(); } catch (_) {}
     restoreAdminTabsScroll();
     syncLeviFabVisibility();
     hideLevromartSplash();
@@ -13438,6 +13457,7 @@ function handleHomeCarouselImageError(img, failedIndex) {
 function renderHomepageCarouselHtml(slides) {
   const usable = (slides || []).filter(s => s?.image_url).slice(0, 12);
   if (!usable.length) return "";
+  if (usable.length !== homeCarouselSlides.length) window.__levroCarouselDom = null;
   homeCarouselSlides = usable;
   const slideHtml = (s, i, clone) => `<button type="button" class="home-promotional-slide" data-carousel-index="${i}" ${clone ? 'data-clone="1" tabindex="-1" aria-hidden="true"' : ""} data-link-url="${esc(s.link_url || "")}" onclick="handleHomeCarouselSlideClick(event,${i})" aria-label="${esc(s.alt_text || `Promotion ${i + 1}`)}"><img src="${esc(s.image_url)}" alt="${clone ? "" : esc(s.alt_text || "Levromart promotion")}" ${i === 0 && !clone ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" draggable="false" onerror="handleHomeCarouselImageError(this,${i})"></button>`;
   // With more than one banner the row is a seamless loop: a copy of the last
@@ -13569,7 +13589,7 @@ function homeCarouselGoTo(viewport, domIndex, smooth = true) {
 }
 function activateHomeCarouselSlide(index) {
   const viewport = byId("homePromotionalViewport");
-  if (!viewport || !homeCarouselSlides.length) return;
+  if (!viewport) return;
   const loop = viewport.dataset.loop === "1";
   homeCarouselGoTo(viewport, (Number(index) || 0) + (loop ? 1 : 0));
   homeCarouselPause(4000);
@@ -13582,20 +13602,26 @@ function initHomepageCarousel() {
   if (!viewport || viewport.dataset.carouselBound === "1") return;
   viewport.dataset.carouselBound = "1";
   const loop = viewport.dataset.loop === "1";
-  const count = homeCarouselSlides.length;
+  const count = viewport.querySelectorAll(".home-promotional-slide:not([data-clone])").length;
   const dots = Array.from(document.querySelectorAll("#homePromotionalDots .home-promotional-dot"));
   let ticking = false, current = 0, settleTimer = null, visible = true;
+  { const sv = Number(window.__levroCarouselDom); if (loop && Number.isFinite(sv) && sv >= 1 && sv <= count) { current = sv - 1; dots.forEach((d, i) => d.classList.toggle("active", i === current)); } }
 
   const place = (domIndex) => {                       // instant jump, snap off for a frame
     viewport.style.scrollSnapType = "none";
     homeCarouselGoTo(viewport, domIndex, false);
     requestAnimationFrame(() => { viewport.style.scrollSnapType = ""; });
   };
+  // Re-rendering Home (coming back from another page) must not make the row jump:
+  // put it straight back on the banner that was showing, in the same frame.
+  const saved = Number(window.__levroCarouselDom);
+  const startDom = loop ? (Number.isFinite(saved) && saved >= 1 && saved <= count ? saved : 1) : 0;
   const dotFor = (domIndex) => loop ? (domIndex - 1 + count) % count : domIndex;
   const syncDots = () => {
     ticking = false;
     const step = homeCarouselStep(viewport);
     if (!step) return;
+    window.__levroCarouselDom = Math.round(viewport.scrollLeft / step);
     const idx = dotFor(Math.round(viewport.scrollLeft / step));
     if (idx === current) return;
     current = idx;
@@ -13614,7 +13640,7 @@ function initHomepageCarousel() {
     clearTimeout(settleTimer); settleTimer = setTimeout(settle, 110);
   }, { passive: true });
 
-  if (loop) requestAnimationFrame(() => place(1));
+  if (loop) { if (homeCarouselStep(viewport)) place(startDom); else requestAnimationFrame(() => place(startDom)); }
 
   // Anything the user does with the row holds autoplay off for a few seconds.
   const hold = () => homeCarouselPause(6000);
@@ -14053,50 +14079,54 @@ async function renderHome() {
     return hit && Date.now() - hit.at < HOME_CATALOG_CACHE_MS ? hit.data : null;
   };
   const setCachedCatalog = (key, data) => window.__homeCatalogCache.set(key, { data, at: Date.now() });
+  const VENDOR_COLS = "id, business_name, city, avg_rating, review_count, logo_url, bio, sector_id, lat, lng";
   const loadTopVendors = async () => {
-    const cacheKey = `vendors:${activeSector?.id || "all"}`;
+    const cacheKey = `vendors:${activeSector?.id || "all"}:${activeCategory?.id || "all"}`;
     const cached = getCachedCatalog(cacheKey);
     if (cached) return { data: cached };
-    const rows = [];
-    const pageSize = 500;
-    const orderedQuery = topVendorsQuery.order("avg_rating", { ascending: false }).order("id");
-    for (let offset = 0; ; offset += pageSize) {
-      const { data, error } = await orderedQuery.range(offset, offset + pageSize - 1);
+    let rows = [];
+    if (activeCategory) {
+      // Only the vendors that really sell in this category.
+      const { data: sellers, error: sellersError } = await sb.from("products")
+        .select("vendor_id, vendor:vendors!inner(id)")
+        .eq("status", "active").eq("category_id", activeCategory.id)
+        .eq("vendor.verification_status", "verified").eq("vendor.is_active", true).limit(1000);
+      if (sellersError) return { data: null, error: sellersError };
+      const ids = [...new Set((sellers || []).map((r) => r.vendor_id).filter(Boolean))];
+      if (ids.length) {
+        const { data, error } = await sb.from("vendors").select(VENDOR_COLS).in("id", ids).eq("verification_status", "verified").eq("is_active", true).is("deleted_at", null);
+        if (error) return { data: null, error };
+        rows = data || [];
+      }
+    } else {
+      // The strip only shows a handful; the 40 best-rated are plenty (it used to download every vendor).
+      const { data, error } = await topVendorsQuery.order("avg_rating", { ascending: false }).order("id").limit(40);
       if (error) return { data: null, error };
-      rows.push(...(data || []));
-      if (!data || data.length < pageSize) break;
+      rows = data || [];
     }
     const uniqueRows = [...new Map(rows.map(v => [String(v.id), v])).values()];
     const result = await attachVendorFollowerCounts(uniqueRows);
     setCachedCatalog(cacheKey, result);
     return { data: result };
   };
-  const loadBrowseCatalogue = async () => {
-    const cacheKey = `browse:${activeSector?.id || "all"}:${activeCategory?.id || "all"}`;
-    const cached = getCachedCatalog(cacheKey);
-    if (cached) return { data: cached };
-    const rows = [];
-    const pageSize = 500;
-    for (let offset = 0; ; offset += pageSize) {
-      const q = browseCatalogQuery.range(offset, offset + pageSize - 1);
-      if (activeSector) q.eq("category.sector_id", activeSector.id);
-      if (activeCategory) q.eq("category_id", activeCategory.id);
-      const { data, error } = await q;
-      if (error) return { data: null, error };
-      rows.push(...(data || []));
-      if (!data || data.length < pageSize) break;
-    }
-    const result = [...new Map(rows.map(p => [String(p.id), p])).values()];
-    setCachedCatalog(cacheKey, result);
-    return { data: result };
+  // Browse Everything: only a light index (id + vendor + category, ~100 bytes each) of the whole
+  // eligible catalogue is fetched, so the 10-minute fairness rotation still covers every
+  // listing. Full product rows are then loaded 24 at a time as the shopper scrolls.
+  const loadBrowseFirstPage = async () => {
+    const index = await loadBrowseIndex(activeSector, activeCategory);
+    if (!index) return { data: null, error: new Error("catalogue index failed") };
+    const ids = index.filter((x) => !x.is_service).slice(0, BROWSE_GRID_PAGE).map((x) => x.id);
+    const rows = await fetchProductsByIds(ids);
+    return { data: rows, index };
   };
-  const [{ data: trending, error: trendingError }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts }] = await Promise.all([
-    vendorQuery.order("view_count", { ascending: false }),
+  const [{ data: trending, error: trendingError }, { data: topVendors }, { data: recentProducts }, { data: packages }, { data: browseProducts, index: browseIndex }] = await Promise.all([
+    vendorQuery.order("view_count", { ascending: false }).limit(40),
     loadTopVendors(),
     recentPhotosQuery.order("created_at", { ascending: false }).limit(3),
     packageQuery,
-    loadBrowseCatalogue(),
+    loadBrowseFirstPage(),
   ]);
+  window.__homeBrowseIndex = Array.isArray(browseIndex) ? browseIndex : (window.__homeBrowseIndex || null);
   // Never discard a previously good Browse Everything catalogue just because
   // this refresh returned null/empty data for a moment. The homepage is
   // cache-first: a successful catalogue already on this device remains the
@@ -14107,7 +14137,8 @@ async function renderHome() {
   const stableBrowseProducts = Array.isArray(browseProducts) && browseProducts.length
     ? browseProducts
     : knownGoodBrowseCatalog;
-  const rotatedBrowseProducts = deterministicBrowseVisibilityShuffle(stableBrowseProducts, `browse:${activeSector?.id||"all"}`);
+  // Already in rotation order (the index is shuffled once per 10-minute slot).
+  const rotatedBrowseProducts = stableBrowseProducts;
   window.__homeBrowseCatalog = rotatedBrowseProducts;
   window.__homeBrowseRotationKey = Math.floor(Date.now() / 600000);
   // Which sectors actually have a real, buyable listing right now -- the
@@ -14121,8 +14152,9 @@ async function renderHome() {
     if (!activeSector && !activeCategory) {
       // The unfiltered browse catalogue was already fetched above -- reuse
       // it instead of scanning the whole product table a second time.
-      ids = new Set(stableBrowseProducts.map(p => p.category?.sector_id).filter(Boolean).map(String));
-      ids.categoryIds = new Set(stableBrowseProducts.map(p => p.category_id).filter(Boolean).map(String));
+      const idxRows = Array.isArray(browseIndex) && browseIndex.length ? browseIndex : stableBrowseProducts;
+      ids = new Set(idxRows.map(p => p.category?.sector_id).filter(Boolean).map(String));
+      ids.categoryIds = new Set(idxRows.map(p => p.category_id).filter(Boolean).map(String));
     } else {
       const rows = [];
       const pageSize = 500;
@@ -14212,8 +14244,7 @@ async function renderHome() {
 
   }
 
-  const sellersInScope = activeCategory && Array.isArray(trending) ? new Set(trending.map((p) => String(p.vendor?.id))) : null;
-  const scopedTopVendors = sellersInScope ? (topVendors || []).filter((v) => sellersInScope.has(String(v.id))) : topVendors;
+  const scopedTopVendors = topVendors;
   if (scopedTopVendors && scopedTopVendors.length) {
     const shuffledTopVendors = deterministicHourlyShuffle(scopedTopVendors,"top-rated-vendors");
     html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorCardHtml).join("")}</div>`;
@@ -14273,6 +14304,7 @@ function paintHomeFromLocalCatalog(showOfflineNotice = false) {
   const previousScrollY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
   const previousCatRailScroll = byId("app")?.querySelector(".levro-home-cat-rail")?.scrollLeft || 0;
   app.innerHTML = rendered;
+  try { initHomepageCarousel(); } catch (_) {}
   const catRail = app.querySelector(".levro-home-cat-rail");
   if (catRail) catRail.scrollLeft = previousCatRailScroll;
   syncLeviFabVisibility();
@@ -15077,6 +15109,45 @@ function filterBrowseCategoryOptions() {
 }
 
 let homeFilterGeneration = 0;
+// ---------- BROWSE EVERYTHING DATA (light index + 24-at-a-time rows) ----------
+const productRowCache = new Map();
+async function fetchProductsByIds(ids) {
+  const want = [...new Set((ids || []).map(String))];
+  if (!want.length) return [];
+  const missing = want.filter((id) => !productRowCache.has(id));
+  if (missing.length) {
+    const { data, error } = await sb.from("products").select(PRODUCT_LIST_SELECT).in("id", missing)
+      .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
+    if (!error) (data || []).forEach((p) => productRowCache.set(String(p.id), p));
+  }
+  if (productRowCache.size > 600) [...productRowCache.keys()].slice(0, 200).forEach((k) => productRowCache.delete(k));
+  return want.map((id) => productRowCache.get(id)).filter(Boolean);
+}
+async function loadBrowseIndex(activeSector, activeCategory) {
+  const slot = Math.floor(Date.now() / 600000);
+  const key = `levro-browse-idx:${slot}:${activeSector?.id || "all"}:${activeCategory?.id || "all"}`;
+  window.__homeBrowseIdxMem = window.__homeBrowseIdxMem || new Map();
+  if (window.__homeBrowseIdxMem.has(key)) return window.__homeBrowseIdxMem.get(key);
+  try { const saved = JSON.parse(sessionStorage.getItem(key) || "null"); if (Array.isArray(saved)) { window.__homeBrowseIdxMem.set(key, saved); return saved; } } catch (_) {}
+  const rows = [];
+  const pageSize = 1000;
+  for (let offset = 0; offset < 20000; offset += pageSize) {
+    let q = sb.from("products")
+      .select(`id, vendor_id, category_id, is_service, category:categories${activeSector ? "!inner" : ""}(sector_id), vendor:vendors!inner(id)`)
+      .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
+    if (activeSector) q = q.eq("category.sector_id", activeSector.id);
+    if (activeCategory) q = q.eq("category_id", activeCategory.id);
+    const { data, error } = await q.order("id").range(offset, offset + pageSize - 1);
+    if (error) return null;
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  const slim = rows.map((r) => ({ id: r.id, vendor_id: r.vendor_id, category_id: r.category_id, is_service: !!r.is_service, category: { sector_id: r.category?.sector_id || null } }));
+  const rotated = deterministicBrowseVisibilityShuffle(slim, `browse:${activeSector?.id || "all"}`);
+  window.__homeBrowseIdxMem.set(key, rotated);
+  try { Object.keys(sessionStorage).filter((k) => k.startsWith("levro-browse-idx:") && k !== key).forEach((k) => sessionStorage.removeItem(k)); sessionStorage.setItem(key, JSON.stringify(rotated)); } catch (_) {}
+  return rotated;
+}
 // Browse Everything renders a page at a time and loads the next one as you
 // scroll near the end (the list is already in memory; this keeps the DOM small).
 const BROWSE_GRID_PAGE = 24;
@@ -15103,6 +15174,32 @@ function paintBrowseGrid(grid, list) {
   browseGridObserver = io;
   io.observe(sentinel);
 }
+// Pages of Browse Everything load on demand: loadMore() resolves to the next rows
+// (empty = no more). The old grid is replaced as a whole when the filters change.
+function paintBrowsePaged(grid, firstRows, loadMore, hasMore, generation) {
+  browseGridObserver?.disconnect(); browseGridObserver = null;
+  grid.innerHTML = firstRows.map(productCardHtml).join("");
+  if (!hasMore()) return;
+  const sentinel = document.createElement("div");
+  sentinel.className = "browse-sentinel";
+  sentinel.style.cssText = "grid-column:1/-1;height:1px";
+  grid.appendChild(sentinel);
+  let loading = false;
+  const io = new IntersectionObserver(async (entries) => {
+    if (loading || !entries.some((e) => e.isIntersecting)) return;
+    if (!sentinel.isConnected || generation !== homeFilterGeneration) { io.disconnect(); return; }
+    loading = true;
+    let next = [];
+    try { next = await loadMore(); } catch (_) {}
+    loading = false;
+    if (!sentinel.isConnected || generation !== homeFilterGeneration) { io.disconnect(); return; }
+    if (next.length) sentinel.insertAdjacentHTML("beforebegin", next.map(productCardHtml).join(""));
+    if (!hasMore()) { io.disconnect(); sentinel.remove(); return; }
+    io.unobserve(sentinel); io.observe(sentinel);
+  }, { rootMargin: "700px 0px" });
+  browseGridObserver = io;
+  io.observe(sentinel);
+}
 async function filterHomeProducts() {
   const generation = ++homeFilterGeneration;
   const search = byId("searchInput")?.value.trim() || "";
@@ -15116,28 +15213,43 @@ async function filterHomeProducts() {
   }
 
   renderHomePackageSearch(search).catch(() => {});
+  const wantService = homeListingTab === "services";
+  const extraCategory = catId && String(catId) !== String(currentHomeCategoryId || "");
 
-  // Paint immediately from the last complete catalogue. This is the stable
-  // source of truth for the first frame and prevents a slow/failed network
-  // request from leaving Browse Everything empty.
+  // Offline / first paint: whatever is already on the device.
   const localCatalog = Array.isArray(window.__homeBrowseCatalog) && window.__homeBrowseCatalog.length
     ? window.__homeBrowseCatalog
     : (getOfflineHomeCache()?.browseProducts || []);
-  const localFiltered = offlineFilterProducts(localCatalog, search, listing, catId, currentSectorId)
-    .filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
+  const localFiltered = offlineFilterProducts(localCatalog, search, listing, extraCategory ? catId : "", currentSectorId)
+    .filter(p => wantService ? !!p.is_service : !p.is_service);
   const hasLocalCatalogue = localCatalog.length > 0;
-  if (hasLocalCatalogue) {
-    if (localFiltered.length) paintBrowseGrid(grid, localFiltered);
-    else grid.innerHTML = `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
-  }
-
   if (browserLooksOffline()) {
-    if (!hasLocalCatalogue) {
-      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="fa-solid fa-wifi-slash" style="display:block;font-size:1.5rem;margin-bottom:.5rem;"></i>No saved products match these filters while you're offline.</div>`;
-    }
+    if (localFiltered.length) paintBrowseGrid(grid, localFiltered);
+    else grid.innerHTML = hasLocalCatalogue
+      ? `<div class="empty-state">No ${homeListingTab} match these filters.</div>`
+      : `<div class="empty-state" style="grid-column:1/-1;"><i class="fa-solid fa-wifi-slash" style="display:block;font-size:1.5rem;margin-bottom:.5rem;"></i>No saved products match these filters while you're offline.</div>`;
     return;
   }
 
+  const index = Array.isArray(window.__homeBrowseIndex) ? window.__homeBrowseIndex : null;
+  const plain = !search && !listing && !extraCategory;
+
+  // A) Plain browse: follow the rotated catalogue order, 24 products at a time.
+  if (plain && index) {
+    const order = index.filter((x) => !!x.is_service === wantService).map((x) => x.id);
+    let offset = 0;
+    const loadMore = async () => { const ids = order.slice(offset, offset + BROWSE_GRID_PAGE); offset += ids.length; return fetchProductsByIds(ids); };
+    const first = await loadMore();
+    if (generation !== homeFilterGeneration || !byId("productGrid")) return;
+    if (!first.length) { grid.innerHTML = `<div class="empty-state">No ${homeListingTab} match these filters.</div>`; return; }
+    paintBrowsePaged(grid, first, loadMore, () => offset < order.length, generation);
+    return;
+  }
+
+  // Quick paint from what is on the device while the filtered request runs.
+  if (hasLocalCatalogue && localFiltered.length) paintBrowseGrid(grid, localFiltered);
+
+  // B) Text search: the search function returns the matching ids (best match first).
   let matchingIds = null;
   if (search) {
     try {
@@ -15146,8 +15258,6 @@ async function filterHomeProducts() {
       if (searchError) throw searchError;
       matchingIds = (idRows || []).map((r) => r.id);
       if (matchingIds.length === 0) {
-        // If local data already contains a useful result for the requested
-        // filters, keep it. Otherwise show the normal fallback catalogue.
         if (localFiltered.length) return;
         const fallback = await fetchFallbackProducts();
         if (generation !== homeFilterGeneration) return;
@@ -15160,33 +15270,44 @@ async function filterHomeProducts() {
     }
   }
 
-  let query = sb
-    .from("products")
-    .select(PRODUCT_LIST_SELECT)
-    .eq("status", "active")
-    .eq("vendor.verification_status", "verified")
-    .eq("vendor.is_active", true);
-
-  if (matchingIds) query = query.in("id", matchingIds);
-  if (listing === "rent") query = query.in("listing_type", ["rent", "both"]);
-  if (listing === "sale") query = query.in("listing_type", ["sale", "both"]);
-  if (catId) query = query.eq("category_id", catId);
-  if (currentSectorId) query = query.eq("category.sector_id", currentSectorId);
-
-  let result;
-  try {
-    result = await query.order("created_at", { ascending: false });
-  } catch (err) {
+  // C) Filters (and search results): the server does the filtering, a page at a time.
+  const buildQuery = (idSlice) => {
+    let q = sb.from("products").select(PRODUCT_LIST_SELECT)
+      .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
+      .eq("is_service", wantService);
+    if (idSlice) q = q.in("id", idSlice);
+    if (listing === "rent") q = q.in("listing_type", ["rent", "both"]);
+    if (listing === "sale") q = q.in("listing_type", ["sale", "both"]);
+    if (catId) q = q.eq("category_id", catId);
+    else if (currentHomeCategoryId) q = q.eq("category_id", currentHomeCategoryId);
+    if (currentSectorId) q = q.eq("category.sector_id", currentSectorId);
+    return q;
+  };
+  let offset = 0, more = true;
+  const loadMore = async () => {
+    if (matchingIds) {
+      // Search results: walk the best-match-first id list a slice at a time.
+      while (offset < matchingIds.length) {
+        const ids = matchingIds.slice(offset, offset + BROWSE_GRID_PAGE);
+        offset += ids.length;
+        const { data, error } = await buildQuery(ids).range(0, BROWSE_GRID_PAGE - 1);
+        if (error) throw error;
+        const rows = (data || []).slice().sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+        if (rows.length) { more = offset < matchingIds.length; return rows; }
+      }
+      more = false;
+      return [];
+    }
+    const { data, error } = await buildQuery().order("created_at", { ascending: false }).range(offset, offset + BROWSE_GRID_PAGE - 1);
+    if (error) throw error;
+    const rows = data || [];
+    offset += rows.length;
+    more = rows.length >= BROWSE_GRID_PAGE;
+    return rows;
+  };
+  let first;
+  try { first = await loadMore(); } catch (err) {
     console.warn("[Levromart] Home browse query failed; preserving local browse data:", err);
-    return;
-  }
-  const { data: products, error } = result || {};
-  if (generation !== homeFilterGeneration) return;
-
-  // Never replace good local content with an empty/error response from a
-  // transient backend request. The next successful render will refresh it.
-  if (error || !products) {
-    console.warn("[Levromart] Home browse query returned an error; preserving local browse data:", error);
     if (!hasLocalCatalogue) {
       const fallback = await fetchFallbackProducts();
       if (generation !== homeFilterGeneration) return;
@@ -15194,30 +15315,15 @@ async function filterHomeProducts() {
     }
     return;
   }
-
-  if (products.length === 0) {
+  if (generation !== homeFilterGeneration || !byId("productGrid")) return;
+  if (!first.length) {
     if (localFiltered.length) return;
     const fallback = await fetchFallbackProducts();
     if (generation !== homeFilterGeneration) return;
-    const message = search
-      ? `No exact match for "${search}" with these filters - but here's what's available:`
-      : "No products match these filters - but here's what's available:";
-    grid.innerHTML = noResultsWithFallbackHtml(message, fallback);
+    grid.innerHTML = noResultsWithFallbackHtml(search ? `No exact match for "${search}" with these filters - but here's what's available:` : "No products match these filters - but here's what's available:", fallback);
     return;
   }
-
-  if (matchingIds) products.sort((a, b) => matchingIds.indexOf(a.id) - matchingIds.indexOf(b.id));
-  else if (!search && !listing && !catId && homeListingTab === "products") {
-    const rotated=deterministicBrowseVisibilityShuffle(products,`browse:${currentSectorId||'all'}`);
-    window.__homeBrowseCatalog=rotated;
-    window.__homeBrowseRotationKey=Math.floor(Date.now()/600000);
-  }
-  const displayProducts = (!search && !listing && !catId && homeListingTab === "products" && Array.isArray(window.__homeBrowseCatalog) && window.__homeBrowseCatalog.length)
-    ? window.__homeBrowseCatalog
-    : products;
-  const tabProducts = displayProducts.filter(p => homeListingTab === "services" ? !!p.is_service : !p.is_service);
-  if (tabProducts.length) paintBrowseGrid(grid, tabProducts);
-  else grid.innerHTML = `<div class="empty-state">No ${homeListingTab} match these filters.</div>`;
+  paintBrowsePaged(grid, first, loadMore, () => more, generation);
 }
 function productDeliverySummaryHtml(p) {
   const v = p?.vendor || {};
@@ -16188,6 +16294,7 @@ async function refreshConversationInboxInBackground() {
   if (conversationInboxRefreshPromise) return conversationInboxRefreshPromise;
   conversationInboxRefreshPromise = sb.rpc("list_my_conversations").then(({ data, error }) => {
     if (error) throw error;
+    window.__convRaw = data; window.__convRawAt = Date.now();
     applyConversationsList(data);
     if (currentView === "messages" && !currentViewParams?.conversationId && byId("convListWrap")) {
       filterMsgList();
@@ -18859,9 +18966,16 @@ async function attachVendorFollowerCounts(vendors) {
   try {
     const ids = [...new Set(rows.map(v => v?.id).filter(Boolean))];
     if (!ids.length) return rows;
-    const { data, error } = await sb.rpc("get_vendor_follower_counts", { p_vendor_ids: ids });
-    if (error) throw error;
-    const counts = new Map((data || []).map(r => [String(r.vendor_id), Number(r.follower_count || 0)]));
+    // Remember counts for 3 minutes so the same vendors are not re-counted on every render.
+    const memo = (window.__followerCountMemo ||= new Map());
+    const stale = ids.filter((id) => { const h = memo.get(String(id)); return !h || Date.now() - h.at > 180000; });
+    if (stale.length) {
+      const { data, error } = await sb.rpc("get_vendor_follower_counts", { p_vendor_ids: stale });
+      if (error) throw error;
+      (data || []).forEach((r) => memo.set(String(r.vendor_id), { n: Number(r.follower_count || 0), at: Date.now() }));
+      stale.forEach((id) => { if (!memo.has(String(id))) memo.set(String(id), { n: 0, at: Date.now() }); });
+    }
+    const counts = new Map(ids.map((id) => [String(id), memo.get(String(id))?.n ?? 0]));
     return rows.map(v => ({ ...v, follower_count: counts.get(String(v.id)) ?? 0 }));
   } catch (err) {
     console.warn("[Levromart] Could not hydrate vendor follower counts:", err);
@@ -34259,10 +34373,19 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
       }
     }catch(e){console.warn('[Levromart] commission deadline check failed:',e);}
   }
+  // The server enforces the deadline on its own, so this only needs to look when the
+  // vendor opens the app, comes back to it, and every 10 minutes while it stays open
+  // (it used to run four requests every minute).
+  let commissionLastCheck=0;
   function startCommissionHeartbeat(){
     if(commissionHeartbeat)clearInterval(commissionHeartbeat);
+    commissionLastCheck=Date.now();
     checkCommissionDeadline();
-    commissionHeartbeat=setInterval(checkCommissionDeadline,60000);
+    commissionHeartbeat=setInterval(()=>{ if(document.hidden)return; commissionLastCheck=Date.now(); checkCommissionDeadline(); },10*60000);
+    if(!window.__commissionVisBound){
+      window.__commissionVisBound=true;
+      document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&Date.now()-commissionLastCheck>5*60000){ commissionLastCheck=Date.now(); checkCommissionDeadline(); } },{passive:true});
+    }
   }
   function stopCommissionHeartbeat(){if(commissionHeartbeat){clearInterval(commissionHeartbeat);commissionHeartbeat=null;}}
   setTimeout(()=>{
@@ -38744,7 +38867,7 @@ body.search-input-active #aiChatFab,body.search-input-active #cartFab{visibility
     adminAttentionObserverTimer=setTimeout(()=>hydrateAdminAttention(),1200);
   }).observe(document.getElementById('mainContent')||document.body,{childList:true,subtree:true});
   document.addEventListener('levromart:view-rendered',()=>{if(currentView?.startsWith('admin'))setTimeout(hydrateAdminAttention,50);});
-  setInterval(()=>{if(currentView?.startsWith('admin'))hydrateAdminAttention();},60000);
+  setInterval(()=>{if(currentView?.startsWith('admin')&&!document.hidden)hydrateAdminAttention();},180000);
   const applyPendingPush=()=>{if(window.__pendingPushDeepLink && session){const d=window.__pendingPushDeepLink;window.__pendingPushDeepLink=null;applyPushDeepLink(d);}};
   setTimeout(applyPendingPush,1200);
   document.addEventListener('levromart:auth-ready',applyPendingPush);
@@ -39684,7 +39807,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     pollTimer=setInterval(()=>{
       tick++;
       const healthy=(typeof typingChannelReady!=="undefined")&&typingChannelReady===true;
-      if(healthy&&tick%5!==0)return;
+      if(healthy&&tick%10!==0)return;
       reconcileLatestChatMessages(pollConversation);
     },3000);
   };
@@ -43131,6 +43254,9 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 #app .levro-home-quick-actions .levro-quick-blue:hover,#app .levro-home-quick-actions .levro-quick-blue:focus,#app .levro-home-quick-actions .levro-quick-blue:focus-visible,#app .levro-home-quick-actions .levro-quick-blue:active{background:#d0e1f8 !important}
 #app .levro-home-quick-actions .levro-quick-action:hover,#app .levro-home-quick-actions .levro-quick-action:focus,#app .levro-home-quick-actions .levro-quick-action:focus-visible,#app .levro-home-quick-actions .levro-quick-action:active{filter:none !important;border-color:transparent !important;outline:0 !important}
 #app .levro-home-quick-actions .levro-quick-action:focus-visible,#app .levro-home-quick-actions .levro-quick-action:active{box-shadow:0 0 0 2px color-mix(in srgb,var(--text) 55%,transparent) !important}
+#app .levro-home-quick-actions .levro-quick-action:hover .levro-quick-icon,#app .levro-home-quick-actions .levro-quick-action:focus .levro-quick-icon,#app .levro-home-quick-actions .levro-quick-action:focus-visible .levro-quick-icon,#app .levro-home-quick-actions .levro-quick-action:active .levro-quick-icon{background:rgba(255,255,255,.55) !important;background-color:rgba(255,255,255,.55) !important;color:#1f2937 !important;-webkit-text-fill-color:#1f2937 !important;opacity:1 !important;filter:none !important;box-shadow:none !important;border:0 !important}
+#app .levro-home-quick-actions .levro-quick-action:hover .levro-quick-icon i,#app .levro-home-quick-actions .levro-quick-action:active .levro-quick-icon i,#app .levro-home-quick-actions .levro-quick-action:focus .levro-quick-icon i{color:#1f2937 !important;opacity:1 !important;filter:none !important}
+
 
 /* Vendor cards without a photo: draw a real outline around the initials block
    so its top/left/right edges don't dissolve into the card. */
@@ -43371,7 +43497,7 @@ body.levro-kbd-open #aiChatFab,body.levro-kbd-open #cartFab{visibility:hidden !i
 // last ~90s" and "last seen" is the last ping. Inside a chat, the other person
 // shows as online instantly if they are in the same conversation channel.
 (function(){
-  const PING_MS=45000, ONLINE_WINDOW_MS=90000;
+  const PING_MS=60000, ONLINE_WINDOW_MS=150000;
   let lastPing=0;
   function ping(force){
     try{

@@ -76,8 +76,22 @@ module.exports = async function handler(req, res) {
       console.error("[daily-cron] commission deadline reminders failed:", err);
     }
 
+    // Keep the notifications table small: read notifications older than 60 days go.
+    let notificationsTrimmed = null;
+    try {
+      const cutoff = new Date(Date.now() - 60 * 86400000).toISOString();
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/notifications?read=eq.true&created_at=lt.${encodeURIComponent(cutoff)}`, {
+        method: "DELETE",
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Prefer: "return=minimal" }
+      });
+      notificationsTrimmed = r.ok;
+    } catch (err) {
+      console.error("[daily-cron] notification cleanup failed:", err);
+    }
+
     res.status(200).json({
       ok: true,
+      notificationsTrimmed,
       ...data,
       commissionReminders
     });

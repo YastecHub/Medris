@@ -1,4 +1,4 @@
-name: Nightly database backup
+name: Weekly database backup
 
 # Dumps the public schema (structure + data) and the auth users/identities
 # data, encrypts it with BACKUP_PASSPHRASE, and keeps it as a workflow
@@ -9,7 +9,7 @@ name: Nightly database backup
 # Restore: gpg -d backup.tar.gz.gpg | tar xz, then pg_restore the .dump files.
 on:
   schedule:
-    - cron: "17 2 * * *"
+    - cron: "17 2 * * 0"
   workflow_dispatch: {}
 
 permissions:
