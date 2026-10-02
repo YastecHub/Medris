@@ -18574,11 +18574,10 @@ async function __levroOriginalRenderProductDetail(productId) {
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
           : `<input type="number" id="buyQty" value="1" min="1" placeholder="Qty" oninput="updateBuyTotalPreview(${effectivePrice(product) ?? 0})" style="width:90px;" />`}
-      </div></div><div class="pd-total-box">${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product)}">Total: ${naira(productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product))}</p>` : ""}</div></div>
+      </div></div><div class="pd-total-box ${product.is_service ? "" : "pd-has-plan"}">${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% now, ${paymentRemainingPercent}% after delivery.` : "Full payment is needed before delivery."}</span></div>` : ""}${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product)}">Total: ${naira(productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product))}</p>` : ""}</div></div>
       <div class="pd-step-title"><i class="fa-solid fa-truck-fast"></i> How do you want it?</div>
       ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
       ${!product.is_service ? `<div class="pd-note-box"><label class="df-label" for="buyNote"><i class="fa-regular fa-note-sticky"></i> Note for the vendor <span class="df-hint">(optional)</span></label><textarea id="buyNote" rows="2" placeholder="e.g. I'd like the blue one, or a size 42"></textarea></div>` : ""}
-      ${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% first; the remaining ${paymentRemainingPercent}% is due after delivery.` : "Full payment is required before delivery. If you need a different arrangement, please contact the vendor."}</span></div>` : ""}
       <div class="flex pd-buy-actions">
         <button class="btn" onclick="buyNow('${product.vendor.id}','${product.id}')">${buyLabel}</button>
         ${!product.is_service ? `<button id="productAddToCartBtn" class="btn btn-outline" onclick="addToCart('${product.id}', parseInt(byId('buyQty').value)||1)"><i class="fa-solid fa-cart-plus"></i> Add to cart</button>` : ""}
@@ -44708,6 +44707,15 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 :root[data-theme="dark"] .od-tracker .od-step:nth-child(3),:root[data-theme="black"] .od-tracker .od-step:nth-child(3){--st:#a78bfa}
 :root[data-theme="dark"] .od-tracker .od-step:nth-child(4),:root[data-theme="black"] .od-tracker .od-step:nth-child(4){--st:#4ade80}
 :root[data-theme="dark"] .od-step.is-done .od-step-dot,:root[data-theme="dark"] .od-step.is-current .od-step-dot,:root[data-theme="black"] .od-step.is-done .od-step-dot,:root[data-theme="black"] .od-step.is-current .od-step-dot{color:#0b0f14}
+/* Order card: the pay-before/after notice sits beside the quantity; totals live only in the breakdown below. */
+.pd-has-plan #serviceTotalPreview{display:none}
+.pd-total-box{align-items:stretch}
+.pd-total-box .product-payment-plan-notice{margin:0!important;width:100%;padding:.55rem .7rem;border-radius:14px;display:flex;flex-direction:column;justify-content:center;gap:.15rem}
+.pd-total-box .product-payment-plan-notice strong{font-size:.86rem}
+.pd-total-box .product-payment-plan-notice span{font-size:.74rem;line-height:1.35}
+#buyDeliveryFields .delivery-fee-line{display:none}
+#buyDeliveryFields .price-breakdown-table{margin-top:.9rem}
+.dyn-delivery-fields>p.muted{margin:.5rem 0 0}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
