@@ -15649,7 +15649,7 @@ async function renderCart() {
 
   const cartResult = await withRouteTimeout(
     sb.from("cart_items")
-      .select("id, variant_id, quantity, created_at, variant:product_variants(*), product:products(id, name, sale_price, discount_price, photos, quantity_available, status, vendor:vendors(id, business_name, previous_business_name, name_changed_at, is_active, verification_status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng))")
+      .select("id, variant_id, quantity, created_at, variant:product_variants(*), product:products(id, name, sale_price, discount_price, photos, quantity_available, status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors(id, business_name, previous_business_name, name_changed_at, is_active, verification_status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng))")
       .eq("buyer_id", session.user.id)
       .order("created_at", { ascending: true }),
     8000,
@@ -15687,7 +15687,12 @@ async function renderCart() {
   [...byVendor.values()].forEach(({ vendor: v, items: vItems }) => {
     const subtotal = vItems.reduce((s, it) => s + Number(it.variant?.discount_price ?? it.variant?.sale_price ?? it.product.discount_price ?? it.product.sale_price ?? 0) * it.quantity, 0);
     const ownCartVendor = isOwnVendorId(v.id);
-    const deliveryHtml = deliveryFieldsHtml(`cart-${v.id}`, v.delivery_fee, v.lat, v.lng, v.delivery_fee_mode, v.delivery_fee_per_km, "", subtotal);
+    // The server adds each product's OWN delivery fee (create_cart_order), so the cart does too.
+    const feeLines = vItems.map((it) => ({ mode: String(it.product.delivery_fee_mode || "free").toLowerCase(), fee: Number(it.product.delivery_fee) || 0, perKm: Number(it.product.delivery_fee_per_km) || 0 }));
+    const cartFlatFee = feeLines.reduce((n, l) => n + (l.mode === "flat" ? l.fee : 0), 0);
+    const cartDistanceLine = feeLines.find((l) => l.mode === "distance" && l.perKm > 0);
+    const deliveryHtml = deliveryFieldsHtml(`cart-${v.id}`, cartFlatFee, v.lat, v.lng, cartDistanceLine ? "distance" : "flat", cartDistanceLine ? cartDistanceLine.perKm : 0, "", subtotal)
+      .replace(`id="cart-${v.id}DeliveryFields"`, `id="cart-${v.id}DeliveryFields" data-fee-lines="${JSON.stringify(feeLines).replace(/"/g, "&quot;")}"`);
     // The live item / delivery / total breakdown lives in its own Order summary card.
     const breakdownRe = new RegExp(`<div id="cart-${v.id}PriceBreakdown"[^>]*></div>`);
     const deliveryNoBreakdown = deliveryHtml.replace(breakdownRe, "");
@@ -18628,6 +18633,14 @@ function refreshPriceBreakdown(prefix) {
   const { fee, known } = computeDeliveryFeeForPrefix(prefix, method);
   const feeLabel = method !== "delivery" ? `<span class="price-breakdown-free">Free</span>` : known ? (fee > 0 ? naira(fee) : `<span class="price-breakdown-free">Free</span>`) : `<span class="muted">Share location to see fee</span>`;
   const total = method !== "delivery" ? itemTotal : (known ? itemTotal + fee : null);
+  if (prefix === "buy") {
+    // Keep the headline "Total" honest: show the delivery-inclusive amount right under it.
+    const headline = byId("serviceTotalPreview");
+    if (headline) {
+      headline.querySelector(".total-with-delivery")?.remove();
+      if (method === "delivery" && known && fee > 0) headline.insertAdjacentHTML("beforeend", ` <span class="total-with-delivery" style="display:block;font-weight:700;">With delivery: ${naira(itemTotal + fee)}</span>`);
+    }
+  }
   const ckTotal = byId(`${prefix}CheckoutTotal`);
   if (ckTotal) ckTotal.textContent = naira(method !== "delivery" ? itemTotal : (known ? itemTotal + fee : itemTotal));
   box.innerHTML = `
@@ -18761,6 +18774,21 @@ function computeDeliveryFeeForPrefix(prefix, method) {
   const perKm = Number(wrap.dataset.perKm) || 0;
   const vendorLat = wrap.dataset.vendorLat !== "" ? Number(wrap.dataset.vendorLat) : null;
   const vendorLng = wrap.dataset.vendorLng !== "" ? Number(wrap.dataset.vendorLng) : null;
+  if (wrap.dataset.feeLines) {
+    try {
+      const lines = JSON.parse(wrap.dataset.feeLines);
+      let total = 0;
+      for (const l of lines) {
+        if (l.mode === "flat") total += Number(l.fee) || 0;
+        else if (l.mode === "distance" && l.perKm > 0) {
+          if (vendorLat == null || vendorLng == null) total += Number(l.fee) || 0;
+          else if (!buyerLocation) return { fee: 0, known: false };
+          else total += Math.round((l.perKm * haversineKm(buyerLocation.lat, buyerLocation.lng, vendorLat, vendorLng)) / 50) * 50;
+        }
+      }
+      return { fee: total, known: true };
+    } catch (_) {}
+  }
   const isDistanceMode = feeMode === "distance" && perKm > 0 && vendorLat != null && vendorLng != null;
   if (isDistanceMode) {
     if (!buyerLocation) return { fee: 0, known: false };
