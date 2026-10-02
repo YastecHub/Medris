@@ -45184,6 +45184,13 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 #app .vendor-listing-tab{flex:0 0 auto!important;position:relative;min-height:0!important;padding:.2rem 0 .8rem!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--text-muted)!important;font-size:.95rem!important;font-weight:600!important;white-space:nowrap}
 #app .vendor-listing-tab.active{color:var(--text)!important;font-weight:800!important}
 #app .vendor-listing-tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--primary,#0B6E4A)}
+/* Vendors page filter tabs (vd-seg): underline tabs. */
+#app .vd-seg{display:flex!important;gap:1.7rem!important;margin:.2rem 0 1rem!important;padding:0!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none;justify-content:flex-start!important}
+#app .vd-seg::-webkit-scrollbar{display:none}
+#app .vd-seg .vd-tab{flex:0 0 auto!important;position:relative;min-height:0!important;width:auto!important;padding:.2rem 0 .8rem!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--text-muted)!important;font-size:.95rem!important;font-weight:600!important;white-space:nowrap}
+#app .vd-seg .vd-tab,#app .vd-seg .vd-tab.active{border-color:transparent!important;-webkit-text-fill-color:currentColor!important}
+#app .vd-seg .vd-tab.active{color:var(--text)!important;font-weight:800!important;background:transparent!important}
+#app .vd-seg .vd-tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--primary,#0B6E4A)}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
