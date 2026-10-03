@@ -180,3 +180,7 @@ fingerprint poll while an order screen is open as a safety net.
 **Listing points (Oct 2026):** a listing earns `product_listed` once (and `ref_vendor_product` for the referrer); pausing/unpausing never pays again (event key).
 `trg_points_listing` takes the points back when a listing's status becomes removed or `admin_deleted_at` is set; listings deleted outright are caught by
 `points_reconcile_listings()` (called by `finalize_points_weeks()` on every leaderboard read and by pg_cron `levromart-points-reconcile` every 10 minutes).
+
+**Stock tracking default (Oct 2026):** `products.track_quantity` now defaults to `false` and every existing product was switched to untracked (the same shape the app writes
+when a vendor turns tracking off: `quantity_total = quantity_available = 999999`, so the order/edit functions that still read `quantity_available` never block a sale).
+Vendors turn tracking on per listing in the Stock section and enter a quantity.
