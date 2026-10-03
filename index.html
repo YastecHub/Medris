@@ -19379,13 +19379,16 @@ function vendorPageCardHtml(v) {
   const logo = v?.logo_url && !hideLogo
     ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onerror="vdImgFail(this)">`
     : vdInitialsHtml(name, id);
-  const banner = v?.cover_image_url
-    ? `<img src="${esc(v.cover_image_url)}" alt="" loading="lazy" decoding="async" draggable="false" onerror="this.remove()">`
+ const coverSrc = v?.cover_url || v?.cover_image_url || "";
+  let hue = 150; { const k = String(id || name); let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; hue = h % 360; }
+  const tint = `style="background:linear-gradient(135deg,hsl(${hue} 62% 86%),hsl(${(hue + 40) % 360} 58% 93%))"`;
+  const banner = coverSrc
+    ? `<img src="${esc(coverSrc)}" alt="" loading="lazy" decoding="async" draggable="false" onerror="this.remove()">`
     : "";
   const tags = [sector, ...(v?.categories || [])].filter(Boolean);
   const uniq = []; tags.forEach((t) => { if (!uniq.some((u) => u.toLowerCase() === String(t).toLowerCase())) uniq.push(t); });
   return `<div class="vc2" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
-    <div class="vc2-banner">${banner}</div>
+    <div class="vc2-banner" ${tint}>${banner}</div>
     <div class="vc2-logo">${logo}</div>
     <div class="vc2-body">
       <strong class="vc2-name">${esc(name)}</strong>
@@ -19422,11 +19425,11 @@ function renderVendorCatChips() {
   if (!list.length) { host.innerHTML = ""; host.hidden = true; return; }
   host.hidden = false;
   list.sort((a, b) => used.get(String(b.id)) - used.get(String(a.id)) || String(a.name).localeCompare(String(b.name)));
-  host.innerHTML = list.map((s) => `<button type="button" class="vd-chip${sel === String(s.id) ? " active" : ""}" aria-pressed="${sel === String(s.id)}" onclick="vendorCatChipPick('${esc(s.id)}')"><i class="fa-solid ${esc(levroSectorIconClass(s))}" aria-hidden="true"></i><span>${esc(s.name)}</span></button>`).join("");
+  host.innerHTML = `<button type="button" class="vd-chip${sel === "" ? " active" : ""}" aria-pressed="${sel === ""}" onclick="vendorCatChipPick('')"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>All categories</span></button>` + list.map((s) => `<button type="button" class="vd-chip${sel === String(s.id) ? " active" : ""}" aria-pressed="${sel === String(s.id)}" onclick="vendorCatChipPick('${esc(s.id)}')"><i class="fa-solid ${esc(levroSectorIconClass(s))}" aria-hidden="true"></i><span>${esc(s.name)}</span></button>`).join("");
 }
 function vendorCatChipPick(id) {
   const el = byId("vendorSectorFilter"); if (!el) return;
-  el.value = String(el.value) === String(id) ? "" : String(id);
+  el.value = String(id || "");
   filterVendorsDirectory();
 }
 function vendorDirectorySkeletonHtml() {
@@ -19538,7 +19541,7 @@ async function loadVendorsDirectory() {
   // query (products, packages, sectors, follower counts) is temporarily slow
   // or unavailable. The vendor list itself is the primary page content.
   const vendorResult = await sb.from("vendors")
-    .select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, cover_image_url, lat, lng")
+    .select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, cover_url, cover_image_url, lat, lng")
     .eq("verification_status", "verified")
     .eq("is_active", true)
     .order("business_name");
