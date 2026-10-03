@@ -9639,7 +9639,7 @@ function showToast(message, type = "info") {
       if (el === window.__activeToast) window.__activeToast = null;
       el.remove();
     }, 300);
-  }, 4200);
+  }, type === "error" ? 3600 : 2400);
 }
 // Shown the instant we're back from Paystack, before verify-payment even
 // starts - otherwise there's a gap of a few seconds where the page just
@@ -36159,7 +36159,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
     try{
       const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});
       if(r.error)throw r.error;
-      if(typeof showToast==='function')showToast(next?'Following vendor.':'Unfollowed vendor.','success')
+      /* follow/unfollow: no toast, the button already shows the state */
     }catch(e){
       window.__followRecentAction=null;
       window.rememberVendorFollow?.(vendorId,wasFollowing);
@@ -39331,7 +39331,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
     try{
       const r=await sb.rpc("toggle_vendor_follow",{p_vendor_id:vendorId,p_following:next});
       if(r.error)throw r.error;
-      showToast?.(next?"Following vendor.":"Unfollowed vendor.","success");
+      /* follow/unfollow: no toast */
     }catch(e){
       window.__vendorCardFollowRecent.set(String(vendorId),{following:!next,at:Date.now()});
       rememberVendorFollow(vendorId,!next);
@@ -40881,6 +40881,11 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 
 <style id="levromart-vendors-v2">
+#app ~ .toast-stack,.toast-stack{width:auto;max-width:min(92vw,26rem)}
+#toastStack .toast,.toast-stack .toast{width:auto;max-width:100%;margin:0 auto;gap:.55rem;padding:.6rem 1rem .6rem .8rem;border-radius:999px;font-size:.85rem;font-weight:600;line-height:1.25;background:color-mix(in srgb,var(--card,#fff) 92%,transparent);border:1px solid color-mix(in srgb,var(--text,#111) 10%,transparent);box-shadow:0 8px 24px rgba(15,23,42,.16);transform:translateY(10px) scale(.98)}
+#toastStack .toast.show,.toast-stack .toast.show{transform:translateY(0) scale(1)}
+#toastStack .toast i,.toast-stack .toast i{font-size:1rem;flex:0 0 auto}
+#toastStack .toast-success i{color:#16a34a}#toastStack .toast-error i{color:#ef4444}#toastStack .toast-info i{color:#0B6E4A}
 #app .vc2-feat .vc2-tags{overflow:hidden;max-width:100%}
 #app .vc2-feat .vc2-tags em{display:block;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #app .home-lb-card{position:relative;overflow:visible}
