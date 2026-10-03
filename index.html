@@ -19388,18 +19388,19 @@ function vendorPageCardHtml(v, feat) {
     : "";
   const tags = [sector, ...(v?.categories || [])].filter(Boolean);
   const uniq = []; tags.forEach((t) => { if (!uniq.some((u) => u.toLowerCase() === String(t).toLowerCase())) uniq.push(t); });
-  return `<div class="vc2${feat ? " vc2-feat" : ""}" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
+  const tag = uniq[0] || "";
+  const menuBtn = feat ? "" : `<button type="button" class="vc2-more" aria-label="More options" aria-haspopup="menu" onclick="event.stopPropagation();vc2OpenMenu(this,'${esc(id)}')"><i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i></button>`;
+  return `<div class="vc2 vc2-feat" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
     <div class="vc2-banner" ${tint}>${banner}</div>
+    ${menuBtn}
     <div class="vc2-logo">${logo}</div>
     <div class="vc2-body">
       <strong class="vc2-name">${esc(name)}</strong>
-      <span class="vc2-rate"><i class="fa-solid fa-star" aria-hidden="true"></i> ${rating.toFixed(1)}${reviews ? ` <small>(${reviews})</small>` : ""}</span>
-      <span class="vc2-loc"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${esc(v?.city || "Online")}${dist ? ` <b>·</b> ${esc(dist)}` : ""}</span>
+      <span class="vc2-meta"><span class="vc2-star"><i class="fa-solid fa-star" aria-hidden="true"></i> ${rating.toFixed(1)}${reviews ? ` <small>(${reviews})</small>` : ""}</span><b>·</b><span class="vc2-where">${esc(v?.city || "Online")}${dist ? ` · ${esc(dist)}` : ""}</span></span>
+      <span class="vc2-tags">${tag ? `<em>${esc(tag)}</em>` : ""}</span>
     </div>
-    <div class="vc2-tags">${uniq.slice(0, 2).map((t) => `<em>${esc(t)}</em>`).join("")}</div>
     <div class="vc2-actions">
-      ${showFollow ? `<button type="button" class="vendor-card-follow-btn vd-follow vc2-follow${following ? " following" : ""}" data-vendor-id="${esc(id)}" onclick="event.stopPropagation();toggleVendorCardFollow('${esc(id)}',event)"><i class="fa-solid ${following ? "fa-user-check" : "fa-user-plus"}" aria-hidden="true"></i><span>${following ? "Following" : "Follow"}</span></button>` : `<span class="vc2-own">Your shop</span>`}
-      ${feat ? `<span class="vc2-pill"><i class="fa-solid fa-star" aria-hidden="true"></i> ${rating.toFixed(1)}${reviews ? ` <small>(${reviews})</small>` : ""}</span>` : `<button type="button" class="vc2-more" aria-label="More options" aria-haspopup="menu" onclick="event.stopPropagation();vc2OpenMenu(this,'${esc(id)}')"><i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i></button>`}
+      ${showFollow ? `<button type="button" class="vendor-card-follow-btn vd-follow vc2-follow${following ? " following" : ""}" data-vendor-id="${esc(id)}" onclick="event.stopPropagation();toggleVendorCardFollow('${esc(id)}',event)"><span>${following ? "Following" : "Follow"}</span></button>` : `<span class="vc2-own">Your shop</span>`}
     </div>
   </div>`;
 }
@@ -40879,6 +40880,15 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 
 <style id="levromart-vendors-v2">
+#app .vc2-feat .vc2-body{padding:2.4rem .8rem 0;align-items:center;gap:.35rem}
+.vc2-meta{display:flex;align-items:center;justify-content:center;gap:.35rem;max-width:100%;font-size:.8rem;color:var(--vd-muted,#64748b);white-space:nowrap;overflow:hidden}
+.vc2-meta b{font-weight:400;opacity:.6}
+.vc2-star{font-weight:700;color:var(--text);flex:0 0 auto}.vc2-star i{color:#f59e0b;font-size:.72rem}.vc2-star small{font-weight:500;color:var(--vd-muted,#64748b)}
+.vc2-where{overflow:hidden;text-overflow:ellipsis;min-width:0}
+#app .vc2-feat .vc2-tags{padding:.35rem .8rem 0;min-height:1.9rem}
+#app .vc2-feat .vc2-actions{padding:.6rem .8rem .8rem;margin-top:auto}
+#app .vc2 button.vc2-follow{width:100%;flex:1 1 100%;min-height:2.6rem;border-radius:12px!important}
+.vc2>.vc2-more{position:absolute;top:.45rem;right:.45rem;z-index:2;width:2rem;height:2rem;border-radius:50%;background:rgba(255,255,255,.88);color:#1f2937;display:flex;align-items:center;justify-content:center;font-size:.9rem;box-shadow:0 1px 4px rgba(0,0,0,.18)}
 #app .hscroll.top-rated-vendors-scroll{align-items:stretch!important}
 #app .vc2-feat{height:auto}
 #app .vc2-feat .vc2-name{min-height:2.4em;display:-webkit-box;align-items:center}
