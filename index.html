@@ -19362,6 +19362,73 @@ function vendorDirectoryCardHtml(v) {
     </div>
   </div>`;
 }
+
+/* ---- Vendors page: cover-banner cards, dynamic category chips, three-dot menu ---- */
+function vendorPageCardHtml(v) {
+  const id = String(v?.id || "");
+  const name = v?.business_name || "Vendor";
+  const sector = v?.sector_name || (Array.isArray(sectors) ? sectors.find((x) => String(x.id) === String(v?.sector_id))?.name : "") || "";
+  const km = typeof vendorDistanceKm === "function" ? vendorDistanceKm(v) : null;
+  const dist = km == null ? "" : km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+  const showFollow = !(typeof isOwnVendorId === "function" && isOwnVendorId(v?.id));
+  const recent = window.__vendorCardFollowRecent?.get(id);
+  const following = recent && Date.now() - recent.at < 15000 ? !!recent.following : !!(session && window.followedVendorSet?.().has(id));
+  const rating = Number(v?.avg_rating || 0), reviews = Number(v?.review_count || 0);
+  const open = `navigate('storefront',{vendorId:'${esc(id)}'})`;
+  const hideLogo = /^aura\s+lux/i.test(String(name).trim());
+  const logo = v?.logo_url && !hideLogo
+    ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onerror="vdImgFail(this)">`
+    : vdInitialsHtml(name, id);
+  const banner = v?.cover_image_url
+    ? `<img src="${esc(v.cover_image_url)}" alt="" loading="lazy" decoding="async" draggable="false" onerror="this.remove()">`
+    : "";
+  const tags = [sector, ...(v?.categories || [])].filter(Boolean);
+  const uniq = []; tags.forEach((t) => { if (!uniq.some((u) => u.toLowerCase() === String(t).toLowerCase())) uniq.push(t); });
+  return `<div class="vc2" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
+    <div class="vc2-banner">${banner}</div>
+    <div class="vc2-logo">${logo}</div>
+    <div class="vc2-body">
+      <strong class="vc2-name">${esc(name)}</strong>
+      <span class="vc2-rate"><i class="fa-solid fa-star" aria-hidden="true"></i> ${reviews ? `${rating.toFixed(1)} <small>(${reviews})</small>` : `<small>No reviews yet</small>`}</span>
+      <span class="vc2-loc"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${esc(v?.city || "Online")}${dist ? ` <b>·</b> ${esc(dist)}` : ""}</span>
+    </div>
+    <div class="vc2-tags">${uniq.slice(0, 2).map((t) => `<em>${esc(t)}</em>`).join("")}</div>
+    <div class="vc2-actions">
+      ${showFollow ? `<button type="button" class="vendor-card-follow-btn vd-follow vc2-follow${following ? " following" : ""}" data-vendor-id="${esc(id)}" onclick="event.stopPropagation();toggleVendorCardFollow('${esc(id)}',event)"><i class="fa-solid ${following ? "fa-user-check" : "fa-user-plus"}" aria-hidden="true"></i><span>${following ? "Following" : "Follow"}</span></button>` : `<span class="vc2-own">Your shop</span>`}
+      <button type="button" class="vc2-more" aria-label="More options" aria-haspopup="menu" onclick="event.stopPropagation();vc2OpenMenu(this,'${esc(id)}')"><i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i></button>
+    </div>
+  </div>`;
+}
+function vc2CloseMenu() { document.getElementById("vc2Menu")?.remove(); document.removeEventListener("click", vc2CloseMenu, true); }
+function vc2OpenMenu(btn, vendorId) {
+  const had = document.getElementById("vc2Menu"); vc2CloseMenu(); if (had && had.dataset.for === vendorId) return;
+  const r = btn.getBoundingClientRect();
+  const m = document.createElement("div");
+  m.id = "vc2Menu"; m.className = "vc2-menu"; m.dataset.for = vendorId; m.setAttribute("role", "menu");
+  m.innerHTML = `<button type="button" role="menuitem" data-a="open"><i class="fa-solid fa-store"></i> View shop</button><button type="button" role="menuitem" data-a="share"><i class="fa-solid fa-share-nodes"></i> Share shop</button>`;
+  m.style.top = Math.min(r.bottom + 6, window.innerHeight - 110) + "px";
+  m.style.right = Math.max(8, window.innerWidth - r.right) + "px";
+  m.onclick = (e) => { e.stopPropagation(); const a = e.target.closest("button")?.dataset.a; vc2CloseMenu(); if (a === "open") navigate("storefront", { vendorId }); else if (a === "share") openStorefrontShare(vendorId); };
+  document.body.appendChild(m);
+  setTimeout(() => document.addEventListener("click", vc2CloseMenu, true), 0);
+}
+function renderVendorCatChips() {
+  const host = byId("vendorCatChips"); if (!host) return;
+  const vendors = Array.isArray(window.__allVendors) ? window.__allVendors : [];
+  const used = new Map();
+  vendors.forEach((v) => { if (v.sector_id != null) used.set(String(v.sector_id), (used.get(String(v.sector_id)) || 0) + 1); });
+  const list = (Array.isArray(sectors) ? sectors : []).filter((s) => used.has(String(s.id)));
+  const sel = String(byId("vendorSectorFilter")?.value || "");
+  if (!list.length) { host.innerHTML = ""; host.hidden = true; return; }
+  host.hidden = false;
+  list.sort((a, b) => used.get(String(b.id)) - used.get(String(a.id)) || String(a.name).localeCompare(String(b.name)));
+  host.innerHTML = list.map((s) => `<button type="button" class="vd-chip${sel === String(s.id) ? " active" : ""}" aria-pressed="${sel === String(s.id)}" onclick="vendorCatChipPick('${esc(s.id)}')"><i class="fa-solid ${esc(levroSectorIconClass(s))}" aria-hidden="true"></i><span>${esc(s.name)}</span></button>`).join("");
+}
+function vendorCatChipPick(id) {
+  const el = byId("vendorSectorFilter"); if (!el) return;
+  el.value = String(el.value) === String(id) ? "" : String(id);
+  filterVendorsDirectory();
+}
 function vendorDirectorySkeletonHtml() {
   return Array.from({ length: 6 }, () => `<div class="vd-card vd-skel" aria-hidden="true"><div class="vd-cover"></div><div class="vd-body"><span class="vd-skel-line"></span><span class="vd-skel-line vd-w60"></span><span class="vd-skel-line vd-w40"></span></div></div>`).join("");
 }
@@ -19471,7 +19538,7 @@ async function loadVendorsDirectory() {
   // query (products, packages, sectors, follower counts) is temporarily slow
   // or unavailable. The vendor list itself is the primary page content.
   const vendorResult = await sb.from("vendors")
-    .select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, lat, lng")
+    .select("id, business_name, city, avg_rating, review_count, sector_id, logo_url, cover_image_url, lat, lng")
     .eq("verification_status", "verified")
     .eq("is_active", true)
     .order("business_name");
@@ -32732,7 +32799,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       // empty array a real zero-result filter would, and wrongly claimed "no
       // vendors match" while the directory was simply still loading.
       grid.innerHTML = visible.length
-        ? visible.map(vendorDirectoryCardHtml).join("")
+        ? visible.map(vendorDirectoryMode === "list" ? vendorDirectoryCardHtml : vendorPageCardHtml).join("")
         : Array.isArray(window.__allVendors)
           ? vendorDirectoryEmptyHtml(true)
           : vendorDirectorySkeletonHtml();
@@ -32753,6 +32820,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     byId("vendorsViewGridBtn")?.classList.toggle("active", vendorDirectoryMode === "grid");
     byId("vendorsViewListBtn")?.classList.toggle("active", vendorDirectoryMode === "list");
     byId("vendorsViewMapBtn")?.classList.toggle("active", vendorDirectoryMode === "map");
+    if (typeof renderVendorCatChips === "function") renderVendorCatChips();
 
     if (vendorDirectoryMode === "map" && typeof renderVendorsMap === "function") {
       byId("vendorsMapWrap")?.classList.remove("hidden");
@@ -32842,6 +32910,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         </select></label>
       </div>
     </div>
+    <div class="vd-chips" id="vendorCatChips" role="group" aria-label="Vendor categories"></div>
     <div class="vd-grid" id="vendorsGrid">${vendorDirectorySkeletonHtml()}</div>
 
     <div id="vendorsMapWrap" class="hidden">
@@ -32859,7 +32928,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         if (grid) {
           const cached = Array.isArray(window.__filteredVendors) ? window.__filteredVendors : [];
           grid.innerHTML = cached.length
-            ? cached.map(vendorDirectoryCardHtml).join("")
+            ? cached.map(vendorPageCardHtml).join("")
             : vendorDirectorySkeletonHtml();
         }
         updateVendorsLocationUI();
@@ -40802,6 +40871,45 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 .service-offer-waiting{display:block;margin-top:.55rem;font-size:.82rem;}
 .service-payment-confirm-card{border-color:color-mix(in srgb,var(--primary) 35%,var(--border));}
 @media(max-width:560px){.service-offers-head{align-items:flex-start;flex-direction:column}.service-vendor-contact-actions .btn{flex:1 1 auto;justify-content:center}}
+</style>
+
+<style id="levromart-vendors-v2">
+/* Vendors page only: cards, category chips, view controls */
+.vd-views{display:inline-flex;gap:.3rem;padding:.25rem;border-radius:14px;background:color-mix(in srgb,var(--text) 5%,var(--card));border:1px solid var(--vd-line)}
+#app .vd-page .vd-views button.vd-view{width:2.5rem;height:2.3rem;border:0!important;border-radius:10px;background:transparent!important;color:var(--vd-muted)!important;box-shadow:none!important}
+#app .vd-page .vd-views button.vd-view i{color:inherit!important;font-size:.95rem}
+#app .vd-views #vendorsViewGridBtn.active,#app .vd-views #vendorsViewListBtn.active,#app .vd-views #vendorsViewMapBtn.active,#app .vd-page .vd-views button.vd-view.active{background:var(--vd-g)!important;color:#fff!important;box-shadow:0 2px 8px color-mix(in srgb,var(--vd-g) 35%,transparent)!important}
+#app .vd-views #vendorsViewGridBtn.active i,#app .vd-views #vendorsViewListBtn.active i,#app .vd-views #vendorsViewMapBtn.active i,#app .vd-page .vd-views button.vd-view.active i{color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important}
+.vd-chips{display:flex;gap:.5rem;overflow-x:auto;margin:0 -1rem .85rem;padding:.1rem 1rem .35rem;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.vd-chips::-webkit-scrollbar{display:none}
+.vd-chips[hidden]{display:none}
+.vd-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:.5rem;min-height:2.6rem;padding:0 1rem;border-radius:14px;border:1px solid var(--vd-line);background:var(--card);color:var(--text);font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.vd-chip i{font-size:1rem;color:var(--vd-gt)}
+#app .vd-chip.active{background:var(--vd-g)!important;border-color:var(--vd-g)!important;color:#fff!important}
+#app .vd-chip.active i{color:#fff!important}
+.vc2{position:relative;display:flex;flex-direction:column;align-items:stretch!important;text-align:left;min-width:0;border-radius:18px;background:var(--card);border:1px solid var(--vd-line);overflow:hidden;cursor:pointer;box-shadow:0 2px 10px rgba(15,23,42,.06);-webkit-tap-highlight-color:transparent;transition:transform .18s,box-shadow .18s}
+.vc2:active{transform:scale(.99)}
+.vc2-banner{height:5.6rem;background:linear-gradient(135deg,color-mix(in srgb,var(--vd-g) 38%,var(--card)),color-mix(in srgb,var(--vd-g) 14%,var(--card)));overflow:hidden}
+.vc2-banner img{width:100%;height:100%;object-fit:cover;display:block}
+.vc2-logo{position:absolute;left:.7rem;top:3.35rem;width:3.7rem;height:3.7rem;border-radius:50%;background:#fff;border:3px solid var(--card);box-shadow:0 2px 8px rgba(15,23,42,.18);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.vc2-logo .vd-initials span{font-size:1.15rem!important}
+.vc2-logo img,.vc2-logo .vd-initials{width:100%;height:100%;border-radius:50%;object-fit:cover}
+.vc2-body{display:flex;flex-direction:column;gap:.18rem;padding:.55rem .7rem .2rem 4.75rem;min-width:0;min-height:5.2rem}
+.vc2-name{font-size:.95rem;line-height:1.2;font-weight:800;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.vc2-rate{font-size:.78rem;font-weight:700;color:var(--text);display:inline-flex;align-items:center;gap:.25rem}
+.vc2-rate i{color:#f59e0b;font-size:.72rem}.vc2-rate small{color:var(--vd-muted);font-weight:500;font-size:.76rem}
+.vc2-loc{font-size:.78rem;color:var(--vd-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vc2-loc i{margin-right:.2rem;opacity:.8}.vc2-loc b{font-weight:400}
+.vc2-tags{display:flex;flex-wrap:wrap;gap:.3rem;padding:.35rem .7rem .1rem;min-height:1.9rem}
+.vc2-tags em{font-style:normal;font-size:.72rem;font-weight:600;padding:.22rem .6rem;border-radius:999px;background:color-mix(in srgb,var(--text) 6%,var(--card));color:var(--vd-muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vc2-actions{display:flex;align-items:center;gap:.4rem;padding:.4rem .6rem .65rem}
+#app .vc2-follow{flex:1;min-width:0;margin:0!important;min-height:2.4rem;border-radius:12px!important;border:0!important;background:color-mix(in srgb,var(--vd-g) 14%,var(--card))!important;color:var(--vd-gt)!important;font-weight:700;font-size:.86rem;display:inline-flex;align-items:center;justify-content:center;gap:.4rem}
+#app .vc2-follow.following{background:var(--vd-g)!important;color:#fff!important}
+.vc2-own{flex:1;text-align:center;font-size:.8rem;font-weight:700;color:var(--vd-muted);min-height:2.4rem;line-height:2.4rem}
+.vc2-more{flex:0 0 auto;width:2.2rem;height:2.4rem;border:0;background:transparent;color:var(--text);font-size:1rem;cursor:pointer;border-radius:10px}
+.vc2-menu{position:fixed;z-index:3000;min-width:10.5rem;padding:.3rem;border-radius:14px;background:var(--card);border:1px solid var(--vd-line,rgba(0,0,0,.1));box-shadow:0 10px 30px rgba(15,23,42,.2)}
+.vc2-menu button{display:flex;align-items:center;gap:.6rem;width:100%;padding:.65rem .75rem;border:0;background:transparent;color:var(--text);font:inherit;font-size:.9rem;font-weight:600;border-radius:10px;cursor:pointer;text-align:left}
+.vc2-menu button:active{background:color-mix(in srgb,var(--text) 6%,transparent)}
 </style>
 <script>
 (function(){
