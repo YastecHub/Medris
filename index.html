@@ -40879,6 +40879,16 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 
 <style id="levromart-vendors-v2">
+#app .hscroll.top-rated-vendors-scroll{align-items:stretch!important}
+#app .vc2-feat{height:auto}
+#app .vc2-feat .vc2-name{min-height:2.4em;display:-webkit-box;align-items:center}
+#app .vc2-feat .vc2-tags{min-height:2.3rem;align-items:center}
+#app .vc2-feat .vc2-actions{margin-top:auto!important}
+#app .vc2 button.vc2-follow{background:linear-gradient(135deg,#22c55e,#0d9f6e)!important;color:#fff!important;border:0!important;box-shadow:0 4px 12px rgba(13,159,110,.32)!important;font-weight:700}
+#app .vc2 button.vc2-follow.following{background:color-mix(in srgb,var(--text) 8%,var(--card))!important;color:var(--text)!important;box-shadow:none!important}
+#app .storefront-follow-controls .follow-btn.btn-outline{background:linear-gradient(135deg,#22c55e,#0d9f6e)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important;box-shadow:0 4px 12px rgba(13,159,110,.3)!important}
+#app .storefront-follow-controls .follow-btn:not(.btn-outline){background:color-mix(in srgb,var(--text) 8%,var(--card))!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)!important;border:0!important;box-shadow:none!important}
+#app .home-lb-ico{background:linear-gradient(145deg,#ffd75e,#f2a900)!important;color:#5a3600!important}
 .vc2-feat{text-align:center}
 .vc2-feat .vc2-banner{height:4.6rem}
 .vc2-feat .vc2-logo{left:50%;top:2.6rem;margin-left:-1.85rem}
@@ -47379,6 +47389,15 @@ function hideLeviFromPanel() {
     probe.src = img.currentSrc || img.src;
   }
   let t = 0;
-  new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => document.querySelectorAll(".vc2").forEach(tintOne), 150); }).observe(document.documentElement, { childList: true, subtree: true });
+  new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => { document.querySelectorAll(".vc2").forEach(tintOne); levroPulseLbCard(); }, 150); }).observe(document.documentElement, { childList: true, subtree: true });
 })();
+
+/* Home leaderboard card: gentle gold pulse (WAAPI, because CSS animation is disabled by the calm-motion guard). */
+function levroPulseLbCard() {
+  const card = document.getElementById("homeLbCard"); if (!card || card.__pulsing) return;
+  const ico = card.querySelector(".home-lb-ico"); if (!ico || !ico.animate) return;
+  card.__pulsing = true;
+  ico.animate([{ boxShadow: "0 0 0 0 rgba(242,169,0,.55)", transform: "scale(1)" }, { boxShadow: "0 0 0 10px rgba(242,169,0,0)", transform: "scale(1.06)" }, { boxShadow: "0 0 0 0 rgba(242,169,0,0)", transform: "scale(1)" }], { duration: 2200, iterations: Infinity, easing: "ease-out" });
+  card.animate([{ borderColor: "rgba(242,169,0,.25)" }, { borderColor: "rgba(242,169,0,.75)" }, { borderColor: "rgba(242,169,0,.25)" }], { duration: 2200, iterations: Infinity });
+}
 </script>
