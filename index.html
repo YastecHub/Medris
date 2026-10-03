@@ -18897,8 +18897,6 @@ function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, 
     <div id="${prefix}DeliveryFields" class="dyn-delivery-fields" style="margin-bottom:0.9rem;" data-vendor-lat="${vendorLat ?? ""}" data-vendor-lng="${vendorLng ?? ""}" data-fee="${fee}" data-fee-mode="${esc(feeMode || "flat")}" data-per-km="${Number(perKm) || 0}" data-pickup-label="${esc(pickupLabel || "Pickup")}" data-item-total="${fixedItemTotal != null ? Number(fixedItemTotal) : ""}">
       <label class="df-label" for="${prefix}Address"><i class="fa-solid fa-location-dot"></i> Delivery address</label>
       <input type="text" id="${prefix}Address" placeholder="Delivery address" value="${esc(profile?.address || "")}" />
-      <label class="df-label" for="${prefix}Phone"><i class="fa-solid fa-phone"></i> Phone number <span class="df-hint">(kept private)</span></label>
-      <input type="tel" id="${prefix}Phone" placeholder="Phone number (kept private, used for your order)" value="${esc(profile?.phone || "")}" />
       ${!isDistance && fee > 0 ? `<p class="delivery-fee-line" style="margin:0.35rem 0 0;"><i class="fa-solid fa-truck"></i> <strong>${naira(fee)}</strong> delivery fee</p>` : ""}
       ${isDistance || hasVendorLoc ? `<p class="delivery-fee-line" style="margin:0.35rem 0 0;" id="${prefix}FeeLine">${deliveryInfoLineHtml(prefix, isDistance, hasVendorLoc, vendorLat, vendorLng, perKm)}</p>` : ""}
       <div id="${prefix}PriceBreakdown" class="price-breakdown-table" aria-live="polite"></div>
@@ -19077,9 +19075,9 @@ async function requestOrderEta() {
 function readDeliveryFields(prefix, errorEl) {
   const method = document.querySelector(`input[name="${prefix}DeliveryMethod"]:checked`)?.value || "pickup";
   const address = byId(`${prefix}Address`)?.value.trim() || "";
-  const phone = byId(`${prefix}Phone`)?.value.trim() || "";
-  if (method === "delivery" && (!address || !phone)) {
-    errorEl.textContent = "Enter a delivery address and phone number, or switch to pickup.";
+  const phone = null; // contacts are no longer exchanged; buyers and vendors use in-app chat and calls
+  if (method === "delivery" && !address) {
+    errorEl.textContent = "Enter a delivery address, or switch to pickup.";
     errorEl.classList.remove("hidden");
     return null;
   }
@@ -25943,7 +25941,6 @@ async function openEditOrderModal(orderId) {
       <div class="edit-order-section">
         <h4>Delivery details</h4>
         <label>Delivery address<input id="editOrderAddress" type="text" value="${esc(order.delivery_address || "")}" placeholder="Delivery address" /></label>
-        <label>Phone number<input id="editOrderPhone" type="tel" value="${esc(order.delivery_phone || "")}" placeholder="Phone number" /></label>
       </div>` : "";
     modal.innerHTML = `<div class="modal-content edit-order-modal-content">
       <div class="drawer-header"><div><span class="muted">Order edit</span><h3 style="margin:.1rem 0 0;">Edit your order</h3></div><button type="button" class="icon-btn" onclick="closeEditOrderModal()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
@@ -26007,7 +26004,7 @@ async function saveEditedOrder(orderId) {
       p_items: items,
       p_buyer_note: byId("editOrderNote")?.value?.trim() || null,
       p_delivery_address: byId("editOrderAddress")?.value?.trim() || null,
-      p_delivery_phone: byId("editOrderPhone")?.value?.trim() || null,
+      p_delivery_phone: null,
     });
     if (error) throw error;
     closeEditOrderModal();
