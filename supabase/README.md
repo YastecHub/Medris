@@ -161,3 +161,8 @@ leaderboard read and by pg_cron job `levromart-finalize-points-week` (Sun 23:05 
 
 **Voiding things without deleting**: set `vendor_week_winners.reward_status = 'void'` to hide a winner; use `admin_adjust_points`
 with a negative value to take points back.
+
+**Update (Oct 2026):** the board shows only This week and Last week (points start from zero every Monday 00:00 Lagos time; lifetime totals
+stay on "My points"). Social-follow points are no longer awarded on tap: people follow, screenshot and WhatsApp 08063227669, then an admin
+adds them with `admin_award_social_points(phone, platform)` (Earn points tab, admin only; also pays the referrer once per platform).
+`record_social_click` is now a no-op kept for older clients.

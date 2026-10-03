@@ -20139,6 +20139,7 @@ function renderContactUs() {
       ${socials.map((s) => `<a class="contact-us-social-btn" href="${s.href}" target="_blank" rel="noopener" onclick="window.trackSocialClick?.('${s.key}')"><img src="${s.logo}" alt="${esc(s.label)}" class="contact-us-social-logo" loading="lazy" decoding="async"><span>${esc(s.label)}</span></a>`).join("")}
     </div>
     <p class="muted contact-us-handle">@levromart on all platforms</p>
+    <p class="muted contact-us-handle" style="margin-top:.2rem">Followed us? Screenshot it and send it on <a href="https://wa.me/2348063227669" target="_blank" rel="noopener noreferrer">WhatsApp to 0806 322 7669</a> to earn leaderboard points.</p>
     <div class="contact-us-help">
       <span class="contact-us-help-ico"><i class="fa-solid fa-headset"></i></span>
       <div><strong>Need help with an order or your account?</strong><p>Send us a support request and our team will reply inside the app.</p></div>
@@ -46277,6 +46278,14 @@ function hideLeviFromPanel() {
 .lb-social button img{width:1.9rem;height:1.9rem;border-radius:9px;object-fit:cover}
 .lb-social button small{display:block;font-size:.72rem;font-weight:700;color:var(--lb-violet)}
 .lb-social button.done small{color:#15803d}
+.lb-steps{margin:0 0 .8rem;padding:0;list-style:none;display:flex;flex-direction:column;gap:.5rem}
+.lb-steps li{display:flex;gap:.65rem;align-items:flex-start;font-size:.84rem;line-height:1.45;color:var(--text)}
+.lb-steps li span{flex:1;min-width:0}
+.lb-steps li b{flex:0 0 1.5rem;height:1.5rem;border-radius:50%;display:grid;place-items:center;font-size:.74rem;font-weight:800;color:#fff;background:linear-gradient(145deg,var(--lb-violet-2),var(--lb-violet))}
+.lb-steps a{font-weight:750;color:#15803d;text-decoration:underline}
+.lb-wa{display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.75rem;width:100%;text-decoration:none;background:#16a34a;color:#fff;border-radius:12px;padding:.7rem 1rem;font-weight:750}
+.lb-apply input{flex:1 1 7rem!important;width:auto!important}
+.lb-apply select{flex:0 0 7.2rem;width:7.2rem!important;border:1px solid var(--border);border-radius:12px;padding:0 .6rem;background:var(--input-bg);color:var(--text);font:inherit}
 .lb-fair{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.45rem}
 .lb-fair li{display:flex;gap:.55rem;font-size:.8rem;line-height:1.45;color:var(--text-muted)}
 .lb-fair li i{color:var(--lb-violet);margin-top:.18rem;font-size:.78rem}
@@ -46350,7 +46359,13 @@ function hideLeviFromPanel() {
   } catch (_) {}
 
   const TABS = [["ranking", "Ranking", "fa-ranking-star"], ["mine", "My points", "fa-chart-simple"], ["earn", "Earn points", "fa-bolt"], ["refer", "Refer & earn", "fa-gift"], ["winners", "Winners", "fa-crown"]];
-  const PERIODS = [["week", "This week"], ["last_week", "Last week"], ["month", "This month"], ["all", "All time"]];
+  const PERIODS = [["week", "This week"], ["last_week", "Last week"]];
+  const WA_NUMBER = "2348063227669", WA_DISPLAY = "0806 322 7669";
+  const waLink = (platform) => {
+    const who = [typeof profile !== "undefined" && profile?.name, typeof profile !== "undefined" && profile?.phone].filter(Boolean).join(", ");
+    const text = `Hi Levromart, I followed your ${platform || "social"} page. Here is my screenshot as evidence.${who ? " My details: " + who + "." : ""}`;
+    return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(text)}`;
+  };
   const TIERS = [[0, "Starter", "fa-seedling"], [250, "Rising", "fa-arrow-trend-up"], [1000, "Pro", "fa-bolt"], [2500, "Elite", "fa-gem"], [6000, "Legend", "fa-crown"]];
   const CAT = { sales: ["Sales", "#16a34a"], reputation: ["Reputation", "#e9a912"], referrals: ["Referrals", "#6d5ce8"], growth: ["Growth", "#2563eb"], shop: ["Your shop", "#0891b2"] };
   const SOCIALS = [["instagram", "Instagram", "/social-instagram.jpg", "https://instagram.com/levromart"], ["tiktok", "TikTok", "/social-tiktok.jpg", "https://tiktok.com/@levromart"], ["linkedin", "LinkedIn", "/social-linkedin.png", "https://linkedin.com/company/levromart"]];
@@ -46439,7 +46454,7 @@ function hideLeviFromPanel() {
       <div class="lb-hero">
         <div class="lb-hero-top"><div class="lb-hero-badge"><i class="fa-solid fa-trophy"></i></div>
           <div><h2>Vendor Leaderboard</h2><p>Stay active, earn points and win a full week of free promotion as Vendor of the Week.</p></div></div>
-        <div class="lb-hero-meta"><span class="lb-pill"><i class="fa-regular fa-clock"></i><span data-lb-countdown>${countdownText()}</span> left this week</span><span id="lbHeroPills"></span></div>
+        <div class="lb-hero-meta"><span class="lb-pill"><i class="fa-regular fa-clock"></i><span data-lb-countdown>${countdownText()}</span> left this week</span><span class="lb-pill"><i class="fa-solid fa-rotate"></i> Fresh start every Monday</span><span id="lbHeroPills"></span></div>
       </div>
       <div class="lb-tabs" role="tablist">${TABS.map((t) => `<button type="button" role="tab" class="lb-tab${LB.tab === t[0] ? " active" : ""}" data-tab="${t[0]}" onclick="lbSetTab('${t[0]}')"><i class="fa-solid ${t[2]}"></i>${t[1]}</button>`).join("")}</div>
       <div id="lbBody">${skeleton(6)}</div>
@@ -46572,7 +46587,7 @@ function hideLeviFromPanel() {
     const groups = {};
     rules.forEach((r) => { (groups[r.category] = groups[r.category] || []).push(r); });
     const done = new Set(LB.summary?.socials || []);
-    let html = `<div class="lb-card"><h3>How points work</h3><p class="lb-sub" style="margin:0">Points are added automatically the moment something happens on Levromart. Each week the vendor with the most points wins Vendor of the Week. A completed sale is the biggest earner.</p></div>`;
+    let html = `<div class="lb-card"><h3>How points work</h3><p class="lb-sub" style="margin:0">Points are added automatically the moment something happens on Levromart. The board resets every Monday at 12:00 am, so everyone starts level and new vendors can win straight away. The vendor with the most points each week becomes Vendor of the Week. A completed sale is the biggest earner.</p></div>`;
     Object.keys(CAT).forEach((k) => {
       const g = groups[k]; if (!g) return;
       html += `<div class="lb-rule-group"><h4>${CAT[k][0]}</h4>${g.map((r) => {
@@ -46580,8 +46595,11 @@ function hideLeviFromPanel() {
         return `<div class="lb-rule${r.points === top ? " top" : ""}" style="--ic:${CAT[k][1]}"><span class="lb-rule-ico"><i class="fa-solid ${esc(r.icon)}"></i></span><div class="lb-rule-copy"><strong>${esc(r.label)}${r.points === top ? '<span class="lb-tag you" style="background:var(--lb-gold);color:#5a3b00">Biggest</span>' : ""}</strong><p>${esc(r.description)}${caps ? ` (${caps})` : ""}</p></div><span class="lb-rule-pts">+${r.points}</span></div>`;
       }).join("")}</div>`;
     });
-    html += `<div class="lb-card"><h3>Follow Levromart, earn points</h3><p class="lb-sub">Tap a platform to open it and collect your points. Each platform counts once, and the vendor who referred you earns too.</p>
-      <div class="lb-social">${SOCIALS.map((s) => `<button type="button" class="${done.has(s[0]) ? "done" : ""}" onclick="lbSocial('${s[0]}')"><img src="${s[2]}" alt="" loading="lazy"><span>${s[1]}<small>${done.has(s[0]) ? "Points collected" : "+5 points"}</small></span></button>`).join("")}</div></div>
+    html += `<div class="lb-card"><h3>Follow Levromart, earn points</h3><p class="lb-sub">Each platform is worth 5 points, once. Your referrer earns 5 too.</p>
+      <ol class="lb-steps"><li><b>1</b><span>Tap a platform below and follow our page.</span></li><li><b>2</b><span>Take a screenshot that shows you are following us.</span></li><li><b>3</b><span>Send the screenshot on WhatsApp to <a href="${waLink("")}" target="_blank" rel="noopener noreferrer">${WA_DISPLAY}</a> so your points can be added.</span></li></ol>
+      <div class="lb-social">${SOCIALS.map((s) => `<button type="button" class="${done.has(s[0]) ? "done" : ""}" onclick="lbSocial('${s[0]}')"><img src="${s[2]}" alt="" loading="lazy"><span>${s[1]}<small>${done.has(s[0]) ? "Points added" : "+5 after we confirm"}</small></span></button>`).join("")}</div>
+      <a class="btn lb-wa" href="${waLink("")}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp"></i> Send screenshot on WhatsApp</a></div>
+      ${profile?.role === "admin" ? `<div class="lb-card"><h3>Admin: add social points</h3><p class="lb-sub">Enter the phone number the customer sent their screenshot from (or the one on their account) and pick the platform.</p><div class="lb-apply"><input id="lbAdminPhone" type="tel" placeholder="Phone number" style="text-transform:none;letter-spacing:0"><select id="lbAdminPlatform"><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="linkedin">LinkedIn</option></select><button type="button" class="btn" onclick="lbAdminAward()">Add</button></div></div>` : ""}
       <div class="lb-card"><h3>Fair play</h3><p class="lb-sub">Keeping the board honest.</p><ul class="lb-fair">
         <li><i class="fa-solid fa-circle-check"></i>Only real activity counts. You cannot earn points from your own orders or by following or reviewing yourself.</li>
         <li><i class="fa-solid fa-circle-check"></i>Sales under ₦1,000 do not count, and sales to the same customer count up to 3 times a week.</li>
@@ -46614,7 +46632,7 @@ function hideLeviFromPanel() {
       <div class="lb-flow-step"><i class="ic fa-solid fa-box-open"></i><div><strong>Your vendor lists a product</strong><span>First 10 listings per vendor</span></div><em>+${P("ref_vendor_product", 2)} each</em></div>
       <div class="lb-flow-step"><i class="ic fa-solid fa-sitemap"></i><div><strong>Your vendor refers a vendor</strong><span>Second level, paid when verified</span></div><em>+${P("ref2_vendor", 25)}</em></div>
       <div class="lb-flow-step"><i class="ic fa-solid fa-people-arrows"></i><div><strong>Your vendor refers a customer</strong><span>Second level</span></div><em>+${P("ref2_customer", 10)}</em></div>
-      <div class="lb-flow-step"><i class="ic fa-solid fa-hashtag"></i><div><strong>Your referral follows our socials</strong><span>Once per platform, they earn too</span></div><em>+${P("ref_social", 5)}</em></div></div></div>`;
+      <div class="lb-flow-step"><i class="ic fa-solid fa-hashtag"></i><div><strong>Your referral follows our socials</strong><span>Once per platform, after they send their screenshot</span></div><em>+${P("ref_social", 5)}</em></div></div></div>`;
     if (s.is_vendor && (refs.recent || []).length) {
       html += `<div class="lb-card"><h3>Recently joined with your code</h3><div class="lb-mini-list" style="margin-top:.4rem">${refs.recent.map((r) => `<div class="lb-mini"><i class="fa-solid ${r.role === "vendor" ? "fa-store" : "fa-user"}"></i><span>${esc(r.name)} <span class="muted">· ${r.role}</span></span><small>${timeAgo(r.at)}</small></div>`).join("")}</div></div>`;
     }
@@ -46724,20 +46742,20 @@ function hideLeviFromPanel() {
     if (navigator.share) { navigator.share({ title: "Join Levromart", text }).catch(() => {}); return; }
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
-  async function recordSocial(platform) {
-    if (!signedIn()) return null;
-    try { const { data } = await sb.rpc("record_social_click", { p_platform: platform }); return data; } catch (_) { return null; }
-  }
-  window.trackSocialClick = async function (platform) {
-    const r = await recordSocial(platform);
-    if (r?.awarded > 0) showToast(`+${r.awarded} points for following us on ${platform[0].toUpperCase() + platform.slice(1)}.`, "success");
-  };
-  window.lbSocial = async function (platform) {
+  // Social points are confirmed by hand: follow, screenshot, send it on WhatsApp.
+  window.trackSocialClick = function () {};
+  window.lbSocial = function (platform) {
     const s = SOCIALS.find((x) => x[0] === platform); if (!s) return;
     window.open(s[3], "_blank", "noopener,noreferrer");
-    if (!signedIn()) { showToast("Sign in first to collect points for following us.", "info"); return; }
-    const r = await recordSocial(platform);
-    if (r?.awarded > 0) { showToast(`+${r.awarded} points. Thanks for following us.`, "success"); await loadSummary(); if (LB.tab === "earn") renderBody(false); heroPills(); }
+    showToast(`Follow us, then screenshot it and send it on WhatsApp to ${WA_DISPLAY} for your points.`, "info");
+  };
+  window.lbAdminAward = async function () {
+    const phone = String($("lbAdminPhone")?.value || "").trim(), platform = $("lbAdminPlatform")?.value;
+    if (!phone) { showToast("Enter a phone number first.", "info"); return; }
+    const { data, error } = await sb.rpc("admin_award_social_points", { p_phone: phone, p_platform: platform });
+    if (error || !data?.ok) { showToast(data?.message || error?.message || "Could not add points.", "error"); return; }
+    showToast(data.already ? `${data.name || "This person"} already has ${platform} points.` : `Added ${data.awarded} points to ${data.name || "the account"}${data.referrer_awarded ? ` and ${data.referrer_awarded} to their referrer` : ""}.`, data.already ? "info" : "success");
+    const el = $("lbAdminPhone"); if (el) el.value = "";
   };
   window.lbApplyCode = async function () {
     const code = String($("lbApplyInput")?.value || "").trim();
