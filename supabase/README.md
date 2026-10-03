@@ -166,3 +166,8 @@ with a negative value to take points back.
 stay on "My points"). Social-follow points are no longer awarded on tap: people follow, screenshot and WhatsApp 08063227669, then an admin
 adds them with `admin_award_social_points(phone, platform)` (Earn points tab, admin only; also pays the referrer once per platform).
 `record_social_click` is now a no-op kept for older clients.
+
+**Sign-up referrals:** the sign-up form sends `referral_code` to `/api/delete-account` (register). It is stored in the auth user metadata and applied
+instantly by `trg_zz_apply_signup_referral` (and once more by the server through `apply_referral_internal`, service role only), so the vendor is credited the
+moment the account exists. People applying as vendors skip the customer award; the vendor award is paid when they are verified.
+`profile_complete` is now paid only when a profile goes from incomplete to complete, never for vendors who already had a logo, bio, address and city.

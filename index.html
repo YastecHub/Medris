@@ -12122,7 +12122,8 @@ async function submitAuth() {
           name,
           phone,
           city,
-          role
+          role,
+          referral_code: String(byId("loginReferral")?.value || "").trim()
         })
       });
 
@@ -12142,6 +12143,10 @@ async function submitAuth() {
         password
       });
       if (loginError) throw loginError;
+      if (registerBody?.referral?.ok) {
+        try { localStorage.removeItem("levro-ref-code"); } catch (_) {}
+        setTimeout(() => showToast(`Referral applied. You joined with ${registerBody.referral.business_name}'s code.`, "success"), 1200);
+      }
 
       await finishLoginSuccess(role === "vendor" ? "vendorApply" : "home");
     } else {

@@ -188,6 +188,7 @@ async function registerAccount(body, res) {
   const role = body?.role;
   const password = String(body?.password || "");
   const city = String(body?.city || "").trim();
+  const referralCode = String(body?.referral_code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
 
   if (!cleanName) return res.status(400).json({ error: "Full name is required." });
   if (!normalizedPhone || normalizedPhone.length < 10) return res.status(400).json({ error: "A valid phone number is required." });
@@ -240,7 +241,8 @@ async function registerAccount(body, res) {
         city,
         role: authoritativeRole,
         requested_role: role,
-        email_optional: !cleanEmail
+        email_optional: !cleanEmail,
+        ...(referralCode ? { referral_code: referralCode } : {})
       }
     })
   });
@@ -280,10 +282,25 @@ async function registerAccount(body, res) {
     return res.status(500).json({ error: detail || "Could not create the account profile." });
   }
 
+  // A referral code typed at sign-up is applied right away (the database trigger normally does it already;
+  // this is the safety net and is harmless to repeat). The vendor who owns the code is credited immediately.
+  let referral = null;
+  if (referralCode) {
+    try {
+      const rr = await fetch(`${supabaseUrl}/rest/v1/rpc/apply_referral_internal`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ p_uid: created.id, p_code: referralCode, p_skip_customer: role === "vendor" })
+      });
+      referral = await readJson(rr);
+    } catch (_) {}
+  }
+
   return res.status(201).json({
     created: true,
     userId: created.id,
-    loginEmail: authEmail
+    loginEmail: authEmail,
+    referral
   });
 }
 
