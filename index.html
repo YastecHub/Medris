@@ -19425,7 +19425,7 @@ function renderVendorCatChips() {
   if (!list.length) { host.innerHTML = ""; host.hidden = true; return; }
   host.hidden = false;
   list.sort((a, b) => used.get(String(b.id)) - used.get(String(a.id)) || String(a.name).localeCompare(String(b.name)));
-  host.innerHTML = `<button type="button" class="vd-chip${sel === "" ? " active" : ""}" aria-pressed="${sel === ""}" onclick="vendorCatChipPick('')"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>All categories</span></button>` + list.map((s) => `<button type="button" class="vd-chip${sel === String(s.id) ? " active" : ""}" aria-pressed="${sel === String(s.id)}" onclick="vendorCatChipPick('${esc(s.id)}')"><i class="fa-solid ${esc(levroSectorIconClass(s))}" aria-hidden="true"></i><span>${esc(s.name)}</span></button>`).join("");
+  host.innerHTML = `<button type="button" class="vd-chip vd-chip-all${sel === "" ? " active" : ""}" aria-pressed="${sel === ""}" onclick="vendorCatChipPick('')"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>All categories</span></button>` + list.map((s) => `<button type="button" class="vd-chip${sel === String(s.id) ? " active" : ""}" style="--cc:${esc(levroSectorColor(s))}" aria-pressed="${sel === String(s.id)}" onclick="vendorCatChipPick('${esc(s.id)}')"><i class="fa-solid ${esc(levroSectorIconClass(s))}" aria-hidden="true"></i><span>${esc(s.name)}</span></button>`).join("");
 }
 function vendorCatChipPick(id) {
   const el = byId("vendorSectorFilter"); if (!el) return;
@@ -40877,6 +40877,15 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 
 <style id="levromart-vendors-v2">
+#app .hscroll.top-rated-vendors-scroll>.vc2{flex:0 0 11.2rem!important;width:11.2rem!important;min-width:0!important;max-width:11.2rem!important}
+#app .vd-views #vendorsViewGridBtn,#app .vd-views #vendorsViewListBtn,#app .vd-views #vendorsViewMapBtn{box-sizing:border-box!important;flex:0 0 2.6rem!important;width:2.6rem!important;height:2.4rem!important;min-width:2.6rem!important;min-height:2.4rem!important;max-width:2.6rem!important;padding:0!important;margin:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:1!important}
+#app .vd-views button.vd-view i{font-size:1rem!important;width:1rem;height:1rem;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+#app .home-lb-card{background:var(--card)!important;border:1px solid var(--border)!important;box-shadow:0 1px 4px rgba(15,23,42,.05)!important;border-radius:16px;padding:.75rem .9rem}
+#app .home-lb-ico{width:2.5rem;height:2.5rem;border-radius:12px;background:color-mix(in srgb,var(--primary,#0B6E4A) 10%,var(--card))!important;color:var(--primary,#0B6E4A)!important;font-size:1.05rem;border:1px solid color-mix(in srgb,var(--primary,#0B6E4A) 22%,transparent)}
+#app .home-lb-copy strong{font-size:.95rem;font-weight:700}
+.vd-chip:not(.vd-chip-all){background:color-mix(in srgb,var(--cc) 9%,var(--card));border-color:color-mix(in srgb,var(--cc) 24%,transparent)}
+.vd-chip:not(.vd-chip-all) i{color:var(--cc)}
+#app .vd-chip.active:not(.vd-chip-all) i{color:#fff!important}
 #app .vd-title-ico{width:2.4rem!important;height:2.4rem!important;border-radius:12px!important;background:transparent!important;border:1.5px solid color-mix(in srgb,var(--vd-g) 45%,transparent)!important;color:var(--vd-gt)!important}
 #app .vd-title h2{font-size:1.25rem!important;letter-spacing:-.01em}
 .vd-head{margin:.6rem 0 1.1rem!important}
