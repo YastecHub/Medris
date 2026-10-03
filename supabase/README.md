@@ -176,3 +176,7 @@ moment the account exists. People applying as vendors skip the customer award; t
 and `points_weekly`. A client channel that binds a table missing from the publication fails as a whole (`CHANNEL_ERROR`), so every table the app listens to must be in it.
 The client uses three independent channels (orders+payments, order extras, requests+disputes), re-subscribes after an error, repaints on reconnect and runs a 6-second
 fingerprint poll while an order screen is open as a safety net.
+
+**Listing points (Oct 2026):** a listing earns `product_listed` once (and `ref_vendor_product` for the referrer); pausing/unpausing never pays again (event key).
+`trg_points_listing` takes the points back when a listing's status becomes removed or `admin_deleted_at` is set; listings deleted outright are caught by
+`points_reconcile_listings()` (called by `finalize_points_weeks()` on every leaderboard read and by pg_cron `levromart-points-reconcile` every 10 minutes).
