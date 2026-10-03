@@ -7709,7 +7709,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     <details class="lm-more"><summary><i class="fa-solid fa-sliders"></i> More options <small>likes and comments</small></summary><div class="listing-engagement-settings" id="prodEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="prodLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="prodAllowComments" checked onchange="syncProductEngagementSettingsUI()"></label><div id="prodCommentAudienceWrap"><label>Who can comment</label><select id="prodCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div></details>
     <div class="lm-sec lm-teal"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-boxes-stacked"></i></span><div><strong>Stock</strong></div></div>
     <div id="prodQtyWrap">
-      <label class="inline-toggle-row"><span>Track quantity available</span><input type="checkbox" id="prodTrackQuantity" checked onchange="toggleProdQuantityField()"></label>
+      <label class="inline-toggle-row"><span>Track quantity available</span><input type="checkbox" id="prodTrackQuantity" onchange="toggleProdQuantityField()"></label>
       <p class="muted" style="font-size:.76rem;margin:.2rem 0 .6rem;">Switch this off for items that aren't counted in stock, like made-to-order food so it always shows as available instead of running out.</p>
       <div id="prodQtyTotalRow">
         <label>Quantity available</label>
@@ -18813,14 +18813,16 @@ async function __levroOriginalRenderProductDetail(productId) {
   if (profile?.role !== "admin" && canBuy) {
     const buyLabel = product.is_service ? "Book Now" : "Place order";
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
+    // Items that are not counted in stock (made to order, etc.) show no stock number and no quantity box here.
+    const hideQty = !product.is_service && product.track_quantity === false;
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
       ${productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><span class="variety-choice-image">${v.photo_url?`<img src="${esc(v.photo_url)}" alt="${esc(v.name)}"><span class="variety-image-position">${productVariants.filter(x=>x.photo_url).findIndex(x=>x.id===v.id)+1}/${productVariants.filter(x=>x.photo_url).length}</span>`:""}</span><strong>${esc(v.name)}</strong><small>${naira(Number(effectivePrice(v) ?? 0))}</small></button>`).join("")}</div></div>` : ""}
-      ${productVariants.length ? `<div class="selected-variant-summary sv-card" id="selectedVariantSummary"><div class="sv-top"><div class="sv-name"><span class="sv-label">Selected variety</span><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong></div><strong id="selectedVariantPrice" class="sv-price">${naira(Number(effectivePrice(productVariants[0]) ?? 0))}</strong></div><div class="sv-stock muted">Available: <span id="selectedVariantStock">${variantStockLabel(productVariants[0])}</span></div><details class="sv-details"><summary>About this variety <i class="fa-solid fa-chevron-down"></i></summary><p id="selectedVariantDescription" class="muted">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</p></details></div>` : ""}
-      <div class="pd-qty-row"><div class="pd-qty-box"><span class="df-label">Quantity</span><div class="flex" style="margin:0;">
+      ${productVariants.length ? `<div class="selected-variant-summary sv-card" id="selectedVariantSummary"><div class="sv-top"><div class="sv-name"><span class="sv-label">Selected variety</span><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong></div><strong id="selectedVariantPrice" class="sv-price">${naira(Number(effectivePrice(productVariants[0]) ?? 0))}</strong></div>${hideQty ? "" : `<div class="sv-stock muted">Available: <span id="selectedVariantStock">${variantStockLabel(productVariants[0])}</span></div>`}<details class="sv-details"><summary>About this variety <i class="fa-solid fa-chevron-down"></i></summary><p id="selectedVariantDescription" class="muted">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</p></details></div>` : ""}
+      <div class="pd-qty-row${hideQty ? " pd-no-qty" : ""}">${hideQty ? `<input type="hidden" id="buyQty" value="1" />` : `<div class="pd-qty-box"><span class="df-label">Quantity</span><div class="flex" style="margin:0;">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
           : `<input type="number" id="buyQty" value="1" min="1" placeholder="Qty" oninput="updateBuyTotalPreview(${effectivePrice(product) ?? 0})" style="width:90px;" />`}
-      </div></div><div class="pd-total-box ${product.is_service ? "" : "pd-has-plan"}">${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% now, ${paymentRemainingPercent}% after delivery.` : "Full payment is needed before delivery."}</span></div>` : ""}${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product)}">Total: ${naira(productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product))}</p>` : ""}</div></div>
+      </div></div>`}<div class="pd-total-box ${product.is_service ? "" : "pd-has-plan"}">${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% now, ${paymentRemainingPercent}% after delivery.` : "Full payment is needed before delivery."}</span></div>` : ""}${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product)}">Total: ${naira(productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product))}</p>` : ""}</div></div>
       <div class="pd-step-title"><i class="fa-solid fa-truck-fast"></i> How do you want it?</div>
       ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
       ${!product.is_service ? `<div class="pd-note-box"><label class="df-label" for="buyNote"><i class="fa-regular fa-note-sticky"></i> Note for the vendor <span class="df-hint">(optional)</span></label><textarea id="buyNote" rows="2" placeholder="e.g. I'd like the blue one, or a size 42"></textarea></div>` : ""}
@@ -23091,7 +23093,7 @@ async function showProductModal() {
     updateProductPaymentTimingHint();
     byId("prodDeliveryFee").value = 0;
     byId("prodDeliveryPerKm").value = 0;
-    byId("prodTrackQuantity").checked = true;
+    byId("prodTrackQuantity").checked = false;
     byId("prodQtyTotal").value = 1;
     toggleProdQuantityField();
     byId("prodCondition").value = "new";
@@ -25835,6 +25837,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   }
 
   let odBottomBar = "";
+  let odReportBlock = "";   // on the redesigned pages the report link sits under the action buttons
   if (newView) {
     const parts = orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, { parts: true });
     if (parts.main) html += `<div class="order-action-wrap od-action-wrap">${parts.main}</div>`;
@@ -25868,17 +25871,18 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
         </div>` : ""}
     </div>`;
   } else if ((isCustomer || isVendor) && order.status !== "cancelled" && !(isVendor && pendingReportedPayment && !openPaymentDispute)) {
-    html += `<div style="margin-top:1rem;">
-      <a href="#" onclick="byId('disputeForm').classList.remove('hidden');this.classList.add('hidden');return false;" style="color:var(--danger);">Report an issue with this order</a>
+    const reportBlock = `<div class="${(newView || newVendorView) ? "od-report" : ""}" ${(newView || newVendorView) ? "" : 'style="margin-top:1rem;"'}>
+      <a href="#" class="od-report-link" onclick="byId('disputeForm').classList.remove('hidden');this.classList.add('hidden');return false;" style="color:var(--danger);">Report an issue with this order</a>
       <div id="disputeForm" class="card hidden" style="border-color:var(--danger);margin-top:0.5rem;">
         <div id="disputeError" class="error-text hidden"></div>
         <textarea id="disputeReason" rows="2" placeholder="What went wrong?"></textarea>
         <button class="btn btn-sm btn-danger" onclick="fileDispute('${order.id}')">Submit report</button>
       </div>
     </div>`;
+    if (newView || newVendorView) odReportBlock = reportBlock; else html += reportBlock;
   }
 
-  if (newView || newVendorView) return `<div class="od-page">${html}${odBottomBar}</div>`;
+  if (newView || newVendorView) return `<div class="od-page">${html}${odBottomBar}${odReportBlock}</div>`;
   return html;
 }
 
@@ -34372,7 +34376,8 @@ window.renderVendorMapRail = function(){
   window.openVendorDistanceMap=async function(vendorId){
     if(!vendorId)return;
     window.__pendingVendorMapFocusId=String(vendorId);
-    try{await navigate("vendors");}catch(err){
+    vendorsViewMode="map"; // open on the map itself, not the grid of vendors
+    try{await navigate("vendors");if(vendorsViewMode!=="map"||byId("vendorsMapWrap")?.classList.contains("hidden"))await switchVendorsView("map");}catch(err){
       window.__pendingVendorMapFocusId=null;
       showToast("Could not open the vendor map right now.","error");
     }
@@ -44493,6 +44498,9 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 /* bottom bar */
 .od-bottom-bar{position:static;display:flex;gap:.7rem;padding:0;margin:0 0 .9rem;background:none}
 .od-bottom-bar .od-btn{flex:1;min-height:3.2rem}
+.od-report{margin:1.4rem 0 .5rem;text-align:center}
+.od-report-link{display:inline-block;padding:.65rem 1rem;font-weight:650;font-size:.92rem;text-decoration:underline;text-underline-offset:3px}
+.od-report #disputeForm{text-align:left}
 .od-action-wrap{display:flex;flex-direction:column;gap:.6rem;margin:0 0 .9rem}
 .od-action-wrap .btn{width:100%;min-height:3.1rem;justify-content:center}
 /* ---- vendor order details additions */
