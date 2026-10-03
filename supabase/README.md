@@ -189,3 +189,8 @@ Vendors turn tracking on per listing in the Stock section and enter a quantity.
 and one customer counts up to 5 times a week (`per_source_weekly_cap`). Award logic lives in `points_award_order()` / `points_award_review()`; every skipped event is logged in `points_skips`
 with the reason (also daily/weekly limits). This week's missed sales and reviews were backfilled. Admin RPCs: `admin_search_points_users`, `admin_adjust_points` (add or take away, notifies the person),
 `admin_recent_points_skips`, `admin_recent_points_adjustments`, `admin_award_social_points`; UI at the Points manager page (admin drawer).
+
+**Delivery by distance (Oct 2026):** `compute_delivery_fee` / `compute_product_delivery_fee` charge at least one kilometre (`rate x greatest(distance, 1)`, rounded to the nearest ₦50), so a distance-priced
+delivery is never shown as Free for a buyer standing next to the shop. The client mirrors this in `distanceDeliveryFee()`.
+**Dispute evidence:** `disputes.attachments` (jsonb, up to 3 images), private storage bucket `dispute-evidence` (`{user}/{order}/{file}`; readable by the uploader, the two parties on the order and admins) and
+`raise_dispute(order, reason, attachments)`; images are shown on the order page and in the admin disputes list through signed links.

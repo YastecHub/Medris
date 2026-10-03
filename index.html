@@ -9170,6 +9170,8 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+// A distance-priced delivery is never free: the first kilometre is always charged, then rate x distance, to the nearest N50.
+function distanceDeliveryFee(perKm, km) { return Math.round((Number(perKm) * Math.max(1, Number(km) || 0)) / 50) * 50; }
 function formatDistanceKm(km) {
   return km < 1 ? `${Math.round(km * 1000)} m away` : `${km.toFixed(1)} km away`;
 }
@@ -13112,6 +13114,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (view === "notifications") void renderNotifPanel();
   if (view === "leaderboard") void window.initLeaderboardPage?.();
   if (view === "adminPoints") void window.initAdminPoints?.();
+  if (view === "orderDetail" || view === "adminDisputes") setTimeout(() => window.hydrateDisputeEvidence?.(), 60);
   if (view === "home") setTimeout(() => window.mountHomeLeaderboardCard?.(), 120);
   if (view === "home") setTimeout(() => { try { filterHomeProducts(); } catch (_) {} }, 0);
   syncLeviFabVisibility();
@@ -15661,7 +15664,7 @@ function productCardHtml(p) {
   const cardPerKm = Number(p.delivery_fee_per_km ?? p.vendor?.delivery_fee_per_km ?? 0) || 0;
   const cardDeliveryFee = deliveryMode === "free" ? 0
     : deliveryMode === "distance"
-      ? ((buyerLocation && cardPerKm > 0 && p.vendor?.lat != null && p.vendor?.lng != null) ? Math.round((cardPerKm * haversineKm(buyerLocation.lat, buyerLocation.lng, Number(p.vendor.lat), Number(p.vendor.lng))) / 50) * 50 : 0)
+      ? ((buyerLocation && cardPerKm > 0 && p.vendor?.lat != null && p.vendor?.lng != null) ? distanceDeliveryFee(cardPerKm, haversineKm(buyerLocation.lat, buyerLocation.lng, Number(p.vendor.lat), Number(p.vendor.lng))) : 0)
       : deliveryFlatFee;
   const totalHtml = (!commissionService && !p.is_service && p.sale_price != null)
     ? `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice + cardDeliveryFee)}</strong></div>`
@@ -18919,8 +18922,8 @@ function deliveryFeeCalcHtml(prefix) {
     const label = l.name ? ` <small>(${esc(l.name)})</small>` : "";
     if (l.mode === "distance" && l.perKm > 0 && km != null) {
       usedDistance = true;
-      const raw = l.perKm * km, fee = Math.round(raw / 50) * 50;
-      rows.push(`<div class="fee-calc-row"><span>${km.toFixed(2)} km × ${naira(l.perKm)} per km${label}</span><strong>${naira(Math.round(raw))}</strong></div>` + (Math.round(raw) !== fee ? `<div class="fee-calc-row fee-calc-sub"><span>Rounded to the nearest ₦50</span><strong>${naira(fee)}</strong></div>` : ""));
+      const billedKm = Math.max(1, km), raw = l.perKm * billedKm, fee = Math.round(raw / 50) * 50;
+      rows.push(`<div class="fee-calc-row"><span>${billedKm.toFixed(2)} km × ${naira(l.perKm)} per km${label}${km < 1 ? " <small>(1 km minimum)</small>" : ""}</span><strong>${naira(Math.round(raw))}</strong></div>` + (Math.round(raw) !== fee ? `<div class="fee-calc-row fee-calc-sub"><span>Rounded to the nearest ₦50</span><strong>${naira(fee)}</strong></div>` : ""));
     } else if (l.mode === "flat" && l.fee > 0) {
       rows.push(`<div class="fee-calc-row"><span>Flat delivery fee${label}</span><strong>${naira(l.fee)}</strong></div>`);
     }
@@ -18981,8 +18984,8 @@ function deliveryInfoLineHtml(prefix, isDistance, hasVendorLoc, vendorLat, vendo
   const km = haversineKm(buyerLocation.lat, buyerLocation.lng, vendorLat, vendorLng);
   const eta = estimateDeliveryRange(km);
   if (isDistance) {
-    const fee = Math.round((Number(perKm) * km) / 50) * 50;
-    return `<i class="fa-solid fa-truck"></i> ${naira(Number(perKm))}/km × ${formatDistanceKm(km)} = <strong>${naira(fee)}</strong> · ~${eta}`;
+    const fee = distanceDeliveryFee(perKm, km);
+    return `<i class="fa-solid fa-truck"></i> ${naira(Number(perKm))}/km × ${formatDistanceKm(Math.max(1, km))}${km < 1 ? " (1 km minimum)" : ""} = <strong>${naira(fee)}</strong> · ~${eta}`;
   }
   return `<i class="fa-solid fa-clock"></i> ~${eta} estimated`;
 }
@@ -19099,7 +19102,7 @@ function computeDeliveryFeeForPrefix(prefix, method) {
         else if (l.mode === "distance" && l.perKm > 0) {
           if (vendorLat == null || vendorLng == null) total += Number(l.fee) || 0;
           else if (!buyerLocation) return { fee: 0, known: false };
-          else total += Math.round((l.perKm * haversineKm(buyerLocation.lat, buyerLocation.lng, vendorLat, vendorLng)) / 50) * 50;
+          else total += distanceDeliveryFee(l.perKm, haversineKm(buyerLocation.lat, buyerLocation.lng, vendorLat, vendorLng));
         }
       }
       return { fee: total, known: true };
@@ -19109,7 +19112,7 @@ function computeDeliveryFeeForPrefix(prefix, method) {
   if (isDistanceMode) {
     if (!buyerLocation) return { fee: 0, known: false };
     const km = haversineKm(buyerLocation.lat, buyerLocation.lng, vendorLat, vendorLng);
-    return { fee: Math.round((perKm * km) / 50) * 50, known: true };
+    return { fee: distanceDeliveryFee(perKm, km), known: true };
   }
   return { fee: flatFee, known: true };
 }
@@ -25413,7 +25416,7 @@ function customerOrderTopHtml(order, ctx) {
   const items = order.items || [];
   h += `<section class="od-card"><div class="od-card-head"><h3>Items (${items.length})</h3>${v.id ? `<a href="#" class="od-link" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'});return false;"><i class="fa-solid fa-store"></i> View Vendor Store <i class="fa-solid fa-chevron-right"></i></a>` : ""}</div>
     ${items.map((item) => `<div class="od-item">${img(item)}<div class="od-item-copy"><strong>${esc(item.product?.name || "")}${item.variant?.name ? ` · ${esc(item.variant.name)}` : ""}</strong><span class="od-muted">Qty: ${Number(item.quantity || 1)}${item.rental_start_date ? ` · ${esc(item.rental_start_date)} → ${esc(item.rental_end_date)}` : ""}</span><b class="od-price">${naira(item.unit_price)}</b>
-      ${ctx.isCustomer && order.status === "completed" && item.product_id && !order.review ? `<button type="button" class="od-btn od-btn-light od-btn-small" onclick="navigate('productDetail',{productId:'${item.product_id}',scrollToReviews:true})"><i class="fa-solid fa-star"></i> Rate this product</button>` : ""}</div></div>`).join("")}
+      ${ctx.isCustomer && order.status === "completed" && item.product_id && !orderHasReview(order) ? `<button type="button" class="od-btn od-btn-light od-btn-small" onclick="navigate('productDetail',{productId:'${item.product_id}',scrollToReviews:true})"><i class="fa-solid fa-star"></i> Rate this product</button>` : ""}</div></div>`).join("")}
     ${order.buyer_note ? `<p class="od-note"><i class="fa-regular fa-message"></i> <strong>Your note:</strong> ${esc(order.buyer_note)}</p>` : ""}
   </section>`;
   // ---- payment summary
@@ -25593,7 +25596,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
   if (!session) return '<div class="empty-state">Please log in.</div>';
   const { data: order, error } = await sb
     .from("orders")
-    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng, logo_url, avg_rating, review_count, verification_status), items:order_items(*,variant:product_variants(name),product:products(name,photos,is_service)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at, raised_by), package:vendor_packages(name)")
+    .select("*, vendor:vendors(id, business_name, phone, whatsapp_number, whatsapp_visible, address, city, opening_hours, user_id, lat, lng, logo_url, avg_rating, review_count, verification_status), items:order_items(*,variant:product_variants(name),product:products(name,photos,is_service)), payments(*), review:reviews(id), disputes(id, reason, status, admin_notes, vendor_response, created_at, raised_by, attachments), package:vendor_packages(name)")
     .eq("id", orderId)
     .maybeSingle();
   if (error || !order) return '<div class="empty-state">Order not found.</div>';
@@ -25690,7 +25693,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     ${order.items.map((item, i) => `<div style="${i > 0 ? "border-top:1px solid var(--border);padding-top:0.7rem;margin-top:0.7rem;" : ""}">
       <strong>${esc(item.product?.name || "")}${item.variant?.name ? ` · ${esc(item.variant.name)}` : ""}</strong>
       <p class="muted" style="margin:0.15rem 0 0;">Qty ${item.quantity} · ${naira(item.unit_price)}${item.rental_start_date ? ` · ${item.rental_start_date} → ${item.rental_end_date}` : ""}</p>
-      ${isCustomer && order.status === "completed" && item.product_id && !order.review ? `<button type="button" class="btn btn-sm btn-outline" style="margin-top:0.4rem;" onclick="navigate('productDetail',{productId:'${item.product_id}',scrollToReviews:true})"><i class="fa-solid fa-star"></i> Rate this product</button>` : ""}
+      ${isCustomer && order.status === "completed" && item.product_id && !orderHasReview(order) ? `<button type="button" class="btn btn-sm btn-outline" style="margin-top:0.4rem;" onclick="navigate('productDetail',{productId:'${item.product_id}',scrollToReviews:true})"><i class="fa-solid fa-star"></i> Rate this product</button>` : ""}
     </div>`).join("")}
     ${order.buyer_note ? `<div class="divider"></div><p style="margin:0;"><i class="fa-regular fa-message"></i> <strong>${isVendor ? "Customer's note" : "Your note"}:</strong> ${esc(order.buyer_note)}</p>` : ""}
     <div class="divider"></div>
@@ -25854,7 +25857,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     html += `<div class="order-action-wrap" style="margin-top:1.35rem;display:flex;gap:.85rem;flex-wrap:wrap;align-items:center;">${orderActionButtonsHtml(order, isCustomer, isVendor, feePaid)}</div>`;
   }
 
-  if (isCustomer && order.status === "completed" && !order.review) {
+  if (isCustomer && order.status === "completed" && !orderHasReview(order)) {
     html += `<div class="card"><h3>Leave a review</h3>
       <div id="reviewError" class="error-text hidden"></div>
       ${starRatingWidgetHtml(5)}
@@ -25869,6 +25872,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
     html += `<div class="card" style="border-color:var(--danger);margin-top:1rem;">
       <div class="flex" style="justify-content:space-between;"><h3 style="margin:0;"><i class='fa-solid fa-triangle-exclamation'></i> Dispute</h3><span class="badge">${esc(dispute.status)}</span></div>
       <p style="margin:0.5rem 0;"><strong>Reason:</strong> ${esc(dispute.reason)}</p>
+      ${disputeEvidenceHtml(dispute.attachments)}
       ${dispute.vendor_response ? `<p style="margin:0.5rem 0;"><strong>Vendor response:</strong> ${esc(dispute.vendor_response)}</p>` : ""}
       ${dispute.admin_notes ? `<p style="margin:0.5rem 0;"><strong>Resolution notes:</strong> ${esc(dispute.admin_notes)}</p>` : ""}
       ${isVendor ? `
@@ -25883,8 +25887,12 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
       <a href="#" class="od-report-link" onclick="byId('disputeForm').classList.remove('hidden');this.classList.add('hidden');return false;" style="color:var(--danger);">Report an issue with this order</a>
       <div id="disputeForm" class="card hidden" style="border-color:var(--danger);margin-top:0.5rem;">
         <div id="disputeError" class="error-text hidden"></div>
-        <textarea id="disputeReason" rows="2" placeholder="What went wrong?"></textarea>
-        <button class="btn btn-sm btn-danger" onclick="fileDispute('${order.id}')">Submit report</button>
+        <textarea id="disputeReason" rows="3" placeholder="Describe what went wrong"></textarea>
+        <div class="dispute-photos"><div class="dispute-photos-head"><span><i class="fa-solid fa-camera"></i> Photos of the item</span><small class="muted">Optional, up to 3</small></div>
+          <div id="disputePhotoList" class="dispute-photo-list"></div>
+          <input type="file" id="disputePhotoInput" accept="image/*" multiple class="hidden" onchange="pickDisputePhotos(this)">
+          <button type="button" class="btn btn-sm btn-outline" id="disputeAddPhotoBtn" onclick="byId('disputePhotoInput').click()"><i class="fa-solid fa-image"></i> Add photos <small>(0/3)</small></button></div>
+        <button class="btn btn-sm btn-danger" id="disputeSubmitBtn" onclick="fileDispute('${order.id}')">Submit report</button>
       </div>
     </div>`;
     if (newView || newVendorView) odReportBlock = reportBlock; else html += reportBlock;
@@ -26723,6 +26731,7 @@ async function submitVendorReviewModal() {
   } catch (_) {}
   window.__reviewPromptDismissedOrderId=String(orderId);
   window.__closeLevromartReviewPrompt?.();
+  forgetOrderPageCaches(orderId);
   showToast("Thanks for reviewing this vendor!", "success");
   navigate("orderDetail", { orderId });
 }
@@ -26764,6 +26773,19 @@ async function renderLeaveReview(orderId) {
   return `<div class="card leave-review-page" style="max-width:620px;margin:1rem auto;"><div class="banner banner-success" style="margin-bottom:.85rem;text-align:center;"><strong><i class="fa-solid fa-circle-check"></i> Payment verified. Order completed.</strong></div><div style="text-align:center;"><h2 style="margin:0;">Leave a review</h2><p class="muted" style="margin:.35rem 0 1rem;">How was your experience with ${vendorName}?</p></div><div id="reviewError" class="error-text hidden"></div>${starRatingWidgetHtml(5)}<input type="hidden" id="reviewRating" value="5" /><textarea id="reviewComment" rows="4" placeholder="Tell us about your experience with the order and vendor…"></textarea><div class="leave-review-actions" style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:.8rem;"><button type="button" class="btn btn-sm btn-outline" onclick="navigate('orderDetail',{orderId:'${order.id}'},false)"><i class="fa-solid fa-arrow-left"></i> Back to order</button><button type="button" class="btn btn-sm" onclick="submitReview('${order.id}','${order.vendor?.id || order.vendor_id}')"><i class="fa-solid fa-paper-plane"></i> Submit review</button></div></div>`;
 }
 
+// Once a buyer has reviewed an order, nothing on the order page should ask for a review again, even from a cached copy.
+function orderHasReview(order) {
+  if (!order) return false;
+  if (Array.isArray(order.review) ? order.review.length > 0 : !!order.review) return true;
+  try { return JSON.parse(localStorage.getItem("levromart_review_completed_v1") || "[]").includes(String(order.id)); } catch (_) { return false; }
+}
+function forgetOrderPageCaches(orderId) {
+  const id = String(orderId || ""); if (!id) return;
+  try { for (const k of [...routeHtmlCache.keys()]) if (k.startsWith("orderDetail:") && k.includes(id)) routeHtmlCache.delete(k); } catch (_) {}
+  for (const store of [sessionStorage, localStorage]) {
+    try { for (const k of Object.keys(store)) if (k.startsWith(ROUTE_HTML_SNAPSHOT_PREFIX + "orderDetail:") && k.includes(id)) store.removeItem(k); } catch (_) {}
+  }
+}
 async function submitReview(orderId, vendorId) {
   const errorEl = byId("reviewError");
   errorEl.classList.add("hidden");
@@ -26780,6 +26802,8 @@ async function submitReview(orderId, vendorId) {
   } catch (_) {}
   window.__reviewPromptDismissedOrderId=String(orderId);
   window.__closeLevromartReviewPrompt?.();
+  forgetOrderPageCaches(orderId);
+  byId("reviewError")?.closest(".card")?.remove();
   navigate("orderDetail", { orderId });
 }
 
@@ -26858,15 +26882,6 @@ async function submitVendorDisputeResponse(disputeId, orderId) {
   navigate("orderDetail", { orderId });
 }
 
-async function fileDispute(orderId) {
-  const errorEl = byId("disputeError");
-  errorEl.classList.add("hidden");
-  const reason = byId("disputeReason").value.trim();
-  if (!reason) { errorEl.textContent = "Reason is required."; errorEl.classList.remove("hidden"); return; }
-  const { error } = await sb.rpc("raise_dispute", { p_order_id: orderId, p_reason: reason });
-  if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
-  navigate("orderDetail", { orderId });
-}
 
 // ---------- ADMIN ----------
 function isSuperAdmin() {
@@ -28584,7 +28599,7 @@ async function renderAdminDisputes() {
   openDisputes.forEach(d=>{
     const claim=(d.order?.payments||[]).find(p=>p.status==='pending'&&['buyer_report','service_offer_report'].includes(String(p.provider_reference||'').toLowerCase()));
     const paymentIssue=!!claim || d.order?.status==='payment_unresolved';
-    html += `<div class="card"><div class="flex" style="justify-content:space-between;"><a href="#" onclick="navigate('orderDetail',{orderId:'${d.order?.id}'});return false;">${esc(d.order?.vendor?.business_name||"")} · ${esc(d.order?.order_type||"")} order</a><span class="muted" style="text-transform:capitalize;">${paymentIssue?'Payment unresolved · ':''}raised by ${esc(d.raised_by||'unknown')}</span></div><p style="margin:.5rem 0;"><strong>Reason:</strong> ${esc(d.reason||'')}</p>${d.vendor_response?`<p style="margin:.5rem 0;"><strong>Vendor says:</strong> ${esc(d.vendor_response)}</p>`:`<p class="muted" style="margin:.5rem 0;">Vendor hasn't responded yet.</p>`}${claim?`<div class="payment-resolution-admin-card"><strong><i class="fa-solid fa-building-columns"></i> Payment claim: ${naira(claim.amount)}</strong><p class="muted" style="margin:.25rem 0 .55rem;">The buyer reported a direct transfer. This claim has not been verified yet.</p><div class="flex" style="gap:.45rem;flex-wrap:wrap;"><button class="btn btn-sm" onclick="adminConfirmReportedPayment('${d.order.id}')"><i class="fa-solid fa-check"></i> Verify payment</button><button class="btn btn-sm btn-danger" onclick="adminRejectReportedPayment('${d.order.id}')"><i class="fa-solid fa-xmark"></i> Reject claim</button></div></div>`:''}${d.order?.buyer_id&&d.order?.vendor_id?`<button class="btn btn-sm btn-outline" onclick="openDisputeChat('${d.order.buyer_id}','${d.order.vendor_id}')"><i class="fa-solid fa-comment-dots"></i> View chat between buyer &amp; vendor</button>`:""}${d.order?.payout_status==='held'?`<p class="muted" style="font-size:.82rem;margin-top:.4rem;"><i class="fa-solid fa-shield-halved"></i> Payment on this order is still held by Levromart. The vendor hasn't been paid.</p><button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','held')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>`:""}${d.order?.payout_status==='released'?`<p class="muted" style="font-size:.82rem;margin-top:.4rem;"><i class="fa-solid fa-triangle-exclamation"></i> The vendor's share of this order has already been paid out.</p><button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','released')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>`:""}<div class="flex"><textarea id="notes-${d.id}" rows="2" placeholder="Resolution notes" style="flex:1;"></textarea><select id="newstatus-${d.id}"><option value="" disabled selected>Choose an outcome…</option><option value="completed">Complete (release to vendor)</option><option value="cancelled">Cancel (side with buyer)</option></select><button class="btn btn-sm" onclick="resolveDispute('${d.id}','${d.order?.id}','${d.order?.payout_status}')">Mark resolved</button></div></div>`;
+    html += `<div class="card"><div class="flex" style="justify-content:space-between;"><a href="#" onclick="navigate('orderDetail',{orderId:'${d.order?.id}'});return false;">${esc(d.order?.vendor?.business_name||"")} · ${esc(d.order?.order_type||"")} order</a><span class="muted" style="text-transform:capitalize;">${paymentIssue?'Payment unresolved · ':''}raised by ${esc(d.raised_by||'unknown')}</span></div><p style="margin:.5rem 0;"><strong>Reason:</strong> ${esc(d.reason||'')}</p>${disputeEvidenceHtml(d.attachments)}${d.vendor_response?`<p style="margin:.5rem 0;"><strong>Vendor says:</strong> ${esc(d.vendor_response)}</p>`:`<p class="muted" style="margin:.5rem 0;">Vendor hasn't responded yet.</p>`}${claim?`<div class="payment-resolution-admin-card"><strong><i class="fa-solid fa-building-columns"></i> Payment claim: ${naira(claim.amount)}</strong><p class="muted" style="margin:.25rem 0 .55rem;">The buyer reported a direct transfer. This claim has not been verified yet.</p><div class="flex" style="gap:.45rem;flex-wrap:wrap;"><button class="btn btn-sm" onclick="adminConfirmReportedPayment('${d.order.id}')"><i class="fa-solid fa-check"></i> Verify payment</button><button class="btn btn-sm btn-danger" onclick="adminRejectReportedPayment('${d.order.id}')"><i class="fa-solid fa-xmark"></i> Reject claim</button></div></div>`:''}${d.order?.buyer_id&&d.order?.vendor_id?`<button class="btn btn-sm btn-outline" onclick="openDisputeChat('${d.order.buyer_id}','${d.order.vendor_id}')"><i class="fa-solid fa-comment-dots"></i> View chat between buyer &amp; vendor</button>`:""}${d.order?.payout_status==='held'?`<p class="muted" style="font-size:.82rem;margin-top:.4rem;"><i class="fa-solid fa-shield-halved"></i> Payment on this order is still held by Levromart. The vendor hasn't been paid.</p><button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','held')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>`:""}${d.order?.payout_status==='released'?`<p class="muted" style="font-size:.82rem;margin-top:.4rem;"><i class="fa-solid fa-triangle-exclamation"></i> The vendor's share of this order has already been paid out.</p><button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','released')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>`:""}<div class="flex"><textarea id="notes-${d.id}" rows="2" placeholder="Resolution notes" style="flex:1;"></textarea><select id="newstatus-${d.id}"><option value="" disabled selected>Choose an outcome…</option><option value="completed">Complete (release to vendor)</option><option value="cancelled">Cancel (side with buyer)</option></select><button class="btn btn-sm" onclick="resolveDispute('${d.id}','${d.order?.id}','${d.order?.payout_status}')">Mark resolved</button></div></div>`;
   });
   html += `</section>`;
   html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('adminPanel',{status:'pending'})"><i class='fa-solid fa-arrow-left'></i> Back to admin</button>`;
@@ -36318,7 +36333,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
       const err=modal.querySelector('#lrpError');err.classList.add('hidden');
       const {error}=await sb.from('reviews').insert({order_id:order.id,buyer_id:session.user.id,vendor_id:order.vendor_id,rating,comment:(modal.querySelector('#lrpComment').value||'').trim()||null});
       if(error){err.textContent=error.message||'Could not save your review.';err.classList.remove('hidden');btn.disabled=false;return;}
-      rememberReviewCompleted(order.id);window.__reviewPromptDismissedOrderId=String(order.id);closePrompt();
+      rememberReviewCompleted(order.id);try{forgetOrderPageCaches(order.id);}catch(_){}window.__reviewPromptDismissedOrderId=String(order.id);closePrompt();
       showToast?.('Thanks for your review!','success');
       try{invalidateMarketplaceState?.();}catch(_){}
       setTimeout(()=>window.maybePromptLevromartReview?.(true),600);
@@ -47083,6 +47098,94 @@ function hideLeviFromPanel() {
     if (error || !data?.ok) { showToast(data?.message || error?.message || "Could not add points.", "error"); return; }
     showToast(data.already ? `${data.name || "This person"} already has ${platform} points.` : `Added ${data.awarded} points to ${data.name || "the account"}${data.referrer_awarded ? ` and ${data.referrer_awarded} to their referrer` : ""}.`, data.already ? "info" : "success");
     const el = $("apSocialPhone"); if (el) el.value = "";
+  };
+})();
+</script>
+<style id="levromart-dispute-photos">
+.dispute-photos{margin:.7rem 0 .8rem;padding:.7rem;border:1px dashed var(--border);border-radius:14px}
+.dispute-photos-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;font-weight:700;font-size:.86rem;margin-bottom:.5rem}
+.dispute-photo-list{display:flex;gap:.55rem;flex-wrap:wrap;margin-bottom:.5rem}
+.dispute-photo-list:empty{display:none}
+.dispute-photo{position:relative;width:5.2rem;height:5.2rem;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+.dispute-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.dispute-photo button{position:absolute;top:.2rem;right:.2rem;width:1.5rem;height:1.5rem;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:.7rem;display:grid;place-items:center;cursor:pointer}
+.dispute-evidence{display:flex;gap:.5rem;flex-wrap:wrap;margin:.2rem 0 .6rem}
+.dispute-evidence img{width:5.6rem;height:5.6rem;object-fit:cover;border-radius:12px;border:1px solid var(--border);display:block}
+</style>
+<script id="levromart-dispute-photos-js">
+/* ===== Dispute photos (up to 3) ===== */
+(function () {
+  const MAX = 3, MAX_BYTES = 12 * 1024 * 1024;
+  window.__disputeFiles = [];
+  const $ = (id) => document.getElementById(id);
+  function renderPhotos() {
+    const list = $("disputePhotoList"), btn = $("disputeAddPhotoBtn");
+    if (!list) return;
+    list.innerHTML = window.__disputeFiles.map((f, i) => `<div class="dispute-photo"><img src="${f.url}" alt="Photo ${i + 1}"><button type="button" aria-label="Remove photo ${i + 1}" onclick="removeDisputePhoto(${i})"><i class="fa-solid fa-xmark"></i></button></div>`).join("");
+    if (btn) { btn.classList.toggle("hidden", window.__disputeFiles.length >= MAX); btn.innerHTML = `<i class="fa-solid fa-image"></i> ${window.__disputeFiles.length ? "Add another" : "Add photos"} <small>(${window.__disputeFiles.length}/${MAX})</small>`; }
+  }
+  window.pickDisputePhotos = function (input) {
+    const files = [...(input.files || [])];
+    input.value = "";
+    for (const f of files) {
+      if (window.__disputeFiles.length >= MAX) { showToast(`You can add up to ${MAX} photos.`, "info"); break; }
+      if (!/^image\//.test(f.type || "") && !/\.(jpe?g|png|webp|heic|heif)$/i.test(f.name || "")) { showToast("Only photos can be added.", "error"); continue; }
+      if (f.size > MAX_BYTES) { showToast("That photo is too large (12 MB maximum).", "error"); continue; }
+      window.__disputeFiles.push({ file: f, url: URL.createObjectURL(f) });
+    }
+    renderPhotos();
+  };
+  window.removeDisputePhoto = function (i) {
+    const f = window.__disputeFiles[i]; if (!f) return;
+    try { URL.revokeObjectURL(f.url); } catch (_) {}
+    window.__disputeFiles.splice(i, 1);
+    renderPhotos();
+  };
+  window.resetDisputePhotos = function () { (window.__disputeFiles || []).forEach((f) => { try { URL.revokeObjectURL(f.url); } catch (_) {} }); window.__disputeFiles = []; renderPhotos(); };
+
+  window.fileDispute = async function (orderId) {
+    const errorEl = $("disputeError"), btn = $("disputeSubmitBtn");
+    errorEl.classList.add("hidden");
+    const reason = ($("disputeReason").value || "").trim();
+    if (!reason) { errorEl.textContent = "Please describe what went wrong."; errorEl.classList.remove("hidden"); return; }
+    if (btn) { btn.disabled = true; btn.textContent = window.__disputeFiles.length ? "Uploading photos…" : "Sending…"; }
+    const uploaded = [];
+    try {
+      for (const item of window.__disputeFiles) {
+        let blob = item.file;
+        try { if (typeof window.compressImage === "function") blob = await window.compressImage(item.file, { maxWidth: 1600, maxHeight: 1600 }); } catch (_) {}
+        const ext = ((blob.type || item.file.type || "image/jpeg").split("/")[1] || "jpg").replace(/[^a-z0-9]/gi, "").replace("jpeg", "jpg").slice(0, 5) || "jpg";
+        const path = `${session.user.id}/${orderId}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await sb.storage.from("dispute-evidence").upload(path, blob, { upsert: false, contentType: blob.type || item.file.type || "image/jpeg" });
+        if (upErr) throw upErr;
+        uploaded.push({ path, name: item.file.name || "photo", type: blob.type || item.file.type || "image/jpeg" });
+      }
+      const { error } = await sb.rpc("raise_dispute", { p_order_id: orderId, p_reason: reason, p_attachments: uploaded });
+      if (error) throw error;
+    } catch (e) {
+      errorEl.textContent = e?.message || "Could not send your report. Please try again.";
+      errorEl.classList.remove("hidden");
+      if (btn) { btn.disabled = false; btn.textContent = "Submit report"; }
+      return;
+    }
+    window.resetDisputePhotos();
+    try { forgetOrderPageCaches(orderId); } catch (_) {}
+    navigate("orderDetail", { orderId });
+  };
+
+  // Evidence thumbnails: private bucket, so each image is shown through a short-lived signed link.
+  window.disputeEvidenceHtml = function (attachments) {
+    const list = Array.isArray(attachments) ? attachments.filter((a) => a && a.path) : [];
+    if (!list.length) return "";
+    return `<div class="dispute-evidence" data-paths='${esc(JSON.stringify(list.map((a) => a.path)))}'><span class="muted" style="font-size:.78rem"><i class="fa-solid fa-camera"></i> Loading photos…</span></div>`;
+  };
+  window.hydrateDisputeEvidence = async function () {
+    for (const box of document.querySelectorAll(".dispute-evidence[data-paths]")) {
+      let paths = []; try { paths = JSON.parse(box.dataset.paths || "[]"); } catch (_) {}
+      box.removeAttribute("data-paths");
+      const urls = await Promise.all(paths.map(async (p) => { try { const { data } = await sb.storage.from("dispute-evidence").createSignedUrl(p, 3600); return data?.signedUrl || ""; } catch (_) { return ""; } }));
+      box.innerHTML = urls.filter(Boolean).map((u) => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Evidence photo" loading="lazy"></a>`).join("") || `<span class="muted" style="font-size:.78rem">Photos are not available.</span>`;
+    }
   };
 })();
 </script>
