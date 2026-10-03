@@ -194,3 +194,5 @@ with the reason (also daily/weekly limits). This week's missed sales and reviews
 delivery is never shown as Free for a buyer standing next to the shop. The client mirrors this in `distanceDeliveryFee()`.
 **Dispute evidence:** `disputes.attachments` (jsonb, up to 3 images), private storage bucket `dispute-evidence` (`{user}/{order}/{file}`; readable by the uploader, the two parties on the order and admins) and
 `raise_dispute(order, reason, attachments)`; images are shown on the order page and in the admin disputes list through signed links.
+
+**Smarter search (Oct 2026)** – `search_products_full_v2` and `search_product_ids` now rank by name first (name starts with the query, every typed word starting a word in the name, then typo tolerance via word_similarity, synonyms, category, shop name, description last). Partial words ("skin aqu") work. Results keep this relevance order; the app no longer re-sorts search results by price.

@@ -14825,7 +14825,7 @@ function scheduleSearchPageQuery() {
   // enough that a normal typing cadence doesn't fire a full search for
   // every half-typed word -- each one of those on a slow connection just
   // queues up and delays the query for what was actually typed.
-  searchPageTimer = setTimeout(() => runSearchPageQuery(term, false), 220);
+  searchPageTimer = setTimeout(() => runSearchPageQuery(term, false), 120);
 }
 // Search-result distance/price ordering: closest+cheapest listings should be
 // the first thing a buyer sees, so results are sorted cheapest-first with
@@ -15112,12 +15112,13 @@ async function runSearchPageQuery(term, saveToHistory) {
   }
   if (mySeq !== searchPageSeq) return;
   const productRows = (fullRows || []).filter((r) => kind === "products" ? !r.is_service : kind === "services" ? !!r.is_service : true).slice(0, kind === "all" ? 20 : 30);
-  const prods = sortSearchResultsByPriceThenDistance(productRows.map((r) => ({
+  // Keep the server's relevance order (best name match first); never re-sort by price.
+  const prods = productRows.map((r) => ({
     id: r.id, name: r.name, photos: r.photos, sale_price: r.sale_price, discount_price: r.discount_price,
     rental_rate: r.rental_rate, rental_rate_unit: r.rental_rate_unit, is_service: r.is_service,
     listing_type: r.listing_type, service_price_unit: r.service_price_unit,
     vendor: { id: r.vendor_id, business_name: r.vendor_business_name, lat: r.vendor_lat, lng: r.vendor_lng, avg_rating: r.vendor_avg_rating, review_count: r.vendor_review_count },
-  })), searchResultEffectivePrice);
+  }));
   const vendList = buyerLocation ? [...(vends || [])].sort((a, b) => {
     const da = searchResultDistanceKm(a), db = searchResultDistanceKm(b);
     if (da == null && db == null) return 0;
