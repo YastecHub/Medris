@@ -15653,10 +15653,15 @@ function productCardHtml(p) {
   // a different reason.
   // Every product card carries this line (free delivery included). Distance-priced delivery depends on where the
   // buyer is, so it shows the item price plus "+ distance fee" rather than guessing a number.
+  // One plain figure: item price plus delivery. Distance pricing uses the same km x rate rule as checkout once the
+  // buyer's location is known (until then it is just the item price).
+  const cardPerKm = Number(p.delivery_fee_per_km ?? p.vendor?.delivery_fee_per_km ?? 0) || 0;
+  const cardDeliveryFee = deliveryMode === "free" ? 0
+    : deliveryMode === "distance"
+      ? ((buyerLocation && cardPerKm > 0 && p.vendor?.lat != null && p.vendor?.lng != null) ? Math.round((cardPerKm * haversineKm(buyerLocation.lat, buyerLocation.lng, Number(p.vendor.lat), Number(p.vendor.lng))) / 50) * 50 : 0)
+      : deliveryFlatFee;
   const totalHtml = (!commissionService && !p.is_service && p.sale_price != null)
-    ? (deliveryMode === "distance"
-      ? `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice)}</strong> <small>+ distance fee</small></div>`
-      : `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice + (deliveryMode === "free" ? 0 : deliveryFlatFee))}</strong></div>`)
+    ? `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice + cardDeliveryFee)}</strong></div>`
     : `<div class="product-card-total-line" style="visibility:hidden;">&nbsp;</div>`;
   // The wishlist management page keeps the explicit heart button -- that's
   // the one place removing something is the whole point of being there, and
