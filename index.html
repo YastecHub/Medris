@@ -14955,7 +14955,23 @@ async function runSearchPageQuery(term, saveToHistory) {
         // Older database without the richer function: fall back to the original one.
         return r.error && !controller.signal.aborted ? sb.rpc("search_products_full", args).abortSignal(controller.signal) : r;
       }, controller.signal, true) : [],
-      wantVendors ? searchCached(`v:${kind === "all" ? 6 : 30}:${enc}`, () => sb.from("vendors").select("id,business_name,logo_url,city,lat,lng,avg_rating,review_count,sector_id").eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(kind === "all" ? 6 : 30).abortSignal(controller.signal), controller.signal, true) : [],
+      wantVendors ? searchCached(`v2:${kind === "all" ? 6 : 30}:${enc}`, async () => {
+        // Vendors match by shop name AND by what they sell: a search for a product or service also surfaces the shops offering it.
+        const limit = kind === "all" ? 6 : 30;
+        const vendorCols = "id,business_name,logo_url,city,lat,lng,avg_rating,review_count,sector_id";
+        const byName = await sb.from("vendors").select(vendorCols).eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(limit).abortSignal(controller.signal);
+        if (byName.error) return byName;
+        let prodRes = await sb.rpc("search_products_full_v2", { p_query: term, p_limit: 40 }).abortSignal(controller.signal);
+        if (prodRes.error && !controller.signal.aborted) prodRes = await sb.rpc("search_products_full", { p_query: term, p_limit: 40 }).abortSignal(controller.signal);
+        const known = new Set((byName.data || []).map((v) => String(v.id)));
+        const ids = [...new Set((prodRes.data || []).map((r) => r.vendor_id).filter(Boolean).map(String))].filter((id) => !known.has(id)).slice(0, limit);
+        let extra = [];
+        if (ids.length) {
+          const r = await sb.from("vendors").select(vendorCols).in("id", ids).eq("verification_status", "verified").eq("is_active", true).abortSignal(controller.signal);
+          extra = r.data || [];
+        }
+        return { data: [...(byName.data || []), ...extra].slice(0, limit), error: null };
+      }, controller.signal, true) : [],
       wantPackages ? searchCached(`k:${kind === "all" ? 6 : 30}:${enc}`, () => sb.from("vendor_packages").select("id,name,price,photos,items:package_items(quantity),vendor:vendors!inner(id,business_name,verification_status,is_active,lat,lng,avg_rating,review_count)").eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).or(`name.ilike.%${term}%,description.ilike.%${term}%`).limit(kind === "all" ? 6 : 30).abortSignal(controller.signal), controller.signal, true) : [],
     ]);
   } catch (err) {
@@ -15514,8 +15530,12 @@ function productCardHtml(p) {
   // some cards was exactly what made cards in the same row end up
   // different heights again, the same bug fixed earlier this session for
   // a different reason.
-  const totalHtml = (!commissionService && !p.is_service && p.sale_price != null && deliveryMode !== "distance")
-    ? `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice + deliveryFlatFee)}</strong></div>`
+  // Every product card carries this line (free delivery included). Distance-priced delivery depends on where the
+  // buyer is, so it shows the item price plus "+ distance fee" rather than guessing a number.
+  const totalHtml = (!commissionService && !p.is_service && p.sale_price != null)
+    ? (deliveryMode === "distance"
+      ? `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice)}</strong> <small>+ distance fee</small></div>`
+      : `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice + (deliveryMode === "free" ? 0 : deliveryFlatFee))}</strong></div>`)
     : `<div class="product-card-total-line" style="visibility:hidden;">&nbsp;</div>`;
   // The wishlist management page keeps the explicit heart button -- that's
   // the one place removing something is the whole point of being there, and
@@ -18674,7 +18694,7 @@ async function __levroOriginalRenderProductDetail(productId) {
     const isTimedService = product.is_service && product.service_price_unit && product.service_price_unit !== "flat";
     html += `<div class="card"><h3><i class='fa-solid ${product.is_service ? "fa-calendar-check" : "fa-cart-shopping"}'></i> ${buyLabel}</h3>
       ${productVariants.length ? `<div class="product-variant-picker"><div class="product-variant-picker-head"><strong>Choose a variety</strong><span class="muted" style="font-size:.72rem;">Individual prices</span></div><input type="hidden" id="selectedProductVariantId" value="${esc(productVariants[0].id)}" /><div class="product-variant-picker-list">${productVariants.map((v,i)=>`<button type="button" class="product-variant-choice ${i===0?'active':''}" aria-pressed="${i===0 ? "true" : "false"}" onclick="selectProductVariant('${esc(v.id)}')"><span class="variety-choice-image">${v.photo_url?`<img src="${esc(v.photo_url)}" alt="${esc(v.name)}"><span class="variety-image-position">${productVariants.filter(x=>x.photo_url).findIndex(x=>x.id===v.id)+1}/${productVariants.filter(x=>x.photo_url).length}</span>`:""}</span><strong>${esc(v.name)}</strong><small>${naira(Number(effectivePrice(v) ?? 0))}</small></button>`).join("")}</div></div>` : ""}
-      ${productVariants.length ? `<div class="selected-variant-summary" id="selectedVariantSummary"><span class="product-gallery-variant-label">Selected variety:</span><div style="min-width:0;"><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong><small id="selectedVariantDescription" class="muted" style="display:block;margin-top:.16rem;line-height:1.35;">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</small><small class="muted" style="display:block;margin-top:.16rem;">Available: <span id="selectedVariantStock">${variantStockLabel(productVariants[0])}</span></small></div><strong id="selectedVariantPrice">Price: ${naira(Number(effectivePrice(productVariants[0]) ?? 0))}</strong></div>` : ""}
+      ${productVariants.length ? `<div class="selected-variant-summary sv-card" id="selectedVariantSummary"><div class="sv-top"><div class="sv-name"><span class="sv-label">Selected variety</span><strong id="selectedVariantName">${esc(productVariants[0].name)}</strong></div><strong id="selectedVariantPrice" class="sv-price">${naira(Number(effectivePrice(productVariants[0]) ?? 0))}</strong></div><div class="sv-stock muted">Available: <span id="selectedVariantStock">${variantStockLabel(productVariants[0])}</span></div><details class="sv-details"><summary>About this variety <i class="fa-solid fa-chevron-down"></i></summary><p id="selectedVariantDescription" class="muted">${esc(productVariants[0].description || cleanDescription || "No variety-specific description is stored.")}</p></details></div>` : ""}
       <div class="pd-qty-row"><div class="pd-qty-box"><span class="df-label">Quantity</span><div class="flex" style="margin:0;">
         ${isTimedService
           ? `<div><label style="margin:0;">Number of ${product.service_price_unit}s</label><input type="number" id="buyQty" value="1" min="1" oninput="updateServiceTotalPreview(${product.sale_price},'${product.service_price_unit}')" style="width:140px;" /></div>`
@@ -45245,6 +45265,22 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .fee-calc small{display:block;margin-top:.5rem;color:var(--text-muted);font-size:.74rem;line-height:1.4}
 .delivery-method-row label:has(input[value="pickup"]:checked){border-color:#2563eb!important;background:color-mix(in srgb,#2563eb 8%,var(--card))!important}
 .delivery-method-row input[value="pickup"]{accent-color:#2563eb!important}
+/* Selected variety: name + price on one line, long description tucked into a dropdown. */
+.sv-card.selected-variant-summary{display:block!important;padding:.85rem 1rem}
+.sv-top{display:flex;align-items:center;justify-content:space-between;gap:.8rem}
+.sv-name{min-width:0;display:flex;flex-direction:column}
+.sv-label{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted)}
+.sv-name strong{font-size:1rem;overflow-wrap:anywhere}
+.sv-price{flex:none;font-size:1.2rem;font-weight:900;color:var(--primary,#0B6E4A)}
+.sv-stock{font-size:.8rem;margin-top:.2rem}
+.sv-details{margin-top:.55rem;border-top:1px dashed var(--border);padding-top:.5rem}
+.sv-details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:.86rem;font-weight:700}
+.sv-details>summary::-webkit-details-marker{display:none}
+.sv-details>summary i{color:var(--text-muted);transition:transform .2s}
+.sv-details[open]>summary i{transform:rotate(180deg)}
+.sv-details p{margin:.5rem 0 0;line-height:1.5;font-size:.88rem;white-space:pre-line}
+.search-empty-actions .vl-add,.search-empty-actions .sr-retry{background:var(--primary,#0B6E4A)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important;border:0!important}
+.search-empty-actions .vl-add i{color:#fff!important}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
