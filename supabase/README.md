@@ -184,3 +184,8 @@ fingerprint poll while an order screen is open as a safety net.
 **Stock tracking default (Oct 2026):** `products.track_quantity` now defaults to `false` and every existing product was switched to untracked (the same shape the app writes
 when a vendor turns tracking off: `quantity_total = quantity_available = 999999`, so the order/edit functions that still read `quantity_available` never block a sale).
 Vendors turn tracking on per listing in the Stock section and enter a quantity.
+
+**Points fixes and admin tools (Oct 2026):** sales and reviews now need an order of at least ₦500 (`points_rules.min_amount`, previously a hard-coded ₦1,000 that silently skipped ₦589 orders),
+and one customer counts up to 5 times a week (`per_source_weekly_cap`). Award logic lives in `points_award_order()` / `points_award_review()`; every skipped event is logged in `points_skips`
+with the reason (also daily/weekly limits). This week's missed sales and reviews were backfilled. Admin RPCs: `admin_search_points_users`, `admin_adjust_points` (add or take away, notifies the person),
+`admin_recent_points_skips`, `admin_recent_points_adjustments`, `admin_award_social_points`; UI at the Points manager page (admin drawer).

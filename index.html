@@ -11365,6 +11365,7 @@ function updateAuthUI() {
       links.push({ label: `Conversations`, action: "navigate('adminConversations')" });
       links.push({ label: `Suggestions${unreadSuggestionCount > 0 ? ` <span class="badge danger">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : ""}`, action: "navigate('adminFeedback')", profileKey: "suggestions" });
       links.push({ label: `Feedback`, action: "navigate('adminFeedback')" });
+      links.push({ label: "Points manager", action: "navigate('adminPoints')" });
       links.push({ label: "Link Library", action: "navigate('adminLinkLibrary')" });
       links.push({ label: "Contact us", action: "navigate('contactUs')" });
       links.push({ label: "Settings &amp; Privacy", action: "navigate('settings')" });
@@ -12595,8 +12596,8 @@ function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
 function navigationShellHtml(view) {
-  const titleMap={vendorDashboard:"My Shop",vendorProducts:"My Listings",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package",contactUs:"Contact us",leaderboard:"Leaderboard",search:"Search"};
-  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user",storefront:"fa-store",productDetail:"fa-box",packageDetail:"fa-boxes-stacked",contactUs:"fa-address-book",leaderboard:"fa-trophy",search:"fa-magnifying-glass"};
+  const titleMap={vendorDashboard:"My Shop",vendorProducts:"My Listings",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package",contactUs:"Contact us",leaderboard:"Leaderboard",adminPoints:"Points manager",search:"Search"};
+  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user",storefront:"fa-store",productDetail:"fa-box",packageDetail:"fa-boxes-stacked",contactUs:"fa-address-book",leaderboard:"fa-trophy",adminPoints:"fa-sliders",search:"fa-magnifying-glass"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
   if(view==="vendorProducts")return vlSkeletonHtml();
@@ -12936,6 +12937,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "supportRequest": html = await renderSupportRequest(); break;
       case "contactUs": html = renderContactUs(); break;
       case "leaderboard": html = renderLeaderboard(params); break;
+      case "adminPoints": html = renderAdminPoints(); break;
       case "search": html = renderSearchPage(); break;
       case "vendorRequests": html = await renderVendorRequests(); break;
       case "terms": html = renderTerms(); break;
@@ -13109,6 +13111,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   if (!__levroRouteHadRenderError) hideLevromartSplash();
   if (view === "notifications") void renderNotifPanel();
   if (view === "leaderboard") void window.initLeaderboardPage?.();
+  if (view === "adminPoints") void window.initAdminPoints?.();
   if (view === "home") setTimeout(() => window.mountHomeLeaderboardCard?.(), 120);
   if (view === "home") setTimeout(() => { try { filterHomeProducts(); } catch (_) {} }, 0);
   syncLeviFabVisibility();
@@ -31601,7 +31604,7 @@ window.addEventListener("popstate", (e) => {
   // the browser still knows exactly which Levromart screen was open.
   const persistedUrlView = urlParams.get("appView");
   if (persistedUrlView) {
-    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","orderHistory","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","contactUs","leaderboard","search","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
+    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","orderHistory","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","contactUs","leaderboard","adminPoints","search","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
     let persistedParams = {};
     try { persistedParams = JSON.parse(urlParams.get("appParams") || "{}"); } catch (_) {}
     if (allowedPersistedViews.has(persistedUrlView)) {
@@ -46700,10 +46703,10 @@ function hideLeviFromPanel() {
       <ol class="lb-steps"><li><b>1</b><span>Tap a platform below and follow our page.</span></li><li><b>2</b><span>Take a screenshot that shows you are following us.</span></li><li><b>3</b><span>Send the screenshot on WhatsApp to <a href="${waLink("")}" target="_blank" rel="noopener noreferrer">${WA_DISPLAY}</a> so your points can be added.</span></li></ol>
       <div class="lb-social">${SOCIALS.map((s) => `<button type="button" class="${done.has(s[0]) ? "done" : ""}" onclick="lbSocial('${s[0]}')"><img src="${s[2]}" alt="" loading="lazy"><span>${s[1]}<small>${done.has(s[0]) ? "Points added" : "+5 after we confirm"}</small></span></button>`).join("")}</div>
       <a class="btn lb-wa" href="${waLink("")}" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp"></i> Send screenshot on WhatsApp</a></div>
-      ${profile?.role === "admin" ? `<div class="lb-card"><h3>Admin: add social points</h3><p class="lb-sub">Enter the phone number the customer sent their screenshot from (or the one on their account) and pick the platform.</p><div class="lb-apply"><input id="lbAdminPhone" type="tel" placeholder="Phone number" style="text-transform:none;letter-spacing:0"><select id="lbAdminPlatform"><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="linkedin">LinkedIn</option></select><button type="button" class="btn" onclick="lbAdminAward()">Add</button></div></div>` : ""}
+      ${profile?.role === "admin" ? `<div class="lb-card"><h3>Admin: add social points</h3><p class="lb-sub"><a href="#" onclick="navigate('adminPoints');return false;" style="font-weight:700;text-decoration:underline">Open the Points manager</a> to add or remove points for anyone.</p><p class="lb-sub">Enter the phone number the customer sent their screenshot from (or the one on their account) and pick the platform.</p><div class="lb-apply"><input id="lbAdminPhone" type="tel" placeholder="Phone number" style="text-transform:none;letter-spacing:0"><select id="lbAdminPlatform"><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="linkedin">LinkedIn</option></select><button type="button" class="btn" onclick="lbAdminAward()">Add</button></div></div>` : ""}
       <div class="lb-card"><h3>Fair play</h3><p class="lb-sub">Keeping the board honest.</p><ul class="lb-fair">
         <li><i class="fa-solid fa-circle-check"></i>Only real activity counts. You cannot earn points from your own orders or by following or reviewing yourself.</li>
-        <li><i class="fa-solid fa-circle-check"></i>Sales under ₦1,000 do not count, and sales to the same customer count up to 3 times a week.</li>
+        <li><i class="fa-solid fa-circle-check"></i>Sales under ₦${num(rules.find((x) => x.kind === "order_completed")?.min_amount ?? 500)} do not count, and sales to the same customer count up to ${rules.find((x) => x.kind === "order_completed")?.per_source_weekly_cap ?? 5} times a week.</li>
         <li><i class="fa-solid fa-circle-check"></i>Each event is counted once: following, unfollowing and following again earns nothing extra.</li>
         <li><i class="fa-solid fa-circle-check"></i>If an order is cancelled or disputed after completion, its points are taken back.</li>
         <li><i class="fa-solid fa-circle-check"></i>A new listing earns points once. If you delete a listing, its points are taken back. Pausing and unpausing earns or loses nothing.</li>
@@ -46983,5 +46986,103 @@ function hideLeviFromPanel() {
   wireSignup();
   try { sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN") setTimeout(() => window.lbApplyPendingReferral?.(), 2500); }); } catch (_) {}
   setTimeout(() => { if (typeof session !== "undefined" && session) window.lbApplyPendingReferral?.(); }, 4000);
+})();
+</script>
+<script id="levromart-admin-points-js">
+/* ===== Admin: points manager ===== */
+(function () {
+  const AP = (window.__ap = { rows: [], sel: null, adj: [], skips: null, busy: false });
+  const $ = (id) => document.getElementById(id);
+  const num = (n) => Number(n || 0).toLocaleString("en-NG");
+  const isAdmin = () => typeof profile !== "undefined" && profile?.role === "admin";
+
+  window.renderAdminPoints = function () {
+    if (!isAdmin()) return '<div class="empty-state">Access denied.</div>';
+    return `<div class="lb-page">
+      <div class="lb-hero"><div class="lb-hero-top"><div class="lb-hero-badge"><i class="fa-solid fa-sliders"></i></div>
+        <div><h2>Points manager</h2><p>Add or remove points by hand when something genuine goes wrong. The person is notified and it shows in their activity.</p></div></div></div>
+      <div class="lb-card" style="margin-top:.85rem"><h3>Find a person</h3><p class="lb-sub">Search by name, shop name, phone number or email.</p>
+        <div class="lb-apply"><input id="apQuery" placeholder="e.g. Levromart or 0806..." autocomplete="off" style="text-transform:none;letter-spacing:0" onkeydown="if(event.key==='Enter')apSearch()"><button type="button" class="btn" onclick="apSearch()">Search</button></div>
+        <div id="apResults" class="lb-list" style="margin-top:.7rem"></div></div>
+      <div id="apAdjust"></div>
+      <div class="lb-card"><h3>Social follow points</h3><p class="lb-sub">After someone sends their follow screenshot on WhatsApp, add their 5 points (and their referrer's 5) here. Counts once per platform.</p>
+        <div class="lb-apply"><input id="apSocialPhone" type="tel" placeholder="Phone number" style="text-transform:none;letter-spacing:0"><select id="apSocialPlatform"><option value="instagram">Instagram</option><option value="tiktok">TikTok</option><option value="linkedin">LinkedIn</option></select><button type="button" class="btn" onclick="apSocial()">Add</button></div></div>
+      <div class="lb-card"><h3>Why was nothing added?</h3><p class="lb-sub">Recent events that earned no points, and the reason. Anything listed here can be corrected above.</p><div id="apSkips" class="lb-act">${'<div class="lb-skel"></div>'}</div></div>
+    </div>`;
+  };
+
+  window.initAdminPoints = async function () {
+    if (!isAdmin()) return;
+    try {
+      const { data, error } = await sb.rpc("admin_recent_points_skips", { p_limit: 30 });
+      if (error) throw error;
+      AP.skips = data || [];
+    } catch (e) { AP.skips = []; }
+    const el = $("apSkips"); if (!el) return;
+    const label = { order_completed: "Sale", review_5: "5-star review", review_4: "4-star review", review_3: "3-star review", follower: "Follower", product_listed: "Listing", ref_customer: "Customer referral", ref2_customer: "Second-level customer", ref_vendor_product: "Referred vendor listing" };
+    el.innerHTML = AP.skips.length ? AP.skips.map((s) => `<div class="lb-act-row"><span class="lb-act-ico" style="background:color-mix(in srgb,#e9a912 14%,var(--card));color:#b7791f"><i class="fa-solid fa-circle-info"></i></span><div class="lb-act-copy"><strong>${esc(s.business_name || s.name || "Unknown")} · ${esc(label[s.kind] || s.kind)}</strong><small>${esc(s.reason)} · ${timeAgo(s.created_at)}</small></div></div>`).join("") : `<div class="lb-empty" style="padding:.8rem 0"><strong>Nothing skipped</strong><p class="muted">Every recent event was counted.</p></div>`;
+  };
+
+  window.apSearch = async function () {
+    const q = String($("apQuery")?.value || "").trim();
+    const box = $("apResults"); if (!box) return;
+    if (q.length < 2) { showToast("Type at least 2 characters.", "info"); return; }
+    box.innerHTML = '<div class="lb-skel"></div>';
+    const { data, error } = await sb.rpc("admin_search_points_users", { p_q: q });
+    if (error) { box.innerHTML = `<p class="muted">${esc(error.message)}</p>`; return; }
+    AP.rows = data || [];
+    box.innerHTML = AP.rows.length ? AP.rows.map((r, i) => `<div class="lb-row" onclick="apPick(${i})" role="button" tabindex="0"><div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name || r.name || "Unnamed")}</span>${r.business_name ? '<span class="lb-tag you" style="background:#15803d">Vendor</span>' : ""}</strong><small>${esc([r.name, r.phone].filter(Boolean).join(" · "))}</small></div><div class="lb-row-pts"><b>${num(r.week_points)}</b>this week</div></div>`).join("") : '<p class="muted">No one matched that search.</p>';
+  };
+
+  async function loadAdj(uid) {
+    try { const { data } = await sb.rpc("admin_recent_points_adjustments", { p_user: uid }); AP.adj = data || []; } catch (_) { AP.adj = []; }
+  }
+  function renderAdjust() {
+    const host = $("apAdjust"); if (!host) return;
+    const r = AP.sel;
+    if (!r) { host.innerHTML = ""; return; }
+    host.innerHTML = `<div class="lb-card"><h3>${esc(r.business_name || r.name)}</h3><p class="lb-sub">${esc([r.business_name ? r.name : "", r.phone].filter(Boolean).join(" · "))}<br>This week <strong>${num(r.week_points)}</strong> pts · All time <strong>${num(r.all_points)}</strong> pts</p>
+      <label for="apAmount" style="font-weight:700;font-size:.82rem">Points</label>
+      <input id="apAmount" type="number" inputmode="numeric" min="1" max="10000" placeholder="e.g. 50" style="text-transform:none;letter-spacing:0">
+      <div class="lb-chips" style="margin:.5rem 0">${[5, 10, 20, 50, 100].map((n) => `<button type="button" class="lb-chip" onclick="byId('apAmount').value=${n}">${n}</button>`).join("")}</div>
+      <label for="apNote" style="font-weight:700;font-size:.82rem">Reason (shown to them)</label>
+      <input id="apNote" maxlength="120" placeholder="e.g. Referral did not register" style="text-transform:none;letter-spacing:0">
+      <div class="lb-code-actions" style="margin-top:.8rem;justify-content:stretch"><button type="button" class="btn" style="flex:1" onclick="apApply(1)"><i class="fa-solid fa-plus"></i> Add points</button><button type="button" class="btn btn-outline" style="flex:1;border-color:#dc2626;color:#dc2626" onclick="apApply(-1)"><i class="fa-solid fa-minus"></i> Remove points</button></div>
+      ${AP.adj.length ? `<div class="lb-act" style="margin-top:.8rem"><h4 style="margin:0 0 .3rem;font-size:.74rem;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)">Recent manual changes</h4>${AP.adj.map((a) => `<div class="lb-act-row"><div class="lb-act-copy"><strong>${esc(a.note || "Adjustment")}</strong><small>${timeAgo(a.created_at)}</small></div><span class="lb-act-pts${a.points < 0 ? " neg" : ""}">${a.points > 0 ? "+" : ""}${num(a.points)}</span></div>`).join("")}</div>` : ""}</div>`;
+  }
+  window.apPick = async function (i) {
+    AP.sel = AP.rows[i] || null; AP.adj = [];
+    renderAdjust();
+    $("apAdjust")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (AP.sel) { await loadAdj(AP.sel.user_id); renderAdjust(); }
+  };
+  window.apApply = async function (sign) {
+    const r = AP.sel; if (!r || AP.busy) return;
+    const amount = Math.floor(Math.abs(Number($("apAmount")?.value || 0)));
+    if (!amount) { showToast("Enter how many points.", "info"); return; }
+    const note = String($("apNote")?.value || "").trim();
+    const name = r.business_name || r.name;
+    const ok = await showConfirmDialog(`${sign > 0 ? "Add" : "Remove"} ${num(amount)} points ${sign > 0 ? "to" : "from"} ${name}?`, { title: sign > 0 ? "Add points" : "Remove points", okLabel: sign > 0 ? "Add points" : "Remove points" });
+    if (!ok) return;
+    AP.busy = true;
+    try {
+      const { data, error } = await sb.rpc("admin_adjust_points", { p_user: r.user_id, p_points: sign * amount, p_note: note });
+      if (error || !data?.ok) throw new Error(data?.message || error?.message || "Could not change the points.");
+      showToast(`${sign > 0 ? "Added" : "Removed"} ${num(amount)} points ${sign > 0 ? "to" : "from"} ${name}.`, "success");
+      const q = String($("apQuery")?.value || "").trim();
+      if (q.length >= 2) { const res = await sb.rpc("admin_search_points_users", { p_q: q }); AP.rows = res.data || []; const upd = AP.rows.find((x) => x.user_id === r.user_id); if (upd) AP.sel = upd; }
+      await loadAdj(r.user_id);
+      renderAdjust();
+    } catch (e) { showToast(e.message || "Could not change the points.", "error"); }
+    finally { AP.busy = false; }
+  };
+  window.apSocial = async function () {
+    const phone = String($("apSocialPhone")?.value || "").trim(), platform = $("apSocialPlatform")?.value;
+    if (!phone) { showToast("Enter a phone number first.", "info"); return; }
+    const { data, error } = await sb.rpc("admin_award_social_points", { p_phone: phone, p_platform: platform });
+    if (error || !data?.ok) { showToast(data?.message || error?.message || "Could not add points.", "error"); return; }
+    showToast(data.already ? `${data.name || "This person"} already has ${platform} points.` : `Added ${data.awarded} points to ${data.name || "the account"}${data.referrer_awarded ? ` and ${data.referrer_awarded} to their referrer` : ""}.`, data.already ? "info" : "success");
+    const el = $("apSocialPhone"); if (el) el.value = "";
+  };
 })();
 </script>
