@@ -19388,7 +19388,8 @@ function vendorPageCardHtml(v, feat) {
     : "";
   const tags = [sector, ...(v?.categories || [])].filter(Boolean);
   const uniq = []; tags.forEach((t) => { if (!uniq.some((u) => u.toLowerCase() === String(t).toLowerCase())) uniq.push(t); });
-  const tag = uniq[0] || "";
+  let tag = String(uniq[0] || "").trim();
+  { const first = tag.split(/[.!?;\n]/)[0].trim() || tag; tag = first.length > 22 ? first.slice(0, 21).trimEnd() + "…" : (first.length < tag.length ? first + "…" : first); }
   const menuBtn = feat ? "" : `<button type="button" class="vc2-more" aria-label="More options" aria-haspopup="menu" onclick="event.stopPropagation();vc2OpenMenu(this,'${esc(id)}')"><i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i></button>`;
   return `<div class="vc2 vc2-feat" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
     <div class="vc2-banner" ${tint}>${banner}</div>
@@ -40880,6 +40881,13 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 
 <style id="levromart-vendors-v2">
+#app .vc2-feat .vc2-tags{overflow:hidden;max-width:100%}
+#app .vc2-feat .vc2-tags em{display:block;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app .home-lb-card{position:relative;overflow:visible}
+#app .home-lb-ico{background:linear-gradient(145deg,#ffe27a 0%,#f7b500 55%,#e09100 100%)!important;color:#4a2c00!important;box-shadow:0 4px 14px rgba(247,181,0,.5),inset 0 1px 0 rgba(255,255,255,.55)!important;border:0!important}
+.lb-nudge{position:absolute;right:.9rem;top:-.95rem;z-index:3;display:flex;align-items:center;gap:.4rem;padding:.4rem .75rem;border-radius:999px;background:#1f2937;color:#fff;font-size:.78rem;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.25);pointer-events:none;opacity:0;white-space:nowrap}
+.lb-nudge i{color:#ffd24d}
+.lb-nudge::after{content:"";position:absolute;bottom:-5px;right:2.2rem;width:10px;height:10px;background:#1f2937;transform:rotate(45deg)}
 #app .vc2-feat .vc2-body{padding:2.4rem .8rem 0;align-items:center;gap:.35rem}
 .vc2-meta{display:flex;align-items:center;justify-content:center;gap:.35rem;max-width:100%;font-size:.8rem;color:var(--vd-muted,#64748b);white-space:nowrap;overflow:hidden}
 .vc2-meta b{font-weight:400;opacity:.6}
@@ -47407,7 +47415,17 @@ function levroPulseLbCard() {
   const card = document.getElementById("homeLbCard"); if (!card || card.__pulsing) return;
   const ico = card.querySelector(".home-lb-ico"); if (!ico || !ico.animate) return;
   card.__pulsing = true;
-  ico.animate([{ boxShadow: "0 0 0 0 rgba(242,169,0,.55)", transform: "scale(1)" }, { boxShadow: "0 0 0 10px rgba(242,169,0,0)", transform: "scale(1.06)" }, { boxShadow: "0 0 0 0 rgba(242,169,0,0)", transform: "scale(1)" }], { duration: 2200, iterations: Infinity, easing: "ease-out" });
-  card.animate([{ borderColor: "rgba(242,169,0,.25)" }, { borderColor: "rgba(242,169,0,.75)" }, { borderColor: "rgba(242,169,0,.25)" }], { duration: 2200, iterations: Infinity });
+  const ring = () => ico.animate([{ boxShadow: "0 0 0 0 rgba(247,181,0,.65)", transform: "scale(1)" }, { boxShadow: "0 0 0 12px rgba(247,181,0,0)", transform: "scale(1.1)" }, { boxShadow: "0 0 0 0 rgba(247,181,0,0)", transform: "scale(1)" }], { duration: 1500, iterations: 2, easing: "ease-out" });
+  const nudge = () => {
+    if (!document.body.contains(card)) { clearInterval(card.__t); return; }
+    const r = card.getBoundingClientRect(); if (r.bottom < 80 || r.top > innerHeight - 40) { ring(); return; }
+    ring();
+    const n = document.createElement("div"); n.className = "lb-nudge"; n.innerHTML = '<i class="fa-solid fa-trophy"></i> See who is leading this week';
+    card.appendChild(n);
+    const a = n.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)", offset: .15 }, { opacity: 1, transform: "translateY(0)", offset: .8 }, { opacity: 0, transform: "translateY(-6px)" }], { duration: 4200, fill: "forwards" });
+    a.onfinish = () => n.remove();
+  };
+  setTimeout(ring, 800); setTimeout(nudge, 3500);
+  card.__t = setInterval(nudge, 14000);
 }
 </script>
