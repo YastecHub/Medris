@@ -171,3 +171,8 @@ adds them with `admin_award_social_points(phone, platform)` (Earn points tab, ad
 instantly by `trg_zz_apply_signup_referral` (and once more by the server through `apply_referral_internal`, service role only), so the vendor is credited the
 moment the account exists. People applying as vendors skip the customer award; the vendor award is paid when they are verified.
 `profile_complete` is now paid only when a profile goes from incomplete to complete, never for vendors who already had a logo, bio, address and city.
+
+**Realtime publication (Oct 2026):** `supabase_realtime` now also carries `order_items`, `order_notes`, `service_offers`, `equipment_requests`, `request_offers`, `disputes`
+and `points_weekly`. A client channel that binds a table missing from the publication fails as a whole (`CHANNEL_ERROR`), so every table the app listens to must be in it.
+The client uses three independent channels (orders+payments, order extras, requests+disputes), re-subscribes after an error, repaints on reconnect and runs a 6-second
+fingerprint poll while an order screen is open as a safety net.
