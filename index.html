@@ -15662,12 +15662,17 @@ function productCardHtml(p) {
   // One plain figure: item price plus delivery. Distance pricing uses the same km x rate rule as checkout once the
   // buyer's location is known (until then it is just the item price).
   const cardPerKm = Number(p.delivery_fee_per_km ?? p.vendor?.delivery_fee_per_km ?? 0) || 0;
+  // null = distance-priced and the buyer's location is not known yet, so no honest total can be shown (the rate is shown instead).
   const cardDeliveryFee = deliveryMode === "free" ? 0
     : deliveryMode === "distance"
-      ? ((buyerLocation && cardPerKm > 0 && p.vendor?.lat != null && p.vendor?.lng != null) ? distanceDeliveryFee(cardPerKm, haversineKm(buyerLocation.lat, buyerLocation.lng, Number(p.vendor.lat), Number(p.vendor.lng))) : 0)
+      ? (cardPerKm <= 0 ? 0
+        : (p.vendor?.lat == null || p.vendor?.lng == null) ? deliveryFlatFee
+        : buyerLocation ? distanceDeliveryFee(cardPerKm, haversineKm(buyerLocation.lat, buyerLocation.lng, Number(p.vendor.lat), Number(p.vendor.lng))) : null)
       : deliveryFlatFee;
   const totalHtml = (!commissionService && !p.is_service && p.sale_price != null)
-    ? `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice + cardDeliveryFee)}</strong></div>`
+    ? (cardDeliveryFee == null
+      ? `<div class="product-card-total-line">Delivery: <strong>${naira(cardPerKm)}</strong> per km</div>`
+      : `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice + cardDeliveryFee)}</strong></div>`)
     : `<div class="product-card-total-line" style="visibility:hidden;">&nbsp;</div>`;
   // The wishlist management page keeps the explicit heart button -- that's
   // the one place removing something is the whole point of being there, and
@@ -18857,7 +18862,7 @@ async function __levroOriginalRenderProductDetail(productId) {
   const relatedNames = RELATED_EQUIPMENT[product.category?.name] || [];
   if (relatedNames.length) {
     const { data: related } = await sb.from("products")
-      .select("id, name, listing_type, sale_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, category:categories!inner(name), vendor:vendors!inner(id, business_name, verification_status, logo_url)")
+      .select("id, name, listing_type, sale_price, discount_price, rental_rate, rental_rate_unit, photos, quantity_available, condition, is_service, service_price_unit, delivery_fee, delivery_fee_mode, delivery_fee_per_km, category:categories!inner(name), vendor:vendors!inner(id, business_name, verification_status, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng)")
       .neq("id", product.id).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
       .in("category.name", relatedNames).limit(6);
     if (related && related.length) {
@@ -20064,7 +20069,8 @@ async function renderStorefrontInner(vendorId) {
   ]);
 
   const { data: products } = await productsPromise;
-  const allProducts = products || [];
+  // Cards need the shop's location and logo to work out delivery totals and fallbacks, so each product carries them.
+  const allProducts = (products || []).map((pr) => ({ ...pr, vendor: pr.vendor || { id: v.id, business_name: v.business_name, logo_url: v.logo_url, lat: v.lat, lng: v.lng, delivery_fee: v.delivery_fee, delivery_fee_mode: v.delivery_fee_mode, delivery_fee_per_km: v.delivery_fee_per_km, verification_status: v.verification_status } }));
   window.__storefrontProducts = allProducts;
   window.__storefrontExpanded = false;
   storefrontCatalogTab = "products";
