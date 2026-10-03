@@ -32884,7 +32884,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     // variable along with everything else) happened to fix.
     vendorsListingFilter = "all";
     let html = `<div class="vd-page"><div class="vd-head">
-      <div class="vd-title"><span class="vd-title-ico"><i class="fa-solid fa-store"></i></span><div><h2>All vendors</h2><p>Discover businesses and sellers on LevroMart.</p></div></div>
+      <div class="vd-title"><span class="vd-title-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5 5.6 4.5h12.8L20 9.5"/><path d="M4 9.5a2.67 2.67 0 0 0 5.33 0 2.67 2.67 0 0 0 5.34 0 2.67 2.67 0 0 0 5.33 0"/><path d="M5.5 12.6V20h13v-7.4"/><path d="M10 20v-4.5h4V20"/></svg></span><h2>All vendors</h2></div>
       <div class="vd-views" role="group" aria-label="View mode">
         <button type="button" class="vd-view" id="vendorsViewGridBtn" onclick="switchVendorsView('grid')" title="Grid view" aria-label="Grid view"><i class="fa-solid fa-table-cells-large"></i></button>
         <button type="button" class="vd-view" id="vendorsViewListBtn" onclick="switchVendorsView('list')" title="List view" aria-label="List view"><i class="fa-solid fa-list"></i></button>
@@ -40877,6 +40877,9 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 
 <style id="levromart-vendors-v2">
+#app .vd-title-ico{width:2.4rem!important;height:2.4rem!important;border-radius:12px!important;background:transparent!important;border:1.5px solid color-mix(in srgb,var(--vd-g) 45%,transparent)!important;color:var(--vd-gt)!important}
+#app .vd-title h2{font-size:1.25rem!important;letter-spacing:-.01em}
+.vd-head{margin:.6rem 0 1.1rem!important}
 .top-rated-vendors-scroll .vc2{flex:0 0 12.5rem;width:12.5rem;scroll-snap-align:start}
 /* Vendors page only: cards, category chips, view controls */
 .vd-views{display:inline-flex;gap:.3rem;padding:.25rem;border-radius:14px;background:color-mix(in srgb,var(--text) 5%,var(--card));border:1px solid var(--vd-line)}
