@@ -15814,7 +15814,7 @@ async function renderCart() {
     const subtotal = vItems.reduce((s, it) => s + Number(it.variant?.discount_price ?? it.variant?.sale_price ?? it.product.discount_price ?? it.product.sale_price ?? 0) * it.quantity, 0);
     const ownCartVendor = isOwnVendorId(v.id);
     // The server adds each product's OWN delivery fee (create_cart_order), so the cart does too.
-    const feeLines = vItems.map((it) => ({ mode: String(it.product.delivery_fee_mode || "free").toLowerCase(), fee: Number(it.product.delivery_fee) || 0, perKm: Number(it.product.delivery_fee_per_km) || 0 }));
+    const feeLines = vItems.map((it) => ({ name: it.product.name, mode: String(it.product.delivery_fee_mode || "free").toLowerCase(), fee: Number(it.product.delivery_fee) || 0, perKm: Number(it.product.delivery_fee_per_km) || 0 }));
     const cartFlatFee = feeLines.reduce((n, l) => n + (l.mode === "flat" ? l.fee : 0), 0);
     const cartDistanceLine = feeLines.find((l) => l.mode === "distance" && l.perKm > 0);
     const deliveryHtml = deliveryFieldsHtml(`cart-${v.id}`, cartFlatFee, v.lat, v.lng, cartDistanceLine ? "distance" : "flat", cartDistanceLine ? cartDistanceLine.perKm : 0, "", subtotal)
@@ -18751,6 +18751,37 @@ function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, 
 // what they'll actually pay -- reads the item subtotal from whichever live
 // preview element applies (buy/service or rent) or, for a fixed-price
 // listing like a package, from data-item-total set at render time.
+// A plain-language breakdown of how the delivery fee was worked out, so the buyer can see why they pay it.
+function deliveryFeeCalcHtml(prefix) {
+  const wrap = byId(`${prefix}DeliveryFields`);
+  if (!wrap) return "";
+  const vLat = wrap.dataset.vendorLat !== "" ? Number(wrap.dataset.vendorLat) : null;
+  const vLng = wrap.dataset.vendorLng !== "" ? Number(wrap.dataset.vendorLng) : null;
+  let lines = [];
+  if (wrap.dataset.feeLines) { try { lines = JSON.parse(wrap.dataset.feeLines); } catch (_) { lines = []; } }
+  else lines = [{ name: "", mode: wrap.dataset.feeMode || "flat", fee: Number(wrap.dataset.fee) || 0, perKm: Number(wrap.dataset.perKm) || 0 }];
+  const rows = [];
+  let km = null;
+  if (buyerLocation && vLat != null && vLng != null) km = haversineKm(buyerLocation.lat, buyerLocation.lng, vLat, vLng);
+  let usedDistance = false;
+  lines.forEach((l) => {
+    const label = l.name ? ` <small>(${esc(l.name)})</small>` : "";
+    if (l.mode === "distance" && l.perKm > 0 && km != null) {
+      usedDistance = true;
+      const raw = l.perKm * km, fee = Math.round(raw / 50) * 50;
+      rows.push(`<div class="fee-calc-row"><span>${km.toFixed(2)} km × ${naira(l.perKm)} per km${label}</span><strong>${naira(Math.round(raw))}</strong></div>` + (Math.round(raw) !== fee ? `<div class="fee-calc-row fee-calc-sub"><span>Rounded to the nearest ₦50</span><strong>${naira(fee)}</strong></div>` : ""));
+    } else if (l.mode === "flat" && l.fee > 0) {
+      rows.push(`<div class="fee-calc-row"><span>Flat delivery fee${label}</span><strong>${naira(l.fee)}</strong></div>`);
+    }
+  });
+  if (!usedDistance || !rows.length) return "";
+  const perKmShown = lines.find((l) => l.mode === "distance" && l.perKm > 0)?.perKm;
+  return `<div class="fee-calc"><div class="fee-calc-title"><i class="fa-solid fa-route"></i> How your delivery fee is worked out</div>
+    <div class="fee-calc-row"><span>Distance from the vendor to you</span><strong>${km.toFixed(2)} km</strong></div>
+    <div class="fee-calc-row"><span>Vendor's rate</span><strong>${naira(perKmShown)} per km</strong></div>
+    ${rows.join("")}
+    <small>The distance is measured in a straight line from the vendor's shop to your saved location.</small></div>`;
+}
 function refreshPriceBreakdown(prefix) {
   const wrap = byId(`${prefix}DeliveryFields`);
   const box = byId(`${prefix}PriceBreakdown`);
@@ -18780,7 +18811,7 @@ function refreshPriceBreakdown(prefix) {
     <div class="price-breakdown-row"><span>Item price</span><strong>${naira(itemTotal)}</strong></div>
     <div class="price-breakdown-row"><span>${method === "delivery" ? "Delivery fee" : pickupLabel}</span><strong>${feeLabel}</strong></div>
     ${total != null ? `<div class="price-breakdown-row price-breakdown-total"><span>You'll pay</span><strong>${naira(total)}</strong></div>` : `<div class="price-breakdown-row"><span class="muted">Full total shown once your location is shared</span></div>`}
-  `;
+  ` + (method === "delivery" ? deliveryFeeCalcHtml(prefix) : "");
 }
 // Delivery defaults ON (most buyers want it) -- this renders that default
 // info line synchronously from data already known at render time, so it's
@@ -45203,6 +45234,17 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 #app .vd-seg .vd-tab,#app .vd-seg .vd-tab.active{border-color:transparent!important;-webkit-text-fill-color:currentColor!important}
 #app .vd-seg .vd-tab.active{color:var(--text)!important;font-weight:800!important;background:transparent!important}
 #app .vd-seg .vd-tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--primary,#0B6E4A)}
+/* Delivery fee workings + distinct pickup colour */
+.fee-calc{margin-top:.7rem;padding:.75rem .85rem;border-radius:14px;border:1px solid var(--border);background:var(--card)}
+.fee-calc-title{display:flex;align-items:center;gap:.5rem;font-size:.84rem;font-weight:800;margin-bottom:.5rem}
+.fee-calc-title i{color:var(--primary,#0B6E4A)}
+.fee-calc-row{display:flex;justify-content:space-between;gap:.8rem;padding:.3rem 0;font-size:.84rem;border-bottom:1px dashed var(--border)}
+.fee-calc-row:last-of-type{border-bottom:0}
+.fee-calc-row strong{white-space:nowrap}
+.fee-calc-sub{color:var(--text-muted)}
+.fee-calc small{display:block;margin-top:.5rem;color:var(--text-muted);font-size:.74rem;line-height:1.4}
+.delivery-method-row label:has(input[value="pickup"]:checked){border-color:#2563eb!important;background:color-mix(in srgb,#2563eb 8%,var(--card))!important}
+.delivery-method-row input[value="pickup"]{accent-color:#2563eb!important}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
