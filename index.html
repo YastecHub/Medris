@@ -46288,7 +46288,7 @@ function hideLeviFromPanel() {
 .lb-row-copy small{display:block;font-size:.74rem;color:var(--text-muted);margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lb-tag{flex:0 0 auto;font-size:.62rem;font-weight:800;letter-spacing:.03em;padding:.12rem .42rem;border-radius:99px;text-transform:uppercase}
 .lb-tag.you{background:var(--lb-violet);color:#fff}
-.lb-tag.fol{background:color-mix(in srgb,#e11d48 11%,var(--card));color:#be123c}
+.lb-fol{flex:0 0 auto;font-size:.72rem;color:#e11d48}
 .lb-row-pts{flex:0 0 auto;text-align:right;font-size:.7rem;font-weight:700;color:var(--text-muted)}
 .lb-row-pts b{display:block;font-size:1.02rem;color:var(--text);font-variant-numeric:tabular-nums}
 .lb-gap{font-weight:650}
@@ -46583,7 +46583,7 @@ function hideLeviFromPanel() {
     const isFol = followed.has(String(r.vendor_id));
     return `<div class="lb-row${r.is_me ? " me" : ""}" data-row onclick="navigate('storefront',{vendorId:'${esc(r.vendor_id)}'})" role="link" tabindex="0">
       <div class="lb-rank">${r.rank}</div>${av(r.logo_url, r.business_name, "2.7rem", "lb-av")}
-      <div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name)}</span>${r.is_me ? '<span class="lb-tag you">You</span>' : isFol ? '<span class="lb-tag fol"><i class="fa-solid fa-heart"></i> Following</span>' : ""}</strong>${sub ? `<small>${sub}</small>` : ""}</div>
+      <div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name)}</span>${r.is_me ? '<span class="lb-tag you">You</span>' : isFol ? '<i class="fa-solid fa-heart lb-fol" role="img" aria-label="You follow this vendor" title="You follow this vendor"></i>' : ""}</strong>${sub ? `<small>${sub}</small>` : ""}</div>
       <div class="lb-row-pts"><b>${num(r.points)}</b>pts</div></div>`;
   }
 
