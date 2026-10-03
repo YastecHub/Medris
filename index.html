@@ -17186,7 +17186,6 @@ function linkifyChatText(text) {
 const __callLogCache = { id: null, at: 0, rows: [] };
 function callLogLabel(c) {
   const mine = String(c.caller_id) === String(session?.user?.id);
-  const dir = mine ? "Outgoing call" : "Incoming call";
   const ageMs = Date.now() - new Date(c.created_at).getTime();
   let status = c.status;
   if (status === "ringing" && ageMs > 90000) status = "missed";
@@ -17194,14 +17193,14 @@ function callLogLabel(c) {
   if (c.answered_at && (status === "ended" || status === "missed")) {
     const sec = Math.max(0, Math.round((new Date(c.ended_at || c.answered_at).getTime() - new Date(c.answered_at).getTime()) / 1000));
     const dur = sec >= 3600 ? `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m` : sec >= 60 ? `${Math.floor(sec / 60)}m ${String(sec % 60).padStart(2, "0")}s` : `${sec}s`;
-    return { icon: mine ? "fa-phone-arrow-up-right" : "fa-phone-arrow-down-left", text: `${dir} · ${dur}`, bad: false };
+    return { icon: "fa-phone", title: "Voice call", text: dur, bad: false, mine };
   }
-  if (status === "declined") return { icon: "fa-phone-slash", text: mine ? "Call declined" : "You declined a call", bad: true };
-  return { icon: "fa-phone-slash", text: mine ? "No answer" : "Missed call", bad: !mine };
+  if (status === "declined") return { icon: "fa-phone-slash", title: "Voice call", text: mine ? "Declined" : "You declined", bad: !mine, mine };
+  return mine ? { icon: "fa-phone", title: "Voice call", text: "No answer", bad: false, mine } : { icon: "fa-phone-slash", title: "Missed voice call", text: "Tap to call back", bad: true, mine };
 }
 function callLogRowHtml(c, label) {
   const t = new Date(c.created_at).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" });
-  return `<div class="chat-call-log${label.bad ? " is-missed" : ""}" data-call-id="${esc(c.id)}" data-created-at="${esc(c.created_at)}"><span class="chat-call-pill"><i class="fa-solid ${label.icon === "fa-phone-slash" ? "fa-phone-slash" : "fa-phone"}" aria-hidden="true"></i> ${esc(label.text)} <small>${esc(t)}</small></span></div>`;
+  return `<div class="chat-call-log ${label.mine ? "mine" : "theirs"}${label.bad ? " is-missed" : ""}" data-call-id="${esc(c.id)}" data-created-at="${esc(c.created_at)}"><button type="button" class="ccl-card" onclick="window.startVoiceCall(activeConversationId)" aria-label="${esc(label.title)}, ${esc(label.text)}. Tap to call"><span class="ccl-ico"><i class="fa-solid ${label.icon}" aria-hidden="true"></i></span><span class="ccl-copy"><strong>${esc(label.title)}</strong><span>${esc(label.text)}</span></span><small>${esc(t)}</small></button></div>`;
 }
 async function chatSyncCallLogs(force) {
   const box = byId("chatMessages");
@@ -31575,6 +31574,20 @@ document.addEventListener("click", (e) => {
   history.back();
 });
 
+// If the app was opened straight onto an inner page (reload, push-notification link, shared link), put Home underneath it so the
+// phone's back button walks back to Home instead of leaving the app.
+function seedHomeBelowCurrentPage() {
+  try {
+    const st = history.state;
+    if (window.__homeSeeded || !st || !st.view || st.view === "home" || st.dismissibleModal) return;
+    window.__homeSeeded = true;
+    const url = location.href;
+    history.replaceState({ view: "home", params: {} }, "", location.pathname);
+    history.pushState(st, "", url);
+  } catch (_) {}
+}
+setTimeout(seedHomeBelowCurrentPage, 1500);
+window.addEventListener("pageshow", () => setTimeout(seedHomeBelowCurrentPage, 400));
 window.addEventListener("popstate", (e) => {
   if (msgSelectMode) { msgSelectMode = false; msgSelectedIds.clear(); }
   if (notifSelectMode) { notifSelectMode = false; notifSelectedIds.clear(); }
@@ -44991,13 +45004,18 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 #tourModal.tour-tracking #tourSpotlightHole{transition:none!important}
 #app .contact-us-help .vl-add,.contact-us-help .vl-add{background:var(--primary,#0B6E4A)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:0!important;opacity:1!important}
 .contact-us-help .vl-add i{color:#fff!important}
-.chat-call-log{display:flex;justify-content:center;margin:.55rem 0}
-.chat-call-pill{display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .85rem;border-radius:999px;background:color-mix(in srgb,var(--text) 7%,var(--card));color:var(--text);font-size:.8rem;font-weight:600;border:1px solid color-mix(in srgb,var(--text) 8%,transparent)}
-.chat-call-pill i{color:var(--primary);font-size:.78rem}
-.chat-call-pill small{color:var(--text-muted);font-weight:500;font-size:.72rem}
-.chat-call-log.is-missed .chat-call-pill{color:#dc2626}
-.chat-call-log.is-missed .chat-call-pill i{color:#dc2626}
-:root[data-theme="dark"] .chat-call-log.is-missed .chat-call-pill,:root[data-theme="black"] .chat-call-log.is-missed .chat-call-pill{color:#f87171}
+.chat-call-log{display:flex;margin:.45rem 0}
+.chat-call-log.mine{justify-content:flex-end}.chat-call-log.theirs{justify-content:flex-start}
+.ccl-card{display:flex;align-items:center;gap:.7rem;min-width:13.5rem;max-width:78%;padding:.6rem .8rem .5rem .6rem;border-radius:16px;border:0;font:inherit;text-align:left;cursor:pointer;position:relative}
+.chat-call-log.mine .ccl-card{background:var(--primary);color:#fff;border-bottom-right-radius:5px}
+.chat-call-log.theirs .ccl-card{background:var(--card);color:var(--text);border:1px solid var(--border);border-bottom-left-radius:5px}
+.ccl-ico{flex:0 0 auto;width:2.7rem;height:2.7rem;border-radius:50%;display:grid;place-items:center;font-size:1rem;background:rgba(0,0,0,.22);color:#fff}
+.chat-call-log.theirs .ccl-ico{background:color-mix(in srgb,var(--primary) 14%,var(--card));color:var(--primary)}
+.chat-call-log.is-missed .ccl-ico{background:color-mix(in srgb,#dc2626 14%,var(--card));color:#dc2626}
+.ccl-copy{display:flex;flex-direction:column;min-width:0;flex:1;line-height:1.25}
+.ccl-copy strong{font-size:.95rem;font-weight:700}
+.ccl-copy span{font-size:.82rem;opacity:.82}
+.ccl-card small{align-self:flex-end;font-size:.68rem;opacity:.75;margin-left:.3rem}
 #profilePanel .profile-settings-gear{border:1px solid color-mix(in srgb,var(--text) 12%,transparent)!important;background:var(--card)!important;color:var(--text)!important;border-radius:14px!important;font-size:1.15rem}
 /* Profile drawer rows: one icon size, one colour, text always starts at the same x */
 #profilePanel .profile-nav-link .profile-item-icon{flex:0 0 2rem!important;width:2rem!important;height:2rem!important;display:inline-flex!important;align-items:center;justify-content:center;margin:0!important}
