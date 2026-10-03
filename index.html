@@ -14918,6 +14918,26 @@ async function renderSearchPageSuggestions(forceWithTerm) {
     getCustomerLocation().then(() => { if (stillCurrent()) renderSearchPageSuggestions(forceWithTerm); }).catch(() => {});
   }
 }
+async function renderRelatedSuggestions(term, seq) {
+  try {
+    const words = String(term).toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+    const stems = [...new Set(words.flatMap((w) => [w.replace(/(es|s)$/, ""), w.slice(0, Math.max(3, Math.ceil(w.length * 0.6)))]))].filter((w) => w.length > 2);
+    for (const q of stems) {
+      if (seq !== searchPageSeq) return false;
+      const { data, error } = await sb.rpc("search_products_full_v2", { p_query: q, p_limit: 12 });
+      if (error || !data?.length) continue;
+      if (seq !== searchPageSeq) return false;
+      const prods = sortSearchResultsByPriceThenDistance(data.map((r) => ({
+        id: r.id, name: r.name, photos: r.photos, sale_price: r.sale_price, discount_price: r.discount_price, rental_rate: r.rental_rate, rental_rate_unit: r.rental_rate_unit,
+        is_service: r.is_service, listing_type: r.listing_type, service_price_unit: r.service_price_unit,
+        vendor: { id: r.vendor_id, business_name: r.vendor_business_name, lat: r.vendor_lat, lng: r.vendor_lng, avg_rating: r.vendor_avg_rating, review_count: r.vendor_review_count },
+      })), searchResultEffectivePrice);
+      byId("searchPageResults")?.insertAdjacentHTML("beforeend", `<div class="search-page-section"><h3>You might be looking for</h3>${prods.map(searchProductRowHtml).join("")}</div>`);
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
 let searchPageAbortController = null;
 async function runSearchPageQuery(term, saveToHistory) {
   term = String(term || "").trim();
@@ -15023,7 +15043,8 @@ async function runSearchPageQuery(term, saveToHistory) {
     const popularFallback = kind === "all" || kind === "products";
     const noun = { all: "results", products: "products", vendors: "vendors", services: "services", packages: "packages" }[kind];
     results.insertAdjacentHTML("beforeend", `<div class="search-page-empty"><i class="fa-solid fa-magnifying-glass"></i><strong>No results found</strong><p>No ${noun} match "${esc(term)}". Try another search or browse our marketplace.</p><div class="search-empty-actions"><button type="button" class="vl-add sr-retry" onclick="navigate('vendors')"><i class="fa-solid fa-store"></i> Browse vendors</button><button type="button" class="sr-secondary" onclick="navigate('home')"><i class="fa-solid fa-table-cells-large"></i> Browse categories</button></div>${popularFallback ? `<p class="search-empty-note">Here's what's popular right now.</p>` : ""}</div>`);
-    if (popularFallback) await renderSearchPageSuggestions(term);
+    // Never a dead end: first try related listings (shorter stem of the words typed), then fall back to what is popular.
+    if (!(await renderRelatedSuggestions(term, mySeq))) { if (mySeq === searchPageSeq) await renderSearchPageSuggestions(term); }
   } else {
     results.insertAdjacentHTML("beforeend", sections.map((s) => `<div class="search-page-section">${s.title ? `<h3>${esc(s.title)}</h3>` : ""}${s.rows.join("")}</div>`).join(""));
   }
@@ -45295,6 +45316,13 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 #app .delivery-method-row label input[type=radio]{-webkit-appearance:none!important;appearance:none!important;flex:none;width:1.35rem!important;height:1.35rem!important;min-width:1.35rem!important;min-height:0!important;padding:0!important;margin:0!important;border:2px solid color-mix(in srgb,var(--text) 35%,transparent)!important;border-radius:50%!important;background:transparent!important;box-shadow:none!important;outline:0!important}
 #app .delivery-method-row label input[type=radio]:checked{border-color:var(--primary,#0B6E4A)!important;background:radial-gradient(circle,var(--primary,#0B6E4A) 0 42%,transparent 46%)!important}
 #app .delivery-method-row label input[value="pickup"]:checked{border-color:#2563eb!important;background:radial-gradient(circle,#2563eb 0 42%,transparent 46%)!important}
+/* Product page: keep the green for actions only. Inputs get a plain outline; price breakdown gets a warm tint. */
+.dyn-delivery-fields input[type=text],.dyn-delivery-fields input[type=tel],.pd-note-box textarea{background:var(--card)!important;border:1.5px solid color-mix(in srgb,var(--text) 22%,var(--border))!important;box-shadow:none!important}
+.dyn-delivery-fields input:focus,.pd-note-box textarea:focus{border-color:var(--primary,#0B6E4A)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--primary,#0B6E4A) 16%,transparent)!important}
+.price-breakdown-table{background:color-mix(in srgb,#f59e0b 9%,var(--card))!important;border-color:color-mix(in srgb,#f59e0b 32%,var(--border))!important}
+.fee-calc{border-top-color:color-mix(in srgb,#f59e0b 40%,var(--border))}
+.fee-calc>summary{color:#b45309}
+:root[data-theme="dark"] .fee-calc>summary,:root[data-theme="black"] .fee-calc>summary{color:#fcd34d}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
