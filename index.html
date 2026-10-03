@@ -18796,11 +18796,12 @@ function deliveryFeeCalcHtml(prefix) {
   });
   if (!usedDistance || !rows.length) return "";
   const perKmShown = lines.find((l) => l.mode === "distance" && l.perKm > 0)?.perKm;
-  return `<div class="fee-calc"><div class="fee-calc-title"><i class="fa-solid fa-route"></i> How your delivery fee is worked out</div>
-    <div class="fee-calc-row"><span>Distance from the vendor to you</span><strong>${km.toFixed(2)} km</strong></div>
-    <div class="fee-calc-row"><span>Vendor's rate</span><strong>${naira(perKmShown)} per km</strong></div>
+  return `<details class="fee-calc"><summary><span><i class="fa-solid fa-route"></i> How is this fee worked out?</span><i class="fa-solid fa-chevron-down fee-calc-chev"></i></summary>
+    <div class="fee-calc-body">
+    <div class="fee-calc-row"><span>Distance (straight line)</span><strong>${km.toFixed(2)} km</strong></div>
+    <div class="fee-calc-row"><span>Vendor's rate</span><strong>${naira(perKmShown)} / km</strong></div>
     ${rows.join("")}
-    <small>The distance is measured in a straight line from the vendor's shop to your saved location.</small></div>`;
+    </div></details>`;
 }
 function refreshPriceBreakdown(prefix) {
   const wrap = byId(`${prefix}DeliveryFields`);
@@ -45281,6 +45282,19 @@ body.tour-active #bottomNav{transform:none!important;opacity:1!important;visibil
 .sv-details p{margin:.5rem 0 0;line-height:1.5;font-size:.88rem;white-space:pre-line}
 .search-empty-actions .vl-add,.search-empty-actions .sr-retry{background:var(--primary,#0B6E4A)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important;border:0!important}
 .search-empty-actions .vl-add i{color:#fff!important}
+/* Delivery fee workings: collapsed by default; breakdown card gets a light tint; radios drawn by us so Android shows no square box. */
+.price-breakdown-table{background:color-mix(in srgb,var(--primary,#0B6E4A) 7%,var(--card))!important;border-color:color-mix(in srgb,var(--primary,#0B6E4A) 22%,var(--border))!important}
+.fee-calc{margin-top:.6rem;padding:0;border:0;background:transparent;border-top:1px dashed color-mix(in srgb,var(--primary,#0B6E4A) 30%,var(--border));border-radius:0}
+.fee-calc>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.6rem .1rem .2rem;font-size:.84rem;font-weight:700;color:var(--primary,#0B6E4A)}
+.fee-calc>summary::-webkit-details-marker{display:none}
+.fee-calc>summary i:first-child{margin-right:.4rem}
+.fee-calc-chev{font-size:.75rem;transition:transform .2s}
+.fee-calc[open] .fee-calc-chev{transform:rotate(180deg)}
+.fee-calc-body{padding:.1rem .1rem .2rem}
+.fee-calc-row{padding:.35rem 0}
+#app .delivery-method-row label input[type=radio]{-webkit-appearance:none!important;appearance:none!important;flex:none;width:1.35rem!important;height:1.35rem!important;min-width:1.35rem!important;min-height:0!important;padding:0!important;margin:0!important;border:2px solid color-mix(in srgb,var(--text) 35%,transparent)!important;border-radius:50%!important;background:transparent!important;box-shadow:none!important;outline:0!important}
+#app .delivery-method-row label input[type=radio]:checked{border-color:var(--primary,#0B6E4A)!important;background:radial-gradient(circle,var(--primary,#0B6E4A) 0 42%,transparent 46%)!important}
+#app .delivery-method-row label input[value="pickup"]:checked{border-color:#2563eb!important;background:radial-gradient(circle,#2563eb 0 42%,transparent 46%)!important}
 /* Order history page + its search / tabs. */
 #app .order-history-card .order-history-item{display:block;font-size:.85rem !important;font-weight:500 !important;color:var(--text-muted) !important;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .order-history-page{max-width:640px;margin:0 auto}
