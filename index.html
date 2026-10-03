@@ -13435,7 +13435,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   const trendingProducts = deterministicHourlyShuffle((trending || []).filter(p => !p.is_service),"trending-products");
   const trendingServices = deterministicHourlyShuffle((trending || []).filter(p => p.is_service),"trending-services");
   if (trendingProducts.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-fire'></i> Trending now${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</span><a class="section-title-link" onclick="scrollToBrowse('')">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll trending-scroll">${trendingProducts.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
-  if (topVendors.length) { const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors"); html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorDirectoryCardHtml).join("")}</div>`; }
+  if (topVendors.length) { const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors"); html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorPageCardHtml).join("")}</div>`; }
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
@@ -14190,7 +14190,7 @@ async function renderHome() {
     .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
   if (activeSector) vendorQuery = vendorQuery.eq("category.sector_id", activeSector.id);
   if (activeCategory) vendorQuery = vendorQuery.eq("category_id", activeCategory.id);
-  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, bio, sector_id, lat, lng").eq("verification_status", "verified").eq("is_active",true).is("deleted_at",null);
+  let topVendorsQuery = sb.from("vendors").select("id, business_name, city, avg_rating, review_count, logo_url, cover_url, bio, sector_id, lat, lng").eq("verification_status", "verified").eq("is_active",true).is("deleted_at",null);
   if (activeSector) topVendorsQuery = topVendorsQuery.eq("sector_id", activeSector.id);
   const recentPhotosQuery = sb.from("products")
     .select("id, name, photos, created_at, vendor:vendors!inner(verification_status, is_active)")
@@ -14409,7 +14409,7 @@ async function renderHome() {
   const scopedTopVendors = topVendors;
   if (scopedTopVendors && scopedTopVendors.length) {
     const shuffledTopVendors = deterministicHourlyShuffle(scopedTopVendors,"top-rated-vendors");
-    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorDirectoryCardHtml).join("")}</div>`;
+    html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map(vendorPageCardHtml).join("")}</div>`;
   }
   const trendingServices = (trending || []).filter(p => p.is_service).slice(0, 10);
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
@@ -40877,6 +40877,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 
 <style id="levromart-vendors-v2">
+.top-rated-vendors-scroll .vc2{flex:0 0 12.5rem;width:12.5rem;scroll-snap-align:start}
 /* Vendors page only: cards, category chips, view controls */
 .vd-views{display:inline-flex;gap:.3rem;padding:.25rem;border-radius:14px;background:color-mix(in srgb,var(--text) 5%,var(--card));border:1px solid var(--vd-line)}
 #app .vd-page .vd-views button.vd-view{width:2.5rem;height:2.3rem;border:0!important;border-radius:10px;background:transparent!important;color:var(--vd-muted)!important;box-shadow:none!important}
@@ -47320,5 +47321,35 @@ function hideLeviFromPanel() {
       box.innerHTML = urls.filter(Boolean).map((u) => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Evidence photo" loading="lazy"></a>`).join("") || `<span class="muted" style="font-size:.78rem">Photos are not available.</span>`;
     }
   };
+})();
+
+/* Banner tint for vendors without a cover: a light shade of their own logo colour (falls back to a per-vendor hue). */
+(function () {
+  const done = new WeakSet();
+  function tintOne(card) {
+    if (done.has(card)) return; done.add(card);
+    const ban = card.querySelector(".vc2-banner"); const img = card.querySelector(".vc2-logo img");
+    if (!ban || ban.querySelector("img") || !img) return;
+    const probe = new Image(); probe.crossOrigin = "anonymous";
+    probe.onload = () => {
+      try {
+        const c = document.createElement("canvas"); c.width = c.height = 24;
+        const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(probe, 0, 0, 24, 24);
+        const d = x.getImageData(0, 0, 24, 24).data; let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          const R = d[i], G = d[i + 1], B = d[i + 2], mx = Math.max(R, G, B), mn = Math.min(R, G, B);
+          if (d[i + 3] < 200 || mx - mn < 28 || mx > 245 || mx < 25) continue; // skip white/black/grey
+          r += R; g += G; b += B; n++;
+        }
+        if (n < 8) return;
+        r /= n; g /= n; b /= n;
+        const mix = (v, t) => Math.round(v + (255 - v) * t);
+        ban.style.background = `linear-gradient(135deg,rgb(${mix(r, .72)},${mix(g, .72)},${mix(b, .72)}),rgb(${mix(r, .86)},${mix(g, .86)},${mix(b, .86)}))`;
+      } catch (_) {}
+    };
+    probe.src = img.currentSrc || img.src;
+  }
+  let t = 0;
+  new MutationObserver(() => { clearTimeout(t); t = setTimeout(() => document.querySelectorAll(".vc2").forEach(tintOne), 150); }).observe(document.documentElement, { childList: true, subtree: true });
 })();
 </script>
