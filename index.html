@@ -40881,6 +40881,19 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 
 <style id="levromart-vendors-v2">
+.lb-page .lb-hero{padding:.9rem 1rem .85rem!important}
+.lb-hero-sub{display:inline-flex;align-items:center;gap:.35rem;margin-top:.2rem;font-size:.8rem;font-weight:600;color:rgba(255,255,255,.85)}
+.lb-hero-meta:empty,.lb-hero-meta:has(#lbHeroPills:empty){display:none}
+.lb-hero-meta{margin-top:.6rem!important}
+.lb-page .lb-reward{padding:.6rem .8rem!important;gap:.65rem!important}
+.lb-page .lb-reward strong{font-size:.88rem!important}
+.lb-page .lb-reward span{font-size:.76rem!important;margin-top:.05rem}
+.lb-page .lb-reward-ico{width:2.1rem!important;height:2.1rem!important;font-size:.9rem!important}
+.lb-page .lb-tabs{gap:.15rem}
+.lb-page .lb-tab{font-size:.86rem!important}
+.lb-page .lb-me{padding:.7rem .85rem!important}
+.lb-page .lb-me-copy strong{font-size:.9rem}
+.lb-page .lb-me-copy span{font-size:.76rem}
 #app .home-lb-card{position:relative;overflow:visible;border-radius:18px;padding:.8rem .95rem;border:1px solid color-mix(in srgb,#f5b301 42%,var(--border))!important;background:linear-gradient(120deg,color-mix(in srgb,#ffd24d 20%,var(--card)) 0%,color-mix(in srgb,#f5b301 8%,var(--card)) 55%,var(--card) 100%)!important;box-shadow:0 6px 20px color-mix(in srgb,#f5b301 18%,transparent)!important}
 #app .home-lb-ico{width:2.9rem;height:2.9rem;border-radius:14px;font-size:1.25rem;border:0!important;background:linear-gradient(145deg,#fff0a8 0%,#ffcf33 38%,#f5a300 72%,#d98200 100%)!important;color:#5b3300!important;box-shadow:0 6px 16px rgba(245,163,0,.55),inset 0 1.5px 0 rgba(255,255,255,.75),inset 0 -2px 4px rgba(150,80,0,.25)!important;position:relative;overflow:hidden}
 #app .home-lb-ico i{color:#5b3300!important;filter:drop-shadow(0 1px 0 rgba(255,255,255,.55))}
@@ -46767,8 +46780,8 @@ function hideLeviFromPanel() {
     return `<div class="lb-page">
       <div class="lb-hero">
         <div class="lb-hero-top"><div class="lb-hero-badge"><i class="fa-solid fa-trophy"></i></div>
-          <div><h2>Vendor Leaderboard</h2><p>Stay active, earn points and win a full week of free promotion as Vendor of the Week.</p></div></div>
-        <div class="lb-hero-meta"><span class="lb-pill"><i class="fa-regular fa-clock"></i><span data-lb-countdown>${countdownText()}</span> left this week</span><span class="lb-pill"><i class="fa-solid fa-rotate"></i> Fresh start every Monday</span><span id="lbHeroPills"></span></div>
+          <div><h2>Vendor Leaderboard</h2><span class="lb-hero-sub"><i class="fa-regular fa-clock"></i> <span data-lb-countdown>${countdownText()}</span> left</span></div></div>
+        <div class="lb-hero-meta"><span id="lbHeroPills"></span></div>
       </div>
       <div class="lb-tabs" role="tablist">${TABS.map((t) => `<button type="button" role="tab" class="lb-tab${LB.tab === t[0] ? " active" : ""}" data-tab="${t[0]}" onclick="lbSetTab('${t[0]}')"><i class="fa-solid ${t[2]}"></i>${t[1]}</button>`).join("")}</div>
       <div id="lbBody">${skeleton(6)}</div>
@@ -46815,7 +46828,7 @@ function hideLeviFromPanel() {
 
   function rankingHtml() {
     const chips = `<div class="lb-chips">${PERIODS.map((p) => `<button type="button" class="lb-chip${LB.period === p[0] ? " active" : ""}" onclick="lbSetPeriod('${p[0]}')">${p[1]}</button>`).join("")}<button type="button" class="lb-chip sep${LB.filter === "following" ? " active" : ""}" onclick="lbSetFilter('${LB.filter === "following" ? "all" : "following"}')"><i class="fa-solid fa-heart"></i> Following</button></div>`;
-    const reward = `<div class="lb-reward"><div class="lb-reward-ico"><i class="fa-solid fa-gift"></i></div><div><strong>Finish first to be Vendor of the Week</strong><span>The winner gets full-time adverts all week on our social pages and the app carousel, plus special incentives.</span></div></div>`;
+    const reward = `<div class="lb-reward"><div class="lb-reward-ico"><i class="fa-solid fa-gift"></i></div><div><strong>Win a full week of free promotion</strong><span>Finish first to be Vendor of the Week</span></div></div>`;
     const b = LB.boards[LB.period];
     if (!b) return reward + chips + skeleton(7);
     const rows = b.rows || [];
@@ -46823,7 +46836,7 @@ function hideLeviFromPanel() {
     const followed = (window.followedVendorSet && window.followedVendorSet()) || new Set();
     const mine = rows.find((r) => r.is_me) || null;
     let html = reward + chips;
-    if (!isVendor() && signedIn()) html += `<div class="lb-me"><div class="lb-me-rank"><i class="fa-solid fa-heart"></i></div><div class="lb-me-copy"><strong>You decide who climbs</strong><span>Following, ordering from and reviewing a vendor earns them points. Tap Following to see the vendors you support.</span></div></div>`;
+    if (!isVendor() && signedIn()) html += `<div class="lb-me"><div class="lb-me-rank"><i class="fa-solid fa-heart"></i></div><div class="lb-me-copy"><strong>You lift vendors</strong><span>Follow, order and review to give them points.</span></div></div>`;
     if (LB.filter === "following") {
       const list = rows.filter((r) => followed.has(String(r.vendor_id)) || r.is_me);
       html += list.length ? `<div class="lb-list">${list.map((r) => rowHtml(r, mine, followed)).join("")}</div>` : `<div class="lb-card lb-empty"><i class="fa-solid fa-heart"></i><strong>You are not following any ranked vendors</strong><p>Follow vendors from their shop pages and they will show up here.</p><button type="button" class="btn btn-outline" onclick="navigate('vendors')">Browse vendors</button></div>`;
@@ -46836,8 +46849,8 @@ function hideLeviFromPanel() {
       const next = mine.rank > 1 ? rows[mine.rank - 2] : null;
       let line, pct = 100;
       if (LB.period === "last_week") line = `You finished #${mine.rank} with ${num(mine.points)} pts`;
-      else if (mine.points <= 0) { line = "Earn your first points to enter the race"; pct = 0; }
-      else if (!next) line = "You are leading. Keep going to win Vendor of the Week";
+      else if (mine.points <= 0) { line = "Earn points to enter the race"; pct = 0; }
+      else if (!next) line = "You are leading";
       else { line = `${num(next.points - mine.points + 1)} pts to pass ${esc(next.business_name)}`; pct = Math.max(4, Math.min(100, (mine.points / Math.max(1, next.points)) * 100)); }
       html += `<div class="lb-me"><div class="lb-me-rank">#${mine.rank}</div><div class="lb-me-copy"><strong>Your position</strong><span>${line}</span>${LB.period === "last_week" ? "" : `<div class="lb-me-bar"><i data-w="${pct}"></i></div>`}</div><div class="lb-me-pts"><b>${num(mine.points)}</b>pts</div></div>`;
     }

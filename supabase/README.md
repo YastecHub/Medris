@@ -196,3 +196,5 @@ delivery is never shown as Free for a buyer standing next to the shop. The clien
 `raise_dispute(order, reason, attachments)`; images are shown on the order page and in the admin disputes list through signed links.
 
 **Smarter search (Oct 2026)** – `search_products_full_v2` and `search_product_ids` now rank by name first (name starts with the query, every typed word starting a word in the name, then typo tolerance via word_similarity, synonyms, category, shop name, description last). Partial words ("skin aqu") work. Results keep this relevance order; the app no longer re-sorts search results by price.
+
+**Rank-change alerts (Oct 2026)** – `trg_points_rank_notify` on `points_weekly` notifies a vendor who climbs the weekly board (top 10) and every vendor they pass (type `rank_change`, merged per user for 20 minutes, push + in-app only). Failures never block awarding points.
