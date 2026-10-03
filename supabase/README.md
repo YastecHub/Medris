@@ -130,3 +130,34 @@ value as the `EMAIL_WEBHOOK_SECRET` environment variable in Vercel.
 `orders.quantity_proposal` (jsonb) holds a vendor's counter-offer. `vendor_suggest_order_quantity(order, items, note)` (vendor, pending
 sale orders) stores it and notifies the buyer; `buyer_respond_quantity_proposal(order, accept)` applies or clears it and notifies the vendor.
 `create_cart_order` no longer refuses orders above the stock counter (stock is floored at zero), matching `create_sale_order`.
+
+## Leaderboard, points and referrals (added Oct 2026)
+
+Vendors earn points for real activity; the vendor with the most points each Lagos-time week (Mon 00:00 to Sun 24:00) is
+Vendor of the Week. Everything is automatic and server-side, nothing is trusted from the browser.
+
+**Tables** (all RLS, writes only through `SECURITY DEFINER` functions): `points_rules` (the point values, editable at any
+time: `update points_rules set points = ...`), `points_ledger` (one row per awarded event, `unique(user_id, event_key)` makes
+every event count once), `points_weekly` (per user per week totals, in the realtime publication so the board updates live),
+`vendor_week_winners` (finalised weeks, `reward_status` pending/void), `referrals` (one row per referred user),
+`vendors.referral_code` (unique, issued automatically, never changes).
+
+**Point values** (see `points_rules`): completed paid sale 100 (orders under ₦1,000 skipped, same customer max 3 a week, taken back
+if the order is later cancelled/disputed), 5-star review 20, 4-star 10, 3-star 5 (order must be ₦1,000+; editing a rating moves the
+points), vendor joins with your code 50 (paid on verification), customer joins 20 (max 10/day), vendor-of-vendor 25, customer-of-vendor 10,
+referred vendor lists a product 2 (first 10), new follower 5 (max 25/day), social link tap 5 (once per platform, referrer gets 5 too),
+list a product 5 (max 5/week), complete shop profile 20 (once).
+
+**Engine**: `award_points`, `revoke_points`, `notify_points` (internal, no execute grants). Triggers: `trg_points_follow`,
+`trg_points_review`, `trg_points_order`, `trg_points_listing` (products + vendor_packages), `trg_points_vendor`,
+`trg_vendor_referral_code`. All trigger bodies swallow their own errors so points can never block an order or a follow.
+`notify_points` keeps one unread "+N points" notification per 3 hours (topped up, not spammed); `api/notify.js` does not email it.
+
+**RPCs** (browser): `get_points_leaderboard(period, limit)` (week/last_week/month/all), `get_my_points_summary()`,
+`get_my_points_activity(limit, before)`, `get_vendor_spotlight()`, `get_past_week_winners(limit)`, `validate_referral_code(code)`,
+`apply_referral_code(code)` (own account, within 7 days, once, not your own code/phone), `record_social_click(platform)`,
+`admin_adjust_points(user, points, note)` (admins, positive or negative). `finalize_points_weeks()` crowns winners lazily on any
+leaderboard read and by pg_cron job `levromart-finalize-points-week` (Sun 23:05 UTC).
+
+**Voiding things without deleting**: set `vendor_week_winners.reward_status = 'void'` to hide a winner; use `admin_adjust_points`
+with a negative value to take points back.

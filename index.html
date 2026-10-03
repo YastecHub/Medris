@@ -177,6 +177,8 @@
  Named <style id="..."> blocks (first 40): order-edit-and-buyer-location-ui, pickup-payment-message-polish, order-vendor-message-contact-ui, automatic-location-distance-ui, tour-vendor-lock-polish, final-tour-cart-polish-css, fast-ui-micro-polish, native-app-shell-css, levromart-search-and-rail-preferences, bottom-nav-scroll-motion, final-vendor-bottom-nav-and-profile-gesture-fix, dedicated-chat-page-fix, levromart-2026-09-07-polish, levi-input-placeholder-fix, package-experience-performance-fix, package-section-search-fix, self-purchase-speed-polish, offline-first-marketplace, instant-nav-speed-fix, support-request-polish, support-card-actions-refinement, floating-scroll-visibility, 2026-09-08-marketplace-polish, 2026-09-08-final-mobile-ux, 2026-09-08-user-ux-final, levi-cart-state-guard, home-loading-resilience, storefront-loading-resilience, 2026-09-08-final-chat-static-and-table, levromart-20260908-final-request-packages-chat-polish, levromart-20260908-absolute-final-overrides, levromart-final-v5-precision-fixes, product-discount-delivery-polish, no-account-deletion-ui, dashboard-dot-polish, vendor-custom-cover, levromart-live-accent-branding, levromart-levi-white-mark, levromart-media-action-sheet, levromart-2026-09-10-card-consistency-fix
 -->
 <head>
+<script>try{var __r=new URLSearchParams(location.search).get("ref");if(__r)localStorage.setItem("levro-ref-code",String(__r).trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,16));}catch(e){}</script>
+
   <!-- LEVROMART REAL FIX BUILD: orders-live-2026-09-05T10:54+01 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
@@ -7330,6 +7332,7 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <nav class="header-nav-links">
         <a class="header-nav-link active" data-view="home" href="#" onclick="fastNavigateHome(event);return false;">Browse</a>
         <a class="header-nav-link" data-view="vendors" href="#" onclick="navigate('vendors');return false;">Vendors</a>
+        <a class="header-nav-link" data-view="leaderboard" href="#" onclick="navigate('leaderboard');return false;">Leaderboard</a>
       </nav>
     </div>
     <button type="button" class="header-search-row" onclick="openSearchFromHeader()" aria-label="Search products, services, vendors">
@@ -7519,6 +7522,9 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
       <input type="text" id="loginCity" placeholder="City" value="Lagos" />
       <label>Phone</label>
       <input type="tel" id="loginPhone" placeholder="Phone" />
+      <label>Referral code <span class="muted" style="font-weight:500">(optional)</span></label>
+      <input type="text" id="loginReferral" placeholder="Invited by a vendor? Enter their code" autocomplete="off" autocapitalize="characters" maxlength="16" />
+      <p id="loginReferralMsg" class="muted" style="font-size:.75rem;margin:.2rem 0 .3rem;min-height:1em;"></p>
       <p class="muted" style="font-size:.75rem;margin:.15rem 0 .55rem;">Email is optional when registering. Your phone number can be used to sign in if you do not add an email.</p>
     </div>
 
@@ -9594,7 +9600,7 @@ function notificationSystemIconHtml(n) {
     appeal_submitted: ["fa-envelope-open-text", A], password_reset_request: ["fa-key", A], promoted_admin: ["fa-user-shield", V],
     stock_alert: ["fa-box-open", A], product_wishlisted: ["fa-heart", R], product_comment: ["fa-comment", B],
     comment_liked: ["fa-thumbs-up", B], comment_reply: ["fa-reply", B], vendor_follow: ["fa-user-plus", B],
-    vendor_follow_update: ["fa-bullhorn", G],
+    vendor_follow_update: ["fa-bullhorn", G], points: ["fa-trophy", A], points_winner: ["fa-crown", A],
   };
   let hit = map[T];
   if (T === "order_status_changed") {
@@ -11319,6 +11325,8 @@ function updateAuthUI() {
         { icon: "fa-boxes-stacked", tone: "blue", label: "My listings", action: "navigate('vendorProducts')" },
         { icon: "fa-receipt", tone: "amber", label: "Orders", badge: pend, action: "navigate('vendorOrders',{status:'all',perspective:'sales'})" },
         { icon: "fa-chart-line", tone: "green", label: "Earnings", action: "navigate('vendorEarnings')" },
+        { icon: "fa-trophy", tone: "amber", label: "Leaderboard", action: "navigate('leaderboard')" },
+        { icon: "fa-gift", tone: "violet", label: "Refer &amp; earn", action: "navigate('leaderboard',{tab:'refer'})" },
         { icon: "fa-user-group", tone: "violet", label: "Followers", action: "navigate('vendorFollowers')" },
         { icon: "fa-comment-dots", tone: "blue", label: "Messages", action: "navigate('messages')" },
         { icon: "fa-hand", tone: "pink", label: "Requests", badge: Number(requestOfferBadgeCount || 0), action: "navigate('vendorRequests')" },
@@ -11340,6 +11348,7 @@ function updateAuthUI() {
         { icon: "fa-receipt", tone: "amber", label: "My orders", badge: Number(buyerPendingOrderCount || 0), action: "navigate('buyerOrders')" },
         { icon: "fa-heart", tone: "pink", label: "Wishlist", action: "navigate('wishlist')" },
         { icon: "fa-user-group", tone: "violet", label: "Vendors you follow", action: "navigate('customerFollowing')" },
+        { icon: "fa-trophy", tone: "amber", label: "Vendor leaderboard", action: "navigate('leaderboard')" },
         { icon: "fa-comment-dots", tone: "blue", label: "Messages", action: "navigate('messages')" },
         { icon: "fa-bell", tone: "amber", label: "Notifications", action: "navigate('notifications')" },
         { icon: "fa-box-open", tone: "green", label: "Request an item", action: "navigate('requestEquipment')" },
@@ -12498,8 +12507,8 @@ function routeCacheKey(view, params = {}) {
   try { return `${view}:${JSON.stringify(params || {})}`; } catch (e) { return String(view); }
 }
 function navigationShellHtml(view) {
-  const titleMap={vendorDashboard:"My Shop",vendorProducts:"My Listings",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package",contactUs:"Contact us",search:"Search"};
-  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user",storefront:"fa-store",productDetail:"fa-box",packageDetail:"fa-boxes-stacked",contactUs:"fa-address-book",search:"fa-magnifying-glass"};
+  const titleMap={vendorDashboard:"My Shop",vendorProducts:"My Listings",vendorPackages:"Packages",vendorEarnings:"Earnings",vendorOrders:"Orders",buyerOrders:"My Orders",orderDetail:"Order",adminPanel:"Admin",wishlist:"Wishlist",cart:"Cart",supportRequest:"Support request",vendors:"Vendors",notifications:"Notifications",buyerProfile:"My Profile",storefront:"Storefront",productDetail:"Product",packageDetail:"Package",contactUs:"Contact us",leaderboard:"Leaderboard",search:"Search"};
+  const iconMap={vendorDashboard:"fa-store",vendorProducts:"fa-box",vendorPackages:"fa-boxes-stacked",vendorEarnings:"fa-sack-dollar",vendorOrders:"fa-clipboard-list",buyerOrders:"fa-clipboard-list",orderDetail:"fa-file-invoice",adminPanel:"fa-shield-halved",wishlist:"fa-heart",cart:"fa-cart-shopping",supportRequest:"fa-headset",vendors:"fa-store",buyerProfile:"fa-user",storefront:"fa-store",productDetail:"fa-box",packageDetail:"fa-boxes-stacked",contactUs:"fa-address-book",leaderboard:"fa-trophy",search:"fa-magnifying-glass"};
   const title=titleMap[view]||""; const icon=iconMap[view]||"fa-circle";
   if(!title)return "";
   if(view==="vendorProducts")return vlSkeletonHtml();
@@ -12838,6 +12847,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "requestEquipment": html = await renderRequestEquipment(); break;
       case "supportRequest": html = await renderSupportRequest(); break;
       case "contactUs": html = renderContactUs(); break;
+      case "leaderboard": html = renderLeaderboard(params); break;
       case "search": html = renderSearchPage(); break;
       case "vendorRequests": html = await renderVendorRequests(); break;
       case "terms": html = renderTerms(); break;
@@ -13010,6 +13020,8 @@ async function navigate(view, params = {}, pushHistory = true) {
   }
   if (!__levroRouteHadRenderError) hideLevromartSplash();
   if (view === "notifications") void renderNotifPanel();
+  if (view === "leaderboard") void window.initLeaderboardPage?.();
+  if (view === "home") setTimeout(() => window.mountHomeLeaderboardCard?.(), 120);
   if (view === "home") setTimeout(() => { try { filterHomeProducts(); } catch (_) {} }, 0);
   syncLeviFabVisibility();
   hideLevromartSplash();
@@ -20112,9 +20124,9 @@ function renderContactUs() {
     { icon: "fa-phone", label: "Phone", value: "+234 806 063 8179", href: "tel:+2348060638179" },
   ];
   const socials = [
-    { logo: "/social-instagram.jpg", label: "Instagram", href: "https://instagram.com/levromart" },
-    { logo: "/social-tiktok.jpg", label: "TikTok", href: "https://tiktok.com/@levromart" },
-    { logo: "/social-linkedin.png", label: "LinkedIn", href: "https://linkedin.com/company/levromart" },
+    { logo: "/social-instagram.jpg", label: "Instagram", key: "instagram", href: "https://instagram.com/levromart" },
+    { logo: "/social-tiktok.jpg", label: "TikTok", key: "tiktok", href: "https://tiktok.com/@levromart" },
+    { logo: "/social-linkedin.png", label: "LinkedIn", key: "linkedin", href: "https://linkedin.com/company/levromart" },
   ];
   return `<div class="contact-us-page">
     <h2><i class="fa-solid fa-address-book"></i> Contact us</h2>
@@ -20124,7 +20136,7 @@ function renderContactUs() {
     </div>
     <h3 class="contact-us-socials-title">Follow us</h3>
     <div class="contact-us-socials">
-      ${socials.map((s) => `<a class="contact-us-social-btn" href="${s.href}" target="_blank" rel="noopener"><img src="${s.logo}" alt="${esc(s.label)}" class="contact-us-social-logo" loading="lazy" decoding="async"><span>${esc(s.label)}</span></a>`).join("")}
+      ${socials.map((s) => `<a class="contact-us-social-btn" href="${s.href}" target="_blank" rel="noopener" onclick="window.trackSocialClick?.('${s.key}')"><img src="${s.logo}" alt="${esc(s.label)}" class="contact-us-social-logo" loading="lazy" decoding="async"><span>${esc(s.label)}</span></a>`).join("")}
     </div>
     <p class="muted contact-us-handle">@levromart on all platforms</p>
     <div class="contact-us-help">
@@ -31491,7 +31503,7 @@ window.addEventListener("popstate", (e) => {
   // the browser still knows exactly which Levromart screen was open.
   const persistedUrlView = urlParams.get("appView");
   if (persistedUrlView) {
-    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","orderHistory","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","contactUs","search","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
+    const allowedPersistedViews = new Set(["home","profile","vendors","storefront","productDetail","packageDetail","wishlist","cart","requestEquipment","buyerOrders","orderHistory","messages","settings","vendorDashboard","vendorProducts","vendorPackages","vendorEarnings","vendorOrders","vendorEditProfile","vendorRequests","notifications","adminPanel","adminCarousel","adminLinkLibrary","adminInventory","adminDisputes","adminSupportRequests","adminPeople","adminFeedback","adminUsers","adminFinance","adminLog","vendorSuggestionsInbox","customerFollowing","supportRequest","contactUs","leaderboard","search","terms","privacy","refundPolicy","suspended","adminMonthlyListings"]);
     let persistedParams = {};
     try { persistedParams = JSON.parse(urlParams.get("appParams") || "{}"); } catch (_) {}
     if (allowedPersistedViews.has(persistedUrlView)) {
@@ -46101,5 +46113,755 @@ function hideLeviFromPanel() {
   document.addEventListener("focusout", function(){ setTimeout(schedule, 60); setTimeout(schedule, 350); }, true);
   window.addEventListener("orientationchange", function(){ base = 0; setTimeout(schedule, 300); }, { passive: true });
   window.addEventListener("pagehide", function(){ document.body.classList.remove("levro-kbd-open"); }, { passive: true });
+})();
+</script>
+
+<style id="levromart-leaderboard">
+/* ===== Leaderboard, points and referrals ===== */
+.lb-page{--lb-gold:#e9a912;--lb-gold-2:#fbd45a;--lb-silver:#9aa6b6;--lb-silver-2:#dfe5ed;--lb-bronze:#b9703c;--lb-bronze-2:#efb88a;--lb-violet:#6d5ce8;--lb-violet-2:#8f81f5;--lb-sky:#4b9bf5;max-width:880px;margin:0 auto;padding:0 0 6.5rem}
+.lb-page *{box-sizing:border-box}
+.lb-hero{position:relative;overflow:hidden;border-radius:22px;padding:1.15rem 1.15rem 1.05rem;color:#fff;background:linear-gradient(135deg,#4b3fc9 0%,#6d5ce8 52%,#4b9bf5 130%);box-shadow:0 16px 36px rgba(75,63,201,.25);isolation:isolate}
+.lb-hero:before,.lb-hero:after{content:"";position:absolute;border-radius:50%;z-index:-1;background:rgba(255,255,255,.1)}
+.lb-hero:before{width:210px;height:210px;right:-70px;top:-90px}
+.lb-hero:after{width:130px;height:130px;right:42px;bottom:-72px;background:rgba(255,255,255,.07)}
+.lb-hero-top{display:flex;align-items:center;gap:.8rem}
+.lb-hero-badge{flex:0 0 auto;width:3rem;height:3rem;border-radius:16px;display:grid;place-items:center;background:linear-gradient(145deg,var(--lb-gold-2),var(--lb-gold));color:#5a3b00;font-size:1.35rem;box-shadow:0 8px 18px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.55)}
+.lb-hero h2{margin:0;font-size:1.28rem;line-height:1.2;color:#fff;font-weight:800;letter-spacing:-.01em}
+.lb-hero p{margin:.15rem 0 0;font-size:.84rem;color:rgba(255,255,255,.86);line-height:1.4}
+.lb-hero-meta{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.85rem}
+.lb-pill{display:inline-flex;align-items:center;gap:.4rem;padding:.34rem .7rem;border-radius:999px;font-size:.76rem;font-weight:700;background:rgba(255,255,255,.17);color:#fff;border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(4px)}
+.lb-pill i{font-size:.72rem}
+.lb-pill.gold{background:linear-gradient(135deg,var(--lb-gold-2),var(--lb-gold));color:#5a3b00;border-color:transparent}
+#lbConfetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4000}
+
+.lb-tabs{display:flex;gap:.2rem;overflow-x:auto;margin:.9rem 0 .85rem;border-bottom:1px solid var(--border);scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}
+.lb-tabs::-webkit-scrollbar{display:none}
+.lb-tab{flex:0 0 auto;display:inline-flex;align-items:center;gap:.4rem;padding:.7rem .85rem;background:none;border:0;border-bottom:2.5px solid transparent;margin-bottom:-1px;color:var(--text-muted);font:inherit;font-size:.86rem;font-weight:650;cursor:pointer;white-space:nowrap}
+.lb-tab i{font-size:.82rem;opacity:.85}
+.lb-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.lb-tab:active{transform:scale(.97)}
+
+.lb-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:1rem;box-shadow:var(--shadow);margin-bottom:.85rem}
+.lb-card h3{margin:0 0 .15rem;font-size:1rem;font-weight:750;color:var(--text)}
+.lb-card .lb-sub{margin:0 0 .75rem;font-size:.8rem;color:var(--text-muted);line-height:1.45}
+.lb-reward{display:flex;align-items:center;gap:.75rem;padding:.8rem .9rem;border-radius:16px;margin-bottom:.85rem;background:linear-gradient(135deg,color-mix(in srgb,var(--lb-gold) 15%,var(--card)),color-mix(in srgb,var(--lb-violet) 9%,var(--card)));border:1px solid color-mix(in srgb,var(--lb-gold) 34%,var(--border))}
+.lb-reward-ico{flex:0 0 auto;width:2.5rem;height:2.5rem;border-radius:13px;display:grid;place-items:center;background:linear-gradient(145deg,var(--lb-gold-2),var(--lb-gold));color:#5a3b00;font-size:1.05rem}
+.lb-reward strong{display:block;font-size:.9rem;color:var(--text)}
+.lb-reward span{display:block;font-size:.78rem;color:var(--text-muted);line-height:1.4;margin-top:.1rem}
+
+.lb-chips{display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;margin-bottom:.85rem;touch-action:pan-x}
+.lb-chips::-webkit-scrollbar{display:none}
+.lb-chip{flex:0 0 auto;padding:.45rem .85rem;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text-muted);font:inherit;font-size:.8rem;font-weight:650;cursor:pointer}
+.lb-chip.active{background:color-mix(in srgb,var(--lb-violet) 11%,var(--card));border-color:color-mix(in srgb,var(--lb-violet) 45%,var(--border));color:color-mix(in srgb,var(--lb-violet) 85%,var(--text))}
+.lb-chip.sep{margin-left:auto}
+
+/* podium */
+.lb-podium{display:grid;grid-template-columns:1fr 1.14fr 1fr;align-items:end;gap:.55rem;padding:.4rem .2rem 0;margin-bottom:.9rem}
+.lb-pod{display:flex;flex-direction:column;align-items:center;min-width:0;cursor:pointer;text-align:center}
+.lb-pod-crown{font-size:1.25rem;color:var(--lb-gold);height:1.5rem;filter:drop-shadow(0 3px 5px rgba(233,169,18,.45))}
+.lb-pod-av{position:relative;border-radius:50%;padding:3px;background:linear-gradient(145deg,var(--c1),var(--c2));box-shadow:0 8px 18px color-mix(in srgb,var(--c2) 40%,transparent)}
+.lb-pod-av img,.lb-pod-av .avatar-circle{display:block;border-radius:50%;background:var(--card);object-fit:cover;border:2px solid var(--card)}
+.lb-pod.first .lb-pod-av{--sz:5.1rem}.lb-pod.second .lb-pod-av,.lb-pod.third .lb-pod-av{--sz:4rem}
+.lb-pod-av img,.lb-pod-av .avatar-circle{width:var(--sz)!important;height:var(--sz)!important}
+.lb-pod-medal{position:absolute;right:-.15rem;bottom:-.15rem;width:1.55rem;height:1.55rem;border-radius:50%;display:grid;place-items:center;font-size:.72rem;font-weight:800;color:#fff;background:linear-gradient(145deg,var(--c1),var(--c2));border:2px solid var(--card);box-shadow:0 3px 8px rgba(0,0,0,.2)}
+.lb-pod-name{margin-top:.5rem;max-width:100%;font-size:.8rem;font-weight:750;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-pod-pts{font-size:.76rem;font-weight:700;color:var(--text-muted);margin-top:.05rem}
+.lb-pod-pts b{font-size:.98rem;color:var(--text);font-variant-numeric:tabular-nums}
+.lb-pod-block{width:100%;margin-top:.55rem;border-radius:14px 14px 0 0;display:grid;place-items:start center;padding-top:.45rem;color:#fff;font-size:1.5rem;font-weight:850;background:linear-gradient(180deg,var(--c1),var(--c2));box-shadow:inset 0 1px 0 rgba(255,255,255,.4);position:relative;overflow:hidden}
+.lb-pod.first .lb-pod-block{height:5.6rem}.lb-pod.second .lb-pod-block{height:4.2rem}.lb-pod.third .lb-pod-block{height:3.3rem}
+.lb-sheen{position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);transform:translateX(-130%);pointer-events:none}
+.lb-pod.first{--c1:var(--lb-gold-2);--c2:var(--lb-gold)}
+.lb-pod.second{--c1:var(--lb-silver-2);--c2:var(--lb-silver)}
+.lb-pod.third{--c1:var(--lb-bronze-2);--c2:var(--lb-bronze)}
+.lb-pod.first .lb-pod-block{color:#5a3b00}.lb-pod.second .lb-pod-block{color:#3b4656}.lb-pod.third .lb-pod-block{color:#5b3314}
+
+/* my position */
+.lb-me{display:flex;align-items:center;gap:.8rem;padding:.85rem .95rem;border-radius:18px;margin-bottom:.85rem;background:linear-gradient(135deg,color-mix(in srgb,var(--lb-violet) 12%,var(--card)),color-mix(in srgb,var(--lb-sky) 8%,var(--card)));border:1px solid color-mix(in srgb,var(--lb-violet) 30%,var(--border))}
+.lb-me-rank{flex:0 0 auto;min-width:2.9rem;height:2.9rem;border-radius:14px;display:grid;place-items:center;font-weight:850;font-size:1.05rem;color:#fff;background:linear-gradient(145deg,var(--lb-violet-2),var(--lb-violet));padding:0 .3rem}
+.lb-me-copy{min-width:0;flex:1}
+.lb-me-copy strong{display:block;font-size:.92rem;color:var(--text)}
+.lb-me-copy span{display:block;font-size:.78rem;color:var(--text-muted);margin-top:.08rem}
+.lb-me-bar{height:7px;border-radius:99px;background:color-mix(in srgb,var(--lb-violet) 14%,var(--border));margin-top:.5rem;overflow:hidden}
+.lb-me-bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--lb-violet),var(--lb-sky))}
+.lb-me-pts{flex:0 0 auto;text-align:right;font-size:.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+.lb-me-pts b{display:block;font-size:1.25rem;color:var(--text);letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums}
+
+/* list */
+.lb-list{display:flex;flex-direction:column;gap:.45rem}
+.lb-row{display:flex;align-items:center;gap:.7rem;padding:.65rem .75rem;border-radius:16px;background:var(--card);border:1px solid var(--border);cursor:pointer;transition:transform .12s}
+.lb-row:active{transform:scale(.99)}
+.lb-row.me{border-color:color-mix(in srgb,var(--lb-violet) 50%,var(--border));background:color-mix(in srgb,var(--lb-violet) 7%,var(--card));box-shadow:0 0 0 3px color-mix(in srgb,var(--lb-violet) 11%,transparent)}
+.lb-rank{flex:0 0 1.9rem;text-align:center;font-weight:800;font-size:.92rem;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.lb-row .avatar-circle,.lb-row img.lb-av{width:2.7rem!important;height:2.7rem!important;border-radius:50%;object-fit:cover;flex:0 0 auto}
+.lb-row-copy{min-width:0;flex:1}
+.lb-row-copy strong{display:flex;align-items:center;gap:.4rem;font-size:.9rem;color:var(--text);min-width:0}
+.lb-row-copy strong span.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-row-copy small{display:block;font-size:.74rem;color:var(--text-muted);margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-tag{flex:0 0 auto;font-size:.62rem;font-weight:800;letter-spacing:.03em;padding:.12rem .42rem;border-radius:99px;text-transform:uppercase}
+.lb-tag.you{background:var(--lb-violet);color:#fff}
+.lb-tag.fol{background:color-mix(in srgb,#e11d48 11%,var(--card));color:#be123c}
+.lb-row-pts{flex:0 0 auto;text-align:right;font-size:.7rem;font-weight:700;color:var(--text-muted)}
+.lb-row-pts b{display:block;font-size:1.02rem;color:var(--text);font-variant-numeric:tabular-nums}
+.lb-gap{font-weight:650}
+.lb-gap.up{color:#b45309}.lb-gap.down{color:#15803d}
+.lb-empty{padding:1.6rem 1rem;text-align:center;color:var(--text-muted)}
+.lb-empty i{display:block;font-size:1.8rem;margin-bottom:.6rem;color:var(--lb-violet)}
+.lb-empty strong{display:block;color:var(--text);margin-bottom:.25rem}
+
+/* my points */
+.lb-total{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.lb-total-num{font-size:2.5rem;line-height:1;font-weight:850;letter-spacing:-.02em;color:var(--text);font-variant-numeric:tabular-nums}
+.lb-total-num small{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.3rem}
+.lb-tier{display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .75rem;border-radius:99px;font-size:.78rem;font-weight:750;background:color-mix(in srgb,var(--lb-violet) 11%,var(--card));color:color-mix(in srgb,var(--lb-violet) 85%,var(--text));border:1px solid color-mix(in srgb,var(--lb-violet) 28%,var(--border))}
+.lb-tier-bar{height:8px;border-radius:99px;background:color-mix(in srgb,var(--text) 8%,transparent);overflow:hidden;margin-top:.85rem}
+.lb-tier-bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--lb-violet),var(--lb-sky))}
+.lb-tier-note{font-size:.76rem;color:var(--text-muted);margin-top:.4rem}
+.lb-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:.55rem;margin-bottom:.85rem}
+@media(min-width:620px){.lb-stats{grid-template-columns:repeat(4,1fr)}}
+.lb-stat{padding:.8rem .85rem;border-radius:16px;background:var(--card);border:1px solid var(--border)}
+.lb-stat small{display:flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+.lb-stat small i{font-size:.74rem}
+.lb-stat b{display:block;font-size:1.5rem;margin-top:.25rem;color:var(--text);font-variant-numeric:tabular-nums}
+.lb-stat:nth-child(1) small i{color:var(--lb-sky)}.lb-stat:nth-child(2) small i{color:var(--lb-violet)}.lb-stat:nth-child(3) small i{color:#16a34a}.lb-stat:nth-child(4) small i{color:var(--lb-gold)}
+.lb-streaks{display:flex;gap:.55rem;margin-bottom:.85rem;flex-wrap:wrap}
+.lb-streak{flex:1 1 9rem;display:flex;align-items:center;gap:.6rem;padding:.7rem .8rem;border-radius:16px;background:var(--card);border:1px solid var(--border)}
+.lb-streak i{width:2.1rem;height:2.1rem;border-radius:12px;display:grid;place-items:center;font-size:.95rem}
+.lb-streak.fire i{background:color-mix(in srgb,#f97316 15%,var(--card));color:#ea580c}
+.lb-streak.crown i{background:color-mix(in srgb,var(--lb-gold) 20%,var(--card));color:#b7791f}
+.lb-streak b{display:block;font-size:1.05rem;color:var(--text)}
+.lb-streak span{font-size:.74rem;color:var(--text-muted)}
+.lb-chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;margin-bottom:.5rem}
+.lb-seg{display:inline-flex;padding:.2rem;border-radius:99px;background:color-mix(in srgb,var(--text) 6%,transparent)}
+.lb-seg{flex:0 0 auto}.lb-seg button{white-space:nowrap;border:0;background:none;font:inherit;font-size:.76rem;font-weight:700;color:var(--text-muted);padding:.32rem .75rem;border-radius:99px;cursor:pointer}
+.lb-seg button.active{background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.lb-chart-read{font-size:.8rem;color:var(--text-muted);min-height:1.2rem}
+.lb-chart-read b{color:var(--text);font-size:.98rem}
+.lb-chart{width:100%;height:170px;display:block;touch-action:manipulation}
+.lb-bar{cursor:pointer;transform-box:fill-box;transform-origin:bottom}
+.lb-bar rect.b{fill:color-mix(in srgb,var(--lb-violet) 45%,var(--card))}
+.lb-bar rect.hit{fill:transparent}
+.lb-bar.on rect.b,.lb-bar:hover rect.b{fill:var(--lb-violet)}
+.lb-bar.today rect.b{fill:url(#lbBarGrad)}
+.lb-axis text{font-size:9.5px;fill:var(--text-muted);text-anchor:middle}
+.lb-grid line{stroke:var(--border);stroke-dasharray:3 4}
+.lb-bd{display:flex;flex-direction:column;gap:.65rem}
+.lb-bd-row{display:grid;grid-template-columns:2.1rem 1fr auto;gap:.3rem .65rem;align-items:center}
+.lb-bd-ico{width:2.1rem;height:2.1rem;border-radius:12px;display:grid;place-items:center;font-size:.9rem;background:color-mix(in srgb,var(--lb-violet) 12%,var(--card));color:var(--lb-violet);grid-row:span 2}
+.lb-bd-row strong{font-size:.86rem;color:var(--text)}
+.lb-bd-row strong small{font-weight:600;color:var(--text-muted);margin-left:.3rem}
+.lb-bd-row b{font-size:.92rem;color:var(--text);font-variant-numeric:tabular-nums}
+.lb-bd-track{grid-column:2/4;height:6px;border-radius:99px;background:color-mix(in srgb,var(--text) 7%,transparent);overflow:hidden}
+.lb-bd-track i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--lb-violet),var(--lb-sky))}
+.lb-act{display:flex;flex-direction:column}
+.lb-act-row{display:flex;align-items:center;gap:.7rem;padding:.65rem 0;border-bottom:1px solid var(--border)}
+.lb-act-row:last-child{border-bottom:0}
+.lb-act-ico{flex:0 0 auto;width:2.2rem;height:2.2rem;border-radius:12px;display:grid;place-items:center;font-size:.9rem;background:color-mix(in srgb,#16a34a 12%,var(--card));color:#15803d}
+.lb-act-copy{min-width:0;flex:1}
+.lb-act-copy strong{display:block;font-size:.86rem;color:var(--text)}
+.lb-act-copy small{display:block;font-size:.74rem;color:var(--text-muted);margin-top:.06rem}
+.lb-act-pts{font-weight:800;color:#15803d;font-size:.92rem;font-variant-numeric:tabular-nums}
+.lb-act-pts.neg{color:#dc2626}
+
+/* earn */
+.lb-rule-group{margin-bottom:1rem}
+.lb-rule-group h4{margin:0 0 .5rem;font-size:.74rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}
+.lb-rule{display:flex;align-items:flex-start;gap:.75rem;padding:.8rem .85rem;border-radius:16px;background:var(--card);border:1px solid var(--border);margin-bottom:.45rem}
+.lb-rule.top{border-color:color-mix(in srgb,var(--lb-gold) 50%,var(--border));background:linear-gradient(135deg,color-mix(in srgb,var(--lb-gold) 11%,var(--card)),var(--card))}
+.lb-rule-ico{flex:0 0 auto;width:2.4rem;height:2.4rem;border-radius:13px;display:grid;place-items:center;font-size:.95rem;background:color-mix(in srgb,var(--ic,var(--lb-violet)) 13%,var(--card));color:var(--ic,var(--lb-violet))}
+.lb-rule-copy{min-width:0;flex:1}
+.lb-rule-copy strong{display:flex;align-items:center;gap:.4rem;font-size:.9rem;color:var(--text)}
+.lb-rule-copy p{margin:.18rem 0 0;font-size:.78rem;line-height:1.45;color:var(--text-muted)}
+.lb-rule-pts{flex:0 0 auto;font-weight:850;font-size:1rem;color:var(--text);background:color-mix(in srgb,var(--ic,var(--lb-violet)) 10%,var(--card));padding:.2rem .6rem;border-radius:99px;font-variant-numeric:tabular-nums}
+.lb-social{display:flex;gap:.55rem;flex-wrap:wrap}
+.lb-social button{flex:1 1 8.5rem;display:flex;align-items:center;gap:.6rem;padding:.65rem .8rem;border-radius:14px;border:1px solid var(--border);background:var(--card);font:inherit;cursor:pointer;color:var(--text);font-weight:700;font-size:.86rem;text-align:left}
+.lb-social button img{width:1.9rem;height:1.9rem;border-radius:9px;object-fit:cover}
+.lb-social button small{display:block;font-size:.72rem;font-weight:700;color:var(--lb-violet)}
+.lb-social button.done small{color:#15803d}
+.lb-fair{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.45rem}
+.lb-fair li{display:flex;gap:.55rem;font-size:.8rem;line-height:1.45;color:var(--text-muted)}
+.lb-fair li i{color:var(--lb-violet);margin-top:.18rem;font-size:.78rem}
+
+/* refer */
+.lb-code{text-align:center;padding:1.15rem 1rem;border-radius:20px;color:#fff;background:linear-gradient(135deg,#4b3fc9,#6d5ce8 55%,#4b9bf5 135%);box-shadow:0 14px 32px rgba(75,63,201,.24);margin-bottom:.85rem;position:relative;overflow:hidden}
+.lb-code small{display:block;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.8)}
+.lb-code-val{display:inline-flex;align-items:center;gap:.6rem;margin:.5rem 0 .35rem;padding:.5rem 1rem;border-radius:16px;border:2px dashed rgba(255,255,255,.55);background:rgba(255,255,255,.12);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:850;font-size:1.9rem;letter-spacing:.14em;color:#fff;cursor:pointer;user-select:all}
+.lb-code p{margin:.2rem 0 .8rem;font-size:.8rem;color:rgba(255,255,255,.86)}
+.lb-code-actions{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+.lb-code-actions button{display:inline-flex;align-items:center;gap:.45rem;border:0;border-radius:12px;padding:.6rem .95rem;font:inherit;font-weight:750;font-size:.84rem;cursor:pointer;background:#fff;color:#4b3fc9}
+.lb-code-actions button.alt{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.lb-flow{display:flex;flex-direction:column;gap:.5rem}
+.lb-flow-step{display:flex;align-items:center;gap:.7rem;padding:.65rem .75rem;border-radius:14px;background:color-mix(in srgb,var(--text) 4%,transparent)}
+.lb-flow-step i.ic{width:2.1rem;height:2.1rem;border-radius:11px;display:grid;place-items:center;font-size:.85rem;background:color-mix(in srgb,var(--lb-violet) 13%,var(--card));color:var(--lb-violet);flex:0 0 auto}
+.lb-flow-step strong{font-size:.84rem;color:var(--text);display:block}
+.lb-flow-step span{font-size:.75rem;color:var(--text-muted)}
+.lb-flow-step em{margin-left:auto;font-style:normal;font-weight:850;color:#15803d;font-size:.9rem;white-space:nowrap}
+.lb-apply{display:flex;gap:.5rem}
+.lb-apply input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.lb-mini-list{display:flex;flex-direction:column}
+.lb-mini{display:flex;align-items:center;gap:.65rem;padding:.55rem 0;border-bottom:1px solid var(--border);font-size:.84rem;color:var(--text)}
+.lb-mini:last-child{border-bottom:0}
+.lb-mini i{width:1.9rem;height:1.9rem;border-radius:10px;display:grid;place-items:center;font-size:.8rem;background:color-mix(in srgb,var(--lb-sky) 13%,var(--card));color:#2563eb}
+.lb-mini small{margin-left:auto;color:var(--text-muted);font-size:.74rem}
+
+/* winners */
+.lb-champ{position:relative;overflow:hidden;text-align:center;padding:1.2rem 1rem;border-radius:20px;margin-bottom:.85rem;background:linear-gradient(160deg,color-mix(in srgb,var(--lb-gold) 20%,var(--card)),color-mix(in srgb,var(--lb-violet) 10%,var(--card)));border:1px solid color-mix(in srgb,var(--lb-gold) 40%,var(--border));cursor:pointer}
+.lb-champ .crown{font-size:1.5rem;color:var(--lb-gold);filter:drop-shadow(0 3px 6px rgba(233,169,18,.45))}
+.lb-champ .avatar-circle,.lb-champ img.lb-av{width:4.6rem!important;height:4.6rem!important;border-radius:50%;object-fit:cover;border:3px solid var(--lb-gold);margin:.4rem auto;display:block}
+.lb-champ h3{margin:.1rem 0;font-size:1.05rem;color:var(--text)}
+.lb-champ p{margin:.1rem 0 0;font-size:.8rem;color:var(--text-muted)}
+.lb-champ .lb-pill{margin-top:.55rem;background:linear-gradient(135deg,var(--lb-gold-2),var(--lb-gold));color:#5a3b00;border-color:transparent}
+.lb-win{display:flex;align-items:center;gap:.7rem;padding:.7rem .8rem;border-radius:16px;background:var(--card);border:1px solid var(--border);margin-bottom:.45rem;cursor:pointer}
+.lb-win .wk{flex:0 0 3.6rem;font-size:.72rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.03em;line-height:1.25}
+.lb-win .avatar-circle,.lb-win img.lb-av{width:2.6rem!important;height:2.6rem!important;border-radius:50%;object-fit:cover;flex:0 0 auto}
+.lb-win-copy{min-width:0;flex:1}
+.lb-win-copy strong{display:flex;align-items:center;gap:.35rem;font-size:.9rem;color:var(--text)}
+.lb-win-copy strong i{color:var(--lb-gold);font-size:.8rem}
+.lb-win-copy small{display:block;font-size:.74rem;color:var(--text-muted);margin-top:.08rem}
+.lb-win b{font-size:.98rem;color:var(--text)}
+
+/* skeleton */
+.lb-skel{border-radius:16px;height:3.6rem;margin-bottom:.45rem;background:linear-gradient(90deg,color-mix(in srgb,var(--text) 5%,transparent),color-mix(in srgb,var(--text) 10%,transparent),color-mix(in srgb,var(--text) 5%,transparent));background-size:200% 100%}
+
+/* home card */
+.home-lb-card{display:flex;align-items:center;gap:.8rem;margin:.2rem 0 .9rem;padding:.8rem .9rem;border-radius:18px;cursor:pointer;color:var(--text);background:linear-gradient(135deg,color-mix(in srgb,#6d5ce8 11%,var(--card)),color-mix(in srgb,#4b9bf5 8%,var(--card)));border:1px solid color-mix(in srgb,#6d5ce8 26%,var(--border));box-shadow:var(--shadow)}
+.home-lb-ico{flex:0 0 auto;width:2.7rem;height:2.7rem;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#fbd45a,#e9a912);color:#5a3b00;font-size:1.15rem}
+.home-lb-copy{min-width:0;flex:1}
+.home-lb-copy strong{display:block;font-size:.92rem}
+.home-lb-copy span{display:block;font-size:.76rem;color:var(--text-muted);margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-lb-av{display:flex;flex:0 0 auto}
+.home-lb-av img,.home-lb-av .avatar-circle{width:1.95rem!important;height:1.95rem!important;border-radius:50%;object-fit:cover;border:2px solid var(--card);margin-left:-.5rem}
+.home-lb-av>:first-child{margin-left:0}
+.home-lb-card>i.go{color:var(--text-muted);font-size:.8rem}
+@media(min-width:900px){.lb-page{padding-bottom:3rem}}
+#app .lb-page{max-width:900px!important;margin-left:auto!important;margin-right:auto!important}
+</style>
+<script id="levromart-leaderboard-js">
+/* ===== Leaderboard, points and referrals ===== */
+(function () {
+  // --- capture a referral link (?ref=CODE) as early as possible ---
+  try {
+    const u = new URL(location.href);
+    const r = u.searchParams.get("ref");
+    if (r) {
+      localStorage.setItem("levro-ref-code", String(r).trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16));
+      u.searchParams.delete("ref");
+      history.replaceState(history.state, "", u.pathname + (u.search || "") + u.hash);
+    }
+  } catch (_) {}
+
+  const TABS = [["ranking", "Ranking", "fa-ranking-star"], ["mine", "My points", "fa-chart-simple"], ["earn", "Earn points", "fa-bolt"], ["refer", "Refer & earn", "fa-gift"], ["winners", "Winners", "fa-crown"]];
+  const PERIODS = [["week", "This week"], ["last_week", "Last week"], ["month", "This month"], ["all", "All time"]];
+  const TIERS = [[0, "Starter", "fa-seedling"], [250, "Rising", "fa-arrow-trend-up"], [1000, "Pro", "fa-bolt"], [2500, "Elite", "fa-gem"], [6000, "Legend", "fa-crown"]];
+  const CAT = { sales: ["Sales", "#16a34a"], reputation: ["Reputation", "#e9a912"], referrals: ["Referrals", "#6d5ce8"], growth: ["Growth", "#2563eb"], shop: ["Your shop", "#0891b2"] };
+  const SOCIALS = [["instagram", "Instagram", "/social-instagram.jpg", "https://instagram.com/levromart"], ["tiktok", "TikTok", "/social-tiktok.jpg", "https://tiktok.com/@levromart"], ["linkedin", "LinkedIn", "/social-linkedin.png", "https://linkedin.com/company/levromart"]];
+  const LB = (window.__lb = { tab: "ranking", period: "week", filter: "all", boards: {}, summary: null, rules: null, winners: null, spot: null, activity: [], activityDone: false, chartMode: "daily", bdMode: "week", channel: null, tick: null, poll: null, prev: null, token: 0 });
+
+  const reduced = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) { return false; } };
+  const anim = (el, kf, opt) => { if (!el || !el.animate || reduced()) return null; try { return el.animate(kf, Object.assign({ fill: "both", easing: "cubic-bezier(.2,.8,.2,1)", duration: 600 }, opt || {})); } catch (_) { return null; } };
+  const num = (n) => Number(n || 0).toLocaleString("en-NG");
+  const $ = (id) => document.getElementById(id);
+  const isVendor = () => !!(LB.summary?.is_vendor || (typeof vendor !== "undefined" && vendor?.id));
+  const signedIn = () => !!(typeof session !== "undefined" && session?.user?.id);
+  const myId = () => (signedIn() ? session.user.id : null);
+  const av = (url, name, size, cls) => profileAvatarHtml(url, name || "Vendor", size, { extraClass: cls || "lb-av" });
+
+  function countUp(el, to, dur) {
+    if (!el) return;
+    to = Number(to || 0);
+    if (reduced() || to === 0) { el.textContent = num(to); return; }
+    const t0 = performance.now(); dur = dur || 800;
+    const step = (t) => { const p = Math.min(1, (t - t0) / dur); const e = 1 - Math.pow(1 - p, 3); el.textContent = num(Math.round(to * e)); if (p < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+
+  function tierFor(total) {
+    let i = 0; TIERS.forEach((t, k) => { if (total >= t[0]) i = k; });
+    const cur = TIERS[i], next = TIERS[i + 1] || null;
+    const pct = next ? Math.max(4, Math.min(100, ((total - cur[0]) / (next[0] - cur[0])) * 100)) : 100;
+    return { name: cur[1], icon: cur[2], next, pct, need: next ? next[0] - total : 0 };
+  }
+
+  function nextWeekEndMs() {
+    const l = new Date(Date.now() + 3600e3), dow = (l.getUTCDay() + 6) % 7;
+    return Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate() + (7 - dow), 0, 0, 0) - 3600e3;
+  }
+  function countdownText() {
+    let ms = nextWeekEndMs() - Date.now(); if (ms < 0) ms = 0;
+    const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4);
+    return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+  function tickCountdown() { document.querySelectorAll("[data-lb-countdown]").forEach((el) => { el.textContent = countdownText(); }); }
+
+  // ---------- data ----------
+  async function loadBoard(period, quiet) {
+    const key = period || LB.period;
+    try {
+      const { data, error } = await sb.rpc("get_points_leaderboard", { p_period: key, p_limit: 100 });
+      if (error) throw error;
+      LB.boards[key] = { rows: data || [], at: Date.now() };
+    } catch (e) { if (!LB.boards[key]) LB.boards[key] = { rows: [], at: Date.now(), failed: true }; console.warn("[Levromart] leaderboard", e); }
+  }
+  async function loadSummary() {
+    if (!signedIn()) { LB.summary = null; return; }
+    try { const { data, error } = await sb.rpc("get_my_points_summary"); if (error) throw error; LB.summary = data; } catch (e) { console.warn("[Levromart] points summary", e); }
+  }
+  async function loadRules() {
+    if (LB.rules) return;
+    try { const { data, error } = await sb.from("points_rules").select("*").eq("active", true).order("sort_order"); if (error) throw error; LB.rules = data || []; } catch (e) { console.warn("[Levromart] points rules", e); }
+  }
+  async function loadWinners() {
+    try {
+      const [w, s] = await Promise.all([sb.rpc("get_past_week_winners", { p_limit: 12 }), sb.rpc("get_vendor_spotlight")]);
+      LB.winners = w.data || []; LB.spot = s.data || null;
+    } catch (e) { LB.winners = LB.winners || []; }
+  }
+  async function loadActivity(more) {
+    if (!signedIn()) return;
+    const before = more && LB.activity.length ? LB.activity[LB.activity.length - 1].created_at : null;
+    try {
+      const { data, error } = await sb.rpc("get_my_points_activity", { p_limit: 30, p_before: before });
+      if (error) throw error;
+      LB.activity = more ? LB.activity.concat(data || []) : (data || []);
+      LB.activityDone = (data || []).length < 30;
+    } catch (e) { console.warn("[Levromart] points activity", e); }
+  }
+
+  // ---------- html ----------
+  function loginCta(msg) {
+    return `<div class="lb-card lb-empty"><i class="fa-solid fa-lock"></i><strong>Sign in to continue</strong><p>${esc(msg)}</p><button type="button" class="btn" onclick="showLogin()">Sign in</button></div>`;
+  }
+  function skeleton(n) { return Array.from({ length: n || 5 }, () => `<div class="lb-skel"></div>`).join(""); }
+
+  window.renderLeaderboard = function (params) {
+    const want = params?.tab === "activity" ? "mine" : params?.tab;
+    LB.tab = want && TABS.some((t) => t[0] === want) ? want : "ranking";
+    return `<div class="lb-page">
+      <div class="lb-hero">
+        <div class="lb-hero-top"><div class="lb-hero-badge"><i class="fa-solid fa-trophy"></i></div>
+          <div><h2>Vendor Leaderboard</h2><p>Stay active, earn points and win a full week of free promotion as Vendor of the Week.</p></div></div>
+        <div class="lb-hero-meta"><span class="lb-pill"><i class="fa-regular fa-clock"></i><span data-lb-countdown>${countdownText()}</span> left this week</span><span id="lbHeroPills"></span></div>
+      </div>
+      <div class="lb-tabs" role="tablist">${TABS.map((t) => `<button type="button" role="tab" class="lb-tab${LB.tab === t[0] ? " active" : ""}" data-tab="${t[0]}" onclick="lbSetTab('${t[0]}')"><i class="fa-solid ${t[2]}"></i>${t[1]}</button>`).join("")}</div>
+      <div id="lbBody">${skeleton(6)}</div>
+    </div>`;
+  };
+
+  function heroPills() {
+    const el = $("lbHeroPills"); if (!el) return;
+    const s = LB.summary;
+    if (!s?.signed_in) { el.innerHTML = ""; return; }
+    if (s.is_vendor) {
+      el.innerHTML = `${s.rank ? `<span class="lb-pill gold"><i class="fa-solid fa-medal"></i> You are #${s.rank}</span>` : ""}<span class="lb-pill"><i class="fa-solid fa-bolt"></i> ${num(s.week)} pts this week</span>`;
+    } else {
+      el.innerHTML = `<span class="lb-pill"><i class="fa-solid fa-star"></i> ${num(s.all)} pts</span>`;
+    }
+  }
+
+  function podiumHtml(rows) {
+    const t = rows.slice(0, 3);
+    const col = (r, cls, n) => {
+      if (!r) return `<div class="lb-pod ${cls}"></div>`;
+      return `<div class="lb-pod ${cls}" onclick="navigate('storefront',{vendorId:'${esc(r.vendor_id)}'})" role="link" tabindex="0">
+        <div class="lb-pod-crown">${n === 1 ? '<i class="fa-solid fa-crown"></i>' : ""}</div>
+        <div class="lb-pod-av">${av(r.logo_url, r.business_name, "var(--sz)", "lb-av")}<span class="lb-pod-medal">${n}</span></div>
+        <div class="lb-pod-name">${esc(r.business_name)}</div>
+        <div class="lb-pod-pts"><b data-count="${r.points}">0</b> pts</div>
+        <div class="lb-pod-block">${n}<span class="lb-sheen"></span></div>
+      </div>`;
+    };
+    return `<div class="lb-podium">${col(t[1], "second", 2)}${col(t[0], "first", 1)}${col(t[2], "third", 3)}</div>`;
+  }
+
+  function rowHtml(r, mine, followed) {
+    const gap = mine && !r.is_me && LB.period !== "all"
+      ? (r.rank < mine.rank ? `<span class="lb-gap up">${num(r.points - mine.points + 1)} pts to pass</span>` : `<span class="lb-gap down">${num(mine.points - r.points)} pts behind you</span>`)
+      : "";
+    const sub = [r.city, gap].filter(Boolean).join(" · ");
+    const isFol = followed.has(String(r.vendor_id));
+    return `<div class="lb-row${r.is_me ? " me" : ""}" data-row onclick="navigate('storefront',{vendorId:'${esc(r.vendor_id)}'})" role="link" tabindex="0">
+      <div class="lb-rank">${r.rank}</div>${av(r.logo_url, r.business_name, "2.7rem", "lb-av")}
+      <div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name)}</span>${r.is_me ? '<span class="lb-tag you">You</span>' : isFol ? '<span class="lb-tag fol"><i class="fa-solid fa-heart"></i> Following</span>' : ""}</strong>${sub ? `<small>${sub}</small>` : ""}</div>
+      <div class="lb-row-pts"><b>${num(r.points)}</b>pts</div></div>`;
+  }
+
+  function rankingHtml() {
+    const chips = `<div class="lb-chips">${PERIODS.map((p) => `<button type="button" class="lb-chip${LB.period === p[0] ? " active" : ""}" onclick="lbSetPeriod('${p[0]}')">${p[1]}</button>`).join("")}<button type="button" class="lb-chip sep${LB.filter === "following" ? " active" : ""}" onclick="lbSetFilter('${LB.filter === "following" ? "all" : "following"}')"><i class="fa-solid fa-heart"></i> Following</button></div>`;
+    const reward = `<div class="lb-reward"><div class="lb-reward-ico"><i class="fa-solid fa-gift"></i></div><div><strong>Finish first to be Vendor of the Week</strong><span>The winner gets full-time adverts all week on our social pages and the app carousel, plus special incentives.</span></div></div>`;
+    const b = LB.boards[LB.period];
+    if (!b) return reward + chips + skeleton(7);
+    const rows = b.rows || [];
+    if (!rows.length) return reward + chips + `<div class="lb-card lb-empty"><i class="fa-solid fa-ranking-star"></i><strong>No vendors on the board yet</strong><p>Check back soon.</p></div>`;
+    const followed = (window.followedVendorSet && window.followedVendorSet()) || new Set();
+    const mine = rows.find((r) => r.is_me) || null;
+    let html = reward + chips;
+    if (!isVendor() && signedIn()) html += `<div class="lb-me"><div class="lb-me-rank"><i class="fa-solid fa-heart"></i></div><div class="lb-me-copy"><strong>You decide who climbs</strong><span>Following, ordering from and reviewing a vendor earns them points. Tap Following to see the vendors you support.</span></div></div>`;
+    if (LB.filter === "following") {
+      const list = rows.filter((r) => followed.has(String(r.vendor_id)) || r.is_me);
+      html += list.length ? `<div class="lb-list">${list.map((r) => rowHtml(r, mine, followed)).join("")}</div>` : `<div class="lb-card lb-empty"><i class="fa-solid fa-heart"></i><strong>You are not following any ranked vendors</strong><p>Follow vendors from their shop pages and they will show up here.</p><button type="button" class="btn btn-outline" onclick="navigate('vendors')">Browse vendors</button></div>`;
+      return html;
+    }
+    const live = rows[0].points > 0;
+    if (live) html += podiumHtml(rows);
+    else html += `<div class="lb-card lb-empty"><i class="fa-solid fa-seedling"></i><strong>A fresh start</strong><p>${LB.period === "week" ? "No points yet this week. Complete a sale, get a follower or a 5-star review to take the lead." : "No points were earned in this period."}</p></div>`;
+    if (mine && isVendor()) {
+      const next = mine.rank > 1 ? rows[mine.rank - 2] : null;
+      let line, pct = 100;
+      if (LB.period === "last_week") line = `You finished #${mine.rank} with ${num(mine.points)} pts`;
+      else if (mine.points <= 0) { line = "Earn your first points to enter the race"; pct = 0; }
+      else if (!next) line = "You are leading. Keep going to win Vendor of the Week";
+      else { line = `${num(next.points - mine.points + 1)} pts to pass ${esc(next.business_name)}`; pct = Math.max(4, Math.min(100, (mine.points / Math.max(1, next.points)) * 100)); }
+      html += `<div class="lb-me"><div class="lb-me-rank">#${mine.rank}</div><div class="lb-me-copy"><strong>Your position</strong><span>${line}</span>${LB.period === "last_week" ? "" : `<div class="lb-me-bar"><i data-w="${pct}"></i></div>`}</div><div class="lb-me-pts"><b>${num(mine.points)}</b>pts</div></div>`;
+    }
+    const rest = live ? rows.slice(3) : rows;
+    html += `<div class="lb-list">${rest.map((r) => rowHtml(r, mine, followed)).join("")}</div>`;
+    return html;
+  }
+
+  function chartSvg(series, labels, tipFn) {
+    const W = 320, H = 170, base = 138, top = 14, n = series.length, max = Math.max(1, ...series.map((s) => s));
+    const slot = (W - 20) / n, bw = Math.min(26, slot * 0.62);
+    let bars = "";
+    series.forEach((v, i) => {
+      const h = v > 0 ? Math.max(4, (v / max) * (base - top)) : 2;
+      const x = 10 + i * slot + (slot - bw) / 2;
+      bars += `<g class="lb-bar${i === n - 1 ? " today" : ""}" data-i="${i}" onclick="lbChartTap(${i})"><rect class="b" x="${x.toFixed(1)}" y="${(base - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="5"/><rect class="hit" x="${(10 + i * slot).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${base + 20}"/></g>`;
+    });
+    const axis = labels.map((l, i) => `<text x="${(10 + i * slot + slot / 2).toFixed(1)}" y="${H - 8}">${esc(l)}</text>`).join("");
+    return `<svg class="lb-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Points over time"><defs><linearGradient id="lbBarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8f81f5"/><stop offset="1" stop-color="#4b9bf5"/></linearGradient></defs>
+      <g class="lb-grid"><line x1="10" x2="${W - 10}" y1="${top}" y2="${top}"/><line x1="10" x2="${W - 10}" y1="${(top + base) / 2}" y2="${(top + base) / 2}"/><line x1="10" x2="${W - 10}" y1="${base}" y2="${base}" style="stroke-dasharray:none"/></g>${bars}<g class="lb-axis">${axis}</g></svg>`;
+  }
+  function chartData() {
+    const s = LB.summary || {};
+    if (LB.chartMode === "weekly") {
+      const w = s.weekly || [];
+      return { series: w.map((x) => x.points), labels: w.map((x) => { const d = new Date(x.week_start + "T00:00:00"); return `${d.getDate()}/${d.getMonth() + 1}`; }), tips: w.map((x) => `Week of ${new Date(x.week_start + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`), total: w.reduce((a, x) => a + x.points, 0), range: "Last 8 weeks" };
+    }
+    const d = s.daily || [];
+    return { series: d.map((x) => x.points), labels: d.map((x) => "SMTWTFS"[new Date(x.date + "T00:00:00").getDay()]), tips: d.map((x) => new Date(x.date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })), total: d.reduce((a, x) => a + x.points, 0), range: "Last 14 days" };
+  }
+
+  function mineHtml() {
+    if (!signedIn()) return loginCta("Sign in to see your points, activity and progress.");
+    const s = LB.summary;
+    if (!s) return skeleton(6);
+    const t = tierFor(s.all);
+    const cd = chartData();
+    const bd = (LB.bdMode === "all" ? s.breakdown_all : s.breakdown_week) || [];
+    const bdMax = Math.max(1, ...bd.map((x) => Math.abs(x.points)));
+    let html = `<div class="lb-card"><div class="lb-total"><div class="lb-total-num"><small>All-time points</small><span data-count="${s.all}">0</span></div><span class="lb-tier"><i class="fa-solid ${t.icon}"></i> ${t.name}</span></div>
+      <div class="lb-tier-bar"><i data-w="${t.pct}"></i></div><div class="lb-tier-note">${t.next ? `${num(t.need)} more points to reach ${t.next[1]}` : "You have reached the top tier"}</div></div>
+      <div class="lb-stats">
+        <div class="lb-stat"><small><i class="fa-solid fa-sun"></i>Today</small><b data-count="${s.today}">0</b></div>
+        <div class="lb-stat"><small><i class="fa-solid fa-calendar-week"></i>This week</small><b data-count="${s.week}">0</b></div>
+        <div class="lb-stat"><small><i class="fa-solid fa-calendar-days"></i>This month</small><b data-count="${s.month}">0</b></div>
+        <div class="lb-stat"><small><i class="fa-solid fa-infinity"></i>All time</small><b data-count="${s.all}">0</b></div></div>
+      <div class="lb-streaks"><div class="lb-streak fire"><i class="fa-solid fa-fire"></i><div><b>${s.streak} day${s.streak === 1 ? "" : "s"}</b><span>Points streak</span></div></div>${s.is_vendor ? `<div class="lb-streak crown"><i class="fa-solid fa-crown"></i><div><b>${s.weeks_won}</b><span>Weeks won</span></div></div>` : ""}</div>
+      <div class="lb-card"><div class="lb-chart-head"><div><h3>Points over time</h3><div class="lb-chart-read" id="lbChartRead">${cd.range}: <b>${num(cd.total)} pts</b></div></div><div class="lb-seg"><button type="button" class="${LB.chartMode === "daily" ? "active" : ""}" onclick="lbSetChart('daily')">Daily</button><button type="button" class="${LB.chartMode === "weekly" ? "active" : ""}" onclick="lbSetChart('weekly')">Weekly</button></div></div>${chartSvg(cd.series, cd.labels)}</div>
+      <div class="lb-card"><div class="lb-chart-head"><div><h3>Points breakdown</h3></div><div class="lb-seg"><button type="button" class="${LB.bdMode === "week" ? "active" : ""}" onclick="lbSetBd('week')">This week</button><button type="button" class="${LB.bdMode === "all" ? "active" : ""}" onclick="lbSetBd('all')">All time</button></div></div>
+        ${bd.length ? `<div class="lb-bd" style="margin-top:.7rem">${bd.map((x) => `<div class="lb-bd-row"><span class="lb-bd-ico"><i class="fa-solid ${esc(x.icon)}"></i></span><strong>${esc(x.label)}<small>× ${x.count}</small></strong><b>+${num(x.points)}</b><div class="lb-bd-track"><i data-w="${Math.max(3, (Math.abs(x.points) / bdMax) * 100)}"></i></div></div>`).join("")}</div>` : `<p class="lb-sub" style="margin-top:.6rem">Nothing here yet. See the Earn points tab for ways to get started.</p>`}</div>
+      <div class="lb-card"><h3>Recent activity</h3><p class="lb-sub">Every point you earn, newest first.</p>
+        <div class="lb-act">${LB.activity.length ? LB.activity.map((a) => `<div class="lb-act-row"><span class="lb-act-ico"><i class="fa-solid ${esc(a.icon || "fa-star")}"></i></span><div class="lb-act-copy"><strong>${esc(a.note || a.label)}</strong><small>${esc(a.source_name ? a.source_name + " · " : "")}${timeAgo(a.created_at)}</small></div><span class="lb-act-pts${a.points < 0 ? " neg" : ""}">${a.points > 0 ? "+" : ""}${num(a.points)}</span></div>`).join("") : `<div class="lb-empty" style="padding:1rem 0"><strong>No activity yet</strong><p class="muted">Your points will appear here the moment you earn them.</p></div>`}</div>
+        ${LB.activity.length && !LB.activityDone ? `<button type="button" class="btn btn-outline btn-sm" style="margin-top:.7rem" onclick="lbMoreActivity()">Load more</button>` : ""}</div>`;
+    return html;
+  }
+
+  function earnHtml() {
+    const rules = LB.rules;
+    if (!rules) return skeleton(6);
+    const top = Math.max(...rules.map((r) => r.points));
+    const groups = {};
+    rules.forEach((r) => { (groups[r.category] = groups[r.category] || []).push(r); });
+    const done = new Set(LB.summary?.socials || []);
+    let html = `<div class="lb-card"><h3>How points work</h3><p class="lb-sub" style="margin:0">Points are added automatically the moment something happens on Levromart. Each week the vendor with the most points wins Vendor of the Week. A completed sale is the biggest earner.</p></div>`;
+    Object.keys(CAT).forEach((k) => {
+      const g = groups[k]; if (!g) return;
+      html += `<div class="lb-rule-group"><h4>${CAT[k][0]}</h4>${g.map((r) => {
+        const caps = [r.daily_cap ? `up to ${r.daily_cap} a day` : "", r.weekly_cap ? `up to ${r.weekly_cap} a week` : ""].filter(Boolean).join(", ");
+        return `<div class="lb-rule${r.points === top ? " top" : ""}" style="--ic:${CAT[k][1]}"><span class="lb-rule-ico"><i class="fa-solid ${esc(r.icon)}"></i></span><div class="lb-rule-copy"><strong>${esc(r.label)}${r.points === top ? '<span class="lb-tag you" style="background:var(--lb-gold);color:#5a3b00">Biggest</span>' : ""}</strong><p>${esc(r.description)}${caps ? ` (${caps})` : ""}</p></div><span class="lb-rule-pts">+${r.points}</span></div>`;
+      }).join("")}</div>`;
+    });
+    html += `<div class="lb-card"><h3>Follow Levromart, earn points</h3><p class="lb-sub">Tap a platform to open it and collect your points. Each platform counts once, and the vendor who referred you earns too.</p>
+      <div class="lb-social">${SOCIALS.map((s) => `<button type="button" class="${done.has(s[0]) ? "done" : ""}" onclick="lbSocial('${s[0]}')"><img src="${s[2]}" alt="" loading="lazy"><span>${s[1]}<small>${done.has(s[0]) ? "Points collected" : "+5 points"}</small></span></button>`).join("")}</div></div>
+      <div class="lb-card"><h3>Fair play</h3><p class="lb-sub">Keeping the board honest.</p><ul class="lb-fair">
+        <li><i class="fa-solid fa-circle-check"></i>Only real activity counts. You cannot earn points from your own orders or by following or reviewing yourself.</li>
+        <li><i class="fa-solid fa-circle-check"></i>Sales under ₦1,000 do not count, and sales to the same customer count up to 3 times a week.</li>
+        <li><i class="fa-solid fa-circle-check"></i>Each event is counted once: following, unfollowing and following again earns nothing extra.</li>
+        <li><i class="fa-solid fa-circle-check"></i>If an order is cancelled or disputed after completion, its points are taken back.</li>
+        <li><i class="fa-solid fa-circle-check"></i>Referral codes must be added within 7 days of creating an account. Vendor referrals pay out once the new vendor is verified.</li>
+        <li><i class="fa-solid fa-circle-check"></i>Levromart may remove points earned unfairly. Ties are decided by completed sales, then by who reached the points first.</li></ul></div>`;
+    return html;
+  }
+
+  function referLink(code) { return `${location.origin}/?ref=${encodeURIComponent(code)}`; }
+  function referHtml() {
+    if (!signedIn()) return loginCta("Sign in to get your referral code and track who you have brought in.");
+    const s = LB.summary;
+    if (!s) return skeleton(5);
+    const rules = Object.fromEntries((LB.rules || []).map((r) => [r.kind, r.points]));
+    const P = (k, d) => rules[k] ?? d;
+    const refs = s.referrals || {};
+    let html = "";
+    if (s.is_vendor && s.referral_code) {
+      html += `<div class="lb-code"><small>Your referral code</small><div class="lb-code-val" onclick="lbCopy('${esc(s.referral_code)}','Referral code copied')">${esc(s.referral_code)}</div><p>Share it with customers and other vendors. You earn every time it is used.</p>
+        <div class="lb-code-actions"><button type="button" onclick="lbCopy('${esc(referLink(s.referral_code))}','Referral link copied')"><i class="fa-regular fa-copy"></i> Copy link</button><button type="button" class="alt" onclick="lbShareCode()"><i class="fa-brands fa-whatsapp"></i> Share</button></div></div>
+        <div class="lb-stats"><div class="lb-stat"><small><i class="fa-solid fa-user-plus"></i>Customers</small><b data-count="${refs.referred_customers || 0}">0</b></div><div class="lb-stat"><small><i class="fa-solid fa-store"></i>Vendors</small><b data-count="${refs.referred_vendors || 0}">0</b></div><div class="lb-stat"><small><i class="fa-solid fa-sitemap"></i>Second level</small><b data-count="${refs.second_level || 0}">0</b></div><div class="lb-stat"><small><i class="fa-solid fa-star"></i>Points earned</small><b data-count="${refs.points_earned || 0}">0</b></div></div>`;
+    } else {
+      html += `<div class="lb-card"><h3>Refer and earn</h3><p class="lb-sub" style="margin:0">Referral codes belong to vendors. Open your own shop on Levromart to get a code, earn points every time it is used and compete for Vendor of the Week.</p><button type="button" class="btn" style="margin-top:.75rem" onclick="navigate('vendorApply')">Become a vendor</button></div>`;
+    }
+    html += `<div class="lb-card"><h3>How referral points work</h3><p class="lb-sub">Points arrive on their own, nothing to claim.</p><div class="lb-flow">
+      <div class="lb-flow-step"><i class="ic fa-solid fa-store"></i><div><strong>A vendor joins with your code</strong><span>Paid once they are verified</span></div><em>+${P("ref_vendor", 50)}</em></div>
+      <div class="lb-flow-step"><i class="ic fa-solid fa-user-plus"></i><div><strong>A customer joins with your code</strong><span>Vendors earn more than customers</span></div><em>+${P("ref_customer", 20)}</em></div>
+      <div class="lb-flow-step"><i class="ic fa-solid fa-box-open"></i><div><strong>Your vendor lists a product</strong><span>First 10 listings per vendor</span></div><em>+${P("ref_vendor_product", 2)} each</em></div>
+      <div class="lb-flow-step"><i class="ic fa-solid fa-sitemap"></i><div><strong>Your vendor refers a vendor</strong><span>Second level, paid when verified</span></div><em>+${P("ref2_vendor", 25)}</em></div>
+      <div class="lb-flow-step"><i class="ic fa-solid fa-people-arrows"></i><div><strong>Your vendor refers a customer</strong><span>Second level</span></div><em>+${P("ref2_customer", 10)}</em></div>
+      <div class="lb-flow-step"><i class="ic fa-solid fa-hashtag"></i><div><strong>Your referral follows our socials</strong><span>Once per platform, they earn too</span></div><em>+${P("ref_social", 5)}</em></div></div></div>`;
+    if (s.is_vendor && (refs.recent || []).length) {
+      html += `<div class="lb-card"><h3>Recently joined with your code</h3><div class="lb-mini-list" style="margin-top:.4rem">${refs.recent.map((r) => `<div class="lb-mini"><i class="fa-solid ${r.role === "vendor" ? "fa-store" : "fa-user"}"></i><span>${esc(r.name)} <span class="muted">· ${r.role}</span></span><small>${timeAgo(r.at)}</small></div>`).join("")}</div></div>`;
+    }
+    if (refs.referred_by) {
+      html += `<div class="lb-card"><h3>You joined with a referral</h3><p class="lb-sub" style="margin:0">Referred by <strong>${esc(refs.referred_by)}</strong>.</p></div>`;
+    } else {
+      html += `<div class="lb-card"><h3>Have a referral code?</h3><p class="lb-sub">Add it within 7 days of creating your account so the vendor who invited you gets credit.</p><div class="lb-apply"><input id="lbApplyInput" placeholder="Enter code" maxlength="16" autocomplete="off" value="${esc(localStorage.getItem("levro-ref-code") || "")}"><button type="button" class="btn" onclick="lbApplyCode()">Apply</button></div></div>`;
+    }
+    return html;
+  }
+
+  function winnersHtml() {
+    if (!LB.winners) return skeleton(5);
+    const w = LB.spot?.winner;
+    let html = "";
+    if (w) {
+      html += `<div class="lb-champ" onclick="navigate('storefront',{vendorId:'${esc(w.vendor_id)}'})"><div class="crown"><i class="fa-solid fa-crown"></i></div>${av(w.logo_url, w.business_name, "4.6rem", "lb-av")}<h3>${esc(w.business_name)}</h3><p>${esc([w.city, w.review_count ? `${Number(w.avg_rating || 0).toFixed(1)} ★ (${w.review_count})` : ""].filter(Boolean).join(" · "))}</p><span class="lb-pill"><i class="fa-solid fa-trophy"></i> Vendor of the Week · ${num(w.points)} pts</span></div>`;
+    }
+    html += `<div class="lb-card"><h3>Hall of fame</h3><p class="lb-sub" style="margin:0">A new Vendor of the Week is crowned every Monday, based on the previous week's points.</p></div>`;
+    if (!LB.winners.length) return html + `<div class="lb-card lb-empty"><i class="fa-solid fa-crown"></i><strong>The first winner is coming soon</strong><p>The week ends in <span data-lb-countdown>${countdownText()}</span>. Every point counts.</p></div>`;
+    html += LB.winners.map((x) => {
+      const d = new Date(x.week_start + "T00:00:00"), e = new Date(d.getTime() + 6 * 864e5);
+      const f = (z) => z.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      const others = (x.top3 || []).slice(1).map((o) => esc(o.business_name)).join(", ");
+      return `<div class="lb-win" onclick="navigate('storefront',{vendorId:'${esc(x.vendor_id)}'})"><div class="wk">${f(d)}<br>to ${f(e)}</div>${av(x.logo_url, x.business_name, "2.6rem", "lb-av")}<div class="lb-win-copy"><strong>${esc(x.business_name)} <i class="fa-solid fa-crown"></i></strong>${others ? `<small>Also on the podium: ${others}</small>` : ""}</div><b>${num(x.points)}</b></div>`;
+    }).join("");
+    return html;
+  }
+
+  // ---------- render + animate ----------
+  function renderBody(animate) {
+    const body = $("lbBody"); if (!body) return;
+    const fn = { ranking: rankingHtml, mine: mineHtml, earn: earnHtml, refer: referHtml, winners: winnersHtml }[LB.tab] || rankingHtml;
+    body.innerHTML = fn();
+    heroPills();
+    postRender(animate);
+  }
+  function postRender(animate) {
+    const body = $("lbBody"); if (!body) return;
+    body.querySelectorAll("[data-count]").forEach((el) => countUp(el, el.dataset.count, animate ? 850 : 1));
+    body.querySelectorAll("[data-w]").forEach((el) => {
+      el.style.width = el.dataset.w + "%"; el.style.transformOrigin = "left";
+      if (animate) anim(el, [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], { duration: 900, delay: 120 });
+    });
+    if (animate) {
+      body.querySelectorAll(".lb-pod").forEach((p, i) => {
+        const order = p.classList.contains("first") ? 2 : p.classList.contains("second") ? 0 : 1;
+        anim(p, [{ opacity: 0, transform: "translateY(34px)" }, { opacity: 1, transform: "none" }], { duration: 650, delay: order * 140 });
+        const blk = p.querySelector(".lb-pod-block"); if (blk) { blk.style.transformOrigin = "bottom"; anim(blk, [{ transform: "scaleY(.05)" }, { transform: "scaleY(1)" }], { duration: 750, delay: order * 140 }); }
+      });
+      body.querySelectorAll("[data-row],.lb-win,.lb-rule,.lb-act-row").forEach((el, i) => { if (i < 14) anim(el, [{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: 420, delay: 80 + i * 35 }); });
+      body.querySelectorAll(".lb-bar").forEach((g, i) => anim(g, [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }], { duration: 650, delay: i * 28 }));
+    }
+    body.querySelectorAll(".lb-pod.first .lb-pod-crown i,.lb-champ .crown i").forEach((c) => anim(c, [{ transform: "translateY(0) rotate(-6deg)" }, { transform: "translateY(-5px) rotate(6deg)" }], { duration: 1400, iterations: Infinity, direction: "alternate", easing: "ease-in-out" }));
+    body.querySelectorAll(".lb-pod.first .lb-sheen").forEach((s) => anim(s, [{ transform: "translateX(-130%)" }, { transform: "translateX(130%)" }], { duration: 1800, iterations: Infinity, delay: 900, easing: "ease-in-out" }));
+    body.querySelectorAll(".lb-pod.first .lb-pod-av").forEach((s) => anim(s, [{ boxShadow: "0 8px 18px rgba(233,169,18,.35)" }, { boxShadow: "0 8px 30px rgba(233,169,18,.75)" }], { duration: 1500, iterations: Infinity, direction: "alternate", easing: "ease-in-out" }));
+  }
+
+  function confetti() {
+    if (reduced()) return;
+    const old = $("lbConfetti"); if (old) old.remove();
+    const c = document.createElement("canvas"); c.id = "lbConfetti"; document.body.appendChild(c);
+    const ctx = c.getContext("2d"); const dpr = Math.min(2, window.devicePixelRatio || 1);
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+    const cols = ["#fbd45a", "#e9a912", "#8f81f5", "#4b9bf5", "#34d399", "#f472b6"];
+    const ps = Array.from({ length: 110 }, () => ({ x: innerWidth / 2 + (Math.random() - .5) * 120, y: innerHeight * .35, vx: (Math.random() - .5) * 11, vy: -Math.random() * 11 - 3, s: 5 + Math.random() * 6, r: Math.random() * 6, vr: (Math.random() - .5) * .4, c: cols[(Math.random() * cols.length) | 0] }));
+    const t0 = performance.now();
+    (function frame(t) {
+      const el = t - t0; ctx.clearRect(0, 0, innerWidth, innerHeight);
+      ps.forEach((p) => { p.vy += .28; p.x += p.vx; p.y += p.vy; p.vx *= .992; p.r += p.vr; ctx.save(); ctx.globalAlpha = Math.max(0, 1 - el / 2600); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 3, p.s, p.s * .6); ctx.restore(); });
+      if (el < 2700) requestAnimationFrame(frame); else c.remove();
+    })(t0);
+  }
+  window.lbConfetti = confetti;
+
+  // ---------- actions ----------
+  window.lbSetTab = function (tab) {
+    LB.tab = tab;
+    document.querySelectorAll(".lb-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+    renderBody(true);
+    if (tab === "mine") { if (!LB.activity.length) loadActivity(false).then(() => { if (LB.tab === "mine") renderBody(false); }); }
+    if (tab === "winners" && !LB.winners) loadWinners().then(() => { if (LB.tab === "winners") renderBody(true); });
+    if (tab === "earn" || tab === "refer") loadRules().then(() => { if (LB.tab === tab) renderBody(false); });
+    document.querySelector(".lb-tab.active")?.scrollIntoView({ block: "nearest", inline: "center" });
+  };
+  window.lbSetPeriod = async function (p) {
+    LB.period = p; renderBody(false);
+    if (!LB.boards[p] || Date.now() - LB.boards[p].at > 20000) { await loadBoard(p); if (LB.tab === "ranking" && LB.period === p) renderBody(true); }
+    else renderBody(true);
+  };
+  window.lbSetFilter = function (f) { LB.filter = f; renderBody(false); };
+  window.lbSetChart = function (m) { LB.chartMode = m; renderBody(false); const g = document.querySelectorAll(".lb-bar"); g.forEach((x, i) => anim(x, [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }], { duration: 550, delay: i * 22 })); };
+  window.lbSetBd = function (m) { LB.bdMode = m; renderBody(true); };
+  window.lbChartTap = function (i) {
+    const cd = chartData();
+    document.querySelectorAll(".lb-bar").forEach((g) => g.classList.toggle("on", Number(g.dataset.i) === i));
+    const r = $("lbChartRead"); if (r) r.innerHTML = `${esc(cd.tips[i])}: <b>${num(cd.series[i])} pts</b>`;
+  };
+  window.lbMoreActivity = async function () { await loadActivity(true); if (LB.tab === "mine") renderBody(false); };
+  window.lbCopy = async function (text, msg) {
+    try { await navigator.clipboard.writeText(text); showToast(msg || "Copied.", "success"); }
+    catch (_) { try { const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); showToast(msg || "Copied.", "success"); } catch (e) { showToast(text, "info"); } }
+  };
+  window.lbShareCode = function () {
+    const code = LB.summary?.referral_code; if (!code) return;
+    const text = `Join me on Levromart, Nigeria's marketplace to buy, sell and connect. Use my referral code ${code}: ${referLink(code)}`;
+    if (navigator.share) { navigator.share({ title: "Join Levromart", text }).catch(() => {}); return; }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  };
+  async function recordSocial(platform) {
+    if (!signedIn()) return null;
+    try { const { data } = await sb.rpc("record_social_click", { p_platform: platform }); return data; } catch (_) { return null; }
+  }
+  window.trackSocialClick = async function (platform) {
+    const r = await recordSocial(platform);
+    if (r?.awarded > 0) showToast(`+${r.awarded} points for following us on ${platform[0].toUpperCase() + platform.slice(1)}.`, "success");
+  };
+  window.lbSocial = async function (platform) {
+    const s = SOCIALS.find((x) => x[0] === platform); if (!s) return;
+    window.open(s[3], "_blank", "noopener,noreferrer");
+    if (!signedIn()) { showToast("Sign in first to collect points for following us.", "info"); return; }
+    const r = await recordSocial(platform);
+    if (r?.awarded > 0) { showToast(`+${r.awarded} points. Thanks for following us.`, "success"); await loadSummary(); if (LB.tab === "earn") renderBody(false); heroPills(); }
+  };
+  window.lbApplyCode = async function () {
+    const code = String($("lbApplyInput")?.value || "").trim();
+    if (!code) { showToast("Enter a referral code first.", "info"); return; }
+    const { data, error } = await sb.rpc("apply_referral_code", { p_code: code });
+    if (error || !data?.ok) { showToast(data?.message || "Could not apply that code.", "error"); return; }
+    try { localStorage.removeItem("levro-ref-code"); } catch (_) {}
+    showToast(`Referral applied. You joined with ${data.business_name}'s code.`, "success");
+    await loadSummary(); if (LB.tab === "refer") renderBody(false);
+  };
+
+  // A code from a ?ref= link or the sign-up form is applied once the account exists.
+  window.lbApplyPendingReferral = async function () {
+    let code = ""; try { code = localStorage.getItem("levro-ref-code") || ""; } catch (_) {}
+    if (!code || !signedIn()) return;
+    try {
+      const { data } = await sb.rpc("apply_referral_code", { p_code: code });
+      if (data?.ok) showToast(`Welcome! You joined with ${data.business_name}'s referral code.`, "success");
+      if (data?.ok || ["already_used", "too_late", "own_code", "invalid"].includes(data?.error)) localStorage.removeItem("levro-ref-code");
+    } catch (_) {}
+  };
+
+  // ---------- live ----------
+  function stopLive() {
+    try { if (LB.channel) sb.removeChannel(LB.channel); } catch (_) {}
+    LB.channel = null; clearInterval(LB.tick); clearInterval(LB.poll); LB.tick = LB.poll = null; clearTimeout(LB.deb);
+  }
+  async function refreshLive() {
+    if (currentView !== "leaderboard") { stopLive(); return; }
+    const before = LB.summary;
+    await Promise.all([loadBoard(LB.period, true), loadBoard("week", true), loadSummary()]);
+    if (currentView !== "leaderboard") return;
+    const after = LB.summary;
+    if (before && after && after.all > before.all) {
+      showToast(`+${num(after.all - before.all)} points`, "success");
+      if (after.rank && before.rank && after.rank < before.rank && after.rank <= 3) confetti();
+    }
+    if (LB.tab === "mine") loadActivity(false).then(() => { if (LB.tab === "mine") renderBody(false); });
+    renderBody(false);
+  }
+  function startLive() {
+    stopLive();
+    LB.tick = setInterval(tickCountdown, 30000);
+    LB.poll = setInterval(() => { if (!document.hidden) refreshLive(); }, 60000);
+    try {
+      LB.channel = sb.channel("lb-live-" + Date.now()).on("postgres_changes", { event: "*", schema: "public", table: "points_weekly" }, () => {
+        clearTimeout(LB.deb); LB.deb = setTimeout(refreshLive, 900);
+      }).subscribe();
+    } catch (_) {}
+  }
+
+  window.initLeaderboardPage = async function () {
+    const tok = ++LB.token;
+    startLive();
+    const wantSummary = signedIn();
+    const tasks = [loadBoard(LB.period), loadRules()];
+    if (wantSummary) tasks.push(loadSummary());
+    if (LB.tab === "winners") tasks.push(loadWinners());
+    if (LB.tab === "mine") tasks.push(loadActivity(false));
+    // paint cached data straight away while the fresh copies load
+    if (LB.boards[LB.period]) renderBody(false);
+    await Promise.all(tasks);
+    if (tok !== LB.token || currentView !== "leaderboard") return;
+    renderBody(true);
+    const s = LB.summary;
+    try {
+      const key = "levro-lb-celebrated-" + (s?.week_start || "");
+      if (s?.is_vendor && s.rank === 1 && s.week > 0 && !sessionStorage.getItem(key)) { sessionStorage.setItem(key, "1"); setTimeout(confetti, 500); }
+    } catch (_) {}
+    if (!LB.winners && LB.tab !== "winners") loadWinners();
+  };
+
+  // ---------- home card ----------
+  let spotAt = 0, spotBusy = false;
+  async function homeSpot() {
+    if (LB.spot && Date.now() - spotAt < 90000) return LB.spot;
+    if (spotBusy) return LB.spot;
+    spotBusy = true;
+    try { const { data } = await sb.rpc("get_vendor_spotlight"); if (data) { LB.spot = data; spotAt = Date.now(); } } catch (_) {} finally { spotBusy = false; }
+    return LB.spot;
+  }
+  function homeCardHtml(spot) {
+    const w = spot?.winner, leaders = spot?.leaders || [];
+    const faces = (w ? [w] : leaders).slice(0, 3).map((x) => av(x.logo_url, x.business_name, "1.95rem", "lb-av")).join("") || "";
+    const title = w ? `Vendor of the Week: ${esc(w.business_name)}` : "Vendor Leaderboard";
+    const lead = leaders[0];
+    const sub = w ? `New race ends in ${countdownText()} · tap to see the board` : lead ? `Ends in ${countdownText()} · ${esc(lead.business_name)} leads with ${num(lead.points)} pts` : `Ends in ${countdownText()} · see who is most active`;
+    return `<div class="home-lb-card" id="homeLbCard" role="link" tabindex="0" onclick="navigate('leaderboard')"><div class="home-lb-ico"><i class="fa-solid ${w ? "fa-crown" : "fa-trophy"}"></i></div><div class="home-lb-copy"><strong>${title}</strong><span>${sub}</span></div><div class="home-lb-av">${faces}</div><i class="fa-solid fa-chevron-right go"></i></div>`;
+  }
+  async function mountHomeCard() {
+    if (currentView !== "home") return;
+    const app = $("app");
+    const anchor = () => app?.querySelector(":scope > .levro-home-hero") || app?.querySelector(":scope > .levro-home-cat-rail");
+    if (!anchor() || $("homeLbCard")) return;
+    const spot = await homeSpot();
+    if (currentView !== "home" || $("homeLbCard")) return;
+    const a2 = anchor(); if (!a2) return;
+    a2.insertAdjacentHTML(a2.classList.contains("levro-home-hero") ? "afterend" : "beforebegin", homeCardHtml(spot));
+  }
+  window.mountHomeLeaderboardCard = mountHomeCard;
+  try {
+    const host = $("app");
+    if (host) new MutationObserver(() => { if (currentView === "home" && !$("homeLbCard")) { clearTimeout(window.__lbHomeT); window.__lbHomeT = setTimeout(mountHomeCard, 60); } }).observe(host, { childList: true });
+  } catch (_) {}
+
+  // ---------- sign-up field + referral application ----------
+  function wireSignup() {
+    const input = $("loginReferral"); if (!input) return;
+    try { const c = localStorage.getItem("levro-ref-code"); if (c) input.value = c; } catch (_) {}
+    let t;
+    input.addEventListener("input", () => {
+      input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+      try { input.value ? localStorage.setItem("levro-ref-code", input.value) : localStorage.removeItem("levro-ref-code"); } catch (_) {}
+      const msg = $("loginReferralMsg"); if (!msg) return;
+      clearTimeout(t); msg.textContent = "";
+      if (input.value.length < 4) return;
+      t = setTimeout(async () => {
+        try { const { data } = await sb.rpc("validate_referral_code", { p_code: input.value }); msg.style.color = data?.valid ? "#15803d" : "#b45309"; msg.textContent = data?.valid ? `Referred by ${data.business_name}` : "Code not found yet. Check the spelling."; } catch (_) {}
+      }, 350);
+    });
+    if (input.value) input.dispatchEvent(new Event("input"));
+  }
+  wireSignup();
+  try { sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN") setTimeout(() => window.lbApplyPendingReferral?.(), 2500); }); } catch (_) {}
+  setTimeout(() => { if (typeof session !== "undefined" && session) window.lbApplyPendingReferral?.(); }, 4000);
 })();
 </script>

@@ -120,7 +120,8 @@ module.exports = async function handler(req, res) {
     }
 
     // Calls are time-critical and pointless in an inbox: push only, no email.
-    const callType = n.type === "incoming_call" || n.type === "missed_call";
+    // Points alerts are frequent, so they are push + in-app only as well.
+    const callType = n.type === "incoming_call" || n.type === "missed_call" || n.type === "points";
     const [email, push] = await Promise.all([
       callType ? Promise.resolve({ sent: false, reason: "not emailed" }) : sendEmail(SUPABASE_URL, svcHeaders, n),
       sendPush(SUPABASE_URL, svcHeaders, n),
@@ -186,7 +187,7 @@ const TYPE_ICON = [
   [/order|offer|request|reminder/, "order"],
   [/follow/, "follow"],
   [/wishlist|favou?rite|like/, "heart"],
-  [/review|comment|rating/, "review"],
+  [/review|comment|rating|points/, "review"],
   [/admin|vendor_(approved|application|deleted|renamed)|dispute/, "admin"],
   [/message/, "message"],
 ];
