@@ -22342,25 +22342,11 @@ function storefrontPackagesInnerHtml(v, packages) {
 function storefrontPackagesLoadingInnerHtml() {
   return `<div class="storefront-section-head"><h3>Special packages</h3></div><p class="muted">Loading…</p>`;
 }
-function storefrontStorefrontEmptyStateHtml(kind) {
-  if (kind === "reviews") {
-    return `<div class="storefront-empty-state storefront-empty-reviews" role="status">
-      <div class="storefront-empty-icon" aria-hidden="true"><i class="fa-regular fa-star"></i></div>
-      <strong>No reviews yet</strong>
-      <span>Customer reviews will appear here once this shop receives them.</span>
-    </div>`;
-  }
-  return `<div class="storefront-empty-state storefront-empty-products" role="status">
-    <div class="storefront-empty-icon" aria-hidden="true"><i class="fa-solid fa-box-open"></i></div>
-    <strong>No products or services listed yet</strong>
-    <span>This shop has not added any products or services yet.</span>
-  </div>`;
-}
 function storefrontReviewsInnerHtml(st, reviews) {
   if (reviews && reviews.length > 0) {
     return `<button type="button" class="storefront-reviews-head" onclick="toggleReviewsList()"><h3 style="margin:0;">Reviews${st.review_count ? ` (${st.review_count})` : ""}</h3><i class="fa-solid fa-chevron-down" id="reviewsChevron" style="transition:transform 0.2s;color:var(--text-muted);"></i></button><div id="reviewsList">${reviews.map((r) => `<div class="card review-card">${r.buyer_avatar_url ? `<img src="${esc(r.buyer_avatar_url)}" class="avatar-circle" style="width:2.3rem;height:2.3rem;object-fit:cover;" />` : avatarFallbackHtml(r.buyer_name || "Customer", "2.3rem", "", r.buyer_name || "Customer")}<div><div class="flex" style="justify-content:space-between;gap:1rem;"><strong>${esc(r.buyer_name || "A buyer")}</strong><span class="star-display">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span></div>${r.comment ? `<p style="margin:0.3rem 0 0;">${esc(r.comment)}</p>` : ""}<p class="muted" style="font-size:0.75rem;margin-top:0.2rem;">${new Date(r.created_at).toLocaleDateString()}</p></div></div>`).join("")}</div>`;
   }
-  return `<h3 style="margin-top:0;">Reviews</h3>${storefrontStorefrontEmptyStateHtml("reviews")}`;
+  return `<h3 style="margin-top:0;">Reviews</h3><p class="muted">No reviews yet.</p>`;
 }
 function storefrontReviewsLoadingInnerHtml() {
   return `<h3 style="margin-top:0;">Reviews</h3><p class="muted">Loading reviews…</p>`;
@@ -22526,7 +22512,7 @@ async function renderStorefrontInner(vendorId) {
   html += `<section class="storefront-products-shell" id="storefrontProductsShell">
     <div class="storefront-section-head"><h3>Products & services</h3></div>
     ${allProducts.length ? `<div class="storefront-products-toolbar"><div class="storefront-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="storefrontSearch" placeholder="Search this shop" oninput="filterStorefrontProducts()" /></div></div><div class="storefront-category-chips" id="storefrontCategoryChips"></div>` : ""}
-    <div id="storefrontGrid" class="grid">${allProducts.length ? "<p class='muted'>Loading…</p>" : storefrontStorefrontEmptyStateHtml("products")}</div>
+    <div id="storefrontGrid" class="grid">${allProducts.length ? "<p class='muted'>Loading…</p>" : '<div class="empty-state">No products or services listed yet.</div>'}</div>
     <div class="storefront-view-more" id="storefrontViewMoreWrap"></div>
   </section>`;
 
@@ -45517,20 +45503,6 @@ body #app .storefront-profile .storefront-public-actions .follow-settings-btn{
   margin:0!important;
 }
 
-/* The name is intentionally separated from the profile image/action group. */
-body #app .storefront-profile .storefront-name-row{
-  position:relative!important;
-  z-index:6!important;
-  width:100%!important;
-  margin:18px 0 .55rem!important;
-  padding:0!important;
-  transform:none!important;
-}
-
-body #app .storefront-profile .storefront-profile-name{
-  margin:0!important;
-}
-
 /* Three-dot button: understated, crisp outline and slightly darker icon. */
 body #app .storefront-profile .storefront-cover > .storefront-banner-more{
   position:absolute!important;
@@ -45605,11 +45577,6 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
     min-height:38px!important;
   }
 
-  body #app .storefront-profile .storefront-name-row{
-    margin-top:16px!important;
-    margin-bottom:.55rem!important;
-  }
-
   body #app .storefront-profile .storefront-cover > .storefront-banner-more{
     width:40px!important;
     height:40px!important;
@@ -45621,85 +45588,6 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
 }
 </style>
 
-<style id="levro-storefront-name-final-spacing-20261004">
-/* FINAL MICRO-FIX: keep vendor name completely clear of the profile image. */
-body #app .storefront-profile .storefront-name-row{
-  position:relative!important;
-  z-index:10!important;
-  width:100%!important;
-  margin:62px 0 .55rem!important;
-  padding:0!important;
-  transform:none!important;
-  clear:both!important;
-}
-body #app .storefront-profile .storefront-profile-name{
-  position:relative!important;
-  display:block!important;
-  margin:0!important;
-  padding:0!important;
-}
-@media(max-width:620px){
-  body #app .storefront-profile .storefront-name-row{
-    margin:62px 0 .55rem!important;
-  }
-}
-</style>
-
-<style id="levro-storefront-name-clearance-final-20261004">
-/*
-  FINAL STOREFRONT NAME CLEARANCE
-  Only the vertical relationship between the profile picture and vendor name
-  is adjusted. No storefront logic, actions, data, routing, or other sections
-  are changed.
-*/
-body #app .storefront-profile .storefront-name-row{
-  position:relative!important;
-  z-index:10!important;
-  width:100%!important;
-  margin:5rem 0 .55rem!important;
-  padding:0!important;
-  transform:none!important;
-}
-
-/* Mobile: keep the same deliberate clearance instead of letting the
-   enlarged avatar collide with the vendor name. */
-@media(max-width:620px){
-  body #app .storefront-profile .storefront-name-row{
-    margin-top:5rem!important;
-    margin-bottom:.55rem!important;
-    transform:none!important;
-  }
-}
-</style>
-
-<style id="levro-storefront-spacing-and-empty-states-final-20261005">
-/* FINAL HEADER SPACING: avatar is anchored to the banner, while actions and name have independent flow spacing. */
-body #app .storefront-profile .storefront-profile-body{position:relative!important;display:block!important;overflow:visible!important;padding-top:0!important;}
-body #app .storefront-profile .storefront-avatar-row{position:absolute!important;top:-48px!important;left:0!important;width:100%!important;height:96px!important;min-height:96px!important;margin:0!important;padding:0!important;display:flex!important;align-items:flex-end!important;justify-content:flex-start!important;overflow:visible!important;z-index:20!important;pointer-events:none!important;}
-body #app .storefront-profile .storefront-avatar-row .storefront-avatar,
-body #app .storefront-profile .storefront-avatar-row .storefront-avatar-button{pointer-events:auto!important;}
-/* Follow + notification: same intentional breathing room below the banner. */
-body #app .storefront-profile .storefront-profile-actions.storefront-public-actions{position:relative!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;width:100%!important;height:40px!important;min-height:40px!important;margin:36px 0 0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:.55rem!important;z-index:15!important;transform:none!important;}
-/* Vendor name: a separate, generous gap below the avatar, not merely below the buttons. */
-body #app .storefront-profile .storefront-name-row{position:relative!important;z-index:16!important;width:100%!important;margin:34px 0 .55rem!important;padding:0!important;clear:none!important;transform:none!important;}
-body #app .storefront-profile .storefront-name-row .storefront-profile-name{margin:0!important;padding:0!important;}
-@media(max-width:620px){
- body #app .storefront-profile .storefront-avatar-row{top:-48px!important;height:96px!important;min-height:96px!important;}
- body #app .storefront-profile .storefront-profile-actions.storefront-public-actions{height:38px!important;min-height:38px!important;margin-top:36px!important;gap:.45rem!important;}
- body #app .storefront-profile .storefront-name-row{margin-top:34px!important;margin-bottom:.65rem!important;}
-}
-/* Refined empty states: animated, lightweight, and centered without a heavy card. */
-body #app .storefront-products-shell #storefrontGrid{display:flex!important;justify-content:center!important;width:100%!important;}
-body #app .storefront-empty-state{width:min(100%,420px)!important;min-height:210px!important;padding:2rem 1rem 2.1rem!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;gap:.42rem!important;color:var(--text-muted)!important;}
-body #app .storefront-empty-icon{width:72px!important;height:72px!important;margin-bottom:.45rem!important;border-radius:22px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:color-mix(in srgb,var(--primary) 8%,var(--card))!important;border:1px solid color-mix(in srgb,var(--primary) 15%,var(--border))!important;color:var(--primary)!important;box-shadow:0 8px 22px rgba(15,23,42,.07)!important;position:relative!important;overflow:hidden!important;}
-body #app .storefront-empty-icon::after{content:""!important;position:absolute!important;inset:-30% auto -30% -45%!important;width:42%!important;transform:rotate(24deg)!important;background:linear-gradient(90deg,transparent,rgba(255,255,255,.42),transparent)!important;animation:levroEmptyIconShine 2.8s ease-in-out infinite!important;}
-body #app .storefront-empty-icon i{position:relative!important;z-index:1!important;font-size:2rem!important;animation:levroEmptyIconFloat 2.8s ease-in-out infinite!important;}
-body #app .storefront-empty-state strong{color:var(--text)!important;font-size:1rem!important;font-weight:800!important;}
-body #app .storefront-empty-state span{max-width:300px!important;font-size:.82rem!important;line-height:1.5!important;color:var(--text-muted)!important;}
-@keyframes levroEmptyIconFloat{0%,100%{transform:translateY(0) rotate(0deg);}50%{transform:translateY(-4px) rotate(-2deg);}}
-@keyframes levroEmptyIconShine{0%,55%{left:-45%;opacity:0;}70%{opacity:1;}100%{left:125%;opacity:0;}}
-@media(prefers-reduced-motion:reduce){body #app .storefront-empty-icon i,body #app .storefront-empty-icon::after{animation:none!important;}}
-</style>
 </head><body>
     <h1>Levromart Inventory Report</h1>
     <p class="muted">Generated ${new Date().toLocaleString()}</p>
@@ -51083,34 +50971,28 @@ body:has(#app .storefront-profile) #app.container{
 }
 </style>
 
-
-<style id="levro-storefront-name-spacing-actually-final-20261004">
+<style id="levromart-storefront-avatar-name-spacing-final">
 /*
-  ABSOLUTE FINAL MICRO-FIX — VENDOR NAME SPACING ONLY
-  The profile photo intentionally overlaps the banner. The vendor name must
-  never occupy that same visual space. This rule is intentionally placed
-  LAST so no older storefront rule can pull the name back upward.
+  LEVROMART — STOREFRONT AVATAR / VENDOR NAME SPACING ONLY
+  The avatar intentionally overlaps the cover. The action row keeps its
+  existing position; the name receives its own normal-flow clearance after it.
+  No banner, actions, content, data, or functionality is changed here.
 */
 body #app .storefront-profile .storefront-name-row{
   position:relative!important;
-  z-index:50!important;
+  z-index:10!important;
   display:block!important;
   width:100%!important;
-  margin-top:2rem!important;
-  margin-right:0!important;
-  margin-bottom:.55rem!important;
-  margin-left:0!important;
-  padding-top:0!important;
-  padding-right:0!important;
-  padding-bottom:0!important;
-  padding-left:0!important;
+  margin:3rem 0 .55rem!important;
+  padding:0!important;
   transform:none!important;
   clear:both!important;
 }
 
 body #app .storefront-profile .storefront-name-row .storefront-profile-name{
   position:relative!important;
-  z-index:51!important;
+  z-index:11!important;
+  display:block!important;
   margin:0!important;
   padding:0!important;
   transform:none!important;
@@ -51118,7 +51000,7 @@ body #app .storefront-profile .storefront-name-row .storefront-profile-name{
 
 @media(max-width:620px){
   body #app .storefront-profile .storefront-name-row{
-    margin-top:2rem!important;
+    margin-top:3rem!important;
     margin-bottom:.55rem!important;
   }
 }
