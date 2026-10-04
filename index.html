@@ -7507,6 +7507,117 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #app .product-card-total-line > strong{transform:none!important;}
 </style>
 
+
+<style id="levromart-vendors-category-appstore-polish">
+/* VENDORS PAGE — compact category rail.
+   Keep the actual vendor-category controls, filtering and ordering unchanged;
+   this block only refines their visual treatment to match the compact Home rail. */
+#app .vd-page .vd-chips{
+  display:flex!important;
+  align-items:center!important;
+  gap:.38rem!important;
+  overflow-x:auto!important;
+  margin:0 -.02rem .68rem!important;
+  padding:.08rem .02rem .42rem!important;
+  scrollbar-width:none!important;
+  -webkit-overflow-scrolling:touch!important;
+}
+#app .vd-page .vd-chips::-webkit-scrollbar{display:none!important;}
+#app .vd-page .vd-chip{
+  flex:0 0 auto!important;
+  min-height:35px!important;
+  height:35px!important;
+  padding:0 .68rem 0 .44rem!important;
+  gap:.28rem!important;
+  border-radius:999px!important;
+  border:1px solid color-mix(in srgb,var(--text) 8%,var(--border))!important;
+  background:var(--card)!important;
+  color:var(--text)!important;
+  font-size:.74rem!important;
+  font-weight:700!important;
+  line-height:1!important;
+  box-shadow:none!important;
+  transition:transform .16s ease,background-color .16s ease,border-color .16s ease,box-shadow .16s ease!important;
+}
+#app .vd-page .vd-chip:active{transform:scale(.975)!important;}
+#app .vd-page .vd-chip i{
+  width:19px!important;
+  height:19px!important;
+  min-width:19px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0!important;
+  font-size:.82rem!important;
+  line-height:1!important;
+  color:var(--cc,var(--primary))!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+#app .vd-page .vd-chip span{white-space:nowrap!important;}
+#app .vd-page .vd-chip.active{
+  background:color-mix(in srgb,var(--cc,var(--primary)) 10%,var(--card))!important;
+  border-color:color-mix(in srgb,var(--cc,var(--primary)) 38%,var(--border))!important;
+  color:var(--text)!important;
+  box-shadow:0 1px 5px color-mix(in srgb,var(--cc,var(--primary)) 7%,transparent)!important;
+}
+#app .vd-page .vd-chip.active i{color:var(--cc,var(--primary))!important;}
+#app .vd-page .vd-chip.vd-chip-all.active{
+  --cc:var(--primary)!important;
+  background:color-mix(in srgb,var(--primary) 11%,var(--card))!important;
+  border-color:color-mix(in srgb,var(--primary) 38%,var(--border))!important;
+}
+
+/* Tiny optical motion — the icon gently lifts only while the chip is selected.
+   It remains completely still for users who prefer reduced motion. */
+@keyframes levroVendorCatIconFloat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-1px)}
+}
+#app .vd-page .vd-chip.active i{
+  animation:levroVendorCatIconFloat 2.4s ease-in-out infinite;
+}
+@media(prefers-reduced-motion:reduce){
+  #app .vd-page .vd-chip.active i{animation:none!important;}
+}
+
+/* Neutral charcoal dark mode — no bright/white icon wells. */
+[data-theme="dark"] #app .vd-page .vd-chip{
+  background:#202428!important;
+  border-color:#303438!important;
+  color:#eceff1!important;
+  box-shadow:none!important;
+}
+[data-theme="dark"] #app .vd-page .vd-chip.active{
+  background:color-mix(in srgb,var(--cc,var(--primary)) 10%,#202428)!important;
+  border-color:color-mix(in srgb,var(--cc,var(--primary)) 38%,#303438)!important;
+}
+
+/* Pure black mode — pills sit quietly on the black surface and the artwork
+   remains colorful without introducing a white/pastel tile. */
+[data-theme="black"] #app .vd-page .vd-chip{
+  background:#0a0a0a!important;
+  border-color:#202020!important;
+  color:#f2f2f2!important;
+  box-shadow:none!important;
+}
+[data-theme="black"] #app .vd-page .vd-chip.active{
+  background:color-mix(in srgb,var(--cc,var(--primary)) 11%,#0a0a0a)!important;
+  border-color:color-mix(in srgb,var(--cc,var(--primary)) 40%,#202020)!important;
+}
+
+/* Light mode keeps the same compact proportions, with a clean white chip. */
+@media(max-width:420px){
+  #app .vd-page .vd-chips{gap:.32rem!important;padding-bottom:.38rem!important;}
+  #app .vd-page .vd-chip{
+    min-height:34px!important;height:34px!important;
+    padding:0 .6rem 0 .38rem!important;gap:.24rem!important;font-size:.72rem!important;
+  }
+  #app .vd-page .vd-chip i{width:18px!important;height:18px!important;min-width:18px!important;font-size:.78rem!important;}
+}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
