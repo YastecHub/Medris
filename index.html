@@ -33807,8 +33807,9 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     showToast("This vendor has not added a map location yet.", "info");
     return;
   }
-  vendorsViewMode = "map";
-  switchVendorsView("map");
+  const keepY = window.scrollY, keepEl = document.scrollingElement || document.documentElement;
+  [0, 60, 150, 300, 500, 800].forEach((ms) => setTimeout(() => { if (Math.abs((window.scrollY || 0) - keepY) > 2) keepEl.scrollTop = keepY; }, ms));
+  if (vendorsViewMode !== "map" || byId("vendorsMapWrap")?.classList.contains("hidden")) { vendorsViewMode = "map"; switchVendorsView("map"); }
   const focus = () => {
     if (!vendorsMap) return;
     vendorsMap.setView([Number(target.lat), Number(target.lng)], Math.max(vendorsMap.getZoom(), 15), { animate:true, duration:.45 });
@@ -34580,8 +34581,10 @@ window.renderVendorMapRail = function(){
     const list=Array.isArray(window.__filteredVendors)?window.__filteredVendors:[];
     const target=list.find(v=>String(v.id)===String(vendorId));
     if(!target||target.lat==null||target.lng==null){showToast('This vendor has not added a map location yet.','info');return;}
-    vendorsViewMode='map';
-    switchVendorsView('map');
+    const keepY=window.scrollY, keepEl=document.scrollingElement||document.documentElement;
+    const restoreY=()=>{ if(Math.abs((window.scrollY||0)-keepY)>2) keepEl.scrollTop=keepY; };
+    if(vendorsViewMode!=='map'||byId('vendorsMapWrap')?.classList.contains('hidden')){ vendorsViewMode='map'; switchVendorsView('map'); }
+    [0,60,150,300,500,800].forEach(t=>setTimeout(restoreY,t));
     const focus=async()=>{
       if(!vendorsMap)return;
       vendorsMap.setView([Number(target.lat),Number(target.lng)],Math.max(vendorsMap.getZoom(),15),{animate:true,duration:.45});
