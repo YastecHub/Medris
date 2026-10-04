@@ -7391,15 +7391,106 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 </style>
 
 <style id="levromart-home-category-appstore-polish">
-  /* FINAL HOME CATEGORY RAIL POLISH — visual-only; existing data/click handlers remain intact. */
-  #app .levro-home-cat-rail{gap:.45rem!important;padding:.12rem .05rem .62rem!important;align-items:center!important;}
-  #app .levro-home-cat-chip{min-height:38px!important;height:38px!important;padding:0 .72rem 0 .48rem!important;gap:.38rem!important;border-radius:999px!important;border:1px solid color-mix(in srgb,var(--text) 10%,var(--border))!important;background:color-mix(in srgb,var(--card) 96%,var(--text) 4%)!important;box-shadow:0 1px 3px rgba(15,23,42,.05)!important;transition:transform .16s ease,border-color .16s ease,background-color .16s ease,box-shadow .16s ease!important;}
+  /*
+   * HOME CATEGORY RAIL — photography-first, Apple-style browse chips.
+   * No Font Awesome category pictograms here. Each category gets a real
+   * photographic thumbnail, while the chip surface follows the active theme.
+   * Existing category data, ordering and click handlers are untouched.
+   */
+  #app .levro-home-cat-rail{
+    gap:.55rem!important;
+    padding:.18rem .02rem .7rem!important;
+    align-items:center!important;
+    overflow-x:auto!important;
+    scrollbar-width:none!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  #app .levro-home-cat-rail::-webkit-scrollbar{display:none!important;}
+  #app .levro-home-cat-chip{
+    flex:0 0 auto!important;
+    min-height:42px!important;
+    height:42px!important;
+    padding:0 .82rem 0 .38rem!important;
+    gap:.46rem!important;
+    border-radius:999px!important;
+    border:1px solid color-mix(in srgb,var(--text) 11%,var(--border))!important;
+    background:var(--card)!important;
+    color:var(--text)!important;
+    box-shadow:0 1px 3px rgba(0,0,0,.07)!important;
+    transition:transform .16s ease,border-color .16s ease,background-color .16s ease,box-shadow .16s ease!important;
+    overflow:hidden!important;
+  }
   #app .levro-home-cat-chip:active{transform:scale(.97)!important;}
-  #app .levro-home-cat-icon{width:27px!important;height:27px!important;min-width:27px!important;border-radius:9px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:color-mix(in srgb,var(--cat-color,var(--primary)) 12%,var(--card))!important;color:var(--cat-color,var(--primary))!important;font-size:.78rem!important;box-shadow:none!important;}
-  #app .levro-home-cat-label{font-size:.77rem!important;line-height:1!important;font-weight:650!important;letter-spacing:-.01em!important;}
-  #app .levro-home-cat-chip.active{background:color-mix(in srgb,var(--cat-color,var(--primary)) 9%,var(--card))!important;border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 42%,var(--border))!important;box-shadow:0 2px 7px color-mix(in srgb,var(--cat-color,var(--primary)) 10%,transparent)!important;}
-  #app .levro-home-cat-chip.active .levro-home-cat-icon{background:color-mix(in srgb,var(--cat-color,var(--primary)) 16%,var(--card))!important;}
-  @media(max-width:420px){#app .levro-home-cat-rail{gap:.4rem!important;padding-bottom:.58rem!important;}#app .levro-home-cat-chip{min-height:36px!important;height:36px!important;padding-right:.66rem!important;}#app .levro-home-cat-icon{width:25px!important;height:25px!important;min-width:25px!important;border-radius:8px!important;font-size:.73rem!important;}#app .levro-home-cat-label{font-size:.74rem!important;}}
+  #app .levro-home-cat-thumb{
+    width:34px!important;
+    height:34px!important;
+    min-width:34px!important;
+    border-radius:50%!important;
+    overflow:hidden!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 16%,var(--card))!important;
+    border:1px solid color-mix(in srgb,var(--text) 8%,transparent)!important;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)!important;
+  }
+  #app .levro-home-cat-thumb img{
+    display:block!important;
+    width:100%!important;
+    height:100%!important;
+    object-fit:cover!important;
+    object-position:center!important;
+  }
+  #app .levro-home-cat-label{
+    font-size:.78rem!important;
+    line-height:1!important;
+    font-weight:700!important;
+    letter-spacing:-.012em!important;
+    white-space:nowrap!important;
+    color:var(--text)!important;
+  }
+  #app .levro-home-cat-chip.active{
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 12%,var(--card))!important;
+    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 52%,var(--border))!important;
+    box-shadow:0 3px 10px color-mix(in srgb,var(--cat-color,var(--primary)) 13%,transparent)!important;
+  }
+  #app .levro-home-cat-chip.active .levro-home-cat-thumb{
+    box-shadow:0 0 0 2px color-mix(in srgb,var(--cat-color,var(--primary)) 18%,transparent),inset 0 0 0 1px rgba(255,255,255,.14)!important;
+  }
+
+  /* Dark charcoal mode: never fall back to white category pills. */
+  [data-theme="dark"] #app .levro-home-cat-chip{
+    background:#24282c!important;
+    border-color:#3a3f43!important;
+    box-shadow:0 2px 7px rgba(0,0,0,.28)!important;
+  }
+  [data-theme="dark"] #app .levro-home-cat-chip.active{
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 14%,#24282c)!important;
+    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 55%,#3a3f43)!important;
+  }
+
+  /* True black mode: use near-black surfaces, not charcoal/white. */
+  [data-theme="black"] #app .levro-home-cat-chip{
+    background:#0d0d0d!important;
+    border-color:#292929!important;
+    box-shadow:0 2px 8px rgba(0,0,0,.5)!important;
+  }
+  [data-theme="black"] #app .levro-home-cat-chip.active{
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 16%,#0d0d0d)!important;
+    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 58%,#292929)!important;
+  }
+
+  /* System dark preference also stays dark before JS/theme hydration finishes. */
+  @media (prefers-color-scheme:dark){
+    html:not([data-theme=""]):not([data-theme="light"]) #app .levro-home-cat-chip{background:#24282c!important;}
+  }
+
+  @media(max-width:420px){
+    #app .levro-home-cat-rail{gap:.48rem!important;padding-bottom:.62rem!important;}
+    #app .levro-home-cat-chip{min-height:40px!important;height:40px!important;padding-right:.72rem!important;gap:.42rem!important;}
+    #app .levro-home-cat-thumb{width:32px!important;height:32px!important;min-width:32px!important;}
+    #app .levro-home-cat-label{font-size:.75rem!important;}
+  }
 </style>
 <style id="levromart-product-card-total-final-position">
   /* FINAL MICRO-FIX — delivery total row only. */
@@ -14964,6 +15055,50 @@ function levroSectorIconClass(sector) {
   if (/^fa-[a-z0-9-]+$/.test(own) && own !== "fa-shapes") return own;
   return levroSectorHint(sector)?.[1] || "fa-shapes";
 }
+
+/*
+ * HOME CATEGORY PHOTOGRAPHY
+ * Use real product/category photography rather than Font Awesome pictograms.
+ * These are fixed Unsplash photographs so the rail stays visually consistent
+ * between renders/sessions. The mapping is keyword-based, so vendor-created
+ * categories still receive the closest useful photograph.
+ */
+const LEVRO_CATEGORY_PHOTOS = [
+  [/scarf|scarves|headwrap|ribbon/, "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/women|dress|gown|lady|ladies|fashion|cloth|wear|tailor|fabric/, "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/(^|\W)men|suit|male/, "https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/jewel|ring|necklace|earring|watch|gem/, "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/fragrance|perfume|scent|cologne/, "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/shawarma|burger|meal|pizza|fast ?food|food|grocer|restaurant|cater|snack|bak/, "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/yogurt|yoghurt|dairy|milk|ice ?cream/, "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/shoe|sneaker|footwear|sandal/, "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/bag|handbag|purse/, "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/drink|beverage|juice|water|wine/, "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/beauty|cosmetic|skin|hair|spa|wellness|makeup/, "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/iphone|phone|mobile|tablet|telecom/, "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/electronic|gadget|tv|audio|generator|power|lamp/, "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/comput|laptop|tech|software/, "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/health|pharm|medic|glucometer|pressure/, "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/home|furniture|decor|living|kitchen|appliance|bottle/, "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/auto|car|vehicle/, "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/book|stationery|education|school/, "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/sport|fitness|gym/, "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/art|craft|handmade|tattoo/, "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/baby|kid|toy/, "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/service|repair|clean|laundry/, "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/event|entertain|music|media|photo/, "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/agri|farm|pet/, "https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/build|construct|hardware|tool|industrial/, "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=160&h=160&q=86"],
+  [/gift/, "https://images.unsplash.com/photo-1512909006721-3d6018887383?auto=format&fit=crop&w=160&h=160&q=86"]
+];
+const LEVRO_CATEGORY_DEFAULT_PHOTO = "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?auto=format&fit=crop&w=160&h=160&q=86";
+const LEVRO_CATEGORY_ALL_PHOTO = "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=160&h=160&q=86";
+
+function levroSectorPhoto(sector) {
+  const name = String(sector?.name || "").toLowerCase();
+  return LEVRO_CATEGORY_PHOTOS.find(([re]) => re.test(name))?.[1] || LEVRO_CATEGORY_DEFAULT_PHOTO;
+}
+
 function levroSectorColor(sector) {
   const hint = levroSectorHint(sector);
   if (hint) return hint[2];
@@ -14980,12 +15115,14 @@ function levroStableSectorOrder(list) {
 }
 function homeCategoryRailHtml(categoryList) {
   // "All" always comes first and clears the category filter.
-  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${!currentHomeCategoryId && !currentSectorId ? "active" : ""}" style="--cat-color:var(--primary)" onclick="clearHomeCategoryFilter()"><span class="levro-home-cat-icon"><i class="fa-solid fa-grip"></i></span><span class="levro-home-cat-label">All</span></button>`;
+  const allActive = !currentHomeCategoryId && !currentSectorId;
+  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${allActive ? "active" : ""}" style="--cat-color:var(--primary)" onclick="clearHomeCategoryFilter()"><span class="levro-home-cat-thumb"><img src="${LEVRO_CATEGORY_ALL_PHOTO}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer"></span><span class="levro-home-cat-label">All</span></button>`;
   const chips = levroStableSectorOrder(categoryList).map((c) => {
     const active = String(currentHomeCategoryId || "") === String(c.id);
-    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" data-cat="${c.id}" style="--cat-color:${levroSectorColor(c)}" onclick="toggleHomeCategoryFilter('${c.id}')"><span class="levro-home-cat-icon"><i class="fa-solid ${esc(levroSectorIconClass(c))}"></i></span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`;
+    const photo = levroSectorPhoto(c);
+    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" data-cat="${esc(c.id)}" style="--cat-color:${levroSectorColor(c)}" onclick="toggleHomeCategoryFilter('${esc(c.id)}')"><span class="levro-home-cat-thumb"><img src="${photo}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`;
   }).join("");
-  return `<div class="levro-home-cat-rail hscroll">${allChip}${chips}</div>`;
+  return `<div class="levro-home-cat-rail hscroll" aria-label="Browse categories">${allChip}${chips}</div>`;
 }
 // A category tap re-renders Home against the database for that category, so
 // Trending, Featured Vendors, Services, Packages and Browse Everything all
