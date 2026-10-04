@@ -12904,7 +12904,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "vendorProducts": html = await renderVendorProducts(); break;
       case "vendorPackages": html = await renderVendorPackages(); break;
       case "vendorEarnings": html = await renderVendorEarnings(); break;
-      case "vendorFollowers": html = await renderVendorFollowers(); break;
+      case "vendorFollowers": html = await renderVendorFollowersPage(); break;
       case "vendorFollowerNetwork": html = await renderVendorFollowerNetwork(params.vendorId); break;
       case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
       case "buyerOrders": html = await renderCustomerOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo); break;
@@ -12964,7 +12964,7 @@ async function navigate(view, params = {}, pushHistory = true) {
             case "vendorProducts": html = await renderVendorProducts(); break;
             case "vendorPackages": html = await renderVendorPackages(); break;
             case "vendorEarnings": html = await renderVendorEarnings(); break;
-            case "vendorFollowers": html = await renderVendorFollowers(); break;
+            case "vendorFollowers": html = await renderVendorFollowersPage(); break;
             case "vendorFollowerNetwork": html = await renderVendorFollowerNetwork(params.vendorId); break;
             case "vendorOrders": html = await renderVendorOrders(params.status, params.type, params.payment, params.dateFrom, params.dateTo, params.perspective || "sales"); break;
             case "vendorEditProfile": html = await renderVendorEditProfile(); break;
@@ -15859,6 +15859,60 @@ async function renderVendorFollowers(){
   html+='</div>'; return html;
 }
 
+
+/* ---- Followers page: tabs (All / Vendors / Customers), search, connection tags ---- */
+window.__fp = { rows: [], tab: "all", q: "" };
+async function renderVendorFollowersPage() {
+  if (!session || profile?.role === "admin") return '<div class="empty-state">Access denied.</div>';
+  const { data: v } = await sb.from("vendors").select("id,business_name").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
+  if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
+  window.__fp = { rows: [], tab: "all", q: "", vendorId: v.id };
+  setTimeout(fpLoad, 0);
+  return `<div class="fp-page">
+    <div class="fp-head"><button type="button" class="icon-btn" onclick="navigate('vendorDashboard')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h2>Followers</h2><span class="fp-count" id="fpCount"></span></div>
+    <label class="fp-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="fpSearch" type="search" placeholder="Search followers…" autocomplete="off" oninput="fpSearch(this.value)"></label>
+    <div class="fp-tabs" id="fpTabs" role="tablist"></div>
+    <div id="fpList" class="fp-list">${'<div class="lb-skel"></div>'.repeat(4)}</div>
+  </div>`;
+}
+async function fpLoad() {
+  const box = byId("fpList"); if (!box) return;
+  try {
+    const { data, error } = await sb.rpc("get_vendor_followers_v2", { p_vendor_id: window.__fp.vendorId });
+    if (error) throw error;
+    window.__fp.rows = data || [];
+    fpRender();
+  } catch (e) {
+    box.innerHTML = '<div class="empty-state">Could not load your followers. <button type="button" class="btn btn-outline" onclick="fpLoad()">Try again</button></div>';
+  }
+}
+function fpSearch(q) { window.__fp.q = String(q || "").trim().toLowerCase(); fpRender(); }
+function fpTab(t) { window.__fp.tab = t; fpRender(); }
+function fpTag(r) {
+  if (r.link_level === 1) return '<span class="fn-tag fn-following"><i class="fa-solid fa-check"></i> You follow them</span>';
+  if (r.link_level === 2) return `<span class="fn-tag fn-mutual"><i class="fa-solid fa-link"></i> Mutual${r.via_name ? ` · via ${esc(r.via_name)}` : ""}</span>`;
+  if (r.link_level === 3) return `<span class="fn-tag fn-wide"><i class="fa-solid fa-diagram-project"></i> 3rd connection${r.via_name ? ` · via ${esc(r.via_name)}` : ""}</span>`;
+  return "";
+}
+function fpRender() {
+  const { rows, tab, q } = window.__fp;
+  const vend = rows.filter((r) => r.is_vendor), cust = rows.filter((r) => !r.is_vendor);
+  const tabs = byId("fpTabs");
+  if (tabs) tabs.innerHTML = [["all", "All", rows.length], ["vendors", "Vendors", vend.length], ["customers", "Customers", cust.length]].map(([k, l, n]) => `<button type="button" role="tab" class="fp-tab${tab === k ? " active" : ""}" onclick="fpTab('${k}')">${l} <b>${n}</b></button>`).join("");
+  const c = byId("fpCount"); if (c) c.textContent = rows.length ? `${rows.length} total` : "";
+  let list = tab === "vendors" ? vend : tab === "customers" ? cust : rows;
+  if (q) list = list.filter((r) => `${r.name || ""} ${r.business_name || ""} ${r.city || ""} ${r.sector_name || ""}`.toLowerCase().includes(q));
+  const box = byId("fpList"); if (!box) return;
+  if (!list.length) { box.innerHTML = `<div class="empty-state"><i class="fa-solid fa-user-group" style="font-size:1.6rem;display:block;margin-bottom:.5rem"></i><strong>${q ? "No one matches your search" : tab === "vendors" ? "No vendor followers yet" : tab === "customers" ? "No customer followers yet" : "No followers yet"}</strong></div>`; return; }
+  box.innerHTML = list.map((r) => {
+    const name = r.name || "Levromart user";
+    const when = r.followed_at ? new Date(r.followed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+    const av = profileAvatarHtml(r.avatar_url, name, "3rem");
+    const open = r.is_vendor && r.vendor_id ? ` onclick="navigate('storefront',{vendorId:'${esc(r.vendor_id)}'})" role="link" tabindex="0"` : "";
+    const sub = r.is_vendor ? [r.sector_name, r.city].filter(Boolean).join(" · ") : "Customer";
+    return `<div class="fp-row${r.is_vendor ? " clickable" : ""}"${open}>${av}<div class="fp-copy"><strong>${esc(name)}</strong><span class="muted">${esc(sub)}${when ? ` · since ${esc(when)}` : ""}</span>${fpTag(r)}</div>${r.is_vendor ? '<i class="fa-solid fa-chevron-right fp-go"></i>' : ""}</div>`;
+  }).join("");
+}
 // ---------- FOLLOWER NETWORK (vendors only) ----------
 // Tapping "N followers" opens the vendors that follow this shop (customers are never listed). Each row says how
 // the viewer is connected: Following (you follow them), Mutual (a vendor you follow follows them) or
@@ -36180,7 +36234,7 @@ document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-
   document.addEventListener('click',e=>{if(!e.target.closest?.('.storefront-follow-wrap'))document.querySelectorAll('.follow-menu:not(.hidden)').forEach(m=>m.classList.add('hidden'))},true);
 
   // Follower list for the shop owner.
-  window.showVendorFollowers=async function(vendorId){if(!session)return;let modal=document.getElementById('vendorFollowersModal');if(!modal){modal=document.createElement('div');modal.id='vendorFollowersModal';modal.className='modal hidden';document.body.appendChild(modal)}modal.innerHTML='<div class="modal-content" style="max-width:480px"><div class="flex" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Followers</h3><button class="icon-btn" type="button" aria-label="Close" onclick="document.getElementById(\'vendorFollowersModal\').classList.add(\'hidden\')"><i class="fa-solid fa-xmark"></i></button></div><div class="followers-modal-list"><p class="muted">Loading followers…</p></div></div>';modal.classList.remove('hidden');try{const r=await sb.rpc('get_vendor_followers',{p_vendor_id:vendorId});if(r.error)throw r.error;const list=r.data||[];modal.querySelector('.followers-modal-list').innerHTML=list.length?list.map(x=>'<div class="follower-row">'+(x.avatar_url?'<img src="'+escHtml(x.avatar_url)+'" alt="">':'<div class="follower-avatar avatar-circle">'+escHtml((x.name||'U').charAt(0).toUpperCase())+'</div>')+'<div class="follower-copy"><strong>'+escHtml(x.name||'Levromart user')+'</strong><small>Following since '+new Date(x.followed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+'</small></div></div>').join(''):'<p class="muted">No followers yet.</p>'}catch(e){modal.querySelector('.followers-modal-list').innerHTML='<p class="muted">Could not load followers.</p>'}}
+  window.showVendorFollowers=async function(vendorId){if(!session)return;navigate('vendorFollowers');return;let modal=document.getElementById('vendorFollowersModal');if(!modal){modal=document.createElement('div');modal.id='vendorFollowersModal';modal.className='modal hidden';document.body.appendChild(modal)}modal.innerHTML='<div class="modal-content" style="max-width:480px"><div class="flex" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Followers</h3><button class="icon-btn" type="button" aria-label="Close" onclick="document.getElementById(\'vendorFollowersModal\').classList.add(\'hidden\')"><i class="fa-solid fa-xmark"></i></button></div><div class="followers-modal-list"><p class="muted">Loading followers…</p></div></div>';modal.classList.remove('hidden');try{const r=await sb.rpc('get_vendor_followers',{p_vendor_id:vendorId});if(r.error)throw r.error;const list=r.data||[];modal.querySelector('.followers-modal-list').innerHTML=list.length?list.map(x=>'<div class="follower-row">'+(x.avatar_url?'<img src="'+escHtml(x.avatar_url)+'" alt="">':'<div class="follower-avatar avatar-circle">'+escHtml((x.name||'U').charAt(0).toUpperCase())+'</div>')+'<div class="follower-copy"><strong>'+escHtml(x.name||'Levromart user')+'</strong><small>Following since '+new Date(x.followed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+'</small></div></div>').join(''):'<p class="muted">No followers yet.</p>'}catch(e){modal.querySelector('.followers-modal-list').innerHTML='<p class="muted">Could not load followers.</p>'}}
   function makeFollowerStatClickable(){const stat=document.querySelector('[data-follow-count]');const wrap=document.querySelector('.storefront-follow-wrap');const own=document.querySelector('.storefront-profile')?.dataset.ownStorefront==='1';if(!stat||(!wrap&&!own))return;const id=wrap?.dataset.followVendorId||currentViewParams?.vendorId;if(!id)return;if(own){stat.classList.add('storefront-follow-count-button');stat.setAttribute('role','button');stat.setAttribute('tabindex','0');stat.setAttribute('aria-label','View followers');stat.title='View your followers';stat.onclick=()=>showVendorFollowers(id);stat.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showVendorFollowers(id)}}}else{stat.classList.remove('storefront-follow-count-button');stat.onclick=null;stat.onkeydown=null}}
 
   // Commission deadline/countdown: vendors may pay at any time during the 7-day window.
@@ -40884,6 +40938,24 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
 </style>
 
 <style id="levromart-vendors-v2">
+:root[data-theme="dark"] body #app .profile-view-full-link,:root[data-theme="black"] body #app .profile-view-full-link,:root[data-theme="dark"] body #app .profile-view-full-link i,:root[data-theme="black"] body #app .profile-view-full-link i,:root[data-theme="dark"] body #app .section-title-link,:root[data-theme="black"] body #app .section-title-link,:root[data-theme="dark"] body #app .storefront-read-more,:root[data-theme="black"] body #app .storefront-read-more,:root[data-theme="dark"] body #app [class*="read-more"],:root[data-theme="black"] body #app [class*="read-more"],:root[data-theme="dark"] body #app [class*="readmore"],:root[data-theme="black"] body #app [class*="readmore"],:root[data-theme="dark"] body #app .link-btn,:root[data-theme="black"] body #app .link-btn,:root[data-theme="dark"] body #app a.text-link,:root[data-theme="black"] body #app a.text-link,:root[data-theme="dark"] body #app .storefront-stat-link,:root[data-theme="black"] body #app .storefront-stat-link,:root[data-theme="dark"] body #app .drawer-link-green,:root[data-theme="black"] body #app .drawer-link-green,:root[data-theme="dark"] body #app [style*="color:var(--primary)"],:root[data-theme="black"] body #app [style*="color:var(--primary)"],:root[data-theme="dark"] body #app [style*="color: var(--primary)"],:root[data-theme="black"] body #app [style*="color: var(--primary)"],:root[data-theme="dark"] body #app .fn-tag.fn-following,:root[data-theme="black"] body #app .fn-tag.fn-following,:root[data-theme="dark"] body #app .modal .icon-btn i.fa-xmark,:root[data-theme="black"] body #app .modal .icon-btn i.fa-xmark,:root[data-theme="dark"] body #app .vd-chip-all i,:root[data-theme="black"] body #app .vd-chip-all i,:root[data-theme="dark"] body #app .pd-link,:root[data-theme="black"] body #app .pd-link{color:#6ee7a8!important;-webkit-text-fill-color:#6ee7a8!important}
+:root[data-theme="dark"] body .modal .icon-btn i,:root[data-theme="black"] body .modal .icon-btn i{color:#6ee7a8!important}
+.fp-page{padding-bottom:5rem}
+.fp-head{display:flex;align-items:center;gap:.7rem;margin:.2rem 0 .9rem}.fp-head h2{margin:0;font-size:1.25rem;flex:1}.fp-count{font-size:.8rem;color:var(--text-muted)}
+.fp-search{display:flex;align-items:center;gap:.6rem;min-height:2.9rem;padding:0 .95rem;border-radius:14px;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);background:var(--card);color:var(--text-muted);margin-bottom:.8rem}
+.fp-search input{flex:1;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;margin:0!important;height:auto!important;font:inherit;color:var(--text)}
+.fp-tabs{display:flex;gap:.4rem;margin-bottom:.8rem}
+.fp-tab{flex:1;min-height:2.5rem;border-radius:12px;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);background:var(--card);color:var(--text-muted);font:inherit;font-weight:700;font-size:.86rem;cursor:pointer}
+.fp-tab b{margin-left:.25rem;font-weight:700;opacity:.8}
+html body #app .fp-tab.active{background:var(--text)!important;color:var(--bg,#fff)!important;border-color:transparent!important;-webkit-text-fill-color:var(--bg,#fff)!important}
+.fp-list{display:flex;flex-direction:column;gap:.55rem}
+.fp-row{display:flex;align-items:center;gap:.75rem;padding:.7rem .85rem;border-radius:16px;background:var(--card);border:1px solid color-mix(in srgb,var(--text) 9%,transparent)}
+.fp-row.clickable{cursor:pointer}
+.fp-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:.1rem}.fp-copy strong{font-size:.95rem}.fp-copy .muted{font-size:.78rem}
+.fp-go{color:var(--text-muted);font-size:.8rem}
+/* lighter green text everywhere in dark mode */
+:root[data-theme="dark"] body #app a,:root[data-theme="black"] body #app a{--lg:#6ee7a8}
+:root[data-theme="dark"] body #app .view-full-profile,:root[data-theme="black"] body #app .view-full-profile,:root[data-theme="dark"] body #app [class*="profile-link"],:root[data-theme="black"] body #app [class*="profile-link"],:root[data-theme="dark"] body #app .section-title-link,:root[data-theme="black"] body #app .section-title-link,:root[data-theme="dark"] body #app .vd-chip i,:root[data-theme="black"] body #app .vd-chip i:not([style]){color:#6ee7a8!important}
 
 :root[data-theme="dark"] body #app .storefront-distance-link,:root[data-theme="black"] body #app .storefront-distance-link,:root[data-theme="dark"] body #app .search-result-distance,:root[data-theme="black"] body #app .search-result-distance,:root[data-theme="dark"] body #app .storefront-distance-link *,:root[data-theme="black"] body #app .storefront-distance-link *{color:#7df2b6!important;-webkit-text-fill-color:#7df2b6!important}
 :root[data-theme="dark"] body #app .vc2-loc,:root[data-theme="black"] body #app .vc2-loc,:root[data-theme="dark"] body #app .vc2-where,:root[data-theme="black"] body #app .vc2-where{color:#b9c5d1!important}
