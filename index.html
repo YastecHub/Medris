@@ -51039,3 +51039,45 @@ body:has(#app .storefront-profile) #app.container{
   }
 }
 </style>
+
+
+<style id="levro-storefront-name-spacing-actually-final-20261004">
+/*
+  ABSOLUTE FINAL MICRO-FIX — VENDOR NAME SPACING ONLY
+  The profile photo intentionally overlaps the banner. The vendor name must
+  never occupy that same visual space. This rule is intentionally placed
+  LAST so no older storefront rule can pull the name back upward.
+*/
+body #app .storefront-profile .storefront-name-row{
+  position:relative!important;
+  z-index:50!important;
+  display:block!important;
+  width:100%!important;
+  margin-top:2rem!important;
+  margin-right:0!important;
+  margin-bottom:.55rem!important;
+  margin-left:0!important;
+  padding-top:0!important;
+  padding-right:0!important;
+  padding-bottom:0!important;
+  padding-left:0!important;
+  transform:none!important;
+  clear:both!important;
+}
+
+body #app .storefront-profile .storefront-name-row .storefront-profile-name{
+  position:relative!important;
+  z-index:51!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+}
+
+@media(max-width:620px){
+  body #app .storefront-profile .storefront-name-row{
+    margin-top:2rem!important;
+    margin-bottom:.55rem!important;
+  }
+}
+</style>
+
