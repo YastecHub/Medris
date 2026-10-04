@@ -44712,11 +44712,11 @@ html[data-theme="dark"] .badge.unresolved,html[data-theme="black"] .badge.unreso
 #app .home-promotional-viewport::-webkit-scrollbar{display:none}
 #app .home-promotional-viewport.dragging{scroll-snap-type:none;cursor:grabbing;user-select:none}
 #app .home-promotional-track{display:flex !important;gap:.6rem;width:max-content !important;height:auto !important;transform:none !important;transition:none !important;will-change:auto !important;padding-inline:calc((100% - var(--slide-w)) / 2)}
-#app .home-promotional-slide{flex:0 0 var(--slide-w) !important;width:var(--slide-w) !important;height:auto !important;aspect-ratio:16/9;scroll-snap-align:center;scroll-snap-stop:always;border-radius:16px;overflow:hidden;border:1px solid var(--ui-border,var(--border)) !important;background:var(--card) !important}
+#app .home-promotional-slide{flex:0 0 var(--slide-w) !important;width:var(--slide-w) !important;height:auto !important;aspect-ratio:1.55/1;scroll-snap-align:center;scroll-snap-stop:always;border-radius:16px;overflow:hidden;border:1px solid var(--ui-border,var(--border)) !important;background:var(--card) !important}
+#app .home-promotional-slide img{width:100% !important;height:100% !important;object-fit:cover !important;object-position:center !important}
 @media(min-width:720px){#app .home-promotional-viewport{--slide-w:min(60vw,520px)}}
-#app .home-promotional-carousel .home-promotional-dots{position:static !important;transform:none !important;display:flex !important;justify-content:center !important;align-items:center !important;gap:.3rem !important;margin:.5rem 0 0 !important;padding:0 !important;left:auto !important;right:auto !important;bottom:auto !important;background:transparent !important;border:0 !important;box-shadow:none !important}
-#app .home-promotional-carousel .home-promotional-dot{width:.4rem !important;height:.4rem !important;flex:0 0 .4rem !important;border-radius:999px !important;background:var(--text-muted,#94a3b8) !important;opacity:.4;padding:0 !important;border:0 !important;transition:none !important}
-#app .home-promotional-carousel .home-promotional-dot.active{width:.4rem !important;flex-basis:.4rem !important;background:var(--text,#0f172a) !important;opacity:1}
+/* Apple-App-Store-style promotional banners: intentionally no pagination dots. */
+#app .home-promotional-carousel .home-promotional-dots{display:none !important}
 
 /* Quick-action cards: pressing one must not dim/darken it (a touch leaves
    :hover/:focus stuck on, which swapped the pastel for a dark mix). Keep the
