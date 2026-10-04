@@ -45630,6 +45630,33 @@ body #app .storefront-profile .storefront-profile-name{
   }
 }
 </style>
+
+<style id="levro-storefront-name-clearance-final-20261004">
+/*
+  FINAL STOREFRONT NAME CLEARANCE
+  Only the vertical relationship between the profile picture and vendor name
+  is adjusted. No storefront logic, actions, data, routing, or other sections
+  are changed.
+*/
+body #app .storefront-profile .storefront-name-row{
+  position:relative!important;
+  z-index:10!important;
+  width:100%!important;
+  margin:5rem 0 .55rem!important;
+  padding:0!important;
+  transform:none!important;
+}
+
+/* Mobile: keep the same deliberate clearance instead of letting the
+   enlarged avatar collide with the vendor name. */
+@media(max-width:620px){
+  body #app .storefront-profile .storefront-name-row{
+    margin-top:5rem!important;
+    margin-bottom:.55rem!important;
+    transform:none!important;
+  }
+}
+</style>
 </head><body>
     <h1>Levromart Inventory Report</h1>
     <p class="muted">Generated ${new Date().toLocaleString()}</p>
