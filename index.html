@@ -7283,6 +7283,27 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 }
 </style>
 
+<style id="light-mode-product-order-text-contrast-fix">
+  /* Light-mode product order card: restore readable contrast only for the
+     payment notice and price breakdown; no layout or behavior changes. */
+  :root:not([data-theme="dark"]):not([data-theme="black"]) #app .pd-total-box .product-payment-plan-notice.pay-before,
+  :root:not([data-theme="dark"]):not([data-theme="black"]) #app .pd-total-box .product-payment-plan-notice.pay-before strong,
+  :root:not([data-theme="dark"]):not([data-theme="black"]) #app .pd-total-box .product-payment-plan-notice.pay-before span {
+    color:#0A5C40 !important;
+    -webkit-text-fill-color:#0A5C40 !important;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="black"]) #app #buyDeliveryFields .price-breakdown-table .price-breakdown-row,
+  :root:not([data-theme="dark"]):not([data-theme="black"]) #app #buyDeliveryFields .price-breakdown-table .price-breakdown-row strong,
+  :root:not([data-theme="dark"]):not([data-theme="black"]) #app #buyDeliveryFields .price-breakdown-table .price-breakdown-total span,
+  :root:not([data-theme="dark"]):not([data-theme="black"]) #app #buyDeliveryFields .price-breakdown-table .price-breakdown-total strong {
+    color:#1E293B !important;
+    -webkit-text-fill-color:#1E293B !important;
+  }
+  :root:not([data-theme="dark"]):not([data-theme="black"]) #app #buyDeliveryFields .price-breakdown-table .price-breakdown-row span:first-child {
+    color:#475569 !important;
+    -webkit-text-fill-color:#475569 !important;
+  }
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
