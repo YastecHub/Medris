@@ -8001,6 +8001,287 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #app .levro-storefront-sheet-backdrop{transition:none!important;}
 }
 </style>
+<style id="levro-storefront-flat-profile-20261004">
+/*
+  FLAT STOREFRONT / SOCIAL-PROFILE PRESENTATION
+  The storefront itself is a page section, not a card.
+  Keep the cover, avatar, identity, actions, metadata and stats in normal
+  page flow. Product/package cards remain cards because they represent
+  individual marketplace items.
+*/
+
+/* The vendor profile shell must not look like a giant card. */
+#app .storefront-profile{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+
+/* Cover = full-width page banner, with no card enclosure. */
+#app .storefront-profile .storefront-cover{
+  width:100%!important;
+  height:176px!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+
+/* The profile content sits directly on the page background. */
+#app .storefront-profile .storefront-profile-body{
+  width:100%!important;
+  margin:0!important;
+  padding:0 1rem 1.35rem!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+
+/* Avatar can still have a clean profile-picture edge, but not a card ring. */
+#app .storefront-profile .storefront-avatar{
+  border:4px solid var(--bg)!important;
+  box-shadow:0 3px 14px rgba(0,0,0,.18)!important;
+}
+
+/* Identity rhythm: image -> name -> actions. */
+#app .storefront-profile .storefront-avatar-row{
+  margin-bottom:.15rem!important;
+}
+#app .storefront-profile .storefront-name-row{
+  margin-top:.15rem!important;
+  margin-bottom:.55rem!important;
+}
+#app .storefront-profile .storefront-profile-name{
+  margin:0!important;
+  font-size:1.55rem!important;
+  line-height:1.18!important;
+  letter-spacing:-.025em!important;
+}
+
+/* Follow + bell are page actions, not floating controls or mini-cards. */
+#app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+  position:static!important;
+  width:100%!important;
+  margin:.05rem 0 .15rem!important;
+  padding:0!important;
+  justify-content:flex-start!important;
+  align-items:center!important;
+  gap:.5rem!important;
+}
+#app .storefront-profile .storefront-public-actions .storefront-follow-wrap{
+  position:static!important;
+}
+#app .storefront-profile .storefront-public-actions .storefront-follow-controls{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:.5rem!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon{
+  min-width:108px!important;
+  height:40px!important;
+  min-height:40px!important;
+  padding:.45rem 1rem!important;
+  border-radius:999px!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-settings-btn{
+  width:40px!important;
+  min-width:40px!important;
+  height:40px!important;
+  min-height:40px!important;
+  border-radius:50%!important;
+}
+
+/* About is a page section, not a nested card. */
+#app .storefront-profile .storefront-about{
+  margin:1rem 0 0!important;
+  padding:1rem 0 0!important;
+  border-top:1px solid color-mix(in srgb,var(--border) 55%,transparent)!important;
+  background:transparent!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+#app .storefront-profile .storefront-about-head h2{
+  font-size:1.05rem!important;
+}
+
+/* Metadata: clean inline information, no enclosing box. */
+#app .storefront-profile .storefront-meta{
+  margin:1rem 0 0!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+}
+
+/* Statistics: four simple pieces of information on the page.
+   No enclosing border, no boxed cells, no green numbers. */
+#app .storefront-profile .storefront-stats{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:0!important;
+  width:100%!important;
+  margin:1rem 0 0!important;
+  padding:1rem 0 0!important;
+  border-top:1px solid color-mix(in srgb,var(--border) 55%,transparent)!important;
+  border-bottom:0!important;
+  background:transparent!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  font-size:.8rem!important;
+}
+#app .storefront-profile .storefront-stats > *{
+  min-width:0!important;
+  padding:0 .65rem!important;
+  text-align:center!important;
+  border:0!important;
+  background:transparent!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+#app .storefront-profile .storefront-stats > *:first-child{padding-left:0!important;}
+#app .storefront-profile .storefront-stats > *:last-child{padding-right:0!important;}
+#app .storefront-profile .storefront-stats strong{
+  display:block!important;
+  color:var(--text)!important;
+  font-size:1rem!important;
+  font-weight:800!important;
+  line-height:1.2!important;
+}
+#app .storefront-profile .storefront-stat-link{
+  color:var(--text-muted)!important;
+  text-decoration:none!important;
+}
+
+/* No card enclosure around the storefront's "latest" rail or catalogue shell. */
+#app .storefront-featured,
+#app .storefront-packages,
+#app .storefront-products-shell,
+#app .storefront-reviews{
+  width:100%!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+#app .storefront-featured{
+  margin:1.25rem 0 0!important;
+  padding:1.15rem 1rem 0!important;
+  border-top:1px solid color-mix(in srgb,var(--border) 55%,transparent)!important;
+}
+#app .storefront-products-shell{
+  margin:1.15rem 0 0!important;
+  padding:1rem!important;
+  border-top:1px solid color-mix(in srgb,var(--border) 55%,transparent)!important;
+}
+#app .storefront-reviews{
+  margin:1.25rem 0 0!important;
+  padding:1.1rem 1rem 0!important;
+  border-top:1px solid color-mix(in srgb,var(--border) 55%,transparent)!important;
+}
+
+/* Keep headings on the page itself rather than inside a header card. */
+#app .storefront-section-head{
+  margin-bottom:.7rem!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+}
+
+/* Catalogue tabs are navigation, not cards. */
+#app .storefront-catalog-tabs{
+  margin:1.1rem 1rem 0!important;
+  padding:.1rem 0 .15rem!important;
+  background:transparent!important;
+  border:0!important;
+  border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent)!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+#app .storefront-catalog-tab{
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+#app .storefront-catalog-tab.active{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:inset 0 -2px 0 var(--primary)!important;
+}
+
+/* Product cards remain marketplace objects; only the storefront wrapper is flat. */
+
+/* Desktop: keep the page visually centred without recreating a card. */
+@media(min-width:861px){
+  #app .storefront-profile,
+  #app .storefront-featured,
+  #app .storefront-catalog-tabs,
+  #app .storefront-products-shell,
+  #app .storefront-reviews{
+    max-width:980px!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+  #app .storefront-profile .storefront-profile-body{
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+  #app .storefront-featured,
+  #app .storefront-products-shell,
+  #app .storefront-reviews{
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+  #app .storefront-catalog-tabs{margin-left:auto!important;margin-right:auto!important;}
+}
+
+/* Mobile: full-bleed cover + comfortable page gutters. */
+@media(max-width:620px){
+  #app .storefront-profile .storefront-cover{
+    height:156px!important;
+  }
+  #app .storefront-profile .storefront-profile-body{
+    padding:0 .95rem 1.1rem!important;
+  }
+  #app .storefront-profile .storefront-avatar{
+    width:76px!important;
+    height:76px!important;
+    min-width:76px!important;
+    min-height:76px!important;
+    margin-top:-38px!important;
+  }
+  #app .storefront-profile .storefront-profile-name{
+    font-size:1.42rem!important;
+  }
+  #app .storefront-profile .storefront-stats{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    row-gap:1rem!important;
+    padding-top:.9rem!important;
+  }
+  #app .storefront-profile .storefront-stats > *{
+    padding:0!important;
+    text-align:left!important;
+  }
+  #app .storefront-featured,
+  #app .storefront-products-shell,
+  #app .storefront-reviews{
+    padding-left:.95rem!important;
+    padding-right:.95rem!important;
+  }
+  #app .storefront-catalog-tabs{
+    margin-left:.95rem!important;
+    margin-right:.95rem!important;
+  }
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
@@ -29696,6 +29977,9 @@ function exportFinancePdf() {
     <tbody>${filtered.map((t) => `<tr><td>${new Date(t.created_at).toLocaleString()}</td><td>${esc(t.buyer_name || "")}</td><td>${esc(t.vendor_name || "")}</td><td>${esc((t.payment_type || "").replace("_", " "))}</td><td>${naira(t.amount)}</td><td>${esc(t.method || "")}</td><td>${esc(t.status || "")}</td><td>${naira(t.platform_cut)}</td></tr>`).join("")}</tbody></table>
     ${"<scr"}ipt>window.onload = () => window.print();<\/script>
   
+
+
+
 </body></html>`);
   w.document.close();
 }
@@ -48857,6 +49141,182 @@ function levroPulseLbCard() {
   #app .product-card-total-line > strong{
     transform:none!important;
   }
+
+<!-- LEVROMART STOREFRONT ACTIONS — FINAL MOBILE PLACEMENT -->
+<style id="levromart-storefront-actions-final-placement-20261004">
+/* The banner owns ONLY the three-dot button. */
+#app .storefront-profile .storefront-cover{
+  position:relative!important;
+}
+#app .storefront-profile .storefront-cover > .storefront-banner-more{
+  position:absolute!important;
+  inset:12px 12px auto auto!important;
+  left:auto!important;
+  right:12px!important;
+  top:12px!important;
+  z-index:20!important;
+  width:40px!important;
+  height:40px!important;
+  min-width:40px!important;
+  min-height:40px!important;
+  margin:0!important;
+  padding:0!important;
+  border-radius:50%!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+
+/* Give the avatar a real row in the document flow. It still overlaps the
+   bottom of the banner, but it no longer lets the following controls float
+   into the avatar's physical area. */
+#app .storefront-profile .storefront-avatar-row{
+  position:relative!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:flex-start!important;
+  min-height:82px!important;
+  height:82px!important;
+  margin-top:-41px!important;
+  margin-bottom:.35rem!important;
+  overflow:visible!important;
+  z-index:3!important;
+}
+#app .storefront-profile .storefront-avatar-row .storefront-avatar,
+#app .storefront-profile .storefront-avatar-row .storefront-avatar-button{
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+  margin:0!important;
+  flex:0 0 82px!important;
+}
+
+/* Identity first; actions come beneath it and stay in normal flow. */
+#app .storefront-profile .storefront-name-row{
+  position:relative!important;
+  z-index:4!important;
+  width:100%!important;
+  margin:.1rem 0 0!important;
+  padding:0!important;
+}
+#app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+  position:relative!important;
+  inset:auto!important;
+  z-index:4!important;
+  width:100%!important;
+  min-height:40px!important;
+  height:40px!important;
+  margin:.65rem 0 0!important;
+  padding:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:.5rem!important;
+  flex-wrap:nowrap!important;
+}
+#app .storefront-profile .storefront-public-actions .storefront-follow-wrap{
+  position:static!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:.5rem!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+  margin:0!important;
+}
+#app .storefront-profile .storefront-public-actions .storefront-follow-controls{
+  position:static!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:.5rem!important;
+  width:auto!important;
+  min-width:0!important;
+  margin:0!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon{
+  position:static!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:110px!important;
+  max-width:150px!important;
+  height:40px!important;
+  min-height:40px!important;
+  padding:.45rem 1rem!important;
+  border-radius:999px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:.42rem!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  font-size:.82rem!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon .follow-btn-label{
+  display:inline!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-settings-btn{
+  position:static!important;
+  flex:0 0 40px!important;
+  width:40px!important;
+  height:40px!important;
+  min-width:40px!important;
+  min-height:40px!important;
+  max-width:40px!important;
+  padding:0!important;
+  border-radius:50%!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-settings-btn i{
+  font-size:1rem!important;
+}
+@media(max-width:620px){
+  #app .storefront-profile .storefront-avatar-row{
+    min-height:74px!important;
+    height:74px!important;
+    margin-top:-37px!important;
+  }
+  #app .storefront-profile .storefront-avatar-row .storefront-avatar,
+  #app .storefront-profile .storefront-avatar-row .storefront-avatar-button{
+    flex-basis:74px!important;
+    width:74px!important;
+    height:74px!important;
+    min-width:74px!important;
+    min-height:74px!important;
+    max-width:74px!important;
+    max-height:74px!important;
+  }
+  #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+    height:38px!important;
+    min-height:38px!important;
+    margin-top:.6rem!important;
+  }
+  #app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon{
+    min-width:108px!important;
+    max-width:140px!important;
+    height:38px!important;
+    min-height:38px!important;
+    padding:.4rem .85rem!important;
+    font-size:.78rem!important;
+  }
+  #app .storefront-profile .storefront-public-actions .follow-settings-btn{
+    flex-basis:38px!important;
+    width:38px!important;
+    height:38px!important;
+    min-width:38px!important;
+    min-height:38px!important;
+    max-width:38px!important;
+  }
+}
+</style>
+
 </style>
 
 <script id="levromart-profile-storefront-sheet-js">
