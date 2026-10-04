@@ -21214,17 +21214,13 @@ async function renderStorefrontInner(vendorId) {
     <div class="storefront-profile-body">
       <div class="storefront-avatar-row">
         ${logo}
-        <div class="storefront-profile-actions storefront-top-actions">
-          ${isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-message-icon" type="button" aria-label="Messages" title="Messages" onclick="navigate('messages')"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
-          ${!isOwnStorefront ? `<div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div>` : ""}
-
-        </div>
       </div>
       <div class="storefront-name-row">
         <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
-        <div class="storefront-name-actions">
-          ${"" /* No Message button on a storefront: customers can only message a vendor from an accepted order. */}
-        </div>
+      </div>
+      <div class="storefront-profile-actions storefront-public-actions">
+        ${isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-message-icon" type="button" aria-label="Messages" title="Messages" onclick="navigate('messages')"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
+        ${!isOwnStorefront ? `<div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div>` : ""}
       </div>
       ${v.bio ? `<section class="storefront-about" aria-labelledby="storefrontAboutTitle">
         <div class="storefront-about-head"><h2 id="storefrontAboutTitle">About</h2></div>
@@ -44047,6 +44043,90 @@ html body #app button#productAddToCartBtn{border-radius:14px!important;border:1.
   #app .storefront-profile .storefront-banner-more{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;right:12px!important;top:12px!important;}
   #app .storefront-profile .storefront-profile-actions{top:.55rem!important;right:0!important;}
   #app .storefront-profile .storefront-follow-controls .follow-btn{min-width:104px!important;}
+}
+</style>
+
+<style id="levro-storefront-action-layout-final-20261004">
+/* FINAL STOREFRONT ACTION LAYOUT
+   The banner owns the three-dot menu. The vendor identity owns the avatar +
+   name. Follow + Bell live in their own normal-flow row, so they can never
+   collide with the avatar, name, cover, or each other. */
+#app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+  position:static!important;
+  right:auto!important;
+  top:auto!important;
+  z-index:auto!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:.5rem!important;
+  width:100%!important;
+  min-height:40px!important;
+  margin:.65rem 0 0!important;
+  padding:0!important;
+  flex-wrap:nowrap!important;
+}
+#app .storefront-profile .storefront-public-actions .storefront-follow-wrap{
+  display:flex!important;
+  align-items:center!important;
+  gap:.5rem!important;
+  position:static!important;
+  min-width:0!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon{
+  width:auto!important;
+  min-width:112px!important;
+  height:40px!important;
+  min-height:40px!important;
+  padding:.45rem .95rem!important;
+  border-radius:999px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:.42rem!important;
+  font-size:.82rem!important;
+  white-space:nowrap!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon .follow-btn-label{
+  display:inline!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-settings-btn{
+  width:40px!important;
+  min-width:40px!important;
+  height:40px!important;
+  min-height:40px!important;
+  padding:0!important;
+  border-radius:50%!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 40px!important;
+}
+#app .storefront-profile .storefront-public-actions .storefront-own-message-icon{
+  width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;
+  padding:0!important;border-radius:50%!important;
+}
+#app .storefront-profile .storefront-banner-more{
+  position:absolute!important;
+  right:14px!important;
+  top:14px!important;
+  width:42px!important;height:42px!important;
+  min-width:42px!important;min-height:42px!important;
+  z-index:8!important;
+}
+@media(max-width:620px){
+  #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+    margin-top:.6rem!important;
+    min-height:38px!important;
+  }
+  #app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon{
+    min-width:108px!important;height:38px!important;min-height:38px!important;
+    padding:.4rem .85rem!important;font-size:.78rem!important;
+  }
+  #app .storefront-profile .storefront-public-actions .follow-settings-btn,
+  #app .storefront-profile .storefront-public-actions .storefront-own-message-icon{
+    width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;
+  }
 }
 </style>
 </head><body>
