@@ -50973,35 +50973,43 @@ body:has(#app .storefront-profile) #app.container{
 
 <style id="levromart-storefront-avatar-name-spacing-final">
 /*
-  LEVROMART — STOREFRONT AVATAR / VENDOR NAME SPACING ONLY
-  The avatar intentionally overlaps the cover. The action row keeps its
-  existing position; the name receives its own normal-flow clearance after it.
-  No banner, actions, content, data, or functionality is changed here.
+  STOREFRONT: PROFILE PICTURE -> VENDOR NAME SPACING ONLY.
+  Root cause: "#app .storefront-profile .storefront-profile-actions + .storefront-name-row"
+  (margin-top:0!important, specificity 1,3,0) out-ranked every later name-row rule, and the
+  avatar overflows its short flow row, so the name sat at the actions' bottom edge, under the avatar.
+  Fix: the avatar's bottom edge and the name's flow offset are tied together with variables,
+  so the name always starts one clear gap below the avatar. Avatar size/overlap, banner and
+  Follow row are unchanged.
 */
-body #app .storefront-profile .storefront-name-row{
-  position:relative!important;
-  z-index:10!important;
-  display:block!important;
-  width:100%!important;
-  margin:4.5rem 0 .55rem!important;
-  padding:0!important;
-  transform:none!important;
-  clear:both!important;
+body #app .storefront-profile .storefront-profile-body{
+  --lm-av-size:96px;
+  --lm-row-top:-41px;      /* avatar-row margin-top (as before)                */
+  --lm-row-flow:13px;      /* net flow height of avatar-row (-41 + 82 - 28)    */
+  --lm-actions-h:40px;     /* Follow row height (unchanged)                    */
+  --lm-name-gap:18px;      /* clear space: avatar bottom -> vendor name        */
 }
-
-body #app .storefront-profile .storefront-name-row .storefront-profile-name{
+body #app .storefront-profile .storefront-avatar-row{
   position:relative!important;
-  z-index:11!important;
-  display:block!important;
+  top:0!important;
+  align-items:flex-start!important;
+  overflow:visible!important;
+}
+body #app .storefront-profile .storefront-avatar-row .storefront-avatar,
+body #app .storefront-profile .storefront-avatar-row .storefront-avatar-button{
+  position:relative!important;
+  top:0!important;
   margin:0!important;
-  padding:0!important;
+  flex:0 0 auto!important;
+}
+body #app .storefront-profile .storefront-profile-body > .storefront-name-row{
+  margin-top:max(0px, calc(var(--lm-row-top) + var(--lm-av-size) + var(--lm-name-gap) - var(--lm-row-flow) - var(--lm-actions-h)))!important;
   transform:none!important;
 }
-
 @media(max-width:620px){
-  body #app .storefront-profile .storefront-name-row{
-    margin-top:4.5rem!important;
-    margin-bottom:.55rem!important;
+  body #app .storefront-profile .storefront-profile-body{
+    --lm-row-top:-37px;
+    --lm-row-flow:12px;    /* -37 + 74 - 25 */
+    --lm-actions-h:38px;
   }
 }
 </style>
