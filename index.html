@@ -47905,3 +47905,121 @@ function levroPulseLbCard() {
   card.__t = setInterval(nudge, 14000);
 }
 </script>
+<!-- LEVROMART FINAL CATEGORY RAIL REFINEMENT -->
+<style id="levromart-final-appstore-category-rail">
+  /* Deliberately compact, App Store-inspired category pills.
+     Visual-only: no data, click handlers, ordering, or category logic changed. */
+  #app .levro-home-cat-rail{
+    display:flex!important;
+    align-items:center!important;
+    gap:8px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    padding:3px 2px 9px!important;
+    margin:0!important;
+    scrollbar-width:none!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain!important;
+  }
+  #app .levro-home-cat-rail::-webkit-scrollbar{display:none!important;}
+
+  #app .levro-home-cat-chip{
+    flex:0 0 auto!important;
+    display:inline-flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:6px!important;
+    width:auto!important;
+    min-width:0!important;
+    min-height:30px!important;
+    height:30px!important;
+    padding:0 11px!important;
+    border:1px solid rgba(15,23,42,.09)!important;
+    border-radius:999px!important;
+    background:rgba(255,255,255,.96)!important;
+    color:var(--text)!important;
+    box-shadow:0 2px 7px rgba(15,23,42,.075)!important;
+    white-space:nowrap!important;
+    transform:none!important;
+    transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease!important;
+  }
+  #app .levro-home-cat-chip:active{transform:scale(.965)!important;}
+
+  /* Use the existing real Font Awesome pictograms directly. No generated
+     artwork, no coloured square behind them, and no artificial icon tile. */
+  #app .levro-home-cat-icon{
+    width:18px!important;
+    height:18px!important;
+    min-width:18px!important;
+    min-height:18px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:0!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    color:var(--cat-color,var(--primary))!important;
+    font-size:16px!important;
+    line-height:1!important;
+  }
+  #app .levro-home-cat-icon i{
+    display:block!important;
+    font-size:inherit!important;
+    line-height:1!important;
+  }
+  #app .levro-home-cat-label{
+    display:inline-block!important;
+    max-width:none!important;
+    overflow:visible!important;
+    white-space:nowrap!important;
+    color:var(--text)!important;
+    font-size:12.5px!important;
+    line-height:1!important;
+    font-weight:650!important;
+    letter-spacing:-.015em!important;
+  }
+
+  /* Clean selected state: restrained green tint instead of a heavy box. */
+  #app .levro-home-cat-chip.active{
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 9%,#fff)!important;
+    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 48%,rgba(15,23,42,.09))!important;
+    box-shadow:0 2px 9px color-mix(in srgb,var(--cat-color,var(--primary)) 12%,transparent)!important;
+  }
+  #app .levro-home-cat-chip.active .levro-home-cat-icon{
+    background:transparent!important;
+    box-shadow:none!important;
+    color:var(--cat-color,var(--primary))!important;
+  }
+  #app .levro-home-cat-chip.active .levro-home-cat-label{
+    color:var(--text)!important;
+    font-weight:750!important;
+  }
+
+  @media(max-width:420px){
+    #app .levro-home-cat-rail{gap:7px!important;padding:3px 1px 8px!important;}
+    #app .levro-home-cat-chip{min-height:29px!important;height:29px!important;padding:0 10px!important;gap:5px!important;}
+    #app .levro-home-cat-icon{width:17px!important;height:17px!important;min-width:17px!important;min-height:17px!important;font-size:15px!important;}
+    #app .levro-home-cat-label{font-size:12px!important;}
+  }
+</style>
+
+<!-- LEVROMART FINAL PRODUCT DELIVERY/TOTAL POSITION -->
+<style id="levromart-final-product-total-position">
+  /* Move the delivery icon + label down/left slightly. The total amount stays
+     exactly where it is, as requested. */
+  #app .product-card-total-line{
+    padding-top:1.15rem!important;
+  }
+  #app .product-card-total-line > i,
+  #app .product-card-total-line .product-card-total-label{
+    transform:translate(-.62rem,.08rem)!important;
+  }
+  #app .product-card-total-line > strong{
+    transform:none!important;
+  }
+</style>
+
