@@ -45606,6 +45606,30 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
   }
 }
 </style>
+
+<style id="levro-storefront-name-final-spacing-20261004">
+/* FINAL MICRO-FIX: keep vendor name completely clear of the profile image. */
+body #app .storefront-profile .storefront-name-row{
+  position:relative!important;
+  z-index:10!important;
+  width:100%!important;
+  margin:62px 0 .55rem!important;
+  padding:0!important;
+  transform:none!important;
+  clear:both!important;
+}
+body #app .storefront-profile .storefront-profile-name{
+  position:relative!important;
+  display:block!important;
+  margin:0!important;
+  padding:0!important;
+}
+@media(max-width:620px){
+  body #app .storefront-profile .storefront-name-row{
+    margin:62px 0 .55rem!important;
+  }
+}
+</style>
 </head><body>
     <h1>Levromart Inventory Report</h1>
     <p class="muted">Generated ${new Date().toLocaleString()}</p>
