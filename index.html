@@ -45263,6 +45263,195 @@ html body #app button#productAddToCartBtn{border-radius:14px!important;border:1.
   }
 }
 </style>
+
+<style id="levro-storefront-actions-final-clean-20261004">
+/*
+  FINAL STOREFRONT ACTION CLEANUP
+  - Follow + notification sit OUTSIDE the banner, directly underneath it.
+  - A small breathing gap remains between banner and actions.
+  - Vendor name gets deliberate breathing room below the profile image/actions.
+  - Three-dot control stays subtle but more legible.
+*/
+body #app .storefront-profile .storefront-profile-body{
+  display:flex!important;
+  flex-direction:column!important;
+  position:relative!important;
+}
+
+/* The avatar still overlaps the banner, but its row now ends just above
+   the action row so the actions can sit directly below the banner. */
+body #app .storefront-profile .storefront-avatar-row{
+  position:relative!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:flex-start!important;
+  width:100%!important;
+  min-height:82px!important;
+  height:82px!important;
+  margin-top:-41px!important;
+  margin-bottom:-28px!important;
+  overflow:visible!important;
+  z-index:5!important;
+}
+
+/* Follow + bell are normal-flow content below the banner — never inside it. */
+body #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+  position:relative!important;
+  inset:auto!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+  z-index:10!important;
+  width:100%!important;
+  min-width:0!important;
+  height:40px!important;
+  min-height:40px!important;
+  margin:0 0 0!important;
+  padding:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:.55rem!important;
+  flex-wrap:nowrap!important;
+  transform:none!important;
+}
+
+/* Keep the controls compact and aligned as one group. */
+body #app .storefront-profile .storefront-public-actions .storefront-follow-wrap,
+body #app .storefront-profile .storefront-public-actions .storefront-follow-controls{
+  position:static!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:.55rem!important;
+  width:auto!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+}
+
+body #app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon{
+  position:static!important;
+  min-width:110px!important;
+  width:auto!important;
+  height:40px!important;
+  min-height:40px!important;
+  margin:0!important;
+}
+
+body #app .storefront-profile .storefront-public-actions .follow-settings-btn{
+  position:static!important;
+  width:40px!important;
+  min-width:40px!important;
+  height:40px!important;
+  min-height:40px!important;
+  margin:0!important;
+}
+
+/* The name is intentionally separated from the profile image/action group. */
+body #app .storefront-profile .storefront-name-row{
+  position:relative!important;
+  z-index:6!important;
+  width:100%!important;
+  margin:18px 0 .55rem!important;
+  padding:0!important;
+  transform:none!important;
+}
+
+body #app .storefront-profile .storefront-profile-name{
+  margin:0!important;
+}
+
+/* Three-dot button: understated, crisp outline and slightly darker icon. */
+body #app .storefront-profile .storefront-cover > .storefront-banner-more{
+  position:absolute!important;
+  inset:12px 12px auto auto!important;
+  left:auto!important;
+  right:12px!important;
+  top:12px!important;
+  z-index:25!important;
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  min-height:42px!important;
+  margin:0!important;
+  padding:0!important;
+  border-radius:50%!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(255,255,255,.30)!important;
+  border:2px solid rgba(15,23,42,.38)!important;
+  color:#172033!important;
+  box-shadow:0 3px 12px rgba(0,0,0,.13)!important;
+  backdrop-filter:blur(4px)!important;
+  -webkit-backdrop-filter:blur(4px)!important;
+}
+body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
+  font-size:1rem!important;
+  color:#172033!important;
+  opacity:.92!important;
+}
+
+[data-theme="dark"] body #app .storefront-profile .storefront-cover > .storefront-banner-more,
+[data-theme="black"] body #app .storefront-profile .storefront-cover > .storefront-banner-more{
+  background:rgba(0,0,0,.22)!important;
+  border-color:rgba(255,255,255,.55)!important;
+  color:#f4f6f8!important;
+}
+[data-theme="dark"] body #app .storefront-profile .storefront-cover > .storefront-banner-more i,
+[data-theme="black"] body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
+  color:#f4f6f8!important;
+}
+
+@media(max-width:620px){
+  body #app .storefront-profile .storefront-avatar-row{
+    min-height:74px!important;
+    height:74px!important;
+    margin-top:-37px!important;
+    margin-bottom:-25px!important;
+  }
+
+  body #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+    height:38px!important;
+    min-height:38px!important;
+    gap:.45rem!important;
+  }
+
+  body #app .storefront-profile .storefront-public-actions .storefront-follow-wrap,
+  body #app .storefront-profile .storefront-public-actions .storefront-follow-controls{
+    gap:.45rem!important;
+  }
+
+  body #app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon{
+    min-width:108px!important;
+    height:38px!important;
+    min-height:38px!important;
+  }
+
+  body #app .storefront-profile .storefront-public-actions .follow-settings-btn{
+    width:38px!important;
+    min-width:38px!important;
+    height:38px!important;
+    min-height:38px!important;
+  }
+
+  body #app .storefront-profile .storefront-name-row{
+    margin-top:16px!important;
+    margin-bottom:.55rem!important;
+  }
+
+  body #app .storefront-profile .storefront-cover > .storefront-banner-more{
+    width:40px!important;
+    height:40px!important;
+    min-width:40px!important;
+    min-height:40px!important;
+    right:12px!important;
+    top:12px!important;
+  }
+}
+</style>
 </head><body>
     <h1>Levromart Inventory Report</h1>
     <p class="muted">Generated ${new Date().toLocaleString()}</p>
