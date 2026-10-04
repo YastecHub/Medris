@@ -21971,6 +21971,13 @@ async function renderVendorEditProfile() {
   const { data: v } = await sb.from("vendors").select("*").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   vendor = v;
+  if (!Array.isArray(sectors) || !sectors.length) {
+    const { data: sectorRows } = await sb.from("sectors").select("*").order("sort_order");
+    sectors = sectorRows || [];
+  }
+  const vendorEditSectorOptions = (Array.isArray(sectors) ? sectors : [])
+    .filter((sector) => sector?.id && String(sector?.name || "").trim())
+    .sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity: "base" }));
   const [{ data: owed }, { data: commissionDeadline }] = await Promise.all([
     sb.rpc("get_vendor_commission_owed", { p_vendor_id: v.id }),
     sb.rpc("get_vendor_commission_deadline", { p_vendor_id: v.id }),
@@ -22012,6 +22019,11 @@ async function renderVendorEditProfile() {
     </div>
     <label>Your name *</label><input id="vePersonalName" value="${esc(profile?.name || "")}" />
     <label>Business name *</label><input id="veBusinessName" value="${esc(v.business_name || "")}" />
+    <label>Business sector *</label>
+    <select id="veSector">
+      <option value="">Select a sector</option>
+      ${vendorEditSectorOptions.map((sector) => `<option value="${esc(sector.id)}" ${String(sector.id) === String(v.sector_id || "") ? "selected" : ""}>${esc(sector.name)}</option>`).join("")}
+    </select>
     <label>Address (leave blank if you're an online-only business)</label><input id="veAddress" value="${esc(v.address || "")}" />
     <label>City</label><input id="veCity" value="${esc(v.city || "")}" />
     <label>Phone *</label><input id="vePhone" type="tel" value="${esc(v.phone || "")}" />
@@ -22466,6 +22478,7 @@ async function submitVendorEditProfile() {
   errorEl.classList.add("hidden");
   const personalName = byId("vePersonalName")?.value.trim() || "";
   const business_name = byId("veBusinessName").value.trim();
+  const sector_id = byId("veSector")?.value || "";
   const phone = byId("vePhone").value.trim();
   if (!personalName || !business_name || !phone) {
     errorEl.textContent = "Your name, business name and phone are required.";
@@ -22480,6 +22493,7 @@ async function submitVendorEditProfile() {
   const business_hours = collectBusinessHoursFromForm();
   const { error } = await sb.from("vendors").update({
     business_name,
+    sector_id: sector_id || null,
     address: byId("veAddress").value.trim() || null,
     city: byId("veCity").value.trim() || null,
     phone,
@@ -22492,6 +22506,7 @@ async function submitVendorEditProfile() {
   }).eq("id", vendor.id);
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); return; }
   vendor.business_name = business_name;
+  vendor.sector_id = sector_id || null;
   vendor.phone = phone;
   vendor.whatsapp_number = byId("veWhatsapp").value.trim() || null;
   vendor.whatsapp_visible = !!byId("veWhatsappVisible")?.checked && !!vendor.whatsapp_number;
