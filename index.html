@@ -7347,6 +7347,19 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   }
 </style>
 
+<style id="levromart-product-card-delivery-spacing-fix">
+  /* Final, narrowly-scoped adjustment: move only the truck + Total label
+     slightly left, and give the delivery row a little more breathing room
+     below the divider. The total amount remains untouched/right-aligned. */
+  #app .product-card-total-line{
+    padding-top:.65rem !important;
+  }
+  #app .product-card-total-line > i,
+  #app .product-card-total-line .product-card-total-label{
+    transform:translateX(-.3rem);
+  }
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
