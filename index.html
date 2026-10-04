@@ -8541,6 +8541,350 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   #app .storefront-profile .follow-mode-icon{width:46px!important;height:46px!important;}
 }
 </style>
+
+<style id="levro-storefront-exact-adjustments-20261004">
+/* EXACT FOLLOW-UP ADJUSTMENTS — only the requested storefront/header details. */
+
+/* 1) Put Follow + notification controls ABOVE the vendor name, with a deliberate
+      breathing gap so the name reads as the identity line underneath the actions. */
+#app .storefront-profile .storefront-profile-body{
+  padding-top:0!important;
+}
+#app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+  order:initial!important;
+  position:relative!important;
+  top:auto!important;
+  inset:auto!important;
+  width:100%!important;
+  min-height:42px!important;
+  height:42px!important;
+  margin:0 0 .62rem!important;
+  padding:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:.55rem!important;
+  flex-wrap:nowrap!important;
+}
+#app .storefront-profile .storefront-profile-actions + .storefront-name-row{
+  margin-top:0!important;
+  padding-top:.05rem!important;
+}
+#app .storefront-profile .storefront-profile-name{
+  margin:.05rem 0 .22rem!important;
+  padding:0!important;
+  line-height:1.16!important;
+}
+
+/* 2) When followed, always show the state as text + check, never a lone check. */
+#app .storefront-profile .follow-btn.follow-btn-icon .follow-btn-label{
+  display:inline!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:auto!important;
+  max-width:none!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+}
+#app .storefront-profile .follow-btn.follow-btn-icon{
+  min-width:122px!important;
+  height:42px!important;
+  min-height:42px!important;
+  padding:.45rem 1rem!important;
+  gap:.45rem!important;
+}
+
+/* 3) Three-dot control: slightly darker glass with a crisp white ring and dots.
+      This keeps it legible over very bright covers and remains visible at night. */
+#app .storefront-profile .storefront-banner-more{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  border:2px solid rgba(255,255,255,.92)!important;
+  background:rgba(15,23,42,.48)!important;
+  color:#fff!important;
+  box-shadow:0 3px 14px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.12)!important;
+  backdrop-filter:blur(8px) saturate(115%)!important;
+  -webkit-backdrop-filter:blur(8px) saturate(115%)!important;
+}
+#app .storefront-profile .storefront-banner-more i{
+  color:#fff!important;
+  opacity:1!important;
+  font-size:.92rem!important;
+}
+
+/* 4) Shorter mobile app header: reduce the vertical footprint without removing
+      the avatar, search, notification/message or cart controls. */
+header{
+  padding:.52rem .9rem!important;
+}
+.header-top-row{
+  gap:.5rem!important;
+  min-height:46px!important;
+}
+.header-search-row{
+  min-height:44px!important;
+  height:44px!important;
+  padding:.45rem .82rem!important;
+  font-size:.82rem!important;
+}
+.header-left,.header-right{
+  min-height:44px!important;
+}
+.header-left .icon-btn,.header-right .icon-btn{
+  width:40px!important;
+  height:40px!important;
+  min-width:40px!important;
+  min-height:40px!important;
+}
+@media(max-width:720px){
+  body{padding-top:calc(62px + env(safe-area-inset-top,0px))!important;}
+  header{padding:.45rem .75rem!important;}
+  .header-top-row{min-height:44px!important;gap:.42rem!important;}
+  .header-search-row{height:42px!important;min-height:42px!important;padding:.4rem .76rem!important;}
+}
+
+/* Preserve the enlarged avatar while keeping the action/name spacing clean. */
+@media(max-width:620px){
+  #app .storefront-profile .storefront-avatar-row{
+    min-height:96px!important;
+    height:96px!important;
+    margin-top:-48px!important;
+    margin-bottom:.48rem!important;
+  }
+  #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+    min-height:40px!important;
+    height:40px!important;
+    margin-bottom:.58rem!important;
+  }
+  #app .storefront-profile .storefront-profile-name{
+    font-size:1.42rem!important;
+  }
+}
+
+/* Dark/black modes: retain the same crisp white ring, but deepen the glass. */
+[data-theme="dark"] #app .storefront-profile .storefront-banner-more,
+[data-theme="black"] #app .storefront-profile .storefront-banner-more{
+  background:rgba(0,0,0,.58)!important;
+  border-color:rgba(255,255,255,.9)!important;
+}
+</style>
+
+
+<style id="levro-storefront-notification-drawer-final-20261004">
+/* FINAL NOTIFICATION DRAWER — same native bottom-sheet mechanics as Store options.
+   The sheet/backdrop are portaled to document.body so no #app or bottom-nav
+   stacking context can sit above them. */
+body.follow-notification-sheet-open{overflow:hidden!important;overscroll-behavior:none!important;}
+body.follow-notification-sheet-open #bottomNav,
+body.follow-notification-sheet-open .bottom-nav{
+  display:none!important;
+}
+
+.follow-sheet-backdrop{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  background:rgba(8,15,25,.56)!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  z-index:2147483008!important;
+}
+
+.follow-menu{
+  position:fixed!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  top:auto!important;
+  width:100vw!important;
+  max-width:none!important;
+  height:auto!important;
+  max-height:min(72dvh,620px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  margin:0!important;
+  padding:8px max(20px,env(safe-area-inset-left)) calc(16px + env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-right))!important;
+  background:#fff!important;
+  color:#172033!important;
+  border:1px solid #d6dee8!important;
+  border-bottom:0!important;
+  border-radius:26px 26px 0 0!important;
+  box-shadow:0 -20px 60px rgba(15,23,42,.28)!important;
+  transform:translateY(105%)!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  transition:transform .28s cubic-bezier(.22,1,.36,1),opacity .2s ease,visibility 0s linear .28s!important;
+  z-index:2147483009!important;
+}
+.follow-menu.is-sheet-open{
+  transform:translateY(0)!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  transition:transform .28s cubic-bezier(.22,1,.36,1),opacity .2s ease!important;
+}
+.follow-menu.hidden{display:none!important;}
+
+.follow-menu::before{
+  content:""!important;
+  display:block!important;
+  width:46px!important;
+  height:5px!important;
+  margin:1px auto 16px!important;
+  border-radius:999px!important;
+  background:#c7d0db!important;
+}
+.follow-menu > strong{
+  display:block!important;
+  margin:0!important;
+  padding:0 0 5px!important;
+  color:#172033!important;
+  font-size:1.12rem!important;
+  line-height:1.25!important;
+  font-weight:800!important;
+  border:0!important;
+}
+.follow-menu .follow-mode-intro{
+  margin:0 0 12px!important;
+  color:#657386!important;
+  font-size:.81rem!important;
+  line-height:1.45!important;
+}
+.follow-menu .follow-mode-row{
+  width:100%!important;
+  min-height:78px!important;
+  display:grid!important;
+  grid-template-columns:50px minmax(0,1fr) 30px!important;
+  align-items:center!important;
+  gap:.8rem!important;
+  padding:12px 0!important;
+  border:0!important;
+  border-bottom:1px solid #e2e8ef!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#172033!important;
+  font:inherit!important;
+  text-align:left!important;
+  box-shadow:none!important;
+}
+.follow-menu .follow-mode-row:last-child{border-bottom:0!important;}
+.follow-menu .follow-mode-row:active{background:#f7f9fb!important;}
+.follow-menu .follow-mode-icon{
+  width:50px!important;
+  height:50px!important;
+  min-width:50px!important;
+  min-height:50px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:15px!important;
+  border:1px solid transparent!important;
+  font-size:1.12rem!important;
+  line-height:1!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+.follow-menu .follow-mode-icon i{
+  display:block!important;
+  font-family:"Font Awesome 6 Free"!important;
+  font-weight:900!important;
+  line-height:1!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+.follow-menu .follow-mode-icon-all{
+  color:#2563eb!important;
+  background:#edf4ff!important;
+  border-color:#bfd3f4!important;
+}
+.follow-menu .follow-mode-icon-relevant{
+  color:#7c3aed!important;
+  background:#f2edff!important;
+  border-color:#d6c8f4!important;
+}
+.follow-menu .follow-mode-icon-off{
+  color:#536174!important;
+  background:#f1f4f7!important;
+  border-color:#d6dde6!important;
+}
+.follow-menu .follow-mode-copy{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:3px!important;
+}
+.follow-menu .follow-mode-copy b{
+  display:block!important;
+  color:#172033!important;
+  font-size:.93rem!important;
+  line-height:1.2!important;
+  font-weight:800!important;
+}
+.follow-menu .follow-mode-copy small{
+  display:block!important;
+  margin:0!important;
+  color:#657386!important;
+  font-size:.75rem!important;
+  line-height:1.4!important;
+}
+.follow-menu .follow-mode-check{
+  width:28px!important;
+  height:28px!important;
+  min-width:28px!important;
+  min-height:28px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:50%!important;
+  border:2px solid #cbd5e1!important;
+  background:#fff!important;
+  color:transparent!important;
+  font-size:.78rem!important;
+}
+.follow-menu .follow-mode-row[aria-pressed="true"] .follow-mode-check{
+  border-color:#087f56!important;
+  background:#087f56!important;
+  color:#fff!important;
+  box-shadow:0 3px 10px rgba(8,127,86,.18)!important;
+}
+.follow-menu .follow-mode-row[aria-pressed="true"] .follow-mode-copy b{font-weight:850!important;}
+
+/* Dark theme remains a genuine dark sheet, not a washed-out gray overlay. */
+[data-theme="dark"] .follow-menu,
+[data-theme="black"] .follow-menu{
+  background:#181c20!important;
+  color:#eef2f5!important;
+  border-color:#333a40!important;
+  box-shadow:0 -22px 60px rgba(0,0,0,.6)!important;
+}
+[data-theme="dark"] .follow-menu > strong,
+[data-theme="black"] .follow-menu > strong,
+[data-theme="dark"] .follow-menu .follow-mode-copy b,
+[data-theme="black"] .follow-menu .follow-mode-copy b{color:#eef2f5!important;}
+[data-theme="dark"] .follow-menu .follow-mode-intro,
+[data-theme="black"] .follow-menu .follow-mode-copy small{color:#aeb6bf!important;}
+[data-theme="dark"] .follow-menu .follow-mode-row,
+[data-theme="black"] .follow-menu .follow-mode-row{border-bottom-color:#343b42!important;color:#eef2f5!important;}
+[data-theme="dark"] .follow-menu .follow-mode-row:active,
+[data-theme="black"] .follow-menu .follow-mode-row:active{background:#20252a!important;}
+[data-theme="dark"] .follow-menu .follow-mode-check,
+[data-theme="black"] .follow-menu .follow-mode-check{background:#181c20!important;border-color:#59636d!important;}
+
+@media(max-width:420px){
+  .follow-menu{padding-left:16px!important;padding-right:16px!important;}
+  .follow-menu .follow-mode-row{grid-template-columns:46px minmax(0,1fr) 28px!important;gap:.7rem!important;min-height:74px!important;}
+  .follow-menu .follow-mode-icon{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;}
+}
+@media(prefers-reduced-motion:reduce){
+  .follow-menu,.follow-menu.is-sheet-open{transition:none!important;}
+  #app .storefront-profile .follow-sheet-backdrop{transition:none!important;}
+}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
@@ -21612,7 +21956,7 @@ function storefrontFollowWrapInnerHtml(v, followState) {
       <strong>Notifications from this vendor</strong>
       <p class="follow-mode-intro">Choose how you want LevroMart to keep you updated.</p>
       <button type="button" class="follow-mode-row" data-notify-mode="all" aria-pressed="${mode === 'all' ? 'true' : 'false'}"><span class="follow-mode-icon follow-mode-icon-all"><i class="fa-solid fa-bell"></i></span><span class="follow-mode-copy"><b>All</b><small>Get notified about every update from this vendor.</small></span><span class="follow-mode-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span></button>
-      <button type="button" class="follow-mode-row" data-notify-mode="relevant" aria-pressed="${mode === 'relevant' ? 'true' : 'false'}"><span class="follow-mode-icon follow-mode-icon-relevant"><i class="fa-solid fa-sparkles"></i></span><span class="follow-mode-copy"><b>Most relevant</b><small>Get the updates that matter most to you.</small></span><span class="follow-mode-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span></button>
+      <button type="button" class="follow-mode-row" data-notify-mode="relevant" aria-pressed="${mode === 'relevant' ? 'true' : 'false'}"><span class="follow-mode-icon follow-mode-icon-relevant"><i class="fa-solid fa-star"></i></span><span class="follow-mode-copy"><b>Most relevant</b><small>Get the updates that matter most to you.</small></span><span class="follow-mode-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span></button>
       <button type="button" class="follow-mode-row" data-notify-mode="off" aria-pressed="${mode === 'off' ? 'true' : 'false'}"><span class="follow-mode-icon follow-mode-icon-off"><i class="fa-regular fa-bell-slash"></i></span><span class="follow-mode-copy"><b>Off</b><small>Don't receive notifications from this vendor.</small></span><span class="follow-mode-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span></button>
     </div>`;
 }
@@ -21755,15 +22099,14 @@ async function renderStorefrontInner(vendorId) {
       <div class="storefront-avatar-row">
         ${logo}
       </div>
-      <div class="storefront-name-row">
-        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
-      </div>
       <div class="storefront-profile-actions storefront-public-actions">
         ${isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-message-icon" type="button" aria-label="Messages" title="Messages" onclick="navigate('messages')"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
         ${!isOwnStorefront ? `<div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div>` : ""}
       </div>
-      ${v.bio ? `<section class="storefront-about" aria-labelledby="storefrontAboutTitle">
-        <div class="storefront-about-head"><h2 id="storefrontAboutTitle">About</h2></div>
+      <div class="storefront-name-row">
+        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
+      </div>
+      ${v.bio ? `<section class="storefront-about" aria-label="Vendor description">
         <div class="storefront-bio-wrap" id="storefrontBioWrap"><p class="storefront-bio">${esc(v.bio)}</p>${v.bio.length > 160 ? `<button type="button" class="storefront-bio-toggle" onclick="toggleStorefrontBio(this)">Read more</button>` : ""}</div>
       </section>` : ""}
       <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${storefrontDistanceHtml(v)}${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
@@ -37784,12 +38127,52 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
       showToast?.(e.message||'Could not update your following list.','error')
     }finally{btn.disabled=false}
   }
-  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;let st=await followState(vendorId);if(st)window.rememberVendorFollow?.(vendorId,!!st.following);else st={following:!!window.followedVendorSet?.().has(String(vendorId)),mute_mode:'none'};const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i><span class="follow-btn-label">'+(following?'Following':'Follow')+'</span>';btn.title=following?'Following, tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}const mode=storefrontFollowNotificationMode(st);wrap.querySelectorAll('.follow-mode-row').forEach(b=>{const active=b.dataset.notifyMode===mode;b.setAttribute('aria-pressed',active?'true':'false')});const count=document.querySelector('[data-follow-count]');if(count&&st.follower_count!=null){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
-  async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const wasHidden=menu.classList.contains('hidden');document.querySelectorAll('.follow-menu:not(.hidden)').forEach(m=>m.classList.add('hidden'));document.querySelectorAll('.follow-sheet-backdrop').forEach(b=>b.remove());if(!wasHidden){bell.setAttribute('aria-expanded','false');return;}let backdrop=wrap.querySelector('.follow-sheet-backdrop');if(!backdrop){backdrop=document.createElement('div');backdrop.className='follow-sheet-backdrop';backdrop.setAttribute('aria-hidden','true');backdrop.addEventListener('click',()=>closeStorefrontFollowSheet(wrap));wrap.appendChild(backdrop)}menu.classList.remove('hidden');bell.setAttribute('aria-expanded','true');wireStorefrontFollowSheetGesture(menu,wrap);await refreshFollow(vendorId)}
+  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;let st=await followState(vendorId);if(st)window.rememberVendorFollow?.(vendorId,!!st.following);else st={following:!!window.followedVendorSet?.().has(String(vendorId)),mute_mode:'none'};const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i><span class="follow-btn-label">'+(following?'Following':'Follow')+'</span>';btn.title=following?'Following, tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}const mode=storefrontFollowNotificationMode(st);document.querySelectorAll('.follow-mode-row[data-notify-mode]').forEach(b=>{const active=b.closest('.follow-menu')?.dataset.followSheetVendorId===String(vendorId) && b.dataset.notifyMode===mode;if(b.closest('.follow-menu')?.dataset.followSheetVendorId===String(vendorId))b.setAttribute('aria-pressed',active?'true':'false')});const count=document.querySelector('[data-follow-count]');if(count&&st.follower_count!=null){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
+  async function toggleFollowBell(vendorId,ev){
+    ev?.preventDefault?.();
+    ev?.stopPropagation?.();
+    const selector='.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]';
+    const wrap=document.querySelector(selector);
+    const bell=wrap?.querySelector('.follow-settings-btn');
+    if(!bell || bell.disabled || !wrap)return;
+    const menu=wrap.querySelector('.follow-menu');
+    if(!menu)return;
+    const alreadyOpen=menu.classList.contains('is-sheet-open');
+    document.querySelectorAll('.storefront-follow-wrap').forEach(w=>{
+      if(w!==wrap)window.closeStorefrontFollowSheet?.(w);
+    });
+    if(alreadyOpen){
+      window.closeStorefrontFollowSheet(wrap);
+      return;
+    }
+
+    let backdrop=document.querySelector('.follow-sheet-backdrop');
+    if(backdrop)backdrop.remove();
+    backdrop=document.createElement('div');
+    backdrop.className='follow-sheet-backdrop';
+    backdrop.setAttribute('aria-hidden','true');
+    backdrop.addEventListener('click',()=>window.closeStorefrontFollowSheet(wrap));
+    document.body.appendChild(backdrop);
+
+    if(menu.__followSheetCloseTimer)clearTimeout(menu.__followSheetCloseTimer);
+    menu.__followSheetCloseTimer=null;
+    menu.__followSheetOwner=wrap;
+    menu.dataset.followSheetVendorId=String(vendorId);
+    document.body.appendChild(menu);
+    menu.classList.remove('hidden');
+    menu.classList.add('is-sheet-open');
+    menu.setAttribute('aria-hidden','false');
+    menu.scrollTop=0;
+    bell.setAttribute('aria-expanded','true');
+    followSheetSetBodyLock(true);
+    wireStorefrontFollowSheetGesture(menu,wrap);
+
+    await refreshFollow(vendorId);
+  }
   window.toggleLevromartVendorFollow=toggleFollow;window.toggleLevromartFollowNotifications=toggleFollowBell;
-  async function saveFollowPrefsFromWrap(wrap,muteModeOverride,modeOverride,silent){const id=wrap?.dataset.followVendorId;if(!id)return;const mode=modeOverride||wrap.querySelector('.follow-mode-row[aria-pressed="true"]')?.dataset.notifyMode||'relevant';const prefs={all:{notify_new_listing:true,notify_new_service:true,notify_new_package:true,notify_new_variety:true,notify_price_change:true,notify_discount:true,mute:'none'},relevant:{notify_new_listing:true,notify_new_service:true,notify_new_package:true,notify_new_variety:false,notify_price_change:false,notify_discount:false,mute:'none'},off:{notify_new_listing:false,notify_new_service:false,notify_new_package:false,notify_new_variety:false,notify_price_change:false,notify_discount:false,mute:'always'}}[mode]||null;if(!prefs)return;const muteMode=muteModeOverride||prefs.mute;try{const r=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:muteMode,p_notify_new_listing:prefs.notify_new_listing,p_notify_new_service:prefs.notify_new_service,p_notify_new_package:prefs.notify_new_package,p_notify_new_variety:prefs.notify_new_variety,p_notify_price_change:prefs.notify_price_change,p_notify_discount:prefs.notify_discount});if(r.error)throw r.error;wrap.querySelectorAll('.follow-mode-row').forEach(b=>b.setAttribute('aria-pressed',b.dataset.notifyMode===mode?'true':'false'));if(!silent)showToast?.(mode==='all'?'All vendor notifications are on.':mode==='off'?'Vendor notifications are off.':'Most relevant vendor notifications are on.','success');}catch(e){showToast?.(e.message||'Could not update vendor notifications.','error')}}
-document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mode-row[data-notify-mode]');if(!b)return;e.preventDefault();e.stopPropagation();const wrap=b.closest('.storefront-follow-wrap');if(!wrap)return;saveFollowPrefsFromWrap(wrap,null,b.dataset.notifyMode,false);},true);
-  document.addEventListener('click',e=>{if(!e.target.closest?.('.storefront-follow-wrap'))document.querySelectorAll('.storefront-follow-wrap').forEach(w=>closeStorefrontFollowSheet(w))},true);
+  async function saveFollowPrefsFromWrap(wrap,muteModeOverride,modeOverride,silent){const id=wrap?.dataset.followVendorId;if(!id)return;const menu=wrap?.querySelector('.follow-menu[data-follow-sheet-vendor-id="'+CSS.escape(String(id))+'"]') || document.querySelector('.follow-menu[data-follow-sheet-vendor-id="'+CSS.escape(String(id))+'"]') || wrap?.querySelector('.follow-menu'); const mode=modeOverride||menu?.querySelector('.follow-mode-row[aria-pressed="true"]')?.dataset.notifyMode||'relevant';const prefs={all:{notify_new_listing:true,notify_new_service:true,notify_new_package:true,notify_new_variety:true,notify_price_change:true,notify_discount:true,mute:'none'},relevant:{notify_new_listing:true,notify_new_service:true,notify_new_package:true,notify_new_variety:false,notify_price_change:false,notify_discount:false,mute:'none'},off:{notify_new_listing:false,notify_new_service:false,notify_new_package:false,notify_new_variety:false,notify_price_change:false,notify_discount:false,mute:'always'}}[mode]||null;if(!prefs)return;const muteMode=muteModeOverride||prefs.mute;try{const r=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:muteMode,p_notify_new_listing:prefs.notify_new_listing,p_notify_new_service:prefs.notify_new_service,p_notify_new_package:prefs.notify_new_package,p_notify_new_variety:prefs.notify_new_variety,p_notify_price_change:prefs.notify_price_change,p_notify_discount:prefs.notify_discount});if(r.error)throw r.error;menu?.querySelectorAll('.follow-mode-row').forEach(b=>b.setAttribute('aria-pressed',b.dataset.notifyMode===mode?'true':'false'));if(!silent)showToast?.(mode==='all'?'All vendor notifications are on.':mode==='off'?'Vendor notifications are off.':'Most relevant vendor notifications are on.','success');}catch(e){showToast?.(e.message||'Could not update vendor notifications.','error')}}
+document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mode-row[data-notify-mode]');if(!b)return;e.preventDefault();e.stopPropagation();const menu=b.closest('.follow-menu');const vendorId=menu?.dataset.followSheetVendorId;const wrap=vendorId?document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]'):null;if(!wrap)return;saveFollowPrefsFromWrap(wrap,null,b.dataset.notifyMode,false);},true);
+  document.addEventListener('click',e=>{if(e.target.closest?.('.storefront-follow-wrap') || e.target.closest?.('.follow-menu') || e.target.closest?.('.follow-sheet-backdrop'))return;document.querySelectorAll('.storefront-follow-wrap').forEach(w=>closeStorefrontFollowSheet(w));},true);
 
   // Follower list for the shop owner.
   window.showVendorFollowers=async function(vendorId){if(!session)return;navigate('vendorFollowers');return;let modal=document.getElementById('vendorFollowersModal');if(!modal){modal=document.createElement('div');modal.id='vendorFollowersModal';modal.className='modal hidden';document.body.appendChild(modal)}modal.innerHTML='<div class="modal-content" style="max-width:480px"><div class="flex" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Followers</h3><button class="icon-btn" type="button" aria-label="Close" onclick="document.getElementById(\'vendorFollowersModal\').classList.add(\'hidden\')"><i class="fa-solid fa-xmark"></i></button></div><div class="followers-modal-list"><p class="muted">Loading followers…</p></div></div>';modal.classList.remove('hidden');try{const r=await sb.rpc('get_vendor_followers',{p_vendor_id:vendorId});if(r.error)throw r.error;const list=r.data||[];modal.querySelector('.followers-modal-list').innerHTML=list.length?list.map(x=>'<div class="follower-row">'+(x.avatar_url?'<img src="'+escHtml(x.avatar_url)+'" alt="">':'<div class="follower-avatar avatar-circle">'+escHtml((x.name||'U').charAt(0).toUpperCase())+'</div>')+'<div class="follower-copy"><strong>'+escHtml(x.name||'Levromart user')+'</strong><small>Following since '+new Date(x.followed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+'</small></div></div>').join(''):'<p class="muted">No followers yet.</p>'}catch(e){modal.querySelector('.followers-modal-list').innerHTML='<p class="muted">Could not load followers.</p>'}}
@@ -39596,7 +39979,7 @@ html[data-theme="black"] #app .order-filter-clear-btn{
     related.forEach(t => items.push(`<button type="button" class="levi-smart-search-item levi-smart-search-related" data-related="${esc(t)}"><i class="fa-solid fa-wand-magic-sparkles"></i><span><strong>${esc(t)}</strong><small>Related to “${esc(q)}”</small></span></button>`));
 
     if (!items.length) { menu.classList.add("hidden"); return; }
-    menu.innerHTML = `<div class="levi-smart-search-heading"><i class="fa-solid fa-sparkles"></i> Smart suggestions</div>${items.slice(0,9).join("")}`;
+    menu.innerHTML = `<div class="levi-smart-search-heading"><i class="fa-solid fa-star"></i> Smart suggestions</div>${items.slice(0,9).join("")}`;
     menu.classList.remove("hidden");
     menu.querySelectorAll("[data-product-id]").forEach(btn => btn.addEventListener("mousedown", e => { e.preventDefault(); navigate("productDetail", { productId: btn.dataset.productId }); hideMenu(input); }));
     menu.querySelectorAll("[data-package-id]").forEach(btn => btn.addEventListener("mousedown", e => { e.preventDefault(); navigate("packageDetail", { packageId: btn.dataset.packageId }); hideMenu(input); }));
@@ -49611,23 +49994,72 @@ function levroPulseLbCard() {
     sheet.addEventListener("touchmove",e=>{if(!dragging)return;lastY=e.touches[0].clientY;const dy=Math.max(0,lastY-startY);if(dy>0)sheet.style.transform=`translateY(${dy}px)`;},{passive:true});
     sheet.addEventListener("touchend",()=>{if(!dragging)return;dragging=false;const dy=Math.max(0,lastY-startY);sheet.style.transition="";sheet.style.transform="";if(dy>70)window.closeStorefrontMoreSheet();},{passive:true});
   }
+  function followSheetSetBodyLock(on){
+    const body=document.body;
+    if(!body)return;
+    if(on){
+      body.classList.add("follow-notification-sheet-open");
+      body.classList.add("levro-sheet-open");
+    }else if(!document.querySelector(".levro-storefront-sheet.is-open")){
+      body.classList.remove("follow-notification-sheet-open");
+      body.classList.remove("levro-sheet-open");
+    }else{
+      body.classList.remove("follow-notification-sheet-open");
+    }
+  }
   window.closeStorefrontFollowSheet=function(wrap){
-    wrap=wrap||document.querySelector(".storefront-follow-wrap");
-    if(!wrap)return;
-    const menu=wrap.querySelector(".follow-menu"),bell=wrap.querySelector(".follow-settings-btn");
-    if(menu)menu.classList.add("hidden");
+    const menu=(wrap?.querySelector?.(".follow-menu")) || document.querySelector(".follow-menu[data-follow-sheet-vendor-id]");
+    const bell=wrap?.querySelector?.(".follow-settings-btn") || document.querySelector(".follow-settings-btn[aria-expanded='true']");
+    if(!menu && !bell)return;
     if(bell)bell.setAttribute("aria-expanded","false");
-    wrap.querySelector(".follow-sheet-backdrop")?.remove();
+    if(menu){
+      if(menu.__followSheetCloseTimer)clearTimeout(menu.__followSheetCloseTimer);
+      menu.classList.remove("is-sheet-open");
+      menu.setAttribute("aria-hidden","true");
+      menu.style.transform="";
+      menu.__followSheetCloseTimer=setTimeout(()=>{
+        menu.classList.add("hidden");
+        const owner=menu.__followSheetOwner||wrap;
+        if(owner && owner.isConnected) owner.appendChild(menu);
+        menu.removeAttribute("data-follow-sheet-vendor-id");
+        menu.__followSheetOwner=null;
+        menu.__followSheetCloseTimer=null;
+      },290);
+    }
+    document.querySelectorAll(".follow-sheet-backdrop").forEach(b=>b.remove());
+    followSheetSetBodyLock(false);
   };
   window.wireStorefrontFollowSheetGesture=function(menu,wrap){
     if(!menu||menu.dataset.gestureWired==="1")return;
     menu.dataset.gestureWired="1";
     let startY=0,lastY=0,dragging=false;
-    menu.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;startY=e.touches[0].clientY;lastY=startY;dragging=true;menu.style.transition="none";},{passive:true});
-    menu.addEventListener("touchmove",e=>{if(!dragging)return;lastY=e.touches[0].clientY;const dy=Math.max(0,lastY-startY);if(dy>0)menu.style.transform=`translateY(${dy}px)`;},{passive:true});
-    menu.addEventListener("touchend",()=>{if(!dragging)return;dragging=false;const dy=Math.max(0,lastY-startY);menu.style.transition="";menu.style.transform="";if(dy>70)window.closeStorefrontFollowSheet(wrap);},{passive:true});
+    menu.addEventListener("touchstart",e=>{
+      if(e.touches.length!==1)return;
+      startY=e.touches[0].clientY;
+      lastY=startY;
+      dragging=true;
+      menu.style.transition="none";
+    },{passive:true});
+    menu.addEventListener("touchmove",e=>{
+      if(!dragging)return;
+      lastY=e.touches[0].clientY;
+      const dy=Math.max(0,lastY-startY);
+      if(dy>0)menu.style.transform=`translateY(${dy}px)`;
+    },{passive:true});
+    menu.addEventListener("touchend",()=>{
+      if(!dragging)return;
+      dragging=false;
+      const dy=Math.max(0,lastY-startY);
+      menu.style.transition="";
+      menu.style.transform="";
+      if(dy>70)window.closeStorefrontFollowSheet(wrap);
+    },{passive:true});
   };
-  document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;window.closeStorefrontMoreSheet?.();document.querySelectorAll(".storefront-follow-wrap").forEach(w=>window.closeStorefrontFollowSheet?.(w));});
+  document.addEventListener("keydown",e=>{
+    if(e.key!=="Escape")return;
+    window.closeStorefrontMoreSheet?.();
+    document.querySelectorAll(".storefront-follow-wrap").forEach(w=>window.closeStorefrontFollowSheet?.(w));
+  });
 })();
 </script>
 
