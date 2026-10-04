@@ -7347,16 +7347,28 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   }
 </style>
 
-<style id="levromart-product-card-delivery-spacing-fix">
-  /* Final, narrowly-scoped adjustment: move only the truck + Total label
-     slightly left, and give the delivery row a little more breathing room
-     below the divider. The total amount remains untouched/right-aligned. */
-  #app .product-card-total-line{
-    padding-top:.65rem !important;
+
+
+
+<style id="levromart-product-card-delivery-spacing-final">
+  /* FINAL MICRO-FIX — product-card delivery row only.
+     Do not alter the cart button, item price, card width, card height,
+     typography, or any other product-card behaviour. */
+  #app .grid:has(> .product-card-wrap) .product-card-total-line,
+  #app .hscroll .product-card-total-line,
+  #app .product-card-total-line {
+    padding-top: .75rem !important;
   }
+
+  /* Move ONLY the truck icon + "Total" label left.
+     The total amount (<strong>) is intentionally untouched. */
+  #app .grid:has(> .product-card-wrap) .product-card-total-line > i,
+  #app .grid:has(> .product-card-wrap) .product-card-total-line .product-card-total-label,
+  #app .hscroll .product-card-total-line > i,
+  #app .hscroll .product-card-total-line .product-card-total-label,
   #app .product-card-total-line > i,
-  #app .product-card-total-line .product-card-total-label{
-    transform:translateX(-.3rem);
+  #app .product-card-total-line .product-card-total-label {
+    transform: translateX(-.45rem) !important;
   }
 </style>
 
