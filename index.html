@@ -9093,6 +9093,160 @@ body #app .storefront-profile .storefront-name-row{
 }
 </style>
 
+
+<style id="levro-storefront-header-true-final-20261004">
+/* TRUE FINAL STOREFRONT HEADER FIX
+   Follow + notification are normal-flow controls BELOW the cover.
+   The avatar overlaps the cover independently, so it cannot pull the
+   action row back into the banner. The vendor name follows with clear air.
+*/
+body #app .storefront-profile .storefront-profile-body{
+  position:relative!important;
+  display:block!important;
+  padding-top:0!important;
+}
+
+/* Avatar: keep the intentional overlap, but remove it from normal flow. */
+body #app .storefront-profile .storefront-avatar-row{
+  position:absolute!important;
+  left:1rem!important;
+  right:1rem!important;
+  top:-48px!important;
+  width:auto!important;
+  height:96px!important;
+  min-height:96px!important;
+  margin:0!important;
+  padding:0!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:flex-start!important;
+  overflow:visible!important;
+  z-index:20!important;
+  pointer-events:none!important;
+}
+body #app .storefront-profile .storefront-avatar-row .storefront-avatar,
+body #app .storefront-profile .storefront-avatar-row .storefront-avatar-button{
+  pointer-events:auto!important;
+}
+
+/* Follow + notification: BELOW the banner, with deliberate breathing room. */
+body #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+  position:relative!important;
+  inset:auto!important;
+  top:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:auto!important;
+  z-index:15!important;
+  width:100%!important;
+  height:40px!important;
+  min-height:40px!important;
+  margin:16px 0 0!important;
+  padding:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:.55rem!important;
+  flex-wrap:nowrap!important;
+  transform:none!important;
+}
+body #app .storefront-profile .storefront-public-actions .storefront-follow-wrap,
+body #app .storefront-profile .storefront-public-actions .storefront-follow-controls{
+  position:static!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:.55rem!important;
+  width:auto!important;
+  margin:0!important;
+  padding:0!important;
+}
+
+/* Name: clearly separated from the overlapping profile picture/action row. */
+body #app .storefront-profile .storefront-name-row{
+  position:relative!important;
+  z-index:10!important;
+  width:100%!important;
+  margin:22px 0 .55rem!important;
+  padding:0!important;
+  transform:none!important;
+}
+body #app .storefront-profile .storefront-profile-name{
+  margin:0!important;
+}
+
+/* Three-dot: subtle dark outline so it is legible without becoming dominant. */
+body #app .storefront-profile .storefront-cover > .storefront-banner-more{
+  position:absolute!important;
+  top:12px!important;
+  right:12px!important;
+  left:auto!important;
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  min-height:42px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:50%!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(255,255,255,.34)!important;
+  border:1.5px solid rgba(15,23,42,.48)!important;
+  color:#172033!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.10)!important;
+  backdrop-filter:blur(4px)!important;
+  -webkit-backdrop-filter:blur(4px)!important;
+  z-index:30!important;
+}
+body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
+  color:#172033!important;
+  font-size:1rem!important;
+  opacity:.94!important;
+}
+
+[data-theme="dark"] body #app .storefront-profile .storefront-cover > .storefront-banner-more,
+[data-theme="black"] body #app .storefront-profile .storefront-cover > .storefront-banner-more{
+  background:rgba(0,0,0,.24)!important;
+  border-color:rgba(255,255,255,.48)!important;
+  color:#f4f6f8!important;
+}
+[data-theme="dark"] body #app .storefront-profile .storefront-cover > .storefront-banner-more i,
+[data-theme="black"] body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
+  color:#f4f6f8!important;
+}
+
+@media(max-width:620px){
+  body #app .storefront-profile .storefront-avatar-row{
+    left:.9rem!important;
+    right:.9rem!important;
+    top:-48px!important;
+    height:96px!important;
+    min-height:96px!important;
+  }
+  body #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+    height:38px!important;
+    min-height:38px!important;
+    margin:16px 0 0!important;
+    gap:.45rem!important;
+  }
+  body #app .storefront-profile .storefront-public-actions .storefront-follow-wrap,
+  body #app .storefront-profile .storefront-public-actions .storefront-follow-controls{
+    gap:.45rem!important;
+  }
+  body #app .storefront-profile .storefront-name-row{
+    margin:22px 0 .55rem!important;
+  }
+  body #app .storefront-profile .storefront-cover > .storefront-banner-more{
+    width:40px!important;
+    height:40px!important;
+    min-width:40px!important;
+    min-height:40px!important;
+    top:12px!important;
+    right:12px!important;
+  }
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
