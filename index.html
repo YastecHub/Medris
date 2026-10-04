@@ -7631,6 +7631,376 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 }
 </style>
 
+
+<style id="levromart-profile-storefront-refurbish-v1">
+/* ================================================================
+   LEVROMART PROFILE / STOREFRONT REFURBISH — scoped final layer
+   Phase 2–8: hierarchy, sheets, neutral statistics, spacing.
+   No database/query behavior is changed here.
+   ================================================================ */
+
+/* Profile identity: keep the cover as context, not as the information wall. */
+#app .storefront-profile{
+  max-width:980px!important;
+  margin:0 auto 1.5rem!important;
+}
+#app .storefront-profile-body{
+  padding:0 1.15rem 1.15rem!important;
+}
+#app .storefront-avatar-row{
+  min-height:78px!important;
+  margin-bottom:.35rem!important;
+}
+#app .storefront-profile-name{
+  font-size:clamp(1.35rem,4.8vw,1.65rem)!important;
+  line-height:1.12!important;
+  letter-spacing:-.025em!important;
+  font-weight:800!important;
+}
+#app .storefront-name-row{
+  margin-top:.15rem!important;
+  margin-bottom:.15rem!important;
+}
+
+/* About is part of the primary identity hierarchy, immediately under the name. */
+#app .storefront-about{
+  margin-top:.7rem!important;
+  padding-top:.8rem!important;
+  border-top:1px solid color-mix(in srgb,var(--border) 72%,transparent)!important;
+}
+#app .storefront-about-head{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  margin-bottom:.28rem!important;
+}
+#app .storefront-about-head h2{
+  margin:0!important;
+  font-size:1rem!important;
+  line-height:1.25!important;
+  font-weight:780!important;
+  letter-spacing:-.01em!important;
+}
+#app .storefront-bio{
+  margin:0!important;
+  font-size:.9rem!important;
+  line-height:1.55!important;
+  color:var(--text)!important;
+  max-width:72ch!important;
+}
+#app .storefront-bio-wrap{
+  margin:0!important;
+}
+#app .storefront-bio-toggle{
+  display:inline-flex!important;
+  align-items:center!important;
+  min-height:32px!important;
+  margin:.18rem 0 0!important;
+  padding:.15rem 0!important;
+  color:var(--text-muted)!important;
+  font-weight:700!important;
+  font-size:.78rem!important;
+}
+#app .storefront-bio-toggle:hover{color:var(--text)!important;}
+
+/* Location, distance and category are supporting metadata — quiet and scannable. */
+#app .storefront-meta{
+  display:flex!important;
+  align-items:center!important;
+  gap:.42rem .65rem!important;
+  flex-wrap:wrap!important;
+  margin-top:.75rem!important;
+  padding-top:.7rem!important;
+  border-top:1px solid color-mix(in srgb,var(--border) 58%,transparent)!important;
+  color:var(--text-muted)!important;
+  font-size:.76rem!important;
+  line-height:1.35!important;
+}
+#app .storefront-meta span{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:.3rem!important;
+  min-width:0!important;
+}
+#app .storefront-meta i{font-size:.72rem!important;opacity:.82!important;}
+
+/* Stats: numbers stay neutral/white. Green is reserved for selected states/actions. */
+#app .storefront-stats{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:0!important;
+  margin-top:.85rem!important;
+  padding-top:.8rem!important;
+  border-top:1px solid color-mix(in srgb,var(--border) 72%,transparent)!important;
+  color:var(--text-muted)!important;
+  font-size:.72rem!important;
+  line-height:1.25!important;
+}
+#app .storefront-stats > *{
+  min-width:0!important;
+  padding:0 .55rem!important;
+  border-left:1px solid color-mix(in srgb,var(--border) 58%,transparent)!important;
+  text-align:center!important;
+}
+#app .storefront-stats > *:first-child{border-left:0!important;}
+#app .storefront-stats strong{
+  display:block!important;
+  margin-bottom:.16rem!important;
+  color:var(--text)!important;
+  -webkit-text-fill-color:var(--text)!important;
+  font-size:.98rem!important;
+  font-weight:800!important;
+}
+#app .storefront-stats .storefront-stat-link{
+  color:var(--text-muted)!important;
+  -webkit-text-fill-color:var(--text-muted)!important;
+  text-decoration:none!important;
+  cursor:pointer!important;
+}
+#app .storefront-stats .storefront-stat-link strong{
+  color:var(--text)!important;
+  -webkit-text-fill-color:var(--text)!important;
+}
+/* Neutralize the older dark/black-mode green link override specifically for these stats. */
+:root[data-theme="dark"] body #app .storefront-stats .storefront-stat-link,
+:root[data-theme="black"] body #app .storefront-stats .storefront-stat-link,
+:root[data-theme="dark"] body #app .storefront-stats .storefront-stat-link strong,
+:root[data-theme="black"] body #app .storefront-stats .storefront-stat-link strong{
+  color:var(--text)!important;
+  -webkit-text-fill-color:var(--text)!important;
+}
+:root[data-theme="dark"] body #app .storefront-stats .storefront-stat-link:not(strong),
+:root[data-theme="black"] body #app .storefront-stats .storefront-stat-link:not(strong){
+  color:var(--text-muted)!important;
+  -webkit-text-fill-color:var(--text-muted)!important;
+}
+
+/* Store options: native-feeling bottom sheet instead of a small popover. */
+#app .levro-storefront-sheet-root{position:relative!important;z-index:2147483000!important;}
+#app .levro-storefront-sheet-backdrop{
+  position:fixed!important;
+  inset:0!important;
+  background:rgba(0,0,0,.52)!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  transition:opacity .22s ease!important;
+  z-index:2147483000!important;
+}
+#app .levro-storefront-sheet{
+  position:fixed!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  width:100%!important;
+  max-height:min(78dvh,620px)!important;
+  overflow:auto!important;
+  overscroll-behavior:contain!important;
+  padding:8px max(16px,env(safe-area-inset-left)) calc(14px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right))!important;
+  background:var(--card)!important;
+  color:var(--text)!important;
+  border:1px solid var(--border)!important;
+  border-bottom:0!important;
+  border-radius:24px 24px 0 0!important;
+  box-shadow:0 -18px 55px rgba(0,0,0,.34)!important;
+  transform:translateY(105%)!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  transition:transform .28s cubic-bezier(.22,1,.36,1),visibility 0s linear .28s!important;
+  z-index:2147483001!important;
+  touch-action:pan-y!important;
+}
+#app .levro-storefront-sheet.is-open{
+  transform:translateY(0)!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+  transition:transform .28s cubic-bezier(.22,1,.36,1)!important;
+}
+#app .levro-storefront-sheet-root.is-open .levro-storefront-sheet-backdrop{
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+#app .levro-sheet-handle{
+  width:38px!important;
+  height:4px!important;
+  margin:2px auto 12px!important;
+  border-radius:999px!important;
+  background:color-mix(in srgb,var(--text-muted) 55%,transparent)!important;
+}
+#app .levro-sheet-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:1rem!important;
+  padding:0 2px .7rem!important;
+  border-bottom:1px solid var(--border)!important;
+}
+#app .levro-sheet-head h2{
+  margin:0!important;
+  font-size:1.02rem!important;
+  font-weight:800!important;
+}
+#app .levro-sheet-head p{
+  margin:.2rem 0 0!important;
+  color:var(--text-muted)!important;
+  font-size:.72rem!important;
+  line-height:1.4!important;
+}
+#app .levro-sheet-close{
+  width:38px!important;height:38px!important;min-width:38px!important;
+  border:1px solid var(--border)!important;
+  border-radius:50%!important;
+  background:var(--input-bg)!important;
+  color:var(--text)!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  cursor:pointer!important;
+}
+#app .levro-storefront-sheet-list{
+  display:flex!important;
+  flex-direction:column!important;
+  padding-top:.35rem!important;
+}
+#app .levro-storefront-sheet-item{
+  width:100%!important;
+  min-height:52px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:.75rem!important;
+  padding:.72rem .45rem!important;
+  border:0!important;
+  border-bottom:1px solid color-mix(in srgb,var(--border) 68%,transparent)!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:var(--text)!important;
+  font:inherit!important;
+  font-size:.84rem!important;
+  font-weight:600!important;
+  text-align:left!important;
+  text-decoration:none!important;
+  cursor:pointer!important;
+}
+#app .levro-storefront-sheet-item:last-child{border-bottom:0!important;}
+#app .levro-storefront-sheet-item:hover,
+#app .levro-storefront-sheet-item:focus-visible{
+  background:color-mix(in srgb,var(--text) 5%,transparent)!important;
+  outline:none!important;
+}
+#app .levro-storefront-sheet-item i{
+  width:28px!important;
+  flex:0 0 28px!important;
+  text-align:center!important;
+  color:var(--text-muted)!important;
+  font-size:.95rem!important;
+}
+#app .levro-storefront-sheet-item[onclick*="openStorefrontShare"] i{color:var(--primary)!important;}
+
+/* Notification preferences use the same bottom-sheet interaction language. */
+#app .storefront-profile .follow-sheet-backdrop{
+  position:fixed!important;
+  inset:0!important;
+  background:rgba(0,0,0,.52)!important;
+  opacity:1!important;
+  z-index:2147483002!important;
+}
+#app .storefront-profile .follow-menu{
+  position:fixed!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  top:auto!important;
+  width:100%!important;
+  max-width:none!important;
+  max-height:min(76dvh,620px)!important;
+  overflow:auto!important;
+  padding:8px max(16px,env(safe-area-inset-left)) calc(18px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right))!important;
+  background:var(--card)!important;
+  color:var(--text)!important;
+  border:1px solid var(--border)!important;
+  border-bottom:0!important;
+  border-radius:24px 24px 0 0!important;
+  box-shadow:0 -18px 55px rgba(0,0,0,.34)!important;
+  transform:translateY(0)!important;
+  z-index:2147483003!important;
+}
+#app .storefront-profile .follow-menu::before{
+  content:""!important;
+  display:block!important;
+  width:38px!important;height:4px!important;
+  margin:2px auto 12px!important;
+  border-radius:999px!important;
+  background:color-mix(in srgb,var(--text-muted) 55%,transparent)!important;
+}
+#app .storefront-profile .follow-menu > strong{
+  display:block!important;
+  padding:.1rem 0 .75rem!important;
+  border-bottom:1px solid var(--border)!important;
+  font-size:1rem!important;
+  color:var(--text)!important;
+}
+#app .storefront-profile .follow-pref-row{
+  min-height:50px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:1rem!important;
+  padding:.72rem 0!important;
+  border-bottom:1px solid color-mix(in srgb,var(--border) 68%,transparent)!important;
+  color:var(--text)!important;
+  font-size:.84rem!important;
+}
+#app .storefront-profile .follow-pref-row input[type=checkbox]{width:20px!important;height:20px!important;}
+#app .storefront-profile .follow-menu small{
+  display:block!important;
+  margin:.8rem 0 .35rem!important;
+  font-size:.72rem!important;
+  color:var(--text-muted)!important;
+}
+#app .storefront-profile .follow-mute-grid{
+  display:grid!important;
+  grid-template-columns:repeat(3,1fr)!important;
+  gap:.45rem!important;
+}
+#app .storefront-profile .follow-mute-grid button{
+  min-height:42px!important;
+  border:1px solid var(--border)!important;
+  border-radius:12px!important;
+  background:var(--input-bg)!important;
+  color:var(--text)!important;
+  font:inherit!important;
+  font-size:.72rem!important;
+  font-weight:700!important;
+}
+#app .storefront-profile .follow-mute-grid button.active{
+  color:var(--primary)!important;
+  border-color:color-mix(in srgb,var(--primary) 50%,var(--border))!important;
+  background:color-mix(in srgb,var(--primary) 9%,var(--card))!important;
+}
+#app .storefront-profile .follow-menu.hidden{display:none!important;}
+
+/* Reduce the "everything is a card" feeling around the catalogue. */
+#app .storefront-featured{margin:1.1rem 0 1.25rem!important;}
+#app .storefront-section-head{margin-bottom:.55rem!important;}
+#app .storefront-section-head h3{font-size:1.05rem!important;font-weight:800!important;}
+#app .storefront-catalog-tabs{
+  margin-top:1rem!important;
+  margin-bottom:.85rem!important;
+}
+#app .storefront-products-shell{margin-top:.85rem!important;}
+#app .storefront-reviews{margin-top:1.35rem!important;padding-top:1.1rem!important;border-top:1px solid var(--border)!important;}
+
+/* Small screens: preserve the hierarchy without squeezing the stat rail. */
+@media(max-width:620px){
+  #app .storefront-profile-body{padding:0 .9rem .95rem!important;}
+  #app .storefront-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;row-gap:.75rem!important;}
+  #app .storefront-stats > *:nth-child(3){border-left:0!important;}
+  #app .storefront-stats > *{padding:0 .35rem!important;}
+  #app .storefront-stats strong{font-size:.94rem!important;}
+  #app .storefront-meta{font-size:.72rem!important;}
+}
+@media(prefers-reduced-motion:reduce){
+  #app .levro-storefront-sheet,
+  #app .levro-storefront-sheet-backdrop{transition:none!important;}
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
@@ -20827,7 +21197,7 @@ async function renderStorefrontInner(vendorId) {
     yearsSince(v.created_at) ? `<div class="ms-item"><i class="fa-solid fa-calendar-check"></i> ${esc(yearsSince(v.created_at))}</div>` : "",
     v.opening_hours ? `<div class="ms-item"><i class='fa-solid fa-clock'></i> ${esc(v.opening_hours)}</div>` : "",
     profile?.role !== "admin" ? `<button type="button" class="ms-item" onclick="showSuggestionModal('vendor','${v.id}')"><i class='fa-solid fa-comment-medical'></i> Suggest something</button>` : "",
-    `<button type="button" class="ms-item" onclick="openStorefrontShare('${v.id}');closeInlineMenu('storefrontMoreMenu')"><i class='fa-solid fa-share-nodes'></i> Share storefront</button>`,
+    `<button type="button" class="ms-item" onclick="openStorefrontShare('${v.id}');closeStorefrontMoreSheet()"><i class='fa-solid fa-share-nodes'></i> Share storefront</button>`,
   ].filter(Boolean).join("");
 
   let html = `<section class="storefront-profile" data-own-storefront="${isOwnStorefront ? "1" : "0"}">
@@ -20841,7 +21211,7 @@ async function renderStorefrontInner(vendorId) {
         <div class="storefront-profile-actions storefront-top-actions">
           ${isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-message-icon" type="button" aria-label="Messages" title="Messages" onclick="navigate('messages')"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
           ${!isOwnStorefront ? `<div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div>` : ""}
-          ${storefrontMoreItems ? `<div class="ms-wrap storefront-more-wrap" style="position:relative;display:inline-flex;width:auto;"><button class="btn btn-sm btn-outline storefront-more-icon" type="button" aria-label="More vendor details" title="More vendor details" onclick="toggleInlineMenu('storefrontMoreMenu',event)"><i class="fa-solid fa-ellipsis"></i></button><div class="ms-list hidden" id="storefrontMoreMenu" style="left:auto;right:0;width:max-content;min-width:180px;">${storefrontMoreItems}</div></div>` : ""}
+          ${storefrontMoreItems ? `<button class="btn btn-sm btn-outline storefront-more-icon" type="button" aria-label="More vendor details" title="More vendor details" onclick="openStorefrontMoreSheet(event)"><i class="fa-solid fa-ellipsis"></i></button>` : ""}
         </div>
       </div>
       <div class="storefront-name-row">
@@ -20850,11 +21220,25 @@ async function renderStorefrontInner(vendorId) {
           ${"" /* No Message button on a storefront: customers can only message a vendor from an accepted order. */}
         </div>
       </div>
+      ${v.bio ? `<section class="storefront-about" aria-labelledby="storefrontAboutTitle">
+        <div class="storefront-about-head"><h2 id="storefrontAboutTitle">About</h2></div>
+        <div class="storefront-bio-wrap" id="storefrontBioWrap"><p class="storefront-bio">${esc(v.bio)}</p>${v.bio.length > 160 ? `<button type="button" class="storefront-bio-toggle" onclick="toggleStorefrontBio(this)">Read more</button>` : ""}</div>
+      </section>` : ""}
       <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${storefrontDistanceHtml(v)}${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
-      ${v.bio ? `<div class="storefront-bio-wrap" id="storefrontBioWrap"><p class="storefront-bio">${esc(v.bio)}</p>${v.bio.length > 160 ? `<button type="button" class="storefront-bio-toggle" onclick="toggleStorefrontBio(this)">Read more</button>` : ""}</div>` : ""}
       <div class="storefront-stats" id="storefrontStatsLine">${storefrontStatsLoadingInnerHtml(allProducts.length)}</div>
     </div>
-  </section>`;
+  </section>
+  ${storefrontMoreItems ? `<div class="levro-storefront-sheet-root" id="storefrontMoreSheetRoot">
+    <div class="levro-storefront-sheet-backdrop" id="storefrontMoreSheetBackdrop" aria-hidden="true" onclick="closeStorefrontMoreSheet()"></div>
+    <section class="levro-storefront-sheet" id="storefrontMoreSheet" role="dialog" aria-modal="true" aria-labelledby="storefrontMoreSheetTitle" aria-hidden="true">
+      <div class="levro-sheet-handle" aria-hidden="true"></div>
+      <div class="levro-sheet-head">
+        <div><h2 id="storefrontMoreSheetTitle">Store options</h2><p>More information and actions for this storefront.</p></div>
+        <button type="button" class="levro-sheet-close" aria-label="Close" onclick="closeStorefrontMoreSheet()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="levro-storefront-sheet-list">${storefrontMoreItems.replaceAll('class="ms-item"', 'class="levro-storefront-sheet-item"').replaceAll("closeInlineMenu('storefrontMoreMenu')", "closeStorefrontMoreSheet()")}</div>
+    </section>
+  </div>` : ""}`;
 
   if (allProducts.length) {
     const featured = allProducts.slice(0, 6);
@@ -29309,7 +29693,8 @@ function exportFinancePdf() {
     <table><thead><tr><th>Date</th><th>Customer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th></tr></thead>
     <tbody>${filtered.map((t) => `<tr><td>${new Date(t.created_at).toLocaleString()}</td><td>${esc(t.buyer_name || "")}</td><td>${esc(t.vendor_name || "")}</td><td>${esc((t.payment_type || "").replace("_", " "))}</td><td>${naira(t.amount)}</td><td>${esc(t.method || "")}</td><td>${esc(t.status || "")}</td><td>${naira(t.platform_cut)}</td></tr>`).join("")}</tbody></table>
     ${"<scr"}ipt>window.onload = () => window.print();<\/script>
-  </body></html>`);
+  
+</body></html>`);
   w.document.close();
 }
 
@@ -36853,12 +37238,12 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
     }finally{btn.disabled=false}
   }
   async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;let st=await followState(vendorId);if(st)window.rememberVendorFollow?.(vendorId,!!st.following);else st={following:!!window.followedVendorSet?.().has(String(vendorId)),mute_mode:'none'};const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following, tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count&&st.follower_count!=null){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
-  async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const open=menu.classList.toggle('hidden')===false;bell.setAttribute('aria-expanded',String(open));if(open)await refreshFollow(vendorId)}
+  async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const wasHidden=menu.classList.contains('hidden');document.querySelectorAll('.follow-menu:not(.hidden)').forEach(m=>m.classList.add('hidden'));document.querySelectorAll('.follow-sheet-backdrop').forEach(b=>b.remove());if(!wasHidden){bell.setAttribute('aria-expanded','false');return;}let backdrop=wrap.querySelector('.follow-sheet-backdrop');if(!backdrop){backdrop=document.createElement('div');backdrop.className='follow-sheet-backdrop';backdrop.setAttribute('aria-hidden','true');backdrop.addEventListener('click',()=>closeStorefrontFollowSheet(wrap));wrap.appendChild(backdrop)}menu.classList.remove('hidden');bell.setAttribute('aria-expanded','true');wireStorefrontFollowSheetGesture(menu,wrap);await refreshFollow(vendorId)}
   window.toggleLevromartVendorFollow=toggleFollow;window.toggleLevromartFollowNotifications=toggleFollowBell;
   async function saveFollowPrefsFromWrap(wrap,muteModeOverride){const id=wrap?.dataset.followVendorId;if(!id)return;const checked=k=>!!wrap.querySelector('[data-pref="'+k+'"]')?.checked;let muteMode=muteModeOverride;if(muteMode==null){const active=wrap.querySelector('.follow-mute-grid button.active');muteMode=active?.dataset.mute||'none';}try{const r=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:muteMode,p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')});if(r.error)throw r.error;wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===muteMode));showToast?.(muteMode==='none'?'Vendor notifications turned on.':muteMode==='always'?'Vendor notifications muted until you turn them back on.':`Vendor notifications muted for ${muteMode==='1h'?'1 hour':'8 hours'}.`,'success');}catch(e){showToast?.(e.message||'Could not update vendor notifications.','error')}}
 document.addEventListener('change',e=>{const cb=e.target?.closest?.('.follow-menu input[data-pref]');if(!cb)return;saveFollowPrefsFromWrap(cb.closest('.storefront-follow-wrap'));},true);
 document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-grid button[data-mute]');if(!b)return;e.preventDefault();e.stopPropagation();const wrap=b.closest('.storefront-follow-wrap');if(!wrap)return;saveFollowPrefsFromWrap(wrap,b.dataset.mute);},true);
-  document.addEventListener('click',e=>{if(!e.target.closest?.('.storefront-follow-wrap'))document.querySelectorAll('.follow-menu:not(.hidden)').forEach(m=>m.classList.add('hidden'))},true);
+  document.addEventListener('click',e=>{if(!e.target.closest?.('.storefront-follow-wrap'))document.querySelectorAll('.storefront-follow-wrap').forEach(w=>closeStorefrontFollowSheet(w))},true);
 
   // Follower list for the shop owner.
   window.showVendorFollowers=async function(vendorId){if(!session)return;navigate('vendorFollowers');return;let modal=document.getElementById('vendorFollowersModal');if(!modal){modal=document.createElement('div');modal.id='vendorFollowersModal';modal.className='modal hidden';document.body.appendChild(modal)}modal.innerHTML='<div class="modal-content" style="max-width:480px"><div class="flex" style="justify-content:space-between;align-items:center"><h3 style="margin:0">Followers</h3><button class="icon-btn" type="button" aria-label="Close" onclick="document.getElementById(\'vendorFollowersModal\').classList.add(\'hidden\')"><i class="fa-solid fa-xmark"></i></button></div><div class="followers-modal-list"><p class="muted">Loading followers…</p></div></div>';modal.classList.remove('hidden');try{const r=await sb.rpc('get_vendor_followers',{p_vendor_id:vendorId});if(r.error)throw r.error;const list=r.data||[];modal.querySelector('.followers-modal-list').innerHTML=list.length?list.map(x=>'<div class="follower-row">'+(x.avatar_url?'<img src="'+escHtml(x.avatar_url)+'" alt="">':'<div class="follower-avatar avatar-circle">'+escHtml((x.name||'U').charAt(0).toUpperCase())+'</div>')+'<div class="follower-copy"><strong>'+escHtml(x.name||'Levromart user')+'</strong><small>Following since '+new Date(x.followed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+'</small></div></div>').join(''):'<p class="muted">No followers yet.</p>'}catch(e){modal.querySelector('.followers-modal-list').innerHTML='<p class="muted">Could not load followers.</p>'}}
@@ -48344,4 +48729,57 @@ function levroPulseLbCard() {
     transform:none!important;
   }
 </style>
+
+<script id="levromart-profile-storefront-sheet-js">
+(function(){
+  "use strict";
+  function sheetRoot(){return document.getElementById("storefrontMoreSheetRoot");}
+  window.openStorefrontMoreSheet=function(ev){
+    ev?.preventDefault?.(); ev?.stopPropagation?.();
+    const root=sheetRoot(), sheet=document.getElementById("storefrontMoreSheet");
+    if(!root||!sheet)return;
+    document.querySelectorAll(".ms-list").forEach(el=>el.classList.add("hidden"));
+    root.classList.add("is-open");
+    sheet.classList.add("is-open");
+    sheet.setAttribute("aria-hidden","false");
+    document.body.classList.add("levro-sheet-open");
+    const focusable=sheet.querySelector("button:not(.levro-sheet-close),a");
+    setTimeout(()=>focusable?.focus?.(),80);
+    wireMoreSheetGesture(sheet);
+  };
+  window.closeStorefrontMoreSheet=function(){
+    const root=sheetRoot(), sheet=document.getElementById("storefrontMoreSheet");
+    if(!root||!sheet)return;
+    root.classList.remove("is-open");
+    sheet.classList.remove("is-open");
+    sheet.setAttribute("aria-hidden","true");
+    document.body.classList.remove("levro-sheet-open");
+  };
+  function wireMoreSheetGesture(sheet){
+    if(sheet.dataset.gestureWired==="1")return;
+    sheet.dataset.gestureWired="1";
+    let startY=0,lastY=0,dragging=false;
+    sheet.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;startY=e.touches[0].clientY;lastY=startY;dragging=true;sheet.style.transition="none";},{passive:true});
+    sheet.addEventListener("touchmove",e=>{if(!dragging)return;lastY=e.touches[0].clientY;const dy=Math.max(0,lastY-startY);if(dy>0)sheet.style.transform=`translateY(${dy}px)`;},{passive:true});
+    sheet.addEventListener("touchend",()=>{if(!dragging)return;dragging=false;const dy=Math.max(0,lastY-startY);sheet.style.transition="";sheet.style.transform="";if(dy>70)window.closeStorefrontMoreSheet();},{passive:true});
+  }
+  window.closeStorefrontFollowSheet=function(wrap){
+    wrap=wrap||document.querySelector(".storefront-follow-wrap");
+    if(!wrap)return;
+    const menu=wrap.querySelector(".follow-menu"),bell=wrap.querySelector(".follow-settings-btn");
+    if(menu)menu.classList.add("hidden");
+    if(bell)bell.setAttribute("aria-expanded","false");
+    wrap.querySelector(".follow-sheet-backdrop")?.remove();
+  };
+  window.wireStorefrontFollowSheetGesture=function(menu,wrap){
+    if(!menu||menu.dataset.gestureWired==="1")return;
+    menu.dataset.gestureWired="1";
+    let startY=0,lastY=0,dragging=false;
+    menu.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;startY=e.touches[0].clientY;lastY=startY;dragging=true;menu.style.transition="none";},{passive:true});
+    menu.addEventListener("touchmove",e=>{if(!dragging)return;lastY=e.touches[0].clientY;const dy=Math.max(0,lastY-startY);if(dy>0)menu.style.transform=`translateY(${dy}px)`;},{passive:true});
+    menu.addEventListener("touchend",()=>{if(!dragging)return;dragging=false;const dy=Math.max(0,lastY-startY);menu.style.transition="";menu.style.transform="";if(dy>70)window.closeStorefrontFollowSheet(wrap);},{passive:true});
+  };
+  document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;window.closeStorefrontMoreSheet?.();document.querySelectorAll(".storefront-follow-wrap").forEach(w=>window.closeStorefrontFollowSheet?.(w));});
+})();
+</script>
 
