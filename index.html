@@ -8282,6 +8282,265 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   }
 }
 </style>
+
+<style id="levro-storefront-final-standard-polish-20261004">
+/* FINAL STANDARD STOREFRONT POLISH — mobile social-profile hierarchy.
+   Presentation-only: preserves the existing storefront markup, follow logic,
+   notification preferences, three-dot menu and marketplace functionality. */
+
+/* 1) Banner overflow/menu: light, crisp, visible without the heavy dark disc. */
+#app .storefront-profile .storefront-banner-more{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  right:14px!important;
+  top:14px!important;
+  border:2px solid rgba(255,255,255,.82)!important;
+  background:rgba(15,23,42,.24)!important;
+  color:#fff!important;
+  border-radius:50%!important;
+  box-shadow:0 2px 12px rgba(0,0,0,.20), inset 0 0 0 1px rgba(255,255,255,.16)!important;
+  backdrop-filter:blur(7px) saturate(120%)!important;
+  -webkit-backdrop-filter:blur(7px) saturate(120%)!important;
+}
+#app .storefront-profile .storefront-banner-more i{
+  font-size:.9rem!important;
+  letter-spacing:.12em!important;
+  margin-left:.08em!important;
+  color:#fff!important;
+  opacity:.98!important;
+}
+
+/* 2) Identity actions: pull Follow + notification control closer to the name,
+      keep them above About, and prevent the row from looking detached. */
+#app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+  position:relative!important;
+  top:-6px!important;
+  margin:.05rem 0 -.05rem!important;
+  padding:0!important;
+  min-height:40px!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  gap:.55rem!important;
+}
+#app .storefront-profile .storefront-public-actions .storefront-follow-wrap{
+  display:flex!important;
+  align-items:center!important;
+  gap:.55rem!important;
+  position:static!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon{
+  width:auto!important;
+  min-width:118px!important;
+  height:42px!important;
+  min-height:42px!important;
+  padding:.5rem 1rem!important;
+  border-radius:999px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:.45rem!important;
+  white-space:nowrap!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-btn.follow-btn-icon .follow-btn-label{
+  display:inline!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:auto!important;
+  max-width:none!important;
+  overflow:visible!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-settings-btn{
+  width:42px!important;
+  min-width:42px!important;
+  height:42px!important;
+  min-height:42px!important;
+  padding:0!important;
+  border-radius:50%!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:var(--card)!important;
+  border:1.5px solid color-mix(in srgb,var(--text-muted) 58%,var(--border))!important;
+  color:var(--text)!important;
+  box-shadow:none!important;
+}
+#app .storefront-profile .storefront-public-actions .follow-settings-btn i{color:var(--text)!important;}
+#app .storefront-profile .storefront-public-actions .follow-settings-btn:disabled{opacity:.5!important;}
+
+/* 3) Larger, more pronounced profile picture, shifted higher into the banner. */
+#app .storefront-profile .storefront-avatar{
+  width:96px!important;
+  height:96px!important;
+  margin-top:-48px!important;
+  border-width:4px!important;
+  border-color:var(--bg)!important;
+  box-shadow:0 6px 20px rgba(15,23,42,.20)!important;
+}
+
+/* 4) Four storefront metrics: balanced 2x2 mobile layout with centered copy. */
+#app .storefront-profile .storefront-stats{
+  text-align:center!important;
+}
+#app .storefront-profile .storefront-stats > *{
+  text-align:center!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+}
+#app .storefront-profile .storefront-stats strong,
+#app .storefront-profile .storefront-stats .storefront-stat-link strong{
+  text-align:center!important;
+}
+@media(max-width:620px){
+  #app .storefront-profile .storefront-stats{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    row-gap:1.25rem!important;
+    padding-top:1.05rem!important;
+  }
+  #app .storefront-profile .storefront-stats > *{
+    padding:0 .5rem!important;
+  }
+  #app .storefront-profile .storefront-avatar{
+    width:96px!important;
+    height:96px!important;
+    margin-top:-48px!important;
+  }
+  #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+    top:-8px!important;
+    margin-top:.02rem!important;
+    margin-bottom:-.08rem!important;
+  }
+}
+
+/* 5) Notification preferences: true premium bottom sheet, with enough contrast
+      for light mode and clean dark-mode adaptation. */
+#app .storefront-profile .follow-menu{
+  background:#ffffff!important;
+  color:#172033!important;
+  border:1px solid #d7dee8!important;
+  border-bottom:0!important;
+  box-shadow:0 -18px 55px rgba(15,23,42,.24)!important;
+  padding:10px max(20px,env(safe-area-inset-left)) calc(22px + env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-right))!important;
+}
+#app .storefront-profile .follow-menu::before{
+  width:44px!important;
+  height:5px!important;
+  margin:2px auto 16px!important;
+  background:#aab5c3!important;
+}
+#app .storefront-profile .follow-menu > strong{
+  color:#172033!important;
+  font-size:1.18rem!important;
+  line-height:1.25!important;
+  padding:.05rem 0 .45rem!important;
+  border-bottom:0!important;
+  font-weight:800!important;
+}
+#app .storefront-profile .follow-mode-intro{
+  color:#5c6a7c!important;
+  font-size:.82rem!important;
+  line-height:1.45!important;
+  margin:0 0 .55rem!important;
+}
+#app .storefront-profile .follow-mode-row{
+  min-height:82px!important;
+  grid-template-columns:50px minmax(0,1fr) 30px!important;
+  gap:.8rem!important;
+  padding:.72rem .05rem!important;
+  border-bottom:1px solid #dfe5ec!important;
+  background:transparent!important;
+  color:#172033!important;
+}
+#app .storefront-profile .follow-mode-row:active{
+  background:#f3f6f9!important;
+}
+#app .storefront-profile .follow-mode-icon{
+  width:50px!important;
+  height:50px!important;
+  border-radius:15px!important;
+  border:1px solid #d2dbe6!important;
+  font-size:1.05rem!important;
+  display:grid!important;
+  place-items:center!important;
+}
+#app .storefront-profile .follow-mode-icon-all{
+  color:#2563eb!important;
+  background:#edf4ff!important;
+  border-color:#bfd2f2!important;
+}
+#app .storefront-profile .follow-mode-icon-relevant{
+  color:#7c3aed!important;
+  background:#f2edff!important;
+  border-color:#d5c8f5!important;
+}
+#app .storefront-profile .follow-mode-icon-relevant i{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+#app .storefront-profile .follow-mode-icon-off{
+  color:#536174!important;
+  background:#f1f3f6!important;
+  border-color:#d5dce5!important;
+}
+#app .storefront-profile .follow-mode-copy b{
+  color:#172033!important;
+  font-size:.92rem!important;
+  line-height:1.25!important;
+  font-weight:800!important;
+}
+#app .storefront-profile .follow-mode-copy small{
+  color:#5c6a7c!important;
+  font-size:.74rem!important;
+  line-height:1.42!important;
+}
+#app .storefront-profile .follow-mode-check{
+  width:27px!important;
+  height:27px!important;
+  border:2px solid #cbd5e1!important;
+  background:#fff!important;
+  color:transparent!important;
+}
+#app .storefront-profile .follow-mode-row[aria-pressed="true"] .follow-mode-check{
+  border-color:#087f56!important;
+  background:#087f56!important;
+  color:#fff!important;
+  box-shadow:0 2px 8px rgba(8,127,86,.18)!important;
+}
+
+/* Dark mode: retain the same hierarchy while restoring readable contrast. */
+[data-theme="dark"] #app .storefront-profile .follow-menu,
+[data-theme="black"] #app .storefront-profile .follow-menu{
+  background:var(--card)!important;
+  color:var(--text)!important;
+  border-color:var(--border)!important;
+  box-shadow:0 -18px 55px rgba(0,0,0,.52)!important;
+}
+[data-theme="dark"] #app .storefront-profile .follow-menu > strong,
+[data-theme="black"] #app .storefront-profile .follow-menu > strong,
+[data-theme="dark"] #app .storefront-profile .follow-mode-copy b,
+[data-theme="black"] #app .storefront-profile .follow-mode-copy b{color:var(--text)!important;}
+[data-theme="dark"] #app .storefront-profile .follow-mode-intro,
+[data-theme="black"] #app .storefront-profile .follow-mode-intro,
+[data-theme="dark"] #app .storefront-profile .follow-mode-copy small,
+[data-theme="black"] #app .storefront-profile .follow-mode-copy small{color:var(--text-muted)!important;}
+[data-theme="dark"] #app .storefront-profile .follow-mode-row,
+[data-theme="black"] #app .storefront-profile .follow-mode-row{border-bottom-color:var(--border)!important;color:var(--text)!important;}
+[data-theme="dark"] #app .storefront-profile .follow-mode-row:active,
+[data-theme="black"] #app .storefront-profile .follow-mode-row:active{background:color-mix(in srgb,var(--text) 6%,transparent)!important;}
+[data-theme="dark"] #app .storefront-profile .follow-mode-check,
+[data-theme="black"] #app .storefront-profile .follow-mode-check{background:var(--card)!important;border-color:#59636f!important;}
+
+/* Keep the sheet comfortably sized on smaller phones. */
+@media(max-width:420px){
+  #app .storefront-profile .follow-menu{padding-left:16px!important;padding-right:16px!important;}
+  #app .storefront-profile .follow-mode-row{grid-template-columns:46px minmax(0,1fr) 28px!important;gap:.7rem!important;min-height:76px!important;}
+  #app .storefront-profile .follow-mode-icon{width:46px!important;height:46px!important;}
+}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
