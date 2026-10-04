@@ -7393,12 +7393,14 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 <style id="levromart-home-category-appstore-polish">
   /*
    * HOME CATEGORY RAIL — compact illustrated browse chips.
-   * Small optical artwork, soft colorful surfaces and theme-aware chips.
+   * The artwork is intentionally tiny and transparent: the chip is the
+   * visual container, not the icon. This keeps the rail light, premium and
+   * theme-native in light, charcoal-dark and pure-black modes.
    * This block intentionally affects ONLY the category rail.
    */
   #app .levro-home-cat-rail{
     gap:.42rem!important;
-    padding:.14rem .02rem .58rem!important;
+    padding:.12rem .02rem .54rem!important;
     align-items:center!important;
     overflow-x:auto!important;
     scrollbar-width:none!important;
@@ -7408,45 +7410,49 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 
   #app .levro-home-cat-chip{
     flex:0 0 auto!important;
-    min-height:38px!important;
-    height:38px!important;
-    padding:0 .68rem 0 .24rem!important;
-    gap:.38rem!important;
+    min-height:36px!important;
+    height:36px!important;
+    padding:0 .66rem 0 .42rem!important;
+    gap:.28rem!important;
     border-radius:999px!important;
-    border:1px solid color-mix(in srgb,var(--text) 9%,var(--border))!important;
+    border:1px solid color-mix(in srgb,var(--text) 8%,var(--border))!important;
     background:var(--card)!important;
     color:var(--text)!important;
-    box-shadow:0 1px 4px rgba(0,0,0,.06)!important;
+    box-shadow:none!important;
     transition:transform .16s ease,border-color .16s ease,background-color .16s ease,box-shadow .16s ease!important;
     overflow:hidden!important;
   }
   #app .levro-home-cat-chip:active{transform:scale(.975)!important;}
 
-  /* Smaller than the previous 34px photo circles: this is deliberately
-     closer to an App Store-style optical icon inside a compact pill. */
+  /* Tiny optical artwork — no white/pastel tile behind it. */
   #app .levro-home-cat-thumb{
-    width:28px!important;
-    height:28px!important;
-    min-width:28px!important;
-    border-radius:9px!important;
-    overflow:hidden!important;
+    width:21px!important;
+    height:21px!important;
+    min-width:21px!important;
+    border-radius:0!important;
+    overflow:visible!important;
     display:inline-flex!important;
     align-items:center!important;
     justify-content:center!important;
     background:transparent!important;
     border:0!important;
     box-shadow:none!important;
+    flex:0 0 21px!important;
   }
   #app .levro-home-cat-thumb img{
     display:block!important;
-    width:100%!important;
-    height:100%!important;
-    object-fit:cover!important;
+    width:21px!important;
+    height:21px!important;
+    max-width:21px!important;
+    max-height:21px!important;
+    object-fit:contain!important;
     object-position:center!important;
-    border-radius:9px!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
   }
   #app .levro-home-cat-label{
-    font-size:.76rem!important;
+    font-size:.75rem!important;
     line-height:1!important;
     font-weight:700!important;
     letter-spacing:-.012em!important;
@@ -7454,41 +7460,44 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     color:var(--text)!important;
   }
   #app .levro-home-cat-chip.active{
-    background:color-mix(in srgb,var(--cat-color,var(--primary)) 11%,var(--card))!important;
-    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 48%,var(--border))!important;
-    box-shadow:0 2px 8px color-mix(in srgb,var(--cat-color,var(--primary)) 10%,transparent)!important;
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 8%,var(--card))!important;
+    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 36%,var(--border))!important;
+    box-shadow:0 1px 5px color-mix(in srgb,var(--cat-color,var(--primary)) 7%,transparent)!important;
   }
 
-  /* Dark charcoal */
+  /* Charcoal dark mode: no white icon wells, no bright halo. */
   [data-theme="dark"] #app .levro-home-cat-chip{
-    background:#24282c!important;
-    border-color:#353a3e!important;
-    color:#f1f3f4!important;
-    box-shadow:0 2px 7px rgba(0,0,0,.28)!important;
+    background:#202428!important;
+    border-color:#303438!important;
+    color:#eceff1!important;
+    box-shadow:none!important;
   }
   [data-theme="dark"] #app .levro-home-cat-chip.active{
-    background:color-mix(in srgb,var(--cat-color,var(--primary)) 13%,#24282c)!important;
-    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 52%,#353a3e)!important;
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 10%,#202428)!important;
+    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 38%,#303438)!important;
+    box-shadow:0 1px 6px color-mix(in srgb,var(--cat-color,var(--primary)) 8%,transparent)!important;
   }
 
-  /* Pure black */
+  /* Pure black: the pill stays close to the page surface; artwork floats
+     directly on it instead of sitting on a contrasting square. */
   [data-theme="black"] #app .levro-home-cat-chip{
-    background:#0b0b0b!important;
-    border-color:#252525!important;
-    color:#f5f5f5!important;
-    box-shadow:0 2px 8px rgba(0,0,0,.52)!important;
+    background:#0a0a0a!important;
+    border-color:#202020!important;
+    color:#f2f2f2!important;
+    box-shadow:none!important;
   }
   [data-theme="black"] #app .levro-home-cat-chip.active{
-    background:color-mix(in srgb,var(--cat-color,var(--primary)) 14%,#0b0b0b)!important;
-    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 54%,#252525)!important;
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 11%,#0a0a0a)!important;
+    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 40%,#202020)!important;
+    box-shadow:0 1px 7px color-mix(in srgb,var(--cat-color,var(--primary)) 8%,transparent)!important;
   }
 
   @media(max-width:420px){
-    #app .levro-home-cat-rail{gap:.36rem!important;padding-bottom:.52rem!important;}
-    #app .levro-home-cat-chip{min-height:36px!important;height:36px!important;padding-right:.6rem!important;gap:.34rem!important;}
-    #app .levro-home-cat-thumb{width:26px!important;height:26px!important;min-width:26px!important;border-radius:8px!important;}
-    #app .levro-home-cat-thumb img{border-radius:8px!important;}
-    #app .levro-home-cat-label{font-size:.73rem!important;}
+    #app .levro-home-cat-rail{gap:.34rem!important;padding-bottom:.48rem!important;}
+    #app .levro-home-cat-chip{min-height:34px!important;height:34px!important;padding:0 .58rem 0 .36rem!important;gap:.24rem!important;}
+    #app .levro-home-cat-thumb{width:19px!important;height:19px!important;min-width:19px!important;flex-basis:19px!important;}
+    #app .levro-home-cat-thumb img{width:19px!important;height:19px!important;max-width:19px!important;max-height:19px!important;}
+    #app .levro-home-cat-label{font-size:.72rem!important;}
   }
 </style>
 <style id="levromart-product-card-total-final-position">
@@ -15135,7 +15144,12 @@ function levroCategoryArtSvg(key) {
     tools:["#edf0ff","#fff0e7"], gift:["#fff0f5","#fff8df"], default:["#edf0ff","#e9fbf5"]
   };
   const [a,b] = palettes[key] || palettes.default;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="80" height="80" rx="22" fill="url(#g)"/><ellipse cx="40" cy="59" rx="23" ry="5" fill="#000" opacity=".06"/>${arts[key] || arts.default}</svg>`;
+  /*
+   * Transparent artwork: the pill itself supplies the surface/background.
+   * Keeping the SVG transparent prevents the old white/pastel square from
+   * appearing around the illustration in dark and pure-black themes.
+   */
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" role="img" aria-hidden="true">${arts[key] || arts.default}</svg>`;
 }
 
 function levroSectorArt(sector) {
