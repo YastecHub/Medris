@@ -49372,3 +49372,377 @@ function levroPulseLbCard() {
 })();
 </script>
 
+
+
+<style id="levro-storefront-final-visual-polish-20261004">
+/* ================================================================
+   FINAL STOREFRONT VISUAL POLISH
+   1) Banner touches the app header with no dead gap.
+   2) Three-dot control is light, crisp and properly framed.
+   3) Profile image is larger and sits higher over the banner.
+   4) Notification preferences are a clean, full-width bottom sheet.
+   ================================================================ */
+
+/* ---------- 1. HEADER -> BANNER CONTINUITY ---------- */
+body:has(#app .storefront-profile) #app.container{
+  width:100%!important;
+  max-width:none!important;
+  margin-top:0!important;
+  margin-bottom:0!important;
+  padding-left:0!important;
+  padding-right:0!important;
+  padding-top:0!important;
+}
+
+/* The storefront is the page itself, so its banner starts immediately
+   underneath the sticky app header. */
+#app .storefront-profile{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+}
+
+/* ---------- 2. LIGHT, CRISP THREE-DOT CONTROL ---------- */
+#app .storefront-profile .storefront-cover > .storefront-banner-more{
+  position:absolute!important;
+  top:12px!important;
+  right:12px!important;
+  left:auto!important;
+  width:44px!important;
+  height:44px!important;
+  min-width:44px!important;
+  min-height:44px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:50%!important;
+
+  /* Light framed treatment — not the heavy dark computer-like circle. */
+  background:rgba(255,255,255,.20)!important;
+  border:2px solid rgba(255,255,255,.78)!important;
+  color:#fff!important;
+  box-shadow:0 3px 12px rgba(0,0,0,.14)!important;
+  backdrop-filter:blur(5px)!important;
+  -webkit-backdrop-filter:blur(5px)!important;
+
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  z-index:30!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+}
+
+#app .storefront-profile .storefront-cover > .storefront-banner-more i{
+  color:#fff!important;
+  font-size:1.02rem!important;
+  line-height:1!important;
+  opacity:.98!important;
+}
+
+#app .storefront-profile .storefront-cover > .storefront-banner-more:active{
+  transform:scale(.96)!important;
+  background:rgba(255,255,255,.28)!important;
+}
+
+/* ---------- 3. LARGER / MORE PRONOUNCED PROFILE IMAGE ---------- */
+#app .storefront-profile .storefront-avatar-row{
+  position:relative!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:flex-start!important;
+  min-height:96px!important;
+  height:96px!important;
+  margin-top:-48px!important;
+  margin-bottom:.42rem!important;
+  overflow:visible!important;
+  z-index:5!important;
+}
+
+#app .storefront-profile .storefront-avatar-row .storefront-avatar,
+#app .storefront-profile .storefront-avatar-row .storefront-avatar-button{
+  position:relative!important;
+  inset:auto!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+
+  width:96px!important;
+  height:96px!important;
+  min-width:96px!important;
+  min-height:96px!important;
+  max-width:96px!important;
+  max-height:96px!important;
+  flex:0 0 96px!important;
+  margin:0!important;
+
+  border:4px solid var(--bg)!important;
+  box-shadow:0 6px 18px rgba(0,0,0,.20)!important;
+}
+
+/* Keep the name and actions safely below the enlarged avatar. */
+#app .storefront-profile .storefront-name-row{
+  position:relative!important;
+  z-index:6!important;
+  margin:.12rem 0 0!important;
+}
+
+/* ---------- 4. CLEAN NOTIFICATION BOTTOM SHEET ---------- */
+/* The backdrop should dim the page evenly without making the sheet itself
+   look gray or muddy. */
+#app .storefront-profile .follow-sheet-backdrop{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  background:rgba(15,23,42,.48)!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  z-index:2147483002!important;
+}
+
+/* Full-width sheet, clean white/light surface, no boxed-card appearance. */
+#app .storefront-profile .follow-menu{
+  position:fixed!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  top:auto!important;
+
+  width:100vw!important;
+  max-width:none!important;
+  max-height:min(72dvh,600px)!important;
+  margin:0!important;
+
+  padding:10px max(20px,env(safe-area-inset-left))
+           calc(22px + env(safe-area-inset-bottom))
+           max(20px,env(safe-area-inset-right))!important;
+
+  background:var(--card)!important;
+  color:var(--text)!important;
+
+  border:0!important;
+  border-top:1px solid color-mix(in srgb,var(--border) 78%,transparent)!important;
+  border-radius:28px 28px 0 0!important;
+  box-shadow:0 -14px 44px rgba(15,23,42,.20)!important;
+
+  overflow:auto!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  z-index:2147483003!important;
+  transform:translateY(0)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  appearance:none!important;
+}
+
+/* Bottom-sheet handle. */
+#app .storefront-profile .follow-menu::before{
+  content:""!important;
+  display:block!important;
+  width:42px!important;
+  height:5px!important;
+  margin:1px auto 16px!important;
+  border-radius:999px!important;
+  background:var(--border)!important;
+}
+
+/* Sheet title and intro. */
+#app .storefront-profile .follow-menu > strong{
+  display:block!important;
+  margin:0!important;
+  padding:0 0 5px!important;
+  border:0!important;
+  color:var(--text)!important;
+  font-size:1.12rem!important;
+  line-height:1.3!important;
+  font-weight:800!important;
+}
+
+#app .storefront-profile .follow-mode-intro{
+  margin:0 0 10px!important;
+  padding:0!important;
+  color:var(--text-muted)!important;
+  font-size:.78rem!important;
+  line-height:1.45!important;
+}
+
+/* Kill every browser/default gray button treatment. */
+#app .storefront-profile .follow-mode-row,
+#app .storefront-profile .follow-mode-row:hover,
+#app .storefront-profile .follow-mode-row:focus,
+#app .storefront-profile .follow-mode-row:focus-visible,
+#app .storefront-profile .follow-mode-row:active{
+  width:100%!important;
+  min-width:0!important;
+  min-height:70px!important;
+  height:auto!important;
+
+  display:grid!important;
+  grid-template-columns:46px minmax(0,1fr) 28px!important;
+  align-items:center!important;
+  gap:13px!important;
+
+  margin:0!important;
+  padding:11px 0!important;
+
+  border:0!important;
+  border-bottom:1px solid color-mix(in srgb,var(--border) 76%,transparent)!important;
+  border-radius:0!important;
+
+  background:transparent!important;
+  background-color:transparent!important;
+  box-shadow:none!important;
+
+  color:var(--text)!important;
+  text-align:left!important;
+  font:inherit!important;
+  outline:none!important;
+
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  -webkit-tap-highlight-color:transparent!important;
+  cursor:pointer!important;
+}
+
+#app .storefront-profile .follow-mode-row:last-child{
+  border-bottom:0!important;
+}
+
+/* Icon tile: deliberately subtle, not a gray block. */
+#app .storefront-profile .follow-mode-icon{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  border-radius:14px!important;
+
+  display:grid!important;
+  place-items:center!important;
+
+  background:color-mix(in srgb,var(--primary) 8%,var(--card))!important;
+  border:1px solid color-mix(in srgb,var(--primary) 12%,var(--border))!important;
+  box-shadow:none!important;
+
+  font-size:1rem!important;
+}
+
+/* Preserve the three unique LevroMart notification identities. */
+#app .storefront-profile .follow-mode-icon-all{
+  background:color-mix(in srgb,#3b82f6 9%,var(--card))!important;
+  border-color:color-mix(in srgb,#3b82f6 18%,var(--border))!important;
+  color:#2563eb!important;
+}
+#app .storefront-profile .follow-mode-icon-relevant{
+  background:color-mix(in srgb,#8b5cf6 9%,var(--card))!important;
+  border-color:color-mix(in srgb,#8b5cf6 18%,var(--border))!important;
+  color:#7c3aed!important;
+}
+#app .storefront-profile .follow-mode-icon-off{
+  background:color-mix(in srgb,var(--text) 5%,var(--card))!important;
+  border-color:var(--border)!important;
+  color:var(--text-muted)!important;
+}
+
+/* Text remains crisp and readable. */
+#app .storefront-profile .follow-mode-copy{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:3px!important;
+}
+
+#app .storefront-profile .follow-mode-copy b{
+  display:block!important;
+  margin:0!important;
+  color:var(--text)!important;
+  font-size:.92rem!important;
+  line-height:1.25!important;
+  font-weight:750!important;
+}
+
+#app .storefront-profile .follow-mode-copy small{
+  display:block!important;
+  margin:0!important;
+  color:var(--text-muted)!important;
+  font-size:.73rem!important;
+  line-height:1.4!important;
+}
+
+/* Selection indicator is clean and circular. */
+#app .storefront-profile .follow-mode-check{
+  width:25px!important;
+  height:25px!important;
+  min-width:25px!important;
+  min-height:25px!important;
+  border:2px solid var(--border)!important;
+  border-radius:50%!important;
+  background:transparent!important;
+  color:transparent!important;
+
+  display:grid!important;
+  place-items:center!important;
+  box-shadow:none!important;
+}
+
+#app .storefront-profile .follow-mode-row[aria-pressed="true"] .follow-mode-check{
+  border-color:var(--primary)!important;
+  background:var(--primary)!important;
+  color:#fff!important;
+}
+
+#app .storefront-profile .follow-mode-row[aria-pressed="true"] .follow-mode-copy b{
+  font-weight:800!important;
+}
+
+/* The hidden state must always remain truly hidden even if another legacy
+   storefront rule tries to position the menu. */
+#app .storefront-profile .follow-menu.hidden{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+
+/* Mobile sizing: LinkedIn-like proportions without oversized gray panels. */
+@media(max-width:620px){
+  #app .storefront-profile .storefront-cover > .storefront-banner-more{
+    top:11px!important;
+    right:11px!important;
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+    min-height:44px!important;
+  }
+
+  #app .storefront-profile .storefront-avatar-row{
+    min-height:96px!important;
+    height:96px!important;
+    margin-top:-48px!important;
+  }
+
+  #app .storefront-profile .storefront-avatar-row .storefront-avatar,
+  #app .storefront-profile .storefront-avatar-row .storefront-avatar-button{
+    width:96px!important;
+    height:96px!important;
+    min-width:96px!important;
+    min-height:96px!important;
+    flex-basis:96px!important;
+  }
+
+  #app .storefront-profile .follow-menu{
+    padding-left:max(18px,env(safe-area-inset-left))!important;
+    padding-right:max(18px,env(safe-area-inset-right))!important;
+    border-radius:26px 26px 0 0!important;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  #app .storefront-profile .follow-menu{
+    transition:none!important;
+  }
+}
+</style>
