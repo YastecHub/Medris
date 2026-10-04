@@ -9006,6 +9006,93 @@ body .follow-menu.hidden{
 }
 </style>
 
+
+<style id="levro-storefront-actions-neat-final-20261004">
+/*
+  FINAL MICRO-ADJUSTMENT — STOREFRONT HEADER ONLY
+  Keep the Follow + notification controls directly under the cover.
+  Keep the vendor name immediately after the enlarged profile picture.
+  Presentation-only: no markup, data, auth, routing, or storefront logic changes.
+*/
+
+/* The action row is anchored to the bottom edge of the banner/profile-body
+   boundary, so it cannot push the vendor name downward. */
+body #app .storefront-profile .storefront-profile-body{
+  position:relative!important;
+}
+
+body #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+  position:absolute!important;
+  top:8px!important;
+  right:0!important;
+  inset-inline-end:0!important;
+  left:auto!important;
+  width:auto!important;
+  height:40px!important;
+  min-height:40px!important;
+  margin:0!important;
+  padding:0!important;
+  z-index:30!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:.55rem!important;
+  flex-wrap:nowrap!important;
+}
+
+/* Keep the two controls compact and aligned as one professional action group. */
+body #app .storefront-profile .storefront-public-actions .storefront-follow-wrap,
+body #app .storefront-profile .storefront-public-actions .storefront-follow-controls{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:.55rem!important;
+  width:auto!important;
+  margin:0!important;
+  padding:0!important;
+}
+
+/* The avatar remains the visual anchor; the name follows it immediately. */
+body #app .storefront-profile .storefront-avatar-row{
+  margin-top:-48px!important;
+  margin-bottom:-2px!important;
+}
+
+body #app .storefront-profile .storefront-name-row{
+  position:relative!important;
+  z-index:6!important;
+  margin-top:0!important;
+  margin-bottom:.55rem!important;
+  transform:translateY(-3px)!important;
+}
+
+@media(max-width:620px){
+  body #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
+    top:7px!important;
+    right:0!important;
+    inset-inline-end:0!important;
+    height:40px!important;
+    min-height:40px!important;
+    gap:.45rem!important;
+  }
+
+  body #app .storefront-profile .storefront-public-actions .storefront-follow-wrap,
+  body #app .storefront-profile .storefront-public-actions .storefront-follow-controls{
+    gap:.45rem!important;
+  }
+
+  body #app .storefront-profile .storefront-avatar-row{
+    margin-top:-48px!important;
+    margin-bottom:-2px!important;
+  }
+
+  body #app .storefront-profile .storefront-name-row{
+    margin-top:0!important;
+    transform:translateY(-4px)!important;
+  }
+}
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
