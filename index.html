@@ -21051,24 +21051,29 @@ function storefrontStatsLoadingInnerHtml(listingCount) {
     <span class="storefront-stat-link" style="opacity:.55;"><strong>★ …</strong> rating</span>
     <span data-follow-count style="opacity:.55;"><strong>…</strong> followers</span>`;
 }
+function storefrontFollowNotificationMode(st) {
+  const x = (Array.isArray(st) ? st[0] : st) || {};
+  const vals = [x.notify_new_listing, x.notify_new_service, x.notify_new_package, x.notify_new_variety, x.notify_price_change, x.notify_discount];
+  if (String(x.mute_mode || '') === 'always' && vals.every(v => v === false)) return 'off';
+  if (vals.every(v => v === true)) return 'all';
+  if (x.notify_new_listing !== false && x.notify_new_service !== false && x.notify_new_package !== false && x.notify_new_variety === false && x.notify_price_change === false && x.notify_discount === false) return 'relevant';
+  // New follows/defaults without an explicit preference use LevroMart's recommended mode.
+  if (vals.every(v => v == null)) return 'relevant';
+  return 'relevant';
+}
 function storefrontFollowWrapInnerHtml(v, followState) {
   const following = !!followState?.[0]?.following;
+  const mode = storefrontFollowNotificationMode(followState);
   return `<div class="storefront-follow-controls">
-      <button type="button" class="btn btn-sm follow-btn follow-btn-icon ${following ? "" : "btn-outline"}" aria-pressed="${following ? "true" : "false"}" aria-label="${following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${following ? "Following, tap to unfollow" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${following ? "fa-check" : "fa-user-plus"}"></i></button>
+      <button type="button" class="btn btn-sm follow-btn follow-btn-icon ${following ? "" : "btn-outline"}" aria-pressed="${following ? "true" : "false"}" aria-label="${following ? "Unfollow" : "Follow"} ${esc(v.business_name || "vendor")}" title="${following ? "Following, tap to unfollow" : "Follow vendor"}" onclick="window.toggleLevromartVendorFollow?.('${v.id}',event)"><i class="fa-solid ${following ? "fa-check" : "fa-user-plus"}"></i><span class="follow-btn-label">${following ? "Following" : "Follow"}</span></button>
       <button type="button" class="btn btn-sm btn-outline follow-settings-btn" ${following ? "" : "disabled"} aria-expanded="false" aria-label="Notification preferences" title="${following ? "Notification preferences" : "Follow this vendor to manage notifications"}" onclick="window.toggleLevromartFollowNotifications?.('${v.id}',event)"><i class="fa-solid fa-bell"></i></button>
     </div>
     <div class="follow-menu hidden" role="dialog" aria-label="Vendor notification preferences">
-      <strong>Vendor notifications</strong>
-      <div class="follow-pref-row"><span>New listings</span><input type="checkbox" data-pref="notify_new_listing" ${followState?.[0]?.notify_new_listing !== false ? "checked" : ""}></div>
-      <div class="follow-pref-row"><span>New services</span><input type="checkbox" data-pref="notify_new_service" ${followState?.[0]?.notify_new_service !== false ? "checked" : ""}></div>
-      <div class="follow-pref-row"><span>New packages</span><input type="checkbox" data-pref="notify_new_package" ${followState?.[0]?.notify_new_package !== false ? "checked" : ""}></div>
-      <div class="follow-pref-row"><span>New varieties</span><input type="checkbox" data-pref="notify_new_variety" ${followState?.[0]?.notify_new_variety !== false ? "checked" : ""}></div>
-      <div class="follow-pref-row"><span>Price changes</span><input type="checkbox" data-pref="notify_price_change" ${followState?.[0]?.notify_price_change !== false ? "checked" : ""}></div>
-      <div class="follow-pref-row"><span>Discounts</span><input type="checkbox" data-pref="notify_discount" ${followState?.[0]?.notify_discount !== false ? "checked" : ""}></div>
-      <small class="muted">Mute this vendor</small>
-      <div class="follow-mute-grid">
-        <button type="button" data-mute="none">On</button><button type="button" data-mute="1h">1 hour</button><button type="button" data-mute="8h">8 hours</button><button type="button" data-mute="always" style="grid-column:1/-1;">Always</button>
-      </div>
+      <strong>Notifications from this vendor</strong>
+      <p class="follow-mode-intro">Choose how you want LevroMart to keep you updated.</p>
+      <button type="button" class="follow-mode-row" data-notify-mode="all" aria-pressed="${mode === 'all' ? 'true' : 'false'}"><span class="follow-mode-icon follow-mode-icon-all"><i class="fa-solid fa-bell"></i></span><span class="follow-mode-copy"><b>All</b><small>Get notified about every update from this vendor.</small></span><span class="follow-mode-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span></button>
+      <button type="button" class="follow-mode-row" data-notify-mode="relevant" aria-pressed="${mode === 'relevant' ? 'true' : 'false'}"><span class="follow-mode-icon follow-mode-icon-relevant"><i class="fa-solid fa-sparkles"></i></span><span class="follow-mode-copy"><b>Most relevant</b><small>Get the updates that matter most to you.</small></span><span class="follow-mode-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span></button>
+      <button type="button" class="follow-mode-row" data-notify-mode="off" aria-pressed="${mode === 'off' ? 'true' : 'false'}"><span class="follow-mode-icon follow-mode-icon-off"><i class="fa-regular fa-bell-slash"></i></span><span class="follow-mode-copy"><b>Off</b><small>Don't receive notifications from this vendor.</small></span><span class="follow-mode-check" aria-hidden="true"><i class="fa-solid fa-check"></i></span></button>
     </div>`;
 }
 function storefrontFollowWrapLoadingInnerHtml() {
@@ -21204,6 +21209,7 @@ async function renderStorefrontInner(vendorId) {
     <div class="storefront-cover ${customCoverUrl ? "has-custom-cover" : ""}" ${customCoverUrl ? `style="background-image:url('${esc(customCoverUrl)}')"` : ""}>
       ${customCoverUrl ? '<div class="storefront-cover-overlay"></div>' : '<div class="storefront-cover-empty">Set a custom storefront header in your business profile.</div>'}
       ${isOwnStorefront ? `<label class="storefront-cover-edit" title="Edit storefront header" aria-label="Edit storefront header"><i class="fa-solid fa-pen"></i><input type="file" accept="image/*" onchange="uploadVendorCover(event)" /></label>` : ""}
+      ${storefrontMoreItems ? `<button class="storefront-banner-more" type="button" aria-label="More vendor details" title="More vendor details" onclick="openStorefrontMoreSheet(event)"><i class="fa-solid fa-ellipsis"></i></button>` : ""}
     </div>
     <div class="storefront-profile-body">
       <div class="storefront-avatar-row">
@@ -21211,7 +21217,7 @@ async function renderStorefrontInner(vendorId) {
         <div class="storefront-profile-actions storefront-top-actions">
           ${isOwnStorefront && profile?.role !== "admin" ? `<button class="btn btn-sm btn-outline storefront-more-icon storefront-own-message-icon" type="button" aria-label="Messages" title="Messages" onclick="navigate('messages')"><i class='fa-solid fa-comment-dots'></i></button>` : ""}
           ${!isOwnStorefront ? `<div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div>` : ""}
-          ${storefrontMoreItems ? `<button class="btn btn-sm btn-outline storefront-more-icon" type="button" aria-label="More vendor details" title="More vendor details" onclick="openStorefrontMoreSheet(event)"><i class="fa-solid fa-ellipsis"></i></button>` : ""}
+
         </div>
       </div>
       <div class="storefront-name-row">
@@ -37228,6 +37234,8 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
     try{
       const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});
       if(r.error)throw r.error;
+      /* New follows use LevroMart's recommended notification level by default. */
+      if(next) await saveFollowPrefsFromWrap(wrap,'none','relevant',true);
       /* follow/unfollow: no toast, the button already shows the state */
     }catch(e){
       window.__followRecentAction=null;
@@ -37237,12 +37245,11 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
       showToast?.(e.message||'Could not update your following list.','error')
     }finally{btn.disabled=false}
   }
-  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;let st=await followState(vendorId);if(st)window.rememberVendorFollow?.(vendorId,!!st.following);else st={following:!!window.followedVendorSet?.().has(String(vendorId)),mute_mode:'none'};const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i>';btn.title=following?'Following, tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===String(st.mute_mode||'none')));const count=document.querySelector('[data-follow-count]');if(count&&st.follower_count!=null){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
+  async function refreshFollow(vendorId){const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');if(!wrap)return;let st=await followState(vendorId);if(st)window.rememberVendorFollow?.(vendorId,!!st.following);else st={following:!!window.followedVendorSet?.().has(String(vendorId)),mute_mode:'none'};const following=!!st.following;const btn=wrap.querySelector('.follow-btn'),bell=wrap.querySelector('.follow-settings-btn');if(btn){btn.classList.toggle('btn-outline',!following);btn.setAttribute('aria-pressed',following?'true':'false');btn.innerHTML='<i class="fa-solid '+(following?'fa-check':'fa-user-plus')+'"></i><span class="follow-btn-label">'+(following?'Following':'Follow')+'</span>';btn.title=following?'Following, tap to unfollow':'Follow vendor'}if(bell){bell.disabled=!following;bell.title=following?'Notification preferences':'Follow this vendor to manage notifications'}const mode=storefrontFollowNotificationMode(st);wrap.querySelectorAll('.follow-mode-row').forEach(b=>{const active=b.dataset.notifyMode===mode;b.setAttribute('aria-pressed',active?'true':'false')});const count=document.querySelector('[data-follow-count]');if(count&&st.follower_count!=null){const n=Number(st.follower_count||0);count.innerHTML='<strong>'+n.toLocaleString()+'</strong> follower'+(n===1?'':'s')}}
   async function toggleFollowBell(vendorId,ev){ev?.preventDefault?.();ev?.stopPropagation?.();const wrap=document.querySelector('.storefront-follow-wrap[data-follow-vendor-id="'+CSS.escape(String(vendorId))+'"]');const bell=wrap?.querySelector('.follow-settings-btn');if(!bell||bell.disabled)return;const menu=wrap.querySelector('.follow-menu');if(!menu)return;const wasHidden=menu.classList.contains('hidden');document.querySelectorAll('.follow-menu:not(.hidden)').forEach(m=>m.classList.add('hidden'));document.querySelectorAll('.follow-sheet-backdrop').forEach(b=>b.remove());if(!wasHidden){bell.setAttribute('aria-expanded','false');return;}let backdrop=wrap.querySelector('.follow-sheet-backdrop');if(!backdrop){backdrop=document.createElement('div');backdrop.className='follow-sheet-backdrop';backdrop.setAttribute('aria-hidden','true');backdrop.addEventListener('click',()=>closeStorefrontFollowSheet(wrap));wrap.appendChild(backdrop)}menu.classList.remove('hidden');bell.setAttribute('aria-expanded','true');wireStorefrontFollowSheetGesture(menu,wrap);await refreshFollow(vendorId)}
   window.toggleLevromartVendorFollow=toggleFollow;window.toggleLevromartFollowNotifications=toggleFollowBell;
-  async function saveFollowPrefsFromWrap(wrap,muteModeOverride){const id=wrap?.dataset.followVendorId;if(!id)return;const checked=k=>!!wrap.querySelector('[data-pref="'+k+'"]')?.checked;let muteMode=muteModeOverride;if(muteMode==null){const active=wrap.querySelector('.follow-mute-grid button.active');muteMode=active?.dataset.mute||'none';}try{const r=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:muteMode,p_notify_new_listing:checked('notify_new_listing'),p_notify_new_service:checked('notify_new_service'),p_notify_new_package:checked('notify_new_package'),p_notify_new_variety:checked('notify_new_variety'),p_notify_price_change:checked('notify_price_change'),p_notify_discount:checked('notify_discount')});if(r.error)throw r.error;wrap.querySelectorAll('.follow-mute-grid button').forEach(b=>b.classList.toggle('active',b.dataset.mute===muteMode));showToast?.(muteMode==='none'?'Vendor notifications turned on.':muteMode==='always'?'Vendor notifications muted until you turn them back on.':`Vendor notifications muted for ${muteMode==='1h'?'1 hour':'8 hours'}.`,'success');}catch(e){showToast?.(e.message||'Could not update vendor notifications.','error')}}
-document.addEventListener('change',e=>{const cb=e.target?.closest?.('.follow-menu input[data-pref]');if(!cb)return;saveFollowPrefsFromWrap(cb.closest('.storefront-follow-wrap'));},true);
-document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mute-grid button[data-mute]');if(!b)return;e.preventDefault();e.stopPropagation();const wrap=b.closest('.storefront-follow-wrap');if(!wrap)return;saveFollowPrefsFromWrap(wrap,b.dataset.mute);},true);
+  async function saveFollowPrefsFromWrap(wrap,muteModeOverride,modeOverride,silent){const id=wrap?.dataset.followVendorId;if(!id)return;const mode=modeOverride||wrap.querySelector('.follow-mode-row[aria-pressed="true"]')?.dataset.notifyMode||'relevant';const prefs={all:{notify_new_listing:true,notify_new_service:true,notify_new_package:true,notify_new_variety:true,notify_price_change:true,notify_discount:true,mute:'none'},relevant:{notify_new_listing:true,notify_new_service:true,notify_new_package:true,notify_new_variety:false,notify_price_change:false,notify_discount:false,mute:'none'},off:{notify_new_listing:false,notify_new_service:false,notify_new_package:false,notify_new_variety:false,notify_price_change:false,notify_discount:false,mute:'always'}}[mode]||null;if(!prefs)return;const muteMode=muteModeOverride||prefs.mute;try{const r=await sb.rpc('set_vendor_follow_preferences',{p_vendor_id:id,p_mute_mode:muteMode,p_notify_new_listing:prefs.notify_new_listing,p_notify_new_service:prefs.notify_new_service,p_notify_new_package:prefs.notify_new_package,p_notify_new_variety:prefs.notify_new_variety,p_notify_price_change:prefs.notify_price_change,p_notify_discount:prefs.notify_discount});if(r.error)throw r.error;wrap.querySelectorAll('.follow-mode-row').forEach(b=>b.setAttribute('aria-pressed',b.dataset.notifyMode===mode?'true':'false'));if(!silent)showToast?.(mode==='all'?'All vendor notifications are on.':mode==='off'?'Vendor notifications are off.':'Most relevant vendor notifications are on.','success');}catch(e){showToast?.(e.message||'Could not update vendor notifications.','error')}}
+document.addEventListener('click',e=>{const b=e.target?.closest?.('.follow-mode-row[data-notify-mode]');if(!b)return;e.preventDefault();e.stopPropagation();const wrap=b.closest('.storefront-follow-wrap');if(!wrap)return;saveFollowPrefsFromWrap(wrap,null,b.dataset.notifyMode,false);},true);
   document.addEventListener('click',e=>{if(!e.target.closest?.('.storefront-follow-wrap'))document.querySelectorAll('.storefront-follow-wrap').forEach(w=>closeStorefrontFollowSheet(w))},true);
 
   // Follower list for the shop owner.
@@ -44000,7 +44007,49 @@ html body #app button#productAddToCartBtn{border-radius:14px!important;border:1.
       .stat b{display:block;font-size:1.3rem;color:#0B6E4A;}
       @media print{h3{page-break-after:avoid;}h4{page-break-after:avoid;}tr{page-break-inside:avoid;}}
     </style>
-    </head><body>
+    
+<style id="levro-storefront-profile-action-refinement-20261004">
+/* Public storefront action hierarchy: the three-dot menu belongs to the banner;
+   the identity row keeps only the two useful actions: Follow + notifications. */
+#app .storefront-profile .storefront-banner-more{
+  position:absolute!important;right:14px!important;top:14px!important;width:42px!important;height:42px!important;
+  min-width:42px!important;min-height:42px!important;border-radius:50%!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  border:1px solid rgba(255,255,255,.34)!important;background:rgba(0,0,0,.34)!important;
+  color:#fff!important;box-shadow:0 6px 20px rgba(0,0,0,.22)!important;backdrop-filter:blur(10px)!important;
+  -webkit-backdrop-filter:blur(10px)!important;z-index:8!important;cursor:pointer!important;
+}
+#app .storefront-profile .storefront-banner-more:active{transform:scale(.96)!important;}
+#app .storefront-profile .storefront-banner-more i{font-size:1rem!important;}
+#app .storefront-profile .storefront-follow-controls{display:flex!important;align-items:center!important;gap:.45rem!important;}
+#app .storefront-profile .storefront-follow-controls .follow-btn{min-width:112px!important;justify-content:center!important;gap:.42rem!important;}
+#app .storefront-profile .follow-btn-label{display:inline!important;}
+
+/* LinkedIn-inspired interaction pattern, but with LevroMart's own icon language. */
+#app .storefront-profile .follow-menu{padding:8px max(18px,env(safe-area-inset-left)) calc(20px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-right))!important;}
+#app .storefront-profile .follow-menu > strong{font-size:1.05rem!important;padding:.2rem 0 .25rem!important;border:0!important;}
+#app .storefront-profile .follow-mode-intro{margin:0 0 .8rem!important;color:var(--text-muted)!important;font-size:.74rem!important;line-height:1.45!important;}
+#app .storefront-profile .follow-mode-row{width:100%!important;min-height:68px!important;display:grid!important;grid-template-columns:42px minmax(0,1fr) 28px!important;align-items:center!important;gap:.75rem!important;padding:.65rem .15rem!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)!important;background:transparent!important;color:var(--text)!important;text-align:left!important;font:inherit!important;cursor:pointer!important;}
+#app .storefront-profile .follow-mode-row:last-child{border-bottom:0!important;}
+#app .storefront-profile .follow-mode-row:active{background:color-mix(in srgb,var(--text) 5%,transparent)!important;}
+#app .storefront-profile .follow-mode-icon{width:42px!important;height:42px!important;border-radius:13px!important;display:grid!important;place-items:center!important;font-size:1rem!important;}
+#app .storefront-profile .follow-mode-icon-all{background:color-mix(in srgb,#3b82f6 12%,var(--card))!important;color:#3b82f6!important;}
+#app .storefront-profile .follow-mode-icon-relevant{background:color-mix(in srgb,#8b5cf6 12%,var(--card))!important;color:#8b5cf6!important;}
+#app .storefront-profile .follow-mode-icon-off{background:color-mix(in srgb,var(--text) 8%,var(--card))!important;color:var(--text-muted)!important;}
+#app .storefront-profile .follow-mode-copy{min-width:0!important;display:flex!important;flex-direction:column!important;gap:.15rem!important;}
+#app .storefront-profile .follow-mode-copy b{font-size:.86rem!important;line-height:1.25!important;}
+#app .storefront-profile .follow-mode-copy small{margin:0!important;font-size:.69rem!important;line-height:1.35!important;color:var(--text-muted)!important;}
+#app .storefront-profile .follow-mode-check{width:24px!important;height:24px!important;border:2px solid var(--border)!important;border-radius:50%!important;display:grid!important;place-items:center!important;color:transparent!important;}
+#app .storefront-profile .follow-mode-row[aria-pressed="true"] .follow-mode-check{border-color:var(--primary)!important;background:var(--primary)!important;color:#fff!important;}
+#app .storefront-profile .follow-mode-row[aria-pressed="true"] .follow-mode-copy b{font-weight:800!important;}
+
+@media(max-width:620px){
+  #app .storefront-profile .storefront-banner-more{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;right:12px!important;top:12px!important;}
+  #app .storefront-profile .storefront-profile-actions{top:.55rem!important;right:0!important;}
+  #app .storefront-profile .storefront-follow-controls .follow-btn{min-width:104px!important;}
+}
+</style>
+</head><body>
     <h1>Levromart Inventory Report</h1>
     <p class="muted">Generated ${new Date().toLocaleString()}</p>
     <div class="stats">
