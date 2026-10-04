@@ -5839,15 +5839,33 @@ body.chat-full-page,body.chat-full-page>#app,.chat-page-wrap,.chat-page-wrap .ch
   .admin-carousel-form-grid .full{grid-column:1/-1}
   .admin-carousel-file{display:block;padding:.8rem;border:1px dashed var(--border);border-radius:12px;background:var(--input-bg);cursor:pointer}
   .admin-carousel-file input{margin:.5rem 0 0;padding:0;border:0;background:transparent;box-shadow:none}
-  .admin-carousel-list{display:flex;flex-direction:column;gap:.85rem}
-  .admin-carousel-item{display:grid;grid-template-columns:190px minmax(0,1fr);gap:1rem;align-items:start;padding:.85rem;border:1px solid var(--border);border-radius:15px;background:var(--card)}
-  .admin-carousel-thumb{width:100%;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:var(--input-bg);border:1px solid var(--border)}
+  .admin-carousel-list{display:flex;flex-direction:column;gap:.7rem}
+  .admin-carousel-item{border:1px solid var(--border);border-radius:15px;background:var(--card);overflow:hidden;transition:box-shadow .18s ease,opacity .18s ease,transform .18s ease}
+  .admin-carousel-item.dragging{opacity:.55;box-shadow:0 12px 28px rgba(15,23,42,.16);transform:scale(.995)}
+  .admin-carousel-item.drop-target{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 16%,transparent)}
+  .admin-carousel-summary{display:grid;grid-template-columns:auto 104px minmax(0,1fr) auto auto;gap:.8rem;align-items:center;padding:.72rem .8rem;cursor:pointer;user-select:none}
+  .admin-carousel-drag{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;color:var(--text-muted);background:var(--input-bg);cursor:grab;touch-action:none}
+  .admin-carousel-drag:active{cursor:grabbing}
+  .admin-carousel-thumb{width:104px;aspect-ratio:16/9;border-radius:9px;overflow:hidden;background:var(--input-bg);border:1px solid var(--border)}
   .admin-carousel-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-  .admin-carousel-meta{min-width:0}.admin-carousel-meta h4{margin:0 0 .3rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .admin-carousel-summary-copy{min-width:0}.admin-carousel-summary-copy h4{margin:0 0 .15rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .admin-carousel-summary-copy p{margin:0;font-size:.76rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .admin-carousel-chevron{transition:transform .18s ease;color:var(--text-muted)}
+  .admin-carousel-item.open .admin-carousel-chevron{transform:rotate(180deg)}
+  .admin-carousel-details{display:none;padding:0 .85rem .85rem;border-top:1px solid var(--border)}
+  .admin-carousel-item.open .admin-carousel-details{display:block}
+  .admin-carousel-meta{min-width:0;padding-top:.8rem}
   .admin-carousel-actions{display:flex;gap:.55rem;flex-wrap:wrap;margin-top:.65rem}
   .admin-carousel-actions .btn{margin:0}
-  .admin-carousel-status{display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;font-weight:700;padding:.22rem .55rem;border-radius:999px;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary)}
-  @media(max-width:650px){.admin-carousel-form-grid{grid-template-columns:1fr}.admin-carousel-form-grid .full{grid-column:auto}.admin-carousel-item{grid-template-columns:1fr}.admin-carousel-thumb{max-height:220px}}
+  .admin-carousel-status{display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;font-weight:700;padding:.22rem .55rem;border-radius:999px;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);white-space:nowrap}
+  .admin-carousel-uploading{opacity:.65;pointer-events:none}
+  @media(max-width:650px){
+    .admin-carousel-form-grid{grid-template-columns:1fr}
+    .admin-carousel-form-grid .full{grid-column:auto}
+    .admin-carousel-summary{grid-template-columns:auto 76px minmax(0,1fr) auto;gap:.55rem}
+    .admin-carousel-thumb{width:76px}
+    .admin-carousel-summary .admin-carousel-status{display:none}
+  }
 </style>
 <style id="admin-link-library-styles">
   .admin-link-library{display:flex;flex-direction:column;gap:1rem}
@@ -9872,6 +9890,37 @@ async function uploadToR2(blob, key, contentType) {
   const putRes = await fetch(presignJson.uploadUrl, { method: "PUT", headers: putHeaders, body: blob });
   if (!putRes.ok) throw new Error("Upload to storage failed. Please try again.");
   return presignJson.publicUrl;
+}
+
+async function uploadCarouselImage(blob, storagePath, contentType) {
+  const type = contentType || blob.type || "application/octet-stream";
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const url = await uploadToR2(blob, `homepage-carousel/${storagePath}`, type);
+      if (url) return { url, storagePath, backend: "r2" };
+    } catch (e) {
+      lastError = e;
+      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+
+  try {
+    const { error } = await sb.storage.from("homepage-carousel").upload(
+      storagePath,
+      blob,
+      { cacheControl: "31536000", contentType: type, upsert: false }
+    );
+    if (error) throw error;
+    const { data } = sb.storage.from("homepage-carousel").getPublicUrl(storagePath);
+    if (!data?.publicUrl) throw new Error("Could not create the carousel image URL.");
+    return { url: data.publicUrl, storagePath, backend: "supabase" };
+  } catch (fallbackError) {
+    const a = lastError?.message ? `R2: ${lastError.message}` : "";
+    const b = fallbackError?.message ? `Supabase: ${fallbackError.message}` : "";
+    throw new Error([a, b].filter(Boolean).join(" | ") || "Could not upload the carousel image.");
+  }
 }
 function yearsSince(dateStr) {
   if (!dateStr) return null;
@@ -14122,11 +14171,15 @@ function isCarouselAdmin() { return !!session?.user?.id && profile?.role === "ad
 
 async function renderAdminCarousel() {
   if (!isCarouselAdmin()) return '<div class="empty-state">Access denied.</div>';
-  const { data: slides, error } = await sb.from("homepage_carousel_slides").select("id,storage_path,image_url,link_url,alt_text,sort_order,is_active,created_at,updated_at").order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+  const { data: slides, error } = await sb.from("homepage_carousel_slides")
+    .select("id,storage_path,image_url,link_url,alt_text,sort_order,is_active,created_at,updated_at")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
   let html = `<h2><i class="fa-solid fa-images"></i> Homepage carousel</h2>${adminNavHtml("adminCarousel")}`;
   if (error) html += errorStateHtml(error);
   html += `<div class="card admin-carousel-manager">
-    <div><h3 style="margin:0 0 .25rem;">Manage promotional banners</h3><p class="muted" style="margin:0;">Admins can add, replace, reorder, activate/deactivate, or delete homepage carousel images. Uploaded files are stored in Supabase Storage.</p></div>
+    <div><h3 style="margin:0 0 .25rem;">Manage promotional banners</h3><p class="muted" style="margin:0;">Tap a banner to view its details. Drag the handle to change the order. Replacing an image keeps the banner in the same position.</p></div>
     <div class="admin-carousel-add">
       <h4 style="margin:0 0 .7rem;"><i class="fa-solid fa-cloud-arrow-up"></i> Add a new banner</h4>
       <div class="admin-carousel-form-grid">
@@ -14137,30 +14190,128 @@ async function renderAdminCarousel() {
       </div>
       <div class="flex" style="justify-content:flex-end;margin-top:.4rem;"><button class="btn" id="adminCarouselAddBtn" onclick="addAdminCarouselSlide()"><i class="fa-solid fa-plus"></i> Add banner</button></div>
     </div>
-    <div class="flex" style="justify-content:space-between;align-items:center;"><strong>${(slides || []).length} saved banner${(slides || []).length === 1 ? "" : "s"}</strong><button class="btn btn-sm btn-outline" onclick="publishBundledCarouselSlides()"><i class="fa-solid fa-cloud-arrow-up"></i> Publish the 6 bundled banners</button></div>
+    <div class="flex" style="justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;">
+      <strong>${(slides || []).length} saved banner${(slides || []).length === 1 ? "" : "s"}</strong>
+      <button class="btn btn-sm btn-outline" onclick="publishBundledCarouselSlides()"><i class="fa-solid fa-cloud-arrow-up"></i> Publish the 6 bundled banners</button>
+    </div>
   </div>`;
+
   if (!slides?.length) {
     html += `<div class="card empty-state"><i class="fa-solid fa-images" style="display:block;font-size:2rem;margin-bottom:.6rem;"></i>No database banners yet. The six bundled Levromart banners are currently shown on the homepage. Publish them here to make them fully editable from this page.</div>`;
   } else {
-    html += `<div class="admin-carousel-list">${slides.map((s, i) => `<div class="admin-carousel-item" data-carousel-admin-id="${esc(s.id)}">
-      <div class="admin-carousel-thumb"><img src="${esc(s.image_url || "")}" alt="${esc(s.alt_text || "")}" loading="lazy" onerror="this.style.opacity='.25'"></div>
-      <div class="admin-carousel-meta">
-        <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.5rem;"><h4>${esc(s.alt_text || `Banner ${i + 1}`)}</h4><span class="admin-carousel-status">${s.is_active ? "Active" : "Hidden"}</span></div>
-        <p class="muted" style="margin:.15rem 0;">Order ${Number(s.sort_order ?? 0)} · ${s.storage_path ? "Supabase Storage" : "Bundled asset"}</p>
-        <label>Alt text<input id="adminCarouselAlt_${esc(s.id)}" maxlength="180" value="${esc(s.alt_text || "")}" /></label>
-        <label>Link URL<input id="adminCarouselLink_${esc(s.id)}" type="url" value="${esc(s.link_url || "")}" placeholder="Optional" /></label>
-        <label>Display order<input id="adminCarouselOrder_${esc(s.id)}" type="number" min="0" step="1" value="${Number(s.sort_order ?? 0)}" /></label>
-        <div class="admin-carousel-actions">
-          <button class="btn btn-sm" onclick="saveAdminCarouselSlide('${esc(s.id)}')"><i class="fa-solid fa-floppy-disk"></i> Save</button>
-          <label class="btn btn-sm btn-outline" style="cursor:pointer;margin:0;"><i class="fa-solid fa-image"></i> Replace image<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="replaceAdminCarouselImage(event,'${esc(s.id)}')"></label>
-          <button class="btn btn-sm btn-outline" onclick="toggleAdminCarouselSlide('${esc(s.id)}',${!s.is_active})"><i class="fa-solid ${s.is_active ? "fa-eye-slash" : "fa-eye"}"></i> ${s.is_active ? "Hide" : "Show"}</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteAdminCarouselSlide('${esc(s.id)}')"><i class="fa-solid fa-trash"></i> Delete</button>
+    html += `<div class="admin-carousel-list" id="adminCarouselList">`;
+    html += slides.map((s, i) => {
+      const sid = esc(s.id);
+      const title = esc(s.alt_text || `Banner ${i + 1}`);
+      return `<div class="admin-carousel-item" draggable="true" data-carousel-admin-id="${sid}">
+        <div class="admin-carousel-summary" onclick="toggleAdminCarouselDetails('${sid}',event)">
+          <button type="button" class="admin-carousel-drag" title="Drag to reorder" aria-label="Drag to reorder" onclick="event.stopPropagation()"><i class="fa-solid fa-grip-vertical"></i></button>
+          <div class="admin-carousel-thumb"><img src="${esc(s.image_url || "")}" alt="${title}" loading="lazy" onerror="this.style.opacity='.25'"></div>
+          <div class="admin-carousel-summary-copy">
+            <h4>${title}</h4>
+            <p>Order ${Number(s.sort_order ?? 0)} · ${s.storage_path ? "Stored image" : "Bundled asset"}</p>
+          </div>
+          <span class="admin-carousel-status">${s.is_active ? "Active" : "Hidden"}</span>
+          <i class="fa-solid fa-chevron-down admin-carousel-chevron" aria-hidden="true"></i>
         </div>
-      </div>
-    </div>`).join("")}</div>`;
+        <div class="admin-carousel-details">
+          <div class="admin-carousel-meta">
+            <label>Alt text<input id="adminCarouselAlt_${sid}" maxlength="180" value="${esc(s.alt_text || "")}" /></label>
+            <label>Link URL<input id="adminCarouselLink_${sid}" type="url" value="${esc(s.link_url || "")}" placeholder="Optional" /></label>
+            <label>Display order<input id="adminCarouselOrder_${sid}" type="number" min="0" step="1" value="${Number(s.sort_order ?? 0)}" /></label>
+            <div class="admin-carousel-actions">
+              <button class="btn btn-sm" onclick="saveAdminCarouselSlide('${sid}')"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+              <label class="btn btn-sm btn-outline" style="cursor:pointer;margin:0;"><i class="fa-solid fa-image"></i> Replace image<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="replaceAdminCarouselImage(event,'${sid}')"></label>
+              <button class="btn btn-sm btn-outline" onclick="toggleAdminCarouselSlide('${sid}',${!s.is_active})"><i class="fa-solid ${s.is_active ? "fa-eye-slash" : "fa-eye"}"></i> ${s.is_active ? "Hide" : "Show"}</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteAdminCarouselSlide('${sid}')"><i class="fa-solid fa-trash"></i> Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+    html += `</div>`;
   }
+
   html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('adminPanel')"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>`;
+  setTimeout(() => initAdminCarouselDragDrop(), 0);
   return html;
+}
+
+function toggleAdminCarouselDetails(id, event) {
+  if (event?.target?.closest?.(".admin-carousel-drag")) return;
+  const card = document.querySelector(`.admin-carousel-item[data-carousel-admin-id="${CSS.escape(String(id))}"]`);
+  if (card) card.classList.toggle("open");
+}
+
+let adminCarouselDraggedId = null;
+
+function initAdminCarouselDragDrop() {
+  const list = byId("adminCarouselList");
+  if (!list || list.dataset.dragReady === "1") return;
+  list.dataset.dragReady = "1";
+
+  list.querySelectorAll(".admin-carousel-item").forEach(card => {
+    card.addEventListener("dragstart", (e) => {
+      adminCarouselDraggedId = card.dataset.carouselAdminId;
+      card.classList.add("dragging");
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", adminCarouselDraggedId);
+      }
+    });
+    card.addEventListener("dragend", () => {
+      card.classList.remove("dragging");
+      list.querySelectorAll(".drop-target").forEach(el => el.classList.remove("drop-target"));
+      adminCarouselDraggedId = null;
+    });
+    card.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      if (card.dataset.carouselAdminId !== adminCarouselDraggedId) card.classList.add("drop-target");
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    });
+    card.addEventListener("dragleave", () => card.classList.remove("drop-target"));
+    card.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      card.classList.remove("drop-target");
+      const dragged = list.querySelector(`.admin-carousel-item[data-carousel-admin-id="${CSS.escape(String(adminCarouselDraggedId || ""))}"]`);
+      if (!dragged || dragged === card) return;
+      const rect = card.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      list.insertBefore(dragged, before ? card : card.nextSibling);
+      await persistAdminCarouselOrder();
+    });
+  });
+}
+
+async function persistAdminCarouselOrder() {
+  if (!isCarouselAdmin()) return;
+  const list = byId("adminCarouselList");
+  if (!list) return;
+  const cards = [...list.querySelectorAll(".admin-carousel-item")];
+  const updates = cards.map((card, index) => ({ id: card.dataset.carouselAdminId, sort_order: (index + 1) * 10 }));
+  try {
+    for (const row of updates) {
+      const { error } = await sb.from("homepage_carousel_slides")
+        .update({ sort_order: row.sort_order, updated_at: new Date().toISOString() })
+        .eq("id", row.id);
+      if (error) throw error;
+    }
+    levroCacheClear("carousel");
+    cards.forEach((card, index) => {
+      const order = (index + 1) * 10;
+      const input = card.querySelector('input[id^="adminCarouselOrder_"]');
+      if (input) input.value = String(order);
+      const summary = card.querySelector(".admin-carousel-summary-copy p");
+      if (summary) {
+        const kind = summary.textContent.includes("Stored image") ? "Stored image" : "Bundled asset";
+        summary.textContent = `Order ${order} · ${kind}`;
+      }
+    });
+    showToast("Carousel order updated.", "success");
+  } catch (e) {
+    console.error(e);
+    showToast(e?.message || "Could not save carousel order.", "error");
+  }
 }
 
 async function addAdminCarouselSlide() {
@@ -14204,20 +14355,50 @@ async function toggleAdminCarouselSlide(id, active) {
 
 async function replaceAdminCarouselImage(event, id) {
   if (!isCarouselAdmin()) return;
-  const file = event?.target?.files?.[0]; if (!file) return;
-  if (!file.type?.startsWith("image/")) { showToast("Please choose an image file.", "error"); return; }
+  const input = event?.target;
+  const file = input?.files?.[0];
+  if (!file) return;
+  if (!file.type?.startsWith("image/")) {
+    showToast("Please choose an image file.", "error");
+    return;
+  }
+
+  const card = document.querySelector(`.admin-carousel-item[data-carousel-admin-id="${CSS.escape(String(id))}"]`);
+  card?.classList.add("admin-carousel-uploading");
+  if (input) input.disabled = true;
+
   try {
-    const { data: old, error: oldError } = await sb.from("homepage_carousel_slides").select("storage_path").eq("id", id).maybeSingle();
-    if (oldError) throw oldError;
-    const newPath = `homepage-carousel/${carouselStoragePathForUpload(file)}`;
     let uploadBlob = file;
-    try { if (typeof window.compressImage === "function") uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 }); } catch (_) {}
-    const publicUrl = await uploadToR2(uploadBlob, newPath, uploadBlob.type || file.type);
-    const { error: updateError } = await sb.from("homepage_carousel_slides").update({ storage_path: newPath, image_url: publicUrl, updated_at: new Date().toISOString() }).eq("id", id);
+    try {
+      if (typeof window.compressImage === "function") {
+        uploadBlob = await window.compressImage(file, { maxWidth: 1920, maxHeight: 1080 });
+      }
+    } catch (_) {}
+
+    const storagePath = carouselStoragePathForUpload(file);
+    const uploaded = await uploadCarouselImage(uploadBlob, storagePath, uploadBlob.type || file.type);
+
+    const { error: updateError } = await sb.from("homepage_carousel_slides")
+      .update({
+        storage_path: uploaded.storagePath,
+        image_url: `${uploaded.url}${uploaded.url.includes("?") ? "&" : "?"}v=${Date.now()}`,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", id);
+
     if (updateError) throw updateError;
+
+    levroCacheClear("carousel");
     showToast("Banner image replaced.", "success");
     navigate("adminCarousel", {}, { replace: true });
-  } catch (e) { console.error(e); showToast(e?.message || "Could not replace banner image.", "error"); }
+  } catch (e) {
+    console.error("[Levromart] Carousel replacement failed:", e);
+    showToast(String(e?.message || "").trim() || "Could not replace the banner image. Please try again.", "error");
+  } finally {
+    if (input) input.disabled = false;
+    card?.classList.remove("admin-carousel-uploading");
+    if (input) input.value = "";
+  }
 }
 
 async function deleteAdminCarouselSlide(id) {
@@ -14228,7 +14409,9 @@ async function deleteAdminCarouselSlide(id) {
     if (readError) throw readError;
     levroCacheClear("carousel"); const { error } = await sb.from("homepage_carousel_slides").delete().eq("id", id);
     if (error) throw error;
-    if (row?.storage_path) await sb.storage.from("homepage-carousel").remove([row.storage_path]);
+    if (row?.storage_path) {
+      try { await sb.storage.from("homepage-carousel").remove([row.storage_path]); } catch (_) {}
+    }
     showToast("Banner deleted.", "success");
     navigate("adminCarousel", {}, { replace: true });
   } catch (e) { console.error(e); showToast(e?.message || "Could not delete banner.", "error"); }
