@@ -7392,47 +7392,50 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
 
 <style id="levromart-home-category-appstore-polish">
   /*
-   * HOME CATEGORY RAIL — photography-first, Apple-style browse chips.
-   * No Font Awesome category pictograms here. Each category gets a real
-   * photographic thumbnail, while the chip surface follows the active theme.
-   * Existing category data, ordering and click handlers are untouched.
+   * HOME CATEGORY RAIL — compact illustrated browse chips.
+   * Small optical artwork, soft colorful surfaces and theme-aware chips.
+   * This block intentionally affects ONLY the category rail.
    */
   #app .levro-home-cat-rail{
-    gap:.55rem!important;
-    padding:.18rem .02rem .7rem!important;
+    gap:.42rem!important;
+    padding:.14rem .02rem .58rem!important;
     align-items:center!important;
     overflow-x:auto!important;
     scrollbar-width:none!important;
     -webkit-overflow-scrolling:touch!important;
   }
   #app .levro-home-cat-rail::-webkit-scrollbar{display:none!important;}
+
   #app .levro-home-cat-chip{
     flex:0 0 auto!important;
-    min-height:42px!important;
-    height:42px!important;
-    padding:0 .82rem 0 .38rem!important;
-    gap:.46rem!important;
+    min-height:38px!important;
+    height:38px!important;
+    padding:0 .68rem 0 .24rem!important;
+    gap:.38rem!important;
     border-radius:999px!important;
-    border:1px solid color-mix(in srgb,var(--text) 11%,var(--border))!important;
+    border:1px solid color-mix(in srgb,var(--text) 9%,var(--border))!important;
     background:var(--card)!important;
     color:var(--text)!important;
-    box-shadow:0 1px 3px rgba(0,0,0,.07)!important;
+    box-shadow:0 1px 4px rgba(0,0,0,.06)!important;
     transition:transform .16s ease,border-color .16s ease,background-color .16s ease,box-shadow .16s ease!important;
     overflow:hidden!important;
   }
-  #app .levro-home-cat-chip:active{transform:scale(.97)!important;}
+  #app .levro-home-cat-chip:active{transform:scale(.975)!important;}
+
+  /* Smaller than the previous 34px photo circles: this is deliberately
+     closer to an App Store-style optical icon inside a compact pill. */
   #app .levro-home-cat-thumb{
-    width:34px!important;
-    height:34px!important;
-    min-width:34px!important;
-    border-radius:50%!important;
+    width:28px!important;
+    height:28px!important;
+    min-width:28px!important;
+    border-radius:9px!important;
     overflow:hidden!important;
     display:inline-flex!important;
     align-items:center!important;
     justify-content:center!important;
-    background:color-mix(in srgb,var(--cat-color,var(--primary)) 16%,var(--card))!important;
-    border:1px solid color-mix(in srgb,var(--text) 8%,transparent)!important;
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
   }
   #app .levro-home-cat-thumb img{
     display:block!important;
@@ -7440,9 +7443,10 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     height:100%!important;
     object-fit:cover!important;
     object-position:center!important;
+    border-radius:9px!important;
   }
   #app .levro-home-cat-label{
-    font-size:.78rem!important;
+    font-size:.76rem!important;
     line-height:1!important;
     font-weight:700!important;
     letter-spacing:-.012em!important;
@@ -7450,46 +7454,41 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     color:var(--text)!important;
   }
   #app .levro-home-cat-chip.active{
-    background:color-mix(in srgb,var(--cat-color,var(--primary)) 12%,var(--card))!important;
-    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 52%,var(--border))!important;
-    box-shadow:0 3px 10px color-mix(in srgb,var(--cat-color,var(--primary)) 13%,transparent)!important;
-  }
-  #app .levro-home-cat-chip.active .levro-home-cat-thumb{
-    box-shadow:0 0 0 2px color-mix(in srgb,var(--cat-color,var(--primary)) 18%,transparent),inset 0 0 0 1px rgba(255,255,255,.14)!important;
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 11%,var(--card))!important;
+    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 48%,var(--border))!important;
+    box-shadow:0 2px 8px color-mix(in srgb,var(--cat-color,var(--primary)) 10%,transparent)!important;
   }
 
-  /* Dark charcoal mode: never fall back to white category pills. */
+  /* Dark charcoal */
   [data-theme="dark"] #app .levro-home-cat-chip{
     background:#24282c!important;
-    border-color:#3a3f43!important;
+    border-color:#353a3e!important;
+    color:#f1f3f4!important;
     box-shadow:0 2px 7px rgba(0,0,0,.28)!important;
   }
   [data-theme="dark"] #app .levro-home-cat-chip.active{
-    background:color-mix(in srgb,var(--cat-color,var(--primary)) 14%,#24282c)!important;
-    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 55%,#3a3f43)!important;
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 13%,#24282c)!important;
+    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 52%,#353a3e)!important;
   }
 
-  /* True black mode: use near-black surfaces, not charcoal/white. */
+  /* Pure black */
   [data-theme="black"] #app .levro-home-cat-chip{
-    background:#0d0d0d!important;
-    border-color:#292929!important;
-    box-shadow:0 2px 8px rgba(0,0,0,.5)!important;
+    background:#0b0b0b!important;
+    border-color:#252525!important;
+    color:#f5f5f5!important;
+    box-shadow:0 2px 8px rgba(0,0,0,.52)!important;
   }
   [data-theme="black"] #app .levro-home-cat-chip.active{
-    background:color-mix(in srgb,var(--cat-color,var(--primary)) 16%,#0d0d0d)!important;
-    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 58%,#292929)!important;
-  }
-
-  /* System dark preference also stays dark before JS/theme hydration finishes. */
-  @media (prefers-color-scheme:dark){
-    html:not([data-theme=""]):not([data-theme="light"]) #app .levro-home-cat-chip{background:#24282c!important;}
+    background:color-mix(in srgb,var(--cat-color,var(--primary)) 14%,#0b0b0b)!important;
+    border-color:color-mix(in srgb,var(--cat-color,var(--primary)) 54%,#252525)!important;
   }
 
   @media(max-width:420px){
-    #app .levro-home-cat-rail{gap:.48rem!important;padding-bottom:.62rem!important;}
-    #app .levro-home-cat-chip{min-height:40px!important;height:40px!important;padding-right:.72rem!important;gap:.42rem!important;}
-    #app .levro-home-cat-thumb{width:32px!important;height:32px!important;min-width:32px!important;}
-    #app .levro-home-cat-label{font-size:.75rem!important;}
+    #app .levro-home-cat-rail{gap:.36rem!important;padding-bottom:.52rem!important;}
+    #app .levro-home-cat-chip{min-height:36px!important;height:36px!important;padding-right:.6rem!important;gap:.34rem!important;}
+    #app .levro-home-cat-thumb{width:26px!important;height:26px!important;min-width:26px!important;border-radius:8px!important;}
+    #app .levro-home-cat-thumb img{border-radius:8px!important;}
+    #app .levro-home-cat-label{font-size:.73rem!important;}
   }
 </style>
 <style id="levromart-product-card-total-final-position">
@@ -15057,46 +15056,90 @@ function levroSectorIconClass(sector) {
 }
 
 /*
- * HOME CATEGORY PHOTOGRAPHY
- * Use real product/category photography rather than Font Awesome pictograms.
- * These are fixed Unsplash photographs so the rail stays visually consistent
- * between renders/sessions. The mapping is keyword-based, so vendor-created
- * categories still receive the closest useful photograph.
+ * HOME CATEGORY ART
+ * Small, colorful vector illustrations instead of large photographic thumbnails.
+ * The artwork is intentionally between "real" and "cartoon": simple layered
+ * shapes, soft gradients and clear silhouettes that stay legible at tiny sizes.
+ * It is self-contained so the category rail does not depend on an image CDN.
  */
-const LEVRO_CATEGORY_PHOTOS = [
-  [/scarf|scarves|headwrap|ribbon/, "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/women|dress|gown|lady|ladies|fashion|cloth|wear|tailor|fabric/, "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/(^|\W)men|suit|male/, "https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/jewel|ring|necklace|earring|watch|gem/, "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/fragrance|perfume|scent|cologne/, "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/shawarma|burger|meal|pizza|fast ?food|food|grocer|restaurant|cater|snack|bak/, "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/yogurt|yoghurt|dairy|milk|ice ?cream/, "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/shoe|sneaker|footwear|sandal/, "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/bag|handbag|purse/, "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/drink|beverage|juice|water|wine/, "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/beauty|cosmetic|skin|hair|spa|wellness|makeup/, "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/iphone|phone|mobile|tablet|telecom/, "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/electronic|gadget|tv|audio|generator|power|lamp/, "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/comput|laptop|tech|software/, "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/health|pharm|medic|glucometer|pressure/, "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/home|furniture|decor|living|kitchen|appliance|bottle/, "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/auto|car|vehicle/, "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/book|stationery|education|school/, "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/sport|fitness|gym/, "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/art|craft|handmade|tattoo/, "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/baby|kid|toy/, "https://images.unsplash.com/photo-1516627145497-ae6968895b74?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/service|repair|clean|laundry/, "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/event|entertain|music|media|photo/, "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/agri|farm|pet/, "https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/build|construct|hardware|tool|industrial/, "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=160&h=160&q=86"],
-  [/gift/, "https://images.unsplash.com/photo-1512909006721-3d6018887383?auto=format&fit=crop&w=160&h=160&q=86"]
-];
-const LEVRO_CATEGORY_DEFAULT_PHOTO = "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?auto=format&fit=crop&w=160&h=160&q=86";
-const LEVRO_CATEGORY_ALL_PHOTO = "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=160&h=160&q=86";
-
-function levroSectorPhoto(sector) {
+function levroCategoryArtKey(sector) {
   const name = String(sector?.name || "").toLowerCase();
-  return LEVRO_CATEGORY_PHOTOS.find(([re]) => re.test(name))?.[1] || LEVRO_CATEGORY_DEFAULT_PHOTO;
+  if (/scarf|scarves|headwrap|ribbon/.test(name)) return "scarf";
+  if (/women|dress|gown|lady|ladies/.test(name)) return "dress";
+  if (/(^|\W)men|suit|male/.test(name)) return "mens";
+  if (/jewel|ring|necklace|earring|watch|gem/.test(name)) return "jewelry";
+  if (/fragrance|perfume|scent|cologne/.test(name)) return "perfume";
+  if (/shawarma|burger|meal|pizza|fast ?food|food|grocer|restaurant|cater|snack|bak/.test(name)) return "food";
+  if (/yogurt|yoghurt|dairy|milk|ice ?cream/.test(name)) return "yogurt";
+  if (/shoe|sneaker|footwear|sandal/.test(name)) return "shoe";
+  if (/bag|handbag|purse/.test(name)) return "bag";
+  if (/drink|beverage|juice|water|wine/.test(name)) return "drink";
+  if (/beauty|cosmetic|skin|hair|spa|wellness|makeup/.test(name)) return "beauty";
+  if (/iphone|phone|mobile|tablet|telecom/.test(name)) return "phone";
+  if (/electronic|gadget|tv|audio|generator|power|lamp/.test(name)) return "electronics";
+  if (/comput|laptop|tech|software/.test(name)) return "laptop";
+  if (/health|pharm|medic|glucometer|pressure/.test(name)) return "health";
+  if (/home|furniture|decor|living|kitchen|appliance|bottle/.test(name)) return "home";
+  if (/auto|car|vehicle/.test(name)) return "car";
+  if (/book|stationery|education|school/.test(name)) return "books";
+  if (/sport|fitness|gym/.test(name)) return "sport";
+  if (/art|craft|handmade|tattoo/.test(name)) return "art";
+  if (/baby|kid|toy/.test(name)) return "baby";
+  if (/service|repair|clean|laundry/.test(name)) return "service";
+  if (/event|entertain|music|media|photo/.test(name)) return "event";
+  if (/agri|farm|pet/.test(name)) return "farm";
+  if (/build|construct|hardware|tool|industrial/.test(name)) return "tools";
+  if (/gift/.test(name)) return "gift";
+  return "default";
+}
+
+function levroCategoryArtSvg(key) {
+  const arts = {
+    scarf: `<path d="M20 31c7-5 13-7 20-5l12 5-5 12-11-5-9 11-8-6 9-12z" fill="#21b7a4"/><path d="M31 26l12 6-7 7-12-5z" fill="#f6c453"/><circle cx="50" cy="25" r="7" fill="#ff6f91"/>`,
+    dress: `<path d="M34 18h12l3 12 9 18c1 3-2 6-5 6H25c-3 0-6-3-5-6l9-18 3-12z" fill="#ff6fae"/><path d="M34 18h12l2 8H32z" fill="#ffb3d0"/><circle cx="40" cy="13" r="5" fill="#ffd3b6"/>`,
+    mens: `<path d="M27 19l9-6h8l9 6 6 29H21z" fill="#4b7bec"/><path d="M36 13l4 7 4-7 5 5-5 10h-8l-5-10z" fill="#f5f7fb"/><path d="M40 19l-4 9h8z" fill="#1f3f9c"/>`,
+    jewelry: `<circle cx="40" cy="37" r="18" fill="none" stroke="#f5c64d" stroke-width="5"/><circle cx="40" cy="18" r="7" fill="#8bd9ff"/><circle cx="40" cy="18" r="4" fill="#fff2a8"/><path d="M25 49c5 4 10 6 15 6s10-2 15-6" fill="none" stroke="#ff8fba" stroke-width="4" stroke-linecap="round"/>`,
+    perfume: `<rect x="27" y="25" width="26" height="27" rx="7" fill="#d98cff"/><rect x="33" y="17" width="14" height="9" rx="3" fill="#7e68e8"/><rect x="36" y="12" width="8" height="6" rx="2" fill="#f6c453"/><circle cx="46" cy="38" r="5" fill="#f4e4ff" opacity=".8"/>`,
+    food: `<path d="M18 34h44l-4 14H22z" fill="#ffb347"/><path d="M21 31c3-8 11-11 19-6 8-5 16-2 19 6z" fill="#ff6b57"/><rect x="23" y="40" width="34" height="5" rx="2.5" fill="#79c267"/><rect x="22" y="48" width="36" height="5" rx="2.5" fill="#8b4b3e"/>`,
+    yogurt: `<path d="M26 25h28l-3 28H29z" fill="#7ad7e9"/><path d="M24 24h32l-3-7H27z" fill="#fff5fb"/><circle cx="40" cy="37" r="7" fill="#ff7da7"/><path d="M34 48h12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`,
+    shoe: `<path d="M17 42c8 2 13 1 18-5l8-11 8 9 8 7c3 3 2 9-3 10H20c-5 0-7-7-3-10z" fill="#ff5d67"/><path d="M35 37l10 7h13" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M24 49h34" stroke="#6c4bff" stroke-width="4" stroke-linecap="round"/>`,
+    bag: `<path d="M22 27h36l-3 28H25z" fill="#9b73e8"/><path d="M30 29c0-11 20-11 20 0" fill="none" stroke="#f6c453" stroke-width="5" stroke-linecap="round"/><path d="M35 42h10" stroke="#fff" stroke-width="4" stroke-linecap="round"/>`,
+    drink: `<path d="M28 20h24l-3 34H31z" fill="#ff8a5b"/><path d="M34 17h12" stroke="#7bd389" stroke-width="4" stroke-linecap="round"/><path d="M48 15c4-6 6-8 7-12" stroke="#58b8ff" stroke-width="3" stroke-linecap="round"/><circle cx="40" cy="34" r="6" fill="#ffd166"/>`,
+    beauty: `<rect x="25" y="25" width="30" height="28" rx="9" fill="#ff9fc5"/><rect x="31" y="17" width="18" height="9" rx="3" fill="#8f7cf5"/><path d="M35 38c3-5 7-5 10 0-2 7-8 8-10 0z" fill="#fff3a8"/><circle cx="48" cy="21" r="2" fill="#fff"/>`,
+    phone: `<rect x="27" y="13" width="26" height="42" rx="6" fill="#5f86ff"/><rect x="31" y="19" width="18" height="29" rx="3" fill="#c7f1ff"/><circle cx="40" cy="51" r="2.5" fill="#fff"/><circle cx="46" cy="17" r="2" fill="#d9e3ff"/>`,
+    electronics: `<rect x="17" y="24" width="46" height="27" rx="6" fill="#6e7bf2"/><rect x="23" y="29" width="34" height="16" rx="3" fill="#b9f2ff"/><path d="M31 57h18" stroke="#f6c453" stroke-width="5" stroke-linecap="round"/>`,
+    laptop: `<rect x="21" y="16" width="38" height="28" rx="4" fill="#5d8dff"/><rect x="26" y="21" width="28" height="18" rx="2" fill="#d5f7ff"/><path d="M16 48h48l-6 7H22z" fill="#8d6ce8"/>`,
+    health: `<rect x="23" y="19" width="34" height="35" rx="7" fill="#62c9a5"/><path d="M40 26v21M30 36h20" stroke="#fff" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="24" r="5" fill="#ff7188"/>`,
+    home: `<path d="M17 34l23-20 23 20" fill="#ff9a62"/><path d="M23 32h34v23H23z" fill="#ffcf70"/><rect x="36" y="41" width="8" height="14" rx="2" fill="#8c6de0"/><circle cx="28" cy="39" r="4" fill="#fff2a8"/>`,
+    car: `<path d="M20 38l6-13h28l7 13 5 3v10H14V41z" fill="#4f8cff"/><circle cx="25" cy="50" r="6" fill="#27364d"/><circle cx="55" cy="50" r="6" fill="#27364d"/><path d="M29 27h20l5 10H24z" fill="#bcecff"/>`,
+    books: `<rect x="20" y="22" width="12" height="31" rx="2" fill="#ff6f91"/><rect x="32" y="17" width="13" height="36" rx="2" fill="#6f8dff"/><rect x="45" y="25" width="12" height="28" rx="2" fill="#64cfa4"/><path d="M20 53h37" stroke="#f6c453" stroke-width="4"/>`,
+    sport: `<circle cx="40" cy="37" r="19" fill="#f6c453"/><path d="M22 37h36M40 18c7 6 7 31 0 38M28 23c8 5 16 5 24 0M28 51c8-5 16-5 24 0" fill="none" stroke="#fff" stroke-width="3"/>`,
+    art: `<path d="M20 47c-4-12 6-27 21-29 14-2 22 7 18 18-4 11-17 2-20 10-3 8-16 9-19 1z" fill="#f08adf"/><circle cx="30" cy="31" r="4" fill="#5d8dff"/><circle cx="43" cy="27" r="4" fill="#ffd166"/><circle cx="51" cy="36" r="4" fill="#67d4a2"/>`,
+    baby: `<circle cx="40" cy="28" r="11" fill="#ffd0b5"/><path d="M27 51c2-13 24-13 26 0z" fill="#7fd8e8"/><path d="M31 24c2-10 16-12 20-1-5-3-14-3-20 1z" fill="#8e6ce3"/><circle cx="36" cy="29" r="2" fill="#26334a"/><circle cx="44" cy="29" r="2" fill="#26334a"/>`,
+    service: `<path d="M24 48l23-23" stroke="#5f86ff" stroke-width="8" stroke-linecap="round"/><path d="M45 19l8 8M50 18l4 4" stroke="#ff8a5b" stroke-width="5" stroke-linecap="round"/><circle cx="24" cy="48" r="8" fill="#67d4a2"/>`,
+    event: `<path d="M20 49c4-18 14-29 20-29s16 11 20 29z" fill="#8e6ce3"/><circle cx="30" cy="38" r="5" fill="#ffd166"/><circle cx="50" cy="38" r="5" fill="#ff6f91"/><path d="M40 20v30" stroke="#fff" stroke-width="3"/>`,
+    farm: `<path d="M17 48c7-16 15-24 23-24s16 8 23 24z" fill="#67c982"/><path d="M40 24v30" stroke="#7b5b43" stroke-width="5"/><circle cx="26" cy="34" r="7" fill="#ffd166"/><path d="M21 53h38" stroke="#5f86ff" stroke-width="4" stroke-linecap="round"/>`,
+    tools: `<path d="M25 22l28 28" stroke="#6d7cf0" stroke-width="8" stroke-linecap="round"/><path d="M51 20l-5 5 7 7 5-5z" fill="#ff8a5b"/><circle cx="25" cy="48" r="9" fill="#67d4a2"/>`,
+    gift: `<rect x="21" y="28" width="38" height="27" rx="4" fill="#ff6f91"/><path d="M40 28v27M21 37h38" stroke="#ffd166" stroke-width="5"/><path d="M40 28c-11 0-13-12-6-13 5-1 8 6 6 13zM40 28c11 0 13-12 6-13-5-1-8 6-6 13z" fill="#67d4a2"/>`,
+    default: `<circle cx="40" cy="40" r="22" fill="#7d8cff"/><circle cx="32" cy="34" r="5" fill="#ffd166"/><circle cx="47" cy="34" r="5" fill="#ff7da7"/><path d="M29 45c7 8 15 8 22 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>`
+  };
+  const palettes = {
+    scarf:["#e8fbf5","#d9f2ff"], dress:["#fff0f7","#efe6ff"], mens:["#edf3ff","#e5f4ff"],
+    jewelry:["#fff8df","#ffe8f1"], perfume:["#f6edff","#e9f6ff"], food:["#fff2dc","#ffe9e5"],
+    yogurt:["#e9fbff","#fff0f7"], shoe:["#fff0ee","#efeaff"], bag:["#f2ecff","#fff0f6"],
+    drink:["#fff0e7","#e8fbf5"], beauty:["#fff0f7","#f0ebff"], phone:["#eaf0ff","#e9fbff"],
+    electronics:["#eef0ff","#e7fbff"], laptop:["#eaf1ff","#f2ecff"], health:["#e7fbf4","#eaf4ff"],
+    home:["#fff1dc","#fff8e8"], car:["#eaf2ff","#e8fbf5"], books:["#fff0f5","#eaf0ff"],
+    sport:["#fff7d9","#e8f8ff"], art:["#fff0fa","#fff8df"], baby:["#eafcff","#f5edff"],
+    service:["#eaf1ff","#e8fbf5"], event:["#f0ebff","#fff0f7"], farm:["#eaf9e8","#fff7dc"],
+    tools:["#edf0ff","#fff0e7"], gift:["#fff0f5","#fff8df"], default:["#edf0ff","#e9fbf5"]
+  };
+  const [a,b] = palettes[key] || palettes.default;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="80" height="80" rx="22" fill="url(#g)"/><ellipse cx="40" cy="59" rx="23" ry="5" fill="#000" opacity=".06"/>${arts[key] || arts.default}</svg>`;
+}
+
+function levroSectorArt(sector) {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(levroCategoryArtSvg(levroCategoryArtKey(sector)))}`;
 }
 
 function levroSectorColor(sector) {
@@ -15116,11 +15159,11 @@ function levroStableSectorOrder(list) {
 function homeCategoryRailHtml(categoryList) {
   // "All" always comes first and clears the category filter.
   const allActive = !currentHomeCategoryId && !currentSectorId;
-  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${allActive ? "active" : ""}" style="--cat-color:var(--primary)" onclick="clearHomeCategoryFilter()"><span class="levro-home-cat-thumb"><img src="${LEVRO_CATEGORY_ALL_PHOTO}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer"></span><span class="levro-home-cat-label">All</span></button>`;
+  const allChip = `<button type="button" class="levro-home-cat-chip levro-home-cat-all ${allActive ? "active" : ""}" style="--cat-color:var(--primary)" onclick="clearHomeCategoryFilter()"><span class="levro-home-cat-thumb"><img src="${levroSectorArt({name:"All"})}" alt="" loading="eager" decoding="async"></span><span class="levro-home-cat-label">All</span></button>`;
   const chips = levroStableSectorOrder(categoryList).map((c) => {
     const active = String(currentHomeCategoryId || "") === String(c.id);
-    const photo = levroSectorPhoto(c);
-    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" data-cat="${esc(c.id)}" style="--cat-color:${levroSectorColor(c)}" onclick="toggleHomeCategoryFilter('${esc(c.id)}')"><span class="levro-home-cat-thumb"><img src="${photo}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`;
+    const art = levroSectorArt(c);
+    return `<button type="button" class="levro-home-cat-chip ${active ? "active" : ""}" data-cat="${esc(c.id)}" style="--cat-color:${levroSectorColor(c)}" onclick="toggleHomeCategoryFilter('${esc(c.id)}')"><span class="levro-home-cat-thumb"><img src="${art}" alt="" loading="lazy" decoding="async"></span><span class="levro-home-cat-label">${esc(c.name)}</span></button>`;
   }).join("");
   return `<div class="levro-home-cat-rail hscroll" aria-label="Browse categories">${allChip}${chips}</div>`;
 }
