@@ -7304,6 +7304,49 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
     -webkit-text-fill-color:#475569 !important;
   }
 </style>
+
+<style id="levromart-product-card-delivery-row-polish">
+  /* Compact delivery-total row: icon + short label + complete total. */
+  #app .product-card-total-line{
+    display:flex !important;
+    align-items:center !important;
+    gap:.3rem !important;
+    width:auto !important;
+    min-width:0 !important;
+    margin:.3rem .55rem .65rem !important;
+    padding:.42rem 0 0 !important;
+    border-top:1px solid color-mix(in srgb,var(--text) 8%,transparent) !important;
+    font-size:.68rem !important;
+    line-height:1.15 !important;
+    white-space:nowrap !important;
+    overflow:visible !important;
+  }
+  #app .product-card-total-line > i{
+    flex:0 0 auto !important;
+    font-size:.68rem !important;
+    color:var(--text-muted) !important;
+  }
+  #app .product-card-total-line .product-card-total-label{
+    flex:0 1 auto !important;
+    min-width:0 !important;
+    color:var(--text-muted) !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+  #app .product-card-total-line > strong{
+    flex:0 0 auto !important;
+    margin-left:auto !important;
+    color:var(--text) !important;
+    font-weight:750 !important;
+    font-size:.72rem !important;
+  }
+  /* The old grid rule reserved a large right-side text area for the
+     long sentence; remove that reservation now that the row is compact. */
+  #app .grid:has(> .product-card-wrap) .product-card-total-line{
+    padding-right:0 !important;
+  }
+</style>
+
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><svg viewBox="0 0 64 64" role="img">
@@ -15693,8 +15736,8 @@ function productCardHtml(p) {
       : deliveryFlatFee;
   const totalHtml = (!commissionService && !p.is_service && p.sale_price != null)
     ? (cardDeliveryFee == null
-      ? `<div class="product-card-total-line">Delivery: <strong>${naira(cardPerKm)}</strong> per km</div>`
-      : `<div class="product-card-total-line">Total with delivery: <strong>${naira(cardItemPrice + cardDeliveryFee)}</strong></div>`)
+      ? `<div class="product-card-total-line" title="Delivery fee"><i class="fa-solid fa-truck" aria-hidden="true"></i><span class="product-card-total-label">Delivery</span><strong>${naira(cardPerKm)}/km</strong></div>`
+      : `<div class="product-card-total-line" title="Total with delivery"><i class="fa-solid fa-truck" aria-hidden="true"></i><span class="product-card-total-label">Total</span><strong>${naira(cardItemPrice + cardDeliveryFee)}</strong></div>`)
     : `<div class="product-card-total-line" style="visibility:hidden;">&nbsp;</div>`;
   // The wishlist management page keeps the explicit heart button -- that's
   // the one place removing something is the whole point of being there, and
