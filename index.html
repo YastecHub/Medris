@@ -7540,29 +7540,42 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   transition:transform .16s ease,background-color .16s ease,border-color .16s ease,box-shadow .16s ease!important;
 }
 #app .vd-page .vd-chip:active{transform:scale(.975)!important;}
-#app .vd-page .vd-chip i{
-  width:19px!important;
-  height:19px!important;
-  min-width:19px!important;
+#app .vd-page .vd-chip-art{
+  width:20px!important;
+  height:20px!important;
+  min-width:20px!important;
+  flex:0 0 20px!important;
   display:inline-flex!important;
   align-items:center!important;
   justify-content:center!important;
   margin:0!important;
-  font-size:.82rem!important;
-  line-height:1!important;
-  color:var(--cc,var(--primary))!important;
+  overflow:visible!important;
   background:transparent!important;
   border:0!important;
   box-shadow:none!important;
 }
+#app .vd-page .vd-chip-art img{
+  display:block!important;
+  width:20px!important;
+  height:20px!important;
+  max-width:20px!important;
+  max-height:20px!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  transform-origin:center!important;
+}
 #app .vd-page .vd-chip span{white-space:nowrap!important;}
+#app .vd-page .vd-chip-art img{opacity:.98!important;}
 #app .vd-page .vd-chip.active{
   background:color-mix(in srgb,var(--cc,var(--primary)) 10%,var(--card))!important;
   border-color:color-mix(in srgb,var(--cc,var(--primary)) 38%,var(--border))!important;
   color:var(--text)!important;
   box-shadow:0 1px 5px color-mix(in srgb,var(--cc,var(--primary)) 7%,transparent)!important;
 }
-#app .vd-page .vd-chip.active i{color:var(--cc,var(--primary))!important;}
+
 #app .vd-page .vd-chip.vd-chip-all.active{
   --cc:var(--primary)!important;
   background:color-mix(in srgb,var(--primary) 11%,var(--card))!important;
@@ -7575,11 +7588,11 @@ body > footer.site-footer{flex:0 0 auto !important;margin-top:0 !important;paddi
   0%,100%{transform:translateY(0)}
   50%{transform:translateY(-1px)}
 }
-#app .vd-page .vd-chip.active i{
+#app .vd-page .vd-chip.active .vd-chip-art img{
   animation:levroVendorCatIconFloat 2.4s ease-in-out infinite;
 }
 @media(prefers-reduced-motion:reduce){
-  #app .vd-page .vd-chip.active i{animation:none!important;}
+  #app .vd-page .vd-chip.active .vd-chip-art img{animation:none!important;}
 }
 
 /* Neutral charcoal dark mode — no bright/white icon wells. */
@@ -20078,7 +20091,11 @@ function renderVendorCatChips() {
   if (!list.length) { host.innerHTML = ""; host.hidden = true; return; }
   host.hidden = false;
   list.sort((a, b) => used.get(String(b.id)) - used.get(String(a.id)) || String(a.name).localeCompare(String(b.name)));
-  host.innerHTML = `<button type="button" class="vd-chip vd-chip-all${sel === "" ? " active" : ""}" aria-pressed="${sel === ""}" onclick="vendorCatChipPick('')"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i><span>All categories</span></button>` + list.map((s) => `<button type="button" class="vd-chip${sel === String(s.id) ? " active" : ""}" style="--cc:${esc(levroSectorColor(s))}" aria-pressed="${sel === String(s.id)}" onclick="vendorCatChipPick('${esc(s.id)}')"><i class="fa-solid ${esc(levroSectorIconClass(s))}" aria-hidden="true"></i><span>${esc(s.name)}</span></button>`).join("");
+  // Use the exact same illustrated category artwork as the Home category rail.
+  // The Vendors rail is only a presentation change; the existing sector filter
+  // and click behavior remain unchanged.
+  const allArt = levroSectorArt({name:"All"});
+  host.innerHTML = `<button type="button" class="vd-chip vd-chip-all${sel === "" ? " active" : ""}" aria-pressed="${sel === ""}" onclick="vendorCatChipPick('')"><span class="vd-chip-art"><img src="${allArt}" alt="" aria-hidden="true" decoding="async"></span><span>All categories</span></button>` + list.map((s) => { const art = levroSectorArt(s); return `<button type="button" class="vd-chip${sel === String(s.id) ? " active" : ""}" style="--cc:${esc(levroSectorColor(s))}" aria-pressed="${sel === String(s.id)}" onclick="vendorCatChipPick('${esc(s.id)}')"><span class="vd-chip-art"><img src="${art}" alt="" aria-hidden="true" loading="lazy" decoding="async"></span><span>${esc(s.name)}</span></button>`; }).join("");
 }
 function vendorCatChipPick(id) {
   const el = byId("vendorSectorFilter"); if (!el) return;
