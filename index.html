@@ -205,6 +205,80 @@
 <meta name="theme-color" content="#e8efeb" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d1210" media="(prefers-color-scheme: dark)">
 <script>try{var __t=localStorage.getItem("medris-theme");document.documentElement.setAttribute("data-splash",(__t==="dark"||__t==="black")?"dark":(__t==="light"?"light":"auto"))}catch(e){}</script>
+<script id="levromart-friendly-errors">
+(function(){
+  "use strict";
+  /* Friendly backend errors. Raw infrastructure messages (quota / egress limits, paused project, gateway or
+     server trouble) are never shown to people. They see one calm line with an icon; the real details go to the
+     console and to window.__levroErrorLog so you can still debug. */
+  var OUTAGE_TEXT="We're experiencing high traffic right now. Please try again in a few moments.";
+  var OUTAGE_ICON="fa-hourglass-half";
+  var log=window.__levroErrorLog=window.__levroErrorLog||[];
+  var lastNote="";
+  function note(kind,detail){
+    try{
+      var d=String(detail==null?"":detail).slice(0,600), key=kind+"|"+d;
+      if(key===lastNote) return; lastNote=key;
+      log.push({t:Date.now(),kind:kind,detail:d}); if(log.length>50) log.shift();
+      console.error("[Levromart backend]",kind,d);
+    }catch(e){}
+  }
+  var INFRA=/restricted due to|exceed_[a-z_]*quota|egress|over[_ ]?quota|quota (exceeded|reached)|project (is )?paused|service (is )?unavailable|bad gateway|gateway time-?out|upstream (connect|request|error)|server (is )?overloaded|statement timeout|connection (refused|terminated)|too many connections|internal server error|database (is )?(unavailable|error)|fair use policy|spend cap/i;
+  window.__levroClassifyBackendError=function(raw){
+    raw=String(raw==null?"":raw);
+    if(raw===OUTAGE_TEXT) return {kind:"outage",icon:OUTAGE_ICON,text:OUTAGE_TEXT};
+    if(raw && INFRA.test(raw)){ note("outage",raw); return {kind:"outage",icon:OUTAGE_ICON,text:OUTAGE_TEXT}; }
+    return null;
+  };
+  /* Used as supabase-js's fetch: when the backend answers with a quota / paused / gateway failure, hand the
+     app a clean message instead of the raw one, so every error.message in the app is already friendly. */
+  window.__levroSafeFetch=async function(input,init){
+    var res=await fetch(input,init);
+    try{
+      if(res.ok) return res;
+      var url=typeof input==="string"?input:(input&&input.url)||"";
+      if(!/\.supabase\.(co|in)\//.test(url)||/\/functions\/v1\//.test(url)) return res;
+      var st=res.status, body="";
+      try{ body=await res.clone().text(); }catch(e){}
+      if(!(INFRA.test(body)||st===402||st===502||st===503||st===504||(st>=520&&st<=546))) return res;
+      note("http "+st+" "+url.split("?")[0],body);
+      var payload=JSON.stringify({message:OUTAGE_TEXT,msg:OUTAGE_TEXT,error:OUTAGE_TEXT,error_description:OUTAGE_TEXT,code:"service_busy",hint:null,details:null});
+      return new Response(payload,{status:st,statusText:res.statusText,headers:{"Content-Type":"application/json"}});
+    }catch(e){ return res; }
+  };
+  /* Safety net for any message that reaches the screen another way (inline error boxes, empty states). */
+  function sweep(el){
+    if(!el||el.nodeType!==1||el.getAttribute("data-lv-friendly")) return;
+    var isErr=el.classList.contains("error-text"), isEmpty=el.classList.contains("empty-state");
+    if(!isErr&&!isEmpty) return;
+    if(el.children.length>1||(el.children.length===1&&el.children[0].tagName!=="I")) return;
+    var txt=(el.textContent||"").trim(); if(!txt||txt.length>700) return;
+    var c=window.__levroClassifyBackendError(txt); if(!c) return;
+    el.setAttribute("data-lv-friendly","1");
+    var ic=document.createElement("i"); ic.className="fa-solid "+c.icon;
+    if(isEmpty){ ic.style.cssText="font-size:1.6rem;display:block;margin-bottom:.6rem"; } else { ic.style.marginRight=".4rem"; }
+    var span=document.createElement("span"); span.textContent=c.text;
+    el.replaceChildren(ic,span);
+  }
+  function start(){
+    var busy=false;
+    new MutationObserver(function(muts){
+      if(busy) return; busy=true;
+      try{
+        muts.forEach(function(m){
+          var t=m.target&&(m.target.nodeType===1?m.target:m.target.parentElement);
+          if(t&&t.closest){ var h=t.closest(".error-text,.empty-state"); if(h){ h.removeAttribute("data-lv-friendly"); sweep(h); } }
+          m.addedNodes&&m.addedNodes.forEach(function(n){
+            if(n.nodeType!==1) return; sweep(n);
+            if(n.querySelectorAll) n.querySelectorAll(".error-text,.empty-state").forEach(sweep);
+          });
+        });
+      }finally{ busy=false; }
+    }).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",start); else start();
+})();
+</script>
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -10078,7 +10152,7 @@ html body > header{
 // provider's secret key in client-side code like this file.
 const SUPABASE_URL = "https://ovklnoroyxobijgvsyfp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_SjOSMDFWO-u9t5sKRp1sXQ_GsnrO2a7";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, window.__levroSafeFetch ? { global: { fetch: window.__levroSafeFetch } } : undefined);
 // Any write to cart_items marks the cached cart count stale, so the badge still updates at once.
 try {
   const __sbFrom = sb.from.bind(sb);
@@ -11672,8 +11746,9 @@ function showToast(message, type = "info") {
   playSound(type === "error" ? "error" : "notify");
   const wrap = byId("toastStack");
   if (!wrap) return;
-  const displayMessage = sanitizeToastMessage(message, type);
-  const icon = type === "error" ? "fa-circle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info";
+  const __friendly = window.__levroClassifyBackendError ? window.__levroClassifyBackendError(message) : null;
+  const displayMessage = __friendly ? __friendly.text : sanitizeToastMessage(message, type);
+  const icon = __friendly ? __friendly.icon : type === "error" ? "fa-circle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info";
   let el = window.__activeToast;
   if (!el || !el.isConnected) {
     el = document.createElement("div");
@@ -11694,7 +11769,7 @@ function showToast(message, type = "info") {
       if (el === window.__activeToast) window.__activeToast = null;
       el.remove();
     }, 300);
-  }, type === "error" ? 3600 : 2400);
+  }, __friendly ? 5200 : type === "error" ? 3600 : 2400);
 }
 // Shown the instant we're back from Paystack, before verify-payment even
 // starts - otherwise there's a gap of a few seconds where the page just
@@ -14231,6 +14306,8 @@ function friendlyAuthErrorMessage(err) {
   if (raw.includes("invalid login credentials")) return "Incorrect email/phone or password. If you signed up with Google, tap \"Continue with Google\" below instead, or use \"Forgot password?\" to set one for the first time.";
   if (raw.includes("email not confirmed")) return "This email hasn't been confirmed yet.";
   if (raw.includes("user already registered") || raw.includes("already registered")) return "An account with this email or phone already exists.";
+  const __f = window.__levroClassifyBackendError ? window.__levroClassifyBackendError(err?.message) : null;
+  if (__f) return __f.text;
   return err?.message || "Something went wrong. Please try again.";
 }
 async function submitAuth() {
@@ -14629,6 +14706,8 @@ let lastRenderError = null;
 function friendlyErrorText(err) {
   const raw = String(err?.message || err || "");
   console.error("Levromart error:", raw);
+  const __f = window.__levroClassifyBackendError ? window.__levroClassifyBackendError(raw) : null;
+  if (__f) return { icon: __f.icon, text: __f.text };
   if (/fetch|network|offline|websocket|realtime|socket|timeout|NetworkError/i.test(raw)) {
     return { icon: "fa-wifi", text: "Network trouble reaching Levromart. Check your connection and try again." };
   }
