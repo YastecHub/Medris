@@ -205,6 +205,41 @@
 <meta name="theme-color" content="#e8efeb" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d1210" media="(prefers-color-scheme: dark)">
 <script>try{var __t=localStorage.getItem("medris-theme");document.documentElement.setAttribute("data-splash",(__t==="dark"||__t==="black")?"dark":(__t==="light"?"light":"auto"))}catch(e){}</script>
+<script id="levromart-flat-helpers">
+window.LV_SETTINGS_SVG='<svg class="lv-svg-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>';
+window.lvLinkRow=function(icon,label,value,onclick){
+  var ic=icon.charAt(0)==="<"?icon:'<i class="fa-solid '+icon+'" aria-hidden="true"></i>';
+  var inner='<span class="lv-row-ico">'+ic+'</span><span class="lv-row-label">'+label+'</span>'+(value!==""&&value!=null?'<span class="lv-row-val">'+value+'</span>':'');
+  return onclick?'<button type="button" class="lv-row" onclick="'+onclick+'">'+inner+'<i class="fa-solid fa-chevron-right lv-row-chev" aria-hidden="true"></i></button>':'<div class="lv-row lv-row-static">'+inner+'</div>';
+};
+</script>
+<script id="levromart-thumbs">
+(function(){
+  "use strict";
+  /* Small, cached copies of product photos for cards, search and cart (the full photo is still used on the product page).
+     Any thumbnail that fails to load falls back to the original photo; after 3 failures thumbnails switch off for the visit.
+     Switch off manually: localStorage.setItem("lv-no-thumbs","1") */
+  var BASE="https://wsrv.nl/", fails=0, off=false;
+  try{ off=localStorage.getItem("lv-no-thumbs")==="1"; }catch(e){}
+  window.lvThumb=function(u,w){
+    try{
+      if(off||typeof u!=="string"||!/^https?:\/\//i.test(u)||u.indexOf("/product-photos/")<0||/\.(svg|gif)(\?|$)/i.test(u)) return u;
+      var d=Math.min(window.devicePixelRatio||1,2), px=Math.max(80,Math.round((w||300)*d));
+      return BASE+"?url="+encodeURIComponent(u.replace(/^https?:\/\//i,""))+"&w="+px+"&q=75&output=webp&we=1";
+    }catch(e){ return u; }
+  };
+  window.addEventListener("error",function(ev){
+    var t=ev.target; if(!t||t.tagName!=="IMG") return;
+    var src=t.getAttribute("src")||""; if(src.indexOf(BASE+"?url=")!==0) return;
+    try{
+      var m=/[?&]url=([^&]+)/.exec(src); if(!m) return;
+      ev.stopImmediatePropagation();
+      if(++fails>=3) off=true;
+      t.src="https://"+decodeURIComponent(m[1]);
+    }catch(e){}
+  },true);
+})();
+</script>
 <script id="levromart-friendly-errors">
 (function(){
   "use strict";
@@ -232,7 +267,7 @@
   };
   /* Used as supabase-js's fetch: when the backend answers with a quota / paused / gateway failure, hand the
      app a clean message instead of the raw one, so every error.message in the app is already friendly. */
-  window.__levroSafeFetch=async function(input,init){
+  var rawSafe=async function(input,init){
     var res=await fetch(input,init);
     try{
       if(res.ok) return res;
@@ -245,6 +280,58 @@
       var payload=JSON.stringify({message:OUTAGE_TEXT,msg:OUTAGE_TEXT,error:OUTAGE_TEXT,error_description:OUTAGE_TEXT,code:"service_busy",hint:null,details:null});
       return new Response(payload,{status:st,statusText:res.statusText,headers:{"Content-Type":"application/json"}});
     }catch(e){ return res; }
+  };
+  /* Read cache + request merging. Identical reads of slow-changing tables are answered from memory for a short time
+     (and shared when several parts of the app ask at once), so the same rows are not downloaded again and again.
+     Any write clears it; if the backend is down/over quota the last good copy is served instead of an error. */
+  var CACHE=new Map(), FLIGHT=new Map(), STALE_MS=3600000, MAX_ENTRIES=160, MAX_BYTES=600000;
+  var TTL={sectors:600000,categories:600000,points_rules:600000,homepage_carousel_slides:300000,
+    products:25000,vendor_packages:25000,vendors:25000,package_items:25000,product_variants:25000,
+    product_rating_stats:40000,product_engagement_settings:60000,package_engagement_settings:60000};
+  var stats=window.__levroCacheStats={hit:0,miss:0,merged:0,stale:0};
+  function hkey(h){
+    try{ var o=[]; (h instanceof Headers?h:new Headers(h||{})).forEach(function(v,k){ if(k==="x-client-info"||k==="x-supabase-api-version") return; o.push(k+":"+v); }); return o.sort().join("|"); }catch(e){ return ""; }
+  }
+  function tableTtl(input,init){
+    if(typeof input!=="string"||!init||init.signal||(init.method&&String(init.method).toUpperCase()!=="GET")) return 0;
+    var m=/^https:\/\/[^/]+\.supabase\.(?:co|in)\/rest\/v1\/([a-z_]+)(?:\?|$)/.exec(input);
+    return m&&TTL[m[1]]||0;
+  }
+  function rebuild(e){ return new Response(e.body,{status:e.status,headers:e.headers}); }
+  window.__levroClearReadCache=function(){ CACHE.clear(); };
+  window.__levroSafeFetch=function(input,init){
+    try{
+      var url=typeof input==="string"?input:(input&&input.url)||"";
+      var method=String((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
+      if(method!=="GET"&&method!=="HEAD"&&/\.supabase\.(co|in)\/(rest|functions)\/v1\//.test(url)) CACHE.clear();
+      var ttl=tableTtl(input,init);
+      if(!ttl) return rawSafe(input,init);
+      var key=url+"#"+hkey(init.headers), now=Date.now(), hit=CACHE.get(key);
+      if(hit&&now-hit.t<ttl){ stats.hit++; return Promise.resolve(rebuild(hit)); }
+      if(FLIGHT.has(key)){ stats.merged++; return FLIGHT.get(key).then(rebuild); }
+      stats.miss++;
+      var p=rawSafe(input,init).then(async function(res){
+        if(res.ok){
+          var body=await res.clone().text();
+          if(body.length<=MAX_BYTES){
+            var ct=res.headers.get("content-type"), cr=res.headers.get("content-range"), hd={};
+            if(ct) hd["content-type"]=ct; if(cr) hd["content-range"]=cr;
+            CACHE.set(key,{t:Date.now(),body:body,status:res.status,headers:hd});
+            if(CACHE.size>MAX_ENTRIES){ var k0=CACHE.keys().next().value; CACHE.delete(k0); }
+          }
+          return CACHE.get(key)||{body:body,status:res.status,headers:{"content-type":ct||"application/json"}};
+        }
+        if(hit&&now-hit.t<STALE_MS){ stats.stale++; return hit; }
+        var b2=await res.text();
+        return {body:b2,status:res.status,headers:{"content-type":res.headers.get("content-type")||"application/json"}};
+      },function(err){
+        if(hit&&now-hit.t<STALE_MS){ stats.stale++; return hit; }
+        throw err;
+      });
+      FLIGHT.set(key,p);
+      var done=function(){ FLIGHT.delete(key); }; p.then(done,done);
+      return p.then(rebuild);
+    }catch(e){ return rawSafe(input,init); }
   };
   /* Safety net for any message that reaches the screen another way (inline error boxes, empty states). */
   function sweep(el){
@@ -9389,6 +9476,75 @@ html body > header{
   html body > header{background:color-mix(in srgb,var(--bg) 94%,transparent)!important;}
 }
 </style>
+<style id="levromart-flat-pages">
+/* ===== FLAT PAGES: order details, settings, profile. No cards, hairline dividers, everything on the page. ===== */
+:root{--lv-hair:color-mix(in srgb,var(--text) 10%,transparent)}
+.lv-svg-ico{width:1.2em;height:1.2em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block;flex:0 0 auto}
+
+/* ---- link rows (profile) ---- */
+.lv-group{max-width:700px;margin:0 auto;padding:.2rem 0 .3rem;border-top:1px solid var(--lv-hair)}
+.lv-group-flush{border-top:0;padding-top:0}
+.lv-group-title{margin:.9rem 0 .25rem;font-size:.72rem!important;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
+.lv-row{display:flex;align-items:center;gap:.85rem;width:100%;min-height:3.3rem;padding:.55rem .1rem;border:0;border-top:1px solid var(--lv-hair);background:transparent;color:var(--text);font:inherit;font-size:.95rem;font-weight:600;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.lv-group-title+.lv-row{border-top:0}
+.lv-row:active{background:color-mix(in srgb,var(--text) 5%,transparent)}
+.lv-row-static{cursor:default}
+.lv-row-ico{flex:0 0 1.5rem;width:1.5rem;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:1.02rem}
+.lv-row-label{flex:1;min-width:0}
+.lv-row-val{flex:0 0 auto;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-weight:600;font-size:.88rem}
+.lv-row-chev{flex:0 0 auto;font-size:.68rem;color:var(--text-muted);opacity:.7}
+.buyer-profile-settings-btn,#profilePanel .profile-settings-gear{border:0!important;background:color-mix(in srgb,var(--text) 6%,transparent)!important;border-radius:50%!important;display:flex!important;align-items:center;justify-content:center;color:var(--text)!important}
+.buyer-profile-settings-btn .lv-svg-ico{width:1.3rem;height:1.3rem}
+#profilePanel .profile-settings-gear .lv-svg-ico{width:1.25rem;height:1.25rem}
+.vh-row-ico .lv-svg-ico,.vp-ico .lv-svg-ico{width:1.2rem;height:1.2rem}
+
+/* ---- profile pages: header + hub flat ---- */
+html body #app .vendor-profile-header-card{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+html body #app .vendor-profile-header-cover{border-radius:14px!important}
+html body #app .vh-list{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;border-top:1px solid var(--lv-hair)!important}
+html body #app .vh-list-single{margin-top:.4rem!important}
+html body #app .vh-row{padding:.6rem .1rem!important;min-height:3.6rem!important}
+html body #app .vh-row-ico{background:transparent!important;width:1.6rem!important;height:1.6rem!important;border-radius:0!important;font-size:1.05rem!important}
+html body #app .vh-row+.vh-row{border-top:1px solid var(--lv-hair)!important}
+html body #app .vh-stats{gap:0!important;border-top:1px solid var(--lv-hair);border-bottom:1px solid var(--lv-hair)}
+html body #app .vh-stat{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:.75rem .4rem!important}
+html body #app .vh-stat+.vh-stat{border-left:1px solid var(--lv-hair)!important}
+html body #app .vh-stat-ico{background:transparent!important;width:1.6rem!important;height:1.6rem!important}
+html body #app .vh-stat .vh-chev{display:none}
+html body #app .vh-tabs button{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;border-bottom:2px solid transparent!important}
+html body #app .vl-discarded{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;border-top:1px solid var(--lv-hair)!important;border-bottom:1px solid var(--lv-hair)!important;padding-left:.1rem!important;padding-right:.1rem!important}
+html body #app .vendor-profile-divider{border-top-color:var(--lv-hair)!important}
+
+/* ---- profile drawer: stats as linked rows ---- */
+#profilePanel .profile-panel-stats{display:flex!important;flex-direction:column;gap:0!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;margin:.6rem 1.1rem 0!important}
+#profilePanel .profile-panel-stat{flex-direction:row-reverse!important;justify-content:space-between;align-items:center;text-align:left;width:100%;padding:.8rem .1rem!important;border-radius:0!important;border-top:1px solid var(--lv-hair)!important;gap:.6rem}
+#profilePanel .profile-panel-stat:first-child{border-top:0!important}
+#profilePanel .profile-panel-stat strong{font-size:.95rem!important;font-weight:700;max-width:55%}
+#profilePanel .profile-panel-stat span{font-size:.92rem!important;font-weight:600;color:var(--text)!important}
+#profilePanel .profile-panel-stat-link::after{content:"\f054";font-family:"Font Awesome 6 Free","Font Awesome 5 Free";font-weight:900;font-size:.62rem;color:var(--text-muted);order:3;margin-left:.2rem}
+#profilePanel .profile-panel-stat-link{padding:.8rem .1rem!important}
+#profilePanel .vendor-profile-divider{border-top-color:var(--lv-hair)!important}
+#profilePanel .vp-row{border-top-color:var(--lv-hair)!important}
+#profilePanel .vp-ico{background:transparent!important;color:var(--primary)!important}
+
+/* ---- settings: sections sit on the page ---- */
+html body #app .settings-page-section{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important;margin:0!important;padding:1.05rem .1rem!important;border-bottom:1px solid var(--lv-hair)!important}
+html body #app .settings-page-section:last-of-type{border-bottom:0!important}
+html body #app .settings-page-section h3{font-size:.74rem!important;font-weight:800!important;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)!important;margin-bottom:.15rem!important}
+html body #app .settings-page-section h3 i{color:var(--text-muted)!important}
+html body #app .settings-close-page{background:transparent!important;border:0!important;color:var(--text-muted)!important}
+html body #app .settings-choice,html body #app .settings-action-row,html body #app .settings-simple-row,html body #app .settings-toggle-row{background:transparent!important;box-shadow:none!important;border-radius:0!important}
+
+/* ---- order details: flat page ---- */
+html body #app .od-page .od-card,html body #app .od-page .od-status,html body #app .od-page .od-info,html body #app .od-page .od-strip-card,html body #app .od-page .card{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;border-bottom:1px solid var(--lv-hair)!important;margin:0!important;padding-left:.15rem!important;padding-right:.15rem!important}
+html body #app .od-page .od-status{padding-top:.9rem!important;padding-bottom:1rem!important}
+html body #app .od-page .od-strip{background:transparent!important;border-radius:0!important;padding-left:0!important;padding-right:0!important}
+html body #app .od-page .od-card-head{border-bottom:0!important;margin-bottom:.3rem!important}
+html body #app .od-page .od-btn-light{box-shadow:none!important}
+html body #app .od-page .od-card:last-of-type{border-bottom:0!important}
+html body #app .od-page .od-item-img{border-radius:10px!important}
+html body #app .od-page .od-menu{border-radius:14px}
+</style>
 </head>
 <body>
 <div id="levromartSplash" aria-hidden="true"><div class="levromart-splash-mark" aria-hidden="true"><img class="levromart-splash-img" src="data:image/webp;base64,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" alt="" width="132" height="132"></div><div class="lv-sp-foot" aria-hidden="true"><img src="data:image/webp;base64,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" alt="" width="24" height="24"><span>LevroMart</span></div></div>
@@ -12792,7 +12948,8 @@ async function handleNotifItemClick(event, id) {
     // when the notification was generated while the inbox list was stale.
     try { await refreshConversationInboxInBackground(); } catch (_) {}
     try {
-      const {data:latestMessages}=await sb.from('messages').select('*').eq('conversation_id',conversationId).order('created_at',{ascending:true});
+      const {data:latestMessagesDesc}=await sb.from('messages').select('*').eq('conversation_id',conversationId).order('created_at',{ascending:false}).limit(200);
+      const latestMessages=Array.isArray(latestMessagesDesc)?latestMessagesDesc.slice().reverse():latestMessagesDesc;
       if(Array.isArray(latestMessages)) lastSeenMessagesByConv.set(conversationId,latestMessages);
     } catch (_) {}
     navigate('messages',{conversationId});
@@ -13149,7 +13306,7 @@ function startOrderSignaturePoll() {
       __orderSigs.set(key, sig);
       if (prev !== undefined && prev !== sig) refreshVisibleOrderView();
     } catch (_) {}
-  }, 6000);
+  }, 20000);
 }
 
 let orderBadgeTimer = null;
@@ -13608,7 +13765,7 @@ function updateAuthUI() {
 
     panel.innerHTML = `
       <div class="profile-panel-static">
-        <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn profile-settings-gear" onclick="closeAllPanels();navigate('settings')" aria-label="Settings" title="Settings"><i class='fa-solid fa-gear'></i></button></div>
+        <div class="drawer-header"><h4>Profile</h4><button class="drawer-close-btn profile-settings-gear" onclick="closeAllPanels();navigate('settings')" aria-label="Settings" title="Settings">${window.LV_SETTINGS_SVG}</button></div>
 
         <div class="profile-panel-header ${vendor ? 'profile-own-storefront-header' : 'profile-customer-following-header'}" ${vendor ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('vendorDashboard')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('vendorDashboard')}"` : profile.role !== 'admin' ? `role="button" tabindex="0" aria-label="View your full profile" onclick="closeAllPanels();navigate('buyerProfile')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();closeAllPanels();navigate('buyerProfile')}"` : ''}>
           <div class="avatar-edit-wrap">
@@ -13651,7 +13808,7 @@ function updateAuthUI() {
         </div>
         <hr class="vendor-profile-divider" />
         <div class="vendor-profile-plain-rows">
-          <button type="button" class="vendor-profile-plain-row vendor-profile-settings-row vp-row" onclick="closeAllPanels();navigate('settings')"><span class="vp-ico vp-slate"><i class="fa-solid fa-gear"></i></span><span class="vp-text">Settings &amp; Privacy</span><i class="fa-solid fa-chevron-right vp-arrow"></i></button>
+          <button type="button" class="vendor-profile-plain-row vendor-profile-settings-row vp-row" onclick="closeAllPanels();navigate('settings')"><span class="vp-ico vp-slate">${window.LV_SETTINGS_SVG}</span><span class="vp-text">Settings &amp; Privacy</span><i class="fa-solid fa-chevron-right vp-arrow"></i></button>
         </div>`}
       </div>
     `;
@@ -13954,7 +14111,7 @@ async function renderBuyerProfile() {
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "4.4rem", "vendor-profile-header-avatar", profile.name || profile.email)}
-        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('editProfile')" title="Edit my details" aria-label="Edit my details"><i class="fa-solid fa-pen"></i> Edit</button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings"><i class="fa-solid fa-gear"></i></button></span>
+        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('editProfile')" title="Edit my details" aria-label="Edit my details"><i class="fa-solid fa-pen"></i> Edit</button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings">${window.LV_SETTINGS_SVG}</button></span>
       </div>
       <h2 class="vendor-profile-header-name">${esc(profile.name || "")}</h2>
       ${memberSince ? `<p class="vendor-profile-header-personal">Member since ${memberSince}</p>` : ""}
@@ -13962,45 +14119,22 @@ async function renderBuyerProfile() {
     </div>
   </div>
 
-  <hr class="vendor-profile-divider" />
-  <div class="vendor-profile-section">
-    <h3 class="vendor-profile-section-title"><i class="fa-solid fa-chart-simple"></i> Activity</h3>
-    <table class="order-stats-table">
-      <tr><td>Total orders</td><td>${totalOrders || 0}</td></tr>
-      <tr><td>Saved items</td><td>${wishlistCount}</td></tr>
-      <tr><td>Vendors followed</td><td>${followingCount || 0}</td></tr>
-    </table>
+  <div class="lv-group">
+    <h3 class="lv-group-title">Activity</h3>
+    ${lvLinkRow("fa-receipt", "My orders", Number(buyerPendingOrderCount || 0) > 0 ? `${buyerPendingOrderCount} pending` : `${totalOrders || 0}`, "navigate('buyerOrders')")}
+    ${lvLinkRow("fa-heart", "Wishlist", `${wishlistCount} saved`, "navigate('wishlist')")}
+    ${lvLinkRow("fa-store", "Vendors you follow", `${followingCount || 0}`, "navigate('customerFollowing')")}
   </div>
-
-  <hr class="vendor-profile-divider" />
-  <div class="vendor-profile-section">
-    <div class="vendor-profile-subrow" onclick="navigate('buyerOrders')" role="button" tabindex="0">
-      <span><i class="fa-solid fa-receipt"></i> My orders</span>
-      <span class="muted">${Number(buyerPendingOrderCount || 0) > 0 ? `${buyerPendingOrderCount} pending` : "View all"} <i class="fa-solid fa-chevron-right"></i></span>
-    </div>
-    <div class="vendor-profile-subrow" onclick="navigate('wishlist')" role="button" tabindex="0">
-      <span><i class="fa-solid fa-heart"></i> Wishlist</span>
-      <span class="muted">${wishlistCount} saved <i class="fa-solid fa-chevron-right"></i></span>
-    </div>
-    <div class="vendor-profile-subrow" onclick="navigate('customerFollowing')" role="button" tabindex="0">
-      <span><i class="fa-solid fa-store"></i> Vendors you follow</span>
-      <span class="muted">${followingCount || 0} <i class="fa-solid fa-chevron-right"></i></span>
-    </div>
-    <div class="vendor-profile-subrow" onclick="navigate('editProfile')" role="button" tabindex="0">
-      <span><i class="fa-solid fa-id-card"></i> My details</span>
-      <span class="muted"><i class="fa-solid fa-chevron-right"></i></span>
-    </div>
+  <div class="lv-group">
+    <h3 class="lv-group-title">Account</h3>
+    ${lvLinkRow("fa-id-card", "My details", "", "navigate('editProfile')")}
+    ${lvLinkRow("fa-location-dot", "Location", profile.city ? esc(profile.city) : "Add city", "navigate('editProfile')")}
   </div>
-
-  <hr class="vendor-profile-divider" />
-  <div class="vendor-profile-plain-rows">
-    <button type="button" class="vendor-profile-plain-row" onclick="navigate('requestEquipment')">Request an item</button>
-    <button type="button" class="vendor-profile-plain-row" onclick="navigate('supportRequest')">Support</button>
-  </div>
-
-  <hr class="vendor-profile-divider" />
-  <div class="vendor-profile-plain-rows">
-    <button type="button" class="vendor-profile-plain-row vendor-profile-settings-row" onclick="navigate('settings')"><i class="fa-solid fa-gear"></i> Settings &amp; Privacy</button>
+  <div class="lv-group">
+    <h3 class="lv-group-title">More</h3>
+    ${lvLinkRow("fa-bag-shopping", "Request an item", "", "navigate('requestEquipment')")}
+    ${lvLinkRow("fa-headset", "Support", "", "navigate('supportRequest')")}
+    ${lvLinkRow(window.LV_SETTINGS_SVG, "Settings &amp; Privacy", "", "navigate('settings')")}
   </div>`;
 
   return html;
@@ -17261,7 +17395,7 @@ function searchRowOpen(onclick) {
   return `onclick="${onclick}" role="link" tabindex="0" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${onclick}}"`;
 }
 function searchThumbHtml(src, icon, round) {
-  return `<span class="sr-thumb${round ? " sr-thumb-round" : ""}">${src ? `<img src="${esc(src)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid ${icon}'}))">` : `<i class="fa-solid ${icon}" aria-hidden="true"></i>`}</span>`;
+  return `<span class="sr-thumb${round ? " sr-thumb-round" : ""}">${src ? `<img src="${esc(lvThumb(src, 100))}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid ${icon}'}))">` : `<i class="fa-solid ${icon}" aria-hidden="true"></i>`}</span>`;
 }
 function searchProductRowHtml(p) {
   const hasDiscount = p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price ?? Infinity);
@@ -17364,7 +17498,7 @@ function openSearchResultPreview(productId, rowEl) {
   backdrop.onclick = (e) => { if (e.target === backdrop) closeSearchResultPreview(); };
   backdrop.innerHTML = `<div class="search-preview-sheet">
     <button type="button" class="search-preview-close" onclick="closeSearchResultPreview()" aria-label="Close preview"><i class="fa-solid fa-xmark"></i></button>
-    <div class="search-preview-media">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</div>
+    <div class="search-preview-media">${img ? `<img src="${esc(lvThumb(img, 120))}" alt="" loading="lazy" decoding="async">` : `<i class="fa-solid fa-camera"></i>`}</div>
     <div class="search-preview-body">
       <strong class="search-preview-name">${esc(p.name)}</strong>
       <span class="muted">${esc(p.vendor?.business_name || "")}${searchDistanceMetaHtml(p.vendor)}</span>
@@ -18079,7 +18213,7 @@ function productCardHtml(p) {
   return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
     ${showFavBtn ? `<button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>` : ""}
     <div class="card" style="cursor:pointer;" onclick="${showFavBtn ? `navigate('productDetail',{productId:'${p.id}'})` : `handleProductImageTap(event,'${p.id}')`}">
-      <div class="product-img">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}${showFavBtn ? "" : `<span class="product-wish-bounce"><i class="fa-solid fa-heart"></i></span>`}</div>
+      <div class="product-img">${img ? `<img src="${esc(lvThumb(img, 280))}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}${showFavBtn ? "" : `<span class="product-wish-bounce"><i class="fa-solid fa-heart"></i></span>`}</div>
       <h4>${esc(p.name)}</h4>
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
@@ -18359,7 +18493,7 @@ function cartItemRowHtml(it) {
   const effectivePrice = Number(variant?.discount_price ?? variant?.sale_price ?? p.discount_price ?? p.sale_price ?? 0);
   const img = variant?.photo_url || (p.photos && p.photos[0]);
   return `<div class="cart-item">
-    ${img ? `<img class="cart-item-img" src="${esc(img)}" alt="" loading="lazy" decoding="async" />` : `<span class="cart-item-img cart-item-img-empty"><i class="fa-solid fa-box"></i></span>`}
+    ${img ? `<img class="cart-item-img" src="${esc(lvThumb(img, 120))}" alt="" loading="lazy" decoding="async" />` : `<span class="cart-item-img cart-item-img-empty"><i class="fa-solid fa-box"></i></span>`}
     <div class="cart-item-main">
       <strong class="cart-item-name">${esc(p.name)}</strong>
       ${variant ? `<span class="cart-item-variant">${esc(variant.name)}</span>` : ""}
@@ -19244,13 +19378,13 @@ async function fetchChatBundle(conversationId) {
   const [o, c, m, pins, blocks, open] = await Promise.all([
     sb.rpc("get_conversation_other_party", { p_conversation_id: conversationId }),
     sb.from("conversations").select("id, buyer_id, vendor:vendors(id, business_name, logo_url, user_id, phone, whatsapp_number, whatsapp_visible)").eq("id", conversationId).maybeSingle(),
-    sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }),
+    sb.from("messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(200),
     sb.from("message_pins").select("id,conversation_id,message_id,pinned_at,expires_at").eq("conversation_id", conversationId).eq("user_id", uid).order("pinned_at", { ascending: false }).limit(4),
     sb.from("blocked_users").select("blocked_id").eq("blocker_id", uid),
     sb.rpc("conversation_is_open", { p_conversation_id: conversationId }),
   ]);
   return {
-    other: o.data, otherErr: o.error, conv: c.data, messages: m.data || [], pins: pins.data || [],
+    other: o.data, otherErr: o.error, conv: c.data, messages: (m.data || []).slice().reverse(), pins: pins.data || [],
     blocked: (blocks.data || []).map((x) => x.blocked_id),
     open: open.error ? true : open.data !== false,
     failed: !!(o.error || c.error || m.error),
@@ -22664,7 +22798,7 @@ async function renderStorefrontInner(vendorId) {
       <div class="storefront-product-strip">${featured.map((p) => {
         const img = p.photos?.[0];
         const price = p.is_service ? `${naira(p.sale_price)}${servicePriceSuffix(p)}` : p.sale_price != null ? naira(p.sale_price) : p.rental_rate != null ? `${naira(p.rental_rate)}/${p.rental_rate_unit}` : "View details";
-        return `<div class="storefront-product-mini" onclick="navigate('productDetail',{productId:'${p.id}'})">${img ? `<img src="${esc(img)}" alt="${esc(p.name)}" loading="lazy" />` : `<div class="mini-placeholder"><i class="fa-solid fa-box"></i></div>`}<strong>${esc(p.name)}</strong><span>${price}</span></div>`;
+        return `<div class="storefront-product-mini" onclick="navigate('productDetail',{productId:'${p.id}'})">${img ? `<img src="${esc(lvThumb(img, 240))}" alt="${esc(p.name)}" loading="lazy" />` : `<div class="mini-placeholder"><i class="fa-solid fa-box"></i></div>`}<strong>${esc(p.name)}</strong><span>${price}</span></div>`;
       }).join("")}</div>
     </section>`;
   }
@@ -24013,7 +24147,7 @@ async function renderVendorDashboard() {
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(profile?.name || v.business_name || "Vendor", "4.4rem", "vendor-profile-header-avatar", profile?.name || v.business_name || "Vendor")}
-        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('vendorEditProfile')" title="Edit profile" aria-label="Edit profile"><i class="fa-solid fa-pen"></i> Edit</button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings"><i class="fa-solid fa-gear"></i></button></span>
+        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('vendorEditProfile')" title="Edit profile" aria-label="Edit profile"><i class="fa-solid fa-pen"></i> Edit</button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings">${window.LV_SETTINGS_SVG}</button></span>
       </div>
       <h2 class="vendor-profile-header-name">${esc(v.business_name)} ${verifiedTick}</h2>
       ${profile?.name ? `<p class="vendor-profile-header-personal">${esc(profile.name)}</p>` : ""}
@@ -24031,15 +24165,15 @@ async function renderVendorDashboard() {
   // ---------- 2. Analytics ----------
   html += `<hr class="vendor-profile-divider" />
   <div class="vendor-profile-section">
-    <h3 class="vendor-profile-section-title"><i class="fa-solid fa-chart-simple"></i> Analytics</h3>
-    <table class="order-stats-table">
-      <tr><td>Total orders</td><td>${totalOrders}</td></tr>
-      <tr><td>Revenue (completed)</td><td>${naira(revenue)}</td></tr>
-      <tr><td>Listings</td><td>${totalListings}</td></tr>
-      <tr><td>Followers</td><td>${totalFollowers}</td></tr>
-      <tr><td>Product views</td><td>${totalViews}</td></tr>
-      <tr><td>Wishlist saves</td><td>${totalFavorites}</td></tr>
-    </table>
+    <h3 class="lv-group-title">Statistics</h3>
+    <div class="lv-group lv-group-flush">
+      ${lvLinkRow("fa-clipboard-list", "Total orders", `${totalOrders}`, "navigate('vendorOrders')")}
+      ${lvLinkRow("fa-sack-dollar", "Revenue (completed)", naira(revenue), "navigate('vendorEarnings')")}
+      ${lvLinkRow("fa-box", "Listings", `${totalListings}`, "navigate('vendorProducts')")}
+      ${lvLinkRow("fa-user-group", "Followers", `${totalFollowers}`, "navigate('vendorFollowers')")}
+      ${lvLinkRow("fa-eye", "Product views", `${totalViews}`, "")}
+      ${lvLinkRow("fa-heart", "Wishlist saves", `${totalFavorites}`, "")}
+    </div>
     <div id="vendorRevenueChartArea" style="margin-top:0.6rem;"></div>
     <button type="button" class="vendor-profile-see-more" onclick="navigate('vendorEarnings')">See full earnings <i class="fa-solid fa-chevron-right"></i></button>
   </div>`;
@@ -24064,7 +24198,7 @@ async function renderVendorDashboard() {
   }
 
   // ---------- 4. Seller hub: listings overview, management tools, more options ----------
-  const hubRow = (icon, title, sub, value, onclick) => `<button type="button" class="vh-row" onclick="${onclick}"><span class="vh-row-ico"><i class="fa-solid ${icon}" aria-hidden="true"></i></span><span class="vh-row-copy"><strong>${title}</strong>${sub ? `<small>${sub}</small>` : ""}</span>${value ? `<span class="vh-row-val">${value}</span>` : ""}<i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
+  const hubRow = (icon, title, sub, value, onclick) => `<button type="button" class="vh-row" onclick="${onclick}"><span class="vh-row-ico">${String(icon).charAt(0) === "<" ? icon : `<i class="fa-solid ${icon}" aria-hidden="true"></i>`}</span><span class="vh-row-copy"><strong>${title}</strong>${sub ? `<small>${sub}</small>` : ""}</span>${value ? `<span class="vh-row-val">${value}</span>` : ""}<i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
   const goTab = (tab) => `try{localStorage.setItem('levromart-vendor-listing-tab','${tab}')}catch(_){};navigate('vendorProducts')`;
   const hubStat = (icon, n, label, tab) => `<button type="button" class="vh-stat" onclick="${goTab(tab)}"><span class="vh-stat-ico"><i class="fa-solid ${icon}" aria-hidden="true"></i></span><span><b>${n}</b><small>${label}</small></span><i class="fa-solid fa-chevron-right vh-chev" aria-hidden="true"></i></button>`;
   html += `<hr class="vendor-profile-divider" />
@@ -24094,7 +24228,7 @@ async function renderVendorDashboard() {
       ${hubRow("fa-lightbulb", "Suggestions", "Tips to grow your business on Levromart.", unreadSuggestionCount > 0 ? `<span class="vh-badge">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : "", "navigate('vendorSuggestionsInbox')")}
       ${hubRow("fa-headset", "Support", "Get help or contact our support team.", "", "navigate('supportRequest')")}
     </div>
-    <div class="vh-list vh-list-single">${hubRow("fa-gear", "Settings &amp; Privacy", "Manage your account, notifications and privacy.", "", "navigate('settings')")}</div>
+    <div class="vh-list vh-list-single">${hubRow(window.LV_SETTINGS_SVG, "Settings &amp; Privacy", "Manage your account, notifications and privacy.", "", "navigate('settings')")}</div>
   </div>`;
 
   return html;
@@ -25267,7 +25401,7 @@ async function renderVendorProducts() {
 
   html += `<div id="vendorDiscardedPanel" class="vendor-discarded-panel hidden">
     <div class="vendor-discarded-head"><div><strong>Discarded items</strong><span class="muted">Products removed from your live catalogue stay here when order history prevents permanent deletion.</span></div><button type="button" class="icon-btn" aria-label="Close discarded items" onclick="toggleVendorDiscarded(event,false)"><i class="fa-solid fa-xmark"></i></button></div>
-    ${removedProducts.length ? `<div class="vendor-discarded-bulkbar"><label><input type="checkbox" id="discardedSelectAll" onchange="toggleAllDiscardedItems(this.checked)"> <span>Select all</span></label><span id="discardedSelectedCount" class="muted">0 selected</span><button type="button" class="btn btn-sm btn-danger" id="discardedBulkDeleteBtn" disabled onclick="deleteSelectedDiscardedItems()"><i class="fa-solid fa-trash-can"></i> Delete selected</button></div><div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-id="${esc(p.id)}" data-discarded-name="${esc((p.name||'').toLowerCase())}"><label class="discarded-select"><input type="checkbox" class="discarded-item-check" value="${esc(p.id)}" onchange="updateDiscardedSelection()" aria-label="Select ${esc(p.name)}"></label><div class="product-img">${img ? `<img src="${esc(img)}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
+    ${removedProducts.length ? `<div class="vendor-discarded-bulkbar"><label><input type="checkbox" id="discardedSelectAll" onchange="toggleAllDiscardedItems(this.checked)"> <span>Select all</span></label><span id="discardedSelectedCount" class="muted">0 selected</span><button type="button" class="btn btn-sm btn-danger" id="discardedBulkDeleteBtn" disabled onclick="deleteSelectedDiscardedItems()"><i class="fa-solid fa-trash-can"></i> Delete selected</button></div><div class="vendor-discarded-grid">${removedProducts.map((p) => { const img=p.photos?.[0]; const expired=p.billing_model==='monthly' && (!p.billing_paid_until || new Date(p.billing_paid_until).getTime()<=Date.now()); return `<div class="vendor-discarded-card" data-discarded-id="${esc(p.id)}" data-discarded-name="${esc((p.name||'').toLowerCase())}"><label class="discarded-select"><input type="checkbox" class="discarded-item-check" value="${esc(p.id)}" onchange="updateDiscardedSelection()" aria-label="Select ${esc(p.name)}"></label><div class="product-img">${img ? `<img src="${esc(lvThumb(img, 280))}" style="width:100%;height:100%;object-fit:cover;">` : `<i class="fa-solid fa-box-open"></i>`}</div><div class="vendor-discarded-copy"><strong>${esc(p.name)}</strong><span>${p.billing_model==='monthly' ? (expired ? 'Monthly listing expired' : 'Monthly listing paid') : 'Commission listing'} · removed</span><div class="vendor-discarded-actions"><button type="button" class="btn btn-sm" onclick="restoreProduct('${p.id}')"><i class="fa-solid fa-rotate-left"></i> Restore</button><button type="button" class="btn btn-sm btn-danger" onclick="deleteProductCompletely('${p.id}')"><i class="fa-solid fa-trash-can"></i> Delete permanently</button></div></div></div>`; }).join('')}</div>` : `<div class="empty-state" style="margin:0;">No discarded products.</div>`}
   </div>`;
 
   const packageSection = "";
@@ -31521,7 +31655,7 @@ async function checkManualResetStatus() {
 function startManualResetWatcher() {
   stopManualResetWatcher();
   checkManualResetStatus();
-  manualResetWatcherTimer = setInterval(checkManualResetStatus, 3000);
+  manualResetWatcherTimer = setInterval(()=>{ if(!document.hidden) checkManualResetStatus(); }, 6000);
 }
 
 function resumeManualResetWatcher() {
@@ -44442,7 +44576,7 @@ html body #app button#productAddToCartBtn{border-radius:14px!important;border:1.
       banks.map(b=>`<option value="${esc(String(b.code))}">${esc(String(b.name))}</option>`).join("");
   }
 
-  setInterval(hydrateApplicationBankSelect,1200);
+  setInterval(()=>{ if(!document.hidden) hydrateApplicationBankSelect(); },2500);
 
   /* ---------- Install banner ---------- */
   function isStandalone(){
@@ -48835,7 +48969,7 @@ body.levro-kbd-open #aiChatFab,body.levro-kbd-open #cartFab{visibility:hidden !i
       tick++;
       if(typeof activeConversationId==="undefined"||String(activeConversationId)!==activeFor||typeof currentView==="undefined"||currentView!=="messages"){clearInterval(timer);timer=null;activeFor=null;return;}
       paint();
-      if(tick%7===0)load(); // network check roughly every 20s
+      if(tick%10===0&&!document.hidden)load(); // network check roughly every 30s, never in a background tab
     },3000);
   };
   const wrapSub=window.subscribeToConversation;
