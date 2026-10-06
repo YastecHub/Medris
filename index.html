@@ -52067,22 +52067,7 @@ html body #app .product-card-wrap.product-card-compact>.card>.product-card-total
 #app .search-page-section .search-result-row{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;border-bottom:1px solid var(--border)!important;padding-left:0!important;padding-right:0!important}
 #app .lm-related{margin-top:1.6rem;padding-top:1rem;border-top:1px solid var(--border)}
 #app .lm-related-title{margin:0 0 .8rem;font-size:1.05rem;font-weight:700}
-/* ---------- Home: six actions, calmer and tied to the carousel ---------- */
-#app .levro-quick-action{position:relative!important;overflow:hidden!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:none!important;background:linear-gradient(150deg,#1d4f3b 0%,#143a2b 100%)!important;color:#e8f3ed!important}
-#app .levro-quick-action::before{content:"";position:absolute;width:104px;height:104px;right:-34px;bottom:-40px;border-radius:50%;border:13px solid rgba(255,255,255,.06);pointer-events:none}
-#app .levro-quick-action::after{content:"";position:absolute;width:62px;height:62px;left:-26px;top:-28px;border-radius:50%;border:9px solid rgba(255,255,255,.045);pointer-events:none}
-#app .levro-quick-peach{background:linear-gradient(150deg,#22493a,#173a2d)!important}
-#app .levro-quick-lavender{background:linear-gradient(150deg,#1d4646,#143331)!important}
-#app .levro-quick-pink{background:linear-gradient(150deg,#244f3f,#17392d)!important}
-#app .levro-quick-aqua{background:linear-gradient(150deg,#1a4a45,#12332f)!important}
-#app .levro-quick-blue{background:linear-gradient(150deg,#21463f,#15332c)!important}
-#app .levro-quick-action .levro-quick-icon{background:rgba(255,255,255,.10)!important;color:#e8f3ed!important;box-shadow:none!important}
-#app .levro-quick-action .levro-quick-title{color:#f2f8f4!important}
-#app .levro-quick-action .levro-quick-desc{color:rgba(232,243,237,.68)!important}
-#app .levro-quick-action .levro-quick-arrow{background:rgba(255,255,255,.12)!important;color:#e8f3ed!important}
-#homeLbCard{background:transparent!important;border:0!important;border-top:1px solid var(--border)!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important}
-#homeLbCard [class*="ico"],#homeLbCard [class*="crown"]{background:color-mix(in srgb,var(--text) 9%,transparent)!important;box-shadow:none!important;color:var(--text)!important}
-#homeLbCard i{color:var(--text-muted)!important}
+/* ---------- Home: six actions keep their original look, just calmer (less saturated, a touch darker) ---------- */
 /* ---------- Neutral accents instead of orange / purple ---------- */
 #app input[type=checkbox],#app input[type=radio]{accent-color:#6b7a73}
 /* ---------- Profile panel ---------- */
@@ -52095,7 +52080,6 @@ html body #app .product-card-wrap.product-card-compact>.card>.product-card-total
 #app .settings-page-header p{font-size:.78rem!important}
 #app .settings-page-header .settings-back-btn{width:2.3rem!important;height:2.3rem!important;font-size:.9rem!important}
 #app .settings-page{padding-bottom:.5rem!important;margin-bottom:0!important;min-height:0!important}
-#app:has(#settings-page){padding-bottom:calc(env(safe-area-inset-bottom,0px) + 84px)!important;min-height:0!important}
 /* ---------- Dialogs: Cancel left, action right, spread across the width ---------- */
 .modal .flex:has(> button[id$="Cancel"]),.modal .flex:has(> .cc-cancel){display:grid!important;grid-template-columns:1fr 1fr;gap:.75rem;justify-content:stretch!important}
 .modal .flex:has(> button[id$="Cancel"]) .btn,.modal .flex:has(> .cc-cancel) button{width:100%;min-height:48px;border-radius:999px!important;font-size:1rem;font-weight:600;margin:0}
@@ -52103,5 +52087,28 @@ html body #app .product-card-wrap.product-card-compact>.card>.product-card-total
 #confirmModal .modal-content{max-width:420px!important;border-radius:20px!important;padding:1.4rem!important}
 .order-action-pair .order-action-cancel,.order-action-pair .order-action-decline{order:-1}
 .order-action-pair .order-action-edit{order:1}
+
+#app .levro-quick-action{filter:saturate(.62) brightness(.9)!important}
+/* ---------- Product card: distance pill sits at the bottom of its row, just above the dividing line ---------- */
+#app .product-card-compact .product-card-meta{align-items:flex-end!important}
+#app .product-card-compact .product-card-meta .product-card-dist{align-self:flex-end!important;margin:0 0 .2rem!important}
+#app .product-card-compact .product-card-meta > span:empty{align-self:flex-end!important}
+/* ---------- Search results: cart button matches the product-card one ---------- */
+#app .search-result-row .sr-cart{width:2.3rem!important;height:2.3rem!important;min-width:0!important;padding:0!important;border-radius:.85rem!important;background:transparent!important;border:2px solid #1faa6a!important;color:var(--text)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:.85rem!important;box-shadow:none!important}
+#app .search-result-row .sr-cart.added{background:#1faa6a!important;color:#fff!important}
+/* ---------- Dialog buttons: text centred ---------- */
+.modal .flex:has(> button[id$="Cancel"]) .btn,.modal .flex:has(> .cc-cancel) button{display:flex!important;align-items:center;justify-content:center;text-align:center!important}
+/* ---------- Settings: tighter bottom ---------- */
+body:has(#settings-page) #app{padding-bottom:4.4rem!important}
+body:has(#settings-page) .site-footer{display:none!important}
+body:has(#settings-page) .settings-page{padding-bottom:0!important}
+body:has(#settings-page) .settings-page > .settings-page-section:last-child{margin-bottom:0!important;padding-bottom:.4rem!important}
+
+/* ---------- Product cards (final, beats the older "html body #app" rules) ---------- */
+html body #app .product-card-compact .product-card-meta{align-items:flex-end!important}
+html body #app .product-card-compact .product-card-meta .product-card-dist{align-self:flex-end!important;margin:0 0 .1rem!important}
+html body #app .product-card-compact .product-card-meta > span:empty,html body #app .product-card-compact .product-card-meta .product-card-dist-empty{align-self:flex-end!important}
+html body #app .product-card-compact h4{margin-bottom:.9rem!important}
+html body #app .hscroll.trending-scroll .product-card-compact h4{margin-left:-.8rem!important}
 </style>
 
