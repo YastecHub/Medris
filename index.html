@@ -18153,7 +18153,6 @@ function productCardHtml(p) {
       if (Number.isFinite(km)) distHtml = `<div class="product-card-dist" title="Distance from you"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>${km < 1 ? Math.max(50, Math.round(km * 10) * 100) + " m" : km.toFixed(1) + " km"}</div>`;
     }
   } catch (_) {}
-  if (!distHtml) distHtml = `<div class="product-card-dist product-card-dist-empty" aria-hidden="true"><i class="fa-solid fa-location-dot"></i>0.0 km</div>`;
   const totalHtml = (!commissionService && !p.is_service && p.sale_price != null)
     ? (cardDeliveryFee == null
       ? `<div class="product-card-total-line" title="Delivery fee"><i class="fa-solid fa-truck" aria-hidden="true"></i><span class="product-card-total-label">Delivery</span><strong>${naira(cardPerKm)}/km</strong></div>`
@@ -18173,9 +18172,8 @@ function productCardHtml(p) {
       <h4><span class="pc-title-row"><span class="pc-vlogo-wrap">${p.vendor?.logo_url ? `<img class="pc-vlogo" src="${esc(p.vendor.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="pc-vlogo pc-vlogo-txt">${esc(String(p.vendor?.business_name || "?").trim().charAt(0).toUpperCase())}</span>`}</span><span class="pc-name">${esc(p.name)}</span></span></h4>
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
-        ${actionHtml}
       </div>
-      ${distHtml}
+      <div class="product-card-meta">${distHtml || "<span></span>"}${actionHtml}</div>
       ${totalHtml}
     </div>
   </div>`;
@@ -51901,4 +51899,25 @@ html body #app .card-cart-btn,html body #app .card-cart-btn:not(.added),html bod
 html body #app .card-cart-btn i,html body #app .card-cart-btn svg{color:#1fb768!important;-webkit-text-fill-color:#1fb768!important;fill:#1fb768}
 html body #app .card-cart-btn:active{background:color-mix(in srgb,#1fb768 14%,transparent)!important}
 html body #app .product-card-compact .pc-vlogo.pc-vlogo-txt{display:flex!important;align-items:center;justify-content:center;line-height:1}
+
+/* ---- round 3: cart button on the distance row, no dead space at the bottom ---- */
+html body #app .product-card-compact>.card{padding-bottom:0!important}
+html body #app .product-card-compact .product-card-compact-footer{padding-bottom:0!important;min-height:0!important}
+html body #app .product-card-compact .product-card-meta{display:flex!important;align-items:center;justify-content:space-between;gap:.5rem;padding:.35rem .7rem 0!important;min-height:2.7rem}
+html body #app .product-card-compact .product-card-meta .product-card-dist{margin:0!important}
+html body #app .product-card-compact .product-card-meta .card-cart-btn,html body #app .product-card-compact .product-card-meta .card-service-btn,html body #app .product-card-compact .product-card-meta .own-listing-badge{position:static!important;inset:auto!important;margin:0 0 0 auto!important;flex:0 0 auto}
+html body #app .product-card-compact .product-card-meta .card-cart-btn:not(.added){width:2.3rem!important;height:2.3rem!important;min-width:2.3rem!important}
+html body #app .product-card-compact .product-card-total-line{margin-top:.35rem!important;padding-top:.7rem!important;padding-bottom:.75rem!important}
+
+html body #app .product-card-wrap.product-card-compact>.card>.product-card-meta{padding:.45rem .7rem .6rem!important}
+html body #app .product-card-wrap.product-card-compact>.card>.product-card-compact-footer{padding-bottom:.15rem!important}
+html body #app .product-card-wrap.product-card-compact>.card>.product-card-total-line{margin-top:0!important;padding:.75rem .7rem .8rem!important}
+
+html body #app .product-card-wrap.product-card-compact{height:auto!important;min-height:0!important}
+html body #app .product-card-wrap.product-card-compact>.card{height:auto!important;min-height:0!important;padding-bottom:0!important;flex:1 1 auto!important}
+html body #app .hscroll.trending-scroll{align-items:stretch!important}
+html body #app .grid:has(> .product-card-wrap){align-items:stretch!important}
+
+html body #app .grid:has(> .product-card-wrap) > .product-card-wrap.product-card-compact > .card,html body #app .hscroll.trending-scroll > .product-card-wrap.product-card-compact > .card,html body #app .hscroll.trending-scroll .product-card-wrap.product-card-compact > .card{padding-bottom:0!important}
+html body #app .product-card-wrap.product-card-compact>.card>.product-card-total-line{padding-bottom:.6rem!important}
 </style>
