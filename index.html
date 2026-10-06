@@ -18153,6 +18153,7 @@ function productCardHtml(p) {
       if (Number.isFinite(km)) distHtml = `<div class="product-card-dist" title="Distance from you"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>${km < 1 ? Math.max(50, Math.round(km * 10) * 100) + " m" : km.toFixed(1) + " km"}</div>`;
     }
   } catch (_) {}
+  if (!distHtml) distHtml = `<div class="product-card-dist product-card-dist-empty" aria-hidden="true"><i class="fa-solid fa-location-dot"></i>0.0 km</div>`;
   const totalHtml = (!commissionService && !p.is_service && p.sale_price != null)
     ? (cardDeliveryFee == null
       ? `<div class="product-card-total-line" title="Delivery fee"><i class="fa-solid fa-truck" aria-hidden="true"></i><span class="product-card-total-label">Delivery</span><strong>${naira(cardPerKm)}/km</strong></div>`
@@ -18169,7 +18170,7 @@ function productCardHtml(p) {
     ${showFavBtn ? `<button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>` : ""}
     <div class="card" style="cursor:pointer;" onclick="${showFavBtn ? `navigate('productDetail',{productId:'${p.id}'})` : `handleProductImageTap(event,'${p.id}')`}">
       <div class="product-img">${img ? `<img src="${esc(lvThumb(img, 280))}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}${showFavBtn ? "" : `<span class="product-wish-bounce"><i class="fa-solid fa-heart"></i></span>`}</div>
-      <h4><span class="pc-vlogo-wrap">${p.vendor?.logo_url ? `<img class="pc-vlogo" src="${esc(p.vendor.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="pc-vlogo pc-vlogo-txt">${esc(String(p.vendor?.business_name || "?").trim().charAt(0).toUpperCase())}</span>`}</span><span class="pc-name">${esc(p.name)}</span></h4>
+      <h4><span class="pc-title-row"><span class="pc-vlogo-wrap">${p.vendor?.logo_url ? `<img class="pc-vlogo" src="${esc(p.vendor.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false">` : `<span class="pc-vlogo pc-vlogo-txt">${esc(String(p.vendor?.business_name || "?").trim().charAt(0).toUpperCase())}</span>`}</span><span class="pc-name">${esc(p.name)}</span></span></h4>
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
         ${actionHtml}
@@ -51887,4 +51888,17 @@ html body #app .delivery-method-row label *,html body #app .delivery-method-row 
 html body #app .delivery-method-row input[type=radio]{accent-color:var(--primary)!important}
 html body #app .product-gallery-varieties-list{scroll-behavior:smooth}
 :root[data-theme="dark"] .pc-vlogo-txt,:root[data-theme="black"] .pc-vlogo-txt{color:#4cc38a!important}
+
+/* ---- round 2: aligned title row, bottom-anchored price block, outlined cart ---- */
+html body #app .product-card-compact h4{display:block!important;-webkit-line-clamp:unset!important;overflow:hidden!important;white-space:nowrap!important}
+html body #app .product-card-compact .pc-title-row{display:flex!important;align-items:center!important;gap:.5rem;width:100%;min-width:0;line-height:1.2}
+html body #app .product-card-compact .pc-vlogo-wrap{display:flex!important;align-items:center;flex:0 0 auto;margin:0!important}
+html body #app .product-card-compact .pc-vlogo{margin:0!important;display:block!important;flex:0 0 auto}
+html body #app .product-card-compact .pc-name{display:block!important;margin:0!important;padding:0!important;line-height:1.2}
+html body #app .product-card-compact .product-card-dist-empty{visibility:hidden}
+html body #app .product-card-compact .product-card-total-line{margin-top:.4rem!important;padding-top:.8rem!important;padding-bottom:.8rem!important;border-top-width:1px}
+html body #app .card-cart-btn,html body #app .card-cart-btn:not(.added),html body #app .product-card-compact .card-cart-btn:not(.added),html body #app .grid:has(> .product-card-wrap) > .product-card-wrap.product-card-compact > .card .card-cart-btn:not(.added){background:transparent!important;background-image:none!important;border:1.5px solid #1fb768!important;color:#1fb768!important;-webkit-text-fill-color:#1fb768!important;box-shadow:none!important}
+html body #app .card-cart-btn i,html body #app .card-cart-btn svg{color:#1fb768!important;-webkit-text-fill-color:#1fb768!important;fill:#1fb768}
+html body #app .card-cart-btn:active{background:color-mix(in srgb,#1fb768 14%,transparent)!important}
+html body #app .product-card-compact .pc-vlogo.pc-vlogo-txt{display:flex!important;align-items:center;justify-content:center;line-height:1}
 </style>
