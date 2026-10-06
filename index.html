@@ -21391,10 +21391,10 @@ async function __levroOriginalRenderProductDetail(productId) {
       </div></div>`}<div class="pd-total-box ${product.is_service ? "" : "pd-has-plan"}">${!product.is_service ? `<div class="product-payment-plan-notice ${product.payment_timing === "pay_after" ? "pay-after" : "pay-before"}"><strong><i class="fa-solid fa-wallet"></i> ${product.payment_timing === "pay_after" ? "Pay after delivery" : "Pay before delivery"}</strong><span>${product.payment_timing === "pay_after" ? `Pay ${paymentDepositPercent}% now, ${paymentRemainingPercent}% after delivery.` : "Full payment is needed before delivery."}</span></div>` : ""}${product.sale_price != null ? `<p class="muted" id="serviceTotalPreview" data-raw-total="${productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product)}">Total: ${naira(productVariants.length ? Number(effectivePrice(productVariants[0]) ?? effectivePrice(product)) : effectivePrice(product))}</p>` : ""}</div></div>
       <div class="pd-step-title"><i class="fa-solid fa-truck-fast"></i> How do you want it?</div>
       ${deliveryFieldsHtml("buy", product.delivery_fee, product.vendor.lat, product.vendor.lng, product.delivery_fee_mode, product.delivery_fee_per_km, product.is_service ? "In-person" : "Pickup")}
-      ${!product.is_service ? `<div class="pd-note-box"><label class="df-label" for="buyNote"><i class="fa-regular fa-note-sticky"></i> Note for the vendor <span class="df-hint">(optional)</span></label><textarea id="buyNote" rows="2" placeholder="e.g. I'd like the blue one, or a size 42"></textarea></div>` : ""}
+      ${!product.is_service ? `<div class="pd-note-box"><label class="df-label" for="buyNote"><svg class="lv-pen-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7.4 18.6l-4 1 1-4z"/></svg> Note for the vendor <span class="df-hint">(optional)</span></label><textarea id="buyNote" rows="2" placeholder="e.g. I'd like the blue one, or a size 42"></textarea></div>` : ""}
       <div class="flex pd-buy-actions">
-        <button class="btn" onclick="buyNow('${product.vendor.id}','${product.id}')">${buyLabel}</button>
         ${!product.is_service ? `<button id="productAddToCartBtn" class="btn btn-outline" onclick="addToCart('${product.id}', parseInt(byId('buyQty').value)||1)"><i class="fa-solid fa-cart-plus"></i> Add to cart</button>` : ""}
+        <button class="btn" onclick="buyNow('${product.vendor.id}','${product.id}')">${buyLabel}</button>
       </div>
       <p id="buyError" class="error-text hidden"></p>
     </div>`;
@@ -22522,6 +22522,14 @@ async function nativeShareStorefront() {
     if (err?.name !== "AbortError") showToast(`Couldn't share the ${isProduct ? "product" : isPackage ? "package" : "storefront"}.`, "error");
   }
 }
+window.lvOpenWhatsApp = function (text) {
+  const url = "https://wa.me/?text=" + encodeURIComponent(text);
+  try {
+    const a = document.createElement("a");
+    a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.style.display = "none";
+    document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 500);
+  } catch (_) { window.location.href = url; }
+};
 function whatsappShareStorefront() {
   const box = byId("storefrontShareModal");
   const url = box?.dataset.url;
@@ -22529,7 +22537,7 @@ function whatsappShareStorefront() {
   if (!url) return;
   const isPackage = !!box?.dataset.packageId;
   const text = isPackage ? `Check out the ${name} package on Levromart.\n${url}` : `Check out ${name}'s storefront on Levromart.\n${url}`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  window.lvOpenWhatsApp(text);
   closeStorefrontShareModal(true);
 }
 function closeStorefrontShareModal(goBack = false) {
@@ -43562,21 +43570,21 @@ html body #bottomNav .bottom-nav-item.active .bn-icon,html body #bottomNav .bott
 html body #bottomNav .bottom-nav-item.active span:last-child{font-weight:700!important}
 html body #app .product-detail-vendor-link{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important;font-weight:700;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--text) 30%,transparent);text-underline-offset:3px}
 html body #app .pd-chip{background:color-mix(in srgb,var(--text) 9%,transparent)!important;color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
-:root[data-theme="dark"] body #app .product-payment-plan-notice, .product-payment-plan-notice *,:root[data-theme="black"] body #app .product-payment-plan-notice, .product-payment-plan-notice *{color:#e6fff1!important;-webkit-text-fill-color:#e6fff1!important}
+:root[data-theme="dark"] body #app .product-payment-plan-notice,:root[data-theme="black"] body #app .product-payment-plan-notice,:root[data-theme="dark"] body #app .product-payment-plan-notice *,:root[data-theme="black"] body #app .product-payment-plan-notice *{color:#e6fff1!important;-webkit-text-fill-color:#e6fff1!important}
 :root[data-theme="dark"] body #app .product-payment-plan-notice i,:root[data-theme="black"] body #app .product-payment-plan-notice i{color:#5eeaa0!important}
-:root[data-theme="dark"] body #app .product-payment-plan-notice,:root[data-theme="black"] body #app .product-payment-plan-notice{background:linear-gradient(135deg,rgba(34,197,94,.28),rgba(34,197,94,.12))!important;box-shadow:inset 0 0 0 1px rgba(94,234,160,.5)!important}
-:root[data-theme="dark"] body #app .product-payment-plan-notice.pay-after, .product-payment-plan-notice.pay-after *,:root[data-theme="black"] body #app .product-payment-plan-notice.pay-after, .product-payment-plan-notice.pay-after *{color:#fff3d6!important;-webkit-text-fill-color:#fff3d6!important}
-:root[data-theme="dark"] body #app .product-payment-plan-notice.pay-after,:root[data-theme="black"] body #app .product-payment-plan-notice.pay-after{background:linear-gradient(135deg,rgba(245,158,11,.30),rgba(245,158,11,.12))!important;box-shadow:inset 0 0 0 1px rgba(251,191,36,.55)!important}
+:root[data-theme="dark"] body #app .product-payment-plan-notice,:root[data-theme="black"] body #app .product-payment-plan-notice{background:rgba(34,197,94,.10)!important;box-shadow:inset 0 0 0 1px rgba(94,234,160,.28)!important}
+:root[data-theme="dark"] body #app .product-payment-plan-notice.pay-after,:root[data-theme="black"] body #app .product-payment-plan-notice.pay-after,:root[data-theme="dark"] body #app .product-payment-plan-notice.pay-after *,:root[data-theme="black"] body #app .product-payment-plan-notice.pay-after *{color:#fff3d6!important;-webkit-text-fill-color:#fff3d6!important}
+:root[data-theme="dark"] body #app .product-payment-plan-notice.pay-after,:root[data-theme="black"] body #app .product-payment-plan-notice.pay-after{background:rgba(245,158,11,.10)!important;box-shadow:inset 0 0 0 1px rgba(251,191,36,.28)!important}
 :root[data-theme="dark"] body #app .product-payment-plan-notice.pay-after i,:root[data-theme="black"] body #app .product-payment-plan-notice.pay-after i{color:#fbbf24!important}
-:root[data-theme="dark"] body #app .price-breakdown-table, .price-breakdown-table *,:root[data-theme="black"] body #app .price-breakdown-table, .price-breakdown-table *{color:#eef2f7!important;-webkit-text-fill-color:#eef2f7!important}
-:root[data-theme="dark"] body #app .price-breakdown-table,:root[data-theme="black"] body #app .price-breakdown-table{background:linear-gradient(160deg,rgba(139,92,246,.22),rgba(139,92,246,.08))!important;box-shadow:inset 0 0 0 1px rgba(167,139,250,.45)!important}
-:root[data-theme="dark"] body #app .price-breakdown-table .muted, .price-breakdown-table span:first-child,:root[data-theme="black"] body #app .price-breakdown-table .muted, .price-breakdown-table span:first-child{color:#b6c0cc!important;-webkit-text-fill-color:#b6c0cc!important}
-:root[data-theme="dark"] body #app .product-price-hero,:root[data-theme="black"] body #app .product-price-hero{background:linear-gradient(135deg,rgba(245,158,11,.24),rgba(245,158,11,.08))!important;box-shadow:inset 0 0 0 1px rgba(251,191,36,.45)!important}
-:root[data-theme="dark"] body #app .product-price-hero *:not(.badge),:root[data-theme="black"] body #app .product-price-hero *:not(.badge){color:#fff7e6!important;-webkit-text-fill-color:#fff7e6!important}
-:root[data-theme="dark"] body #app .product-price-hero .pph-label,:root[data-theme="black"] body #app .product-price-hero .pph-label{color:#e5c98a!important;-webkit-text-fill-color:#e5c98a!important}
-:root[data-theme="dark"] body #app .delivery-method-row label:has(input:checked),:root[data-theme="black"] body #app .delivery-method-row label:has(input:checked){background:linear-gradient(135deg,rgba(139,92,246,.32),rgba(139,92,246,.12))!important;border-color:#a78bfa!important}
-:root[data-theme="dark"] body #app .delivery-method-row label:has(input:checked) *,:root[data-theme="black"] body #app .delivery-method-row label:has(input:checked) *{color:#f3eeff!important;-webkit-text-fill-color:#f3eeff!important}
-:root[data-theme="dark"] body #app .delivery-method-row input[type=radio],:root[data-theme="black"] body #app .delivery-method-row input[type=radio]{accent-color:#a78bfa}
+:root[data-theme="dark"] body #app .price-breakdown-table,:root[data-theme="black"] body #app .price-breakdown-table,:root[data-theme="dark"] body #app .price-breakdown-table *,:root[data-theme="black"] body #app .price-breakdown-table *{color:#eef2f7!important;-webkit-text-fill-color:#eef2f7!important}
+:root[data-theme="dark"] body #app .price-breakdown-table,:root[data-theme="black"] body #app .price-breakdown-table{background:rgba(255,255,255,.04)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)!important}
+:root[data-theme="dark"] body #app .price-breakdown-table .muted,:root[data-theme="black"] body #app .price-breakdown-table .muted,:root[data-theme="dark"] body #app .price-breakdown-table span:first-child,:root[data-theme="black"] body #app .price-breakdown-table span:first-child{color:#b6c0cc!important;-webkit-text-fill-color:#b6c0cc!important}
+:root[data-theme="dark"] body #app .product-price-hero,:root[data-theme="black"] body #app .product-price-hero{background:transparent!important;box-shadow:none!important}
+:root[data-theme="dark"] body #app .product-price-hero *:not(.badge),:root[data-theme="black"] body #app .product-price-hero *:not(.badge){color:#f1f5f9!important;-webkit-text-fill-color:#f1f5f9!important}
+:root[data-theme="dark"] body #app .product-price-hero .pph-label,:root[data-theme="black"] body #app .product-price-hero .pph-label{color:#94a3b8!important;-webkit-text-fill-color:#94a3b8!important}
+:root[data-theme="dark"] body #app .delivery-method-row label:has(input:checked),:root[data-theme="black"] body #app .delivery-method-row label:has(input:checked){background:rgba(34,197,94,.08)!important;border-color:rgba(94,234,160,.55)!important}
+:root[data-theme="dark"] body #app .delivery-method-row label:has(input:checked) *,:root[data-theme="black"] body #app .delivery-method-row label:has(input:checked) *{color:#f1f5f9!important;-webkit-text-fill-color:#f1f5f9!important}
+:root[data-theme="dark"] body #app .delivery-method-row input[type=radio],:root[data-theme="black"] body #app .delivery-method-row input[type=radio]{accent-color:#22c55e}
 :root[data-theme="dark"] body #app .df-label,:root[data-theme="black"] body #app .df-label{color:#cfd8e3!important}
 :root[data-theme="dark"] body #app .df-label i,:root[data-theme="black"] body #app .df-label i{color:#5eeaa0!important}
 :root[data-theme="dark"] body #app .storefront-follow-controls .follow-btn:not(.btn-outline),:root[data-theme="black"] body #app .storefront-follow-controls .follow-btn:not(.btn-outline){background:rgba(255,255,255,.12)!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
@@ -43589,10 +43597,10 @@ html body #app .product-card-compact .card h4{margin:.6rem 0 .15rem!important;pa
 html body #app .product-card-compact-footer{padding:0 .85rem!important;min-height:2.5rem}
 html body #app .product-card-total-line{margin:.3rem .85rem .75rem!important}
 html body #app .card-cart-btn:not(.added),html body #app .product-card-compact .card-cart-btn:not(.added),html body #app .grid:has(> .product-card-wrap) > .product-card-wrap.product-card-compact > .card .card-cart-btn:not(.added){width:2.2rem!important;height:2.2rem!important;min-width:2.2rem!important;border-radius:11px!important;font-size:.88rem!important}
-html body #app .delivery-method-row:not(.cart-delivery *) label:has(input:checked),html body #app .cart-delivery .delivery-method-row label:has(input:checked){border-color:#8b5cf6!important;background:linear-gradient(135deg,color-mix(in srgb,#8b5cf6 14%,var(--card)),color-mix(in srgb,#8b5cf6 5%,var(--card)))!important;box-shadow:0 2px 10px rgba(139,92,246,.15)}
-html body #app .delivery-method-row label:has(input:checked) strong,html body #app .delivery-method-row label:has(input:checked) .delivery-fee-inline{color:#6d28d9!important}
-html body #app .delivery-method-row input[type=radio]{accent-color:#8b5cf6}
-html body #app .product-price-hero{border:0!important;background:linear-gradient(135deg,color-mix(in srgb,#f59e0b 14%,var(--card)),color-mix(in srgb,#f59e0b 4%,var(--card)))!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,#f59e0b 30%,transparent)!important}
+html body #app .delivery-method-row:not(.cart-delivery *) label:has(input:checked),html body #app .cart-delivery .delivery-method-row label:has(input:checked){border-color:color-mix(in srgb,var(--primary,#0B6E4A) 55%,transparent)!important;background:color-mix(in srgb,var(--primary,#0B6E4A) 5%,transparent)!important;box-shadow:none!important}
+html body #app .delivery-method-row label:has(input:checked) strong,html body #app .delivery-method-row label:has(input:checked) .delivery-fee-inline{color:var(--text)!important}
+html body #app .delivery-method-row input[type=radio]{accent-color:var(--primary,#0B6E4A)}
+html body #app .product-price-hero{border:0!important;background:transparent!important;box-shadow:none!important}
 html body #app .product-price-hero .pph-label{color:var(--text-muted)!important}
 html body #app .product-price-hero *:not(.pph-label):not(.badge){color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
 html body #app .price-breakdown-table{background:linear-gradient(160deg,color-mix(in srgb,#8b5cf6 8%,var(--card)),var(--card))!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,#8b5cf6 20%,transparent)!important}
@@ -49986,7 +49994,7 @@ function hideLeviFromPanel() {
     let html = "";
     if (s.is_vendor && s.referral_code) {
       html += `<div class="lb-code"><small>Your referral code</small><div class="lb-code-val" onclick="lbCopy('${esc(s.referral_code)}','Referral code copied')">${esc(s.referral_code)}</div><p>Share it with customers and other vendors. You earn every time it is used.</p>
-        <div class="lb-code-actions"><button type="button" onclick="lbCopy('${esc(referLink(s.referral_code))}','Referral link copied')"><i class="fa-regular fa-copy"></i> Copy link</button><button type="button" class="alt" onclick="lbShareCode()"><i class="fa-brands fa-whatsapp"></i> Share</button></div></div>
+        <div class="lb-code-actions"><button type="button" onclick="lbCopy('${esc(referLink(s.referral_code))}','Referral link copied')"><i class="fa-regular fa-copy"></i> Copy link</button><button type="button" class="alt" onclick="lbShareCode()"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button><button type="button" onclick="lbShareMore()"><i class="fa-solid fa-share-nodes"></i> More</button></div></div>
         <div class="lb-stats"><div class="lb-stat"><small><i class="fa-solid fa-user-plus"></i>Customers</small><b data-count="${refs.referred_customers || 0}">0</b></div><div class="lb-stat"><small><i class="fa-solid fa-store"></i>Vendors</small><b data-count="${refs.referred_vendors || 0}">0</b></div><div class="lb-stat"><small><i class="fa-solid fa-sitemap"></i>Second level</small><b data-count="${refs.second_level || 0}">0</b></div><div class="lb-stat"><small><i class="fa-solid fa-star"></i>Points earned</small><b data-count="${refs.points_earned || 0}">0</b></div></div>`;
     } else {
       html += `<div class="lb-card"><h3>Refer and earn</h3><p class="lb-sub" style="margin:0">Referral codes belong to vendors. Open your own shop on Levromart to get a code, earn points every time it is used and compete for Vendor of the Week.</p><button type="button" class="btn" style="margin-top:.75rem" onclick="navigate('vendorApply')">Become a vendor</button></div>`;
@@ -50105,8 +50113,12 @@ function hideLeviFromPanel() {
   window.lbShareCode = function () {
     const code = LB.summary?.referral_code; if (!code) return;
     const text = `Join me on Levromart, Nigeria's marketplace to buy, sell and connect. Use my referral code ${code}: ${referLink(code)}`;
-    if (navigator.share) { navigator.share({ title: "Join Levromart", text }).catch(() => {}); return; }
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    window.lvOpenWhatsApp(text);
+  };
+  window.lbShareMore = function () {
+    const code = LB.summary?.referral_code; if (!code) return;
+    const text = `Join me on Levromart, Nigeria's marketplace to buy, sell and connect. Use my referral code ${code}: ${referLink(code)}`;
+    if (navigator.share) { navigator.share({ title: "Join Levromart", text }).catch(() => {}); } else { lbCopy(text, "Invite copied"); }
   };
   // Social points are confirmed by hand: follow, screenshot, send it on WhatsApp.
   window.trackSocialClick = function () {};
@@ -50124,13 +50136,21 @@ function hideLeviFromPanel() {
     const el = $("lbAdminPhone"); if (el) el.value = "";
   };
   window.lbApplyCode = async function () {
-    const code = String($("lbApplyInput")?.value || "").trim();
+    const input = $("lbApplyInput");
+    const code = String(input?.value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (!code) { showToast("Enter a referral code first.", "info"); return; }
-    const { data, error } = await sb.rpc("apply_referral_code", { p_code: code });
-    if (error || !data?.ok) { showToast(data?.message || "Could not apply that code.", "error"); return; }
-    try { localStorage.removeItem("levro-ref-code"); } catch (_) {}
-    showToast(`Referral applied. You joined with ${data.business_name}'s code.`, "success");
-    await loadSummary(); if (LB.tab === "refer") renderBody(false);
+    if (!signedIn()) { showToast("Sign in first, then enter the code.", "info"); return; }
+    const btn = input?.parentElement?.querySelector("button"); if (btn) { btn.disabled = true; btn.dataset.t = btn.textContent; btn.textContent = "Checking..."; }
+    const reasons = { invalid: "That referral code was not found. Check the spelling.", already_used: "You have already used a referral code.", too_late: "Referral codes can only be added within 7 days of creating your account.", own_code: "You cannot use your own referral code.", not_signed_in: "Please sign in first.", no_profile: "Your profile is still being set up. Try again in a moment." };
+    try {
+      const { data, error } = await sb.rpc("apply_referral_code", { p_code: code });
+      if (error || !data?.ok) { showToast(data?.message || reasons[data?.error] || "Could not apply that code. Please try again.", "error"); return; }
+      try { localStorage.removeItem("levro-ref-code"); } catch (_) {}
+      showToast(`Referral applied. You joined with ${data.business_name}'s code.`, "success");
+      await loadSummary(); if (LB.tab === "refer") renderBody(false);
+    } catch (e) {
+      showToast("Could not reach the server. Check your connection and try again.", "error");
+    } finally { if (btn) { btn.disabled = false; btn.textContent = btn.dataset.t || "Apply"; } }
   };
 
   // A code from a ?ref= link or the sign-up form is applied once the account exists.
@@ -52088,7 +52108,7 @@ html body #app .product-card-wrap.product-card-compact>.card>.product-card-total
 .order-action-pair .order-action-cancel,.order-action-pair .order-action-decline{order:-1}
 .order-action-pair .order-action-edit{order:1}
 
-#app .levro-quick-action{filter:saturate(.62) brightness(.9)!important}
+#app .levro-quick-action{filter:none!important}
 /* ---------- Product card: distance pill sits at the bottom of its row, just above the dividing line ---------- */
 #app .product-card-compact .product-card-meta{align-items:flex-end!important}
 #app .product-card-compact .product-card-meta .product-card-dist{align-self:flex-end!important;margin:0 0 .2rem!important}
@@ -52109,6 +52129,127 @@ html body #app .product-card-compact .product-card-meta{align-items:flex-end!imp
 html body #app .product-card-compact .product-card-meta .product-card-dist{align-self:flex-end!important;margin:0 0 .1rem!important}
 html body #app .product-card-compact .product-card-meta > span:empty,html body #app .product-card-compact .product-card-meta .product-card-dist-empty{align-self:flex-end!important}
 html body #app .product-card-compact h4{margin-bottom:.9rem!important}
-html body #app .hscroll.trending-scroll .product-card-compact h4{margin-left:-.8rem!important}
+</style>
+
+<style id="levromart-polish-20261006">
+/* ============ 1. HOME: the six action tiles - bright and lively again ============ */
+html body #app .levro-home-quick-actions .levro-quick-action{filter:saturate(1.12) brightness(1.02)!important;border-color:transparent!important}
+html body #app .levro-home-quick-actions .levro-quick-mint,html body #app .levro-home-quick-actions .levro-quick-mint:hover,html body #app .levro-home-quick-actions .levro-quick-mint:focus,html body #app .levro-home-quick-actions .levro-quick-mint:active{background:#b4efcf!important}
+html body #app .levro-home-quick-actions .levro-quick-peach,html body #app .levro-home-quick-actions .levro-quick-peach:hover,html body #app .levro-home-quick-actions .levro-quick-peach:focus,html body #app .levro-home-quick-actions .levro-quick-peach:active{background:#ffd8ae!important}
+html body #app .levro-home-quick-actions .levro-quick-lavender,html body #app .levro-home-quick-actions .levro-quick-lavender:hover,html body #app .levro-home-quick-actions .levro-quick-lavender:focus,html body #app .levro-home-quick-actions .levro-quick-lavender:active{background:#d6ccff!important}
+html body #app .levro-home-quick-actions .levro-quick-pink,html body #app .levro-home-quick-actions .levro-quick-pink:hover,html body #app .levro-home-quick-actions .levro-quick-pink:focus,html body #app .levro-home-quick-actions .levro-quick-pink:active{background:#ffcad6!important}
+html body #app .levro-home-quick-actions .levro-quick-aqua,html body #app .levro-home-quick-actions .levro-quick-aqua:hover,html body #app .levro-home-quick-actions .levro-quick-aqua:focus,html body #app .levro-home-quick-actions .levro-quick-aqua:active{background:#b0f0e3!important}
+html body #app .levro-home-quick-actions .levro-quick-blue,html body #app .levro-home-quick-actions .levro-quick-blue:hover,html body #app .levro-home-quick-actions .levro-quick-blue:focus,html body #app .levro-home-quick-actions .levro-quick-blue:active{background:#bcd8ff!important}
+
+/* ============ 2. ADD-TO-CART icon: visible in light AND dark mode ============ */
+html body #app{--lv-cart-green:#0f9d58}
+:root[data-theme="dark"] body #app,:root[data-theme="black"] body #app{--lv-cart-green:#34d27b}
+html body #app .card-cart-btn:not(.added),html body #app .product-card-compact .card-cart-btn:not(.added),html body #app .grid:has(> .product-card-wrap) > .product-card-wrap.product-card-compact > .card .card-cart-btn:not(.added){border:1.8px solid var(--lv-cart-green)!important;background:transparent!important;color:var(--lv-cart-green)!important;-webkit-text-fill-color:var(--lv-cart-green)!important}
+html body #app .product-card-compact .card-cart-btn:not(.added) i,html body #app .card-cart-btn:not(.added) i,html body #app .product-card-compact .card-cart-btn:not(.added) i::before,html body #app .card-cart-btn:not(.added) i::before{color:var(--lv-cart-green)!important;-webkit-text-fill-color:var(--lv-cart-green)!important;opacity:1!important;visibility:visible!important}
+html body #app .product-card-compact .card-cart-btn:not(.added) svg,html body #app .card-cart-btn:not(.added) svg{fill:var(--lv-cart-green)!important;color:var(--lv-cart-green)!important}
+html body #app .card-cart-btn.added,html body #app .product-card-compact .card-cart-btn.added{background:var(--lv-cart-green)!important;border:1.8px solid var(--lv-cart-green)!important}
+html body #app .card-cart-btn.added i,html body #app .product-card-compact .card-cart-btn.added i{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html body #app .search-result-row .sr-cart:not(.added),html body #app .search-result-row .sr-cart:not(.added) i{color:var(--lv-cart-green)!important;-webkit-text-fill-color:var(--lv-cart-green)!important;border-color:var(--lv-cart-green)!important}
+
+/* ============ 3. PRODUCT CARDS: spacing (browse grid + trending) ============ */
+html body #app .grid > .product-card-wrap.product-card-compact{--lv-pad:.65rem}
+html body #app .hscroll.trending-scroll .product-card-wrap.product-card-compact{--lv-pad:.95rem}
+html body #app .product-card-wrap.product-card-compact > .card > h4{margin:.7rem 0 1.05rem!important;padding:0 var(--lv-pad)!important}
+html body #app .product-card-wrap.product-card-compact > .card > h4 .pc-title-row{gap:.45rem!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-card-compact-footer{padding:0 var(--lv-pad)!important;margin:0!important;min-height:1.5rem!important;align-items:center!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-card-meta{padding:.5rem var(--lv-pad) .55rem!important;margin-top:.15rem!important;align-items:flex-end!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-card-total-line{padding:.75rem var(--lv-pad) .8rem!important}
+/* trending: distance pill sits down near the Total line, not up by the price */
+
+/* ============ 4. SETTINGS: logout sits right above the bottom bar ============ */
+html body:has(#settings-page){padding-bottom:calc(58px + env(safe-area-inset-bottom,0px) + .3rem)!important}
+html body:has(#settings-page) #app{padding-bottom:0!important;margin-bottom:0!important}
+html body:has(#settings-page) .settings-page,html body:has(#settings-page) #app .settings-page{padding-bottom:0!important;margin-bottom:0!important;min-height:0!important}
+html body:has(#settings-page) #app .settings-page > .settings-page-section:last-child,html body:has(#settings-page) #app .settings-page-section:has(.settings-logout-row){padding-bottom:0!important;margin-bottom:0!important;border-bottom:0!important}
+html body:has(#settings-page) #app .settings-logout-row{margin-bottom:0!important}
+html body:has(#settings-page) > footer.site-footer{display:none!important}
+
+/* ============ 5. PRODUCT PAGE: rounded, flat, calm - light and dark ============ */
+html body #app .product-detail-media,html body #app .product-gallery-carousel,html body #app .product-gallery-track,html body #app .product-gallery-main{border-radius:20px!important;overflow:hidden!important}
+html body #app .product-gallery-slide,html body #app .product-gallery-slide img,html body #app .product-gallery-main > img{border-radius:20px!important}
+html body #app .product-gallery-thumb{border-radius:14px!important}
+html body #app .product-gallery-count{border-radius:999px!important}
+/* price: no orange block */
+html body #app .product-price-hero{background:transparent!important;background-image:none!important;border:0!important;border-top:1px solid var(--lv-hair)!important;border-radius:0!important;box-shadow:none!important;padding:.9rem .1rem .6rem!important}
+html body #app .product-price-hero .pph-label{color:var(--text-muted)!important;-webkit-text-fill-color:var(--text-muted)!important;font-weight:700!important}
+html body #app .product-price-hero .pph-now{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important}
+html body #app .product-price-hero .pph-was{color:var(--text-muted)!important;-webkit-text-fill-color:var(--text-muted)!important}
+/* delivery / pickup: plain rows, only a quiet green ring when chosen */
+html body #app .delivery-method-row label,html body #app .delivery-method-row:not(.cart-delivery *) label{background:transparent!important;background-image:none!important;border:1px solid var(--lv-hair)!important;border-radius:14px!important;box-shadow:none!important}
+html body #app .delivery-method-row label:has(input:checked),html body #app .delivery-method-row:not(.cart-delivery *) label:has(input:checked),html body #app .cart-delivery .delivery-method-row label:has(input:checked){background:color-mix(in srgb,var(--primary) 5%,transparent)!important;border:1.5px solid color-mix(in srgb,var(--primary) 55%,transparent)!important;box-shadow:none!important}
+html body #app .delivery-method-row input[type=radio],html body #app .delivery-method-row input[type=checkbox]{accent-color:var(--primary)!important}
+/* pay-before / pay-after notice: soft tint, no neon, no side bar */
+html body #app .product-payment-plan-notice,html body #app .product-payment-plan-notice.pay-before,html body #app .product-payment-plan-notice.pay-after{background:color-mix(in srgb,var(--primary) 6%,transparent)!important;background-image:none!important;border:1px solid color-mix(in srgb,var(--primary) 20%,transparent)!important;border-left:1px solid color-mix(in srgb,var(--primary) 20%,transparent)!important;border-radius:14px!important;box-shadow:none!important}
+html body #app .product-payment-plan-notice.pay-after{background:color-mix(in srgb,#b7791f 6%,transparent)!important;border-color:color-mix(in srgb,#b7791f 22%,transparent)!important}
+/* comments: flat on the page, no highlighted box */
+html body #app .product-comments-card,html body #app .package-comments-card{background:transparent!important;background-image:none!important;border:0!important;border-top:1px solid var(--lv-hair)!important;border-radius:0!important;box-shadow:none!important}
+html body #app .product-comments-toggle,html body #app .product-comments-toggle:hover,html body #app .product-comments-toggle:active,html body #app .product-comments-toggle:focus{background:transparent!important;background-image:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;outline:0!important;padding-left:.1rem!important;padding-right:.1rem!important}
+html body #app .product-comments-panel,html body #app .product-comment-composer{background:transparent!important;border-radius:0!important;box-shadow:none!important}
+html body #app .product-comment-composer{border-top:1px solid var(--lv-hair)!important;position:static!important}
+html body #app .product-comment-composer textarea{background:transparent!important;border:1px solid var(--lv-hair)!important;border-radius:16px!important;box-shadow:none!important}
+html body #app .product-comment-composer .product-comment-send-btn{border-radius:50%!important;box-shadow:none!important}
+</style>
+
+<style id="levromart-polish-2-20261006">
+/* ===== product page: Add to cart left, Place order right ===== */
+html body #app .pd-buy-actions{flex-direction:row!important}
+html body #app .pd-buy-actions .btn:first-child{flex:1!important}
+html body #app .pd-buy-actions .btn:last-child{flex:1.3!important}
+html body #app .pd-buy-actions .btn:only-child{flex:1!important}
+
+/* ===== modern note icon ===== */
+html body #app .df-label .lv-pen-ico{flex:0 0 auto;color:var(--primary,#0B6E4A)!important;stroke:currentColor!important}
+
+/* ===== tighter gap: Buy price -> Place order ===== */
+html body #app .product-price-hero{margin:0!important;padding:.7rem .1rem .1rem!important;min-height:0!important}
+html body #app .product-price-hero .pph-row{margin:0!important;min-height:0!important}
+html body #app .product-detail-card{padding-bottom:.2rem!important;margin-bottom:0!important}
+html body #app .product-detail-card > :last-child{margin-bottom:0!important}
+html body #app .card:has(.pd-buy-actions){margin-top:0!important;padding-top:.55rem!important}
+html body #app .card:has(.pd-buy-actions) > h3:first-child{margin:.15rem 0 .5rem!important}
+
+/* ===== fee explainer + breakdown: readable in light mode ===== */
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table{background:color-mix(in srgb,var(--primary,#0B6E4A) 5%,transparent)!important;border:1px solid color-mix(in srgb,var(--primary,#0B6E4A) 18%,transparent)!important;box-shadow:none!important;border-radius:14px!important}
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table .fee-calc,
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table .fee-calc-body{opacity:1!important}
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table .fee-calc>summary,
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table .fee-calc>summary *{color:#0B6E4A!important;-webkit-text-fill-color:#0B6E4A!important;opacity:1!important;font-weight:700!important}
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table .fee-calc-row,
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table .fee-calc-row strong{color:#1E293B!important;-webkit-text-fill-color:#1E293B!important;opacity:1!important}
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table .fee-calc-row span,
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table .fee-calc small{color:#475569!important;-webkit-text-fill-color:#475569!important;opacity:1!important}
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table .fee-calc{border-top:1px dashed rgba(11,110,74,.35)!important}
+:root:not([data-theme="dark"]):not([data-theme="black"]) body #app .price-breakdown-table .fee-calc-row{border-bottom-color:rgba(15,23,42,.12)!important}
+:root[data-theme="dark"] body #app .price-breakdown-table .fee-calc>summary,:root[data-theme="black"] body #app .price-breakdown-table .fee-calc>summary,
+:root[data-theme="dark"] body #app .price-breakdown-table .fee-calc>summary *,:root[data-theme="black"] body #app .price-breakdown-table .fee-calc>summary *{color:#5eeaa0!important;-webkit-text-fill-color:#5eeaa0!important}
+
+/* ===== comments: everything flat on the page ===== */
+html body #app .product-comments-card,html body #app .product-comments-card :where(div,section,form,ul,li,p,label,textarea):not([class*="avatar"]):not(.btn):not(.badge){background:transparent!important;background-image:none!important;box-shadow:none!important}
+html body #app .product-comments-card .product-comment-compose-row{width:100%!important;margin:.5rem 0 0!important;padding:0!important;border:0!important;border-radius:0!important}
+html body #app .product-comments-card .product-comment-composer{padding:.6rem 0 0!important;border:0!important;border-top:1px solid var(--lv-hair)!important;border-radius:0!important}
+html body #app .product-comments-card .product-comment-composer textarea{border:0!important;border-bottom:1px solid var(--lv-hair)!important;border-radius:0!important;padding:.55rem .1rem!important;min-height:2.6rem!important;outline:0!important}
+html body #app .product-comments-card .product-comment-composer textarea:focus{border-bottom-color:var(--primary,#0B6E4A)!important}
+html body #app .product-comments-card .product-comment-compose-row > button{width:2.4rem!important;height:2.4rem!important;min-width:2.4rem!important;padding:0!important;border-radius:50%!important;box-shadow:none!important}
+html body #app .product-comments-toggle{background:transparent!important;border:0!important;box-shadow:none!important}
+
+/* ===== product cards: bigger photo, compact details ===== */
+html body #app .grid > .product-card-wrap.product-card-compact{--lv-pad:.65rem}
+html body #app .hscroll.trending-scroll .product-card-wrap.product-card-compact{--lv-pad:.8rem}
+html body #app .product-card-wrap.product-card-compact > .card{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;grid-auto-rows:auto!important;align-content:start!important;padding:0!important;overflow:hidden!important;border-radius:18px!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-img,
+html body #app .hscroll.trending-scroll .product-card-wrap.product-card-compact > .card > .product-img{grid-column:1/-1!important;grid-row:1!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;flex-basis:auto!important;aspect-ratio:1/1.12!important;margin:0!important;border-radius:0!important;overflow:hidden!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-img img{width:100%!important;height:100%!important;object-fit:cover!important;border-radius:0!important}
+html body #app .product-card-wrap.product-card-compact > .card > h4{grid-column:1/-1!important;grid-row:2!important;margin:.55rem 0 .15rem!important;padding:0 var(--lv-pad)!important;min-height:0!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-card-compact-footer{grid-column:1!important;grid-row:3!important;padding:0 0 0 var(--lv-pad)!important;margin:0!important;min-height:0!important;align-self:end!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-card-meta{display:contents!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-card-meta > span:empty{display:none!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-card-meta > .product-card-dist{grid-column:1!important;grid-row:4!important;justify-self:start!important;align-self:center!important;margin:.3rem 0 .1rem var(--lv-pad)!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-card-meta > :not(.product-card-dist):not(span:empty){grid-column:2!important;grid-row:3/5!important;align-self:center!important;justify-self:end!important;margin:0 var(--lv-pad) 0 .3rem!important}
+html body #app .product-card-wrap.product-card-compact > .card > .product-card-total-line{grid-column:1/-1!important;grid-row:5!important;margin:.35rem var(--lv-pad) .6rem!important;padding:.45rem 0 0!important}
 </style>
 
