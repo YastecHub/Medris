@@ -1,5 +1,8 @@
 # Levromart – Build Manual
 
+> **Current manuals (7 Oct 2026):** [`LEVROMART_FRONTEND_BUILD_MANUAL.pdf`](LEVROMART_FRONTEND_BUILD_MANUAL.pdf) and [`LEVROMART_BACKEND_BUILD_MANUAL.pdf`](LEVROMART_BACKEND_BUILD_MANUAL.pdf), each with a table of contents. They replace this text file, which is kept only for history and has older numbers.
+
+
 Handover guide for the Levromart marketplace PWA (Nigeria). It explains how the system is put
 together, where to find things, how to run and deploy it, and what was built or changed in the latest
 work sessions. Read this first, then use the **CODE MAP** comment at the top of `index.html`.
