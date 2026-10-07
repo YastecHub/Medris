@@ -32819,6 +32819,24 @@ function syncSystemBarColor() {
   syncSystemBarColorForTheme(theme);
 }
 syncSystemBarColor();
+function lmCleanVoice(text) {
+  let t = String(text || "").replace(/\b(?:um+|uh+|erm+|er|ah+|hmm+|mm+)\b[,.]?/gi, " ");
+  t = t.replace(/\b(\w+)(\s+\1\b)+/gi, "$1").replace(/\s+/g, " ").replace(/\s+([,.!?])/g, "$1").trim();
+  if (!t) return "";
+  t = t.replace(/(^|[.!?]\s+)([a-z])/g, (m, a, b) => a + b.toUpperCase());
+  if (!/[.!?]$/.test(t)) t += ".";
+  return t;
+}
+function lmJoinVoice(base, spoken) {
+  base = String(base || "").trim(); spoken = String(spoken || "").trim();
+  if (!spoken) return base;
+  if (!base) return spoken;
+  const sentences = (base.match(/[.!?](\s|$)/g) || []).length;
+  return base + (sentences > 0 && sentences % 3 === 0 && !/\n\n$/.test(base) ? "\n\n" : " ") + spoken;
+}
+let aiChatWant = false;
+let aiChatVoiceBase = "";
+let msgWant = false;
 let aiChatRecognizer = null;
 let aiChatListening = false;
 let aiChatVoicePaused = false;
@@ -32861,10 +32879,13 @@ function toggleAiChatMic(evt) {
   // the browser never has Levi's TTS competing with the microphone.
   if (("speechSynthesis" in window) && speechSynthesis.speaking) stopAiSpeaking();
   if (aiChatListening) {
+    aiChatWant = false;
     try { aiChatRecognizer?.stop(); } catch (_) {}
     return;
   }
+  if (!aiChatWant) { aiChatWant = true; aiChatVoiceBase = String(byId("aiChatInput")?.value || "").trim(); }
   aiChatRecognizer = new AiSpeechRecognition();
+  const aiRecThis = aiChatRecognizer;
   aiChatRecognizer.lang = "en-NG";
   aiChatRecognizer.interimResults = true;
   aiChatRecognizer.continuous = false;
@@ -32893,7 +32914,7 @@ function toggleAiChatMic(evt) {
     aiChatLastVoiceTranscript = transcript;
     const el = byId("aiChatInput");
     if (el) {
-      el.value = transcript;
+      el.value = lmJoinVoice(aiChatVoiceBase, transcript);
       autoGrowChatInput(el);
       el.scrollTop = el.scrollHeight;
       aiChatLastInputVoice = true;
@@ -32904,15 +32925,27 @@ function toggleAiChatMic(evt) {
   aiChatRecognizer.onerror = (e) => {
     // No app-generated audio/beeps. Normal no-speech/abort lifecycle events
     // are silent; only actual recognition failures get a visual toast.
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") aiChatWant = false;
     if (e.error !== "aborted" && e.error !== "no-speech") {
       showToast("Couldn't hear that, try again.", "error");
     }
   };
   aiChatRecognizer.onend = () => {
+    const mine = aiChatRecognizer === aiRecThis;
     aiChatListening = false;
     aiChatVoicePaused = false;
     aiChatRecognizer = null;
     const input = byId("aiChatInput");
+    if (mine && aiChatWant && input) {
+      // A pause in speech ends this browser session; keep the text (tidied) and listen again.
+      aiChatVoiceBase = lmJoinVoice(aiChatVoiceBase, lmCleanVoice(aiChatLastVoiceTranscript));
+      input.value = aiChatVoiceBase; autoGrowChatInput(input);
+      setTimeout(() => { if (aiChatWant && !aiChatListening) toggleAiChatMic(); }, 120);
+      return;
+    }
+    aiChatWant = false;
+    if (input && !mine && aiChatLastVoiceTranscript) { /* cancelled */ }
+    else if (input && aiChatLastVoiceTranscript) { input.value = lmJoinVoice(aiChatVoiceBase, lmCleanVoice(aiChatLastVoiceTranscript)); autoGrowChatInput(input); }
     if (input) input.readOnly = false;
     try { document.activeElement?.blur?.(); } catch (_) {}
     updateAiVoiceStatus();
@@ -32938,6 +32971,7 @@ async function cancelAiChatVoice() {
   if (!aiChatListening && !aiChatVoicePaused) return;
   const confirmed = await showConfirmDialog("Cancel your current voice recording? The text captured so far will be cleared.", { title: "Cancel recording", okLabel: "Cancel recording", danger: true });
   if (!confirmed) return;
+  aiChatWant = false;
   try { aiChatRecognizer?.abort(); } catch (_) {}
   aiChatRecognizer = null;
   aiChatListening = false;
@@ -33005,6 +33039,8 @@ function startMsgVoiceRecognition() {
 
   try { msgRecognizer?.abort(); } catch (_) {}
   msgRecognizer = new AiSpeechRecognition();
+  const msgRecThis = msgRecognizer;
+  msgWant = true;
   const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   msgRecognizer.lang = isIOSDevice ? "en-US" : "en-NG";
   msgRecognizer.interimResults = true;
@@ -33053,11 +33089,21 @@ function startMsgVoiceRecognition() {
   msgRecognizer.onend = () => {
     // Natural pauses end only this recognition session. The text stays in the
     // compose box so the user can tap the mic again and continue speaking.
+    const mine = msgRecognizer === msgRecThis;
     msgListening = false;
     msgVoicePaused = false;
+    const heard = msgVoiceFinalTranscript || msgVoiceInterimTranscript;
     msgVoiceInterimTranscript = "";
     msgRecognizer = null;
-    applyMsgVoiceTranscript();
+    if (mine && msgWant) {
+      const inp = byId("chatInput");
+      if (inp) { inp.value = lmJoinVoice(msgVoiceBaseText, lmCleanVoice(heard)); autoGrowChatInput(inp); }
+      setTimeout(() => { if (msgWant && !msgListening && !msgRecognizer) startMsgVoiceRecognition(); }, 120);
+      return;
+    }
+    msgWant = false;
+    if (mine && heard) { const inp = byId("chatInput"); if (inp) { inp.value = lmJoinVoice(msgVoiceBaseText, lmCleanVoice(heard)); autoGrowChatInput(inp); } }
+    else applyMsgVoiceTranscript();
     renderMsgVoiceState();
   };
 
@@ -33081,6 +33127,7 @@ function toggleMsgMic(evt) {
   }
 
   if (msgListening) {
+    msgWant = false;
     try { msgRecognizer?.stop(); } catch (_) {}
     return;
   }
@@ -33093,6 +33140,7 @@ function toggleMsgMic(evt) {
 
 function toggleMsgMicPause() {
   if (msgListening) {
+    msgWant = false;
     try { msgRecognizer?.stop(); } catch (_) {}
   } else {
     startMsgVoiceRecognition();
@@ -33103,6 +33151,7 @@ function stopMsgVoiceRecording() {
   const status = byId("msgVoiceStatus");
   status?.classList.add("hidden");
   byId("msgMicBtn")?.classList.remove("listening");
+  msgWant = false;
   try { msgRecognizer?.abort(); } catch (_) {}
   msgRecognizer = null;
   msgListening = false;
@@ -33119,6 +33168,7 @@ async function cancelMsgVoiceRecording() {
   if (!msgListening && !msgVoicePaused) return;
   const confirmed = await showConfirmDialog("Cancel your current voice recording? The text captured in this voice session will be removed, while any text already in the compose box is kept.", { title: "Cancel recording", okLabel: "Cancel recording", danger: true });
   if (!confirmed) return;
+  msgWant = false;
   try { msgRecognizer?.abort(); } catch (_) {}
   msgRecognizer = null;
   msgListening = false;
@@ -33232,7 +33282,7 @@ async function sendAiChatMessage() {
     setTimeout(() => showTour(), 350);
     return;
   }
-  if (aiChatListening || aiChatRecognizer) { try { aiChatRecognizer?.abort(); } catch (_) {} aiChatRecognizer = null; aiChatListening = false; aiChatVoicePaused = false; updateAiVoiceStatus(); }
+  if (aiChatListening || aiChatRecognizer) { aiChatWant = false; try { aiChatRecognizer?.abort(); } catch (_) {} aiChatRecognizer = null; aiChatListening = false; aiChatVoicePaused = false; updateAiVoiceStatus(); }
   resetChatInput(input);
   appendAiChatMessage("user", text);
   persistAiMessage("user", text);
