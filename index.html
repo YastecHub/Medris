@@ -32853,6 +32853,88 @@ function syncSystemBarColor() {
   syncSystemBarColorForTheme(theme);
 }
 syncSystemBarColor();
+/* Android: the browser's speech recogniser beeps on every restart, so record short WAV clips
+   (cut at natural pauses) and transcribe them on the server. Same interface as SpeechRecognition. */
+function lmChunkSttAvailable() {
+  return /Android/i.test(navigator.userAgent) && !!(navigator.mediaDevices?.getUserMedia && (window.AudioContext || window.webkitAudioContext));
+}
+class LmChunkRecognizer {
+  constructor() { this.lang = "en"; this.continuous = true; this.interimResults = true; this.maxAlternatives = 1; this._chunks = []; this._queue = Promise.resolve(); this._active = false; this._buf = []; this._spoke = false; this._t0 = 0; this._lastVoice = 0; }
+  async start() {
+    this._starting = true;
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch (_) { this._starting = false; this.onerror?.({ error: "not-allowed" }); this.onend?.(); return; }
+    if (this._aborted) { stream.getTracks().forEach((t) => t.stop()); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    let ctx;
+    try { ctx = new AC({ sampleRate: 16000 }); } catch (_) { ctx = new AC(); }
+    this._stream = stream; this._ctx = ctx;
+    this._src = ctx.createMediaStreamSource(stream);
+    this._proc = ctx.createScriptProcessor(4096, 1, 1);
+    this._mute = ctx.createGain(); this._mute.gain.value = 0;
+    this._proc.onaudioprocess = (e) => this._onAudio(e.inputBuffer.getChannelData(0));
+    this._src.connect(this._proc); this._proc.connect(this._mute); this._mute.connect(ctx.destination);
+    this._active = true; this._starting = false; this._t0 = Date.now(); this._lastVoice = Date.now();
+    this.onstart?.();
+  }
+  _onAudio(data) {
+    if (!this._active) return;
+    this._buf.push(new Float32Array(data));
+    let sum = 0; for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+    const rms = Math.sqrt(sum / data.length), now = Date.now();
+    if (rms > 0.015) { this._spoke = true; this._lastVoice = now; }
+    const age = now - this._t0;
+    if (this._spoke && ((now - this._lastVoice > 900 && age > 1500) || age > 14000)) this._cut();
+    else if (!this._spoke && age > 6000) { this._buf = []; this._t0 = now; }
+  }
+  _cut() {
+    const buf = this._buf, spoke = this._spoke;
+    this._buf = []; this._spoke = false; this._t0 = Date.now(); this._lastVoice = Date.now();
+    if (spoke && buf.length) this._submit(this._wav(buf, this._ctx.sampleRate));
+  }
+  _wav(chunks, rate) {
+    let n = 0; chunks.forEach((c) => (n += c.length));
+    const view = new DataView(new ArrayBuffer(44 + n * 2));
+    const w = (o, str) => { for (let i = 0; i < str.length; i++) view.setUint8(o + i, str.charCodeAt(i)); };
+    w(0, "RIFF"); view.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true); w(36, "data"); view.setUint32(40, n * 2, true);
+    let o = 44;
+    for (const c of chunks) for (let i = 0; i < c.length; i++, o += 2) { const v = Math.max(-1, Math.min(1, c[i])); view.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7fff, true); }
+    return new Blob([view], { type: "audio/wav" });
+  }
+  _submit(blob) {
+    this._queue = this._queue.then(async () => {
+      if (this._aborted) return;
+      try {
+        const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1] || ""); r.onerror = rej; r.readAsDataURL(blob); });
+        const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "transcribe", accessToken: session?.access_token, audio: b64 }) });
+        const j = await r.json().catch(() => ({}));
+        if (this._aborted) return;
+        if (j.text) { this._chunks.push(j.text); this.onresult?.({ results: this._chunks.map((t) => { const x = [{ transcript: t }]; x.isFinal = true; return x; }) }); }
+        else if (!r.ok) this.onerror?.({ error: "network" });
+      } catch (_) { if (!this._aborted) this.onerror?.({ error: "network" }); }
+    });
+  }
+  _release() {
+    this._active = false;
+    try { this._proc && (this._proc.onaudioprocess = null); this._src?.disconnect(); this._proc?.disconnect(); this._mute?.disconnect(); } catch (_) {}
+    try { this._stream?.getTracks().forEach((t) => t.stop()); } catch (_) {}
+    try { this._ctx?.close(); } catch (_) {}
+  }
+  stop() {
+    if (this._ended) return; this._ended = true;
+    if (this._active && this._spoke && this._buf.length) this._cut();
+    this._release();
+    this._queue.then(() => this.onend?.());
+  }
+  abort() {
+    this._aborted = true; this._ended = true; this._buf = [];
+    this._release();
+    setTimeout(() => this.onend?.(), 0);
+  }
+}
+function lmNewRecognizer() { return lmChunkSttAvailable() ? new LmChunkRecognizer() : new AiSpeechRecognition(); }
 function lmMergeResults(results) {
   const kept = [];
   for (let i = 0; i < results.length; i++) {
@@ -32930,7 +33012,7 @@ function toggleAiChatMic(evt) {
     return;
   }
   if (!aiChatWant) { aiChatWant = true; aiChatVoiceBase = String(byId("aiChatInput")?.value || "").trim(); }
-  aiChatRecognizer = new AiSpeechRecognition();
+  aiChatRecognizer = lmNewRecognizer();
   const aiRecThis = aiChatRecognizer;
   aiChatRecognizer.lang = "en-NG";
   aiChatRecognizer.interimResults = true;
@@ -33079,7 +33161,7 @@ function startMsgVoiceRecognition() {
   msgVoicePaused = false;
 
   try { msgRecognizer?.abort(); } catch (_) {}
-  msgRecognizer = new AiSpeechRecognition();
+  msgRecognizer = lmNewRecognizer();
   const msgRecThis = msgRecognizer;
   msgWant = true;
   const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -33116,6 +33198,7 @@ function startMsgVoiceRecognition() {
 
   msgRecognizer.onerror = (e) => {
     if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      msgWant = false;
       showToast("Microphone or speech recognition permission is blocked. Allow microphone access for Levromart and try again.", "error");
     } else if (e.error !== "aborted" && e.error !== "no-speech") {
       showToast("Couldn't hear that, try again.", "error");

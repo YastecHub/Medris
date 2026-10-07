@@ -673,11 +673,43 @@ function appendClientDirectives(reply, toolResults) {
   return `${reply.replace(/\s+$/g, "")} ${directives.join(" ")}`.trim();
 }
 
+// Speech-to-text for the mic buttons on Android, where the browser's own recogniser
+// beeps every time it restarts. The page sends short WAV clips and gets text back.
+async function transcribeAudio(body, res) {
+  const { accessToken, audio } = body || {};
+  if (!accessToken) { res.status(401).json({ error: "Please log in." }); return; }
+  if (typeof audio !== "string" || !audio || audio.length > 3_000_000) { res.status(400).json({ error: "audio required" }); return; }
+  const SUPABASE_URL = env("SUPABASE_URL");
+  const SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY");
+  const GEMINI_API_KEY = env("GEMINI_API_KEY");
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !GEMINI_API_KEY) { res.status(500).json({ error: "Not configured." }); return; }
+  const meRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` } });
+  const me = await meRes.json().catch(() => ({}));
+  if (!meRes.ok || !me?.id) { res.status(401).json({ error: "Session expired." }); return; }
+  const prompt = "Transcribe this short voice clip exactly as spoken (English, possibly with a Nigerian accent). Output ONLY the spoken words with normal punctuation. No quotes, no commentary. If there is no clear speech, output nothing.";
+  for (const model of [MODEL, FALLBACK_MODEL]) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }, { inline_data: { mime_type: "audio/wav", data: audio } }] }], generationConfig: { temperature: 0, maxOutputTokens: 400 } }),
+      });
+      if (!r.ok) continue;
+      const j = await r.json();
+      const text = String(j?.candidates?.[0]?.content?.parts?.map((x) => x.text || "").join(" ") || "").replace(/\s+/g, " ").trim();
+      res.status(200).json({ text });
+      return;
+    } catch (_) { /* try the fallback model */ }
+  }
+  res.status(502).json({ error: "Couldn't transcribe that." });
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") { res.status(405).json({ error: "Method not allowed" }); return; }
   try {
     const body = JSON.parse(await readBody(req));
     const { messages, accessToken, lat, lng, currentView, currentViewParams, lastRenderError, mode } = body || {};
+    if (mode === "transcribe") { await transcribeAudio(body, res); return; }
     if (!Array.isArray(messages) || messages.length === 0) { res.status(400).json({ error: "messages array required" }); return; }
     if (!accessToken) { res.status(401).json({ error: "Please log in to use Levi." }); return; }
 
