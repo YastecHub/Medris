@@ -220,6 +220,7 @@
   },3200);
 })();
 window.__lvSetChatIcon=function(has){ var w=document.getElementById("messagesWrap"); if(w) w.classList.toggle("lv-chat-off",!has); };
+window.LV_FILTER_SVG = '<svg class="lv-filter-ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h16"/><path d="M8 16h8"/></svg>';
 window.LV_SETTINGS_SVG='<svg class="lv-svg-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>';
 window.lvLinkRow=function(icon,label,value,onclick){
   var ic=icon.charAt(0)==="<"?icon:'<i class="fa-solid '+icon+'" aria-hidden="true"></i>';
@@ -15683,7 +15684,7 @@ function renderOfflineHomeFromCache(cache, options = {}) {
   if (topVendors.length) { const shuffledTopVendors = deterministicHourlyShuffle(topVendors,"top-rated-vendors"); html += `<h3 class="section-title"><span><i class='fa-solid fa-medal'></i> Featured Vendors</span><a class="section-title-link" onclick="navigate('vendors').then(()=>setTimeout(()=>switchVendorsView('list'),0))">See all <i class="fa-solid fa-arrow-right"></i></a></h3><div class="hscroll top-rated-vendors-scroll" id="topRatedVendors">${shuffledTopVendors.map((x) => vendorPageCardHtml(x, true)).join("")}</div>`; }
   if (recommendedPackages.length) html += `<h3 class="section-title"><span><i class='fa-solid fa-box-open'></i> ${hasPersonalPackageMatch ? "Recommended packages for you" : "Special packages"}</span></h3><div class="hscroll package-recommendation-strip">${recommendedPackages.map(pkg => packageCardHtml(pkg, pkg.vendor?.delivery_fee)).join("")}</div>`;
   window.__homeBrowseCatalog = Array.isArray(cache.browseProducts) ? cache.browseProducts : [];
-  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeCategory ? esc(activeCategory.name) : activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search marketplace…" oninput="scheduleHomeSearch()" /><button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button><div class="browse-filter-panel hidden" id="browseFilterPanel"><div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('listing')"><span>Type</span><strong id="browseListingLabel">${esc("All types")}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu hidden" id="browseListingSubmenu"><button type="button" onclick="chooseBrowseListing('', 'All types')">All types</button><button type="button" onclick="chooseBrowseListing('rent', 'Rent')">Rent</button><button type="button" onclick="chooseBrowseListing('sale', 'Buy')">Buy</button></div></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || 'All categories')}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><div id="browseCategoryOptions">${subCats.map(c => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace("'","&#39;")}')">${esc(c.name)}</button>`).join("")}</div><button type="button" onclick="chooseBrowseCategory('','All categories')">All categories</button></div></div><button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button></div><select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
+  html += `<h3 class="section-title" id="browseSection"><i class='fa-solid fa-shop'></i> Browse ${activeCategory ? esc(activeCategory.name) : activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3><div class="browse-filter-toolbar"><input type="text" id="searchInput" placeholder="Search marketplace…" oninput="scheduleHomeSearch()" /><button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()">${window.LV_FILTER_SVG}<i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button><div class="browse-filter-panel hidden" id="browseFilterPanel"><div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('listing')"><span>Type</span><strong id="browseListingLabel">${esc("All types")}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu hidden" id="browseListingSubmenu"><button type="button" onclick="chooseBrowseListing('', 'All types')">All types</button><button type="button" onclick="chooseBrowseListing('rent', 'Rent')">Rent</button><button type="button" onclick="chooseBrowseListing('sale', 'Buy')">Buy</button></div></div><div class="browse-filter-row-group"><button type="button" class="browse-filter-subtrigger" onclick="toggleBrowseSubmenu('category')"><span>Category</span><strong id="browseCategoryLabel">${esc(activeCategory?.name || 'All categories')}</strong><i class="fa-solid fa-chevron-down"></i></button><div class="browse-filter-submenu browse-category-submenu hidden" id="browseCategorySubmenu"><input type="search" id="filterCategorySearch" placeholder="Search categories…" oninput="filterBrowseCategoryOptions()" autocomplete="off" /><div id="browseCategoryOptions">${subCats.map(c => `<button type="button" data-value="${c.id}" data-label="${esc(c.name)}" onclick="chooseBrowseCategory('${c.id}','${esc(c.name).replace("'","&#39;")}')">${esc(c.name)}</button>`).join("")}</div><button type="button" onclick="chooseBrowseCategory('','All categories')">All categories</button></div></div><button type="button" class="browse-filter-clear" onclick="clearBrowseFilters()">Clear filters</button></div><select id="filterListing" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All types</option><option value="rent">Rent</option><option value="sale">Buy</option></select><select id="filterCategory" class="visually-hidden-select" onchange="filterHomeProducts()"><option value="">All categories</option>${subCats.map(c => `<option value="${c.id}" ${activeCategory?.id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select></div><div class="grid" id="productGrid"></div><div id="packageSearchResults" class="hidden" style="margin-top:1.3rem;"></div>`;
   setTimeout(filterHomeProducts, 0);
   return html;
 }
@@ -16806,7 +16807,7 @@ async function renderHome() {
   html += `<h3 class="section-title" id="browseSection"><i class="fa-solid fa-shop"></i> Browse ${activeCategory ? esc(activeCategory.name) : activeSector ? `all ${esc(activeSector.name)}` : "everything"}</h3>`;
   html += `<div class="catalog-type-tabs home-catalog-type-tabs" role="tablist" aria-label="Browse products, services and packages"><button type="button" class="catalog-type-tab ${homeListingTab === "products" ? "active" : ""}" data-tab="products" onclick="switchHomeListingTab('products')"><i class="fa-solid fa-box"></i> Products</button><button type="button" class="catalog-type-tab ${homeListingTab === "services" ? "active" : ""}" data-tab="services" onclick="switchHomeListingTab('services')"><i class="fa-solid fa-hand-holding-heart"></i> Services</button><button type="button" class="catalog-type-tab ${homeListingTab === "packages" ? "active" : ""}" data-tab="packages" onclick="switchHomeListingTab('packages')"><i class="fa-solid fa-box-open"></i> Packages</button></div>`;
   html += `<div class="browse-filter-toolbar">
-    <button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()"><i class="fa-solid fa-sliders"></i><i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button>
+    <button type="button" class="browse-filter-trigger" id="browseFilterTrigger" aria-expanded="false" onclick="toggleBrowseFilters()">${window.LV_FILTER_SVG}<i class="fa-solid fa-chevron-down browse-filter-chevron" aria-hidden="true"></i></button>
     <input type="search" id="searchInput" placeholder="Search marketplace…" oninput="scheduleHomeSearch()" autocomplete="off" aria-label="Search products, packages, or services" />
     <div class="browse-filter-panel hidden" id="browseFilterPanel">
       <div class="browse-filter-panel-head"><strong>Filter browse</strong><button type="button" class="icon-btn" onclick="toggleBrowseFilters()" aria-label="Close filters"><i class="fa-solid fa-xmark"></i></button></div>
@@ -18107,7 +18108,7 @@ function productCardHtml(p) {
   // before/after delivery, etc.) still shows in full on the product detail
   // page once it's opened -- it's just not cluttering the card itself.
   const hasDiscount = p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price ?? Infinity);
-  const priceHtml = commissionService ? "" : p.sale_price != null
+  const priceHtml = commissionService ? `<span class="card-svc-tag"><i class="fa-solid fa-handshake"></i> Negotiable</span>` : p.sale_price != null
     ? (hasDiscount
         ? `<span class="product-old-price">${naira(p.sale_price)}</span> <span class="product-current-price">${naira(p.discount_price)}</span>`
         : naira(p.sale_price))
@@ -18161,7 +18162,7 @@ function productCardHtml(p) {
     ? (cardDeliveryFee == null
       ? `<div class="product-card-total-line" title="Delivery fee"><i class="fa-solid fa-truck" aria-hidden="true"></i><span class="product-card-total-label">Delivery</span><strong>${naira(cardPerKm)}/km</strong></div>`
       : `<div class="product-card-total-line" title="Total with delivery"><i class="fa-solid fa-truck" aria-hidden="true"></i><span class="product-card-total-label">Total</span><strong>${naira(cardItemPrice + cardDeliveryFee)}</strong></div>`)
-    : `<div class="product-card-total-line" style="visibility:hidden;">&nbsp;</div>`;
+    : (p.is_service ? `<div class="product-card-total-line card-svc-cta"><i class="fa-solid fa-comments-dollar" aria-hidden="true"></i><span class="product-card-total-label">Name your price</span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></div>` : `<div class="product-card-total-line" style="visibility:hidden;">&nbsp;</div>`);
   // The wishlist management page keeps the explicit heart button -- that's
   // the one place removing something is the whole point of being there, and
   // a double-tap-to-remove gesture would be far less discoverable than a
@@ -19133,6 +19134,7 @@ function msgSelectionHeaderHtml() {
       <button type="button" class="icon-btn messages-more-btn" onclick="toggleInlineMenu('messagesMoreMenu',event)" aria-label="Message actions"><i class="fa-solid fa-ellipsis"></i></button>
       <div class="ms-list hidden messages-more-menu" id="messagesMoreMenu">
         <div class="lm-sheet-head"><strong>Chat actions</strong><button type="button" class="lm-x" onclick="toggleInlineMenu('messagesMoreMenu',event)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+        <button type="button" class="ms-item" onclick="toggleInlineMenu('messagesMoreMenu',event);createChatListPrompt()"><i class="fa-solid fa-folder-plus"></i> New list</button>
         <button type="button" class="ms-item" onclick="enterMsgSelectMode();toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-check-double"></i> Select chats</button>
         <button type="button" class="ms-item" onclick="enterMsgSelectMode();toggleSelectAllChats();toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-square-check"></i> Select all chats</button>
         <button type="button" class="ms-item" onclick="batchMarkChatsRead(true);toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-envelope-open"></i> Mark all as read</button>
@@ -19260,7 +19262,7 @@ function chatListTabsHtml() {
       <a role="tab" class="${msgListFilter === "archived" ? "active" : ""}" onclick="setMsgListFilter('archived')">Archived${badge(archivedUnread)}</a>
       ${listTabs}
       ${msgListFilter.startsWith("list:") ? `<a onclick="deleteChatListPrompt('${msgListFilter.slice(5)}')" title="Delete this list" aria-label="Delete this list" class="msg-tab-del"><i class="fa-solid fa-trash"></i></a>` : ""}
-    </div><button type="button" class="msg-newlist" onclick="createChatListPrompt()" title="Create a new list"><i class="fa-solid fa-plus"></i> New List</button></div>`;
+    </div></div>`;
 }
 async function createChatListPrompt() {
   const name = await showTextPromptDialog("New chat list", "Name this list (like WhatsApp's Favorites or Groups) to organize your own chats.", { placeholder: "e.g. Regular vendors", okLabel: "Create" });
@@ -22113,7 +22115,7 @@ function renderVendorsDirectory() {
     <button type="button" class="vendor-listing-tab" data-filter="both" onclick="setVendorsListingFilter('both')">Buy &amp; Rent</button>
   </div>
   <div class="vendors-directory-toolbar vendors-directory-controls">
-    <button type="button" class="btn btn-sm btn-outline vendors-filters-toggle" id="vendorsFiltersToggle" aria-expanded="false" onclick="toggleVendorsFilters()"><i class="fa-solid fa-sliders"></i> Filters <i class="fa-solid fa-chevron-down vendors-filters-chevron"></i></button>
+    <button type="button" class="btn btn-sm btn-outline vendors-filters-toggle" id="vendorsFiltersToggle" aria-expanded="false" onclick="toggleVendorsFilters()" aria-label="Filter">${window.LV_FILTER_SVG}</button>
   </div>
   <div class="vendors-directory-search">
     <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" autocomplete="off" aria-label="Search vendors or products" />
@@ -27492,7 +27494,7 @@ function orderFiltersDropdownHtml(route, status, type, payment, dateFrom, dateTo
   const p = String(perspective || "").replace(/'/g, "\\'");
   return `<div class="order-filters-wrap">
     <button type="button" class="order-filters-trigger${(type !== "all" || payment !== "all" || dateFrom || dateTo) ? " has-filters" : ""}" aria-expanded="false" aria-label="Filters" title="Filters" onclick="toggleOrderFilters(this)">
-      <span><i class="fa-solid fa-sliders"></i> Filters</span>
+      <span>${window.LV_FILTER_SVG}</span>
       <small>${esc([statusLabel,typeLabel,paymentLabel,dateLabel].join(" · "))}</small>
       <i class="fa-solid fa-chevron-down order-filters-chevron"></i>
     </button>
@@ -35645,7 +35647,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
     </div>
     <div class="vd-tools">
       <label class="vd-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="vendorSearchInput" placeholder="Search vendors…" oninput="filterVendorsDirectory()" autocomplete="off" enterkeyhint="search" aria-label="Search vendors or products" /></label>
-      <button type="button" class="vd-filter-btn" id="vendorsFiltersToggle" aria-label="Filter" title="Filter" aria-expanded="false" onclick="toggleVendorsFilters()"><i class="fa-solid fa-sliders" aria-hidden="true"></i></button>
+      <button type="button" class="vd-filter-btn" id="vendorsFiltersToggle" aria-label="Filter" title="Filter" aria-expanded="false" onclick="toggleVendorsFilters()">${window.LV_FILTER_SVG}</button>
     </div>
     <div class="vendors-filters-panel vd-panel hidden" id="vendorsFiltersPanel">
       <div class="lm-sheet-head"><strong>Filter vendors</strong><button type="button" class="lm-x" onclick="toggleVendorsFilters(false)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
@@ -52627,11 +52629,11 @@ html body #app .section-title i.fa-hand-holding-heart{background:linear-gradient
 html body #app .section-title i.fa-box-open{background:linear-gradient(135deg,#38bdf8,#2563eb);box-shadow:0 4px 10px -4px rgba(37,99,235,.55)}
 /* login: readable in dark */
 html[data-splash="dark"] #loginModal.lv-auth{--lv-muted:#c3d4ca}
-html[data-splash="dark"] #loginModal.lv-auth :is(label,.lv-check,.lv-switch,.lv-or,.lv-sub,p,small,span){color:#d5e3db}
+html[data-splash="dark"] #loginModal.lv-auth :is(label,.lv-check,.lv-switch,.lv-or){color:#d5e3db}
 html[data-splash="dark"] #loginModal.lv-auth :is(a,.lv-link,#lvSwitchLink){color:#5be39a}
 @media (prefers-color-scheme:dark){
 html[data-splash="auto"] #loginModal.lv-auth{--lv-muted:#c3d4ca}
-html[data-splash="auto"] #loginModal.lv-auth :is(label,.lv-check,.lv-switch,.lv-or,.lv-sub,p,small,span){color:#d5e3db}
+html[data-splash="auto"] #loginModal.lv-auth :is(label,.lv-check,.lv-switch,.lv-or){color:#d5e3db}
 html[data-splash="auto"] #loginModal.lv-auth :is(a,.lv-link,#lvSwitchLink){color:#5be39a}
 }
 /* service page: flat, rounded, negotiation-style */
@@ -52652,6 +52654,42 @@ html body #app .svc-chip{border:1px solid var(--border);background:transparent;c
 html body #app .service-request-card textarea{border-radius:16px!important}
 html body #app .service-request-card > .btn{width:100%;border-radius:999px;min-height:50px;font-weight:800}
 html body #app .service-offer-row{background:transparent!important;border:0!important;border-top:1px solid var(--border)!important;border-radius:0!important;padding:.8rem 0!important;box-shadow:none!important}
+/* ---- batch: slim header, flat nav-aware drawers, filters, service cards ---- */
+html body > header .header-top-row{min-height:0!important;gap:.5rem!important;padding-top:.25rem!important;padding-bottom:.25rem!important}
+html body > header .header-search-row{height:34px!important;min-height:0!important;padding:0 .8rem!important;font-size:.88rem!important}
+html body > header .icon-btn,html body > header .avatar-btn,html body > header #loginBtn{width:34px!important;height:34px!important;min-width:0!important;min-height:0!important;font-size:.95rem!important}
+html body > header .avatar-btn img,html body > header .avatar-btn .avatar-circle{width:32px!important;height:32px!important}
+html body > header{padding-top:calc(env(safe-area-inset-top) + 0px)!important;padding-bottom:.15rem!important}
+html body{padding-top:calc(48px + env(safe-area-inset-top))!important}
+/* hide bottom nav whenever a drawer is open */
+body:has(.browse-filter-panel:not(.hidden)) #bottomNav,body:has(.vendors-filters-panel:not(.hidden)) #bottomNav,body:has(.messages-more-menu:not(.hidden)) #bottomNav,body:has(.cc-backdrop.open) #bottomNav,body:has(.order-filters-panel:not(.hidden)) #bottomNav,body:has(.lm-drawer-open) #bottomNav{transform:translateY(130%)!important;pointer-events:none}
+#bottomNav{transition:transform .22s ease}
+/* filter buttons: icon only, two lines */
+#app .browse-filter-toolbar>.browse-filter-trigger::after{content:none!important;display:none!important}
+html body #app .browse-filter-trigger,html body #app .vendors-filters-toggle,html body #app .vd-filter-btn,html body #app .order-filters-trigger{color:var(--text)!important}
+html body #app .order-filters-trigger .order-filters-chevron,html body #app .vendors-filters-toggle .vendors-filters-chevron{display:none!important}
+.lv-filter-ico{display:block}
+/* vendor cards: no dark halo */
+html body #app .vc2,html body #app .vc2 *:not(img){box-shadow:none!important}
+html body #app .vc2{filter:none!important;background-image:none}
+html body #app .hscroll:has(.vc2),html body #app .grid:has(.vc2){filter:none!important;box-shadow:none!important;background:transparent!important}
+/* product card spacing */
+html body #app .product-card-compact .product-card-compact-footer{margin-top:.5rem!important}
+html body #app .product-card-compact h4{margin-bottom:.15rem!important}
+/* service cards */
+.card-svc-tag{display:inline-flex;align-items:center;gap:.3rem;font-size:.78rem;font-weight:800;color:#7c3aed;background:color-mix(in srgb,#8b5cf6 14%,transparent);padding:.2rem .55rem;border-radius:999px}
+.card-svc-cta{color:#7c3aed!important}
+.card-svc-cta .product-card-total-label{flex:1;font-weight:800}
+/* messages tabs: plain underline tabs */
+html body #app .msg-tabs{gap:1.1rem!important;border-bottom:1px solid var(--border)}
+html body #app .msg-tabs a,html body #app .msg-tabs a.active{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:.55rem .1rem!important;color:var(--text-muted,#6b7280)!important;border-bottom:2.5px solid transparent!important}
+html body #app .msg-tabs a.active{color:var(--text)!important;border-bottom-color:var(--primary,#16a34a)!important;font-weight:800}
+/* service page */
+html body #app .service-detail-card .product-gallery-main{aspect-ratio:4/3;background:transparent!important}
+html body #app .service-detail-card .product-gallery-main img{width:100%!important;height:100%!important;max-height:none!important;object-fit:cover!important;display:block}
+html body #app .service-request-card > .btn{display:flex!important;justify-content:center!important;align-items:center!important;gap:.5rem;text-align:center}
+html body > header .header-left,html body > header .header-right{min-height:0!important;height:36px!important}
+html body > header .icon-wrap .icon-btn,html body > header #avatarBtn,html body > header #loginBtn,html body > header #notifWrap button,html body > header #messagesWrap button,html body > header #headerCartWrap button{width:36px!important;height:36px!important;min-width:0!important;min-height:0!important;font-size:.98rem!important}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
