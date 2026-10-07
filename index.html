@@ -16323,7 +16323,6 @@ function renderAdminLinkLibrary() {
     <div class="flex" style="justify-content:flex-start;gap:.55rem;flex-wrap:wrap;">
       <button class="btn btn-sm btn-outline" onclick="copyAllAdminLinks()"><i class="fa-solid fa-copy"></i> Copy all links</button>
       <button class="btn btn-sm btn-outline" onclick="navigate('adminCarousel')"><i class="fa-solid fa-images"></i> Carousel manager</button>
-      <button class="btn btn-sm" onclick="navigate('adminPanel')"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>
     </div>
   </div>`;
 }
@@ -16416,7 +16415,6 @@ async function renderAdminCarousel() {
     html += `</div>`;
   }
 
-  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('adminPanel')"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>`;
   setTimeout(() => initAdminCarouselDragDrop(), 0);
   return html;
 }
@@ -29784,7 +29782,7 @@ function openAdminNavSheet() {
   const tabs = [...document.querySelectorAll(".admin-dash-tabs [data-admin-view]")].filter((b) => !b.classList.contains("hidden") && b.style.display !== "none");
   const wrap = document.createElement("div");
   wrap.id = "adminNavSheet"; wrap.className = "cc-backdrop";
-  wrap.innerHTML = `<div class="cc-sheet admin-nav-sheet" role="dialog" aria-modal="true"><button type="button" class="cc-x" aria-label="Close" data-cc="close"><i class="fa-solid fa-xmark"></i></button><h3 style="margin:.2rem 0 .8rem;text-align:left;">Go to</h3><div class="admin-nav-grid">${tabs.map((b) => `<button type="button" class="admin-nav-item${b.classList.contains("active") ? " active" : ""}" data-v="${esc(b.dataset.adminView)}">${b.innerHTML}</button>`).join("")}</div></div>`;
+  wrap.innerHTML = `<div class="cc-sheet admin-nav-sheet" role="dialog" aria-modal="true"><button type="button" class="cc-x" aria-label="Close" data-cc="close"><i class="fa-solid fa-xmark"></i></button><h3 style="margin:.2rem 0 .8rem;text-align:left;">Go to</h3><div class="admin-nav-grid">${tabs.map((b) => `<button type="button" class="admin-nav-item${b.classList.contains("active") ? " active" : ""}${(b.querySelector(".dash-tab-dot:not(.hidden)") && /[1-9]/.test(b.querySelector(".dash-tab-dot:not(.hidden)").textContent)) ? " has-alert" : ""}" data-v="${esc(b.dataset.adminView)}">${b.innerHTML}</button>`).join("")}</div></div>`;
   document.body.appendChild(wrap);
   requestAnimationFrame(() => wrap.classList.add("open"));
   const close = () => { wrap.classList.remove("open"); setTimeout(() => wrap.remove(), 180); };
@@ -30175,7 +30173,6 @@ async function renderAdminPasswordResets() {
     html += `</div>`;
   }
 
-  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('adminPanel',{status:'pending'})"><i class="fa-solid fa-arrow-left"></i> Back to admin</button>`;
 
   clearInterval(window.__passwordResetAdminTimer);
   window.__passwordResetAdminTimer = setInterval(async () => {
@@ -30327,7 +30324,7 @@ async function renderAdminPanel(status) {
   if(vendorError)return html+errorStateHtml(vendorError);
   const emptyLabel = status === "recycle" ? "recycle bin" : (status === "all" ? "vendors" : status + " vendors");
   html += `<div class="admin-vendor-filters"><input type="search" id="adminVendorSearch" placeholder="Search name, email or phone" oninput="filterAdminVendorCards()"><select id="adminVendorSort" onchange="filterAdminVendorCards()"><option value="latest">Last listed</option><option value="alpha">Alphabetical</option></select></div><div id="adminVendorCards">`;
-  if (!vendors.length) html += `<div class="card empty-state"><i class="fa-solid ${status === "recycle" ? "fa-trash-can" : "fa-store"}"></i><p>No ${emptyLabel}.</p></div>`;
+  if (!vendors.length) html += `<div class="empty-state"><i class="fa-solid ${status === "recycle" ? "fa-trash-can" : "fa-store"}"></i><p>No ${emptyLabel}.</p></div>`;
 
   vendors.forEach((v) => {
     const doc = (v.verification_docs || [])[0];
@@ -30335,9 +30332,9 @@ async function renderAdminPanel(status) {
     const applicantName = v.applicant?.name || "";
     const applicantEmail = v.applicant?.email || "";
     const searchable = [v.business_name, applicantName, applicantEmail, v.phone, v.id].filter(Boolean).join(' ').toLowerCase();
-    html += `<details id="adminVendor-${esc(v.id)}" class="card admin-vendor-card" data-name="${esc(v.business_name || "Deleted vendor")}" data-created="${esc(v.deleted_at || v.created_at)}" data-search="${esc(searchable)}">
+    html += `<details id="adminVendor-${esc(v.id)}" class="ad-row admin-vendor-card" data-name="${esc(v.business_name || "Deleted vendor")}" data-created="${esc(v.deleted_at || v.created_at)}" data-search="${esc(searchable)}">
       <summary class="flex" style="justify-content:space-between;">
-        <strong>${esc(v.business_name || "Deleted vendor")}</strong>
+        <span class="ad-sum-main"><span class="ad-ini">${esc(String(v.business_name || "V").trim().charAt(0).toUpperCase())}</span><span class="ad-sum-text"><strong>${esc(v.business_name || "Deleted vendor")}</strong><small>${esc(applicantName || applicantEmail || "")}</small></span></span>
         <span class="badge ${deleted ? "warning" : (v.verification_status === "verified" ? "success" : v.verification_status === "pending" ? "warning" : v.verification_status === "rejected" ? "danger" : "")}">${deleted ? "Deleted" : esc(v.verification_status)}</span>
       </summary>
       <p class="muted" style="margin:0.3rem 0;">Applicant: ${esc(applicantName)} ${applicantEmail ? `(${esc(applicantEmail)})` : ""}</p>
@@ -30347,11 +30344,11 @@ async function renderAdminPanel(status) {
       <p class="muted" style="margin:0.3rem 0;">${deleted ? `Deleted ${new Date(v.deleted_at).toLocaleDateString()}` : (doc ? `<a href="#" onclick="viewVendorDoc('${doc}');return false;"><i class='fa-solid fa-file-lines'></i> View submitted document</a>` : "No document uploaded") + ` · applied ${new Date(v.created_at).toLocaleDateString()}`}</p>
       <div class="flex" style="margin-top:0.5rem;gap:.5rem;flex-wrap:wrap;">
         ${deleted
-          ? `<button type="button" class="btn btn-sm" onclick="restoreAdminVendor('${esc(v.id)}');return false;"><i class="fa-solid fa-rotate-left"></i> Restore</button>
-             <button type="button" class="btn btn-sm btn-danger" onclick="permanentlyDeleteAdminVendor('${esc(v.id)}');return false;"><i class="fa-solid fa-trash-can"></i> Delete permanently</button>`
-          : `${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}">Approve</button>` : ""}
-             ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}">Reject</button>` : ""}
-             ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm btn-danger vendor-admin-action" style="background:#7f1d1d;" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}`}
+          ? `<button type="button" class="btn btn-sm ad-btn ad-approve" onclick="restoreAdminVendor('${esc(v.id)}');return false;"><i class="fa-solid fa-rotate-left"></i> Restore</button>
+             <button type="button" class="btn btn-sm ad-btn ad-delete" onclick="permanentlyDeleteAdminVendor('${esc(v.id)}');return false;"><i class="fa-solid fa-trash-can"></i> Delete permanently</button>`
+          : `${v.verification_status !== "verified" ? `<button type="button" class="btn btn-sm ad-btn ad-approve vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="verified" data-filter-status="${esc(status)}"><i class="fa-solid fa-circle-check"></i> Approve</button>` : ""}
+             ${v.verification_status !== "rejected" ? `<button type="button" class="btn btn-sm ad-btn ad-reject vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="rejected" data-filter-status="${esc(status)}"><i class="fa-solid fa-circle-xmark"></i> Reject</button>` : ""}
+             ${profile?.email === SUPER_ADMIN_EMAIL ? `<button type="button" class="btn btn-sm ad-btn ad-delete vendor-admin-action" data-vendor-id="${esc(v.id)}" data-status="delete" data-filter-status="${esc(status)}"><i class="fa-solid fa-trash"></i> Delete vendor</button>` : ""}`}
       </div>
     </details>`;
   });
@@ -30387,7 +30384,7 @@ async function renderAdminLockedVendors() {
 
   html += `<div id="adminLockedVendorCards">${locked.map((v) => {
     const reason = v.admin_paused ? "Manually paused by an admin" : v.commission_pause_reason === "commission_overdue" ? "Commission overdue" : "Paused";
-    return `<div id="adminLockedVendor-${esc(v.vendor_id)}" class="card admin-vendor-card">
+    return `<div id="adminLockedVendor-${esc(v.vendor_id)}" class="ad-row ad-static admin-vendor-card">
       <div class="flex" style="justify-content:space-between;align-items:flex-start;gap:.5rem;">
         <strong>${esc(v.business_name || "Vendor")}</strong>
         <span class="badge danger">Locked</span>
@@ -30397,7 +30394,7 @@ async function renderAdminLockedVendors() {
       ${v.city ? `<p class="muted" style="margin:0.3rem 0;">${esc(v.city)}</p>` : ""}
       <p style="margin:0.4rem 0;">Commission owed: <strong>${naira(Number(v.commission_owed || 0))}</strong></p>
       <div class="flex" style="margin-top:0.5rem;gap:.5rem;flex-wrap:wrap;">
-        <button type="button" class="btn btn-sm" onclick="adminUnlockVendor('${esc(v.vendor_id)}')"><i class="fa-solid fa-unlock"></i> Unlock</button>
+        <button type="button" class="btn btn-sm ad-btn ad-approve" onclick="adminUnlockVendor('${esc(v.vendor_id)}')"><i class="fa-solid fa-unlock"></i> Unlock</button>
       </div>
     </div>`;
   }).join("")}</div>`;
@@ -30936,7 +30933,7 @@ async function denyAppealPrompt(appealId) {
   navigate("adminPeople");
 }
 function suggestionRowHtml(s) {
-  return `<div class="card" style="${s.status === "new" ? "border-color:var(--primary);" : ""}">
+  return `<div class="ad-row ad-static ${s.status === "new" ? "is-new" : ""}">
     <div class="flex" style="justify-content:space-between;align-items:flex-start;">
       <div>
         <strong>${s.is_anonymous ? "Anonymous" : esc(s.sender_name || "Someone")}</strong>
@@ -30951,7 +30948,7 @@ async function markSuggestionRead(id, btn) {
   btn.disabled = true;
   const { error } = await sb.rpc("mark_suggestion_read", { p_suggestion_id: id });
   if (error) { showToast(error.message, "error"); btn.disabled = false; return; }
-  btn.closest(".card").style.borderColor = "";
+  btn.closest(".ad-row,.card")?.classList.remove("is-new");
   btn.outerHTML = `<span class="badge">read</span>`;
   unreadSuggestionCount = Math.max(0, Number(unreadSuggestionCount || 0) - 1);
   document.querySelectorAll('.admin-dash-tabs [data-admin-view="adminFeedback"]').forEach(tab => {
@@ -30994,7 +30991,7 @@ async function renderAdminUsers() {
 
   let html = `<h2><i class='fa-solid fa-user'></i> Manage admins</h2>`;
   html += adminNavHtml("adminUsers");
-  html += `<div class="card" style="max-width:480px;">
+  html += `<div class="ad-panel" style="max-width:480px;">
       <label>Promote a user to admin (by email)</label>
       <div class="flex">
         <input id="promoteEmail" type="email" placeholder="user@example.com" style="flex:1;" />
@@ -31004,8 +31001,7 @@ async function renderAdminUsers() {
       <p class="muted" style="font-size:0.85rem;">The user must already have a Levromart account. Only promote people you trust. Admins can approve vendors, resolve disputes, and manage other admins.</p>
     </div>
     <h3 style="margin-top:1.2rem;">Current admins</h3>`;
-  html += (admins || []).map((a) => `<div class="card flex" style="justify-content:space-between;"><span>${esc(a.name || "")} · ${esc(a.email)}</span>${a.id !== session.user.id ? `<button class="btn btn-sm btn-outline" onclick="demoteAdmin('${esc(a.email)}')">Remove admin</button>` : `<span class="muted">(you)</span>`}</div>`).join("");
-  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('adminPanel',{status:'pending'})"><i class='fa-solid fa-arrow-left'></i> Back to admin</button>`;
+  html += (admins || []).map((a) => `<div class="ad-row ad-static flex" style="justify-content:space-between;"><span>${esc(a.name || "")} · ${esc(a.email)}</span>${a.id !== session.user.id ? `<button class="btn btn-sm btn-outline" onclick="demoteAdmin('${esc(a.email)}')">Remove admin</button>` : `<span class="muted">(you)</span>`}</div>`).join("");
   return html;
 }
 
@@ -31064,7 +31060,7 @@ async function renderAdminConversations(q = "") {
   html += `<div class="msg-tabs lm-conv-tabs" role="tablist"><a class="active" data-conv-tab="active" onclick="lmConvTab('active')">Active <span class="conv-unread-badge msg-tab-badge">${nActive}</span></a><a data-conv-tab="closed" onclick="lmConvTab('closed')">Earlier <span class="conv-unread-badge msg-tab-badge" style="opacity:.7">${rows.length - nActive}</span></a></div>`;
   html += `<div class="admin-conv-list" data-tab="active">${rows.map((c) => {
     const when = c.last_at ? new Date(c.last_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
-    return `<button type="button" class="card admin-conv-row" data-act="${isActive(c) ? 1 : 0}" onclick="navigate('messages',{conversationId:'${esc(c.conversation_id)}'})"><div class="flex" style="justify-content:space-between;gap:.6rem;"><strong>${esc(c.buyer_name || "Customer")} ↔ ${esc(c.vendor_name || "Vendor")}</strong><span class="muted" style="font-size:.75rem;white-space:nowrap;">${esc(when)}</span></div><div class="muted admin-conv-last">${esc(maskSensitiveNumbers(c.last_body || "No messages yet"))}</div><span class="badge">${Number(c.message_count || 0)} message${Number(c.message_count) === 1 ? "" : "s"}</span></button>`;
+    return `<button type="button" class="ad-row ad-static admin-conv-row" data-act="${isActive(c) ? 1 : 0}" onclick="navigate('messages',{conversationId:'${esc(c.conversation_id)}'})"><div class="flex" style="justify-content:space-between;gap:.6rem;"><strong>${esc(c.buyer_name || "Customer")} ↔ ${esc(c.vendor_name || "Vendor")}</strong><span class="muted" style="font-size:.75rem;white-space:nowrap;">${esc(when)}</span></div><div class="muted admin-conv-last">${esc(maskSensitiveNumbers(c.last_body || "No messages yet"))}</div><span class="badge">${Number(c.message_count || 0)} message${Number(c.message_count) === 1 ? "" : "s"}</span></button>`;
   }).join("")}</div>`;
   return html;
 }
@@ -31503,7 +31499,6 @@ async function renderAdminDisputes() {
     html += `<div class="card"><div class="flex" style="justify-content:space-between;"><a href="#" onclick="navigate('orderDetail',{orderId:'${d.order?.id}'});return false;">${esc(d.order?.vendor?.business_name||"")} · ${esc(d.order?.order_type||"")} order</a><span class="muted" style="text-transform:capitalize;">${paymentIssue?'Payment unresolved · ':''}raised by ${esc(d.raised_by||'unknown')}</span></div><p style="margin:.5rem 0;"><strong>Reason:</strong> ${esc(d.reason||'')}</p>${disputeEvidenceHtml(d.attachments)}${d.vendor_response?`<p style="margin:.5rem 0;"><strong>Vendor says:</strong> ${esc(d.vendor_response)}</p>`:`<p class="muted" style="margin:.5rem 0;">Vendor hasn't responded yet.</p>`}${claim?`<div class="payment-resolution-admin-card"><strong><i class="fa-solid fa-building-columns"></i> Payment claim: ${naira(claim.amount)}</strong><p class="muted" style="margin:.25rem 0 .55rem;">The buyer reported a direct transfer. This claim has not been verified yet.</p><div class="flex" style="gap:.45rem;flex-wrap:wrap;"><button class="btn btn-sm" onclick="adminConfirmReportedPayment('${d.order.id}')"><i class="fa-solid fa-check"></i> Verify payment</button><button class="btn btn-sm btn-danger" onclick="adminRejectReportedPayment('${d.order.id}')"><i class="fa-solid fa-xmark"></i> Reject claim</button></div></div>`:''}${d.order?.buyer_id&&d.order?.vendor_id?`<button class="btn btn-sm btn-outline" onclick="openDisputeChat('${d.order.buyer_id}','${d.order.vendor_id}')"><i class="fa-solid fa-comment-dots"></i> View chat between buyer &amp; vendor</button>`:""}${d.order?.payout_status==='held'?`<p class="muted" style="font-size:.82rem;margin-top:.4rem;"><i class="fa-solid fa-shield-halved"></i> Payment on this order is still held by Levromart. The vendor hasn't been paid.</p><button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','held')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>`:""}${d.order?.payout_status==='released'?`<p class="muted" style="font-size:.82rem;margin-top:.4rem;"><i class="fa-solid fa-triangle-exclamation"></i> The vendor's share of this order has already been paid out.</p><button class="btn btn-sm btn-danger" onclick="adminRefundOrder('${d.order.id}','released')"><i class="fa-solid fa-rotate-left"></i> Refund customer in full</button>`:""}<div class="flex"><textarea id="notes-${d.id}" rows="2" placeholder="Resolution notes" style="flex:1;"></textarea><select id="newstatus-${d.id}"><option value="" disabled selected>Choose an outcome…</option><option value="completed">Complete (release to vendor)</option><option value="cancelled">Cancel (side with buyer)</option></select><button class="btn btn-sm" onclick="resolveDispute('${d.id}','${d.order?.id}','${d.order?.payout_status}')">Mark resolved</button></div></div>`;
   });
   html += `</section>`;
-  html += `<button class="btn btn-sm" style="margin-top:1rem;" onclick="navigate('adminPanel',{status:'pending'})"><i class='fa-solid fa-arrow-left'></i> Back to admin</button>`;
   return html;
 }
 
@@ -53139,6 +53134,114 @@ html body #app .fp-tab:not(.active){-webkit-text-fill-color:currentColor!importa
 :root:root:root body #app .ps-page .ps-name{text-align:center;margin-top:1rem;font-size:1.15rem}
 .ps-next{width:100%;margin-top:1.6rem}
 .ps-skip{display:block;margin:.9rem auto 0;background:none;border:0;color:var(--text,#1c2630);opacity:.7;font-weight:600;cursor:pointer;padding:.4rem .8rem}
+
+/* ===== ADMIN SKIN: flat, modern lists (no cards). Everything is scoped to admin screens via body[data-view^="admin"]. ===== */
+body[data-view^="admin"] #app{--ad-line:rgba(127,127,127,.22);--ad-soft:rgba(127,127,127,.08);--ad-green:#12a266;--ad-red:#e0463f;--ad-amber:#d98a0b;--ad-purple:#7c3aed}
+:root body[data-view^="admin"] #app h2{font-size:1.45rem;letter-spacing:-.01em;margin:.2rem 0 .9rem}
+/* cards -> flat */
+:root:root body[data-view^="admin"] #app .card,
+:root:root body[data-view^="admin"] #app .accordion-section,
+:root:root body[data-view^="admin"] #app .ad-panel{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+:root:root body[data-view^="admin"] #app .card{padding:.9rem 0!important;margin:0!important;border-bottom:1px solid var(--ad-line)!important}
+/* rows */
+body[data-view^="admin"] #app .ad-row{display:block;border-bottom:1px solid var(--ad-line);padding:0;margin:0;background:transparent;text-align:left;width:100%;border-top:0;border-left:0;border-right:0;color:inherit;font:inherit}
+body[data-view^="admin"] #app details.ad-row>summary{list-style:none;cursor:pointer;display:flex!important;align-items:center;gap:.7rem;padding:.85rem .2rem}
+body[data-view^="admin"] #app details.ad-row>summary::-webkit-details-marker{display:none}
+body[data-view^="admin"] #app details.ad-row>summary::after{content:"\f078";font-family:"Font Awesome 6 Free";font-weight:900;font-size:.7rem;opacity:.45;margin-left:.2rem;transition:transform .2s}
+body[data-view^="admin"] #app details.ad-row[open]>summary::after{transform:rotate(180deg)}
+body[data-view^="admin"] #app details.ad-row[open]{background:var(--ad-soft)}
+body[data-view^="admin"] #app details.ad-row>*:not(summary){padding-left:3.1rem;padding-right:.4rem}
+body[data-view^="admin"] #app details.ad-row>*:last-child{padding-bottom:1rem}
+body[data-view^="admin"] #app .ad-sum-main{display:flex;align-items:center;gap:.7rem;min-width:0;flex:1}
+body[data-view^="admin"] #app .ad-sum-text{display:flex;flex-direction:column;min-width:0}
+body[data-view^="admin"] #app .ad-sum-text strong{font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-view^="admin"] #app .ad-sum-text small{opacity:.65;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-view^="admin"] #app .ad-ini{flex:0 0 auto;width:2.3rem;height:2.3rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;background:rgba(18,162,102,.16);color:#0f8f58}
+body[data-view^="admin"] #app .ad-static{padding:.85rem .2rem}
+body[data-view^="admin"] #app .ad-static.is-new{box-shadow:inset 3px 0 0 var(--ad-purple);padding-left:.8rem}
+body[data-view^="admin"] #app .ad-panel{padding:.4rem 0 1rem;border-bottom:1px solid var(--ad-line)!important}
+body[data-view^="admin"] #app .admin-vendor-card p{margin:.3rem 0!important}
+/* buttons */
+body[data-view^="admin"] #app .btn{border-radius:999px!important;font-weight:600;padding:.5rem 1rem;box-shadow:none!important}
+body[data-view^="admin"] #app .btn-sm{padding:.42rem .9rem;font-size:.84rem}
+body[data-view^="admin"] #app .btn i{margin-right:.35rem}
+:root:root body[data-view^="admin"] #app .ad-btn{border:1.5px solid transparent!important;display:inline-flex;align-items:center;gap:.2rem}
+:root:root body[data-view^="admin"] #app .ad-approve{background:var(--ad-green)!important;color:#fff!important}
+:root:root body[data-view^="admin"] #app .ad-reject{background:rgba(217,138,11,.14)!important;color:var(--ad-amber)!important;border-color:rgba(217,138,11,.4)!important}
+:root:root body[data-view^="admin"] #app .ad-delete{background:rgba(224,70,63,.12)!important;color:var(--ad-red)!important;border-color:rgba(224,70,63,.45)!important}
+:root:root body[data-view^="admin"] #app .btn-danger:not(.ad-btn){background:rgba(224,70,63,.12)!important;color:var(--ad-red)!important;border:1.5px solid rgba(224,70,63,.45)!important}
+:root:root body[data-view^="admin"] #app .btn-outline:not(.ad-btn){background:transparent!important;border:1.5px solid var(--ad-line)!important;color:inherit!important}
+body[data-view^="admin"] #app .badge{border-radius:999px;padding:.2rem .65rem;font-size:.74rem;font-weight:700}
+/* tabs -> underline pills */
+body[data-view^="admin"] #app .tabs{display:flex;gap:1.1rem;overflow-x:auto;border-bottom:1px solid var(--ad-line);margin:.2rem 0 .9rem;padding:0;scrollbar-width:none}
+body[data-view^="admin"] #app .tabs a,body[data-view^="admin"] #app .tabs button{background:none!important;border:0!important;border-bottom:2.5px solid transparent!important;border-radius:0!important;padding:.6rem .1rem!important;font-weight:600;white-space:nowrap;opacity:.7;text-transform:capitalize}
+body[data-view^="admin"] #app .tabs a.active,body[data-view^="admin"] #app .tabs button.active{opacity:1;border-bottom-color:var(--ad-green)!important;color:var(--ad-green)}
+/* inputs flat */
+body[data-view^="admin"] #app input:not([type=checkbox]):not([type=file]):not([type=radio]):not([type=range]),body[data-view^="admin"] #app select,body[data-view^="admin"] #app textarea{border-radius:12px!important;background:var(--ad-soft)!important;border:1px solid transparent!important;padding:.65rem .85rem!important;box-shadow:none!important}
+body[data-view^="admin"] #app input:focus,body[data-view^="admin"] #app select:focus,body[data-view^="admin"] #app textarea:focus{border-color:var(--ad-green)!important;outline:none!important}
+body[data-view^="admin"] #app .admin-vendor-filters,body[data-view^="admin"] #app .admin-people-controls,body[data-view^="admin"] #app .admin-inventory-controls{display:flex;gap:.55rem;flex-wrap:wrap;align-items:center;margin:.3rem 0 .9rem}
+body[data-view^="admin"] #app .admin-vendor-filters input,body[data-view^="admin"] #app .admin-people-search-wrap,body[data-view^="admin"] #app .admin-inventory-controls input[type=search]{flex:1 1 12rem;min-width:0}
+/* nav picker */
+body[data-view^="admin"] #app .admin-nav-pick{width:100%;display:flex;align-items:center;gap:.8rem;background:transparent!important;border:0!important;border-bottom:1px solid var(--ad-line)!important;border-radius:0!important;padding:.7rem .1rem!important;box-shadow:none!important;text-align:left;color:inherit;position:relative}
+body[data-view^="admin"] #app .admin-nav-pick .admin-nav-pick-dot{position:absolute;right:2.4rem;top:50%;transform:translateY(-50%);min-width:1.35rem;height:1.35rem;border-radius:999px;background:#e0463f;color:#fff;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 .35rem}
+.admin-nav-sheet .admin-nav-item{position:relative}
+.admin-nav-sheet .admin-nav-item.has-alert{background:rgba(124,58,237,.13)!important;box-shadow:inset 0 0 0 1.5px rgba(124,58,237,.35)}
+.admin-nav-sheet .admin-nav-item .dash-tab-dot,.admin-dash-tabs .dash-tab-dot{background:#e0463f!important;color:#fff!important;border-radius:999px!important;min-width:1.3rem;height:1.3rem;display:inline-flex!important;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;padding:0 .35rem;margin-left:.4rem}
+.admin-nav-sheet .admin-nav-item .dash-tab-dot.hidden{display:none!important}
+.admin-nav-sheet .admin-nav-item.has-alert .dash-tab-dot{position:absolute;top:.35rem;right:.4rem;margin:0}
+/* tables -> expandable rows (JS tags the cells) */
+body[data-view^="admin"] #app table.ad-xt,body[data-view^="admin"] #app table.ad-xt tbody{display:block;width:100%;border:0!important;background:transparent!important}
+body[data-view^="admin"] #app table.ad-xt thead{display:none}
+body[data-view^="admin"] #app table.ad-xt tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:.7rem;row-gap:.1rem;padding:.8rem .2rem;border-bottom:1px solid var(--ad-line)!important;background:transparent!important;cursor:pointer;position:relative}
+body[data-view^="admin"] #app table.ad-xt tr.open{background:var(--ad-soft)!important}
+body[data-view^="admin"] #app table.ad-xt td{display:none;border:0!important;padding:0!important;background:transparent!important}
+body[data-view^="admin"] #app table.ad-xt td.ad-t{display:block;grid-column:1;font-weight:700;font-size:1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body[data-view^="admin"] #app table.ad-xt td.ad-s{display:block;grid-column:1;opacity:.65;font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body[data-view^="admin"] #app table.ad-xt td.ad-c{display:flex;align-items:center;justify-content:flex-end;gap:.55rem;grid-column:2;grid-row:1/3;align-self:center;text-align:right}
+body[data-view^="admin"] #app table.ad-xt tr.open td:not(.ad-t):not(.ad-s):not(.ad-c){display:flex;grid-column:1/-1;justify-content:space-between;gap:1rem;padding:.4rem 0 0!important;font-size:.9rem;border-top:1px dashed var(--ad-line)!important;margin-top:.35rem}
+body[data-view^="admin"] #app table.ad-xt tr.open td[data-label]::before{content:attr(data-label);opacity:.55;font-weight:600;flex:0 0 auto}
+body[data-view^="admin"] #app table.ad-xt tr.open td.ad-a{justify-content:flex-start;border-top:0!important}
+body[data-view^="admin"] #app table.ad-xt tr.open td.ad-a::before{content:none}
+body[data-view^="admin"] #app table.ad-xt td.ad-n{display:none!important}
+body[data-view^="admin"] #app .table-wrap,body[data-view^="admin"] #app .admin-people-table-xscroll,body[data-view^="admin"] #app .admin-inventory-table-wrap{overflow:visible!important;max-height:none!important;border:0!important;background:transparent!important}
+body[data-view^="admin"] #app .admin-people-hint{display:none}
+body[data-view^="admin"] #app .category-group-header{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;opacity:.65;margin:1.2rem 0 .2rem;padding:0;background:none!important;border:0!important}
+/* conversations */
+body[data-view="adminConversations"] #app .admin-conv-row{display:grid!important;grid-template-columns:1fr auto;gap:.2rem .8rem;padding:.9rem .2rem!important;cursor:pointer}
+body[data-view="adminConversations"] #app .admin-conv-row>.flex{display:contents}
+body[data-view="adminConversations"] #app .admin-conv-row>.flex strong{grid-column:1;font-size:1rem}
+body[data-view="adminConversations"] #app .admin-conv-row>.flex .muted{grid-column:2;grid-row:1;align-self:start;font-size:.75rem;background:var(--ad-soft);border-radius:999px;padding:.15rem .6rem;white-space:nowrap}
+body[data-view="adminConversations"] #app .admin-conv-last{grid-column:1;opacity:.7;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body[data-view="adminConversations"] #app .admin-conv-row>.badge{grid-column:2;grid-row:2;justify-self:end}
+/* support accordions, carousel, disputes */
+body[data-view^="admin"] #app details.support-request-accordion{border:0!important;border-bottom:1px solid var(--ad-line)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;margin:0!important}
+body[data-view^="admin"] #app details.support-request-accordion[open]{background:var(--ad-soft)!important}
+body[data-view^="admin"] #app details.support-request-accordion>summary{padding:.85rem .2rem}
+body[data-view^="admin"] #app .support-request-body{padding:0 .5rem 1rem 3.1rem}
+body[data-view^="admin"] #app .admin-carousel-item{background:transparent!important;border:0!important;border-bottom:1px solid var(--ad-line)!important;border-radius:0!important;box-shadow:none!important}
+body[data-view^="admin"] #app .admin-carousel-manager{padding:0 0 1rem!important}
+body[data-view^="admin"] #app .admin-carousel-add{background:transparent!important;border:0!important;border-top:1px solid var(--ad-line)!important;border-radius:0!important;padding:1rem 0!important}
+body[data-view^="admin"] #app .admin-payment-issue-tabs{display:flex;gap:1rem;overflow-x:auto;border-bottom:1px solid var(--ad-line);margin:.2rem 0 .9rem}
+body[data-view^="admin"] #app .admin-payment-issue-tab{background:none!important;border:0!important;border-bottom:2.5px solid transparent!important;border-radius:0!important;padding:.6rem .1rem!important;font-weight:600;white-space:nowrap;opacity:.7;color:inherit}
+body[data-view^="admin"] #app .admin-payment-issue-tab.active{opacity:1;border-bottom-color:var(--ad-green)!important;color:var(--ad-green)}
+body[data-view^="admin"] #app .admin-payment-issue-tab strong{background:#e0463f;color:#fff;border-radius:999px;padding:.05rem .45rem;font-size:.72rem;margin-left:.25rem}
+body[data-view^="admin"] #app .empty-state{padding:2rem 0;opacity:.7;text-align:center;background:transparent!important;border:0!important}
+body[data-view^="admin"] #app table.ad-xt td.ad-c::after{content:"\f078";font-family:"Font Awesome 6 Free";font-weight:900;font-size:.65rem;opacity:.45;transition:transform .2s}
+body[data-view^="admin"] #app table.ad-xt tr.open td.ad-c::after{transform:rotate(180deg)}
+body[data-view^="admin"] #app .tabs{justify-content:flex-start!important;padding-left:.1rem!important}
+:root:root body[data-view^="admin"] #app .admin-people-search-wrap input{padding-left:2.4rem!important;width:100%}
+body[data-view^="admin"] #app .admin-people-search-wrap{position:relative}
+body[data-view^="admin"] #app .admin-people-search-wrap>i{position:absolute;left:.85rem;top:50%;transform:translateY(-50%);opacity:.5;z-index:1}
+:root:root body[data-view^="admin"] #app table.ad-xt{min-width:0!important;width:100%!important;max-width:100%!important;table-layout:auto}
+:root:root body[data-view^="admin"] #app table.ad-xt tr{width:100%!important;max-width:100%!important;box-sizing:border-box}
+body[data-view^="admin"] #app table.ad-xt td.ad-t{grid-row:1}
+body[data-view^="admin"] #app table.ad-xt td.ad-s{grid-row:2}
+:root:root:root:root:root body[data-view^="admin"] #app table.ad-xt tr.open td.ad-t::before,:root:root:root:root:root body[data-view^="admin"] #app table.ad-xt tr.open td.ad-s::before,:root:root:root:root:root body[data-view^="admin"] #app table.ad-xt tr.open td.ad-c::before{content:none!important}
+:root:root:root:root:root body[data-view^="admin"] #app .ad-reject,:root:root:root:root:root body[data-view^="admin"] #app .ad-reject *{color:#b86e00!important;-webkit-text-fill-color:#b86e00!important}
+:root:root:root:root:root body[data-view^="admin"] #app .ad-delete,:root:root:root:root:root body[data-view^="admin"] #app .ad-delete *,:root:root:root:root:root body[data-view^="admin"] #app .btn-danger:not(.ad-btn),:root:root:root:root:root body[data-view^="admin"] #app .btn-danger:not(.ad-btn) *{color:#d03a33!important;-webkit-text-fill-color:#d03a33!important}
+:root:root:root:root:root body[data-view^="admin"] #app .ad-approve,:root:root:root:root:root body[data-view^="admin"] #app .ad-approve *{color:#fff!important;-webkit-text-fill-color:#fff!important}
+:root[data-theme="dark"]:root:root:root body[data-view^="admin"] #app .ad-reject,:root[data-theme="dark"]:root:root:root body[data-view^="admin"] #app .ad-reject *{color:#f5b84a!important;-webkit-text-fill-color:#f5b84a!important}
+:root[data-theme="dark"]:root:root:root body[data-view^="admin"] #app .ad-delete,:root[data-theme="dark"]:root:root:root body[data-view^="admin"] #app .ad-delete *,:root[data-theme="dark"]:root:root:root body[data-view^="admin"] #app .btn-danger:not(.ad-btn){color:#ff7b74!important;-webkit-text-fill-color:#ff7b74!important}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
@@ -53236,5 +53339,60 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
   setInterval(beat,20000); document.addEventListener("visibilitychange",function(){ if(document.hidden){ try{ if(session) Promise.resolve(sb.rpc("clear_presence")).catch(function(){}); }catch(_){} last=0; } else beat(); });
   window.addEventListener("pagehide",function(){ try{ if(session) sb.rpc("clear_presence"); }catch(_){} });
   window.addEventListener("load",function(){ setTimeout(beat,2500); });
+})();
+
+/* ===== Admin skin helpers: body[data-view], expandable table rows, nav badges ===== */
+(function(){
+  const origNav=window.navigate;
+  if(typeof origNav==="function"&&!origNav.__lvView){
+    const w=async function(view,...rest){ try{document.body.setAttribute("data-view",String(view||"home"));}catch(_){} return origNav.call(this,view,...rest); };
+    w.__lvView=true; window.navigate=w;
+  }
+  const MAPS=[
+    {sig:["name","email"],t:"name",s:"email",c:"status"},
+    {sig:["product","vendor"],t:"product",s:"vendor",c:"status"},
+    {sig:["person","event"],t:"person",s:"email",c:"event"},
+    {sig:["admin","action"],t:"target",s:"admin",c:"action"},
+  ];
+  function tag(table){
+    const heads=[...table.querySelectorAll("thead th")].map(th=>th.textContent.trim().toLowerCase());
+    if(!heads.length) return;
+    const m=MAPS.find(m=>m.sig.every(x=>heads.includes(x)));
+    if(!m) return;
+    table.classList.add("ad-xt");
+    const idx=k=>heads.indexOf(k);
+    const ti=idx(m.t),si=idx(m.s),ci=idx(m.c);
+    table.querySelectorAll("tbody tr").forEach(tr=>{
+      if(tr.dataset.adx==="1") return;
+      const tds=[...tr.children];
+      if(tds.length!==heads.length){ tr.dataset.adx="1"; return; }
+      tds.forEach((td,i)=>{
+        const h=heads[i]; td.dataset.label=h.replace(/^\w/,c=>c.toUpperCase());
+        if(i===ti) td.classList.add("ad-t"); else if(i===si) td.classList.add("ad-s"); else if(i===ci) td.classList.add("ad-c");
+        else if(h==="#") td.classList.add("ad-n");
+        else if(h==="action"){ td.classList.add("ad-a"); td.removeAttribute("data-label"); }
+      });
+      tr.dataset.adx="1";
+    });
+  }
+  let t=null;
+  function scan(){ t=null; if(!/^admin/.test(document.body.getAttribute("data-view")||"")) return; document.querySelectorAll("#app table").forEach(tag); }
+  new MutationObserver(()=>{ if(!t) t=setTimeout(scan,60); }).observe(document.documentElement,{childList:true,subtree:true});
+  document.addEventListener("click",(e)=>{
+    const tr=e.target.closest&&e.target.closest("table.ad-xt tr");
+    if(!tr||!tr.parentElement||tr.parentElement.tagName!=="TBODY") return;
+    if(e.target.closest("button,a,select,input,textarea")) return;
+    tr.classList.toggle("open");
+  });
+  // total badge on the "Admin section" picker + keep it fresh
+  function syncPick(){
+    const pick=document.querySelector("#app .admin-nav-pick"); if(!pick) return;
+    let n=0; document.querySelectorAll("#app .admin-dash-tabs .dash-tab-dot:not(.hidden)").forEach(d=>{ const v=parseInt(String(d.textContent).replace(/\D/g,""),10); if(v>0) n+=v; });
+    let dot=pick.querySelector(".admin-nav-pick-dot");
+    if(n>0){ if(!dot){ dot=document.createElement("span"); dot.className="admin-nav-pick-dot"; pick.appendChild(dot); } dot.textContent=n>99?"99+":String(n); }
+    else dot?.remove();
+  }
+  setInterval(()=>{ if(/^admin/.test(document.body.getAttribute("data-view")||"")){ try{window.hydrateAdminAttention?.();}catch(_){} syncPick(); } },2500);
+  document.addEventListener("DOMContentLoaded",()=>{ try{document.body.setAttribute("data-view",window.currentView||"home");}catch(_){} });
 })();
 </script>
