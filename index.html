@@ -11775,7 +11775,7 @@ function toggleLeviVisible() {
   if (!leviVisible) { byId("aiChatPanel")?.classList.add("hidden"); }
   applyLeviVisibility();
   renderLeviVisibleToggle();
-  showToast(leviVisible ? "Levi is back." : "Levi is hidden. Triple-tap anywhere on the page to bring him back.", "success");
+  showToast(leviVisible ? "Levi is back." : "Levi hidden · triple-tap to bring him back", "success");
 }
 function applyLeviVisibility() { syncLeviFabVisibility(); }
 function renderLeviVisibleToggle() {
@@ -18108,7 +18108,7 @@ function productCardHtml(p) {
   // before/after delivery, etc.) still shows in full on the product detail
   // page once it's opened -- it's just not cluttering the card itself.
   const hasDiscount = p.discount_price != null && Number(p.discount_price) > 0 && Number(p.discount_price) < Number(p.sale_price ?? Infinity);
-  const priceHtml = commissionService ? `<span class="card-svc-tag"><i class="fa-solid fa-handshake"></i> Negotiable</span>` : p.sale_price != null
+  const priceHtml = commissionService ? "" : p.sale_price != null
     ? (hasDiscount
         ? `<span class="product-old-price">${naira(p.sale_price)}</span> <span class="product-current-price">${naira(p.discount_price)}</span>`
         : naira(p.sale_price))
@@ -18178,7 +18178,7 @@ function productCardHtml(p) {
       <div class="product-card-compact-footer">
         ${priceHtml ? `<span class="product-card-compact-price">${priceHtml}${varietyIconHtml}</span>` : "<span></span>"}
       </div>
-      <div class="product-card-meta">${distHtml || "<span></span>"}${actionHtml}</div>
+      <div class="product-card-meta">${commissionService ? `<span class="card-svc-tag"><i class="fa-solid fa-handshake"></i> Negotiable</span>` : (distHtml || "<span></span>")}${actionHtml}</div>
       ${totalHtml}
     </div>
   </div>`;
@@ -27498,7 +27498,7 @@ function orderFiltersDropdownHtml(route, status, type, payment, dateFrom, dateTo
       <small>${esc([statusLabel,typeLabel,paymentLabel,dateLabel].join(" · "))}</small>
       <i class="fa-solid fa-chevron-down order-filters-chevron"></i>
     </button>
-    <div class="order-filters-panel hidden">
+    <div class="order-filters-panel hidden"><div class="lm-sheet-head"><strong>Filter orders</strong><button type="button" class="lm-x" onclick="toggleOrderFilters(this.closest('.order-filters-wrap').querySelector('.order-filters-trigger'))" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <div class="order-filters-grid">
         <label>Status<select onchange="navigate('${r}',{status:this.value,type:'${type}',payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}',perspective:'${p}'})">${ORDER_TABS.map(t => `<option value="${t}" ${t===status?"selected":""}>${t==="all"?"All statuses":esc(t.replace(/_/g," ").replace(/^./,c=>c.toUpperCase()))}</option>`).join("")}</select></label>
         <label>Type<select onchange="navigate('${r}',{status:'${status}',type:this.value,payment:'${payment}',dateFrom:'${dateFrom}',dateTo:'${dateTo}',perspective:'${p}'})">${ORDER_TYPE_TABS.map(t => `<option value="${t.value}" ${t.value===type?"selected":""}>${t.value==="all"?"All types":esc(t.label)}</option>`).join("")}</select></label>
@@ -32885,7 +32885,7 @@ class LmChunkRecognizer {
     const rms = Math.sqrt(sum / data.length), now = Date.now();
     if (rms > 0.015) { this._spoke = true; this._lastVoice = now; }
     const age = now - this._t0;
-    if (this._spoke && ((now - this._lastVoice > 900 && age > 1500) || age > 14000)) this._cut();
+    if (this._spoke && ((now - this._lastVoice > 700 && age > 900) || age > 14000)) this._cut();
     else if (!this._spoke && age > 6000) { this._buf = []; this._t0 = now; }
   }
   _cut() {
@@ -37344,6 +37344,7 @@ window.renderVendorMapRail = function(){
     routeLayer=null;
     routeEndpoints=[];
   }
+  window.traceVendorRoute=traceVendorRoute;
   async function traceVendorRoute(vendor){
     if(!vendorsMap||!vendor||vendor.lat==null||vendor.lng==null) return;
     clearVendorRoute();
@@ -52587,25 +52588,23 @@ body:has(.search-page) #app{padding-top:.1rem!important}
     var host=document.getElementById("searchPageResults");
     if(!host||document.getElementById("lvSearchVendors")||typeof sb==="undefined") return;
     if((document.getElementById("searchPageInput")||{}).value) return;
-    var ids=rd(), vendors=[], recent=false;
+    var ids=rd(), vendors=[], recent=false, recentV=[];
     var wrap=document.createElement("div"); wrap.id="lvSearchVendors"; wrap.className="lv-svr";
     try{
       if(ids.length){
         var r=await sb.from("vendors").select("id,business_name,logo_url").in("id",ids).eq("is_active",true);
         var map={}; (r.data||[]).forEach(function(v){map[String(v.id)]=v;});
-        vendors=ids.map(function(i){return map[i];}).filter(Boolean); recent=vendors.length>0;
+        recentV=ids.map(function(i){return map[i];}).filter(Boolean);
       }
-      if(!recent){
-        var r2=await sb.from("vendors").select("id,business_name,logo_url").eq("verification_status","verified").eq("is_active",true).limit(80);
-        vendors=(r2.data||[]).sort(function(){return Math.random()-.5;});
-      }
+      var r2=await sb.from("vendors").select("id,business_name,logo_url").eq("verification_status","verified").eq("is_active",true).limit(80);
+      vendors=(r2.data||[]).sort(function(){return Math.random()-.5;});
     }catch(_){return;}
     if(!vendors.length||document.getElementById("lvSearchVendors")||!document.getElementById("searchPageResults")) return;
     if((document.getElementById("searchPageInput")||{}).value) return;
-    var items=vendors.map(item).join(""); if(vendors.length>3) items+=items.replace(/<button /g,'<button aria-hidden="true" tabindex="-1" ');
-    wrap.innerHTML='<div class="lv-svr-head"><strong>'+(recent?"Recent searches":"Suggested vendors")+'</strong>'+(recent?'<button type="button" class="lv-svr-clear">Clear all</button>':'')+'</div><div class="lv-svr-row">'+items+'</div>';
+    var items=vendors.map(item).join(""); recent=false; if(vendors.length>3) items+=items.replace(/<button /g,'<button aria-hidden="true" tabindex="-1" ');
+    wrap.innerHTML=(recentV.length?'<div class="lv-svr-head"><strong>Recently viewed</strong><button type="button" class="lv-svr-clear">Clear all</button></div><div class="lv-svr-row lv-svr-recent">'+recentV.map(item).join("")+'</div>':'')+'<div class="lv-svr-head"><strong>Suggested vendors</strong></div><div class="lv-svr-row">'+items+'</div>';
     host.insertAdjacentElement("afterbegin",wrap);
-    var row=wrap.querySelector(".lv-svr-row");
+    var row=wrap.querySelector(".lv-svr-row:not(.lv-svr-recent)");
     wrap.addEventListener("click",function(e){
       var c=e.target.closest(".lv-svr-clear"); if(c){wr([]);wrap.remove();return;}
       var b=e.target.closest(".lv-svr-item"); if(b) navigate("storefront",{vendorId:b.getAttribute("data-vid")});
@@ -52773,6 +52772,50 @@ html body #app .service-detail-card .product-gallery-main img{width:100%!importa
 html body #app .service-request-card > .btn{display:flex!important;justify-content:center!important;align-items:center!important;gap:.5rem;text-align:center}
 html body > header .header-left,html body > header .header-right{min-height:0!important;height:36px!important}
 html body > header .icon-wrap .icon-btn,html body > header #avatarBtn,html body > header #loginBtn,html body > header #notifWrap button,html body > header #messagesWrap button,html body > header #headerCartWrap button{width:36px!important;height:36px!important;min-width:0!important;min-height:0!important;font-size:.98rem!important}
+/* ---- batch 4 ---- */
+html body #app .pd-step-title i.fa-truck-fast.fa-solid.fa-solid{color:#a78bfa!important}
+html body #app label.df-label i.fa-location-dot.fa-solid.fa-solid,html body #app .df-label .fa-location-dot.fa-solid.fa-solid{color:#fbbf24!important}
+html body #app .pd-note-box .df-label .lv-pen-ico,html body #app .pd-note-box .df-label svg{color:#60a5fa!important;stroke:#60a5fa!important}
+html body #toastStack .toast,html body .toast-stack .toast{border-radius:14px!important;padding:.5rem .85rem!important;font-size:.82rem!important;max-width:min(94vw,30rem)!important;text-align:left}
+html body .toast-stack{max-width:min(94vw,30rem)!important}
+/* orders filter as a drawer */
+html body #app .order-filters-panel:not(.hidden){position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;max-width:none!important;max-height:80vh;overflow:auto;margin:0!important;border-radius:22px 22px 0 0!important;padding:1rem 1rem calc(1.2rem + env(safe-area-inset-bottom))!important;z-index:9000!important;background:var(--card)!important;border:0!important;box-shadow:0 0 0 100vmax rgba(0,0,0,.5)!important}
+html body #app .order-filters-trigger,html body #app .order-filters-trigger.has-filters{width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;border-radius:50%!important;background:transparent!important;display:inline-flex!important;align-items:center;justify-content:center}
+html body #app .order-filters-trigger span{display:inline-flex}
+html body #app .order-filters-trigger .lv-filter-ico{width:20px;height:20px}
+/* recent-search lists (orders / browse / vendors) */
+html body #app .levro-compact-history-row{display:flex!important;align-items:center;gap:.2rem;position:static!important}
+html body #app .levro-compact-history-row .compact-use{flex:1;display:flex!important;align-items:center;gap:.6rem;text-align:left;padding:.65rem .6rem!important;min-height:42px;position:static!important;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+html body #app .levro-compact-history-row .compact-use i{position:static!important;flex:none;color:var(--muted);transform:none!important}
+html body #app .levro-compact-history-row .compact-remove{flex:none;width:36px;height:36px;position:static!important}
+/* service card tag sits with the icon, above the divider */
+html body #app .product-card-meta .card-svc-tag{margin-right:auto}
+html body #app .product-card-compact .product-card-compact-footer{margin-top:.8rem!important}
+html body #app .product-card-compact h4{margin-bottom:.4rem!important}
+/* messages page */
+html body #app .msg-tabs-row{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;border-radius:0!important}
+html body #app .msg-search,html body #app .msg-search input{min-height:0!important;height:36px!important;border-radius:12px!important}
+html body #app .msg-search input{padding-top:0!important;padding-bottom:0!important}
+#messagesWrap:not(.lv-chat-off) .icon-btn>i{animation:none!important}
+#messagesWrap:not(.lv-chat-off):has(#messagesDot:not(.hidden)) .icon-btn>i{animation:levroWiggle 2.4s ease-in-out infinite!important}
+html body > header #messagesWrap .icon-btn{background:transparent!important}
+/* buttons: content centred */
+html body #app .btn:not(.btn-sm):not(.icon-btn){display:inline-flex;align-items:center;justify-content:center;gap:.5rem;text-align:center}
+html body #app #postEquipmentRequestBtn,html body #app .vendor-requests-heading-row > .btn{width:100%!important;min-width:0!important}
+/* search page: no gap under the (hidden) header */
+body:has(.search-page){padding-top:env(safe-area-inset-top)!important}
+html body #app .search-page-head{padding-top:.4rem!important;margin-top:0!important}
+/* onboarding hero: room to float without being clipped */
+.lv-slide-art{padding-top:18px!important;box-sizing:border-box!important}
+.lv-hero,.lv-hero-girl{inset:18px 0 0 0!important;height:calc(100% - 18px)!important}
+/* section icons: white glyphs, per-section colours */
+html body #app .section-title i[class*="fa-"]:first-child{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html body #app .section-title > span > i.fa-fire:first-child,html body #app .section-title > i.fa-fire:first-child{background:linear-gradient(135deg,#fdba74,#f97316)!important;box-shadow:0 4px 10px -4px rgba(249,115,22,.6)!important}
+html body #app .section-title > span > i.fa-medal:first-child,html body #app .section-title > i.fa-medal:first-child{background:linear-gradient(135deg,#7dd3fc,#2563eb)!important;box-shadow:0 4px 10px -4px rgba(37,99,235,.55)!important}
+html body #app .section-title > span > i.fa-shop:first-child,html body #app .section-title > i.fa-shop:first-child{background:linear-gradient(135deg,#6ee7b7,#059669)!important}
+/* DM scroll-to-bottom */
+.lm-chat-down{position:absolute;left:50%;bottom:5.2rem;transform:translateX(-50%);width:2.6rem;height:2.6rem;border-radius:50%;border:1px solid var(--border);background:color-mix(in srgb,var(--card) 88%,transparent);color:var(--text);display:flex;align-items:center;justify-content:center;z-index:30;box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
+.lm-chat-down.hidden{display:none}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
@@ -52811,5 +52854,29 @@ html body > header .icon-wrap .icon-btn,html body > header #avatarBtn,html body 
     }catch(_){}
   }
   setInterval(run,30000);
+})();
+/* DM chat: scroll-down arrow (only when scrolled up); search page suggestions never vanish */
+(function(){
+  function wire(){
+    var m=document.getElementById("chatMessages");
+    if(!m||m.dataset.lmDown==="1") return;
+    m.dataset.lmDown="1";
+    var host=m.parentElement; if(!host) return;
+    if(getComputedStyle(host).position==="static") host.style.position="relative";
+    var b=document.createElement("button"); b.type="button"; b.className="lm-chat-down hidden"; b.setAttribute("aria-label","Scroll to latest message"); b.innerHTML='<i class="fa-solid fa-arrow-down"></i>';
+    b.onclick=function(){ m.scrollTo({top:m.scrollHeight,behavior:"smooth"}); };
+    host.appendChild(b);
+    function upd(){ b.classList.toggle("hidden", m.scrollHeight-m.scrollTop-m.clientHeight<140); }
+    m.addEventListener("scroll",upd,{passive:true}); upd();
+  }
+  var tries=0;
+  function searchGuard(){
+    var res=document.getElementById("searchPageResults"), inp=document.getElementById("searchPageInput");
+    if(!res||!inp||inp.value.trim()){tries=0;return;}
+    if(!res.querySelector(".search-page-section")&&tries<4&&typeof renderSearchPageSuggestions==="function"){ tries++; try{renderSearchPageSuggestions();}catch(_){} }
+  }
+  var t=0;
+  new MutationObserver(function(){ if(t) return; t=setTimeout(function(){ t=0; wire(); },120); }).observe(document.documentElement,{childList:true,subtree:true});
+  setInterval(searchGuard,2500);
 })();
 </script>

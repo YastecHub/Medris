@@ -170,8 +170,8 @@ self.addEventListener('push', event => {
       }
 
 
-      // 30-second reminders are only for when the app is closed or backgrounded.
-      if (data && data.reminder) {
+      // While the app is open and on screen, everything shows inside the app instead (calls still ring).
+      if (data && !data.call && data.tag !== 'levromart-incoming-call') {
         try {
           const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
           if (open.some(c => c.visibilityState === 'visible')) return;
