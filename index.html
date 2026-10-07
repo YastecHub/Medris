@@ -27599,14 +27599,12 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
     // pending/cancelled orders whose customer is hidden anyway). Only look up the
     // name for accepted orders, and remember it for the session.
     window.__buyerNameCache = window.__buyerNameCache || new Map();
-    await Promise.all((safeAllOrders || []).map(async (o) => {
-      if (o.buyer?.name || !o.id) return;
-      if (["pending", "cancelled"].includes(String(o.status || ""))) return;
-      if (window.__buyerNameCache.has(o.id)) { o.buyer = { ...(o.buyer || {}), name: window.__buyerNameCache.get(o.id) }; return; }
-      const r = await withRouteTimeout(sb.rpc("get_order_buyer_contact", { p_order_id: o.id }), 2200, { data: [] });
-      const c = Array.isArray(r?.data) ? r.data[0] : null;
-      if (c?.name) { window.__buyerNameCache.set(o.id, c.name); o.buyer = { ...(o.buyer || {}), name: c.name }; }
-    }));
+    const need = (safeAllOrders || []).filter((o) => o.id && !o.buyer?.name && !["pending", "cancelled"].includes(String(o.status || "")) && !window.__buyerNameCache.has(o.id)).map((o) => o.id);
+    if (need.length) {
+      const r = await withRouteTimeout(sb.rpc("get_orders_buyer_names", { p_order_ids: need }), 3000, { data: [] });
+      (Array.isArray(r?.data) ? r.data : []).forEach((x) => { if (x?.name) window.__buyerNameCache.set(x.order_id, x.name); });
+    }
+    (safeAllOrders || []).forEach((o) => { if (!o.buyer?.name && window.__buyerNameCache.has(o.id)) o.buyer = { ...(o.buyer || {}), name: window.__buyerNameCache.get(o.id) }; });
   } catch (_) {}
   // Customers stay anonymous to the vendor until the order is accepted.
   (safeAllOrders || []).forEach((o) => { if (["pending", "cancelled"].includes(String(o.status || ""))) o.buyer = null; });
