@@ -1,5 +1,10 @@
 # Levromart database (Supabase / PostgreSQL)
 
+> **Start with the handover manual: [`docs/LEVROMART_BACKEND_BUILD_MANUAL.pdf`](../docs/LEVROMART_BACKEND_BUILD_MANUAL.pdf)** (7 Oct 2026).
+> It is the current reference for all 71 tables, business logic, cron jobs, security, Vercel API layer and the
+> migration playbook. `01_tables.sql` and `02_cron_jobs.sql` below are older snapshots (64 tables, 4 cron jobs);
+> for an up-to-date schema dump run `export.sh`.
+
 Live project: `ovklnoroyxobijgvsyfp`. Standby copy: `rtmnrdzmcnlhqfptgkkn` (kept in step by hand).
 
 | File | Contents |
