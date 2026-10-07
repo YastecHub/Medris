@@ -16775,6 +16775,13 @@ async function renderHome() {
     ${renderHomepageCarouselHtml(homepageCarouselSlides)}
   </div>`;
 
+  let svcRows = [];
+  try {
+    let sq = sb.from("products").select(PRODUCT_LIST_SELECT).eq("status", "active").eq("is_service", true).eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
+    if (activeCategory) sq = sq.eq("category_id", activeCategory.id);
+    const { data: sd } = await sq.order("view_count", { ascending: false }).limit(12);
+    svcRows = sd || [];
+  } catch (_) {}
   html += homeQuickActionsHtml();
 
   if (trendingError) html += `<h3 class="section-title"><i class="fa-solid fa-fire"></i> Trending now</h3><p class="muted">Trending listings couldn’t load. Please try again.</p>`;
@@ -16784,7 +16791,7 @@ async function renderHome() {
 
   }
 
-  const trendingServices = (() => { const seen = new Set(); return [...(trending || []), ...(browseProducts || [])].filter(p => p && p.is_service && !seen.has(p.id) && seen.add(p.id)).slice(0, 12); })();
+  const trendingServices = (() => { const seen = new Set(); return [...(trending || []), ...svcRows, ...(browseProducts || [])].filter(p => p && p.is_service && !seen.has(p.id) && seen.add(p.id)).slice(0, 12); })();
   if (trendingServices.length) html += `<h3 class="section-title"><i class='fa-solid fa-hand-holding-heart'></i> Trending services${activeCategory ? ` · ${esc(activeCategory.name)}` : activeSector ? ` · ${esc(activeSector.name)}` : ""}</h3><div class="hscroll trending-scroll service-trending-scroll">${trendingServices.map(p=>productCardHtml({...p,_cardContext:"trending"})).join("")}</div>`;
   const scopedTopVendors = topVendors;
   if (scopedTopVendors && scopedTopVendors.length) {
@@ -21204,7 +21211,7 @@ async function renderPackageDetail(packageId) {
   }).join("") : `<p class="muted">No items are currently attached to this package.</p>`}</div></div>`;
 
   if (profile?.role === "admin") {
-    html += `<div class="card"><p class="muted"><i class="fa-solid fa-circle-info"></i> Admin accounts can't make purchases on Levromart.</p></div>`;
+    html += `<div class="service-flat"><p class="muted"><i class="fa-solid fa-circle-info"></i> Admin accounts can't make purchases on Levromart.</p></div>`;
   } else if (isOwnVendorId(v.id)) {
     html += `<div class="card own-purchase-block"><p style="margin:0;"><i class="fa-solid fa-circle-info"></i> This is your own package. You can manage it from your vendor dashboard, but you can't buy it from your own shop.</p></div>`;
   } else {
@@ -21292,7 +21299,7 @@ async function renderCommissionServiceDetail(product,priceHint,offers){
   const rating=Number(vendor.avg_rating||0).toFixed(1);
   const reviews=Number(vendor.review_count||0);
   const category=product.category?.name||'Service';
-  let html=`<div class="card service-detail-card" data-service-detail-id="${esc(product.id)}">
+  let html=`<div class="service-detail-card service-flat" data-service-detail-id="${esc(product.id)}">
     <div class="product-detail-top-actions"><button class="fav-btn ${favoriteIds.has(product.id)?'active':''}" onclick="toggleFavorite(event,'${product.id}')" aria-label="Save to wishlist">${favoriteIds.has(product.id)?"<i class='fa-solid fa-heart'></i>":"<i class='fa-regular fa-heart'></i>"}</button><button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share service"><i class="fa-solid fa-share-nodes"></i></button></div>
     <h2 class="product-detail-title">${esc(product.name)} <span class="badge">Service</span></h2>
     ${image?`<div class="product-detail-media"><div class="product-gallery"><div class="product-gallery-main"><img src="${esc(image)}" alt="${esc(product.name)}" loading="eager" /></div></div></div>`:''}
@@ -21301,15 +21308,17 @@ async function renderCommissionServiceDetail(product,priceHint,offers){
     ${priceHint?`<div class="service-price-hint"><i class="fa-solid fa-chart-line"></i> <strong>Past agreed prices:</strong> ${naira(priceHint.min)}${priceHint.min!==priceHint.max?' – '+naira(priceHint.max):''} <span>(last ${priceHint.count} completed bookings)</span></div>`:''}
   </div>`;
   if(isBuyer){
-    html+=`<div class="card service-request-card"><h3><i class="fa-solid fa-handshake"></i> Request this service</h3><p class="muted">Describe what you need and propose the price you are willing to pay. The vendor can accept, decline, or counter your offer.</p><div id="serviceOfferError" class="error-text hidden"></div><label>What do you need?</label><textarea id="serviceOfferDescription" rows="4" maxlength="4000" placeholder="Describe exactly what you need from the vendor…"></textarea><label>Proposed price (₦)</label><input id="serviceOfferPrice" type="number" min="1" step="0.01" placeholder="e.g. 15000" /><button type="button" class="btn" onclick="submitServiceOffer('${product.id}')"><i class="fa-solid fa-paper-plane"></i> Send request</button></div>`;
+    html+=`<div class="service-request-card service-flat"><h3><i class="fa-solid fa-handshake"></i> Name your price</h3><p class="muted">Tell the vendor what you need and offer a price. They can accept, decline or counter, just like negotiating a ride.</p><div id="serviceOfferError" class="error-text hidden"></div><label>What do you need?</label><textarea id="serviceOfferDescription" rows="4" maxlength="4000" placeholder="Describe exactly what you need from the vendor…"></textarea><label>Your offer</label><div class="svc-price-box"><button type="button" class="svc-step" onclick="svcBump(-500)" aria-label="Lower offer"><i class="fa-solid fa-minus"></i></button><div class="svc-price-in"><span>₦</span><input id="serviceOfferPrice" type="number" inputmode="decimal" min="1" step="0.01" placeholder="0" /></div><button type="button" class="svc-step" onclick="svcBump(500)" aria-label="Raise offer"><i class="fa-solid fa-plus"></i></button></div><div class="svc-chips">${(priceHint?[priceHint.min,Math.round((Number(priceHint.min)+Number(priceHint.max))/2),priceHint.max]:[5000,10000,20000,50000]).filter((v,i,a)=>a.indexOf(v)===i).map(v=>`<button type="button" class="svc-chip" onclick="svcSetPrice(${Number(v)})">${naira(v)}</button>`).join('')}</div><button type="button" class="btn" onclick="submitServiceOffer('${product.id}')"><i class="fa-solid fa-paper-plane"></i> Send request</button></div>`;
   } else if(profile?.role==='admin'){
     html+=`<div class="card"><p class="muted"><i class="fa-solid fa-circle-info"></i> Admin accounts can't negotiate service bookings.</p></div>`;
   }
   if((isBuyer||isVendor)&&offers.length){
-    html+=`<div class="card service-offers-card"><div class="service-offers-head"><h3><i class="fa-solid fa-comments-dollar"></i> ${isVendor?'Service requests':'Your service requests'}</h3><span class="muted">${offers.length} request${offers.length===1?'':'s'}</span></div>${renderServiceOfferList(offers,isBuyer,isVendor)}</div>`;
+    html+=`<div class="service-offers-card service-flat"><div class="service-offers-head"><h3><i class="fa-solid fa-comments-dollar"></i> ${isVendor?'Service requests':'Your service requests'}</h3><span class="muted">${offers.length} request${offers.length===1?'':'s'}</span></div>${renderServiceOfferList(offers,isBuyer,isVendor)}</div>`;
   }
   return html;
 }
+window.svcSetPrice=function(v){const i=byId('serviceOfferPrice');if(i){i.value=String(Math.max(1,Number(v)||1));i.focus();}};
+window.svcBump=function(d){const i=byId('serviceOfferPrice');if(!i)return;const c=Number(String(i.value||'0').replace(/,/g,''))||0;i.value=String(Math.max(1,c+d));};
 window.submitServiceOffer=async function(listingId){
   if(!session){showLogin();return;}
   const desc=String(byId('serviceOfferDescription')?.value||'').trim();
@@ -52625,6 +52634,24 @@ html[data-splash="auto"] #loginModal.lv-auth{--lv-muted:#c3d4ca}
 html[data-splash="auto"] #loginModal.lv-auth :is(label,.lv-check,.lv-switch,.lv-or,.lv-sub,p,small,span){color:#d5e3db}
 html[data-splash="auto"] #loginModal.lv-auth :is(a,.lv-link,#lvSwitchLink){color:#5be39a}
 }
+/* service page: flat, rounded, negotiation-style */
+html body #app .service-flat{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:.4rem .2rem!important;margin:0 0 1.2rem!important}
+html body #app .service-detail-card .product-detail-media img,html body #app .service-detail-card .product-gallery-main img{border-radius:20px!important;width:100%;max-height:340px;object-fit:cover}
+html body #app .service-detail-card .product-detail-media,html body #app .service-detail-card .product-gallery,html body #app .service-detail-card .product-gallery-main{border-radius:20px!important;overflow:hidden;background:transparent!important;border:0!important;box-shadow:none!important}
+html body #app .service-vendor-info-block{background:transparent!important;border:0!important;border-top:1px solid var(--border)!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;padding:.8rem 0!important;margin:1rem 0!important}
+html body #app .service-vendor-info-head{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+html body #app .service-description-block h3,html body #app .service-request-card h3{font-size:1.15rem;margin:.2rem 0 .4rem}
+html body #app .service-request-card h3 i{color:#8b5cf6;margin-right:.35rem}
+html body #app .svc-price-box{display:flex;align-items:center;justify-content:center;gap:.8rem;margin:.5rem 0 .7rem}
+html body #app .svc-step{width:48px;height:48px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--text);font-size:1rem;cursor:pointer;flex:none}
+html body #app .svc-price-in{display:flex;align-items:center;justify-content:center;gap:.25rem;flex:1;max-width:240px;border-bottom:2px solid var(--border);padding:.2rem 0}
+html body #app .svc-price-in span{font-size:1.8rem;font-weight:800;color:var(--muted)}
+html body #app .svc-price-in input{border:0!important;background:transparent!important;box-shadow:none!important;font-size:2rem;font-weight:800;text-align:center;width:100%;padding:0!important;color:var(--text)}
+html body #app .svc-chips{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-bottom:1rem}
+html body #app .svc-chip{border:1px solid var(--border);background:transparent;color:var(--text);border-radius:999px;padding:.4rem .9rem;font-weight:700;cursor:pointer}
+html body #app .service-request-card textarea{border-radius:16px!important}
+html body #app .service-request-card > .btn{width:100%;border-radius:999px;min-height:50px;font-weight:800}
+html body #app .service-offer-row{background:transparent!important;border:0!important;border-top:1px solid var(--border)!important;border-radius:0!important;padding:.8rem 0!important;box-shadow:none!important}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
