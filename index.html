@@ -14058,7 +14058,7 @@ async function renderBuyerProfile() {
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || "Profile")}" draggable="false" />` : avatarFallbackHtml(profile.name || profile.email, "4.4rem", "vendor-profile-header-avatar", profile.name || profile.email)}
-        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('editProfile')" title="Edit my details" aria-label="Edit my details"><i class="fa-solid fa-pen"></i> Edit</button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings">${window.LV_SETTINGS_SVG}</button></span>
+        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('editProfile')" title="Edit my details" aria-label="Edit my details"><i class="fa-solid fa-pen"></i></button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings">${window.LV_SETTINGS_SVG}</button></span>
       </div>
       <h2 class="vendor-profile-header-name">${esc(profile.name || "")}</h2>
       ${memberSince ? `<p class="vendor-profile-header-personal">Member since ${memberSince}</p>` : ""}
@@ -19104,6 +19104,7 @@ function msgSelectionHeaderHtml() {
       </div>
       <button type="button" class="icon-btn messages-more-btn" onclick="toggleInlineMenu('messagesMoreMenu',event)" aria-label="Message actions"><i class="fa-solid fa-ellipsis"></i></button>
       <div class="ms-list hidden messages-more-menu" id="messagesMoreMenu">
+        <div class="lm-sheet-head"><strong>Chat actions</strong><button type="button" class="lm-x" onclick="toggleInlineMenu('messagesMoreMenu',event)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
         <button type="button" class="ms-item" onclick="enterMsgSelectMode();toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-check-double"></i> Select chats</button>
         <button type="button" class="ms-item" onclick="enterMsgSelectMode();toggleSelectAllChats();toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-square-check"></i> Select all chats</button>
         <button type="button" class="ms-item" onclick="batchMarkChatsRead(true);toggleInlineMenu('messagesMoreMenu',event)"><i class="fa-solid fa-envelope-open"></i> Mark all as read</button>
@@ -22087,7 +22088,7 @@ function renderVendorsDirectory() {
   <div class="vendors-directory-search">
     <input type="text" id="vendorSearchInput" placeholder="Search vendors or products…" oninput="filterVendorsDirectory()" autocomplete="off" aria-label="Search vendors or products" />
   </div>
-  <div class="vendors-filters-panel hidden" id="vendorsFiltersPanel">
+  <div class="vendors-filters-panel hidden" id="vendorsFiltersPanel"><div class="lm-sheet-head"><strong>Filter vendors</strong><button type="button" class="lm-x" onclick="toggleVendorsFilters(false)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="vendors-filter-grid">
       <label>Sector<select id="vendorSectorFilter" onchange="filterVendorsDirectory()"><option value="">All sectors</option></select></label>
       <label>City<select id="vendorCityFilter" onchange="filterVendorsDirectory()"><option value="">All cities</option></select></label>
@@ -24168,7 +24169,7 @@ async function renderVendorDashboard() {
     <div class="vendor-profile-header-body">
       <div class="vendor-profile-header-avatar-row">
         ${profile?.avatar_url ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle vendor-profile-header-avatar" alt="${esc(profile.name || v.business_name || "Vendor")}" draggable="false" />` : avatarFallbackHtml(profile?.name || v.business_name || "Vendor", "4.4rem", "vendor-profile-header-avatar", profile?.name || v.business_name || "Vendor")}
-        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('vendorEditProfile')" title="Edit profile" aria-label="Edit profile"><i class="fa-solid fa-pen"></i> Edit</button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings">${window.LV_SETTINGS_SVG}</button></span>
+        <span class="buyer-profile-row-actions"><button type="button" class="btn btn-sm btn-outline vendor-profile-edit-btn" onclick="navigate('vendorEditProfile')" title="Edit profile" aria-label="Edit profile"><i class="fa-solid fa-pen"></i></button><button type="button" class="buyer-profile-settings-btn" onclick="navigate('settings')" aria-label="Settings" title="Settings">${window.LV_SETTINGS_SVG}</button></span>
       </div>
       <h2 class="vendor-profile-header-name">${esc(v.business_name)} ${verifiedTick}</h2>
       ${profile?.name ? `<p class="vendor-profile-header-personal">${esc(profile.name)}</p>` : ""}
@@ -27689,7 +27690,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   rememberOrderHistory(embeddedVendorOrders ? "purchases" : "", splitActiveAndHistoryOrders(sortOrdersForList(safeAllOrders || []), "all").history, true, embeddedVendorOrders ? "purchases" : null);
   window.__orderHistoryEmpty = !historyCustomerOrders.length;
   const filtersRow = `<div class="orders-filter-search-row">${orderFiltersDropdownHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective)}${orderSearchWrapHtml()}</div>`;
-  const moreMenu = `<div class="orders-more-wrap"><button type="button" class="orders-icon-btn" onclick="toggleOrdersMore(this)" aria-label="More" aria-expanded="false" title="More"><i class="fa-solid fa-ellipsis"></i></button><div class="orders-more-menu hidden">${historyCustomerOrders.length ? `<button type="button" onclick="toggleOrdersMore(this);openOrderHistory()"><i class="fa-solid fa-clock-rotate-left"></i> Order history <b>${historyCustomerOrders.length}</b></button>` : ""}<button type="button" onclick="navigate('home')"><i class="fa-solid fa-bag-shopping"></i> Continue shopping</button></div></div>`;
+  const moreMenu = historyCustomerOrders.length ? `<button type="button" class="orders-icon-btn orders-history-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>` : "";
   let html = `<div class="orders-title-row"><h2>${embeddedVendorOrders ? "Orders" : "My Orders"}</h2><div class="orders-top-actions">${filtersRow}${moreMenu}</div></div>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
   html += orderStatusPillsHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective, await fetchBuyerOrderStatusCounts());
@@ -35563,6 +35564,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
       <button type="button" class="vd-filter-btn" id="vendorsFiltersToggle" aria-label="Filter" title="Filter" aria-expanded="false" onclick="toggleVendorsFilters()"><i class="fa-solid fa-sliders" aria-hidden="true"></i></button>
     </div>
     <div class="vendors-filters-panel vd-panel hidden" id="vendorsFiltersPanel">
+      <div class="lm-sheet-head"><strong>Filter vendors</strong><button type="button" class="lm-x" onclick="toggleVendorsFilters(false)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
       <div class="vendors-filter-grid">
         <label>Sector<select id="vendorSectorFilter" onchange="filterVendorsDirectory()"><option value="">All sectors</option></select></label>
         <label>City<select id="vendorCityFilter" onchange="filterVendorsDirectory()"><option value="">All cities</option></select></label>
@@ -52485,4 +52487,22 @@ html body #app .df-label .fa-location-dot,html body #app .delivery-method-row .f
 /* flat product cards: drop the dark shadow */
 html body #app .hscroll .card,html body #app .grid .card,html body #app .hscroll .product-card,html body #app .grid .product-card{box-shadow:none!important}
 html body #app .hscroll,html body #app .grid{filter:none!important}
+/* bottom-sheet drawers (filters + chat actions); big spread shadow = backdrop */
+html body #app .browse-filter-panel:not(.hidden),html body #app .vendors-filters-panel:not(.hidden),html body #app .messages-more-menu:not(.hidden){position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;max-width:none!important;max-height:78vh;overflow:auto;margin:0!important;border-radius:22px 22px 0 0!important;padding:1rem 1rem calc(1.2rem + env(safe-area-inset-bottom))!important;z-index:9000!important;background:var(--card)!important;border:0!important;box-shadow:0 0 0 100vmax rgba(0,0,0,.5)!important;animation:none}
+html body #app .lm-sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+html body #app .lm-sheet-head .lm-x{width:34px;height:34px;border-radius:50%;border:0;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text);cursor:pointer}
+html body #app .messages-more-menu:not(.hidden) .ms-item{width:100%;padding:.85rem .5rem;text-align:left}
+/* browse filter: icon only, slim search */
+html body #app .browse-filter-trigger,html body #app .browse-filter-trigger.active{width:40px!important;min-width:40px!important;height:40px!important;padding:0!important;border-radius:50%!important;background:transparent!important;border:1px solid var(--border)!important;color:var(--text)!important;box-shadow:none!important}
+html body #app .browse-filter-trigger .browse-filter-chevron{display:none!important}
+html body #app .browse-filter-toolbar #searchInput{height:40px!important;min-height:0!important;padding-top:0!important;padding-bottom:0!important}
+/* orders history icon / profile edit pencil */
+html body #app .orders-history-btn,html body #app .vendor-profile-edit-btn{width:40px;height:40px;padding:0!important;border-radius:50%!important;display:inline-flex;align-items:center;justify-content:center}
+/* splash footer brand */
+#levromartSplash .lv-sp-foot{--sp-foot:#8a8f98!important;color:#8a8f98!important}
+#levromartSplash .lv-sp-foot img.lv-sp-foot-logo{box-sizing:content-box;background:#fff!important;border-radius:50%!important;padding:6px;width:28px!important;height:28px!important;box-shadow:0 1px 6px rgba(0,0,0,.12)}
+/* leaderboard: flat rows, hairlines */
+html body #app .lb-row,html body #app .lb-rank-row,html body #app .lb-item{background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;border-bottom:1px solid var(--border)!important}
+html body #app .support-page-card{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;border-radius:0!important}
+html body #app .lb-list,html body #app .lb-rows{background:transparent!important;border:0!important;box-shadow:none!important;gap:0!important}
 </style>
