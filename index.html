@@ -28102,11 +28102,20 @@ function odStagesFor(order) {
 }
 function odStageIndex(order) {
   if (odIsPayAfter(order)) {
+    const pays = Array.isArray(order.payments) ? order.payments : [];
+    const paid = (t) => pays.some((p) => String(p.payment_type || "").trim().toLowerCase() === t && p.status === "paid");
+    const reported = (t) => pays.some((p) => String(p.payment_type || "").trim().toLowerCase() === t && p.status === "pending");
+    const feeT = order.order_type === "rental" ? "rental_fee" : "sale_price";
+    const depositPaid = paid("delivery_deposit_20"), balancePaid = paid(feeT);
     switch (String(order.status || "")) {
       case "pending": return 0;
-      case "confirmed": case "payment_unresolved": case "disputed": return 1;
-      case "handed_over": case "returned": return 4;
-      case "completed": return 5;
+      case "confirmed": case "payment_unresolved": case "disputed":
+        if (depositPaid && balancePaid) return 5;           // everything paid, waiting for "I've received"
+        return depositPaid ? 2 : 1;                         // "N% paid" once the deposit is confirmed
+      case "handed_over": case "returned":
+        if (balancePaid) return 5;                          // delivered, waiting for the buyer's confirmation
+        return reported(feeT) ? 4 : 3;                      // out for delivery -> paying the remaining part
+      case "completed": return 6;                           // every step done
       default: return -1;
     }
   }
@@ -53014,6 +53023,12 @@ html body #app .admin-nav-pick-txt b{font-size:1.05rem}
 .admin-conv-list[data-tab="active"] .admin-conv-row[data-act="0"],.admin-conv-list[data-tab="closed"] .admin-conv-row[data-act="1"]{display:none}
 html body #app .admin-conv-row{background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;width:100%;text-align:left}
 html body #app .admin-dash-tabs[hidden]{display:none!important}
+.od-tracker .od-step:nth-child(5){--st:#f97316}
+.od-tracker .od-step:nth-child(6){--st:#16a34a}
+:root[data-theme="dark"] .od-tracker .od-step:nth-child(5),:root[data-theme="black"] .od-tracker .od-step:nth-child(5){--st:#fb923c}
+:root[data-theme="dark"] .od-tracker .od-step:nth-child(6),:root[data-theme="black"] .od-tracker .od-step:nth-child(6){--st:#4ade80}
+html body #app .fp-tab.active,html body #app .fp-tab[aria-selected="true"]{-webkit-text-fill-color:var(--text)!important;color:var(--text)!important}
+html body #app .fp-tab:not(.active){-webkit-text-fill-color:currentColor!important}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
