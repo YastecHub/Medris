@@ -44188,9 +44188,9 @@ html body #app button#productAddToCartBtn{border-radius:14px!important;border:1.
 
     const banks = getBanks();
 
-    return `<div class="card" style="max-width:480px;margin:0 auto;">
-      <h2>Apply as a vendor</h2>
-      <p class="muted">Tell us about your business. An admin will review this manually.</p>
+    return `<div class="va-page">
+      <div class="va-hero"><span class="va-hero-ico"><i class="fa-solid fa-store"></i></span><h2>Apply as a vendor</h2><p>Tell us about your business. Every application is reviewed by our team.</p>
+        <div class="va-perks"><span><i class="fa-solid fa-circle-check"></i> Free to apply</span><span><i class="fa-solid fa-shield-halved"></i> Verified badge</span><span><i class="fa-solid fa-users"></i> Reach new buyers</span></div></div>
       <div id="vendorApplyError" class="error-text hidden"></div>
 
       <label>Which sector is your business in? *</label>
@@ -45149,7 +45149,6 @@ html body #app button#productAddToCartBtn{border-radius:14px!important;border:1.
       </div>
 
       <div class="vendor-application-actions">
-        <button type="button" class="btn vendor-application-cancel" onclick="cancelVendorApply()"><i class="fa-solid fa-xmark"></i> Cancel</button>
         <button type="button" class="btn" id="vendorApplySubmitBtn" onclick="submitVendorApply()"><i class="fa-solid fa-paper-plane"></i> Submit application</button>
       </div>
     </div>`;
@@ -52556,7 +52555,7 @@ body:has(.search-page) #app{padding-top:.1rem!important}
     var ini=ee(typeof initials==="function"?initials(nm).slice(0,2):String(nm).trim().charAt(0).toUpperCase());
     var hue=typeof stableAvatarHue==="function"?stableAvatarHue(v.id||nm):0;
     var ico=v.logo_url?'<img src="'+ee(v.logo_url)+'" alt="" loading="lazy" draggable="false" onerror="this.remove()">':ini;
-    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 42%)!important;color:#fff!important;')+'">'+ico+'</span><span class="lv-svr-name">'+ee(v.business_name||"Vendor")+'</span></button>';
+    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name">'+ee(v.business_name||"Vendor")+'</span></button>';
   }
   // remember vendors opened from the search page
   function hookNav(){
@@ -52591,17 +52590,12 @@ body:has(.search-page) #app{padding-top:.1rem!important}
     var ids=rd(), vendors=[], recent=false, recentV=[];
     var wrap=document.createElement("div"); wrap.id="lvSearchVendors"; wrap.className="lv-svr";
     try{
-      if(ids.length){
-        var r=await sb.from("vendors").select("id,business_name,logo_url").in("id",ids).eq("is_active",true);
-        var map={}; (r.data||[]).forEach(function(v){map[String(v.id)]=v;});
-        recentV=ids.map(function(i){return map[i];}).filter(Boolean);
-      }
       var r2=await sb.from("vendors").select("id,business_name,logo_url").eq("verification_status","verified").eq("is_active",true).limit(80);
       vendors=(r2.data||[]).sort(function(){return Math.random()-.5;});
     }catch(_){return;}
     if(!vendors.length||document.getElementById("lvSearchVendors")||!document.getElementById("searchPageResults")) return;
     if((document.getElementById("searchPageInput")||{}).value) return;
-    var items=vendors.map(item).join(""); recent=false; if(vendors.length>3) items+=items.replace(/<button /g,'<button aria-hidden="true" tabindex="-1" ');
+    var items=vendors.map(item).join(""); recent=false;
     wrap.innerHTML=(recentV.length?'<div class="lv-svr-head"><strong>Recently viewed</strong><button type="button" class="lv-svr-clear">Clear all</button></div><div class="lv-svr-row lv-svr-recent">'+recentV.map(item).join("")+'</div>':'')+'<div class="lv-svr-head"><strong>Suggested vendors</strong></div><div class="lv-svr-row">'+items+'</div>';
     host.insertAdjacentElement("afterbegin",wrap);
     var row=wrap.querySelector(".lv-svr-row:not(.lv-svr-recent)");
@@ -52609,7 +52603,7 @@ body:has(.search-page) #app{padding-top:.1rem!important}
       var c=e.target.closest(".lv-svr-clear"); if(c){wr([]);wrap.remove();return;}
       var b=e.target.closest(".lv-svr-item"); if(b) navigate("storefront",{vendorId:b.getAttribute("data-vid")});
     });
-    if(vendors.length>3&&row) autoScroll(row);
+
     
   }
   function wrapSug(){
@@ -52816,6 +52810,33 @@ html body #app .section-title > span > i.fa-shop:first-child,html body #app .sec
 /* DM scroll-to-bottom */
 .lm-chat-down{position:absolute;left:50%;bottom:5.2rem;transform:translateX(-50%);width:2.6rem;height:2.6rem;border-radius:50%;border:1px solid var(--border);background:color-mix(in srgb,var(--card) 88%,transparent);color:var(--text);display:flex;align-items:center;justify-content:center;z-index:30;box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
 .lm-chat-down.hidden{display:none}
+/* ---- batch 5 ---- */
+html body #app .product-card-meta .card-svc-tag{margin-left:-.45rem}
+#aiChatFab,#cartFab{touch-action:none!important;-webkit-user-select:none;user-select:none}
+html body #aiChatFab{background:linear-gradient(135deg,#34d399,#059669)!important;box-shadow:0 8px 20px -6px rgba(5,150,105,.6)!important}
+html body #aiChatFab #aiChatFabLogo,html body #aiChatFab .ai-chat-fab-logo{display:none!important}
+html body #aiChatFab::before{display:block!important;content:""!important;position:absolute!important;inset:0!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='white' stroke-width='11' stroke-linecap='round'%3E%3Ccircle cx='50' cy='50' r='8' fill='white' stroke='none'/%3E%3Cpath d='M36 28C22 40 22 60 34 72'/%3E%3Cpath d='M64 28C78 40 78 60 66 72'/%3E%3C/svg%3E") center/74% no-repeat!important;border-radius:50%!important}
+html body #aiChatFab::after{display:none!important}
+/* hide the thin scrollbar under horizontal rows */
+html body #app .hscroll,html body #app .cat-row{scrollbar-width:none!important;-ms-overflow-style:none!important}
+html body #app .hscroll::-webkit-scrollbar,html body #app .cat-row::-webkit-scrollbar{display:none!important;height:0!important}
+/* vendors you follow: flat list */
+html body #app .customer-following-grid{display:block!important}
+html body #app .customer-following-card{display:flex!important;align-items:center;gap:.85rem;width:100%;text-align:left;background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;padding:.85rem 0!important;margin:0!important}
+/* support send button */
+html body #app #supportSubmitBtn,html body #app #vendorApplySubmitBtn{width:100%!important;min-height:50px;border-radius:999px;font-weight:800;justify-content:center}
+/* apply as a vendor: flat, designed page */
+html body #app .va-page{max-width:520px;margin:0 auto;padding:0 .2rem 2rem;background:transparent!important;border:0!important;box-shadow:none!important}
+html body #app .va-hero{text-align:center;padding:1.4rem 0 1.2rem;margin-bottom:.6rem;border-bottom:1px solid var(--border)}
+html body #app .va-hero-ico{display:inline-grid;place-items:center;width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#34d399,#059669);color:#fff;font-size:1.6rem;box-shadow:0 10px 24px -10px rgba(5,150,105,.7);margin-bottom:.8rem}
+html body #app .va-hero h2{margin:.1rem 0 .3rem;font-size:1.6rem;letter-spacing:-.02em}
+html body #app .va-hero p{margin:0 auto;max-width:30ch;color:var(--text-muted)}
+html body #app .va-perks{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-top:1rem}
+html body #app .va-perks span{display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:700;padding:.35rem .7rem;border-radius:999px;background:color-mix(in srgb,var(--text) 6%,transparent)}
+html body #app .va-perks span:nth-child(1) i{color:#16a34a}html body #app .va-perks span:nth-child(2) i{color:#3b82f6}html body #app .va-perks span:nth-child(3) i{color:#f59e0b}
+html body #app .va-page label{display:block;margin-top:1rem;font-weight:700;font-size:.88rem}
+html body #app .va-page input,html body #app .va-page select,html body #app .va-page textarea{border-radius:14px}
+html body #app .va-page .vendor-application-actions{margin-top:1.4rem;display:block}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
@@ -52878,5 +52899,14 @@ html body #app .section-title > span > i.fa-shop:first-child,html body #app .sec
   var t=0;
   new MutationObserver(function(){ if(t) return; t=setTimeout(function(){ t=0; wire(); },120); }).observe(document.documentElement,{childList:true,subtree:true});
   setInterval(searchGuard,2500);
+})();
+/* stagger-in for the vendor application page */
+(function(){
+  var t=0;
+  function go(){
+    t=0; var p=document.querySelector("#app .va-page"); if(!p||p.dataset.lmAnim==="1"||!p.animate) return; p.dataset.lmAnim="1";
+    [].slice.call(p.children).slice(0,14).forEach(function(c,i){ try{ c.animate([{opacity:0,transform:"translateY(14px)"},{opacity:1,transform:"none"}],{duration:420,delay:i*55,easing:"cubic-bezier(.2,.8,.2,1)",fill:"backwards"}); }catch(_){} });
+  }
+  new MutationObserver(function(){ if(!t) t=setTimeout(go,60); }).observe(document.documentElement,{childList:true,subtree:true});
 })();
 </script>
