@@ -12112,6 +12112,7 @@ function syncSystemBarColorForTheme(theme) {
 
 function setTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme === "light" ? "" : theme);
+  try { document.documentElement.setAttribute("data-splash", (theme === "dark" || theme === "black") ? "dark" : ((theme === "light" && localStorage.getItem("medris-theme")) ? "light" : "auto")); } catch (_) {}
   localStorage.setItem("medris-theme", theme);
   syncSystemBarColorForTheme(theme);
   document.querySelectorAll("#settingsPanel .theme-option").forEach((el) => {
@@ -52560,6 +52561,20 @@ html body #app .orders-history-btn,html body #app .vendor-profile-edit-btn{width
 html body #app .lb-row,html body #app .lb-rank-row,html body #app .lb-item{background:transparent!important;box-shadow:none!important;border:0!important;border-radius:0!important;border-bottom:1px solid var(--border)!important}
 html body #app .support-page-card{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;border-radius:0!important}
 html body #app .lb-list,html body #app .lb-rows{background:transparent!important;border:0!important;box-shadow:none!important;gap:0!important}
+/* onboarding + login follow the dark theme */
+html[data-splash="dark"]{--lv-ink:#eaf6f0;--lv-muted:#9db3a8;--lv-line:#26332d}
+html[data-splash="dark"] .lv-onb,html[data-splash="dark"] #loginModal.lv-auth{color-scheme:dark;background:linear-gradient(180deg,#0d1210 0%,#101a15 55%,#0d1612 100%)!important;color:#eaf6f0}
+html[data-splash="dark"] #loginModal.lv-auth :is(input,select,textarea){background:#16201b!important;color:#eaf6f0!important;border-color:#2a3a32!important}
+html[data-splash="dark"] #loginModal.lv-auth :is(.lv-card,.lv-field,.lv-form,.lv-social,.lv-oauth,.lv-btn-alt,.lv-ghost){background:#141d18!important;color:#eaf6f0!important;border-color:#2a3a32!important}
+html[data-splash="dark"] .lv-onb :is(.lv-ghost,.lv-skip){color:#c5d6cd!important}
+html[data-splash="dark"] .lv-bgfx i{border-color:rgba(63,185,127,.14);background:rgba(63,185,127,.07)}
+@media (prefers-color-scheme:dark){
+html[data-splash="auto"]{--lv-ink:#eaf6f0;--lv-muted:#9db3a8;--lv-line:#26332d}
+html[data-splash="auto"] .lv-onb,html[data-splash="auto"] #loginModal.lv-auth{color-scheme:dark;background:linear-gradient(180deg,#0d1210 0%,#101a15 55%,#0d1612 100%)!important;color:#eaf6f0}
+html[data-splash="auto"] #loginModal.lv-auth :is(input,select,textarea){background:#16201b!important;color:#eaf6f0!important;border-color:#2a3a32!important}
+html[data-splash="auto"] #loginModal.lv-auth :is(.lv-card,.lv-field,.lv-form,.lv-social,.lv-oauth,.lv-btn-alt,.lv-ghost){background:#141d18!important;color:#eaf6f0!important;border-color:#2a3a32!important}
+html[data-splash="auto"] .lv-onb :is(.lv-ghost,.lv-skip){color:#c5d6cd!important}
+}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
