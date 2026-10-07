@@ -9861,7 +9861,7 @@ html body > header{
     <input type="text" id="prodName" placeholder="e.g. BP Monitor or Hair Braiding" />
     <label style="display:flex;align-items:center;gap:0.5rem;font-weight:400;"><input type="checkbox" id="prodIsService" onchange="updateProductFormFields();updateProductSaveButtonLabel()" style="width:auto;margin:0;" /> This is a service, not a physical product (e.g. hairdressing, baking, repairs)</label>
     <label>Description</label>
-    <textarea id="prodDesc" placeholder="Tell buyers what makes it good" rows="3"></textarea>
+    <textarea id="prodDesc" placeholder="Tell buyers what makes it good (required)" rows="3" required></textarea>
     </div>
     <div class="lm-sec lm-violet"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-layer-group"></i></span><div><strong>Where it belongs</strong><small>Helps buyers find it</small></div></div>
     <label>Sector</label>
@@ -22394,6 +22394,7 @@ async function renderVendorsMap() {
       : avatarFallbackHtml(v.business_name || "Vendor", "38px", "vendor-map-popup-avatar vendor-map-popup-avatar-fallback", v.business_name || "Vendor");
     const popupMeta = `${`★ ${Number(v.avg_rating ?? 0).toFixed(1)} (${Number(v.review_count ?? 0)})`}${dist ? ` · ${dist}` : ""}`;
     marker.bindPopup(`<div class="vendor-map-popup"><div class="vendor-map-popup-head">${vendorLogo}<div class="vendor-map-popup-copy"><strong>${vendorName}</strong>${popupMeta ? `<span>${esc(popupMeta)}</span>` : ""}</div></div><a class="vendor-map-popup-link" href="#" onclick="navigate('storefront',{vendorId:'${v.id}'});return false;">View storefront</a></div>`);
+    marker.on("click", () => { try { window.traceVendorRoute?.(v); } catch (_) {} });
     vendorsMapMarkers.push(marker);
   });
 
@@ -26601,6 +26602,7 @@ async function saveProduct() {
     if (delivery_fee_mode === "distance" && delivery_fee_per_km <= 0) throw new Error("Enter a fee per kilometre for distance-based delivery.");
     if (payment_timing === "pay_after" && (!Number.isFinite(payment_deposit_percent) || payment_deposit_percent < 1 || payment_deposit_percent > 99)) throw new Error("Enter a buyer deposit percentage between 1% and 99%.");
     if (listing_type !== "sale" && !rental_rate) throw new Error("Rental rate is required for a rental listing.");
+    if (!byId("prodDesc").value.trim()) { byId("prodDesc").focus(); throw new Error("Add a description so buyers know what they're getting."); }
 
     let chosenSectorId = byId("prodSector").value || null;
     if (chosenSectorId === "__other__") {
