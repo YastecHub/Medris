@@ -52380,9 +52380,11 @@ body:has(.search-page) #app{padding-top:.1rem!important}
   function wr(a){try{localStorage.setItem(KEY,JSON.stringify(a.slice(0,MAX)));}catch(_){}}
   function ee(x){return (typeof esc==="function")?esc(x):String(x==null?"":x).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function item(v){
-    var ini=ee(String(v.business_name||"V").trim().charAt(0).toUpperCase());
+    var nm=v.business_name||"Vendor";
+    var ini=ee(typeof initials==="function"?initials(nm).slice(0,2):String(nm).trim().charAt(0).toUpperCase());
+    var hue=typeof stableAvatarHue==="function"?stableAvatarHue(v.id||nm):0;
     var ico=v.logo_url?'<img src="'+ee(v.logo_url)+'" alt="" loading="lazy" draggable="false" onerror="this.remove()">':ini;
-    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico">'+ico+'</span><span class="lv-svr-name">'+ee(v.business_name||"Vendor")+'</span></button>';
+    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 42%)!important;color:#fff!important;')+'">'+ico+'</span><span class="lv-svr-name">'+ee(v.business_name||"Vendor")+'</span></button>';
   }
   // remember vendors opened from the search page
   function hookNav(){
@@ -52423,13 +52425,13 @@ body:has(.search-page) #app{padding-top:.1rem!important}
         vendors=ids.map(function(i){return map[i];}).filter(Boolean); recent=vendors.length>0;
       }
       if(!recent){
-        var r2=await sb.from("vendors").select("id,business_name,logo_url").eq("verification_status","verified").eq("is_active",true).limit(24);
-        vendors=(r2.data||[]).sort(function(){return Math.random()-.5;}).slice(0,16);
+        var r2=await sb.from("vendors").select("id,business_name,logo_url").eq("verification_status","verified").eq("is_active",true).limit(80);
+        vendors=(r2.data||[]).sort(function(){return Math.random()-.5;});
       }
     }catch(_){return;}
     if(!vendors.length||document.getElementById("lvSearchVendors")||!document.getElementById("searchPageResults")) return;
     if((document.getElementById("searchPageInput")||{}).value) return;
-    var items=vendors.map(item).join("");
+    var items=vendors.map(item).join(""); if(vendors.length>3) items+=items.replace(/<button /g,'<button aria-hidden="true" tabindex="-1" ');
     wrap.innerHTML='<div class="lv-svr-head"><strong>'+(recent?"Recent searches":"Suggested vendors")+'</strong>'+(recent?'<button type="button" class="lv-svr-clear">Clear all</button>':'')+'</div><div class="lv-svr-row">'+items+'</div>';
     host.insertAdjacentElement("afterbegin",wrap);
     var row=wrap.querySelector(".lv-svr-row");
@@ -52437,6 +52439,7 @@ body:has(.search-page) #app{padding-top:.1rem!important}
       var c=e.target.closest(".lv-svr-clear"); if(c){wr([]);wrap.remove();return;}
       var b=e.target.closest(".lv-svr-item"); if(b) navigate("storefront",{vendorId:b.getAttribute("data-vid")});
     });
+    if(vendors.length>3&&row) autoScroll(row);
     
   }
   function wrapSug(){
@@ -52506,3 +52509,26 @@ html body #app .lb-row,html body #app .lb-rank-row,html body #app .lb-item{backg
 html body #app .support-page-card{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;border-radius:0!important}
 html body #app .lb-list,html body #app .lb-rows{background:transparent!important;border:0!important;box-shadow:none!important;gap:0!important}
 </style>
+<script id="lm-b3-js">
+/* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
+(function(){
+  function setup(row){
+    if(row.__lmLoop||row.children.length<4) return;
+    row.__lmLoop=true;
+    var orig=[].slice.call(row.children);
+    [0,1].forEach(function(){orig.forEach(function(n){var c=n.cloneNode(true);c.setAttribute("aria-hidden","true");row.appendChild(c);});});
+    var snap=row.style.scrollSnapType; row.style.scrollSnapType="none";
+    requestAnimationFrame(function(){
+      var w=row.scrollWidth/3; if(!w){return;}
+      row.scrollLeft=w; row.style.scrollSnapType=snap;
+      row.addEventListener("scroll",function(){
+        var w=row.scrollWidth/3, x=row.scrollLeft;
+        if(x<w*0.4) row.scrollLeft=x+w; else if(x>w*1.6) row.scrollLeft=x-w;
+      },{passive:true});
+    });
+  }
+  var t=0;
+  function scan(){ t=0; document.querySelectorAll("#app .hscroll.trending-scroll:not(.service-trending-scroll)").forEach(setup); }
+  new MutationObserver(function(){ if(!t) t=setTimeout(scan,150); }).observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script>
