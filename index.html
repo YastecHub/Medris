@@ -13912,7 +13912,7 @@ async function saveVendorCoverCrop(){
       const url=`${await uploadToR2(blob,path,"image/jpeg")}?t=${Date.now()}`;
       const {error}=await sb.from("vendors").update({cover_url:url}).eq("id",vendor.id);if(error)throw error;
       vendor.cover_url=url;closeVendorCoverCropModal();showToast("Storefront header updated.","success");
-      if(currentView==="vendorEditProfile")await navigate("vendorEditProfile",{},false);else if(currentView==="storefront")await navigate("storefront",{vendorId:vendor.id},false);
+      if(currentView==="vendorEditProfile")await navigate("vendorEditProfile",{},false);else if(currentView==="editProfile"||currentView==="profileSetup")await navigate(currentView,{},false);else if(currentView==="storefront")await navigate("storefront",{vendorId:vendor.id},false);
     }catch(e){showToast(e.message||"Could not update storefront header.","error");}
   },"image/jpeg",0.9);
 }
@@ -13934,6 +13934,7 @@ async function removeProfileAvatar(event) {
   await sb.storage.from("avatars").remove([`${session.user.id}/avatar.jpg`,`${session.user.id}/avatar.jpeg`,`${session.user.id}/avatar.png`,`${session.user.id}/avatar.webp`]).catch(()=>{});
   profile.avatar_url = null;
   updateAuthUI();
+  try { window.lvAvatarChanged?.(); } catch (_) {}
   showToast("Profile picture removed.", "success");
 }
 
@@ -14002,7 +14003,7 @@ async function saveAvatarCrop(){
       const { error: vendorLogoError } = await sb.from('vendors').update({ logo_url:url }).eq('id', vendor.id);
       if (!vendorLogoError) vendor.logo_url = url;
     }
-    updateAuthUI(); closeAvatarCropModal(); showToast('Profile photo updated.','success');
+    updateAuthUI(); closeAvatarCropModal(); showToast('Profile photo updated.','success'); try{window.lvAvatarChanged?.();}catch(_){}
   },'image/jpeg',0.9);
 }
 
@@ -14082,26 +14083,101 @@ async function renderBuyerProfile() {
   return html;
 }
 
+function epAvatarInner() {
+  return profile?.avatar_url
+    ? `<img src="${esc(profile.avatar_url)}" class="avatar-circle ep-avatar-img" alt="${esc(profile.name || "Profile")}" draggable="false" />`
+    : avatarFallbackHtml(profile?.name || profile?.email, "100%", "ep-avatar-img", profile?.name || profile?.email);
+}
+function epPhotoBlockHtml(big) {
+  return `<div class="ep-photo${big ? " ep-photo-big" : ""}">
+    <button type="button" class="ep-avatar-btn" onclick="openEpAvatarActions(event)" aria-label="Change profile picture"><span id="epAvatarBox" class="ep-avatar-box">${epAvatarInner()}</span><span class="ep-cam"><i class="fa-solid fa-camera"></i></span></button>
+    <input type="file" id="epAvatarInput" accept="image/*" class="hidden" onchange="uploadAvatar(event)" />
+    <button type="button" class="ep-link" onclick="openEpAvatarActions(event)">${profile?.avatar_url ? "Change photo" : "Add a photo"}</button>
+  </div>`;
+}
+function epBannerBlockHtml() {
+  const v = vendor;
+  if (!v) return "";
+  return `<div class="ep-banner">
+    <label>Shop banner</label>
+    <div class="storefront-cover ${v.cover_url ? "has-custom-cover" : ""}" style="height:130px;border-radius:14px;${v.cover_url ? `background-image:url('${esc(v.cover_url)}');background-size:cover;background-position:center;` : ""}">
+      ${v.cover_url ? '<div class="storefront-cover-overlay"></div>' : '<div class="storefront-cover-empty">No banner yet</div>'}
+      <button type="button" class="storefront-cover-edit" onclick="openVendorCoverActions(event)" title="Edit shop banner" aria-label="Edit shop banner"><i class="fa-solid fa-pen"></i></button>
+      <input id="vendorCoverInput" type="file" accept="image/*" class="hidden" onchange="uploadVendorCover(event)" />
+    </div>
+  </div>`;
+}
+function openEpAvatarActions(event) {
+  event?.stopPropagation?.();
+  const has = !!profile?.avatar_url;
+  openMediaActionSheet("Profile picture", [
+    { label: "Edit", icon: "fa-crop-simple", note: has ? "Crop or reposition your current picture." : "Choose a picture first.", disabled: !has, action: "editCurrentAvatar();" },
+    { label: has ? "Replace" : "Choose a photo", icon: "fa-camera", note: "Pick a picture and adjust it.", action: "closeMediaActionSheet();byId('epAvatarInput')?.click();" },
+    { label: "Remove", icon: "fa-trash-can", note: "Remove your current picture.", danger: true, disabled: !has, action: "closeMediaActionSheet();removeProfileAvatar();" },
+  ]);
+}
+window.lvAvatarChanged = function () {
+  const box = byId("epAvatarBox");
+  if (box) box.innerHTML = epAvatarInner();
+  document.querySelectorAll(".ep-link").forEach((b) => { if (/photo/i.test(b.textContent)) b.textContent = profile?.avatar_url ? "Change photo" : "Add a photo"; });
+};
 function renderEditProfile() {
   if (!session || !profile) return '<div class="empty-state">Please log in.</div>';
-  return `<h2 class="page-title"><i class="fa-solid fa-id-card"></i> My details ${infoPopoverHtml("editProfileInfo", "Keep this up to date. It's what fills in automatically at checkout, so a typo here won't follow you into every future order.")}</h2>
-  <div class="card" style="max-width:480px;">
-    <div id="editProfileError" class="error-text hidden"></div>
-    <label>Full name</label>
-    <input type="text" id="epName" value="${esc(profile.name || "")}" />
-    <label>Phone number *</label>
-    <input type="tel" id="epPhone" value="${esc(profile.phone || "")}" required />
-    <label>City</label>
-    <input type="text" id="epCity" value="${esc(profile.city || "")}" />
-    <label>Delivery address</label>
-    <textarea id="epAddress" rows="2" placeholder="e.g. Elkanemi Hostel, Block A, Room A12">${esc(profile.address || "")}</textarea>
-    <button class="btn btn-sm" id="epSaveBtn" style="margin-top:0.8rem;width:100%;" onclick="submitEditProfile()"><i class="fa-solid fa-check"></i> Save changes</button>
-  </div>
-  ${!vendor && profile.role !== "admin" ? `<div class="card" style="max-width:480px;">
-    <h3 style="margin-top:0;"><i class="fa-solid fa-store"></i> Want to sell on Levromart?</h3>
-    <p class="muted" style="font-size:0.85rem;">Open your own storefront and start listing products or services.</p>
-    <button class="btn btn-sm btn-outline" onclick="navigate('vendorApply')">Apply to become a vendor</button>
-  </div>` : ""}`;
+  return `<div class="ep-page lv-flat">
+  <h2 class="page-title"><i class="fa-solid fa-id-card"></i> My details ${infoPopoverHtml("editProfileInfo", "Keep this up to date. It's what fills in automatically at checkout, so a typo here won't follow you into every future order.")}</h2>
+  ${epPhotoBlockHtml(false)}
+  ${epBannerBlockHtml()}
+  <div id="editProfileError" class="error-text hidden"></div>
+  <label>Full name</label>
+  <input type="text" id="epName" value="${esc(profile.name || "")}" />
+  <label>Phone number *</label>
+  <input type="tel" id="epPhone" value="${esc(profile.phone || "")}" required />
+  <label>City</label>
+  <input type="text" id="epCity" value="${esc(profile.city || "")}" />
+  <label>Delivery address</label>
+  <textarea id="epAddress" rows="2" placeholder="e.g. Elkanemi Hostel, Block A, Room A12">${esc(profile.address || "")}</textarea>
+  <button class="btn" id="epSaveBtn" style="margin-top:1.1rem;width:100%;" onclick="submitEditProfile()"><i class="fa-solid fa-check"></i> Save changes</button>
+  ${vendor ? `<div class="ep-section"><h3><i class="fa-solid fa-store"></i> Your shop</h3>
+    <p class="muted">Business name, sector, opening hours, location and delivery settings.</p>
+    <button class="btn btn-outline" style="width:100%;" onclick="navigate('vendorEditProfile')">Edit business profile</button></div>` : ""}
+  ${!vendor && profile.role !== "admin" ? `<div class="ep-section"><h3><i class="fa-solid fa-store"></i> Want to sell on Levromart?</h3>
+    <p class="muted">Open your own storefront and start listing products or services.</p>
+    <button class="btn btn-outline" onclick="navigate('vendorApply')">Apply to become a vendor</button></div>` : ""}
+  </div>`;
+}
+// ---------- PROFILE SETUP (first screen after sign-up / first vendor login, WhatsApp style) ----------
+function lvSetupKey() { return "lv-setup-done:" + (session?.user?.id || ""); }
+function lvSetupSeen() { try { return localStorage.getItem(lvSetupKey()) === "1"; } catch (_) { return true; } }
+function lvSetupMarkSeen() { try { localStorage.setItem(lvSetupKey(), "1"); } catch (_) {} }
+function renderProfileSetup() {
+  if (!session || !profile) return '<div class="empty-state">Please log in.</div>';
+  const isV = !!vendor && profile.role !== "admin";
+  return `<div class="ps-page lv-flat">
+    <h2 class="ps-title">${isV ? "Set up your shop profile" : "Profile info"}</h2>
+    <p class="ps-sub">${isV ? "Add your name, a profile picture and a banner for your storefront. You can change them any time." : "Please provide your name and an optional profile photo."}</p>
+    ${isV ? epBannerBlockHtml() : ""}
+    ${epPhotoBlockHtml(true)}
+    <div id="psError" class="error-text hidden"></div>
+    <input type="text" id="psName" class="ps-name" maxlength="60" placeholder="Your name" value="${esc(profile.name || "")}" />
+    <button class="btn ps-next" id="psNextBtn" onclick="finishProfileSetup()">${isV ? "Done" : "Next"}</button>
+    <button type="button" class="ps-skip" onclick="finishProfileSetup(true)">Skip for now</button>
+  </div>`;
+}
+async function finishProfileSetup(skip) {
+  const target = vendor && profile?.role !== "admin" ? "vendorDashboard" : "home";
+  if (!skip) {
+    const name = (byId("psName")?.value || "").trim();
+    if (!name) { const e = byId("psError"); if (e) { e.textContent = "Please enter your name."; e.classList.remove("hidden"); } return; }
+    if (name !== (profile.name || "")) {
+      const btn = byId("psNextBtn"); if (btn) btn.disabled = true;
+      const { error } = await sb.from("users").update({ name }).eq("id", session.user.id);
+      if (btn) btn.disabled = false;
+      if (error) { const e = byId("psError"); if (e) { e.textContent = error.message; e.classList.remove("hidden"); } return; }
+      profile.name = name; try { updateAuthUI(); } catch (_) {}
+    }
+  }
+  lvSetupMarkSeen();
+  navigate(target);
 }
 async function submitEditProfile() {
   const errorEl = byId("editProfileError");
@@ -14542,6 +14618,10 @@ async function finishLoginSuccess(view) {
       postSignupView = "vendorApply";
       sessionStorage.removeItem("levromart-new-vendor-applicant");
     }
+  } catch (_) {}
+  try {
+    if (justRegistered && postSignupView === "home") postSignupView = "profileSetup";
+    else if (postSignupView === "home" && vendor && profile?.role !== "admin" && !lvSetupSeen() && !vendor.cover_url && !profile?.avatar_url) postSignupView = "profileSetup";
   } catch (_) {}
   navigate(postSignupView);
   awaitingInstallPromptForLogin = true;
@@ -15140,6 +15220,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "vendorDashboard": html = await renderVendorDashboard(); break;
       case "vendorEditProfile": html = await renderVendorEditProfile(); break;
       case "editProfile": html = renderEditProfile(); break;
+      case "profileSetup": html = renderProfileSetup(); break;
       case "buyerProfile": html = await renderBuyerProfile(); break;
       case "settings": html = renderSettingsPage(); break;
       case "vendorProducts": html = await renderVendorProducts(); break;
@@ -24576,7 +24657,7 @@ async function renderVendorEditProfile() {
     <button class="quick-action outline" onclick="navigate('storefront',{vendorId:'${v.id}'})"><span class="quick-action-icon"><i class='fa-solid fa-store'></i></span><span>Storefront</span></button>
     <button class="quick-action outline" onclick="toggleVendorActive(${v.is_active})"><span class="quick-action-icon"><i class='fa-solid fa-${v.is_active ? "pause" : "play"}'></i></span><span>${v.is_active ? "Pause" : "Resume"}</span></button>
   </div>` : ""}
-  <div class="card" style="max-width:480px;margin:0 auto;">
+  <div class="card lv-flat" style="max-width:480px;margin:0 auto;">
     <h2>Edit business profile</h2>
     <div id="vendorEditError" class="error-text hidden"></div>
     <div class="vendor-cover-editor" style="margin:0 0 1rem;">
@@ -24617,7 +24698,7 @@ async function renderVendorEditProfile() {
     </div>
   </div>
 
-  <div class="card" style="max-width:480px;margin:1.2rem auto 0;">
+  <div class="card lv-flat" style="max-width:480px;margin:1.2rem auto 0;">
     <h2><i class="fa-solid fa-clock"></i> Working hours ${infoPopoverHtml("veHoursInfo", "Customers see these on your storefront. Turn off a day you're closed, or set start/end times for the days you're open.")}</h2>
     <p class="muted" style="font-size:0.85rem;">${v.opening_hours ? esc(v.opening_hours) : "Not set yet."}</p>
     <div class="accordion-section" id="veHoursAccordion">
@@ -24636,7 +24717,7 @@ async function renderVendorEditProfile() {
     </div>
   </div>
 
-  <div class="card" style="max-width:480px;margin:1.2rem auto 0;">
+  <div class="card lv-flat" style="max-width:480px;margin:1.2rem auto 0;">
     <h2><i class="fa-solid fa-location-dot"></i> Shop location ${infoPopoverHtml("veLocationInfo", "This is what customers see on the map and what Levi uses to point people to your nearest listing. Tap \"Use my current location\" while you're actually at the shop, then drag the pin to fine-tune if the GPS lands a little off.")}</h2>
     ${v.lat != null ? `<p class="muted" style="font-size:0.82rem;"><i class="fa-solid fa-circle-check" style="color:var(--success);"></i> Location set.</p>` : `<p class="muted" style="font-size:0.82rem;">Not set yet, customers can't find you on the map until you set this.</p>`}
     <div id="veLocationMap" style="height:220px;border-radius:0.8rem;overflow:hidden;background:var(--border);position:relative;isolation:isolate;z-index:0;margin-top:0.9rem;"></div>
@@ -24650,7 +24731,7 @@ async function renderVendorEditProfile() {
     <div class="vendor-location-presets" id="veLocationPresets"></div>
   </div>
 
-  <div class="card" style="max-width:480px;margin:1.2rem auto 0;">
+  <div class="card lv-flat" style="max-width:480px;margin:1.2rem auto 0;">
     <h2><i class="fa-solid fa-money-bill-transfer"></i> Payout details ${infoPopoverHtml("payoutInfo", `Set your bank account once. Levromart then pays you directly through Paystack on every order (minus the ${Number(v.commission_pct ?? 3)}% platform commission), no manual transfers needed. Funds typically land in your account the next business day after a sale.`)}</h2>
     <div id="bankError" class="error-text hidden"></div>
     ${v.paystack_subaccount_code
@@ -25114,6 +25195,7 @@ async function removeVendorCover(event) {
   await sb.storage.from("vendor-logos").remove([`${vendor.id}/cover.jpg`,`${vendor.id}/cover.jpeg`,`${vendor.id}/cover.png`,`${vendor.id}/cover.webp`]).catch(()=>{});
   vendor.cover_url = null;
   if (currentView === "vendorEditProfile") await navigate("vendorEditProfile", {}, false);
+  else if (currentView === "editProfile" || currentView === "profileSetup") await navigate(currentView, {}, false);
   else if (currentView === "storefront") await navigate("storefront", { vendorId: vendor.id }, false);
   showToast("Storefront header removed.", "success");
 }
@@ -53029,6 +53111,34 @@ html body #app .admin-dash-tabs[hidden]{display:none!important}
 :root[data-theme="dark"] .od-tracker .od-step:nth-child(6),:root[data-theme="black"] .od-tracker .od-step:nth-child(6){--st:#4ade80}
 html body #app .fp-tab.active,html body #app .fp-tab[aria-selected="true"]{-webkit-text-fill-color:var(--text)!important;color:var(--text)!important}
 html body #app .fp-tab:not(.active){-webkit-text-fill-color:currentColor!important}
+
+/* ---- Flat edit pages: My details, profile setup, vendor business profile (no cards, content sits on the page) ---- */
+:root:root:root body #app .card.lv-flat{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;max-width:520px!important}
+:root:root:root body #app .card.lv-flat + .card.lv-flat{margin-top:1.6rem!important;padding-top:1.4rem!important;border-top:1px solid rgba(127,127,127,.28)!important}
+:root:root:root body #app .lv-flat input:not([type=checkbox]):not([type=file]):not([type=range]):not([type=radio]),
+:root:root:root body #app .lv-flat textarea,
+:root:root:root body #app .lv-flat select{background:transparent!important;border:0!important;border-bottom:1.5px solid rgba(127,127,127,.4)!important;border-radius:0!important;box-shadow:none!important;padding:.55rem 0!important;font-size:1.02rem}
+:root:root:root body #app .lv-flat input:focus,:root:root:root body #app .lv-flat textarea:focus,:root:root:root body #app .lv-flat select:focus{border-bottom-color:#12a266!important;outline:none!important}
+:root:root:root body #app .lv-flat label{display:block;margin:1.05rem 0 0;font-size:.82rem;font-weight:600;opacity:.7}
+.ep-page,.ps-page{max-width:520px;margin:0 auto;padding:0 .25rem 2.5rem}
+.ep-photo{display:flex;flex-direction:column;align-items:center;gap:.4rem;margin:.6rem 0 .6rem}
+.ep-avatar-btn{position:relative;width:7rem;height:7rem;border-radius:50%;border:0;padding:0;background:none;cursor:pointer}
+.ep-photo-big .ep-avatar-btn{width:9.5rem;height:9.5rem}
+.ep-avatar-box{display:block;width:100%;height:100%;border-radius:50%;overflow:hidden}
+.ep-avatar-box .avatar-circle,.ep-avatar-box .ep-avatar-img{width:100%!important;height:100%!important;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:2.4rem}
+.ep-cam{position:absolute;right:.1rem;bottom:.1rem;width:2.2rem;height:2.2rem;border-radius:50%;background:#12a266;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.9rem;border:3px solid var(--bg,#fff)}
+.ep-link{background:none;border:0;color:#0f8f58;font-weight:600;font-size:.9rem;cursor:pointer;padding:.2rem .4rem}
+.ep-banner{margin:.4rem 0 .4rem}
+.ep-section{margin-top:1.8rem;padding-top:1.3rem;border-top:1px solid rgba(127,127,127,.28)}
+.ep-section h3{margin:0 0 .25rem;font-size:1.05rem}
+.ep-section .muted{font-size:.85rem;margin:0 0 .7rem}
+.ps-page{text-align:center;padding-top:1rem}
+.ps-title{font-size:1.5rem;margin:.4rem 0 .3rem}
+.ps-sub{opacity:.7;font-size:.92rem;margin:0 auto 1.2rem;max-width:22rem}
+.ps-page .ep-banner{text-align:left;margin-bottom:1rem}
+:root:root:root body #app .ps-page .ps-name{text-align:center;margin-top:1rem;font-size:1.15rem}
+.ps-next{width:100%;margin-top:1.6rem}
+.ps-skip{display:block;margin:.9rem auto 0;background:none;border:0;color:var(--text,#1c2630);opacity:.7;font-weight:600;cursor:pointer;padding:.4rem .8rem}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
