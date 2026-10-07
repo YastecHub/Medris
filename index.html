@@ -44194,8 +44194,18 @@ html body #app button#productAddToCartBtn{border-radius:14px!important;border:1.
     const banks = getBanks();
 
     return `<div class="va-page">
-      <div class="va-hero"><span class="va-hero-ico"><i class="fa-solid fa-store"></i></span><h2>Apply as a vendor</h2><p>Tell us about your business. Every application is reviewed by our team.</p>
-        <div class="va-perks"><span><i class="fa-solid fa-circle-check"></i> Free to apply</span><span><i class="fa-solid fa-shield-halved"></i> Verified badge</span><span><i class="fa-solid fa-users"></i> Reach new buyers</span></div></div>
+      <div class="va-hero">
+        <div class="va-bg" aria-hidden="true"><i class="o1"></i><i class="o2"></i></div>
+        <div class="va-hero-grid">
+          <div class="va-copy">
+            <p class="va-eyebrow">Become a vendor</p>
+            <h2>Grow your <em>business.</em></h2>
+            <p class="va-lead">Open your LevroMart shop, reach nearby buyers and get paid safely. Every application is reviewed by our team.</p>
+          </div>
+          <div class="va-art"><span class="va-chip c1"><i class="fa-solid fa-store"></i></span><span class="va-chip c2"><i class="fa-solid fa-chart-line"></i></span>${(function(){var im=document.querySelectorAll("#lvOnb .lv-hero")[2]||document.querySelector("#loginModal .lv-auth-char");return im&&im.src?`<img class="va-char" alt="" src="${im.src}" draggable="false">`:"";})()}</div>
+        </div>
+        <div class="va-perks"><span><i class="fa-solid fa-circle-check"></i> Free to apply</span><span><i class="fa-solid fa-shield-halved"></i> Verified badge</span><span><i class="fa-solid fa-users"></i> Reach new buyers</span></div>
+      </div>
       <div id="vendorApplyError" class="error-text hidden"></div>
 
       <label>Which sector is your business in? *</label>
@@ -45071,9 +45081,20 @@ html body #app button#productAddToCartBtn{border-radius:14px!important;border:1.
 
     const banks=(typeof NIGERIAN_BANKS!=="undefined"&&Array.isArray(NIGERIAN_BANKS))?NIGERIAN_BANKS:[];
 
-    return `<div class="card" style="max-width:480px;margin:0 auto;">
-      <h2>Apply as a vendor</h2>
-      <p class="muted">Tell us about your business. An admin will review this manually.</p>
+    return `<div class="va-page">
+      <div class="va-hero">
+        <div class="va-bg" aria-hidden="true"><i class="o1"></i><i class="o2"></i></div>
+        <div class="va-hero-grid">
+          <div class="va-copy">
+            <p class="va-eyebrow">Become a vendor</p>
+            <h2>Grow your <em>business.</em></h2>
+            <p class="va-lead">Open your LevroMart shop, reach nearby buyers and get paid safely. Every application is reviewed by our team.</p>
+          </div>
+          <div class="va-art"><span class="va-chip c1"><i class="fa-solid fa-store"></i></span><span class="va-chip c2"><i class="fa-solid fa-chart-line"></i></span>${(function(){var im=document.querySelectorAll("#lvOnb .lv-hero")[2]||document.querySelector("#loginModal .lv-auth-char");return im&&im.src?`<img class="va-char" alt="" src="${im.src}" draggable="false">`:"";})()}</div>
+        </div>
+        <div class="va-perks"><span><i class="fa-solid fa-circle-check"></i> Free to apply</span><span><i class="fa-solid fa-shield-halved"></i> Verified badge</span><span><i class="fa-solid fa-users"></i> Reach new buyers</span></div>
+      </div>
+
       <div id="vendorApplyError" class="error-text hidden"></div>
 
       <label>Which sector is your business in? *</label>
@@ -52878,6 +52899,27 @@ html body #bottomNav.has-add .bottom-nav-item{text-align:center}
 .lm-fol-search{display:flex;align-items:center;gap:.5rem;height:38px;padding:0 .8rem;margin:.2rem 0 .6rem;border:1px solid var(--border);border-radius:12px;background:transparent}
 .lm-fol-search input{flex:1;min-width:0;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;font-size:.9rem;color:var(--text);outline:none}
 #aiChatFab.dragging,#cartFab.dragging{transition:none!important;animation:none!important;will-change:left,top;cursor:grabbing}
+/* ---- vendor application hero (matches the sign-in page) ---- */
+html body #app .va-hero{position:relative;text-align:left;padding:.4rem 0 1rem;border-bottom:1px solid var(--border);overflow:visible}
+html body #app .va-bg{position:absolute;inset:-1rem -1rem 0;pointer-events:none;overflow:hidden;border-radius:28px;z-index:0}
+html body #app .va-bg i{position:absolute;border-radius:50%;border:2px solid rgba(18,162,102,.12);background:rgba(18,162,102,.06)}
+html body #app .va-bg .o1{width:300px;height:300px;right:-110px;top:-120px}
+html body #app .va-bg .o2{width:340px;height:340px;left:-170px;bottom:-190px}
+html body #app .va-hero::before{content:"";position:absolute;inset:-1rem -1rem 0;border-radius:28px;background:linear-gradient(180deg,rgba(18,162,102,.10),transparent 70%);pointer-events:none;z-index:0}
+html body #app .va-hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:4px}
+html body #app .va-eyebrow{margin:0 0 .5rem;font-size:.72rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#12a266}
+html body #app .va-hero h2{margin:0 0 .6rem;font-size:2.15rem;line-height:1.05;letter-spacing:-.03em;font-weight:900}
+html body #app .va-hero h2 em{font-style:normal;color:#12a266}
+html body #app .va-lead{margin:0;color:var(--text-muted);font-size:.92rem;line-height:1.5;max-width:none}
+html body #app .va-art{position:relative;aspect-ratio:1/1.05;min-width:0}
+html body #app .va-char{position:absolute;inset:6% 0 0 0;width:100%;height:94%;object-fit:contain;pointer-events:none;user-select:none;filter:drop-shadow(0 14px 18px rgba(5,46,30,.22))}
+html body #app .va-chip{position:absolute;z-index:2;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--card);box-shadow:0 8px 20px -8px rgba(5,46,30,.4);font-size:.95rem}
+html body #app .va-chip.c1{left:-2%;top:6%;color:#2563eb}
+html body #app .va-chip.c2{right:0;top:14%;color:#f59e0b}
+html body #app .va-perks{position:relative;z-index:1;margin-top:.9rem;justify-content:flex-start}
+html body #app .va-hero-ico{display:none}
+html body #app .va-perks{gap:.35rem!important}
+html body #app .va-perks span{font-size:.68rem!important;padding:.3rem .55rem!important;white-space:nowrap}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
@@ -52946,6 +52988,8 @@ html body #bottomNav.has-add .bottom-nav-item{text-align:center}
   var t=0;
   function go(){
     t=0; var p=document.querySelector("#app .va-page"); if(!p||p.dataset.lmAnim==="1"||!p.animate) return; p.dataset.lmAnim="1";
+    var ch=p.querySelector(".va-char"); if(ch) try{ ch.animate([{transform:"translateY(0)"},{transform:"translateY(-9px)"},{transform:"translateY(0)"}],{duration:4600,iterations:Infinity,easing:"ease-in-out"}); }catch(_){}
+    [].slice.call(p.querySelectorAll(".va-chip")).forEach(function(c,i){ try{ c.animate([{transform:"translateY(0)"},{transform:"translateY(-7px)"},{transform:"translateY(0)"}],{duration:3200+i*700,iterations:Infinity,easing:"ease-in-out"}); }catch(_){} });
     [].slice.call(p.children).slice(0,14).forEach(function(c,i){ try{ c.animate([{opacity:0,transform:"translateY(14px)"},{opacity:1,transform:"none"}],{duration:420,delay:i*55,easing:"cubic-bezier(.2,.8,.2,1)",fill:"backwards"}); }catch(_){} });
   }
   new MutationObserver(function(){ if(!t) t=setTimeout(go,60); }).observe(document.documentElement,{childList:true,subtree:true});
