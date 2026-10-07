@@ -10970,6 +10970,7 @@ let buyerFollowingCount = 0;
 let buyerTotalOrderCount = 0;
 let vendorProductCount = 0;
 let vendorProfileViewsToday = 0;
+let vendorOrdersToday = 0;
 // Only orders still awaiting the vendor's own action (accept, then hand
 // over) keep the nav badge lit -- once it's handed over/returned/disputed,
 // the ball is in the customer's (or admin's) court, not something that needs
@@ -12632,9 +12633,11 @@ async function __refreshNotificationsNow(renderPanel = true, includeSlow = true)
   let requestSeenAt = ""; try { requestSeenAt = sessionStorage.getItem("levromart-request-offers-seen-at") || ""; } catch (_) {}
   const requestOfferQ = profile?.role !== "admin" ? sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("type", "new_offer").eq("read", false).eq("archived", false).is("deleted_at", null).gt("created_at", requestSeenAt || "1970-01-01T00:00:00.000Z") : Promise.resolve({ count: 0 });
 
-  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes, followingRes, totalOrdersRes, vendorProfileViewsTodayRes] = await Promise.all([
-    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ, vendorProductCountQ, followingQ, totalOrdersQ, vendorProfileViewsTodayQ
+  const vendorOrdersTodayQ = (vendor && includeSlow) ? sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).gte("created_at", todayStartLocal.toISOString()) : Promise.resolve(null);
+  const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes, followingRes, totalOrdersRes, vendorProfileViewsTodayRes, vendorOrdersTodayRes] = await Promise.all([
+    unreadQ, vendorQ, buyerQ, suggestionQ, conversationsQ, cartQ, requestOfferQ, vendorProductCountQ, followingQ, totalOrdersQ, vendorProfileViewsTodayQ, vendorOrdersTodayQ
   ]);
+  if (vendorOrdersTodayRes) vendorOrdersToday = vendor ? (vendorOrdersTodayRes?.count || 0) : 0;
   if (!ordFresh) window.__ordCnt = { at: Date.now(), uid: session.user.id, v: vendorRes?.count || 0, b: buyerRes?.count || 0 };
   if (vendorProductCountRes) vendorProductCount = vendor ? (vendorProductCountRes?.count || 0) : 0;
   else if (!vendor) vendorProductCount = 0;
@@ -13669,7 +13672,8 @@ function updateAuthUI() {
         { label: "Pending orders", value: Number(vendorPendingOrderCount || 0), action: "navigate('vendorOrders',{status:'all',perspective:'sales'})" },
         { label: "Suggestions", value: Number(unreadSuggestionCount || 0), action: "navigate('vendorSuggestionsInbox')" },
         { label: "Number of listings", value: Number(vendorProductCount || 0), action: "navigate('vendorProducts')" },
-        { label: "Profile views today", value: Number(vendorProfileViewsToday || 0), action: "navigate('vendorDashboard')" },
+        { label: "Views today", value: Number(vendorProfileViewsToday || 0), action: "navigate('vendorDashboard')" },
+        { label: "Orders today", value: Number(vendorOrdersToday || 0), action: "navigate('vendorOrders',{status:'all',perspective:'sales'})" },
       ];
       const pend = Number(vendorPendingOrderCount || 0);
       plainLinks = [
@@ -28094,7 +28098,28 @@ const OD_STAGES = [
   { key: "handed", icon: "fa-truck-fast", label: (d) => d ? "Out for delivery" : "Handed over" },
   { key: "done", icon: "fa-circle-check", label: (d) => d ? "Delivered" : "Completed" },
 ];
+function odIsPayAfter(order) { return String(order.payment_timing || "") === "pay_after"; }
+function odStagesFor(order) {
+  if (!odIsPayAfter(order)) return OD_STAGES;
+  const pct = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20));
+  return [
+    OD_STAGES[0], OD_STAGES[1],
+    { key: "deposit", icon: "fa-wallet", label: () => `${pct}% paid` },
+    { key: "handed", icon: "fa-truck-fast", label: (d) => d ? "Out for delivery" : "Handed over" },
+    { key: "balance", icon: "fa-money-bill-transfer", label: () => `Pay remaining ${100 - pct}%` },
+    OD_STAGES[3],
+  ];
+}
 function odStageIndex(order) {
+  if (odIsPayAfter(order)) {
+    switch (String(order.status || "")) {
+      case "pending": return 0;
+      case "confirmed": case "payment_unresolved": case "disputed": return 1;
+      case "handed_over": case "returned": return 4;
+      case "completed": return 5;
+      default: return -1;
+    }
+  }
   switch (String(order.status || "")) {
     case "pending": return 0;
     case "confirmed": case "payment_unresolved": case "disputed": return 1;
@@ -28115,6 +28140,8 @@ function odInfoCard(order, isDelivery) {
   const t = String(order.status || "");
   if (order.__paymentUnresolved) return { icon: "fa-hourglass-half", head: "Payment needs verification", body: "The vendor is checking your payment. If they don't respond within 24 hours, Levromart steps in." };
   if (t === "pending") return { icon: "fa-hourglass-half", head: "Your order has been placed successfully!", body: "The vendor will review it and you will be notified as soon as they accept." };
+  if (odIsPayAfter(order) && t === "confirmed") { const pct = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20)); return { icon: "fa-wallet", head: `Pay the first ${pct}% to start`, body: `This is a pay-after-delivery order. Pay ${pct}% now; the remaining ${100 - pct}% is paid after delivery.` }; }
+  if (odIsPayAfter(order) && t === "handed_over") { const pct = Math.max(1, Math.min(99, Number(order.payment_deposit_percent ?? 20) || 20)); return { icon: "fa-money-bill-transfer", head: `Second payment: remaining ${100 - pct}%`, body: "Your first payment is done. Pay the remaining balance to complete this order." }; }
   if (t === "confirmed") return { icon: "fa-circle-check", head: "The vendor accepted your order", body: "Pay the vendor, then tap “I’ve paid the vendor” so they can hand your order over." };
   if (t === "handed_over") return { icon: "fa-truck-fast", head: isDelivery ? "Your order is on its way" : "Your order has been handed over", body: order.order_type === "rental" ? "Return the equipment when you're done. The vendor will mark it returned." : "Check everything, then confirm once you've received it." };
   if (t === "returned") return { icon: "fa-rotate-left", head: "Equipment is back with the vendor", body: "Confirm to complete the order and release the deposit." };
@@ -28155,7 +28182,7 @@ function customerOrderTopHtml(order, ctx) {
   }
   // ---- progress tracker
   if (stageIdx >= 0) {
-    h += `<section class="od-card od-tracker" aria-label="Order progress">${OD_STAGES.map((st, i) => `<div class="od-step ${i < stageIdx ? "is-done" : i === stageIdx ? "is-current" : ""}"><span class="od-step-dot"><i class="fa-solid ${st.icon}"></i></span><span class="od-step-label">${esc(st.label(isDelivery))}</span>${i === 0 && order.created_at ? `<small>${esc(new Date(order.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</small>` : ""}</div>`).join("")}</section>`;
+    h += `<section class="od-card od-tracker" aria-label="Order progress">${odStagesFor(order).map((st, i) => `<div class="od-step ${i < stageIdx ? "is-done" : i === stageIdx ? "is-current" : ""}"><span class="od-step-dot"><i class="fa-solid ${st.icon}"></i></span><span class="od-step-label">${esc(st.label(isDelivery))}</span>${i === 0 && order.created_at ? `<small>${esc(new Date(order.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</small>` : ""}</div>`).join("")}</section>`;
   }
   // ---- state information
   if (info) h += `<section class="od-info od-tone-${tone}"><span class="od-info-icon"><i class="fa-solid ${info.icon}"></i></span><div><strong>${esc(info.head)}</strong><p>${esc(info.body)}</p></div></section>`;
@@ -28281,7 +28308,7 @@ function vendorOrderTopHtml(order, ctx) {
   h += `</section>`;
   // ---- progress tracker
   if (stageIdx >= 0) {
-    h += `<section class="od-card od-tracker" aria-label="Order progress">${OD_STAGES.map((s, i) => `<div class="od-step ${i < stageIdx ? "is-done" : i === stageIdx ? "is-current" : ""}"><span class="od-step-dot"><i class="fa-solid ${s.icon}"></i></span><span class="od-step-label">${esc(s.label(isDelivery))}</span>${i === 0 && order.created_at ? `<small>${esc(new Date(order.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</small>` : ""}</div>`).join("")}</section>`;
+    h += `<section class="od-card od-tracker" aria-label="Order progress">${odStagesFor(order).map((s, i) => `<div class="od-step ${i < stageIdx ? "is-done" : i === stageIdx ? "is-current" : ""}"><span class="od-step-dot"><i class="fa-solid ${s.icon}"></i></span><span class="od-step-label">${esc(s.label(isDelivery))}</span>${i === 0 && order.created_at ? `<small>${esc(new Date(order.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</small>` : ""}</div>`).join("")}</section>`;
   }
   if (order.payout_status && order.payout_status !== "not_applicable") {
     h += `<section class="od-strip od-strip-card"><i class="fa-solid fa-shield-halved"></i><span>${esc(PAYOUT_STATUS_SHORT_LABEL[order.payout_status] || (typeof PAYOUT_STATUS_HELP[order.payout_status] === "function" ? PAYOUT_STATUS_HELP[order.payout_status](order.auto_release_at ? new Date(order.auto_release_at).toLocaleDateString("en-GB") : "the release date") : order.payout_status))}</span></section>`;
@@ -52920,6 +52947,16 @@ html body #app .va-perks{position:relative;z-index:1;margin-top:.9rem;justify-co
 html body #app .va-hero-ico{display:none}
 html body #app .va-perks{gap:.35rem!important}
 html body #app .va-perks span{font-size:.68rem!important;padding:.3rem .55rem!important;white-space:nowrap}
+/* ---- batch 7 ---- */
+#levromartSplash .lv-sp-foot svg.lv-sp-foot-logo{width:22px!important;height:22px!important;margin-right:5px}
+#levromartSplash .lv-sp-foot{gap:0!important}
+html body #app .msg-tabs{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;border-bottom:1px solid var(--border)!important}
+html body #app .msg-tabs-row,html body #app .msg-tabs-row .msg-tabs{background:transparent!important}
+:root:root:root:root:root:root body #app .product-card-wrap.product-card-compact > .card > .product-card-meta > .card-svc-tag{margin:0 auto 0 -.4rem!important;color:#8b72d6!important;background:color-mix(in srgb,#8b5cf6 9%,transparent)!important;font-weight:700!important}
+:root:root:root:root:root:root body #app .pd-step-title i.fa-solid{color:#a78bfa!important}
+:root:root:root:root:root:root body #app label.df-label i.fa-location-dot{color:#f97316!important}
+html body #app .vendor-application-actions{position:static!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;outline:0!important}
+html body #app .va-page,html body #app .va-page *{outline-color:transparent}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
