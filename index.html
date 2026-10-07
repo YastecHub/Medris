@@ -13734,18 +13734,10 @@ function updateAuthUI() {
         </div>
       </div>
       <div class="profile-panel-scroll">
-        ${profile.role === "admin" ? `<div class="profile-panel-stats admin-profile-stats">
-          ${adminStats.map(s => s.action
-            ? `<button type="button" class="profile-panel-stat profile-panel-stat-link" data-admin-stat="${esc(s.key)}" onclick="closeAllPanels();${s.action}"><strong>${s.value}</strong><span>${esc(s.label)}</span></button>`
-            : `<div class="profile-panel-stat" data-admin-stat="${esc(s.key)}"><strong>${s.value}</strong><span>${esc(s.label)}</span></div>`).join("")}
-        </div>
-        <hr class="vendor-profile-divider" />
-        <div class="admin-profile-nav-list">${links.map((l) => {
-          const raw = String(l.label).replace(/<[^>]*>/g, '').trim().toLowerCase();
-          const icon = raw.includes('admin panel') ? 'fa-shield-halved' : raw.includes('manage admins') ? 'fa-users-gear' : raw.includes('vendors') ? 'fa-chart-line' : raw.includes('support requests') ? 'fa-headset' : raw.includes('feedback') ? 'fa-comment-medical' : raw.includes('suggestions') ? 'fa-inbox' : raw.includes('link library') ? 'fa-link' : raw.includes('disputes') ? 'fa-scale-balanced' : raw.includes('monthly listing') ? 'fa-receipt' : raw.includes('contact us') ? 'fa-address-book' : raw.includes('settings') ? 'fa-gear' : 'fa-circle';
-          const profileKeyAttr = l.profileKey ? ` data-profile-key="${esc(l.profileKey)}"` : "";
-          return `<a class="profile-nav-link"${profileKeyAttr} onclick="closeAllPanels();${l.action};"><span class="profile-item-icon"><i class="fa-solid ${icon}"></i></span><span class="profile-nav-text">${l.label}</span><i class="fa-solid fa-chevron-right profile-nav-arrow"></i></a>`;
-        }).join("")}</div>` : `
+        ${profile.role === "admin" ? `<div class="lv-pp">
+          <div class="lv-pp-stats admin-profile-stats">${adminStats.map(s => `<button type="button" class="lv-pp-stat" data-admin-stat="${esc(s.key)}" onclick="closeAllPanels();${s.action || ""}"><b>${s.value}</b> ${esc(String(s.label).toLowerCase())}</button>`).join("")}</div>
+          <div class="lv-pp-group">${links.map((l) => `<button type="button" class="lv-pp-row"${l.profileKey ? ` data-profile-key="${esc(l.profileKey)}"` : ""} onclick="closeAllPanels();${l.action}">${l.label}</button>`).join("")}</div>
+        </div>` : `
         <div class="lv-pp">
           <div class="lv-pp-stats">${(vendor
             ? [{ n: Number(vendorProductCount || 0), t: Number(vendorProductCount || 0) === 1 ? "listing" : "listings", a: "navigate('vendorProducts')" }, { n: Number(vendorPendingOrderCount || 0), t: "pending orders", a: "navigate('vendorOrders',{status:'all',perspective:'sales'})" }]
@@ -13781,7 +13773,7 @@ function updateAuthUI() {
 async function hydrateAdminProfileStats() {
   if (!session || profile?.role !== "admin" || typeof sb === "undefined") return;
   const patchStat = (key, value) => {
-    document.querySelectorAll(`.admin-profile-stats [data-admin-stat="${key}"] strong`).forEach((el) => { el.textContent = value; });
+    document.querySelectorAll(`.admin-profile-stats [data-admin-stat="${key}"] strong, .admin-profile-stats [data-admin-stat="${key}"] b`).forEach((el) => { el.textContent = value; });
   };
   try {
     if (isSuperAdmin()) {
@@ -28934,6 +28926,16 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {})
       buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-circle-info"></i> The ${BUYER_CANCEL_WINDOW_HOURS}-hour self-serve cancellation window has passed. Report an issue below if something's wrong.</p>`);
     }
   }
+  {
+    const lmPaidAll = (isDeliveryOrder && order.payment_timing === "pay_after") ? paymentComplete : feePaid;
+    const lmDup = order.status === "handed_over" && order.order_type === "sale" && !isDeliveryOrder;
+    if (isCustomer && order.awaiting_confirmation_since && ["confirmed", "handed_over"].includes(order.status) && order.order_type !== "rental" && !order.service_offer_id && String(order.payout_status || "not_applicable") === "not_applicable" && lmPaidAll && !lmDup) {
+      const due = new Date(new Date(order.awaiting_confirmation_since).getTime() + 24 * 3600 * 1000);
+      buttons.push(`<button class="btn btn-sm" onclick="confirmReceivedOrder('${order.id}')"><i class="fa-solid fa-check"></i> I've received this</button>`);
+      buttons.push(notReceivedButtonHtml(order));
+      buttons.push(`<p class="muted" style="font-size:.8rem;margin:.2rem 0 0;"><i class="fa-solid fa-clock"></i> Payment confirmed. If you don't respond or report a problem, this order completes automatically on ${esc(due.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}.</p>`);
+    }
+  }
   if (isCustomer && order.status === "handed_over" && order.order_type === "rental" && !isDeliveryOrder) buttons.push(`<button class="btn btn-sm" onclick="updateOrderStatus('${order.id}','returned')">I've returned this equipment</button>`);
   if (isCustomer && order.status === "handed_over" && isDeliveryOrder) {
     // Delivery orders complete automatically when the vendor confirms the
@@ -29210,6 +29212,16 @@ async function submitNotReceived() {
 // The buyer's "I've received this" / "Confirm & complete" action - unlike
 // every other status change, this one also has to actually move money, so
 // it goes through a serverless endpoint instead of a plain RPC call.
+async function confirmReceivedOrder(orderId) {
+  if (!(await showConfirmDialog("Confirm that you have received this order. This completes the order. Only continue after you have actually received it.", { title: "Confirm I've received it", okLabel: "Yes, I've received it" }))) return;
+  try {
+    const { error } = await sb.rpc("buyer_confirm_received", { p_order_id: orderId });
+    if (error) throw error;
+    showToast("Order completed. Thank you!", "success");
+  } catch (err) { showToast(err.message || "Couldn't confirm. Please try again.", "error"); }
+  navigate("orderDetail", { orderId });
+  setTimeout(() => { try { window.maybePromptLevromartReview?.(true); } catch (_) {} }, 900);
+}
 async function confirmReceiveOrder(orderId) {
   if (!(await showConfirmDialog("Confirm that you have physically received this order. This completes the order once all required payments have been paid. Only continue after you have actually received it.", { title: "Confirm I've received it", okLabel: "Yes, I've received it" }))) return;
   showToast("Confirming…", "info");
@@ -29678,6 +29690,20 @@ const SUPER_ADMIN_ONLY_VIEWS = new Set([
 // Login logs are the one exception: sub-admins can see them, only Reset
 // Password / Inventory / everything else in this set is super-admin-only.
 
+function openAdminNavSheet() {
+  if (byId("adminNavSheet")) return;
+  const tabs = [...document.querySelectorAll(".admin-dash-tabs [data-admin-view]")].filter((b) => !b.classList.contains("hidden") && b.style.display !== "none");
+  const wrap = document.createElement("div");
+  wrap.id = "adminNavSheet"; wrap.className = "cc-backdrop";
+  wrap.innerHTML = `<div class="cc-sheet admin-nav-sheet" role="dialog" aria-modal="true"><button type="button" class="cc-x" aria-label="Close" data-cc="close"><i class="fa-solid fa-xmark"></i></button><h3 style="margin:.2rem 0 .8rem;text-align:left;">Go to</h3><div class="admin-nav-grid">${tabs.map((b) => `<button type="button" class="admin-nav-item${b.classList.contains("active") ? " active" : ""}" data-v="${esc(b.dataset.adminView)}">${b.innerHTML}</button>`).join("")}</div></div>`;
+  document.body.appendChild(wrap);
+  requestAnimationFrame(() => wrap.classList.add("open"));
+  const close = () => { wrap.classList.remove("open"); setTimeout(() => wrap.remove(), 180); };
+  wrap.addEventListener("click", (e) => {
+    if (e.target === wrap || e.target.closest('[data-cc="close"]')) return close();
+    const it = e.target.closest(".admin-nav-item"); if (it) { close(); navigate(it.dataset.v); }
+  });
+}
 function adminNavHtml(active) {
   const items = [
     ["adminPeople", "fa-users", "People"],
@@ -29695,7 +29721,9 @@ function adminNavHtml(active) {
     ["adminR2Migration", "fa-cloud-arrow-up", "R2 migration"],
     ["adminR2Optimize", "fa-compress", "R2 image size"],
   ].filter(([view]) => isSuperAdmin() || !SUPER_ADMIN_ONLY_VIEWS.has(view));
-  return `<div class="dash-tabs admin-dash-tabs"><div class="admin-dash-tabs-inner">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : view === "adminPanel" ? `<span class="dash-tab-dot locked-vendors-admin-badge ${Number(window.__lockedVendorCount||0)?'':'hidden'}">${Number(window.__lockedVendorCount || 0) > 9 ? "9+" : Number(window.__lockedVendorCount || 0)}</span>` : ""}</button>`).join("")}</div></div>`;
+  const cur = items.find(([v]) => v === active) || items[0];
+  const picker = `<button type="button" class="admin-nav-pick" onclick="openAdminNavSheet()"><span class="admin-nav-pick-ico"><i class="fa-solid ${cur[1]}"></i></span><span class="admin-nav-pick-txt"><small>Admin section</small><b>${cur[2]}</b></span><i class="fa-solid fa-chevron-down"></i></button>`;
+  return picker + `<div class="dash-tabs admin-dash-tabs" hidden><div class="admin-dash-tabs-inner">${items.map(([view, icon, label]) => `<button class="dash-tab ${view === active ? "active" : ""}" data-admin-view="${view}" onclick="navigate('${view}')"><i class="fa-solid ${icon}"></i> ${label}${view === "adminFeedback" && unreadSuggestionCount > 0 ? `<span class="dash-tab-dot">${unreadSuggestionCount > 9 ? "9+" : unreadSuggestionCount}</span>` : view === "adminMonthlyListings" ? `<span class="dash-tab-dot monthly-listings-admin-badge ${Number(window.__monthlyPendingCount||0)?'':'hidden'}">${Number(window.__monthlyPendingCount || 0) > 9 ? "9+" : Number(window.__monthlyPendingCount || 0)}</span>` : view === "adminPanel" ? `<span class="dash-tab-dot locked-vendors-admin-badge ${Number(window.__lockedVendorCount||0)?'':'hidden'}">${Number(window.__lockedVendorCount || 0) > 9 ? "9+" : Number(window.__lockedVendorCount || 0)}</span>` : ""}</button>`).join("")}</div></div>`;
 }
 
 // ---------- ADMIN: one-time R2 migration ----------
@@ -30941,9 +30969,13 @@ async function renderAdminConversations(q = "") {
   if (error) return html + errorStateHtml(error);
   const rows = data || [];
   if (!rows.length) return html + '<div class="empty-state">No conversations found.</div>';
-  html += `<div class="admin-conv-list">${rows.map((c) => {
+  const recentMs = 48 * 3600 * 1000;
+  const isActive = (c) => c.last_at && (Date.now() - new Date(c.last_at).getTime() < recentMs);
+  const nActive = rows.filter(isActive).length;
+  html += `<div class="msg-tabs lm-conv-tabs" role="tablist"><a class="active" data-conv-tab="active" onclick="lmConvTab('active')">Active <span class="conv-unread-badge msg-tab-badge">${nActive}</span></a><a data-conv-tab="closed" onclick="lmConvTab('closed')">Earlier <span class="conv-unread-badge msg-tab-badge" style="opacity:.7">${rows.length - nActive}</span></a></div>`;
+  html += `<div class="admin-conv-list" data-tab="active">${rows.map((c) => {
     const when = c.last_at ? new Date(c.last_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
-    return `<button type="button" class="card admin-conv-row" onclick="navigate('messages',{conversationId:'${esc(c.conversation_id)}'})"><div class="flex" style="justify-content:space-between;gap:.6rem;"><strong>${esc(c.buyer_name || "Customer")} ↔ ${esc(c.vendor_name || "Vendor")}</strong><span class="muted" style="font-size:.75rem;white-space:nowrap;">${esc(when)}</span></div><div class="muted admin-conv-last">${esc(maskSensitiveNumbers(c.last_body || "No messages yet"))}</div><span class="badge">${Number(c.message_count || 0)} message${Number(c.message_count) === 1 ? "" : "s"}</span></button>`;
+    return `<button type="button" class="card admin-conv-row" data-act="${isActive(c) ? 1 : 0}" onclick="navigate('messages',{conversationId:'${esc(c.conversation_id)}'})"><div class="flex" style="justify-content:space-between;gap:.6rem;"><strong>${esc(c.buyer_name || "Customer")} ↔ ${esc(c.vendor_name || "Vendor")}</strong><span class="muted" style="font-size:.75rem;white-space:nowrap;">${esc(when)}</span></div><div class="muted admin-conv-last">${esc(maskSensitiveNumbers(c.last_body || "No messages yet"))}</div><span class="badge">${Number(c.message_count || 0)} message${Number(c.message_count) === 1 ? "" : "s"}</span></button>`;
   }).join("")}</div>`;
   return html;
 }
@@ -52957,6 +52989,33 @@ html body #app .msg-tabs-row,html body #app .msg-tabs-row .msg-tabs{background:t
 :root:root:root:root:root:root body #app label.df-label i.fa-location-dot{color:#f97316!important}
 html body #app .vendor-application-actions{position:static!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;outline:0!important}
 html body #app .va-page,html body #app .va-page *{outline-color:transparent}
+/* ---- batch 8 ---- */
+html body #app .fp-row{background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;padding:.85rem 0!important}
+html body #app .fp-list{gap:0!important}
+html body #app .fp-tabs{gap:1.4rem;border-bottom:1px solid var(--border);margin-bottom:.4rem}
+html body #app .fp-tab,html body #app .fp-tab.active,html body #app .fp-tab[aria-selected="true"]{flex:0 0 auto;background:transparent!important;border:0!important;border-bottom:2.5px solid transparent!important;border-radius:0!important;box-shadow:none!important;color:var(--text-muted)!important;padding:.5rem .1rem!important;min-height:0}
+html body #app .fp-tab.active,html body #app .fp-tab[aria-selected="true"]{color:var(--text)!important;border-bottom-color:var(--primary,#16a34a)!important}
+html body #app .fp-search{background:transparent!important;min-height:2.4rem}
+#levromartSplash .lv-sp-foot svg.lv-sp-foot-logo{overflow:visible!important}
+#levromartSplash .lv-sp-foot svg.lv-sp-foot-logo path{transform:translate(50px,50px) scale(.82) translate(-50px,-50px)}
+.od-tracker:has(.od-step:nth-child(6)){grid-template-columns:repeat(6,minmax(0,1fr))!important;padding:.9rem .1rem!important}
+.od-tracker:has(.od-step:nth-child(6)) .od-step-dot{width:1.9rem!important;height:1.9rem!important;font-size:.72rem!important}
+.od-tracker:has(.od-step:nth-child(6)) .od-step::before{top:.95rem!important}
+.od-tracker:has(.od-step:nth-child(6)) .od-step-label{font-size:.6rem!important;line-height:1.15}
+.od-tracker:has(.od-step:nth-child(6)) .od-step{padding:0 .05rem}
+html body #app .admin-nav-pick{display:flex;align-items:center;gap:.8rem;width:100%;margin:.2rem 0 1rem;padding:.7rem .9rem;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);text-align:left;cursor:pointer;font:inherit}
+html body #app .admin-nav-pick-ico{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:color-mix(in srgb,#16a34a 14%,transparent);color:#16a34a;flex:none}
+html body #app .admin-nav-pick-txt{flex:1;display:flex;flex-direction:column;min-width:0}
+html body #app .admin-nav-pick-txt small{color:var(--text-muted);font-size:.72rem}
+html body #app .admin-nav-pick-txt b{font-size:1.05rem}
+.admin-nav-sheet{max-height:80vh;overflow:auto}
+.admin-nav-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.4rem}
+.admin-nav-item{display:flex;align-items:center;gap:.55rem;padding:.8rem .7rem;border:1px solid var(--border);border-radius:14px;background:transparent;color:var(--text);font:inherit;font-weight:700;font-size:.88rem;text-align:left;cursor:pointer}
+.admin-nav-item.active{border-color:#16a34a;color:#16a34a}
+.admin-nav-item .dash-tab-dot{margin-left:auto}
+.admin-conv-list[data-tab="active"] .admin-conv-row[data-act="0"],.admin-conv-list[data-tab="closed"] .admin-conv-row[data-act="1"]{display:none}
+html body #app .admin-conv-row{background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;width:100%;text-align:left}
+html body #app .admin-dash-tabs[hidden]{display:none!important}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */
@@ -53045,5 +53104,14 @@ window.lmFilterFollowing=function(q){q=String(q||"").trim().toLowerCase();docume
   }
   var t=0;
   new MutationObserver(function(){ if(t) return; t=setTimeout(function(){ t=0; document.querySelectorAll("#lvSearchVendors .lv-svr-row:not(.lv-svr-recent)").forEach(setup); },150); }).observe(document.documentElement,{childList:true,subtree:true});
+})();
+window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if(l)l.setAttribute("data-tab",t);document.querySelectorAll("[data-conv-tab]").forEach(function(a){a.classList.toggle("active",a.getAttribute("data-conv-tab")===t);});};
+/* presence heartbeat: tells the server the app is open, so pushes stay inside the app */
+(function(){
+  var last=0;
+  function beat(){ try{ if(typeof session!=="undefined"&&session&&!document.hidden&&Date.now()-last>15000){ last=Date.now(); Promise.resolve(sb.rpc("touch_presence")).catch(function(){}); } }catch(_){} }
+  setInterval(beat,20000); document.addEventListener("visibilitychange",function(){ if(document.hidden){ try{ if(session) Promise.resolve(sb.rpc("clear_presence")).catch(function(){}); }catch(_){} last=0; } else beat(); });
+  window.addEventListener("pagehide",function(){ try{ if(session) sb.rpc("clear_presence"); }catch(_){} });
+  window.addEventListener("load",function(){ setTimeout(beat,2500); });
 })();
 </script>
