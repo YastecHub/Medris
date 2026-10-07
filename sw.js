@@ -170,6 +170,14 @@ self.addEventListener('push', event => {
       }
 
 
+      // 30-second reminders are only for when the app is closed or backgrounded.
+      if (data && data.reminder) {
+        try {
+          const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+          if (open.some(c => c.visibilityState === 'visible')) return;
+        } catch (_) {}
+      }
+
       const declarative = data && data.web_push === 8030 && data.notification
         ? data.notification
         : null;

@@ -13680,7 +13680,6 @@ function updateAuthUI() {
         { icon: "fa-comment-dots", tone: "blue", label: "Messages", action: "navigate('messages')" },
         { icon: "fa-hand", tone: "pink", label: "Requests", badge: Number(requestOfferBadgeCount || 0), action: "navigate('vendorRequests')" },
         { icon: "fa-lightbulb", tone: "amber", label: "Suggestions", badge: Number(unreadSuggestionCount || 0), action: "navigate('vendorSuggestionsInbox')" },
-        { icon: "fa-bag-shopping", tone: "violet", label: "My purchases", action: "navigate('vendorOrders',{status:'all',perspective:'purchases'})" },
         { icon: "fa-headset", tone: "teal", label: "Support", action: "navigate('supportRequest')" },
         { icon: "fa-phone", tone: "teal", label: "Contact us", action: "navigate('contactUs')" },
         { icon: "fa-compass", tone: "slate", label: "Take the tour", action: "showTour()" },
@@ -13749,7 +13748,7 @@ function updateAuthUI() {
           ).map(x => `<button type="button" class="lv-pp-stat" onclick="closeAllPanels();${x.a}"><b>${x.n}</b> ${x.t}</button>`).join("")}</div>
           ${(() => {
             const keepGroups = vendor
-              ? [["My shop", "My listings", "Orders", "Earnings", "Followers"], ["Requests", "Suggestions", "My purchases", "Leaderboard", "Refer &amp; earn"], ["Support"]]
+              ? [["My shop", "My listings", "Orders", "Earnings", "Followers"], ["Requests", "Suggestions", "Leaderboard", "Refer &amp; earn"], ["Support"]]
               : [["Apply to be a vendor", "My orders", "Wishlist", "Vendors you follow"], ["Vendor leaderboard", "Request an item", "Support"]];
             const row = (l) => `<button type="button" class="lv-pp-row" onclick="closeAllPanels();${l.action}">${l.label === "Settings &amp; Privacy" ? '<svg class="lm-gear" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>' : ""}<span>${l.label.replace("Vendor leaderboard", "Leaderboard")}</span>${l.badge > 0 ? `<em class="lv-pp-badge">${l.badge > 9 ? "9+" : l.badge}</em>` : ""}</button>`;
             const groups = keepGroups.map(names => names.map(n => plainLinks.find(l => l.label === n)).filter(Boolean));
@@ -32350,7 +32349,7 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
       // the user explicitly taps the speaker button when they want audio.
     }
     if (role === "assistant" && msgId) attachAiReactionUI(el, msgId, existingReaction);
-    if (nav && isReplay) {
+    if (nav) {
       const navHint = document.createElement("button");
       navHint.type = "button";
       navHint.className = "ai-chat-nav-btn";
@@ -32843,6 +32842,18 @@ function syncSystemBarColor() {
   syncSystemBarColorForTheme(theme);
 }
 syncSystemBarColor();
+function lmMergeResults(results) {
+  const kept = [];
+  for (let i = 0; i < results.length; i++) {
+    const t = String(results[i]?.[0]?.transcript || "").trim();
+    if (!t) continue;
+    const last = kept[kept.length - 1];
+    if (last && t.toLowerCase().startsWith(last.toLowerCase())) kept[kept.length - 1] = t; // cumulative result (Android)
+    else if (last && last.toLowerCase().startsWith(t.toLowerCase())) continue;
+    else kept.push(t);
+  }
+  return kept.join(" ").replace(/\s+/g, " ").trim();
+}
 function lmCleanVoice(text) {
   let t = String(text || "").replace(/\b(?:um+|uh+|erm+|er|ah+|hmm+|mm+)\b[,.]?/gi, " ");
   t = t.replace(/\b(\w+)(\s+\1\b)+/gi, "$1").replace(/\s+/g, " ").replace(/\s+([,.!?])/g, "$1").trim();
@@ -32912,7 +32923,7 @@ function toggleAiChatMic(evt) {
   const aiRecThis = aiChatRecognizer;
   aiChatRecognizer.lang = "en-NG";
   aiChatRecognizer.interimResults = true;
-  aiChatRecognizer.continuous = false;
+  aiChatRecognizer.continuous = true;
   aiChatRecognizer.maxAlternatives = 1;
   aiChatLastVoiceTranscript = "";
   aiChatRecognizer.onstart = () => {
@@ -32928,12 +32939,7 @@ function toggleAiChatMic(evt) {
     // Build the transcript from the single recognition session and REPLACE
     // the input value instead of appending every result event. That prevents
     // the continuous-recognition accumulation that was doubling sentences.
-    let transcript = "";
-    for (let i = 0; i < e.results.length; i++) {
-      const t = String(e.results[i]?.[0]?.transcript || "").trim();
-      if (t) transcript += `${transcript ? " " : ""}${t}`;
-    }
-    transcript = transcript.replace(/\s+/g, " ").trim();
+    let transcript = lmMergeResults(e.results);
     if (!transcript || transcript === aiChatLastVoiceTranscript) return;
     aiChatLastVoiceTranscript = transcript;
     const el = byId("aiChatInput");
@@ -33068,7 +33074,7 @@ function startMsgVoiceRecognition() {
   const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   msgRecognizer.lang = isIOSDevice ? "en-US" : "en-NG";
   msgRecognizer.interimResults = true;
-  msgRecognizer.continuous = false;
+  msgRecognizer.continuous = true;
   msgRecognizer.maxAlternatives = 1;
 
   msgRecognizer.onstart = () => {
@@ -33084,12 +33090,7 @@ function startMsgVoiceRecognition() {
   msgRecognizer.onresult = (e) => {
     // Only use the current recognition session. Browser engines may revise
     // interim results, so replacement is safer than append-on-every-event.
-    let transcript = "";
-    for (let i = 0; i < e.results.length; i++) {
-      const t = String(e.results[i]?.[0]?.transcript || "").trim();
-      if (t) transcript += `${transcript ? " " : ""}${t}`;
-    }
-    transcript = transcript.replace(/\s+/g, " ").trim();
+    let transcript = lmMergeResults(e.results);
     if (!transcript) return;
     const finalResult = Array.from(e.results).some(r => r.isFinal);
     if (finalResult) {
@@ -49493,9 +49494,9 @@ function hideLeviFromPanel() {
     const myCall=call.id; let again=0;
     clearInterval(ringAgainTimer);
     ringAgainTimer=setInterval(()=>{
-      if(!call||call.id!==myCall||document.getElementById("levroCallOverlay")?.classList.contains("lc-connected")||++again>5){clearInterval(ringAgainTimer);return;}
+      if(!call||call.id!==myCall||document.getElementById("levroCallOverlay")?.classList.contains("lc-connected")||++again>8){clearInterval(ringAgainTimer);return;}
       Promise.resolve(sb.rpc("ring_callee_again",{p_call_id:myCall})).catch(()=>{});
-    },8000);
+    },5000);
   };
 
   window.__levroIncomingCall=function(n){
@@ -52602,11 +52603,28 @@ html[data-splash="auto"] .lv-onb :is(.lv-ghost,.lv-skip){color:#c5d6cd!important
 html[data-splash="dark"] #levromartSplash .lv-sp-foot{color:#8b97a0!important}
 html body #app .cart-vendor-head,html body #app .cart-vendor-head span{color:var(--text)!important}
 html body #app .cart-head .cart-back{order:0}
-html body #app .cart-head .cart-checkall{order:1;color:#16a34a}
-html body #app .cart-head .cart-page-title{order:2}
-html body #app .cart-head .cart-clear{order:3}
+html body #app .cart-head .cart-checkall{order:3;color:#16a34a}
+html body #app .cart-head .cart-page-title{order:1}
+html body #app .cart-head .cart-clear{order:2}
 .coa-ico{background:color-mix(in srgb,#16a34a 14%,transparent)!important;color:#16a34a!important}
 .cc-confirm.coa-ok{background:#16a34a!important;border-color:#16a34a!important;color:#fff!important}
+#levromartSplash .lv-sp-foot{gap:.1rem!important}
+#levromartSplash .lv-sp-foot svg.lv-sp-foot-logo{margin-right:-2px}
+/* section icons: modern gradient tiles */
+html body #app .section-title > i:first-child,html body #app .section-title > span > i:first-child{width:30px;height:30px;border-radius:10px;display:inline-grid;place-items:center;font-size:.85rem;color:#fff!important;margin-right:.5rem;vertical-align:middle;background:linear-gradient(135deg,#34d399,#059669);box-shadow:0 4px 10px -4px rgba(5,150,105,.55)}
+html body #app .section-title i.fa-fire{background:linear-gradient(135deg,#fb923c,#ef4444);box-shadow:0 4px 10px -4px rgba(239,68,68,.55)}
+html body #app .section-title i.fa-medal{background:linear-gradient(135deg,#fbbf24,#f97316);box-shadow:0 4px 10px -4px rgba(249,115,22,.55)}
+html body #app .section-title i.fa-hand-holding-heart{background:linear-gradient(135deg,#a78bfa,#ec4899);box-shadow:0 4px 10px -4px rgba(168,85,247,.55)}
+html body #app .section-title i.fa-box-open{background:linear-gradient(135deg,#38bdf8,#2563eb);box-shadow:0 4px 10px -4px rgba(37,99,235,.55)}
+/* login: readable in dark */
+html[data-splash="dark"] #loginModal.lv-auth{--lv-muted:#c3d4ca}
+html[data-splash="dark"] #loginModal.lv-auth :is(label,.lv-check,.lv-switch,.lv-or,.lv-sub,p,small,span){color:#d5e3db}
+html[data-splash="dark"] #loginModal.lv-auth :is(a,.lv-link,#lvSwitchLink){color:#5be39a}
+@media (prefers-color-scheme:dark){
+html[data-splash="auto"] #loginModal.lv-auth{--lv-muted:#c3d4ca}
+html[data-splash="auto"] #loginModal.lv-auth :is(label,.lv-check,.lv-switch,.lv-or,.lv-sub,p,small,span){color:#d5e3db}
+html[data-splash="auto"] #loginModal.lv-auth :is(a,.lv-link,#lvSwitchLink){color:#5be39a}
+}
 </style>
 <script id="lm-b3-js">
 /* Trending Now row: endless horizontal loop (3 copies, silently re-centred) */

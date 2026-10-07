@@ -72,6 +72,30 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    // Batched 30-second reminders from the database job: push only (no inbox row, no email).
+    if (Array.isArray(body.reminders)) {
+      const SU = env("SUPABASE_URL");
+      const SK = env("SUPABASE_SERVICE_ROLE_KEY");
+      const sh = { apikey: SK, Authorization: `Bearer ${SK}` };
+      let sent = 0;
+      for (const r of body.reminders.slice(0, 500)) {
+        if (!r || !r.user_id) continue;
+        const out = await sendPush(SU, sh, {
+          id: `reminder-${r.kind || "x"}-${r.user_id}`,
+          user_id: r.user_id,
+          type: r.kind === "orders" ? "order_reminder" : "new_message",
+          title: String(r.title || "Levromart"),
+          body: String(r.body || ""),
+          target_view: r.view || "home",
+          target_params: r.params || {},
+          reminder: true,
+        }).catch(() => ({ sent: 0 }));
+        sent += out.sent || 0;
+      }
+      res.status(200).json({ reminders: body.reminders.length, sent });
+      return;
+    }
+
     const { notificationId } = body;
 
     if (!notificationId) {
@@ -268,6 +292,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
     target_view: n.target_view || "home",
     target_params: n.target_params || {},
     requireInteraction: isIncomingCall,
+    reminder: !!n.reminder,
     tag: isIncomingCall ? "levromart-incoming-call" : `levromart-${n.id}`,
     icon: iconUrl,
     badge: '/levromart-badge.png',
@@ -302,7 +327,7 @@ async function sendPush(SUPABASE_URL, svcHeaders, n) {
             }
           },
           payload,
-          { urgency: 'high', TTL: isIncomingCall ? 45 : 86400 }
+          { urgency: 'high', TTL: isIncomingCall ? 45 : (n.reminder ? 60 : 86400) }
         );
 
         sent++;
