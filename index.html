@@ -18478,7 +18478,7 @@ async function renderCart() {
   const { data: items, error } = cartResult || { data: null, error: new Error("Your cart could not be loaded.") };
   if (error) return `<h2 class="cart-page-title"><i class="fa-solid fa-cart-shopping"></i> Your Cart</h2>${errorStateHtml(error)}<button class="btn btn-outline" onclick="navigate('cart',{},false)"><i class="fa-solid fa-rotate-right"></i> Try again</button>`;
 
-  const cartHead = (n) => `<div class="cart-head"><button type="button" class="cart-back" onclick="history.length>1?history.back():navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h2 class="cart-page-title"><i class="fa-solid fa-cart-shopping"></i> My Cart${n ? ` <span class="cart-count">(${n})</span>` : ""}</h2>${n ? `<button type="button" class="cart-clear" onclick="openClearCartSheet()"><i class="fa-solid fa-trash-can"></i> Clear Cart</button>` : ""}</div>`;
+  const cartHead = (n) => `<div class="cart-head"><button type="button" class="cart-back" onclick="history.length>1?history.back():navigate('home')" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><h2 class="cart-page-title">My Cart${n ? ` <span class="cart-count">(${n})</span>` : ""}</h2>${n ? `<button type="button" class="cart-ico cart-checkall" onclick="checkoutCartAll()" aria-label="Checkout all" title="Checkout all"><i class="fa-solid fa-circle-check"></i></button><button type="button" class="cart-ico cart-clear" onclick="openClearCartSheet()" aria-label="Clear cart" title="Clear cart"><i class="fa-solid fa-trash-can"></i></button>` : ""}</div>`;
   let html = "";
   if (!items || items.length === 0) {
     return `<div class="cart-page">${cartHead(0)}<div class="vd-empty"><span class="vd-empty-ico"><i class="fa-solid fa-cart-shopping"></i></span><strong>Your cart is empty</strong><p>Add items from any product page, or tell Levi what you want and it'll add them for you.</p><button type="button" class="vl-add" onclick="navigate('home')"><i class="fa-solid fa-bag-shopping"></i> Start shopping</button></div></div>`;
@@ -18518,14 +18518,14 @@ async function renderCart() {
     const deliveryNoBreakdown = deliveryHtml.replace(breakdownRe, "");
     const itemCount = vItems.reduce((n, it) => n + it.quantity, 0);
     html += `<section class="cart-vendor-card ${ownCartVendor ? "own-cart-vendor" : ""}" data-cart-vendor="${esc(v.id)}">
-      <a href="#" class="cart-vendor-head" onclick="navigate('storefront',{vendorId:'${v.id}'});return false;"><i class="fa-solid fa-store"></i><span>${vendorNameWithFormerly(v)}</span><i class="fa-solid fa-chevron-right cart-chev"></i></a>
+      <a href="#" class="cart-vendor-head" onclick="navigate('storefront',{vendorId:'${v.id}'});return false;"><i class="fa-solid fa-store cart-ico-vendor"></i><span>${vendorNameWithFormerly(v)}</span><i class="fa-solid fa-chevron-right cart-chev"></i></a>
       ${ownCartVendor ? `<p class="error-text" style="margin:.5rem .9rem;"><i class="fa-solid fa-ban"></i> Your own products can't be purchased from your shop.</p>` : ""}
       <div class="cart-items">${vItems.map(cartItemRowHtml).join("")}</div>
     </section>
-    <section class="cart-card cart-summary"><div class="cart-card-head"><h3><i class="fa-solid fa-receipt"></i> Order summary</h3><strong>${naira(subtotal)}</strong></div>
+    <section class="cart-card cart-summary"><div class="cart-card-head"><h3><i class="fa-solid fa-receipt cart-ico-sum"></i> Order summary</h3><strong>${naira(subtotal)}</strong></div>
       <div class="cart-summary-row"><span>Subtotal (${itemCount} item${itemCount === 1 ? "" : "s"})</span><strong>${naira(subtotal)}</strong></div>
       <div id="cart-${v.id}PriceBreakdown" class="price-breakdown-table" aria-live="polite"></div></section>
-    <section class="cart-card cart-delivery"><h3><i class="fa-solid fa-truck-fast"></i> Delivery option</h3>${deliveryNoBreakdown}</section>
+    <section class="cart-card cart-delivery"><h3><i class="fa-solid fa-truck-fast cart-ico-del"></i> Delivery option</h3>${deliveryNoBreakdown}</section>
     <section class="cart-card cart-note"><label for="cartNote-${v.id}">Note for the vendor <span>(optional)</span></label>
       <textarea id="cartNote-${v.id}" rows="3" maxlength="200" placeholder="e.g. I'd like the blue one, or a size 42" oninput="this.nextElementSibling.textContent=this.value.length+'/200'"></textarea><small class="cart-note-count">0/200</small></section>
     ${ownCartVendor ? `<button class="btn btn-outline" style="width:100%;" disabled title="You can't purchase from your own shop"><i class="fa-solid fa-ban"></i> Checkout unavailable</button>` : `<button type="button" class="cart-checkout" onclick="checkoutCartVendor('${v.id}')"><i class="fa-solid fa-bag-shopping"></i><span class="cart-checkout-label">Checkout · ${esc(v.business_name)}</span><b id="cart-${v.id}CheckoutTotal">${naira(subtotal)}</b></button>`}
@@ -18633,6 +18633,51 @@ async function clearStaleCartItems() {
   await sb.from("cart_items").delete().in("id", ids);
   navigate("cart", {}, false);
 }
+async function checkoutCartAll() {
+  const groups = [...(window.__cartByVendor || new Map()).entries()].filter(([id]) => !isOwnVendorId(id));
+  if (!groups.length) { showToast("Your cart is empty.", "error"); return; }
+  const plan = [];
+  for (const [vendorId, group] of groups) {
+    const errorEl = byId(`cartError-${vendorId}`);
+    errorEl?.classList.add("hidden");
+    const delivery = readDeliveryFields(`cart-${vendorId}`, errorEl);
+    if (!delivery) { document.querySelector(`[data-cart-vendor="${vendorId}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    let itemsTotal = 0;
+    const lines = group.items.map((it) => {
+      const unit = Number(effectivePrice(it.variant && it.variant.sale_price != null ? it.variant : it.product) ?? 0);
+      itemsTotal += unit * it.quantity;
+      return `${it.quantity}× ${it.product.name}${it.variant?.name ? ` (${it.variant.name})` : ""} · ${naira(unit * it.quantity)}`;
+    });
+    const { fee, known } = computeDeliveryFeeForPrefix(`cart-${vendorId}`, delivery.method);
+    plan.push({ vendorId, group, delivery, lines, itemsTotal, fee: known ? Number(fee) || 0 : 0, known });
+  }
+  const grand = plan.reduce((n, p) => n + p.itemsTotal + p.fee, 0);
+  const anyUnknown = plan.some((p) => !p.known && p.delivery.method === "delivery");
+  const confirmHtml = plan.map((p) => `<div style="margin:0 0 .7rem;"><strong>${esc(p.group.vendor.business_name)}</strong>` + orderSummaryConfirmHtml({ itemLines: p.lines, method: p.delivery.method, pickupLabel: "Pickup", deliveryFee: p.fee, feeKnown: p.known, itemTotal: p.itemsTotal }) + `</div>`).join("") +
+    `<div style="display:flex;justify-content:space-between;font-weight:800;border-top:1px solid var(--border,#e5e7eb);padding-top:.6rem;"><span>Total (${plan.length} order${plan.length === 1 ? "" : "s"})</span><span>${naira(grand)}${anyUnknown ? "+" : ""}</span></div>`;
+  if (!(await showConfirmDialog(confirmHtml, { title: "Confirm checkout of everything", okLabel: "Checkout all", html: true }))) return;
+  let done = 0, lastId = null, failed = [];
+  for (const p of plan) {
+    try {
+      const { data: orderId, error } = await sb.rpc("create_cart_order", {
+        p_vendor_id: p.vendorId,
+        p_items: p.group.items.map((it) => ({ product_id: it.product.id, quantity: it.quantity, variant_id: it.variant?.id || null })),
+        p_delivery_method: p.delivery.method, p_delivery_address: p.delivery.address, p_delivery_phone: p.delivery.phone,
+        p_buyer_note: byId(`cartNote-${p.vendorId}`)?.value.trim() || null,
+        p_buyer_lat: buyerLocation?.lat ?? null, p_buyer_lng: buyerLocation?.lng ?? null,
+      });
+      if (error) throw error;
+      await sb.from("cart_items").delete().in("id", p.group.items.map((it) => it.id));
+      await persistBuyerDeliveryLocation(orderId, p.delivery.method);
+      done++; lastId = orderId;
+    } catch (e) { failed.push(`${p.group.vendor.business_name}: ${e.message || "failed"}`); }
+  }
+  refreshNotifications();
+  if (failed.length) showToast(`${done} placed. Couldn't place: ${failed.join("; ")}`, "error");
+  if (done === 1 && !failed.length) navigate("orderDetail", { orderId: lastId });
+  else if (done) { if (!failed.length) showToast(`${done} orders placed`, "success"); navigate(failed.length ? "cart" : "buyerOrders", {}, false); }
+}
+
 async function checkoutCartVendor(vendorId) {
   vendorId = String(vendorId);
   if (blockOwnVendorPurchase(vendorId, "buy")) return;
@@ -52422,4 +52467,22 @@ html body #aiChatFab .ai-chat-fab-logo,html body #app #aiChatFab .ai-chat-fab-lo
 html body #aiChatFab{overflow:hidden!important;border-radius:50%!important}
 html body #aiChatFab::before,html body #aiChatFab::after{display:none!important}
 html body #tourLeviLogo,html body #aiChatHeaderLogo,html body #installModalLogo,html body .settings-levi-logo{filter:none!important;-webkit-filter:none!important;border-radius:50%!important;object-fit:cover!important;background:transparent!important}
+</style>
+<style id="lm-b3">
+/* cart: standalone icons, colour-coded */
+html body #app .cart-head{display:flex;align-items:center;gap:.5rem}
+html body #app .cart-head .cart-page-title{flex:1;margin:0;font-size:1.25rem}
+html body #app .cart-head .cart-ico{width:40px;height:40px;min-height:0;padding:0;border:0!important;background:transparent!important;box-shadow:none!important;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:1.35rem;cursor:pointer}
+html body #app .cart-head .cart-checkall{color:#16a34a}
+html body #app .cart-head .cart-clear{color:#ef4444}
+html body #app .cart-ico-vendor{color:#2563eb!important}
+html body #app .cart-ico-sum{color:#f97316!important}
+html body #app .cart-ico-del{color:#8b5cf6!important}
+html body #app .cart-item .cart-remove,html body #app .cart-item .cart-remove i{color:#ef4444!important;background:transparent!important}
+/* order form: coloured delivery / location icons */
+html body #app .df-label .fa-truck,html body #app .df-label .fa-truck-fast,html body #app .delivery-method-row .fa-truck,html body #app .delivery-method-row .fa-truck-fast{color:#a78bfa!important}
+html body #app .df-label .fa-location-dot,html body #app .delivery-method-row .fa-location-dot,html body #app .delivery-method-row .fa-store{color:#f97316!important}
+/* flat product cards: drop the dark shadow */
+html body #app .hscroll .card,html body #app .grid .card,html body #app .hscroll .product-card,html body #app .grid .product-card{box-shadow:none!important}
+html body #app .hscroll,html body #app .grid{filter:none!important}
 </style>
