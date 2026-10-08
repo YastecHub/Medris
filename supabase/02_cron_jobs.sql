@@ -20,3 +20,6 @@ select cron.schedule('remind-unattended-orders', '*/3 * * * *', 'select public.r
 -- Not in pg_cron (runs from the app / Vercel instead):
 --   /api/daily-cron       (Vercel cron, once a day)   -> listing billing reminders, old notification cleanup
 --   /api/order-reminders  (GitHub Actions, optional)  -> 30-minute order reminder sweep
+
+-- Pending orders the vendor has not confirmed within 30 minutes are cancelled automatically and both sides are notified (every minute)
+select cron.schedule('auto-cancel-unconfirmed-orders', '* * * * *', 'select public.auto_cancel_unconfirmed_orders();');
