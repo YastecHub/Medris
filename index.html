@@ -9967,9 +9967,8 @@ html body > header{
     </div>
     <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-shapes"></i></span><div><strong>Varieties</strong><small>Sizes, colours or options with their own price</small></div></div>
     <div class="product-variant-pricing" id="productVariantPricing"></div>
-    <div class="lf-var-actions"><button type="button" class="btn btn-outline btn-sm" onclick="addProductVarietyDraft()"><i class="fa-solid fa-plus"></i> Add variety</button><button type="button" class="btn btn-sm lf-bulk" onclick="byId('prodVarietyBulkFiles')?.click()"><i class="fa-solid fa-images"></i> Upload many photos at once</button></div>
+    <div class="lf-var-actions"><button type="button" class="btn btn-outline btn-sm lf-var-add" onclick="addProductVarietyDraft()"><i class="fa-solid fa-plus"></i> Add variety</button><button type="button" class="btn btn-sm lf-bulk" title="Pick many photos together; each becomes its own variety" onclick="byId('prodVarietyBulkFiles')?.click()"><i class="fa-solid fa-images"></i> Add many photos</button></div>
     <input type="file" id="prodVarietyBulkFiles" accept="image/*" multiple class="hidden" onchange="bulkAddVarietiesFromPhotos(this)" />
-    <p class="muted" style="font-size:.78rem;margin:.45rem 0 0;">Pick all your variety photos together. Each photo becomes its own variety; open any one afterwards to add its name and price.</p>
     </div>
     <div class="flex lm-actions">
       <button type="button" class="btn btn-sm lf-cancel" onclick="clearNewListingDraft('product');closeProductModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
@@ -53792,4 +53791,10 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
 :root:root:root body .lf-page .lf-top{position:static!important}
 :root:root:root body .lf-page .lm-actions .btn{display:inline-flex!important;align-items:center;justify-content:center;gap:.4rem;text-align:center!important}
 :root:root:root body .lf-page .lm-actions .btn.hidden{display:none!important}
+
+/* variety buttons: one tidy row */
+:root:root:root body .lf-var-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:.6rem;margin:.7rem 0 0}
+:root:root:root body .lf-var-actions .btn{width:100%;min-height:2.9rem;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border-radius:999px;font-weight:800;font-size:.92rem;white-space:nowrap;padding:.6rem .5rem;margin:0}
+:root:root:root body .lf-var-actions .lf-var-add{background:transparent;color:var(--lf-acc,#16a34a);border:1.5px solid var(--lf-acc,#16a34a)}
+:root:root:root body .lf-var-actions .lf-bulk{background:color-mix(in srgb,var(--lf-acc,#16a34a) 14%,transparent);color:var(--lf-acc,#16a34a);border:1.5px solid transparent}
 </style>

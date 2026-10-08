@@ -1,4 +1,4 @@
-const CACHE = 'levromart-shell-v24';
+const CACHE = 'levromart-shell-v25';
 const RUNTIME = 'levromart-runtime-v9';
 const OFFLINE_FALLBACK = '/';
 
