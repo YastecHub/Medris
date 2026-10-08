@@ -9864,7 +9864,7 @@ html body > header{
     <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-pen-to-square"></i></span><div><strong>Basics</strong><small>Name it and describe it</small></div></div>
     <label>Name <b class="lf-req">*</b></label>
     <input type="text" id="prodName" placeholder="e.g. BP Monitor or Hair Braiding" />
-    <label style="display:flex;align-items:center;gap:0.5rem;font-weight:400;"><input type="checkbox" id="prodIsService" onchange="updateProductFormFields();updateProductSaveButtonLabel()" style="width:auto;margin:0;" /> This is a service, not a physical product (e.g. hairdressing, baking, repairs)</label>
+    <label id="prodIsServiceRow" style="display:flex;align-items:center;gap:0.5rem;font-weight:400;"><input type="checkbox" id="prodIsService" onchange="updateProductFormFields();updateProductSaveButtonLabel()" style="width:auto;margin:0;" /> This is a service, not a physical product (e.g. hairdressing, baking, repairs)</label>
     <label>Description <b class="lf-req">*</b> <span class="lf-reqnote">required</span></label>
     <textarea id="prodDesc" placeholder="Tell buyers what makes it good (required)" rows="3" required></textarea>
     </div>
@@ -26329,16 +26329,49 @@ function bulkAddVarietiesFromPhotos(input){
   showToast(`${files.length} ${files.length===1?'variety':'varieties'} added. Open any one to add its name and price.`,'success');
   byId('productVariantPricing')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
-window.lfFillArt=function(){
+window.lfArtFor=function(mode){
   try{
-    const src=document.querySelector('#lvOnb .lv-hero-girl')?.getAttribute('src')||document.querySelector('#lvOnb .lv-hero')?.getAttribute('src')||'';
-    document.querySelectorAll('.lf-page .lf-art').forEach(i=>{ if(src&&i.getAttribute('src')!==src) i.setAttribute('src',src); i.style.display=src?'':'none'; });
+    if(mode==='service')return document.querySelector('.lv-auth-char')?.getAttribute('src')||'';
+    if(mode==='package')return document.querySelectorAll('#lvOnb img.lv-hero')[2]?.getAttribute('src')||'';
+    return document.querySelector('#lvOnb .lv-hero-girl')?.getAttribute('src')||'';
+  }catch(_){return ''}
+};
+window.lfApplyMode=function(){
+  try{
+    const pm=byId('productModal'),kg=byId('packageModal');
+    if(pm){
+      const svc=!!byId('prodIsService')?.checked, mode=svc?'service':'product';
+      pm.dataset.lfMode=mode;try{updateProductSaveButtonLabel()}catch(_){}
+      const t=byId('productModalTitle');
+      if(t){const x=t.textContent||'';const y=svc?x.replace(/Product$/,'Service'):x.replace(/Service$/,'Product');if(x!==y)t.textContent=y}
+      const sub=pm.querySelector('.lf-sub');
+      if(sub)sub.innerHTML=svc?'Describe what you offer, set your rate and show your work. Fields marked <b class="lf-req">*</b> are required.':'Fill in the basics, add clear photos, then save. Fields marked <b class="lf-req">*</b> are required.';
+      const nm=byId('prodName');if(nm)nm.placeholder=svc?'e.g. Hair braiding or Home cleaning':'e.g. BP Monitor or Ankara Fabric';
+      const ds=byId('prodDesc');if(ds)ds.placeholder=svc?"Tell customers what's included and how it works (required)":'Tell buyers what makes it good (required)';
+      const sm=pm.querySelector('.lm-pink .lm-sec-head strong');if(sm)sm.textContent=svc?'Photos of your work':'Photos';
+      const bs=pm.querySelector('.lm-blue .lm-sec-head small');if(bs)bs.textContent=svc?'Name your service and say what it covers':'Name it and describe it';
+      const img=pm.querySelector('.lf-art');const src=lfArtFor(mode);if(img&&src&&img.getAttribute('src')!==src)img.setAttribute('src',src);
+    }
+    if(kg){kg.dataset.lfMode='package';const img=kg.querySelector('.lf-art');const src=lfArtFor('package');if(img&&src&&img.getAttribute('src')!==src)img.setAttribute('src',src);}
   }catch(_){}
 };
+window.lfFillArt=window.lfApplyMode;
+(function(){
+  if(window.__lfWrapUPF)return;window.__lfWrapUPF=true;
+  const o=window.updateProductFormFields;
+  if(typeof o==='function')window.updateProductFormFields=function(){const r=o.apply(this,arguments);lfApplyMode();return r};
+  /* chooser choice wins over a restored draft */
+  new MutationObserver(()=>{const pm=byId('productModal');if(!pm||pm.classList.contains('hidden')||pm.dataset.draftRestored!=='1'||pm.dataset.lfEnforced==='1')return;
+    pm.dataset.lfEnforced='1';const want=window.__lfWant;
+    if(want&&/^Add/.test(byId('productModalTitle')?.textContent||'')){const cb=byId('prodIsService');if(cb&&cb.checked!==(want==='service')){cb.checked=want==='service';window.updateProductFormFields?.();updateProductSaveButtonLabel?.()}}
+    window.__lfWant=null;lfApplyMode();
+  }).observe(document.body,{attributes:true,subtree:true,attributeFilter:['class','data-draft-restored']});
+  new MutationObserver(()=>{const pm=byId('productModal');if(pm&&pm.classList.contains('hidden'))delete pm.dataset.lfEnforced}).observe(document.body,{attributes:true,subtree:true,attributeFilter:['class']});
+})();
 (function(){
   const t=setInterval(()=>{
     if(typeof window.openAddProductModal==='function'&&!window.openAddProductModal.__lf){
-      const o=window.openAddProductModal; const w=async function(){ const r=await o.apply(this,arguments); window.lfFillArt(); return r; }; w.__lf=true; window.openAddProductModal=w;
+      const o=window.openAddProductModal; const w=async function(){ const r=await o.apply(this,arguments); const want=window.__lfWant; if(want&&/^Add/.test(byId('productModalTitle')?.textContent||'')){const cb=byId('prodIsService');if(cb){cb.checked=want==='service';window.updateProductFormFields?.();updateProductSaveButtonLabel?.();}} window.lfApplyMode(); return r; }; w.__lf=true; window.openAddProductModal=w;
     }
     if(typeof window.openAddPackageModal==='function'&&!window.openAddPackageModal.__lf){
       const o=window.openAddPackageModal; const w=async function(){ const r=await o.apply(this,arguments); window.lfFillArt(); return r; }; w.__lf=true; window.openAddPackageModal=w;
@@ -36931,6 +36964,7 @@ window.renderVendorMapRail = function(){
   };
   window.chooseAddListing=async function(type){
     byId('addListingChooser')?.remove();
+    window.__lfWant=(type==='service')?'service':(type==='product'?'product':null);
     if(type==='package'){ await openAddPackageModal(); return; }
     await window.openAddProductModal();
     if(type==='service'){
@@ -53637,4 +53671,19 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
 .lf-page .listing-payment-timing-settings{background:color-mix(in srgb,#8b5cf6 6%,transparent)!important;border-radius:14px!important;padding:.7rem!important}
 .lf-page .lm-more{border:0;background:color-mix(in srgb,var(--text) 4%,transparent);border-radius:20px;padding:.1rem .95rem}
 .lf-top{border-bottom:1px solid var(--border);margin-bottom:.4rem}
+
+/* round 3: product / service / package each get their own look */
+.lf-page #prodIsServiceRow{display:none!important}
+.lf-page{--lf-acc:#16a34a;--lf-acc2:#3fb97f}
+.lf-page[data-lf-mode="service"]{--lf-acc:#ea580c;--lf-acc2:#f59e0b}
+.lf-page[data-lf-mode="package"]{--lf-acc:#7c3aed;--lf-acc2:#6366f1}
+.lf-page .lf-top{background:linear-gradient(135deg,color-mix(in srgb,var(--lf-acc) 14%,var(--bg)),var(--bg) 85%)!important;margin:0 -1rem .5rem;padding:1rem 1rem 1.05rem;border-bottom:0;border-radius:0 0 26px 26px}
+.lf-page .lf-back{background:color-mix(in srgb,var(--lf-acc) 16%,transparent)!important;color:var(--lf-acc)!important}
+.lf-page .lf-top-copy h3{color:var(--lf-acc)}
+.lf-page .lf-saved.ok{color:var(--lf-acc)}
+.lf-page .lm-actions #saveProductBtn,.lf-page .lm-actions .btn:not(.lf-cancel):not(.btn-outline){background:linear-gradient(135deg,var(--lf-acc2),var(--lf-acc))!important;box-shadow:0 8px 20px color-mix(in srgb,var(--lf-acc) 35%,transparent)!important}
+.lf-page[data-lf-mode="service"] .lm-blue{--lm:#f97316}
+.lf-page[data-lf-mode="service"] .lm-pink{--lm:#f59e0b}
+.lf-page[data-lf-mode="package"] .lm-blue{--lm:#7c3aed}
+.lf-page[data-lf-mode="package"] .lm-pink{--lm:#a855f7}
 </style>
