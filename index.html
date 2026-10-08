@@ -13909,15 +13909,18 @@ async function saveVendorCoverCrop(){
   const sx=Math.max(0,-left)*(img.naturalWidth/displayW),sy=Math.max(0,-top)*(img.naturalHeight/displayH);
   const sw=Math.min(img.naturalWidth,v.clientWidth*img.naturalWidth/displayW),sh=Math.min(img.naturalHeight,v.clientHeight*img.naturalHeight/displayH);
   ctx.drawImage(img,sx,sy,sw,sh,0,0,width,height);
+  const useBtn=document.querySelector("#vendorCoverCropModal .btn:not(.btn-outline), .cover-crop-modal-content .btn:not(.btn-outline)");
+  const setBusy=(on)=>{ if(!useBtn) return; useBtn.disabled=on; if(on){ useBtn.dataset.h=useBtn.innerHTML; useBtn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Saving…'; } else if(useBtn.dataset.h){ useBtn.innerHTML=useBtn.dataset.h; } };
+  setBusy(true);
   canvas.toBlob(async blob=>{
-    if(!blob){showToast("Could not prepare that header.","error");return;}
+    if(!blob){setBusy(false);showToast("Could not prepare that header.","error");return;}
     try{
       const path=`vendor-logos/${vendor.id}/cover.jpg`;
       const url=`${await uploadToR2(blob,path,"image/jpeg")}?t=${Date.now()}`;
       const {error}=await sb.from("vendors").update({cover_url:url}).eq("id",vendor.id);if(error)throw error;
       vendor.cover_url=url;closeVendorCoverCropModal();showToast("Storefront header updated.","success");
-      if(currentView==="vendorEditProfile")await navigate("vendorEditProfile",{},false);else if(currentView==="editProfile"||currentView==="profileSetup")await navigate(currentView,{},false);else if(currentView==="storefront")await navigate("storefront",{vendorId:vendor.id},false);
-    }catch(e){showToast(e.message||"Could not update storefront header.","error");}
+      try{document.querySelectorAll("#app .storefront-cover").forEach(el=>{el.classList.add("has-custom-cover");el.style.backgroundImage=`url('${url}')`;el.style.backgroundSize="cover";el.style.backgroundPosition="center";el.querySelector(".storefront-cover-empty")?.remove();if(!el.querySelector(".storefront-cover-overlay"))el.insertAdjacentHTML("afterbegin",'<div class="storefront-cover-overlay"></div>');});}catch(_){}
+    }catch(e){setBusy(false);showToast(e.message||"Could not update storefront header.","error");}
   },"image/jpeg",0.9);
 }
 function uploadAvatar(event) {
@@ -13990,15 +13993,18 @@ async function saveAvatarCrop(){
   const sx=Math.max(0,-left)*(img.naturalWidth/displayW), sy=Math.max(0,-top)*(img.naturalHeight/displayH);
   const sw=Math.min(img.naturalWidth, v.clientWidth*img.naturalWidth/displayW); const sh=Math.min(img.naturalHeight, v.clientHeight*img.naturalHeight/displayH);
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
+  const aBtn=document.querySelector('#avatarCropModal .btn:not(.btn-outline)');
+  const aBusy=(on)=>{ if(!aBtn) return; aBtn.disabled=on; if(on){ aBtn.dataset.h=aBtn.innerHTML; aBtn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Saving…'; } else if(aBtn.dataset.h){ aBtn.innerHTML=aBtn.dataset.h; } };
+  aBusy(true);
   canvas.toBlob(async (blob)=>{
-    if(!blob){showToast('Could not prepare that photo.','error');return;}
+    if(!blob){aBusy(false);showToast('Could not prepare that photo.','error');return;}
     const path=`avatars/${session.user.id}/avatar.jpg`;
     let publicUrl;
     try{ publicUrl=await uploadToR2(blob,path,'image/jpeg'); }
-    catch(upErr){ showToast(upErr.message,'error'); return; }
+    catch(upErr){ aBusy(false); showToast(upErr.message,'error'); return; }
     const url=`${publicUrl}?t=${Date.now()}`;
     const {error}=await sb.from('users').update({avatar_url:url}).eq('id',session.user.id);
-    if(error){showToast(error.message,'error');return;}
+    if(error){aBusy(false);showToast(error.message,'error');return;}
     profile.avatar_url=url;
     // Keep a vendor's marketplace identity tied to the same profile photo.
     // The vendor logo is the public storefront avatar, so changing the main
