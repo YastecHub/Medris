@@ -28017,7 +28017,7 @@ function filterTableRowsBySearch(inputEl, scopeSelector) {
   const q = inputEl.value.trim().toLowerCase();
   document.querySelectorAll(scopeSelector).forEach((wrap) => {
     let anyVisible = false;
-    wrap.querySelectorAll("tbody tr").forEach((row) => {
+    wrap.querySelectorAll("tbody tr, .fin-row").forEach((row) => {
       const match = !q || row.textContent.toLowerCase().includes(q);
       row.classList.toggle("hidden", !match);
       if (match) anyVisible = true;
@@ -31331,37 +31331,44 @@ async function renderAdminFinance() {
     const commissionOwingCount = (vendors || []).filter(v => Number(v.commission_owed || 0) > 0).length;
     const commissionOverdueCount = (vendors || []).filter(v => v.commission_status === "overdue").length;
     const commissionDueSoonCount = (vendors || []).filter(v => v.commission_status === "due_soon").length;
-    html += `<div class="stats-grid" style="max-width:900px;margin:1rem auto;">
-      <div class="stat"><div class="n">${commissionOwingCount}</div><div class="muted">Vendors owing</div></div>
-      <div class="stat"><div class="n">${commissionOverdueCount}</div><div class="muted">Overdue</div></div>
-      <div class="stat"><div class="n">${commissionDueSoonCount}</div><div class="muted">Due within 48h</div></div>
+    html += `<div class="fin-chips">
+      <div class="fin-chip"><b>${commissionOwingCount}</b><span>Owing</span></div>
+      <div class="fin-chip ${commissionOverdueCount ? "bad" : ""}"><b>${commissionOverdueCount}</b><span>Overdue</span></div>
+      <div class="fin-chip ${commissionDueSoonCount ? "warn" : ""}"><b>${commissionDueSoonCount}</b><span>Due in 48h</span></div>
     </div>`;
   }
   html += `<h3 style="margin-top:1.2rem;">Vendors</h3>`;
   html += `<input type="text" placeholder="Search vendors…" style="max-width:320px;margin-bottom:0.6rem;" oninput="filterTableRowsBySearch(this,'.financeVendorsTableWrap')" />`;
-  html += `<div class="table-wrap financeVendorsTableWrap"><table class="data-table"><thead><tr>
-    <th>Business</th><th>Status</th><th>Payouts</th>${seesFinancials ? `<th>Commission %</th><th>Completed orders</th><th>Total collected</th><th>Commission owed</th><th>Due date</th><th>Days remaining</th><th>Commission status</th><th>Storefront</th>` : ""}
-  </tr></thead><tbody>`;
+  html += `<div class="fin-list financeVendorsTableWrap">`;
   (vendors || []).forEach((v) => {
     const owed = Number(v.commission_owed || 0);
-    html += `<tr>
-      <td>${esc(v.business_name)}</td>
-      <td><span class="badge ${v.verification_status === "verified" ? "success" : v.verification_status === "rejected" ? "danger" : "warning"}">${esc(v.verification_status)}</span></td>
-      <td>${v.paystack_subaccount_code ? `<span class="badge success">Active</span>` : `<span class="badge warning">Not set up</span>`}</td>
-      ${seesFinancials ? `<td>${Number(v.commission_pct)}%</td>
-      <td>${v.completed_orders}</td>
-      <td>${naira(v.total_paid_in)}</td>
-      <td>${owed > 0 ? `<span class="badge warning">${naira(owed)}</span>` : naira(0)}</td>
-      <td>${v.commission_due_at ? esc(new Date(v.commission_due_at).toLocaleDateString("en-NG", {day:"numeric",month:"short",year:"numeric"})) : "-"}</td>
-      <td>${owed > 0 ? (Number(v.commission_days_remaining) < 0 ? `<span class="badge danger">${Math.abs(Number(v.commission_days_remaining))}d overdue</span>` : `<span class="badge ${Number(v.commission_days_remaining) <= 2 ? "warning" : "success"}">${Number(v.commission_days_remaining)}d</span>`) : "-"}</td>
-      <td><span class="badge ${v.commission_status === "overdue" ? "danger" : v.commission_status === "due_soon" ? "warning" : v.commission_status === "paid" ? "success" : "warning"}">${esc(v.commission_status || "paid")}</span></td>
-      <td>
-        <span class="badge ${v.is_active ? "success" : "danger"}">${v.is_active ? "Active" : "Paused"}</span>
-        ${owed > 0 ? (v.is_active ? `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', true, '${esc(v.business_name)}')">Pause</button>` : `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', false, '${esc(v.business_name)}')">Unlock</button>`) : `<button class="btn btn-sm btn-outline" style="margin-left:0.4rem;" onclick="adminToggleVendorActive('${v.vendor_id}', ${v.is_active}, '${esc(v.business_name)}')">${v.is_active ? "Pause" : "Reactivate"}</button>`}
-      </td>` : ""}
-    </tr>`;
+    const vBadge = v.verification_status === "verified" ? "success" : v.verification_status === "rejected" ? "danger" : "warning";
+    const cStatus = v.commission_status || "paid";
+    const cBadge = cStatus === "overdue" ? "danger" : cStatus === "due_soon" ? "warning" : cStatus === "paid" ? "success" : "warning";
+    const due = v.commission_due_at ? new Date(v.commission_due_at).toLocaleDateString("en-NG", {day:"numeric",month:"short",year:"numeric"}) : "";
+    const days = owed > 0 ? (Number(v.commission_days_remaining) < 0 ? `<span class="badge danger">${Math.abs(Number(v.commission_days_remaining))}d overdue</span>` : `<span class="badge ${Number(v.commission_days_remaining) <= 2 ? "warning" : "success"}">${Number(v.commission_days_remaining)}d left</span>`) : "";
+    const act = (arg, label, solid) => `<button class="btn btn-sm ${solid ? "" : "btn-outline"}" onclick="adminToggleVendorActive('${v.vendor_id}', ${arg}, '${esc(v.business_name)}')">${label}</button>`;
+    const action = !seesFinancials ? "" : owed > 0 ? (v.is_active ? act("true", "Pause") : act("false", "Unlock", true)) : act(String(!!v.is_active), v.is_active ? "Pause" : "Reactivate", !v.is_active);
+    html += `<div class="fin-row">
+      <div class="fin-row-top">
+        <strong class="fin-name">${esc(v.business_name)}</strong>
+        <span class="badge ${vBadge}">${esc(v.verification_status)}</span>
+        ${seesFinancials ? `<span class="badge ${v.is_active ? "success" : "danger"}">${v.is_active ? "Live" : "Paused"}</span>` : ""}
+        <span class="fin-action">${action}</span>
+      </div>
+      <div class="fin-meta">
+        <span>${v.paystack_subaccount_code ? `<span class="badge success">Payouts on</span>` : `<span class="badge warning">Payouts not set up</span>`}</span>
+        ${seesFinancials ? `<span><em>Commission</em> ${Number(v.commission_pct)}%</span>
+        <span><em>Orders</em> ${v.completed_orders}</span>
+        <span><em>Collected</em> ${naira(v.total_paid_in)}</span>
+        <span><em>Owed</em> ${owed > 0 ? `<span class="badge warning">${naira(owed)}</span>` : naira(0)}</span>
+        ${due ? `<span><em>Due</em> ${esc(due)}</span>` : ""}
+        ${days}
+        <span><span class="badge ${cBadge}">${esc(cStatus.replace("_", " "))}</span></span>` : ""}
+      </div>
+    </div>`;
   });
-  html += `</tbody></table></div>`;
+  html += `</div>`;
   if (!vendors || vendors.length === 0) html += `<p class="muted">No vendors yet.</p>`;
 
   if (!seesFinancials) return html;
@@ -31430,18 +31437,19 @@ function renderAdminFinanceRange() {
     let tableHtml = "";
     byDate.forEach((dayTxns, dateKey) => {
       tableHtml += `<div class="category-group-header">${esc(dateKey)}</div>
-        <div class="table-wrap financeTxnTableWrap"><table class="data-table"><thead><tr>
-          <th>Time</th><th>Customer</th><th>Vendor</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Platform cut</th>
-        </tr></thead><tbody>${dayTxns.map((t) => `<tr>
-          <td>${new Date(t.created_at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" })}</td>
-          <td>${esc(t.buyer_name || "")}</td>
-          <td>${esc(t.vendor_name || "")}</td>
-          <td style="text-transform:capitalize;">${esc((t.payment_type || "").replace("_", " "))}</td>
-          <td>${naira(t.amount)}</td>
-          <td style="text-transform:capitalize;">${esc(t.method)}</td>
-          <td><span class="badge ${t.status === "paid" ? "success" : t.status === "refunded" ? "danger" : "warning"}">${esc(t.status)}</span></td>
-          <td>${naira(t.platform_cut)}</td>
-        </tr>`).join("")}</tbody></table></div>`;
+        <div class="fin-list financeTxnTableWrap">${dayTxns.map((t) => `<div class="fin-row">
+          <div class="fin-row-top">
+            <strong class="fin-name">${esc(t.buyer_name || "Customer")} <span class="fin-arrow">→</span> ${esc(t.vendor_name || "Vendor")}</strong>
+            <span class="fin-amount">${naira(t.amount)}</span>
+          </div>
+          <div class="fin-meta">
+            <span>${new Date(t.created_at).toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit" })}</span>
+            <span style="text-transform:capitalize;">${esc((t.payment_type || "").replace("_", " "))}</span>
+            <span style="text-transform:capitalize;">${esc(t.method)}</span>
+            <span class="badge ${t.status === "paid" ? "success" : t.status === "refunded" ? "danger" : "warning"}">${esc(t.status)}</span>
+            <span><em>Byla cut</em> ${naira(t.platform_cut)}</span>
+          </div>
+        </div>`).join("")}</div>`;
     });
     tableArea.innerHTML = tableHtml;
   }
@@ -53877,4 +53885,39 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
 :root:root body #app .product-card-dist[class*="dt"],:root:root:root[data-theme] body #app .product-card-dist[class*="dt"]{color:var(--dtc)!important;background:color-mix(in srgb,var(--dtc) 14%,transparent)!important}
 :root:root body #app .search-result-distance[class*="dt"],:root:root body #app .vendor-distance[class*="dt"],:root:root body #app .storefront-distance-link[class*="dt"]{color:var(--dtc)!important;font-weight:700}
 #browseSortSubmenu button i{margin-right:.4rem;color:var(--primary)}
+</style>
+
+<style id="card-total-tighten">
+/* trim the empty space under "Total / Delivery" on product cards */
+:root:root:root:root body #app .product-card-wrap.product-card-compact > .card > .product-card-total-line,:root:root:root:root body #app .product-card-wrap .product-card-total-line{margin:auto var(--lv-pad,.65rem) 0!important;padding:.45rem 0 .55rem!important}
+:root:root:root body #app .product-card-wrap>.card{padding-bottom:0!important;min-height:0!important}
+:root:root:root body #app .hscroll.trending-scroll .product-card-wrap{height:auto!important}
+</style>
+
+<style id="chooser-sheet-flush">
+/* the + chooser is a true bottom sheet: edge to edge, flush with the bottom of the screen */
+:root:root:root body #addListingChooser{padding:0!important;display:flex;align-items:flex-end!important;justify-content:center!important}
+:root:root:root body #addListingChooser>.modal-content{width:100%!important;max-width:560px!important;margin:0!important;border-radius:26px 26px 0 0!important;border:0!important;padding:1.1rem 1rem calc(1.4rem + env(safe-area-inset-bottom,0px))!important;max-height:92vh;overflow-y:auto}
+</style>
+
+<style id="admin-finance-style">
+.fin-chips{display:flex;gap:.55rem;overflow-x:auto;margin:.9rem 0 1.1rem;padding-bottom:.2rem;scrollbar-width:none}
+.fin-chips::-webkit-scrollbar{display:none}
+.fin-chip{flex:1 0 auto;min-width:6.2rem;display:flex;align-items:baseline;justify-content:center;gap:.4rem;padding:.55rem .9rem;border-radius:999px;background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--text)}
+.fin-chip b{font-size:1.15rem;font-weight:800;color:var(--primary)}
+.fin-chip span{font-size:.78rem;font-weight:600;color:var(--text-muted)}
+.fin-chip.bad{background:color-mix(in srgb,#dc2626 12%,var(--card))}.fin-chip.bad b{color:#dc2626}
+.fin-chip.warn{background:color-mix(in srgb,#f59e0b 14%,var(--card))}.fin-chip.warn b{color:#d97706}
+.fin-list{display:flex;flex-direction:column;margin:.2rem 0 1rem}
+.fin-row{padding:.8rem .1rem;border-bottom:1px solid var(--border)}
+.fin-row:last-child{border-bottom:0}
+.fin-row.hidden{display:none}
+.fin-row-top{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem .5rem}
+.fin-name{font-size:.98rem;font-weight:800;min-width:0;overflow-wrap:anywhere}
+.fin-arrow{color:var(--text-muted);font-weight:600}
+.fin-amount{margin-left:auto;font-weight:800;font-size:1rem;color:var(--text)}
+.fin-action{margin-left:auto;display:inline-flex}
+:root:root body .fin-action .btn{padding:.3rem .85rem!important;min-height:0!important;height:auto!important;width:auto!important;border-radius:999px;font-size:.76rem;line-height:1.3}
+.fin-meta{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .9rem;margin-top:.45rem;font-size:.78rem;color:var(--text)}
+.fin-meta em{font-style:normal;color:var(--text-muted);margin-right:.25rem}
 </style>
