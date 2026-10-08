@@ -53609,6 +53609,48 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
 })();
 </script>
 
+<script>
+/* Listing page: keep Save/Cancel bar last in the form, and survive a refresh. */
+(function(){
+  const KEY='levromart-listing-page-open-v1';
+  function pin(){document.querySelectorAll('#productModal .lm-actions,#packageModal .lm-actions').forEach(a=>{const p=a.parentElement;if(p&&p.lastElementChild!==a)p.appendChild(a)})}
+  ['productModal','packageModal'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const c=el.querySelector('.modal-content');
+    if(c)new MutationObserver(()=>{if(!el.classList.contains('hidden'))pin()}).observe(c,{childList:true,subtree:true});
+  });
+  function track(){
+    try{
+      const pm=document.getElementById('productModal'),kg=document.getElementById('packageModal');
+      let st=null;
+      if(pm&&!pm.classList.contains('hidden'))st={k:'product',id:(typeof editingProductId!=='undefined'&&editingProductId)||null,svc:!!document.getElementById('prodIsService')?.checked};
+      else if(kg&&!kg.classList.contains('hidden'))st={k:'package',id:(typeof editingPackageId!=='undefined'&&editingPackageId)||null};
+      if(st){localStorage.setItem(KEY,JSON.stringify(st));pin()}else localStorage.removeItem(KEY);
+    }catch(_){}
+  }
+  new MutationObserver(track).observe(document.body,{attributes:true,subtree:true,attributeFilter:['class']});
+  document.addEventListener('change',e=>{if(e.target&&e.target.id==='prodIsService')track()},true);
+  /* After a refresh, reopen the page the vendor was on. */
+  let st=null;try{st=JSON.parse(localStorage.getItem(KEY)||'null')}catch(_){}
+  if(!st)return;
+  let tries=0;
+  const t=setInterval(async()=>{
+    tries++;
+    if(tries>150){clearInterval(t);return}
+    try{
+      if(!(typeof session!=='undefined'&&session&&typeof vendor!=='undefined'&&vendor))return;
+      if(typeof openAddProductModal!=='function'||typeof openAddPackageModal!=='function')return;
+      clearInterval(t);
+      await new Promise(r=>setTimeout(r,700));
+      if(st.k==='package'){ if(st.id&&typeof openEditPackageModal==='function')await openEditPackageModal(st.id); else await openAddPackageModal(); }
+      else if(st.id&&typeof openEditProductModal==='function')await openEditProductModal(st.id);
+      else{window.__lfWant=st.svc?'service':'product';await window.openAddProductModal();}
+      pin();
+    }catch(_){}
+  },300);
+})();
+</script>
+
 <style id="listing-page-style">
 /* Listing form as a dedicated flat page */
 :root:root body #productModal.lf-page,:root:root body #packageModal.lf-page{position:fixed!important;inset:0!important;display:block;align-items:initial!important;justify-content:initial!important;padding:0!important;background:var(--bg)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow-y:auto!important;overflow-x:hidden!important;z-index:2147483000}
@@ -53686,4 +53728,12 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
 .lf-page[data-lf-mode="service"] .lm-pink{--lm:#f59e0b}
 .lf-page[data-lf-mode="package"] .lm-blue{--lm:#7c3aed}
 .lf-page[data-lf-mode="package"] .lm-pink{--lm:#a855f7}
+
+/* round 4: bar sticks to the bottom of the scrolling page (no fixed positioning) */
+:root:root body .lf-page>.modal-content{overflow:visible!important;padding-bottom:0!important}
+:root:root body .lf-page .lm-actions{position:sticky!important;left:auto!important;right:auto!important;bottom:0!important;top:auto!important;margin:1.2rem -1rem 0!important;padding:.75rem 1rem calc(.75rem + env(safe-area-inset-bottom,0px))!important;z-index:20}
+
+/* round 5: modal-content is the one scroller; bar sticks to its bottom */
+:root:root:root body #productModal.lf-page,:root:root:root body #packageModal.lf-page{overflow:hidden!important}
+:root:root:root body #productModal.lf-page>.modal-content,:root:root:root body #packageModal.lf-page>.modal-content{height:100%!important;max-height:none!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 </style>
