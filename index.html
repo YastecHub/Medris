@@ -43345,7 +43345,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       const replies=(children.get(String(root.id))||[]).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
       const replyId=`levro-replies-${kind}-${root.id}`;
       return commentRow(root,likeMap,myLiked,0,kind)+
-        (replies.length?`<button type="button" class="comment-replies-toggle" onclick="toggleInlineCommentReplies('${escSafe(root.id)}','${kind}')" aria-expanded="false" data-replies-for="${escSafe(root.id)}"><i class="fa-solid fa-chevron-down"></i> ${replies.length} ${replies.length===1?"reply":"replies"}</button><div id="${replyId}" class="comment-replies-dropdown hidden">${replies.map(r=>commentRow(r,likeMap,myLiked,1,kind)).join("")}</div>`:"");
+        (replies.length?`<button type="button" class="comment-replies-toggle" onclick="toggleInlineCommentReplies('${escSafe(root.id)}','${kind}')" aria-expanded="false" data-replies-for="${escSafe(root.id)}"><span class="cr-line"></span><span class="cr-label">View ${replies.length} ${replies.length===1?"reply":"replies"}</span></button><div id="${replyId}" class="comment-replies-dropdown hidden">${replies.map(r=>commentRow(r,likeMap,myLiked,1,kind)).join("")}</div>`:"");
     }).join("");
   }
 
@@ -43357,7 +43357,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     if(btn){
       btn.setAttribute("aria-expanded",String(!open));
       const count=el.querySelectorAll(".product-comment-row").length;
-      btn.innerHTML=`<i class="fa-solid fa-chevron-${open?"down":"up"}"></i> ${count} ${count===1?"reply":"replies"}`;
+      btn.innerHTML=`<span class="cr-line"></span><span class="cr-label">${open?`View ${count} ${count===1?"reply":"replies"}`:"Hide replies"}</span>`;
     }
   };
 
@@ -54138,4 +54138,14 @@ body.lv-cs-open{overflow:hidden}
 :root[data-theme="dark"] body .fav-btn.active,:root[data-theme="black"] body .fav-btn.active{background:rgba(255,255,255,.12)!important}
 :root:root body .fav-btn.active i{animation:lvHeartPop .35s ease-out}
 @keyframes lvHeartPop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+</style>
+
+<style id="comment-replies-ig">
+/* Instagram-style "View N replies": flat grey text with a short line, replies indented underneath */
+:root:root body .comment-replies-toggle{all:unset;box-sizing:border-box;display:inline-flex!important;align-items:center;gap:.6rem;cursor:pointer;margin:.1rem 0 .55rem 3.2rem!important;padding:.25rem 0!important;font-size:.78rem!important;font-weight:600!important;color:var(--text-muted)!important;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;width:auto!important;min-height:0!important;-webkit-tap-highlight-color:transparent}
+:root:root body .comment-replies-toggle .cr-line{display:inline-block;width:1.6rem;height:1px;background:color-mix(in srgb,var(--text-muted) 70%,transparent)}
+:root:root body .comment-replies-toggle:active .cr-label{opacity:.6}
+:root:root body .comment-replies-dropdown{margin:0 0 .4rem 2.4rem!important;padding:0!important;border:0!important;background:none!important}
+:root:root body .comment-replies-dropdown.hidden{display:none!important}
+:root:root body .comment-replies-dropdown .product-comment-row{padding-top:.5rem!important;padding-bottom:.5rem!important}
 </style>
