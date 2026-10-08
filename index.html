@@ -54241,3 +54241,61 @@ document.addEventListener("click",function(e){
 #app .vd-grid.vendors-list-mode .vd-card{row-gap:.3rem!important}
 #app .vd-grid.vendors-list-mode .vd-card .vd-loc,#app .vd-grid.vendors-list-mode .vd-card .vd-cat{line-height:1.3;min-width:0}
 </style>
+
+<script id="comment-count-live">
+/* The comment count on a product/package page loads on its own and keeps itself current (live + light polling). */
+(function(){
+  var state={id:null,kind:null,chan:null,timer:null};
+  function el(){ return document.getElementById("productCommentsCount")||document.getElementById("packageCommentsCount"); }
+  async function fetchCount(kind,id){
+    try{
+      var tbl=kind==="package"?"package_comments":"product_comments", col=kind==="package"?"package_id":"product_id";
+      var r=await sb.from(tbl).select("id",{count:"exact",head:true}).eq(col,id);
+      if(!r.error&&typeof r.count==="number") return r.count;
+    }catch(_){}
+    return null;
+  }
+  async function refresh(){
+    var e=el(); if(!e){ stop(); return; }
+    var kind=e.id==="packageCommentsCount"?"package":"product";
+    var id=e.dataset.productId||e.dataset.packageId||(kind==="package"?(window.currentViewParams&&currentViewParams.packageId):(window.currentProductDetail&&currentProductDetail.id));
+    if(!id) return;
+    var n=await fetchCount(kind,id);
+    var again=el(); if(n==null||!again) return;
+    again.textContent=String(n);
+    try{ (kind==="package"?window.__packageCommentCounts:window.__productCommentCounts).set(String(id),n); }catch(_){}
+  }
+  function stop(){
+    if(state.chan){ try{ sb.removeChannel(state.chan); }catch(_){} }
+    if(state.timer) clearInterval(state.timer);
+    state={id:null,kind:null,chan:null,timer:null};
+  }
+  function start(){
+    var e=el(); if(!e) { if(state.id) stop(); return; }
+    var kind=e.id==="packageCommentsCount"?"package":"product";
+    var id=e.dataset.productId||e.dataset.packageId||(kind==="package"?(window.currentViewParams&&currentViewParams.packageId):(window.currentProductDetail&&currentProductDetail.id));
+    if(!id) return;
+    if(state.id===String(id)&&state.kind===kind) return;
+    stop(); state.id=String(id); state.kind=kind;
+    refresh();
+    try{
+      state.chan=sb.channel("cc-"+kind+"-"+id).on("postgres_changes",{event:"*",schema:"public",table:kind==="package"?"package_comments":"product_comments",filter:(kind==="package"?"package_id":"product_id")+"=eq."+id},function(){ refresh(); }).subscribe();
+    }catch(_){}
+    state.timer=setInterval(function(){ if(!document.hidden) refresh(); },20000);
+  }
+  new MutationObserver(function(){ if(start._t) return; start._t=setTimeout(function(){ start._t=0; start(); },250); }).observe(document.body,{childList:true,subtree:true});
+  document.addEventListener("visibilitychange",function(){ if(!document.hidden) refresh(); });
+  start();
+})();
+</script>
+<style id="home-carousel-wide">
+/* Home banner: wider and taller, like a store hero */
+#app .home-promotional-viewport,#app .home-promotional-carousel,#app .home-promotional-track{--slide-w:min(94vw,780px)!important}
+#app .home-promotional-slide{aspect-ratio:1.28/1!important;border-radius:22px!important;box-shadow:0 14px 34px rgba(0,0,0,.2)!important;border:0!important}
+#app .home-promotional-track{gap:.5rem!important}
+#app .home-promotional-carousel{margin-bottom:1.1rem!important}
+@media(min-width:720px){
+  #app .home-promotional-viewport,#app .home-promotional-carousel,#app .home-promotional-track{--slide-w:min(86vw,1000px)!important}
+  #app .home-promotional-slide{aspect-ratio:2.1/1!important}
+}
+</style>
