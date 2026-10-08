@@ -188,14 +188,14 @@
 <meta property="og:title" content="Levromart">
 <meta property="og:description" content="Rent or buy from verified vendors across Lagos: healthcare equipment, food, electronics, and more.">
 <meta property="og:url" content="https://levromart.vercel.app/">
-<meta property="og:image" content="https://pub-bc905d4e70404264a256cb3069953205.r2.dev/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png">
+<meta property="og:image" content="https://levromart.vercel.app/og-levromart.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Levromart — Support Local Businesses">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Levromart">
 <meta name="twitter:description" content="Rent or buy from verified vendors across Lagos: healthcare equipment, food, electronics, and more.">
-<meta name="twitter:image" content="https://pub-bc905d4e70404264a256cb3069953205.r2.dev/homepage-carousel/slides/f1b015da-408c-450d-93fb-0d9517b49e3e.png">
+<meta name="twitter:image" content="https://levromart.vercel.app/og-levromart.png">
 <meta name="twitter:image:alt" content="Levromart — Support Local Businesses">
 
 <link rel="icon" href="/favicon.ico" sizes="any">
@@ -54097,4 +54097,45 @@ body.lv-cs-open{overflow:hidden}
 :root:root body .chat-input-row textarea,:root:root body .ai-chat-input-row textarea{min-height:2.5rem!important;padding:.6rem 1rem!important;border-radius:20px!important;line-height:1.3}
 :root:root body .chat-input-row .btn,:root:root body .ai-chat-input-row .icon-btn:last-child{width:2.5rem!important;height:2.5rem!important;min-height:0!important;min-width:2.5rem;padding:0!important;border-radius:50%!important;display:inline-flex;align-items:center;justify-content:center;flex:none}
 :root:root body .chat-input-row,:root:root body .ai-chat-input-row{align-items:flex-end;gap:.5rem}
+</style>
+
+<style id="pd-detail-declutter">
+/* Product page top section: one clear reading order, no stacked divider lines */
+:root:root body #app .product-detail-card{display:flex!important;flex-direction:column;gap:.95rem;padding:1.1rem 1rem 1.2rem!important}
+:root:root body #app .product-detail-card>*{margin:0!important;border:0!important;border-top:0!important;border-bottom:0!important;box-shadow:none}
+:root:root body #app .product-detail-card .product-detail-top-actions{position:absolute!important;top:1rem;right:1rem;display:flex;gap:.5rem;z-index:3;order:0}
+:root:root body #app .product-detail-card .product-detail-top-actions>*{position:static!important;width:2.5rem;height:2.5rem;border-radius:50%;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+:root:root body #app .product-detail-card .product-detail-title{order:1;font-size:1.4rem!important;line-height:1.2;padding-right:6rem}
+:root:root body #app .product-detail-card .product-detail-actions{order:2;padding:0!important;display:flex;align-items:center;justify-content:flex-start!important;gap:.5rem;margin-top:-.5rem!important}
+:root:root body #app .product-detail-card .product-detail-actions .badge{font-size:.8rem;padding:.25rem .65rem}
+:root:root body #app .product-detail-card .product-detail-media{order:3}
+:root:root body #app .product-detail-card .product-price-hero{order:4;text-align:left!important;padding:.2rem .1rem!important;background:none!important}
+:root:root body #app .product-detail-card .pph-label{font-size:.72rem!important;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);text-align:left!important;margin:0 0 .15rem!important}
+:root:root body #app .product-detail-card .pph-row{display:flex!important;align-items:baseline;flex-wrap:wrap;justify-content:flex-start!important;gap:.35rem .7rem}
+:root:root body #app .product-detail-card .pph-now{font-size:2rem!important;font-weight:800;letter-spacing:-.02em;color:var(--text)}
+:root:root body #app .product-detail-card .pph-was{font-size:1rem;color:var(--text-muted)}
+:root:root body #app .product-detail-card .pph-save{font-size:.76rem;font-weight:700;padding:.2rem .6rem;border-radius:999px;background:color-mix(in srgb,#16a34a 14%,transparent);color:#15803d}
+:root:root body #app .product-detail-card .product-gallery-varieties{order:5;padding:0!important;background:none!important}
+:root:root body #app .product-detail-card .product-gallery-varieties-head{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 .5rem!important}
+:root:root body #app .product-detail-card .product-gallery-varieties-head strong{font-size:.95rem}
+:root:root body #app .product-detail-card #productGalleryVariantMeta{display:none!important}
+:root:root body #app .product-detail-card .product-detail-info{order:6;display:flex;flex-direction:column;gap:.7rem;padding:0!important}
+:root:root body #app .product-detail-card .product-detail-info>p{margin:0!important}
+:root:root body #app .product-detail-card .product-detail-info>p:first-child{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .7rem;padding:.8rem .9rem;border-radius:16px;background:color-mix(in srgb,var(--primary,#3fb97f) 8%,var(--card))}
+:root:root body #app .product-detail-card .product-detail-info>p:first-child>strong{flex:0 0 100%;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+:root:root body #app .product-detail-card .product-detail-vendor-link{display:inline-flex;align-items:center;gap:.6rem;font-size:1rem;font-weight:800;text-decoration:none!important;color:var(--text)}
+:root:root body #app .product-detail-card .product-detail-vendor-logo{width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover}
+:root:root body #app .product-detail-card .pd-condition{display:flex;align-items:center;gap:.5rem;font-size:.85rem}
+:root:root body #app .product-detail-card .pd-condition strong{font-weight:600;color:var(--text-muted)}
+:root:root body #app .product-detail-card .pd-about{padding:.2rem .9rem!important;border-radius:16px!important;background:color-mix(in srgb,var(--text) 5%,var(--card))!important;border:0!important}
+:root:root body #app .product-detail-card .pd-about summary{padding:.7rem 0}
+:root:root body #app .product-detail-card .product-detail-stats{order:7;padding:0!important}
+</style>
+<style id="like-heart-red">
+/* a saved/liked heart is always a solid red heart */
+:root:root body .fav-btn.active,:root:root body .fav-btn.active i,:root:root body .package-fav-btn.active,:root:root body .package-fav-btn.active i,:root:root body .product-detail-card .fav-btn.active i{color:#ef4444!important;-webkit-text-fill-color:#ef4444}
+:root:root body .fav-btn.active{background:#fff!important}
+:root[data-theme="dark"] body .fav-btn.active,:root[data-theme="black"] body .fav-btn.active{background:rgba(255,255,255,.12)!important}
+:root:root body .fav-btn.active i{animation:lvHeartPop .35s ease-out}
+@keyframes lvHeartPop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
 </style>

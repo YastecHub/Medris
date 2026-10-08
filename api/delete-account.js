@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { readBody, env } = require("./_util");
+const sharp = require("sharp");
 
 // Vercel's Hobby plan caps deployments at 12 serverless functions, and this
 // file is already the shared landing spot for a couple of rewritten routes
@@ -19,6 +20,52 @@ const { readBody, env } = require("./_util");
 // photo, so the crawler's very first (and only) fetch already has them.
 function escAttr(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Share-preview card for a storefront link: the vendor's own profile picture inside
+// the Levromart-branded frame (og-store-bg.png), with a small Levromart badge on it.
+// It rides along on this function for the same reason as the meta tags above.
+async function storeOgImage(req, res) {
+  try {
+    const id = String(req.query?.ogstore || "").trim();
+    const root = process.cwd();
+    const D = 392, CX = 880, CY = 315;
+    let logo = null;
+    if (id) {
+      try {
+        const SUPABASE_URL = env("SUPABASE_URL");
+        const KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${encodeURIComponent(id)}&verification_status=eq.verified&is_active=eq.true&select=logo_url`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } });
+        const [v] = await r.json();
+        if (v?.logo_url) {
+          const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
+          try { const ir = await fetch(v.logo_url, { signal: ctl.signal }); if (ir.ok) logo = Buffer.from(await ir.arrayBuffer()); } finally { clearTimeout(t); }
+        }
+      } catch (_) { logo = null; }
+    }
+    const circle = Buffer.from(`<svg width="${D}" height="${D}"><circle cx="${D / 2}" cy="${D / 2}" r="${D / 2}" fill="#fff"/></svg>`);
+    const layers = [];
+    let centre = null;
+    if (logo) {
+      try { centre = await sharp(logo, { failOn: "none" }).rotate().flatten({ background: "#ffffff" }).resize(D, D, { fit: "cover" }).composite([{ input: circle, blend: "dest-in" }]).png().toBuffer(); } catch (_) { centre = null; }
+    }
+    if (!centre) {
+      const mark = await sharp(path.join(root, "levromart-badge.png")).resize(230, 230, { fit: "inside" }).png().toBuffer();
+      centre = await sharp({ create: { width: D, height: D, channels: 4, background: "#0f8f5a" } }).composite([{ input: mark, gravity: "center" }, { input: circle, blend: "dest-in" }]).png().toBuffer();
+    }
+    layers.push({ input: centre, left: CX - D / 2, top: CY - D / 2 });
+    const B = 124, m = Buffer.from(`<svg width="${B}" height="${B}"><rect width="${B}" height="${B}" rx="34" fill="#fff"/></svg>`);
+    const icon = await sharp(path.join(root, "icon-512.png")).resize(B - 16, B - 16).composite([{ input: Buffer.from(`<svg width="${B - 16}" height="${B - 16}"><rect width="${B - 16}" height="${B - 16}" rx="26" fill="#fff"/></svg>`), blend: "dest-in" }]).png().toBuffer();
+    const badge = await sharp(m).composite([{ input: icon, left: 8, top: 8 }]).png().toBuffer();
+    layers.push({ input: badge, left: CX + 118, top: CY + 112 });
+    const out = await sharp(path.join(root, "og-store-bg.png")).composite(layers).png({ compressionLevel: 8 }).toBuffer();
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
+    res.status(200).send(out);
+  } catch (err) {
+    console.error("Levromart store og-image error:", err);
+    res.statusCode = 302; res.setHeader("Location", "/og-levromart.png"); res.end();
+  }
 }
 async function shareMetaPreview(req, res) {
   const serveAsIs = () => {
@@ -44,7 +91,7 @@ async function shareMetaPreview(req, res) {
       if (v) {
         title = `${v.business_name || "Levromart storefront"} | Levromart`;
         description = v.bio || `Check out ${v.business_name || "this store"} on Levromart.`;
-        image = v.logo_url || null;
+        image = `${origin}/api/delete-account?ogstore=${encodeURIComponent(v.id)}`;
         pageUrl = `${origin}/?storefront=${encodeURIComponent(v.id)}`;
       }
     } else {
@@ -467,6 +514,7 @@ async function turnServers(req, res) {
 
 module.exports = async function handler(req, res) {
   if (req.method === "GET" && /(?:^|[?&])turn=1(?:&|$)/.test(String(req.url || ""))) return turnServers(req, res);
+  if (req.method === "GET" && /(?:^|[?&])ogstore=/.test(String(req.url || ""))) return storeOgImage(req, res);
   if (req.method === "GET") return shareMetaPreview(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed." });
 
