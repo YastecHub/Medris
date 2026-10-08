@@ -26371,10 +26371,10 @@ window.lfFillArt=window.lfApplyMode;
 (function(){
   const t=setInterval(()=>{
     if(typeof window.openAddProductModal==='function'&&!window.openAddProductModal.__lf){
-      const o=window.openAddProductModal; const w=async function(){ const r=await o.apply(this,arguments); const want=window.__lfWant; if(want&&/^Add/.test(byId('productModalTitle')?.textContent||'')){const cb=byId('prodIsService');if(cb){cb.checked=want==='service';window.updateProductFormFields?.();updateProductSaveButtonLabel?.();}} window.lfApplyMode(); return r; }; w.__lf=true; window.openAddProductModal=w;
+      const o=window.openAddProductModal; const w=async function(){ const r=await o.apply(this,arguments); const want=window.__lfWant; if(want&&/^Add/.test(byId('productModalTitle')?.textContent||'')){const cb=byId('prodIsService');if(cb){cb.checked=want==='service';window.updateProductFormFields?.();updateProductSaveButtonLabel?.();}} window.lfApplyMode(); try{window.__restoreListingDraft?.()}catch(_){} return r; }; w.__lf=true; window.openAddProductModal=w;
     }
     if(typeof window.openAddPackageModal==='function'&&!window.openAddPackageModal.__lf){
-      const o=window.openAddPackageModal; const w=async function(){ const r=await o.apply(this,arguments); window.lfFillArt(); return r; }; w.__lf=true; window.openAddPackageModal=w;
+      const o=window.openAddPackageModal; const w=async function(){ const r=await o.apply(this,arguments); window.lfFillArt(); try{window.__restoreListingDraft?.()}catch(_){} return r; }; w.__lf=true; window.openAddPackageModal=w;
     }
   },400);
   setTimeout(()=>clearInterval(t),20000);
@@ -43012,7 +43012,8 @@ body.search-input-active #bottomNav,body.search-input-active #aiChatFab,body.sea
   document.addEventListener('input',e=>{if(isListingForm(e.target))scheduleListingDraft(e.target.closest('#productModal,#packageModal'))},true);
   document.addEventListener('change',e=>{if(isListingForm(e.target))scheduleListingDraft(e.target.closest('#productModal,#packageModal'))},true);
   document.addEventListener('click',e=>{const b=e.target?.closest?.('#productModal button,#packageModal button');if(!b)return;const txt=(b.textContent||'').trim().toLowerCase();if(txt==='cancel'){const root=b.closest('#productModal,#packageModal');root.dataset.discardDraft='1';clearNewListingDraft(listingModalKind(root));searchClose?.()}},true);
-  const draftObserver=new MutationObserver(()=>{const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(root){clearTimeout(window.__astraRestoreTimer);window.__astraRestoreTimer=setTimeout(()=>restoreListingDraft(),80)}});
+  const draftObserver=new MutationObserver(()=>{const root=document.querySelector('#productModal:not(.hidden),#packageModal:not(.hidden)');if(root&&!window.__astraRestoreTimer){window.__astraRestoreTimer=setTimeout(()=>{window.__astraRestoreTimer=0;restoreListingDraft()},80)}});
+  window.__restoreListingDraft=restoreListingDraft;
   draftObserver.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 
   /* Own listing management: enrich active owner pages and make owner navigation obvious. */
@@ -53648,6 +53649,52 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
       pin();
     }catch(_){}
   },300);
+})();
+</script>
+
+<script>
+/* Listing drafts: also keep the photos the vendor picked (IndexedDB) so a refresh or closed app loses nothing. */
+(function(){
+  const DB='levromart-lf-files',ST='f';
+  function db(){return new Promise((res,rej)=>{try{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore(ST);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+  function uid(){try{return session?.user?.id||'guest'}catch(_){return 'guest'}}
+  const k=kind=>uid()+':'+kind+':new';
+  async function put(kind,val){try{const d=await db();const tx=d.transaction(ST,'readwrite');val?tx.objectStore(ST).put(val,k(kind)):tx.objectStore(ST).delete(k(kind))}catch(_){}}
+  async function get(kind){try{const d=await db();return await new Promise(r=>{const q=d.transaction(ST).objectStore(ST).get(k(kind));q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})}catch(_){return null}}
+  function isNew(kind){try{return kind==='product'?!editingProductId:!editingPackageId}catch(_){return false}}
+  function saveFiles(kind){
+    if(!isNew(kind))return;
+    if(kind==='package'){const main=[...(window.__newPackagePhotoFiles||[])];put('package',main.length?{main}:null);return}
+    const main=[...(window.__newProductPhotoFiles||[])],variants={};
+    (window.__productVariants||[]).forEach(v=>{const f=v._imageFile||window.__productVariantPhotoFiles?.[v._localKey];if(f&&v._localKey)variants[v._localKey]=f});
+    put('product',(main.length||Object.keys(variants).length)?{main,variants}:null);
+  }
+  const openKind=()=>document.querySelector('#productModal:not(.hidden)')?'product':document.querySelector('#packageModal:not(.hidden)')?'package':null;
+  let t;function later(){clearTimeout(t);t=setTimeout(()=>{const kd=openKind();if(kd)saveFiles(kd)},700)}
+  document.addEventListener('change',e=>{if(e.target&&e.target.closest&&e.target.closest('#productModal,#packageModal'))later()},true);
+  document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.closest('#productModal,#packageModal'))later()},true);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){const kd=openKind();if(kd)saveFiles(kd)}});
+  window.addEventListener('pagehide',()=>{const kd=openKind();if(kd)saveFiles(kd)});
+  /* forget files whenever the draft is cleared (Cancel or a successful save) */
+  ['clearListingDraft','clearNewListingDraft'].forEach(n=>{const o=window[n];if(typeof o!=='function')return;window[n]=function(kind,id){const r=o.apply(this,arguments);try{const kd=kind||'product';if(n==='clearListingDraft'?(!id||id==='new'):true)put(kd,null)}catch(_){}return r}});
+  async function restore(kind){
+    if(!isNew(kind))return;
+    const rec=await get(kind);if(!rec)return;
+    if(kind==='package'){
+      if(rec.main?.length&&!(window.__newPackagePhotoFiles||[]).length){window.__newPackagePhotoFiles=rec.main;try{syncNewPackagePhotoInput();renderNewPackagePhotos()}catch(_){}}
+      return;
+    }
+    if(rec.main?.length&&!(window.__newProductPhotoFiles||[]).length){window.__newProductPhotoFiles=rec.main;try{syncNewProductPhotoInput();renderNewProductPhotos();renderProductDisplayPicture()}catch(_){}}
+    const vs=window.__productVariants||[];window.__productVariantPhotoFiles=window.__productVariantPhotoFiles||{};
+    let n=0;vs.forEach(v=>{const f=rec.variants?.[v._localKey];if(f&&!v._imageFile){v._imageFile=f;v._previewUrl=URL.createObjectURL(f);window.__productVariantPhotoFiles[v._localKey]=f;n++}});
+    if(n){try{renderProductVariantPricing()}catch(_){}}
+  }
+  new MutationObserver(()=>{
+    ['productModal','packageModal'].forEach(id=>{const r=document.getElementById(id);if(!r)return;
+      if(r.classList.contains('hidden')){delete r.dataset.lfFiles;return}
+      if(r.dataset.draftRestored==='1'&&r.dataset.lfFiles!=='1'&&/^Add/.test(r.querySelector('h3')?.textContent||'')){r.dataset.lfFiles='1';restore(id==='packageModal'?'package':'product')}
+    });
+  }).observe(document.body,{attributes:true,subtree:true,attributeFilter:['class','data-draft-restored']});
 })();
 </script>
 
