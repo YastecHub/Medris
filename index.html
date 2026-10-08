@@ -20903,17 +20903,23 @@ async function sendChatMessage(conversationId) {
   const input = byId("chatInput");
   let body = input.value.trim();
   if (!body) return;
+  // Clear the box the moment Send is tapped; the safety check below used to run first, leaving the text sitting there.
+  const __rawBody = body;
+  resetChatInput(input);
+  const __restoreBody = () => { if (!input.value) { input.value = __rawBody; autoGrowChatInput(input); } };
   if (!(await conversationHasCompletedOrder(conversationId))) {
     // Digits deliberately split across several separate messages have no
     // single number in any one message to mask, so that specific evasion
     // pattern still has to be blocked outright.
     if (messageContinuesDigitFragmentPattern(conversationId, body)) {
       showToast("For your safety, phone numbers and outside contact details can't be shared here until an order between you has completed. Keep the conversation and payment in-app.", "error");
+      __restoreBody();
       return;
     }
     const masked = maskOrBlockContactInfo(body);
     if (masked === null) {
       showToast("For your safety, phone numbers and outside contact details can't be shared here until an order between you has completed. Keep the conversation and payment in-app.", "error");
+      __restoreBody();
       return;
     }
     if (masked !== body) {
@@ -43381,7 +43387,16 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       const thread=rows.length?simpleThread(rows,result.likeMap,result.myLiked,kind):'<div class="product-comments-empty">No comments yet. Be the first to ask a question.</div>';
       const replyActive=kind==="package"?window.__levroActivePackageReply:window.__levroActiveProductReply;
       const composer=`<div class="product-comment-composer">${replyActive?`<div class="product-comment-replying">Replying to a comment <button type="button" class="icon-btn" onclick="${kind==="package"?"cancelPackageCommentReply":"cancelProductCommentReply"}()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button></div>`:""}<div class="product-comment-compose-row"><textarea id="${inputId}" rows="2" placeholder="Write a comment..." ${session?"":"disabled"}>${escSafe(draft)}</textarea><button type="button" class="btn btn-sm" aria-label="Send comment" onclick="${kind==="package"?"submitPackageComment":"submitProductComment"}('${escSafe(id)}')" ${session?"":"disabled"}><i class="fa-solid fa-paper-plane"></i></button></div>${session?"":'<small class="muted">Log in to join the discussion.</small>'}</div>`;
-      panel.innerHTML=thread+composer;
+      const __oldComposer=panel.querySelector(":scope > .product-comment-composer");
+      if(__oldComposer&&$(inputId)){
+        /* Keep the same input element alive so the keyboard never drops and a half-typed reply survives refreshes. */
+        const __tmp=document.createElement("div"); __tmp.innerHTML=thread+composer;
+        const __newComposer=__tmp.querySelector(".product-comment-composer"); const __newRep=__newComposer?.querySelector(".product-comment-replying"); const __oldRep=__oldComposer.querySelector(".product-comment-replying");
+        if(__oldRep&&!__newRep)__oldRep.remove(); else if(!__oldRep&&__newRep)__oldComposer.insertBefore(__newRep,__oldComposer.firstChild);
+        [...panel.childNodes].forEach(n=>{if(n!==__oldComposer)n.remove()});
+        __newComposer?.remove();
+        while(__tmp.firstChild)panel.insertBefore(__tmp.firstChild,__oldComposer);
+      }else panel.innerHTML=thread+composer;
     }catch(_){
       if(!panel.dataset.loaded)panel.innerHTML='<div class="product-comments-empty">Couldn’t load comments right now. Please try again.</div>';
     }
@@ -43415,22 +43430,24 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     if(!session){showLogin();return}
     const content=String($("productCommentInput")?.value||"").trim();
     if(!content){showToast("Write a comment first.","error");return}
+    const __in=$("productCommentInput");const __restore=()=>{const i=$("productCommentInput");if(i&&!i.value){i.value=content;i.style.height=""}};if(__in){__in.value="";__in.style.height=""}
     const {data:st}=await sb.from("product_engagement_settings").select("allow_comments,comment_audience,vendor_id").eq("product_id",id).maybeSingle();
-    if(st?.allow_comments===false){showToast("Comments are disabled for this listing.","error");return}
-    if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await sb.from("vendor_follows").select("id").eq("vendor_id",st.vendor_id).eq("follower_id",session.user.id).maybeSingle();if(!f){showToast("Only followers can comment on this listing.","error");return}}
+    if(st?.allow_comments===false){showToast("Comments are disabled for this listing.","error");__restore();return}
+    if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await sb.from("vendor_follows").select("id").eq("vendor_id",st.vendor_id).eq("follower_id",session.user.id).maybeSingle();if(!f){showToast("Only followers can comment on this listing.","error");__restore();return}}
     const {error}=await sb.from("product_comments").insert({product_id:id,user_id:session.user.id,parent_comment_id:window.__levroActiveProductReply||null,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null});
-    if(error){showToast(error.message||"Could not post that comment.","error");return}
+    if(error){showToast(error.message||"Could not post that comment.","error");__restore();return}
     window.__levroActiveProductReply=null;await loadInlineComments("product",id,{preserveDraft:false,showLoading:false});hydrateProductCommentCountsInView();
   };
   window.submitPackageComment=async function(id){
     if(!session){showLogin();return}
     const content=String($("packageCommentInput")?.value||"").trim();
     if(!content){showToast("Write a comment first.","error");return}
+    const __in=$("packageCommentInput");const __restore=()=>{const i=$("packageCommentInput");if(i&&!i.value){i.value=content;i.style.height=""}};if(__in){__in.value="";__in.style.height=""}
     const {data:st}=await sb.from("package_engagement_settings").select("allow_comments,comment_audience,vendor_id").eq("package_id",id).maybeSingle();
-    if(st?.allow_comments===false){showToast("Comments are disabled for this package.","error");return}
-    if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await sb.from("vendor_follows").select("id").eq("vendor_id",st.vendor_id).eq("follower_id",session.user.id).maybeSingle();if(!f){showToast("Only followers can comment on this package.","error");return}}
+    if(st?.allow_comments===false){showToast("Comments are disabled for this package.","error");__restore();return}
+    if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await sb.from("vendor_follows").select("id").eq("vendor_id",st.vendor_id).eq("follower_id",session.user.id).maybeSingle();if(!f){showToast("Only followers can comment on this package.","error");__restore();return}}
     const {error}=await sb.from("package_comments").insert({package_id:id,user_id:session.user.id,parent_comment_id:window.__levroActivePackageReply||null,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null});
-    if(error){showToast(error.message||"Could not post that comment.","error");return}
+    if(error){showToast(error.message||"Could not post that comment.","error");__restore();return}
     window.__levroActivePackageReply=null;await loadInlineComments("package",id,{preserveDraft:false,showLoading:false});hydratePackageCommentCountsInView();
   };
   window.toggleProductCommentLike=async function(id){
@@ -54044,4 +54061,40 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
 #lvCs .product-comment-compose-row .btn{flex:none;width:2.8rem;height:2.8rem;min-height:0;padding:0!important;border-radius:50%!important;display:inline-flex;align-items:center;justify-content:center}
 #lvCs .product-comment-replying{display:flex;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--text-muted);padding:0 .4rem .4rem}
 body.lv-cs-open{overflow:hidden}
+</style>
+
+<script id="comment-composer-autosize">
+/* slim one-line comment box that grows only as you type */
+(function(){
+  function grow(t){ t.style.height="auto"; t.style.height=Math.min(t.scrollHeight,112)+"px"; }
+  document.addEventListener("input",e=>{ const t=e.target; if(t&&t.matches&&t.matches(".product-comment-compose-row textarea")) grow(t); },true);
+  function slim(){ document.querySelectorAll(".product-comment-compose-row textarea").forEach(t=>{ if(t.rows!==1) t.rows=1; }); }
+  new MutationObserver(slim).observe(document.body,{childList:true,subtree:true}); slim();
+  document.addEventListener("keydown",e=>{
+    const t=e.target; if(!(t&&t.matches&&t.matches(".product-comment-compose-row textarea")))return;
+    if(e.key==="Enter"&&!e.shiftKey&&!(window.matchMedia&&matchMedia("(pointer:coarse)").matches)){ e.preventDefault(); t.closest(".product-comment-compose-row")?.querySelector("button")?.click(); }
+  },true);
+})();
+</script>
+<style id="comment-composer-style">
+:root:root body .product-comment-composer{padding:.55rem .9rem calc(.6rem + env(safe-area-inset-bottom,0px))!important;margin-top:.6rem}
+:root:root body .product-comment-compose-row{display:flex!important;align-items:flex-end;gap:.5rem}
+:root:root body .product-comment-compose-row textarea{flex:1 1 auto;min-width:0;min-height:2.5rem!important;max-height:7rem!important;padding:.6rem 1rem!important;border-radius:20px!important;font-size:.95rem!important;line-height:1.3;resize:none;overflow-y:auto;background:color-mix(in srgb,var(--text) 6%,var(--card))!important;border:1px solid color-mix(in srgb,var(--text) 12%,transparent)!important;box-shadow:none!important;outline:0;margin:0!important}
+:root:root body .product-comment-compose-row textarea:focus{border-color:var(--primary,#3fb97f)!important;box-shadow:none!important}
+:root:root body .product-comment-compose-row .btn{flex:none;width:2.5rem!important;height:2.5rem!important;min-width:2.5rem;min-height:0!important;padding:0!important;border-radius:50%!important;display:inline-flex;align-items:center;justify-content:center;margin:0!important;font-size:.9rem;box-shadow:0 4px 12px color-mix(in srgb,var(--primary,#3fb97f) 35%,transparent);transition:opacity .15s,transform .15s}
+:root:root body .product-comment-compose-row textarea:placeholder-shown+.btn{opacity:.45;box-shadow:none}
+:root:root body .product-comment-compose-row .btn:active{transform:scale(.94)}
+:root:root body .product-comment-replying{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:0 0 .45rem;padding:.35rem .5rem .35rem .8rem;border-radius:12px;font-size:.78rem;font-weight:600;background:color-mix(in srgb,var(--primary,#3fb97f) 10%,transparent);color:var(--text-muted)}
+:root:root body .product-comment-replying .icon-btn{width:1.6rem;height:1.6rem;min-height:0;padding:0;font-size:.8rem}
+/* sheet: same, plus dark / black themes use the sheet's own surface */
+#lvCs .product-comment-composer{margin:auto 0 0!important;padding-left:1rem!important;padding-right:1rem!important}
+:root[data-theme="dark"] #lvCs .lv-cs-card,:root[data-theme="black"] #lvCs .lv-cs-card{box-shadow:0 -18px 50px rgba(0,0,0,.6)}
+:root[data-theme="black"] #lvCs .lv-cs-card{background:#0b0b0c;border-top:1px solid rgba(255,255,255,.08)}
+:root[data-theme="black"] #lvCs .product-comment-composer{background:#0b0b0c!important}
+:root[data-theme="dark"] body .product-comment-compose-row textarea,:root[data-theme="black"] body .product-comment-compose-row textarea{color:#f1f5f9!important;background:rgba(255,255,255,.07)!important;border-color:rgba(255,255,255,.12)!important}
+:root[data-theme="dark"] body .product-comment-compose-row textarea::placeholder,:root[data-theme="black"] body .product-comment-compose-row textarea::placeholder{color:rgba(241,245,249,.5)}
+/* slim chat + Levi input rows too */
+:root:root body .chat-input-row textarea,:root:root body .ai-chat-input-row textarea{min-height:2.5rem!important;padding:.6rem 1rem!important;border-radius:20px!important;line-height:1.3}
+:root:root body .chat-input-row .btn,:root:root body .ai-chat-input-row .icon-btn:last-child{width:2.5rem!important;height:2.5rem!important;min-height:0!important;min-width:2.5rem;padding:0!important;border-radius:50%!important;display:inline-flex;align-items:center;justify-content:center;flex:none}
+:root:root body .chat-input-row,:root:root body .ai-chat-input-row{align-items:flex-end;gap:.5rem}
 </style>
