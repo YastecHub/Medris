@@ -54299,3 +54299,25 @@ document.addEventListener("click",function(e){
   #app .home-promotional-slide{aspect-ratio:2.1/1!important}
 }
 </style>
+
+<script id="carousel-blur-backdrop">
+/* Banners keep their full artwork (no cropping); the taller frame is filled with a soft blurred copy of the same picture. */
+(function(){
+  function tag(){
+    document.querySelectorAll("#app .home-promotional-slide").forEach(function(s){
+      var img=s.querySelector("img"); if(!img) return;
+      var src=img.currentSrc||img.src; if(!src||s.dataset.bg===src) return;
+      s.dataset.bg=src; s.style.setProperty("--slide-bg",'url("'+src.replace(/"/g,"%22")+'")');
+    });
+  }
+  var t=0;
+  new MutationObserver(function(){ if(t) return; t=setTimeout(function(){ t=0; tag(); },200); }).observe(document.body,{childList:true,subtree:true});
+  tag();
+})();
+</script>
+<style id="home-carousel-contain">
+#app .home-promotional-slide{aspect-ratio:1.42/1!important;position:relative;background:#0a2a1d!important;overflow:hidden}
+#app .home-promotional-slide::before{content:"";position:absolute;inset:-24px;background:var(--slide-bg,none) center/cover no-repeat;filter:blur(22px) saturate(1.25) brightness(.8);z-index:0}
+#app .home-promotional-slide img{position:relative;z-index:1;object-fit:contain!important;object-position:center!important}
+@media(min-width:720px){#app .home-promotional-slide{aspect-ratio:2.1/1!important}}
+</style>
