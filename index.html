@@ -53406,3 +53406,98 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
   document.addEventListener("DOMContentLoaded",()=>{ try{document.body.setAttribute("data-view",window.currentView||"home");}catch(_){} });
 })();
 </script>
+
+<script id="levromart-dual-search">
+/* Dual live search: the vendor strip and the product list both follow what is typed, on the same page. */
+(function(){
+  var pool=null, poolAt=0, loading=null;
+  function ee(x){return (typeof esc==="function")?esc(x):String(x==null?"":x).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function item(v){
+    var nm=v.business_name||"Vendor";
+    var ini=ee(typeof initials==="function"?initials(nm).slice(0,2):String(nm).trim().charAt(0).toUpperCase());
+    var hue=typeof stableAvatarHue==="function"?stableAvatarHue(v.id||nm):0;
+    var ico=v.logo_url?'<img src="'+ee(v.logo_url)+'" alt="" loading="lazy" draggable="false" onerror="this.remove()">':ini;
+    return '<button type="button" class="lv-svr-item" data-vid="'+ee(v.id)+'"><span class="lv-svr-ico" style="'+(v.logo_url?'':'background:hsl('+hue+' 55% 91%)!important;color:hsl('+hue+' 55% 26%)!important;')+'">'+ico+'</span><span class="lv-svr-name">'+ee(nm)+'</span></button>';
+  }
+  function loadPool(){
+    if(pool&&Date.now()-poolAt<300000) return Promise.resolve(pool);
+    if(loading) return loading;
+    loading=Promise.resolve(sb.from("vendors").select("id,business_name,logo_url").eq("verification_status","verified").eq("is_active",true).is("deleted_at",null).limit(500)).then(function(r){ pool=r.data||[]; poolAt=Date.now(); loading=null; return pool; },function(){loading=null;return pool||[];});
+    return loading;
+  }
+  function match(v,term){
+    var n=String(v.business_name||"").toLowerCase(), t=term.toLowerCase();
+    if(n.indexOf(t)>-1) return n.indexOf(t)===0?0:1;
+    var ws=t.split(/\s+/).filter(Boolean); if(ws.length>1&&ws.every(function(w){return n.indexOf(w)>-1;})) return 2;
+    return -1;
+  }
+  function local(term){
+    if(!pool) return [];
+    return pool.map(function(v){return {v:v,k:match(v,term)};}).filter(function(x){return x.k>=0;}).sort(function(a,b){return a.k-b.k||String(a.v.business_name).localeCompare(String(b.v.business_name));}).map(function(x){return x.v;});
+  }
+  function strip(){
+    var host=document.getElementById("searchPageResults"); if(!host) return null;
+    var w=document.getElementById("lvSearchVendors");
+    if(!w){ w=document.createElement("div"); w.id="lvSearchVendors"; w.className="lv-svr"; host.insertAdjacentElement("afterbegin",w);
+      w.addEventListener("click",function(e){ var b=e.target.closest(".lv-svr-item"); if(b) navigate("storefront",{vendorId:b.getAttribute("data-vid")}); }); }
+    return w;
+  }
+  function paint(list,term){
+    if(searchPageFilter!=="all"&&searchPageFilter!=="vendors"){ document.getElementById("lvSearchVendors")?.remove(); return; }
+    var w=strip(); if(!w) return;
+    w.dataset.typed="1";
+    w.innerHTML='<div class="lv-svr-head"><strong>Suggested vendors</strong></div>'+(list.length?'<div class="lv-svr-row">'+list.slice(0,24).map(item).join("")+'</div>':'<p class="muted" style="margin:.2rem 0 .4rem;font-size:.85rem;">No vendors match "'+ee(term)+'"</p>');
+  }
+  var lastTerm="";
+  function instant(){
+    var term=(document.getElementById("searchPageInput")||{}).value||""; term=term.trim(); lastTerm=term;
+    if(!term||typeof sb==="undefined") return;
+    if(!pool){ loadPool().then(function(){ if(lastTerm===term) paint(local(term),term); }); return; }
+    paint(local(term),term);
+  }
+  // the heading above the products follows the same wording
+  function retitle(){
+    document.querySelectorAll("#searchPageResults .search-page-section>h3").forEach(function(h){
+      if(/^Products \(/.test(h.textContent)) h.textContent="Suggested for you";
+      if(/^Vendors \(/.test(h.textContent)) h.closest(".search-page-section").remove();
+    });
+  }
+  function wrap(){
+    var s=window.scheduleSearchPageQuery;
+    if(typeof s==="function"&&!s.__lvDual){ var ws=function(){ var r=s.apply(this,arguments); try{instant();}catch(_){} return r; }; ws.__lvDual=true; window.scheduleSearchPageQuery=ws; }
+    var q=window.runSearchPageQuery;
+    if(typeof q==="function"&&!q.__lvDual){
+      var wq=async function(term){
+        var out=await q.apply(this,arguments);
+        try{
+          term=String(term||"").trim(); var cur=((document.getElementById("searchPageInput")||{}).value||"").trim();
+          if(term&&term===cur){
+            retitle();
+            // refine with server matches (names + shops that sell what was typed)
+            if(searchPageFilter==="all"||searchPageFilter==="vendors"){
+              var enc=term.toLowerCase(), ids=[];
+              try{ var hit=searchResultCache&&searchResultCache.get("v2:6:"+enc); }catch(_){}
+              var byName=await sb.from("vendors").select("id,business_name,logo_url").eq("verification_status","verified").eq("is_active",true).is("deleted_at",null).ilike("business_name","%"+term+"%").limit(24);
+              var list=(byName.data||[]).slice(); var seen={}; list.forEach(function(v){seen[v.id]=1;});
+              try{ var pr=await searchCached("p2:20:"+enc,function(){return sb.rpc("search_products_full_v2",{p_query:term,p_limit:20});},null,false); ids=[...new Set((pr||[]).map(function(r){return r.vendor_id;}).filter(Boolean))].filter(function(i){return !seen[i];}).slice(0,12); }catch(_){}
+              if(ids.length){ var ex=await sb.from("vendors").select("id,business_name,logo_url").in("id",ids).eq("verification_status","verified").eq("is_active",true); (ex.data||[]).forEach(function(v){list.push(v);}); }
+              local(term).forEach(function(v){ if(!seen[v.id]&&!list.some(function(x){return x.id===v.id;})) list.push(v); });
+              var cur2=((document.getElementById("searchPageInput")||{}).value||"").trim();
+              if(cur2===term) paint(list,term);
+            }
+          }
+        }catch(_){}
+        return out;
+      };
+      wq.__lvDual=true; window.runSearchPageQuery=wq;
+    }
+    var r=window.renderSearchPageSuggestions;
+    if(typeof r==="function"&&!r.__lvDualR){
+      var wr=function(force){ if(!force){ var w=document.getElementById("lvSearchVendors"); if(w&&w.dataset.typed) w.remove(); } return r.apply(this,arguments); };
+      wr.__lvDualR=true; wr.__lvSv=r.__lvSv; window.renderSearchPageSuggestions=wr;
+    }
+  }
+  wrap(); window.addEventListener("load",function(){wrap();setTimeout(wrap,500);});
+  document.addEventListener("input",function(e){ if(e.target&&e.target.id==="searchPageInput") loadPool(); },true);
+})();
+</script>
