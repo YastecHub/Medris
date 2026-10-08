@@ -53945,3 +53945,103 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
 :root:root:root body #app .product-card-wrap.product-card-compact .pc-name{line-height:1.3!important;padding:.05rem 0}
 :root:root:root body #app .product-card-wrap.product-card-compact > .card > .product-card-compact-footer{margin-top:.7rem!important;min-height:1.6rem!important}
 </style>
+
+<style id="pd-order-sections">
+/* Product page order box: clear, colour-coded sections (delivery = purple, address = orange, note = blue) */
+:root:root body #app .pd-total-box{margin:.4rem 0 .9rem!important}
+:root:root body #app .pd-step-title{display:flex!important;align-items:center;gap:.65rem;margin:1.1rem 0 0!important;padding:.95rem 1rem .35rem!important;font-size:1.02rem!important;font-weight:800!important;color:var(--text)!important;background:color-mix(in srgb,#8b5cf6 8%,var(--card));border:1px solid color-mix(in srgb,#8b5cf6 20%,var(--border));border-bottom:0;border-radius:20px 20px 0 0}
+:root:root body #app .pd-step-title i{flex:none;width:2.2rem;height:2.2rem;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:.95rem;background:color-mix(in srgb,#8b5cf6 20%,transparent);color:#7c3aed!important}
+:root:root body #app .pd-step-title+.delivery-method-row{display:grid!important;grid-template-columns:1fr 1fr;gap:.6rem!important;margin:0 0 1rem!important;padding:.4rem 1rem 1rem!important;background:color-mix(in srgb,#8b5cf6 8%,var(--card));border:1px solid color-mix(in srgb,#8b5cf6 20%,var(--border));border-top:0;border-radius:0 0 20px 20px}
+:root:root body #app .pd-step-title+.delivery-method-row label{display:flex!important;align-items:center;gap:.55rem!important;min-height:3.2rem;padding:.6rem .8rem!important;border-radius:14px!important;background:var(--card)!important;border:1.5px solid color-mix(in srgb,#8b5cf6 22%,var(--border))!important;font-weight:700!important;font-size:.86rem;line-height:1.2;white-space:normal!important}
+:root:root body #app .pd-step-title+.delivery-method-row label:has(input:checked){border-color:#8b5cf6!important;background:color-mix(in srgb,#8b5cf6 12%,var(--card))!important;box-shadow:0 0 0 3px color-mix(in srgb,#8b5cf6 14%,transparent)}
+:root:root body #app .pd-step-title+.delivery-method-row input[type=radio]{accent-color:#8b5cf6;flex:none}
+/* address = orange */
+:root:root body #app #buyDeliveryFields{background:color-mix(in srgb,#f97316 8%,var(--card));border:1px solid color-mix(in srgb,#f97316 22%,var(--border));border-radius:20px;padding:1rem!important;margin:0 0 1rem!important}
+:root:root body #app #buyDeliveryFields .df-label{display:flex!important;align-items:center;gap:.6rem;font-weight:800!important;font-size:.98rem!important;color:var(--text)!important;margin:0 0 .6rem!important}
+:root:root body #app #buyDeliveryFields .df-label i{flex:none;width:2.2rem;height:2.2rem;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:.95rem;background:color-mix(in srgb,#f97316 20%,transparent);color:#ea580c!important}
+:root:root body #app #buyDeliveryFields input[type=text]{background:var(--card)!important;border:1.5px solid color-mix(in srgb,#f97316 28%,var(--border))!important;border-radius:14px!important;padding:.8rem .9rem!important}
+:root:root body #app #buyDeliveryFields input[type=text]:focus{border-color:#f97316!important;box-shadow:0 0 0 3px color-mix(in srgb,#f97316 18%,transparent)!important;outline:0}
+:root:root body #app #buyDeliveryFields .delivery-fee-line{margin:.7rem 0 0!important;font-size:.84rem;color:var(--text-muted)}
+:root:root body #app #buyDeliveryFields .price-breakdown-table{margin-top:.9rem!important}
+:root:root body #app #buyDeliveryFields>p.muted{margin:.7rem 0 0!important}
+/* note = blue */
+:root:root body #app .pd-note-box{background:color-mix(in srgb,#3b82f6 8%,var(--card))!important;border:1px solid color-mix(in srgb,#3b82f6 22%,var(--border))!important;border-radius:20px!important;padding:1rem!important;margin:0 0 1.1rem!important;box-shadow:none!important}
+:root:root body #app .pd-note-box .df-label{display:flex!important;align-items:center;gap:.6rem;font-weight:800;font-size:.98rem;margin:0 0 .6rem!important}
+:root:root body #app .pd-note-box .lv-pen-ico{flex:none;box-sizing:content-box;width:1.1rem;height:1.1rem;padding:.55rem;border-radius:12px;background:color-mix(in srgb,#3b82f6 18%,transparent);color:#2563eb}
+:root:root body #app .pd-note-box textarea{background:var(--card)!important;border:1.5px solid color-mix(in srgb,#3b82f6 26%,var(--border))!important;border-radius:14px!important;padding:.8rem .9rem!important}
+:root:root body #app .pd-note-box textarea:focus{border-color:#3b82f6!important;box-shadow:0 0 0 3px color-mix(in srgb,#3b82f6 16%,transparent)!important;outline:0}
+:root:root body #app .pd-buy-actions{gap:.7rem!important}
+:root:root body #app .pd-buy-actions .btn{border-radius:999px!important;min-height:3.1rem}
+:root[data-theme="dark"] body #app #buyDeliveryFields .df-label i,:root[data-theme="black"] body #app #buyDeliveryFields .df-label i{color:#fb923c!important}
+:root[data-theme="dark"] body #app .pd-step-title i,:root[data-theme="black"] body #app .pd-step-title i{color:#a78bfa!important}
+</style>
+
+<script id="comments-bottom-sheet">
+/* Comments open as a bottom sheet (like Instagram): thread scrolls, composer stays pinned, tap outside or drag down to close. */
+(function(){
+  const SHEET_ID="lvCs";
+  function closeSheet(){
+    const w=document.getElementById(SHEET_ID); if(!w) return;
+    const panel=w.querySelector(".lv-cs-body>*");
+    const home=w._home;
+    if(panel&&home&&home.parent){ if(home.next&&home.next.parentNode===home.parent) home.parent.insertBefore(panel,home.next); else home.parent.appendChild(panel); }
+    w.remove(); document.body.classList.remove("lv-cs-open");
+  }
+  function openSheet(panel,fn,id,title){
+    closeSheet();
+    const w=document.createElement("div"); w.id=SHEET_ID;
+    w.innerHTML='<div class="lv-cs-back"></div><div class="lv-cs-card" role="dialog" aria-modal="true" aria-label="Comments"><div class="lv-cs-head"><span class="lv-cs-handle"></span><strong>'+title+'</strong><button type="button" class="lv-cs-x" aria-label="Close comments"><i class="fa-solid fa-xmark"></i></button></div><div class="lv-cs-body"></div></div>';
+    w._home={parent:panel.parentNode,next:panel.nextSibling};
+    w.querySelector(".lv-cs-body").appendChild(panel);
+    document.body.appendChild(w); document.body.classList.add("lv-cs-open");
+    const close=()=>fn(id);
+    w.querySelector(".lv-cs-back").addEventListener("click",close);
+    w.querySelector(".lv-cs-x").addEventListener("click",close);
+    /* drag the header down to dismiss */
+    const card=w.querySelector(".lv-cs-card"),head=w.querySelector(".lv-cs-head");
+    let y0=null,dy=0;
+    head.addEventListener("touchstart",e=>{y0=e.touches[0].clientY;dy=0;card.style.transition="none"},{passive:true});
+    head.addEventListener("touchmove",e=>{if(y0==null)return;dy=Math.max(0,e.touches[0].clientY-y0);card.style.transform="translateY("+dy+"px)"},{passive:true});
+    head.addEventListener("touchend",()=>{if(y0==null)return;card.style.transition="";card.style.transform="";if(dy>110)close();y0=null});
+  }
+  function wrap(name,panelId,title){
+    const orig=window[name]; if(typeof orig!=="function"||orig.__cs) return;
+    const fn=function(id){
+      const panel=document.getElementById(panelId);
+      if(!panel) return orig.apply(this,arguments);
+      const wasOpen=!panel.classList.contains("hidden");
+      if(wasOpen){ closeSheet(); return orig.apply(this,arguments); }
+      const r=orig.apply(this,arguments);
+      openSheet(panel,fn,id,title);
+      return r;
+    };
+    fn.__cs=true; window[name]=fn;
+  }
+  function install(){ wrap("toggleProductComments","productCommentsPanel","Comments"); wrap("togglePackageComments","packageCommentsPanel","Comments"); }
+  install(); window.addEventListener("load",install);
+  /* a stale sheet must not survive leaving the page */
+  window.addEventListener("popstate",closeSheet);
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&document.getElementById(SHEET_ID)){ document.querySelector("#"+SHEET_ID+" .lv-cs-x")?.click(); } });
+})();
+</script>
+<style id="comments-bottom-sheet-style">
+#lvCs{position:fixed;inset:0;z-index:2147483300}
+#lvCs .lv-cs-back{position:absolute;inset:0;background:rgba(0,0,0,.5);animation:lvCsFade .2s ease-out}
+#lvCs .lv-cs-card{position:absolute;left:0;right:0;bottom:0;margin:0 auto;width:100%;max-width:640px;height:78vh;height:78dvh;background:var(--card);color:var(--text);border-radius:22px 22px 0 0;display:flex;flex-direction:column;box-shadow:0 -18px 50px rgba(0,0,0,.3);animation:lvCsUp .28s cubic-bezier(.2,.8,.2,1);transition:transform .2s}
+@keyframes lvCsUp{from{transform:translateY(100%)}}
+@keyframes lvCsFade{from{opacity:0}}
+#lvCs .lv-cs-head{position:relative;flex:none;text-align:center;padding:1.15rem 1rem .8rem;border-bottom:1px solid var(--border);touch-action:none}
+#lvCs .lv-cs-handle{position:absolute;left:50%;top:.45rem;transform:translateX(-50%);width:2.6rem;height:.28rem;border-radius:9px;background:color-mix(in srgb,var(--text) 22%,transparent)}
+#lvCs .lv-cs-head strong{font-size:1rem;font-weight:800}
+#lvCs .lv-cs-x{position:absolute;right:.7rem;top:.75rem;border:0;background:transparent;color:var(--text-muted);font-size:1.1rem;width:2.2rem;height:2.2rem;border-radius:50%;cursor:pointer}
+#lvCs .lv-cs-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+#lvCs .lv-cs-body>.product-comments-panel,#lvCs .lv-cs-body>#productCommentsPanel,#lvCs .lv-cs-body>#packageCommentsPanel{display:flex!important;flex-direction:column;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;margin:0!important;padding:.4rem 1rem 0!important;border:0!important;background:transparent!important;box-shadow:none!important;max-height:none!important}
+#lvCs .lv-cs-body>.hidden{display:flex!important}
+#lvCs .product-comments-empty{margin:auto;text-align:center;color:var(--text-muted);padding:2rem 1rem}
+#lvCs .product-comment-composer{position:sticky;bottom:0;margin:auto -1rem 0!important;padding:.6rem 1rem calc(.7rem + env(safe-area-inset-bottom,0px))!important;background:var(--card)!important;border-top:1px solid var(--border)!important;z-index:2}
+#lvCs .product-comment-compose-row{display:flex;align-items:flex-end;gap:.6rem}
+#lvCs .product-comment-compose-row textarea{flex:1;min-height:2.8rem;max-height:7rem;border-radius:999px!important;padding:.7rem 1.1rem!important;resize:none;background:color-mix(in srgb,var(--text) 6%,transparent)!important;border:1px solid var(--border)!important}
+#lvCs .product-comment-compose-row .btn{flex:none;width:2.8rem;height:2.8rem;min-height:0;padding:0!important;border-radius:50%!important;display:inline-flex;align-items:center;justify-content:center}
+#lvCs .product-comment-replying{display:flex;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--text-muted);padding:0 .4rem .4rem}
+body.lv-cs-open{overflow:hidden}
+</style>
