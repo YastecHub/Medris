@@ -9856,16 +9856,16 @@ html body > header{
 </div>
 
 <!-- Add/Edit Product Modal -->
-<div id="productModal" class="modal hidden">
-  <div class="modal-content" style="max-width:550px;">
-    <h3 id="productModalTitle">Add New Product</h3>
+<div id="productModal" class="modal hidden lf-page">
+  <div class="modal-content" style="max-width:640px;">
+    <div class="lf-top"><button type="button" class="lf-back" onclick="closeProductModal()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="lf-top-copy"><h3 id="productModalTitle">Add New Product</h3><p class="lf-sub">Fill in the basics, add clear photos, then save. Fields marked <b class="lf-req">*</b> are required.</p></div><img class="lf-art" alt="" /></div>
     <div id="productDuplicateNotice" class="product-duplicate-notice hidden" role="status" aria-live="polite"></div>
     <div id="productError" class="error-text hidden"></div>
     <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-pen-to-square"></i></span><div><strong>Basics</strong><small>Name it and describe it</small></div></div>
-    <label>Name</label>
+    <label>Name <b class="lf-req">*</b></label>
     <input type="text" id="prodName" placeholder="e.g. BP Monitor or Hair Braiding" />
     <label style="display:flex;align-items:center;gap:0.5rem;font-weight:400;"><input type="checkbox" id="prodIsService" onchange="updateProductFormFields();updateProductSaveButtonLabel()" style="width:auto;margin:0;" /> This is a service, not a physical product (e.g. hairdressing, baking, repairs)</label>
-    <label>Description</label>
+    <label>Description <b class="lf-req">*</b> <span class="lf-reqnote">required</span></label>
     <textarea id="prodDesc" placeholder="Tell buyers what makes it good (required)" rows="3" required></textarea>
     </div>
     <div class="lm-sec lm-violet"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-layer-group"></i></span><div><strong>Where it belongs</strong><small>Helps buyers find it</small></div></div>
@@ -9896,7 +9896,7 @@ html body > header{
       <p id="prodBillingHint" class="muted" style="font-size:.74rem;margin:.35rem 0 0;"></p>
     </div>
     <div class="flex">
-      <div style="flex:1;" id="prodSalePriceWrap"><label id="prodSalePriceLabel">Price (₦)</label><input type="number" id="prodSalePrice" step="0.01" min="0" /></div>
+      <div style="flex:1;" id="prodSalePriceWrap"><label id="prodSalePriceLabel">Price (₦) <b class="lf-req">*</b></label><input type="number" id="prodSalePrice" step="0.01" min="0" /></div>
       <div style="flex:1;" id="prodDiscountPriceWrap"><label>Discount price (₦) <span class="muted" style="font-weight:400;">optional</span></label><input type="number" id="prodDiscountPrice" step="0.01" min="0" placeholder="e.g. 8500" /></div>
       <div style="flex:1;" id="prodRentalRateWrap"><label>Rental rate (₦)</label><input type="number" id="prodRentalRate" step="0.01" /></div>
       <div style="flex:1;" id="prodServiceUnitWrap"><label>Price is</label><select id="prodServiceUnit" onchange="updateProductFormFields()"><option value="flat">One-time (flat)</option><option value="hour">Per hour</option><option value="day">Per day</option><option value="week">Per week</option></select></div>
@@ -9967,7 +9967,9 @@ html body > header{
     </div>
     <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-shapes"></i></span><div><strong>Varieties</strong><small>Sizes, colours or options with their own price</small></div></div>
     <div class="product-variant-pricing" id="productVariantPricing"></div>
-    <button type="button" class="btn btn-outline btn-sm" style="margin-top:.7rem;" onclick="addProductVarietyDraft()"><i class="fa-solid fa-plus"></i> Add variety</button>
+    <div class="lf-var-actions"><button type="button" class="btn btn-outline btn-sm" onclick="addProductVarietyDraft()"><i class="fa-solid fa-plus"></i> Add variety</button><button type="button" class="btn btn-sm lf-bulk" onclick="byId('prodVarietyBulkFiles')?.click()"><i class="fa-solid fa-images"></i> Upload many photos at once</button></div>
+    <input type="file" id="prodVarietyBulkFiles" accept="image/*" multiple class="hidden" onchange="bulkAddVarietiesFromPhotos(this)" />
+    <p class="muted" style="font-size:.78rem;margin:.45rem 0 0;">Pick all your variety photos together. Each photo becomes its own variety; open any one afterwards to add its name and price.</p>
     </div>
     <div class="flex lm-actions">
       <button type="button" class="btn btn-sm" style="background:#6b7280;" onclick="clearNewListingDraft('product');closeProductModal()">Cancel</button>
@@ -9982,9 +9984,9 @@ html body > header{
   <img id="productLightboxImage" src="" alt="Product image" draggable="false" />
 </div>
 
-<div id="packageModal" class="modal hidden">
-  <div class="modal-content" style="max-width:520px;">
-    <h3 id="packageModalTitle">Add New Package</h3>
+<div id="packageModal" class="modal hidden lf-page">
+  <div class="modal-content" style="max-width:640px;">
+    <div class="lf-top"><button type="button" class="lf-back" onclick="closePackageModal()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="lf-top-copy"><h3 id="packageModalTitle">Add New Package</h3><p class="lf-sub">Bundle your products into one fixed-price deal.</p></div><img class="lf-art" alt="" /></div>
     <div id="packageError" class="error-text hidden"></div>
     <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-box-open"></i></span><div><strong>Basics</strong><small>Name, story and price</small></div></div>
     <label>Package name</label>
@@ -26307,6 +26309,43 @@ async function uploadVarietyImages(){
     delete v._imageFile;
   }));
 }
+
+/* ---- Listing form as a full page: illustration + bulk varieties ---- */
+function bulkAddVarietiesFromPhotos(input){
+  const files=[...(input?.files||[])].filter(f=>f?.type?.startsWith('image/'));
+  if(input) input.value='';
+  if(!files.length) return;
+  persistVisibleVariantOrder();
+  const variants=window.__productVariants||[];
+  window.__productVariantPhotoFiles ||= {};
+  files.forEach((file)=>{
+    const key=`local-${crypto.randomUUID()}`;
+    variants.push({_localKey:key,name:'',sale_price:'',discount_price:'',photo_url:'',description:'',quantity_available:null,sort_order:variants.length,_imageFile:file,_previewUrl:URL.createObjectURL(file)});
+    window.__productVariantPhotoFiles[key]=file;
+  });
+  window.__productVariants=variants;
+  renderProductVariantPricing();
+  try{window.__captureListingDraftForModal?.('product');}catch(_){}
+  showToast(`${files.length} ${files.length===1?'variety':'varieties'} added. Open any one to add its name and price.`,'success');
+  byId('productVariantPricing')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+window.lfFillArt=function(){
+  try{
+    const src=document.querySelector('#lvOnb .lv-hero-girl')?.getAttribute('src')||document.querySelector('#lvOnb .lv-hero')?.getAttribute('src')||'';
+    document.querySelectorAll('.lf-page .lf-art').forEach(i=>{ if(src&&i.getAttribute('src')!==src) i.setAttribute('src',src); i.style.display=src?'':'none'; });
+  }catch(_){}
+};
+(function(){
+  const t=setInterval(()=>{
+    if(typeof window.openAddProductModal==='function'&&!window.openAddProductModal.__lf){
+      const o=window.openAddProductModal; const w=async function(){ const r=await o.apply(this,arguments); window.lfFillArt(); return r; }; w.__lf=true; window.openAddProductModal=w;
+    }
+    if(typeof window.openAddPackageModal==='function'&&!window.openAddPackageModal.__lf){
+      const o=window.openAddPackageModal; const w=async function(){ const r=await o.apply(this,arguments); window.lfFillArt(); return r; }; w.__lf=true; window.openAddPackageModal=w;
+    }
+  },400);
+  setTimeout(()=>clearInterval(t),20000);
+})();
 function addProductVarietyDraft(){
   persistVisibleVariantOrder();const variants=window.__productVariants||[];
   const newKey=`local-${crypto.randomUUID()}`;
@@ -26818,8 +26857,23 @@ async function saveProduct() {
       return publicUrl;
     };
 
-    const mainUrls = [];
-    for (const file of newFiles) mainUrls.push(await uploadOne(file, ""));
+    // Upload every photo (display + extras + varieties) at the same time, a few at once,
+    // instead of one after another -- the main reason saving felt slow.
+    const pool = async (tasks, limit = 4) => {
+      const out = new Array(tasks.length); let next = 0;
+      const worker = async () => { while (next < tasks.length) { const k = next++; out[k] = await tasks[k](); } };
+      await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+      return out;
+    };
+    const jobs = [];
+    newFiles.forEach((file) => jobs.push(async () => ({ kind: "main", url: await uploadOne(file, "") })));
+    variantDrafts.forEach((draft) => {
+      const source = variantSourceByKey.get(String(draft._localKey || draft.id || ""));
+      if (source?._imageFile) jobs.push(async () => ({ kind: "variant", draft, url: await uploadOne(source._imageFile, "variants") }));
+    });
+    if (jobs.length) setSaveStage(`Uploading ${jobs.length} photo${jobs.length === 1 ? "" : "s"}…`);
+    const uploaded = await pool(jobs, 4);
+    const mainUrls = uploaded.filter((u) => u.kind === "main").map((u) => u.url);
 
     // A display-picture replacement is represented by previewNewProductPhotos()
     // removing the old first photo before Save. Preserve that semantics here.
@@ -26829,15 +26883,7 @@ async function saveProduct() {
     }
 
     const uploadedVariantUrls = new Map();
-    for (const draft of variantDrafts) {
-      const sourceKey = String(draft._localKey || draft.id || "");
-      const source = variantSourceByKey.get(sourceKey);
-      if (source?._imageFile) {
-        const url = await uploadOne(source._imageFile, "variants");
-        uploadedVariantUrls.set(String(draft.id), url);
-        draft.photo_url = url;
-      }
-    }
+    uploaded.filter((u) => u.kind === "variant").forEach((u) => { uploadedVariantUrls.set(String(u.draft.id), u.url); u.draft.photo_url = u.url; });
 
     const isNewMonthlyListing = !originalProductId && billing_model === "monthly";
     if (isNewMonthlyListing) {
@@ -53501,3 +53547,42 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
   document.addEventListener("input",function(e){ if(e.target&&e.target.id==="searchPageInput") loadPool(); },true);
 })();
 </script>
+
+<style id="listing-page-style">
+/* Listing form as a dedicated flat page */
+:root:root body #productModal.lf-page,:root:root body #packageModal.lf-page{position:fixed!important;inset:0!important;display:block;align-items:initial!important;justify-content:initial!important;padding:0!important;background:var(--bg)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow-y:auto!important;overflow-x:hidden!important;z-index:2147483000}
+:root:root body #productModal.lf-page.hidden,:root:root body #packageModal.lf-page.hidden{display:none!important}
+:root:root body .lf-page>.modal-content{max-width:640px!important;width:100%!important;margin:0 auto!important;min-height:100%;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;padding:0 1rem calc(6rem + env(safe-area-inset-bottom,0px))!important}
+.lf-top{display:flex;align-items:center;gap:.75rem;padding:.9rem 0 1rem;position:sticky;top:0;z-index:5;background:var(--bg)}
+.lf-back{flex:none;width:2.5rem;height:2.5rem;border-radius:50%;border:0;background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lf-top-copy{flex:1;min-width:0}
+.lf-top-copy h3{margin:0;font-size:1.25rem;font-weight:800}
+.lf-sub{margin:.15rem 0 0;font-size:.78rem;color:var(--text-muted);line-height:1.35}
+.lf-art{flex:none;width:4.6rem;height:4.6rem;object-fit:contain;animation:lfFloat 3.6s ease-in-out infinite}
+.lf-art:not([src]){display:none}
+@keyframes lfFloat{50%{transform:translateY(-4px)}}
+.lf-req{color:#dc2626;font-weight:800;margin-left:.1rem}
+.lf-reqnote{font-size:.68rem;font-weight:700;color:#dc2626;margin-left:.25rem}
+/* flat sections */
+.lf-page .lm-sec{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:1rem 0!important;margin:0!important;border-bottom:1px solid var(--border)!important}
+.lf-page .lm-sec:last-of-type{border-bottom:0!important}
+.lf-page input:not([type=checkbox]):not([type=radio]):not([type=file]),.lf-page select,.lf-page textarea{border-radius:12px!important;padding:.75rem .85rem!important;font-size:1rem!important}
+.lf-page textarea{min-height:6rem}
+.lf-page .lm-actions{position:fixed!important;left:0;right:0;bottom:0;margin:0!important;padding:.7rem 1rem calc(.7rem + env(safe-area-inset-bottom,0px))!important;background:var(--card)!important;border-top:1px solid var(--border);justify-content:center;z-index:6}
+.lf-page .lm-actions>*{max-width:300px}
+.lf-page .lm-actions .btn{flex:1;border-radius:12px;padding:.75rem 1rem;font-weight:800}
+.lf-var-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin:.5rem 0}
+.lf-bulk{border-radius:999px;background:color-mix(in srgb,var(--primary) 14%,transparent);color:var(--primary);border:0;font-weight:800}
+/* chooser card */
+#addListingChooser{align-items:flex-end!important}
+#addListingChooser .modal-content{max-width:460px!important;border-radius:26px 26px 0 0!important;padding:1.1rem 1rem calc(1.2rem + env(safe-area-inset-bottom,0px))!important;background:var(--card)!important;box-shadow:0 -18px 50px rgba(0,0,0,.28)!important;border:0!important;animation:lfSheet .28s ease-out}
+@keyframes lfSheet{from{transform:translateY(40px);opacity:0}}
+#addListingChooser .modal-content::before{content:"";display:block;width:2.6rem;height:.28rem;border-radius:9px;background:var(--border);margin:-.4rem auto .7rem}
+#addListingChooser .add-listing-choice{border:0;border-radius:18px;padding:.85rem .9rem;margin-top:.6rem;background:color-mix(in srgb,var(--primary) 7%,var(--bg));transition:transform .15s,background .15s}
+#addListingChooser .add-listing-choice:active{transform:scale(.98)}
+#addListingChooser .add-listing-choice:nth-of-type(2) i{background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff}
+#addListingChooser .add-listing-choice:nth-of-type(3) i{background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff}
+#addListingChooser .add-listing-choice:nth-of-type(1) i{background:linear-gradient(135deg,#3fb97f,#10b981);color:#fff}
+#addListingChooser .add-listing-choice i{width:2.9rem;height:2.9rem;border-radius:14px;font-size:1.15rem;box-shadow:0 6px 14px rgba(0,0,0,.14)}
+#addListingChooser .add-listing-choice::after{content:"\203A";margin-left:auto;font-size:1.6rem;color:var(--text-muted)}
+</style>
