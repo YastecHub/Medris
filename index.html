@@ -27023,6 +27023,7 @@ async function saveProduct() {
 
     clearProductValidationState();
     window.clearListingDraft?.("product", savedDraftIdentity);
+    if (!originalProductId) window.clearListingDraft?.("product", "new");
     renderProductVariantPricing();
 
     // Keep secondary engagement settings from blocking the critical product save.
