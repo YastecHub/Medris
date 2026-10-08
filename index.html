@@ -53736,4 +53736,7 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
 /* round 5: modal-content is the one scroller; bar sticks to its bottom */
 :root:root:root body #productModal.lf-page,:root:root:root body #packageModal.lf-page{overflow:hidden!important}
 :root:root:root body #productModal.lf-page>.modal-content,:root:root:root body #packageModal.lf-page>.modal-content{height:100%!important;max-height:none!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+/* round 6: flat buttons at the very end of the page, no bar/card behind them */
+:root:root:root body .lf-page .lm-actions{position:static!important;background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;margin:1.4rem 0 0!important;padding:0 0 calc(2.2rem + env(safe-area-inset-bottom,0px))!important}
 </style>
