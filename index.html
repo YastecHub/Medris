@@ -17621,6 +17621,65 @@ async function renderRelatedSuggestions(term, seq) {
   return false;
 }
 let searchPageAbortController = null;
+
+// ---------- typo-tolerant search helpers ----------
+function lvNorm(x){ return String(x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim(); }
+function lvLev(a,b){
+  if(a===b) return 0; const m=a.length,n=b.length; if(!m) return n; if(!n) return m;
+  let prev=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){ const cur=[i]; for(let j=1;j<=n;j++){ cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1)); } prev=cur; }
+  return prev[n];
+}
+function lvFuzzyScore(q,name){
+  q=lvNorm(q); const n=lvNorm(name); if(!q||!n) return null;
+  if(n.includes(q)) return 0;
+  const maxd=q.length<=3?0:q.length<=5?1:q.length<=8?2:3;
+  let best=99;
+  for(const w of n.split(" ")){ if(!w) continue; best=Math.min(best,lvLev(q,w),lvLev(q,w.slice(0,q.length+1))); }
+  if(best<=maxd) return 1+best;
+  if(q.length>=4){
+    const flat=n.replace(/ /g,""); let i=0; for(const c of flat){ if(c===q[i]) i++; if(i===q.length) break; }
+    if(i===q.length) return 6;
+    const cnt={}; for(const c of flat) cnt[c]=(cnt[c]||0)+1;
+    let ok=true; for(const c of q.replace(/ /g,"")){ if(!cnt[c]){ ok=false; break; } cnt[c]--; }
+    if(ok) return 7;
+  }
+  return null;
+}
+async function lvFuzzyNameIndex(kind){
+  window.__lvFuzzyIdx=window.__lvFuzzyIdx||{};
+  const hit=window.__lvFuzzyIdx[kind];
+  if(hit&&Date.now()-hit.at<600000) return hit.rows;
+  let rows=[];
+  if(kind==="products"){
+    const r=await sb.from("products").select("id,name,vendor:vendors!inner(id)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).range(0,2999);
+    rows=(r.data||[]).map(x=>({id:x.id,name:x.name}));
+  }else{
+    const r=await sb.from("vendors").select("id,business_name").eq("verification_status","verified").eq("is_active",true).range(0,2999);
+    rows=(r.data||[]).map(x=>({id:x.id,name:x.business_name}));
+  }
+  window.__lvFuzzyIdx[kind]={at:Date.now(),rows};
+  return rows;
+}
+async function lvMergeFuzzyProducts(term,existing,kind){
+  const have=new Set(existing.map(r=>String(r.id)));
+  const idx=await lvFuzzyNameIndex("products");
+  const hits=idx.map(x=>({id:x.id,s:lvFuzzyScore(term,x.name)})).filter(x=>x.s!=null&&!have.has(String(x.id))).sort((a,b)=>a.s-b.s).slice(0,12);
+  if(!hits.length) return existing;
+  const r=await sb.from("products").select("id,name,photos,sale_price,discount_price,rental_rate,rental_rate_unit,is_service,listing_type,service_price_unit,vendor_id,vendor:vendors(business_name,lat,lng,avg_rating,review_count)").in("id",hits.map(h=>h.id)).eq("status","active");
+  const byId_=new Map((r.data||[]).map(x=>[String(x.id),x]));
+  const extra=hits.map(h=>byId_.get(String(h.id))).filter(Boolean).filter(p=>kind==="products"?!p.is_service:kind==="services"?!!p.is_service:true).map(p=>({...p,vendor_business_name:p.vendor?.business_name,vendor_lat:p.vendor?.lat,vendor_lng:p.vendor?.lng,vendor_avg_rating:p.vendor?.avg_rating,vendor_review_count:p.vendor?.review_count}));
+  return [...existing,...extra];
+}
+async function lvMergeFuzzyVendors(term,existing){
+  const have=new Set(existing.map(v=>String(v.id)));
+  const idx=await lvFuzzyNameIndex("vendors");
+  const hits=idx.map(x=>({id:x.id,s:lvFuzzyScore(term,x.name)})).filter(x=>x.s!=null&&!have.has(String(x.id))).sort((a,b)=>a.s-b.s).slice(0,8);
+  if(!hits.length) return existing;
+  const r=await sb.from("vendors").select("id,business_name,logo_url,city,lat,lng,avg_rating,review_count,sector_id").in("id",hits.map(h=>h.id)).eq("verification_status","verified").eq("is_active",true);
+  const m=new Map((r.data||[]).map(x=>[String(x.id),x]));
+  return [...existing,...hits.map(h=>m.get(String(h.id))).filter(Boolean)];
+}
 async function runSearchPageQuery(term, saveToHistory) {
   term = String(term || "").trim();
   if (!term) return;
@@ -17687,7 +17746,16 @@ async function runSearchPageQuery(term, saveToHistory) {
     return;
   }
   if (mySeq !== searchPageSeq) return;
-  const productRows = (fullRows || []).filter((r) => kind === "products" ? !r.is_service : kind === "services" ? !!r.is_service : true).slice(0, kind === "all" ? 20 : 30);
+  let productRows = (fullRows || []).filter((r) => kind === "products" ? !r.is_service : kind === "services" ? !!r.is_service : true).slice(0, kind === "all" ? 20 : 30);
+  // Typo-tolerant fallback: a search with few exact hits also lists names that nearly match ("togernu" finds "tigernut").
+  if (wantProducts && productRows.length < 4 && term.length >= 3) {
+    try { productRows = await lvMergeFuzzyProducts(term, productRows, kind); } catch (_) {}
+    if (mySeq !== searchPageSeq) return;
+  }
+  if (wantVendors && (vends || []).length < 2 && term.length >= 3) {
+    try { vends = await lvMergeFuzzyVendors(term, vends || []); } catch (_) {}
+    if (mySeq !== searchPageSeq) return;
+  }
   // Keep the server's relevance order (best name match first); never re-sort by price.
   const prods = productRows.map((r) => ({
     id: r.id, name: r.name, photos: r.photos, sale_price: r.sale_price, discount_price: r.discount_price,
@@ -18417,10 +18485,7 @@ function playProductWishBounce(imgContainer, added) {
 // down a list of cards - matches the 1-5 star scale users already know.
 function ratingBadgeClass(rating) {
   const r = Number(rating);
-  if (r >= 4.8) return "rating-five-star";
-  if (r >= 4.0) return "success";
-  if (r >= 2.5) return "warning";
-  return "danger";
+  return "rating-gold";
 }
 function vendorDistanceKm(v){
   const values=[buyerLocation?.lat,buyerLocation?.lng,v?.lat,v?.lng];if(values.some(x=>x==null||x===''||!Number.isFinite(Number(x))))return null;
@@ -18439,7 +18504,7 @@ function vendorCardHtml(v) {
     <div class="vendor-home-copy">
       <strong>${esc(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
       <span class="vendor-home-city"><i class="fa-solid fa-location-dot"></i> ${esc(v?.city || "Online")}</span>${vendorDistanceHtml(v)}
-      <div class="vendor-home-meta"><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span><span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} · ${Number(v?.review_count ?? 0)} reviews</span></div>
+      <div class="vendor-home-meta"><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span><span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}"><i class="fa-solid fa-star"></i> ${Number(v?.avg_rating ?? 0).toFixed(1)} · ${Number(v?.review_count ?? 0)} reviews</span></div>
       <span class="vendor-home-known"><i class="fa-solid fa-layer-group"></i> ${esc(sectorName || "Sector not listed")}</span>
       <div class="vendor-card-footer"><span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> <span class="vendor-follower-count">${followerCount.toLocaleString()}</span> follower${followerCount===1?'':'s'}</span><span class="vendor-home-storefront-label">View storefront <i class="fa-solid fa-arrow-right"></i></span></div>
     </div>
@@ -21475,7 +21540,7 @@ async function renderCommissionServiceDetail(product,priceHint,offers){
     <div class="product-detail-top-actions"><button class="fav-btn ${favoriteIds.has(product.id)?'active':''}" onclick="toggleFavorite(event,'${product.id}')" aria-label="Save to wishlist">${favoriteIds.has(product.id)?"<i class='fa-solid fa-heart'></i>":"<i class='fa-regular fa-heart'></i>"}</button><button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share service"><i class="fa-solid fa-share-nodes"></i></button></div>
     <h2 class="product-detail-title">${esc(product.name)} <span class="badge">Service</span></h2>
     ${image?`<div class="product-detail-media"><div class="product-gallery"><div class="product-gallery-main"><img src="${esc(image)}" alt="${esc(product.name)}" loading="eager" /></div></div></div>`:''}
-    <div class="service-vendor-info-block"><div class="service-vendor-info-head" role="button" tabindex="0" style="cursor:pointer;" onclick="navigate('storefront',{vendorId:'${vendor.id}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${vendor.id}'})}"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating">★ ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div></div>
+    <div class="service-vendor-info-block"><div class="service-vendor-info-head" role="button" tabindex="0" style="cursor:pointer;" onclick="navigate('storefront',{vendorId:'${vendor.id}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${vendor.id}'})}"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating"><i class="fa-solid fa-star"></i> ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div></div>
     <div class="service-description-block"><h3>About this service</h3><p>${esc(stripProductVariantMeta(product.description||'No description provided.'))}</p></div>
     ${priceHint?`<div class="service-price-hint"><i class="fa-solid fa-chart-line"></i> <strong>Past agreed prices:</strong> ${naira(priceHint.min)}${priceHint.min!==priceHint.max?' – '+naira(priceHint.max):''} <span>(last ${priceHint.count} completed bookings)</span></div>`:''}
   </div>`;
@@ -21596,7 +21661,7 @@ async function __levroOriginalRenderProductDetail(productId) {
         // before the platform's been paid" decision, applied here too).
         return `<button class="btn btn-sm" onclick="startConversationWithVendor('${product.vendor.id}')"><i class='fa-solid fa-comment-dots'></i> Message vendor</button>`;
       })()}
-      ${`<span class="badge ${ratingBadgeClass(Number(st.avg_rating ?? 0))}">★ ${Number(st.avg_rating ?? 0).toFixed(1)} (${Number(st.review_count ?? 0)})</span>`}
+      ${`<span class="badge ${ratingBadgeClass(Number(st.avg_rating ?? 0))}"><i class="fa-solid fa-star"></i> ${Number(st.avg_rating ?? 0).toFixed(1)} (${Number(st.review_count ?? 0)})</span>`}
     </div>
     <div class="product-detail-info">
       <p><strong>Vendor:</strong> <a class="product-detail-vendor-link" href="#" onclick="navigate('storefront',{vendorId:'${product.vendor.id}'});return false;">${product.vendor.logo_url ? `<img src="${esc(product.vendor.logo_url)}" alt="" class="product-detail-vendor-logo" loading="lazy" decoding="async" draggable="false">` : ""}<span>${vendorNameWithFormerly(product.vendor)}</span></a></p>
@@ -36154,7 +36219,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
         ${v.categories?.length ? `<p class="muted vendor-directory-categories"><i class="fa-solid fa-tags"></i> ${v.categories.slice(0,3).map(esc).join(", ")}</p>` : ""}
         <div class="vendor-card-footer">
           <span class="badge success"><i class="fa-solid fa-circle-check"></i> Verified</span>
-          ${`<span class="badge ${ratingBadgeClass(Number(v.avg_rating ?? 0))}">★ ${Number(v.avg_rating ?? 0).toFixed(1)} (${Number(v.review_count ?? 0)})</span>`}
+          ${`<span class="badge ${ratingBadgeClass(Number(v.avg_rating ?? 0))}"><i class="fa-solid fa-star"></i> ${Number(v.avg_rating ?? 0).toFixed(1)} (${Number(v.review_count ?? 0)})</span>`}
           ${distance}
         </div>
       </div>
@@ -37600,7 +37665,7 @@ window.renderVendorMapRail = function(){
         <p class="muted vendor-directory-city" style="margin:.15rem 0;">${esc(v?.city || 'Lagos')}</p>
         ${knownLine}
         <div class="vendor-card-footer">
-          <span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}">★ ${Number(v?.avg_rating ?? 0).toFixed(1)} (${Number(v?.review_count ?? 0)})</span>
+          <span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}"><i class="fa-solid fa-star"></i> ${Number(v?.avg_rating ?? 0).toFixed(1)} (${Number(v?.review_count ?? 0)})</span>
           <span class="badge vendor-follower-badge"><i class="fa-solid fa-user-group"></i> <span class="vendor-follower-count">${followerCount.toLocaleString()}</span> follower${followerCount === 1 ? "" : "s"}</span>
           <span class="badge" style="margin-left:auto;"><i class="fa-solid fa-store"></i> View storefront</span>
         </div>
@@ -42504,7 +42569,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
       // city/distance share one line instead of two.
       const followerStat=`<span class="vendor-card-follower-stat"><i class="fa-solid fa-user-group" aria-hidden="true"></i> <span class="vendor-follower-count">${count}</span> follower${Number(v?.follower_count||0)===1?'':'s'}</span>`;
       const distanceHtml = vendorDistanceHtml(v);
-      const ratingInline = `<span class="vendor-card-rating-corner badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}">★ ${Number(v?.avg_rating||0).toFixed(1)}</span>`;
+      const ratingInline = `<span class="vendor-card-rating-corner badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}"><i class="fa-solid fa-star"></i> ${Number(v?.avg_rating||0).toFixed(1)}</span>`;
       const verifiedBadge = `<span class="vendor-card-verified-badge" aria-label="Verified vendor" title="Verified vendor"><i class="fa-solid fa-circle-check"></i></span>`;
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
         <span class="vendor-card-avatar-wrap">${avatarHtml}${verifiedBadge}</span><div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
@@ -54148,4 +54213,31 @@ body.lv-cs-open{overflow:hidden}
 :root:root body .comment-replies-dropdown{margin:0 0 .4rem 2.4rem!important;padding:0!important;border:0!important;background:none!important}
 :root:root body .comment-replies-dropdown.hidden{display:none!important}
 :root:root body .comment-replies-dropdown .product-comment-row{padding-top:.5rem!important;padding-bottom:.5rem!important}
+</style>
+
+<script id="search-history-on-open">
+/* Opening a search result remembers what was typed, so it shows up under "Recent searches" next time. */
+document.addEventListener("click",function(e){
+  var t=e.target; if(!t||!t.closest) return;
+  if(!t.closest("#searchPageResults")) return;
+  if(t.closest(".search-page-chip,.search-page-history-head,.search-page-error,.search-page-filter")) return;
+  if(!t.closest('[role="link"],a,.product-card-wrap,.vd-card,.vendor-card,.search-result-row,.sr-row,[onclick*="navigate("]')) return;
+  var inp=document.getElementById("searchPageInput"); var term=inp&&inp.value.trim();
+  if(term&&typeof writeSearchHistory==="function") writeSearchHistory(term);
+},true);
+</script>
+<style id="misc-polish-oct">
+/* comments sheet: one clean divider under the header, no second line above the first comment */
+#lvCs .lv-cs-body .product-comment-row,#lvCs .lv-cs-body .product-comments-panel>*{border-top:0!important}
+#lvCs .lv-cs-body .product-comment-row{border-bottom:0!important}
+/* order card: no rule under the "Place order" heading */
+:root:root body #app .card:has(>.pd-step-title)>h3,:root:root body #app .card:has(.pd-total-box)>h3{border:0!important;padding-bottom:0!important;margin-bottom:.4rem!important}
+:root:root body #app .card:has(>.pd-step-title) .product-payment-plan-notice{margin-top:.2rem!important}
+/* rating pill: one gold star everywhere, like the featured vendors */
+:root:root body .badge.rating-gold,:root:root body .rating-gold{display:inline-flex;align-items:center;gap:.3rem;background:color-mix(in srgb,#f59e0b 14%,var(--card))!important;color:var(--text)!important;border:0!important;font-weight:700;box-shadow:none!important}
+:root:root body .rating-gold i,:root:root body .rating-gold .fa-star{color:#f59e0b!important;font-size:.85em}
+/* vendors list: long names wrap fully instead of printing over the next line */
+#app .vd-grid.vendors-list-mode .vd-card .vd-name{display:block!important;-webkit-line-clamp:unset!important;max-height:none!important;height:auto!important;line-height:1.25!important;overflow:visible!important}
+#app .vd-grid.vendors-list-mode .vd-card{row-gap:.3rem!important}
+#app .vd-grid.vendors-list-mode .vd-card .vd-loc,#app .vd-grid.vendors-list-mode .vd-card .vd-cat{line-height:1.3;min-width:0}
 </style>
