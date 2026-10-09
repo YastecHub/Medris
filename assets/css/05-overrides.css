@@ -1192,3 +1192,20 @@ html.lv-anim,html.lv-anim body{overflow-x:hidden}
 .storefront-meta .sf-loc:not([data-lvc]){visibility:visible;opacity:0}
 .storefront-meta .sf-loc{transition:opacity .16s ease}
 @media (prefers-reduced-motion:reduce){.vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.product-card-wrap{transition:none}}
+#lvFace .lvf-acts{display:flex;flex-direction:column;gap:.6rem;margin-top:1rem;width:min(86vw,340px)}
+#lvFace .lvf-acts.hidden{display:none}
+#lvFace .lvf-acts button{padding:.85rem 1rem;border-radius:14px;border:1.5px solid rgba(11,42,31,.18);background:#fff;color:#0b2a1f;font-weight:700;font-size:1rem}
+#lvFace .lvf-acts button.pri{background:#10b981;border-color:#10b981;color:#fff}
+
+/* ---- admin: student verification review sheet ---- */
+#lvSvReview .lvsr{max-height:88vh;overflow:auto}
+.lvsr-h{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:.2rem 0 .7rem}.lvsr-h strong{font-size:1.15rem}
+.lvsr-st{font-size:.74rem;font-weight:800;padding:.25rem .65rem;border-radius:999px;background:#fef3c7;color:#92400e}.lvsr-st.approved{background:#dcfce7;color:#166534}.lvsr-st.rejected{background:#fee2e2;color:#991b1b}
+.lvsr-grid{display:grid;grid-template-columns:1fr 1fr;gap:.55rem .9rem;margin-bottom:.7rem}.lvsr-grid small{display:block;color:var(--text-muted,#667);font-size:.7rem}.lvsr-grid b{font-size:.9rem;word-break:break-word}
+.lvsr-ai{margin:.2rem 0 .3rem}.lvsr-ocr{font-size:.82rem;margin:.2rem 0 .7rem}.lvsr-ocr small{color:var(--text-muted,#667)}
+.lvsr-ph{display:grid!important;grid-template-columns:repeat(3,1fr);gap:.5rem;margin:.3rem 0 .7rem}
+.lvsr-ph .req-ph-thumb{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;padding:0;border:1px solid var(--border,#dde5e0)}
+.lvsr-ph .req-ph-thumb img{width:100%;height:100%;object-fit:cover}.lvsr-ph .req-ph-thumb span{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);color:#fff;font-size:.68rem;padding:.2rem}
+#lvSvReview textarea{width:100%;min-height:3.4rem;border-radius:12px;margin-bottom:.6rem}
+.lvsr-acts{display:flex;gap:.5rem}.lvsr-acts button{flex:1;padding:.8rem .4rem;border-radius:14px;border:1.5px solid var(--border,#dde5e0);background:transparent;color:inherit;font-weight:700}
+.lvsr-acts .ok{background:var(--primary,#16a34a);border-color:transparent;color:#fff}.lvsr-acts .no{color:#dc2626}

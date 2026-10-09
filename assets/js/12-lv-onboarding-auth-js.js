@@ -1506,7 +1506,7 @@ async function setVendorRequestPref(v){
     box.addEventListener("change",async function(e){
       if(e.target.id!=="svFile"||!cur) return; var file=e.target.files[0]; e.target.value=""; if(!file) return;
       var keep={m:box.querySelector("#svMatric").value,f:box.querySelector("#svFaculty").value,d:box.querySelector("#svDept").value,l:box.querySelector("#svLevel").value};
-      try{ var small=await lvPrepareImageFile(file,1800); files[cur]={file:small,url:URL.createObjectURL(small)}; }catch(_){ toast("Couldn't read that photo.","error"); }
+      try{ var small=await lvPrepareImageFile(file,1400); files[cur]={file:small,url:URL.createObjectURL(small)}; }catch(_){ toast("Couldn't read that photo.","error"); }
       row=row||null; paint(); box.querySelector("#svMatric").value=keep.m; box.querySelector("#svFaculty").value=keep.f; box.querySelector("#svDept").value=keep.d; box.querySelector("#svLevel").value=keep.l;
     });
     function keepInputs(){ return {m:box.querySelector("#svMatric").value,f:box.querySelector("#svFaculty").value,d:box.querySelector("#svDept").value,l:box.querySelector("#svLevel").value}; }
@@ -1847,7 +1847,11 @@ async function setVendorRequestPref(v){
           var m=e.target.closest("[data-m]"); if(m){ ADM.mode=m.dataset.m; host.querySelectorAll("[data-m]").forEach(function(c){c.classList.toggle("on",c===m);}); paintList(host); return; }
           var g=e.target.closest("[data-g]"); if(g){ paintDetail(host,g.dataset.g); window.scrollTo({top:0}); return; }
           if(e.target.closest("[data-back]")){ host.querySelector("#acTop").style.display=""; paintList(host); return; }
-          var v=e.target.closest("[data-v]"); if(v){ try{navigate("storefront",{vendorId:v.dataset.v});}catch(_){} }
+          var v=e.target.closest("[data-v]"); if(v){
+            var vv=(ADM.all||[]).filter(function(x){return String(x.id)===String(v.dataset.v);})[0];
+            if(vv&&vv.svs&&window.lvAdminSvReview){ window.lvAdminSvReview(vv.id,vv.business_name,function(){ try{navigate("adminCampuses",{},false);}catch(_){} }); }
+            else { try{navigate("storefront",{vendorId:v.dataset.v});}catch(_){} }
+          }
         });
       }catch(err){ host.innerHTML='<div class="empty-state">Couldn\'t load campuses. '+e3(err&&err.message||"")+'</div>'; }
     },0);
