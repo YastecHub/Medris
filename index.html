@@ -54644,3 +54644,9 @@ html body #app .storefront-product-strip::-webkit-scrollbar{display:none!importa
 #app .home-promotional-slide{aspect-ratio:1.4/1!important}
 @media(min-width:720px){#app .home-promotional-viewport,#app .home-promotional-carousel,#app .home-promotional-track{--slide-w:min(66vw,820px)!important}#app .home-promotional-slide{aspect-ratio:1.9/1!important}}
 </style>
+<style id="pd-gallery-round-fix">
+/* the picture frame was 2rem wider than the card (old edge-to-edge margins), so its right corners ran off-screen and looked square */
+:root:root:root body #app .product-detail-card .product-detail-media{margin-left:0!important;margin-right:0!important;width:100%!important;max-width:100%!important;border-radius:20px!important;overflow:hidden!important}
+:root:root:root body #app .product-detail-card .product-gallery-carousel,:root:root:root body #app .product-detail-card .product-gallery-track{width:100%!important;max-width:100%!important;border-radius:20px!important;overflow-y:hidden!important}
+:root:root:root body #app .product-detail-card .product-gallery-slide img{border-radius:20px!important}
+</style>
