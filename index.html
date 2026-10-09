@@ -13922,8 +13922,7 @@ function uploadAvatar(event) {
   event.target.value = "";
   if (!file || !session) return;
   if (!String(file.type || '').startsWith('image/')) { showToast('Please choose an image.', 'error'); return; }
-  pendingAvatarFile = file;
-  openAvatarCropModal(file);
+  lvPrepareImageFile(file, 1600).then((small) => { pendingAvatarFile = small; openAvatarCropModal(small); }).catch(() => showToast("Couldn't open that photo. Try another one.", "error"));
 }
 async function removeProfileAvatar(event) {
   event?.stopPropagation?.();
@@ -25428,8 +25427,35 @@ async function uploadVendorCover(event) {
   event.target.value = "";
   if (!file || !vendor) return;
   if (!file.type.startsWith("image/")) { showToast("Please choose an image file.", "error"); return; }
-  pendingVendorCoverFile = file;
-  openVendorCoverCropModal(file);
+  try { const small = await lvPrepareImageFile(file, 2000); pendingVendorCoverFile = small; openVendorCoverCropModal(small); }
+  catch (e) { showToast("Couldn't open that photo. Try another one.", "error"); }
+}
+// Phone photos are huge (12MP+, sometimes HEIC). Reading them whole into the crop screen can crash a phone's browser and
+// bounce the person back to the home page, so the picked photo is shrunk to a sensible size first (orientation fixed too).
+async function lvPrepareImageFile(file, maxSide = 2000) {
+  try {
+    let bmp = null;
+    if (window.createImageBitmap) { try { bmp = await createImageBitmap(file, { imageOrientation: "from-image" }); } catch (_) { bmp = null; } }
+    let w, h, src;
+    if (bmp) { w = bmp.width; h = bmp.height; src = bmp; }
+    else {
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("decode")); i.src = url; });
+        w = img.naturalWidth; h = img.naturalHeight; src = img;
+      } finally { setTimeout(() => URL.revokeObjectURL(url), 5000); }
+    }
+    const k = Math.min(1, maxSide / Math.max(w, h));
+    if (k === 1 && file.size < 1.5 * 1024 * 1024 && /jpe?g|png|webp/i.test(file.type)) { try { bmp?.close?.(); } catch (_) {} return file; }
+    const cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+    const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+    const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cw, ch); ctx.drawImage(src, 0, 0, cw, ch);
+    try { bmp?.close?.(); } catch (_) {}
+    const blob = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.9));
+    c.width = c.height = 0;
+    if (!blob) return file;
+    return new File([blob], (file.name || "photo").replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+  } catch (_) { return file; }
 }
 async function removeVendorCover(event) {
   event?.stopPropagation?.();
