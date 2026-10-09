@@ -54394,3 +54394,13 @@ document.addEventListener("click",function(e){
 #app .home-promotional-slide{border-radius:22px!important;overflow:hidden!important;clip-path:inset(0 round 22px)!important;-webkit-clip-path:inset(0 round 22px)!important;isolation:isolate;transform:translateZ(0);-webkit-mask-image:-webkit-radial-gradient(white,black)}
 #app .home-promotional-slide::before{border-radius:inherit}
 </style>
+
+<style id="home-carousel-appstore">
+/* App Store-style banner: centred card with the neighbouring cards peeking in on both sides; picture fills the card edge to edge */
+#app .home-promotional-viewport,#app .home-promotional-carousel,#app .home-promotional-track{--slide-w:min(84vw,640px)!important}
+#app .home-promotional-track{gap:.7rem!important}
+#app .home-promotional-slide{aspect-ratio:1.6/1!important;background:var(--card)!important;border-radius:22px!important;overflow:hidden!important;clip-path:inset(0 round 22px)!important;-webkit-clip-path:inset(0 round 22px)!important;box-shadow:0 12px 28px rgba(0,0,0,.18)!important}
+#app .home-promotional-slide::before{display:none!important}
+#app .home-promotional-slide img{object-fit:cover!important;object-position:center!important;width:100%!important;height:100%!important}
+@media(min-width:720px){#app .home-promotional-viewport,#app .home-promotional-carousel,#app .home-promotional-track{--slide-w:min(70vw,860px)!important}#app .home-promotional-slide{aspect-ratio:2/1!important}}
+</style>
