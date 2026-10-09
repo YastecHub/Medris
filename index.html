@@ -21331,6 +21331,14 @@ function syncProductGalleryIndex(track) {
   document.querySelectorAll(".product-gallery-thumb").forEach((el) => {
     el.classList.toggle("active", Number(el.dataset.galleryIndex) === bestIndex);
   });
+  if (changed) {
+    // keep the matching variety thumbnail in view as the big picture is swiped
+    const act = document.querySelector(".product-gallery-thumb.active"), box = act && act.parentElement;
+    if (box && box.scrollWidth > box.clientWidth) {
+      const ar = act.getBoundingClientRect(), br = box.getBoundingClientRect();
+      box.scrollTo({ left: Math.max(0, box.scrollLeft + (ar.left - br.left) - (box.clientWidth - ar.width) / 2), behavior: "smooth" });
+    }
+  }
   if (changed || track.dataset.variantSyncIndex !== String(bestIndex)) {
     track.dataset.variantSyncIndex = String(bestIndex);
     syncProductVariantToGalleryIndex(bestIndex);
@@ -21700,6 +21708,7 @@ async function __levroOriginalRenderProductDetail(productId) {
   let html = `<div class="card product-detail-card" data-product-detail-id="${esc(product.id)}" style="position:relative;">
     <div class="product-detail-top-actions" aria-label="Product actions">
       <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${product.id}')" title="Save to wishlist" aria-label="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
+      <button type="button" class="product-storefront-share-btn lv-top-comment-btn" onclick="lvOpenProductComments('${product.id}')" title="Comments" aria-label="Open comments"><i class="fa-regular fa-comment-dots"></i></button>
       <button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share product" aria-label="Share product"><i class="fa-solid fa-share-nodes"></i></button>
     </div>
     <h2 class="product-detail-title">${esc(product.name)}${product.is_service ? ` <span class="badge">Service</span>` : ""}</h2>
@@ -54732,4 +54741,18 @@ html body #app .storefront-product-strip::-webkit-scrollbar{display:none!importa
 .lv-cm-row .save:disabled{opacity:.6}
 .lv-edited{font-size:.72rem}
 .product-comment-action.lv-cmore{color:var(--text-muted)!important}
+</style>
+<script id="pd-top-comment">
+/* comment button between heart and share: opens the comments sheet straight away */
+window.lvOpenProductComments=function(id){
+  var p=document.getElementById("productCommentsPanel");
+  if(!p){ showToast("Comments aren't available here.","error"); return; }
+  if(p.classList.contains("hidden")&&window.toggleProductComments) window.toggleProductComments(id);
+};
+</script>
+<style id="pd-top-comment-style">
+:root:root:root body #app .product-detail-card .product-gallery-thumbs,:root:root:root body #app .product-gallery-varieties-list{scrollbar-width:none!important;-ms-overflow-style:none!important}
+:root:root:root body #app .product-detail-card .product-gallery-thumbs::-webkit-scrollbar,:root:root:root body #app .product-gallery-varieties-list::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+.product-detail-card .lv-top-comment-btn i{color:var(--text-muted)}
+@media(max-width:720px){:root:root:root body #app .product-detail-card .product-detail-title{padding-right:8.4rem!important}}
 </style>
