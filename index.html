@@ -11888,9 +11888,12 @@ function showConfirmDialog(message, opts = {}) {
     const cancelBtn = byId("confirmModalCancel");
     okBtn.textContent = opts.okLabel || "Confirm";
     okBtn.className = opts.danger ? "btn btn-danger" : "btn";
+    modal.classList.toggle("confirm-drawer", !!opts.html);
     modal.classList.remove("hidden");
+    try { msgEl.scrollTop = 0; } catch (_) {}
     const cleanup = (result) => {
       modal.classList.add("hidden");
+      setTimeout(() => modal.classList.remove("confirm-drawer"), 260);
       okBtn.removeEventListener("click", onOk);
       cancelBtn.removeEventListener("click", onCancel);
       resolve(result);
@@ -23770,7 +23773,7 @@ async function renderVendorRequests() {
       <button type="button" class="vendor-request-tab" data-request-tab="mine" onclick="switchVendorRequestTab('mine')"><i class="fa-solid fa-list-check"></i> My requests${myRequests?.length ? ` <span>${myRequests.length}</span>` : ""}</button>
     </div>
     <section id="vendorCustomerRequestsTab" class="vendor-request-tab-panel">
-      <div class="vr-pref" role="group" aria-label="Which customer requests do you want to see?">
+      <details class="vr-pref vr-pref2"><summary><span class="vr-pref-now"><i class="fa-solid fa-sliders"></i> ${reqPref === "all" ? "All requests" : reqPref === "sector" ? "My sector" : "Requests off"} · ${campusScope === "mine" ? "My campus" : campusScope === "selected" ? "Selected campuses" : "All campuses"}</span><span class="vr-pref-edit">Change</span></summary>
         <span class="vr-pref-label"><i class="fa-solid fa-sliders"></i> Requests I receive</span>
         <div class="vr-pref-seg">
           ${[["all", "All"], ["sector", "My sector"], ["none", "Off"]].map(([k, l]) => `<button type="button" class="${reqPref === k ? "on" : ""}" onclick="setVendorRequestPref('${k}')">${l}</button>`).join("")}
@@ -23780,7 +23783,7 @@ async function renderVendorRequests() {
           ${[["mine", "My campus"], ["selected", "Selected"], ["all", "All campuses"]].map(([k, l]) => `<button type="button" class="${campusScope === k ? "on" : ""}" onclick="setVendorRequestCampus('${k}')">${l}</button>`).join("")}
         </div>
         <small class="muted">${reqPref === "all" ? "You'll see customer requests and get alerts for ones that match what you sell." : reqPref === "sector" ? "You'll only see and get alerts for requests in your own sector." : "Customer requests are hidden and you won't get alerts. You can still post your own."}</small>
-      </div>`;
+      </details>`;
   if (requestsError) html += `<div class="banner banner-danger">Could not load customer requests right now. Please try again.</div>`;
   else if (reqPref === "none") html += `<div class="empty-state">You've turned customer requests off.<br><button type="button" class="btn btn-sm" style="margin-top:.7rem;" onclick="setVendorRequestPref('all')">Turn requests back on</button></div>`;
   else if (!visibleRequests.length) html += `<div class="empty-state">${reqPref === "sector" ? "No requests in your sector right now." : "No customer requests to show right now."}</div>`;
@@ -23817,7 +23820,7 @@ async function renderVendorRequests() {
         <span class="vr-main">
           <strong class="vr-title">${esc(r.title)}</strong>
           ${r.description ? `<span class="vr-desc">${esc(r.description)}</span>` : ""}
-          <span class="vr-meta"><span><i class="fa-regular fa-clock"></i> ${esc(vrAgo(r.created_at))}</span><span><i class="fa-solid fa-location-dot"></i> ${esc(r.city || "Lagos")}</span></span>
+          <span class="vr-meta"><span><i class="fa-regular fa-clock"></i> ${esc(vrAgo(r.created_at))}</span><span><i class="fa-solid fa-location-dot"></i> ${esc((r.campus_id && typeof window.lvCampusShort === "function" && window.lvCampusShort(r.campus_id)) || r.city || "Lagos")}</span></span>
         </span>
         <span class="vr-side"><span class="vr-status ${mine ? "vr-prog" : "vr-open"}">${mine ? "In progress" : "Open"}</span><i class="fa-solid fa-chevron-right vr-chev"></i></span>
       </button>
@@ -23845,9 +23848,9 @@ async function renderVendorRequests() {
   // Keep the request area compact while making the request list explicitly
   // collapsible. It opens by default so the current request remains visible.
   if (visibleRequests.length) {
-    html += `<details class="vr-section" open><summary><span><i class="fa-solid fa-chevron-down"></i> ${visibleRequests.length} customer request${visibleRequests.length === 1 ? "" : "s"}</span><small>Collapse / expand</small></summary><div class="vr-list">`;
+    html += `<div class="vr-list">`;
     visibleRequests.forEach(requestRender);
-    html += `</div></details>`;
+    html += `</div>`;
   }
   html += `</section><section id="vendorMyRequestsTab" class="vendor-request-tab-panel hidden">`;
   if (!myRequests?.length) html += `<div class="empty-state"><i class="fa-solid fa-list-check" style="font-size:1.5rem;display:block;margin-bottom:.5rem;"></i>You haven't posted any requests yet.<br><button type="button" class="btn btn-sm" style="margin-top:.7rem;" onclick="navigate('requestEquipment')">Post a request</button></div>`;
@@ -55486,6 +55489,55 @@ async function setVendorRequestPref(v){
 .ac-sub-h{display:flex;align-items:center;gap:.7rem}.ac-sub-h b{display:block}.ac-sub-h small{color:var(--text-muted,#667)}
 .ac-sub-a{display:flex;gap:.5rem;margin-top:.7rem}.ac-sub-a button{flex:1;padding:.55rem .4rem;border-radius:12px;border:1.5px solid var(--border,#dde5e0);background:transparent;color:inherit;font-weight:600;cursor:pointer}
 .ac-sub-a .ok{background:var(--primary,#16a34a);border-color:transparent;color:#fff}.ac-sub-a .no{color:#dc2626}
+
+/* ---- order / cart confirmation as a bottom drawer */
+#confirmModal.confirm-drawer{align-items:flex-end!important;justify-content:center;padding:0!important;overflow:hidden}
+#confirmModal.confirm-drawer .modal-content{max-width:560px!important;width:100%;max-height:88vh;display:flex;flex-direction:column;border-radius:26px 26px 0 0!important;padding:.55rem 1.1rem calc(1rem + env(safe-area-inset-bottom,0px))!important;background:var(--card,#fff)!important;animation:cdUp .26s cubic-bezier(.2,.8,.2,1);overflow:hidden;box-shadow:0 -14px 40px rgba(0,0,0,.28)}
+@keyframes cdUp{from{transform:translateY(100%)}to{transform:none}}
+#confirmModal.confirm-drawer .modal-content::before{content:"";display:block;width:42px;height:4px;border-radius:4px;margin:.1rem auto .8rem;background:color-mix(in srgb,var(--text,#000) 18%,transparent);flex:0 0 auto}
+#confirmModal.confirm-drawer #confirmModalTitle{margin:0 0 .6rem;font-size:1.2rem;flex:0 0 auto}
+#confirmModal.confirm-drawer #confirmModalMsg{flex:1 1 auto;min-height:0;max-height:none!important;overflow-y:auto;margin:0 0 .9rem!important;padding-right:.1rem;-webkit-overflow-scrolling:touch;color:var(--text)}
+#confirmModal.confirm-drawer .order-summary-confirm{gap:.1rem}
+#confirmModal.confirm-drawer .order-summary-row{padding:.6rem 0;border-bottom:1px solid color-mix(in srgb,var(--text,#000) 8%,transparent);font-size:.92rem}
+#confirmModal.confirm-drawer .order-summary-row:last-child{border-bottom:0}
+#confirmModal.confirm-drawer .order-summary-row:first-child span:first-child{font-weight:500}
+#confirmModal.confirm-drawer .order-summary-total{margin-top:.3rem;padding:.8rem .9rem;border:0;border-radius:14px;background:color-mix(in srgb,var(--primary,#16a34a) 12%,var(--card,#fff));font-size:1.05rem}
+#confirmModal.confirm-drawer .order-summary-total strong{font-size:1.2rem;color:var(--primary,#16a34a)!important}
+#confirmModal.confirm-drawer .flex{flex:0 0 auto;display:grid!important;grid-template-columns:1fr 2fr;gap:.6rem;justify-content:stretch!important;border-top:1px solid color-mix(in srgb,var(--text,#000) 8%,transparent);padding-top:.8rem}
+#confirmModal.confirm-drawer .flex .btn{height:3rem;border-radius:14px;font-size:.98rem;margin:0}
+#confirmModal.confirm-drawer #confirmModalCancel{background:color-mix(in srgb,var(--text,#000) 8%,var(--card,#fff))!important;color:var(--text,#111)!important}
+
+/* ---- Orders: quiet underline tabs */
+:root:root:root body #app .vendor-orders-perspective-tabs{display:flex!important;gap:0!important;max-width:none!important;margin:.4rem 0 1rem!important;padding:0!important;background:transparent!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--text) 10%,transparent)!important;border-radius:0!important;box-shadow:none!important}
+:root:root:root body #app .vendor-orders-perspective-tabs button{flex:1 1 0!important;position:relative;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:.75rem .4rem!important;color:var(--text-muted)!important;font-weight:600!important;font-size:.95rem!important;display:flex!important;align-items:center;justify-content:center;gap:.4rem;transition:color .18s}
+:root:root:root body #app .vendor-orders-perspective-tabs button i{display:none!important}
+:root:root:root body #app .vendor-orders-perspective-tabs button::after{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--primary,#16a34a);transform:scaleX(0);transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+:root:root:root body #app .vendor-orders-perspective-tabs button.active{color:var(--text)!important;background:transparent!important;font-weight:700!important}
+:root:root:root body #app .vendor-orders-perspective-tabs button.active::after{transform:scaleX(1)}
+
+/* ---- Requests page: calmer layout */
+:root:root:root body #app .vendor-requests-page{display:block}
+:root:root:root body #app .vr-page-head{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center;justify-content:space-between;gap:.8rem;margin:.2rem 0 .4rem!important}
+:root:root:root body #app .vr-page-head h2{margin:0!important;font-size:1.45rem}
+:root:root:root body #app .vr-page-head>div{flex:1 1 auto;min-width:0}
+:root:root:root body #app .vr-page-head .vr-cta{margin:0!important;align-self:center!important;flex:0 0 auto!important;width:auto!important;max-width:none!important;border-radius:999px!important;padding:.55rem 1rem!important;height:auto!important;white-space:nowrap}
+:root:root:root body #app .vr-tabs{display:flex!important;gap:0!important;padding:0!important;margin:.4rem 0 1rem!important;background:transparent!important;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--text) 10%,transparent)!important;border-radius:0!important;box-shadow:none!important}
+:root:root:root body #app .vr-tabs .vendor-request-tab{flex:1 1 0;position:relative;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:.75rem .4rem!important;color:var(--text-muted)!important;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.4rem}
+:root:root:root body #app .vr-tabs .vendor-request-tab i{display:none!important}
+:root:root:root body #app .vr-tabs .vendor-request-tab span{background:color-mix(in srgb,var(--primary,#16a34a) 14%,transparent);color:var(--primary,#16a34a);border-radius:999px;font-size:.72rem;font-weight:700;padding:.05rem .45rem}
+:root:root:root body #app .vr-tabs .vendor-request-tab::after{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--primary,#16a34a);transform:scaleX(0);transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+:root:root:root body #app .vr-tabs .vendor-request-tab.active{color:var(--text)!important;font-weight:700}
+:root:root:root body #app .vr-tabs .vendor-request-tab.active::after{transform:scaleX(1)}
+#app details.vr-pref2{display:block!important;padding:0!important;margin:0 0 .9rem!important;border:1px solid color-mix(in srgb,var(--text) 10%,transparent)!important;border-radius:14px!important;background:var(--card)!important;overflow:hidden}
+#app details.vr-pref2>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.65rem .85rem;cursor:pointer;font-size:.88rem;font-weight:600}
+#app details.vr-pref2>summary::-webkit-details-marker{display:none}
+#app details.vr-pref2 .vr-pref-now i{margin-right:.4rem;color:var(--primary,#16a34a)}
+#app details.vr-pref2 .vr-pref-edit{color:var(--primary,#16a34a);font-weight:700;font-size:.82rem}
+#app details.vr-pref2[open]>summary{border-bottom:1px solid color-mix(in srgb,var(--text) 8%,transparent)}
+#app details.vr-pref2>*:not(summary){margin-left:.85rem!important;margin-right:.85rem!important}
+#app details.vr-pref2>.vr-pref-label{display:block;margin-top:.7rem!important;font-size:.78rem;color:var(--text-muted)}
+#app details.vr-pref2>small{display:block;margin:.6rem .85rem .8rem!important}
+#app .vr-list{display:flex;flex-direction:column;gap:.7rem}
 </style>
 <script id="lv-campus2-js">
 (function(){
