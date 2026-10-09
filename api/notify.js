@@ -225,6 +225,7 @@ async function pickNotificationIcon(SUPABASE_URL, svcHeaders, n) {
   const tp = n.target_params || {};
   const person = tp.callerAvatar || tp.senderAvatar;
   if (isHttps(person)) return composeIcon({ u: person, n: tp.callerName || tp.senderName || n.actor_name });
+  if (tp.callerName || tp.senderName) return composeIcon({ n: tp.callerName || tp.senderName });
   if (n.vendor_id) {
     try {
       const [v] = await (await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${n.vendor_id}&select=logo_url,business_name,user_id`, { headers: svcHeaders })).json();
