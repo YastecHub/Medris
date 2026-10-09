@@ -21364,7 +21364,7 @@ async function openPackageShare(packageId) {
   try {
     const { data: pkg, error } = await sb.from("vendor_packages").select("id,name,price,photos,status,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("id", packageId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
     if (error || !pkg) throw new Error("This package is no longer available.");
-    const url = `${location.origin}${location.pathname}?package=${encodeURIComponent(pkg.id)}`;
+    const url = `${location.origin}/k/${encodeURIComponent(pkg.id)}`;
     const box = byId("storefrontShareModal");
     if (!box) return;
     const name = pkg.name || "this package";
@@ -22702,18 +22702,10 @@ function vendorNameWithFormerly(v) {
 }
 
 function storefrontPublicUrl(vendorId) {
-  const url = new URL(window.location.href);
-  url.search = "";
-  url.hash = "";
-  url.searchParams.set("storefront", String(vendorId || ""));
-  return url.toString();
+  return `${location.origin}/s/${encodeURIComponent(String(vendorId || ""))}`;
 }
 function productPublicUrl(productId) {
-  const url = new URL(window.location.href);
-  url.search = "";
-  url.hash = "";
-  url.searchParams.set("product", String(productId || ""));
-  return url.toString();
+  return `${location.origin}/p/${encodeURIComponent(String(productId || ""))}`;
 }
 function updateStorefrontSocialMeta(v) {
   if (!v) return;
@@ -43429,7 +43421,7 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
       <div class="product-comment-main">
         <div class="product-comment-head"><strong>${escSafe(nameSafe(c.author_name))}</strong><span class="muted">${timeAgo(c.created_at)}</span></div>
         <div class="product-comment-body-row">
-          <div class="product-comment-body">${escSafe(c.content)}</div>
+          <div class="product-comment-body">${window.lvMentionHtml?window.lvMentionHtml(c.content,c.author_name):escSafe(c.content)}</div>
           <div class="product-comment-actions">
             <button type="button" class="product-comment-action ${liked?"active":""}" onclick="${likeFn}('${escSafe(c.id)}')" aria-label="Like comment" title="Like"><i class="fa-${liked?"solid":"regular"} fa-heart"></i>${Number(likeMap?.get(String(c.id))||0)>0?`<span class="comment-like-count">${Number(likeMap?.get(String(c.id))||0)}</span>`:""}</button>
             <button type="button" class="product-comment-action" onclick="${replyFn}('${escSafe(c.id)}')" aria-label="Reply to comment" title="Reply"><i class="fa-solid fa-reply"></i></button>
@@ -54403,4 +54395,85 @@ document.addEventListener("click",function(e){
 #app .home-promotional-slide::before{display:none!important}
 #app .home-promotional-slide img{object-fit:cover!important;object-position:center!important;width:100%!important;height:100%!important}
 @media(min-width:720px){#app .home-promotional-viewport,#app .home-promotional-carousel,#app .home-promotional-track{--slide-w:min(70vw,860px)!important}#app .home-promotional-slide{aspect-ratio:2/1!important}}
+</style>
+
+<script id="comment-mentions">
+/* @mentions in comments: pick a vendor while typing "@", replies pre-fill "@Name", tagged names are highlighted. */
+(function(){
+  var names=new Set(); window.__lvVendorNames=names;
+  function esc2(t){ return String(t==null?"":t).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  window.lvMentionHtml=function(text,author){
+    var html=esc2(text); if(author) names.add(String(author));
+    if(html.indexOf("@")<0) return html;
+    var list=Array.from(names).filter(function(n){return n&&n.length>1;}).sort(function(a,b){return b.length-a.length;});
+    list.forEach(function(n){
+      var token="@"+esc2(n); var i=html.toLowerCase().indexOf(token.toLowerCase());
+      while(i>=0){ var real=html.substr(i,token.length); var rep='<span class="lv-mention">'+real+'</span>'; html=html.slice(0,i)+rep+html.slice(i+token.length); i=html.toLowerCase().indexOf(token.toLowerCase(),i+rep.length); }
+    });
+    return html;
+  };
+  var box=null,seq=0,timer=0,cur=null;
+  function hide(){ if(box){ box.remove(); box=null; } cur=null; }
+  function show(ta,rows,start){
+    hide(); if(!rows.length) return;
+    cur={ta:ta,start:start};
+    box=document.createElement("div"); box.className="lv-mention-list"; box.setAttribute("role","listbox");
+    box.innerHTML=rows.map(function(v,i){ return '<button type="button" class="lv-mention-item" data-i="'+i+'">'+(v.logo_url?'<img src="'+esc2(v.logo_url)+'" alt="">':'<span class="lv-mention-ini">'+esc2((v.business_name||"?").charAt(0).toUpperCase())+'</span>')+'<span>'+esc2(v.business_name)+'</span></button>'; }).join("");
+    var host=ta.closest(".product-comment-composer")||ta.parentNode; host.style.position=host.style.position||"relative"; host.appendChild(box);
+    box.addEventListener("mousedown",function(e){ e.preventDefault(); });
+    box.addEventListener("click",function(e){
+      var b=e.target.closest(".lv-mention-item"); if(!b) return; var v=rows[+b.dataset.i];
+      var before=ta.value.slice(0,cur.start), after=ta.value.slice(ta.selectionStart||ta.value.length);
+      var ins="@"+v.business_name+" "; names.add(v.business_name);
+      ta.value=before+ins+after; var pos=(before+ins).length; ta.focus(); try{ta.setSelectionRange(pos,pos);}catch(_){}
+      ta.dispatchEvent(new Event("input",{bubbles:true})); hide();
+    });
+  }
+  document.addEventListener("input",function(e){
+    var ta=e.target; if(!ta||!ta.matches||!ta.matches(".product-comment-compose-row textarea")) return;
+    var pos=ta.selectionStart==null?ta.value.length:ta.selectionStart, upto=ta.value.slice(0,pos);
+    var at=upto.lastIndexOf("@");
+    if(at<0||(at>0&&!/\s/.test(upto.charAt(at-1)))){ hide(); return; }
+    var q=upto.slice(at+1); if(/\n/.test(q)||q.length>40){ hide(); return; }
+    clearTimeout(timer); var my=++seq;
+    timer=setTimeout(async function(){
+      try{
+        var req=sb.from("vendors").select("id,business_name,logo_url").eq("verification_status","verified").eq("is_active",true);
+        if(q.trim()) req=req.ilike("business_name","%"+q.trim().replace(/[%_]/g,"")+"%");
+        var r=await req.order("business_name").limit(6);
+        if(my!==seq) return; var rows=(r&&r.data)||[]; rows.forEach(function(v){names.add(v.business_name);}); show(ta,rows,at);
+      }catch(_){ }
+    },160);
+  },true);
+  document.addEventListener("click",function(e){ if(box&&!e.target.closest(".lv-mention-list")&&!e.target.closest(".product-comment-compose-row")) hide(); },true);
+  /* reply -> prefill "@Name " (LinkedIn style) */
+  function wrapReply(name){
+    var o=window[name]; if(typeof o!=="function"||o.__m) return;
+    var f=function(id){
+      var r=o.apply(this,arguments);
+      try{
+        var row=document.querySelector('.product-comment-row[data-comment-id="'+String(id).replace(/"/g,"")+'"] .product-comment-head strong');
+        var who=row&&row.textContent.trim();
+        setTimeout(function(){
+          var ta=document.querySelector(".product-comment-compose-row textarea"); if(!ta||!who) return;
+          names.add(who); var tag="@"+who+" ";
+          if(!ta.value.trim()||/^@[^@]*\s$/.test(ta.value)&&ta.value.length<80) ta.value=tag; else if(ta.value.indexOf(tag)!==0) ta.value=tag+ta.value;
+          ta.focus(); try{ta.setSelectionRange(ta.value.length,ta.value.length);}catch(_){}
+          ta.dispatchEvent(new Event("input",{bubbles:true}));
+        },120);
+      }catch(_){}
+      return r;
+    };
+    f.__m=true; window[name]=f;
+  }
+  function install(){ wrapReply("replyToProductComment"); wrapReply("replyToPackageComment"); }
+  install(); window.addEventListener("load",install);
+})();
+</script>
+<style id="comment-mentions-style">
+.lv-mention{color:var(--primary,#3fb97f);font-weight:700}
+.lv-mention-list{position:absolute;left:.6rem;right:.6rem;bottom:100%;margin-bottom:.35rem;max-height:14rem;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 -10px 30px rgba(0,0,0,.18);z-index:10;padding:.3rem}
+.lv-mention-item{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:.65rem;width:100%;padding:.55rem .6rem;border-radius:12px;cursor:pointer;font-weight:600;font-size:.92rem;color:var(--text)}
+.lv-mention-item:active,.lv-mention-item:hover{background:color-mix(in srgb,var(--primary,#3fb97f) 12%,transparent)}
+.lv-mention-item img,.lv-mention-ini{flex:none;width:2rem;height:2rem;border-radius:50%;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary,#3fb97f) 18%,var(--card));color:var(--primary,#3fb97f);font-weight:800}
 </style>

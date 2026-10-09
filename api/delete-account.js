@@ -240,6 +240,10 @@ async function shareMetaPreview(req, res) {
         html = html.replace(/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${img}">`);
       }
     }
+    if (/^\/[spk]\//.test(String(req.url || "")) || vendorId || productId || packageId) {
+      const q = vendorId ? `storefront=${encodeURIComponent(vendorId)}` : productId ? `product=${encodeURIComponent(productId)}` : `package=${encodeURIComponent(packageId)}`;
+      html = html.replace("<head>", `<head><base href="/"><script>try{if(location.pathname!=="/"||!location.search)history.replaceState(null,"","/?${q}");}catch(e){}</script>`);
+    }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(200).send(html);
   } catch (err) {
