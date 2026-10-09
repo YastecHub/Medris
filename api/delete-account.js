@@ -67,6 +67,62 @@ async function storeOgImage(req, res) {
     res.statusCode = 302; res.setHeader("Location", "/og-levromart.png"); res.end();
   }
 }
+
+// Share-preview card for a product or package link: the item's own photo, with the vendor's
+// profile picture and a small Levromart badge on top (no text, so it needs no fonts on the server).
+async function itemOgImage(req, res) {
+  try {
+    const productId = String(req.query?.ogprod || "").trim();
+    const packageId = String(req.query?.ogpkg || "").trim();
+    const root = process.cwd();
+    const W = 1200, H = 630;
+    const SUPABASE_URL = env("SUPABASE_URL");
+    const KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+    const hdr = { apikey: KEY, Authorization: `Bearer ${KEY}` };
+    let photoUrl = null, logoUrl = null;
+    if (productId) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(productId)}&select=photos,vendor:vendors(logo_url)`, { headers: hdr });
+      const [p] = await r.json();
+      photoUrl = Array.isArray(p?.photos) && p.photos[0] ? p.photos[0] : null; logoUrl = p?.vendor?.logo_url || null;
+    } else if (packageId) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/vendor_packages?id=eq.${encodeURIComponent(packageId)}&select=photos,vendor:vendors(logo_url)`, { headers: hdr });
+      const [p] = await r.json();
+      photoUrl = Array.isArray(p?.photos) && p.photos[0] ? p.photos[0] : null; logoUrl = p?.vendor?.logo_url || null;
+    }
+    const grab = async (u) => {
+      if (!u) return null;
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
+      try { const ir = await fetch(u, { signal: ctl.signal }); return ir.ok ? Buffer.from(await ir.arrayBuffer()) : null; } catch (_) { return null; } finally { clearTimeout(t); }
+    };
+    const [photo, logo] = await Promise.all([grab(photoUrl), grab(logoUrl)]);
+    let base;
+    try { base = photo ? await sharp(photo, { failOn: "none" }).rotate().resize(W, H, { fit: "cover" }).toBuffer() : await sharp(path.join(root, "og-levromart.png")).toBuffer(); }
+    catch (_) { base = await sharp(path.join(root, "og-levromart.png")).toBuffer(); }
+    const shade = Buffer.from(`<svg width="${W}" height="${H}"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#g)"/></svg>`);
+    const layers = [{ input: shade, left: 0, top: 0 }];
+    if (logo) {
+      try {
+        const R = 92, ring = Buffer.from(`<svg width="${R * 2}" height="${R * 2}"><circle cx="${R}" cy="${R}" r="${R}" fill="#fff"/></svg>`);
+        const inner = Buffer.from(`<svg width="${R * 2 - 16}" height="${R * 2 - 16}"><circle cx="${R - 8}" cy="${R - 8}" r="${R - 8}" fill="#fff"/></svg>`);
+        const face = await sharp(logo, { failOn: "none" }).rotate().flatten({ background: "#ffffff" }).resize(R * 2 - 16, R * 2 - 16, { fit: "cover" }).composite([{ input: inner, blend: "dest-in" }]).png().toBuffer();
+        layers.push({ input: ring, left: 44, top: H - 44 - R * 2 });
+        layers.push({ input: face, left: 52, top: H - 44 - R * 2 + 8 });
+      } catch (_) {}
+    }
+    const B = 112;
+    const mask = Buffer.from(`<svg width="${B}" height="${B}"><rect width="${B}" height="${B}" rx="30" fill="#fff"/></svg>`);
+    const icon = await sharp(path.join(root, "icon-512.png")).resize(B - 14, B - 14).composite([{ input: Buffer.from(`<svg width="${B - 14}" height="${B - 14}"><rect width="${B - 14}" height="${B - 14}" rx="24" fill="#fff"/></svg>`), blend: "dest-in" }]).png().toBuffer();
+    const badge = await sharp(mask).composite([{ input: icon, left: 7, top: 7 }]).png().toBuffer();
+    layers.push({ input: badge, left: W - 44 - B, top: H - 44 - B });
+    const out = await sharp(base).composite(layers).jpeg({ quality: 86 }).toBuffer();
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
+    res.status(200).send(out);
+  } catch (err) {
+    console.error("Levromart item og-image error:", err);
+    res.statusCode = 302; res.setHeader("Location", "/og-levromart.png"); res.end();
+  }
+}
 async function shareMetaPreview(req, res) {
   const serveAsIs = () => {
     const html = fs.readFileSync(path.join(process.cwd(), "index.html"), "utf8");
@@ -76,7 +132,8 @@ async function shareMetaPreview(req, res) {
   try {
     const vendorId = String(req.query?.storefront || "").trim();
     const productId = String(req.query?.product || "").trim();
-    if (!vendorId && !productId) { serveAsIs(); return; }
+    const packageId = String(req.query?.package || "").trim();
+    if (!vendorId && !productId && !packageId) { serveAsIs(); return; }
 
     const SUPABASE_URL = env("SUPABASE_URL");
     const SERVICE_KEY = env("SUPABASE_SERVICE_ROLE_KEY");
@@ -94,13 +151,22 @@ async function shareMetaPreview(req, res) {
         image = `${origin}/api/delete-account?ogstore=${encodeURIComponent(v.id)}`;
         pageUrl = `${origin}/?storefront=${encodeURIComponent(v.id)}`;
       }
+    } else if (packageId) {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/vendor_packages?id=eq.${encodeURIComponent(packageId)}&select=id,name,description,vendor:vendors(business_name)`, { headers: svcHeaders });
+      const [k] = await r.json();
+      if (k) {
+        title = `${k.name || "Levromart package"} | Levromart`;
+        description = String(k.description || `${k.name || "This package"} on Levromart${k.vendor?.business_name ? ` from ${k.vendor.business_name}` : ""}.`).slice(0, 200);
+        image = `${origin}/api/delete-account?ogpkg=${encodeURIComponent(k.id)}`;
+        pageUrl = `${origin}/?package=${encodeURIComponent(k.id)}`;
+      }
     } else {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(productId)}&select=id,name,description,photos,vendor:vendors(business_name)`, { headers: svcHeaders });
       const [p] = await r.json();
       if (p) {
         title = `${p.name || "Levromart listing"} | Levromart`;
         description = String(p.description || `${p.name || "This listing"} on Levromart${p.vendor?.business_name ? ` from ${p.vendor.business_name}` : ""}.`).slice(0, 200);
-        image = Array.isArray(p.photos) && p.photos[0] ? p.photos[0] : null;
+        image = `${origin}/api/delete-account?ogprod=${encodeURIComponent(p.id)}`;
         pageUrl = `${origin}/?product=${encodeURIComponent(p.id)}`;
       }
     }
@@ -515,6 +581,7 @@ async function turnServers(req, res) {
 module.exports = async function handler(req, res) {
   if (req.method === "GET" && /(?:^|[?&])turn=1(?:&|$)/.test(String(req.url || ""))) return turnServers(req, res);
   if (req.method === "GET" && /(?:^|[?&])ogstore=/.test(String(req.url || ""))) return storeOgImage(req, res);
+  if (req.method === "GET" && /(?:^|[?&])og(?:prod|pkg)=/.test(String(req.url || ""))) return itemOgImage(req, res);
   if (req.method === "GET") return shareMetaPreview(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed." });
 

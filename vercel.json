@@ -25,6 +25,11 @@
       "source": "/",
       "has": [{ "type": "query", "key": "product" }],
       "destination": "/api/delete-account"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "query", "key": "package" }],
+      "destination": "/api/delete-account"
     }
   ],
   "functions": {

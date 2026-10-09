@@ -21362,7 +21362,7 @@ async function togglePackageFavorite(evt, packageId) {
 }
 async function openPackageShare(packageId) {
   try {
-    const { data: pkg, error } = await sb.from("vendor_packages").select("id,name,price,status,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("id", packageId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
+    const { data: pkg, error } = await sb.from("vendor_packages").select("id,name,price,photos,status,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("id", packageId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
     if (error || !pkg) throw new Error("This package is no longer available.");
     const url = `${location.origin}${location.pathname}?package=${encodeURIComponent(pkg.id)}`;
     const box = byId("storefrontShareModal");
@@ -21370,7 +21370,8 @@ async function openPackageShare(packageId) {
     const name = pkg.name || "this package";
     byId("storefrontShareTitle").textContent = `Share ${name}`;
     byId("storefrontShareText").textContent = `Share this package on Levromart.`;
-    box.dataset.vendorId = ""; box.dataset.url = url; box.dataset.name = name; box.dataset.whatsapp = ""; box.dataset.packageId = pkg.id; delete box.dataset.productId;
+    box.dataset.vendorId = ""; box.dataset.url = url; box.dataset.name = name; box.dataset.whatsapp = ""; box.dataset.packageId = pkg.id; delete box.dataset.productId; box.dataset.kind = "package"; box.dataset.thumb = (Array.isArray(pkg.photos) && pkg.photos[0]) || "";
+    lvRenderShareSheet(box);
     box.classList.remove("hidden");
     trackModalOpened("storefrontShareModal");
   } catch (err) { showToast(err?.message || "Couldn't prepare package sharing.", "error"); }
@@ -22774,6 +22775,8 @@ async function openStorefrontShare(vendorId) {
     box.dataset.whatsapp = v.whatsapp_visible && v.whatsapp_number ? v.whatsapp_number : "";
     delete box.dataset.packageId;
     delete box.dataset.productId;
+    box.dataset.kind = "store"; box.dataset.thumb = v.logo_url || "";
+    lvRenderShareSheet(box);
     box.classList.remove("hidden");
     trackModalOpened("storefrontShareModal");
   } catch (err) {
@@ -22786,7 +22789,7 @@ async function shareStorefrontFromProduct(evt, vendorId) {
 }
 async function openProductShare(productId) {
   try {
-    const { data: product, error } = await sb.from("products").select("id,name,status,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("id", productId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
+    const { data: product, error } = await sb.from("products").select("id,name,photos,status,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("id", productId).eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true).maybeSingle();
     if (error || !product) throw new Error("This product is no longer available.");
     const box = byId("storefrontShareModal");
     if (!box) return;
@@ -22799,9 +22802,41 @@ async function openProductShare(productId) {
     box.dataset.whatsapp = "";
     box.dataset.productId = product.id;
     delete box.dataset.packageId;
+    box.dataset.kind = "product"; box.dataset.thumb = (Array.isArray(product.photos) && product.photos[0]) || "";
+    lvRenderShareSheet(box);
     box.classList.remove("hidden");
     trackModalOpened("storefrontShareModal");
   } catch (err) { showToast(err?.message || "Couldn't prepare product sharing.", "error"); }
+}
+
+function lvRenderShareSheet(box){
+  try{
+    const url=box.dataset.url||"", kind=box.dataset.kind||"store", thumb=box.dataset.thumb||"";
+    const th=byId("lvShareThumb");
+    if(th){ th.innerHTML=thumb?`<img src="${esc(thumb)}" alt="" onerror="this.remove()">`:`<i class="fa-solid ${kind==="product"?"fa-bag-shopping":kind==="package"?"fa-box-open":"fa-store"}"></i>`; }
+    const u=byId("lvShareUrl"); if(u) u.textContent=url.replace(/^https?:\/\//,"");
+    const t=byId("storefrontShareText"); if(t) t.textContent=kind==="product"?"Product on Levromart":kind==="package"?"Package on Levromart":"Storefront on Levromart";
+    byId("storefrontShareTitle").textContent=box.dataset.name||"Share";
+    box.querySelector(".lv-share-apps")?.scrollTo?.(0,0);
+  }catch(_){}
+}
+function lvShareTo(app){
+  const box=byId("storefrontShareModal"); const url=box?.dataset.url; if(!url) return;
+  const name=box.dataset.name||"this";
+  const kind=box.dataset.kind||"store";
+  const msg=kind==="product"?`Check out ${name} on Levromart.`:kind==="package"?`Check out the ${name} package on Levromart.`:`Check out ${name}'s storefront on Levromart.`;
+  const u=encodeURIComponent(url), t=encodeURIComponent(msg);
+  const open=(href)=>{ try{ const a=document.createElement("a"); a.href=href; a.target="_blank"; a.rel="noopener noreferrer"; a.style.display="none"; document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(),500); }catch(_){ location.href=href; } };
+  if(app==="more"){ nativeShareStorefront(); return; }
+  if(app==="whatsapp"){ window.lvOpenWhatsApp(`${msg}\n${url}`); }
+  else if(app==="facebook") open(`https://www.facebook.com/sharer/sharer.php?u=${u}`);
+  else if(app==="messenger"){ if(/Android|iPhone|iPad/i.test(navigator.userAgent)) location.href=`fb-messenger://share/?link=${u}`; else open(`https://www.facebook.com/sharer/sharer.php?u=${u}`); }
+  else if(app==="x") open(`https://twitter.com/intent/tweet?text=${t}&url=${u}`);
+  else if(app==="telegram") open(`https://t.me/share/url?url=${u}&text=${t}`);
+  else if(app==="linkedin") open(`https://www.linkedin.com/sharing/share-offsite/?url=${u}`);
+  else if(app==="sms") location.href=`sms:?&body=${encodeURIComponent(msg+" "+url)}`;
+  else if(app==="email") location.href=`mailto:?subject=${encodeURIComponent(name+" | Levromart")}&body=${encodeURIComponent(msg+"\n\n"+url)}`;
+  closeStorefrontShareModal(true);
 }
 async function copyStorefrontShareLink() {
   const box = byId("storefrontShareModal");
@@ -35558,16 +35593,23 @@ html:not([data-theme="dark"]):not([data-theme="black"]) .product-detail-card .fa
 </style>
 </style>
 <div id="storefrontShareModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="storefrontShareTitle" onclick="if(event.target===this){closeStorefrontShareModal(true);}">
-  <div class="storefront-share-sheet">
+  <div class="storefront-share-sheet lv-share">
     <div class="storefront-share-grabber" aria-hidden="true"></div>
-    <h3 class="storefront-share-title" id="storefrontShareTitle">Share storefront</h3>
-    <p class="storefront-share-copy" id="storefrontShareText">Share this vendor's storefront on Levromart.</p>
-    <div class="storefront-share-actions">
-      <button type="button" class="storefront-share-action" onclick="copyStorefrontShareLink()"><i class="fa-regular fa-copy"></i><span>Copy link</span></button>
-      <button type="button" class="storefront-share-action" onclick="nativeShareStorefront()"><i class="fa-solid fa-share-nodes"></i><span>Share</span></button>
-      <button type="button" class="storefront-share-action" onclick="whatsappShareStorefront()"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></button>
+    <div class="lv-share-head"><strong id="storefrontShareTitle">Share</strong><button type="button" class="lv-share-x" onclick="closeStorefrontShareModal(true)" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="lv-share-preview"><span class="lv-share-thumb" id="lvShareThumb"></span><span class="lv-share-meta"><b id="storefrontShareText">Share on Levromart</b><small id="lvShareUrl"></small></span></div>
+    <div class="lv-share-label">Share to</div>
+    <div class="lv-share-apps" role="list">
+      <button type="button" role="listitem" class="lv-app" style="--c:#25D366" onclick="lvShareTo('whatsapp')"><i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#1877F2" onclick="lvShareTo('facebook')"><i class="fa-brands fa-facebook-f"></i><span>Facebook</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#0099FF" onclick="lvShareTo('messenger')"><i class="fa-brands fa-facebook-messenger"></i><span>Messenger</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#111111" onclick="lvShareTo('x')"><i class="fa-brands fa-x-twitter"></i><span>X</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#229ED9" onclick="lvShareTo('telegram')"><i class="fa-brands fa-telegram"></i><span>Telegram</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#0A66C2" onclick="lvShareTo('linkedin')"><i class="fa-brands fa-linkedin-in"></i><span>LinkedIn</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#34C759" onclick="lvShareTo('sms')"><i class="fa-solid fa-message"></i><span>Message</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#EA4335" onclick="lvShareTo('email')"><i class="fa-solid fa-envelope"></i><span>Email</span></button>
+      <button type="button" role="listitem" class="lv-app" style="--c:#64748b" onclick="lvShareTo('more')"><i class="fa-solid fa-ellipsis"></i><span>More apps</span></button>
     </div>
-    <button type="button" class="storefront-share-close" onclick="closeStorefrontShareModal(true)">Cancel</button>
+    <button type="button" class="lv-share-copy" onclick="copyStorefrontShareLink()"><i class="fa-regular fa-copy"></i> Copy link</button>
   </div>
 </div>
 <style id="levromart-master-fix-final">
@@ -54320,4 +54362,29 @@ document.addEventListener("click",function(e){
 #app .home-promotional-slide::before{content:"";position:absolute;inset:-24px;background:var(--slide-bg,none) center/cover no-repeat;filter:blur(22px) saturate(1.25) brightness(.8);z-index:0}
 #app .home-promotional-slide img{position:relative;z-index:1;object-fit:contain!important;object-position:center!important}
 @media(min-width:720px){#app .home-promotional-slide{aspect-ratio:2.1/1!important}}
+</style>
+
+<style id="share-sheet-modern">
+#storefrontShareModal{padding:0!important;align-items:flex-end!important;background:rgba(0,0,0,.5)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+#storefrontShareModal .storefront-share-sheet.lv-share{width:100%!important;max-width:560px!important;margin:0 auto;border:0!important;border-radius:26px 26px 0 0!important;padding:.7rem 1.1rem calc(1.2rem + env(safe-area-inset-bottom,0px))!important;background:var(--card)!important;box-shadow:0 -18px 50px rgba(0,0,0,.35);animation:lvShareUp .28s cubic-bezier(.2,.8,.2,1)}
+@keyframes lvShareUp{from{transform:translateY(100%)}}
+#storefrontShareModal .lv-share-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:.2rem 0 .8rem}
+#storefrontShareModal .lv-share-head strong{font-size:1.1rem;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+#storefrontShareModal .lv-share-x{flex:none;width:2.2rem;height:2.2rem;border:0;border-radius:50%;background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text-muted);cursor:pointer}
+#storefrontShareModal .lv-share-preview{display:flex;align-items:center;gap:.8rem;padding:.65rem;border-radius:16px;background:color-mix(in srgb,var(--text) 5%,var(--card));margin-bottom:1.1rem}
+#storefrontShareModal .lv-share-thumb{flex:none;width:3.4rem;height:3.4rem;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary,#3fb97f) 14%,var(--card));color:var(--primary,#3fb97f);font-size:1.3rem}
+#storefrontShareModal .lv-share-thumb img{width:100%;height:100%;object-fit:cover}
+#storefrontShareModal .lv-share-meta{display:flex;flex-direction:column;min-width:0}
+#storefrontShareModal .lv-share-meta b{font-size:.92rem;font-weight:700}
+#storefrontShareModal .lv-share-meta small{color:var(--text-muted);font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#storefrontShareModal .lv-share-label{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin:0 0 .6rem}
+#storefrontShareModal .lv-share-apps{scroll-padding-left:1.1rem;display:flex;gap:.9rem;overflow-x:auto;scroll-snap-type:x proximity;margin:0 -1.1rem;padding:.1rem 1.1rem .6rem;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#storefrontShareModal .lv-share-apps::-webkit-scrollbar{display:none}
+#storefrontShareModal .lv-app{all:unset;box-sizing:border-box;flex:0 0 4.3rem;display:flex;flex-direction:column;align-items:center;gap:.4rem;cursor:pointer;scroll-snap-align:start;-webkit-tap-highlight-color:transparent}
+#storefrontShareModal .lv-app i{width:3.5rem;height:3.5rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--c);color:#fff;font-size:1.4rem;box-shadow:0 6px 14px color-mix(in srgb,var(--c) 40%,transparent);transition:transform .15s}
+#storefrontShareModal .lv-app:active i{transform:scale(.92)}
+#storefrontShareModal .lv-app span{font-size:.72rem;font-weight:600;color:var(--text);text-align:center;line-height:1.15}
+:root[data-theme="dark"] #storefrontShareModal .lv-app[style*="#111111"] i,:root[data-theme="black"] #storefrontShareModal .lv-app[style*="#111111"] i{background:#2b2f36}
+#storefrontShareModal .lv-share-copy{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:.55rem;width:100%;margin-top:.5rem;padding:.85rem;border-radius:14px;cursor:pointer;font-weight:700;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text)}
+#storefrontShareModal .lv-share-copy:active{opacity:.7}
 </style>
