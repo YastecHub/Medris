@@ -1185,7 +1185,8 @@ function estimateDeliveryRange(distanceKm) {
 // then quietly refresh from the browser. This avoids making the Vendors page
 // wait for a GPS fix before showing distance chips.
 const BUYER_LOCATION_CACHE_KEY = "levromart-buyer-location";
-const BUYER_LOCATION_CACHE_MAX_AGE = 30 * 60 * 1000;
+// Distances are city-scale, so a position up to 12 hours old is still fine to show instantly; a fresh reading replaces it quietly.
+const BUYER_LOCATION_CACHE_MAX_AGE = 12 * 60 * 60 * 1000;
 
 function readCachedCustomerLocation() {
   try {

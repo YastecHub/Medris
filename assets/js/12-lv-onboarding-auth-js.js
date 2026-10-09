@@ -1622,7 +1622,7 @@ async function setVendorRequestPref(v){
       });
       applyScope(map);
       var sfl=document.querySelector(".storefront-meta .sf-loc");
-      if(sfl&&!sfl.dataset.lvc){ var sv=curVid(); var xs=map.get(String(sv)); if(xs){ sfl.dataset.lvc="1"; var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML='<i class="fa-solid fa-graduation-cap"></i> '+e2(shortName(rr)); sfl.title=rr.name; } } }
+      if(sfl&&!sfl.dataset.lvc){ var sv=curVid(); var xs=map.get(String(sv)); if(xs){ sfl.dataset.lvc="1"; var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ if(document.querySelector(".storefront-name-row")){ sfl.remove(); } else { sfl.innerHTML='<i class="fa-solid fa-graduation-cap"></i> '+e2(shortName(rr)); sfl.title=rr.name; } } } }
       var row=document.querySelector(".storefront-name-row");
       if(row&&!row.dataset.lvc){ var sid=curVid(); var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=chipFor(x2,true); if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } } }
     }).finally(function(){busy=false; if(again){again=false; setTimeout(decorate,30);}});
