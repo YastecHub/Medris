@@ -4957,7 +4957,18 @@ async function navigate(view, params = {}, pushHistory = true) {
     // for the whole network round trip, which is exactly what read as a
     // multi-second "stall" after tapping a vendor card. Every other route
     // already gets an instant shell; storefront now does too.
-    app.innerHTML = instantRouteHtml || navigationShellHtml(view);
+    if (instantRouteHtml) {
+      app.innerHTML = instantRouteHtml;
+    } else {
+      // Keep the page you are leaving on screen while the next one loads. The placeholder shell only appears if the
+      // new page takes longer than ~160 ms, so quick navigations never flash an empty frame in between.
+      clearTimeout(window.__lvShellTimer);
+      window.__lvShellTimer = setTimeout(() => {
+        if (navToken !== navigationGeneration) return;
+        app.innerHTML = navigationShellHtml(view);
+        restoreAdminTabsScroll();
+      }, 160);
+    }
     restoreAdminTabsScroll();
     syncLeviFabVisibility();
     hideLevromartSplash();
@@ -5149,6 +5160,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       html = navigationShellHtml(view) || '<div class="empty-state">This page is temporarily unavailable. Please try again.</div>';
     }
   }
+  clearTimeout(window.__lvShellTimer);
   // Ignore an older request if the user has already navigated somewhere else.
   if (navToken !== navigationGeneration) return;
   if (html && !lastRenderError) {
@@ -12359,7 +12371,10 @@ function filterVendorsDirectory() {
   }
   window.__filteredVendors = list;
   const grid = byId("vendorsGrid");
-  if (grid) grid.innerHTML = list.length ? list.map(vendorCardHtml).join("") : '<div class="empty-state">No vendors match that search.</div>';
+  if (grid) {
+    const __gridHtml = list.length ? list.map(vendorCardHtml).join("") : '<div class="empty-state">No vendors match that search.</div>';
+    if (grid.__lvHtml !== __gridHtml) { grid.innerHTML = __gridHtml; grid.__lvHtml = __gridHtml; }   // unchanged list: leave the cards alone
+  }
   if (vendorsViewMode === "map") renderVendorsMap();
 }
 

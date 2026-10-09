@@ -1183,3 +1183,12 @@ html body #app .storefront-product-strip::-webkit-scrollbar{display:none!importa
 #lvFace .lvf-bar i{background:#10b981}
 #lvFace .lvf-manual{background:#10b981;color:#fff}
 #lvFace .lvf-frozen{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+
+/* ---- motion polish ---- */
+html.lv-anim,html.lv-anim body{overflow-x:hidden}
+/* cards fade in once they are labelled, instead of popping */
+.vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.product-card-wrap{transition:opacity .16s ease}
+.vd-card:not([data-lvs]),.vc2:not([data-lvs]),.vendor-card:not([data-lvs]),.homepage-vendor-card:not([data-lvs]),.sr-vendor-row:not([data-lvs]),.product-card-wrap:not([data-lvs]){visibility:visible;opacity:0}
+.storefront-meta .sf-loc:not([data-lvc]){visibility:visible;opacity:0}
+.storefront-meta .sf-loc{transition:opacity .16s ease}
+@media (prefers-reduced-motion:reduce){.vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.product-card-wrap{transition:none}}
