@@ -1288,6 +1288,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     try{localStorage.setItem("lv-view-campus",id);}catch(_){}
     var bar=document.getElementById("lvCampusBar");
     if(bar) bar.innerHTML=barHtml();
+    try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){}
     setTimeout(function(){ try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){} },30);
     // fast path: re-filter the catalogue already in memory and repaint only the grid
     try{
@@ -1593,6 +1594,7 @@ async function setVendorRequestPref(v){
         out=!!x&&!own&&!inScope(x,view);
       }
       card.classList.toggle("lv-out",out); if(out&&card.parentElement) parents.add(card.parentElement);
+      card.setAttribute("data-lvs","1");
     });
     parents.forEach(function(par){
       if(par.querySelector(SCOPE_SEL.split(",").map(function(q){return q+":not(.lv-out)";}).join(","))) return;
@@ -1609,10 +1611,11 @@ async function setVendorRequestPref(v){
     return inScope(x,view);
   };
   var busy=false,again=false;
-  function decorate(){
-    if(busy){ again=true; return; } busy=true;
-    vmap().then(function(map){
-      if(!map.size) { VMAP=null; return; }
+  function revealAll(){
+    document.querySelectorAll(SCOPE_SEL).forEach(function(c){ if(!c.hasAttribute("data-lvs")) c.setAttribute("data-lvs","1"); });
+    document.querySelectorAll(".storefront-meta .sf-loc:not([data-lvc])").forEach(function(e){ e.setAttribute("data-lvc","1"); });
+  }
+  function runDecorate(map){
       document.querySelectorAll(".vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row").forEach(function(card){
         if(card.dataset.lvc) return; var id=vendorIdOf(card); if(!id) return; var x=map.get(String(id)); card.dataset.lvc="1"; if(!x) return;
         var swapped=swapLocation(card,x);
@@ -1622,13 +1625,33 @@ async function setVendorRequestPref(v){
       });
       applyScope(map);
       var sfl=document.querySelector(".storefront-meta .sf-loc");
-      if(sfl&&!sfl.dataset.lvc){ var sv=curVid(); var xs=map.get(String(sv)); if(xs){ sfl.dataset.lvc="1"; var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML=(rr.logo?'<img class="sf-camp-logo" src="/campus-logos/'+e2(rr.id)+'.webp" alt="">':'<i class="fa-solid fa-graduation-cap"></i>')+' '+e2(shortName(rr)); sfl.title=rr.name; } } }
+      if(sfl&&!sfl.dataset.lvc){ var sv=curVid(); var xs=map.get(String(sv)); sfl.dataset.lvc="1"; if(xs){ var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML=(rr.logo?'<img class="sf-camp-logo" src="/campus-logos/'+e2(rr.id)+'.webp" alt="">':'<i class="fa-solid fa-graduation-cap"></i>')+' '+e2(shortName(rr)); sfl.title=rr.name; } } }
       var row=document.querySelector(".storefront-name-row");
       if(row&&!row.dataset.lvc){ var sid=curVid(); var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=x2.student_verified?chipFor({campus_id:null,student_verified:true},false):null; if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } } }
-    }).finally(function(){busy=false; if(again){again=false; setTimeout(decorate,30);}});
+  }
+  var failTimer=null;
+  function armFailsafe(){ clearTimeout(failTimer); failTimer=setTimeout(revealAll,1500); }
+  function decorate(){
+    if(VMAP&&VMAP.size){
+      try{ runDecorate(VMAP); }catch(_){ revealAll(); }
+      if(Date.now()-VAT>180000) vmap().then(function(m){ if(m&&m.size) try{runDecorate(m);}catch(_){} });
+      return;
+    }
+    if(busy){ again=true; return; } busy=true; armFailsafe();
+    vmap().then(function(map){
+      if(!map.size){ VMAP=null; revealAll(); return; }
+      try{ runDecorate(map); }catch(_){ revealAll(); }
+    }).catch(revealAll).finally(function(){busy=false; if(again){again=false; setTimeout(decorate,30);}});
   }
   window.lvRefreshVendorMap=function(){VMAP=null;VAT=0;decorate();};
-  var dt=null; try{ new MutationObserver(function(){ clearTimeout(dt); dt=setTimeout(decorate,60); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+  try{ new MutationObserver(function(recs){
+    // runs before the browser paints, so new vendor/product cards are labelled and campus-filtered before anyone sees them
+    var hit=false;
+    for(var k=0;k<recs.length&&!hit;k++){ var an=recs[k].addedNodes; for(var m=0;m<an.length;m++){ var n=an[m]; if(n.nodeType===1&&((n.matches&&n.matches(SCOPE_SEL+",.storefront-meta,.sf-loc"))||(n.querySelector&&n.querySelector(SCOPE_SEL+",.storefront-meta")))){ hit=true; break; } } }
+    if(hit){ decorate(); armFailsafe(); }
+  }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+  // load the vendor list early so the first cards are ready the moment they appear
+  (function warm(n){ if(typeof sb!=="undefined"&&sb&&sb.from){ vmap().then(function(){ decorate(); }); } else if(n<20) setTimeout(function(){warm(n+1);},250); })(0);
   setTimeout(decorate,800);
 
   // ---------- vendor request campus scope

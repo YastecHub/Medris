@@ -1136,3 +1136,7 @@ html body #app .storefront-product-strip::-webkit-scrollbar{display:none!importa
 /* ---- storefront: campus in the info row (logo + short name, no pill) ---- */
 .storefront-meta .sf-loc{display:inline-flex;align-items:center;gap:.35rem}
 .storefront-meta .sf-loc .sf-camp-logo{width:1.15em;height:1.15em;object-fit:contain;border-radius:0;flex:0 0 auto}
+
+/* ---- campus scope: cards stay invisible (but keep their space) until they are labelled/filtered, so nothing flashes or jumps ---- */
+.vd-card:not([data-lvs]),.vc2:not([data-lvs]),.vendor-card:not([data-lvs]),.homepage-vendor-card:not([data-lvs]),.sr-vendor-row:not([data-lvs]),.product-card-wrap:not([data-lvs]){visibility:hidden}
+.storefront-meta .sf-loc:not([data-lvc]){visibility:hidden}
