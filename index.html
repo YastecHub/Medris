@@ -23585,6 +23585,13 @@ async function submitEquipmentRequest() {
 
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Posting…'; }
   try {
+    const photoUrls = [];
+    const picked = Array.isArray(window.__reqPhotos) ? window.__reqPhotos : [];
+    for (let i = 0; i < picked.length; i++) {
+      if (btn) btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading photo ${i + 1}/${picked.length}…`;
+      const url = await uploadToR2(picked[i].file, `product-photos/requests/${session.user.id}/${Date.now()}-${i}.jpg`, "image/jpeg");
+      photoUrls.push(url);
+    }
     // Do not chain .select() onto the insert. An INSERT can be permitted by
     // RLS while the follow-up SELECT is not; that made successful requests
     // look like they had failed on some accounts. The request is reloaded
@@ -23598,6 +23605,7 @@ async function submitEquipmentRequest() {
       needed_from: type === "rent" ? (neededFrom || null) : null,
       needed_to: type === "rent" ? (neededTo || null) : null,
       request_type: type,
+      photos: photoUrls,
       buyer_name: profile?.name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || null,
       buyer_avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url || null,
     });
@@ -23651,6 +23659,9 @@ async function renderRequestEquipment() {
         <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="rent" onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Rent</label>
       </div>
       <label>More details</label><textarea id="reqDesc" rows="2" placeholder="Duration, specs, delivery preferences…"></textarea>
+      <label>Photos <span class="muted" style="font-weight:500">(optional, up to 4: show vendors exactly what you want)</span></label>
+      <div id="reqPhotoBox" class="req-photos"></div>
+      <input id="reqPhotoInput" type="file" accept="image/*" multiple class="hidden" onchange="reqPhotosPicked(event)" />
       <div class="flex">
         <div style="flex:1;"><label>Sector</label><button type="button" class="req-sector-picker" id="reqSectorPicker" onclick="openRequestSectorPicker(event)" aria-haspopup="dialog" aria-expanded="false"><span id="reqSectorLabel">Any</span><i class="fa-solid fa-chevron-down"></i></button><input type="hidden" id="reqSector" value=""></div>
         <div style="flex:1;"><label>Category *</label><div class="req-category-picker-wrap"><button type="button" class="req-category-picker" id="reqCategoryPicker" onclick="openRequestCategoryPicker(event)" aria-haspopup="dialog" aria-expanded="false"><span id="reqCategoryLabel">Choose one…</span><i class="fa-solid fa-chevron-down"></i></button><input type="hidden" id="reqCategory" value=""></div></div>
@@ -23676,6 +23687,7 @@ async function renderRequestEquipment() {
       <div class="flex" style="justify-content:space-between;"><strong>${esc(r.title)}</strong><div class="flex"><span class="badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span><span class="badge ${r.status === "fulfilled" ? "success" : r.status === "cancelled" ? "danger" : ""}">${esc(r.status)}</span></div></div>
       ${r.status === "open" ? `<button class="btn btn-sm btn-outline" style="margin-top:0.4rem;" onclick="cancelEquipmentRequest('${r.id}')"><i class="fa-solid fa-ban"></i> Cancel request</button>` : ""}
       ${r.description ? `<p class="muted" style="margin:0.3rem 0;">${esc(r.description)}</p>` : ""}
+      ${reqPhotosHtml(r.photos)}
       <p class="muted" style="font-size:0.8rem;">${[r.city, r.request_type !== "buy" && r.needed_from ? r.needed_from + " → " + (r.needed_to || "") : ""].filter(Boolean).map(esc).join(" · ")}</p>
       ${offers.length ? `<div style="margin-top:0.6rem;"><strong style="font-size:0.85rem;">${offers.length} offer${offers.length === 1 ? "" : "s"}:</strong>
         ${offers.map((o) => {
@@ -23697,6 +23709,8 @@ async function renderRequestEquipment() {
   });
   html += `</div></div>`;
   setTimeout(updateRequestFormFields, 0);
+  window.__reqPhotos = [];
+  setTimeout(reqPhotosPaint, 0);
   return html;
 }
 
@@ -23714,11 +23728,22 @@ async function renderVendorRequests() {
   }
   if (!vendor?.id) return '<div class="empty-state">Your vendor profile is not available yet.</div>';
 
-  const [{ data: requests, error: requestsError }, { data: myProducts }, { data: myRequests }] = await Promise.all([
+  let [{ data: requests, error: requestsError }, { data: myProducts }, { data: myRequests }] = await Promise.all([
     sb.from("equipment_requests").select("*, offers:request_offers(id, vendor_id, status)").eq("status", "open").order("created_at", { ascending: false }),
     sb.from("products").select("id, name, category_id, sale_price, rental_rate, rental_rate_unit").eq("vendor_id", vendor.id).eq("status", "active"),
     sb.from("equipment_requests").select("*, offers:request_offers(id, vendor_id, message, price, status, created_at, vendor:vendors(business_name, avg_rating, phone, whatsapp_number, delivery_fee))").eq("buyer_id", session.user.id).order("created_at", { ascending: false }),
   ]);
+  // Vendor's own choice of which customer requests to see: all / only their sector / none.
+  let reqPref = vendor.request_pref || "all";
+  let allowedRequests = requests || [];
+  if (reqPref === "none") allowedRequests = [];
+  else if (reqPref === "sector") {
+    let cats = window.__categories;
+    if (!cats?.length) { const { data } = await sb.from("categories").select("*").order("name"); cats = window.__categories = data || []; }
+    const sectorOf = new Map(cats.map((c) => [String(c.id), String(c.sector_id || "")]));
+    allowedRequests = allowedRequests.filter((r) => r.category_id && vendor.sector_id && sectorOf.get(String(r.category_id)) === String(vendor.sector_id));
+  }
+  requests = allowedRequests;
   window.__myProductsForOffers = myProducts || [];
   window.__vendorCustomerRequests = requests || [];
   window.__vendorMyRequests = myRequests || [];
@@ -23740,9 +23765,17 @@ async function renderVendorRequests() {
       <button type="button" class="vendor-request-tab active" data-request-tab="customers" onclick="switchVendorRequestTab('customers')"><i class="fa-solid fa-users"></i> Customer requests${visibleRequests.length ? ` <span data-request-customer-count>${visibleRequests.length}</span>` : ""}</button>
       <button type="button" class="vendor-request-tab" data-request-tab="mine" onclick="switchVendorRequestTab('mine')"><i class="fa-solid fa-list-check"></i> My requests${myRequests?.length ? ` <span>${myRequests.length}</span>` : ""}</button>
     </div>
-    <section id="vendorCustomerRequestsTab" class="vendor-request-tab-panel">`;
+    <section id="vendorCustomerRequestsTab" class="vendor-request-tab-panel">
+      <div class="vr-pref" role="group" aria-label="Which customer requests do you want to see?">
+        <span class="vr-pref-label"><i class="fa-solid fa-sliders"></i> Requests I receive</span>
+        <div class="vr-pref-seg">
+          ${[["all", "All"], ["sector", "My sector"], ["none", "Off"]].map(([k, l]) => `<button type="button" class="${reqPref === k ? "on" : ""}" onclick="setVendorRequestPref('${k}')">${l}</button>`).join("")}
+        </div>
+        <small class="muted">${reqPref === "all" ? "You'll see customer requests and get alerts for ones that match what you sell." : reqPref === "sector" ? "You'll only see and get alerts for requests in your own sector." : "Customer requests are hidden and you won't get alerts. You can still post your own."}</small>
+      </div>`;
   if (requestsError) html += `<div class="banner banner-danger">Could not load customer requests right now. Please try again.</div>`;
-  else if (!visibleRequests.length) html += `<div class="empty-state">No customer requests to show right now.</div>`;
+  else if (reqPref === "none") html += `<div class="empty-state">You've turned customer requests off.<br><button type="button" class="btn btn-sm" style="margin-top:.7rem;" onclick="setVendorRequestPref('all')">Turn requests back on</button></div>`;
+  else if (!visibleRequests.length) html += `<div class="empty-state">${reqPref === "sector" ? "No requests in your sector right now." : "No customer requests to show right now."}</div>`;
 
   const requestRender = (r) => {
     const mine = (r.offers || []).find((o) => o.vendor_id === vendor.id);
@@ -23783,9 +23816,7 @@ async function renderVendorRequests() {
       <div class="vr-body">
         <div class="vr-body-meta"><span class="badge vendor-request-type-badge">${r.request_type === "buy" ? "Buy" : "Rent"}</span><span class="muted">Posted by ${esc(r.buyer_name || "a buyer")}</span></div>
         ${r.description ? `<p class="vr-full-desc">${esc(r.description)}</p>` : ""}
-
-        
-        
+        ${reqPhotosHtml(r.photos)}
         ${mine
           ? `<div class="vendor-interest-row">
                <button type="button" class="btn btn-sm vendor-interest-btn" disabled><i class="fa-solid fa-heart"></i> Interested</button>
@@ -55203,3 +55234,72 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
 })();
 </script>
 
+
+<script id="request-photos-js">
+/* photos on buyer requests + the vendor's "which requests do I receive" setting */
+window.__reqPhotos=window.__reqPhotos||[];
+function reqPhotosPaint(){
+  var box=document.getElementById("reqPhotoBox"); if(!box) return;
+  var list=window.__reqPhotos||[];
+  box.innerHTML=list.map(function(p,i){return '<div class="req-ph"><img src="'+p.url+'" alt=""><button type="button" aria-label="Remove photo" onclick="reqPhotoRemove('+i+')"><i class="fa-solid fa-xmark"></i></button></div>';}).join("")
+   +(list.length<4?'<button type="button" class="req-ph add" onclick="document.getElementById(\'reqPhotoInput\').click()"><i class="fa-solid fa-camera"></i><span>Add photo</span></button>':'');
+}
+async function reqPhotosPicked(e){
+  var files=Array.prototype.slice.call(e.target.files||[]); e.target.value="";
+  var room=4-(window.__reqPhotos||[]).length;
+  for(var i=0;i<files.length&&i<room;i++){
+    var f=files[i]; if(!/^image\//.test(f.type)) continue;
+    try{ var small=await lvPrepareImageFile(f,1600); window.__reqPhotos.push({file:small,url:URL.createObjectURL(small)}); }
+    catch(_){ showToast("Couldn't read one of the photos.","error"); }
+  }
+  if(files.length>room) showToast("You can add up to 4 photos.","info");
+  reqPhotosPaint();
+}
+function reqPhotoRemove(i){ var p=(window.__reqPhotos||[]).splice(i,1)[0]; if(p) try{URL.revokeObjectURL(p.url);}catch(_){} reqPhotosPaint(); }
+function reqPhotosHtml(photos){
+  var l=Array.isArray(photos)?photos.filter(Boolean):[]; if(!l.length) return "";
+  window.__reqPhotoSets=window.__reqPhotoSets||[]; var k=window.__reqPhotoSets.push(l)-1;
+  return '<div class="req-ph-row">'+l.map(function(u,i){return '<button type="button" class="req-ph-thumb" onclick="event.stopPropagation();reqPhotoOpen('+k+','+i+')"><img src="'+esc(u)+'" alt="Requested item photo" loading="lazy"></button>';}).join("")+'</div>';
+}
+function reqPhotoOpen(k,i){
+  var l=(window.__reqPhotoSets||[])[k]||[]; if(!l.length) return;
+  var w=document.createElement("div"); w.className="req-lightbox";
+  w.innerHTML='<button type="button" class="x" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><div class="strip">'+l.map(function(u){return '<img src="'+esc(u)+'" alt="">';}).join("")+'</div><div class="n">'+(i+1)+' / '+l.length+'</div>';
+  document.body.appendChild(w);
+  var strip=w.querySelector(".strip"); strip.scrollLeft=strip.clientWidth*i;
+  strip.addEventListener("scroll",function(){w.querySelector(".n").textContent=(Math.round(strip.scrollLeft/strip.clientWidth)+1)+" / "+l.length;},{passive:true});
+  w.addEventListener("click",function(e){ if(e.target===w||e.target.closest(".x")) w.remove(); });
+}
+async function setVendorRequestPref(v){
+  if(!vendor||!vendor.id) return;
+  var r=await sb.from("vendors").update({request_pref:v}).eq("id",vendor.id);
+  if(r.error){ showToast(r.error.message||"Couldn't save that setting.","error"); return; }
+  vendor.request_pref=v;
+  showToast(v==="all"?"You'll see all customer requests.":v==="sector"?"You'll only see requests in your sector.":"Customer requests are off.","success");
+  try{ await navigate("vendorRequests",{},false); }catch(_){}
+}
+</script>
+<style id="request-photos-style">
+.req-photos{display:flex;flex-wrap:wrap;gap:.55rem;margin:.2rem 0 .6rem}
+.req-ph{position:relative;width:4.6rem;height:4.6rem;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--card)}
+.req-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.req-ph>button{position:absolute;top:3px;right:3px;width:1.4rem;height:1.4rem;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:.65rem;cursor:pointer}
+.req-ph.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.2rem;border:1.5px dashed color-mix(in srgb,var(--primary) 55%,var(--border));background:color-mix(in srgb,var(--primary) 6%,transparent);color:var(--primary);font:inherit;font-size:.68rem;font-weight:700;cursor:pointer;padding:0}
+.req-ph.add i{font-size:1.1rem}
+.req-ph-row{display:flex;gap:.45rem;flex-wrap:wrap;margin:.5rem 0}
+.req-ph-thumb{width:4.2rem;height:4.2rem;border-radius:12px;overflow:hidden;border:1px solid var(--border);padding:0;background:var(--card);cursor:zoom-in}
+.req-ph-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.req-lightbox{position:fixed;inset:0;z-index:2147483500;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.req-lightbox .x{position:absolute;top:calc(.8rem + env(safe-area-inset-top,0px));right:.9rem;width:2.5rem;height:2.5rem;border-radius:50%;border:0;background:rgba(255,255,255,.15);color:#fff;font-size:1.1rem;cursor:pointer;z-index:2}
+.req-lightbox .strip{display:flex;width:100%;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.req-lightbox .strip::-webkit-scrollbar{display:none}
+.req-lightbox .strip img{flex:0 0 100%;width:100%;max-height:82vh;object-fit:contain;scroll-snap-align:center}
+.req-lightbox .n{color:#fff;font-weight:700;margin-top:.8rem;font-size:.85rem;opacity:.8}
+.vr-pref{display:flex;flex-direction:column;gap:.45rem;margin:0 0 .9rem;padding:.7rem .8rem;border-radius:14px;border:1px solid var(--border);background:color-mix(in srgb,var(--text) 3%,var(--card))}
+.vr-pref-label{font-weight:800;font-size:.84rem}
+.vr-pref-label i{color:var(--primary);margin-right:.35rem}
+.vr-pref-seg{display:flex;background:color-mix(in srgb,var(--text) 7%,transparent);border-radius:999px;padding:3px;align-self:flex-start}
+.vr-pref-seg button{border:0;background:transparent;color:inherit;font:inherit;font-size:.78rem;font-weight:800;padding:.4rem .95rem;border-radius:999px;cursor:pointer}
+.vr-pref-seg button.on{background:var(--primary);color:#fff}
+.vr-pref small{font-size:.74rem;line-height:1.35}
+</style>
