@@ -49998,7 +49998,7 @@ function hideLeviFromPanel() {
     {urls:["turn:openrelay.metered.ca:80","turn:openrelay.metered.ca:443","turns:openrelay.metered.ca:443?transport=tcp"],username:"openrelayproject",credential:"openrelayproject"}].concat(window.LEVROMART_TURN_SERVERS||[]);
   // Relay (TURN) servers come from /api/turn so phones on carrier NAT can still connect.
   let iceLoaded=null;
-  const loadIce=()=>iceLoaded||(iceLoaded=Promise.race([fetch("/api/turn").then(r=>r.json()).then(j=>{if(Array.isArray(j?.iceServers)&&j.iceServers.length)ICE=j.iceServers.concat(window.LEVROMART_TURN_SERVERS||[]);}).catch(()=>{}),new Promise(r=>setTimeout(r,2500))]));
+  const loadIce=()=>iceLoaded||(iceLoaded=Promise.race([fetch("/api/turn").then(r=>r.json()).then(j=>{if(Array.isArray(j?.iceServers)&&j.iceServers.length)ICE=[{urls:["stun:stun.l.google.com:19302"]}].concat(j.iceServers,window.LEVROMART_TURN_SERVERS||[]);}).catch(()=>{}),new Promise(r=>setTimeout(r,2500))]));
   setTimeout(()=>{try{loadIce();}catch(_){}},3000);
   const RING_TIMEOUT_MS=45000;
   let call=null, ringTimer=null, ringtone=null, pollTimer=null, tickTimer=null, ringAgainTimer=null;

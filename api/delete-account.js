@@ -625,14 +625,31 @@ const TURN_OPEN_RELAY = [
 ];
 async function turnServers(req, res) {
   res.setHeader("Cache-Control", "private, max-age=600");
+  // 1) Cloudflare Realtime TURN (CF_TURN_KEY_ID + CF_TURN_API_TOKEN), 2) Metered (METERED_API_KEY + METERED_DOMAIN),
+  // 3) the shared open relay, which is a last resort and often does not relay at all.
+  const cfId = process.env.CF_TURN_KEY_ID, cfToken = process.env.CF_TURN_API_TOKEN;
+  if (cfId && cfToken) {
+    try {
+      const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(cfId)}/credentials/generate-ice-servers`, {
+        method: "POST", headers: { Authorization: `Bearer ${cfToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ ttl: 86400 }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        let list = Array.isArray(j?.iceServers) ? j.iceServers : (j?.iceServers ? [j.iceServers] : []);
+        // keep the relay entries, drop port 53 (browsers block it)
+        list = list.map((s) => ({ ...s, urls: [].concat(s.urls || []).filter((u) => !/:53(\?|$)/.test(u)) })).filter((s) => s.urls.length);
+        if (list.length) { res.status(200).json({ iceServers: list, source: "cloudflare" }); return; }
+      }
+    } catch (_) {}
+  }
   const key = process.env.METERED_API_KEY, domain = process.env.METERED_DOMAIN;
   if (key && domain) {
     try {
       const r = await fetch(`https://${domain}/api/v1/turn/credentials?apiKey=${encodeURIComponent(key)}`);
-      if (r.ok) { const list = await r.json(); if (Array.isArray(list) && list.length) { res.status(200).json({ iceServers: list }); return; } }
+      if (r.ok) { const list = await r.json(); if (Array.isArray(list) && list.length) { res.status(200).json({ iceServers: list, source: "metered" }); return; } }
     } catch (_) {}
   }
-  res.status(200).json({ iceServers: TURN_OPEN_RELAY });
+  res.status(200).json({ iceServers: TURN_OPEN_RELAY, source: "open-relay (shared, unreliable)" });
 }
 
 // Push-notification picture (256x256): the person's / shop's photo or initials, or an event icon,
