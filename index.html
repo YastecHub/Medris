@@ -12608,7 +12608,7 @@ async function __refreshNotificationsNow(renderPanel = true, includeSlow = true)
   // hold up unrelated UI state.
   const unreadQ = sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("archived", false).eq("read", false).is("deleted_at", null);
   const ordFresh = !!(window.__ordCnt && window.__ordCnt.uid === session.user.id && Date.now() - window.__ordCnt.at < 15000);
-  const vendorQ = ordFresh ? Promise.resolve({ count: window.__ordCnt.v }) : vendor ? sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES) : Promise.resolve({ count: 0 });
+  const vendorQ = ordFresh ? Promise.resolve({ count: window.__ordCnt.v }) : vendor ? vendorAttentionCount() : Promise.resolve({ count: 0 });
   const vendorProductCountQ = (vendor && includeSlow) ? sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id) : Promise.resolve(null);
   // "Today" is computed in the viewer's own local time (matches the same
   // toDateString() approach vendorEarningsInPeriod already uses for its
@@ -27831,9 +27831,28 @@ function clearOrderDateFilters(view,status,type,payment,perspective=""){ navigat
 // dropdown filters above -- this rides alongside that dropdown rather than
 // bringing that problem back).
 const ORDER_BADGE_STATUSES = ["pending", "confirmed", "payment_unresolved"];
+// A fully paid order (delivery: deposit + balance; pickup: the full payment) has nothing left for the vendor to do,
+// so it never counts as "needing attention" for them. Only the buyer's confirmation (or the 24h auto-complete) remains.
+function orderIsFullyPaid(o) {
+  if (!o || !Array.isArray(o.payments)) return false;
+  const feeType = o.order_type === "sale" ? "sale_price" : "rental_fee";
+  const paid = (t) => o.payments.some((p) => String(p.payment_type || "").trim().toLowerCase() === t && p.status === "paid");
+  return o.delivery_method === "delivery" ? paid("delivery_deposit_20") && paid(feeType) : paid(feeType);
+}
+async function vendorAttentionCount() {
+  if (!vendor?.id) return { count: 0 };
+  try {
+    const { data, error } = await sb.from("orders").select("id,status,order_type,delivery_method,payments(payment_type,status)").eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES).limit(500);
+    if (error || !Array.isArray(data)) throw error || new Error("none");
+    return { count: data.filter((o) => !(o.status === "confirmed" && orderIsFullyPaid(o))).length };
+  } catch (_) {
+    const { count } = await sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES);
+    return { count: count || 0 };
+  }
+}
 function orderStatusCountsFrom(rows) {
   const counts = { pending: 0, confirmed: 0, payment_unresolved: 0, all: 0 };
-  (rows || []).forEach((o) => { const st = String(o?.status || ""); if (ORDER_BADGE_STATUSES.includes(st)) { counts[st]++; counts.all++; } });
+  (rows || []).forEach((o) => { const st = String(o?.status || ""); if (ORDER_BADGE_STATUSES.includes(st)) { if (st === "confirmed" && orderIsFullyPaid(o)) return; counts[st]++; counts.all++; } });
   return counts;
 }
 // Tapping an order-status pill used to re-download every order (2-3 s). Within 45 s of the
@@ -27935,7 +27954,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
     if (session) {
       try {
         const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
-          vendor ? sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES) : Promise.resolve({ count: 0 }),
+          vendor ? vendorAttentionCount() : Promise.resolve({ count: 0 }),
           sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
         ]);
         vendorPendingOrderCount = salesCount || 0;
@@ -27964,7 +27983,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // -- run both queries together instead of one after the other.
   const [{ data: allOrdersRaw, error: allOrdersError }, { data: statsOrders, error: statsError }] = await Promise.all([
     ordersTabCached(`vo:${vendor.id}:${dateFrom}:${dateTo}`, () => withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") })),
-    ordersTabCached(`vs:${vendor.id}`, () => withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, updated_at").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") })),
+    ordersTabCached(`vs:${vendor.id}`, () => withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, updated_at, order_type, delivery_method, payments(payment_type,status)").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") })),
   ]);
   const allOrders = allOrdersRaw && status !== "all" ? allOrdersRaw.filter((o) => o.status === status) : allOrdersRaw;
   // If the timestamp migration has not been run yet, fall back to the base
@@ -28028,7 +28047,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   try {
     const counts = await ordersTabCached(`vcnt:${vendor.id}:${session.user.id}`, async () => {
       const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
-        sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+        vendorAttentionCount(),
         sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
       ]);
       return { salesCount, purchaseCount };
@@ -28686,7 +28705,7 @@ function vendorOrderTopHtml(order, ctx) {
   if (st === "pending") {
     if (orderCanSuggestQuantity(order)) h += `<div class="od-actions"><button type="button" class="od-btn od-btn-soft" onclick="openSuggestQuantity('${esc(order.id)}')"><i class="fa-solid fa-arrows-rotate"></i> Suggest quantity</button></div>`;
     h += `<div class="od-actions od-actions-pair"><button type="button" class="od-btn od-btn-danger" onclick="vendorDeclineOrder('${esc(order.id)}','pending')"><i class="fa-regular fa-circle-xmark"></i> Decline Order</button><button type="button" class="od-btn od-btn-confirm" onclick="confirmOrderAsVendor('${esc(order.id)}')"><i class="fa-solid fa-check"></i> Confirm Order</button></div>`;
-  } else if (st === "confirmed") {
+  } else if (st === "confirmed" && !orderIsFullyPaid(order)) {
     h += `<div class="od-actions"><button type="button" class="od-btn od-btn-outline-danger" onclick="vendorDeclineOrder('${esc(order.id)}','confirmed')"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button></div>`;
   } else if (st === "handed_over" && isRental) {
     h += `<div class="od-actions"><button type="button" class="od-btn od-btn-primary" onclick="updateOrderStatus('${esc(order.id)}','returned')"><i class="fa-solid fa-rotate-left"></i> Mark Returned</button></div>`;
