@@ -55695,6 +55695,7 @@ async function setVendorRequestPref(v){
     var ic=el.querySelector("i"); if(ic) ic.className="fa-solid fa-graduation-cap";
     return true;
   }
+  function curVid(){ try{ if(typeof currentViewParams!=="undefined"&&currentViewParams&&currentViewParams.vendorId) return currentViewParams.vendorId; }catch(_){} try{ if(window.currentViewParams&&window.currentViewParams.vendorId) return window.currentViewParams.vendorId; }catch(_){} var el=document.querySelector("[data-vendor-id]"); return el&&el.dataset.vendorId||""; }
   var SCOPE_SEL=".vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.product-card-wrap";
   function inScope(x,view){ return x.campus_id===view||x.operating_scope==="all"||(x.operating_scope==="multiple"&&Array.isArray(x.operating_campuses)&&x.operating_campuses.indexOf(view)>-1); }
   function applyScope(map){
@@ -55731,9 +55732,9 @@ async function setVendorRequestPref(v){
       });
       applyScope(map);
       var sfl=document.querySelector(".storefront-meta .sf-loc");
-      if(sfl&&!sfl.dataset.lvc){ var sv=(window.currentViewParams&&currentViewParams.vendorId)||""; var xs=map.get(String(sv)); if(xs){ sfl.dataset.lvc="1"; var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML='<i class="fa-solid fa-graduation-cap"></i> '+e2(rr.name); sfl.title=rr.name; } } }
+      if(sfl&&!sfl.dataset.lvc){ var sv=curVid(); var xs=map.get(String(sv)); if(xs){ sfl.dataset.lvc="1"; var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML='<i class="fa-solid fa-graduation-cap"></i> '+e2(shortName(rr)); sfl.title=rr.name; } } }
       var row=document.querySelector(".storefront-name-row");
-      if(row&&!row.dataset.lvc){ var sid=(window.currentViewParams&&currentViewParams.vendorId)||""; var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=chipFor(x2,true); if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } } }
+      if(row&&!row.dataset.lvc){ var sid=curVid(); var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=chipFor(x2,true); if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } } }
     }).finally(function(){busy=false;});
   }
   window.lvRefreshVendorMap=function(){VMAP=null;VAT=0;decorate();};
