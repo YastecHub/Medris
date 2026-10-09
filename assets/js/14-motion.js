@@ -30,6 +30,7 @@
       },HOME_CAROUSEL_INTERVAL_MS);
     }catch(_){}
   }
+  window.lvResumeCarousel=resumeCarousel;
   var KEEP=[
     {sel:"#homePromotionalCarousel",
      sig:function(n){ return Array.prototype.map.call(n.querySelectorAll(".home-promotional-slide:not([data-clone])"),function(b){ var i=b.querySelector("img"); return (i?(i.getAttribute("src")||""):"")+"|"+(b.getAttribute("data-link-url")||""); }).join(";"); },

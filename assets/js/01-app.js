@@ -5869,7 +5869,8 @@ function homeCarouselPause(ms) { homeCarouselResumeAt = Date.now() + ms; }
 function initHomepageCarousel() {
   if (homeCarouselTimer) { clearInterval(homeCarouselTimer); homeCarouselTimer = null; }
   const viewport = byId("homePromotionalViewport");
-  if (!viewport || viewport.dataset.carouselBound === "1") return;
+  if (viewport && viewport.dataset.carouselBound === "1") { window.lvResumeCarousel?.(); return; }   // kept alive from before: just restart autoplay
+  if (!viewport) return;
   viewport.dataset.carouselBound = "1";
   const loop = viewport.dataset.loop === "1";
   const count = viewport.querySelectorAll(".home-promotional-slide:not([data-clone])").length;
