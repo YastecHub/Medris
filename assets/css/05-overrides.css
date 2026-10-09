@@ -1132,3 +1132,7 @@ html body #app .storefront-product-strip::-webkit-scrollbar{display:none!importa
 .ac-sec{font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted,#667);margin:1rem 0 .2rem}
 .ac-tag{display:inline-flex;align-items:center;gap:.25rem;font-size:.68rem;font-weight:800;padding:.15rem .5rem;border-radius:999px;margin-right:.25rem}
 .ac-tag.ok{background:#dcfce7;color:#166534}.ac-tag.pend{background:#fef3c7;color:#92400e}.ac-tag.none{background:#fee2e2;color:#991b1b}.ac-tag.mut{background:color-mix(in srgb,var(--text,#000) 8%,transparent);color:var(--text-muted,#667)}
+
+/* ---- storefront: campus in the info row (logo + short name, no pill) ---- */
+.storefront-meta .sf-loc{display:inline-flex;align-items:center;gap:.35rem}
+.storefront-meta .sf-loc .sf-camp-logo{width:1.15em;height:1.15em;object-fit:contain;border-radius:0;flex:0 0 auto}
