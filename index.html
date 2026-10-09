@@ -24157,7 +24157,7 @@ async function hydrateProductLikeCountsInView(){const ids=[...new Set([...docume
 }
 function openProductCommentsFromCard(id){navigate("productDetail",{productId:id,openComments:true})}function openPackageCommentsFromCard(id){navigate("packageDetail",{packageId:id,openComments:true})}
 async function fetchProductComments(id){const {data,error}=await sb.from("product_comments").select("id,product_id,user_id,parent_comment_id,content,author_name,author_avatar_url,created_at,updated_at").eq("product_id",id).order("created_at",{ascending:false}).limit(120);if(error)throw error;const rows=data||[];let likes=[];if(rows.length){const r=await sb.from("product_comment_likes").select("id,comment_id,user_id").in("comment_id",rows.map(x=>x.id));if(!r.error)likes=r.data||[]}const lm=new Map(),ml=new Set();likes.forEach(l=>{const k=String(l.comment_id);lm.set(k,(lm.get(k)||0)+1);if(session?.user?.id&&String(l.user_id)===String(session.user.id))ml.add(k)});return{rows,likeMap:lm,myLiked:ml}}
-function socialCommentRow(c,lm,ml,d=0,kind="product"){const liked=ml.has(String(c.id)),own=String(session?.user?.id||"")===String(c.user_id||"");const lf=kind==="package"?"togglePackageCommentLike":"toggleProductCommentLike",rf=kind==="package"?"replyToPackageComment":"replyToProductComment",df=kind==="package"?"deletePackageComment":"deleteProductComment";return `<div class="product-comment-row" data-comment-id="${esc(c.id)}" data-depth="${d}">${c.author_avatar_url?`<img src="${esc(c.author_avatar_url)}" class="product-comment-avatar" alt="${esc(c.author_name||"User")}">`:avatarFallbackHtml(c.author_name||"User","2rem","product-comment-avatar",c.author_name||"User",c.user_id||c.author_name)}<div class="product-comment-main"><div class="product-comment-head"><strong>${esc(c.author_name||"Levromart user")}</strong><span class="muted">${timeAgo(c.created_at)}</span></div><div class="product-comment-body">${esc(c.content)}</div><div class="product-comment-actions"><button type="button" class="product-comment-action ${liked?"active":""}" onclick="${lf}('${esc(c.id)}')" aria-label="Like comment" title="Like comment"><i class="fa-${liked?"solid":"regular"} fa-heart"></i><span class="comment-like-count">${Number(lm.get(String(c.id))||0)}</span></button><button type="button" class="product-comment-action" onclick="${rf}('${esc(c.id)}')" aria-label="Reply to comment" title="Reply"><i class="fa-solid fa-reply"></i></button>${own?`<button type="button" class="product-comment-action danger" onclick="${df}('${esc(c.id)}')" aria-label="Delete your comment" title="Delete"><i class="fa-solid fa-trash"></i></button>`:""}</div></div></div>`}
+function socialCommentRow(c,lm,ml,d=0,kind="product"){const liked=ml.has(String(c.id)),own=String(session?.user?.id||"")===String(c.user_id||"");const lf=kind==="package"?"togglePackageCommentLike":"toggleProductCommentLike",rf=kind==="package"?"replyToPackageComment":"replyToProductComment",df=kind==="package"?"deletePackageComment":"deleteProductComment";return `<div class="product-comment-row" data-comment-id="${esc(c.id)}" data-depth="${d}">${c.author_avatar_url?`<img src="${esc(c.author_avatar_url)}" class="product-comment-avatar" alt="${esc(c.author_name||"User")}">`:avatarFallbackHtml(c.author_name||"User","2rem","product-comment-avatar",c.author_name||"User",c.user_id||c.author_name)}<div class="product-comment-main"><div class="product-comment-head"><strong>${esc(c.author_name||"Levromart user")}</strong><span class="muted">${timeAgo(c.created_at)}</span>${c.updated_at&&new Date(c.updated_at)-new Date(c.created_at)>3000?'<span class="muted lv-edited">· edited</span>':""}</div><div class="product-comment-body">${esc(c.content)}</div><div class="product-comment-actions"><button type="button" class="product-comment-action ${liked?"active":""}" onclick="${lf}('${esc(c.id)}')" aria-label="Like comment" title="Like comment"><i class="fa-${liked?"solid":"regular"} fa-heart"></i><span class="comment-like-count">${Number(lm.get(String(c.id))||0)}</span></button><button type="button" class="product-comment-action" onclick="${rf}('${esc(c.id)}')" aria-label="Reply to comment" title="Reply"><i class="fa-solid fa-reply"></i></button>${own?`<button type="button" class="product-comment-action lv-cmore" onclick="lvCommentMenu('${kind==="package"?"package":"product"}','${esc(c.id)}')" aria-label="Comment options" title="More"><i class="fa-solid fa-ellipsis"></i></button>`:""}</div></div></div>`}
 function socialThread(rows,lm,ml,kind){const roots=rows.filter(r=>!r.parent_comment_id),ch=new Map();rows.filter(r=>r.parent_comment_id).forEach(r=>{const k=String(r.parent_comment_id);if(!ch.has(k))ch.set(k,[]);ch.get(k).push(r)});const render=(p,d=1)=>{const kids=(ch.get(String(p.id))||[]).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));if(!kids.length)return"";const first=kids[0],rest=kids.slice(1),pre=kind==="package"?"packageReplies":"commentReplies";return socialCommentRow(first,lm,ml,d,kind)+(rest.length?`<div class="comment-more-replies"><button type="button" class="comment-view-more" onclick="toggleCommentReplies('${esc(p.id)}','${kind}')"><i class="fa-solid fa-chevron-down"></i> See ${rest.length} more repl${rest.length===1?"y":"ies"}</button><div class="comment-hidden-replies hidden" id="${pre}-${esc(p.id)}">${rest.map(r=>socialCommentRow(r,lm,ml,d,kind)).join("")}</div></div>`:"")+render(first,d+1)+rest.map(r=>render(r,d+1)).join("")};return roots.map(r=>socialCommentRow(r,lm,ml,0,kind)+render(r,1)).join("")}
 function toggleCommentReplies(id,kind="product"){const e=byId(`${kind==="package"?"packageReplies":"commentReplies"}-${id}`);if(!e)return;e.classList.toggle("hidden");const b=e.parentElement?.querySelector(".comment-view-more");if(b)b.innerHTML=e.classList.contains("hidden")?`<i class="fa-solid fa-chevron-down"></i> See more replies`:`<i class="fa-solid fa-chevron-up"></i> Hide replies`}
 async function loadProductComments(id,{preserveDraft=true,showLoading=true,force=false}={}){const p=activeSocialCommentPanel("product");if(!p)return;const d=preserveDraft?(activeSocialCommentInput("product")?.value||""):"",k=String(id);if(!force&&productCommentsLoaded.has(k)&&!productCommentsFetches.has(k)){renderLoadedProductComments(id,productCommentsLoaded.get(k),d);return}if(productCommentsFetches.has(k))return productCommentsFetches.get(k);const req=(async()=>{try{const r=await fetchProductComments(id);productCommentsLoaded.set(k,r);renderLoadedProductComments(id,r,d)}catch(_){if(!productCommentsLoaded.has(k))p.innerHTML=`<div class="product-comments-empty">Couldn’t load comments right now. Please try again.</div>`}finally{productCommentsFetches.delete(k)}})();productCommentsFetches.set(k,req);return req}
@@ -43479,13 +43479,13 @@ body.levromart-comment-sheet-open{overflow:auto!important;}
     return `<div class="product-comment-row" data-comment-id="${escSafe(c.id)}" data-depth="${depth||0}" style="${depth?"margin-left:1.1rem;":""}">
       ${c.author_avatar_url?`<img src="${escSafe(c.author_avatar_url)}" class="avatar-circle" style="width:2rem;height:2rem;object-fit:cover;flex:none;" alt="${escSafe(nameSafe(c.author_name))}">`:avatarFallbackHtml(nameSafe(c.author_name),"2rem","product-comment-avatar",nameSafe(c.author_name),c.user_id||c.author_name)}
       <div class="product-comment-main">
-        <div class="product-comment-head"><strong>${escSafe(nameSafe(c.author_name))}</strong><span class="muted">${timeAgo(c.created_at)}</span></div>
+        <div class="product-comment-head"><strong>${escSafe(nameSafe(c.author_name))}</strong><span class="muted">${timeAgo(c.created_at)}</span>${c.updated_at&&new Date(c.updated_at)-new Date(c.created_at)>3000?'<span class="muted lv-edited">· edited</span>':""}</div>
         <div class="product-comment-body-row">
           <div class="product-comment-body">${window.lvMentionHtml?window.lvMentionHtml(c.content,c.author_name):escSafe(c.content)}</div>
           <div class="product-comment-actions">
             <button type="button" class="product-comment-action ${liked?"active":""}" onclick="${likeFn}('${escSafe(c.id)}')" aria-label="Like comment" title="Like"><i class="fa-${liked?"solid":"regular"} fa-heart"></i>${Number(likeMap?.get(String(c.id))||0)>0?`<span class="comment-like-count">${Number(likeMap?.get(String(c.id))||0)}</span>`:""}</button>
             <button type="button" class="product-comment-action" onclick="${replyFn}('${escSafe(c.id)}')" aria-label="Reply to comment" title="Reply"><i class="fa-solid fa-reply"></i></button>
-            ${own?`<button type="button" class="product-comment-action danger" onclick="${deleteFn}('${escSafe(c.id)}')" aria-label="Delete your comment" title="Delete"><i class="fa-solid fa-trash"></i></button>`:""}
+            ${own?`<button type="button" class="product-comment-action lv-cmore" onclick="lvCommentMenu('${kind==="package"?"package":"product"}','${escSafe(c.id)}')" aria-label="Comment options" title="More"><i class="fa-solid fa-ellipsis"></i></button>`:""}
           </div>
         </div>
       </div>
@@ -54649,4 +54649,85 @@ html body #app .storefront-product-strip::-webkit-scrollbar{display:none!importa
 :root:root:root body #app .product-detail-card .product-detail-media{margin-left:0!important;margin-right:0!important;width:100%!important;max-width:100%!important;border-radius:20px!important;overflow:hidden!important}
 :root:root:root body #app .product-detail-card .product-gallery-carousel,:root:root:root body #app .product-detail-card .product-gallery-track{width:100%!important;max-width:100%!important;border-radius:20px!important;overflow-y:hidden!important}
 :root:root:root body #app .product-detail-card .product-gallery-slide img{border-radius:20px!important}
+</style>
+<script id="comment-edit-menu">
+/* three-dots menu on your own comments: Edit / Copy / Delete */
+(function(){
+  var TOP=2147483600;
+  function tbl(k){return k==="package"?"package_comments":"product_comments";}
+  function close(id){var e=document.getElementById(id);if(e)e.remove();}
+  function sheet(id,html){
+    close(id);
+    var w=document.createElement("div");w.id=id;w.className="lv-cm";
+    w.innerHTML='<div class="lv-cm-back"></div><div class="lv-cm-card" role="dialog" aria-modal="true">'+html+'</div>';
+    document.body.appendChild(w);
+    w.querySelector(".lv-cm-back").addEventListener("click",function(){close(id);});
+    return w;
+  }
+  function rowOf(id){return document.querySelector('.product-comment-row[data-comment-id="'+String(id).replace(/"/g,"")+'"]');}
+  function textOf(id){var r=rowOf(id);var b=r&&r.querySelector(".product-comment-body");return b?(b.dataset.raw||b.textContent||"").trim():"";}
+  window.lvCommentMenu=function(kind,id){
+    var w=sheet("lvCmMenu",
+      '<span class="lv-cm-handle"></span>'+
+      '<button type="button" data-a="edit"><i class="fa-solid fa-pen"></i><span>Edit comment</span></button>'+
+      '<button type="button" data-a="copy"><i class="fa-regular fa-copy"></i><span>Copy text</span></button>'+
+      '<button type="button" data-a="delete" class="danger"><i class="fa-solid fa-trash"></i><span>Delete comment</span></button>'+
+      '<button type="button" data-a="cancel" class="cancel">Cancel</button>');
+    w.querySelector(".lv-cm-card").addEventListener("click",function(e){
+      var b=e.target.closest("button[data-a]");if(!b)return;var a=b.dataset.a;close("lvCmMenu");
+      if(a==="edit")openEdit(kind,id);
+      else if(a==="copy"){var t=textOf(id);try{navigator.clipboard.writeText(t).then(function(){showToast("Copied.","success");});}catch(_){}}
+      else if(a==="delete"){(kind==="package"?window.deletePackageComment:window.deleteProductComment)(id);}
+    });
+  };
+  function openEdit(kind,id){
+    var w=sheet("lvCmEdit",
+      '<span class="lv-cm-handle"></span><strong class="lv-cm-title">Edit comment</strong>'+
+      '<textarea rows="4" maxlength="1000" aria-label="Edit your comment"></textarea>'+
+      '<div class="lv-cm-row"><button type="button" class="cancel" data-a="x">Cancel</button><button type="button" class="save" data-a="save">Save</button></div>');
+    var ta=w.querySelector("textarea");ta.value=textOf(id);
+    setTimeout(function(){try{ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}catch(_){}},60);
+    w.querySelector(".lv-cm-card").addEventListener("click",async function(e){
+      var b=e.target.closest("button[data-a]");if(!b)return;
+      if(b.dataset.a==="x"){close("lvCmEdit");return;}
+      var v=ta.value.trim();
+      if(!v){showToast("A comment can't be empty.","error");return;}
+      if(v===textOf(id)){close("lvCmEdit");return;}
+      b.disabled=true;b.textContent="Saving…";
+      var now=new Date().toISOString();
+      var r=await sb.from(tbl(kind)).update({content:v,updated_at:now}).eq("id",id).eq("user_id",session.user.id).select("id");
+      if(r.error||!r.data||!r.data.length){b.disabled=false;b.textContent="Save";showToast((r.error&&r.error.message)||"Could not save your edit.","error");return;}
+      close("lvCmEdit");
+      var row=rowOf(id);
+      if(row){
+        var body=row.querySelector(".product-comment-body");
+        if(body){body.innerHTML=window.lvMentionHtml?window.lvMentionHtml(v,""):v.replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+        var head=row.querySelector(".product-comment-head");
+        if(head&&!head.querySelector(".lv-edited")){var s=document.createElement("span");s.className="muted lv-edited";s.textContent="· edited";head.appendChild(s);}
+      }
+      showToast("Comment updated.","success");
+    });
+  }
+})();
+</script>
+<style id="comment-edit-menu-style">
+.lv-cm{position:fixed;inset:0;z-index:2147483600}
+.lv-cm-back{position:absolute;inset:0;background:rgba(0,0,0,.5);animation:lvCmFade .18s ease-out}
+.lv-cm-card{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:560px;background:var(--card);color:var(--text);border-radius:22px 22px 0 0;padding:.7rem 1rem calc(1rem + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:.45rem;animation:lvCmUp .22s cubic-bezier(.2,.9,.3,1);box-shadow:0 -10px 40px rgba(0,0,0,.35)}
+@keyframes lvCmUp{from{transform:translateY(100%)}}
+@keyframes lvCmFade{from{opacity:0}}
+.lv-cm-handle{align-self:center;width:2.6rem;height:.28rem;border-radius:9px;background:color-mix(in srgb,var(--text) 22%,transparent);margin-bottom:.3rem}
+.lv-cm-card>button{display:flex;align-items:center;gap:.85rem;width:100%;border:0;border-radius:14px;padding:.9rem 1rem;font:inherit;font-weight:650;font-size:1rem;background:color-mix(in srgb,var(--text) 6%,transparent);color:var(--text);cursor:pointer;text-align:left}
+.lv-cm-card>button i{width:1.3rem;text-align:center;color:var(--primary)}
+.lv-cm-card>button.danger,.lv-cm-card>button.danger i{color:#e5484d}
+.lv-cm-card>button.cancel{justify-content:center;background:transparent;color:var(--text-muted)}
+.lv-cm-title{text-align:center;font-size:1rem;font-weight:800;padding-bottom:.2rem}
+.lv-cm-card textarea{width:100%;box-sizing:border-box;min-height:7rem;border-radius:14px;padding:.8rem 1rem;font:inherit;font-size:16px;resize:vertical;border:1px solid var(--border);background:color-mix(in srgb,var(--text) 5%,transparent);color:var(--text)}
+.lv-cm-row{display:flex;gap:.6rem}
+.lv-cm-row button{flex:1;border:0;border-radius:14px;padding:.85rem;font:inherit;font-weight:700;cursor:pointer}
+.lv-cm-row .cancel{background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--text)}
+.lv-cm-row .save{background:var(--primary);color:#fff}
+.lv-cm-row .save:disabled{opacity:.6}
+.lv-edited{font-size:.72rem}
+.product-comment-action.lv-cmore{color:var(--text-muted)!important}
 </style>
