@@ -25,7 +25,7 @@ sw.js (offline + push)            Paystack, Resend (email),         Auth, Realti
                                   Gemini (Levi), Web Push           Cloudflare R2 (public images)
 ```
 
-* **Frontend** – one file, `index.html` (~45k lines): HTML shell, ~170 `<style>` blocks, and ~60 `<script>` blocks of
+* **Frontend** – `index.html` (HTML shell) plus `assets/css/*.css` and `assets/js/*.js` (split from the former single file; numbered in load order, `?v=` ties them to the service-worker cache version — run `tools/bump-version.sh <n>` on every deploy). Contents: the styles and the script blocks of
   plain JavaScript (no framework, no build step). A hand-written router (`navigate()`) swaps the HTML inside `#app`.
 * **Backend** – 12 Vercel serverless functions in `api/` (the Vercel Hobby plan caps this at 12; related actions are
   merged into one file with an `action` field).

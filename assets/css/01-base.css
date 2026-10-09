@@ -1,0 +1,68 @@
+/* ---- order-edit-and-buyer-location-ui ---- */
+  #app .order-action-edit{background:var(--primary)!important;color:#fff!important;}
+  .edit-order-modal-content{max-width:560px!important;padding:1.15rem!important;}
+  .edit-order-intro{font-size:.82rem;line-height:1.45;margin:.65rem 0 1rem;}
+  .edit-order-items{border:1px solid var(--border);border-radius:.9rem;overflow:hidden;}
+  .edit-order-item-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem .9rem;background:var(--card);}
+  .edit-order-item-row + .edit-order-item-row{border-top:1px solid var(--border);}
+  .edit-order-item-copy{min-width:0;display:flex;flex-direction:column;gap:.15rem;}
+  .edit-order-item-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .edit-order-item-copy .muted{font-size:.75rem;}
+  .edit-order-qty-label{display:flex;align-items:center;gap:.45rem;margin:0;white-space:nowrap;font-size:.78rem;color:var(--text-muted);font-weight:600;}
+  .edit-order-qty{width:78px!important;margin:0!important;text-align:center;}
+  .edit-order-section{margin-top:.9rem;}
+  .edit-order-section h4{margin:0 0 .4rem;font-size:.9rem;}
+  .edit-order-total{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding:.75rem .85rem;border-radius:.8rem;background:color-mix(in srgb,var(--primary) 7%,var(--card));border:1px solid color-mix(in srgb,var(--primary) 18%,var(--border));}
+  .edit-order-total strong{font-size:1.05rem;color:var(--primary);}
+  .edit-order-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem;}
+  .order-buyer-location-wrap{margin-top:.9rem;padding-top:.9rem;border-top:1px solid var(--border);}
+  .order-buyer-location-map{width:100%;height:300px;margin-top:.65rem;border-radius:.9rem;overflow:hidden;border:1px solid var(--border);background:var(--input-bg);}
+  .order-buyer-location-btn{display:flex!important;align-items:center;justify-content:center;width:100%;max-width:420px;margin:.75rem auto 0!important;text-align:center;gap:.4rem;}
+  .order-buyer-location-btn-yellow{background:transparent!important;border:1.5px solid #d97706!important;color:#b45309!important;}
+  .order-buyer-location-btn-yellow:hover{background:color-mix(in srgb,#d97706 10%,transparent)!important;}
+  .order-contact-icon-btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;padding:.5rem .9rem;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.85rem;font-weight:600;text-decoration:none;cursor:pointer;flex:1 1 0;text-align:center;}
+  .order-contact-icon-btn i{font-size:.95rem;}
+  .order-contact-message-btn{background:var(--primary)!important;border-color:var(--primary)!important;color:#fff!important;}
+  .order-contact-call-btn i{color:#2563eb;}
+  .order-buyer-map-recenter-control{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--card)!important;color:var(--text)!important;border:1px solid var(--border)!important;box-shadow:0 3px 12px rgba(0,0,0,.16);cursor:pointer;font-size:1rem;}
+  .order-buyer-map-recenter-control:hover{color:var(--primary)!important;}
+  .order-buyer-route{pointer-events:none;}
+  .payment-before-delivery-notice{display:flex;flex-direction:column;gap:.42rem;padding:.8rem .9rem!important;}
+  .payment-before-delivery-title{display:block;font-size:1rem;line-height:1.3;}
+  .payment-before-delivery-copy{display:block;font-size:.78rem;line-height:1.55;color:var(--text-muted);}
+  .payment-contact-vendor{font-style:normal;font-weight:800;color:var(--primary);}
+  #app .payment-confirm-btn{background:#2563eb!important;border-color:#2563eb!important;color:#fff!important;box-shadow:none!important;}
+  #app .payment-confirm-btn:hover{background:#1d4ed8!important;border-color:#1d4ed8!important;}
+  #app .payment-confirm-btn:active{background:#1e40af!important;border-color:#1e40af!important;}
+
+  @media(max-width:520px){.edit-order-modal-content{padding:.95rem!important}.edit-order-item-row{align-items:flex-start}.edit-order-qty-label{flex-direction:column;align-items:flex-end;gap:.2rem}.order-buyer-location-map{height:260px}}
+/* ---- pickup-payment-message-polish ---- */
+  #app .pickup-message-vendor-wrap{display:flex;flex-direction:column;align-items:center;width:100%;margin:.7rem 0 0;}
+  #app .pickup-message-vendor-wrap .order-message-vendor-btn{min-width:min(290px,100%);justify-content:center;}
+  #app .pickup-pay-vendor-btn{justify-content:center;}
+
+/* Minimal, centered network error state — keep the vendor directory clean and uncluttered. */
+.levromart-network-error-state {
+  width: 100%;
+  min-height: 180px;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center !important;
+  margin: 0 !important;
+  padding: 2rem 1rem !important;
+  line-height: 1.25;
+  color: var(--muted, #64748b);
+}
+.levromart-network-error-state i {
+  margin-bottom: 0.45rem !important;
+}
+/* ---- order-vendor-message-contact-ui ---- */
+  /* Customer order-detail contact action: keep the vendor messaging control
+     directly beneath the visible phone line, centered, with the same compact
+     dropdown used elsewhere in Levromart. */
+  #app .order-vendor-message-wrap{position:relative;display:flex;flex-direction:column;align-items:center;width:100%;margin:.55rem 0 .05rem;}
+  #app .order-message-vendor-btn{justify-content:center;min-width:190px;}
+  #app .order-vendor-message-menu{position:relative;top:auto;left:auto;right:auto;width:min(240px,100%);margin:.4rem auto 0;z-index:95;}
+  #app .order-vendor-message-menu .ms-item{display:block;width:100%;text-align:left;}
