@@ -277,22 +277,20 @@
     var v=null; try{ v=(typeof vendor!=="undefined"&&vendor&&vendor.id)?vendor:null; }catch(_){}
     if(!v||typeof sb==="undefined") return;
     nudged=true;
-    try{ if(sessionStorage.getItem("lv-face-nudged3")) return; }catch(_){}
     sb.from("vendor_student_verification").select("status,selfie_url,id_card_url,biodata_url,face_v,matric_number").eq("vendor_id",v.id).maybeSingle().then(function(r){
       var row=r&&r.data; if(!row||(row.face_v||0)>=2) return;
       if(document.getElementById("lvFace")||document.getElementById("lvSetup")||document.getElementById("lvCampus")){ nudged=false; return; }
-      try{ sessionStorage.setItem("lv-face-nudged3","1"); }catch(_){}
       var docs=[row.id_card_url,row.biodata_url].filter(Boolean);
       window.lvFacePreload(); window.lvFacePrepDocs(docs);
       var m=document.createElement("div"); m.id="lvFaceNudge"; m.className="lv-cm";
-      m.innerHTML='<div class="lv-cm-back"></div><div class="lv-cm-card" role="dialog" aria-modal="true"><span class="lv-cm-handle"></span><div class="lvf-nudge-ico"><i class="fa-solid fa-face-smile"></i></div><strong class="lv-cm-title">Quick face check</strong><p class="lvf-nudge-p">'+(row.selfie_url?'We upgraded the face check. Please do it once more, it takes about 10 seconds.':'A quick selfie and a blink confirms the ID is yours, so your student badge is approved faster.')+'</p><button type="button" class="btn go" data-a="go">Start</button><button type="button" class="lvf-later" data-a="later">Later</button></div>';
+      m.innerHTML='<div class="lv-cm-back"></div><div class="lv-cm-card" role="dialog" aria-modal="true"><span class="lv-cm-handle"></span><div class="lvf-nudge-ico"><i class="fa-solid fa-face-smile"></i></div><strong class="lv-cm-title">Verify your face to continue</strong><p class="lvf-nudge-p">'+(row.selfie_url?'We upgraded the face check. Please do it once more, it takes about 10 seconds.':'A quick selfie and a blink confirms the ID is yours. This is required before you can keep using your vendor account.')+'</p><button type="button" class="btn go" data-a="go">Start</button></div>';
       document.body.appendChild(m);
       m.addEventListener("click",async function(e){
-        var a=e.target.closest("[data-a]"); if(!a&&!e.target.classList.contains("lv-cm-back")) return;
-        var act=a&&a.dataset.a; m.remove(); if(act!=="go") return;
+        var a=e.target.closest("[data-a]"); if(!a) return;      // required: it cannot be dismissed
+        m.remove();
         var res=await window.lvFaceCheck({docs:docs});
         while(res&&res.retry){ res=await window.lvFaceCheck({docs:docs}); }
-        if(!res||!res.blob) return;
+        if(!res||!res.blob){ nudged=false; setTimeout(nudgeCheck,300); return; }   // closed the camera: ask again
         try{
           var base="vendor-logos/verification/"+v.id+"/";
           var url=await uploadToR2(res.blob,base+"face-"+Date.now()+".jpg","image/jpeg");
@@ -305,7 +303,7 @@
               if(!o) return; return sb.rpc("submit_face_check",{p_selfie_url:null,p_distance:res.distance,p_match:res.match,p_liveness:res.liveness,p_ocr_matric:o.matric,p_ocr_name:o.name,p_ocr_text:o.text});
             }).catch(function(){});
           }
-        }catch(err){ showToast((err&&err.message)||"Couldn't send your face check.","error"); }
+        }catch(err){ showToast((err&&err.message)||"Couldn't send your face check.","error"); nudged=false; setTimeout(nudgeCheck,1500); }
       });
     }).catch(function(){nudged=false;});
   }

@@ -1209,3 +1209,16 @@ html.lv-anim,html.lv-anim body{overflow-x:hidden}
 #lvSvReview textarea{width:100%;min-height:3.4rem;border-radius:12px;margin-bottom:.6rem}
 .lvsr-acts{display:flex;gap:.5rem}.lvsr-acts button{flex:1;padding:.8rem .4rem;border-radius:14px;border:1.5px solid var(--border,#dde5e0);background:transparent;color:inherit;font-weight:700}
 .lvsr-acts .ok{background:var(--primary,#16a34a);border-color:transparent;color:#fff}.lvsr-acts .no{color:#dc2626}
+
+/* ---- request page: photo dropzone ---- */
+.req-photos{display:grid;grid-template-columns:repeat(4,1fr);gap:.55rem;margin:.3rem 0 .8rem}
+.req-photos.empty{display:block}
+.req-photos .req-ph{width:auto;height:auto;aspect-ratio:1/1;border-radius:16px}
+.req-photos .req-ph.add{border-radius:16px}
+.req-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.25rem;width:100%;padding:1.4rem 1rem;border-radius:20px;border:1.5px dashed color-mix(in srgb,var(--primary,#16a34a) 55%,transparent);background:linear-gradient(160deg,color-mix(in srgb,var(--primary,#16a34a) 12%,var(--card,#fff)),color-mix(in srgb,var(--primary,#16a34a) 4%,var(--card,#fff)));color:var(--text,#111);text-align:center;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.req-drop:active{transform:scale(.985)}
+.req-drop .rd-ico{width:3.4rem;height:3.4rem;border-radius:50%;display:grid;place-items:center;font-size:1.45rem;color:#fff;background:linear-gradient(145deg,#34d399,#059669);box-shadow:0 8px 18px color-mix(in srgb,#059669 38%,transparent),inset 0 1px 0 rgba(255,255,255,.4);margin-bottom:.35rem}
+.req-drop b{font-size:1rem}
+.req-drop small{color:var(--text-muted,#667);font-size:.78rem}
+#postEquipmentRequestBtn{display:flex!important;align-items:center;justify-content:center;width:100%;height:3.2rem;border-radius:16px!important;font-size:1.02rem;font-weight:800;letter-spacing:.01em;background:linear-gradient(145deg,#34d399,#059669)!important;color:#fff!important;border:0!important;box-shadow:0 10px 22px color-mix(in srgb,#059669 35%,transparent),inset 0 1px 0 rgba(255,255,255,.35)!important}
+#postEquipmentRequestBtn:active{transform:translateY(1px);box-shadow:0 5px 12px color-mix(in srgb,#059669 30%,transparent),inset 0 1px 0 rgba(255,255,255,.3)!important}

@@ -1054,14 +1054,14 @@ function lvPageStyled() {
   try {
     if (document.readyState === "loading") return false;
     const fa = document.querySelector('link[rel="stylesheet"][href*="font-awesome"]');
-    if (fa && !fa.sheet) return false;
+    if (fa && !fa.sheet && navigator.onLine !== false) return false;
     return true;
   } catch (_) { return true; }
 }
 function hideLevromartSplash() {
   const splash = byId("levromartSplash");
   if (!splash || window.__levroSplashHidden) return;
-  const minVisibleMs = 1800;
+  const minVisibleMs = 500;
   const elapsed = Date.now() - (window.__levroSplashShownAt || 0);
   if (elapsed < minVisibleMs) {
     setTimeout(() => hideLevromartSplash(), minVisibleMs - elapsed);
@@ -1070,7 +1070,7 @@ function hideLevromartSplash() {
   // Never reveal the app until the whole page has been parsed (the later style blocks are what make cards, buttons and
   // images look right) and the icon stylesheet has arrived; otherwise people briefly see grey, unstyled controls and
   // oversized images. A hard cap keeps a dead CDN from holding the splash forever.
-  if (!lvPageStyled() && elapsed < 9000) {
+  if (!lvPageStyled() && elapsed < 2500) {
     setTimeout(() => hideLevromartSplash(), 100);
     return;
   }
@@ -3449,9 +3449,9 @@ function updateAuthUI() {
         { icon: "fa-comment-dots", tone: "blue", label: "Messages", action: "navigate('messages')" },
         { icon: "fa-hand", tone: "pink", label: "Requests", badge: Number(requestOfferBadgeCount || 0), action: "navigate('vendorRequests')" },
         { icon: "fa-lightbulb", tone: "amber", label: "Suggestions", badge: Number(unreadSuggestionCount || 0), action: "navigate('vendorSuggestionsInbox')" },
+        { icon: "fa-compass", tone: "slate", label: "Take a tour", action: "closeAllPanels();showTour()" },
         { icon: "fa-headset", tone: "teal", label: "Support", action: "navigate('supportRequest')" },
         { icon: "fa-phone", tone: "teal", label: "Contact us", action: "navigate('contactUs')" },
-        { icon: "fa-compass", tone: "slate", label: "Take the tour", action: "showTour()" },
       ];
     } else if (profile.role !== "admin") {
       miniStats = [
@@ -3470,9 +3470,9 @@ function updateAuthUI() {
         { icon: "fa-bell", tone: "amber", label: "Notifications", action: "navigate('notifications')" },
         { icon: "fa-box-open", tone: "green", label: "Request an item", action: "navigate('requestEquipment')" },
         { icon: "fa-shop", tone: "blue", label: "Browse vendors", action: "navigate('vendors')" },
+        { icon: "fa-compass", tone: "slate", label: "Take a tour", action: "closeAllPanels();showTour()" },
         { icon: "fa-headset", tone: "teal", label: "Support", action: "navigate('supportRequest')" },
         { icon: "fa-phone", tone: "teal", label: "Contact us", action: "navigate('contactUs')" },
-        { icon: "fa-compass", tone: "slate", label: "Take the tour", action: "showTour()" },
       ];
     }
 
@@ -3845,6 +3845,7 @@ async function renderBuyerProfile() {
   <div class="lv-group">
     <h3 class="lv-group-title">More</h3>
     ${lvLinkRow("fa-bag-shopping", "Request an item", "", "navigate('requestEquipment')")}
+    ${lvLinkRow("fa-compass", "Take a tour", "", "showTour()")}
     ${lvLinkRow("fa-headset", "Support", "", "navigate('supportRequest')")}
     ${lvLinkRow(window.LV_SETTINGS_SVG, "Settings &amp; Privacy", "", "navigate('settings')")}
   </div>`;
@@ -3990,6 +3991,14 @@ async function submitEditProfile() {
   document.addEventListener("mouseup",end); document.addEventListener("mouseleave",end);
   document.addEventListener("click",(e)=>{ if(moved){e.stopPropagation();e.preventDefault();moved=false;} },true);
 })();
+// Tapping a bottom-nav tab you are already on does nothing (no reload, no flash).
+function lvTabSame(view) {
+  if (!view || currentView !== view) return false;
+  const p = currentViewParams || {};
+  if (view === "vendorOrders") return (p.perspective || "sales") === "sales" && (!p.status || p.status === "all");
+  if (view === "buyerOrders") return !p.status || p.status === "all";
+  return true;
+}
 // Tapping Home while already on a clean Home does nothing (no reload, no flash). With a category/search active it resets them.
 function lvHomeTap() {
   const filtered = !!(currentHomeCategoryId || currentSectorId || (byId("searchInput")?.value || "").trim());
@@ -4032,7 +4041,7 @@ function renderBottomNav() {
       { icon: "<i class='fa-solid fa-user'></i>", label: "Login", action: "showLogin()", view: null }];
   }
 
-  const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}" onclick="${it.action}"><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
+  const itemHtml = (it) => `<button class="bottom-nav-item ${it.view && it.view === currentView ? "active" : ""}" onclick="if(lvTabSame('${it.view || ""}'))return;${it.action}"><span class="bn-icon">${it.icon}${it.badge ? `<span class="bn-badge">${it.badge > 9 ? "9+" : it.badge}</span>` : ""}</span><span>${it.label}</span></button>`;
 
   if (isVendorUser) {
     nav.classList.remove("buyer-no-add");
@@ -13456,8 +13465,8 @@ async function renderRequestEquipment() {
         <label class="theme-option" style="flex:1;padding:0.7rem;border:1px solid var(--border);border-radius:0.5rem;margin:0.3rem 0;"><input type="radio" name="reqType" value="rent" onchange="updateRequestFormFields()" style="width:auto;margin:0 0.5rem 0 0;" />Rent</label>
       </div>
       <label>More details</label><textarea id="reqDesc" rows="2" placeholder="Duration, specs, delivery preferences…"></textarea>
-      <label>Photos <span class="muted" style="font-weight:500">(optional, up to 4: show vendors exactly what you want)</span></label>
-      <div id="reqPhotoBox" class="req-photos"></div>
+      <label>Photos <span class="muted" style="font-weight:500">(optional)</span></label>
+      <div id="reqPhotoBox" class="req-photos empty"><button type="button" class="req-drop" onclick="document.getElementById('reqPhotoInput').click()"><span class="rd-ico"><i class="fa-solid fa-cloud-arrow-up"></i></span><b>Add photos</b><small>Up to 4 · helps vendors send the right offer</small></button></div>
       <input id="reqPhotoInput" type="file" accept="image/*" multiple class="hidden" onchange="reqPhotosPicked(event)" />
       <div class="flex">
         <div style="flex:1;"><label>Sector</label><button type="button" class="req-sector-picker" id="reqSectorPicker" onclick="openRequestSectorPicker(event)" aria-haspopup="dialog" aria-expanded="false"><span id="reqSectorLabel">Any</span><i class="fa-solid fa-chevron-down"></i></button><input type="hidden" id="reqSector" value=""></div>
@@ -24980,7 +24989,7 @@ window.addEventListener("popstate", (e) => {
 (async function init() {
   applyHorizontalBrowsePreference();
   prepareLevromartSplash();
-  const splashEmergencyTimer=setTimeout(()=>{const el=byId("levromartSplash");if(el&&!window.__levroSplashHidden){el.classList.add("is-hidden");el.setAttribute("aria-hidden","true");console.warn("[Levromart] Splash watchdog released startup after a bounded timeout.");}},10000);
+  const splashEmergencyTimer=setTimeout(()=>{const el=byId("levromartSplash");if(el&&!window.__levroSplashHidden){el.classList.add("is-hidden");el.setAttribute("aria-hidden","true");console.warn("[Levromart] Splash watchdog released startup after a bounded timeout.");}},4000);
   // Absolute backstop: whatever else happens, the splash can never stay on
   // screen longer than this. The two hides below are the real triggers.
 

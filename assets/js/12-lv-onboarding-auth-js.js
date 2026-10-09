@@ -1370,8 +1370,15 @@ window.__reqPhotos=window.__reqPhotos||[];
 function reqPhotosPaint(){
   var box=document.getElementById("reqPhotoBox"); if(!box) return;
   var list=window.__reqPhotos||[];
+  var pick="document.getElementById('reqPhotoInput').click()";
+  if(!list.length){
+    box.className="req-photos empty";
+    box.innerHTML='<button type="button" class="req-drop" onclick="'+pick+'"><span class="rd-ico"><i class="fa-solid fa-cloud-arrow-up"></i></span><b>Add photos</b><small>Up to 4 · helps vendors send the right offer</small></button>';
+    return;
+  }
+  box.className="req-photos";
   box.innerHTML=list.map(function(p,i){return '<div class="req-ph"><img src="'+p.url+'" alt=""><button type="button" aria-label="Remove photo" onclick="reqPhotoRemove('+i+')"><i class="fa-solid fa-xmark"></i></button></div>';}).join("")
-   +(list.length<4?'<button type="button" class="req-ph add" onclick="document.getElementById(\'reqPhotoInput\').click()"><i class="fa-solid fa-camera"></i><span>Add photo</span></button>':'');
+   +(list.length<4?'<button type="button" class="req-ph add" onclick="'+pick+'"><i class="fa-solid fa-plus"></i><span>Add</span></button>':'');
 }
 async function reqPhotosPicked(e){
   var files=Array.prototype.slice.call(e.target.files||[]); e.target.value="";
