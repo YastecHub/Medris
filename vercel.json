@@ -5,6 +5,10 @@
       "destination": "/api/delete-account?turn=1"
     },
     {
+      "source": "/api/notif-icon",
+      "destination": "/api/delete-account?nicon=1"
+    },
+    {
       "source": "/api/register",
       "destination": "/api/delete-account"
     },
@@ -37,7 +41,7 @@
   ],
   "functions": {
     "api/delete-account.js": {
-      "includeFiles": "{index.html,og-frame.png,og-levromart.png,icon-512.png,levromart-badge.png,fonts/*.ttf}"
+      "includeFiles": "{index.html,og-frame.png,og-levromart.png,icon-512.png,levromart-notification-icon.png,notif-icons/*.png,levromart-badge.png,fonts/*.ttf}"
     }
   },
   "crons": [

@@ -217,20 +217,24 @@ const TYPE_ICON = [
 ];
 const pushKind = (e) => /fcm\.googleapis|android/.test(String(e)) ? "android" : /push\.apple/.test(String(e)) ? "apple" : /mozilla/.test(String(e)) ? "firefox" : "other";
 const isHttps = (u) => /^https:\/\//.test(String(u || ""));
+// The picture is composed on the fly by /api/notif-icon (person/shop photo or initials, or an event icon,
+// with the small Levromart mark at the bottom-right, like WhatsApp and Instagram).
+const ICON_ORIGIN = "https://levromart.vercel.app";
+const composeIcon = ({ u, n, k }) => `${ICON_ORIGIN}/api/notif-icon?` + [u && `u=${encodeURIComponent(u)}`, n && `n=${encodeURIComponent(String(n).slice(0, 60))}`, k && `k=${k}`].filter(Boolean).join("&");
 async function pickNotificationIcon(SUPABASE_URL, svcHeaders, n) {
   const tp = n.target_params || {};
   const person = tp.callerAvatar || tp.senderAvatar;
-  if (isHttps(person)) return String(person);
+  if (isHttps(person)) return composeIcon({ u: person, n: tp.callerName || tp.senderName || n.actor_name });
   if (n.vendor_id) {
     try {
-      const [v] = await (await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${n.vendor_id}&select=logo_url,user_id`, { headers: svcHeaders })).json();
-      if (v && v.user_id !== n.user_id && isHttps(v.logo_url)) return v.logo_url;
+      const [v] = await (await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${n.vendor_id}&select=logo_url,business_name,user_id`, { headers: svcHeaders })).json();
+      if (v && v.user_id !== n.user_id && (isHttps(v.logo_url) || v.business_name)) return composeIcon({ u: isHttps(v.logo_url) ? v.logo_url : "", n: v.business_name });
     } catch (_) {}
   }
-  if (isHttps(n.actor_avatar_url)) return n.actor_avatar_url;
+  if (isHttps(n.actor_avatar_url) || n.actor_name) return composeIcon({ u: isHttps(n.actor_avatar_url) ? n.actor_avatar_url : "", n: n.actor_name });
   const type = String(n.type || "").toLowerCase();
   const hit = TYPE_ICON.find(([re]) => re.test(type));
-  return hit ? `/notif-icons/${hit[1]}.png` : "/levromart-notification-icon.png";
+  return hit ? composeIcon({ k: hit[1] }) : "/levromart-notification-icon.png";
 }
 
 async function sendPush(SUPABASE_URL, svcHeaders, n) {

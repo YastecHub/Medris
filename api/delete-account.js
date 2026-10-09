@@ -635,8 +635,48 @@ async function turnServers(req, res) {
   res.status(200).json({ iceServers: TURN_OPEN_RELAY });
 }
 
+// Push-notification picture (256x256): the person's / shop's photo or initials, or an event icon,
+// with the small Levromart mark at the bottom-right. Rides on this function (12-function cap).
+const NICON_KINDS = new Set(["admin", "follow", "heart", "message", "order", "payment", "review"]);
+async function notifIcon(req, res) {
+  try {
+    const root = process.cwd(), S = 256, B = 100;
+    const u = String(req.query?.u || ""), name = String(req.query?.n || "").slice(0, 60), k = String(req.query?.k || "");
+    let host = ""; try { const pu = new URL(u); if (pu.protocol === "https:") host = pu.hostname; } catch (_) {}
+    const safeHost = host && !/^(localhost|\d+\.\d+\.\d+\.\d+|\[.*\])$/i.test(host) && !/\.(local|internal)$/i.test(host);
+    let base = null;
+    const buf = safeHost ? await ogGrab(u) : null;
+    if (buf) { try { base = await ogCircle(buf, S); } catch (_) { base = null; } }
+    if (!base && NICON_KINDS.has(k)) base = await ogCircle(fs.readFileSync(path.join(root, "notif-icons", k + ".png")), S);
+    if (!base && name) {
+      const F = ogFonts(), h = ogHue(name), ini = ogInitials(name), size = 112, w = ogWidth(F.bold, ini, size);
+      const svg = `<svg width="${S}" height="${S}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${h},70%,90%)"/><stop offset="1" stop-color="hsl(${h},60%,78%)"/></linearGradient></defs><circle cx="${S / 2}" cy="${S / 2}" r="${S / 2}" fill="url(#g)"/>${ogText(F.bold, ini, (S - w) / 2, S / 2 + size * 0.36, size, `hsl(${h},55%,28%)`)}</svg>`;
+      base = await sharp(Buffer.from(svg)).png().toBuffer();
+    }
+    let out;
+    if (!base) {
+      out = await sharp(path.join(root, "icon-512.png")).resize(S, S).png().toBuffer();
+    } else {
+      const ring = B + 12;
+      const logo = await ogCircle(fs.readFileSync(path.join(root, "icon-512.png")), B);
+      const disc = Buffer.from(`<svg width="${ring}" height="${ring}"><circle cx="${ring / 2}" cy="${ring / 2}" r="${ring / 2}" fill="#fff"/></svg>`);
+      out = await sharp(base).composite([
+        { input: disc, left: S - ring, top: S - ring },
+        { input: logo, left: S - ring + 6, top: S - ring + 6 },
+      ]).png().toBuffer();
+    }
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=604800, immutable");
+    return res.status(200).send(out);
+  } catch (e) {
+    res.setHeader("Cache-Control", "no-store");
+    return res.redirect(302, "/levromart-notification-icon.png");
+  }
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === "GET" && /(?:^|[?&])turn=1(?:&|$)/.test(String(req.url || ""))) return turnServers(req, res);
+  if (req.method === "GET" && /(?:^|[?&])nicon=1(?:&|$)/.test(String(req.url || ""))) return notifIcon(req, res);
   if (req.method === "GET" && /(?:^|[?&])og(?:store|prod|pkg)=/.test(String(req.url || ""))) return ogCard(req, res);
   if (req.method === "GET") return shareMetaPreview(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed." });
