@@ -10125,12 +10125,11 @@ html body > header{
 
 <div id="requiredBuyerPhoneModal" class="modal hidden" data-lock="true">
   <div class="modal-content" style="max-width:400px;">
-    <h3><i class="fa-solid fa-phone"></i> Add your phone number</h3>
-    <p class="muted" style="margin:.6rem 0 1rem;">A phone number is required for every customer account on Levromart. It helps keep your account secure and lets Levromart reach you about your orders. It is not shown to vendors.</p>
+    <div class="lv-ask-ico"><i class="fa-solid fa-phone"></i></div>
+    <h3 class="lv-ask-t">Your phone number</h3>
     <div id="requiredBuyerPhoneError" class="error-text hidden"></div>
-    <label for="requiredBuyerPhoneInput">Phone number *</label>
-    <input type="tel" id="requiredBuyerPhoneInput" inputmode="tel" autocomplete="tel" placeholder="e.g. 08012345678" />
-    <button type="button" class="btn" id="requiredBuyerPhoneSaveBtn" style="width:100%;margin-top:.8rem;" onclick="saveRequiredBuyerPhone()"><i class="fa-solid fa-check"></i> Save phone number</button>
+    <input type="tel" id="requiredBuyerPhoneInput" inputmode="tel" autocomplete="tel" placeholder="08012345678" aria-label="Phone number" />
+    <button type="button" class="btn" id="requiredBuyerPhoneSaveBtn" style="width:100%;margin-top:.9rem;" onclick="saveRequiredBuyerPhone()">Continue</button>
   </div>
 </div>
 
@@ -10158,14 +10157,12 @@ html body > header{
 
 <div id="setPasswordModal" class="modal hidden">
   <div class="modal-content" style="max-width:400px;">
-    <h3><i class="fa-solid fa-key"></i> Set a password</h3>
-    <p class="muted" style="margin:0.6rem 0 1rem;">You signed in with Google, so your account has no password yet. Set one so you can log in without Google too, and so password-protected actions like deleting your account work.</p>
+    <div class="lv-ask-ico"><i class="fa-solid fa-key"></i></div>
+    <h3 class="lv-ask-t">Create a password</h3>
     <div id="setPasswordError" class="error-text hidden"></div>
-    <label>New password</label>
-    <input type="password" id="setPasswordInput" autocomplete="new-password" placeholder="At least 8 characters" />
-    <label>Confirm password</label>
-    <input type="password" id="setPasswordConfirmInput" autocomplete="new-password" />
-    <button class="btn" style="margin-top:0.8rem;" onclick="setAccountPassword()">Set password</button>
+    <input type="password" id="setPasswordInput" autocomplete="new-password" placeholder="Password" aria-label="Password" />
+    <input type="password" id="setPasswordConfirmInput" autocomplete="new-password" placeholder="Confirm password" aria-label="Confirm password" style="margin-top:.55rem;" />
+    <button class="btn" style="width:100%;margin-top:.9rem;" onclick="setAccountPassword()">Continue</button>
   </div>
 </div>
 
@@ -18460,7 +18457,7 @@ function productCardHtml(p) {
   // card (trending, browse, search, category) drops the persistent icon in
   // favor of a double-tap on the photo, Instagram-style.
   const showFavBtn = p._cardContext === "wishlist";
-  return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}">
+  return `<div class="product-card-wrap product-card-compact" data-product-id="${esc(p.id)}" data-vendor-id="${esc(p.vendor?.id || p.vendor_id || "")}">
     ${showFavBtn ? `<button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${p.id}')" title="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>` : ""}
     <div class="card" style="cursor:pointer;" onclick="${showFavBtn ? `navigate('productDetail',{productId:'${p.id}'})` : `handleProductImageTap(event,'${p.id}')`}">
       <div class="product-img">${img ? `<img src="${esc(lvThumb(img, 280))}" alt="${esc(p.name)}" loading="lazy" decoding="async" draggable="false">` : noImageFallback}${showFavBtn ? "" : `<span class="product-wish-bounce"><i class="fa-solid fa-heart"></i></span>`}</div>
@@ -55238,6 +55235,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     try{localStorage.setItem("lv-view-campus",id);}catch(_){}
     var bar=document.getElementById("lvCampusBar");
     if(bar) bar.innerHTML=barHtml();
+    setTimeout(function(){ try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){} },30);
     // fast path: re-filter the catalogue already in memory and repaint only the grid
     try{
       var grid=document.getElementById("productGrid");
@@ -55403,6 +55401,19 @@ async function setVendorRequestPref(v){
 .vr-pref .vr-pref-seg+.vr-pref-label{margin-top:.5rem}
 .lv-scope-card .opt{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:.15rem!important}
 .lv-scope-card .opt small{font-weight:500;color:var(--text-muted,#667);font-size:.78rem}
+
+/* ---- campus scope + modern view toggle + tidy sign-up asks */
+.lv-out,.lv-out-empty{display:none!important}
+.lv-ask-ico{width:3.2rem;height:3.2rem;margin:.2rem auto .7rem;border-radius:50%;display:grid;place-items:center;font-size:1.25rem;background:color-mix(in srgb,var(--primary,#16a34a) 14%,var(--card));color:var(--primary,#16a34a)}
+.lv-ask-t{text-align:center;margin:0 0 1rem!important;font-size:1.25rem}
+#requiredBuyerPhoneModal .modal-content,#setPasswordModal .modal-content{padding:1.5rem 1.4rem 1.4rem}
+#requiredBuyerPhoneModal .btn,#setPasswordModal .btn{display:flex;align-items:center;justify-content:center;text-align:center;height:3rem;border-radius:14px}
+#requiredBuyerPhoneModal input,#setPasswordModal input{margin:0;height:3rem;border-radius:14px}
+:root:root:root body #app .vd-page .vd-views{display:inline-flex!important;gap:2px!important;padding:3px!important;border-radius:14px!important;background:color-mix(in srgb,var(--text) 7%,var(--card))!important;border:0!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 8%,transparent)!important}
+:root:root:root body #app .vd-page .vd-views button.vd-view{width:2.5rem!important;height:2.3rem!important;min-width:0!important;flex:0 0 auto!important;border:0!important;border-radius:11px!important;background:transparent!important;color:var(--text-muted)!important;box-shadow:none!important;transition:background .18s,color .18s,box-shadow .18s,transform .12s}
+:root:root:root body #app .vd-page .vd-views button.vd-view:active{transform:scale(.92)}
+:root:root:root body #app .vd-page .vd-views button.vd-view svg{width:20px!important;height:20px!important;stroke-width:1.9!important}
+:root:root:root body #app .vd-page .vd-views button.vd-view.active{background:var(--card)!important;color:var(--primary,#16a34a)!important;box-shadow:0 1px 3px rgba(0,0,0,.14),0 0 0 1px color-mix(in srgb,var(--primary,#16a34a) 25%,transparent)!important}
 </style>
 <script id="lv-campus2-js">
 (function(){
@@ -55553,7 +55564,7 @@ async function setVendorRequestPref(v){
   function vmap(){
     if(VMAP&&Date.now()-VAT<180000) return Promise.resolve(VMAP);
     if(VLOAD) return VLOAD;
-    VLOAD=Promise.all([window.lvCampuses(),sb.from("vendors").select("id,campus_id,student_verified").or("campus_id.not.is.null,student_verified.eq.true").is("deleted_at",null).limit(5000)]).then(function(a){
+    VLOAD=Promise.all([window.lvCampuses(),sb.from("vendors").select("id,campus_id,student_verified,operating_scope,operating_campuses").is("deleted_at",null).limit(5000)]).then(function(a){
       var m=new Map(); ((a[1]&&a[1].data)||[]).forEach(function(x){m.set(String(x.id),x);}); VMAP=m; VAT=Date.now(); VLOAD=null; return m; }).catch(function(){VLOAD=null;return VMAP||new Map();});
     return VLOAD;
   }
@@ -55582,6 +55593,28 @@ async function setVendorRequestPref(v){
     var ic=el.querySelector("i"); if(ic) ic.className="fa-solid fa-graduation-cap";
     return true;
   }
+  var SCOPE_SEL=".vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.product-card-wrap";
+  function inScope(x,view){ return x.campus_id===view||x.operating_scope==="all"||(x.operating_scope==="multiple"&&Array.isArray(x.operating_campuses)&&x.operating_campuses.indexOf(view)>-1); }
+  function applyScope(map){
+    document.querySelectorAll(".lv-out-empty").forEach(function(n){n.classList.remove("lv-out-empty");});
+    var view=window.lvViewCampus&&window.lvViewCampus()||"all";
+    var skip=!!document.querySelector(".storefront-meta");
+    var cards=document.querySelectorAll(SCOPE_SEL), parents=new Set();
+    cards.forEach(function(card){
+      var id=vendorIdOf(card)||(card.dataset&&card.dataset.vendorId)||""; var out=false;
+      if(!skip&&view!=="all"&&id){
+        var x=map.get(String(id)); var own=false; try{own=typeof isOwnVendorId==="function"&&isOwnVendorId(id);}catch(_){}
+        out=!!x&&!own&&!inScope(x,view);
+      }
+      card.classList.toggle("lv-out",out); if(out&&card.parentElement) parents.add(card.parentElement);
+    });
+    parents.forEach(function(par){
+      if(par.querySelector(SCOPE_SEL.split(",").map(function(q){return q+":not(.lv-out)";}).join(","))) return;
+      var sec=par.closest("section")||par; 
+      if(!sec.querySelector(SCOPE_SEL.split(",").map(function(q){return q+":not(.lv-out)";}).join(","))) sec.classList.add("lv-out-empty"); else par.classList.add("lv-out-empty");
+    });
+  }
+  window.lvApplyCampusScope=function(){ vmap().then(applyScope); };
   var busy=false;
   function decorate(){
     if(busy) return; busy=true;
@@ -55594,6 +55627,7 @@ async function setVendorRequestPref(v){
         if(x.student_verified&&nm&&!nm.querySelector(".lv-svi")){ var ic=document.createElement("i"); ic.className="fa-solid fa-user-graduate lv-svi"; ic.title="Verified student"; ic.setAttribute("aria-label","Verified student"); nm.appendChild(document.createTextNode(" ")); nm.appendChild(ic); }
         if(!swapped){ var c=chipFor({campus_id:x.campus_id,student_verified:false},false); if(c) card.appendChild(c); }
       });
+      applyScope(map);
       var sfl=document.querySelector(".storefront-meta .sf-loc");
       if(sfl&&!sfl.dataset.lvc){ var sv=(window.currentViewParams&&currentViewParams.vendorId)||""; var xs=map.get(String(sv)); if(xs){ sfl.dataset.lvc="1"; var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML='<i class="fa-solid fa-graduation-cap"></i> '+e2(rr.name); sfl.title=rr.name; } } }
       var row=document.querySelector(".storefront-name-row");
