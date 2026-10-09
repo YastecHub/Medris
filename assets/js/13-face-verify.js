@@ -35,25 +35,37 @@
     var w=img.naturalWidth||img.width,h=img.naturalHeight||img.height,k=Math.min(1,maxSide/Math.max(w,h));
     var c=document.createElement("canvas"); c.width=Math.round(w*k); c.height=Math.round(h*k); c.getContext("2d").drawImage(img,0,0,c.width,c.height); return c;
   }
-  // best (smallest) distance between the selfie and any face found on the document photos; null when no document face was readable
+  // faces on the uploaded documents are read ahead of time (while the person fills in the form) and remembered
+  var docCache=new Map();
+  async function docDescriptors(fa,doc){
+    var out=[];
+    try{
+      var img=await toImage(doc);
+      var passes=[[1000,512,.25],[1500,608,.2]];
+      for(var k=0;k<passes.length&&!out.length;k++){
+        var can=toCanvas(img,passes[k][0]);
+        var faces=await fa.detectAllFaces(can,new fa.TinyFaceDetectorOptions({inputSize:passes[k][1],scoreThreshold:passes[k][2]})).withFaceLandmarks(true).withFaceDescriptors();
+        faces.forEach(function(f){out.push(f.descriptor);});
+      }
+    }catch(_){}
+    return out;
+  }
+  function prepDocs(fa,docs){
+    return Promise.all(docs.map(function(d){
+      if(!docCache.has(d)) docCache.set(d,docDescriptors(fa,d));
+      return docCache.get(d);
+    })).then(function(all){return [].concat.apply([],all);});
+  }
+  window.lvFacePrepDocs=function(docs){ return loadFace().then(function(fa){return prepDocs(fa,docs||[]);}).catch(function(){return [];}); };
+  // smallest distance between the selfie and any face found on the document photos; null when no document face was readable
   window.lvFaceCompare=async function(selfie,docs){
     var fa=await loadFace();
-    var sImg=await toImage(selfie), sCan=toCanvas(sImg,720);
-    var s=await fa.detectSingleFace(sCan,new fa.TinyFaceDetectorOptions({inputSize:416,scoreThreshold:.4})).withFaceLandmarks(true).withFaceDescriptor();
+    var docsP=prepDocs(fa,docs||[]);
+    var sImg=await toImage(selfie), sCan=toCanvas(sImg,640);
+    var s=await fa.detectSingleFace(sCan,new fa.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:.4})).withFaceLandmarks(true).withFaceDescriptor();
     if(!s) return {noSelfieFace:true,distance:null};
     var best=null;
-    for(var i=0;i<docs.length;i++){
-      try{
-        var img=await toImage(docs[i]);
-        var sizes=[1400,900];
-        for(var k=0;k<sizes.length;k++){
-          var can=toCanvas(img,sizes[k]);
-          var faces=await fa.detectAllFaces(can,new fa.TinyFaceDetectorOptions({inputSize:608,scoreThreshold:.25})).withFaceLandmarks(true).withFaceDescriptors();
-          faces.forEach(function(f){ var d=fa.euclideanDistance(s.descriptor,f.descriptor); if(best==null||d<best) best=d; });
-          if(faces.length) break;
-        }
-      }catch(_){}
-    }
+    (await docsP).forEach(function(desc){ var d=fa.euclideanDistance(s.descriptor,desc); if(best==null||d<best) best=d; });
     return {distance:best};
   };
   function matchLabel(d){ if(d==null) return "unchecked"; if(d<0.45) return "strong"; if(d<0.6) return "possible"; return "mismatch"; }
@@ -90,6 +102,7 @@
         var c=document.createElement("canvas"),vw=video.videoWidth||640,vh=video.videoHeight||640,k=Math.min(1,720/Math.max(vw,vh));
         c.width=Math.round(vw*k); c.height=Math.round(vh*k); c.getContext("2d").drawImage(video,0,0,c.width,c.height);
         say("Checking your photo…","This only takes a moment."); prog(1); oval.classList.add("ok"); manual.classList.add("hidden");
+        try{ video.style.display="none"; var fr=document.createElement("canvas"); fr.className="lvf-frozen"; fr.width=c.width; fr.height=c.height; fr.getContext("2d").drawImage(c,0,0); w.querySelector(".lvf-stage").insertBefore(fr,oval); }catch(_){}
         c.toBlob(async function(blob){
           if(!blob){ finish(null); return; }
           var res={blob:blob,url:URL.createObjectURL(blob),liveness:!!liveness,distance:null,match:"unchecked"};
@@ -109,7 +122,7 @@
           video.srcObject=stream; await video.play().catch(function(){});
           say("Loading the face check…","One moment, first time only."); prog(.08);
           fa=await faP; if(!alive) return;
-          var opt=new fa.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:.5});
+          var opt=new fa.TinyFaceDetectorOptions({inputSize:192,scoreThreshold:.5});
           var good=0,phase="align",openMax=0,low=false,blinkAt=0,start=Date.now(),phaseAt=Date.now();
           say("Look straight at the camera","Keep your face inside the oval.");
           while(alive){
@@ -120,8 +133,8 @@
             if(det){ var b=det.detection.box; var cx=(b.x+b.width/2)/vw; ok=b.width/vw>.28&&cx>.25&&cx<.75; }
             oval.classList.toggle("ok",!!ok);
             if(phase==="align"){
-              good=ok?good+1:0; prog(.15+Math.min(good,6)/6*.25);
-              if(good>=6){ phase="blink"; phaseAt=Date.now(); openMax=0; low=false; say("Now blink once","Slowly, with your face still in the oval."); }
+              good=ok?good+1:0; prog(.15+Math.min(good,3)/3*.25);
+              if(good>=3){ phase="blink"; phaseAt=Date.now(); openMax=0; low=false; say("Now blink once","Slowly, with your face still in the oval."); }
             } else if(phase==="blink"){
               if(ok&&det){
                 var pts=det.landmarks.positions,e=(ear(pts,36)+ear(pts,42))/2;
@@ -132,10 +145,10 @@
                 }
               }
               prog(.45+Math.min(1,(Date.now()-phaseAt)/8000)*.4);
-              if(Date.now()-phaseAt>9000) manual.classList.remove("hidden");
+              if(Date.now()-phaseAt>6000) manual.classList.remove("hidden");
             }
             if(Date.now()-start>45000){ break; }
-            await new Promise(function(r){setTimeout(r,60);});
+            await new Promise(function(r){requestAnimationFrame(function(){r();});});
           }
           if(!alive) return;
           snap(blinkAt>0);
@@ -168,41 +181,57 @@
     return {matric:mf,name:nf,text:text.replace(/\s+/g," ").trim().slice(0,400)};
   };
 
+  // plain-language verdict from the stored evidence (admins still make the final call)
+  window.lvFaceVerdict=function(row){
+    if(!row||!row.selfie_url) return null;
+    var m=row.face_match||"unchecked", live=!!row.face_liveness;
+    if(m==="strong"&&live) return {k:"ok",i:"fa-circle-check",t:"AI check: face matches the ID"};
+    if(m==="strong") return {k:"mid",i:"fa-circle-half-stroke",t:"AI check: face matches (no blink seen)"};
+    if(m==="possible") return {k:"mid",i:"fa-circle-half-stroke",t:"AI check: needs a second look"};
+    if(m==="mismatch") return {k:"bad",i:"fa-triangle-exclamation",t:"AI check: face doesn't match the ID"};
+    return {k:"mid",i:"fa-eye",t:"Selfie sent for review"};
+  };
   window.lvFaceStatusHtml=function(row){
-    if(!row||!row.selfie_url) return "";
-    var m=row.face_match||"unchecked";
-    var map={strong:["ok","fa-circle-check","Face matches the ID"],possible:["mid","fa-circle-half-stroke","Face partly matches the ID"],mismatch:["bad","fa-triangle-exclamation","Face doesn't match the ID"],unchecked:["mid","fa-eye","Selfie sent for review"]};
-    var t=map[m]||map.unchecked; return '<span class="lvf-chip '+t[0]+'"><i class="fa-solid '+t[1]+'"></i> '+t[2]+'</span>';
+    var t=window.lvFaceVerdict(row); if(!t) return "";
+    return '<span class="lvf-chip '+t.k+'"><i class="fa-solid '+t.i+'"></i> '+esc(t.t)+'</span>';
   };
 
   // ---- nudge for vendors who already sent documents but haven't done the face step ----
   var nudged=false;
+  function fetchBlob(u){ return fetch(u,{mode:"cors"}).then(function(r){return r.ok?r.blob():null;}).catch(function(){return null;}); }
   function nudgeCheck(){
     if(nudged) return;
     var v=null; try{ v=(typeof vendor!=="undefined"&&vendor&&vendor.id)?vendor:null; }catch(_){}
     if(!v||typeof sb==="undefined") return;
     nudged=true;
-    try{ if(sessionStorage.getItem("lv-face-nudged")) return; }catch(_){}
-    sb.from("vendor_student_verification").select("status,selfie_url,id_card_url,biodata_url").eq("vendor_id",v.id).maybeSingle().then(function(r){
-      var row=r&&r.data; if(!row||row.selfie_url||row.status!=="pending") return;
+    try{ if(sessionStorage.getItem("lv-face-nudged2")) return; }catch(_){}
+    sb.from("vendor_student_verification").select("status,selfie_url,id_card_url,biodata_url,face_v,matric_number").eq("vendor_id",v.id).maybeSingle().then(function(r){
+      var row=r&&r.data; if(!row||(row.face_v||0)>=2) return;
       if(document.getElementById("lvFace")||document.getElementById("lvSetup")||document.getElementById("lvCampus")){ nudged=false; return; }
-      try{ sessionStorage.setItem("lv-face-nudged","1"); }catch(_){}
+      try{ sessionStorage.setItem("lv-face-nudged2","1"); }catch(_){}
+      var docs=[row.id_card_url,row.biodata_url].filter(Boolean);
+      window.lvFacePreload(); window.lvFacePrepDocs(docs);
       var m=document.createElement("div"); m.id="lvFaceNudge"; m.className="lv-cm";
-      m.innerHTML='<div class="lv-cm-back"></div><div class="lv-cm-card" role="dialog" aria-modal="true"><span class="lv-cm-handle"></span><div class="lvf-nudge-ico"><i class="fa-solid fa-face-smile"></i></div><strong class="lv-cm-title">One last step: verify your face</strong><p class="lvf-nudge-p">A quick selfie with a blink confirms the ID is yours, so your student badge is approved faster.</p><button type="button" class="btn go" data-a="go">Verify my face</button><button type="button" class="lvf-later" data-a="later">Later</button></div>';
+      m.innerHTML='<div class="lv-cm-back"></div><div class="lv-cm-card" role="dialog" aria-modal="true"><span class="lv-cm-handle"></span><div class="lvf-nudge-ico"><i class="fa-solid fa-face-smile"></i></div><strong class="lv-cm-title">Quick face check</strong><p class="lvf-nudge-p">'+(row.selfie_url?'We upgraded the face check. Please do it once more, it takes about 10 seconds.':'A quick selfie and a blink confirms the ID is yours, so your student badge is approved faster.')+'</p><button type="button" class="btn go" data-a="go">Start</button><button type="button" class="lvf-later" data-a="later">Later</button></div>';
       document.body.appendChild(m);
       m.addEventListener("click",async function(e){
         var a=e.target.closest("[data-a]"); if(!a&&!e.target.classList.contains("lv-cm-back")) return;
         var act=a&&a.dataset.a; m.remove(); if(act!=="go") return;
-        var docs=[row.id_card_url,row.biodata_url].filter(Boolean);
         var res=await window.lvFaceCheck({docs:docs});
         while(res&&res.retry){ res=await window.lvFaceCheck({docs:docs}); }
         if(!res||!res.blob) return;
         try{
           var base="vendor-logos/verification/"+v.id+"/";
           var url=await uploadToR2(res.blob,base+"face-"+Date.now()+".jpg","image/jpeg");
-          var up=await sb.from("vendor_student_verification").update({selfie_url:url,face_distance:res.distance,face_match:res.match,face_liveness:res.liveness,face_checked_at:new Date().toISOString(),status:"pending"}).eq("vendor_id",v.id);
-          if(up.error) throw up.error;
-          showToast("Thanks! Your face check was sent for review.","success");
+          var rpc=await sb.rpc("submit_face_check",{p_selfie_url:url,p_distance:res.distance,p_match:res.match,p_liveness:res.liveness});
+          if(rpc.error) throw rpc.error;
+          showToast(res.match==="strong"?"Your face matches your ID. Sent to the admins.":"Thanks! Your face check was sent for review.","success");
+          // read the ID text in the background if the document photos can be fetched
+          if(window.lvOcrRead&&!(navigator.connection&&navigator.connection.saveData)){
+            Promise.all(docs.map(fetchBlob)).then(function(bl){ bl=bl.filter(Boolean); if(!bl.length) return; return window.lvOcrRead(bl,row.matric_number||"",(typeof profile!=="undefined"&&profile&&profile.name)||""); }).then(function(o){
+              if(!o) return; return sb.rpc("submit_face_check",{p_selfie_url:null,p_distance:res.distance,p_match:res.match,p_liveness:res.liveness,p_ocr_matric:o.matric,p_ocr_name:o.name,p_ocr_text:o.text});
+            }).catch(function(){});
+          }
         }catch(err){ showToast((err&&err.message)||"Couldn't send your face check.","error"); }
       });
     }).catch(function(){nudged=false;});

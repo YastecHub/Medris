@@ -1476,7 +1476,7 @@ async function setVendorRequestPref(v){
       return '<span class="st '+t[0]+'"><i class="fa-solid '+t[1]+'"></i> '+t[2]+'</span>'+(window.lvFaceStatusHtml?' '+window.lvFaceStatusHtml(row):'')+(row.status==="rejected"&&row.review_note?'<div class="note">'+e2(row.review_note)+'</div>':""); }
     function faceBtn(r){
       var haveDocs=!!((files.id||r.id_card_url)&&(files.bio||r.biodata_url)), done=!!(face||r.selfie_url);
-      if(haveDocs&&!warmed){ warmed=true; try{ if(window.lvFacePreload&&!(navigator.connection&&navigator.connection.saveData)) window.lvFacePreload(); }catch(_){} }
+      if(haveDocs&&!warmed){ warmed=true; try{ if(window.lvFacePreload&&!(navigator.connection&&navigator.connection.saveData)){ window.lvFacePreload(); window.lvFacePrepDocs([files.id?files.id.file:r.id_card_url, files.bio?files.bio.file:r.biodata_url].filter(Boolean)); } }catch(_){} }
       return '<button type="button" class="face-btn '+(done?'done':(haveDocs?'':'off'))+'" data-face="1"><span class="fi">'+(face?'<img src="'+face.url+'" alt="">':'<i class="fa-solid fa-face-smile"></i>')+'</span><span class="t"><b>'+(done?'Face check done':'Verify your face')+'</b><small>'+(done?'Tap to retake':'Step 4 · a quick selfie and a blink')+'</small></span><i class="fa-solid '+(done?'fa-circle-check':'fa-chevron-right')+'"></i></button>';
     }
     function paint(){
@@ -1543,7 +1543,7 @@ async function setVendorRequestPref(v){
         var fd=face?{face_distance:face.distance,face_match:face.match,face_liveness:face.liveness}:{face_distance:row.face_distance,face_match:row.face_match,face_liveness:row.face_liveness};
         var idFile=files.id?files.id.file:null, bioFile=files.bio?files.bio.file:null;
         if(v){
-          var rec=Object.assign({vendor_id:v.id,matric_number:m,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_checked_at:new Date().toISOString(),status:"pending",review_note:null,updated_at:new Date().toISOString()},fd);
+          var rec=Object.assign({vendor_id:v.id,matric_number:m,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_checked_at:new Date().toISOString(),face_v:2,status:"pending",review_note:null,updated_at:new Date().toISOString()},fd);
           var up=await sb.from("vendor_student_verification").upsert(rec,{onConflict:"vendor_id"});
           if(up.error) throw up.error;
           row=Object.assign({},rec); files={id:null,bio:null}; face=null;

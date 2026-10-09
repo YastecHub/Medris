@@ -1171,3 +1171,15 @@ html body #app .storefront-product-strip::-webkit-scrollbar{display:none!importa
 .lvf-nudge-p{text-align:center;color:var(--text-muted,#667);margin:.3rem 0 1rem;font-size:.92rem;line-height:1.45}
 #lvFaceNudge .btn.go{display:flex;align-items:center;justify-content:center;width:100%;height:3rem;border-radius:14px}
 .lvf-later{display:block;width:100%;margin-top:.5rem;padding:.7rem;border:0;background:transparent;color:var(--text-muted,#667);font-weight:600}
+
+/* ---- face check: bright screen, so the phone lights your face in a dark room ---- */
+#lvFace{background:#fff;color:#0b2a1f}
+#lvFace .lvf-x{background:rgba(11,42,31,.08);color:#0b2a1f}
+#lvFace .lvf-stage{background:#fff;border-radius:0;width:100%;max-width:520px;aspect-ratio:3/4}
+#lvFace .lvf-oval{box-shadow:0 0 0 999px #fff;border:4px solid #10b981}
+#lvFace .lvf-oval.ok{border-color:#059669}
+#lvFace .lvf-msg .s{color:rgba(11,42,31,.65)}
+#lvFace .lvf-bar{background:rgba(11,42,31,.12)}
+#lvFace .lvf-bar i{background:#10b981}
+#lvFace .lvf-manual{background:#10b981;color:#fff}
+#lvFace .lvf-frozen{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
