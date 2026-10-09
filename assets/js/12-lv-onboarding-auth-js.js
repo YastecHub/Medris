@@ -1133,7 +1133,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
    +'<path d="M32 56q8 8 16 0" stroke="#073b2a" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="24" cy="54" r="4" fill="rgba(255,255,255,.28)"/><circle cx="56" cy="54" r="4" fill="rgba(255,255,255,.28)"/>'
    +'<polygon points="40,12 68,24 40,36 12,24" fill="#0b2a20"/><path d="M26 29v9q14 8 28 0v-9l-14 6z" fill="#123d2e"/><g class="lvc-tassel"><path d="M62 22v14" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round"/><circle cx="62" cy="38" r="3" fill="#fbbf24"/></g></svg>';
   window.lvMascotSvg=MASCOT;
-  var LINES=["Hi! I'm Levi 🎓 Pick your campus and I'll show you what's near you.","Tap your school's logo — it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom — we'll sort it out."];
+  var LINES=["Hi! I'm Levi 🎓 Pick your campus and I'll show you what's near you.","Tap your school's logo, it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom, we'll sort it out."];
 
   // ---- is this school already on the list (or already suggested)?
   var STOP={of:1,the:1,and:1,for:1,university:1,college:1,polytechnic:1,school:1,federal:1,state:1,institute:1,uni:1,univ:1,poly:1,"in":1,at:1,nigeria:1,science:1,sciences:1,technology:1,education:1};
@@ -1888,4 +1888,26 @@ async function setVendorRequestPref(v){
     for(var i=0;i<sib.length;i++){ if(sib[i].classList&&(sib[i].tagName==="BUTTON"||sib[i].getAttribute("role")==="tab")) sib[i].classList.toggle("active",sib[i]===t); }
     var wrap=document.getElementById("orderListWrap"); if(wrap&&t.closest(".order-status-pills-rail,.vendor-orders-perspective-tabs")){ wrap.style.transition="opacity .12s"; wrap.style.opacity=".4"; }
   },true);
+})();
+
+/* Fully verified ticks: show a tick only when the vendor is admin-approved AND student-verified */
+(function(){
+  var SET=null,T=0,Q=0;
+  function paint(){
+    Q=0; if(!SET) return;
+    document.querySelectorAll("[data-vt]").forEach(function(el){
+      var on=SET.has(String(el.getAttribute("data-vt")));
+      if(on!==el.classList.contains("lv-on")) el.classList.toggle("lv-on",on);
+    });
+  }
+  function sched(){ if(!Q){ Q=requestAnimationFrame(paint); } }
+  function load(){
+    if(typeof sb==="undefined"||!sb||!sb.from){ setTimeout(load,400); return; }
+    T=Date.now();
+    sb.from("vendors").select("id").eq("verification_status","verified").eq("student_verified",true).is("deleted_at",null).limit(5000)
+      .then(function(r){ if(r&&!r.error&&r.data){ SET=new Set(r.data.map(function(x){return String(x.id);})); sched(); } });
+  }
+  load();
+  setInterval(function(){ if(Date.now()-T>180000) load(); },60000);
+  new MutationObserver(sched).observe(document.documentElement,{childList:true,subtree:true});
 })();

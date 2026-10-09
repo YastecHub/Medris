@@ -1255,3 +1255,16 @@ html.lv-anim,html.lv-anim body{overflow-x:hidden}
 :root:root:root body #app .vd-views #vendorsViewGridBtn.active,:root:root:root body #app .vd-views #vendorsViewListBtn.active,:root:root:root body #app .vd-views #vendorsViewMapBtn.active{background:linear-gradient(135deg,#6ee7b7,#059669)!important;border-color:transparent!important;color:#fff!important;box-shadow:0 6px 12px -6px rgba(5,150,105,.75),inset 0 1px 0 rgba(255,255,255,.4)!important}
 :root:root:root body #app .vd-views #vendorsViewGridBtn svg,:root:root:root body #app .vd-views #vendorsViewListBtn svg,:root:root:root body #app .vd-views #vendorsViewMapBtn svg{stroke:currentColor!important;fill:none!important;width:20px!important;height:20px!important}
 :root:root:root body #app .vd-views #vendorsViewGridBtn.active svg,:root:root:root body #app .vd-views #vendorsViewListBtn.active svg,:root:root:root body #app .vd-views #vendorsViewMapBtn.active svg{stroke:#fff!important}
+
+/* Green ticks only for fully verified vendors (set by lv-fv script) */
+[data-vt]:not(.lv-on){display:none!important}
+
+/* Campus logos are always circular */
+.lvc-dup-row .lvc-logo,.lvc-dup-row .lvc-logo img,#lvCampus .lvc-logo img,.storefront-meta .sf-loc .sf-camp-logo,.lv-camp-line .lcl-i,.lv-camp-line .lcl-i img,.ac-ico,.ac-ico img,#lvCampusBar .ico,#lvCampusBar .ico img{border-radius:50%!important}
+.storefront-meta .sf-loc .sf-camp-logo{background:#fff;object-fit:contain}
+.lvc-dup-row .lvc-logo{overflow:hidden}
+
+/* Avatars fade in once decoded, so no placeholder icon flashes while loading */
+img[data-lvimg]{transition:opacity .18s ease}
+img[data-lvimg]:not(.lv-ld){opacity:0}
+.storefront-profile .storefront-avatar-button{background:var(--card,#eef2ef)}

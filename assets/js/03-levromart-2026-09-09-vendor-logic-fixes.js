@@ -291,7 +291,7 @@
   };
 
   /* ---------------------------------------------------------------
-     STOREFRONT HEADER TEXT — blank when no custom cover exists.
+     STOREFRONT HEADER TEXT, blank when no custom cover exists.
      --------------------------------------------------------------- */
   const originalRenderStorefront = window.renderStorefront;
   if (typeof originalRenderStorefront === "function") {
@@ -310,7 +310,7 @@
   function openVendorApplyBankPicker(){const select=byId("vaBankCode");if(!select)return;closeVendorApplyBankPicker();const banks=Array.from(select.options).map(o=>({code:o.value,name:o.textContent.trim()})).filter(b=>b.code&&b.name).sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:"base"}));const modal=document.createElement("div");modal.id="vendorApplyBankPickerModal";modal.className="modal vendor-bank-picker-modal";modal.onclick=e=>{if(e.target===modal)closeVendorApplyBankPicker()};modal.innerHTML=`<div class="vendor-bank-picker-content" role="dialog" aria-modal="true" aria-labelledby="vaBankPickerTitle"><div class="vendor-bank-picker-header"><div><h3 id="vaBankPickerTitle"><i class="fa-solid fa-building-columns"></i> Select payout bank</h3><p>${banks.length} supported banks and financial institutions</p></div><button type="button" class="vendor-bank-picker-close" onclick="closeVendorApplyBankPicker()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="vendor-bank-search-wrap"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="vaBankSearch" class="vendor-bank-search" type="search" placeholder="Search bank…" autocomplete="off" /></div><div id="vaBankPickerList" class="vendor-bank-picker-list"></div></div>`;document.body.appendChild(modal);const render=q=>{const query=String(q||"").trim().toLowerCase(),current=String(select.value||""),filtered=query?banks.filter(b=>b.name.toLowerCase().includes(query)||b.code.toLowerCase().includes(query)):banks;byId("vaBankPickerList").innerHTML=filtered.length?filtered.map(b=>"<button type=\"button\" class=\"vendor-bank-option "+(String(b.code)===current?"selected":"")+"\" onclick=\"selectVendorApplyBank('"+esc(b.code)+"')\"><span class=\"vendor-bank-option-icon\"><i class=\"fa-solid fa-building-columns\"></i></span><span class=\"vendor-bank-option-main\"><strong>"+esc(b.name)+"</strong><small>"+esc(b.code)+"</small></span><i class=\"fa-solid "+(String(b.code)===current?"fa-circle-check":"fa-chevron-right")+"\"></i></button>").join(""):"<div class=\"vendor-bank-picker-empty\">No banks match your search.</div>"};byId("vaBankSearch")?.addEventListener("input",e=>render(e.target.value));render("");byId("vaBankPickerBtn")?.setAttribute("aria-expanded","true");setTimeout(()=>byId("vaBankSearch")?.focus(),0);}
 
   /* ---------------------------------------------------------------
-     VENDOR APPLICATION — explicit type=button + delegated click fallback,
+     VENDOR APPLICATION, explicit type=button + delegated click fallback,
      plus a busy guard so slow browsers cannot double-submit.
      --------------------------------------------------------------- */
   let vendorApplyBusy = false;
@@ -433,7 +433,7 @@
   }, true);
 
   /* ---------------------------------------------------------------
-     LEVI — don't show the useless generic fallback for ordinary questions.
+     LEVI, don't show the useless generic fallback for ordinary questions.
      The normal /api/chat answer remains the primary path. If it returns the
      old generic sentence, try one more request with a hard instruction that
      it MUST answer the actual question. If the second request still fails,

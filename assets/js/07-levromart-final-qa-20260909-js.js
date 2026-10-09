@@ -3,7 +3,7 @@
   "use strict";
 
   /* ---------------------------------------------------------------
-     MAP ROUTE — continuous accent-coloured animated trace.
+     MAP ROUTE, continuous accent-coloured animated trace.
      --------------------------------------------------------------- */
   const oldTrace = window.traceVendorRoute;
   if(typeof oldTrace === "function" && !window.__levroAnimatedRouteFinal){
@@ -19,7 +19,7 @@
   }
 
   /* ---------------------------------------------------------------
-     CHAT SWIPE — one clean recogniser only. The older layered wrappers were
+     CHAT SWIPE, one clean recogniser only. The older layered wrappers were
      able to attach multiple pointer handlers to one bubble, which is exactly
      the kind of competing gesture handling that makes a WhatsApp-style drag
      feel sticky. Replace the interaction dispatcher so only this recogniser
@@ -121,7 +121,7 @@
   }
 
   /* ---------------------------------------------------------------
-     LEVI — generic fallback becomes a useful clarification instead of a
+     LEVI, generic fallback becomes a useful clarification instead of a
      canned identity response. Try live products/vendors first, then ask a
      concrete "did you mean" question.
      --------------------------------------------------------------- */
@@ -190,7 +190,7 @@
   }
 
   /* ---------------------------------------------------------------
-     COMMISSION DEADLINE — vendor heartbeat. The DB function is authoritative;
+     COMMISSION DEADLINE, vendor heartbeat. The DB function is authoritative;
      this heartbeat makes the one-week rule take effect while the vendor is
      using the app, without waiting for a navigation/reload.
      --------------------------------------------------------------- */

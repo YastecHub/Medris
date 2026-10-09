@@ -1,7 +1,7 @@
 /* ---- script ---- */
 (function(){
   /* ---------------------------------------------------------------
-     1. MESSAGING REALTIME — make incoming messages paint immediately.
+     1. MESSAGING REALTIME, make incoming messages paint immediately.
      The old handler waited for a parent-reply query before inserting the
      message. That extra query could make a message feel delayed on mobile.
      Paint first, enrich second. Also reconnect the conversation channel if
@@ -45,7 +45,7 @@
   }
 
   /* ---------------------------------------------------------------
-     2. SWIPE REPLY — easier on iPhone. Use a larger activation threshold,
+     2. SWIPE REPLY, easier on iPhone. Use a larger activation threshold,
      a capped movement, and release the transform on every termination path.
      --------------------------------------------------------------- */
   const originalSetupMessageSwipeReply = window.setupMessageSwipeReply;
@@ -107,7 +107,7 @@
   }
 
   /* ---------------------------------------------------------------
-     3. VENDOR PAGE — horizontal vendor rail above the map + See all.
+     3. VENDOR PAGE, horizontal vendor rail above the map + See all.
      Keep the existing grid/list/map controls intact.
      --------------------------------------------------------------- */
   function vendorRailHtml(){

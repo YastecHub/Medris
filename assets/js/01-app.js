@@ -1748,7 +1748,7 @@ function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
   const safeName = String(name || "User").trim() || "User";
   if (url) {
     const clickable = opts.lightbox ? ` role="button" tabindex="0" onclick="event.stopPropagation();openProfileImageLightbox('${esc(url)}','${esc(safeName)}',event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openProfileImageLightbox('${esc(url)}','${esc(safeName)}',event)}"` : "";
-    return `<img src="${esc(url)}" class="avatar-circle ${opts.extraClass || ""}" style="width:${size};height:${size};object-fit:cover;" alt="${esc(safeName)}" draggable="false" loading="lazy" decoding="async"${clickable} onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(safeName)}','${esc(size)}','${esc(opts.extraClass || "")}','${esc(safeName)}')))" />`;
+    return `<img src="${esc(url)}" class="avatar-circle ${opts.extraClass || ""}" style="width:${size};height:${size};object-fit:cover;" alt="${esc(safeName)}" data-lvimg onload="this.classList.add('lv-ld')" draggable="false" loading="lazy" decoding="async"${clickable} onerror="this.replaceWith(document.createRange().createContextualFragment(avatarFallbackHtml('${esc(safeName)}','${esc(size)}','${esc(opts.extraClass || "")}','${esc(safeName)}')))" />`;
   }
   return avatarFallbackHtml(safeName, size, opts.extraClass || "", safeName, opts.stableKey || safeName);
 }
@@ -5619,7 +5619,7 @@ function initHomeSearchScrollMotion(){
       rafId = 0;
       const y = window.scrollY || window.pageYOffset || 0;
       lastY = y;
-      // header is position:fixed, so its rect is constant across scroll —
+      // header is position:fixed, so its rect is constant across scroll -
       // only resync on resize/orientation change, not on every scroll frame.
       if (y <= 8) {
         restoreNormal();
@@ -6906,7 +6906,7 @@ function scrollToBrowse(listingType) {
 // path and the offline-cache fast-repaint path) can never drift apart.
 function homeQuickActionsHtml() {
   const actions = [
-    { key: "products", icon: "fa-bag-shopping", tone: "mint", title: "Shop Products", desc: "Verified vendors" },
+    { key: "products", icon: "fa-bag-shopping", tone: "mint", title: "Shop Products", desc: "Local vendors" },
     { key: "services", icon: "fa-screwdriver-wrench", tone: "peach", title: "Book Services", desc: "Trusted providers" },
     { key: "rent", icon: "fa-key", tone: "lavender", title: "Rent Items", desc: "No need to buy" },
     { key: "vendors", icon: "fa-store", tone: "pink", title: "All Vendors", desc: "Discover nearby" },
@@ -7315,7 +7315,7 @@ function searchProductRowHtml(p) {
   return `<div class="search-result-row sr-row" data-product-id="${esc(p.id)}" ${searchRowOpen(`navigate('productDetail',{productId:'${esc(p.id)}'})`)} aria-label="${esc(p.name)}">
     ${searchThumbHtml(p.photos?.[0], p.is_service ? "fa-hand-holding-heart" : "fa-camera")}
     <div class="sr-main"><strong class="sr-name">${esc(p.name)}${hasVariety ? ` <i class="fa-solid fa-layer-group product-variety-indicator" title="Multiple varieties available"></i>` : ""}</strong>
-      <span class="sr-vendor"><span class="sr-vendor-name">${esc(v.business_name || "")}</span><i class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i>${searchDistanceMetaHtml(v)}</span>
+      <span class="sr-vendor"><span class="sr-vendor-name">${esc(v.business_name || "")}</span><i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i>${searchDistanceMetaHtml(v)}</span>
       <span class="sr-meta"><em class="sr-type${p.is_service ? " sr-type-service" : ""}">${typeLabel}</em>${searchRatingHtml(v.avg_rating, v.review_count)}</span></div>
     <div class="sr-side">${price ? `<b class="sr-price">${price}</b>` : ""}${canCart ? `<button type="button" class="sr-cart" onclick="quickAddToCart(event,'${esc(p.id)}',this,'${esc(v.id)}')" title="Add to cart" aria-label="Add ${esc(p.name)} to cart"><i class="fa-solid fa-cart-plus"></i></button>` : ""}</div>
   </div>`;
@@ -7330,7 +7330,7 @@ function searchVendorRowHtml(v) {
   const loc = [v.city, null].filter(Boolean).map(esc).join("");
   return `<div class="search-result-row sr-row sr-vendor-row" data-vendor-id="${esc(v.id)}" ${searchRowOpen(`navigate('storefront',{vendorId:'${esc(v.id)}'})`)} aria-label="${esc(name)}">
     <span class="sr-thumb sr-thumb-round">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" data-n="${esc(name)}" data-k="${esc(v.id)}" onerror="vdImgFail(this)">` : vdInitialsHtml(name, v.id)}</span>
-    <div class="sr-main"><strong class="sr-name">${esc(name)} <i class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i></strong>
+    <div class="sr-main"><strong class="sr-name">${esc(name)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i></strong>
       <span class="sr-vendor"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${loc || "Online"}${searchDistanceMetaHtml(v).replace(/<i class="fa-solid fa-location-dot"><\/i> /, "")}</span>
       <span class="sr-meta"><em class="sr-type">Vendor</em>${sectorName ? `<span class="sr-sector">${esc(sectorName)}</span>` : ""}</span>
       <span class="sr-meta">${searchRatingHtml(v.avg_rating, v.review_count)}<span class="sr-followers"><i class="fa-solid fa-user-group" aria-hidden="true"></i> <span class="vendor-follower-count">${count.toLocaleString()}</span> follower${count === 1 ? "" : "s"}</span></span></div>
@@ -7343,7 +7343,7 @@ function searchPackageRowHtml(pkg) {
   return `<div class="search-result-row sr-row" ${searchRowOpen(`navigate('packageDetail',{packageId:'${esc(pkg.id)}'})`)} aria-label="${esc(pkg.name)}">
     ${searchThumbHtml(pkg.photos?.[0], "fa-box-open")}
     <div class="sr-main"><strong class="sr-name">${esc(pkg.name)}</strong>
-      <span class="sr-vendor"><span class="sr-vendor-name">${esc(v.business_name || "")}</span><i class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i>${searchDistanceMetaHtml(v)}</span>
+      <span class="sr-vendor"><span class="sr-vendor-name">${esc(v.business_name || "")}</span><i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i>${searchDistanceMetaHtml(v)}</span>
       <span class="sr-meta"><em class="sr-type sr-type-package">Package</em>${n ? `<span class="sr-sector">${n} item${n === 1 ? "" : "s"}</span>` : ""}${searchRatingHtml(v.avg_rating, v.review_count)}</span></div>
     <div class="sr-side"><b class="sr-price">${naira(pkg.price)}</b></div>
   </div>`;
@@ -8362,7 +8362,7 @@ function vendorCardHtml(v) {
   return `<div class="vendor-card homepage-vendor-card" onclick="navigate('storefront',{vendorId:'${esc(v?.id || "")}'});" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || "")}'});}">
     ${avatar ? profileAvatarHtml(avatar, name, "3.05rem", { extraClass: "vendor-home-avatar", lightbox: false, stableKey: v?.id || name }) : avatarFallbackHtml(name, "3.05rem", "vendor-home-avatar vendor-home-avatar-fallback", name)}
     <div class="vendor-home-copy">
-      <strong>${esc(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
+      <strong>${esc(name)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
       <span class="vendor-home-city"><i class="fa-solid fa-location-dot"></i> ${esc(v?.city || "Online")}</span>${vendorDistanceHtml(v)}
       <div class="vendor-home-meta"><span class="badge success"><i class='fa-solid fa-circle-check'></i> Verified</span><span class="badge ${ratingBadgeClass(Number(v?.avg_rating ?? 0))}"><i class="fa-solid fa-star"></i> ${Number(v?.avg_rating ?? 0).toFixed(1)} · ${Number(v?.review_count ?? 0)} reviews</span></div>
       <span class="vendor-home-known"><i class="fa-solid fa-layer-group"></i> ${esc(sectorName || "Sector not listed")}</span>
@@ -11409,7 +11409,7 @@ async function renderCommissionServiceDetail(product,priceHint,offers){
     <div class="product-detail-top-actions"><button class="fav-btn ${favoriteIds.has(product.id)?'active':''}" onclick="toggleFavorite(event,'${product.id}')" aria-label="Save to wishlist">${favoriteIds.has(product.id)?"<i class='fa-solid fa-heart'></i>":"<i class='fa-regular fa-heart'></i>"}</button><button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share service"><i class="fa-solid fa-share-nodes"></i></button></div>
     <h2 class="product-detail-title">${esc(product.name)} <span class="badge">Service</span></h2>
     ${image?`<div class="product-detail-media"><div class="product-gallery"><div class="product-gallery-main"><img src="${esc(image)}" alt="${esc(product.name)}" loading="eager" /></div></div></div>`:''}
-    <div class="service-vendor-info-block"><div class="service-vendor-info-head" role="button" tabindex="0" style="cursor:pointer;" onclick="navigate('storefront',{vendorId:'${vendor.id}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${vendor.id}'})}"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating"><i class="fa-solid fa-star"></i> ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div></div>
+    <div class="service-vendor-info-block"><div class="service-vendor-info-head" role="button" tabindex="0" style="cursor:pointer;" onclick="navigate('storefront',{vendorId:'${vendor.id}'})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${vendor.id}'})}"><div class="service-vendor-avatar">${vendor.logo_url?profileAvatarHtml(vendor.logo_url,vendor.business_name||'Vendor','3.4rem'):avatarFallbackHtml(vendor.business_name||'Vendor','3.4rem','',vendor.business_name||'Vendor')}</div><div style="min-width:0;flex:1;"><strong>${vendorNameWithFormerly(vendor)} ${vendor.verification_status==='verified'?'<i data-vt="${esc(vendor.id)}" class="fa-solid fa-circle-check vendor-inline-verified" title="Verified vendor"></i>':''}</strong><div class="muted">${esc(category)}${vendor.city?' · '+esc(vendor.city):''}</div><div class="service-vendor-rating"><i class="fa-solid fa-star"></i> ${rating} (${reviews} review${reviews===1?'':'s'})</div></div></div></div>
     <div class="service-description-block"><h3>About this service</h3><p>${esc(stripProductVariantMeta(product.description||'No description provided.'))}</p></div>
     ${priceHint?`<div class="service-price-hint"><i class="fa-solid fa-chart-line"></i> <strong>Past agreed prices:</strong> ${naira(priceHint.min)}${priceHint.min!==priceHint.max?' – '+naira(priceHint.max):''} <span>(last ${priceHint.count} completed bookings)</span></div>`:''}
   </div>`;
@@ -12088,7 +12088,7 @@ function vendorDirectoryCardHtml(v) {
     ? `<img src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async" draggable="false" data-n="${esc(name)}" data-k="${esc(id)}" onerror="vdImgFail(this)">`
     : vdInitialsHtml(name, id);
   return `<div class="vd-card" data-vendor-id="${esc(id)}" onclick="${open}" role="link" tabindex="0" aria-label="${esc(name)}" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();${open};}">
-    <div class="vd-cover">${media}<span class="vd-verified" title="Verified vendor" aria-label="Verified vendor"><i class="fa-solid fa-check"></i></span></div>
+    <div class="vd-cover">${media}<span data-vt="${esc(id)}" class="vd-verified" title="Verified vendor" aria-label="Verified vendor"><i class="fa-solid fa-check"></i></span></div>
     <div class="vd-body">
       <strong class="vd-name">${esc(name)}</strong>
       <span class="vd-loc"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${esc(v?.city || "Online")}${dist ? ` <b>·</b> ${esc(dist)}` : ""}</span>
@@ -12934,7 +12934,7 @@ async function renderStorefrontInner(vendorId) {
   const isOwnStorefront = !!session?.user?.id && String(session.user.id) === String(v.user_id);
   if (!isOwnStorefront) sb.rpc("increment_vendor_profile_view", { p_vendor_id: v.id }).then(()=>{}).catch(()=>{});
   const logo = v.logo_url
-    ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${esc(v.logo_url)}','${esc(v.business_name || "Vendor")}',event)"><img src="${esc(v.logo_url)}" alt="${esc(v.business_name || "Vendor")}" loading="eager" draggable="false" /></button>`
+    ? `<button type="button" class="storefront-avatar storefront-avatar-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('${esc(v.logo_url)}','${esc(v.business_name || "Vendor")}',event)"><img src="${esc(v.logo_url)}" alt="" data-lvimg onload="this.classList.add('lv-ld')" loading="eager" draggable="false" /></button>`
     : `<button type="button" class="storefront-avatar storefront-avatar-button storefront-avatar-fallback-button" aria-label="View ${esc(v.business_name || "Vendor")} profile picture" onclick="openProfileImageLightbox('','${esc(v.business_name || "Vendor")}',event)">${avatarFallbackHtml(v.business_name || "Vendor", "100%", "", v.business_name || "Vendor", v.id)}</button>`;
   const location = [v.address, v.city].filter(Boolean).map(esc).join(", ") || "Online business";
 
@@ -12962,7 +12962,7 @@ async function renderStorefrontInner(vendorId) {
         ${!isOwnStorefront ? `<div class="storefront-follow-wrap" id="storefrontFollowWrap" data-follow-vendor-id="${v.id}">${storefrontFollowWrapLoadingInnerHtml()}</div>` : ""}
       </div>
       <div class="storefront-name-row">
-        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
+        <h1 class="storefront-profile-name">${vendorNameWithFormerly(v)} <i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></h1>
       </div>
       ${v.bio ? `<section class="storefront-about" aria-label="Vendor description">
         <div class="storefront-bio-wrap" id="storefrontBioWrap"><p class="storefront-bio">${esc(v.bio)}</p>${v.bio.length > 160 ? `<button type="button" class="storefront-bio-toggle" onclick="toggleStorefrontBio(this)">Read more</button>` : ""}</div>
@@ -14341,7 +14341,7 @@ async function renderVendorDashboard() {
   else if (v.verification_status === "rejected") statusBanner = `<div class="banner banner-danger"><strong>Application not approved.</strong> Contact support if this seems wrong.</div>`;
   else if (!v.is_active) statusBanner = `<div class="banner banner-muted"><strong><i class='fa-solid fa-pause'></i> Storefront paused.</strong> Customers can't see your shop or products right now.</div>`;
   const verifiedTick = v.verification_status === "verified"
-    ? `<span class="verified-tick" title="Verified vendor" onclick="navigate('storefront',{vendorId:'${v.id}'})"><i class="fa-solid fa-circle-check"></i></span>`
+    ? `<span data-vt="${v.id}" class="verified-tick" title="Verified vendor" onclick="navigate('storefront',{vendorId:'${v.id}'})"><i class="fa-solid fa-circle-check"></i></span>`
     : "";
 
   const [{ data: orders }, { data: products }, { data: owed }, { data: commissionDeadline }, { data: followerCounts }] = await Promise.all([
@@ -16256,7 +16256,7 @@ function updateProductPaymentTimingHint(){
   const validPct=Number.isFinite(pct) ? Math.max(1,Math.min(99,pct)) : null;
   const remaining=validPct==null ? null : 100-validPct;
   if (isAfter) {
-    byId("prodPaymentRemainingPercent")?.replaceChildren(document.createTextNode(remaining==null ? "—" : `${remaining}%`));
+    byId("prodPaymentRemainingPercent")?.replaceChildren(document.createTextNode(remaining==null ? "-" : `${remaining}%`));
     el.innerHTML=validPct==null
       ? "<strong>Pay after delivery:</strong> enter the buyer's deposit percentage before saving."
       : `<strong>Pay after delivery:</strong> the buyer pays ${validPct}% before delivery; the remaining ${remaining}% is due after delivery.`;
@@ -18548,7 +18548,7 @@ function customerOrderTopHtml(order, ctx) {
     const rating = Number(v.avg_rating || 0), reviews = Number(v.review_count || 0);
     h += `<section class="od-card"><h3><i class="fa-solid fa-store"></i> Vendor Information</h3><div class="od-vendor">
       ${v.logo_url ? `<img class="od-vendor-logo" src="${esc(v.logo_url)}" alt="" loading="lazy" decoding="async">` : avatarFallbackHtml(v.business_name || "Vendor", "3rem", "od-vendor-logo", v.business_name || "Vendor")}
-      <div class="od-vendor-copy"><strong>${esc(v.business_name || "Vendor")} ${v.verification_status === "verified" ? `<i class="fa-solid fa-circle-check od-verified" title="Verified vendor"></i>` : ""}</strong><span class="od-muted"><i class="fa-solid fa-star od-star"></i> ${reviews ? `${rating.toFixed(1)} (${reviews} review${reviews === 1 ? "" : "s"})` : "No reviews yet"}</span></div>
+      <div class="od-vendor-copy"><strong>${esc(v.business_name || "Vendor")} ${v.verification_status === "verified" ? `<i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check od-verified" title="Verified vendor"></i>` : ""}</strong><span class="od-muted"><i class="fa-solid fa-star od-star"></i> ${reviews ? `${rating.toFixed(1)} (${reviews} review${reviews === 1 ? "" : "s"})` : "No reviews yet"}</span></div>
       <div class="od-vendor-actions">${ctx.contactAllowed ? `<button type="button" class="od-btn od-btn-light od-btn-small" onclick="startConversationWithVendor('${esc(v.id)}')"><i class="fa-regular fa-comment-dots"></i> Message</button>` : ""}<button type="button" class="od-btn od-btn-light od-btn-small" onclick="navigate('storefront',{vendorId:'${esc(v.id)}'})"><i class="fa-solid fa-store"></i> View Store</button></div></div></section>`;
   }
   return h;
@@ -19609,7 +19609,7 @@ async function loadCommissionBreakdown(){
       const date=g.sold_at?new Date(g.sold_at).toLocaleString([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"Date unavailable";
       const lines=g.products.length
         ? g.products.map(x=>`<li>${'<span class="vc-ico"><i class="fa-solid fa-cart-shopping"></i></span>'}<span class="vc-label">${esc(x.qty+"× "+x.name)}</span><span class="vc-amt">${naira(x.qty*x.unit)}</span></li>`).join("")
-        : '<li><span class="vc-ico"><i class="fa-solid fa-cart-shopping"></i></span><span class="vc-label">Order items unavailable</span><span class="vc-amt">—</span></li>';
+        : '<li><span class="vc-ico"><i class="fa-solid fa-cart-shopping"></i></span><span class="vc-label">Order items unavailable</span><span class="vc-amt">-</span></li>';
       const autoDispute = g.auto_completed_at ? `<button type="button" class="btn btn-sm btn-outline vendor-commission-dispute-btn" onclick="openCommissionDispute('${esc(g.order_id||"")}')"><i class="fa-solid fa-scale-balanced"></i> Raise dispute</button>` : "";
       return `<div class="vendor-commission-item vc-collapsed">
         <div class="vendor-commission-item-top" role="button" tabindex="0" aria-expanded="false" onclick="toggleCommissionItem(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCommissionItem(this)}"><span class="vc-ico"><i class="fa-solid fa-store"></i></span><div class="vc-top-text"><div class="vendor-commission-item-title">${g.products.length===1?esc(g.products[0].name):g.products.length>1?`${g.products.length} products`:"Sale"}</div><div class="vendor-commission-item-date">Completed ${esc(date)}</div></div><strong>${naira(g.commission_amount)}</strong><i class="fa-solid fa-chevron-down vc-item-chev"></i></div>
@@ -20752,18 +20752,18 @@ async function logAdminAction(action, targetType, targetId, targetLabel) {
 
 // ---------------------------------------------------------------------
 // CANONICAL vendor admin actions. This is the ONLY place these two
-// functions are defined — do not add another window.setVendorStatus /
+// functions are defined, do not add another window.setVendorStatus /
 // window.adminDeleteVendor override anywhere else in this file. Both
 // actions call the SECURITY DEFINER RPCs (admin_set_vendor_status /
 // admin_delete_vendor) rather than writing to vendors/users directly,
 // so they don't depend on the admin's session having raw table-write
-// RLS access — only on being allowed to call the RPC, which is what
+// RLS access, only on being allowed to call the RPC, which is what
 // public.is_admin() / the SUPER_ADMIN_EMAIL check already gate.
 //
 // Every action is split into two independent phases:
 //   1) the database mutation (RPC call + response validation)
 //   2) the UI refresh (toast + re-render/navigate)
-// A failure in phase 2 is logged and surfaced as a "refresh" notice —
+// A failure in phase 2 is logged and surfaced as a "refresh" notice -
 // it must never be reported to the admin as "approval failed" when the
 // database mutation actually succeeded. See adminVendorActionBusy below
 // for the per-vendor click guard.
@@ -20821,7 +20821,7 @@ async function setVendorStatus(id, status, filterStatus, businessName) {
   let mutationSucceeded = false;
 
   try {
-    // Confirm the RPC will run as the admin we think is signed in — a
+    // Confirm the RPC will run as the admin we think is signed in, a
     // stale/expired client-side session object is a classic cause of
     // "this worked for the first couple of vendors, then stopped".
     const { data: { session: liveSession } = {} } = await sb.auth.getSession();
@@ -20838,7 +20838,7 @@ async function setVendorStatus(id, status, filterStatus, businessName) {
     });
 
     if (error) {
-      // Actual database/RPC failure — this is a real "could not X" case.
+      // Actual database/RPC failure, this is a real "could not X" case.
       vendorActionLog(actionWord, id, {
         stage: "rpc:error",
         message: error.message, code: error.code, details: error.details, hint: error.hint,
@@ -20847,7 +20847,7 @@ async function setVendorStatus(id, status, filterStatus, businessName) {
       return;
     }
 
-    // RPC returned without error — but don't assume that means the
+    // RPC returned without error, but don't assume that means the
     // expected mutation happened. Validate the response shape/content.
     const returnedVendor = data?.vendor ?? data;
     const returnedStatus = returnedVendor?.verification_status;
@@ -24038,7 +24038,7 @@ async function resolveLeviProduct(target) {
         const direct = ordered.filter((p) => normalize(p.name).includes(nq));
         // search_product_ids is a relevance helper, not proof that its first
         // row matches the current request. Never treat a lone unrelated row as
-        // the requested product — that was the path that could turn a fresh
+        // the requested product, that was the path that could turn a fresh
         // request like "shoe" into the previous "Penny" listing.
         if (direct.length) {
           return { product: direct[0], matches: direct, exact: direct.length === 1 && normalize(direct[0].name) === nq };

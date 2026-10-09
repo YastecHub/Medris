@@ -4,7 +4,7 @@
 
   /*
    * IMPORTANT:
-   * A web app cannot ask the ADMIN'S phone for a vendor's location — that would
+   * A web app cannot ask the ADMIN'S phone for a vendor's location, that would
    * incorrectly put the admin on the vendor's map pin. The correct flow is:
    *   1. Capture the applicant's own current browser location when they apply.
    *   2. Store it on that vendor record as lat/lng.
@@ -217,7 +217,7 @@
 
   // ONE delegated handler for all vendor admin buttons. Do not add a
   // second document click/keydown listener for .vendor-admin-action
-  // anywhere else in this file — the row is re-rendered on every
+  // anywhere else in this file, the row is re-rendered on every
   // refresh, so delegation (rather than a per-button listener) is what
   // keeps this working after re-renders.
   async function dispatch(btn){
@@ -225,7 +225,7 @@
     const id=btn.dataset.vendorId, status=btn.dataset.status, filter=btn.dataset.filterStatus;
     if(!id || !status) return;
 
-    // Visual busy state only — the real re-entrancy guard lives in
+    // Visual busy state only, the real re-entrancy guard lives in
     // adminVendorActionBusy inside setVendorStatus/adminDeleteVendor,
     // so this can never get permanently stuck even if the row's DOM
     // node is replaced mid-request.
@@ -239,7 +239,7 @@
       }
     } finally {
       // The button/row may already have been replaced by a successful
-      // refresh (navigate() re-renders #app) — only touch it if
+      // refresh (navigate() re-renders #app), only touch it if
       // it's still actually in the document.
       if(document.contains(btn)) { btn.disabled = false; btn.innerHTML = originalHtml; }
     }

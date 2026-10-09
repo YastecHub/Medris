@@ -941,7 +941,7 @@
     if(existingError) console.warn("[Levromart] Vendor application existing-check:",existingError);
     if(existing){
       // Any existing non-deleted application (pending, rejected, or verified)
-      // already has its own status view on the dashboard — never re-show a
+      // already has its own status view on the dashboard, never re-show a
       // blank, resubmittable application form to a returning applicant.
       navigate("vendorDashboard");
       return '<p class="muted">Redirecting…</p>';

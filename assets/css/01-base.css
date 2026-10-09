@@ -41,7 +41,7 @@
   #app .pickup-message-vendor-wrap .order-message-vendor-btn{min-width:min(290px,100%);justify-content:center;}
   #app .pickup-pay-vendor-btn{justify-content:center;}
 
-/* Minimal, centered network error state — keep the vendor directory clean and uncluttered. */
+/* Minimal, centered network error state, keep the vendor directory clean and uncluttered. */
 .levromart-network-error-state {
   width: 100%;
   min-height: 180px;

@@ -2174,7 +2174,7 @@ body.levro-kbd-open #aiChatFab,body.levro-kbd-open #cartFab{visibility:hidden !i
     transform:none!important;
   }
 
-<!-- LEVROMART STOREFRONT ACTIONS — FINAL MOBILE PLACEMENT -->
+<!-- LEVROMART STOREFRONT ACTIONS, FINAL MOBILE PLACEMENT -->
 <style id="levromart-storefront-actions-final-placement-20261004">
 /* The banner owns ONLY the three-dot button. */
 #app .storefront-profile .storefront-cover{
@@ -2390,7 +2390,7 @@ body:has(#app .storefront-profile) #app.container{
   margin:0!important;
   border-radius:50%!important;
 
-  /* Light framed treatment — not the heavy dark computer-like circle. */
+  /* Light framed treatment, not the heavy dark computer-like circle. */
   background:rgba(255,255,255,.20)!important;
   border:2px solid rgba(255,255,255,.78)!important;
   color:#fff!important;

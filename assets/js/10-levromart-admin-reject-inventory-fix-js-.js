@@ -180,7 +180,7 @@
     const total=all.length;
     const active=all.filter(p=>String(p.status)==="active").length;
     const removed=all.filter(p=>String(p.status)==="removed").length;
-    const priceLabel=p=>(p.price===null||p.price===undefined||p.price==="")?"—":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
+    const priceLabel=p=>(p.price===null||p.price===undefined||p.price==="")?"-":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
 
     const bySector=new Map();
     all.forEach(p=>{
@@ -388,7 +388,7 @@ body #app .storefront-profile .storefront-avatar-row{
   z-index:5!important;
 }
 
-/* Follow + bell are normal-flow content below the banner — never inside it. */
+/* Follow + bell are normal-flow content below the banner, never inside it. */
 body #app .storefront-profile .storefront-profile-actions.storefront-public-actions{
   position:relative!important;
   inset:auto!important;
@@ -549,9 +549,9 @@ body #app .storefront-profile .storefront-cover > .storefront-banner-more i{
 
   function renderAdminInventoryRows(rows){
     return rows.map((p,i)=>{
-      const price=(p.price===null||p.price===undefined||p.price==="")?"—":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
+      const price=(p.price===null||p.price===undefined||p.price==="")?"-":`₦${Number(p.price).toLocaleString("en-NG",{minimumFractionDigits:0,maximumFractionDigits:2})}`;
       const st=String(p.status||"");
-      return `<tr><td>${i+1}</td><td><strong>${esc(p.name||"Unnamed product")}</strong></td><td>${esc(p.vendor_name||"Unknown vendor")}</td><td>${esc(p.sector_name||"Unassigned")}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"—"}</td><td><button type="button" class="btn btn-sm btn-danger admin-inventory-delete-btn" data-product-id="${esc(p.id)}" data-product-name="${esc(p.name||"Unnamed product")}" onclick="adminDeleteInventoryProduct('${esc(p.id)}','${esc(p.name||"Unnamed product")}',event)"><i class="fa-solid fa-trash"></i> Delete</button></td></tr>`;
+      return `<tr><td>${i+1}</td><td><strong>${esc(p.name||"Unnamed product")}</strong></td><td>${esc(p.vendor_name||"Unknown vendor")}</td><td>${esc(p.sector_name||"Unassigned")}</td><td>${price}</td><td><span class="admin-inventory-status ${st==="removed"?"removed":""}">${esc(st||"unknown")}</span></td><td>${p.created_at?new Date(p.created_at).toLocaleDateString("en-NG"):"-"}</td><td><button type="button" class="btn btn-sm btn-danger admin-inventory-delete-btn" data-product-id="${esc(p.id)}" data-product-name="${esc(p.name||"Unnamed product")}" onclick="adminDeleteInventoryProduct('${esc(p.id)}','${esc(p.name||"Unnamed product")}',event)"><i class="fa-solid fa-trash"></i> Delete</button></td></tr>`;
     }).join("")||`<tr><td colspan="8" class="muted" style="text-align:center;padding:1.2rem;">No products match your search/filter.</td></tr>`;
   }
 

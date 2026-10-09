@@ -285,7 +285,7 @@
 })();
 
 /* ---- levromart-levi-smart-experience ---- */
-/* LEVI EXPERIENCE EXTENSION — search intelligence, permission coaching,
+/* LEVI EXPERIENCE EXTENSION, search intelligence, permission coaching,
    compose suggestions and continuous FAB presence. This block only touches
    Levi/search-related UI; it does not alter marketplace rendering. */
 (() => {
@@ -948,7 +948,7 @@
       }
     }
 
-    // Orders — same component for customer orders AND my purchases.
+    // Orders, same component for customer orders AND my purchases.
     document.querySelectorAll(".orders-filter-search-row").forEach(row=>{
       const filter=row.querySelector(".order-filters-wrap"); if(!filter)return;
       row.querySelectorAll(":scope > .orders-search-slot").forEach(el=>el.remove());
@@ -1075,7 +1075,7 @@
       const followerStat=`<span class="vendor-card-follower-stat"><i class="fa-solid fa-user-group" aria-hidden="true"></i> <span class="vendor-follower-count">${count}</span> follower${Number(v?.follower_count||0)===1?'':'s'}</span>`;
       const distanceHtml = vendorDistanceHtml(v);
       const ratingInline = `<span class="vendor-card-rating-corner badge ${typeof ratingBadgeClass==='function'?ratingBadgeClass(Number(v?.avg_rating||0)):''}"><i class="fa-solid fa-star"></i> ${Number(v?.avg_rating||0).toFixed(1)}</span>`;
-      const verifiedBadge = `<span class="vendor-card-verified-badge" aria-label="Verified vendor" title="Verified vendor"><i class="fa-solid fa-circle-check"></i></span>`;
+      const verifiedBadge = `<span data-vt="${esc(v?.id||"")}" class="vendor-card-verified-badge" aria-label="Verified vendor" title="Verified vendor"><i class="fa-solid fa-circle-check"></i></span>`;
       return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${escText(v?.id||"")}" onclick="navigate('storefront',{vendorId:'${escText(v?.id||"")}'});" role="button" tabindex="0">
         <span class="vendor-card-avatar-wrap">${avatarHtml}${verifiedBadge}</span><div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
           <strong class="vendor-directory-name">${escText(name)}</strong>

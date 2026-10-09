@@ -1,5 +1,5 @@
 /* ---- levromart-final-2026-09-09-v4 ---- */
-/* PRODUCT CARDS — compact square cards, larger image, no overlap */
+/* PRODUCT CARDS, compact square cards, larger image, no overlap */
 @media (max-width: 900px){
   #app .grid:has(> .product-card-wrap){grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:.62rem !important;align-items:stretch !important;grid-auto-rows:1fr !important;}
   /* NOTE: previously this forced aspect-ratio:1/1.12 on the whole card and
@@ -40,7 +40,7 @@
 .vendor-home-meta .badge{font-size:.53rem !important;padding:.14rem .28rem !important;white-space:nowrap !important;}
 .vendor-home-known{font-size:.6rem !important;color:var(--text-muted) !important;line-height:1.15 !important;display:block !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}.vendor-home-bio{opacity:.9 !important;}
 
-/* PACKAGES — short, clean cards; the card itself opens the package */
+/* PACKAGES, short, clean cards; the card itself opens the package */
 @media (max-width:900px){
   .package-recommendation-strip .package-listing-card,.package-listing-card{flex:0 0 14.5rem !important;width:14.5rem !important;min-height:0 !important;height:16.2rem !important;padding:.55rem !important;overflow:hidden !important;border-radius:13px !important;}
   .package-listing-card .package-gallery{height:6.4rem !important;min-height:6.4rem !important;border-radius:9px !important;overflow:hidden !important;}
@@ -54,7 +54,7 @@
   .package-card-owner-badge{display:block !important;margin-left:auto !important;margin-top:.12rem !important;width:fit-content !important;max-width:70% !important;font-size:.52rem !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}
 }
 
-/* CHAT — the header stays visible while only the messages area scrolls */
+/* CHAT, the header stays visible while only the messages area scrolls */
 .chat-page-wrap{height:100dvh !important;max-height:100dvh !important;overflow:hidden !important;display:flex !important;flex-direction:column !important;}
 .chat-page-wrap .chat-page-header{position:sticky !important;top:0 !important;z-index:1000 !important;flex:0 0 auto !important;}
 .chat-page-wrap .chat-thread{flex:1 1 auto !important;height:auto !important;min-height:0 !important;overflow:hidden !important;}
@@ -83,7 +83,7 @@
 .notif-message-summary-count{font-size:.69rem !important;color:var(--primary) !important;font-weight:700 !important;}
 .notif-message-summary.unread{border-color:color-mix(in srgb,var(--primary) 32%,var(--border)) !important;background:color-mix(in srgb,var(--primary) 6%,var(--card)) !important;}
 /* ---- levromart-final-qa-20260909 ---- */
-/* PRODUCT CARDS — restore the pre-square card length exactly: two columns,
+/* PRODUCT CARDS, restore the pre-square card length exactly: two columns,
    natural content height, compact 6.5rem image. Delivery remains visible and
    the service/cart action gets its own row so it can never cover text. */
 @media (max-width:640px){
@@ -182,7 +182,7 @@
   #app .grid:has(> .product-card-wrap) .own-listing-badge{margin:0 !important;max-width:72% !important;}
 }
 
-/* HOMEPAGE VENDOR AVATARS — one large, consistent circle, including vendors
+/* HOMEPAGE VENDOR AVATARS, one large, consistent circle, including vendors
    with no uploaded picture. */
 .vendor-home-avatar,
 .vendors-map-vendor-chip .vendor-directory-logo,
@@ -193,7 +193,7 @@
   overflow:hidden !important;font-size:1.05rem !important;font-weight:800 !important;
 }
 
-/* MAP VENDOR RAIL — clicking the chip opens the storefront; clicking View on
+/* MAP VENDOR RAIL, clicking the chip opens the storefront; clicking View on
    map focuses the exact marker and starts the route trace. */
 .vendors-map-vendor-chip{position:relative !important;overflow:hidden !important;}
 .vendors-map-vendor-chip-action{position:relative !important;z-index:4 !important;white-space:nowrap !important;}
@@ -211,7 +211,7 @@
 @keyframes levroRoutePulse{0%,100%{opacity:.78;stroke-width:4;}50%{opacity:1;stroke-width:5;}}
 @media(prefers-reduced-motion:reduce){.levro-vendor-route-path{animation:none !important;}}
 
-/* PACKAGE CARDS — restore the original longer package-card proportions; the
+/* PACKAGE CARDS, restore the original longer package-card proportions; the
    redundant View package button is still absent because the card itself opens. */
 .package-recommendation-strip > .package-listing-card,
 .package-recommendation-strip > .card{
@@ -226,7 +226,7 @@
   .package-recommendation-strip .package-card{min-height:0 !important;}
 }
 
-/* CHAT — only the message list scrolls; header and composer stay anchored like
+/* CHAT, only the message list scrolls; header and composer stay anchored like
    WhatsApp, including while the software keyboard is open. */
 body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 .chat-page-wrap{height:100dvh !important;max-height:100dvh !important;overflow:hidden !important;display:flex !important;flex-direction:column !important;}
@@ -279,7 +279,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 }
 /* ---- levromart-2026-09-10-user-fixes ---- */
 /* ==========================================================================
-   BROWSE EVERYTHING — product cards.
+   BROWSE EVERYTHING, product cards.
    The previous pass (levromart-final-2026-09-09-v4) deliberately let each
    card's height follow its own content, but paired that with
    grid-auto-rows:1fr + align-items:stretch on the grid -- which stretches
@@ -357,7 +357,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 }
 
 /* ==========================================================================
-   TOP-RATED VENDORS — narrower, centered "standing rectangle" card.
+   TOP-RATED VENDORS, narrower, centered "standing rectangle" card.
    The sizing and layout for this rail are owned by the single canonical rule below.
    ========================================================================== */
 #app .vendor-home-avatar {
@@ -392,7 +392,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
 }
 
 /* ==========================================================================
-   CHAT HEADER — stay put when the on-screen keyboard opens.
+   CHAT HEADER, stay put when the on-screen keyboard opens.
    The header was already position:sticky, which is correct once the layout
    viewport itself shrinks for the keyboard -- but nothing told the browser
    to actually shrink the layout viewport, so Chrome/Android was only
@@ -587,7 +587,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
 #app .vendor-request-card .vendor-offer-status{font-size:.56rem!important;line-height:1.04!important;margin:.12rem 0 0!important;text-align:left!important}
 @media(max-width:480px){#app .vendor-request-card{grid-template-columns:minmax(0,.86fr) minmax(0,1.44fr)!important;padding:.42rem .48rem!important;gap:.36rem!important}#app .vendor-request-card .vendor-request-person .avatar-circle{width:2.1rem!important;height:2.1rem!important;min-width:2.1rem!important;min-height:2.1rem!important}#app .vendor-request-title{font-size:.71rem!important}#app .vendor-request-buyer,#app .vendor-request-city{font-size:.53rem!important}#app .vendor-request-type-badge{height:1.27rem!important;font-size:.55rem!important;padding:.12rem .38rem!important}#app .vendor-request-card .vendor-interest-row .btn{height:27px!important;min-height:27px!important;font-size:.54rem!important;padding:.23rem .22rem!important}}
 
-/* Homepage: flyer-inspired 3 × 2 action grid — icon-first, light and modern. */
+/* Homepage: flyer-inspired 3 × 2 action grid, icon-first, light and modern. */
 #app .levro-home-quick-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.72rem .35rem!important;width:min(100%,560px)!important;margin:.65rem auto 1.05rem!important;padding:.1rem .05rem!important}
 #app .levro-quick-action{min-width:0!important;min-height:72px!important;padding:.16rem .12rem!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--text)!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:.3rem!important;font:inherit!important;font-size:.6rem!important;font-weight:750!important;text-align:center!important;cursor:pointer!important;transition:transform .15s ease!important}
 #app .levro-quick-action:active{transform:scale(.96)!important}
@@ -1319,7 +1319,7 @@ html:not([data-theme="dark"]):not([data-theme="black"]) #bottomNav .bottom-nav-i
   box-shadow:none !important;
 }
 
-/* Browse Everything — restore the polished custom dropdown. It opens directly
+/* Browse Everything, restore the polished custom dropdown. It opens directly
    below the Filters control on every screen size; no fixed/upward popover. */
 #app .browse-filter-toolbar{
   position:relative !important;display:grid !important;
@@ -1467,7 +1467,7 @@ html[data-theme="black"] #app .order-filters-trigger span{
   color:var(--text) !important;-webkit-text-fill-color:var(--text) !important;
 }
 
-/* When a filter is open, strengthen the outline only — never flood the bar. */
+/* When a filter is open, strengthen the outline only, never flood the bar. */
 #app .browse-filter-trigger.active,
 #app .vendors-filters-toggle.active,
 #app .order-filters-trigger.active{
@@ -1836,7 +1836,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 }
 
 /* ================================================================
-   FINAL MOBILE POLISH 2 — compact search, sheet stacking, storefront
+   FINAL MOBILE POLISH 2, compact search, sheet stacking, storefront
    hierarchy, compact order controls, and clean follow interactions.
    ================================================================ */
 #levromartHeaderSearchDock{z-index:11000 !important;}
@@ -2053,7 +2053,7 @@ body.search-input-active{--levro-search-keyboard-active:1;}
 }
 /* ---- levromart-launch-final-ux-v4 ---- */
 /* ================================================================
-   LAUNCH FINAL UX — one source of truth for compact search/sheets/storefront
+   LAUNCH FINAL UX, one source of truth for compact search/sheets/storefront
    ================================================================ */
 
 /* Search fields never contain a decorative/leading search icon. The icon is
@@ -2812,7 +2812,7 @@ html[data-levro-motion="calm"] *,html[data-levro-motion="calm"] *::before,html[d
 .product-card-payment-plan.pay-before{background:#EAF6F0!important;color:#0A5C40!important;border-color:#5BA98A!important;}
 .product-card-payment-plan.pay-after{background:#ffedd5!important;color:#c2410c!important;border-color:#fdba74!important;}
 
-/* Service negotiation UI — scoped only to service listings. */
+/* Service negotiation UI, scoped only to service listings. */
 .service-vendor-info-block{border:1px solid var(--border);border-radius:.9rem;padding:.8rem;margin:.8rem 0;background:color-mix(in srgb,var(--primary) 3%,var(--card-bg,transparent));}
 .service-vendor-info-head{display:flex;align-items:center;gap:.7rem;}
 .service-vendor-avatar{flex:0 0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:50%;}

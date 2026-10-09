@@ -320,7 +320,7 @@
     return `<div class="vendor-card homepage-vendor-card" data-vendor-id="${esc(v?.id || '')}" onclick="navigate('storefront',{vendorId:'${esc(v?.id || '')}'})" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();navigate('storefront',{vendorId:'${esc(v?.id || '')}'});}">
       ${avatarHtml}
       <div class="vendor-directory-copy" style="min-width:0;flex:1 1 auto;overflow:hidden;">
-        <strong class="vendor-directory-name">${esc(name)} <i class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
+        <strong class="vendor-directory-name">${esc(name)} <i data-vt="${esc(v?.id||"")}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor" title="Verified vendor"></i></strong>
         <p class="muted vendor-directory-city" style="margin:.15rem 0;">${esc(v?.city || 'Lagos')}</p>
         ${knownLine}
         <div class="vendor-card-footer">
