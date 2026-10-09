@@ -23162,7 +23162,7 @@ async function renderStorefrontInner(vendorId) {
       ${v.bio ? `<section class="storefront-about" aria-label="Vendor description">
         <div class="storefront-bio-wrap" id="storefrontBioWrap"><p class="storefront-bio">${esc(v.bio)}</p>${v.bio.length > 160 ? `<button type="button" class="storefront-bio-toggle" onclick="toggleStorefrontBio(this)">Read more</button>` : ""}</div>
       </section>` : ""}
-      <div class="storefront-meta"><span><i class="fa-solid fa-location-dot"></i> ${location}</span>${storefrontDistanceHtml(v)}${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
+      <div class="storefront-meta"><span class="sf-loc"><i class="fa-solid fa-location-dot"></i> ${location}</span>${storefrontDistanceHtml(v)}${v.sector?.name ? `<span><i class="fa-solid ${esc(v.sector.icon || "fa-shapes")}"></i> ${esc(v.sector.name)}</span>` : ""}</div>
       <div class="storefront-stats" id="storefrontStatsLine">${storefrontStatsLoadingInnerHtml(allProducts.length)}</div>
     </div>
   </section>
@@ -55573,11 +55573,11 @@ async function setVendorRequestPref(v){
   // replace "Lagos" / "Ibadan" on the card with the vendor's campus
   function swapLocation(card,x){
     if(!x.campus_id) return false; var r=window.lvCampusById(x.campus_id); if(!r) return false;
-    var el=card.querySelector(".vendor-home-city,.vd-loc,.vc2-where"); if(!el) return false;
+    var el=card.querySelector(".vendor-home-city,.vd-loc,.vc2-where,.vendor-directory-city"); if(!el) return false;
     var label=shortName(r), tn=null, w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
     while(w.nextNode()){ if(w.currentNode.nodeValue.trim()){ tn=w.currentNode; break; } }
     if(!tn) return false;
-    tn.nodeValue=(el.matches(".vc2-where")?"":" ")+label;
+    var rest=tn.nodeValue.indexOf(" · "); tn.nodeValue=(el.matches(".vc2-where")?"":" ")+label+(rest>0?tn.nodeValue.slice(rest):"");
     el.classList.add("lv-loc-campus"); el.title=r.name;
     var ic=el.querySelector("i"); if(ic) ic.className="fa-solid fa-graduation-cap";
     return true;
@@ -55594,12 +55594,14 @@ async function setVendorRequestPref(v){
         if(x.student_verified&&nm&&!nm.querySelector(".lv-svi")){ var ic=document.createElement("i"); ic.className="fa-solid fa-user-graduate lv-svi"; ic.title="Verified student"; ic.setAttribute("aria-label","Verified student"); nm.appendChild(document.createTextNode(" ")); nm.appendChild(ic); }
         if(!swapped){ var c=chipFor({campus_id:x.campus_id,student_verified:false},false); if(c) card.appendChild(c); }
       });
+      var sfl=document.querySelector(".storefront-meta .sf-loc");
+      if(sfl&&!sfl.dataset.lvc){ var sv=(window.currentViewParams&&currentViewParams.vendorId)||""; var xs=map.get(String(sv)); if(xs){ sfl.dataset.lvc="1"; var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML='<i class="fa-solid fa-graduation-cap"></i> '+e2(rr.name); sfl.title=rr.name; } } }
       var row=document.querySelector(".storefront-name-row");
       if(row&&!row.dataset.lvc){ var sid=(window.currentViewParams&&currentViewParams.vendorId)||""; var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=chipFor(x2,true); if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } } }
     }).finally(function(){busy=false;});
   }
   window.lvRefreshVendorMap=function(){VMAP=null;VAT=0;decorate();};
-  var dt=null; try{ new MutationObserver(function(){ clearTimeout(dt); dt=setTimeout(decorate,250); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+  var dt=null; try{ new MutationObserver(function(){ clearTimeout(dt); dt=setTimeout(decorate,60); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
   setTimeout(decorate,800);
 
   // ---------- vendor request campus scope
