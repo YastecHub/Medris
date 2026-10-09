@@ -1,0 +1,3 @@
+-- Applied via MCP (migration campus_school_submissions): student-submitted schools awaiting admin confirmation.
+-- Table campus_submissions(name_norm pk, name, status pending|approved|merged|rejected, merged_into, submitted_by, requests, created_at, reviewed_at) with RLS on and no direct policies.
+-- RPCs: campus_school_names() [anon/auth], submit_campus_school(p_name) [auth], admin_campus_submissions() [admin], admin_review_campus_school(p_norm,p_action approve|merge|reject,p_target) [admin].

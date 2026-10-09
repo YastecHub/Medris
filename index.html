@@ -55061,11 +55061,30 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
 #lvCampusBar .seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:.3rem .15rem .15rem;padding:3px;border-radius:12px;background:color-mix(in srgb,var(--text,#000) 6%,transparent)}
 #lvCampusBar .seg button{border:0;background:transparent;color:var(--text-muted,#667);font:inherit;font-size:.8rem;font-weight:600;padding:.5rem .4rem;border-radius:9px;cursor:pointer;transition:background .15s,color .15s}
 #lvCampusBar .seg button.on{background:var(--card,#fff);color:var(--text,#0f1d17);box-shadow:0 1px 3px rgba(15,29,23,.14)}
+
+.lvc-dup{position:absolute;inset:0;z-index:5;display:flex;align-items:flex-end;pointer-events:none}
+.lvc-dup.on{pointer-events:auto}
+.lvc-dup-back{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .2s}
+.lvc-dup.on .lvc-dup-back{background:rgba(0,0,0,.45)}
+.lvc-dup-sheet{position:relative;width:100%;max-height:82%;overflow:auto;background:var(--card,#fff);color:var(--text,#111);border-radius:24px 24px 0 0;padding:.6rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom,0px));transform:translateY(100%);transition:transform .24s cubic-bezier(.2,.8,.2,1);box-shadow:0 -12px 40px rgba(0,0,0,.3)}
+.lvc-dup.on .lvc-dup-sheet{transform:none}
+.lvc-dup-grab{width:42px;height:4px;border-radius:4px;background:color-mix(in srgb,var(--text,#000) 18%,transparent);margin:0 auto .8rem}
+.lvc-dup-sheet h3{margin:0 0 .25rem;font-size:1.2rem}
+.lvc-dup-sheet p{margin:0 0 .8rem;color:var(--text-muted,#667);font-size:.9rem}
+.lvc-dup-list{display:flex;flex-direction:column;gap:.45rem;margin-bottom:.9rem}
+.lvc-dup-row{display:flex;align-items:center;gap:.75rem;width:100%;text-align:left;padding:.65rem .75rem;border-radius:16px;border:1.5px solid var(--border,#dde5e0);background:var(--bg,#f6f8f7);color:inherit;cursor:pointer}
+.lvc-dup-row .lvc-logo{width:2.6rem;height:2.6rem;border-radius:12px;display:grid;place-items:center;overflow:hidden;flex:0 0 auto;background:var(--card,#fff);color:var(--primary,#16a34a)}
+.lvc-dup-row .lvc-logo img{width:100%;height:100%;object-fit:contain}
+.lvc-dup-row .t{flex:1;min-width:0;display:flex;flex-direction:column}
+.lvc-dup-row .t b{font-size:.95rem;line-height:1.25}
+.lvc-dup-row .t small{color:var(--text-muted,#667);font-size:.74rem}
+.lvc-dup-new{width:100%;padding:.85rem;border-radius:14px;border:1.5px dashed color-mix(in srgb,var(--primary,#16a34a) 55%,transparent);background:transparent;color:var(--primary,#16a34a);font-weight:700;cursor:pointer}
+.lvc-dup-note{display:block;text-align:center;margin-top:.6rem;color:var(--text-muted,#667)}
 </style>
 <script id="lv-campus-js">
 (function(){
   "use strict";
-  var DATA=null,loading=null,KIND={U:"University",P:"Polytechnic",E:"College of Education",C:"College"};
+  var SUBS=[],DATA=null,loading=null,KIND={U:"University",P:"Polytechnic",E:"College of Education",C:"College"};
   function esc2(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function load(){
     if(DATA) return Promise.resolve(DATA);
@@ -55073,7 +55092,12 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     loading=fetch("/campuses.json").then(function(r){return r.json();}).then(function(rows){
       DATA=rows.map(function(r){var o={id:r[0],name:r[1],kind:r[2],fund:r[3],state:r[4],city:r[5],abbr:r[6],logo:!!r[7]};
         o.hay=(o.name+" "+o.abbr+" "+o.city+" "+o.state+" "+(KIND[o.kind]||"")).toLowerCase().replace(/[^a-z0-9 ]+/g," ");return o;});
-      return DATA;
+      return Promise.resolve().then(function(){return sb.rpc("campus_school_names");}).then(function(x){
+        SUBS=(x&&x.data)||[];
+        SUBS.forEach(function(n){ if(n.status!=="approved") return; var id="custom:"+n.name;
+          DATA.push({id:id,name:n.name,kind:"U",fund:"",state:"",city:"",abbr:"",logo:false,custom:true,hay:n.name.toLowerCase().replace(/[^a-z0-9 ]+/g," ")}); });
+        return DATA;
+      }).catch(function(){return DATA;});
     }).catch(function(){loading=null;DATA=[];return DATA;});
     return loading;
   }
@@ -55125,6 +55149,38 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   window.lvMascotSvg=MASCOT;
   var LINES=["Hi! I'm Levi 🎓 Pick your campus and I'll show you what's near you.","Tap your school's logo — it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom — we'll sort it out."];
 
+  // ---- is this school already on the list (or already suggested)?
+  var STOP={of:1,the:1,and:1,for:1,university:1,college:1,polytechnic:1,school:1,federal:1,state:1,institute:1,uni:1,univ:1,poly:1,"in":1,at:1,nigeria:1,science:1,sciences:1,technology:1,education:1};
+  function toks(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").split(/\s+/).filter(Boolean);}
+  function dupCandidates(input){
+    var all=toks(input), key=all.filter(function(t){return !STOP[t];}), joined=all.join(""), out=[];
+    if(!key.length) key=all;
+    function tokIn(t,hayToks){ return hayToks.some(function(h){return h===t||(t.length>=4&&(h.indexOf(t)===0||t.indexOf(h)===0&&h.length>=4));}); }
+    function score(name,abbr){
+      var ht=toks(name), hk=ht.filter(function(t){return !STOP[t];}), ab=String(abbr||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+      if(ht.join("")===joined) return 100;
+      if(ab&&ab.length>=2&&(all.indexOf(ab)>=0||joined===ab)) return 90;
+      if(key.every(function(t){return tokIn(t,ht);})&&key.length>=1) return 70+Math.min(key.length,3)+10*Math.min(1,key.length/Math.max(1,hk.length));
+      if(hk.length>=2&&hk.every(function(t){return tokIn(t,all);})) return 60;
+      var ov=key.filter(function(t){return tokIn(t,ht);}).length; if(key.length>=2&&ov>=2&&ov/key.length>=.6) return 50;
+      return 0;
+    }
+    (DATA||[]).forEach(function(r){ var sc=score(r.name,r.abbr); if(sc) out.push({r:r,sc:sc}); });
+    (SUBS||[]).forEach(function(n){ if(n.status==="approved") return; var sc=score(n.name,""); if(sc) out.push({r:{id:"custom:"+n.name,name:n.name,custom:true,pending:true},sc:sc}); });
+    out.sort(function(a,b){return b.sc-a.sc;}); return out.slice(0,5).map(function(x){return x.r;});
+  }
+  function dupDrawer(root,name,cands,onUse){
+    var old=root.querySelector(".lvc-dup"); if(old) old.remove();
+    var d=document.createElement("div"); d.className="lvc-dup";
+    d.innerHTML='<div class="lvc-dup-back"></div><div class="lvc-dup-sheet"><div class="lvc-dup-grab"></div><h3>Is this your school?</h3><p>These look like “'+esc2(name)+'”. Pick yours so everyone ends up on the same page.</p><div class="lvc-dup-list">'
+     +cands.map(function(r,i){return '<button type="button" class="lvc-dup-row" data-i="'+i+'"><span class="lvc-logo">'+(r.custom?'<i class="fa-solid fa-graduation-cap"></i>':logoHtml(r))+'</span><span class="t"><b>'+esc2(r.name)+'</b>'+(r.pending?'<small>Added by another student · awaiting confirmation</small>':(r.state?'<small>'+esc2([r.city,r.state].filter(Boolean).join(", "))+'</small>':''))+'</span><i class="fa-solid fa-chevron-right"></i></button>';}).join("")
+     +'</div><button type="button" class="lvc-dup-new">No, add “'+esc2(name)+'” as a new school</button><small class="lvc-dup-note">New schools are checked by Levromart before they’re confirmed.</small></div>';
+    root.appendChild(d); requestAnimationFrame(function(){d.classList.add("on");});
+    function shut(){d.classList.remove("on");setTimeout(function(){d.remove();},220);}
+    d.querySelector(".lvc-dup-back").addEventListener("click",shut);
+    d.querySelector(".lvc-dup-new").addEventListener("click",function(){shut();onUse(rec("custom:"+name));});
+    d.querySelector(".lvc-dup-list").addEventListener("click",function(e){var b=e.target.closest("[data-i]");if(!b)return;var r=cands[+b.dataset.i];shut();onUse(r.custom?rec(r.id):rec(r.id));});
+  }
   window.lvOpenCampusPicker=function(opts){
     opts=opts||{}; var existing=document.getElementById("lvCampus"); if(existing) existing.remove();
     var w=document.createElement("div"); w.id="lvCampus"; w.setAttribute("role","dialog"); w.setAttribute("aria-modal","true");
@@ -55181,7 +55237,10 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
       if(a==="done"){close();if(opts.onDone)opts.onDone(Array.from(chosen));} else if(a==="clear"){chosen.clear();grid.querySelectorAll(".lvc-item.sel").forEach(function(n){n.classList.remove("sel");});doneLabel();} else if(a==="all") pick(rec("all")); else if(a==="none") pick(rec("none")); else if(a==="custom"){custom.classList.add("on");setTimeout(function(){cin.focus();},60);}});
     custom.addEventListener("click",function(e){var b=e.target.closest("[data-a]");if(!b)return;
       if(b.dataset.a==="cancel") custom.classList.remove("on");
-      else{var v=cin.value.trim().replace(/\s+/g," ");if(v.length<3){cin.focus();return;}pick(rec("custom:"+v));}});
+      else{var v=cin.value.trim().replace(/\s+/g," ");if(v.length<3){cin.focus();return;}
+        var cands=dupCandidates(v);
+        if(!cands.length){pick(rec("custom:"+v));return;}
+        dupDrawer(w,v,cands,function(r){pick(r);});}});
     if(opts.focusSearch) setTimeout(function(){input.focus();},300);
   };
 
@@ -55194,6 +55253,14 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     var r=await sb.from("users").update({campus_id:id}).eq("id",uid);
     if(r.error){ try{localStorage.setItem("lv-campus-pending",id);}catch(_){} throw r.error; }
     try{localStorage.removeItem("lv-campus-pending");}catch(_){}
+    if(String(id).indexOf("custom:")===0){
+      try{
+        var sr=await sb.rpc("submit_campus_school",{p_name:String(id).slice(7)});
+        var row=sr&&sr.data&&(Array.isArray(sr.data)?sr.data[0]:sr.data);
+        if(row&&row.status==="merged"&&row.merged_into){ await sb.from("users").update({campus_id:row.merged_into}).eq("id",uid); id=row.merged_into; try{localStorage.setItem("lv-campus",id);}catch(_){} }
+        else if(row&&row.status==="pending"){ try{showToast("Thanks! We'll confirm your school shortly.","success");}catch(_){} }
+      }catch(_){}
+    }
     try{ if(profile) profile.campus_id=id; }catch(_){}
     try{ if(vendor) vendor.campus_id=id; }catch(_){}
     return true;
@@ -55414,6 +55481,11 @@ async function setVendorRequestPref(v){
 :root:root:root body #app .vd-page .vd-views button.vd-view:active{transform:scale(.92)}
 :root:root:root body #app .vd-page .vd-views button.vd-view svg{width:20px!important;height:20px!important;stroke-width:1.9!important}
 :root:root:root body #app .vd-page .vd-views button.vd-view.active{background:var(--card)!important;color:var(--primary,#16a34a)!important;box-shadow:0 1px 3px rgba(0,0,0,.14),0 0 0 1px color-mix(in srgb,var(--primary,#16a34a) 25%,transparent)!important}
+
+.ac-sub{border:1px solid var(--border,#dde5e0);border-radius:16px;padding:.8rem;margin:.5rem 0;background:var(--card,#fff)}
+.ac-sub-h{display:flex;align-items:center;gap:.7rem}.ac-sub-h b{display:block}.ac-sub-h small{color:var(--text-muted,#667)}
+.ac-sub-a{display:flex;gap:.5rem;margin-top:.7rem}.ac-sub-a button{flex:1;padding:.55rem .4rem;border-radius:12px;border:1.5px solid var(--border,#dde5e0);background:transparent;color:inherit;font-weight:600;cursor:pointer}
+.ac-sub-a .ok{background:var(--primary,#16a34a);border-color:transparent;color:#fff}.ac-sub-a .no{color:#dc2626}
 </style>
 <script id="lv-campus2-js">
 (function(){
@@ -55807,6 +55879,23 @@ async function setVendorRequestPref(v){
      +(vs.length?vs.map(vendorRow).join(""):'<p class="muted">No vendors yet.</p>')
      +(also.length?'<div class="ac-sec">Also sells here ('+also.length+')</div>'+also.map(vendorRow).join(""):"");
   }
+  function loadSubs(host){
+    var box=host.querySelector("#acSubs"); if(!box) return;
+    sb.rpc("admin_campus_submissions").then(function(r){
+      var rows=(r&&r.data)||[]; if(!rows.length){ box.innerHTML=""; return; }
+      box.innerHTML='<div class="ac-sec" style="margin-top:0">New schools to confirm ('+rows.length+')</div>'+rows.map(function(x){
+        return '<div class="ac-sub"><div class="ac-sub-h"><span class="ac-ico"><i class="fa-solid fa-graduation-cap"></i></span><div><b>'+e3(x.name)+'</b><small>'+(Number(x.users_count)||0)+' student'+(Number(x.users_count)===1?'':'s')+' · '+(Number(x.vendors_count)||0)+' vendor'+(Number(x.vendors_count)===1?'':'s')+'</small></div></div>'
+          +'<div class="ac-sub-a"><button type="button" class="ok" data-sub="approve" data-n="'+e3(x.name_norm)+'">Approve</button><button type="button" data-sub="merge" data-n="'+e3(x.name_norm)+'">Same as…</button><button type="button" class="no" data-sub="reject" data-n="'+e3(x.name_norm)+'">Reject</button></div></div>';}).join("");
+      box.dataset.rows=JSON.stringify(rows);
+    }).catch(function(){});
+  }
+  function subAction(host,act,norm){
+    var done=function(msg){ try{showToast(msg,"success");}catch(_){} loadSubs(host); };
+    var fail=function(e){ try{showToast((e&&e.message)||"Couldn't save that.","error");}catch(_){} };
+    if(act==="approve"){ sb.rpc("admin_review_campus_school",{p_norm:norm,p_action:"approve"}).then(function(r){ if(r.error) return fail(r.error); done("School approved."); }); }
+    else if(act==="reject"){ if(!confirm("Reject this school? Everyone who picked it will be set to 'Not on a campus'.")) return; sb.rpc("admin_review_campus_school",{p_norm:norm,p_action:"reject"}).then(function(r){ if(r.error) return fail(r.error); done("School rejected."); }); }
+    else if(act==="merge"){ window.lvCampuses().then(function(){ window.lvOpenCampusPicker({title:"Which school is it?",current:"",onPick:function(t){ sb.rpc("admin_review_campus_school",{p_norm:norm,p_action:"merge",p_target:t.id}).then(function(r){ if(r.error) return fail(r.error); done("Merged into "+t.name+"."); }); }}); }); }
+  }
   window.renderAdminCampuses=async function(){
     var html='<h2><i class="fa-solid fa-graduation-cap"></i> Campuses</h2><p class="muted">Vendors grouped by their major campus.</p>'+adminNavHtml("adminCampuses")+'<div id="acHost"><p class="muted" style="margin:1rem 0"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</p></div>';
     setTimeout(async function(){
@@ -55820,11 +55909,12 @@ async function setVendorRequestPref(v){
         var by={}; all.forEach(function(v){ var k=v.campus_id&&v.campus_id!=="none"?v.campus_id:"__none"; (by[k]=by[k]||[]).push(v); });
         ADM={all:all,by:by,mode:"all"};
         var total=all.length,set=all.length-(by.__none||[]).length,ver=all.filter(function(v){return v.student_verified;}).length,pend=all.filter(function(v){return v.svs==="pending";}).length;
-        host.innerHTML='<div id="acTop"><div class="ac-stats"><div class="ac-stat"><b>'+total+'</b><span>Vendors</span></div><div class="ac-stat ok"><b>'+set+'</b><span>With a campus</span></div><div class="ac-stat '+((by.__none||[]).length?'bad':'')+'"><b>'+(by.__none||[]).length+'</b><span>No campus yet</span></div><div class="ac-stat ok"><b>'+ver+'</b><span>Verified students</span></div><div class="ac-stat '+(pend?'warn':'')+'"><b>'+pend+'</b><span>Verifications to review</span></div><div class="ac-stat"><b>'+Object.keys(by).filter(function(k){return k!=="__none";}).length+'</b><span>Campuses with vendors</span></div></div>'
+        host.innerHTML='<div id="acSubs"></div><div id="acTop"><div class="ac-stats"><div class="ac-stat"><b>'+total+'</b><span>Vendors</span></div><div class="ac-stat ok"><b>'+set+'</b><span>With a campus</span></div><div class="ac-stat '+((by.__none||[]).length?'bad':'')+'"><b>'+(by.__none||[]).length+'</b><span>No campus yet</span></div><div class="ac-stat ok"><b>'+ver+'</b><span>Verified students</span></div><div class="ac-stat '+(pend?'warn':'')+'"><b>'+pend+'</b><span>Verifications to review</span></div><div class="ac-stat"><b>'+Object.keys(by).filter(function(k){return k!=="__none";}).length+'</b><span>Campuses with vendors</span></div></div>'
           +'<div class="ac-tools"><input type="search" placeholder="Search a campus or vendor…"><button type="button" class="ac-chip on" data-m="all">All</button><button type="button" class="ac-chip" data-m="review">To review</button></div></div><div id="acList"></div>';
-        paintList(host);
+        paintList(host); loadSubs(host);
         host.addEventListener("input",function(e){ if(e.target.matches("input")) paintList(host); });
         host.addEventListener("click",function(e){
+          var sa=e.target.closest("[data-sub]"); if(sa){ subAction(host,sa.dataset.sub,sa.dataset.n); return; }
           var m=e.target.closest("[data-m]"); if(m){ ADM.mode=m.dataset.m; host.querySelectorAll("[data-m]").forEach(function(c){c.classList.toggle("on",c===m);}); paintList(host); return; }
           var g=e.target.closest("[data-g]"); if(g){ paintDetail(host,g.dataset.g); window.scrollTo({top:0}); return; }
           if(e.target.closest("[data-back]")){ host.querySelector("#acTop").style.display=""; paintList(host); return; }
