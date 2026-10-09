@@ -277,11 +277,11 @@
     var v=null; try{ v=(typeof vendor!=="undefined"&&vendor&&vendor.id)?vendor:null; }catch(_){}
     if(!v||typeof sb==="undefined") return;
     nudged=true;
-    try{ if(sessionStorage.getItem("lv-face-nudged2")) return; }catch(_){}
+    try{ if(sessionStorage.getItem("lv-face-nudged3")) return; }catch(_){}
     sb.from("vendor_student_verification").select("status,selfie_url,id_card_url,biodata_url,face_v,matric_number").eq("vendor_id",v.id).maybeSingle().then(function(r){
       var row=r&&r.data; if(!row||(row.face_v||0)>=2) return;
       if(document.getElementById("lvFace")||document.getElementById("lvSetup")||document.getElementById("lvCampus")){ nudged=false; return; }
-      try{ sessionStorage.setItem("lv-face-nudged2","1"); }catch(_){}
+      try{ sessionStorage.setItem("lv-face-nudged3","1"); }catch(_){}
       var docs=[row.id_card_url,row.biodata_url].filter(Boolean);
       window.lvFacePreload(); window.lvFacePrepDocs(docs);
       var m=document.createElement("div"); m.id="lvFaceNudge"; m.className="lv-cm";
