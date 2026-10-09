@@ -16768,7 +16768,7 @@ async function renderHome() {
   // "Shop by Category" rail should only ever offer a tap that leads
   // somewhere, not a sector nobody has listed anything under yet.
   const activeSectorIds = await (async () => {
-    const cacheKey = "active-sector-ids";
+    const cacheKey = "active-sector-ids:" + ((typeof window.lvViewCampus === "function") ? window.lvViewCampus() : "all");
     const cached = getCachedCatalog(cacheKey);
     if (cached) return cached;
     let ids;
@@ -16807,6 +16807,7 @@ async function renderHome() {
     ? (categories || []).filter((c) => c.parent_category_id && activeSectorIds.categoryIds.has(String(c.id)))
     : (window.__levroRailCategories || []);
   if (activeSectorIds?.categoryIds) window.__levroRailCategories = railCategories;
+  window.__levroAllCategories = categories || window.__levroAllCategories || [];
   const homepageCarouselSlides = await loadHomepageCarouselSlides();
   // Keep an all-category catalogue locally. The active category is applied
   // instantly on-device when a category chip is tapped, so the offline cache
@@ -55321,6 +55322,14 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
       if(grid&&raw&&plainHome&&typeof filterHomeProducts==="function"){
         var idx=id==="all"?raw:raw.filter(function(x){return x.campus_id===id||x.ops_scope==="all"||(x.ops_scope==="multiple"&&Array.isArray(x.ops)&&x.ops.indexOf(id)>-1);});
         window.__homeBrowseIndex=idx; window.__homeFullIndex=idx;
+        try{
+          var allCats=window.__levroAllCategories||[], rail=document.querySelector("#app .levro-home-cat-rail");
+          if(rail&&allCats.length&&typeof homeCategoryRailHtml==="function"){
+            var have=new Set(idx.map(function(x){return String(x.category_id);}));
+            var cats=allCats.filter(function(c){return c.parent_category_id&&have.has(String(c.id));});
+            if(cats.length){ window.__levroRailCategories=cats; var tmp=document.createElement("div"); tmp.innerHTML=homeCategoryRailHtml(cats); rail.replaceWith(tmp.firstElementChild); }
+          }
+        }catch(_){}
         grid.style.transition="opacity .12s"; grid.style.opacity=".45";
         Promise.resolve(filterHomeProducts()).catch(function(){}).then(function(){ grid.style.opacity=""; });
         return;
