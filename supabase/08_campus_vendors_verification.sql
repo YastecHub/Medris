@@ -7,3 +7,4 @@ alter table public.equipment_requests add column if not exists campus_id text;
 -- vendor_student_verification (matric, faculty, department, level, ID card + biodata images, status) with owner/admin RLS,
 -- admin_review_student_verification() RPC, and notify_new_request() honouring request_pref + request_campus_scope
 -- were applied directly in the database.
+alter table public.vendors add column if not exists campus_setup_done boolean not null default false;
