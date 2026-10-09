@@ -219,7 +219,7 @@ const pushKind = (e) => /fcm\.googleapis|android/.test(String(e)) ? "android" : 
 const isHttps = (u) => /^https:\/\//.test(String(u || ""));
 // The picture is composed on the fly by /api/notif-icon (person/shop photo or initials, or an event icon,
 // with the small Levromart mark at the bottom-right, like WhatsApp and Instagram).
-const ICON_ORIGIN = "https://levromart.vercel.app";
+const ICON_ORIGIN = "https://levromart.com";
 const composeIcon = ({ u, n, k }) => `${ICON_ORIGIN}/api/notif-icon?` + [u && `u=${encodeURIComponent(u)}`, n && `n=${encodeURIComponent(String(n).slice(0, 60))}`, k && `k=${k}`].filter(Boolean).join("&");
 async function pickNotificationIcon(SUPABASE_URL, svcHeaders, n) {
   const tp = n.target_params || {};
