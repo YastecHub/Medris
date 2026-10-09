@@ -1347,13 +1347,14 @@
     // Services can use either billing model. Commission services use negotiation;
     // monthly services keep a fixed price and use the existing ₦999 manual listing-fee flow.
     select.disabled=false;
-    if(hint)hint.textContent=select.value==="monthly"
+    const __hintText=select.value==="monthly"
       ? (service ? "Monthly service: set a fixed price, transfer ₦999, upload your receipt, then wait for admin approval." : "Monthly listing: transfer ₦999, upload your receipt, then wait for admin approval.")
       : (service ? "Commission service: buyers request the service and propose a price for you to accept, decline, or counter." : "Commission-based listings can go live without an upfront activation payment.");
-    if(saveBtn&&!editingProductId)saveBtn.innerHTML=select.value==="monthly"?'<i class="fa-solid fa-receipt"></i> Submit ₦999 payment': 'Save to Product';
+    if(hint&&hint.textContent!==__hintText)hint.textContent=__hintText;
+    if(saveBtn&&!editingProductId){const __btnHtml=select.value==="monthly"?'<i class="fa-solid fa-receipt"></i> Submit ₦999 payment': 'Save to Product'; if(saveBtn.__lvHtml!==__btnHtml){saveBtn.innerHTML=__btnHtml;saveBtn.__lvHtml=__btnHtml;}}
   };
   window.syncPackageBillingUI=function(){
-    const s=byId("pkgBillingModel"),h=byId("pkgBillingHint");if(h)h.textContent=s?.value==="monthly"?"Monthly package: transfer ₦999, upload your receipt, then wait for admin approval.":"Commission-based packages can go live without an activation payment.";
+    const s=byId("pkgBillingModel"),h=byId("pkgBillingHint");if(h){const t=s?.value==="monthly"?"Monthly package: transfer ₦999, upload your receipt, then wait for admin approval.":"Commission-based packages can go live without an activation payment."; if(h.textContent!==t)h.textContent=t;}
   };
 
   async function finalPaymentReturn(){ return; }

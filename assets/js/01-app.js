@@ -4099,7 +4099,9 @@ function initBottomNavScrollMotion(){
   };
   const onScroll=()=>{if(!raf)raf=requestAnimationFrame(apply);};
   window.addEventListener("scroll",onScroll,{passive:true});
-  document.addEventListener("scroll",onScroll,{passive:true,capture:true});
+  // Only the page itself (or the chat list) matters here. Rows that auto-scroll sideways fire "scroll" constantly, and each one
+  // used to force a full-page layout just to read the scroll position.
+  document.addEventListener("scroll",(e)=>{ const t=e.target; if(t!==document && t!==document.documentElement && !(t&&t.classList&&t.classList.contains("chat-messages"))) return; onScroll(); },{passive:true,capture:true});
   window.addEventListener("resize",()=>{lastY=getMetrics().y;restore();},{passive:true});
   document.addEventListener("visibilitychange",()=>{if(!document.hidden){lastY=getMetrics().y;restore();}});
 }
@@ -4976,14 +4978,13 @@ async function navigate(view, params = {}, pushHistory = true) {
     if (instantRouteHtml) {
       app.innerHTML = instantRouteHtml;
     } else {
-      // Keep the page you are leaving on screen while the next one loads. The placeholder shell only appears if the
-      // new page takes longer than ~160 ms, so quick navigations never flash an empty frame in between.
+      // Pages that render instantly never show a placeholder; slower ones show it on the very next tick so the tap responds at once.
       clearTimeout(window.__lvShellTimer);
       window.__lvShellTimer = setTimeout(() => {
         if (navToken !== navigationGeneration) return;
         app.innerHTML = navigationShellHtml(view);
         restoreAdminTabsScroll();
-      }, 160);
+      }, 0);
     }
     restoreAdminTabsScroll();
     syncLeviFabVisibility();
@@ -5454,7 +5455,7 @@ function setupAutoScroll(container, { interval = 30, pauseAfterInteraction = 650
     container.addEventListener("mousedown", pause);
   }
   const timer = setInterval(() => {
-    if (!horizontalBrowseEnabled || paused || !container.isConnected) return;
+    if (!horizontalBrowseEnabled || paused || window.__lvDragging || document.hidden || !container.isConnected) return;
     const maxScroll = container.scrollWidth - container.clientWidth;
     if (maxScroll <= 4) return;
     const step = 1.8;
@@ -11510,7 +11511,7 @@ async function __levroOriginalRenderProductDetail(productId) {
   let html = `<div class="card product-detail-card" data-product-detail-id="${esc(product.id)}" style="position:relative;">
     <div class="product-detail-top-actions" aria-label="Product actions">
       <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${product.id}')" title="Save to wishlist" aria-label="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
-      <button type="button" class="product-storefront-share-btn lv-top-comment-btn" onclick="lvOpenProductComments('${product.id}')" title="Comments" aria-label="Open comments"><i class="fa-regular fa-comment-dots"></i></button>
+      <button type="button" class="product-storefront-share-btn lv-top-comment-btn" onclick="lvOpenProductComments('${product.id}')" title="Comments" aria-label="Open comments"><span class="lv-cbubble"><i class="fa-regular fa-comment"></i><b class="lv-ccount" data-product-id="${esc(product.id)}">${window.__productCommentCounts?.get?.(String(product.id)) ?? ""}</b></span></button>
       <button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share product" aria-label="Share product"><i class="fa-solid fa-share-nodes"></i></button>
     </div>
     <h2 class="product-detail-title">${esc(product.name)}${product.is_service ? ` <span class="badge">Service</span>` : ""}</h2>
@@ -13978,7 +13979,7 @@ window.__productCommentCounts=window.__productCommentCounts||new Map();window.__
 let productCommentRealtimeChannel=null,productCommentRealtimeProductId=null,packageCommentRealtimeChannel=null,packageCommentRealtimePackageId=null,activeProductCommentReplyId=null,activePackageCommentReplyId=null;
 const productCommentsLoaded=new Map(),productCommentsFetches=new Map(),packageCommentsLoaded=new Map(),packageCommentsFetches=new Map();
 function activeSocialCommentPanel(kind="product"){return window.__commentSheetPanel||byId(kind==="package"?"packageCommentsPanel":"productCommentsPanel")}function activeSocialCommentInput(kind="product"){return window.__commentSheetInput||byId(kind==="package"?"packageCommentInput":"productCommentInput")}
-async function hydrateProductCommentCountsInView(){const ids=[...new Set([...document.querySelectorAll(".card-comment-btn[data-product-id],#productCommentsCount[data-product-id]")].map(n=>n.dataset.productId).filter(Boolean))];if(!ids.length)return;try{const {data,error}=await sb.rpc("get_product_comment_counts",{p_product_ids:ids});if(!error)(data||[]).forEach(r=>window.__productCommentCounts.set(String(r.product_id),Number(r.comment_count||0)))}catch(_){}document.querySelectorAll(".card-comment-btn[data-product-id]").forEach(b=>{const e=b.querySelector(".product-comment-count");if(e)e.textContent=String(window.__productCommentCounts.get(String(b.dataset.productId))||0)});hydrateProductVariantIndicatorsInView()}
+async function hydrateProductCommentCountsInView(){const ids=[...new Set([...document.querySelectorAll(".card-comment-btn[data-product-id],#productCommentsCount[data-product-id],.lv-ccount[data-product-id]")].map(n=>n.dataset.productId).filter(Boolean))];if(!ids.length)return;try{const {data,error}=await sb.rpc("get_product_comment_counts",{p_product_ids:ids});if(!error)(data||[]).forEach(r=>window.__productCommentCounts.set(String(r.product_id),Number(r.comment_count||0)))}catch(_){}document.querySelectorAll(".card-comment-btn[data-product-id]").forEach(b=>{const e=b.querySelector(".product-comment-count");if(e)e.textContent=String(window.__productCommentCounts.get(String(b.dataset.productId))||0)});document.querySelectorAll(".lv-ccount[data-product-id]").forEach(e=>{const n=window.__productCommentCounts.get(String(e.dataset.productId))||0;e.textContent=n>99?"99+":String(n);e.classList.toggle("big",n>9)});hydrateProductVariantIndicatorsInView()}
 async function hydratePackageCommentCountsInView(){const ids=[...new Set([...document.querySelectorAll(".package-card-comment-btn[data-package-id],#packageCommentsCount[data-package-id],.package-listing-card[data-package-id]")].map(n=>n.dataset.packageId).filter(Boolean))];if(!ids.length)return;try{const [{data:cc,error},{data:fc},{data:settings}]=await Promise.all([sb.rpc("get_package_comment_counts",{p_package_ids:ids}),sb.rpc("get_package_favorite_counts",{p_package_ids:ids}),sb.from("package_engagement_settings").select("package_id,vendor_id,like_visibility").in("package_id",ids)]);if(!error)(cc||[]).forEach(r=>window.__packageCommentCounts.set(String(r.package_id),Number(r.comment_count||0)));const fm=new Map((fc||[]).map(r=>[String(r.package_id),Number(r.favorite_count||0)]));const sm=new Map((settings||[]).map(r=>[String(r.package_id),r]));document.querySelectorAll(".package-listing-card[data-package-id]").forEach(card=>{const id=String(card.dataset.packageId),st=sm.get(id)||{},e=card.querySelector(".package-like-count"),wrap=e?.closest(".package-card-engagement-count"),visible=st.like_visibility!=="no_one";if(e)e.textContent=String(fm.get(id)||0);wrap?.classList.toggle("hidden",!visible)});}catch(_){}document.querySelectorAll(".package-card-comment-btn[data-package-id]").forEach(b=>{const e=b.querySelector(".package-comment-count");if(e)e.textContent=String(window.__packageCommentCounts.get(String(b.dataset.packageId))||0)})}
 // Products didn't have their own rating before -- only the vendor's overall
 // rating showed anywhere. product_rating_stats aggregates each product's own
@@ -24865,6 +24866,8 @@ function setupDraggableFab(fab, storageKey, onTap, onLongPress) {
     if (!moved && Math.hypot(dx, dy) > MOVE_THRESHOLD) {
       moved = true;
       clearTimeout(longTimer);
+      window.__lvDragging = true;                                  // sideways auto-scrolling rows pause while a button is dragged
+      try { homeCarouselPause?.(4000); } catch (_) {}
       fab.classList.add("dragging");
     }
     if (!moved) return;
@@ -24886,6 +24889,7 @@ function setupDraggableFab(fab, storageKey, onTap, onLongPress) {
     if (!dragging || (e && e.pointerId !== pointerId)) return;
     dragging = false;
     clearTimeout(longTimer);
+    window.__lvDragging = false;
     if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
     if (fab.__lvPinned) {
       fab.__lvPinned = false;

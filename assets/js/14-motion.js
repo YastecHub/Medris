@@ -103,9 +103,9 @@
       var chat=document.body&&document.body.classList.contains("chat-full-page");
       var tabSwitch=!!(TABS[prevView]&&TABS[vw]);
       if(chat) animate(this,[{opacity:0},{opacity:1}],180);
-      else if(tabSwitch&&!goingBack) animate(this,[{opacity:0,transform:"translateY(10px)"},{opacity:1,transform:"none"}],210);
-      else if(goingBack) animate(this,[{opacity:0,transform:"translateX(-24px)"},{opacity:1,transform:"none"}],220);
-      else animate(this,[{opacity:0,transform:"translateX(30px)"},{opacity:1,transform:"none"}],230);
+      else if(tabSwitch&&!goingBack) animate(this,[{opacity:0,transform:"translateY(8px)"},{opacity:1,transform:"none"}],170);
+      else if(goingBack) animate(this,[{opacity:0,transform:"translateX(-22px)"},{opacity:1,transform:"none"}],190);
+      else animate(this,[{opacity:0,transform:"translateX(26px)"},{opacity:1,transform:"none"}],190);
       goingBack=false;
     }
   });

@@ -1256,7 +1256,11 @@ function hideLeviFromPanel() {
     const sub = w ? `New race ends in ${countdownText()} · tap to see the board` : lead ? `Ends in ${countdownText()} · ${esc(lead.business_name)} leads with ${num(lead.points)} pts` : `Ends in ${countdownText()} · see who is most active`;
     return `<div class="home-lb-card" id="homeLbCard" role="link" tabindex="0" onclick="navigate('leaderboard')"><div class="home-lb-ico"><i class="fa-solid ${w ? "fa-crown" : "fa-trophy"}"></i></div><div class="home-lb-copy"><strong>${title}</strong><span>${sub}</span></div><div class="home-lb-av">${faces}</div><i class="fa-solid fa-chevron-right go"></i></div>`;
   }
+  window.lvVendorSpot = () => homeSpot();
   async function mountHomeCard() {
+    // The Vendor of the Week now lives as a trophy button in the campus bar (see lv-campus-js); no big card on Home.
+    try { $("homeLbCard")?.remove(); } catch (_) {}
+    return;
     if (currentView !== "home") return;
     const app = $("app");
     const anchor = () => app?.querySelector(":scope > .levro-home-hero") || app?.querySelector(":scope > .levro-home-cat-rail");

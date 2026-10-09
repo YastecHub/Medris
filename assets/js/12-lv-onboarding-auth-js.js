@@ -1279,15 +1279,16 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   // ---- campus bar on Home
   function barHtml(){
     var v=window.lvViewCampus(),mine=window.lvMyCampusId(),r=v==="all"?null:rec(v);
-    var chev='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
-    var pin='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
-    return '<button type="button" class="lvcb-main"><span class="ico">'+(r?logoHtml(r):pin)+'</span><span class="t"><small>'+(r?"Showing products from":"Showing products from")+'</small><b>'+esc2(r?r.name:"All campuses")+'</b></span><span class="chev">'+chev+'</span></button>'
-      +'<div class="seg" role="tablist"><button type="button" role="tab" data-m="mine" aria-selected="'+(mine&&v===mine)+'" class="'+(mine&&v===mine?'on':'')+'">My campus</button><button type="button" role="tab" data-m="all" aria-selected="'+(v==="all")+'" class="'+(v==="all"?'on':'')+'">All campuses</button></div>';
+    var chev='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+    var pin='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
+    return '<button type="button" class="lvcb-main" aria-label="Choose a campus"><span class="ico">'+(r?logoHtml(r):pin)+'</span><span class="t"><b>'+esc2(r?r.name:"All campuses")+'</b></span><span class="chev">'+chev+'</span></button>'
+      +'<div class="seg" role="tablist"><button type="button" role="tab" data-m="mine" aria-selected="'+(mine&&v===mine)+'" class="'+(mine&&v===mine?'on':'')+'">Mine</button><button type="button" role="tab" data-m="all" aria-selected="'+(v==="all")+'" class="'+(v==="all"?'on':'')+'">All</button></div>'
+      +'<button type="button" class="lvcb-trophy" data-lb="1" aria-label="Vendor of the Week" title="Vendor of the Week"><i class="fa-solid fa-trophy"></i></button>';
   }
   function setView(id){
     try{localStorage.setItem("lv-view-campus",id);}catch(_){}
     var bar=document.getElementById("lvCampusBar");
-    if(bar){ var h0=barHtml(); bar.innerHTML=h0; bar.__lvH=h0; }
+    if(bar){ var h0=barHtml(); bar.innerHTML=h0; bar.__lvH=h0; spotIcon(bar); }
     try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){}
     try{ if(document.getElementById("vendorsMap")&&typeof renderVendorsMap==="function") setTimeout(renderVendorsMap,60); }catch(_){}
     setTimeout(function(){ try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){} },30);
@@ -1316,6 +1317,10 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     window.__homeFullIndex=null;
     try{navigate("home",{},false);}catch(_){}
   }
+  // the trophy button turns into a crown when there is a Vendor of the Week
+  function spotIcon(bar){
+    try{ if(!window.lvVendorSpot) return; window.lvVendorSpot().then(function(sp){ var b=bar.querySelector(".lvcb-trophy"); if(!b||!sp) return; var w=sp.winner; var i=b.querySelector("i"); if(w){ i.className="fa-solid fa-crown"; b.title="Vendor of the Week: "+w.business_name; b.setAttribute("aria-label",b.title); } }); }catch(_){}
+  }
   function mountHomeBar(){
     var grid=document.getElementById("productGrid"); if(!grid) return;
     var bar=document.getElementById("lvCampusBar");
@@ -1325,12 +1330,13 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     var kept=window.__lvBarStash;
     if(kept&&!kept.isConnected&&kept.dataset.painted){   // reuse the bar from the last Home visit: its logo is already decoded, so nothing blinks
       window.__lvBarStash=null; bar=kept; anchor.parentNode.insertBefore(bar,anchor);
-      var h=barHtml(); if(bar.__lvH!==h){ bar.innerHTML=h; bar.__lvH=h; }
+      var h=barHtml(); if(bar.__lvH!==h){ bar.innerHTML=h; bar.__lvH=h; spotIcon(bar); }
       return;
     }
     bar=document.createElement("div"); bar.id="lvCampusBar"; anchor.parentNode.insertBefore(bar,anchor);
-    load().then(function(){var h=barHtml();bar.innerHTML=h;bar.__lvH=h;bar.dataset.painted="1";});
+    load().then(function(){var h=barHtml();bar.innerHTML=h;bar.__lvH=h;bar.dataset.painted="1"; spotIcon(bar);});
     bar.addEventListener("click",function(e){
+      if(e.target.closest("[data-lb]")){ try{navigate("leaderboard");}catch(_){} return; }
       var seg=e.target.closest("[data-m]");
       if(seg){ var m=seg.dataset.m; if(m==="all") setView("all"); else { var mine=window.lvMyCampusId(); if(mine&&mine!=="none") setView(mine); else window.lvOpenCampusPicker({title:"Choose your campus",current:"",allowNone:true,onPick:function(r){window.lvSaveCampus(r.id).catch(function(){}).then(function(){ if(r.id!=="none") setView(r.id); else bar.innerHTML=barHtml(); });}}); } return; }
       if(e.target.closest(".lvcb-main")) load().then(function(){ window.lvOpenCampusPicker({title:"Browse a campus",current:window.lvViewCampus(),allowAll:true,onPick:function(r){setView(r.all?"all":r.id);}}); });
