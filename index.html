@@ -54630,3 +54630,10 @@ document.addEventListener("click",function(e){
 html body #app .product-gallery-track,html body #app .product-gallery-main.product-gallery-track{overflow-x:auto!important;overflow-y:hidden!important;scroll-snap-type:x mandatory!important;touch-action:pan-x pan-y!important;-webkit-overflow-scrolling:touch}
 html body #app .product-gallery-slide{scroll-snap-align:center;scroll-snap-stop:always;flex:0 0 100%}
 </style>
+<style id="storefront-polish-3">
+/* stats: all four cells share the same padding so "listings" lines up with "rating" */
+:root:root:root body #app .storefront-profile .storefront-stats>*,:root:root:root body #app .storefront-profile .storefront-stats>*:first-child,:root:root:root body #app .storefront-profile .storefront-stats>*:last-child{padding-left:.55rem!important;padding-right:.55rem!important;text-align:center!important;justify-self:stretch}
+/* no scrollbar under the "Latest from" strip */
+html body #app .storefront-product-strip{scrollbar-width:none!important;-ms-overflow-style:none!important}
+html body #app .storefront-product-strip::-webkit-scrollbar{display:none!important;height:0!important;width:0!important}
+</style>
