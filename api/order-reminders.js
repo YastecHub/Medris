@@ -38,7 +38,7 @@ module.exports = async function handler(req, res) {
         
         `&created_at=lte.${graceCutoff}` +
         `&or=(last_reminder_sent_at.is.null,last_reminder_sent_at.lte.${repeatCutoff})` +
-        `&select=id,order_type,status,delivery_method,buyer_id,vendor:vendors(id,business_name,user_id)`,
+        `&select=id,order_type,status,delivery_method,buyer_id,vendor:vendors(id,business_name,user_id),payments(payment_type,status)`,
       { headers: svcAuth }
     );
     const due = await ordersRes.json();
@@ -79,6 +79,11 @@ function remindersForOrder(o) {
   const handoverVerb = isPickup ? "picked up by" : "delivered to";
   const handoverVerbBuyer = isPickup ? "pick up" : "receive delivery of";
   const out = [];
+  // Fully paid (delivery: deposit + balance; pickup: the full payment): the vendor has nothing left to chase,
+  // it is up to the buyer to confirm receipt, so no "not yet handed over" reminders go to the vendor.
+  const feeType = o.order_type === "sale" ? "sale_price" : "rental_fee";
+  const paid = (type) => (Array.isArray(o.payments) ? o.payments : []).some((p) => String(p.payment_type || "").trim().toLowerCase() === type && p.status === "paid");
+  const fullyPaid = o.delivery_method === "delivery" ? paid("delivery_deposit_20") && paid(feeType) : paid(feeType);
 
   if (o.status === "pending") {
     if (vendorUserId) out.push({ userId: vendorUserId, title: "Order awaiting your confirmation", body: `You still have an order that hasn't been confirmed yet. Buyers are waiting — please accept or decline it.` });
@@ -86,7 +91,7 @@ function remindersForOrder(o) {
   }
 
   if (o.status === "confirmed") {
-    if (vendorUserId) out.push({ userId: vendorUserId, title: "Order not yet handed over", body: `An order still hasn't been ${handoverVerb.replace(" to", "")} the buyer. Please arrange ${isPickup ? "pickup" : "delivery"} when you can.` });
+    if (vendorUserId && !fullyPaid) out.push({ userId: vendorUserId, title: "Order not yet handed over", body: `An order still hasn't been ${handoverVerb.replace(" to", "")} the buyer. Please arrange ${isPickup ? "pickup" : "delivery"} when you can.` });
     if (o.buyer_id) out.push({ userId: o.buyer_id, title: "Your order hasn't arrived yet", body: `Your order hasn't been ${isPickup ? "picked up" : "delivered"} yet. If it's taking too long, you can message the vendor from the order page.` });
     return out;
   }

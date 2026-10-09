@@ -1,0 +1,5 @@
+-- send_background_reminders(): the vendor-side "orders not yet completed" count now skips confirmed /
+-- handed-over orders that are already fully paid (delivery: deposit + balance; pickup: the full payment).
+-- Only the buyer's "I've received this" is left on those, so the vendor is no longer reminded.
+-- The full function body lives in the database (applied as migrations
+-- background_reminders_skip_fully_paid_for_vendors and background_reminders_fix_enum_cast).
