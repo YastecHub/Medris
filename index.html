@@ -14510,6 +14510,7 @@ async function submitAuth() {
 
       if (!name) throw new Error("Full name is required.");
       if (!phone) throw new Error("Phone is required.");
+      if (!window.__lvSignupCampus) throw new Error("Choose your campus (or pick \"Not on a campus\").");
       if (password.length < 8) throw new Error("Password must be at least 8 characters.");
       if (password !== byId("loginPasswordConfirm").value) throw new Error("Passwords don't match.");
 
@@ -14547,6 +14548,7 @@ async function submitAuth() {
         password
       });
       if (loginError) throw loginError;
+      try { const __cp = window.__lvSignupCampus; if (__cp) await window.lvSaveCampus(__cp); } catch (_) {}
       if (registerBody?.referral?.ok) {
         try { localStorage.removeItem("levro-ref-code"); } catch (_) {}
         setTimeout(() => showToast(`Referral applied. You joined with ${registerBody.referral.business_name}'s code.`, "success"), 1200);
@@ -18109,9 +18111,16 @@ async function fetchProductsByIds(ids) {
   if (productRowCache.size > 600) [...productRowCache.keys()].slice(0, 200).forEach((k) => productRowCache.delete(k));
   return want.map((id) => productRowCache.get(id)).filter(Boolean);
 }
+// Campus view: the Home campus bar can narrow Browse to one campus's vendors.
 async function loadBrowseIndex(activeSector, activeCategory) {
+  const idx = await loadBrowseIndexRaw(activeSector, activeCategory);
+  const view = (typeof window.lvViewCampus === "function") ? window.lvViewCampus() : "all";
+  if (!Array.isArray(idx) || !view || view === "all") return idx;
+  return idx.filter((x) => x.campus_id === view);
+}
+async function loadBrowseIndexRaw(activeSector, activeCategory) {
   const slot = Math.floor(Date.now() / 600000);
-  const key = `levro-browse-idx:${slot}:${activeSector?.id || "all"}:${activeCategory?.id || "all"}`;
+  const key = `levro-browse-idx2:${slot}:${activeSector?.id || "all"}:${activeCategory?.id || "all"}`;
   window.__homeBrowseIdxMem = window.__homeBrowseIdxMem || new Map();
   if (window.__homeBrowseIdxMem.has(key)) return window.__homeBrowseIdxMem.get(key);
   // A category is a subset of the full catalogue index we already hold -- no request needed.
@@ -18125,7 +18134,7 @@ async function loadBrowseIndex(activeSector, activeCategory) {
   const pageSize = 1000;
   for (let offset = 0; offset < 20000; offset += pageSize) {
     let q = sb.from("products")
-      .select(`id, vendor_id, category_id, is_service, category:categories${activeSector ? "!inner" : ""}(sector_id), vendor:vendors!inner(id)`)
+      .select(`id, vendor_id, category_id, is_service, category:categories${activeSector ? "!inner" : ""}(sector_id), vendor:vendors!inner(id, campus_id)`)
       .eq("status", "active").eq("vendor.verification_status", "verified").eq("vendor.is_active", true);
     if (activeSector) q = q.eq("category.sector_id", activeSector.id);
     if (activeCategory) q = q.eq("category_id", activeCategory.id);
@@ -18134,10 +18143,10 @@ async function loadBrowseIndex(activeSector, activeCategory) {
     rows.push(...(data || []));
     if (!data || data.length < pageSize) break;
   }
-  const slim = rows.map((r) => ({ id: r.id, vendor_id: r.vendor_id, category_id: r.category_id, is_service: !!r.is_service, category: { sector_id: r.category?.sector_id || null } }));
+  const slim = rows.map((r) => ({ id: r.id, vendor_id: r.vendor_id, campus_id: r.vendor?.campus_id || null, category_id: r.category_id, is_service: !!r.is_service, category: { sector_id: r.category?.sector_id || null } }));
   const rotated = deterministicBrowseVisibilityShuffle(slim, `browse:${activeSector?.id || "all"}`);
   window.__homeBrowseIdxMem.set(key, rotated);
-  try { Object.keys(sessionStorage).filter((k) => k.startsWith("levro-browse-idx:") && k !== key).forEach((k) => sessionStorage.removeItem(k)); sessionStorage.setItem(key, JSON.stringify(rotated)); } catch (_) {}
+  try { Object.keys(sessionStorage).filter((k) => k.startsWith("levro-browse-idx") && k !== key).forEach((k) => sessionStorage.removeItem(k)); sessionStorage.setItem(key, JSON.stringify(rotated)); } catch (_) {}
   return rotated;
 }
 // Browse Everything renders a page at a time and loads the next one as you
@@ -54922,3 +54931,275 @@ window.lvOpenProductComments=function(id){
 /* logging out and back in counts as a fresh login: ask again if notifications are still off */
 try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notifPromptShownFor=null; });}catch(_){}
 </script>
+
+<style id="lv-campus-style">
+#lvCampus{position:fixed;inset:0;z-index:2147483400;background:var(--bg,#f4f7f5);display:flex;flex-direction:column;animation:lvcIn .22s ease-out;color:var(--text,#0f1d17)}
+@keyframes lvcIn{from{opacity:0;transform:translateY(14px)}}
+#lvCampus .lvc-top{flex:none;display:flex;align-items:center;gap:.6rem;padding:calc(.7rem + env(safe-area-inset-top,0px)) .9rem .5rem;background:linear-gradient(180deg,color-mix(in srgb,var(--primary,#16a34a) 16%,var(--bg,#f4f7f5)),var(--bg,#f4f7f5))}
+#lvCampus .lvc-x{width:2.4rem;height:2.4rem;border-radius:50%;border:0;background:color-mix(in srgb,var(--text,#000) 8%,transparent);color:inherit;font-size:1rem;cursor:pointer;flex:none}
+#lvCampus .lvc-title{font-weight:800;font-size:1.12rem;flex:1;min-width:0}
+#lvCampus .lvc-skip{border:0;background:transparent;color:var(--text-muted,#667);font:inherit;font-weight:700;cursor:pointer;padding:.4rem .5rem}
+#lvCampus .lvc-hero{flex:none;display:flex;align-items:center;gap:.8rem;padding:.2rem 1rem .6rem;background:linear-gradient(180deg,var(--bg,#f4f7f5),var(--bg,#f4f7f5))}
+#lvCampus .lvc-mascot{width:74px;height:74px;flex:none;cursor:pointer;-webkit-tap-highlight-color:transparent;animation:lvcBob 3.2s ease-in-out infinite}
+@keyframes lvcBob{50%{transform:translateY(-5px)}}
+#lvCampus .lvc-mascot.hop{animation:lvcHop .6s ease}
+@keyframes lvcHop{30%{transform:translateY(-16px) rotate(-6deg)}60%{transform:translateY(0) rotate(5deg)}100%{transform:none}}
+#lvCampus .lvc-eye{transform-origin:center;animation:lvcBlink 4s infinite}
+@keyframes lvcBlink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+#lvCampus .lvc-tassel{transform-origin:62px 22px;animation:lvcSwing 2.4s ease-in-out infinite}
+@keyframes lvcSwing{50%{transform:rotate(12deg)}}
+#lvCampus .lvc-bubble{position:relative;background:var(--card,#fff);border:1px solid var(--border,#dde5e0);border-radius:16px;padding:.65rem .85rem;font-size:.86rem;font-weight:600;line-height:1.35;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+#lvCampus .lvc-bubble:before{content:"";position:absolute;left:-7px;top:22px;width:12px;height:12px;background:inherit;border-left:1px solid var(--border,#dde5e0);border-bottom:1px solid var(--border,#dde5e0);transform:rotate(45deg)}
+#lvCampus .lvc-search{flex:none;padding:.2rem 1rem .5rem;background:var(--bg,#f4f7f5)}
+#lvCampus .lvc-sbox{display:flex;align-items:center;gap:.6rem;background:var(--card,#fff);border:1.5px solid var(--border,#dde5e0);border-radius:999px;padding:.2rem .4rem .2rem 1rem;box-shadow:0 6px 16px rgba(0,0,0,.05)}
+#lvCampus .lvc-sbox i{color:var(--text-muted,#667)}
+#lvCampus .lvc-sbox input{flex:1;min-width:0;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;font-size:16px;padding:.65rem 0!important;margin:0!important;color:inherit}
+#lvCampus input[type=search]::-webkit-search-cancel-button,#lvCampus input[type=search]::-webkit-search-decoration{-webkit-appearance:none;display:none}
+#lvCampus .lvc-clear{border:0;background:color-mix(in srgb,var(--text,#000) 9%,transparent);width:1.8rem;height:1.8rem;border-radius:50%;color:inherit;cursor:pointer;display:none}
+#lvCampus .lvc-chips{flex:none;display:flex;gap:.45rem;overflow-x:auto;padding:0 1rem .55rem;scrollbar-width:none;background:var(--bg,#f4f7f5)}
+#lvCampus .lvc-chips::-webkit-scrollbar{display:none}
+#lvCampus .lvc-chip{flex:none;border:1px solid var(--border,#dde5e0);background:var(--card,#fff);color:inherit;border-radius:999px;padding:.42rem .85rem;font:inherit;font-size:.8rem;font-weight:700;cursor:pointer}
+#lvCampus .lvc-chip.on{background:var(--primary,#16a34a);border-color:var(--primary,#16a34a);color:#fff}
+#lvCampus .lvc-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:.4rem .6rem calc(5.5rem + env(safe-area-inset-bottom,0px))}
+#lvCampus .lvc-count{padding:.2rem .5rem .6rem;font-size:.76rem;font-weight:700;letter-spacing:.06em;color:var(--text-muted,#667);text-transform:uppercase}
+#lvCampus .lvc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem .3rem}
+#lvCampus .lvc-item{display:flex;flex-direction:column;align-items:center;gap:.5rem;border:0;background:transparent;color:inherit;font:inherit;padding:.15rem .1rem;cursor:pointer;-webkit-tap-highlight-color:transparent;min-width:0}
+#lvCampus .lvc-logo{position:relative;width:74px;height:74px;border-radius:50%;background:#fff;display:grid;place-items:center;overflow:visible;box-shadow:0 8px 20px rgba(10,60,40,.16),0 0 0 1px rgba(0,0,0,.05);transition:transform .15s}
+#lvCampus .lvc-item:active .lvc-logo{transform:scale(.93)}
+#lvCampus .lvc-logo img{width:100%;height:100%;border-radius:50%;object-fit:contain;padding:9px;box-sizing:border-box;background:#fff}
+#lvCampus .lvc-ini{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.15rem;letter-spacing:.02em}
+#lvCampus .lvc-item.sel .lvc-logo{box-shadow:0 0 0 3px var(--primary,#16a34a),0 8px 20px rgba(10,60,40,.2)}
+#lvCampus .lvc-tick{position:absolute;right:-2px;bottom:-2px;width:1.4rem;height:1.4rem;border-radius:50%;background:var(--primary,#16a34a);color:#fff;font-size:.65rem;display:none;place-items:center;border:2px solid var(--bg,#f4f7f5)}
+#lvCampus .lvc-item.sel .lvc-tick{display:grid}
+#lvCampus .lvc-name{font-size:.74rem;font-weight:700;line-height:1.25;text-align:center;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;word-break:break-word}
+#lvCampus .lvc-sub{font-size:.64rem;font-weight:600;color:var(--text-muted,#667);margin-top:-.3rem}
+#lvCampus .lvc-empty{text-align:center;padding:2rem 1rem;color:var(--text-muted,#667)}
+#lvCampus .lvc-foot{position:absolute;left:0;right:0;bottom:0;padding:.7rem 1rem calc(.8rem + env(safe-area-inset-bottom,0px));background:linear-gradient(0deg,var(--bg,#f4f7f5) 70%,transparent);display:flex;gap:.6rem}
+#lvCampus .lvc-foot button{flex:1;border:1.5px solid var(--border,#dde5e0);background:var(--card,#fff);color:inherit;border-radius:14px;padding:.8rem .6rem;font:inherit;font-weight:700;font-size:.86rem;cursor:pointer}
+#lvCampus .lvc-foot button.pri{background:var(--primary,#16a34a);border-color:var(--primary,#16a34a);color:#fff}
+#lvCampus .lvc-custom{position:absolute;left:0;right:0;bottom:0;background:var(--card,#fff);border-radius:22px 22px 0 0;padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.25);display:none;flex-direction:column;gap:.6rem}
+#lvCampus .lvc-custom.on{display:flex}
+#lvCampus .lvc-custom input{width:100%;box-sizing:border-box;font-size:16px;border-radius:12px;padding:.8rem 1rem;border:1.5px solid var(--border,#dde5e0);background:var(--bg,#f4f7f5);color:inherit}
+.lv-campus-field{margin:.2rem 0 .5rem}
+.lv-campus-btn{display:flex;align-items:center;gap:.7rem;width:100%;border:1.5px solid var(--border,#dde5e0);background:var(--input-bg,var(--card,#fff));color:inherit;border-radius:14px;padding:.55rem .8rem;font:inherit;cursor:pointer;text-align:left}
+.lv-campus-btn .ico{width:2.1rem;height:2.1rem;border-radius:50%;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.07)}
+.lv-campus-btn .ico img{width:100%;height:100%;object-fit:contain;padding:3px;box-sizing:border-box}
+.lv-campus-btn .ico i{color:var(--primary,#16a34a)}
+.lv-campus-btn .t{flex:1;min-width:0;font-weight:700;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lv-campus-btn .t small{display:block;font-weight:600;color:var(--text-muted,#667);font-size:.7rem}
+#lvCampusBar{display:flex;align-items:center;gap:.6rem;margin:.2rem 0 .9rem;padding:.4rem .5rem .4rem .45rem;border-radius:999px;background:linear-gradient(135deg,color-mix(in srgb,var(--primary,#16a34a) 18%,var(--card,#fff)),var(--card,#fff));border:1px solid color-mix(in srgb,var(--primary,#16a34a) 25%,var(--border,#dde5e0))}
+#lvCampusBar .lvcb-main{flex:1;min-width:0;display:flex;align-items:center;gap:.6rem;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;text-align:left;padding:0}
+#lvCampusBar .ico{width:2.3rem;height:2.3rem;border-radius:50%;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none;box-shadow:0 3px 10px rgba(10,60,40,.15)}
+#lvCampusBar .ico img{width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box}
+#lvCampusBar .ico i{color:var(--primary,#16a34a)}
+#lvCampusBar .t{min-width:0;font-weight:800;font-size:.88rem;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lvCampusBar .t small{display:block;font-weight:700;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted,#667)}
+#lvCampusBar .seg{display:flex;background:color-mix(in srgb,var(--text,#000) 7%,transparent);border-radius:999px;padding:2px;flex:none}
+#lvCampusBar .seg button{border:0;background:transparent;color:inherit;font:inherit;font-size:.72rem;font-weight:800;padding:.35rem .65rem;border-radius:999px;cursor:pointer}
+#lvCampusBar .seg button.on{background:var(--primary,#16a34a);color:#fff}
+</style>
+<script id="lv-campus-js">
+(function(){
+  "use strict";
+  var DATA=null,loading=null,KIND={U:"University",P:"Polytechnic",E:"College of Education",C:"College"};
+  function esc2(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function load(){
+    if(DATA) return Promise.resolve(DATA);
+    if(loading) return loading;
+    loading=fetch("/campuses.json").then(function(r){return r.json();}).then(function(rows){
+      DATA=rows.map(function(r){var o={id:r[0],name:r[1],kind:r[2],fund:r[3],state:r[4],city:r[5],abbr:r[6],logo:!!r[7]};
+        o.hay=(o.name+" "+o.abbr+" "+o.city+" "+o.state+" "+(KIND[o.kind]||"")).toLowerCase().replace(/[^a-z0-9 ]+/g," ");return o;});
+      return DATA;
+    }).catch(function(){loading=null;DATA=[];return DATA;});
+    return loading;
+  }
+  var byIdCache=null;
+  function rec(id){
+    if(!id) return null;
+    if(id==="none") return {id:"none",name:"Not on a campus",none:true};
+    if(id==="all") return {id:"all",name:"All campuses",all:true};
+    if(String(id).indexOf("custom:")===0) return {id:id,name:String(id).slice(7),custom:true};
+    if(!DATA) return null;
+    if(!byIdCache){byIdCache=new Map();DATA.forEach(function(r){byIdCache.set(r.id,r);});}
+    return byIdCache.get(id)||null;
+  }
+  function hue(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return h;}
+  function inits(r){
+    var a=(r.abbr||"").trim(); if(a&&a.length<=5) return a.slice(0,4).toUpperCase();
+    var w=String(r.name||"").replace(/\b(of|the|and|for|university|college|polytechnic|federal|state)\b/gi," ").trim().split(/\s+/).filter(Boolean);
+    return ((w[0]||"?")[0]+((w[1]||"")[0]||"")).toUpperCase();
+  }
+  function logoHtml(r,big){
+    if(r&&r.logo) return '<img src="/campus-logos/'+esc2(r.id)+'.webp" alt="" loading="lazy" decoding="async" onerror="this.parentNode.innerHTML=lvCampusIni(this.dataset.n||\'\')" data-n="'+esc2(r.id)+'">';
+    return iniHtml(r);
+  }
+  function iniHtml(r){
+    if(!r) return '<i class="fa-solid fa-location-dot"></i>';
+    if(r.none) return '<i class="fa-solid fa-house"></i>';
+    if(r.all) return '<i class="fa-solid fa-earth-africa"></i>';
+    var h=hue(r.id||r.name||"x");
+    return '<span class="lvc-ini" style="background:linear-gradient(135deg,hsl('+h+',58%,46%),hsl('+((h+40)%360)+',62%,34%))">'+esc2(inits(r))+'</span>';
+  }
+  window.lvCampusIni=function(id){return iniHtml(rec(id));};
+  window.lvCampuses=load;
+  window.lvCampusById=function(id){return rec(id);};
+  window.lvMyCampusId=function(){
+    var p=null; try{p=(typeof profile!=="undefined"&&profile)?profile.campus_id:null;}catch(_){}
+    if(p) return p; try{return localStorage.getItem("lv-campus")||"";}catch(_){return "";}
+  };
+  window.lvViewCampus=function(){try{return localStorage.getItem("lv-view-campus")||"all";}catch(_){return "all";}};
+  window.lvCampusBtnHtml=function(id,label){
+    var r=rec(id);
+    return '<span class="ico">'+(r&&!r.none?(r.custom?'<i class="fa-solid fa-graduation-cap"></i>':logoHtml(r)):'<i class="fa-solid fa-graduation-cap"></i>')+'</span><span class="t">'+(r?esc2(r.name)+(r.state?'<small>'+esc2([r.city,r.state].filter(Boolean).join(", "))+'</small>':''):'<span style="color:var(--text-muted)">'+esc2(label||"Choose your campus")+'</span>')+'</span><i class="fa-solid fa-chevron-down" style="color:var(--text-muted);font-size:.8rem"></i>';
+  };
+
+  var MASCOT='<svg viewBox="0 0 80 80" width="74" height="74" aria-hidden="true"><defs><linearGradient id="lvcg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#0f9d6a"/></linearGradient></defs>'
+   +'<ellipse cx="40" cy="74" rx="20" ry="4" fill="rgba(0,0,0,.12)"/><circle cx="40" cy="46" r="27" fill="url(#lvcg)"/><circle cx="40" cy="46" r="27" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2"/>'
+   +'<g class="lvc-eye"><ellipse cx="31" cy="46" rx="4" ry="5" fill="#073b2a"/><circle cx="32.3" cy="44" r="1.4" fill="#fff"/></g><g class="lvc-eye"><ellipse cx="49" cy="46" rx="4" ry="5" fill="#073b2a"/><circle cx="50.3" cy="44" r="1.4" fill="#fff"/></g>'
+   +'<path d="M32 56q8 8 16 0" stroke="#073b2a" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="24" cy="54" r="4" fill="rgba(255,255,255,.28)"/><circle cx="56" cy="54" r="4" fill="rgba(255,255,255,.28)"/>'
+   +'<polygon points="40,12 68,24 40,36 12,24" fill="#0b2a20"/><path d="M26 29v9q14 8 28 0v-9l-14 6z" fill="#123d2e"/><g class="lvc-tassel"><path d="M62 22v14" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round"/><circle cx="62" cy="38" r="3" fill="#fbbf24"/></g></svg>';
+  var LINES=["Hi! I'm Levi 🎓 Pick your campus and I'll show you what's near you.","Tap your school's logo — it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom — we'll sort it out."];
+
+  window.lvOpenCampusPicker=function(opts){
+    opts=opts||{}; var existing=document.getElementById("lvCampus"); if(existing) existing.remove();
+    var w=document.createElement("div"); w.id="lvCampus"; w.setAttribute("role","dialog"); w.setAttribute("aria-modal","true");
+    w.innerHTML='<div class="lvc-top"><button type="button" class="lvc-x" aria-label="Close"><i class="fa-solid fa-arrow-left"></i></button><div class="lvc-title">'+esc2(opts.title||"Choose your campus")+'</div>'+(opts.skippable?'<button type="button" class="lvc-skip">Not now</button>':'')+'</div>'
+     +'<div class="lvc-hero"><div class="lvc-mascot" role="button" aria-label="Levi">'+MASCOT+'</div><div class="lvc-bubble">'+esc2(LINES[0])+'</div></div>'
+     +'<div class="lvc-search"><div class="lvc-sbox"><i class="fa-solid fa-magnifying-glass"></i><input type="search" placeholder="Search your school, e.g. UNILAG" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" class="lvc-clear" aria-label="Clear"><i class="fa-solid fa-xmark"></i></button></div></div>'
+     +'<div class="lvc-chips"></div><div class="lvc-scroll"><div class="lvc-count"></div><div class="lvc-grid"></div><div class="lvc-empty" style="display:none"></div><div class="lvc-sentinel" style="height:1px"></div></div>'
+     +'<div class="lvc-foot">'+(opts.allowAll?'<button type="button" class="pri" data-a="all"><i class="fa-solid fa-earth-africa"></i> All campuses</button>':'')+(opts.allowNone?'<button type="button" data-a="none"><i class="fa-solid fa-house"></i> Not on a campus</button>':'')+'<button type="button" data-a="custom"><i class="fa-solid fa-plus"></i> My school isn\'t here</button></div>'
+     +'<div class="lvc-custom"><strong>Add your school</strong><input type="text" placeholder="Type your school\'s full name" maxlength="80"><div style="display:flex;gap:.6rem"><button type="button" class="lvc-chip" data-a="cancel" style="flex:1;padding:.75rem">Cancel</button><button type="button" class="lvc-chip on" data-a="addok" style="flex:1;padding:.75rem">Use this school</button></div></div>';
+    document.body.appendChild(w); document.documentElement.style.overflow="hidden";
+    var $=function(s){return w.querySelector(s);};
+    var grid=$(".lvc-grid"),cnt=$(".lvc-count"),emp=$(".lvc-empty"),input=$(".lvc-sbox input"),clr=$(".lvc-clear"),chips=$(".lvc-chips"),sc=$(".lvc-scroll");
+    var filter="all",q="",list=[],shown=0,PAGE=60,cur=opts.current||"";
+    function close(){w.remove();document.documentElement.style.overflow="";if(io)io.disconnect();}
+    function pick(r){close(); if(opts.onPick) opts.onPick(r);}
+    var kinds=[["all","All"],["U","Universities"],["P","Polytechnics"],["E","Colleges of Education"],["C","Other colleges"]];
+    chips.innerHTML=kinds.map(function(k){return '<button type="button" class="lvc-chip'+(k[0]===filter?' on':'')+'" data-k="'+k[0]+'">'+k[1]+'</button>';}).join("");
+    function itemHtml(r){
+      var sub=r.abbr&&r.abbr.length<=8?r.abbr:"";
+      return '<button type="button" class="lvc-item'+(r.id===cur?' sel':'')+'" data-id="'+esc2(r.id)+'"><span class="lvc-logo">'+logoHtml(r)+'<span class="lvc-tick"><i class="fa-solid fa-check"></i></span></span><span class="lvc-name">'+esc2(r.name.replace(/,\s*[A-Z][a-z]+( State)?$/,""))+'</span>'+(sub?'<span class="lvc-sub">'+esc2(sub)+'</span>':'')+'</button>';
+    }
+    function apply(){
+      var toks=q.toLowerCase().replace(/[^a-z0-9 ]+/g," ").split(/\s+/).filter(Boolean);
+      list=(DATA||[]).filter(function(r){
+        if(filter!=="all"&&r.kind!==filter) return false;
+        for(var i=0;i<toks.length;i++) if(r.hay.indexOf(toks[i])<0) return false; return true;});
+      if(toks.length){var t0=toks.join(" ");list.sort(function(a,b){
+        function sc(r){var ab=(r.abbr||"").toLowerCase();return ab===t0?0:(r.name.toLowerCase().indexOf(t0)===0?1:(ab.indexOf(t0)===0?2:3));}
+        return sc(a)-sc(b)||a.name.localeCompare(b.name);});}
+      shown=0; grid.innerHTML=""; sc.scrollTop=0; more();
+      cnt.textContent=list.length+(list.length===1?" school":" schools");
+      emp.style.display=list.length?"none":"block";
+      emp.innerHTML=list.length?"":'<i class="fa-regular fa-face-frown" style="font-size:1.6rem"></i><p>No school matches "'+esc2(q)+'".<br>Try a shorter name, or add your school below.</p>';
+    }
+    function more(){ if(shown>=list.length) return; var next=list.slice(shown,shown+PAGE); shown+=next.length; grid.insertAdjacentHTML("beforeend",next.map(itemHtml).join("")); }
+    var io=null; if("IntersectionObserver" in window){io=new IntersectionObserver(function(es){if(es[0].isIntersecting)more();},{root:sc,rootMargin:"600px"});io.observe($(".lvc-sentinel"));}
+    else sc.addEventListener("scroll",function(){if(sc.scrollTop+sc.clientHeight>sc.scrollHeight-800)more();},{passive:true});
+    load().then(function(){ if(!document.body.contains(w)) return; if(cur&&!q){ } apply(); });
+    var t=null; input.addEventListener("input",function(){clr.style.display=input.value?"block":"none";clearTimeout(t);t=setTimeout(function(){q=input.value.trim();apply();},120);});
+    clr.addEventListener("click",function(){input.value="";clr.style.display="none";q="";apply();input.focus();});
+    chips.addEventListener("click",function(e){var b=e.target.closest("[data-k]");if(!b)return;filter=b.dataset.k;chips.querySelectorAll(".lvc-chip").forEach(function(c){c.classList.toggle("on",c===b);});apply();});
+    grid.addEventListener("click",function(e){var b=e.target.closest("[data-id]");if(!b)return;var r=rec(b.dataset.id);if(r)pick(r);});
+    $(".lvc-x").addEventListener("click",function(){close();if(opts.onClose)opts.onClose();});
+    var sk=$(".lvc-skip"); if(sk) sk.addEventListener("click",function(){close();if(opts.onSkip)opts.onSkip();});
+    var mas=$(".lvc-mascot"),bub=$(".lvc-bubble"),li=0;
+    mas.addEventListener("click",function(){mas.classList.remove("hop");void mas.offsetWidth;mas.classList.add("hop");li=(li+1)%LINES.length;bub.textContent=LINES[li];});
+    var custom=$(".lvc-custom"),cin=custom.querySelector("input");
+    w.querySelector(".lvc-foot").addEventListener("click",function(e){var b=e.target.closest("[data-a]");if(!b)return;var a=b.dataset.a;
+      if(a==="all") pick(rec("all")); else if(a==="none") pick(rec("none")); else if(a==="custom"){custom.classList.add("on");setTimeout(function(){cin.focus();},60);}});
+    custom.addEventListener("click",function(e){var b=e.target.closest("[data-a]");if(!b)return;
+      if(b.dataset.a==="cancel") custom.classList.remove("on");
+      else{var v=cin.value.trim().replace(/\s+/g," ");if(v.length<3){cin.focus();return;}pick(rec("custom:"+v));}});
+    if(opts.focusSearch) setTimeout(function(){input.focus();},300);
+  };
+
+  // ---- saving the chosen campus
+  window.lvSaveCampus=async function(id){
+    try{localStorage.setItem("lv-campus",id);}catch(_){}
+    var uid=null; try{uid=session&&session.user&&session.user.id;}catch(_){}
+    if(!uid){ try{var g=await sb.auth.getSession();uid=g&&g.data&&g.data.session&&g.data.session.user.id;}catch(_){} }
+    if(!uid){ try{localStorage.setItem("lv-campus-pending",id);}catch(_){} return false; }
+    var r=await sb.from("users").update({campus_id:id}).eq("id",uid);
+    if(r.error){ try{localStorage.setItem("lv-campus-pending",id);}catch(_){} throw r.error; }
+    try{localStorage.removeItem("lv-campus-pending");}catch(_){}
+    try{ if(profile) profile.campus_id=id; }catch(_){}
+    try{ if(vendor) vendor.campus_id=id; }catch(_){}
+    return true;
+  };
+
+  // ---- a "Your campus" row inside forms
+  function fieldHtml(id){return '<div class="lv-campus-field"><button type="button" class="lv-campus-btn" data-lvcf>'+window.lvCampusBtnHtml(id)+'</button></div>';}
+  function mountField(anchorEl,opt){
+    if(!anchorEl||anchorEl.parentNode.querySelector("[data-lvcf-wrap='"+opt.key+"']")) return;
+    var lab=document.createElement("label"); lab.textContent=opt.label||"Your campus"; lab.setAttribute("data-lvcf-wrap",opt.key);
+    var wrap=document.createElement("div"); wrap.setAttribute("data-lvcf-wrap",opt.key); wrap.innerHTML=fieldHtml(opt.get());
+    anchorEl.insertAdjacentElement("afterend",wrap); anchorEl.insertAdjacentElement("afterend",lab);
+    var paint=function(){ wrap.innerHTML=fieldHtml(opt.get()); };
+    wrap.addEventListener("click",function(e){ if(!e.target.closest("[data-lvcf]")) return;
+      load().then(function(){ window.lvOpenCampusPicker({title:opt.title||"Choose your campus",current:opt.get(),allowNone:true,onPick:function(r){Promise.resolve(opt.set(r.id)).then(paint);}}); }); });
+    load().then(paint);
+  }
+  window.__lvSignupCampus=window.__lvSignupCampus||"";
+  function scan(){
+    var sx=document.getElementById("signupExtraFields");
+    var city=document.getElementById("loginCity");
+    if(city) mountField(city,{key:"signup",get:function(){return window.__lvSignupCampus;},set:function(id){window.__lvSignupCampus=id;return Promise.resolve();},title:"Which campus are you on?"});
+    ["vaCity","veCity"].forEach(function(cid){
+      var el=document.getElementById(cid);
+      if(el) mountField(el,{key:cid,label:"Campus",get:function(){return window.lvMyCampusId();},set:function(id){return window.lvSaveCampus(id).catch(function(){try{showToast("Couldn't save your campus. Try again.","error");}catch(_){}});},title:"Choose your campus"});
+    });
+    mountHomeBar();
+  }
+
+  // ---- campus bar on Home
+  function barHtml(){
+    var v=window.lvViewCampus(),mine=window.lvMyCampusId(),r=v==="all"?null:rec(v);
+    var seg='<div class="seg"><button type="button" data-m="mine" class="'+(mine&&v===mine?'on':'')+'">My campus</button><button type="button" data-m="all" class="'+(v==="all"?'on':'')+'">All</button></div>';
+    return '<button type="button" class="lvcb-main"><span class="ico">'+(r?logoHtml(r):'<i class="fa-solid fa-location-dot"></i>')+'</span><span class="t"><small>Campus</small>'+esc2(r?r.name:"All campuses")+'</span><i class="fa-solid fa-chevron-down" style="color:var(--text-muted);font-size:.75rem"></i></button>'+seg;
+  }
+  function setView(id){
+    try{localStorage.setItem("lv-view-campus",id);}catch(_){}
+    window.__homeFullIndex=null;
+    try{navigate("home",{},false);}catch(_){}
+  }
+  function mountHomeBar(){
+    var grid=document.getElementById("productGrid"); if(!grid) return;
+    var bar=document.getElementById("lvCampusBar");
+    if(bar){ if(!bar.dataset.painted) {bar.innerHTML=barHtml();bar.dataset.painted="1";} return; }
+    var anchor=document.getElementById("homePromotionalViewport"); anchor=anchor&&(anchor.closest("section")||anchor.parentElement);
+    anchor=anchor||document.getElementById("browseSection"); if(!anchor||!anchor.parentNode) return;
+    bar=document.createElement("div"); bar.id="lvCampusBar"; anchor.parentNode.insertBefore(bar,anchor);
+    load().then(function(){bar.innerHTML=barHtml();bar.dataset.painted="1";});
+    bar.addEventListener("click",function(e){
+      var seg=e.target.closest("[data-m]");
+      if(seg){ var m=seg.dataset.m; if(m==="all") setView("all"); else { var mine=window.lvMyCampusId(); if(mine&&mine!=="none") setView(mine); else window.lvOpenCampusPicker({title:"Choose your campus",current:"",allowNone:true,onPick:function(r){window.lvSaveCampus(r.id).catch(function(){}).then(function(){ if(r.id!=="none") setView(r.id); else bar.innerHTML=barHtml(); });}}); } return; }
+      if(e.target.closest(".lvcb-main")) load().then(function(){ window.lvOpenCampusPicker({title:"Browse a campus",current:window.lvViewCampus(),allowAll:true,onPick:function(r){setView(r.all?"all":r.id);}}); });
+    });
+  }
+
+  // ---- ask people who haven't chosen yet
+  var asked=false;
+  function gate(){
+    try{
+      if(asked||typeof session==="undefined"||!session||typeof profile==="undefined"||!profile) return;
+      if(document.getElementById("lvCampus")||(document.getElementById("loginModal")&&!document.getElementById("loginModal").classList.contains("hidden"))) return;
+      if(profile.campus_id) return;
+      var pend=null; try{pend=localStorage.getItem("lv-campus-pending");}catch(_){}
+      if(pend){ window.lvSaveCampus(pend).catch(function(){}); asked=true; return; }
+      var skipAt=0; try{skipAt=Number(sessionStorage.getItem("lv-campus-skip")||0);}catch(_){}
+      if(skipAt) return;
+      if(profile.role==="admin") return;
+      asked=true;
+      load().then(function(){ window.lvOpenCampusPicker({title:"Which campus are you on?",current:"",allowNone:true,skippable:true,
+        onPick:function(r){window.lvSaveCampus(r.id).then(function(){try{showToast("Campus saved.","success");}catch(_){}}).catch(function(){try{showToast("Couldn't save your campus.","error");}catch(_){}});},
+        onSkip:function(){try{sessionStorage.setItem("lv-campus-skip","1");}catch(_){}}}); });
+    }catch(_){}
+  }
+  try{ new MutationObserver(function(){ scan(); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+  setInterval(gate,2500); setTimeout(scan,600);
+  try{ sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT"){ asked=false; window.__lvSignupCampus=""; try{sessionStorage.removeItem("lv-campus-skip");}catch(_){} } }); }catch(_){}
+})();
+</script>
+
