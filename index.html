@@ -21656,8 +21656,10 @@ async function __levroOriginalRenderProductDetail(productId) {
   const st={avg_rating:product.vendor?.avg_rating??0,review_count:product.vendor?.review_count??0};
   setTimeout(async()=>{try{const {data:stats}=await sb.rpc("get_vendor_stats",{p_vendor_id:product.vendor.id});const row=(stats&&stats[0])||{};const root=document.querySelector(`.product-detail-card[data-product-detail-id="${CSS.escape(String(productId))}"]`);if(!root)return;root.querySelector("[data-owner-stat=saved]")?.replaceChildren(document.createTextNode(Number(row.favorites_count??0).toLocaleString()));root.querySelector("[data-owner-stat=revenue]")?.replaceChildren(document.createTextNode(naira(Number(row.revenue??0))));root.querySelector("[data-owner-stat=sales]")?.replaceChildren(document.createTextNode(Number(row.sales_count??0).toLocaleString()));}catch(_){}},0);
   const canRent=!ownListing&&(product.listing_type==="rent"||product.listing_type==="both"), canBuy=!ownListing&&(product.listing_type==="sale"||product.listing_type==="both");
-  const productPhotos=Array.isArray(product.photos)?product.photos.filter(Boolean):[];
   const productVariants=Array.isArray(product.variants)?product.variants.slice().sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0)):[];
+  // Every variety's own photo is part of the swipeable gallery, so swiping the big picture moves through the varieties.
+  const productPhotos=(()=>{const base=Array.isArray(product.photos)?product.photos.filter(Boolean):[];productVariants.forEach(v=>{if(v.photo_url&&!base.some(u=>String(u)===String(v.photo_url)))base.push(v.photo_url)});return base})();
+  product.photos=productPhotos;
   // Keep payment-plan percentages as real JavaScript values. These are reused by the
   // customer-facing notices below; do not nest a template literal inside a quoted string.
   const paymentDepositPercent=Math.max(1,Math.min(99,Number(product.payment_deposit_percent ?? 20) || 20));
@@ -21702,7 +21704,7 @@ async function __levroOriginalRenderProductDetail(productId) {
     </div>
     <h2 class="product-detail-title">${esc(product.name)}${product.is_service ? ` <span class="badge">Service</span>` : ""}</h2>
     <div class="product-detail-media">${photosHtml}</div>
-    ${productVariants.length ? `<div class="product-gallery-varieties" id="productGalleryVarieties"><div class="product-gallery-varieties-head"><strong>Varieties</strong><span class="muted" style="font-size:.68rem;">${productVariants.length} option${productVariants.length===1?'':'s'}</span></div><div class="product-gallery-varieties-list">${productVariants.map((v,i)=>{const unit=Number(v.discount_price ?? v.sale_price ?? v.rental_rate ?? 0);const photo=v.photo_url||'';return `<button type="button" class="product-gallery-variety ${i===0?'active':''}" data-gallery-variety-id="${esc(v.id)}" onclick="selectProductVariant('${esc(v.id)}',true,true)">${photo?`<img src="${esc(photo)}" alt="${esc(v.name||`Variety ${i+1}`)}" loading="lazy" decoding="async">`:`<span class="product-gallery-variety-placeholder"><i class="fa-solid fa-layer-group"></i></span>`}<strong>${esc(v.name||`Variety ${i+1}`)}</strong><small>${unit>0?naira(unit):'Price on request'}</small></button>`;}).join('')}</div></div>` : ''}
+    ${productVariants.length && productVariants.some(v=>!v.photo_url) ? `<div class="product-gallery-varieties" id="productGalleryVarieties"><div class="product-gallery-varieties-head"><strong>Varieties</strong><span class="muted" style="font-size:.68rem;">${productVariants.length} option${productVariants.length===1?'':'s'}</span></div><div class="product-gallery-varieties-list">${productVariants.map((v,i)=>{const unit=Number(v.discount_price ?? v.sale_price ?? v.rental_rate ?? 0);const photo=v.photo_url||'';return `<button type="button" class="product-gallery-variety ${i===0?'active':''}" data-gallery-variety-id="${esc(v.id)}" onclick="selectProductVariant('${esc(v.id)}',true,true)">${photo?`<img src="${esc(photo)}" alt="${esc(v.name||`Variety ${i+1}`)}" loading="lazy" decoding="async">`:`<span class="product-gallery-variety-placeholder"><i class="fa-solid fa-layer-group"></i></span>`}<strong>${esc(v.name||`Variety ${i+1}`)}</strong><small>${unit>0?naira(unit):'Price on request'}</small></button>`;}).join('')}</div></div>` : ''}
     ${productGalleryVariantMetaHtml}
     <div class="product-detail-actions">
       ${(() => {
@@ -54605,3 +54607,26 @@ document.addEventListener("click",function(e){
   new MutationObserver(function(m){ if(t) return; t=setTimeout(function(){ t=0; if(document.querySelector(".product-comment-body")){ load(); process(); } },150); }).observe(document.body,{childList:true,subtree:true});
 })();
 </script>
+
+<style id="pd-declutter-2">
+/* order box: fewer lines, no dead space */
+#app .card:has(.pd-step-title)>h3{border:0!important;padding:0!important;margin:.2rem 0 .6rem!important}
+#app .card:has(.pd-step-title) .sv-card{border:0!important;background:color-mix(in srgb,var(--primary,#3fb97f) 7%,var(--card))!important;border-radius:16px;padding:.8rem .9rem!important;margin:0 0 .8rem!important}
+#app .card:has(.pd-step-title) .sv-details{border:0!important;margin:.3rem 0 0!important;padding:0!important}
+#app .card:has(.pd-step-title) .sv-details summary{padding:.35rem 0!important}
+#app .card:has(.pd-step-title) .sv-top{border:0!important;padding:0!important}
+#app .card:has(.pd-step-title) .pd-qty-row.pd-no-qty,#app .card:has(.pd-step-title) .pd-total-box:not(:has(.product-payment-plan-notice)){margin:0!important;padding:0!important;min-height:0!important}
+#app .card:has(.pd-step-title) .pd-qty-row.pd-no-qty{display:none!important}
+#app .card:has(.pd-step-title) .pd-total-box{border:0!important;background:none!important;padding:0!important;margin:0!important}
+#app .card:has(.pd-step-title) .pd-total-box>.muted{margin:0!important}
+#app .card:has(.pd-step-title) .pd-total-box>.muted:empty{display:none}
+#app .card:has(.pd-step-title) .pd-step-title{margin-top:.2rem!important}
+#app .card:has(.pd-step-title) hr,#app .card:has(.pd-step-title) .pd-divider{display:none!important}
+/* product detail top: single divider-free rhythm */
+#app .product-detail-card .product-gallery-thumbs{margin:.2rem 0 0!important}
+</style>
+<style id="gallery-swipe-fix">
+/* the big product picture must scroll sideways (an overflow:hidden rule was blocking swipes); the rounded frame stays on the wrapper */
+html body #app .product-gallery-track,html body #app .product-gallery-main.product-gallery-track{overflow-x:auto!important;overflow-y:hidden!important;scroll-snap-type:x mandatory!important;touch-action:pan-x pan-y!important;-webkit-overflow-scrolling:touch}
+html body #app .product-gallery-slide{scroll-snap-align:center;scroll-snap-stop:always;flex:0 0 100%}
+</style>
