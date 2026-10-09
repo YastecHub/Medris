@@ -12462,7 +12462,7 @@ async function renderVendorsMap() {
       : "Showing all vendors on the map. Tap the location button to find you.";
   }
 
-  const list = (window.__filteredVendors || []).filter((v) => v.lat != null && v.lng != null);
+  const list = (window.__filteredVendors || []).filter((v) => v.lat != null && v.lng != null && lvVendorVisible(v.id));   // campus view: only vendors that serve the chosen campus
 
   if (!vendorsMap) {
     vendorsMap = window.L.map("vendorsMap", { attributionControl: true, zoomControl: true, zoomControlOptions: { position: "topleft" }, zoomSnap: 0.5, zoomDelta: 0.5, wheelPxPerZoomLevel: 90, inertia: true }).setView(center, zoom);

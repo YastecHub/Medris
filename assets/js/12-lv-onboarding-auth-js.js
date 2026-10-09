@@ -1289,6 +1289,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     var bar=document.getElementById("lvCampusBar");
     if(bar) bar.innerHTML=barHtml();
     try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){}
+    try{ if(document.getElementById("vendorsMap")&&typeof renderVendorsMap==="function") setTimeout(renderVendorsMap,60); }catch(_){}
     setTimeout(function(){ try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){} },30);
     // fast path: re-filter the catalogue already in memory and repaint only the grid
     try{
@@ -1354,7 +1355,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   }
   try{ new MutationObserver(function(){ scan(); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
   setInterval(gate,2500); setTimeout(scan,600);
-  try{ sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT"){ asked=false; window.__lvSignupCampus=""; try{sessionStorage.removeItem("lv-campus-skip");}catch(_){} } }); }catch(_){}
+  try{ sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT"){ try{localStorage.removeItem("lv-view-campus");}catch(_){} asked=false; window.__lvSignupCampus=""; try{sessionStorage.removeItem("lv-campus-skip");}catch(_){} } }); }catch(_){}
 })();
 
 /* ---- request-photos-js ---- */
@@ -1603,7 +1604,7 @@ async function setVendorRequestPref(v){
   }
   function vendorIdOf(card){
     if(card.dataset&&card.dataset.vendorId) return card.dataset.vendorId;
-    var oc=card.getAttribute&&card.getAttribute("onclick")||""; var m=/vendorId:\s*'([^']+)'/.exec(oc); return m?m[1]:"";
+    var oc=card.getAttribute&&card.getAttribute("onclick")||""; var m=/vendorId:\s*'([^']+)'/.exec(oc)||/focusVendorOnMap\('([^']+)'/.exec(oc); return m?m[1]:"";
   }
   // replace "Lagos" / "Ibadan" on the card with the vendor's campus
   function swapLocation(card,x){
@@ -1618,7 +1619,7 @@ async function setVendorRequestPref(v){
     return true;
   }
   function curVid(){ try{ if(typeof currentViewParams!=="undefined"&&currentViewParams&&currentViewParams.vendorId) return currentViewParams.vendorId; }catch(_){} try{ if(window.currentViewParams&&window.currentViewParams.vendorId) return window.currentViewParams.vendorId; }catch(_){} var el=document.querySelector("[data-vendor-id]"); return el&&el.dataset.vendorId||""; }
-  var SCOPE_SEL=".vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.product-card-wrap";
+  var SCOPE_SEL=".vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.product-card-wrap,.vendors-map-vendor-chip";
   function inScope(x,view){ return x.campus_id===view||x.operating_scope==="all"||(x.operating_scope==="multiple"&&Array.isArray(x.operating_campuses)&&x.operating_campuses.indexOf(view)>-1); }
   function applyScope(map){
     document.querySelectorAll(".lv-out-empty").forEach(function(n){n.classList.remove("lv-out-empty");});
