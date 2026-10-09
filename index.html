@@ -54408,7 +54408,7 @@ document.addEventListener("click",function(e){
     var list=Array.from(names).filter(function(n){return n&&n.length>1;}).sort(function(a,b){return b.length-a.length;});
     list.forEach(function(n){
       var token="@"+esc2(n); var i=html.toLowerCase().indexOf(token.toLowerCase());
-      while(i>=0){ var real=html.substr(i,token.length); var rep='<span class="lv-mention">'+real+'</span>'; html=html.slice(0,i)+rep+html.slice(i+token.length); i=html.toLowerCase().indexOf(token.toLowerCase(),i+rep.length); }
+      while(i>=0){ var real=html.substr(i,token.length); var rep='<span class="lv-mention" role="link" tabindex="0" data-name="'+real.slice(1)+'">'+real+'</span>'; html=html.slice(0,i)+rep+html.slice(i+token.length); i=html.toLowerCase().indexOf(token.toLowerCase(),i+rep.length); }
     });
     return html;
   };
@@ -54441,11 +54441,25 @@ document.addEventListener("click",function(e){
         var req=sb.from("vendors").select("id,business_name,logo_url").eq("verification_status","verified").eq("is_active",true);
         if(q.trim()) req=req.ilike("business_name","%"+q.trim().replace(/[%_]/g,"")+"%");
         var r=await req.order("business_name").limit(6);
-        if(my!==seq) return; var rows=(r&&r.data)||[]; rows.forEach(function(v){names.add(v.business_name);}); show(ta,rows,at);
+        if(my!==seq) return; var rows=(r&&r.data)||[]; rows.forEach(function(v){names.add(v.business_name); (window.__lvVendorIds=window.__lvVendorIds||new Map()).set(String(v.business_name).toLowerCase(),v.id);}); show(ta,rows,at);
       }catch(_){ }
     },160);
   },true);
-  document.addEventListener("click",function(e){ if(box&&!e.target.closest(".lv-mention-list")&&!e.target.closest(".product-comment-compose-row")) hide(); },true);
+  document.addEventListener("click",function(e){
+    if(box&&!e.target.closest(".lv-mention-list")&&!e.target.closest(".product-comment-compose-row")) hide();
+    if(box&&e.target.closest&&e.target.closest(".product-comment-compose-row .btn")) hide();
+    var m=e.target.closest&&e.target.closest(".lv-mention"); if(m){ e.preventDefault(); e.stopPropagation(); openMention(m.dataset.name||m.textContent.replace(/^@/,"")); }
+  },true);
+  setInterval(function(){ if(box&&(!cur||!cur.ta.isConnected||!cur.ta.value||cur.ta.value.indexOf("@")<0)) hide(); },250);
+  async function openMention(name){
+    name=String(name||"").trim(); if(!name) return;
+    var id=window.__lvVendorIds&&window.__lvVendorIds.get(name.toLowerCase());
+    if(!id){ try{ var r=await sb.from("vendors").select("id").eq("verification_status","verified").eq("is_active",true).ilike("business_name",name.replace(/[%_]/g,"")).limit(1); id=r&&r.data&&r.data[0]&&r.data[0].id; }catch(_){ } }
+    if(!id) return;
+    document.querySelector("#lvCs .lv-cs-x")&&document.querySelector("#lvCs .lv-cs-x").click();
+    setTimeout(function(){ try{ navigate("storefront",{vendorId:id}); }catch(_){} },60);
+  }
+  window.__lvVendorIds=window.__lvVendorIds||new Map();
   /* reply -> prefill "@Name " (LinkedIn style) */
   function wrapReply(name){
     var o=window[name]; if(typeof o!=="function"||o.__m) return;
@@ -54471,7 +54485,7 @@ document.addEventListener("click",function(e){
 })();
 </script>
 <style id="comment-mentions-style">
-.lv-mention{color:var(--primary,#3fb97f);font-weight:700}
+.lv-mention{color:var(--primary,#3fb97f);font-weight:700;cursor:pointer}
 .lv-mention-list{position:absolute;left:.6rem;right:.6rem;bottom:100%;margin-bottom:.35rem;max-height:14rem;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 -10px 30px rgba(0,0,0,.18);z-index:10;padding:.3rem}
 .lv-mention-item{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:.65rem;width:100%;padding:.55rem .6rem;border-radius:12px;cursor:pointer;font-weight:600;font-size:.92rem;color:var(--text)}
 .lv-mention-item:active,.lv-mention-item:hover{background:color-mix(in srgb,var(--primary,#3fb97f) 12%,transparent)}
@@ -54480,7 +54494,8 @@ document.addEventListener("click",function(e){
 
 <style id="oct-carousel-taller-and-pay-notice">
 /* taller banner so it fills the gap above the leaderboard card */
-#app .home-promotional-slide{aspect-ratio:1.3/1!important}
+#app .home-promotional-viewport,#app .home-promotional-carousel,#app .home-promotional-track{--slide-w:min(88vw,640px)!important}
+#app .home-promotional-slide{aspect-ratio:1.5/1!important}
 #app .home-promotional-carousel{margin-bottom:.6rem!important}
 @media(min-width:720px){#app .home-promotional-slide{aspect-ratio:1.9/1!important}}
 /* pay-before/after notice: only for delivery, shown under the delivery choice */
