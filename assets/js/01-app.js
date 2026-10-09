@@ -24871,13 +24871,27 @@ function setupDraggableFab(fab, storageKey, onTap, onLongPress) {
     if (!bounds) bounds = clamp(0, 0) && { minX: 10, maxX: Math.max(10, window.innerWidth - fab.offsetWidth - 10), minY: (function () { const h = document.querySelector("header"); const hh = h ? Math.max(h.offsetHeight || 0, h.getBoundingClientRect().bottom || 0) : 0; return Math.max(10, hh + 10); })(), maxY: (function () { const n = document.getElementById("bottomNav"); let t = window.innerHeight; if (n && n.offsetHeight > 0) t = window.innerHeight - n.offsetHeight - (parseFloat(getComputedStyle(n).bottom) || 0); return Math.max(10, Math.min(window.innerHeight, t) - fab.offsetHeight - 10); })() };
     lastX = Math.min(Math.max(startLeft + dx, bounds.minX), bounds.maxX);
     lastY = Math.min(Math.max(startTop + dy, bounds.minY), Math.max(bounds.minY, bounds.maxY));
-    if (!rafId) rafId = requestAnimationFrame(() => { rafId = 0; fab.style.setProperty("left", `${lastX}px`, "important"); fab.style.setProperty("top", `${lastY}px`, "important"); fab.style.setProperty("right", "auto", "important"); fab.style.setProperty("bottom", "auto", "important"); });
+    // Dragging moves the button with a compositor-only offset (no layout work per frame, which is what made it crawl on the
+    // heavy Home page). Its real left/top are written once, when the finger lifts.
+    if (!fab.__lvPinned) {
+      fab.__lvPinned = true;
+      fab.style.setProperty("left", `${startLeft}px`, "important"); fab.style.setProperty("top", `${startTop}px`, "important");
+      fab.style.setProperty("right", "auto", "important"); fab.style.setProperty("bottom", "auto", "important");
+      fab.style.willChange = "translate";
+    }
+    if (!rafId) rafId = requestAnimationFrame(() => { rafId = 0; fab.style.translate = `${lastX - startLeft}px ${lastY - startTop}px`; });
   }, { passive: true });
 
   function endDrag(e) {
     if (!dragging || (e && e.pointerId !== pointerId)) return;
     dragging = false;
     clearTimeout(longTimer);
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    if (fab.__lvPinned) {
+      fab.__lvPinned = false;
+      fab.style.setProperty("left", `${lastX}px`, "important"); fab.style.setProperty("top", `${lastY}px`, "important");
+      fab.style.translate = ""; fab.style.willChange = "";
+    }
     fab.classList.remove("dragging");
     if (moved) { try { localStorage.setItem(storageKey, JSON.stringify({ x: lastX, y: lastY, explicit: true })); } catch (_) {} }
     if (!moved && !longFired) onTap?.();
