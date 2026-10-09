@@ -54756,3 +54756,9 @@ window.lvOpenProductComments=function(id){
 .product-detail-card .lv-top-comment-btn i{color:var(--text-muted)}
 @media(max-width:720px){:root:root:root body #app .product-detail-card .product-detail-title{padding-right:8.4rem!important}}
 </style>
+<style id="tour-logo-clean">
+/* welcome / install cards: show the app icon once, as a clean rounded tile (no green badge behind it) */
+:root:root:root body #tourCallout .install-modal-badge,:root:root:root body #installModal .install-modal-badge:has(#installModalLogo){width:3.6rem!important;height:3.6rem!important;margin:0 auto .55rem!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;animation:none!important;overflow:visible!important}
+:root:root:root body #tourCallout .install-modal-badge::before,:root:root:root body #tourCallout .install-modal-badge::after{display:none!important}
+:root:root:root body #tourLeviLogo,:root:root:root body #installModalLogo{width:3.6rem!important;height:3.6rem!important;border-radius:22%!important;object-fit:cover!important;display:block!important;filter:none!important;-webkit-filter:none!important;background:none!important;box-shadow:0 6px 18px rgba(8,80,50,.28)!important}
+</style>
