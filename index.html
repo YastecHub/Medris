@@ -54998,7 +54998,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
 </script>
 
 <style id="lv-campus-style">
-#lvCampus{position:fixed;inset:0;z-index:2147483400;background:var(--bg,#f4f7f5);display:flex;flex-direction:column;animation:lvcIn .22s ease-out;color:var(--text,#0f1d17)}
+#lvCampus{position:fixed;inset:0;z-index:2147483650;background:var(--bg,#f4f7f5);display:flex;flex-direction:column;animation:lvcIn .22s ease-out;color:var(--text,#0f1d17)}
 @keyframes lvcIn{from{opacity:0;transform:translateY(14px)}}
 #lvCampus .lvc-top{flex:none;display:flex;align-items:center;gap:.6rem;padding:calc(.7rem + env(safe-area-inset-top,0px)) .9rem .5rem;background:linear-gradient(180deg,color-mix(in srgb,var(--primary,#16a34a) 16%,var(--bg,#f4f7f5)),var(--bg,#f4f7f5))}
 #lvCampus .lvc-x{width:2.4rem;height:2.4rem;border-radius:50%;border:0;background:color-mix(in srgb,var(--text,#000) 8%,transparent);color:inherit;font-size:1rem;cursor:pointer;flex:none}
@@ -55125,6 +55125,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
    +'<g class="lvc-eye"><ellipse cx="31" cy="46" rx="4" ry="5" fill="#073b2a"/><circle cx="32.3" cy="44" r="1.4" fill="#fff"/></g><g class="lvc-eye"><ellipse cx="49" cy="46" rx="4" ry="5" fill="#073b2a"/><circle cx="50.3" cy="44" r="1.4" fill="#fff"/></g>'
    +'<path d="M32 56q8 8 16 0" stroke="#073b2a" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="24" cy="54" r="4" fill="rgba(255,255,255,.28)"/><circle cx="56" cy="54" r="4" fill="rgba(255,255,255,.28)"/>'
    +'<polygon points="40,12 68,24 40,36 12,24" fill="#0b2a20"/><path d="M26 29v9q14 8 28 0v-9l-14 6z" fill="#123d2e"/><g class="lvc-tassel"><path d="M62 22v14" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round"/><circle cx="62" cy="38" r="3" fill="#fbbf24"/></g></svg>';
+  window.lvMascotSvg=MASCOT;
   var LINES=["Hi! I'm Levi 🎓 Pick your campus and I'll show you what's near you.","Tap your school's logo — it only takes a second.","Visiting another campus? Browse it any time from the Home page.","Can't find your school? Add it at the bottom — we'll sort it out."];
 
   window.lvOpenCampusPicker=function(opts){
@@ -55614,6 +55615,15 @@ async function setVendorRequestPref(v){
 #lvSetup .st-out{border:0;background:transparent;color:var(--text-muted,#667);font:inherit;font-size:.8rem;font-weight:700;cursor:pointer;padding:.4rem}
 #lvSetup .lv-sv{border:0;padding:0;background:transparent;margin:.2rem 0}
 #lvSetup .lv-sv h4,#lvSetup .lv-sv .sub{display:none}
+#lvSetup .st-hero{display:flex;align-items:center;gap:.8rem;margin:.4rem 0 1rem;padding:.85rem .9rem;border-radius:20px;background:linear-gradient(135deg,color-mix(in srgb,var(--primary,#16a34a) 16%,var(--card,#fff)),var(--card,#fff));border:1px solid color-mix(in srgb,var(--primary,#16a34a) 22%,var(--border,#dde5e0))}
+#lvSetup .st-hero .m{flex:none;width:64px;height:64px;animation:lvcBob 3.2s ease-in-out infinite}
+#lvSetup .st-hero .m svg{width:64px;height:64px}
+#lvSetup .st-hero .b{font-size:.92rem;font-weight:700;line-height:1.4}
+#lvSetup .st-perks{list-style:none;margin:1.1rem 0 1.4rem;padding:0;display:flex;flex-direction:column;gap:.7rem}
+#lvSetup .st-perks li{display:flex;gap:.8rem;align-items:flex-start}
+#lvSetup .st-perks li>span{flex:none;width:2.3rem;height:2.3rem;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--primary,#16a34a) 12%,transparent);color:var(--primary,#16a34a)}
+#lvSetup .st-perks b{display:block;font-size:.9rem}
+#lvSetup .st-perks small{display:block;font-size:.78rem;color:var(--text-muted,#667);line-height:1.4;margin-top:.1rem}
 #lvSetup .st-opt{display:flex;flex-direction:column;gap:.15rem;width:100%;text-align:left;border:1.5px solid var(--border,#dde5e0);background:var(--card,#fff);color:inherit;font:inherit;border-radius:14px;padding:.8rem .95rem;cursor:pointer;margin:.45rem 0}
 #lvSetup .st-opt b{font-size:.95rem}
 #lvSetup .st-opt small{font-size:.78rem;color:var(--text-muted,#667)}
@@ -55665,21 +55675,24 @@ async function setVendorRequestPref(v){
     function dots(){ return '<div class="st-dots">'+[1,2,3].map(function(i){return '<i class="'+(i<=step?'on':'')+'"></i>';}).join("")+'</div>'; }
     function chipsOf(){ if(ops.scope!=="multiple") return ""; var ids=ops.list.slice(); if(v.campus_id&&ids.indexOf(v.campus_id)<0) ids.unshift(v.campus_id);
       return '<div class="lvv-chips">'+ids.map(function(id){var r=window.lvCampusById(id);return '<span>'+e3(r?window.lvCampusShort(id):id)+'</span>';}).join("")+'</div>'; }
+    function hero(msg){ return '<div class="st-hero"><div class="m">'+(window.lvMascotSvg||"")+'</div><div class="b">'+msg+'</div></div>'; }
+    function perks(list){ return '<ul class="st-perks">'+list.map(function(x){return '<li><span><i class="fa-solid '+x[0]+'"></i></span><div><b>'+x[1]+'</b><small>'+x[2]+'</small></div></li>';}).join("")+'</ul>'; }
     function render(){
       var head='<div class="st-top">'+dots()+'<div class="st-step">Step '+step+' of 3</div>';
       var body="",foot="";
       if(step===1){
         head+='<h2>Which campus is your business on?</h2><p class="st-sub">This is your major campus. It shows on your store, vendor cards and featured listings.</p></div>';
-        body='<div class="lv-campus-field"><button type="button" class="lv-campus-btn" data-a="major">'+window.lvCampusBtnHtml(v.campus_id&&v.campus_id!=="none"?v.campus_id:"","Choose your campus")+'</button></div>';
+        body=hero("Hi! Pick your school and students nearby will find you first.")+'<div class="lv-campus-field"><button type="button" class="lv-campus-btn" data-a="major">'+window.lvCampusBtnHtml(v.campus_id&&v.campus_id!=="none"?v.campus_id:"","Choose your campus")+'</button></div>'
+          +perks([["fa-location-dot","Be seen first on your campus","Students browsing your campus see your store before anyone else."],["fa-graduation-cap","Campus badge on your store","Your school shows on your store, vendor cards and featured listings."],["fa-users","Reach the right buyers","Customers trust sellers from their own school."]]);
         foot='<button type="button" class="btn" data-a="next1">Continue</button>';
       } else if(step===2){
         head+='<h2>Where do you sell?</h2><p class="st-sub">Customers on these campuses will see your products.</p></div>';
-        body=[["one","Only my campus","Just "+e3(window.lvCampusShort(v.campus_id)||"your campus")],["multiple","Selected campuses","Tick every campus you sell on"],["all","All campuses","Everyone on LevroMart can buy from you"]].map(function(o){return '<button type="button" class="st-opt '+(ops.scope===o[0]?'on':'')+'" data-s="'+o[0]+'"><b>'+o[1]+'</b><small>'+o[2]+'</small></button>';}).join("")
+        body=hero("Sell on one campus or many. You can change this any time.")+[["one","Only my campus","Just "+e3(window.lvCampusShort(v.campus_id)||"your campus")],["multiple","Selected campuses","Tick every campus you sell on"],["all","All campuses","Everyone on LevroMart can buy from you"]].map(function(o){return '<button type="button" class="st-opt '+(ops.scope===o[0]?'on':'')+'" data-s="'+o[0]+'"><b>'+o[1]+'</b><small>'+o[2]+'</small></button>';}).join("")
           +(ops.scope==="multiple"?'<button type="button" class="lv-campus-btn" data-a="many" style="margin-top:.4rem"><span class="ico"><i class="fa-solid fa-list-check"></i></span><span class="t">'+(ops.list.length?ops.list.length+" selected":"Choose campuses")+'<small>Tap to search and tick</small></span><i class="fa-solid fa-chevron-down" style="color:var(--text-muted);font-size:.8rem"></i></button>'+chipsOf():'');
         foot='<button type="button" class="btn btn-outline" data-a="back2" style="flex:0 0 5rem">Back</button><button type="button" class="btn" data-a="next2">Continue</button>';
       } else {
         head+='<h2>Verify you\'re a student</h2><p class="st-sub">Add your student details and upload your ID card and biodata page. Only LevroMart admins see them.</p></div>';
-        body='<div id="stSv"></div>'; foot=(needCampus||needScope?'<button type="button" class="btn btn-outline" data-a="back3" style="flex:0 0 5rem">Back</button>':'')+'<button type="button" class="st-out" data-a="logout">Log out</button>';
+        body=hero("Verified students earn more trust and more orders.")+perks([["fa-shield-heart","Get a Verified student badge","Shown on your store and vendor cards once approved."],["fa-lock","Your documents stay private","Only LevroMart admins can see your ID and biodata."],["fa-bolt","Reviewed quickly","Our team checks submissions as they come in."]])+'<div id="stSv"></div>'; foot=(needCampus||needScope?'<button type="button" class="btn btn-outline" data-a="back3" style="flex:0 0 5rem">Back</button>':'')+'<button type="button" class="st-out" data-a="logout">Log out</button>';
       }
       w.innerHTML=head+'<div class="st-body">'+body+'</div><div class="st-foot">'+foot+'</div>';
       if(step===3){ var host=w.querySelector("#stSv"); var anchor=document.createElement("div"); host.appendChild(anchor); window.lvMountSV(anchor,function(){ finish(); }); }
