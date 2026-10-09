@@ -3990,6 +3990,13 @@ async function submitEditProfile() {
   document.addEventListener("mouseup",end); document.addEventListener("mouseleave",end);
   document.addEventListener("click",(e)=>{ if(moved){e.stopPropagation();e.preventDefault();moved=false;} },true);
 })();
+// Tapping Home while already on a clean Home does nothing (no reload, no flash). With a category/search active it resets them.
+function lvHomeTap() {
+  const filtered = !!(currentHomeCategoryId || currentSectorId || (byId("searchInput")?.value || "").trim());
+  if (currentView === "home" && !filtered) return;
+  resetHomeFilters();
+  navigate("home");
+}
 function renderBottomNav() {
   const nav = byId("bottomNav");
   if (!nav) return;
@@ -4003,7 +4010,7 @@ function renderBottomNav() {
   const ordersTab = isVendorUser
     ? { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('vendorOrders',{status:'all',perspective:'sales'})", view: "vendorOrders", badge: Number(vendorPendingOrderCount||0) + Number(buyerPendingOrderCount||0) }
     : { icon: "<i class='fa-solid fa-receipt'></i>", label: "Orders", action: "navigate('buyerOrders')", view: "buyerOrders", badge: buyerPendingOrderCount };
-  const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "resetHomeFilters();navigate('home')", view: "home" };
+  const homeTab = { icon: "<i class='fa-solid fa-house'></i>", label: "Home", action: "lvHomeTap()", view: "home" };
 
   let items;
   if (session && profile?.role === "admin") {

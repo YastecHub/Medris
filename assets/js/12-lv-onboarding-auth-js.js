@@ -1287,7 +1287,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   function setView(id){
     try{localStorage.setItem("lv-view-campus",id);}catch(_){}
     var bar=document.getElementById("lvCampusBar");
-    if(bar) bar.innerHTML=barHtml();
+    if(bar){ var h0=barHtml(); bar.innerHTML=h0; bar.__lvH=h0; }
     try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){}
     try{ if(document.getElementById("vendorsMap")&&typeof renderVendorsMap==="function") setTimeout(renderVendorsMap,60); }catch(_){}
     setTimeout(function(){ try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){} },30);
@@ -1322,8 +1322,14 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     if(bar){ if(!bar.dataset.painted) {bar.innerHTML=barHtml();bar.dataset.painted="1";} return; }
     var anchor=document.getElementById("homePromotionalViewport"); anchor=anchor&&(anchor.closest("section")||anchor.parentElement);
     anchor=anchor||document.getElementById("browseSection"); if(!anchor||!anchor.parentNode) return;
+    var kept=window.__lvBarStash;
+    if(kept&&!kept.isConnected&&kept.dataset.painted){   // reuse the bar from the last Home visit: its logo is already decoded, so nothing blinks
+      window.__lvBarStash=null; bar=kept; anchor.parentNode.insertBefore(bar,anchor);
+      var h=barHtml(); if(bar.__lvH!==h){ bar.innerHTML=h; bar.__lvH=h; }
+      return;
+    }
     bar=document.createElement("div"); bar.id="lvCampusBar"; anchor.parentNode.insertBefore(bar,anchor);
-    load().then(function(){bar.innerHTML=barHtml();bar.dataset.painted="1";});
+    load().then(function(){var h=barHtml();bar.innerHTML=h;bar.__lvH=h;bar.dataset.painted="1";});
     bar.addEventListener("click",function(e){
       var seg=e.target.closest("[data-m]");
       if(seg){ var m=seg.dataset.m; if(m==="all") setView("all"); else { var mine=window.lvMyCampusId(); if(mine&&mine!=="none") setView(mine); else window.lvOpenCampusPicker({title:"Choose your campus",current:"",allowNone:true,onPick:function(r){window.lvSaveCampus(r.id).catch(function(){}).then(function(){ if(r.id!=="none") setView(r.id); else bar.innerHTML=barHtml(); });}}); } return; }
