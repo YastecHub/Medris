@@ -17830,9 +17830,17 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // Stats always reflect the vendor's full order history, not whatever
   // status/type/payment/date filters the list below happens to be set to
   // -- run both queries together instead of one after the other.
+  // The badge counts are fetched at the same time as the orders, not after them.
+  const __countsP = ordersTabCached(`vcnt:${vendor.id}:${session.user.id}`, async () => {
+    const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
+      vendorAttentionCount(),
+      sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
+    ]);
+    return { salesCount, purchaseCount };
+  }).catch(() => null);
   const [{ data: allOrdersRaw0, error: allOrdersError }, { data: statsOrders0, error: statsError }] = await Promise.all([
     ordersTabCached(`vo:${vendor.id}:${dateFrom}:${dateTo}`, () => withRouteTimeout(query.order("created_at", { ascending: false }), 5000, { data: null, error: new Error("order query timeout") })),
-    ordersTabCached(`vs2:${vendor.id}`, () => withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, updated_at, order_type, delivery_method, awaiting_confirmation_since, payments(payment_type,status)").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") })),
+    ordersTabCached(`vs2:${vendor.id}`, () => withRouteTimeout(sb.from("orders").select("status, created_at, status_changed_at, completed_at, cancelled_at, order_type, delivery_method, awaiting_confirmation_since, payments(payment_type,status)").eq("vendor_id", vendor.id), 5000, { data: null, error: new Error("stats query timeout") })),
   ]);
   // Delivered and paid, just waiting out the buyer's 24-hour window: for the vendor it counts as Completed,
   // so it stops mixing with the orders still needing their attention. A dispute moves it to Disputed as usual.
@@ -17852,8 +17860,8 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
     const r = await withRouteTimeout(fallback.order("created_at", { ascending: false }), 5000, { data: [], error: null });
     safeAllOrders = r.data || [];
   }
-  // Hydrate item summaries separately from the base order query. This keeps a
-  // restrictive nested relationship from blocking the whole Orders page.
+  // Item summaries and customer names are looked up together (they used to run one after the other).
+  const __hydrateItems = (async () => {
   try {
     const orderIds = (safeAllOrders || []).filter(o => !Array.isArray(o.items) || !o.items.length).map(o => o.id).filter(Boolean);
     if (orderIds.length) {
@@ -17866,6 +17874,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
       (safeAllOrders || []).forEach(o => { if (!Array.isArray(o.items) || !o.items.length) o.items = byOrder.get(o.id) || []; });
     }
   } catch (_) {}
+  })();
 
   let orders = type === "all" ? safeAllOrders : (safeAllOrders || []).filter((o) => orderCategory(o) === type);
   if (payment !== "all") orders = (orders || []).filter((o) => (payment === "paid" ? isOrderPaid(o) : !isOrderPaid(o)));
@@ -17873,6 +17882,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // The orders relation can return the order while hiding the nested users row
   // under RLS. Resolve the customer's display name through the existing secure
   // buyer-contact RPC so every vendor card can identify the customer.
+  const __hydrateNames = (async () => {
   try {
     // One RPC per order was fired on every render of the vendor list (including for
     // pending/cancelled orders whose customer is hidden anyway). Only look up the
@@ -17885,6 +17895,8 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
     }
     (safeAllOrders || []).forEach((o) => { if (!o.buyer?.name && window.__buyerNameCache.has(o.id)) o.buyer = { ...(o.buyer || {}), name: window.__buyerNameCache.get(o.id) }; });
   } catch (_) {}
+  })();
+  await Promise.all([__hydrateItems, __hydrateNames]);
   // Customers stay anonymous to the vendor until the order is accepted.
   (safeAllOrders || []).forEach((o) => { if (["pending", "cancelled"].includes(String(o.status || ""))) o.buyer = null; });
 
@@ -17900,13 +17912,7 @@ async function renderVendorOrders(status, type, payment, dateFrom, dateTo, persp
   // two perspective badges and the bottom-nav badge never depend on a stale
   // previous screen.
   try {
-    const counts = await ordersTabCached(`vcnt:${vendor.id}:${session.user.id}`, async () => {
-      const [{ count: salesCount }, { count: purchaseCount }] = await Promise.all([
-        vendorAttentionCount(),
-        sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES),
-      ]);
-      return { salesCount, purchaseCount };
-    });
+    const counts = (await __countsP) || {};
     vendorPendingOrderCount = counts.salesCount || 0;
     buyerPendingOrderCount = counts.purchaseCount || 0;
     renderBottomNav();
@@ -17947,6 +17953,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   dateFrom = dateFrom || "";
   dateTo = dateTo || "";
 
+  const __buyerCountsP = fetchBuyerOrderStatusCounts();   // fetched alongside the orders, not after them
   // order_items(*) is intentionally used here rather than naming columns,
   // so this stays resilient to schema changes on order_items.
   let query = sb.from("orders").select("*, vendor:vendors(business_name,city,logo_url), items:order_items(*,product:products(id,is_service,name,photos)), payments(payment_type,status)").eq("buyer_id", session.user.id);
@@ -18001,7 +18008,7 @@ async function renderCustomerOrders(status, type, payment, dateFrom, dateTo, emb
   const moreMenu = historyCustomerOrders.length ? `<button type="button" class="orders-icon-btn orders-history-btn" onclick="openOrderHistory()" aria-label="Order history" title="Order history"><i class="fa-solid fa-clock-rotate-left"></i></button>` : "";
   let html = `<div class="orders-title-row"><h2>${embeddedVendorOrders ? "Orders" : "My Orders"}</h2><div class="orders-top-actions">${filtersRow}${moreMenu}</div></div>`;
   if (embeddedVendorOrders) html += vendorOrdersTabsHtml("purchases");
-  html += orderStatusPillsHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective, await fetchBuyerOrderStatusCounts());
+  html += orderStatusPillsHtml(ordersRoute, status, type, payment, dateFrom, dateTo, ordersPerspective, await __buyerCountsP);
   orderListViewMode = "cards";
   orderListExpanded = false;
   window.__orderListOrders = activeCustomerOrders;
@@ -20972,13 +20979,15 @@ function finDetailHtml(vid) {
 }
 function finSvHtml(vid, sv) {
   const st = { pending: "Pending review", approved: "Approved", rejected: "Rejected" }[sv.status] || sv.status;
-  const imgs = [sv.id_card_url, sv.biodata_url].filter(Boolean);
+  const imgs = [sv.id_card_url, sv.biodata_url, sv.selfie_url].filter(Boolean);
   window.__reqPhotoSets = window.__reqPhotoSets || []; const k = window.__reqPhotoSets.push(imgs) - 1;
   return `<div class="fin-sv"><b><i class="fa-solid fa-user-graduate"></i> Student verification · ${esc(st)}</b>
     <div class="row"><b>Matric</b><span>${esc(sv.matric_number || "")}</span></div>
     <div class="row"><b>Faculty</b><span>${esc(sv.faculty || "")}</span></div>
     <div class="row"><b>Department</b><span>${esc(sv.department || "")}</span></div>
     <div class="row"><b>Level</b><span>${esc(sv.level || "")}</span></div>
+    <div class="row"><b>Face check</b><span>${sv.selfie_url ? (typeof window.lvFaceStatusHtml === "function" ? window.lvFaceStatusHtml(sv) : "Selfie sent") + (sv.face_distance != null ? ` <small class="muted">(distance ${Number(sv.face_distance).toFixed(2)}${sv.face_liveness ? ", blink seen" : ", no blink"})</small>` : "") : '<span class="muted">Not done yet</span>'}</span></div>
+    <div class="row"><b>ID text read</b><span>${sv.ocr_checked_at ? `Matric ${sv.ocr_matric_found === true ? "✓ found" : sv.ocr_matric_found === false ? "✗ not found" : "–"} · Name ${sv.ocr_name_found === true ? "✓ found" : sv.ocr_name_found === false ? "✗ not found" : "–"}` : '<span class="muted">Not read yet</span>'}</span></div>
     <div class="req-ph-row">${imgs.map((u, i) => `<button type="button" class="req-ph-thumb" onclick="event.stopPropagation();reqPhotoOpen(${k},${i})"><img src="${esc(u)}" alt="Document"></button>`).join("")}</div>
     ${sv.status === "approved" ? "" : `<textarea id="svNote-${esc(vid)}" placeholder="Note to the vendor (optional)"></textarea>`}
     <div class="acts">${sv.status !== "approved" ? `<button type="button" class="btn btn-sm" onclick="event.stopPropagation();finReviewSv('${esc(vid)}','approved')"><i class="fa-solid fa-check"></i> Approve</button>` : ""}${sv.status !== "rejected" ? `<button type="button" class="btn btn-sm btn-outline" onclick="event.stopPropagation();finReviewSv('${esc(vid)}','rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>` : ""}</div></div>`;

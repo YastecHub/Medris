@@ -1,4 +1,4 @@
-const CACHE = 'levromart-shell-v79';
+const CACHE = 'levromart-shell-v80';
 const RUNTIME = 'levromart-runtime-v9';
 const OFFLINE_FALLBACK = '/';
 
@@ -97,7 +97,8 @@ self.addEventListener('fetch', event => {
     url.hostname.includes('cdnjs.cloudflare.com') ||
     url.hostname.includes('fonts.googleapis.com') ||
     url.hostname.includes('fonts.gstatic.com') ||
-    url.hostname.includes('unpkg.com')
+    url.hostname.includes('unpkg.com') ||
+    url.hostname.includes('cdn.jsdelivr.net')
   ) {
     event.respondWith(
       (async () => {
