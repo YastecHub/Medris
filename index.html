@@ -29341,6 +29341,8 @@ function orderActionButtonsHtml(order, isCustomer, isVendor, feePaid, opts = {})
     const hoursSincePaid = paidRow ? (Date.now() - new Date(paidRow.paid_at || paidRow.created_at).getTime()) / 3600000 : 0;
     if (servicePaymentReported) {
       buttons.push(`<p class="muted" style="font-size:0.82rem;margin:0;"><i class="fa-solid fa-hourglass-half"></i> Payment reported. Waiting for the vendor to confirm receipt.</p>`);
+    } else if (paymentComplete) {
+      /* fully paid: the buyer can no longer cancel; the order completes when they confirm receipt (or automatically after 24h) */
     } else if (!paidRow || hoursSincePaid <= BUYER_CANCEL_WINDOW_HOURS) {
       if (opts.parts) bottom.push(`<button type="button" class="od-btn od-btn-danger" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})"><i class="fa-regular fa-circle-xmark"></i> Cancel Order</button>`);
       else buttons.push(`<button class="btn btn-sm btn-danger order-action-cancel" onclick="buyerCancelOrder('${order.id}',${paymentComplete ? "true" : "false"})">Cancel order</button>`);
