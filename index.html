@@ -17257,6 +17257,11 @@ function levroStableSectorOrder(list) {
   list.forEach((s) => { const k = String(s.id); if (!rank.has(k)) rank.set(k, Math.random()); });
   return list.slice().sort((a, b) => rank.get(String(a.id)) - rank.get(String(b.id)));
 }
+// Campus view: true unless the vendor is known to be outside the campus being viewed (unknown -> shown, the page-level
+// scope pass hides it once the vendor list has loaded).
+function lvVendorVisible(vendorId) {
+  try { return typeof window.lvVendorInScope === "function" ? window.lvVendorInScope(vendorId) !== false : true; } catch (_) { return true; }
+}
 function homeCategoryRailHtml(categoryList) {
   // "All" always comes first and clears the category filter.
   const allActive = !currentHomeCategoryId && !currentSectorId;
@@ -55728,14 +55733,21 @@ async function setVendorRequestPref(v){
     });
     parents.forEach(function(par){
       if(par.querySelector(SCOPE_SEL.split(",").map(function(q){return q+":not(.lv-out)";}).join(","))) return;
+      var prev=par.previousElementSibling; if(prev&&prev.matches&&prev.matches("h3.section-title,.section-title")) prev.classList.add("lv-out-empty");
       var sec=par.closest("section")||par; 
       if(!sec.querySelector(SCOPE_SEL.split(",").map(function(q){return q+":not(.lv-out)";}).join(","))) sec.classList.add("lv-out-empty"); else par.classList.add("lv-out-empty");
     });
   }
   window.lvApplyCampusScope=function(){ vmap().then(applyScope); };
-  var busy=false;
+  window.lvVendorInScope=function(id){
+    var view=window.lvViewCampus&&window.lvViewCampus()||"all"; if(view==="all"||!id||!VMAP) return true;
+    var x=VMAP.get(String(id)); if(!x) return true;
+    try{ if(typeof isOwnVendorId==="function"&&isOwnVendorId(id)) return true; }catch(_){}
+    return inScope(x,view);
+  };
+  var busy=false,again=false;
   function decorate(){
-    if(busy) return; busy=true;
+    if(busy){ again=true; return; } busy=true;
     vmap().then(function(map){
       if(!map.size) { VMAP=null; return; }
       document.querySelectorAll(".vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row").forEach(function(card){
@@ -55750,7 +55762,7 @@ async function setVendorRequestPref(v){
       if(sfl&&!sfl.dataset.lvc){ var sv=curVid(); var xs=map.get(String(sv)); if(xs){ sfl.dataset.lvc="1"; var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML='<i class="fa-solid fa-graduation-cap"></i> '+e2(shortName(rr)); sfl.title=rr.name; } } }
       var row=document.querySelector(".storefront-name-row");
       if(row&&!row.dataset.lvc){ var sid=curVid(); var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=chipFor(x2,true); if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } } }
-    }).finally(function(){busy=false;});
+    }).finally(function(){busy=false; if(again){again=false; setTimeout(decorate,30);}});
   }
   window.lvRefreshVendorMap=function(){VMAP=null;VAT=0;decorate();};
   var dt=null; try{ new MutationObserver(function(){ clearTimeout(dt); dt=setTimeout(decorate,60); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
