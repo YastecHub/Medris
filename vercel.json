@@ -34,7 +34,7 @@
   ],
   "functions": {
     "api/delete-account.js": {
-      "includeFiles": "{index.html,og-store-bg.png,og-levromart.png,icon-512.png,levromart-badge.png}"
+      "includeFiles": "{index.html,og-frame.png,og-levromart.png,icon-512.png,levromart-badge.png,fonts/*.ttf}"
     }
   },
   "crons": [

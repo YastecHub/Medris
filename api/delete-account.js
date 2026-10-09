@@ -22,107 +22,160 @@ function escAttr(s) {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// Share-preview card for a storefront link: the vendor's own profile picture inside
-// the Levromart-branded frame (og-store-bg.png), with a small Levromart badge on it.
-// It rides along on this function for the same reason as the meta tags above.
-async function storeOgImage(req, res) {
+// ---------------------------------------------------------------------------
+// Share-preview cards (1200x630) for storefront / product / package links.
+// Text is converted to vector paths with opentype.js so it renders on the server
+// without any installed fonts. Storefront: vendor logo (or initials) in the ring,
+// name on the left. Product/package: item photo in the ring, name + price on the
+// left and the vendor's logo and name along the bottom.
+// ---------------------------------------------------------------------------
+let _ogFonts = null;
+function ogFonts() {
+  if (_ogFonts) return _ogFonts;
+  const opentype = require("opentype.js");
+  const load = (f) => { const b = fs.readFileSync(path.join(process.cwd(), "fonts", f)); return opentype.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)); };
+  _ogFonts = { bold: load("Poppins-ExtraBold.ttf"), semi: load("Poppins-SemiBold.ttf"), med: load("Poppins-Medium.ttf") };
+  return _ogFonts;
+}
+function ogWidth(font, text, size) { return font.getAdvanceWidth(text, size); }
+function ogPathData(p) {
+  // toPathData() can print exponents like 1e-7, which some SVG renderers reject mid-path; format every number plainly.
+  const n = (v) => (Math.round(v * 100) / 100).toFixed(2);
+  return p.commands.map((c) => c.type === "Z" ? "Z" : c.type === "M" || c.type === "L" ? `${c.type}${n(c.x)} ${n(c.y)}` : c.type === "Q" ? `Q${n(c.x1)} ${n(c.y1)} ${n(c.x)} ${n(c.y)}` : `C${n(c.x1)} ${n(c.y1)} ${n(c.x2)} ${n(c.y2)} ${n(c.x)} ${n(c.y)}`).join("");
+}
+function ogText(font, text, x, y, size, fill) { return `<path d="${ogPathData(font.getPath(text, x, y, size))}" fill="${fill}"/>`; }
+function ogFit(font, text, size, maxW) {
+  let t = String(text || "").trim();
+  if (ogWidth(font, t, size) <= maxW) return t;
+  while (t.length > 1 && ogWidth(font, t + "...", size) > maxW) t = t.slice(0, -1);
+  return t.trim() + "...";
+}
+function ogWrap(font, text, size, maxW, maxLines) {
+  const words = String(text || "").trim().split(/\s+/).filter(Boolean);
+  const lines = []; let cur = "";
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i], tryLine = cur ? cur + " " + w : w;
+    if (ogWidth(font, tryLine, size) <= maxW) { cur = tryLine; continue; }
+    if (cur) { lines.push(cur); cur = w; } else { lines.push(ogFit(font, w, size, maxW)); cur = ""; }
+    if (lines.length === maxLines) { cur = ""; const rest = words.slice(i).join(" "); lines[maxLines - 1] = ogFit(font, lines[maxLines - 1] + " " + rest, size, maxW); return lines; }
+  }
+  if (cur) lines.push(cur);
+  if (lines.length > maxLines) { const keep = lines.slice(0, maxLines); keep[maxLines - 1] = ogFit(font, lines.slice(maxLines - 1).join(" "), size, maxW); return keep; }
+  return lines;
+}
+function ogInitials(name) {
+  const w = String(name || "").replace(/[^\p{L}\p{N} ]/gu, " ").trim().split(/\s+/).filter(Boolean);
+  if (!w.length) return "L";
+  return ((w[0][0] || "") + (w.length > 1 ? (w[1][0] || "") : (w[0][1] || ""))).toUpperCase();
+}
+function ogHue(name) { let h = 0; const n = String(name || "Levromart"); for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 360; return h; }
+function ogNaira(f, x, y, size, fill) {
+  const N = ogPathData(f.getPath("N", x, y, size)), w = ogWidth(f, "N", size);
+  const bar = (dy) => `<rect x="${x - size * 0.07}" y="${y - dy}" width="${w + size * 0.14}" height="${size * 0.085}" fill="${fill}"/>`;
+  return { svg: `<path d="${N}" fill="${fill}"/>${bar(size * 0.43)}${bar(size * 0.27)}`, width: w };
+}
+async function ogGrab(u) {
+  if (!u) return null;
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
+  try { const r = await fetch(u, { signal: ctl.signal }); return r.ok ? Buffer.from(await r.arrayBuffer()) : null; } catch (_) { return null; } finally { clearTimeout(t); }
+}
+async function ogCircle(buf, D, bg) {
+  const mask = Buffer.from(`<svg width="${D}" height="${D}"><circle cx="${D / 2}" cy="${D / 2}" r="${D / 2}" fill="#fff"/></svg>`);
+  return sharp(buf, { failOn: "none" }).rotate().flatten({ background: bg || "#ffffff" }).resize(D, D, { fit: "cover" }).composite([{ input: mask, blend: "dest-in" }]).png().toBuffer();
+}
+function ogMoney(n) { return Number(n).toLocaleString("en-NG", { maximumFractionDigits: 0 }); }
+
+async function ogCard(req, res) {
   try {
-    const id = String(req.query?.ogstore || "").trim();
+    const storeId = String(req.query?.ogstore || "").trim();
+    const productId = String(req.query?.ogprod || "").trim();
+    const packageId = String(req.query?.ogpkg || "").trim();
     const root = process.cwd();
-    const D = 392, CX = 880, CY = 315;
-    let logo = null;
-    if (id) {
-      try {
-        const SUPABASE_URL = env("SUPABASE_URL");
-        const KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-        const r = await fetch(`${SUPABASE_URL}/rest/v1/vendors?id=eq.${encodeURIComponent(id)}&verification_status=eq.verified&is_active=eq.true&select=logo_url`, { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } });
-        const [v] = await r.json();
-        if (v?.logo_url) {
-          const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
-          try { const ir = await fetch(v.logo_url, { signal: ctl.signal }); if (ir.ok) logo = Buffer.from(await ir.arrayBuffer()); } finally { clearTimeout(t); }
-        }
-      } catch (_) { logo = null; }
+    const W = 1200, H = 630, CX = 880, CY = 315, D = 392;
+    const SUPABASE_URL = env("SUPABASE_URL"), KEY = env("SUPABASE_SERVICE_ROLE_KEY");
+    const hdr = { apikey: KEY, Authorization: `Bearer ${KEY}` };
+    const get = async (p) => { const r = await fetch(`${SUPABASE_URL}/rest/v1/${p}`, { headers: hdr }); const j = await r.json(); return Array.isArray(j) ? j[0] : null; };
+    const F = ogFonts();
+    let kind = "store", name = "", photo = null, vendorName = "", vendorLogo = null, priceText = "";
+    if (storeId) {
+      const v = await get(`vendors?id=eq.${encodeURIComponent(storeId)}&verification_status=eq.verified&is_active=eq.true&select=business_name,logo_url`);
+      name = v?.business_name || "Levromart storefront"; photo = v?.logo_url || null; vendorName = name;
+    } else if (productId) {
+      kind = "product";
+      const p = await get(`products?id=eq.${encodeURIComponent(productId)}&select=name,sale_price,discount_price,rental_rate,photos,vendor:vendors(business_name,logo_url)`);
+      name = p?.name || "Levromart listing"; photo = Array.isArray(p?.photos) && p.photos[0] ? p.photos[0] : null;
+      vendorName = p?.vendor?.business_name || ""; vendorLogo = p?.vendor?.logo_url || null;
+      const sale = Number(p?.sale_price), disc = Number(p?.discount_price);
+      const price = disc > 0 && sale > 0 && disc < sale ? disc : (sale > 0 ? sale : Number(p?.rental_rate) || 0);
+      if (price > 0) priceText = ogMoney(price);
+    } else if (packageId) {
+      kind = "package";
+      const p = await get(`vendor_packages?id=eq.${encodeURIComponent(packageId)}&select=name,price,photos,vendor:vendors(business_name,logo_url)`);
+      name = p?.name || "Levromart package"; photo = Array.isArray(p?.photos) && p.photos[0] ? p.photos[0] : null;
+      vendorName = p?.vendor?.business_name || ""; vendorLogo = p?.vendor?.logo_url || null;
+      if (Number(p?.price) > 0) priceText = ogMoney(p.price);
     }
-    const circle = Buffer.from(`<svg width="${D}" height="${D}"><circle cx="${D / 2}" cy="${D / 2}" r="${D / 2}" fill="#fff"/></svg>`);
+    const [photoBuf, logoBuf] = await Promise.all([ogGrab(photo), kind === "store" ? Promise.resolve(null) : ogGrab(vendorLogo)]);
     const layers = [];
+    // ---- ring content
     let centre = null;
-    if (logo) {
-      try { centre = await sharp(logo, { failOn: "none" }).rotate().flatten({ background: "#ffffff" }).resize(D, D, { fit: "cover" }).composite([{ input: circle, blend: "dest-in" }]).png().toBuffer(); } catch (_) { centre = null; }
-    }
+    if (photoBuf) { try { centre = await ogCircle(photoBuf, D); } catch (_) { centre = null; } }
     if (!centre) {
-      const mark = await sharp(path.join(root, "levromart-badge.png")).resize(230, 230, { fit: "inside" }).png().toBuffer();
-      centre = await sharp({ create: { width: D, height: D, channels: 4, background: "#0f8f5a" } }).composite([{ input: mark, gravity: "center" }, { input: circle, blend: "dest-in" }]).png().toBuffer();
+      const h = ogHue(kind === "store" ? name : (vendorName || name)), ini = ogInitials(kind === "store" ? name : (vendorName || name));
+      const size = 190, w = ogWidth(F.bold, ini, size);
+      const svg = `<svg width="${D}" height="${D}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${h},70%,90%)"/><stop offset="1" stop-color="hsl(${h},60%,78%)"/></linearGradient><clipPath id="c"><circle cx="${D / 2}" cy="${D / 2}" r="${D / 2}"/></clipPath></defs><g clip-path="url(#c)"><rect width="${D}" height="${D}" fill="url(#g)"/>${ogText(F.bold, ini, (D - w) / 2, D / 2 + size * 0.36, size, `hsl(${h},55%,28%)`)}</g></svg>`;
+      centre = await sharp(Buffer.from(svg)).png().toBuffer();
     }
     layers.push({ input: centre, left: CX - D / 2, top: CY - D / 2 });
-    const B = 124, m = Buffer.from(`<svg width="${B}" height="${B}"><rect width="${B}" height="${B}" rx="34" fill="#fff"/></svg>`);
-    const icon = await sharp(path.join(root, "icon-512.png")).resize(B - 16, B - 16).composite([{ input: Buffer.from(`<svg width="${B - 16}" height="${B - 16}"><rect width="${B - 16}" height="${B - 16}" rx="26" fill="#fff"/></svg>`), blend: "dest-in" }]).png().toBuffer();
-    const badge = await sharp(m).composite([{ input: icon, left: 8, top: 8 }]).png().toBuffer();
+    // ---- Levromart badge on the ring
+    const B = 124;
+    const iconBase = await sharp(path.join(root, "icon-512.png")).resize(B - 16, B - 16).composite([{ input: Buffer.from(`<svg width="${B - 16}" height="${B - 16}"><rect width="${B - 16}" height="${B - 16}" rx="26" fill="#fff"/></svg>`), blend: "dest-in" }]).png().toBuffer();
+    const badge = await sharp(Buffer.from(`<svg width="${B}" height="${B}"><rect width="${B}" height="${B}" rx="34" fill="#fff"/></svg>`)).composite([{ input: iconBase, left: 8, top: 8 }]).png().toBuffer();
     layers.push({ input: badge, left: CX + 118, top: CY + 112 });
-    const out = await sharp(path.join(root, "og-store-bg.png")).composite(layers).png({ compressionLevel: 8 }).toBuffer();
+    // ---- left-hand text
+    let svg = "";
+    const X = 70;
+    if (kind === "store") {
+      const size = 66, lines = ogWrap(F.bold, name, size, 540, 2);
+      lines.forEach((l, i) => { svg += ogText(F.bold, l, X, 250 + i * 78, size, "#ffffff"); });
+      svg += ogText(F.semi, "Verified vendor on LevroMart", X, 250 + lines.length * 78 + 20, 28, "#7dffbe");
+    } else {
+      let size = 58, lines = ogWrap(F.bold, name, size, 540, 2);
+      for (const s of [58, 50, 44]) { size = s; lines = ogWrap(F.bold, name, s, 540, 2); if (lines.join(" ").replace(/\.\.\.$/, "") .length >= String(name).trim().length - 1 && !/\.\.\.$/.test(lines[lines.length - 1])) break; }
+      const lh = Math.round(size * 1.17);
+      lines.forEach((l, i) => { svg += ogText(F.bold, l, X, 230 + i * lh, size, "#ffffff"); });
+      let y = 230 + lines.length * lh + 28;
+      if (priceText) {
+        const n = ogNaira(F.bold, X, y + 34, 54, "#5df0a5");
+        svg += n.svg + ogText(F.bold, priceText, X + n.width + 14, y + 34, 54, "#5df0a5");
+      }
+      if (vendorName) {
+        const R = 40, cy = 512;
+        svg += ogText(F.med, "Sold by", X + 2 * R + 22, cy - 8, 22, "#a9d9c0");
+        svg += ogText(F.semi, ogFit(F.semi, vendorName, 30, 470), X + 2 * R + 22, cy + 28, 30, "#ffffff");
+        let face = null;
+        if (logoBuf) { try { face = await ogCircle(logoBuf, 2 * R - 8); } catch (_) { face = null; } }
+        const ring = Buffer.from(`<svg width="${2 * R}" height="${2 * R}"><circle cx="${R}" cy="${R}" r="${R}" fill="#fff"/></svg>`);
+        layers.push({ input: ring, left: X, top: cy - R });
+        if (face) layers.push({ input: face, left: X + 4, top: cy - R + 4 });
+        else {
+          const h = ogHue(vendorName), ini = ogInitials(vendorName), s2 = 34, w2 = ogWidth(F.bold, ini, s2);
+          const t = Buffer.from(`<svg width="${2 * R - 8}" height="${2 * R - 8}"><defs><clipPath id="c"><circle cx="${R - 4}" cy="${R - 4}" r="${R - 4}"/></clipPath></defs><g clip-path="url(#c)"><rect width="${2 * R}" height="${2 * R}" fill="hsl(${h},60%,84%)"/>${ogText(F.bold, ini, (2 * R - 8 - w2) / 2, R - 4 + s2 * 0.36, s2, `hsl(${h},55%,28%)`)}</g></svg>`);
+          layers.push({ input: await sharp(t).png().toBuffer(), left: X + 4, top: cy - R + 4 });
+        }
+      }
+    }
+    if (svg) layers.push({ input: Buffer.from(`<svg width="${W}" height="${H}">${svg}</svg>`), left: 0, top: 0 });
+    const out = await sharp(path.join(root, "og-frame.png")).composite(layers).png({ compressionLevel: 8 }).toBuffer();
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
     res.status(200).send(out);
   } catch (err) {
-    console.error("Levromart store og-image error:", err);
+    console.error("Levromart share card error:", err);
     res.statusCode = 302; res.setHeader("Location", "/og-levromart.png"); res.end();
   }
 }
 
-// Share-preview card for a product or package link: the item's own photo, with the vendor's
-// profile picture and a small Levromart badge on top (no text, so it needs no fonts on the server).
-async function itemOgImage(req, res) {
-  try {
-    const productId = String(req.query?.ogprod || "").trim();
-    const packageId = String(req.query?.ogpkg || "").trim();
-    const root = process.cwd();
-    const W = 1200, H = 630;
-    const SUPABASE_URL = env("SUPABASE_URL");
-    const KEY = env("SUPABASE_SERVICE_ROLE_KEY");
-    const hdr = { apikey: KEY, Authorization: `Bearer ${KEY}` };
-    let photoUrl = null, logoUrl = null;
-    if (productId) {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(productId)}&select=photos,vendor:vendors(logo_url)`, { headers: hdr });
-      const [p] = await r.json();
-      photoUrl = Array.isArray(p?.photos) && p.photos[0] ? p.photos[0] : null; logoUrl = p?.vendor?.logo_url || null;
-    } else if (packageId) {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/vendor_packages?id=eq.${encodeURIComponent(packageId)}&select=photos,vendor:vendors(logo_url)`, { headers: hdr });
-      const [p] = await r.json();
-      photoUrl = Array.isArray(p?.photos) && p.photos[0] ? p.photos[0] : null; logoUrl = p?.vendor?.logo_url || null;
-    }
-    const grab = async (u) => {
-      if (!u) return null;
-      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
-      try { const ir = await fetch(u, { signal: ctl.signal }); return ir.ok ? Buffer.from(await ir.arrayBuffer()) : null; } catch (_) { return null; } finally { clearTimeout(t); }
-    };
-    const [photo, logo] = await Promise.all([grab(photoUrl), grab(logoUrl)]);
-    let base;
-    try { base = photo ? await sharp(photo, { failOn: "none" }).rotate().resize(W, H, { fit: "cover" }).toBuffer() : await sharp(path.join(root, "og-levromart.png")).toBuffer(); }
-    catch (_) { base = await sharp(path.join(root, "og-levromart.png")).toBuffer(); }
-    const shade = Buffer.from(`<svg width="${W}" height="${H}"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".7"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#g)"/></svg>`);
-    const layers = [{ input: shade, left: 0, top: 0 }];
-    if (logo) {
-      try {
-        const R = 92, ring = Buffer.from(`<svg width="${R * 2}" height="${R * 2}"><circle cx="${R}" cy="${R}" r="${R}" fill="#fff"/></svg>`);
-        const inner = Buffer.from(`<svg width="${R * 2 - 16}" height="${R * 2 - 16}"><circle cx="${R - 8}" cy="${R - 8}" r="${R - 8}" fill="#fff"/></svg>`);
-        const face = await sharp(logo, { failOn: "none" }).rotate().flatten({ background: "#ffffff" }).resize(R * 2 - 16, R * 2 - 16, { fit: "cover" }).composite([{ input: inner, blend: "dest-in" }]).png().toBuffer();
-        layers.push({ input: ring, left: 44, top: H - 44 - R * 2 });
-        layers.push({ input: face, left: 52, top: H - 44 - R * 2 + 8 });
-      } catch (_) {}
-    }
-    const B = 112;
-    const mask = Buffer.from(`<svg width="${B}" height="${B}"><rect width="${B}" height="${B}" rx="30" fill="#fff"/></svg>`);
-    const icon = await sharp(path.join(root, "icon-512.png")).resize(B - 14, B - 14).composite([{ input: Buffer.from(`<svg width="${B - 14}" height="${B - 14}"><rect width="${B - 14}" height="${B - 14}" rx="24" fill="#fff"/></svg>`), blend: "dest-in" }]).png().toBuffer();
-    const badge = await sharp(mask).composite([{ input: icon, left: 7, top: 7 }]).png().toBuffer();
-    layers.push({ input: badge, left: W - 44 - B, top: H - 44 - B });
-    const out = await sharp(base).composite(layers).jpeg({ quality: 86 }).toBuffer();
-    res.setHeader("Content-Type", "image/jpeg");
-    res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800");
-    res.status(200).send(out);
-  } catch (err) {
-    console.error("Levromart item og-image error:", err);
-    res.statusCode = 302; res.setHeader("Location", "/og-levromart.png"); res.end();
-  }
-}
 async function shareMetaPreview(req, res) {
   const serveAsIs = () => {
     const html = fs.readFileSync(path.join(process.cwd(), "index.html"), "utf8");
@@ -580,8 +633,7 @@ async function turnServers(req, res) {
 
 module.exports = async function handler(req, res) {
   if (req.method === "GET" && /(?:^|[?&])turn=1(?:&|$)/.test(String(req.url || ""))) return turnServers(req, res);
-  if (req.method === "GET" && /(?:^|[?&])ogstore=/.test(String(req.url || ""))) return storeOgImage(req, res);
-  if (req.method === "GET" && /(?:^|[?&])og(?:prod|pkg)=/.test(String(req.url || ""))) return itemOgImage(req, res);
+  if (req.method === "GET" && /(?:^|[?&])og(?:store|prod|pkg)=/.test(String(req.url || ""))) return ogCard(req, res);
   if (req.method === "GET") return shareMetaPreview(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed." });
 
