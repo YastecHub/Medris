@@ -54477,3 +54477,24 @@ document.addEventListener("click",function(e){
 .lv-mention-item:active,.lv-mention-item:hover{background:color-mix(in srgb,var(--primary,#3fb97f) 12%,transparent)}
 .lv-mention-item img,.lv-mention-ini{flex:none;width:2rem;height:2rem;border-radius:50%;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary,#3fb97f) 18%,var(--card));color:var(--primary,#3fb97f);font-weight:800}
 </style>
+
+<style id="oct-carousel-taller-and-pay-notice">
+/* taller banner so it fills the gap above the leaderboard card */
+#app .home-promotional-slide{aspect-ratio:1.3/1!important}
+#app .home-promotional-carousel{margin-bottom:.6rem!important}
+@media(min-width:720px){#app .home-promotional-slide{aspect-ratio:1.9/1!important}}
+/* pay-before/after notice: only for delivery, shown under the delivery choice */
+:root:root body #app .card .pd-total-box{display:flex!important;flex-direction:column}
+:root:root body #app .card .pd-total-box>*{order:8}
+:root:root body #app .card .pd-total-box>.pd-step-title{order:1}
+:root:root body #app .card .pd-total-box>.delivery-method-row{order:2}
+:root:root body #app .card .pd-total-box>.product-payment-plan-notice{order:3;margin:0 0 1rem!important}
+:root:root body #app .card .pd-total-box>#buyDeliveryFields{order:4}
+:root:root body #app .card .pd-total-box>.pd-note-box{order:5}
+:root:root body #app .card .pd-total-box>.pd-buy-actions{order:6}
+:root:root body #app .card .pd-total-box:has(input[name="buyDeliveryMethod"][value="pickup"]:checked)>.product-payment-plan-notice{display:none!important}
+:root:root body #app .card .pd-total-box>.product-payment-plan-notice{border-radius:16px}
+</style>
+<style id="lf-top-dark">
+:root[data-theme="dark"] .lf-page .lf-top,:root[data-theme="black"] .lf-page .lf-top{background:none!important;border-radius:0}
+</style>
