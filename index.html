@@ -55236,6 +55236,22 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   }
   function setView(id){
     try{localStorage.setItem("lv-view-campus",id);}catch(_){}
+    var bar=document.getElementById("lvCampusBar");
+    if(bar) bar.innerHTML=barHtml();
+    // fast path: re-filter the catalogue already in memory and repaint only the grid
+    try{
+      var grid=document.getElementById("productGrid");
+      var mem=window.__homeBrowseIdxMem, raw=null;
+      if(mem){ var slot=Math.floor(Date.now()/600000); raw=mem.get("levro-browse-idx3:"+slot+":all:all")||null; }
+      var plainHome=!(typeof currentSectorId!=="undefined"&&currentSectorId)&&!(typeof currentHomeCategoryId!=="undefined"&&currentHomeCategoryId);
+      if(grid&&raw&&plainHome&&typeof filterHomeProducts==="function"){
+        var idx=id==="all"?raw:raw.filter(function(x){return x.campus_id===id||x.ops_scope==="all"||(x.ops_scope==="multiple"&&Array.isArray(x.ops)&&x.ops.indexOf(id)>-1);});
+        window.__homeBrowseIndex=idx; window.__homeFullIndex=idx;
+        grid.style.transition="opacity .12s"; grid.style.opacity=".45";
+        Promise.resolve(filterHomeProducts()).catch(function(){}).then(function(){ grid.style.opacity=""; });
+        return;
+      }
+    }catch(_){}
     window.__homeFullIndex=null;
     try{navigate("home",{},false);}catch(_){}
   }
