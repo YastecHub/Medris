@@ -54637,3 +54637,10 @@ html body #app .product-gallery-slide{scroll-snap-align:center;scroll-snap-stop:
 html body #app .storefront-product-strip{scrollbar-width:none!important;-ms-overflow-style:none!important}
 html body #app .storefront-product-strip::-webkit-scrollbar{display:none!important;height:0!important;width:0!important}
 </style>
+<style id="home-carousel-peek-final">
+/* show a clear slice of the previous and next banner on both sides */
+#app .home-promotional-viewport,#app .home-promotional-carousel,#app .home-promotional-track{--slide-w:min(80vw,600px)!important}
+#app .home-promotional-track{gap:.6rem!important}
+#app .home-promotional-slide{aspect-ratio:1.4/1!important}
+@media(min-width:720px){#app .home-promotional-viewport,#app .home-promotional-carousel,#app .home-promotional-track{--slide-w:min(66vw,820px)!important}#app .home-promotional-slide{aspect-ratio:1.9/1!important}}
+</style>
