@@ -14997,6 +14997,7 @@ async function levroCommissionGate(view) {
     await sb.rpc("enforce_commission_deadlines", { p_vendor_id: vendor.id });
     const { data: deadline, error: deadlineError } = await sb.rpc("get_vendor_commission_deadline", { p_vendor_id: vendor.id });
     if (deadlineError || !deadline?.[0]?.earliest_due_at) return false;
+    if (vendor.commission_pause_reason === 'admin_override') return false;
     if (new Date(deadline[0].earliest_due_at).getTime() > Date.now()) return false;
     const { data: owed, error } = await sb.rpc("get_vendor_commission_owed", { p_vendor_id: vendor.id });
     // Paystack won't transfer under ₦100, so gating a vendor's daily tools
@@ -24626,7 +24627,7 @@ async function toggleVendorActive(currentlyActive) {
     const { data: deadline, error: deadlineError } = await sb.rpc("get_vendor_commission_deadline", { p_vendor_id: vendor.id });
     if (deadlineError) { showToast(deadlineError.message, "error"); return; }
     const dueAt = deadline?.[0]?.earliest_due_at;
-    if (dueAt && new Date(dueAt).getTime() <= Date.now()) {
+    if (dueAt && vendor.commission_pause_reason !== 'admin_override' && new Date(dueAt).getTime() <= Date.now()) {
       const { data: owed, error: owedError } = await sb.rpc("get_vendor_commission_owed", { p_vendor_id: vendor.id });
       if (owedError) { showToast(owedError.message, "error"); return; }
       // Same ₦100 floor as the rest of the commission-pause logic -- Paystack
@@ -31051,17 +31052,67 @@ async function adminDeleteVendor(vendorId, filterStatus, businessName) {
 }
 
 async function adminToggleVendorActive(vendorId, currentlyActive, businessName) {
+  // Pause / unpause at will: no password, no confirmation. The row updates in place.
   const action = currentlyActive ? "pause" : "unlock";
-  const message = currentlyActive ? "Pause this vendor's storefront? Customers won't be able to see their shop or products until an admin reactivates it." : "Unlock vendor? Their storefront will become active again. Any outstanding commission remains owed and is not forgiven.";
-  if (!(await showConfirmDialog(message,{title:currentlyActive?"Pause storefront":"Unlock vendor",okLabel:currentlyActive?"Pause":"Unlock vendor",danger:currentlyActive}))) return;
-  if (currentlyActive && !(await promptAdminPassword("pause this vendor's storefront"))) return;
+  const btn = document.querySelector(`.fin-row[data-vendor-id="${CSS.escape(String(vendorId))}"] .fin-icbtn`);
+  if (btn) btn.disabled = true;
   try {
     const {data,error}=await sb.rpc("admin_set_vendor_storefront_active",{p_vendor_id:vendorId,p_active:!currentlyActive});
     if(error) throw error; if(!data?.success) throw new Error("The storefront status change did not complete.");
-    showToast(currentlyActive?"Storefront paused.":"Vendor unlocked. Outstanding commission remains owed.","success");
-    await navigate("adminFinance");
-  } catch(err) { console.error("[Levromart] Admin storefront action failed:",err); showToast(err?.message||`Could not ${action} this vendor.`,"error"); }
+    showToast(currentlyActive?`${businessName||"Storefront"} paused.`:`${businessName||"Storefront"} is live again.`,"success");
+    await refreshAdminFinanceVendors();
+  } catch(err) { console.error("[Levromart] Admin storefront action failed:",err); showToast(err?.message||`Could not ${action} this vendor.`,"error"); if (btn) btn.disabled = false; }
 }
+
+// One vendor row of the finance page: icons instead of words, neutral colours, red/amber only for things that need attention.
+function finVendorRowHtml(v, seesFinancials) {
+  const owed = Number(v.commission_owed || 0);
+  const live = !!v.is_active;
+  const verIcon = v.verification_status === "verified" ? `<i class="fa-solid fa-circle-check fin-ico ok" title="Verified"></i>` : v.verification_status === "rejected" ? `<i class="fa-solid fa-circle-xmark fin-ico bad" title="Rejected"></i>` : `<i class="fa-solid fa-clock fin-ico warn" title="Pending verification"></i>`;
+  const bank = v.paystack_subaccount_code ? `<i class="fa-solid fa-building-columns fin-ico ok" title="Payouts set up"></i>` : `<i class="fa-solid fa-building-columns fin-ico warn" title="Payouts not set up"></i>`;
+  const state = live ? `<i class="fa-solid fa-circle fin-dot ok" title="Live"></i>` : `<i class="fa-solid fa-circle-pause fin-ico bad" title="Paused"></i>`;
+  const due = v.commission_due_at ? new Date(v.commission_due_at).toLocaleDateString("en-NG", {day:"numeric",month:"short",year:"numeric"}) : "";
+  const dr = Number(v.commission_days_remaining);
+  const dueTxt = owed > 0 && due ? (dr < 0 ? `<span class="fin-due bad"><i class="fa-regular fa-clock"></i> ${Math.abs(dr)}d overdue · due ${esc(due)}</span>` : `<span class="fin-due ${dr <= 2 ? "warn" : ""}"><i class="fa-regular fa-clock"></i> ${dr}d left · due ${esc(due)}</span>`) : "";
+  const label = esc(v.business_name).replace(/'/g, "&#39;");
+  const btn = !seesFinancials ? "" : live
+    ? `<button type="button" class="fin-icbtn" title="Pause storefront" aria-label="Pause storefront" onclick="adminToggleVendorActive('${v.vendor_id}', true, '${label}')"><i class="fa-solid fa-pause"></i></button>`
+    : `<button type="button" class="fin-icbtn go" title="${owed > 0 ? "Unlock storefront" : "Reactivate storefront"}" aria-label="Unlock storefront" onclick="adminToggleVendorActive('${v.vendor_id}', false, '${label}')"><i class="fa-solid fa-play"></i></button>`;
+  return `<div class="fin-row" data-vendor-id="${esc(v.vendor_id)}">
+      <div class="fin-row-top">
+        <strong class="fin-name">${esc(v.business_name)}</strong>
+        ${verIcon}${bank}${seesFinancials ? state : ""}
+        <span class="fin-action">${btn}</span>
+      </div>
+      ${seesFinancials ? `<div class="fin-meta fin-grid">
+        <span title="Commission rate"><i class="fa-solid fa-percent"></i>${Number(v.commission_pct)}</span>
+        <span title="Completed orders"><i class="fa-solid fa-bag-shopping"></i>${v.completed_orders}</span>
+        <span title="Collected"><i class="fa-solid fa-wallet"></i>${naira(v.total_paid_in)}</span>
+        <span class="${owed > 0 ? "owed" : ""}" title="Commission owed"><i class="fa-solid fa-hourglass-half"></i>${naira(owed)}</span>
+      </div>${dueTxt ? `<div class="fin-meta">${dueTxt}</div>` : ""}` : ""}
+    </div>`;
+}
+async function refreshAdminFinanceVendors() {
+  if (currentView !== "adminFinance" || !isSuperAdmin()) return;
+  const wrap = document.querySelector(".fin-list.financeVendorsTableWrap");
+  if (!wrap) return;
+  const { data: vendors, error } = await sb.rpc("admin_list_vendor_payouts");
+  if (error || !Array.isArray(vendors)) return;
+  const sig = JSON.stringify(vendors.map((v) => [v.vendor_id, v.is_active, v.commission_owed, v.verification_status, !!v.paystack_subaccount_code]));
+  if (wrap.dataset.sig === sig) return;
+  wrap.dataset.sig = sig;
+  if (__adminFinanceData) __adminFinanceData.vendors = vendors;
+  wrap.innerHTML = vendors.map((v) => finVendorRowHtml(v, true)).join("");
+  const q = wrap.parentElement?.querySelector('input[type="text"]')?.value;
+  if (q) wrap.parentElement.querySelector('input[type="text"]').dispatchEvent(new Event("input"));
+  const chips = document.querySelector(".fin-chips");
+  if (chips) {
+    const owing = vendors.filter((v) => Number(v.commission_owed || 0) > 0).length, over = vendors.filter((v) => v.commission_status === "overdue").length, soon = vendors.filter((v) => v.commission_status === "due_soon").length;
+    chips.innerHTML = `<div class="fin-chip"><b>${owing}</b><span>Owing</span></div><div class="fin-chip ${over ? "bad" : ""}"><b>${over}</b><span>Overdue</span></div><div class="fin-chip ${soon ? "warn" : ""}"><b>${soon}</b><span>Due in 48h</span></div>`;
+  }
+}
+// keeps the Live / Paused icons current while the admin has this page open (a vendor being paused shows up within seconds)
+setInterval(() => { if (!document.hidden && currentView === "adminFinance") refreshAdminFinanceVendors().catch(() => {}); }, 8000);
 
 // ---------- ADMIN: MANAGE ADMINS ----------
 // A plain directory of every registered account - separate from "Admins"
@@ -31516,34 +31567,7 @@ async function renderAdminFinance() {
   html += `<h3 style="margin-top:1.2rem;">Vendors</h3>`;
   html += `<input type="text" placeholder="Search vendors…" style="max-width:320px;margin-bottom:0.6rem;" oninput="filterTableRowsBySearch(this,'.financeVendorsTableWrap')" />`;
   html += `<div class="fin-list financeVendorsTableWrap">`;
-  (vendors || []).forEach((v) => {
-    const owed = Number(v.commission_owed || 0);
-    const vBadge = v.verification_status === "verified" ? "success" : v.verification_status === "rejected" ? "danger" : "warning";
-    const cStatus = v.commission_status || "paid";
-    const cBadge = cStatus === "overdue" ? "danger" : cStatus === "due_soon" ? "warning" : cStatus === "paid" ? "success" : "warning";
-    const due = v.commission_due_at ? new Date(v.commission_due_at).toLocaleDateString("en-NG", {day:"numeric",month:"short",year:"numeric"}) : "";
-    const days = owed > 0 ? (Number(v.commission_days_remaining) < 0 ? `<span class="badge danger">${Math.abs(Number(v.commission_days_remaining))}d overdue</span>` : `<span class="badge ${Number(v.commission_days_remaining) <= 2 ? "warning" : "success"}">${Number(v.commission_days_remaining)}d left</span>`) : "";
-    const act = (arg, label, solid) => `<button class="btn btn-sm ${solid ? "" : "btn-outline"}" onclick="adminToggleVendorActive('${v.vendor_id}', ${arg}, '${esc(v.business_name)}')">${label}</button>`;
-    const action = !seesFinancials ? "" : owed > 0 ? (v.is_active ? act("true", "Pause") : act("false", "Unlock", true)) : act(String(!!v.is_active), v.is_active ? "Pause" : "Reactivate", !v.is_active);
-    html += `<div class="fin-row">
-      <div class="fin-row-top">
-        <strong class="fin-name">${esc(v.business_name)}</strong>
-        <span class="badge ${vBadge}">${esc(v.verification_status)}</span>
-        ${seesFinancials ? `<span class="badge ${v.is_active ? "success" : "danger"}">${v.is_active ? "Live" : "Paused"}</span>` : ""}
-        <span class="fin-action">${action}</span>
-      </div>
-      <div class="fin-meta">
-        <span>${v.paystack_subaccount_code ? `<span class="badge success">Payouts on</span>` : `<span class="badge warning">Payouts not set up</span>`}</span>
-        ${seesFinancials ? `<span><em>Commission</em> ${Number(v.commission_pct)}%</span>
-        <span><em>Orders</em> ${v.completed_orders}</span>
-        <span><em>Collected</em> ${naira(v.total_paid_in)}</span>
-        <span><em>Owed</em> ${owed > 0 ? `<span class="badge warning">${naira(owed)}</span>` : naira(0)}</span>
-        ${due ? `<span><em>Due</em> ${esc(due)}</span>` : ""}
-        ${days}
-        <span><span class="badge ${cBadge}">${esc(cStatus.replace("_", " "))}</span></span>` : ""}
-      </div>
-    </div>`;
-  });
+  (vendors || []).forEach((v) => { html += finVendorRowHtml(v, seesFinancials); });
   html += `</div>`;
   if (!vendors || vendors.length === 0) html += `<p class="muted">No vendors yet.</p>`;
 
@@ -31558,8 +31582,8 @@ async function renderAdminFinance() {
   </div>`;
   html += `<div id="financeStatsArea"></div>`;
   html += `<div class="flex" style="margin:0.8rem 0;">
-    <button class="btn btn-sm btn-outline" onclick="exportFinanceCsv()"><i class="fa-solid fa-file-csv"></i> Download CSV</button>
-    <button class="btn btn-sm btn-outline" onclick="exportFinancePdf()"><i class="fa-solid fa-file-pdf"></i> Download / Print PDF</button>
+    <button type="button" class="fin-icbtn" title="Download CSV" aria-label="Download CSV" onclick="exportFinanceCsv()"><i class="fa-solid fa-file-csv"></i></button>
+    <button type="button" class="fin-icbtn" title="Download or print PDF" aria-label="Download or print PDF" onclick="exportFinancePdf()"><i class="fa-solid fa-file-pdf"></i></button>
   </div>`;
   html += `<input type="text" placeholder="Search transactions…" style="max-width:320px;margin-bottom:0.6rem;" oninput="filterTableRowsBySearch(this,'.financeTxnTableWrap')" />`;
   html += `<div id="financeTableArea"></div>`;
@@ -38828,7 +38852,7 @@ body.chat-full-page{height:100dvh !important;overflow:hidden !important;}
       const {data:owed}=await sb.rpc('get_vendor_commission_owed',{p_vendor_id:vendor.id});
       // Paystack won't transfer under ₦100, so pausing over a smaller balance
       // than that just locks a vendor out for nothing collectible yet.
-      const hasOverdue=!!dueAt && new Date(dueAt).getTime()<=Date.now() && Number(owed||0)>=100;
+      const hasOverdue=vendor.commission_pause_reason!=='admin_override' && !!dueAt && new Date(dueAt).getTime()<=Date.now() && Number(owed||0)>=100;
       if(hasOverdue){
         vendor.is_active=false;vendor.commission_paused=true;vendor.commission_pause_reason='commission_overdue';
         showCommissionOverdueModal();
@@ -54761,4 +54785,23 @@ window.lvOpenProductComments=function(id){
 :root:root:root body #tourCallout .install-modal-badge,:root:root:root body #installModal .install-modal-badge:has(#installModalLogo){width:3.6rem!important;height:3.6rem!important;margin:0 auto .55rem!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;animation:none!important;overflow:visible!important}
 :root:root:root body #tourCallout .install-modal-badge::before,:root:root:root body #tourCallout .install-modal-badge::after{display:none!important}
 :root:root:root body #tourLeviLogo,:root:root:root body #installModalLogo{width:3.6rem!important;height:3.6rem!important;border-radius:22%!important;object-fit:cover!important;display:block!important;filter:none!important;-webkit-filter:none!important;background:none!important;box-shadow:0 6px 18px rgba(8,80,50,.28)!important}
+</style>
+<style id="fin-vendors-tidy">
+:root:root body .fin-row{padding:.85rem .1rem}
+:root:root body .fin-row-top{display:flex;align-items:center;flex-wrap:nowrap;gap:.5rem}
+:root:root body .fin-row-top .fin-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.98rem}
+.fin-ico{font-size:.95rem;flex:none}.fin-ico.ok{color:var(--text-muted)}.fin-ico.warn{color:#d97706}.fin-ico.bad{color:#dc2626}
+.fin-dot{font-size:.55rem;flex:none}.fin-dot.ok{color:#22c55e}
+:root:root body .fin-action{margin-left:.2rem;flex:none}
+.fin-icbtn{width:2.2rem;height:2.2rem;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--text-muted);display:inline-flex;align-items:center;justify-content:center;font-size:.85rem;cursor:pointer;padding:0;flex:none}
+.fin-icbtn:active{background:color-mix(in srgb,var(--text) 8%,transparent)}
+.fin-icbtn.go{border-color:transparent;background:var(--primary);color:#fff}
+.fin-icbtn:disabled{opacity:.5}
+.fin-meta.fin-grid{display:grid;grid-template-columns:repeat(4,minmax(0,auto));justify-content:space-between;gap:.4rem .6rem;margin-top:.55rem}
+.fin-grid>span{display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;font-weight:600;color:var(--text);white-space:nowrap}
+.fin-grid>span i{color:var(--text-muted);font-size:.78rem;width:.9rem;text-align:center}
+.fin-grid>span.owed,.fin-grid>span.owed i{color:#d97706}
+.fin-due{display:inline-flex;align-items:center;gap:.35rem;font-size:.76rem;font-weight:600;color:var(--text-muted)}
+.fin-due.bad{color:#dc2626}.fin-due.warn{color:#d97706}
+.flex .fin-icbtn+.fin-icbtn{margin-left:.2rem}
 </style>
