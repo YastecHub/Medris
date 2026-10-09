@@ -10451,31 +10451,22 @@ function pushSupported() {
 function maybeShowNotifPrompt() {
   if (!session || !pushSupported()) return;
   if (Notification.permission === "granted") { byId("notifPromptModal")?.classList.add("hidden"); return; }
-  const cooldownKey = "levromart-notif-prompt-v2";
-  let state = {}; try { state = JSON.parse(localStorage.getItem(cooldownKey) || "{}"); } catch (_) {}
-  if (Notification.permission === "denied") {
-    const deniedUntil = Number(state.deniedUntil || 0);
-    if (Date.now() < deniedUntil) return;
-    const installModal = byId("installPromptModal");
-    if (installModal && !installModal.classList.contains("hidden")) return;
-    const prompt = byId("notifPromptModal");
-    if (!prompt) return;
-    const btn = prompt.querySelector("button[onclick*='enablePushNotifications']");
-    const body = prompt.querySelector("p");
-    if (body) body.textContent = "Notifications are blocked for Levromart. Open your browser/site settings to allow them.";
-    if (btn) { btn.textContent = "Open notification settings"; btn.onclick = () => { showToast("Open your browser's site settings and allow notifications for Levromart, then try again.", "info"); }; }
-    prompt.classList.remove("hidden"); trackModalOpened("notifPromptModal");
-    try { localStorage.setItem(cooldownKey, JSON.stringify({ ...state, deniedUntil: Date.now() + 24*60*60*1000 })); } catch (_) {}
-    return;
-  }
-  if (Number(state.dismissedUntil || 0) > Date.now()) return;
+  // Asked again every time the app is opened or someone logs in, until notifications are on. Once they are on, never again.
+  const stamp = String(session.user?.id || "");
+  if (window.__notifPromptShownFor === stamp) return;
   const installModal = byId("installPromptModal");
   if (installModal && !installModal.classList.contains("hidden")) return;
   const prompt = byId("notifPromptModal");
   if (!prompt) return;
+  const btn = prompt.querySelector(".install-modal-actions .btn:not(.btn-outline)");
+  const body = prompt.querySelector("p");
+  if (Notification.permission === "denied") {
+    if (body) body.textContent = "Notifications are blocked for Levromart. Open your browser/site settings to allow them.";
+    if (btn) { btn.textContent = "Open notification settings"; btn.onclick = () => { showToast("Open your browser's site settings and allow notifications for Levromart, then try again.", "info"); }; }
+  }
+  window.__notifPromptShownFor = stamp;
   prompt.classList.remove("hidden");
   trackModalOpened("notifPromptModal");
-  try { localStorage.setItem(cooldownKey, JSON.stringify({ ...state, shownAt: Date.now(), dismissedUntil: Date.now() + 6*60*60*1000 })); } catch (_) {}
 }
 function dismissNotifPrompt() {
   byId("notifPromptModal")?.classList.add("hidden");
@@ -54882,3 +54873,7 @@ window.lvOpenProductComments=function(id){
 <style id="fin-vendors-tidy-3">
 :root:root body .fin-row-top .fin-nm .fin-name{flex:0 1 auto!important}
 </style>
+<script id="notif-prompt-relogin">
+/* logging out and back in counts as a fresh login: ask again if notifications are still off */
+try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notifPromptShownFor=null; });}catch(_){}
+</script>
