@@ -1741,6 +1741,7 @@ async function setVendorRequestPref(v){
     });
   }
   window.lvApplyCampusScope=function(){ vmap().then(applyScope); };
+  window.lvVendorMapReady=function(){ return vmap(); };
   window.lvVendorInScope=function(id){
     var view=window.lvViewCampus&&window.lvViewCampus()||"all"; if(view==="all"||!id||!VMAP) return true;
     var x=VMAP.get(String(id)); if(!x) return true;

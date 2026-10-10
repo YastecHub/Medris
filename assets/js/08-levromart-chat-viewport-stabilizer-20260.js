@@ -753,17 +753,23 @@
       const t=q.toLowerCase().replace(/\s+/g," ");
       const [ids,vendors,packages,cats,sectors] = await Promise.all([
         sb.rpc("search_product_ids",{p_query:t}),
-        sb.from("vendors").select("id,business_name,city").eq("verification_status","verified").eq("is_active",true).ilike("business_name",`%${t}%`).limit(4),
+        sb.from("vendors").select("id,business_name,city").eq("verification_status","verified").eq("is_active",true).ilike("business_name",`%${t}%`).limit(24),
         sb.from("vendor_packages").select("id,name,price,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).or(`name.ilike.%${t}%,description.ilike.%${t}%`).limit(4),
         sb.from("categories").select("id,name").ilike("name",`%${t}%`).limit(4),
         sb.from("sectors").select("id,name").ilike("name",`%${t}%`).limit(4)
       ]);
-      const idList=(ids.data||[]).slice(0,6).map(x=>x.id).filter(Boolean);
+      const idList=(ids.data||[]).slice(0,30).map(x=>x.id).filter(Boolean);
       let products=[];
       if(idList.length){
-        const r=await sb.from("products").select("id,name,is_service,vendor:vendors!inner(business_name,verification_status,is_active)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).in("id",idList);
+        const r=await sb.from("products").select("id,name,is_service,vendor:vendors!inner(id,business_name,verification_status,is_active)").eq("status","active").eq("vendor.verification_status","verified").eq("vendor.is_active",true).in("id",idList);
         products=(r.data||[]).sort((a,b)=>idList.indexOf(a.id)-idList.indexOf(b.id));
       }
+      try{ if(window.lvVendorMapReady) await window.lvVendorMapReady(); }catch(_){}
+      const inScope=id=>!id||typeof window.lvVendorInScope!=="function"||window.lvVendorInScope(id)!==false;
+      products=products.filter(p=>inScope(p.vendor&&p.vendor.id));
+      vendors.data=(vendors.data||[]).filter(v=>inScope(v.id)).slice(0,4);
+      products=products.slice(0,6);
+      packages.data=(packages.data||[]).filter(p=>inScope(p.vendor&&p.vendor.id));
       const rows=[
         ...products.map(p=>`<button type="button" class="levro-smart-result" data-action="product" data-id="${escText(p.id)}"><i class="fa-solid ${p.is_service?'fa-hand-holding-heart':'fa-box'}"></i><span><strong>${escText(p.name)}</strong><small>${escText(p.vendor?.business_name||"Listing")}</small></span></button>`),
         ...(packages.data||[]).map(p=>`<button type="button" class="levro-smart-result" data-action="package" data-id="${escText(p.id)}"><i class="fa-solid fa-box-open"></i><span><strong>${escText(p.name)}</strong><small>Package · ₦${Number(p.price||0).toLocaleString()}</small></span></button>`),
