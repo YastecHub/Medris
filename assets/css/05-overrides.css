@@ -1329,3 +1329,16 @@ img[data-lvimg]:not(.lv-ld){opacity:0}
 /* Vendor marker in comments */
 .lv-cr-vbadge{display:inline-grid;place-items:center;flex:none;width:1.25rem;height:1.25rem;border-radius:50%;background:color-mix(in srgb,var(--primary,#059669) 16%,transparent);color:var(--primary,#059669);font-size:.62rem}
 .lv-cr-vtick{flex:none;color:#16a34a;font-size:.85rem}
+
+/* Vendor of the Week crown: golden glow, small bounce at intervals, and a Levi-style pop-up hint */
+#lvCampusBar{position:relative}
+html[data-levro-motion] #lvCampusBar .lvcb-trophy{position:relative;overflow:visible;animation:lvCrownBounce 7s ease-in-out 2s infinite!important}
+html[data-levro-motion] #lvCampusBar .lvcb-trophy i{color:#fbbf24!important;font-size:1.2rem;filter:drop-shadow(0 0 5px rgba(251,191,36,.85)) drop-shadow(0 0 12px rgba(245,158,11,.5));animation:lvCrownGlow 2.6s ease-in-out infinite!important}
+html[data-levro-motion] #lvCampusBar .lvcb-trophy::after{content:"Check the Vendor of the Week";position:absolute;right:-.2rem;top:calc(100% + .6rem);z-index:30;white-space:nowrap;padding:.5rem .8rem;border-radius:14px;background:var(--card,#fff);color:var(--text,#111);font-family:inherit;font-weight:600;font-size:.78rem;line-height:1.1;box-shadow:0 8px 24px rgba(0,0,0,.18),0 0 0 1px rgba(245,158,11,.35);opacity:0;transform-origin:90% 0;transform:scale(.5);pointer-events:none;animation:lvCrownTip 26s ease-out 3s infinite!important}
+html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:absolute;right:.65rem;top:calc(100% + .35rem);z-index:31;width:.7rem;height:.7rem;background:var(--card,#fff);transform:rotate(45deg) scale(.5);box-shadow:-1px -1px 0 rgba(245,158,11,.35);opacity:0;pointer-events:none;animation:lvCrownArrow 26s ease-out 3s infinite!important}
+@keyframes lvCrownGlow{0%,100%{filter:drop-shadow(0 0 4px rgba(251,191,36,.7)) drop-shadow(0 0 9px rgba(245,158,11,.35))}50%{filter:drop-shadow(0 0 8px rgba(253,224,71,.95)) drop-shadow(0 0 16px rgba(245,158,11,.65))}}
+@keyframes lvCrownBounce{0%,86%,100%{transform:translateY(0)}89%{transform:translateY(-6px)}92%{transform:translateY(0)}95%{transform:translateY(-3px)}97.5%{transform:translateY(0)}}
+@keyframes lvCrownTip{0%,1%{opacity:0;transform:scale(.5)}3%{opacity:1;transform:scale(1.08)}4.5%{transform:scale(1)}16%{opacity:1;transform:scale(1)}18%,100%{opacity:0;transform:scale(.6)}}
+@keyframes lvCrownArrow{0%,1%{opacity:0;transform:rotate(45deg) scale(.5)}3%,16%{opacity:1;transform:rotate(45deg) scale(1)}18%,100%{opacity:0;transform:rotate(45deg) scale(.5)}}
+@media (prefers-reduced-motion:reduce){#lvCampusBar .lvcb-trophy,#lvCampusBar .lvcb-trophy i,#lvCampusBar .lvcb-trophy::before,#lvCampusBar .lvcb-trophy::after{animation:none!important}#lvCampusBar .lvcb-trophy::after,#lvCampusBar .lvcb-trophy::before{display:none}}
+#lvCampusBar{z-index:40}
