@@ -1294,3 +1294,19 @@ img[data-lvimg]:not(.lv-ld){opacity:0}
 
 /* Out-of-campus cards must stay hidden in every layout (list mode used to override this) */
 :root:root:root body #app .lv-out,:root:root:root body .lv-out,:root:root:root body #app .lv-out-empty,:root:root:root body .lv-out-empty{display:none!important}
+
+/* LinkedIn-style comment row */
+.lv-cr{gap:.65rem!important;padding:.75rem 0!important}
+.lv-cr-hidden{display:none!important}
+.lv-cr-av{flex:none;cursor:pointer;line-height:0}
+.lv-cr-head{display:flex!important;align-items:center;gap:.4rem;flex-wrap:nowrap!important}
+.lv-cr-name{border:0;background:none;padding:0;font:inherit;font-weight:700;font-size:.92rem;color:var(--text);cursor:pointer;text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lv-cr-time{font-size:.74rem;white-space:nowrap}
+.lv-cr-dots{order:99;margin-left:auto;border:0;background:none;color:var(--text-muted,#667);width:2rem;height:2rem;border-radius:50%;display:grid;place-items:center;cursor:pointer;flex:none}
+.lv-cr-dots:active{background:color-mix(in srgb,var(--text) 8%,transparent)}
+.lv-cr-actions{display:flex;gap:.3rem;margin-top:.35rem}
+.lv-cr-actions .lv-cr-act{display:inline-flex!important;align-items:center;gap:.4rem;width:auto!important;height:auto!important;min-width:0!important;padding:.4rem .7rem!important;border-radius:999px!important;font-size:.8rem!important;font-weight:600;color:var(--text-muted,#667)!important}
+.lv-cr-actions .lv-cr-act i{font-size:1.05rem!important;margin:0!important}
+.lv-cr-actions .lv-cr-act span{margin:0!important;font-size:.82rem!important}
+.lv-cr-actions .lv-cr-act.active,.lv-cr-actions .lv-cr-act.active i{color:var(--primary,#059669)!important}
+.lv-cr-actions .lv-cr-act:active{background:color-mix(in srgb,var(--text) 8%,transparent)!important}

@@ -1011,18 +1011,73 @@ document.addEventListener("click",function(e){
   }
   function rowOf(id){return document.querySelector('.product-comment-row[data-comment-id="'+String(id).replace(/"/g,"")+'"]');}
   function textOf(id){var r=rowOf(id);var b=r&&r.querySelector(".product-comment-body");return b?(b.dataset.raw||b.textContent||"").trim():"";}
-  window.lvCommentMenu=function(kind,id){
-    var w=sheet("lvCmMenu",
-      '<span class="lv-cm-handle"></span>'+
-      '<button type="button" data-a="edit"><i class="fa-solid fa-pen"></i><span>Edit comment</span></button>'+
+  var CMV=new Map();
+  function esc(t){return String(t==null?"":t).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function hiddenSet(){try{return new Set(JSON.parse(localStorage.getItem("lv-hidden-comments")||"[]"));}catch(_){return new Set();}}
+  function hideComment(id){var h=hiddenSet();h.add(String(id));try{localStorage.setItem("lv-hidden-comments",JSON.stringify([...h].slice(-500)));}catch(_){} var r=rowOf(id);if(r)r.classList.add("lv-cr-hidden");}
+  function vendorOf(uid){
+    if(!uid) return Promise.resolve(null);
+    if(CMV.has(uid)) return Promise.resolve(CMV.get(uid));
+    return sb.from("vendors").select("id,business_name").eq("user_id",uid).is("deleted_at",null).maybeSingle().then(function(r){var v=(r&&r.data)||null;CMV.set(uid,v);return v;}).catch(function(){return null;});
+  }
+  window.lvOpenAuthor=function(uid){ vendorOf(uid).then(function(v){ if(v&&v.id&&typeof navigate==="function") navigate("storefront",{vendorId:v.id}); }); };
+  window.lvCommentRowHtml=function(c,lm,ml,d,kind){
+    var k=kind==="package"?"package":"product",id=String(c.id),uid=String(c.user_id||"");
+    var liked=ml&&ml.has(id),n=Number((lm&&lm.get(id))||0);
+    var nm=c.author_name||"Levromart user";
+    var av=c.author_avatar_url?'<img src="'+esc(c.author_avatar_url)+'" class="product-comment-avatar" style="width:2.4rem;height:2.4rem;object-fit:cover;border-radius:50%" alt="" data-lvimg onload="this.classList.add(\'lv-ld\')">':avatarFallbackHtml(nm,"2.4rem","product-comment-avatar",nm,c.user_id||nm);
+    var edited=c.updated_at&&new Date(c.updated_at)-new Date(c.created_at)>3000?'<span class="muted lv-edited">· edited</span>':"";
+    var body=window.lvMentionHtml?window.lvMentionHtml(c.content,c.author_name):esc(c.content);
+    var lf=k==="package"?"togglePackageCommentLike":"toggleProductCommentLike",rf=k==="package"?"replyToPackageComment":"replyToProductComment";
+    return '<div class="product-comment-row lv-cr'+(hiddenSet().has(id)?' lv-cr-hidden':'')+'" data-comment-id="'+esc(id)+'" data-uid="'+esc(uid)+'" data-depth="'+(d||0)+'" style="'+(d?'margin-left:1.1rem;':'')+'">'
+      +'<span class="lv-cr-av" role="button" tabindex="0" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+av+'</span>'
+      +'<div class="product-comment-main"><div class="product-comment-head lv-cr-head"><button type="button" class="lv-cr-name" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+esc(nm)+'</button><span class="muted lv-cr-time">'+timeAgo(c.created_at)+'</span>'+edited
+      +'<button type="button" class="lv-cmore lv-cr-dots" onclick="lvCommentMenu(\''+k+'\',\''+esc(id)+'\')" aria-label="Comment options"><i class="fa-solid fa-ellipsis-vertical"></i></button></div>'
+      +'<div class="product-comment-body">'+body+'</div>'
+      +'<div class="lv-cr-actions"><button type="button" class="lv-cr-act product-comment-action'+(liked?' active':'')+'" onclick="'+lf+'(\''+esc(id)+'\')" aria-label="Like"><i class="fa-'+(liked?'solid':'regular')+' fa-thumbs-up"></i><span>'+(n>0?n:'Like')+'</span></button>'
+      +'<button type="button" class="lv-cr-act product-comment-action" onclick="'+rf+'(\''+esc(id)+'\')" aria-label="Reply"><i class="fa-regular fa-comment"></i><span>Reply</span></button></div>'
+      +'</div></div>';
+  };
+  function openReport(kind,id){
+    var R=["Spam or advert","Abusive or hateful","Misleading or scam","Something else"];
+    var w=sheet("lvCmReport",'<span class="lv-cm-handle"></span><strong class="lv-cm-title">Report comment</strong>'+R.map(function(x,i){return '<button type="button" data-r="'+i+'"><i class="fa-regular fa-flag"></i><span>'+x+'</span></button>';}).join('')+'<button type="button" data-a="cancel" class="cancel">Cancel</button>');
+    w.querySelector(".lv-cm-card").addEventListener("click",async function(e){
+      var b=e.target.closest("button");if(!b)return;
+      if(b.dataset.r==null){close("lvCmReport");return;}
+      close("lvCmReport");
+      var r=await sb.from("comment_reports").insert({kind:kind,comment_id:id,reason:R[+b.dataset.r]});
+      if(r.error&&!/duplicate|unique/i.test(r.error.message||"")){showToast("Could not send the report.","error");return;}
+      showToast("Thanks, we'll review this comment.","success");
+    });
+  }
+  window.lvCommentMenu=async function(kind,id){
+    var r=rowOf(id),uid=r?r.dataset.uid:"",own=!!(session&&session.user&&String(session.user.id)===uid);
+    var nm=(r&&r.querySelector(".lv-cr-name,.product-comment-head strong")||{}).textContent||"this user";
+    var html='<span class="lv-cm-handle"></span>';
+    if(own){
+      html+='<button type="button" data-a="edit"><i class="fa-solid fa-pen"></i><span>Edit comment</span></button>'+
       '<button type="button" data-a="copy"><i class="fa-regular fa-copy"></i><span>Copy text</span></button>'+
-      '<button type="button" data-a="delete" class="danger"><i class="fa-solid fa-trash"></i><span>Delete comment</span></button>'+
-      '<button type="button" data-a="cancel" class="cancel">Cancel</button>');
-    w.querySelector(".lv-cm-card").addEventListener("click",function(e){
+      '<button type="button" data-a="delete" class="danger"><i class="fa-solid fa-trash"></i><span>Delete comment</span></button>';
+    } else {
+      var v=await vendorOf(uid),following=false;
+      if(v&&session&&session.user){ try{ var f=await sb.from("vendor_follows").select("id").eq("vendor_id",v.id).eq("follower_id",session.user.id).maybeSingle(); following=!!(f&&f.data); }catch(_){} }
+      if(v) html+='<button type="button" data-a="store"><i class="fa-solid fa-store"></i><span>View storefront</span></button>';
+      if(v&&following) html+='<button type="button" data-a="unfollow"><i class="fa-solid fa-user-minus"></i><span>Unfollow '+esc(v.business_name||nm)+'</span></button>';
+      html+='<button type="button" data-a="report"><i class="fa-regular fa-flag"></i><span>Report comment</span></button>'+
+      '<button type="button" data-a="hide"><i class="fa-regular fa-eye-slash"></i><span>I don\'t want to see this</span></button>';
+      var vend=v;
+    }
+    html+='<button type="button" data-a="cancel" class="cancel">Cancel</button>';
+    var w=sheet("lvCmMenu",html);
+    w.querySelector(".lv-cm-card").addEventListener("click",async function(e){
       var b=e.target.closest("button[data-a]");if(!b)return;var a=b.dataset.a;close("lvCmMenu");
       if(a==="edit")openEdit(kind,id);
       else if(a==="copy"){var t=textOf(id);try{navigator.clipboard.writeText(t).then(function(){showToast("Copied.","success");});}catch(_){}}
       else if(a==="delete"){(kind==="package"?window.deletePackageComment:window.deleteProductComment)(id);}
+      else if(a==="store"){ navigate("storefront",{vendorId:vend.id}); }
+      else if(a==="unfollow"){ var d=await sb.from("vendor_follows").delete().eq("vendor_id",vend.id).eq("follower_id",session.user.id); if(d.error){showToast("Could not unfollow.","error");return;} try{ var fs=window.followedVendorSet&&window.followedVendorSet(); if(fs&&fs.delete) fs.delete(String(vend.id)); }catch(_){} showToast("Unfollowed.","success"); }
+      else if(a==="report"){ if(!session){showLogin();return;} openReport(kind,id); }
+      else if(a==="hide"){ hideComment(id); showToast("Comment hidden.","success"); }
     });
   };
   function openEdit(kind,id){

@@ -1673,6 +1673,7 @@
   const nameSafe=(v)=>String(v||"Levromart user");
 
   function commentRow(c,likeMap,myLiked,depth,kind){
+    if(window.lvCommentRowHtml) return window.lvCommentRowHtml(c,likeMap,myLiked,depth,kind);
     const liked=myLiked?.has(String(c.id)), own=String(session?.user?.id||"")===String(c.user_id||"");
     const likeFn=kind==="package"?"togglePackageCommentLike":"toggleProductCommentLike";
     const replyFn=kind==="package"?"replyToPackageComment":"replyToProductComment";
