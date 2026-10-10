@@ -12802,7 +12802,8 @@ function closeStorefrontShareModal(goBack = false) {
   byId("storefrontShareModal")?.classList.add("hidden");
   const wasTracked = dismissibleModalId === "storefrontShareModal";
   dismissibleModalId = wasTracked ? null : dismissibleModalId;
-  if (goBack && wasTracked && history.state?.dismissibleModal === "storefrontShareModal") history.back();
+  // Popping the modal's own history entry must not be treated as a page change (it used to send people Home after "Copy link").
+  if (goBack && wasTracked && history.state?.dismissibleModal === "storefrontShareModal") { window.__ignoreNextPopstate = true; setTimeout(() => { window.__ignoreNextPopstate = false; }, 800); history.back(); }
 }
 /*
  * STOREFRONT FIRST-PAINT GUARD
@@ -25018,6 +25019,7 @@ function trackModalOpened(id) {
 document.addEventListener("click", (e) => {
   if (!dismissibleModalId || e.target.id !== dismissibleModalId) return;
   DISMISSIBLE_MODAL_CLOSERS[dismissibleModalId]?.();
+  if (history.state?.dismissibleModal) { window.__ignoreNextPopstate = true; setTimeout(() => { window.__ignoreNextPopstate = false; }, 800); }
   history.back();
 });
 
@@ -25036,6 +25038,7 @@ function seedHomeBelowCurrentPage() {
 setTimeout(seedHomeBelowCurrentPage, 1500);
 window.addEventListener("pageshow", () => setTimeout(seedHomeBelowCurrentPage, 400));
 window.addEventListener("popstate", (e) => {
+  if (window.__ignoreNextPopstate) { window.__ignoreNextPopstate = false; return; }
   if (msgSelectMode) { msgSelectMode = false; msgSelectedIds.clear(); }
   if (notifSelectMode) { notifSelectMode = false; notifSelectedIds.clear(); }
   if (dismissibleModalId) {
