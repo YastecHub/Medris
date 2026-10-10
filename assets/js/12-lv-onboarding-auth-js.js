@@ -1651,7 +1651,7 @@ async function setVendorRequestPref(v){
     function faceBtn(r){
       var haveDocs=!!((files.id||r.id_card_url)&&(files.bio||r.biodata_url)), done=!!(face||r.selfie_url);
       if(haveDocs&&!warmed){ warmed=true; try{ if(window.lvFacePreload&&!(navigator.connection&&navigator.connection.saveData)){ window.lvFacePreload(); window.lvFacePrepDocs([files.id?files.id.file:r.id_card_url, files.bio?files.bio.file:r.biodata_url].filter(notPdf)); } }catch(_){} }
-      return '<button type="button" class="face-btn '+(done?'done':(haveDocs?'':'off'))+'" data-face="1"><span class="fi">'+(face?'<img src="'+face.url+'" alt="">':'<i class="fa-solid fa-face-smile"></i>')+'</span><span class="t"><b>'+(done?'Face check done':'Verify your face')+'</b><small>'+(done?'Tap to retake':'Step 4 · optional · a quick selfie and a blink')+'</small></span><i class="fa-solid '+(done?'fa-circle-check':'fa-chevron-right')+'"></i></button>';
+      return '<button type="button" class="face-btn '+(done?'done':'')+'" data-face="1"><span class="fi">'+(face?'<img src="'+face.url+'" alt="">':'<i class="fa-solid fa-face-smile"></i>')+'</span><span class="t"><b>'+(done?'Selfie taken':'Take your selfie')+'</b><small>'+(done?'Tap to retake':'Step 4 · a clear selfie, in good light')+'</small></span><i class="fa-solid '+(done?'fa-circle-check':'fa-chevron-right')+'"></i></button>';
     }
     function paint(){
       if(row&&row.status==="approved"){ box.innerHTML='<h4>Student verification</h4>'+stBadge()+'<p class="sub">Your student details have been verified. A "Verified student" badge shows on your store.</p>'; if(cb) cb(); return; }
@@ -1705,16 +1705,14 @@ async function setVendorRequestPref(v){
     function restoreInputs(k){ setNo(k.n); box.querySelector("#svMatric").value=k.m; box.querySelector("#svFaculty").value=k.f; box.querySelector("#svDept").value=k.d; box.querySelector("#svLevel").value=k.l; }
     async function doFace(){
       var r=row||{};
-      if(!((files.id||r.id_card_url)&&(files.bio||r.biodata_url))){ toast("Upload your ID card and biodata page first.","error"); return; }
-      if(!window.lvFaceCheck){ toast("Face check isn't available right now.","error"); return; }
+      if(!window.lvFaceCheck){ toast("The camera isn't available right now.","error"); return; }
       var keep=keepInputs();
       var docs=[files.id?files.id.file:r.id_card_url, files.bio?files.bio.file:r.biodata_url].filter(notPdf);
       var res=await window.lvFaceCheck({docs:docs});
-      while(res&&res.retry){ res=await window.lvFaceCheck({docs:docs}); }
+      
       if(!res||!res.blob) return;
       face=res; paint(); restoreInputs(keep);
-      if(res.match==="mismatch") toast("The photo doesn't look like your ID yet. You can retake it, or submit and an admin will review.","info");
-      else toast("Face check done.","success");
+      toast("Selfie saved.","success");
     }
     async function submit(btn){
       var m=box.querySelector("#svMatric").value.trim(),f=box.querySelector("#svFaculty").value.trim(),d=box.querySelector("#svDept").value.trim(),l=box.querySelector("#svLevel").value;
@@ -1723,6 +1721,7 @@ async function setVendorRequestPref(v){
       if(miss.length){ ferr("Please add your "+miss.join(", ")+".",bad); return; }
       var hasId=files.id||(row&&row.id_card_url), hasBio=files.bio||(row&&row.biodata_url);
       if(!hasId||!hasBio){ ferr("Please add your "+(!hasId&&!hasBio?"ID card and biodata page":!hasId?"ID card":"biodata page")+" (a photo or a PDF).",[!hasId?'[data-f="id"]':null,!hasBio?'[data-f="bio"]':null].filter(Boolean)); return; }
+      if(!face&&!(row&&row.selfie_url)){ ferr("Please take your selfie (step 4). It only takes a few seconds.",['[data-face]']); return; }
       var old=btn.innerHTML; btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
       try{
         var uid=session&&session.user&&session.user.id, base="vendor-logos/verification/"+(v?v.id:uid)+"/", ts=Date.now();
@@ -1742,7 +1741,7 @@ async function setVendorRequestPref(v){
           row=Object.assign({},rec); files={id:null,bio:null}; face=null;
           toast("Submitted. We'll review your documents shortly.","success"); if(cb) setTimeout(cb,300);
           // quietly read the ID card text so the reviewer can see whether the matric number / name appear on it
-          if(window.lvOcrRead&&(idFile||bioFile)){
+          if(false&&window.lvOcrRead&&(idFile||bioFile)){
             window.lvOcrRead([idFile,bioFile].filter(Boolean),m,(typeof profile!=="undefined"&&profile&&profile.name)||"").then(function(o){
               if(!o) return;
               return sb.from("vendor_student_verification").update({ocr_matric_found:o.matric,ocr_name_found:o.name,ocr_text:o.text,ocr_checked_at:new Date().toISOString(),status:"pending"}).eq("vendor_id",v.id);
