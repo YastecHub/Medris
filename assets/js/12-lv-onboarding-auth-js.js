@@ -2004,7 +2004,7 @@ async function setVendorRequestPref(v){
         foot='<button type="button" class="btn btn-outline" data-a="back2" style="flex:0 0 5rem">Back</button><button type="button" class="btn" data-a="next2">Continue</button>';
       } else {
         head+='<h2>Verify you\'re a student</h2><p class="st-sub">Add your student details and upload your ID card and biodata page. Only LevroMart admins see them.</p></div>';
-        body=hero("Verified students earn more trust and more orders.")+perks([["fa-shield-heart","Get a Verified student badge","Shown on your store and vendor cards once approved."],["fa-lock","Your documents stay private","Only LevroMart admins can see your ID and biodata."],["fa-bolt","Reviewed quickly","Our team checks submissions as they come in."]])+'<div id="stSv"></div>'; foot=(needCampus||needScope?'<button type="button" class="btn btn-outline" data-a="back3" style="flex:0 0 5rem">Back</button>':'')+'<button type="button" class="st-out" data-a="logout">Log out</button>';
+        body=hero("Verified students earn more trust and more orders.")+perks([["fa-shield-heart","Get a Verified student badge","Shown on your store and vendor cards once approved."],["fa-lock","Your documents stay private","Only LevroMart admins can see your ID and biodata."],["fa-bolt","Reviewed quickly","Our team checks submissions as they come in."]])+'<div id="stSv"></div>'; foot=('<button type="button" class="btn btn-outline" data-a="back3" style="flex:0 0 5rem">Back</button>')+'<button type="button" class="st-out" data-a="logout">Log out</button>';
       }
       w.innerHTML=head+'<div class="st-body">'+body+'</div><div class="st-foot">'+foot+'</div>';
       if(step===3){ var host=w.querySelector("#stSv"); var anchor=document.createElement("div"); host.appendChild(anchor); window.lvMountSV(anchor,function(){ finish(); }); }
@@ -2017,9 +2017,9 @@ async function setVendorRequestPref(v){
       var b=e.target.closest("[data-a],[data-s]"); if(!b) return; var a=b.dataset.a;
       if(b.dataset.s){ ops.scope=b.dataset.s; render(); if(ops.scope==="multiple"&&!ops.list.length) b=null,pickMany(); return; }
       if(a==="major"){ window.lvOpenCampusPicker({title:"Your major campus",current:v.campus_id,onPick:async function(r){ if(r.none||r.all) return; try{ await window.lvSaveCampus(r.id); v.campus_id=r.id; render(); }catch(_){ toast("Couldn't save your campus.","error"); } }}); }
-      else if(a==="next1"){ if(!v.campus_id||v.campus_id==="none"){ toast("Choose your campus to continue.","error"); return; } step=needScope?2:3; render(); }
+      else if(a==="next1"){ if(!v.campus_id||v.campus_id==="none"){ toast("Choose your campus to continue.","error"); return; } step=2; render(); }
       else if(a==="many"){ pickMany(); }
-      else if(a==="back2"){ if(needCampus){ step=1; render(); } }
+      else if(a==="back2"){ step=1; render(); }
       else if(a==="next2"){
         if(ops.scope==="multiple"&&!ops.list.length){ toast("Tick at least one campus.","error"); return; }
         if(ops.scope==="multiple"&&v.campus_id&&ops.list.indexOf(v.campus_id)<0) ops.list.push(v.campus_id);
@@ -2027,7 +2027,7 @@ async function setVendorRequestPref(v){
         v.operating_scope=ops.scope; v.operating_campuses=ops.list;
         if(needSv){ step=3; render(); } else finish();
       }
-      else if(a==="back3"){ step=needScope?2:1; render(); }
+      else if(a==="back3"){ step=2; render(); }
       else if(a==="logout"){ try{ await sb.auth.signOut(); }catch(_){} cleanup(); location.reload(); }
     });
     function pickMany(){ window.lvOpenCampusPicker({title:"Campuses you sell on",multi:true,selected:ops.list,onDone:function(ids){ ops.list=ids; render(); }}); }
