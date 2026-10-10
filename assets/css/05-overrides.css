@@ -1342,3 +1342,7 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 @keyframes lvCrownArrow{0%,1%{opacity:0;transform:rotate(45deg) scale(.5)}3%,16%{opacity:1;transform:rotate(45deg) scale(1)}18%,100%{opacity:0;transform:rotate(45deg) scale(.5)}}
 @media (prefers-reduced-motion:reduce){#lvCampusBar .lvcb-trophy,#lvCampusBar .lvcb-trophy i,#lvCampusBar .lvcb-trophy::before,#lvCampusBar .lvcb-trophy::after{animation:none!important}#lvCampusBar .lvcb-trophy::after,#lvCampusBar .lvcb-trophy::before{display:none}}
 #lvCampusBar{z-index:40}
+
+/* Leading vendor's picture as a small badge on the crown */
+#lvCampusBar .lvcb-trophy .lvcb-badge{position:absolute;right:-.45rem;top:-.55rem;width:1.35rem;height:1.35rem;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#fef3c7;color:#92400e;font-size:.58rem;font-weight:800;box-shadow:0 0 0 2px var(--card,#fff),0 1px 5px rgba(0,0,0,.28);pointer-events:none}
+#lvCampusBar .lvcb-trophy .lvcb-badge img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}

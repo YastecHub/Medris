@@ -754,7 +754,8 @@ function hideLeviFromPanel() {
     }
   } catch (_) {}
 
-  const TABS = [["ranking", "Ranking", "fa-ranking-star"], ["mine", "My points", "fa-chart-simple"], ["earn", "Earn points", "fa-bolt"], ["refer", "Refer & earn", "fa-gift"], ["winners", "Winners", "fa-crown"]];
+  const ALL_TABS = [["ranking", "Ranking", "fa-ranking-star"], ["mine", "My points", "fa-chart-simple"], ["earn", "Earn points", "fa-bolt"], ["refer", "Refer & earn", "fa-gift"], ["winners", "Winners", "fa-crown"]];
+  const tabsNow = () => { let isV = false; try { isV = !!(vendor && vendor.id) || profile?.role === "admin"; } catch (_) {} return isV ? ALL_TABS : ALL_TABS.filter((t) => t[0] !== "mine"); };
   const PERIODS = [["week", "This week"], ["last_week", "Last week"]];
   const WA_NUMBER = "2348063227669", WA_DISPLAY = "0806 322 7669";
   const waLink = (platform) => {
@@ -845,7 +846,7 @@ function hideLeviFromPanel() {
 
   window.renderLeaderboard = function (params) {
     const want = params?.tab === "activity" ? "mine" : params?.tab;
-    LB.tab = want && TABS.some((t) => t[0] === want) ? want : "ranking";
+    LB.tab = want && tabsNow().some((t) => t[0] === want) ? want : "ranking";
     LB.filter = "all";
     return `<div class="lb-page">
       <div class="lb-hero">
@@ -853,7 +854,7 @@ function hideLeviFromPanel() {
           <div><h2>Vendor Leaderboard</h2><span class="lb-hero-sub"><i class="fa-regular fa-clock"></i> <span data-lb-countdown>${countdownText()}</span> left</span></div></div>
         <div class="lb-hero-meta"><span id="lbHeroPills"></span></div>
       </div>
-      <div class="lb-tabs" role="tablist">${TABS.map((t) => `<button type="button" role="tab" class="lb-tab${LB.tab === t[0] ? " active" : ""}" data-tab="${t[0]}" onclick="lbSetTab('${t[0]}')"><i class="fa-solid ${t[2]}"></i>${t[1]}</button>`).join("")}</div>
+      <div class="lb-tabs" role="tablist">${tabsNow().map((t) => `<button type="button" role="tab" class="lb-tab${LB.tab === t[0] ? " active" : ""}" data-tab="${t[0]}" onclick="lbSetTab('${t[0]}')"><i class="fa-solid ${t[2]}"></i>${t[1]}</button>`).join("")}</div>
       <div id="lbBody">${skeleton(6)}</div>
     </div>`;
   };
