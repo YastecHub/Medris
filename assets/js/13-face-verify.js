@@ -254,7 +254,7 @@
      +'<div class="lvsr-grid"><div><small>Matric</small><b>'+(sv.matric_pending?'Not yet available':esc(sv.matric_number))+'</b></div><div><small>Level</small><b>'+esc(sv.level)+'</b></div><div><small>Faculty</small><b>'+esc(sv.faculty)+'</b></div><div><small>Department</small><b>'+esc(sv.department)+'</b></div></div>'
      +'<div class="lvsr-ai">'+(window.lvFaceStatusHtml(sv)||'<span class="lvf-chip mid"><i class="fa-solid fa-eye"></i> No face check yet</span>')+(sv.face_distance!=null?' <small class="muted">distance '+Number(sv.face_distance).toFixed(2)+(sv.face_liveness?' · blink seen':' · no blink')+'</small>':'')+'</div>'
      +'<div class="lvsr-ocr"><small>ID text</small> '+ocr+'</div>'
-     +'<div class="req-ph-row lvsr-ph">'+imgs.map(function(x,i){return '<button type="button" class="req-ph-thumb" data-i="'+i+'"><img src="'+esc(x[1])+'" alt="'+esc(x[0])+'"><span>'+esc(x[0])+'</span></button>';}).join("")+'</div>'
+     +'<div class="req-ph-row lvsr-ph">'+imgs.map(function(x,i){ if(/\.pdf(\?|$)/i.test(x[1])) return '<a class="req-ph-thumb lvsr-pdf" href="'+esc(x[1])+'" target="_blank" rel="noopener"><i class="fa-regular fa-file-pdf"></i><span>'+esc(x[0])+' (PDF)</span></a>'; return '<button type="button" class="req-ph-thumb" data-i="'+i+'"><img src="'+esc(x[1])+'" alt="'+esc(x[0])+'"><span>'+esc(x[0])+'</span></button>';}).join("")+'</div>'
      +(sv.status==="approved"?'':'<textarea id="lvsrNote" placeholder="Note to the vendor (shown if rejected)"></textarea>')
      +'<div class="lvsr-acts">'+(sv.status!=="approved"?'<button type="button" class="ok" data-a="approved"'+(sv.matric_pending?' disabled title="Waiting for the matric number"':'')+'>Approve</button>':'')+(sv.status!=="rejected"?'<button type="button" class="no" data-a="rejected">Reject</button>':'')+'<button type="button" class="st" data-a="store">View store</button></div>';
     card.addEventListener("click",async function(e){
@@ -275,6 +275,7 @@
   function fetchBlob(u){ return fetch(u,{mode:"cors"}).then(function(r){return r.ok?r.blob():null;}).catch(function(){return null;}); }
   function nudgeCheck(){
     if(nudged) return;
+    try{ if(sessionStorage.getItem("lv-face-later")) return; }catch(_){}
     var v=null; try{ v=(typeof vendor!=="undefined"&&vendor&&vendor.id)?vendor:null; }catch(_){}
     if(!v||typeof sb==="undefined") return;
     nudged=true;
@@ -284,14 +285,16 @@
       var docs=[row.id_card_url,row.biodata_url].filter(Boolean);
       window.lvFacePreload(); window.lvFacePrepDocs(docs);
       var m=document.createElement("div"); m.id="lvFaceNudge"; m.className="lv-cm";
-      m.innerHTML='<div class="lv-cm-back"></div><div class="lv-cm-card" role="dialog" aria-modal="true"><span class="lv-cm-handle"></span><div class="lvf-nudge-ico"><i class="fa-solid fa-face-smile"></i></div><strong class="lv-cm-title">Verify your face to continue</strong><p class="lvf-nudge-p">'+(row.selfie_url?'We upgraded the face check. Please do it once more, it takes about 10 seconds.':'A quick selfie and a blink confirms the ID is yours. This is required before you can keep using your vendor account.')+'</p><button type="button" class="btn go" data-a="go">Start</button></div>';
+      m.innerHTML='<div class="lv-cm-back"></div><div class="lv-cm-card" role="dialog" aria-modal="true"><span class="lv-cm-handle"></span><div class="lvf-nudge-ico"><i class="fa-solid fa-face-smile"></i></div><strong class="lv-cm-title">Quick face check</strong><p class="lvf-nudge-p">'+(row.selfie_url?'We upgraded the face check. Please do it once more, it takes about 10 seconds.':'A quick selfie and a blink confirms the ID is yours. It takes about 10 seconds and helps us approve you faster.')+'</p><button type="button" class="btn go" data-a="go">Start</button><button type="button" class="lvf-later" data-a="later">Maybe later</button></div>';
       document.body.appendChild(m);
       m.addEventListener("click",async function(e){
-        var a=e.target.closest("[data-a]"); if(!a) return;      // required: it cannot be dismissed
+        var a=e.target.closest("[data-a]"); if(!a) return;
         m.remove();
+        var later=function(msg){ try{sessionStorage.setItem("lv-face-later","1");}catch(_){} if(msg) showToast(msg,"info"); };
+        if(a.dataset.a==="later"){ later(); return; }
         var res=await window.lvFaceCheck({docs:docs});
         while(res&&res.retry){ res=await window.lvFaceCheck({docs:docs}); }
-        if(!res||!res.blob){ nudged=false; setTimeout(nudgeCheck,300); return; }   // closed the camera: ask again
+        if(!res||!res.blob){ later("No problem. You can do the face check any time from your profile."); return; }
         try{
           var base="vendor-logos/verification/"+v.id+"/";
           var url=await uploadToR2(res.blob,base+"face-"+Date.now()+".jpg","image/jpeg");
@@ -304,7 +307,7 @@
               if(!o) return; return sb.rpc("submit_face_check",{p_selfie_url:null,p_distance:res.distance,p_match:res.match,p_liveness:res.liveness,p_ocr_matric:o.matric,p_ocr_name:o.name,p_ocr_text:o.text});
             }).catch(function(){});
           }
-        }catch(err){ showToast((err&&err.message)||"Couldn't send your face check.","error"); nudged=false; setTimeout(nudgeCheck,1500); }
+        }catch(err){ later((err&&err.message)||"Couldn't send your face check. Try again later from your profile."); }
       });
     }).catch(function(){nudged=false;});
   }

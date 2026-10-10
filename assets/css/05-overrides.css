@@ -1430,3 +1430,10 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 .lv-role-seg button small{font-size:.72rem;color:var(--text-muted,#667)}
 .lv-role-seg button.on{border-color:var(--primary,#059669);background:color-mix(in srgb,var(--primary,#059669) 10%,var(--card,#fff))}
 .lv-role-seg button.on i{color:var(--primary,#059669)}
+
+/* Verification: PDF chips, hint and the "Maybe later" link */
+.lv-sv .sv-hint{margin:.1rem 0 .5rem;font-size:.74rem;color:var(--text-muted,#667)}
+.lv-sv .up button.has i.fa-file-pdf{font-size:1.6rem;color:#dc2626}
+.lvf-later{display:block;width:100%;margin-top:.55rem;padding:.6rem;border:0;background:none;color:var(--text-muted,#667);font:inherit;font-weight:600;font-size:.9rem;cursor:pointer}
+.lvsr-pdf{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;text-decoration:none;color:var(--text);min-height:5rem}
+.lvsr-pdf i{font-size:1.6rem;color:#dc2626}

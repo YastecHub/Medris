@@ -1638,13 +1638,20 @@ async function setVendorRequestPref(v){
     var box=document.createElement("div"); box.className="lv-sv"; box.setAttribute("data-lvsv","1");
     after.insertAdjacentElement("afterend",box);
     var v=V(), row=null, files={id:null,bio:null}, face=null, warmed=false;
+    function isPdfUrl(u){ return /\.pdf(\?|$)/i.test(String(u||"")); }
+    function notPdf(d){ return d&&!(d.type==="application/pdf"||isPdfUrl(typeof d==="string"?d:d.name)); }
+    function fthumb(f,url,label,icon){
+      if(!f&&!url) return '<i class="'+icon+'"></i>'+label;
+      if((f&&f.pdf)||(!f&&isPdfUrl(url))) return '<i class="fa-regular fa-file-pdf"></i><span>'+(f&&f.name?e2(f.name.slice(0,20)):label+' (PDF)')+'</span>';
+      return '<img src="'+(f?f.url:e2(url))+'" alt=""><span>'+label+'</span>';
+    }
     function stBadge(){ if(!row) return ""; var t={pending:["pending","fa-hourglass-half","Under review"],approved:["approved","fa-circle-check","Verified student"],rejected:["rejected","fa-circle-xmark","Needs attention"]}[row.status]||["pending","fa-hourglass-half","Under review"];
       if(row.matric_pending&&row.status!=="approved") t=["pending","fa-hourglass-half","Awaiting matric number"];
       return '<span class="st '+t[0]+'"><i class="fa-solid '+t[1]+'"></i> '+t[2]+'</span>'+(window.lvFaceStatusHtml?' '+window.lvFaceStatusHtml(row):'')+(row.status==="rejected"&&row.review_note?'<div class="note">'+e2(row.review_note)+'</div>':""); }
     function faceBtn(r){
       var haveDocs=!!((files.id||r.id_card_url)&&(files.bio||r.biodata_url)), done=!!(face||r.selfie_url);
-      if(haveDocs&&!warmed){ warmed=true; try{ if(window.lvFacePreload&&!(navigator.connection&&navigator.connection.saveData)){ window.lvFacePreload(); window.lvFacePrepDocs([files.id?files.id.file:r.id_card_url, files.bio?files.bio.file:r.biodata_url].filter(Boolean)); } }catch(_){} }
-      return '<button type="button" class="face-btn '+(done?'done':(haveDocs?'':'off'))+'" data-face="1"><span class="fi">'+(face?'<img src="'+face.url+'" alt="">':'<i class="fa-solid fa-face-smile"></i>')+'</span><span class="t"><b>'+(done?'Face check done':'Verify your face')+'</b><small>'+(done?'Tap to retake':'Step 4 · a quick selfie and a blink')+'</small></span><i class="fa-solid '+(done?'fa-circle-check':'fa-chevron-right')+'"></i></button>';
+      if(haveDocs&&!warmed){ warmed=true; try{ if(window.lvFacePreload&&!(navigator.connection&&navigator.connection.saveData)){ window.lvFacePreload(); window.lvFacePrepDocs([files.id?files.id.file:r.id_card_url, files.bio?files.bio.file:r.biodata_url].filter(notPdf)); } }catch(_){} }
+      return '<button type="button" class="face-btn '+(done?'done':(haveDocs?'':'off'))+'" data-face="1"><span class="fi">'+(face?'<img src="'+face.url+'" alt="">':'<i class="fa-solid fa-face-smile"></i>')+'</span><span class="t"><b>'+(done?'Face check done':'Verify your face')+'</b><small>'+(done?'Tap to retake':'Step 4 · optional · a quick selfie and a blink')+'</small></span><i class="fa-solid '+(done?'fa-circle-check':'fa-chevron-right')+'"></i></button>';
     }
     function paint(){
       if(row&&row.status==="approved"){ box.innerHTML='<h4>Student verification</h4>'+stBadge()+'<p class="sub">Your student details have been verified. A "Verified student" badge shows on your store.</p>'; if(cb) cb(); return; }
@@ -1656,10 +1663,11 @@ async function setVendorRequestPref(v){
        +'<label>Faculty</label><input id="svFaculty" value="'+e2(r.faculty||"")+'" placeholder="e.g. Engineering" autocomplete="off">'
        +'<label>Department</label><input id="svDept" value="'+e2(r.department||"")+'" placeholder="e.g. Computer Science" autocomplete="off">'
        +'<label>Level of study</label><select id="svLevel">'+levelOptions(r.level)+'</select>'
-       +'<div class="up"><button type="button" data-f="id" class="'+((files.id||r.id_card_url)?'has':'')+'">'+((files.id||r.id_card_url)?'<img src="'+(files.id?files.id.url:e2(r.id_card_url))+'" alt=""><span>School ID card</span>':'<i class="fa-regular fa-id-card"></i>School ID card')+'</button>'
-       +'<button type="button" data-f="bio" class="'+((files.bio||r.biodata_url)?'has':'')+'">'+((files.bio||r.biodata_url)?'<img src="'+(files.bio?files.bio.url:e2(r.biodata_url))+'" alt=""><span>Biodata page</span>':'<i class="fa-regular fa-file-lines"></i>Biodata page')+'</button></div>'
+       +'<div class="up"><button type="button" data-f="id" class="'+((files.id||r.id_card_url)?'has':'')+'">'+fthumb(files.id,r.id_card_url,"School ID card","fa-regular fa-id-card")+'</button>'
+       +'<button type="button" data-f="bio" class="'+((files.bio||r.biodata_url)?'has':'')+'">'+fthumb(files.bio,r.biodata_url,"Biodata page","fa-regular fa-file-lines")+'</button></div>'
+       +'<p class="sv-hint">Photos or PDF files both work.</p>'
        +faceBtn(r)
-       +'<input type="file" accept="image/*" class="hidden" id="svFile">'
+       +'<input type="file" accept="image/*,application/pdf,.pdf" class="hidden" id="svFile">'
        +'<button type="button" class="btn go" data-go="1">'+(row?"Resubmit for review":"Submit for verification")+'</button>';
     }
     function load(){
@@ -1676,7 +1684,12 @@ async function setVendorRequestPref(v){
       if(e.target.id==="svNoMatric"){ setNo(e.target.checked); return; }
       if(e.target.id!=="svFile"||!cur) return; var file=e.target.files[0]; e.target.value=""; if(!file) return;
       var keep={m:box.querySelector("#svMatric").value,f:box.querySelector("#svFaculty").value,d:box.querySelector("#svDept").value,l:box.querySelector("#svLevel").value,n:box.querySelector("#svNoMatric").checked};
-      try{ var small=await lvPrepareImageFile(file,1400); files[cur]={file:small,url:URL.createObjectURL(small)}; }catch(_){ toast("Couldn't read that photo.","error"); }
+      try{
+        if(file.type==="application/pdf"||/\.pdf$/i.test(file.name||"")){
+          if(file.size>10*1024*1024){ toast("That PDF is too big. Use one under 10 MB.","error"); }
+          else files[cur]={file:file,url:"",pdf:true,name:file.name||"document.pdf"};
+        } else { var small=await lvPrepareImageFile(file,1400); files[cur]={file:small,url:URL.createObjectURL(small)}; }
+      }catch(_){ toast("Couldn't read that file. Try a different photo or a PDF.","error"); }
       row=row||null; paint(); setNo(keep.n); box.querySelector("#svMatric").value=keep.m; box.querySelector("#svFaculty").value=keep.f; box.querySelector("#svDept").value=keep.d; box.querySelector("#svLevel").value=keep.l;
     });
     function setNo(on){ var c=box.querySelector("#svNoMatric"),i=box.querySelector("#svMatric"); if(!c||!i) return; c.checked=!!on; i.disabled=!!on; if(on) i.value=""; }
@@ -1687,7 +1700,7 @@ async function setVendorRequestPref(v){
       if(!((files.id||r.id_card_url)&&(files.bio||r.biodata_url))){ toast("Upload your ID card and biodata page first.","error"); return; }
       if(!window.lvFaceCheck){ toast("Face check isn't available right now.","error"); return; }
       var keep=keepInputs();
-      var docs=[files.id?files.id.file:r.id_card_url, files.bio?files.bio.file:r.biodata_url].filter(Boolean);
+      var docs=[files.id?files.id.file:r.id_card_url, files.bio?files.bio.file:r.biodata_url].filter(notPdf);
       var res=await window.lvFaceCheck({docs:docs});
       while(res&&res.retry){ res=await window.lvFaceCheck({docs:docs}); }
       if(!res||!res.blob) return;
@@ -1701,21 +1714,20 @@ async function setVendorRequestPref(v){
       if((!nm&&!m)||!f||!d||!l){ toast(nm?"Fill in your faculty, department and level.":"Fill in your matric number (or tick that you don't have one yet), faculty, department and level.","error"); return; }
       var hasId=files.id||(row&&row.id_card_url), hasBio=files.bio||(row&&row.biodata_url);
       if(!hasId||!hasBio){ toast("Upload your ID card and biodata page.","error"); return; }
-      if(!face&&!(row&&row.selfie_url)){ toast("Complete the face check (step 4).","error"); return; }
       var old=btn.innerHTML; btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
       try{
         var uid=session&&session.user&&session.user.id, base="vendor-logos/verification/"+(v?v.id:uid)+"/", ts=Date.now();
         // the three photos upload at the same time
         var out=await Promise.all([
-          files.id?uploadToR2(files.id.file,base+"id-"+ts+".jpg","image/jpeg"):Promise.resolve(row.id_card_url),
-          files.bio?uploadToR2(files.bio.file,base+"bio-"+ts+".jpg","image/jpeg"):Promise.resolve(row.biodata_url),
-          face?uploadToR2(face.blob,base+"face-"+ts+".jpg","image/jpeg"):Promise.resolve(row.selfie_url)
+          files.id?uploadToR2(files.id.file,base+"id-"+ts+(files.id.pdf?".pdf":".jpg"),files.id.pdf?"application/pdf":"image/jpeg"):Promise.resolve(row&&row.id_card_url),
+          files.bio?uploadToR2(files.bio.file,base+"bio-"+ts+(files.bio.pdf?".pdf":".jpg"),files.bio.pdf?"application/pdf":"image/jpeg"):Promise.resolve(row&&row.biodata_url),
+          face?uploadToR2(face.blob,base+"face-"+ts+".jpg","image/jpeg"):Promise.resolve((row&&row.selfie_url)||null)
         ]);
         var idUrl=out[0],bioUrl=out[1],selfieUrl=out[2];
-        var fd=face?{face_distance:face.distance,face_match:face.match,face_liveness:face.liveness}:{face_distance:row.face_distance,face_match:row.face_match,face_liveness:row.face_liveness};
-        var idFile=files.id?files.id.file:null, bioFile=files.bio?files.bio.file:null;
+        var fd=face?{face_distance:face.distance,face_match:face.match,face_liveness:face.liveness}:{face_distance:row&&row.face_distance!=null?row.face_distance:null,face_match:(row&&row.face_match)||"unchecked",face_liveness:row&&row.face_liveness!=null?row.face_liveness:null};
+        var idFile=files.id&&!files.id.pdf?files.id.file:null, bioFile=files.bio&&!files.bio.pdf?files.bio.file:null;
         if(v){
-          var rec=Object.assign({vendor_id:v.id,matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_checked_at:new Date().toISOString(),face_v:2,status:"pending",review_note:null,updated_at:new Date().toISOString()},fd);
+          var rec=Object.assign({vendor_id:v.id,matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_checked_at:(face||selfieUrl)?new Date().toISOString():null,face_v:(face||selfieUrl)?2:0,status:"pending",review_note:null,updated_at:new Date().toISOString()},fd);
           var up=await sb.from("vendor_student_verification").upsert(rec,{onConflict:"vendor_id"});
           if(up.error) throw up.error;
           row=Object.assign({},rec); files={id:null,bio:null}; face=null;
