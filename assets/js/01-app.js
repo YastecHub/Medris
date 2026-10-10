@@ -1792,10 +1792,12 @@ function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
 // call it replaces.
 async function uploadToR2(blob, key, contentType) {
   const type = contentType || blob.type || "application/octet-stream";
+  const tmo = (ms) => { try { const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; } catch (_) { return undefined; } };
   const presignRes = await fetch("/api/vendor-payments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "r2-presign-upload", accessToken: session.access_token, key, contentType: type }),
+    signal: tmo(20000),
   });
   const presignJson = await presignRes.json().catch(() => ({}));
   if (!presignRes.ok) throw new Error(presignJson.error || "Could not start the upload.");
@@ -1805,7 +1807,7 @@ async function uploadToR2(blob, key, contentType) {
   // instead of re-fetching it from storage on every repeat view.
   const putHeaders = { "Content-Type": type };
   if (presignJson.cacheControl) putHeaders["Cache-Control"] = presignJson.cacheControl;
-  const putRes = await fetch(presignJson.uploadUrl, { method: "PUT", headers: putHeaders, body: blob });
+  const putRes = await fetch(presignJson.uploadUrl, { method: "PUT", headers: putHeaders, body: blob, signal: tmo(60000) });
   if (!putRes.ok) throw new Error("Upload to storage failed. Please try again.");
   return presignJson.publicUrl;
 }
