@@ -1631,7 +1631,21 @@ async function setVendorRequestPref(v){
   };
 
   // ---------- student verification
-  var svMem={};
+  var svMem={}, SIGNED={};
+  var DOCF=["id_card_url","biodata_url","selfie_url"];
+  window.lvSignedUrl=function(u){ return (u&&SIGNED[u])||u; };
+  // turns private "sbdoc:" paths into short-lived links. keepRaw leaves the row's own values alone and only fills the lookup.
+  window.lvSignDocs=async function(row,keepRaw){
+    try{
+      if(!row) return row; var raws=DOCF.map(function(f){return row[f];}).filter(function(x){return x&&String(x).indexOf("sbdoc:")===0&&!SIGNED[x];});
+      if(raws.length){
+        var r=await sb.storage.from("vendor-docs").createSignedUrls(raws.map(function(x){return x.slice(6);}),3600);
+        ((r&&r.data)||[]).forEach(function(d,i){ if(d&&d.signedUrl) SIGNED[raws[i]]=d.signedUrl; });
+      }
+      if(!keepRaw) DOCF.forEach(function(f){ if(row[f]&&SIGNED[row[f]]) row[f]=SIGNED[row[f]]; });
+    }catch(_){}
+    return row;
+  };
   function levelOptions(sel){return '<option value="">Select your level</option>'+LEVELS.map(function(g){return '<optgroup label="'+g[0]+'">'+g[1].map(function(l){return '<option '+(l===sel?'selected':'')+'>'+l+'</option>';}).join("")+'</optgroup>';}).join("");}
   function mountSV(after,cb){
     if(after.parentNode.querySelector("[data-lvsv]")) return;
@@ -1643,7 +1657,7 @@ async function setVendorRequestPref(v){
     function fthumb(f,url,label,icon){
       if(!f&&!url) return '<i class="'+icon+'"></i>'+label;
       if((f&&f.pdf)||(!f&&isPdfUrl(url))) return '<i class="fa-regular fa-file-pdf"></i><span>'+(f&&f.name?e2(f.name.slice(0,20)):label+' (PDF)')+'</span>';
-      return '<img src="'+(f?f.url:e2(url))+'" alt=""><span>'+label+'</span>';
+      return '<img src="'+(f?f.url:e2(window.lvSignedUrl(url)))+'" alt=""><span>'+label+'</span>';
     }
     function stBadge(){ if(!row) return ""; var t={pending:["pending","fa-hourglass-half","Under review"],approved:["approved","fa-circle-check","Verified student"],rejected:["rejected","fa-circle-xmark","Needs attention"]}[row.status]||["pending","fa-hourglass-half","Under review"];
       if(row.matric_pending&&row.status!=="approved") t=["pending","fa-hourglass-half","Awaiting matric number"];
@@ -1675,15 +1689,25 @@ async function setVendorRequestPref(v){
     function upSlot(slot){
       var src=srcOf(slot); if(!src||up_done[slot]) return Promise.resolve(up_done[slot]||null);
       var blob=slot==="face"?src.blob:src.file, pdf=slot!=="face"&&src.pdf, type=pdf?"application/pdf":"image/jpeg";
-      var id=(v&&v.id)||(session&&session.user&&session.user.id); if(!id||typeof session==="undefined"||!session) return Promise.resolve(null);
-      var key="vendor-logos/verification/"+id+"/"+slot+"-"+Date.now()+(pdf?".pdf":".jpg");
+      if(typeof session==="undefined"||!session||!session.user) return Promise.resolve(null);
+      var uid=session.user.id, stamp=Date.now(), ext=pdf?".pdf":".jpg";
+      function within(pr,ms){ return Promise.race([pr,new Promise(function(_,rej){ setTimeout(function(){ rej(new Error("timeout")); },ms); })]); }
+      // route 1: private Supabase bucket (same host the app already talks to, so it works wherever the app works). Only the owner and admins can read it.
+      async function viaSupabase(){
+        var path=uid+"/verification/"+slot+"-"+stamp+ext;
+        var r=await within(sb.storage.from("vendor-docs").upload(path,blob,{contentType:type,upsert:true}),45000);
+        if(r&&r.error) throw r.error;
+        return "sbdoc:"+path;
+      }
+      // route 2: R2 presigned upload
+      function viaR2(){ return uploadToR2(blob,"vendor-logos/verification/"+uid+"/"+slot+"-"+stamp+ext,type); }
       return (async function(){
-        var last=null;
-        for(var a=0;a<3;a++){
+        var last=null, routes=[viaSupabase,viaR2,viaSupabase,viaR2];
+        for(var a=0;a<routes.length;a++){
           try{
-            if(a>0){ await new Promise(function(r){setTimeout(r,500*a);}); try{ var rs=await sb.auth.refreshSession(); if(rs&&rs.data&&rs.data.session) session=rs.data.session; }catch(_){} }
-            var u=await uploadToR2(blob,key,type);
-            if(srcOf(slot)===src) up_done[slot]=u;   // ignore if they swapped the file meanwhile
+            if(a>0){ await new Promise(function(r){setTimeout(r,400*a);}); try{ var rs=await sb.auth.refreshSession(); if(rs&&rs.data&&rs.data.session) session=rs.data.session; }catch(_){} }
+            var u=await routes[a]();
+            if(srcOf(slot)===src) up_done[slot]=u;
             return u;
           }catch(er){ last=er; }
         }
@@ -1707,7 +1731,7 @@ async function setVendorRequestPref(v){
     function load(){
       setTimeout(restoreFiles,0);
       if(!v){ try{var p=JSON.parse(localStorage.getItem("lv-sv-pending")||"null"); if(p) row={matric_number:p.nm?null:p.matric,matric_pending:!!p.nm,faculty:p.faculty,department:p.department,level:p.level,id_card_url:p.idUrl,biodata_url:p.bioUrl,selfie_url:p.selfieUrl,face_match:p.faceMatch,status:"pending"};}catch(_){} paint(); return; }
-      sb.from("vendor_student_verification").select("*").eq("vendor_id",v.id).maybeSingle().then(function(r){ row=r&&r.data||null; paint(); });
+      sb.from("vendor_student_verification").select("*").eq("vendor_id",v.id).maybeSingle().then(function(r){ row=r&&r.data||null; return window.lvSignDocs(row,true); }).then(function(){ paint(); });
     }
     var cur=null;
     box.addEventListener("click",function(e){
@@ -1737,6 +1761,13 @@ async function setVendorRequestPref(v){
     function setNo(on){ var c=box.querySelector("#svNoMatric"),i=box.querySelector("#svMatric"); if(!c||!i) return; c.checked=!!on; i.disabled=!!on; if(on) i.value=""; }
     function keepInputs(){ return {m:box.querySelector("#svMatric").value,f:box.querySelector("#svFaculty").value,d:box.querySelector("#svDept").value,l:box.querySelector("#svLevel").value,n:box.querySelector("#svNoMatric").checked}; }
     function restoreInputs(k){ setNo(k.n); box.querySelector("#svMatric").value=k.m; box.querySelector("#svFaculty").value=k.f; box.querySelector("#svDept").value=k.d; box.querySelector("#svLevel").value=k.l; }
+    function autoSend(){
+      try{
+        var g=function(q){return box.querySelector(q);}; if(!g("#svMatric")) return;
+        var nm=g("#svNoMatric").checked, ok=(nm||g("#svMatric").value.trim())&&g("#svFaculty").value.trim()&&g("#svDept").value.trim()&&g("#svLevel").value&&(files.id||(row&&row.id_card_url))&&(files.bio||(row&&row.biodata_url))&&(face||(row&&row.selfie_url));
+        var btn=g("[data-go]"); if(ok&&btn&&!btn.disabled) setTimeout(function(){ submit(btn); },350);
+      }catch(_){}
+    }
     async function doFace(){
       var r=row||{};
       if(!window.lvFaceCheck){ toast("The camera isn't available right now.","error"); return; }
@@ -1746,7 +1777,7 @@ async function setVendorRequestPref(v){
       
       if(!res||!res.blob) return;
       face=res; delete up_done.face; keepFiles(); startUp("face"); paint(); restoreInputs(keep);
-      toast("Selfie saved.","success");
+      toast("Selfie saved.","success"); autoSend();
     }
     async function submit(btn){
       var m=box.querySelector("#svMatric").value.trim(),f=box.querySelector("#svFaculty").value.trim(),d=box.querySelector("#svDept").value.trim(),l=box.querySelector("#svLevel").value;
@@ -1786,6 +1817,7 @@ async function setVendorRequestPref(v){
           row={matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_match:fd.face_match,status:"pending"}; files={id:null,bio:null}; face=null; up_done={}; pend={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
           toast("Saved. It will be submitted with your application.","success");
         }
+        try{ await window.lvSignDocs(row,true); }catch(_){}
         paint();
       }catch(err){ btn.disabled=false; btn.innerHTML=old; var em=String((err&&err.message)||""); ferr(/failed to fetch|load failed|network|upload/i.test(em)||!em?"Your connection dropped while uploading. Nothing was lost. Tap Submit again.":em,[]); }
     }

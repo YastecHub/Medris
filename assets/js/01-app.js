@@ -21085,7 +21085,7 @@ async function finLoadDetail(vid) {
     if (error || !v) throw error || new Error("none");
     let u = null;
     if (v.user_id) { const r = await sb.from("users").select("name,email,phone").eq("id", v.user_id).maybeSingle(); u = r.data; }
-    let sv = null; try { const r2 = await sb.from("vendor_student_verification").select("*").eq("vendor_id", vid).maybeSingle(); sv = r2.data || null; } catch (_) {}
+    let sv = null; try { const r2 = await sb.from("vendor_student_verification").select("*").eq("vendor_id", vid).maybeSingle(); sv = r2.data || null; if (sv && window.lvSignDocs) await window.lvSignDocs(sv); } catch (_) {}
     window.__finDetail.set(String(vid), { ...v, sv, owner_name: u?.name || "", owner_email: u?.email || "", owner_phone: u?.phone || "" });
   } catch (_) { window.__finDetail.set(String(vid), { error: true }); setTimeout(() => window.__finDetail.delete(String(vid)), 4000); }
   const holder = document.querySelector(`.fin-row[data-vendor-id="${CSS.escape(String(vid))}"] .fin-detail`);
