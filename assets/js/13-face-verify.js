@@ -329,5 +329,5 @@
       });
     }).catch(function(){nudged=false;});
   }
-  setInterval(nudgeCheck,6000);
+  // selfie nudge switched off: a selfie is no longer asked for
 })();

@@ -1680,7 +1680,6 @@ async function setVendorRequestPref(v){
        +'<div class="up"><button type="button" data-f="id" class="'+((files.id||r.id_card_url)?'has':'')+'">'+fthumb(files.id,r.id_card_url,"School ID card","fa-regular fa-id-card")+'</button>'
        +'<button type="button" data-f="bio" class="'+((files.bio||r.biodata_url)?'has':'')+'">'+fthumb(files.bio,r.biodata_url,"Biodata page","fa-regular fa-file-lines")+'</button></div>'
        +'<p class="sv-hint">Photos or PDF files both work.</p>'
-       +faceBtn(r)
        +'<input type="file" accept="image/*,application/pdf,.pdf" class="hidden" id="svFile">'
        +'<p class="sv-err hidden" id="svErr" role="alert"></p>'
        +'<button type="button" class="btn go" data-go="1">'+(row?"Resubmit for review":"Submit for review")+'</button>';
@@ -1786,7 +1785,6 @@ async function setVendorRequestPref(v){
       if(miss.length){ ferr("Please add your "+miss.join(", ")+".",bad); return; }
       var hasId=files.id||(row&&row.id_card_url), hasBio=files.bio||(row&&row.biodata_url);
       if(!hasId||!hasBio){ ferr("Please add your "+(!hasId&&!hasBio?"ID card and biodata page":!hasId?"ID card":"biodata page")+" (a photo or a PDF).",[!hasId?'[data-f="id"]':null,!hasBio?'[data-f="bio"]':null].filter(Boolean)); return; }
-      if(!face&&!(row&&row.selfie_url)){ ferr("Please take your selfie (step 4). It only takes a few seconds.",['[data-face]']); return; }
       var old=btn.innerHTML; btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
       try{
         var uid=session&&session.user&&session.user.id, base="vendor-logos/verification/"+(v?v.id:uid)+"/", ts=Date.now();
