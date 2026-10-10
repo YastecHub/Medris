@@ -856,6 +856,7 @@ function hideLeviFromPanel() {
         <div class="lb-hero-meta"><span id="lbHeroPills"></span></div>
         <div class="lb-hero-winner" id="lbHeroWinner" hidden></div>
       </div>
+      <div class="lb-scope-seg" id="lbScopeSeg" role="tablist" aria-label="Campus"></div>
       <div class="lb-tabs" role="tablist">${tabsNow().map((t) => `<button type="button" role="tab" class="lb-tab${LB.tab === t[0] ? " active" : ""}" data-tab="${t[0]}" onclick="lbSetTab('${t[0]}')"><i class="fa-solid ${t[2]}"></i>${t[1]}</button>`).join("")}</div>
       <div id="lbBody">${skeleton(6)}</div>
     </div>`;
@@ -869,12 +870,25 @@ function hideLeviFromPanel() {
     const kept = (rows || []).filter((r) => r.is_me || inView(r.vendor_id));
     return kept.map((r) => ({ ...r, rank: 1 + kept.filter((o) => o.points > r.points).length }));
   }
+  function paintScopeSeg() {
+    const el = $("lbScopeSeg"); if (!el) return;
+    const v = viewCampus(), mine = (window.lvMyCampusId && window.lvMyCampusId()) || "";
+    const target = v !== "all" ? v : (mine && mine !== "none" ? mine : "");
+    const label = target ? ((window.lvCampusShort && window.lvCampusShort(target)) || "My campus") : "My campus";
+    el.innerHTML = `<button type="button" role="tab" data-s="mine" class="${v !== "all" ? "on" : ""}">${esc(label)}</button><button type="button" role="tab" data-s="all" class="${v === "all" ? "on" : ""}">All campuses</button>`;
+    el.onclick = (e) => {
+      const b = e.target.closest("button[data-s]"); if (!b) return;
+      if (b.dataset.s === "all") { window.lvSetViewCampus && window.lvSetViewCampus("all"); return; }
+      if (target) { window.lvSetViewCampus && window.lvSetViewCampus(target); return; }
+      try { window.lvOpenCampusPicker({ title: "Choose your campus", current: "", onPick: (r) => { if (r && r.id && r.id !== "none") { Promise.resolve(window.lvSaveCampus && window.lvSaveCampus(r.id)).catch(() => {}).then(() => window.lvSetViewCampus(r.id)); } } }); } catch (_) {}
+    };
+  }
   function paintScope() {
     const el = $("lbScope"); if (!el) return;
     const v = viewCampus();
     el.textContent = v === "all" ? "" : " \u00b7 " + ((window.lvCampusShort && window.lvCampusShort(v)) || "");
   }
-  window.lbRerender = function () { if (!$("lbBody")) return; paintScope(); renderBody(false); paintHeroWinner(); };
+  window.lbRerender = function () { if (!$("lbBody")) return; paintScopeSeg(); paintScope(); renderBody(false); paintHeroWinner(); };
   function paintHeroWinner() {
     const el = $("lbHeroWinner"); if (!el) return;
     const w = LB.spot?.winner; if (!w || !inView(w.vendor_id)) { el.hidden = true; return; }
@@ -1098,6 +1112,7 @@ function hideLeviFromPanel() {
     const fn = { ranking: rankingHtml, mine: mineHtml, earn: earnHtml, refer: referHtml, winners: winnersHtml }[LB.tab] || rankingHtml;
     body.innerHTML = fn();
     heroPills();
+    paintScopeSeg();
     paintScope();
     ensureHeroWinner();
     postRender(animate);

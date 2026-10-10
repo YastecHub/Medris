@@ -1459,6 +1459,15 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
       var ini=String(w.business_name||"?").trim().slice(0,1).toUpperCase();
       b.insertAdjacentHTML("beforeend",'<span class="lvcb-badge">'+(w.logo_url?'<img src="'+String(w.logo_url).replace(/"/g,"&quot;")+'" alt="" draggable="false" onerror="this.replaceWith(document.createTextNode(\''+ini.replace(/'/g,"")+'\'))">':ini)+'</span>'); } }); }catch(_){}
   }
+  // change the campus view from anywhere without leaving the page (Home repaints its own grid, other pages just re-filter)
+  window.lvSetViewCampus=function(id){
+    if(document.getElementById("productGrid")) return setView(id);
+    try{localStorage.setItem("lv-view-campus",id);}catch(_){}
+    var bar=document.getElementById("lvCampusBar"); if(bar){ var h0=barHtml(); bar.innerHTML=h0; bar.__lvH=h0; spotIcon(bar); }
+    try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){}
+    try{window.lbRerender&&window.lbRerender();}catch(_){}
+    window.__homeFullIndex=null;
+  };
   function mountHomeBar(){
     var grid=document.getElementById("productGrid"); if(!grid) return;
     var bar=document.getElementById("lvCampusBar");
