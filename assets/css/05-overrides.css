@@ -1373,3 +1373,21 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 
 /* Photo counter stays put while swiping (it used to sit inside the scrolling strip and scroll away with the first photo) */
 .product-gallery-stage,.package-detail-gallery{position:relative}
+
+/* Leaderboard: lighter, cleaner header and controls */
+.lb-page .lb-hero{padding:.7rem .85rem!important;border-radius:18px!important}
+.lb-page .lb-hero-badge{width:2.3rem!important;height:2.3rem!important;border-radius:12px!important;font-size:1rem}
+.lb-page .lb-hero h2{font-size:1.1rem!important;margin:0}
+.lb-page .lb-hero-sub{margin-top:.05rem!important;font-size:.74rem!important}
+.lb-page .lb-hero-meta{display:none!important}
+.lb-page .lb-hero-winner{margin-top:.55rem;padding:.45rem .6rem;gap:.6rem;border-radius:14px}
+.lb-page .lbw-logo .lb-av,.lb-page .lbw-logo img{width:2.3rem!important;height:2.3rem!important}
+.lb-page .lbw-copy strong{font-size:.95rem}
+.lb-page .lbw-copy small{font-size:.7rem}
+.lb-page .lb-tabs{margin:.55rem 0 .6rem}
+.lb-page .lb-tab{padding:.55rem .75rem!important;font-size:.85rem!important}
+.lb-page .lb-tab i{display:none}
+.lb-page .lb-chips{display:flex;align-items:center;gap:.4rem;margin:.1rem 0 .4rem}
+.lb-page .lb-chip.sep{margin-left:auto;width:2rem;height:2rem;padding:0;display:grid;place-items:center;border-radius:50%}
+.lb-page .lb-note{margin:.1rem 0 .7rem;font-size:.74rem;color:var(--text-muted,#667);display:flex;align-items:center;gap:.4rem}
+.lb-page .lb-note i{color:#f59e0b}

@@ -754,7 +754,7 @@ function hideLeviFromPanel() {
     }
   } catch (_) {}
 
-  const ALL_TABS = [["ranking", "Ranking", "fa-ranking-star"], ["mine", "My points", "fa-chart-simple"], ["earn", "Earn points", "fa-bolt"], ["refer", "Refer & earn", "fa-gift"], ["winners", "Winners", "fa-crown"]];
+  const ALL_TABS = [["ranking", "Ranking", "fa-ranking-star"], ["mine", "My points", "fa-chart-simple"], ["earn", "Earn", "fa-bolt"], ["refer", "Refer", "fa-gift"], ["winners", "Winners", "fa-crown"]];
   const tabsNow = () => { let isV = false; try { isV = !!(vendor && vendor.id) || profile?.role === "admin"; } catch (_) {} return isV ? ALL_TABS : ALL_TABS.filter((t) => t[0] !== "mine"); };
   const PERIODS = [["week", "This week"], ["last_week", "Last week"]];
   const WA_NUMBER = "2348063227669", WA_DISPLAY = "0806 322 7669";
@@ -867,7 +867,7 @@ function hideLeviFromPanel() {
     const f = (z) => z.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     el.hidden = false;
     el.innerHTML = `<div class="lbw-logo">${av(w.logo_url, w.business_name, "2.9rem", "lb-av")}<i class="fa-solid fa-crown lbw-crown"></i></div>
-      <div class="lbw-copy"><span class="lbw-tag"><i class="fa-solid fa-crown"></i> Vendor of the Week</span><strong>${esc(w.business_name)}</strong><small>${f(start)} to ${f(end)} \u00b7 enjoying a free week of promotion</small></div>
+      <div class="lbw-copy"><span class="lbw-tag"><i class="fa-solid fa-crown"></i> Vendor of the Week</span><strong>${esc(w.business_name)}</strong><small>${f(start)} to ${f(end)}</small></div>
       <i class="fa-solid fa-chevron-right lbw-go"></i>`;
     el.onclick = () => navigate("storefront", { vendorId: w.vendor_id });
   }
@@ -877,6 +877,7 @@ function hideLeviFromPanel() {
   }
   function heroPills() {
     const el = $("lbHeroPills"); if (!el) return;
+    el.innerHTML = ""; return;
     const s = LB.summary;
     if (!s?.signed_in) { el.innerHTML = ""; return; }
     if (s.is_vendor) {
@@ -914,16 +915,15 @@ function hideLeviFromPanel() {
   }
 
   function rankingHtml() {
-    const chips = `<div class="lb-chips">${PERIODS.map((p) => `<button type="button" class="lb-chip${LB.period === p[0] ? " active" : ""}" onclick="lbSetPeriod('${p[0]}')">${p[1]}</button>`).join("")}<button type="button" class="lb-chip sep${LB.filter === "following" ? " active" : ""}" onclick="lbSetFilter('${LB.filter === "following" ? "all" : "following"}')"><i class="fa-solid fa-heart"></i> Following</button></div>`;
-    const reward = `<div class="lb-reward"><div class="lb-reward-ico"><i class="fa-solid fa-gift"></i></div><div><strong>Win a full week of free promotion</strong><span>Finish first to be Vendor of the Week</span></div></div>`;
+    const chips = `<div class="lb-chips">${PERIODS.map((p) => `<button type="button" class="lb-chip${LB.period === p[0] ? " active" : ""}" onclick="lbSetPeriod('${p[0]}')">${p[1]}</button>`).join("")}<button type="button" class="lb-chip sep${LB.filter === "following" ? " active" : ""}" title="Vendors I follow" aria-label="Vendors I follow" onclick="lbSetFilter('${LB.filter === "following" ? "all" : "following"}')"><i class="fa-solid fa-heart"></i></button></div>`;
+    const reward = `<p class="lb-note"><i class="fa-solid fa-gift"></i> Finish first to win a free week of promotion</p>`;
     const b = LB.boards[LB.period];
-    if (!b) return reward + chips + skeleton(7);
+    if (!b) return chips + skeleton(7);
     const rows = b.rows || [];
-    if (!rows.length) return reward + chips + `<div class="lb-card lb-empty"><i class="fa-solid fa-ranking-star"></i><strong>No vendors on the board yet</strong><p>Check back soon.</p></div>`;
+    if (!rows.length) return chips + `<div class="lb-card lb-empty"><i class="fa-solid fa-ranking-star"></i><strong>No vendors on the board yet</strong><p>Check back soon.</p></div>`;
     const followed = (window.followedVendorSet && window.followedVendorSet()) || new Set();
     const mine = rows.find((r) => r.is_me) || null;
-    let html = reward + chips;
-    if (!isVendor() && signedIn()) html += `<div class="lb-me"><div class="lb-me-rank"><i class="fa-solid fa-heart"></i></div><div class="lb-me-copy"><strong>You lift vendors</strong><span>Follow, order and review to give them points.</span></div></div>`;
+    let html = chips + reward;
     if (LB.filter === "following") {
       const list = rows.filter((r) => followed.has(String(r.vendor_id)) || r.is_me);
       html += list.length ? `<div class="lb-list">${list.map((r) => rowHtml(r, mine, followed)).join("")}</div>` : `<div class="lb-card lb-empty"><i class="fa-solid fa-heart"></i><strong>You are not following any ranked vendors</strong><p>Follow vendors from their shop pages and they will show up here.</p><button type="button" class="btn btn-outline" onclick="navigate('vendors')">Browse vendors</button></div>`;
