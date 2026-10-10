@@ -250,12 +250,13 @@
     var ocr=sv.ocr_checked_at?('Matric '+(sv.ocr_matric_found===true?'✓ found':sv.ocr_matric_found===false?'✗ not found':'–')+' · Name '+(sv.ocr_name_found===true?'✓ found':sv.ocr_name_found===false?'✗ not found':'–')):'<span class="muted">not read yet</span>';
     card.innerHTML='<span class="lv-cm-handle"></span>'
      +'<div class="lvsr-h"><strong>'+esc(name||"Vendor")+'</strong><span class="lvsr-st '+esc(sv.status)+'">'+esc(st)+'</span></div>'
-     +'<div class="lvsr-grid"><div><small>Matric</small><b>'+esc(sv.matric_number)+'</b></div><div><small>Level</small><b>'+esc(sv.level)+'</b></div><div><small>Faculty</small><b>'+esc(sv.faculty)+'</b></div><div><small>Department</small><b>'+esc(sv.department)+'</b></div></div>'
+     +(sv.matric_pending?'<div class="lvsr-warn"><i class="fa-solid fa-triangle-exclamation"></i> Matric number not yet available. This vendor cannot be verified until they add it.</div>':'')
+     +'<div class="lvsr-grid"><div><small>Matric</small><b>'+(sv.matric_pending?'Not yet available':esc(sv.matric_number))+'</b></div><div><small>Level</small><b>'+esc(sv.level)+'</b></div><div><small>Faculty</small><b>'+esc(sv.faculty)+'</b></div><div><small>Department</small><b>'+esc(sv.department)+'</b></div></div>'
      +'<div class="lvsr-ai">'+(window.lvFaceStatusHtml(sv)||'<span class="lvf-chip mid"><i class="fa-solid fa-eye"></i> No face check yet</span>')+(sv.face_distance!=null?' <small class="muted">distance '+Number(sv.face_distance).toFixed(2)+(sv.face_liveness?' · blink seen':' · no blink')+'</small>':'')+'</div>'
      +'<div class="lvsr-ocr"><small>ID text</small> '+ocr+'</div>'
      +'<div class="req-ph-row lvsr-ph">'+imgs.map(function(x,i){return '<button type="button" class="req-ph-thumb" data-i="'+i+'"><img src="'+esc(x[1])+'" alt="'+esc(x[0])+'"><span>'+esc(x[0])+'</span></button>';}).join("")+'</div>'
      +(sv.status==="approved"?'':'<textarea id="lvsrNote" placeholder="Note to the vendor (shown if rejected)"></textarea>')
-     +'<div class="lvsr-acts">'+(sv.status!=="approved"?'<button type="button" class="ok" data-a="approved">Approve</button>':'')+(sv.status!=="rejected"?'<button type="button" class="no" data-a="rejected">Reject</button>':'')+'<button type="button" class="st" data-a="store">View store</button></div>';
+     +'<div class="lvsr-acts">'+(sv.status!=="approved"?'<button type="button" class="ok" data-a="approved"'+(sv.matric_pending?' disabled title="Waiting for the matric number"':'')+'>Approve</button>':'')+(sv.status!=="rejected"?'<button type="button" class="no" data-a="rejected">Reject</button>':'')+'<button type="button" class="st" data-a="store">View store</button></div>';
     card.addEventListener("click",async function(e){
       var th=e.target.closest(".req-ph-thumb"); if(th){ try{ reqPhotoOpen(k,+th.dataset.i); }catch(_){} return; }
       var b=e.target.closest("[data-a]"); if(!b) return; var a=b.dataset.a;

@@ -1399,3 +1399,11 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 
 /* Leaderboard: no extra blank space under the last vendor (the nav clearance is already on the page) */
 #app .lb-page{padding-bottom:.4rem!important}
+
+/* Student verification: "no matric number yet" */
+.lv-sv .sv-nomatric{display:flex;align-items:center;gap:.5rem;margin:.35rem 0 .2rem;font-size:.84rem;font-weight:600;cursor:pointer}
+.lv-sv .sv-nomatric input{width:1.15rem!important;height:1.15rem!important;flex:none;padding:0!important;margin:0!important;border:0!important;box-shadow:none!important;background:none!important;-webkit-appearance:checkbox!important;appearance:auto!important;accent-color:var(--primary,#059669)}
+.lv-sv input#svMatric:disabled{opacity:.5}
+.lv-sv .sv-nm-note{margin:.2rem 0 .4rem;font-size:.78rem;color:#b45309;line-height:1.35}
+.lvsr-warn{display:flex;gap:.5rem;align-items:flex-start;margin:.5rem 0;padding:.55rem .7rem;border-radius:12px;background:#fef3c7;color:#92400e;font-size:.8rem;font-weight:600}
+.lvsr-acts .ok:disabled{opacity:.45}
