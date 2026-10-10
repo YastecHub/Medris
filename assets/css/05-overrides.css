@@ -1321,3 +1321,7 @@ img[data-lvimg]:not(.lv-ld){opacity:0}
 /* Comment avatars: always a true circle (flex was squeezing them into ovals) */
 .lv-cr-av{flex:0 0 2.4rem!important;width:2.4rem;height:2.4rem}
 .lv-cr-av img,.lv-cr-av .avatar-fallback,.lv-cr-av .product-comment-avatar{width:2.4rem!important;height:2.4rem!important;min-width:2.4rem;max-width:2.4rem;aspect-ratio:1/1;border-radius:50%!important;object-fit:cover;flex:none!important}
+
+/* Share and comment buttons: neutral everywhere (product, package, storefront) */
+:root:root:root body .product-storefront-share-btn,:root:root:root body .product-storefront-share-btn i,:root:root:root body .lv-top-comment-btn,:root:root:root body .lv-top-comment-btn i,:root:root:root body .lv-cbubble i{color:var(--text-muted,#64748b)!important}
+:root[data-theme="dark"] body .product-storefront-share-btn,:root[data-theme="dark"] body .product-storefront-share-btn i,:root[data-theme="dark"] body .lv-top-comment-btn i,:root[data-theme="black"] body .product-storefront-share-btn,:root[data-theme="black"] body .product-storefront-share-btn i,:root[data-theme="black"] body .lv-top-comment-btn i{color:#e5e7eb!important}

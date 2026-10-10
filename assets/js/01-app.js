@@ -7121,6 +7121,13 @@ function writeSearchHistory(term) {
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify([q, ...existing].slice(0, SEARCH_HISTORY_MAX)));
   } catch (_) {}
 }
+document.addEventListener("click", (e) => {
+  try {
+    if (!e.target.closest || !e.target.closest("#searchPageResults .search-result-row")) return;
+    const t = byId("searchPageInput")?.value.trim();
+    if (t) writeSearchHistory(t);
+  } catch (_) {}
+}, true);
 function clearSearchHistory() {
   try { localStorage.removeItem(SEARCH_HISTORY_KEY); } catch (_) {}
   const list = byId("searchPageHistory");
@@ -7306,6 +7313,7 @@ function searchProductRowHtml(p) {
     : p.sale_price != null ? naira(hasDiscount ? p.discount_price : p.sale_price)
     : p.rental_rate != null ? `${naira(p.rental_rate)}${unit}` : "";
   const v = p.vendor || {};
+  if (v.id && !lvVendorVisible(v.id)) return "";
   // Long-pressing a row shows a quick preview without navigating away -- cache the
   // full row object so that preview can be built instantly from what's already fetched.
   (window.__searchResultProducts ||= new Map()).set(String(p.id), p);
@@ -7323,6 +7331,7 @@ function searchProductRowHtml(p) {
 function searchVendorRowHtml(v) {
   const name = v.business_name || "Vendor";
   const sectorName = v.sector_name || (Array.isArray(sectors) ? sectors.find((s) => String(s.id) === String(v.sector_id))?.name : "") || "";
+  if (v.id && !lvVendorVisible(v.id)) return "";
   const count = Number(v.follower_count || 0);
   const own = isOwnVendorId(v.id);
   const recent = window.__vendorCardFollowRecent?.get(String(v.id));
@@ -7339,8 +7348,9 @@ function searchVendorRowHtml(v) {
 }
 function searchPackageRowHtml(pkg) {
   const v = pkg.vendor || {};
+  if (v.id && !lvVendorVisible(v.id)) return "";
   const n = Array.isArray(pkg.items) ? pkg.items.length : 0;
-  return `<div class="search-result-row sr-row" ${searchRowOpen(`navigate('packageDetail',{packageId:'${esc(pkg.id)}'})`)} aria-label="${esc(pkg.name)}">
+  return `<div class="search-result-row sr-row" data-vendor-id="${esc(v.id || "")}" ${searchRowOpen(`navigate('packageDetail',{packageId:'${esc(pkg.id)}'})`)} aria-label="${esc(pkg.name)}">
     ${searchThumbHtml(pkg.photos?.[0], "fa-box-open")}
     <div class="sr-main"><strong class="sr-name">${esc(pkg.name)}</strong>
       <span class="sr-vendor"><span class="sr-vendor-name">${esc(v.business_name || "")}</span><i data-vt="${esc(v.id)}" class="fa-solid fa-circle-check sr-verified" aria-label="Verified vendor"></i>${searchDistanceMetaHtml(v)}</span>
