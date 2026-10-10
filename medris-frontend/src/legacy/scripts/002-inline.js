@@ -1,0 +1,1 @@
+try{var __t=localStorage.getItem("medris-theme");document.documentElement.setAttribute("data-splash",(__t==="dark"||__t==="black")?"dark":(__t==="light"?"light":"auto"))}catch(e){}

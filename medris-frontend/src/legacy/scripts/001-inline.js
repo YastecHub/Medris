@@ -1,0 +1,1 @@
+try{var __r=new URLSearchParams(location.search).get("ref");if(__r)localStorage.setItem("levro-ref-code",String(__r).trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,16));}catch(e){}

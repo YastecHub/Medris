@@ -1,0 +1,26 @@
+{
+  "description": "SHA-256 of every legacy file the build emits (production .env). Recorded from the live files of commit 42c4105, so the refactor is byte-for-byte identical. Update only for an intentional legacy change: npm run legacy:rebaseline -w medris-frontend",
+  "files": {
+    "index.html": "6b7d73311425db04437c51cde3bd083508de65a5c71e7a4305c9b8edd7bde66d",
+    "assets/css/01-base.css": "fa40558c85cc2cd70b4030d5ed03f2d121a03dbba73e5f2a449bf71958abc25a",
+    "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
+    "assets/css/03-pages.css": "75fc2a549b5170c1bba78c477501764e2f7322d763c82a87e33245acb85b4482",
+    "assets/css/04-shell.css": "eb0c817881d1a3ea47f128d9770af080fb107c34f9ad57f4ca4fe346958ae3fa",
+    "assets/css/05-overrides.css": "26c20df6fbf6c7f5bc7558fcbb0e67bd7b5ff4d1c1d2287966e5372abd250e5b",
+    "assets/js/01-app.js": "3c9d350a3cd13b2a8e871e73d35b15909e1fa99b8a6863df0bf734f6409f74db",
+    "assets/js/02-levromart-legal-consent-final-js.js": "6600a61a633c0de722392a67fcdc2c3d9c37746598db1c6f587e10a0e23b8907",
+    "assets/js/03-levromart-2026-09-09-vendor-logic-fixes.js": "315a69b098f90967ae2e071872b020f6b21d1e093ac3185158de22f680cdc7e2",
+    "assets/js/04-levromart-vendor-location-auto-script.js": "5a2c8755d75c4eac95318b628d657fce35e938ba61667a76215507a86601c7d5",
+    "assets/js/05-part.js": "786d8004b67e26be61845379829d163f6da51d5dc5cc1a6cccc8d19b8db2c5e3",
+    "assets/js/06-part.js": "dbccefa08648f1ef0ee89fb3aad98072fb8066261293116ed0075699340891f6",
+    "assets/js/07-levromart-final-qa-20260909-js.js": "14ae4bd3b8b26cf0d94447e272c0ba127d5084bfa68bd094f7bb8a59a809dcf6",
+    "assets/js/08-levromart-chat-viewport-stabilizer-20260.js": "8e234061de688109a93cad4d17f2ef8c2159c18c26fb8e76f8264f189b63ab9e",
+    "assets/js/09-part.js": "eaedb6916537453f1fd689e3a3ca223b98f626c13d2f65e5b83535ea743dec5d",
+    "assets/js/10-levromart-admin-reject-inventory-fix-js-.js": "4af25527cefd715aee95762454e30ba6462f49efc42b9a940d9482b24eb377a1",
+    "assets/js/11-levromart-global-broken-image-fallback.js": "41a41044fdf4112e0dc6442c4c5e928da0b9230081b11f7c8945d5b919c25521",
+    "assets/js/12-lv-onboarding-auth-js.js": "55fac3acc982a9fc0666074777bc2eec85d6953040c92f780c49f30873e54cfe",
+    "assets/js/13-face-verify.js": "894564b7fe00d871c24b7283a0e5941c5f685fcd4d1753b1037c442d29e923ef",
+    "assets/js/14-motion.js": "92a9a5fd1f60409d77b4b28567a357da6f6b944c081df336ea41cc5d2a47521f",
+    "sw.js": "c0406c874b83afc3b13403d76570988bb0b15c7c162cc1443af79fd6ee7cd349"
+  }
+}
