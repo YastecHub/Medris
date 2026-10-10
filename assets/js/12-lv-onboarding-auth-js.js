@@ -1018,8 +1018,32 @@ document.addEventListener("click",function(e){
   function vendorOf(uid){
     if(!uid) return Promise.resolve(null);
     if(CMV.has(uid)) return Promise.resolve(CMV.get(uid));
-    return sb.from("vendors").select("id,business_name").eq("user_id",uid).is("deleted_at",null).maybeSingle().then(function(r){var v=(r&&r.data)||null;CMV.set(uid,v);return v;}).catch(function(){return null;});
+    return sb.from("vendors").select("id,business_name,verification_status,student_verified").eq("user_id",uid).is("deleted_at",null).maybeSingle().then(function(r){var v=(r&&r.data)||null;CMV.set(uid,v);return v;}).catch(function(){return null;});
   }
+  // mark vendors in the comment list: store icon, plus the green tick only when fully verified
+  var VBQ=0;
+  function paintVendorBadges(){
+    VBQ=0;
+    var rows=[].slice.call(document.querySelectorAll(".lv-cr[data-uid]:not([data-vb])"));
+    if(!rows.length||typeof sb==="undefined"||!sb.from) return;
+    rows.forEach(function(r){r.setAttribute("data-vb","1");});
+    var need=[],seen={};
+    rows.forEach(function(r){var u=r.dataset.uid;if(u&&!CMV.has(u)&&!seen[u]){seen[u]=1;need.push(u);}});
+    var go=function(){
+      rows.forEach(function(r){
+        var v=CMV.get(r.dataset.uid),nm=r.querySelector(".lv-cr-name"); if(!v||!nm||r.querySelector(".lv-cr-vbadge")) return;
+        var full=v.verification_status==="verified"&&v.student_verified===true;
+        nm.insertAdjacentHTML("afterend",'<span class="lv-cr-vbadge" title="Vendor" aria-label="Vendor"><i class="fa-solid fa-store"></i></span>'+(full?'<i class="fa-solid fa-circle-check lv-cr-vtick" title="Verified vendor" aria-label="Verified vendor"></i>':""));
+      });
+    };
+    if(!need.length){ go(); return; }
+    sb.from("vendors").select("id,business_name,user_id,verification_status,student_verified").in("user_id",need).is("deleted_at",null).then(function(r){
+      var got={}; ((r&&r.data)||[]).forEach(function(v){got[v.user_id]=v;});
+      need.forEach(function(u){CMV.set(u,got[u]||null);});
+      go();
+    }).catch(function(){});
+  }
+  try{ new MutationObserver(function(){ if(!VBQ) VBQ=requestAnimationFrame(paintVendorBadges); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
   window.lvOpenAuthor=function(uid){ vendorOf(uid).then(function(v){ if(v&&v.id&&typeof navigate==="function"){ try{closeSocialCommentSheet();}catch(_){} navigate("storefront",{vendorId:v.id}); } }); };
   window.lvCommentRowHtml=function(c,lm,ml,d,kind){
     var k=kind==="package"?"package":"product",id=String(c.id),uid=String(c.user_id||"");

@@ -1325,3 +1325,7 @@ img[data-lvimg]:not(.lv-ld){opacity:0}
 /* Share and comment buttons: neutral everywhere (product, package, storefront) */
 :root:root:root body .product-storefront-share-btn,:root:root:root body .product-storefront-share-btn i,:root:root:root body .lv-top-comment-btn,:root:root:root body .lv-top-comment-btn i,:root:root:root body .lv-cbubble i{color:var(--text-muted,#64748b)!important}
 :root[data-theme="dark"] body .product-storefront-share-btn,:root[data-theme="dark"] body .product-storefront-share-btn i,:root[data-theme="dark"] body .lv-top-comment-btn i,:root[data-theme="black"] body .product-storefront-share-btn,:root[data-theme="black"] body .product-storefront-share-btn i,:root[data-theme="black"] body .lv-top-comment-btn i{color:#e5e7eb!important}
+
+/* Vendor marker in comments */
+.lv-cr-vbadge{display:inline-grid;place-items:center;flex:none;width:1.25rem;height:1.25rem;border-radius:50%;background:color-mix(in srgb,var(--primary,#059669) 16%,transparent);color:var(--primary,#059669);font-size:.62rem}
+.lv-cr-vtick{flex:none;color:#16a34a;font-size:.85rem}
