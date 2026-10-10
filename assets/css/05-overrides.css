@@ -1396,3 +1396,6 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 .lb-scope-seg{display:flex;gap:1.1rem;margin:.7rem .1rem 0}
 .lb-scope-seg button{border:0;background:none;padding:.25rem 0;font:inherit;font-size:.86rem;font-weight:700;color:var(--text-muted,#667);border-bottom:2px solid transparent;cursor:pointer}
 .lb-scope-seg button.on{color:var(--primary,#059669);border-bottom-color:var(--primary,#059669)}
+
+/* Leaderboard: no extra blank space under the last vendor (the nav clearance is already on the page) */
+#app .lb-page{padding-bottom:.4rem!important}
