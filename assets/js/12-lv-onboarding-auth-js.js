@@ -1671,7 +1671,16 @@ async function setVendorRequestPref(v){
        +'<p class="sv-err hidden" id="svErr" role="alert"></p>'
        +'<button type="button" class="btn go" data-go="1">'+(row?"Resubmit for review":"Submit for review")+'</button>';
     }
+    function keepFiles(){ try{ if(!window.lvDraftFiles) return; window.lvDraftFiles.save("sv",{id:files.id?{file:files.id.file,pdf:!!files.id.pdf,name:files.id.name}:null,bio:files.bio?{file:files.bio.file,pdf:!!files.bio.pdf,name:files.bio.name}:null,face:face?{blob:face.blob,distance:face.distance,match:face.match,liveness:face.liveness}:null}); }catch(_){} }
+    async function restoreFiles(){
+      try{ if(!window.lvDraftFiles) return; var d=await window.lvDraftFiles.load("sv"); if(!d) return; var any=false;
+        ["id","bio"].forEach(function(k){ if(!files[k]&&d[k]&&d[k].file){ files[k]={file:d[k].file,url:d[k].pdf?"":URL.createObjectURL(d[k].file),pdf:d[k].pdf,name:d[k].name}; any=true; } });
+        if(!face&&d.face&&d.face.blob){ face={blob:d.face.blob,url:URL.createObjectURL(d.face.blob),distance:d.face.distance,match:d.face.match,liveness:d.face.liveness}; any=true; }
+        if(any){ var k=keepInputs(); paint(); restoreInputs(k); }
+      }catch(_){}
+    }
     function load(){
+      setTimeout(restoreFiles,0);
       if(!v){ try{var p=JSON.parse(localStorage.getItem("lv-sv-pending")||"null"); if(p) row={matric_number:p.nm?null:p.matric,matric_pending:!!p.nm,faculty:p.faculty,department:p.department,level:p.level,id_card_url:p.idUrl,biodata_url:p.bioUrl,selfie_url:p.selfieUrl,face_match:p.faceMatch,status:"pending"};}catch(_){} paint(); return; }
       sb.from("vendor_student_verification").select("*").eq("vendor_id",v.id).maybeSingle().then(function(r){ row=r&&r.data||null; paint(); });
     }
@@ -1688,8 +1697,8 @@ async function setVendorRequestPref(v){
       try{
         if(file.type==="application/pdf"||/\.pdf$/i.test(file.name||"")){
           if(file.size>10*1024*1024){ toast("That PDF is too big. Use one under 10 MB.","error"); }
-          else { files[cur]={file:file,url:"",pdf:true,name:file.name||"document.pdf"}; delete up_done[cur]; }
-        } else { var small=await lvPrepareImageFile(file,1400); files[cur]={file:small,url:URL.createObjectURL(small)}; delete up_done[cur]; }
+          else { files[cur]={file:file,url:"",pdf:true,name:file.name||"document.pdf"}; delete up_done[cur]; keepFiles(); }
+        } else { var small=await lvPrepareImageFile(file,1400); files[cur]={file:small,url:URL.createObjectURL(small)}; delete up_done[cur]; keepFiles(); }
       }catch(_){ toast("Couldn't read that file. Try a different photo or a PDF.","error"); }
       row=row||null; paint(); setNo(keep.n); box.querySelector("#svMatric").value=keep.m; box.querySelector("#svFaculty").value=keep.f; box.querySelector("#svDept").value=keep.d; box.querySelector("#svLevel").value=keep.l;
     });
@@ -1711,7 +1720,7 @@ async function setVendorRequestPref(v){
       var res=await window.lvFaceCheck({docs:docs});
       
       if(!res||!res.blob) return;
-      face=res; delete up_done.face; paint(); restoreInputs(keep);
+      face=res; delete up_done.face; keepFiles(); paint(); restoreInputs(keep);
       toast("Selfie saved.","success");
     }
     async function submit(btn){
@@ -1751,7 +1760,7 @@ async function setVendorRequestPref(v){
           var rec=Object.assign({vendor_id:v.id,matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_checked_at:(face||selfieUrl)?new Date().toISOString():null,face_v:(face||selfieUrl)?2:0,status:"pending",review_note:null,updated_at:new Date().toISOString()},fd);
           var up=await sb.from("vendor_student_verification").upsert(rec,{onConflict:"vendor_id"});
           if(up.error) throw up.error;
-          row=Object.assign({},rec); files={id:null,bio:null}; face=null; up_done={};
+          row=Object.assign({},rec); files={id:null,bio:null}; face=null; up_done={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
           toast("Submitted. We'll review your documents shortly.","success"); if(cb) setTimeout(cb,300);
           // quietly read the ID card text so the reviewer can see whether the matric number / name appear on it
           if(false&&window.lvOcrRead&&(idFile||bioFile)){
@@ -1762,7 +1771,7 @@ async function setVendorRequestPref(v){
           }
         } else {
           localStorage.setItem("lv-sv-pending",JSON.stringify({nm:nm,matric:m,faculty:f,department:d,level:l,idUrl:idUrl,bioUrl:bioUrl,selfieUrl:selfieUrl,faceDistance:fd.face_distance,faceMatch:fd.face_match,faceLiveness:fd.face_liveness}));
-          row={matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_match:fd.face_match,status:"pending"}; files={id:null,bio:null}; face=null; up_done={};
+          row={matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_match:fd.face_match,status:"pending"}; files={id:null,bio:null}; face=null; up_done={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
           toast("Saved. It will be submitted with your application.","success");
         }
         paint();
