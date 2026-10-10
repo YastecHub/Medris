@@ -1268,3 +1268,29 @@ html.lv-anim,html.lv-anim body{overflow-x:hidden}
 img[data-lvimg]{transition:opacity .18s ease}
 img[data-lvimg]:not(.lv-ld){opacity:0}
 .storefront-profile .storefront-avatar-button{background:var(--card,#eef2ef)}
+
+/* Vendors view toggle: flat, no shine */
+:root:root:root body #app .vd-views #vendorsViewGridBtn,:root:root:root body #app .vd-views #vendorsViewListBtn,:root:root:root body #app .vd-views #vendorsViewMapBtn{background:color-mix(in srgb,#10b981 12%,var(--card,#fff))!important;border:0!important;box-shadow:none!important;color:#059669!important}
+:root:root:root body #app .vd-views #vendorsViewGridBtn.active,:root:root:root body #app .vd-views #vendorsViewListBtn.active,:root:root:root body #app .vd-views #vendorsViewMapBtn.active{background:#10b981!important;box-shadow:none!important;color:#fff!important}
+
+/* No verified ticks anywhere for now */
+.vendor-inline-verified,.sr-verified,.vd-verified,.verified-tick,.od-verified,.vendor-card-verified-badge,[data-vt]{display:none!important}
+
+/* List view follow button matches the grid */
+#app .vd-grid.vendors-list-mode .vd-card .vd-follow:not(.following),#app .vendors-list-mode .vendor-card-follow-btn:not(.following){background:linear-gradient(135deg,#22c55e,#0d9f6e)!important;color:#fff!important;border:0!important;box-shadow:0 4px 12px rgba(13,159,110,.28)!important;font-weight:700;border-radius:12px!important;min-height:2.4rem}
+#app .vd-grid.vendors-list-mode .vd-card .vd-follow.following,#app .vendors-list-mode .vendor-card-follow-btn.following{background:color-mix(in srgb,var(--text) 7%,var(--card))!important;color:var(--text)!important;border:0!important;box-shadow:none!important;font-weight:700;border-radius:12px!important;min-height:2.4rem}
+
+/* Home campus row: flat on the page, no pill */
+#lvCampusBar{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:.1rem 0!important;margin:.1rem 0 .5rem!important;border-bottom:1px solid var(--border,#e3e9e5)!important;padding-bottom:.45rem!important}
+#lvCampusBar .lvcb-main{padding:.1rem 0!important}
+#lvCampusBar .seg{background:transparent!important;gap:.9rem!important;padding:0!important}
+#lvCampusBar .seg button{background:transparent!important;box-shadow:none!important;border-radius:0!important;padding:.3rem 0!important;min-width:0!important;font-weight:700;color:var(--text-muted,#667);border-bottom:2px solid transparent}
+#lvCampusBar .seg button.on{color:var(--primary,#059669)!important;border-bottom-color:var(--primary,#059669)}
+#lvCampusBar .lvcb-trophy{background:transparent!important;box-shadow:none!important;color:#f59e0b!important;width:2rem!important;height:2rem!important;font-size:1.05rem!important}
+
+/* Storefront campus logo: always a round badge */
+.sf-camp-ico{display:inline-grid;place-items:center;width:1.3em;height:1.3em;border-radius:50%;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.08);flex:0 0 auto;vertical-align:middle}
+.sf-camp-ico img{width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;border-radius:50%}
+
+/* Out-of-campus cards must stay hidden in every layout (list mode used to override this) */
+:root:root:root body #app .lv-out,:root:root:root body .lv-out,:root:root:root body #app .lv-out-empty,:root:root:root body .lv-out-empty{display:none!important}

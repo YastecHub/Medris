@@ -1638,7 +1638,7 @@ async function setVendorRequestPref(v){
     return true;
   }
   function curVid(){ try{ if(typeof currentViewParams!=="undefined"&&currentViewParams&&currentViewParams.vendorId) return currentViewParams.vendorId; }catch(_){} try{ if(window.currentViewParams&&window.currentViewParams.vendorId) return window.currentViewParams.vendorId; }catch(_){} var el=document.querySelector("[data-vendor-id]"); return el&&el.dataset.vendorId||""; }
-  var SCOPE_SEL=".vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.product-card-wrap,.vendors-map-vendor-chip";
+  var SCOPE_SEL=".vd-card,.vc2,.vendor-card,.homepage-vendor-card,.sr-vendor-row,.sr-row,.product-card-wrap,.vendors-map-vendor-chip";
   function inScope(x,view){ return x.campus_id===view||x.operating_scope==="all"||(x.operating_scope==="multiple"&&Array.isArray(x.operating_campuses)&&x.operating_campuses.indexOf(view)>-1); }
   function applyScope(map){
     document.querySelectorAll(".lv-out-empty").forEach(function(n){n.classList.remove("lv-out-empty");});
@@ -1683,7 +1683,7 @@ async function setVendorRequestPref(v){
       });
       applyScope(map);
       var sfl=document.querySelector(".storefront-meta .sf-loc");
-      if(sfl&&!sfl.dataset.lvc){ var sv=curVid(); var xs=map.get(String(sv)); sfl.dataset.lvc="1"; if(xs){ var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML=(rr.logo?'<img class="sf-camp-logo" src="/campus-logos/'+e2(rr.id)+'.webp" alt="">':'<i class="fa-solid fa-graduation-cap"></i>')+' '+e2(shortName(rr)); sfl.title=rr.name; } } }
+      if(sfl&&!sfl.dataset.lvc){ var sv=curVid(); var xs=map.get(String(sv)); sfl.dataset.lvc="1"; if(xs){ var rr=xs.campus_id&&window.lvCampusById(xs.campus_id); if(rr){ sfl.innerHTML=(rr.logo?'<span class="sf-camp-ico"><img src="/campus-logos/'+e2(rr.id)+'.webp" alt=""></span>':'<i class="fa-solid fa-graduation-cap"></i>')+' '+e2(shortName(rr)); sfl.title=rr.name; } } }
       var row=document.querySelector(".storefront-name-row");
       if(row&&!row.dataset.lvc){ var sid=curVid(); var x2=map.get(String(sid)); row.dataset.lvc="1"; if(x2){ var c2=x2.student_verified?chipFor({campus_id:null,student_verified:true},false):null; if(c2){ c2.style.marginLeft=".5rem"; row.appendChild(c2); } } }
   }
