@@ -848,10 +848,11 @@ function hideLeviFromPanel() {
     const want = params?.tab === "activity" ? "mine" : params?.tab;
     LB.tab = want && tabsNow().some((t) => t[0] === want) ? want : "ranking";
     LB.filter = "all";
+    try { window.lvVendorMapReady && window.lvVendorMapReady().then(() => { if ($("lbBody")) window.lbRerender(); }); } catch (_) {}
     return `<div class="lb-page">
       <div class="lb-hero">
         <div class="lb-hero-top"><div class="lb-hero-badge"><i class="fa-solid fa-trophy"></i></div>
-          <div><h2>Vendor Leaderboard</h2><span class="lb-hero-sub"><i class="fa-regular fa-clock"></i> <span data-lb-countdown>${countdownText()}</span> left</span></div></div>
+          <div><h2>Vendor Leaderboard</h2><span class="lb-hero-sub"><i class="fa-regular fa-clock"></i> <span data-lb-countdown>${countdownText()}</span> left<span id="lbScope"></span></span></div></div>
         <div class="lb-hero-meta"><span id="lbHeroPills"></span></div>
         <div class="lb-hero-winner" id="lbHeroWinner" hidden></div>
       </div>
@@ -860,9 +861,23 @@ function hideLeviFromPanel() {
     </div>`;
   };
 
+  // Campus view: "Mine" limits the board to vendors of that campus (and those who sell on it); "All" shows everyone.
+  function viewCampus() { try { return window.lvViewCampus ? window.lvViewCampus() : "all"; } catch (_) { return "all"; } }
+  function inView(vendorId) { try { return viewCampus() === "all" || !window.lvVendorInScope || window.lvVendorInScope(vendorId) !== false; } catch (_) { return true; } }
+  function scopeRows(rows) {
+    if (viewCampus() === "all") return rows;
+    const kept = (rows || []).filter((r) => r.is_me || inView(r.vendor_id));
+    return kept.map((r) => ({ ...r, rank: 1 + kept.filter((o) => o.points > r.points).length }));
+  }
+  function paintScope() {
+    const el = $("lbScope"); if (!el) return;
+    const v = viewCampus();
+    el.textContent = v === "all" ? "" : " \u00b7 " + ((window.lvCampusShort && window.lvCampusShort(v)) || "");
+  }
+  window.lbRerender = function () { if (!$("lbBody")) return; paintScope(); renderBody(false); paintHeroWinner(); };
   function paintHeroWinner() {
     const el = $("lbHeroWinner"); if (!el) return;
-    const w = LB.spot?.winner; if (!w) { el.hidden = true; return; }
+    const w = LB.spot?.winner; if (!w || !inView(w.vendor_id)) { el.hidden = true; return; }
     const d0 = new Date(w.week_start + "T00:00:00"), start = new Date(d0.getTime() + 7 * 864e5), end = new Date(start.getTime() + 6 * 864e5);
     const f = (z) => z.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     el.hidden = false;
@@ -919,7 +934,7 @@ function hideLeviFromPanel() {
     const reward = `<p class="lb-note"><i class="fa-solid fa-gift"></i> Finish first to win a free week of promotion</p>`;
     const b = LB.boards[LB.period];
     if (!b) return chips + skeleton(7);
-    const rows = b.rows || [];
+    const rows = scopeRows(b.rows || []);
     if (!rows.length) return chips + `<div class="lb-card lb-empty"><i class="fa-solid fa-ranking-star"></i><strong>No vendors on the board yet</strong><p>Check back soon.</p></div>`;
     const followed = (window.followedVendorSet && window.followedVendorSet()) || new Set();
     const mine = rows.find((r) => r.is_me) || null;
@@ -1061,14 +1076,14 @@ function hideLeviFromPanel() {
 
   function winnersHtml() {
     if (!LB.winners) return skeleton(5);
-    const w = LB.spot?.winner;
+    const w = LB.spot?.winner && inView(LB.spot.winner.vendor_id) ? LB.spot.winner : null;
     let html = "";
     if (w) {
       html += `<div class="lb-champ" onclick="navigate('storefront',{vendorId:'${esc(w.vendor_id)}'})"><div class="crown"><i class="fa-solid fa-crown"></i></div>${av(w.logo_url, w.business_name, "4.6rem", "lb-av")}<h3>${esc(w.business_name)}</h3><p>${esc([w.city, w.review_count ? `${Number(w.avg_rating || 0).toFixed(1)} ★ (${w.review_count})` : ""].filter(Boolean).join(" · "))}</p><span class="lb-pill"><i class="fa-solid fa-trophy"></i> Vendor of the Week · ${num(w.points)} pts</span></div>`;
     }
     html += `<div class="lb-card"><h3>Hall of fame</h3><p class="lb-sub" style="margin:0">A new Vendor of the Week is crowned every Monday, based on the previous week's points.</p></div>`;
-    if (!LB.winners.length) return html + `<div class="lb-card lb-empty"><i class="fa-solid fa-crown"></i><strong>The first winner is coming soon</strong><p>The week ends in <span data-lb-countdown>${countdownText()}</span>. Every point counts.</p></div>`;
-    html += LB.winners.map((x) => {
+    if (!LB.winners.filter((x) => inView(x.vendor_id)).length) return html + `<div class="lb-card lb-empty"><i class="fa-solid fa-crown"></i><strong>The first winner is coming soon</strong><p>The week ends in <span data-lb-countdown>${countdownText()}</span>. Every point counts.</p></div>`;
+    html += LB.winners.filter((x) => inView(x.vendor_id)).map((x) => {
       const d = new Date(x.week_start + "T00:00:00"), e = new Date(d.getTime() + 6 * 864e5);
       const f = (z) => z.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       const others = (x.top3 || []).slice(1).map((o) => esc(o.business_name)).join(", ");
@@ -1083,6 +1098,7 @@ function hideLeviFromPanel() {
     const fn = { ranking: rankingHtml, mine: mineHtml, earn: earnHtml, refer: referHtml, winners: winnersHtml }[LB.tab] || rankingHtml;
     body.innerHTML = fn();
     heroPills();
+    paintScope();
     ensureHeroWinner();
     postRender(animate);
   }

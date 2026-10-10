@@ -1424,6 +1424,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     var bar=document.getElementById("lvCampusBar");
     if(bar){ var h0=barHtml(); bar.innerHTML=h0; bar.__lvH=h0; spotIcon(bar); }
     try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){}
+    try{ window.lbRerender&&window.lbRerender(); }catch(_){}
     try{ if(document.getElementById("vendorsMap")&&typeof renderVendorsMap==="function") setTimeout(renderVendorsMap,60); }catch(_){}
     setTimeout(function(){ try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){} },30);
     // fast path: re-filter the catalogue already in memory and repaint only the grid
@@ -1453,7 +1454,7 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
   }
   // the trophy button turns into a crown when there is a Vendor of the Week
   function spotIcon(bar){
-    try{ if(!window.lvVendorSpot) return; window.lvVendorSpot().then(function(sp){ var b=bar.querySelector(".lvcb-trophy"); if(!b||!sp) return; var lead=sp.leaders&&sp.leaders[0]; var w=lead||sp.winner; var i=b.querySelector("i"); if(w){ i.className="fa-solid fa-crown"; b.title=(lead?"Leading this week: ":"Vendor of the Week: ")+w.business_name; b.setAttribute("aria-label",b.title);
+    try{ if(!window.lvVendorSpot) return; window.lvVendorSpot().then(function(sp){ var b=bar.querySelector(".lvcb-trophy"); if(!b||!sp) return; var okv=function(x){ return x&&(typeof window.lvVendorInScope!=="function"||window.lvVendorInScope(x.vendor_id)!==false); }; var lead=(sp.leaders||[]).filter(okv)[0]; var w=lead||(okv(sp.winner)?sp.winner:null); var i=b.querySelector("i"); if(w){ i.className="fa-solid fa-crown"; b.title=(lead?"Leading this week: ":"Vendor of the Week: ")+w.business_name; b.setAttribute("aria-label",b.title);
       var old=b.querySelector(".lvcb-badge"); if(old) old.remove();
       var ini=String(w.business_name||"?").trim().slice(0,1).toUpperCase();
       b.insertAdjacentHTML("beforeend",'<span class="lvcb-badge">'+(w.logo_url?'<img src="'+String(w.logo_url).replace(/"/g,"&quot;")+'" alt="" draggable="false" onerror="this.replaceWith(document.createTextNode(\''+ini.replace(/'/g,"")+'\'))">':ini)+'</span>'); } }); }catch(_){}
