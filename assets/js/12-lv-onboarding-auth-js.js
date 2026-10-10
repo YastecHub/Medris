@@ -1990,3 +1990,26 @@ async function setVendorRequestPref(v){
   setInterval(function(){ if(Date.now()-T>180000) load(); },60000);
   new MutationObserver(sched).observe(document.documentElement,{childList:true,subtree:true});
 })();
+
+/* Always run the newest version: when the app comes back to the front, compare the running build with the deployed one and reload if it is behind */
+(function(){
+  var run=null; try{ var m=/[?&]v=(\d+)/.exec((document.querySelector('script[src*="01-app.js"]')||{}).src||""); run=m?+m[1]:null; }catch(_){}
+  if(!run) return;
+  var busy=false,last=0;
+  function typing(){ var a=document.activeElement; return !!(a&&/^(INPUT|TEXTAREA)$/.test(a.tagName)&&String(a.value||"").trim().length>1); }
+  async function check(){
+    if(busy||Date.now()-last<20000) return; busy=true; last=Date.now();
+    try{
+      var r=await fetch("/sw.js?_="+Date.now(),{cache:"no-store"}); var t=await r.text();
+      var m=/levromart-shell-v(\d+)/.exec(t); var live=m?+m[1]:0;
+      if(live>run&&!typing()){
+        try{ var reg=await navigator.serviceWorker.getRegistration(); if(reg) await reg.update(); }catch(_){}
+        try{ var ks=await caches.keys(); await Promise.all(ks.filter(function(k){return /shell/.test(k);}).map(function(k){return caches.delete(k);})); }catch(_){}
+        location.reload();
+      }
+    }catch(_){} finally{ busy=false; }
+  }
+  document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") check(); });
+  window.addEventListener("pageshow",function(){ check(); });
+  setTimeout(check,4000); setInterval(check,300000);
+})();
