@@ -7189,6 +7189,7 @@ function renderSearchPage() {
     </div>
     <div class="search-page-filters" role="tablist" aria-label="Search filters">${filterBtn("all", "All")}${filterBtn("products", "Products")}${filterBtn("vendors", "Vendors")}${filterBtn("services", "Services")}${filterBtn("packages", "Packages")}</div>
     </div>
+    <div id="searchScopeNote" class="search-scope-note" hidden></div>
     <div id="searchPageResults" class="search-page-results">
       <div class="search-page-history-block" id="searchPageHistoryBlock" ${history.length ? "" : "hidden"}>
         <div class="search-page-history-head"><span>Recent searches</span><button type="button" onclick="clearSearchHistory()">Clear</button></div>

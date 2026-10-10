@@ -351,7 +351,8 @@
     var wrap=document.createElement("div"); wrap.id="lvSearchVendors"; wrap.className="lv-svr";
     try{
       var r2=await sb.from("vendors").select("id,business_name,logo_url").eq("verification_status","verified").eq("is_active",true).limit(80);
-      vendors=(r2.data||[]).sort(function(){return Math.random()-.5;});
+      try{ if(window.lvVendorMapReady) await window.lvVendorMapReady(); }catch(_){}
+      vendors=(r2.data||[]).filter(function(v){ return typeof window.lvVendorInScope!=="function"||window.lvVendorInScope(v.id)!==false; }).sort(function(){return Math.random()-.5;});
     }catch(_){return;}
     if(!vendors.length||document.getElementById("lvSearchVendors")||!document.getElementById("searchPageResults")) return;
     if((document.getElementById("searchPageInput")||{}).value) return;
@@ -569,7 +570,7 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
   }
   function local(term){
     if(!pool) return [];
-    return pool.map(function(v){return {v:v,k:match(v,term)};}).filter(function(x){return x.k>=0;}).sort(function(a,b){return a.k-b.k||String(a.v.business_name).localeCompare(String(b.v.business_name));}).map(function(x){return x.v;});
+    return pool.map(function(v){return {v:v,k:match(v,term)};}).filter(function(x){return x.k>=0&&(typeof window.lvVendorInScope!=="function"||window.lvVendorInScope(x.v.id)!==false);}).sort(function(a,b){return a.k-b.k||String(a.v.business_name).localeCompare(String(b.v.business_name));}).map(function(x){return x.v;});
   }
   function strip(){
     var host=document.getElementById("searchPageResults"); if(!host) return null;
@@ -619,6 +620,8 @@ window.lmConvTab=function(t){var l=document.querySelector(".admin-conv-list");if
               if(ids.length){ var ex=await sb.from("vendors").select("id,business_name,logo_url").in("id",ids).eq("verification_status","verified").eq("is_active",true); (ex.data||[]).forEach(function(v){list.push(v);}); }
               local(term).forEach(function(v){ if(!seen[v.id]&&!list.some(function(x){return x.id===v.id;})) list.push(v); });
               var cur2=((document.getElementById("searchPageInput")||{}).value||"").trim();
+              try{ if(window.lvVendorMapReady) await window.lvVendorMapReady(); }catch(_){}
+              list=list.filter(function(v){ return typeof window.lvVendorInScope!=="function"||window.lvVendorInScope(v.id)!==false; });
               if(cur2===term) paint(list,term);
             }
           }
@@ -2016,4 +2019,22 @@ async function setVendorRequestPref(v){
   document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") check(); });
   window.addEventListener("pageshow",function(){ check(); });
   setTimeout(check,4000); setInterval(check,300000);
+})();
+
+
+/* Search page: say which campus the results are limited to */
+(function(){
+  function fill(){
+    var n=document.getElementById("searchScopeNote"); if(!n||!window.lvViewCampus) return;
+    var v=window.lvViewCampus(); if(v==="all"){ n.hidden=true; return; }
+    window.lvCampuses().then(function(){
+      var r=window.lvCampusById(v); if(!r){ n.hidden=true; return; }
+      n.innerHTML='<i class="fa-solid fa-graduation-cap"></i><span>Showing <b></b> only</span><button type="button">Change</button>';
+      n.querySelector("b").textContent=r.name;
+      n.querySelector("button").onclick=function(){ window.lvOpenCampusPicker({title:"Browse a campus",current:v,allowAll:true,onPick:function(x){ try{localStorage.setItem("lv-view-campus",x.all?"all":x.id);}catch(_){} fill(); try{window.lvApplyCampusScope&&window.lvApplyCampusScope();}catch(_){} var t=document.getElementById("searchPageInput"); if(t&&t.value.trim()&&typeof runSearchPageQuery==="function") runSearchPageQuery(t.value.trim(),false); }}); };
+      n.hidden=false;
+    });
+  }
+  document.addEventListener("levromart:view-rendered",function(){ setTimeout(fill,0); });
+  try{ new MutationObserver(function(){ var n=document.getElementById("searchScopeNote"); if(n&&n.hidden&&!n.dataset.f){ n.dataset.f="1"; fill(); } }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
 })();

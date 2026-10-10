@@ -853,12 +853,28 @@ function hideLeviFromPanel() {
         <div class="lb-hero-top"><div class="lb-hero-badge"><i class="fa-solid fa-trophy"></i></div>
           <div><h2>Vendor Leaderboard</h2><span class="lb-hero-sub"><i class="fa-regular fa-clock"></i> <span data-lb-countdown>${countdownText()}</span> left</span></div></div>
         <div class="lb-hero-meta"><span id="lbHeroPills"></span></div>
+        <div class="lb-hero-winner" id="lbHeroWinner" hidden></div>
       </div>
       <div class="lb-tabs" role="tablist">${tabsNow().map((t) => `<button type="button" role="tab" class="lb-tab${LB.tab === t[0] ? " active" : ""}" data-tab="${t[0]}" onclick="lbSetTab('${t[0]}')"><i class="fa-solid ${t[2]}"></i>${t[1]}</button>`).join("")}</div>
       <div id="lbBody">${skeleton(6)}</div>
     </div>`;
   };
 
+  function paintHeroWinner() {
+    const el = $("lbHeroWinner"); if (!el) return;
+    const w = LB.spot?.winner; if (!w) { el.hidden = true; return; }
+    const d0 = new Date(w.week_start + "T00:00:00"), start = new Date(d0.getTime() + 7 * 864e5), end = new Date(start.getTime() + 6 * 864e5);
+    const f = (z) => z.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    el.hidden = false;
+    el.innerHTML = `<div class="lbw-logo">${av(w.logo_url, w.business_name, "2.9rem", "lb-av")}<i class="fa-solid fa-crown lbw-crown"></i></div>
+      <div class="lbw-copy"><span class="lbw-tag"><i class="fa-solid fa-crown"></i> Vendor of the Week</span><strong>${esc(w.business_name)}</strong><small>${f(start)} to ${f(end)} \u00b7 enjoying a free week of promotion</small></div>
+      <i class="fa-solid fa-chevron-right lbw-go"></i>`;
+    el.onclick = () => navigate("storefront", { vendorId: w.vendor_id });
+  }
+  function ensureHeroWinner() {
+    paintHeroWinner();
+    if (!LB.spot) homeSpot().then(() => paintHeroWinner()).catch(() => {});
+  }
   function heroPills() {
     const el = $("lbHeroPills"); if (!el) return;
     const s = LB.summary;
@@ -1067,6 +1083,7 @@ function hideLeviFromPanel() {
     const fn = { ranking: rankingHtml, mine: mineHtml, earn: earnHtml, refer: referHtml, winners: winnersHtml }[LB.tab] || rankingHtml;
     body.innerHTML = fn();
     heroPills();
+    ensureHeroWinner();
     postRender(animate);
   }
   function postRender(animate) {
