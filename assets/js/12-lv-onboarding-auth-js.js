@@ -1020,7 +1020,7 @@ document.addEventListener("click",function(e){
     if(CMV.has(uid)) return Promise.resolve(CMV.get(uid));
     return sb.from("vendors").select("id,business_name").eq("user_id",uid).is("deleted_at",null).maybeSingle().then(function(r){var v=(r&&r.data)||null;CMV.set(uid,v);return v;}).catch(function(){return null;});
   }
-  window.lvOpenAuthor=function(uid){ vendorOf(uid).then(function(v){ if(v&&v.id&&typeof navigate==="function") navigate("storefront",{vendorId:v.id}); }); };
+  window.lvOpenAuthor=function(uid){ vendorOf(uid).then(function(v){ if(v&&v.id&&typeof navigate==="function"){ try{closeSocialCommentSheet();}catch(_){} navigate("storefront",{vendorId:v.id}); } }); };
   window.lvCommentRowHtml=function(c,lm,ml,d,kind){
     var k=kind==="package"?"package":"product",id=String(c.id),uid=String(c.user_id||"");
     var liked=ml&&ml.has(id),n=Number((lm&&lm.get(id))||0);
@@ -1074,7 +1074,7 @@ document.addEventListener("click",function(e){
       if(a==="edit")openEdit(kind,id);
       else if(a==="copy"){var t=textOf(id);try{navigator.clipboard.writeText(t).then(function(){showToast("Copied.","success");});}catch(_){}}
       else if(a==="delete"){(kind==="package"?window.deletePackageComment:window.deleteProductComment)(id);}
-      else if(a==="store"){ navigate("storefront",{vendorId:vend.id}); }
+      else if(a==="store"){ try{closeSocialCommentSheet();}catch(_){} navigate("storefront",{vendorId:vend.id}); }
       else if(a==="unfollow"){ var d=await sb.from("vendor_follows").delete().eq("vendor_id",vend.id).eq("follower_id",session.user.id); if(d.error){showToast("Could not unfollow.","error");return;} try{ var fs=window.followedVendorSet&&window.followedVendorSet(); if(fs&&fs.delete) fs.delete(String(vend.id)); }catch(_){} showToast("Unfollowed.","success"); }
       else if(a==="report"){ if(!session){showLogin();return;} openReport(kind,id); }
       else if(a==="hide"){ hideComment(id); showToast("Comment hidden.","success"); }
