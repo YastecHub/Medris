@@ -1461,8 +1461,8 @@ function unlockNotificationAudio(){
 let __chimeEl=null;
 function chimeWavUrl(){
   if(window.__chimeWavUrl)return window.__chimeWavUrl;
-  const rate=22050,len=Math.floor(rate*1.5),buf=new Int16Array(len);
-  [523.25,659.25,783.99].forEach((hz,i)=>{const start=Math.floor(i*.22*rate);for(let n=start;n<len;n++){const t=(n-start)/rate;const env=Math.min(1,t/.025)*Math.exp(-t*3.2);buf[n]+=Math.round(Math.sin(2*Math.PI*hz*t)*env*9000);}});
+  const rate=22050,len=Math.floor(rate*2.4),buf=new Int16Array(len);
+  [0,1.05].forEach(off=>[523.25,659.25,783.99].forEach((hz,i)=>{const start=Math.floor((off+i*.2)*rate);for(let n=start;n<Math.min(len,start+rate);n++){const t=(n-start)/rate;const env=Math.min(1,t/.02)*Math.exp(-t*4);buf[n]+=Math.round(Math.sin(2*Math.PI*hz*t)*env*11000);}}));
   const hdr=new ArrayBuffer(44),v=new DataView(hdr),w=(o,str)=>{for(let k=0;k<str.length;k++)v.setUint8(o+k,str.charCodeAt(k));};
   w(0,'RIFF');v.setUint32(4,36+len*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,len*2,true);
   window.__chimeWavUrl=URL.createObjectURL(new Blob([hdr,buf.buffer],{type:'audio/wav'}));
@@ -1481,17 +1481,21 @@ function playNotificationSound(n){
   const go=()=>{
     const now=audioCtx.currentTime;
     if(now<notificationSoundUntil)return;
-    notificationSoundUntil=now+1.8;
-    // Short Levromart three-note chime, generated in-app (no audio file to download).
-    [523.25,659.25,783.99].forEach((hz,i)=>{
-      const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),at=now+i*.22;
-      osc.type='sine';osc.frequency.setValueAtTime(hz,at);
-      gain.gain.setValueAtTime(0,at);
-      gain.gain.linearRampToValueAtTime(.09,at+.025);
-      gain.gain.exponentialRampToValueAtTime(.0001,at+1.25);
-      osc.connect(gain);gain.connect(audioCtx.destination);
-      osc.start(at);osc.stop(at+1.3);
-    });
+    notificationSoundUntil=now+3.2;
+    // Levromart chime: three notes, repeated once, loud enough to hear in a busy room.
+    // Generated in-app so there is no audio file to download.
+    [0,1.05].forEach(off=>[523.25,659.25,783.99].forEach((hz,i)=>{
+      const at=now+off+i*.2;
+      ['sine','triangle'].forEach((type,k)=>{
+        const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+        osc.type=type;osc.frequency.setValueAtTime(hz*(k?2:1),at);
+        gain.gain.setValueAtTime(0,at);
+        gain.gain.linearRampToValueAtTime(k?.18:.55,at+.02);
+        gain.gain.exponentialRampToValueAtTime(.0001,at+.95);
+        osc.connect(gain);gain.connect(audioCtx.destination);
+        osc.start(at);osc.stop(at+1);
+      });
+    }));
   };
   if(audioCtx&&audioCtx.state==='running'){go();return;}
   if(audioCtx){
@@ -1515,21 +1519,7 @@ setInterval(async()=>{
     });
   }catch(_){}
 },6000);
-function playReminderChime(){
-  if(!soundEnabled||!audioCtx||audioCtx.state!=='running')return;
-  const now=audioCtx.currentTime;
-  if(now<notificationSoundUntil)return;
-  notificationSoundUntil=now+1.8;
-  [523.25,659.25,783.99].forEach((hz,i)=>{
-    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),at=now+i*.22;
-    osc.type='sine';osc.frequency.setValueAtTime(hz,at);
-    gain.gain.setValueAtTime(0,at);
-    gain.gain.linearRampToValueAtTime(.09,at+.025);
-    gain.gain.exponentialRampToValueAtTime(.0001,at+1.25);
-    osc.connect(gain);gain.connect(audioCtx.destination);
-    osc.start(at);osc.stop(at+1.3);
-  });
-}
+function playReminderChime(){ playNotificationSound({id:'reminder-'+Date.now()}); }
 function playSound() {}
 function initSound() {
   if(!window.__notificationAudioBound){

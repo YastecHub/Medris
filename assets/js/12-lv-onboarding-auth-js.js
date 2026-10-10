@@ -954,8 +954,8 @@ document.addEventListener("click",function(e){
     var f=function(id){
       var r=o.apply(this,arguments);
       try{
-        var row=document.querySelector('.product-comment-row[data-comment-id="'+String(id).replace(/"/g,"")+'"] .product-comment-head strong');
-        var who=row&&row.textContent.trim();
+        var row=document.querySelector('.product-comment-row[data-comment-id="'+String(id).replace(/"/g,"")+'"] .lv-cr-name, .product-comment-row[data-comment-id="'+String(id).replace(/"/g,"")+'"] .product-comment-head strong');
+        var who=(window.lvCommentWho&&window.lvCommentWho(id))||(row&&row.textContent.trim());
         setTimeout(function(){
           var ta=document.querySelector(".product-comment-compose-row textarea"); if(!ta||!who) return;
           names.add(who); var tag="@"+who+" ";
@@ -1014,40 +1014,87 @@ document.addEventListener("click",function(e){
   }
   function rowOf(id){return document.querySelector('.product-comment-row[data-comment-id="'+String(id).replace(/"/g,"")+'"]');}
   function textOf(id){var r=rowOf(id);var b=r&&r.querySelector(".product-comment-body");return b?(b.dataset.raw||b.textContent||"").trim():"";}
-  var CMV=new Map();
   function esc(t){return String(t==null?"":t).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function hiddenSet(){try{return new Set(JSON.parse(localStorage.getItem("lv-hidden-comments")||"[]"));}catch(_){return new Set();}}
   function hideComment(id){var h=hiddenSet();h.add(String(id));try{localStorage.setItem("lv-hidden-comments",JSON.stringify([...h].slice(-500)));}catch(_){} var r=rowOf(id);if(r)r.classList.add("lv-cr-hidden");}
+  var CMV=new Map(),AU=new Map(),AUT=new Map();   // CMV: user id -> vendor record (or null); AU: user id -> live author record
+  function authors(uids){
+    var now=Date.now(),need=[];
+    uids.forEach(function(u){ if(u&&(!AU.has(u)||now-(AUT.get(u)||0)>60000)&&need.indexOf(u)<0) need.push(u); });
+    if(!need.length||typeof sb==="undefined"||!sb.rpc) return Promise.resolve(AU);
+    return Promise.resolve(sb.rpc("get_comment_authors",{p_user_ids:need})).then(function(r){
+      var got={}; ((r&&r.data)||[]).forEach(function(a){ got[a.user_id]=a; });
+      need.forEach(function(u){
+        var a=got[u]||null; AU.set(u,a); AUT.set(u,Date.now());
+        CMV.set(u,a&&a.vendor_id?{id:a.vendor_id,business_name:a.business_name,verification_status:a.verification_status,student_verified:a.student_verified}:null);
+        if(a){ var dn=a.vendor_id&&a.business_name?a.business_name:a.name; if(dn&&window.__lvVendorNames) window.__lvVendorNames.add(dn); }
+      });
+      return AU;
+    }).catch(function(){ return AU; });
+  }
   function vendorOf(uid){
     if(!uid) return Promise.resolve(null);
     if(CMV.has(uid)) return Promise.resolve(CMV.get(uid));
-    return sb.from("vendors").select("id,business_name,verification_status,student_verified").eq("user_id",uid).is("deleted_at",null).maybeSingle().then(function(r){var v=(r&&r.data)||null;CMV.set(uid,v);return v;}).catch(function(){return null;});
+    return authors([uid]).then(function(){ return CMV.get(uid)||null; });
   }
-  // mark vendors in the comment list: store icon, plus the green tick only when fully verified
+  function displayName(a,fallback){ return a?(a.vendor_id&&a.business_name?a.business_name:(a.name||fallback)):fallback; }
+  function setAvatar(row,a){
+    var url=a&&(a.vendor_id&&a.logo_url?a.logo_url:a.avatar_url); if(!url) return;
+    var box=row.querySelector(".lv-cr-av"); if(!box) return;
+    var img=box.querySelector("img");
+    if(img){ if(img.getAttribute("src")!==url){ img.setAttribute("src",url); } return; }
+    box.innerHTML='<img src="'+esc(url)+'" class="product-comment-avatar" style="width:2.4rem;height:2.4rem;object-fit:cover;border-radius:50%" alt="">';
+  }
+  // live names, pictures and the vendor marker for every comment on screen
   var VBQ=0;
   function paintVendorBadges(){
     VBQ=0;
     var rows=[].slice.call(document.querySelectorAll(".lv-cr[data-uid]:not([data-vb])"));
-    if(!rows.length||typeof sb==="undefined"||!sb.from) return;
+    if(!rows.length) return;
     rows.forEach(function(r){r.setAttribute("data-vb","1");});
-    var need=[],seen={};
-    rows.forEach(function(r){var u=r.dataset.uid;if(u&&!CMV.has(u)&&!seen[u]){seen[u]=1;need.push(u);}});
-    var go=function(){
+    var uids=[]; rows.forEach(function(r){ var u=r.dataset.uid; if(u&&uids.indexOf(u)<0) uids.push(u); });
+    authors(uids).then(function(){
       rows.forEach(function(r){
-        var v=CMV.get(r.dataset.uid),nm=r.querySelector(".lv-cr-name"); if(!v||!nm||r.querySelector(".lv-cr-vbadge")) return;
-        var full=v.verification_status==="verified"&&v.student_verified===true;
-        nm.insertAdjacentHTML("afterend",'<span class="lv-cr-vbadge" title="Vendor" aria-label="Vendor"><i class="fa-solid fa-store"></i></span>'+(full?'<i class="fa-solid fa-circle-check lv-cr-vtick" title="Verified vendor" aria-label="Verified vendor"></i>':""));
+        var a=AU.get(r.dataset.uid),nm=r.querySelector(".lv-cr-name"); if(!a||!nm) return;
+        var dn=displayName(a,nm.textContent); nm.textContent=dn; r.dataset.dn=dn;
+        setAvatar(r,a);
+        if(a.vendor_id){
+          r.dataset.vid=a.vendor_id;
+          if(!r.querySelector(".lv-cr-vbadge")){
+            var full=a.verification_status==="verified"&&a.student_verified===true;
+            nm.insertAdjacentHTML("afterend",'<span class="lv-cr-vbadge" title="Vendor" aria-label="Vendor"><i class="fa-solid fa-store"></i></span>'+(full?'<i class="fa-solid fa-circle-check lv-cr-vtick" title="Verified vendor" aria-label="Verified vendor"></i>':""));
+          }
+        }
+        // re-link @mentions now that the names are known
+        var body=r.querySelector(".product-comment-body");
+        if(body&&window.lvMentionHtml&&body.textContent.indexOf("@")>-1&&!body.dataset.mp2){ body.dataset.mp2="1"; body.innerHTML=window.lvMentionHtml(body.textContent,""); }
       });
-    };
-    if(!need.length){ go(); return; }
-    sb.from("vendors").select("id,business_name,user_id,verification_status,student_verified").in("user_id",need).is("deleted_at",null).then(function(r){
-      var got={}; ((r&&r.data)||[]).forEach(function(v){got[v.user_id]=v;});
-      need.forEach(function(u){CMV.set(u,got[u]||null);});
-      go();
-    }).catch(function(){});
+      paintReplyBanner();
+    });
   }
-  try{ new MutationObserver(function(){ if(!VBQ) VBQ=requestAnimationFrame(paintVendorBadges); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
-  window.lvOpenAuthor=function(uid){ vendorOf(uid).then(function(v){ if(v&&v.id&&typeof navigate==="function"){ try{closeSocialCommentSheet();}catch(_){} navigate("storefront",{vendorId:v.id}); } }); };
+  try{ new MutationObserver(function(){ if(!VBQ) VBQ=requestAnimationFrame(function(){ paintVendorBadges(); paintReplyBanner(); }); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+  // replying: tag the person right in the box and say who you are replying to
+  function rowName(id){ return window.lvCommentWho?window.lvCommentWho(id):""; }
+  function paintReplyBanner(){
+    var comp=document.querySelector(".product-comment-composer"); if(!comp) return;
+    var id=window.__levroActiveProductReply||window.__levroActivePackageReply||"";
+    var b=comp.querySelector(".product-comment-replying"); if(!b||!id) return;
+    var nm=rowName(id); if(!nm) return;
+    var cb=b.querySelector("b"); if(cb&&cb.textContent===nm) return;
+    var btn=b.querySelector("button"); b.innerHTML='Replying to <b></b> '; b.querySelector("b").textContent=nm; if(btn) b.appendChild(btn);
+  }
+  window.lvCommentWho=function(id){ var r=rowOf(id); if(!r) return ""; var a=AU.get(r.dataset.uid); return displayName(a,(r.querySelector(".lv-cr-name")||{}).textContent||"").trim(); };
+
+  // close the comments drawer first (the real one is #lvCs), then open the storefront
+  function goStore(vid){
+    var x=document.querySelector("#lvCs .lv-cs-x"); if(x){ try{x.click();}catch(_){} } try{closeSocialCommentSheet();}catch(_){}
+    var old=document.getElementById("lvCs"); if(old){ old.remove(); document.body.classList.remove("lv-cs-open"); }
+    setTimeout(function(){ try{ navigate("storefront",{vendorId:vid}); }catch(_){} },30);
+  }
+  window.lvOpenAuthor=function(uid){
+    var go=function(v){ if(v&&v.id) goStore(v.id); };
+    if(CMV.has(uid)) go(CMV.get(uid)); else vendorOf(uid).then(go);
+  };
   window.lvCommentRowHtml=function(c,lm,ml,d,kind){
     var k=kind==="package"?"package":"product",id=String(c.id),uid=String(c.user_id||"");
     var liked=ml&&ml.has(id),n=Number((lm&&lm.get(id))||0);
@@ -1101,7 +1148,7 @@ document.addEventListener("click",function(e){
       if(a==="edit")openEdit(kind,id);
       else if(a==="copy"){var t=textOf(id);try{navigator.clipboard.writeText(t).then(function(){showToast("Copied.","success");});}catch(_){}}
       else if(a==="delete"){(kind==="package"?window.deletePackageComment:window.deleteProductComment)(id);}
-      else if(a==="store"){ try{closeSocialCommentSheet();}catch(_){} navigate("storefront",{vendorId:vend.id}); }
+      else if(a==="store"){ goStore(vend.id); }
       else if(a==="unfollow"){ var d=await sb.from("vendor_follows").delete().eq("vendor_id",vend.id).eq("follower_id",session.user.id); if(d.error){showToast("Could not unfollow.","error");return;} try{ var fs=window.followedVendorSet&&window.followedVendorSet(); if(fs&&fs.delete) fs.delete(String(vend.id)); }catch(_){} showToast("Unfollowed.","success"); }
       else if(a==="report"){ if(!session){showLogin();return;} openReport(kind,id); }
       else if(a==="hide"){ hideComment(id); showToast("Comment hidden.","success"); }
