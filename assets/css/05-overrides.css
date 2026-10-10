@@ -1437,3 +1437,20 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 .lvf-later{display:block;width:100%;margin-top:.55rem;padding:.6rem;border:0;background:none;color:var(--text-muted,#667);font:inherit;font-weight:600;font-size:.9rem;cursor:pointer}
 .lvsr-pdf{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;text-decoration:none;color:var(--text);min-height:5rem}
 .lvsr-pdf i{font-size:1.6rem;color:#dc2626}
+
+.lv-sv .sv-err{margin:.3rem 0 .6rem;padding:.6rem .75rem;border-radius:12px;background:#fee2e2;color:#991b1b;font-size:.82rem;font-weight:600;line-height:1.35}
+.lv-sv .sv-err.hidden{display:none}
+.lv-sv .sv-bad{outline:2px solid #ef4444;outline-offset:2px;border-radius:12px}
+.lv-sv .btn.go{width:100%;min-height:3rem;font-size:1rem;position:relative;z-index:2}
+
+/* Admin: Vendors section tabs and the review drawer header */
+.lv-avt{display:flex;gap:1.2rem;margin:.4rem 0 .8rem;border-bottom:1px solid var(--border,#e3e9e5)}
+.lv-avt button{border:0;background:none;padding:.5rem 0;font:inherit;font-weight:700;color:var(--text-muted,#667);border-bottom:2.5px solid transparent;margin-bottom:-1px;cursor:pointer}
+.lv-avt button.on{color:var(--primary,#059669);border-bottom-color:var(--primary,#059669)}
+.lvsr-who{display:flex;align-items:center;gap:.7rem;margin:.2rem 0 .8rem}
+.lvsr-av{flex:none;width:3rem;height:3rem;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:color-mix(in srgb,var(--primary,#059669) 14%,transparent);color:var(--primary,#059669);font-weight:800}
+.lvsr-av img{width:100%;height:100%;object-fit:cover}
+.lvsr-who strong{display:block;font-size:1.05rem}
+.lvsr-who small{color:var(--text-muted,#667);font-size:.78rem}
+.lvsr-app{margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--border,#e3e9e5)}
+.lvsr-app>small{display:block;margin-bottom:.4rem;font-weight:700;color:var(--text-muted,#667)}

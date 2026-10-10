@@ -20077,10 +20077,10 @@ function openAdminNavSheet() {
   });
 }
 function adminNavHtml(active) {
+  if (active === "adminCampuses") active = "adminPanel";   // one Vendors section: applications and students/campuses live together
   const items = [
     ["adminPeople", "fa-users", "People"],
-    ["adminPanel", "fa-user-check", "Vendor"],
-    ["adminCampuses", "fa-graduation-cap", "Campuses"],
+    ["adminPanel", "fa-user-check", "Vendors"],
     ["adminMonthlyListings", "fa-receipt", "Monthly listings"],
     ["adminDisputes", "fa-scale-balanced", "Disputes"],
     ["adminSupportRequests", "fa-headset", "Support"],
@@ -20596,8 +20596,9 @@ async function renderAdminPanel(status) {
     vendorError = result.error;
   }
 
-  let html = `<h2><i class='fa-solid fa-gear'></i> Admin: Vendor applications</h2>`;
+  let html = `<h2><i class='fa-solid fa-gear'></i> Admin: Vendors</h2>`;
   html += adminNavHtml("adminPanel");
+  html += window.lvAdminVendorsTabs ? window.lvAdminVendorsTabs("applications") : "";
   html += `<div class="tabs">
       <a class="${status === "all" ? "active" : ""}" onclick="navigate('adminPanel',{status:'all'})">all</a>
       <a class="${status === "pending" ? "active" : ""}" onclick="navigate('adminPanel',{status:'pending'})">pending</a>

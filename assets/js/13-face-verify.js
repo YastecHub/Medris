@@ -241,26 +241,48 @@
     var card=m.querySelector(".lvsr");
     function close(){ m.remove(); }
     m.querySelector(".lv-cm-back").addEventListener("click",close);
-    var r=await sb.from("vendor_student_verification").select("*").eq("vendor_id",vendorId).maybeSingle();
-    var sv=r&&r.data;
-    if(!sv){ card.innerHTML='<span class="lv-cm-handle"></span><p class="muted" style="text-align:center">No verification submitted yet.</p>'; return; }
+    var got=await Promise.all([
+      sb.from("vendor_student_verification").select("*").eq("vendor_id",vendorId).maybeSingle(),
+      sb.from("vendors").select("business_name,logo_url,verification_status,student_verified,campus_id").eq("id",vendorId).maybeSingle()
+    ]);
+    var sv=got[0]&&got[0].data, vd=(got[1]&&got[1].data)||{};
+    var vname=vd.business_name||name||"Vendor";
+    var camp=""; try{ if(vd.campus_id&&window.lvCampusById){ var cr=window.lvCampusById(vd.campus_id); if(cr) camp=cr.name; } }catch(_){}
+    var appSt=vd.verification_status||"pending";
+    var head='<span class="lv-cm-handle"></span><div class="lvsr-who"><span class="lvsr-av">'+(vd.logo_url?'<img src="'+esc(vd.logo_url)+'" alt="">':esc(String(vname).slice(0,1).toUpperCase()))+'</span><div><strong>'+esc(vname)+'</strong><small>'+(camp?esc(camp)+' · ':'')+'Application: '+esc(appSt)+'</small></div></div>';
+    // vendor application (approve / reject the business itself), right here with the student check
+    var appActs=appSt!=="verified"?'<div class="lvsr-app"><small>Vendor application</small><div class="lvsr-acts">'+'<button type="button" class="ok" data-a="app-ok">Approve vendor</button>'+(appSt!=="rejected"?'<button type="button" class="no" data-a="app-no">Reject</button>':'')+'</div></div>':'';
+    async function appAction(k,b){
+      b.disabled=true;
+      var res=await sb.rpc("admin_set_vendor_status",{p_vendor_id:vendorId,p_status:k==="app-ok"?"verified":"rejected"});
+      if(res.error||(res.data&&res.data.success===false)){ b.disabled=false; showToast((res.error&&res.error.message)||"Couldn't save.","error"); return; }
+      showToast(k==="app-ok"?"Vendor approved.":"Vendor rejected.","success"); close(); if(done) done();
+    }
+    if(!sv){
+      card.innerHTML=head+'<p class="muted" style="text-align:center;margin:.8rem 0">No student verification submitted yet.</p>'+appActs+'<div class="lvsr-acts"><button type="button" class="st" data-a="store">View store</button></div>';
+      card.addEventListener("click",function(e){ var b=e.target.closest("[data-a]"); if(!b) return; var a=b.dataset.a; if(a==="store"){ close(); try{navigate("storefront",{vendorId:vendorId});}catch(_){} } else if(a==="app-ok"||a==="app-no") appAction(a,b); });
+      return;
+    }
     var imgs=[["ID card",sv.id_card_url],["Biodata",sv.biodata_url],["Selfie",sv.selfie_url]].filter(function(x){return x[1];});
-    window.__reqPhotoSets=window.__reqPhotoSets||[]; var k=window.__reqPhotoSets.push(imgs.map(function(x){return x[1];}))-1;
+    window.__reqPhotoSets=window.__reqPhotoSets||[]; var k=window.__reqPhotoSets.push(imgs.filter(function(x){return !/\.pdf(\?|$)/i.test(x[1]);}).map(function(x){return x[1];}))-1;
     var st={pending:"Pending review",approved:"Approved",rejected:"Rejected"}[sv.status]||sv.status;
     var ocr=sv.ocr_checked_at?('Matric '+(sv.ocr_matric_found===true?'✓ found':sv.ocr_matric_found===false?'✗ not found':'–')+' · Name '+(sv.ocr_name_found===true?'✓ found':sv.ocr_name_found===false?'✗ not found':'–')):'<span class="muted">not read yet</span>';
-    card.innerHTML='<span class="lv-cm-handle"></span>'
-     +'<div class="lvsr-h"><strong>'+esc(name||"Vendor")+'</strong><span class="lvsr-st '+esc(sv.status)+'">'+esc(st)+'</span></div>'
+    var imgIdx=0;
+    card.innerHTML=head
+     +'<div class="lvsr-h"><strong>Student verification</strong><span class="lvsr-st '+esc(sv.status)+'">'+esc(st)+'</span></div>'
      +(sv.matric_pending?'<div class="lvsr-warn"><i class="fa-solid fa-triangle-exclamation"></i> Matric number not yet available. This vendor cannot be verified until they add it.</div>':'')
      +'<div class="lvsr-grid"><div><small>Matric</small><b>'+(sv.matric_pending?'Not yet available':esc(sv.matric_number))+'</b></div><div><small>Level</small><b>'+esc(sv.level)+'</b></div><div><small>Faculty</small><b>'+esc(sv.faculty)+'</b></div><div><small>Department</small><b>'+esc(sv.department)+'</b></div></div>'
      +'<div class="lvsr-ai">'+(window.lvFaceStatusHtml(sv)||'<span class="lvf-chip mid"><i class="fa-solid fa-eye"></i> No face check yet</span>')+(sv.face_distance!=null?' <small class="muted">distance '+Number(sv.face_distance).toFixed(2)+(sv.face_liveness?' · blink seen':' · no blink')+'</small>':'')+'</div>'
      +'<div class="lvsr-ocr"><small>ID text</small> '+ocr+'</div>'
-     +'<div class="req-ph-row lvsr-ph">'+imgs.map(function(x,i){ if(/\.pdf(\?|$)/i.test(x[1])) return '<a class="req-ph-thumb lvsr-pdf" href="'+esc(x[1])+'" target="_blank" rel="noopener"><i class="fa-regular fa-file-pdf"></i><span>'+esc(x[0])+' (PDF)</span></a>'; return '<button type="button" class="req-ph-thumb" data-i="'+i+'"><img src="'+esc(x[1])+'" alt="'+esc(x[0])+'"><span>'+esc(x[0])+'</span></button>';}).join("")+'</div>'
+     +'<div class="req-ph-row lvsr-ph">'+imgs.map(function(x){ if(/\.pdf(\?|$)/i.test(x[1])) return '<a class="req-ph-thumb lvsr-pdf" href="'+esc(x[1])+'" target="_blank" rel="noopener"><i class="fa-regular fa-file-pdf"></i><span>'+esc(x[0])+' (PDF)</span></a>'; var n=imgIdx++; return '<button type="button" class="req-ph-thumb" data-i="'+n+'"><img src="'+esc(x[1])+'" alt="'+esc(x[0])+'"><span>'+esc(x[0])+'</span></button>';}).join("")+'</div>'
      +(sv.status==="approved"?'':'<textarea id="lvsrNote" placeholder="Note to the vendor (shown if rejected)"></textarea>')
-     +'<div class="lvsr-acts">'+(sv.status!=="approved"?'<button type="button" class="ok" data-a="approved"'+(sv.matric_pending?' disabled title="Waiting for the matric number"':'')+'>Approve</button>':'')+(sv.status!=="rejected"?'<button type="button" class="no" data-a="rejected">Reject</button>':'')+'<button type="button" class="st" data-a="store">View store</button></div>';
+     +'<div class="lvsr-acts">'+(sv.status!=="approved"?'<button type="button" class="ok" data-a="approved"'+(sv.matric_pending?' disabled title="Waiting for the matric number"':'')+'>Verify student</button>':'')+(sv.status!=="rejected"?'<button type="button" class="no" data-a="rejected">Reject</button>':'')+'<button type="button" class="st" data-a="store">View store</button></div>'
+     +appActs;
     card.addEventListener("click",async function(e){
-      var th=e.target.closest(".req-ph-thumb"); if(th){ try{ reqPhotoOpen(k,+th.dataset.i); }catch(_){} return; }
+      var th=e.target.closest(".req-ph-thumb[data-i]"); if(th){ try{ reqPhotoOpen(k,+th.dataset.i); }catch(_){} return; }
       var b=e.target.closest("[data-a]"); if(!b) return; var a=b.dataset.a;
       if(a==="store"){ close(); try{navigate("storefront",{vendorId:vendorId});}catch(_){} return; }
+      if(a==="app-ok"||a==="app-no"){ appAction(a,b); return; }
       b.disabled=true;
       var note=(card.querySelector("#lvsrNote")||{}).value||null;
       if(a==="rejected"&&!note){ b.disabled=false; showToast("Add a short note so the vendor knows what to fix.","error"); return; }

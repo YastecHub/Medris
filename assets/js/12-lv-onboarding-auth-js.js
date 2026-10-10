@@ -1668,7 +1668,8 @@ async function setVendorRequestPref(v){
        +'<p class="sv-hint">Photos or PDF files both work.</p>'
        +faceBtn(r)
        +'<input type="file" accept="image/*,application/pdf,.pdf" class="hidden" id="svFile">'
-       +'<button type="button" class="btn go" data-go="1">'+(row?"Resubmit for review":"Submit for verification")+'</button>';
+       +'<p class="sv-err hidden" id="svErr" role="alert"></p>'
+       +'<button type="button" class="btn go" data-go="1">'+(row?"Resubmit for review":"Submit for review")+'</button>';
     }
     function load(){
       if(!v){ try{var p=JSON.parse(localStorage.getItem("lv-sv-pending")||"null"); if(p) row={matric_number:p.nm?null:p.matric,matric_pending:!!p.nm,faculty:p.faculty,department:p.department,level:p.level,id_card_url:p.idUrl,biodata_url:p.bioUrl,selfie_url:p.selfieUrl,face_match:p.faceMatch,status:"pending"};}catch(_){} paint(); return; }
@@ -1692,6 +1693,13 @@ async function setVendorRequestPref(v){
       }catch(_){ toast("Couldn't read that file. Try a different photo or a PDF.","error"); }
       row=row||null; paint(); setNo(keep.n); box.querySelector("#svMatric").value=keep.m; box.querySelector("#svFaculty").value=keep.f; box.querySelector("#svDept").value=keep.d; box.querySelector("#svLevel").value=keep.l;
     });
+    function ferr(msg,sels){
+      var e=box.querySelector("#svErr"); if(e){ e.textContent=msg; e.classList.remove("hidden"); }
+      box.querySelectorAll(".sv-bad").forEach(function(x){x.classList.remove("sv-bad");});
+      (sels||[]).forEach(function(q){ var el=box.querySelector(q); if(el) el.classList.add("sv-bad"); });
+      var first=box.querySelector(".sv-bad")||e; try{ first.scrollIntoView({block:"center",behavior:"smooth"}); }catch(_){}
+      try{ toast(msg,"error"); }catch(_){}
+    }
     function setNo(on){ var c=box.querySelector("#svNoMatric"),i=box.querySelector("#svMatric"); if(!c||!i) return; c.checked=!!on; i.disabled=!!on; if(on) i.value=""; }
     function keepInputs(){ return {m:box.querySelector("#svMatric").value,f:box.querySelector("#svFaculty").value,d:box.querySelector("#svDept").value,l:box.querySelector("#svLevel").value,n:box.querySelector("#svNoMatric").checked}; }
     function restoreInputs(k){ setNo(k.n); box.querySelector("#svMatric").value=k.m; box.querySelector("#svFaculty").value=k.f; box.querySelector("#svDept").value=k.d; box.querySelector("#svLevel").value=k.l; }
@@ -1711,9 +1719,10 @@ async function setVendorRequestPref(v){
     async function submit(btn){
       var m=box.querySelector("#svMatric").value.trim(),f=box.querySelector("#svFaculty").value.trim(),d=box.querySelector("#svDept").value.trim(),l=box.querySelector("#svLevel").value;
       var nm=box.querySelector("#svNoMatric").checked; if(nm) m="";
-      if((!nm&&!m)||!f||!d||!l){ toast(nm?"Fill in your faculty, department and level.":"Fill in your matric number (or tick that you don't have one yet), faculty, department and level.","error"); return; }
+      var miss=[],bad=[]; if(!nm&&!m){ miss.push("matric number (or tick the box)"); bad.push("#svMatric"); } if(!f){ miss.push("faculty"); bad.push("#svFaculty"); } if(!d){ miss.push("department"); bad.push("#svDept"); } if(!l){ miss.push("level"); bad.push("#svLevel"); }
+      if(miss.length){ ferr("Please add your "+miss.join(", ")+".",bad); return; }
       var hasId=files.id||(row&&row.id_card_url), hasBio=files.bio||(row&&row.biodata_url);
-      if(!hasId||!hasBio){ toast("Upload your ID card and biodata page.","error"); return; }
+      if(!hasId||!hasBio){ ferr("Please add your "+(!hasId&&!hasBio?"ID card and biodata page":!hasId?"ID card":"biodata page")+" (a photo or a PDF).",[!hasId?'[data-f="id"]':null,!hasBio?'[data-f="bio"]':null].filter(Boolean)); return; }
       var old=btn.innerHTML; btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
       try{
         var uid=session&&session.user&&session.user.id, base="vendor-logos/verification/"+(v?v.id:uid)+"/", ts=Date.now();
@@ -1745,7 +1754,7 @@ async function setVendorRequestPref(v){
           toast("Saved. It will be submitted with your application.","success");
         }
         paint();
-      }catch(err){ btn.disabled=false; btn.innerHTML=old; toast((err&&err.message)||"Couldn't submit. Try again.","error"); }
+      }catch(err){ btn.disabled=false; btn.innerHTML=old; ferr((err&&err.message)||"Couldn't submit. Check your connection and tap Submit again.",[]); }
     }
     load();
   }
@@ -1973,6 +1982,11 @@ async function setVendorRequestPref(v){
   function paintList(host){
     var q=(host.querySelector("input")||{}).value||""; q=q.trim().toLowerCase();
     var by=ADM.by,list=host.querySelector("#acList"),mode=ADM.mode;
+    if(mode==="review"){
+      var rv=(ADM.all||[]).filter(function(v){ return v.svs==="pending"&&(!q||String(v.business_name||"").toLowerCase().indexOf(q)>=0); }).sort(function(a,b){ return (a.nomatric?1:0)-(b.nomatric?1:0)||String(a.business_name).localeCompare(String(b.business_name)); });
+      list.innerHTML='<div class="ac-sec" style="margin-top:.2rem">To review ('+rv.length+')</div>'+(rv.length?rv.map(vendorRow).join(""):'<p class="muted" style="padding:1rem 0">Nothing waiting for review. '+(((ADM.all||[]).length)?"":"")+'</p>');
+      return;
+    }
     if(mode==="verified"||mode==="unverified"){
       var flat=(ADM.all||[]).filter(function(v){ var ok=!!v.student_verified; return (mode==="verified")===ok&&(!q||String(v.business_name||"").toLowerCase().indexOf(q)>=0); }).sort(function(a,b){ return (b.nomatric?1:0)-(a.nomatric?1:0)||String(a.business_name).localeCompare(String(b.business_name)); });
       list.innerHTML='<div class="ac-sec" style="margin-top:.2rem">'+(mode==="verified"?"Verified vendors":"Unverified vendors")+' ('+flat.length+')</div>'+(flat.length?flat.map(vendorRow).join(""):'<p class="muted" style="padding:1rem 0">None yet.</p>');
@@ -2015,8 +2029,11 @@ async function setVendorRequestPref(v){
     else if(act==="reject"){ if(!confirm("Reject this school? Everyone who picked it will be set to 'Not on a campus'.")) return; sb.rpc("admin_review_campus_school",{p_norm:norm,p_action:"reject"}).then(function(r){ if(r.error) return fail(r.error); done("School rejected."); }); }
     else if(act==="merge"){ window.lvCampuses().then(function(){ window.lvOpenCampusPicker({title:"Which school is it?",current:"",onPick:function(t){ sb.rpc("admin_review_campus_school",{p_norm:norm,p_action:"merge",p_target:t.id}).then(function(r){ if(r.error) return fail(r.error); done("Merged into "+t.name+"."); }); }}); }); }
   }
+  window.lvAdminVendorsTabs=function(active){
+    return '<div class="lv-avt" role="tablist"><button type="button" role="tab" class="'+(active==="applications"?"on":"")+'" onclick="navigate(\'adminPanel\',{status:\'pending\'})">Applications</button><button type="button" role="tab" class="'+(active==="students"?"on":"")+'" onclick="navigate(\'adminCampuses\')">Students &amp; campuses</button></div>';
+  };
   window.renderAdminCampuses=async function(){
-    var html='<h2><i class="fa-solid fa-graduation-cap"></i> Campuses</h2><p class="muted">Vendors grouped by their major campus.</p>'+adminNavHtml("adminCampuses")+'<div id="acHost"><p class="muted" style="margin:1rem 0"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</p></div>';
+    var html='<h2><i class="fa-solid fa-gear"></i> Admin: Vendors</h2>'+adminNavHtml("adminCampuses")+window.lvAdminVendorsTabs("students")+'<div id="acHost"><p class="muted" style="margin:1rem 0"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</p></div>';
     setTimeout(async function(){
       var host=document.getElementById("acHost"); if(!host) return;
       try{
@@ -2026,10 +2043,10 @@ async function setVendorRequestPref(v){
         var svm=new Map(((res[1].data)||[]).map(function(x){return [x.vendor_id,x];}));
         var all=(res[0].data||[]).map(function(v){var x=svm.get(v.id); v.svs=x?x.status:null; v.nomatric=!!(x&&x.matric_pending); return v;});
         var by={}; all.forEach(function(v){ var k=v.campus_id&&v.campus_id!=="none"?v.campus_id:"__none"; (by[k]=by[k]||[]).push(v); });
-        ADM={all:all,by:by,mode:"all"};
+        ADM={all:all,by:by,mode:"review"};
         var total=all.length,set=all.length-(by.__none||[]).length,ver=all.filter(function(v){return v.student_verified;}).length,pend=all.filter(function(v){return v.svs==="pending";}).length;
         host.innerHTML='<div id="acSubs"></div><div id="acTop"><div class="ac-stats"><div class="ac-stat"><b>'+total+'</b><span>Vendors</span></div><div class="ac-stat ok"><b>'+set+'</b><span>With a campus</span></div><div class="ac-stat '+((by.__none||[]).length?'bad':'')+'"><b>'+(by.__none||[]).length+'</b><span>No campus yet</span></div><div class="ac-stat ok"><b>'+ver+'</b><span>Verified students</span></div><div class="ac-stat '+(pend?'warn':'')+'"><b>'+pend+'</b><span>Verifications to review</span></div><div class="ac-stat"><b>'+Object.keys(by).filter(function(k){return k!=="__none";}).length+'</b><span>Campuses with vendors</span></div></div>'
-          +'<div class="ac-tools"><input type="search" placeholder="Search a campus or vendor…"><button type="button" class="ac-chip on" data-m="all">All</button><button type="button" class="ac-chip" data-m="review">To review</button><button type="button" class="ac-chip" data-m="verified">Verified</button><button type="button" class="ac-chip" data-m="unverified">Unverified</button></div></div><div id="acList"></div>';
+          +'<div class="ac-tools"><input type="search" placeholder="Search a vendor or campus…"><button type="button" class="ac-chip on" data-m="review">To review</button><button type="button" class="ac-chip" data-m="verified">Verified</button><button type="button" class="ac-chip" data-m="unverified">Unverified</button><button type="button" class="ac-chip" data-m="all">By campus</button></div></div><div id="acList"></div>';
         paintList(host); loadSubs(host);
         host.addEventListener("input",function(e){ if(e.target.matches("input")) paintList(host); });
         host.addEventListener("click",function(e){
@@ -2039,7 +2056,7 @@ async function setVendorRequestPref(v){
           if(e.target.closest("[data-back]")){ host.querySelector("#acTop").style.display=""; paintList(host); return; }
           var v=e.target.closest("[data-v]"); if(v){
             var vv=(ADM.all||[]).filter(function(x){return String(x.id)===String(v.dataset.v);})[0];
-            if(vv&&vv.svs&&window.lvAdminSvReview){ window.lvAdminSvReview(vv.id,vv.business_name,function(){ try{navigate("adminCampuses",{},false);}catch(_){} }); }
+            if(window.lvAdminSvReview){ window.lvAdminSvReview(v.dataset.v,vv&&vv.business_name,function(){ try{navigate("adminCampuses",{},false);}catch(_){} }); }
             else { try{navigate("storefront",{vendorId:v.dataset.v});}catch(_){} }
           }
         });
