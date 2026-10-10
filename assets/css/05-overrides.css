@@ -1370,3 +1370,6 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 .search-scope-note i{color:var(--primary,#059669)}
 .search-scope-note span{flex:1;min-width:0}
 .search-scope-note button{border:0;background:none;color:var(--primary,#059669);font:inherit;font-weight:700;cursor:pointer;padding:.2rem .3rem}
+
+/* Photo counter stays put while swiping (it used to sit inside the scrolling strip and scroll away with the first photo) */
+.product-gallery-stage,.package-detail-gallery{position:relative}

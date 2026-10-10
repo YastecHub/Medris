@@ -11337,8 +11337,8 @@ async function renderPackageDetail(packageId) {
     ? `<div class="package-detail-gallery">
         <div class="package-detail-gallery-track product-gallery-main" id="packageDetailGalleryTrack" aria-label="Package photos">
           ${photos.map((u,i) => `<div class="package-detail-gallery-slide" data-gallery-index="${i}" onclick="openPackageGallerySlide(event,${i})"><img class="package-detail-main" src="${esc(u)}" alt="${esc(pkg.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
-          ${photos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="packageGalleryCount">1</span>/${photos.length}</span>` : ""}
         </div>
+        ${photos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="packageGalleryCount">1</span>/${photos.length}</span>` : ""}
       </div>`
     : `<div class="package-gallery-placeholder" style="height:260px;"><i class="fa-solid fa-box-open"></i>&nbsp; No package photos</div>`;
 
@@ -11518,9 +11518,11 @@ async function __levroOriginalRenderProductDetail(productId) {
   const cleanDescription=stripProductVariantMeta(product.description||"");
   const photosHtml = productPhotos.length
     ? `<div class="product-gallery product-gallery-carousel">
+        <div class="product-gallery-stage">
         <div class="product-gallery-main product-gallery-track" id="productGalleryTrack" aria-label="Product photos">
           ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
-          ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
+        </div>
+        ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
         ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
         <button type="button" id="productGalleryReturnMain" class="product-gallery-return-main hidden" onclick="restoreProductGalleryMainImage()" aria-label="Return to main product image"><i class="fa-solid fa-arrow-left"></i> Main image</button>

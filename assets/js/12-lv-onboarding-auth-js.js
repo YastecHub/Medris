@@ -1010,6 +1010,11 @@ document.addEventListener("click",function(e){
     w.innerHTML='<div class="lv-cm-back"></div><div class="lv-cm-card" role="dialog" aria-modal="true">'+html+'</div>';
     document.body.appendChild(w);
     w.querySelector(".lv-cm-back").addEventListener("click",function(){close(id);});
+    // drag the sheet down to dismiss it (no Cancel button needed)
+    var card=w.querySelector(".lv-cm-card"),y0=null,dy=0;
+    card.addEventListener("touchstart",function(e){ if(e.target.closest("textarea,input")) return; y0=e.touches[0].clientY; dy=0; card.style.transition="none"; },{passive:true});
+    card.addEventListener("touchmove",function(e){ if(y0==null) return; dy=Math.max(0,e.touches[0].clientY-y0); card.style.transform="translateY("+dy+"px)"; },{passive:true});
+    card.addEventListener("touchend",function(){ if(y0==null) return; card.style.transition=""; if(dy>80){ close(id); } else { card.style.transform=""; } y0=null; });
     return w;
   }
   function rowOf(id){return document.querySelector('.product-comment-row[data-comment-id="'+String(id).replace(/"/g,"")+'"]');}
@@ -1114,7 +1119,7 @@ document.addEventListener("click",function(e){
   };
   function openReport(kind,id){
     var R=["Spam or advert","Abusive or hateful","Misleading or scam","Something else"];
-    var w=sheet("lvCmReport",'<span class="lv-cm-handle"></span><strong class="lv-cm-title">Report comment</strong>'+R.map(function(x,i){return '<button type="button" data-r="'+i+'"><i class="fa-regular fa-flag"></i><span>'+x+'</span></button>';}).join('')+'<button type="button" data-a="cancel" class="cancel">Cancel</button>');
+    var w=sheet("lvCmReport",'<span class="lv-cm-handle"></span><strong class="lv-cm-title">Report comment</strong>'+R.map(function(x,i){return '<button type="button" data-r="'+i+'"><i class="fa-regular fa-flag"></i><span>'+x+'</span></button>';}).join('')+'');
     w.querySelector(".lv-cm-card").addEventListener("click",async function(e){
       var b=e.target.closest("button");if(!b)return;
       if(b.dataset.r==null){close("lvCmReport");return;}
@@ -1141,7 +1146,7 @@ document.addEventListener("click",function(e){
       '<button type="button" data-a="hide"><i class="fa-regular fa-eye-slash"></i><span>I don\'t want to see this</span></button>';
       var vend=v;
     }
-    html+='<button type="button" data-a="cancel" class="cancel">Cancel</button>';
+    
     var w=sheet("lvCmMenu",html);
     w.querySelector(".lv-cm-card").addEventListener("click",async function(e){
       var b=e.target.closest("button[data-a]");if(!b)return;var a=b.dataset.a;close("lvCmMenu");
