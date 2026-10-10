@@ -2111,3 +2111,10 @@ async function setVendorRequestPref(v){
   document.addEventListener("levromart:view-rendered",function(){ setTimeout(fill,0); });
   try{ new MutationObserver(function(){ var n=document.getElementById("searchScopeNote"); if(n&&n.hidden&&!n.dataset.f){ n.dataset.f="1"; fill(); } }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
 })();
+
+/* sign-up form: the two account-type cards drive the (hidden) select the form reads */
+document.addEventListener("click",function(e){
+  var b=e.target.closest&&e.target.closest("#loginRoleSeg button[data-r]"); if(!b) return;
+  var sel=document.getElementById("loginRole"); if(sel) sel.value=b.dataset.r;
+  b.parentNode.querySelectorAll("button").forEach(function(x){ var on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-checked",String(on)); });
+});
