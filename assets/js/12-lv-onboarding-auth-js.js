@@ -1034,8 +1034,8 @@ document.addEventListener("click",function(e){
       +'<div class="product-comment-main"><div class="product-comment-head lv-cr-head"><button type="button" class="lv-cr-name" onclick="lvOpenAuthor(\''+esc(uid)+'\')">'+esc(nm)+'</button><span class="muted lv-cr-time">'+timeAgo(c.created_at)+'</span>'+edited
       +'<button type="button" class="lv-cmore lv-cr-dots" onclick="lvCommentMenu(\''+k+'\',\''+esc(id)+'\')" aria-label="Comment options"><i class="fa-solid fa-ellipsis-vertical"></i></button></div>'
       +'<div class="product-comment-body">'+body+'</div>'
-      +'<div class="lv-cr-actions"><button type="button" class="lv-cr-act product-comment-action'+(liked?' active':'')+'" onclick="'+lf+'(\''+esc(id)+'\')" aria-label="Like"><i class="fa-'+(liked?'solid':'regular')+' fa-thumbs-up"></i><span>'+(n>0?n:'Like')+'</span></button>'
-      +'<button type="button" class="lv-cr-act product-comment-action" onclick="'+rf+'(\''+esc(id)+'\')" aria-label="Reply"><i class="fa-regular fa-comment"></i><span>Reply</span></button></div>'
+      +'<div class="lv-cr-actions"><button type="button" class="lv-cr-act product-comment-action'+(liked?' active':'')+'" onclick="'+lf+'(\''+esc(id)+'\')" aria-label="Like"><i class="fa-'+(liked?'solid':'regular')+' fa-thumbs-up"></i>'+(n>0?'<span>'+n+'</span>':'')+'</button>'
+      +'<button type="button" class="lv-cr-act product-comment-action" onclick="'+rf+'(\''+esc(id)+'\')" aria-label="Reply"><i class="fa-regular fa-comment"></i></button></div>'
       +'</div></div>';
   };
   function openReport(kind,id){

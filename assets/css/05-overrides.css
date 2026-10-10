@@ -1310,3 +1310,10 @@ img[data-lvimg]:not(.lv-ld){opacity:0}
 .lv-cr-actions .lv-cr-act span{margin:0!important;font-size:.82rem!important}
 .lv-cr-actions .lv-cr-act.active,.lv-cr-actions .lv-cr-act.active i{color:var(--primary,#059669)!important}
 .lv-cr-actions .lv-cr-act:active{background:color-mix(in srgb,var(--text) 8%,transparent)!important}
+
+/* Product top actions: comment and share use the normal text colour, not green */
+:root:root:root body #app .product-detail-card .product-storefront-share-btn,:root:root:root body #app .product-detail-card .product-storefront-share-btn i,:root:root:root body #app .product-detail-card .lv-top-comment-btn .lv-cbubble i{color:var(--text,#111)!important}
+/* Selected variety card: rounded */
+:root:root:root body #app .sv-card,:root:root:root body #app .selected-variant-summary{border-radius:18px!important;overflow:hidden}
+/* Comment actions: icons only */
+.lv-cr-actions .lv-cr-act span.lv-n:empty{display:none}
