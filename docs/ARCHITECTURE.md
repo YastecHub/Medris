@@ -70,7 +70,7 @@ change:
   rules and later function definitions win.
 - **Quirks rendering mode.** A stylesheet `<link>` precedes `<!DOCTYPE html>`, so browsers render in quirks mode.
   Moving it changes layout.
-- **Inline `onclick="…"` handlers** calling global functions, and **URLs** (`/assets/js/…?v=117`, `/sw.js`) that
+- **Inline `onclick="…"` handlers** calling global functions, and **URLs** (`/assets/js/…?v=119`, `/sw.js`) that
   the service worker and installed apps already know.
 
 So `build/legacy-document.ts` re-emits everything unchanged: the document from the ordered pieces in

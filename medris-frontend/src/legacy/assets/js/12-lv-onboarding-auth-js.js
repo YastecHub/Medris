@@ -1637,7 +1637,7 @@ async function setVendorRequestPref(v){
     if(after.parentNode.querySelector("[data-lvsv]")) return;
     var box=document.createElement("div"); box.className="lv-sv"; box.setAttribute("data-lvsv","1");
     after.insertAdjacentElement("afterend",box);
-    var v=V(), row=null, files={id:null,bio:null}, face=null, warmed=false;
+    var v=V(), row=null, files={id:null,bio:null}, face=null, warmed=false, up_done={};
     function isPdfUrl(u){ return /\.pdf(\?|$)/i.test(String(u||"")); }
     function notPdf(d){ return d&&!(d.type==="application/pdf"||isPdfUrl(typeof d==="string"?d:d.name)); }
     function fthumb(f,url,label,icon){
@@ -1671,7 +1671,16 @@ async function setVendorRequestPref(v){
        +'<p class="sv-err hidden" id="svErr" role="alert"></p>'
        +'<button type="button" class="btn go" data-go="1">'+(row?"Resubmit for review":"Submit for review")+'</button>';
     }
+    function keepFiles(){ try{ if(!window.lvDraftFiles) return; window.lvDraftFiles.save("sv",{id:files.id?{file:files.id.file,pdf:!!files.id.pdf,name:files.id.name}:null,bio:files.bio?{file:files.bio.file,pdf:!!files.bio.pdf,name:files.bio.name}:null,face:face?{blob:face.blob,distance:face.distance,match:face.match,liveness:face.liveness}:null}); }catch(_){} }
+    async function restoreFiles(){
+      try{ if(!window.lvDraftFiles) return; var d=await window.lvDraftFiles.load("sv"); if(!d) return; var any=false;
+        ["id","bio"].forEach(function(k){ if(!files[k]&&d[k]&&d[k].file){ files[k]={file:d[k].file,url:d[k].pdf?"":URL.createObjectURL(d[k].file),pdf:d[k].pdf,name:d[k].name}; any=true; } });
+        if(!face&&d.face&&d.face.blob){ face={blob:d.face.blob,url:URL.createObjectURL(d.face.blob),distance:d.face.distance,match:d.face.match,liveness:d.face.liveness}; any=true; }
+        if(any){ var k=keepInputs(); paint(); restoreInputs(k); }
+      }catch(_){}
+    }
     function load(){
+      setTimeout(restoreFiles,0);
       if(!v){ try{var p=JSON.parse(localStorage.getItem("lv-sv-pending")||"null"); if(p) row={matric_number:p.nm?null:p.matric,matric_pending:!!p.nm,faculty:p.faculty,department:p.department,level:p.level,id_card_url:p.idUrl,biodata_url:p.bioUrl,selfie_url:p.selfieUrl,face_match:p.faceMatch,status:"pending"};}catch(_){} paint(); return; }
       sb.from("vendor_student_verification").select("*").eq("vendor_id",v.id).maybeSingle().then(function(r){ row=r&&r.data||null; paint(); });
     }
@@ -1688,8 +1697,8 @@ async function setVendorRequestPref(v){
       try{
         if(file.type==="application/pdf"||/\.pdf$/i.test(file.name||"")){
           if(file.size>10*1024*1024){ toast("That PDF is too big. Use one under 10 MB.","error"); }
-          else files[cur]={file:file,url:"",pdf:true,name:file.name||"document.pdf"};
-        } else { var small=await lvPrepareImageFile(file,1400); files[cur]={file:small,url:URL.createObjectURL(small)}; }
+          else { files[cur]={file:file,url:"",pdf:true,name:file.name||"document.pdf"}; delete up_done[cur]; keepFiles(); }
+        } else { var small=await lvPrepareImageFile(file,1400); files[cur]={file:small,url:URL.createObjectURL(small)}; delete up_done[cur]; keepFiles(); }
       }catch(_){ toast("Couldn't read that file. Try a different photo or a PDF.","error"); }
       row=row||null; paint(); setNo(keep.n); box.querySelector("#svMatric").value=keep.m; box.querySelector("#svFaculty").value=keep.f; box.querySelector("#svDept").value=keep.d; box.querySelector("#svLevel").value=keep.l;
     });
@@ -1711,7 +1720,7 @@ async function setVendorRequestPref(v){
       var res=await window.lvFaceCheck({docs:docs});
       
       if(!res||!res.blob) return;
-      face=res; paint(); restoreInputs(keep);
+      face=res; delete up_done.face; keepFiles(); paint(); restoreInputs(keep);
       toast("Selfie saved.","success");
     }
     async function submit(btn){
@@ -1725,12 +1734,25 @@ async function setVendorRequestPref(v){
       var old=btn.innerHTML; btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
       try{
         var uid=session&&session.user&&session.user.id, base="vendor-logos/verification/"+(v?v.id:uid)+"/", ts=Date.now();
-        // the three photos upload at the same time
-        var out=await Promise.all([
-          files.id?uploadToR2(files.id.file,base+"id-"+ts+(files.id.pdf?".pdf":".jpg"),files.id.pdf?"application/pdf":"image/jpeg"):Promise.resolve(row&&row.id_card_url),
-          files.bio?uploadToR2(files.bio.file,base+"bio-"+ts+(files.bio.pdf?".pdf":".jpg"),files.bio.pdf?"application/pdf":"image/jpeg"):Promise.resolve(row&&row.biodata_url),
-          face?uploadToR2(face.blob,base+"face-"+ts+".jpg","image/jpeg"):Promise.resolve((row&&row.selfie_url)||null)
-        ]);
+        // one at a time (steadier on weak mobile data), each retried, and kept after success so a retry never re-sends what already went through
+        var step=0, total=(files.id&&!up_done.id?1:0)+(files.bio&&!up_done.bio?1:0)+(face&&!up_done.face?1:0);
+        async function put(slot,blob,key,type){
+          if(up_done[slot]) return up_done[slot];
+          step++; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Uploading '+step+' of '+total+'…';
+          var last=null;
+          for(var a=0;a<4;a++){
+            try{
+              if(a>0){ await new Promise(function(r){setTimeout(r,700*a);}); try{ var rs=await sb.auth.refreshSession(); if(rs&&rs.data&&rs.data.session) session=rs.data.session; }catch(_){} }
+              var u=await uploadToR2(blob,key,type); up_done[slot]=u; return u;
+            }catch(er){ last=er; }
+          }
+          throw last||new Error("Upload failed");
+        }
+        var out=[];
+        out[0]=files.id?await put("id",files.id.file,base+"id-"+ts+(files.id.pdf?".pdf":".jpg"),files.id.pdf?"application/pdf":"image/jpeg"):(row&&row.id_card_url);
+        out[1]=files.bio?await put("bio",files.bio.file,base+"bio-"+ts+(files.bio.pdf?".pdf":".jpg"),files.bio.pdf?"application/pdf":"image/jpeg"):(row&&row.biodata_url);
+        out[2]=face?await put("face",face.blob,base+"face-"+ts+".jpg","image/jpeg"):((row&&row.selfie_url)||null);
+        btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
         var idUrl=out[0],bioUrl=out[1],selfieUrl=out[2];
         var fd=face?{face_distance:face.distance,face_match:face.match,face_liveness:face.liveness}:{face_distance:row&&row.face_distance!=null?row.face_distance:null,face_match:(row&&row.face_match)||"unchecked",face_liveness:row&&row.face_liveness!=null?row.face_liveness:null};
         var idFile=files.id&&!files.id.pdf?files.id.file:null, bioFile=files.bio&&!files.bio.pdf?files.bio.file:null;
@@ -1738,7 +1760,7 @@ async function setVendorRequestPref(v){
           var rec=Object.assign({vendor_id:v.id,matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_checked_at:(face||selfieUrl)?new Date().toISOString():null,face_v:(face||selfieUrl)?2:0,status:"pending",review_note:null,updated_at:new Date().toISOString()},fd);
           var up=await sb.from("vendor_student_verification").upsert(rec,{onConflict:"vendor_id"});
           if(up.error) throw up.error;
-          row=Object.assign({},rec); files={id:null,bio:null}; face=null;
+          row=Object.assign({},rec); files={id:null,bio:null}; face=null; up_done={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
           toast("Submitted. We'll review your documents shortly.","success"); if(cb) setTimeout(cb,300);
           // quietly read the ID card text so the reviewer can see whether the matric number / name appear on it
           if(false&&window.lvOcrRead&&(idFile||bioFile)){
@@ -1749,11 +1771,11 @@ async function setVendorRequestPref(v){
           }
         } else {
           localStorage.setItem("lv-sv-pending",JSON.stringify({nm:nm,matric:m,faculty:f,department:d,level:l,idUrl:idUrl,bioUrl:bioUrl,selfieUrl:selfieUrl,faceDistance:fd.face_distance,faceMatch:fd.face_match,faceLiveness:fd.face_liveness}));
-          row={matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_match:fd.face_match,status:"pending"}; files={id:null,bio:null}; face=null;
+          row={matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_match:fd.face_match,status:"pending"}; files={id:null,bio:null}; face=null; up_done={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
           toast("Saved. It will be submitted with your application.","success");
         }
         paint();
-      }catch(err){ btn.disabled=false; btn.innerHTML=old; ferr((err&&err.message)||"Couldn't submit. Check your connection and tap Submit again.",[]); }
+      }catch(err){ btn.disabled=false; btn.innerHTML=old; var em=String((err&&err.message)||""); ferr(/failed to fetch|load failed|network|upload/i.test(em)||!em?"Your connection dropped while uploading. Nothing was lost. Tap Submit again.":em,[]); }
     }
     load();
   }
