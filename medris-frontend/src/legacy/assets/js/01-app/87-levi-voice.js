@@ -843,7 +843,7 @@ async function resolveLeviProduct(target) {
 
 async function addCartWithFallback(productId, quantity) {
   const qty = Math.max(1, Math.min(20, Number(quantity) || 1));
-  const { error: rpcError } = await sb.rpc("add_to_cart", { p_product_id: productId, p_quantity: qty });
+  const { error: rpcError } = await levroData.cart.add(productId, qty);
   if (!rpcError) return null;
 
   // Some deployments have the cart table but an out-of-date/missing RPC.
@@ -1355,7 +1355,7 @@ async function resolveLeviLocalAction(text) {
     if(error)return {handled:true,reply:"I couldn't load your cart right now."};
     if(!rows?.length){closeLeviIfOpen();return {handled:true,reply:"Your cart is already empty."};}
     if(!(await showConfirmDialog(`Remove all ${rows.length} item${rows.length===1?"":"s"} from your cart?`,{title:"Clear cart",okLabel:"Clear cart",danger:true}))) return {handled:true,reply:"Okay - I left your cart unchanged."};
-    const {error:delErr}=await sb.from("cart_items").delete().eq("buyer_id",session.user.id);
+    const {error:delErr}=await levroData.cart.clear(session.user.id);
     if(delErr)return {handled:true,reply:"I couldn't clear your cart right now."};
     updateCartFab();
     await refreshNotifications(false).catch(() => {});
@@ -1467,7 +1467,7 @@ async function resolveLeviLocalAction(text) {
     } else {
       const { error } = favoriteIds.has(product.id)
         ? { error: null }
-        : await sb.from("favorites").insert({ buyer_id: session.user.id, product_id: product.id });
+        : await levroData.favorites.addProduct(session.user.id, product.id);
       if (!error) favoriteIds.add(product.id);
       results.push({ product, error: error ? "failed" : null });
     }

@@ -1,4 +1,5 @@
-import { createMiddleware } from "hono/factory";
+import crypto from "node:crypto";
+import type { RequestHandler } from "express";
 import { optionalEnv } from "../config/env.js";
 
 /**
@@ -7,25 +8,36 @@ import { optionalEnv } from "../config/env.js";
  */
 
 /** Exact `Authorization: Bearer <CRON_SECRET>` (GitHub Actions order-reminder trigger). */
-export const requireBearerCronSecret = createMiddleware(async (c, next) => {
+export const requireBearerCronSecret: RequestHandler = (req, res, next) => {
   const expected = optionalEnv("CRON_SECRET");
-  if (expected && c.req.header("authorization") !== `Bearer ${expected}`) {
-    return c.json({ error: "Unauthorized" }, 401);
+  if (expected && !secretsMatch(req.get("authorization") ?? "", `Bearer ${expected}`)) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
-  await next();
-});
+  next();
+};
 
 /** `Authorization: Bearer <secret>` (Vercel Cron) or `x-cron-secret: <secret>`. */
-export const requireCronSecret = createMiddleware(async (c, next) => {
+export const requireCronSecret: RequestHandler = (req, res, next) => {
   const expected = optionalEnv("CRON_SECRET");
   if (expected) {
-    const supplied = c.req.header("authorization")?.replace(/^Bearer\s+/i, "") || c.req.header("x-cron-secret") || "";
-    if (supplied !== expected) return c.json({ error: "Unauthorized" }, 401);
+    const supplied = req.get("authorization")?.replace(/^Bearer\s+/i, "") || req.get("x-cron-secret") || "";
+    if (!secretsMatch(supplied, expected)) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
   }
-  await next();
-});
+  next();
+};
+
+/** Constant-time string comparison for shared secrets. */
+export function secretsMatch(supplied: string, expected: string): boolean {
+  const a = Buffer.from(supplied);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 /** Requests from the database (pg_net) carry the shared webhook secret. */
 export function hasWebhookSecret(headerValue: string | undefined, expected: string): boolean {
-  return headerValue === expected;
+  return typeof headerValue === "string" && secretsMatch(headerValue, expected);
 }

@@ -5,7 +5,7 @@ async function renderVendorEditProfile() {
   if (!v) { navigate("vendorApply"); return '<p class="muted">Redirecting…</p>'; }
   vendor = v;
   if (!Array.isArray(sectors) || !sectors.length) {
-    const { data: sectorRows } = await sb.from("sectors").select("*").order("sort_order");
+    const { data: sectorRows } = await levroData.catalogue.sectors("sort_order");
     sectors = sectorRows || [];
   }
   const vendorEditSectorOptions = (Array.isArray(sectors) ? sectors : [])

@@ -1,12 +1,13 @@
 import { appConfig } from "@/config/env";
 import { api } from "@/services/api/endpoints";
+import { v1 } from "@/services/api/v1-endpoints";
 
 /**
  * `window.medris` gives non-React code (and the browser console) access to
  * the typed configuration and API client. Returns a cleanup for effects.
  */
 export function exposeMedrisRuntime(): () => void {
-  const runtime = Object.freeze({ config: appConfig, api });
+  const runtime = Object.freeze({ config: appConfig, api, v1 });
   window.medris = runtime;
   return () => {
     if (window.medris === runtime) delete window.medris;

@@ -1,7 +1,9 @@
 import { requireEnv } from "../../config/env.js";
-import { lookupUser } from "../../integrations/supabase.js";
+import { getDataContext } from "../../database/index.js";
+import { LeviRepository } from "../../database/repositories/levi.repository.js";
+import { identityFromAccessToken } from "../auth/caller.js";
 import { GEMINI_MODEL, callGemini, transcribeWav, type GeminiContent, type GeminiPart } from "../../integrations/gemini.js";
-import type { ServiceResult } from "../../types/service.js";
+import type { ServiceResult } from "../../shared/types/service.js";
 import { TOOL_DECLARATIONS } from "./levi.declarations.js";
 import { leviSystemPrompt } from "./levi.prompt.js";
 import { appendClientDirectives, cleanText, jsonSafe, stripOldUiDirectives, stripUnsafeTechnicalFallback } from "./levi.text.js";
@@ -30,13 +32,18 @@ export interface LeviRequest {
   audio?: unknown;
 }
 
+/** POST /api/chat: `mode: "transcribe"` turns audio into text; anything else is a chat turn. */
+export function handleLeviRequest(body: LeviRequest): Promise<ServiceResult> {
+  return body?.mode === "transcribe" ? transcribe(body) : chat(body);
+}
+
 /** Speech-to-text for the Android mic buttons (short WAV clips). */
 export async function transcribe(body: LeviRequest): Promise<ServiceResult> {
   const { accessToken, audio } = body || {};
   if (!accessToken) return { status: 401, body: { error: "Please log in." } };
   if (typeof audio !== "string" || !audio || audio.length > 3_000_000) return { status: 400, body: { error: "audio required" } };
   const geminiKey = requireEnv("GEMINI_API_KEY");
-  const { user: me } = await lookupUser(accessToken).catch(() => ({ user: null }));
+  const me = await identityFromAccessToken(accessToken).catch(() => null);
   if (!me) return { status: 401, body: { error: "Session expired." } };
   const text = await transcribeWav(geminiKey, audio);
   return text === null ? { status: 502, body: { error: "Couldn't transcribe that." } } : { status: 200, body: { text } };
@@ -47,32 +54,28 @@ export async function chat(body: LeviRequest): Promise<ServiceResult> {
   if (!Array.isArray(messages) || messages.length === 0) return { status: 400, body: { error: "messages array required" } };
   if (!accessToken) return { status: 401, body: { error: "Please log in to use Levi." } };
 
-  const supabaseUrl = requireEnv("SUPABASE_URL");
-  const anonKey = requireEnv("SUPABASE_ANON_KEY");
-  const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
   const geminiKey = requireEnv("GEMINI_API_KEY");
 
-  const { user: me } = await lookupUser(accessToken);
+  const me = await identityFromAccessToken(accessToken);
   if (!me) return { status: 401, body: { error: "Your session expired. Please log in again." } };
+  const data = getDataContext();
 
   if (mode !== "message_suggestions") {
-    const usageRes = await fetch(`${supabaseUrl}/rest/v1/rpc/increment_chat_usage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: anonKey, Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ p_user_id: me.id, p_limit: DAILY_MESSAGE_LIMIT }),
-    });
-    const withinLimit = await usageRes.json();
-    if (!usageRes.ok) return { status: 500, body: { error: "Levi could not check chat usage." } };
+    // Counted as the user (their own token before), so the function's own checks apply.
+    let withinLimit: unknown;
+    try {
+      withinLimit = await data.asUser(me, (tx) => new LeviRepository(tx).incrementChatUsage(me.userId, DAILY_MESSAGE_LIMIT));
+    } catch {
+      return { status: 500, body: { error: "Levi could not check chat usage." } };
+    }
     if (withinLimit !== true) return { status: 429, body: { error: `You've hit today's Levi message limit (${DAILY_MESSAGE_LIMIT}).` } };
   }
 
   const latest = [...messages].reverse().find((m) => m?.role === "user")?.content || "";
   const ctx: LeviContext = {
-    url: supabaseUrl,
-    anonKey,
-    serviceHeaders: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
-    accessToken,
-    userId: me.id,
+    data,
+    identity: me,
+    userId: me.userId,
     lat: typeof lat === "number" ? lat : null,
     lng: typeof lng === "number" ? lng : null,
   };

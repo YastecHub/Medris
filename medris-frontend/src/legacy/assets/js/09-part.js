@@ -28,7 +28,7 @@
     notifCount=Math.max(0,notifCount-1);
     const dot=byId('notifDot');
     if(dot){ if(notifCount>0){dot.textContent=notifCount>9?'9+':notifCount;dot.classList.remove('hidden');}else dot.classList.add('hidden'); }
-    Promise.resolve(sb.from('notifications').update({read:true}).eq('id',id)).catch(()=>{});
+    Promise.resolve(levroData.notifications.markRead(id)).catch(()=>{});
   };
 
   /* Replace only the cached first-paint branch inside renderNotifPanel so it
@@ -221,7 +221,7 @@
     }
 
     if(!Array.isArray(sectors) || !sectors.length){
-      const {data} = await sb.from("sectors").select("*").order("sort_order");
+      const {data} = await levroData.catalogue.sectors("sort_order");
       sectors = data || [];
     }
 
@@ -948,7 +948,7 @@
     }
 
     if(!Array.isArray(sectors)||!sectors.length){
-      const {data}=await sb.from("sectors").select("*").order("sort_order");
+      const {data}=await levroData.catalogue.sectors("sort_order");
       sectors=data||[];
     }
 

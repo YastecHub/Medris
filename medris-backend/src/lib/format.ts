@@ -42,3 +42,10 @@ export function addOneCalendarMonth(date: Date | string | number): Date {
   d.setDate(Math.min(originalDay, lastDay));
   return d;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** True for a well-formed UUID (ids from the browser are checked before they reach SQL). */
+export function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
+}

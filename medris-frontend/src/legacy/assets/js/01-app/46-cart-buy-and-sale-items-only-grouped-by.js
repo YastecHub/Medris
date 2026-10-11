@@ -31,10 +31,7 @@ async function renderCart() {
   if (profile?.role === "admin") return '<div class="empty-state">Admin accounts can\'t make purchases on Levromart.</div>';
 
   const cartResult = await withRouteTimeout(
-    sb.from("cart_items")
-      .select("id, variant_id, quantity, created_at, variant:product_variants(*), product:products(id, name, sale_price, discount_price, photos, quantity_available, status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, vendor:vendors(id, business_name, previous_business_name, name_changed_at, is_active, verification_status, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng))")
-      .eq("buyer_id", session.user.id)
-      .order("created_at", { ascending: true }),
+    levroData.cart.list(session.user.id),
     8000,
     { data: null, error: new Error("Your cart is taking too long to load. Please try again.") }
   );
@@ -54,7 +51,7 @@ async function renderCart() {
     // self-purchase guard. New self-items are blocked by both the UI and DB
     // trigger, so this only removes stale rows that should never have been
     // purchasable in the first place.
-    await sb.from("cart_items").delete().in("id", ownItems.map((it) => it.id));
+    await levroData.cart.removeMany(ownItems.map((it) => it.id));
   }
   const purchasable = valid.filter((it) => !ownItems.includes(it));
   const stale = items.filter((it) => !purchasable.includes(it));
@@ -120,7 +117,7 @@ function openClearCartSheet() {
     const ok = e.target.closest('[data-cc="ok"]');
     if (!ok) return;
     ok.disabled = true;
-    const { error } = await sb.from("cart_items").delete().eq("buyer_id", session.user.id);
+    const { error } = await levroData.cart.clear(session.user.id);
     if (error) { ok.disabled = false; showToast(error.message || "Couldn't clear your cart.", "error"); return; }
     close();
     showToast("Cart cleared.", "success");
@@ -137,7 +134,7 @@ async function addToCart(productId, qty, variantId = null) {
   // Buyers are no longer blocked by a stock counter here -- see
   // create_sale_order's own comment for why. The vendor is better placed
   // than a raw number to say an order can't be fulfilled.
-  const { error } = await sb.rpc("add_to_cart", { p_product_id: productId, p_quantity: amount, p_variant_id: chosenVariantId });
+  const { error } = await levroData.cart.add(productId, amount, chosenVariantId);
   if (error) { showToast(error.message, "error"); return; }
   showToast("Added to cart.", "success");
   buyerCartCount += 1;
@@ -164,7 +161,7 @@ async function quickAddToCart(evt, productId, btn, vendorId = "") {
   btn.classList.add("added");
   buyerCartCount += 1;
   updateCartFab();
-  const { error } = await sb.rpc("add_to_cart", { p_product_id: productId, p_quantity: 1, p_variant_id: null });
+  const { error } = await levroData.cart.add(productId, 1, null);
   btn.__lmBusy = false;
   if (error) {
     buyerCartCount = Math.max(0, buyerCartCount - 1);
@@ -179,13 +176,13 @@ async function quickAddToCart(evt, productId, btn, vendorId = "") {
 }
 async function updateCartQty(cartItemId, newQty) {
   if (newQty < 1) return;
-  const { error } = await sb.from("cart_items").update({ quantity: newQty }).eq("id", cartItemId);
+  const { error } = await levroData.cart.setQuantity(cartItemId, newQty);
   if (error) { showToast(error.message, "error"); return; }
   navigate("cart", {}, false);
   refreshNotifications();
 }
 async function removeFromCart(cartItemId) {
-  const { error } = await sb.from("cart_items").delete().eq("id", cartItemId);
+  const { error } = await levroData.cart.remove(cartItemId);
   if (error) { showToast(error.message, "error"); return; }
   navigate("cart", {}, false);
   refreshNotifications();
@@ -193,7 +190,7 @@ async function removeFromCart(cartItemId) {
 async function clearStaleCartItems() {
   const ids = window.__staleCartIds || [];
   if (!ids.length) return;
-  await sb.from("cart_items").delete().in("id", ids);
+  await levroData.cart.removeMany(ids);
   navigate("cart", {}, false);
 }
 function openCheckoutAllSheet() {
@@ -253,7 +250,7 @@ async function checkoutCartAll() {
         p_buyer_lat: buyerLocation?.lat ?? null, p_buyer_lng: buyerLocation?.lng ?? null,
       });
       if (error) throw error;
-      await sb.from("cart_items").delete().in("id", p.group.items.map((it) => it.id));
+      await levroData.cart.removeMany(p.group.items.map((it) => it.id));
       await persistBuyerDeliveryLocation(orderId, p.delivery.method);
       done++; lastId = orderId;
     } catch (e) { failed.push(`${p.group.vendor.business_name}: ${e.message || "failed"}`); }
@@ -301,7 +298,7 @@ async function checkoutCartVendor(vendorId) {
     if (errorEl) { errorEl.textContent = error.message; errorEl.classList.remove("hidden"); }
     return;
   }
-  await sb.from("cart_items").delete().in("id", group.items.map((it) => it.id));
+  await levroData.cart.removeMany(group.items.map((it) => it.id));
   await persistBuyerDeliveryLocation(orderId, delivery.method);
   refreshNotifications();
   navigate("orderDetail", { orderId });

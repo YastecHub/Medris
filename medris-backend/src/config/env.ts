@@ -3,6 +3,12 @@
  * project settings in production, `medris-backend/.env` locally); nothing
  * secret is ever hard-coded or sent to the browser.
  *
+ * Two layers live here:
+ *  - `requireEnv` / `optionalEnv`: per-request lookups used by the original
+ *    endpoint modules (unchanged behaviour);
+ *  - `loadConfig()` (config/app-config.ts): the validated, typed platform
+ *    configuration used by the database, auth, logging and /api/v1 layers.
+ *
  * `requireEnv` keeps the exact failure message the original API used, so a
  * missing variable still surfaces as "<NAME> is not configured on this
  * deployment." in the JSON error body.
@@ -32,7 +38,11 @@ export type EnvName =
   | "STATIC_ASSETS_DIR"
   | "ICON_ORIGIN"
   | "CF_TURN_KEY_ID"
-  | "CF_TURN_API_TOKEN";
+  | "CF_TURN_API_TOKEN"
+  | "DATABASE_URL"
+  | "CLOUDINARY_CLOUD_NAME"
+  | "CLOUDINARY_API_KEY"
+  | "CLOUDINARY_API_SECRET";
 
 export function requireEnv(name: EnvName): string {
   const value = process.env[name];
@@ -65,12 +75,4 @@ export function iconOrigin(): string {
 
 export function vapidPublicKey(): string {
   return optionalEnv("VAPID_PUBLIC_KEY") || DEFAULT_VAPID_PUBLIC_KEY;
-}
-
-/** Comma-separated list of extra browser origins allowed to call the API cross-origin. */
-export function corsAllowedOrigins(): string[] {
-  return optionalEnv("CORS_ALLOWED_ORIGINS")
-    .split(",")
-    .map((origin) => origin.trim().replace(/\/$/, ""))
-    .filter(Boolean);
 }

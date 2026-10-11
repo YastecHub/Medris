@@ -1,4 +1,7 @@
-import { SupabaseAdmin } from "../../integrations/supabase.js";
+import { getDataContext } from "../../database/index.js";
+import { BillingRepository } from "../../database/repositories/billing.repository.js";
+import { PaymentsRepository } from "../../database/repositories/orders.repository.js";
+import { VendorsRepository } from "../../database/repositories/vendors.repository.js";
 import type { PaystackTransaction } from "../../integrations/paystack.js";
 
 /**
@@ -9,35 +12,38 @@ import type { PaystackTransaction } from "../../integrations/paystack.js";
  * Shared by the webhook (authoritative) and the browser-return verify call.
  */
 export async function settleReference(reference: string, txData: PaystackTransaction | undefined): Promise<void> {
-  const db = SupabaseAdmin.fromEnv();
+  const data = getDataContext();
   const now = () => new Date().toISOString();
 
   if (reference.startsWith("commission_")) {
-    const settlement = await db.first<{ id: string; vendor_id: string; status: string }>(
-      `commission_settlements?provider_reference=eq.${encodeURIComponent(reference)}&select=id,vendor_id,status`,
-    );
-    if (!settlement || settlement.status === "paid") return;
-    await db.patch(`commission_settlements?id=eq.${settlement.id}`, { status: "paid", paid_at: now() });
-    await db.patch(`commission_charges?vendor_id=eq.${settlement.vendor_id}&status=eq.owed`, { status: "paid", paid_at: now() });
+    await data.asService(async (tx) => {
+      const billing = new BillingRepository(tx);
+      const settlement = await billing.settlementByReference(reference);
+      if (!settlement || settlement.status === "paid") return;
+      // Settlement and the charges it covers are marked paid together (one transaction).
+      await billing.markSettlementPaid(settlement.id, settlement.vendor_id, now());
+    });
     return;
   }
 
   if (reference.startsWith("billing_")) {
-    const charge = await db.first<{ id: string; vendor_id: string; status: string }>(
-      `vendor_monthly_charges?provider_reference=eq.${encodeURIComponent(reference)}&select=id,vendor_id,status`,
-    );
-    if (!charge || charge.status === "paid") return;
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-    await db.patch(`vendors?id=eq.${charge.vendor_id}`, {
-      paystack_authorization_code: txData?.authorization?.authorization_code,
-      paystack_customer_code: txData?.customer?.customer_code,
-      monthly_billing_status: "active",
-      next_monthly_charge_at: nextMonth.toISOString(),
+    await data.asService(async (tx) => {
+      const billing = new BillingRepository(tx);
+      const charge = await billing.monthlyChargeByReference(reference);
+      if (!charge || charge.status === "paid") return;
+      const nextMonth = new Date();
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      // Undefined values are left unchanged, as the original JSON PATCH omitted them.
+      await new VendorsRepository(tx).update(charge.vendor_id, {
+        paystackAuthorizationCode: txData?.authorization?.authorization_code,
+        paystackCustomerCode: txData?.customer?.customer_code,
+        monthlyBillingStatus: "active",
+        nextMonthlyChargeAt: nextMonth.toISOString(),
+      });
+      await billing.markMonthlyChargePaid(charge.id);
     });
-    await db.patch(`vendor_monthly_charges?id=eq.${charge.id}`, { status: "paid" });
     return;
   }
 
-  await db.patch(`payments?provider_reference=eq.${encodeURIComponent(reference)}`, { status: "paid", paid_at: now() });
+  await data.asService((tx) => new PaymentsRepository(tx).markPaidByReference(reference, now()));
 }

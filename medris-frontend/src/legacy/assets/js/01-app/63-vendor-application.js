@@ -22,7 +22,7 @@ async function renderVendorApply() {
   const { data: existing } = await sb.from("vendors").select("id").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
   if (existing) { navigate("vendorDashboard"); return '<p class="muted">Redirecting…</p>'; }
 
-  if (!sectors.length) { const { data } = await sb.from("sectors").select("*").order("name"); sectors = data || []; }
+  if (!sectors.length) { const { data } = await levroData.catalogue.sectors("name"); sectors = data || []; }
   const normalSectorMap = new Map();
   (sectors || []).forEach((sector) => {
     const name = String(sector?.name || "").trim();

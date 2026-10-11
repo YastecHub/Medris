@@ -1,65 +1,82 @@
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { corsAllowedOrigins } from "./config/env.js";
+import express, { type ErrorRequestHandler, type Express, type Request } from "express";
+import { corsMiddleware } from "./config/cors.js";
+import { createServices, type AppServices } from "./container.js";
+import { setDataContextProvider } from "./database/index.js";
 import { errorMessage } from "./lib/http.js";
-import { accountsRoutes, sharePreviewHandler } from "./modules/accounts/accounts.routes.js";
-import { authOtpRoutes } from "./modules/auth-otp/auth-otp.routes.js";
-import { cronRoutes } from "./modules/cron/cron.routes.js";
-import { leviRoutes } from "./modules/levi/levi.routes.js";
-import { notifyRoutes } from "./modules/notify/notify.routes.js";
-import { ordersRoutes } from "./modules/orders/orders.routes.js";
-import { paymentsRoutes } from "./modules/payments/payments.routes.js";
-import { vendorPaymentsRoutes } from "./modules/vendor-payments/vendor-payments.routes.js";
+import { requestContext } from "./middleware/request-context.js";
+import { sharePreviewHandler } from "./modules/accounts/accounts.controller.js";
+import { setAccessTokenVerifier } from "./modules/auth/caller.js";
+import { apiDocs } from "./routes/docs.js";
+import { legacyApi } from "./routes/legacy.js";
+import { v1Router } from "./routes/v1.js";
+import { v1ErrorResponse } from "./shared/errors/handler.js";
+
+export interface CreateAppOptions {
+  /** Replace any service (tests: a PGlite database, a fixed token verifier, a silent logger). */
+  services?: Partial<AppServices>;
+}
+
+/** Whether a request is for /api/v1 (judged on the original URL, whatever router it is in). */
+const isV1 = (req: Request) => {
+  const path = req.originalUrl.split("?")[0] ?? "";
+  return path === "/api/v1" || path.startsWith("/api/v1/");
+};
 
 /**
- * The Medris (Levromart) API. Every public URL of the previous Vercel
- * functions is served at the same path under /api, with the same request and
- * response shapes.
+ * The Medris (Levromart) API, an Express application.
+ *
+ *   /api/v1/*   the backend's own API (see routes/v1.ts)
+ *   /api/v1/docs, /api/v1/openapi.json   Swagger UI and the OpenAPI document (API_DOCS_ENABLED)
+ *   /api/*      every original endpoint at its original path and shape
+ *   /, /s/:id, /p/:id, /k/:id   link previews for shared storefronts/products/packages
  */
-export function createApp(): Hono {
-  const api = new Hono()
-    .route("/", accountsRoutes)
-    .route("/", authOtpRoutes)
-    .route("/", leviRoutes)
-    .route("/", cronRoutes)
-    .route("/", paymentsRoutes)
-    .route("/", notifyRoutes)
-    .route("/", ordersRoutes)
-    .route("/", vendorPaymentsRoutes);
+export function createApp(options: CreateAppOptions = {}): Express {
+  const services = createServices(options.services);
+  if (options.services?.data) setDataContextProvider(options.services.data);
+  // The original endpoints verify the body's accessToken with the same verifier as /api/v1.
+  setAccessTokenVerifier(services.accessTokens);
 
-  const app = new Hono();
+  const app = express();
+  app.disable("x-powered-by");
+  // Responses carry user data and set their own Cache-Control; no automatic ETag/304 handling.
+  app.set("etag", false);
+  // Behind Vercel's proxy: req.protocol and the host come from X-Forwarded-*.
+  app.set("trust proxy", true);
 
-  // In production the app and API share one origin, so no CORS headers are
-  // sent. Set CORS_ALLOWED_ORIGINS to allow a separately hosted frontend.
-  const allowed = corsAllowedOrigins();
-  if (allowed.length) {
-    app.use(
-      "/api/*",
-      cors({
-        origin: (origin) => (allowed.includes(origin.replace(/\/$/, "")) ? origin : null),
-        allowMethods: ["GET", "POST", "OPTIONS"],
-        allowHeaders: ["Content-Type", "Authorization", "x-cron-secret"],
-        maxAge: 600,
-      }),
-    );
-  }
+  app.use(requestContext(services));
 
-  app.route("/api", api);
+  // Same origin in production: no CORS headers. CORS_ALLOWED_ORIGINS opts other origins in.
+  const cors = corsMiddleware(services.config);
+  if (cors) app.use("/api", cors);
+
+  app.use(apiDocs(services));
+  app.use("/api/v1", v1Router(services));
+  app.use("/api", legacyApi());
 
   // Link previews. vercel.json rewrites "/?storefront=|product=|package=..." and the
   // short links /s/<id>, /p/<id>, /k/<id> to /api/delete-account (handled there).
   // These routes answer the same URLs when a request arrives without the rewrite
   // applied to its URL (local server, other hosts).
-  app.get("/", (c) => sharePreviewHandler(c));
-  app.get("/s/:id", (c) => sharePreviewHandler(c, { storefront: c.req.param("id") }));
-  app.get("/p/:id", (c) => sharePreviewHandler(c, { product: c.req.param("id") }));
-  app.get("/k/:id", (c) => sharePreviewHandler(c, { package: c.req.param("id") }));
+  app.get("/", (req, res) => sharePreviewHandler(req, res));
+  app.get("/s/:id", (req, res) => sharePreviewHandler(req, res, { storefront: req.params.id }));
+  app.get("/p/:id", (req, res) => sharePreviewHandler(req, res, { product: req.params.id }));
+  app.get("/k/:id", (req, res) => sharePreviewHandler(req, res, { package: req.params.id }));
 
-  app.notFound((c) => c.json({ error: "Not found" }, 404));
-  app.onError((err, c) => {
-    console.error("[medris-backend] unhandled error:", err);
-    return c.json({ error: errorMessage(err) || "Server error" }, 500);
+  app.use((req, res) => {
+    if (isV1(req)) {
+      res.setHeader("Cache-Control", "no-store");
+      res.status(404).json({ error: { code: "not_found", message: "Not found." }, requestId: res.locals.requestId });
+      return;
+    }
+    res.status(404).json({ error: "Not found" });
   });
+
+  const onError: ErrorRequestHandler = (err, req, res, _next) => {
+    if (isV1(req)) return v1ErrorResponse(req, res, err, res.locals.logger);
+    (res.locals.logger ?? services.logger).error("unhandled error", { err, path: req.originalUrl.split("?")[0] });
+    if (!res.headersSent) res.status(500).json({ error: errorMessage(err) || "Server error" });
+  };
+  app.use(onError);
 
   return app;
 }

@@ -471,8 +471,8 @@ async function warmProductModalRefs(force) {
       const needVendor = vendor?.id && (vendor.delivery_fee_mode === undefined || vendor.delivery_fee === undefined);
       const [vd, cats, secs] = await Promise.all([
         needVendor ? sb.from("vendors").select("id, sector_id, delivery_fee, delivery_fee_mode, delivery_fee_per_km").eq("id", vendor.id).maybeSingle() : Promise.resolve({ data: null }),
-        sb.from("categories").select("*").order("name"),
-        sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
+        levroData.catalogue.categories(),
+        sectors.length ? Promise.resolve({ data: sectors }) : levroData.catalogue.sectors("sort_order"),
       ]);
       if (vd?.data) vendor = { ...vendor, ...vd.data };
       if (!sectors.length) sectors = secs?.data || [];

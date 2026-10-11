@@ -3,7 +3,7 @@ async function renderBuyerProfile() {
   if (!session || !profile || profile.role === "admin" || vendor) return '<div class="empty-state">Access denied.</div>';
   const [{ count: totalOrders }, { count: followingCount }] = await Promise.all([
     sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id),
-    sb.from("vendor_follows").select("id", { count: "exact", head: true }).eq("follower_id", session.user.id),
+    levroData.follows.count(session.user.id),
   ]);
   const wishlistCount = (favoriteIds?.size || 0) + (packageFavoriteIds?.size || 0);
   const memberSince = profile.created_at ? new Date(profile.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" }) : "";

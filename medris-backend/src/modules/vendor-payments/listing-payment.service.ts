@@ -1,8 +1,13 @@
-import { SupabaseAdmin, lookupUserSafe } from "../../integrations/supabase.js";
+import { getDataContext } from "../../database/index.js";
+import { BillingRepository, type ListingRow, type ListingTable } from "../../database/repositories/billing.repository.js";
+import { UsersRepository } from "../../database/repositories/users.repository.js";
+import { VendorsRepository } from "../../database/repositories/vendors.repository.js";
+import { isUuid } from "../../lib/format.js";
+import { identityFromAccessToken } from "../auth/caller.js";
 import { initializeTransaction, verifyTransaction, type PaystackTransaction } from "../../integrations/paystack.js";
 import { requireEnv } from "../../config/env.js";
 import { addOneCalendarMonth } from "../../lib/format.js";
-import type { ServiceResult } from "../../types/service.js";
+import type { ServiceResult } from "../../shared/types/service.js";
 
 /**
  * The individual ₦999-per-month listing activation paid by card through
@@ -16,20 +21,6 @@ export const MONTHLY_LISTING_NAIRA = 999;
 export const MONTHLY_LISTING_KOBO = MONTHLY_LISTING_NAIRA * 100;
 
 type ListingKind = "product" | "package";
-type ListingTable = "products" | "vendor_packages";
-
-interface ListingRow {
-  id: string;
-  vendor_id: string;
-  name?: string;
-  status?: string;
-  billing_model?: string;
-  billing_status?: string;
-  billing_reference?: string | null;
-  billing_paid_until?: string | null;
-}
-
-const LISTING_COLUMNS = "id,vendor_id,status,billing_model,billing_status,billing_reference,billing_paid_until";
 
 function tableFor(kind: ListingKind): ListingTable {
   return kind === "product" ? "products" : "vendor_packages";
@@ -67,7 +58,7 @@ export async function paystackVerifyListing(reference: string): Promise<VerifyOu
 /* ----------------------------------------------------------- activation core */
 
 async function findListingForReference(reference: string, tx: PaystackTransaction, expectedListingId?: string) {
-  const db = SupabaseAdmin.fromEnv();
+  const data = getDataContext();
   const metadata = (tx?.metadata || {}) as Record<string, unknown>;
   const kind: ListingKind | null = metadata?.kind === "package" ? "package" : metadata?.kind === "product" ? "product" : null;
   let listingId = metadata?.listing_id ? String(metadata.listing_id) : null;
@@ -76,11 +67,11 @@ async function findListingForReference(reference: string, tx: PaystackTransactio
 
   const tables: ListingTable[] = kind ? [tableFor(kind)] : ["products", "vendor_packages"];
   for (const table of tables) {
-    const path = listingId
-      ? `${table}?id=eq.${encodeURIComponent(listingId)}&select=${LISTING_COLUMNS}&limit=1`
-      : `${table}?billing_reference=eq.${encodeURIComponent(reference)}&select=${LISTING_COLUMNS}&limit=1`;
-    const rows = (await db.rest(path).then((r) => r.json()).catch(() => [])) as ListingRow[];
-    const listing = Array.isArray(rows) ? rows[0] : null;
+    // A malformed id simply matches nothing (PostgREST answered with an error, read as "no rows").
+    if (listingId && !isUuid(listingId)) continue;
+    const listing = await data
+      .asService((db) => new BillingRepository(db).listing(table, listingId ? { id: listingId } : { reference }))
+      .catch(() => null);
     if (listing) {
       const inferredKind: ListingKind = table === "products" ? "product" : "package";
       if (metadata?.kind && metadata.kind !== inferredKind) continue;
@@ -109,14 +100,11 @@ export async function verifyAndActivateListing(
 
   const { table, kind, listing, vendorId } = found;
   const metadata = (tx?.metadata || {}) as Record<string, unknown>;
-  const db = SupabaseAdmin.fromEnv();
+  const data = getDataContext();
 
   if (authUserId) {
-    const [vendor] = (await db
-      .rest(`vendors?id=eq.${encodeURIComponent(vendorId)}&select=user_id&limit=1`)
-      .then((r) => r.json())
-      .catch(() => [])) as { user_id: string }[];
-    if (!vendor || String(vendor.user_id) !== String(authUserId)) {
+    const ownerId = await data.asService((db) => new VendorsRepository(db).ownerOf(vendorId)).catch(() => null);
+    if (!ownerId || String(ownerId) !== String(authUserId)) {
       return { ok: false, reason: "owner", httpStatus: 403, message: "This payment does not belong to your vendor listing." };
     }
   }
@@ -143,13 +131,16 @@ export async function verifyAndActivateListing(
   const base = currentPaid && currentPaid.getTime() > now.getTime() ? currentPaid : now;
   const paidUntil = addOneCalendarMonth(base).toISOString();
 
-  const update = await db.patch(
-    `${table}?id=eq.${encodeURIComponent(listing.id)}&vendor_id=eq.${encodeURIComponent(vendorId)}&billing_reference=eq.${encodeURIComponent(reference)}`,
-    { status: "active", billing_status: "active", billing_paid_until: paidUntil, billing_reference: null },
-  );
-  if (!update.ok) {
-    const text = await update.text().catch(() => "");
-    console.error("[vendor-payments] listing activation update failed", text);
+  try {
+    await data.asService((db) =>
+      new BillingRepository(db).updateListing(
+        table,
+        { id: listing.id, vendorId, reference },
+        { status: "active", billingStatus: "active", billingPaidUntil: paidUntil, billingReference: null },
+      ),
+    );
+  } catch (err) {
+    console.error("[vendor-payments] listing activation update failed", err);
     return { ok: false, reason: "activation", message: "Paystack confirmed the payment, but the listing could not be activated yet. Do not pay again." };
   }
 
@@ -160,26 +151,23 @@ export async function verifyAndActivateListing(
 /** Marks the optional listing_payment_intents row paid; failures are ignored. */
 async function markIntentPaid(reference: string): Promise<void> {
   try {
-    await SupabaseAdmin.fromEnv().patch(`listing_payment_intents?reference=eq.${encodeURIComponent(reference)}`, {
-      status: "paid",
-      paid_at: new Date().toISOString(),
-    });
+    await getDataContext().asService((db) => new BillingRepository(db).markListingIntentPaid(reference, new Date().toISOString()));
   } catch {
-    /* table is optional */
+    /* reconciliation record only */
   }
 }
 
 /** Webhook path: activates the listing named in the Paystack metadata. Throws on mismatch (-> 500, Paystack retries). */
 export async function settleListingPaymentFromWebhook(reference: string, metadata: Record<string, unknown>): Promise<void> {
-  const db = SupabaseAdmin.fromEnv();
-  const table = metadata.kind === "product" ? "products" : "vendor_packages";
-  const listingId = encodeURIComponent(String(metadata.listing_id));
-  const vendorId = encodeURIComponent(String(metadata.vendor_id));
+  const data = getDataContext();
+  const table: ListingTable = metadata.kind === "product" ? "products" : "vendor_packages";
+  const listingId = String(metadata.listing_id);
+  const vendorId = String(metadata.vendor_id);
 
-  const [listing] = (await db
-    .rest(`${table}?id=eq.${listingId}&vendor_id=eq.${vendorId}&select=id,status,billing_model,billing_status,billing_reference,billing_paid_until&limit=1`)
-    .then((r) => r.json())
-    .catch(() => [])) as ListingRow[];
+  const listing =
+    isUuid(listingId) && isUuid(vendorId)
+      ? await data.asService((db) => new BillingRepository(db).listing(table, { id: listingId, vendorId })).catch(() => null)
+      : null;
 
   if (!listing || listing.billing_model !== "monthly") throw new Error("Monthly listing not found for Paystack reference.");
   if (isPaidUp(listing)) return;
@@ -189,53 +177,47 @@ export async function settleListingPaymentFromWebhook(reference: string, metadat
 
   const now = new Date();
   const baseDate = listing.billing_paid_until && new Date(listing.billing_paid_until).getTime() > now.getTime() ? new Date(listing.billing_paid_until) : now;
-  const updateRes = await db.patch(`${table}?id=eq.${listingId}&vendor_id=eq.${vendorId}&billing_reference=eq.${encodeURIComponent(reference)}`, {
-    status: "active",
-    billing_status: "active",
-    billing_paid_until: addOneCalendarMonth(baseDate).toISOString(),
-    billing_reference: null,
-  });
-  if (!updateRes.ok) throw new Error("Could not activate the paid listing.");
+  try {
+    await data.asService((db) =>
+      new BillingRepository(db).updateListing(
+        table,
+        { id: listingId, vendorId, reference },
+        { status: "active", billingStatus: "active", billingPaidUntil: addOneCalendarMonth(baseDate).toISOString(), billingReference: null },
+      ),
+    );
+  } catch {
+    throw new Error("Could not activate the paid listing.");
+  }
   await markIntentPaid(reference);
 }
 
 /* ------------------------------------------------------------- start payment */
 
 export async function startListingPayment(body: Record<string, unknown>, origin: string): Promise<ServiceResult> {
-  requireEnv("SUPABASE_URL");
-  requireEnv("SUPABASE_ANON_KEY");
-  requireEnv("SUPABASE_SERVICE_ROLE_KEY");
   requireEnv("PAYSTACK_SECRET_KEY");
 
   if (!body?.accessToken || !body?.kind || !body?.id) return { status: 400, body: { error: "A listing and signed-in session are required." } };
   if (!["product", "package"].includes(String(body.kind))) return { status: 400, body: { error: "Invalid listing type." } };
   const kind = body.kind as ListingKind;
 
-  const me = await lookupUserSafe(String(body.accessToken));
-  if (!me?.id) return { status: 401, body: { error: "Your session expired. Please log in again." } };
+  const identity = await identityFromAccessToken(String(body.accessToken));
+  if (!identity) return { status: 401, body: { error: "Your session expired. Please log in again." } };
+  const me = { id: identity.userId, email: identity.email };
 
-  const db = SupabaseAdmin.fromEnv();
+  const data = getDataContext();
   const table = tableFor(kind);
-  const [listing] = (await db
-    .rest(`${table}?id=eq.${encodeURIComponent(String(body.id))}&select=id,vendor_id,name,status,billing_model,billing_status,billing_reference,billing_paid_until&limit=1`)
-    .then((r) => r.json())
-    .catch(() => [])) as ListingRow[];
+  const listingId = String(body.id);
+  const listing = isUuid(listingId) ? await data.asService((db) => new BillingRepository(db).listing(table, { id: listingId }, true)).catch(() => null) : null;
   if (!listing) return { status: 404, body: { error: "Listing not found." } };
 
-  const [vendor] = (await db
-    .rest(`vendors?id=eq.${encodeURIComponent(listing.vendor_id)}&select=id,user_id,business_name&limit=1`)
-    .then((r) => r.json())
-    .catch(() => [])) as { id: string; user_id: string }[];
-  if (!vendor || String(vendor.user_id) !== String(me.id)) return { status: 403, body: { error: "You can only pay for your own listing." } };
+  const ownerId = await data.asService((db) => new VendorsRepository(db).ownerOf(listing.vendor_id)).catch(() => null);
+  if (!ownerId || String(ownerId) !== String(me.id)) return { status: 403, body: { error: "You can only pay for your own listing." } };
   if (listing.billing_model !== "monthly") return { status: 400, body: { error: "This listing is not using monthly billing." } };
 
   // Already paid and still within its billing period.
   if (isPaidUp(listing)) return { status: 200, body: { alreadyActive: true } };
 
-  const [user] = (await db
-    .rest(`users?id=eq.${encodeURIComponent(me.id)}&select=email&limit=1`)
-    .then((r) => r.json())
-    .catch(() => [])) as { email?: string }[];
+  const user = await data.asService((db) => new UsersRepository(db).emailAndName(me.id)).catch(() => null);
   const email = user?.email || me.email;
   if (!email) return { status: 400, body: { error: "Add an email address to your account before paying for a listing." } };
 
@@ -260,21 +242,24 @@ export async function startListingPayment(body: Record<string, unknown>, origin:
   }
 
   const reference = `levro_listing_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-  const patchPath = `${table}?id=eq.${encodeURIComponent(listing.id)}&vendor_id=eq.${encodeURIComponent(listing.vendor_id)}`;
+  const match = { id: listing.id, vendorId: listing.vendor_id };
 
   // Mark the listing as awaiting payment before sending the vendor to Paystack.
-  const prepRes = await db.patch(patchPath, { billing_status: "pending_payment", billing_reference: reference, status: "paused" });
-  if (!prepRes.ok) return { status: 500, body: { error: "Could not prepare the listing for payment." } };
-
-  // Server-side intent record for reconciliation (optional table).
   try {
-    await db.insert(
-      "listing_payment_intents",
-      { reference, listing_id: listing.id, vendor_id: listing.vendor_id, kind, amount_naira: MONTHLY_LISTING_NAIRA, status: "pending" },
-      "resolution=merge-duplicates,return=minimal",
+    await data.asService((db) => new BillingRepository(db).updateListing(table, match, { billingStatus: "pending_payment", billingReference: reference, status: "paused" }));
+  } catch {
+    return { status: 500, body: { error: "Could not prepare the listing for payment." } };
+  }
+
+  // Server-side intent record for reconciliation. Its own transaction: a
+  // failure here never affects the payment. (The previous code omitted the
+  // required user_id, so this record was never actually written.)
+  try {
+    await data.asService((db) =>
+      new BillingRepository(db).insertListingIntent({ reference, userId: me.id, vendorId: listing.vendor_id, listingId: listing.id, kind, amountNaira: MONTHLY_LISTING_NAIRA }),
     );
   } catch {
-    /* optional */
+    /* reconciliation record only */
   }
 
   const { res: initRes, json: initJson } = await initializeTransaction(
@@ -298,8 +283,10 @@ export async function startListingPayment(body: Record<string, unknown>, origin:
 
   if (!initRes.ok || !initJson.status || !initJson.data?.authorization_url) {
     // Payment could not be started: restore the previous listing state.
-    await db
-      .patch(patchPath, { billing_status: listing.billing_status || "pending_payment", billing_reference: null, status: listing.status || "paused" })
+    await data
+      .asService((db) =>
+        new BillingRepository(db).updateListing(table, match, { billingStatus: listing.billing_status || "pending_payment", billingReference: null, status: listing.status || "paused" }),
+      )
       .catch(() => undefined);
     return { status: 502, body: { error: initJson.message || "Paystack could not start the listing payment." } };
   }
@@ -325,10 +312,10 @@ export async function finishListingPaymentRedirect(reference: string, base: stri
 
 export async function verifyListingPayment(body: Record<string, unknown>): Promise<ServiceResult> {
   if (!body?.reference || !body?.accessToken) return { status: 400, body: { error: "reference and accessToken are required" } };
-  const me = await lookupUserSafe(String(body.accessToken));
-  if (!me?.id) return { status: 401, body: { error: "Invalid session" } };
+  const me = await identityFromAccessToken(String(body.accessToken));
+  if (!me) return { status: 401, body: { error: "Invalid session" } };
 
-  const result = await verifyAndActivateListing(String(body.reference), me.id);
+  const result = await verifyAndActivateListing(String(body.reference), me.userId);
   if (!result.ok) {
     return {
       status: result.httpStatus || 400,
@@ -343,10 +330,10 @@ export async function consumeListingPayment(body: Record<string, unknown>): Prom
   if (!body?.reference || !body?.listingId || !body?.accessToken) {
     return { status: 400, body: { error: "reference, listingId and accessToken are required" } };
   }
-  const me = await lookupUserSafe(String(body.accessToken));
-  if (!me?.id) return { status: 401, body: { error: "Invalid session" } };
+  const me = await identityFromAccessToken(String(body.accessToken));
+  if (!me) return { status: 401, body: { error: "Invalid session" } };
 
-  const result = await verifyAndActivateListing(String(body.reference), me.id, { expectedListingId: String(body.listingId) });
+  const result = await verifyAndActivateListing(String(body.reference), me.userId, { expectedListingId: String(body.listingId) });
   if (!result.ok) return { status: result.httpStatus || 400, body: { error: result.message || "Payment could not be verified." } };
   return { status: 200, body: { status: "success", listingId: result.listingId, paidUntil: result.paidUntil } };
 }

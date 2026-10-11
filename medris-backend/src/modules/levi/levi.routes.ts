@@ -1,16 +1,26 @@
-import { Hono } from "hono";
-import { json, methodNotAllowed, readJsonBody } from "../../lib/http.js";
-import { chat, transcribe, type LeviRequest } from "./levi.service.js";
+import { z } from "../../shared/openapi/zod.js";
+import { accessToken, legacyRoute } from "../../shared/openapi/legacy-docs.js";
 
-/** POST /api/chat { messages, accessToken, mode?, ... } -> { reply } | { suggestions } | { text } */
-export const leviRoutes = new Hono().all("/chat", async (c) => {
-  if (c.req.method !== "POST") return methodNotAllowed(c);
-  try {
-    const body = await readJsonBody<LeviRequest>(c);
-    const result = body?.mode === "transcribe" ? await transcribe(body) : await chat(body);
-    return json(c, result.status, result.body);
-  } catch (err) {
-    console.error("[Levromart] Levi handler error:", err);
-    return json(c, 500, { error: "Levi could not complete that request." });
-  }
-});
+/** Contract of /api/chat (documentation; see levi.controller.ts). */
+export const leviDocs = [
+  legacyRoute({
+    method: "post",
+    path: "/chat",
+    summary: "Levi, the in-app assistant",
+    description: "A chat turn (`{ reply }`), message suggestions (`mode: message_suggestions` -> `{ suggestions }`) or speech-to-text (`mode: transcribe` -> `{ text }`). Daily message limit per user.",
+    body: z
+      .object({
+        accessToken,
+        messages: z.array(z.object({ role: z.string(), content: z.string() })).optional(),
+        mode: z.enum(["chat", "message_suggestions", "transcribe"]).optional(),
+        audio: z.string().optional().openapi({ description: "Base64 WAV (transcribe)." }),
+        lat: z.number().optional(),
+        lng: z.number().optional(),
+        currentView: z.string().optional(),
+        currentViewParams: z.unknown().optional(),
+        lastRenderError: z.string().optional(),
+      })
+      .openapi("LeviRequest"),
+    responses: { 200: "`{ reply }`, `{ suggestions }` or `{ text }`.", 400: "Invalid input.", 401: "Not signed in or session expired.", 405: "Only POST.", 429: "Daily limit reached.", 500: "Levi could not complete the request." },
+  }),
+];

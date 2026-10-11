@@ -5,7 +5,7 @@
   window.loadVendorsDirectory=async function(){
     const started=performance.now();
     const vendorPromise=sb.from('vendors').select('id,business_name,city,avg_rating,review_count,sector_id,logo_url,cover_url,lat,lng').eq('verification_status','verified').eq('is_active',true).order('business_name').limit(300);
-    const sectorPromise=sectors.length?Promise.resolve({data:sectors}):sb.from('sectors').select('*').order('sort_order');
+    const sectorPromise=sectors.length?Promise.resolve({data:sectors}):levroData.catalogue.sectors('sort_order');
     /* Capability data is part of the directory's critical path. The Buy/Rent/
        Buy & Rent tabs depend on listing_type, so do not first paint every
        vendor with false capabilities and hope a later enrichment query fixes
@@ -684,7 +684,7 @@
         row.innerHTML=`${av}<span class="notif-message-summary-copy"><span class="notif-message-summary-title">New message from ${esc(sender)}</span>${unread>1?`<span class="notif-message-summary-count">${unread} new messages</span>`:''}<span class="notif-message-summary-sub">${esc(latest)}</span></span><i class="fa-solid fa-chevron-right" style="color:var(--text-muted);font-size:.72rem;"></i>`;
         row.addEventListener('click',async()=>{
           if(ids.length){
-            await sb.from('notifications').update({read:true}).in('id',ids);
+            await levroData.notifications.setRead(ids,true);
             notifCount=Math.max(0,notifCount-unread);
             const dot=byId('notifDot');
             if(dot){if(notifCount>0){dot.textContent=notifCount>9?'9+':notifCount;dot.classList.remove('hidden');}else dot.classList.add('hidden');}

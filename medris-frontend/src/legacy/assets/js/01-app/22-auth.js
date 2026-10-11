@@ -97,8 +97,8 @@ async function refreshAuthState() {
     const [profileRes, vendorRes, favsRes, pkgFavsRes] = await Promise.all([
       sb.from("users").select("*").eq("id", userId).single(),
       sb.from("vendors").select("*").eq("user_id", userId).is("deleted_at", null).maybeSingle(),
-      sb.from("favorites").select("product_id").eq("buyer_id", userId),
-      sb.from("package_favorites").select("package_id").eq("buyer_id", userId)
+      levroData.favorites.productIds(userId),
+      levroData.favorites.packageIds(userId)
     ]);
     profile = profileRes.data;
     vendor = profile?.role === "admin" ? null : vendorRes.data;

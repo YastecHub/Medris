@@ -663,7 +663,7 @@
     window.__followRecentAction={vendorId:String(vendorId),following:next,at:Date.now()};
     window.rememberVendorFollow?.(vendorId,next);
     try{
-      const r=await sb.rpc('toggle_vendor_follow',{p_vendor_id:vendorId,p_following:next});
+      const r=await levroData.follows.set(vendorId,next);
       if(r.error)throw r.error;
       /* New follows use LevroMart's recommended notification level by default. */
       if(next) await saveFollowPrefsFromWrap(wrap,'none','relevant',true);

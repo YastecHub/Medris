@@ -167,3 +167,4 @@ export interface ListingPaymentRequest {
 export type ListingPaymentResponse =
   | { authorization_url: string; reference: string; amount: number }
   | { alreadyActive: true; paidUntil?: string };
+export type * from "./v1.js";

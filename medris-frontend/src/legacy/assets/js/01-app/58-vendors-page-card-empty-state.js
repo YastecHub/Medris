@@ -255,7 +255,7 @@ async function loadVendorsDirectory() {
   const [productsRes, packagesRes, sectorsRes] = await Promise.allSettled([
     sb.from("products").select("vendor_id, name, description, listing_type, is_service, category:categories(name)").eq("status", "active"),
     sb.from("vendor_packages").select("vendor_id, name, description").eq("status", "active"),
-    sectors.length ? Promise.resolve({ data: sectors, error: null }) : sb.from("sectors").select("*").order("sort_order")
+    sectors.length ? Promise.resolve({ data: sectors, error: null }) : levroData.catalogue.sectors("sort_order")
   ]);
 
   const products = productsRes.status === "fulfilled" && !productsRes.value?.error ? (productsRes.value.data || []) : [];

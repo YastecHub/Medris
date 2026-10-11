@@ -15,8 +15,8 @@ async function renderHome() {
   }
   const cachedCats = levroCacheGet("categories", 10 * 60 * 1000);
   const [{ data: categories }, { data: sectorsData }] = await Promise.all([
-    cachedCats ? Promise.resolve({ data: cachedCats }) : sb.from("categories").select("*").order("name"),
-    sectors.length ? Promise.resolve({ data: sectors }) : sb.from("sectors").select("*").order("sort_order"),
+    cachedCats ? Promise.resolve({ data: cachedCats }) : levroData.catalogue.categories(),
+    sectors.length ? Promise.resolve({ data: sectors }) : levroData.catalogue.sectors("sort_order"),
   ]);
   if (!cachedCats && categories?.length) levroCacheSet("categories", categories);
   window.__categories = categories || [];

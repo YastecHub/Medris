@@ -1108,7 +1108,7 @@
     try{window.__followerCountMemo?.delete(String(vendorId));}catch(_){}
     matches.forEach(b=>{b.classList.toggle("following",next);b.textContent=next?"Following":"Follow";b.disabled=true;});
     try{
-      const r=await sb.rpc("toggle_vendor_follow",{p_vendor_id:vendorId,p_following:next});
+      const r=await levroData.follows.set(vendorId,next);
       if(r.error)throw r.error;
       /* follow/unfollow: no toast */
     }catch(e){
@@ -1129,7 +1129,7 @@
     if(window.__followListLoadedFor!==session.user.id && !window.__followListLoading){
       window.__followListLoading=true;
       try{
-        const {data:rows,error:listErr}=await sb.from("vendor_follows").select("vendor_id").eq("follower_id",session.user.id).limit(2000);
+        const {data:rows,error:listErr}=await levroData.follows.vendorIds(session.user.id);
         if(!listErr && Array.isArray(rows)){
           const set=followedVendorSet();set.clear();rows.forEach(r=>r?.vendor_id&&set.add(String(r.vendor_id)));
           try{localStorage.setItem(__followKey(),JSON.stringify([...set]));}catch(_){}
@@ -1800,7 +1800,7 @@
     const __in=$("productCommentInput");const __restore=()=>{const i=$("productCommentInput");if(i&&!i.value){i.value=content;i.style.height=""}};if(__in){__in.value="";__in.style.height=""}
     const {data:st}=await sb.from("product_engagement_settings").select("allow_comments,comment_audience,vendor_id").eq("product_id",id).maybeSingle();
     if(st?.allow_comments===false){showToast("Comments are disabled for this listing.","error");__restore();return}
-    if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await sb.from("vendor_follows").select("id").eq("vendor_id",st.vendor_id).eq("follower_id",session.user.id).maybeSingle();if(!f){showToast("Only followers can comment on this listing.","error");__restore();return}}
+    if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await levroData.follows.isFollowing(session.user.id,st.vendor_id);if(!f){showToast("Only followers can comment on this listing.","error");__restore();return}}
     const {error}=await sb.from("product_comments").insert({product_id:id,user_id:session.user.id,parent_comment_id:window.__levroActiveProductReply||null,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null});
     if(error){showToast(error.message||"Could not post that comment.","error");__restore();return}
     window.__levroActiveProductReply=null;await loadInlineComments("product",id,{preserveDraft:false,showLoading:false});hydrateProductCommentCountsInView();
@@ -1812,7 +1812,7 @@
     const __in=$("packageCommentInput");const __restore=()=>{const i=$("packageCommentInput");if(i&&!i.value){i.value=content;i.style.height=""}};if(__in){__in.value="";__in.style.height=""}
     const {data:st}=await sb.from("package_engagement_settings").select("allow_comments,comment_audience,vendor_id").eq("package_id",id).maybeSingle();
     if(st?.allow_comments===false){showToast("Comments are disabled for this package.","error");__restore();return}
-    if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await sb.from("vendor_follows").select("id").eq("vendor_id",st.vendor_id).eq("follower_id",session.user.id).maybeSingle();if(!f){showToast("Only followers can comment on this package.","error");__restore();return}}
+    if(st?.comment_audience==="followers"&&!isOwnVendorId(st.vendor_id)){const {data:f}=await levroData.follows.isFollowing(session.user.id,st.vendor_id);if(!f){showToast("Only followers can comment on this package.","error");__restore();return}}
     const {error}=await sb.from("package_comments").insert({package_id:id,user_id:session.user.id,parent_comment_id:window.__levroActivePackageReply||null,content,author_name:profile?.name||"Levromart user",author_avatar_url:profile?.avatar_url||null});
     if(error){showToast(error.message||"Could not post that comment.","error");__restore();return}
     window.__levroActivePackageReply=null;await loadInlineComments("package",id,{preserveDraft:false,showLoading:false});hydratePackageCommentCountsInView();

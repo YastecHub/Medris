@@ -198,7 +198,7 @@
     try {
       if (typeof session === "undefined" || !session) return;
       window.__cartCountAt = 0;
-      var r = await sb.from("cart_items").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id);
+      var r = await levroData.cart.count(session.user.id);
       if (r.error) return;
       window.__cartCountVal = r.count || 0; window.__cartCountAt = Date.now();
       buyerCartCount = r.count || 0; updateCartFab();
@@ -1139,7 +1139,7 @@ document.addEventListener("click",function(e){
       '<button type="button" data-a="delete" class="danger"><i class="fa-solid fa-trash"></i><span>Delete comment</span></button>';
     } else {
       var v=await vendorOf(uid),following=false;
-      if(v&&session&&session.user){ try{ var f=await sb.from("vendor_follows").select("id").eq("vendor_id",v.id).eq("follower_id",session.user.id).maybeSingle(); following=!!(f&&f.data); }catch(_){} }
+      if(v&&session&&session.user){ try{ var f=await levroData.follows.isFollowing(session.user.id,v.id); following=!!(f&&f.data); }catch(_){} }
       if(v) html+='<button type="button" data-a="store"><i class="fa-solid fa-store"></i><span>View storefront</span></button>';
       if(v&&following) html+='<button type="button" data-a="unfollow"><i class="fa-solid fa-user-minus"></i><span>Unfollow '+esc(v.business_name||nm)+'</span></button>';
       html+='<button type="button" data-a="report"><i class="fa-regular fa-flag"></i><span>Report comment</span></button>'+
@@ -1154,7 +1154,7 @@ document.addEventListener("click",function(e){
       else if(a==="copy"){var t=textOf(id);try{navigator.clipboard.writeText(t).then(function(){showToast("Copied.","success");});}catch(_){}}
       else if(a==="delete"){(kind==="package"?window.deletePackageComment:window.deleteProductComment)(id);}
       else if(a==="store"){ goStore(vend.id); }
-      else if(a==="unfollow"){ var d=await sb.from("vendor_follows").delete().eq("vendor_id",vend.id).eq("follower_id",session.user.id); if(d.error){showToast("Could not unfollow.","error");return;} try{ var fs=window.followedVendorSet&&window.followedVendorSet(); if(fs&&fs.delete) fs.delete(String(vend.id)); }catch(_){} showToast("Unfollowed.","success"); }
+      else if(a==="unfollow"){ var d=await levroData.follows.unfollow(session.user.id,vend.id); if(d.error){showToast("Could not unfollow.","error");return;} try{ var fs=window.followedVendorSet&&window.followedVendorSet(); if(fs&&fs.delete) fs.delete(String(vend.id)); }catch(_){} showToast("Unfollowed.","success"); }
       else if(a==="report"){ if(!session){showLogin();return;} openReport(kind,id); }
       else if(a==="hide"){ hideComment(id); showToast("Comment hidden.","success"); }
     });

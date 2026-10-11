@@ -64,7 +64,7 @@ const __notifSoundBoot=Date.now()-8000;
 setInterval(async()=>{
   try{
     if(document.hidden||!session?.user?.id||!soundEnabled)return;
-    const {data}=await sb.from('notifications').select('id,type,created_at,target_params').eq('user_id',session.user.id).eq('read',false).order('created_at',{ascending:false}).limit(5);
+    const {data}=await levroData.notifications.recentUnread(session.user.id,5);
     (data||[]).forEach(n=>{
       if(new Date(n.created_at).getTime()<__notifSoundBoot)return;
       if(n.type==='incoming_call')return;

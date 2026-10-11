@@ -1,12 +1,18 @@
 # Architecture (after the frontend/backend restructure)
 
+> **Independent backend (Oct 2026):** the backend now owns its data access (PostgreSQL through Drizzle, no Supabase
+> REST calls), verifies tokens itself and serves a new `/api/v1`; the frontend reaches it through the `levroData`
+> gateway. Details: [BACKEND.md](BACKEND.md), [DATABASE.md](DATABASE.md), [AUTH.md](AUTH.md),
+> [STORAGE.md](STORAGE.md), [DEPLOYMENT.md](DEPLOYMENT.md), [SUPABASE_AUDIT.md](SUPABASE_AUDIT.md). The sections
+> below describe the restructure that preceded it and remain accurate except where they point to those documents.
+
 Based on commit `42c4105`. This replaces the "shell `index.html` + `assets/` + 13 files in `api/`" layout described in
 `BUILD_MANUAL.md`. The product, its look and its behaviour are unchanged; only where the code lives and how it is
 built changed (plus one bug fix, listed below).
 
 ```
 medris/
-├── api/*.js                      12 Vercel functions (same names/URLs as before), each re-exports the Hono app
+├── api/*.js                      12 Vercel functions (same names/URLs as before), each re-exports the Express app
 ├── vercel.json                   build + output settings, the original rewrites, daily cron
 ├── package.json                  npm workspaces + root scripts
 ├── eslint.config.js
@@ -20,7 +26,9 @@ medris/
 │   │   ├── main.tsx              React entry (mounts into #medris-root)
 │   │   ├── app/                  App component, window.medris runtime
 │   │   ├── config/env.ts         typed public config (VITE_*)
-│   │   ├── services/api/         typed API client + endpoint wrappers
+│   │   ├── services/api/         typed API clients: original endpoints (client/endpoints) and /api/v1 (v1-*)
+│   │   ├── services/backend-features.ts  which features go through /api/v1 (VITE_BACKEND_FEATURES)
+│   │   ├── bridge/data-gateway.ts  window.levroData: the legacy code's data gateway (inlined as a classic script)
 │   │   ├── lib/legacy-runtime.ts typed access to the legacy Supabase client/session
 │   │   ├── types/
 │   │   ├── assets/inline/        images the legacy markup/code embeds as data: URIs
@@ -33,17 +41,22 @@ medris/
 │   │       └── assets/           sources of /assets/css/*.css and /assets/js/*.js
 │   │           └── js/01-app/    the main runtime (01-app.js) split into 88 files at its section banners
 │   └── tests/                    legacy regression + API client tests
-├── medris-backend/
+├── medris-backend/               full layout and conventions: docs/BACKEND.md
 │   ├── src/
-│   │   ├── app.ts                builds the Hono app, mounts every module under /api
-│   │   ├── server.ts             local Node server (reads .env)
+│   │   ├── app.ts                builds the Express app: /api/v1, the original /api routes, link previews
+│   │   ├── server.ts             Node server (config validation, JSON logs, graceful shutdown)
 │   │   ├── vercel.ts             Vercel handler
-│   │   ├── config/               typed env access, static-file lookup
-│   │   ├── contracts/api.ts      request/response types shared with the frontend
-│   │   ├── integrations/         Supabase, Paystack, Resend e-mail, Web Push, R2, Gemini
-│   │   ├── middleware/           cron/webhook secret checks
-│   │   ├── lib/, types/
-│   │   └── modules/              one folder per area: routes (HTTP) + services (logic)
+│   │   ├── container.ts          the services every request gets (config, logger, database, auth)
+│   │   ├── config/               validated configuration, database/CORS settings, static-file lookup
+│   │   ├── database/             Drizzle client, DataContext (RLS identity), schema, repositories, migrations
+│   │   ├── contracts/            request/response types shared with the frontend (api.ts, v1.ts)
+│   │   ├── integrations/         Paystack, Resend, Web Push, Gemini, R2, Supabase Auth admin, storage adapters
+│   │   ├── middleware/           request context, auth/roles/CSRF, rate limits, cron/webhook secrets
+│   │   ├── routes/               v1.ts, legacy.ts, docs.ts (Swagger UI at /api/v1/docs)
+│   │   ├── shared/, lib/, types/
+│   │   └── modules/              one folder per area: controller (HTTP) -> service (rules) -> repository (SQL),
+│   │                             plus routes (OpenAPI contract) and schemas (Zod)
+│   │       ├── auth/ users/ catalogue/ cart/ favorites/ follows/ notifications/ health/   (/api/v1)
 │   │       ├── accounts/         register, account-exists, ensure-profile, delete, link previews, TURN
 │   │       ├── share-images/     share cards (1200x630) and notification pictures (256x256)
 │   │       ├── auth-otp/         admin login codes, set password
@@ -53,7 +66,9 @@ medris/
 │   │       ├── orders/           payout actions, 30-minute reminders, order-notify
 │   │       ├── notify/           notification → e-mail + push, call decline, test push
 │   │       └── cron/             daily job
-│   └── tests/                    route + unit tests with stubbed upstreams (no network)
+│   └── tests/                    v1/ + legacy/ tests on a disposable PostgreSQL (PGlite or TEST_DATABASE_URL)
+├── scripts/                      supabase-audit.mjs (dependency scan), check-deploy-env.mjs (production build guard)
+├── docker-compose.yml            local PostgreSQL for development and tests
 ├── supabase/                     database docs, SQL migrations and export script (unchanged)
 ├── docs/                         manuals (the PDFs are the database/feature reference)
 └── .github/workflows/            weekly DB backup, optional order-reminder trigger (unchanged)
@@ -104,15 +119,32 @@ stays same-origin.
 ### Migrating a screen to React
 
 1. Build the component under `src/features/<area>/` (or `src/pages/`), reusing the existing CSS classes so it looks
-   identical. Read data with the same Supabase calls through `getLegacySupabase()` (never create a second client) or
-   with `api.*` from `src/services/api/endpoints.ts`.
+   identical. Read data through the backend with `v1.*` from `src/services/api/v1-endpoints.ts` (add an endpoint if
+   needed, see BACKEND.md §7); only where no endpoint exists yet use `getLegacySupabase()` (never a second client).
 2. Mount it from the legacy router for that view (the view's `renderX` returns an empty container that an exported
    `mountX(el)` fills with `createRoot`), and delete the legacy renderer once the React one is live.
 3. Compare before/after screenshots (430×900 and desktop, light and dark) the way this refactor was checked, then
    rebaseline.
 
 No screen has been migrated yet: React currently renders nothing visible and publishes `window.medris`
-(`config`, `api`).
+(`config`, `api`, `v1`).
+
+### Frontend ↔ backend
+
+```text
+legacy call site ──► window.levroData.<area>.<method>()           (src/bridge/data-gateway.ts, inline classic script)
+                       │ feature on  ──► v1 client ──HTTPS──► /api/v1 ──► backend ──► PostgreSQL (RLS as the user)
+                       │ feature off ──► the exact Supabase query the call site used before
+React component ───► v1.<area>.<method>()  (typed with @medris/contracts)
+```
+
+- `levroData` returns the `{ data, error, count }` shape supabase-js returned, so each call site changed by one line.
+- Features (`catalogue`, `cart`, `favorites`, `follows`, `notifications`) are switched by `VITE_BACKEND_FEATURES`
+  at build time, or per browser with `levroData.useBackend("…")`. Default: none (today's behaviour).
+- The client sends `Authorization: Bearer <Supabase access token>`; errors come back as `{ message, code, status }`.
+- Reads and idempotent writes fall back to Supabase when the backend is unreachable; non-idempotent writes do not.
+- Still direct to Supabase from the browser: sign-in/session (Auth), Realtime channels, Storage uploads/signed URLs,
+  and the call sites not yet moved (SUPABASE_AUDIT.md).
 
 ## Backend
 
@@ -124,9 +156,9 @@ No screen has been migrated yet: React currently renders nothing visible and pub
   cards (`?ogstore=|ogprod=|ogpkg=`). The routes answer both the rewritten URL (`/api/delete-account?turn=1`) and
   the original one (`/api/turn`), so they behave the same whichever URL Vercel hands the function.
 - Routes parse the request and call a module service; services return `{ status, body }`; integrations wrap
-  third-party HTTP APIs. Authorisation is unchanged: the user's Supabase access token in the JSON body is verified
-  with Supabase Auth; user-scoped writes still go through Postgres RPCs with the user's own token (RLS and `auth.uid()`
-  still apply); the service-role key is used only after the code has authorised the caller.
+  third-party HTTP APIs. The user's access token in the JSON body is verified by the backend (AUTH.md); database
+  access goes through repositories inside `DataContext` - as the user where the old code used the user's token (RLS and
+  `auth.uid()` still apply), as `service_role` only after the code has authorised the caller (BACKEND.md).
 - Secrets come only from the environment (`medris-backend/.env.example`); the browser never receives them.
 - CORS: production is same-origin, so no CORS headers are sent. `CORS_ALLOWED_ORIGINS` allows a separately hosted
   frontend.
@@ -141,6 +173,20 @@ No screen has been migrated yet: React currently renders nothing visible and pub
 | `POST /api/turn` returns 405 (GET unchanged). | Via the old rewrite it reached the account-deletion handler. |
 | Paystack webhook signature compared in constant time; admin OTP codes from `crypto.randomInt`. | Same results, safer implementation. |
 | Unknown `/api/*` paths return JSON 404. | Previously Vercel's HTML 404. |
+
+## Validation done for the independent backend (Oct 2026)
+
+- Backend: 121 tests on PGlite, and the same suite on PostgreSQL 16 (`TEST_DATABASE_URL`): RLS identity context,
+  least-privilege role, every /api/v1 endpoint (validation, authorisation, errors, rate limits), backend sessions and
+  Google sign-in, and every original endpoint end to end against the database (payments, payouts, listings, billing,
+  notify, cron, reminders, admin OTP, accounts, link previews, every Levi query).
+- Frontend: gateway tests assert that with features off each method runs the identical Supabase query chain; with
+  features on, the shipped gateway was run against the real backend server and PostgreSQL (cart, favourites,
+  follows, notifications, catalogue, refusals, bad tokens).
+- Screens: 15 scenarios pixel-identical to the pre-change build both with features off and with all features on
+  (the latter served by the backend: 31 catalogue requests, all 200).
+- Not verifiable here: the live Supabase database (no connection was made), signed-in browser flows against real
+  data, Paystack, push, calls, and a Vercel deployment - see DEPLOYMENT.md.
 
 ## Validation done for this restructure
 

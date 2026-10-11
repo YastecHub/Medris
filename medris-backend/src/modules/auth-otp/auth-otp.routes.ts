@@ -1,16 +1,23 @@
-import { Hono } from "hono";
-import { errorMessage, json, methodNotAllowed, readJsonBody } from "../../lib/http.js";
-import { sendOtp, setPassword, verifyOtp } from "./auth-otp.service.js";
+import { z } from "../../shared/openapi/zod.js";
+import { accessToken, legacyRoute } from "../../shared/openapi/legacy-docs.js";
 
-/** POST /api/auth-otp { action: "send" | "verify" | "set-password", accessToken, code?, password? } */
-export const authOtpRoutes = new Hono().all("/auth-otp", async (c) => {
-  if (c.req.method !== "POST") return methodNotAllowed(c);
-  try {
-    const body = await readJsonBody(c);
-    const result =
-      body.action === "verify" ? await verifyOtp(body) : body.action === "set-password" ? await setPassword(body) : await sendOtp(body);
-    return json(c, result.status, result.body);
-  } catch (err) {
-    return json(c, 500, { error: errorMessage(err) || "Server error" });
-  }
-});
+/** Contract of /api/auth-otp (documentation; see auth-otp.controller.ts). */
+export const authOtpDocs = [
+  legacyRoute({
+    method: "post",
+    path: "/auth-otp",
+    summary: "Admin one-time login codes and password setting",
+    description:
+      "No action: e-mails an admin a 6-digit code when their last verification is older than 7 days (`otpRequired`). " +
+      "`verify`: checks `code`. `set-password`: sets `password` (8+ characters) through the Auth admin API.",
+    body: z
+      .object({
+        action: z.enum(["send", "verify", "set-password"]).optional(),
+        accessToken,
+        code: z.string().optional(),
+        password: z.string().optional(),
+      })
+      .openapi("AuthOtpRequest"),
+    responses: { 200: "`{ ok, otpRequired? }` or `{ ok: false, error }` for a wrong code.", 400: "Missing input.", 401: "Invalid session.", 403: "Not an admin.", 405: "Only POST.", 500: "Server error." },
+  }),
+];
