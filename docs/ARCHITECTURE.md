@@ -12,10 +12,10 @@ built changed (plus one bug fix, listed below).
 
 ```
 medris/
-├── api/*.js                      12 Vercel functions (same names/URLs as before), each re-exports the Express app
-├── vercel.json                   build + output settings, the original rewrites, daily cron
+├── api/*.js                      the original 12 Vercel functions, restored as before the restructure (CommonJS)
+├── vercel.json                   frontend-only build + output, the original rewrites, daily cron
 ├── package.json                  npm workspaces + root scripts
-├── eslint.config.js
+├── eslint.config.mjs
 ├── medris-frontend/
 │   ├── index.html                minimal Vite template (React entry only)
 │   ├── build/legacy-document.ts  Vite plugin: assembles the legacy document, /assets files and /sw.js
@@ -69,7 +69,7 @@ medris/
 │   └── tests/                    v1/ + legacy/ tests on a disposable PostgreSQL (PGlite or TEST_DATABASE_URL)
 ├── scripts/                      supabase-audit.mjs (dependency scan), check-deploy-env.mjs (production build guard)
 ├── docker-compose.yml            local PostgreSQL for development and tests
-├── supabase/                     database docs, SQL migrations and export script (unchanged)
+├── supabase/                     database docs, history SQL from before the migration process, export script
 ├── docs/                         manuals (the PDFs are the database/feature reference)
 └── .github/workflows/            weekly DB backup, optional order-reminder trigger (unchanged)
 ```

@@ -17,7 +17,11 @@
     "test": "vitest run",
     "test:postgres": "vitest run --no-file-parallelism",
     "db:introspect": "drizzle-kit pull --config drizzle.config.ts",
-    "db:dev": "tsx scripts/dev-database.ts"
+    "db:dev": "tsx scripts/dev-database.ts",
+    "db:status": "tsx scripts/migrate.ts status",
+    "db:migrate": "tsx scripts/migrate.ts up",
+    "db:migration:new": "tsx scripts/migrate.ts new",
+    "db:migrations:check": "tsx scripts/migrate.ts check"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",

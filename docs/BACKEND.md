@@ -1,7 +1,8 @@
 # Backend (medris-backend)
 
-Node.js + TypeScript + [Express 5](https://expressjs.com), deployed as the existing 12 Vercel functions and runnable as a
-plain Node server. It owns the API, request validation, authorisation, every database read and write it makes, and the
+Node.js + TypeScript + [Express 5](https://expressjs.com), a plain Node server (`npm start`). **Not deployed yet:** production
+still runs the original `api/*.js` functions on Vercel (see `docs/DEPLOYMENT.md`); `src/vercel.ts` is kept for a
+possible Vercel deployment but nothing uses it today. It owns the API, request validation, authorisation, every database read and write it makes, and the
 integrations with Paystack, Resend, Web Push, Gemini, Cloudflare R2 and Supabase Auth/Storage.
 
 **API reference:** run the backend (`npm run dev:backend`) and open **http://localhost:8787/api/v1/docs** (Swagger UI) or
@@ -50,7 +51,7 @@ medris-backend/
 │   │   ├── errors.ts           SQLSTATE -> API error mapping
 │   │   ├── schema/             Drizzle table definitions (only columns the code uses)
 │   │   ├── repositories/       one class per area; all SQL lives here
-│   │   ├── migrations/         reviewed SQL files - NOT applied (0001 least-privilege role, 0002 sessions)
+│   │   ├── migrations/         every database change, NNNN_name.sql, applied by scripts/migrate.ts (DATABASE.md §3)
 │   │   └── portability/        supabase-compat.sql: auth.uid() + API roles for non-Supabase PostgreSQL
 │   ├── middleware/             request-context (request id, access log), auth (bearer/cookie, roles, CSRF),
 │   │                           rate-limit, cron-auth (shared secrets, constant-time)
@@ -73,6 +74,7 @@ medris-backend/
 │   └── types/                  ambient module declarations
 ├── tests/                      Vitest: v1/ (incl. openapi, services, contracts), legacy/, support/, fixtures/
 ├── scripts/dev-database.ts     loads a development schema into a LOCAL database (refuses remote hosts)
+├── scripts/migrate.ts          db:status / db:migrate / db:migration:new / db:migrations:check (migrations.ts: the runner)
 ├── drizzle.config.ts           drizzle-kit, used read-only for introspection
 └── .env.example
 ```
@@ -119,7 +121,7 @@ async setQuantity(me, itemId, quantity) {
 - **Types stay in step**: `input` is typed from the route's schemas, handlers must reply with what the route's success
   response schema says (TypeScript checks it), and
   `tests/v1/contracts.test.ts` fails type-checking if `contracts/v1.ts` (used by the frontend) drifts from the schemas.
-- **Lint**: `eslint.config.js` forbids Drizzle, `database/rpc|json|client|schema` outside `src/database`, and
+- **Lint**: `eslint.config.mjs` forbids Drizzle, `database/rpc|json|client|schema` outside `src/database`, and
   repositories/`database/index` in controllers and routers.
 
 **Original endpoints** (`/api/notify`, `/api/chat`, ...) follow the same split - `*.controller.ts` (method check,

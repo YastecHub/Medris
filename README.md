@@ -5,7 +5,8 @@ Nigerian marketplace PWA: buy, sell, connect. The repository is a monorepo with 
 | App | What it is | Tech |
 |---|---|---|
 | [`medris-frontend/`](medris-frontend) | The web app people use (PWA, service worker, push) | React 19 + TypeScript entry, Vite 7, existing runtime in `src/legacy/` |
-| [`medris-backend/`](medris-backend) | The API (`/api/v1` and the original `/api/*`), link previews, share cards | Node.js + TypeScript + Express 5, Drizzle on PostgreSQL, Zod; deployed as Vercel functions |
+| [`medris-backend/`](medris-backend) | The new API (`/api/v1` and a port of the original `/api/*`), link previews, share cards | Node.js + TypeScript + Express 5, Drizzle on PostgreSQL, Zod; **not deployed yet** (planned: its own host) |
+| [`api/`](api) | The original 12 Vercel functions, as before the restructure | Plain Node.js (CommonJS), Supabase REST with the service-role key |
 
 The backend reads and writes PostgreSQL directly (`DATABASE_URL`) with the same row-level security as before, verifies
 sessions itself and integrates Paystack, Resend, Web Push, Gemini, Cloudflare R2 and TURN providers. Supabase hosts
@@ -15,7 +16,7 @@ configuration are untouched.
 **Read next:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (structure, how the pieces talk) ·
 [`docs/BACKEND.md`](docs/BACKEND.md) · [`docs/DATABASE.md`](docs/DATABASE.md) · [`docs/AUTH.md`](docs/AUTH.md) ·
 [`docs/STORAGE.md`](docs/STORAGE.md) · [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) ·
-[`docs/SUPABASE_AUDIT.md`](docs/SUPABASE_AUDIT.md), then the database docs in [`supabase/`](supabase) and the manuals.
+[`docs/SUPABASE_AUDIT.md`](docs/SUPABASE_AUDIT.md) · [`docs/CLEANUP.md`](docs/CLEANUP.md) (manual §11 clean-up), then the database docs in [`supabase/`](supabase) and the manuals.
 
 ## Quick start
 
@@ -55,17 +56,29 @@ document. The backend is layered controller → service → repository ([docs/BA
 | `npm run build` | Builds the backend (`medris-backend/dist`) then the frontend (`medris-frontend/dist`) |
 | `npm run typecheck` / `npm run lint` / `npm test` | TypeScript, ESLint, Vitest in both apps (`npm run check` runs all three); backend tests use an in-process PostgreSQL (PGlite) |
 | `TEST_DATABASE_URL=… npm run test:postgres -w medris-backend` | the backend suite against a real PostgreSQL (database name must end in `_test`) |
-| `npm run db:dev -w medris-backend` | load the development schema into a local database |
+| `npm run db:dev -w medris-backend` | load the development schema (baseline + every migration) into a local database |
+| `npm run db:migration:new -w medris-backend -- "<name>"` | create the next database migration file ([docs/DATABASE.md](docs/DATABASE.md#3-changing-the-database-migrations)) |
+| `npm run db:status -w medris-backend` | which migrations a database has and which are pending (`MIGRATE_DATABASE_URL` or `DATABASE_URL`) |
+| `npm run db:migrate -w medris-backend` | dry run of the pending migrations; `-- --apply` applies them (remote databases also need `--confirm <host>`) |
 | `npm run db:introspect -w medris-backend` | read-only: generate Drizzle definitions of the live schema |
 | `npm run audit:supabase` | where the code still depends on Supabase (`-- --json` for file:line) |
 | `npm run bump-version -w medris-frontend -- <n>` | Sets the `?v=` cache-buster on `/assets` URLs and the service-worker cache name (replaces `tools/bump-version.sh`; run on every deploy that changes legacy files) |
 | `npm run legacy:check -w medris-frontend` | `node --check` on every legacy script |
 | `npm run legacy:rebaseline -w medris-frontend` | Records an intentional change to the legacy files for the regression test |
 
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every pull request and every push to `main`:
+typecheck, lint, the legacy syntax check, migration checks, the tests (PGlite, and the backend suite again on
+PostgreSQL 17) and the build. It needs no secrets and never touches Supabase or Vercel.
+
 ## Deploying
 
-Vercel builds from the repository root (`vercel.json`): `npm ci`, `npm run build`, static output
-`medris-frontend/dist`. The `api/*.js` files are the same 12 functions at the same URLs as before; each re-exports the
-compiled Express app; `/api/v1/*` is rewritten to one of them. Server environment variables are listed in
-`medris-backend/.env.example`. **`DATABASE_URL` must be set before deploying** - a production build without it fails
-on purpose. Rollout, rollback and the steps that need approval: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+**Vercel deploys the frontend only** - the app and its direct Supabase calls, exactly as before the restructure:
+
+- `vercel.json`: `npm ci`, then `npm run build -w medris-frontend`, static output `medris-frontend/dist`.
+- `api/*.js` are the original 12 functions (payments, notifications, sign-up, admin codes, Levi, uploads, link
+  previews, daily cron), restored as they were and using the same Vercel environment variables as before
+  (Supabase URL + service-role key, Paystack, Resend, VAPID, Gemini, R2, cron/webhook secrets). They have to sit in
+  `api/` at the repository root: that is where Vercel deploys functions from.
+- `medris-backend` is **not** built or deployed by Vercel and needs no `DATABASE_URL` there.
+
+Details, checks and roll-back: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).

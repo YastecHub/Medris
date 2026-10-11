@@ -1,13 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci",
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run build -w medris-frontend",
   "outputDirectory": "medris-frontend/dist",
   "rewrites": [
-    {
-      "source": "/api/v1/:path*",
-      "destination": "/api/notify?__route=/api/v1/:path*"
-    },
     {
       "source": "/api/turn",
       "destination": "/api/delete-account?turn=1"

@@ -10,11 +10,14 @@
  *
  * The schema is the same approximation the tests use (supabase/01_tables.sql,
  * the later column additions, test policies and simplified stand-ins for the
- * database functions). For a faithful copy of production, restore a
- * schema-only dump instead (docs/DATABASE.md, "A faithful local copy").
+ * database functions), followed by every migration through the migration
+ * runner (recorded in medris_migrations.applied; `npm run db:status` shows
+ * them). For a faithful copy of production, restore a schema-only dump instead
+ * (docs/DATABASE.md, "A faithful local copy").
  */
 import pg from "pg";
-import { schemaSql } from "../tests/support/test-db.js";
+import { baselineSql } from "../tests/support/test-db.js";
+import { applyMigrations, readMigrations } from "./migrations.js";
 
 try {
   process.loadEnvFile(".env");
@@ -41,7 +44,7 @@ if (existing.rows[0].n > 0) {
   await client.end();
   process.exit(1);
 }
-for (const chunk of schemaSql()) {
+for (const chunk of baselineSql()) {
   try {
     await client.query(chunk);
   } catch (err) {
@@ -49,6 +52,12 @@ for (const chunk of schemaSql()) {
     if ((err as { code?: string }).code !== "42710" && (err as { code?: string }).code !== "23505") throw err;
   }
 }
+// Migrations go through the runner, so this database records them like production does.
+const { applied } = await applyMigrations(
+  { query: async (text, params) => ({ rows: (await client.query(text, params)).rows }), exec: (text) => client.query(text) },
+  readMigrations().files,
+);
+console.log(`Applied ${applied.length} migrations.`);
 
 if (process.argv.includes("--seed")) {
   const buyer = "00000000-0000-4000-8000-00000000b001";

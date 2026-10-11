@@ -20,12 +20,14 @@ export default tseslint.config(
     // The legacy runtime is classic browser scripts shared through globals; it is
     // guarded by `npm run legacy:check -w medris-frontend` (syntax) and the
     // byte-for-byte baseline test rather than by lint rules.
-    ignores: ["**/dist/**", "**/node_modules/**", "medris-frontend/src/legacy/**", "medris-frontend/src/service-worker/**", "medris-frontend/public/**", "supabase/**", "docs/**"],
+    // api/*.js are the original Vercel functions (CommonJS, restored unchanged); they are
+    // guarded by `npm run api:check` (node --check), like the legacy runtime.
+    ignores: ["**/dist/**", "**/node_modules/**", "api/**", "medris-frontend/src/legacy/**", "medris-frontend/src/service-worker/**", "medris-frontend/public/**", "supabase/**", "docs/**"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["medris-backend/**/*.ts", "medris-frontend/build/**/*.ts", "medris-frontend/scripts/**/*.ts", "medris-frontend/*.config.ts", "api/**/*.js", "scripts/**/*.mjs", "*.js"],
+    files: ["medris-backend/**/*.ts", "medris-frontend/build/**/*.ts", "medris-frontend/scripts/**/*.ts", "medris-frontend/*.config.ts", "scripts/**/*.mjs", "*.mjs"],
     languageOptions: { globals: globals.node },
   },
   {
