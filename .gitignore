@@ -9,3 +9,6 @@ coverage/
 medris-backend/drizzle/
 .agent/
 .antigravity/
+
+# Claude app output folder (local only)
+Claude outputs/
