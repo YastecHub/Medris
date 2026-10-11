@@ -1,1 +1,8 @@
 node_modules/
+dist/
+*.tsbuildinfo
+.env.local
+.env.*.local
+medris-backend/.env
+.vercel/
+coverage/

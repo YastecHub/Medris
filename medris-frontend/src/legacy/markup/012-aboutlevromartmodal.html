@@ -1,0 +1,166 @@
+<div id="aboutLevromartModal" class="modal hidden" onclick="if(event.target===this) closeLevromartAbout()">
+  <div class="modal-content about-modal-content">
+    <div class="about-brand-mark"><img src="{{inline-asset:levromart-splash-img.webp}}" id="aboutLevromartLogo" alt="Levromart" /></div>
+    <h3>Levromart</h3>
+    <p class="muted">A modern marketplace for buying, renting and requesting products - with Levi as your in-app assistant.</p>
+    <div class="about-meta-grid">
+      <div><span>Assistant</span><strong>Levi</strong></div>
+      <div><span>Year</span><strong id="aboutYear"></strong></div>
+      <div><span>Platform</span><strong>Web app / PWA</strong></div>
+    </div>
+    <div class="about-legal-links" aria-label="Legal information">
+      <button type="button" onclick="closeLevromartAbout();navigate('terms')"><i class="fa-regular fa-file-lines"></i><span>Terms &amp; Conditions</span><i class="fa-solid fa-chevron-right"></i></button>
+      <button type="button" onclick="closeLevromartAbout();navigate('privacy')"><i class="fa-solid fa-shield-halved"></i><span>Privacy Policy</span><i class="fa-solid fa-chevron-right"></i></button>
+      <button type="button" onclick="closeLevromartAbout();navigate('refundPolicy')"><i class="fa-solid fa-receipt"></i><span>Refund &amp; Cancellation</span><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+    <button class="btn" style="width:100%;justify-content:center;margin-top:1rem;" onclick="closeLevromartAbout()">Done</button>
+  </div>
+</div>
+
+<div id="textPromptModal" class="modal hidden">
+  <div class="modal-content" style="max-width:420px;">
+    <h3 id="textPromptModalTitle">Please confirm</h3>
+    <p id="textPromptModalMsg" class="muted" style="margin:0.6rem 0;"></p>
+    <textarea id="textPromptModalInput" rows="3"></textarea>
+    <div class="flex" style="justify-content:flex-end;margin-top:0.6rem;">
+      <button class="btn btn-sm" id="textPromptModalCancel" style="background:#6b7280;">Cancel</button>
+      <button class="btn btn-sm" id="textPromptModalOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="productRegionsModal" class="modal hidden">
+  <div class="modal-content" style="max-width:400px;">
+    <h3><i class="fa-solid fa-map-location-dot"></i> <span id="productRegionsTitle"></span></h3>
+    <p class="muted" style="margin:0.4rem 0 0.8rem;font-size:0.85rem;">Where orders for this product have come from, most first.</p>
+    <div id="productRegionsBody"></div>
+    <div class="flex" style="justify-content:flex-end;margin-top:0.6rem;">
+      <button class="btn btn-sm" onclick="byId('productRegionsModal').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="vendorProductDetailsModal" class="modal hidden">
+  <div class="modal-content" style="max-width:420px;">
+    <h3 id="vendorProductDetailsTitle" style="margin:0 0 .5rem;"></h3>
+    <div id="vendorProductDetailsBody"></div>
+    <div class="flex" style="justify-content:space-between;margin-top:.8rem;gap:.5rem;flex-wrap:wrap;">
+      <button type="button" class="btn btn-sm btn-outline" id="vendorProductDetailsViewBtn"><i class="fa-solid fa-eye"></i> View public listing</button>
+      <button type="button" class="btn btn-sm" onclick="byId('vendorProductDetailsModal').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="chatListPickerModal" class="modal hidden">
+  <div class="modal-content" style="max-width:380px;">
+    <h3><i class="fa-solid fa-layer-group"></i> Add to a list</h3>
+    <p class="muted" style="margin:0.4rem 0 0.2rem;font-size:0.85rem;">Check the lists this chat belongs to.</p>
+    <div id="chatListPickerBody"></div>
+    <div class="flex" style="justify-content:flex-end;margin-top:0.6rem;">
+      <button class="btn btn-sm" id="chatListPickerClose">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="requiredBuyerPhoneModal" class="modal hidden" data-lock="true">
+  <div class="modal-content" style="max-width:400px;">
+    <div class="lv-ask-ico"><i class="fa-solid fa-phone"></i></div>
+    <h3 class="lv-ask-t">Your phone number</h3>
+    <div id="requiredBuyerPhoneError" class="error-text hidden"></div>
+    <input type="tel" id="requiredBuyerPhoneInput" inputmode="tel" autocomplete="tel" placeholder="08012345678" aria-label="Phone number" />
+    <button type="button" class="btn" id="requiredBuyerPhoneSaveBtn" style="width:100%;margin-top:.9rem;" onclick="saveRequiredBuyerPhone()">Continue</button>
+  </div>
+</div>
+
+<div id="roleSelectModal" class="modal hidden">
+  <div class="modal-content lv-role-modal" role="dialog" aria-modal="true" aria-labelledby="lvRoleTitle">
+    <span class="lv-role-handle"></span>
+    <h3 id="lvRoleTitle">How will you use Levromart?</h3>
+    <p class="muted lv-role-sub">Pick one to finish setting up your account.</p>
+    <div class="lv-role-cards">
+      <button type="button" class="lv-role-card" onclick="chooseAccountRole('buyer')">
+        <span class="ico"><i class="fa-solid fa-bag-shopping"></i></span>
+        <span class="t"><b>I'm a customer</b><small>Buy and rent from vendors</small></span>
+        <i class="fa-solid fa-chevron-right go"></i>
+      </button>
+      <button type="button" class="lv-role-card vendor" onclick="chooseAccountRole('vendor')">
+        <span class="ico"><i class="fa-solid fa-store"></i></span>
+        <span class="t"><b>I'm a vendor</b><small>Sell on Levromart. Apply in a minute</small></span>
+        <i class="fa-solid fa-chevron-right go"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="vendorPayoutNudgeModal" class="modal hidden">
+  <div class="modal-content" style="max-width:400px;">
+    <h3><i class="fa-solid fa-money-bill-transfer"></i> Set up your payout account</h3>
+    <p class="muted" style="margin:0.6rem 0 1rem;">You haven't added a bank account yet, so Levromart can't pay you for any sales. It only takes a minute, and you won't be asked again once it's set up.</p>
+    <div class="flex" style="flex-direction:column;gap:0.6rem;">
+      <button class="btn" onclick="openVendorPayoutSetup()"><i class="fa-solid fa-arrow-right"></i> Set up now</button>
+      <button class="btn btn-outline" onclick="dismissVendorPayoutNudge()">Remind me later</button>
+    </div>
+  </div>
+</div>
+
+<div id="setPasswordModal" class="modal hidden">
+  <div class="modal-content" style="max-width:400px;">
+    <div class="lv-ask-ico"><i class="fa-solid fa-key"></i></div>
+    <h3 class="lv-ask-t">Create a password</h3>
+    <div id="setPasswordError" class="error-text hidden"></div>
+    <input type="password" id="setPasswordInput" autocomplete="new-password" placeholder="Password" aria-label="Password" />
+    <input type="password" id="setPasswordConfirmInput" autocomplete="new-password" placeholder="Confirm password" aria-label="Confirm password" style="margin-top:.55rem;" />
+    <button class="btn" style="width:100%;margin-top:.9rem;" onclick="setAccountPassword()">Continue</button>
+  </div>
+</div>
+
+<div id="supportInfoModal" class="modal hidden" onclick="if(event.target===this)closeSupportInfo()">
+  <div class="modal-content" style="max-width:430px;">
+    <div class="flex" style="justify-content:space-between;align-items:center;gap:.75rem;">
+      <h3 style="margin:0;"><i class="fa-solid fa-headset"></i> About support</h3>
+      <button type="button" class="drawer-close-btn" onclick="closeSupportInfo()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="support-info-modal-copy" style="margin-top:.85rem;">
+      <p style="margin:.35rem 0;">Use support when you need Levromart admin help with an account, order, payment, scam report, technical issue, or another marketplace problem.</p>
+      <p class="muted" style="margin:.7rem 0 0;">For an order or scam issue, include the order number and any useful evidence such as payment details, messages, photos, or delivery information.</p>
+    </div>
+    <div class="flex" style="justify-content:flex-end;margin-top:1rem;">
+      <button type="button" class="btn btn-sm" onclick="closeSupportInfo()">Got it</button>
+    </div>
+  </div>
+</div>
+
+<div id="suggestionModal" class="modal hidden">
+  <div class="modal-content" style="max-width:420px;">
+    <h3 id="suggestionModalTitle"><i class="fa-solid fa-comment-medical"></i> Send feedback</h3>
+    <div id="suggestionError" class="error-text hidden"></div>
+    <textarea id="suggestionText" rows="4" placeholder="What's on your mind?" maxlength="2000"></textarea>
+    <label style="display:flex;align-items:center;gap:0.5rem;font-weight:400;margin-top:0.6rem;font-size:0.85rem;">
+      <input type="checkbox" id="suggestionAnon" style="width:auto;margin:0;" /> Send anonymously
+    </label>
+    <div class="install-modal-actions" style="margin-top:0.9rem;">
+      <button class="btn btn-sm btn-outline" onclick="closeSuggestionModal()">Cancel</button>
+      <button class="btn btn-sm" id="suggestionSubmitBtn" onclick="submitSuggestion()"><i class="fa-solid fa-paper-plane"></i> Send</button>
+    </div>
+  </div>
+</div>
+
+<div id="adminPasswordModal" class="modal hidden">
+  <div class="modal-content" style="max-width:380px;">
+    <h3><i class="fa-solid fa-shield-halved"></i> Confirm action</h3>
+    <p id="adminPasswordModalMsg" class="muted" style="margin:0.6rem 0;"></p>
+    <input type="password" id="adminPasswordInput" placeholder="Admin action password" autocomplete="off" />
+    <p id="adminPasswordError" class="error-text hidden">Incorrect password.</p>
+    <div class="flex" style="justify-content:flex-end;">
+      <button class="btn btn-sm" id="adminPasswordCancel" style="background:#6b7280;">Cancel</button>
+      <button class="btn btn-sm btn-danger" id="adminPasswordOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast stack (replaces native alert()) -->
+<div id="toastStack" class="toast-stack"></div>
+
+<!-- Floating, draggable AI chat -->
+<div id="cartFab" class="cart-fab hidden" title="Your cart"><i class="fa-solid fa-cart-shopping"></i><span id="cartFabBadge" class="cart-fab-badge hidden">0</span></div>
+<div id="aiChatFab" class="ai-chat-fab" title="Chat with Levi"><img id="aiChatFabLogo" class="ai-chat-fab-logo" alt="" /></div>

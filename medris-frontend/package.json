@@ -1,0 +1,32 @@
+{
+  "name": "medris-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Levromart web app (PWA): React + TypeScript entry hosting the legacy runtime, built with Vite.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "legacy:check": "tsx scripts/check-legacy-syntax.ts",
+    "legacy:rebaseline": "tsx scripts/rebaseline-legacy.ts",
+    "bump-version": "tsx scripts/bump-asset-version.ts"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.0",
+    "vitest": "^3.2.4"
+  }
+}

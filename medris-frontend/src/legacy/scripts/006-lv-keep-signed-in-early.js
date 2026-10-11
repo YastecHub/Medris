@@ -1,0 +1,1 @@
+try{if(localStorage.getItem("lv_session_only")==="1"&&!sessionStorage.getItem("lv_alive")){Object.keys(localStorage).forEach(function(k){if(/^sb-.+-auth-token/.test(k))localStorage.removeItem(k);});localStorage.removeItem("lv_session_only");}sessionStorage.setItem("lv_alive","1");}catch(e){}

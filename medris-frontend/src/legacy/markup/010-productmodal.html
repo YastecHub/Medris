@@ -1,0 +1,127 @@
+<div id="productModal" class="modal hidden lf-page">
+  <div class="modal-content" style="max-width:640px;">
+    <div class="lf-top"><button type="button" class="lf-back" onclick="closeProductModal()" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></button><div class="lf-top-copy"><h3 id="productModalTitle">Add New Product</h3><p class="lf-sub">Fill in the basics, add clear photos, then save. Fields marked <b class="lf-req">*</b> are required.</p><p class="lf-saved" aria-live="polite"><i class="fa-solid fa-cloud-arrow-up"></i> <span>Auto-saves as you type</span></p></div><img class="lf-art" alt="" /></div>
+    <div id="productDuplicateNotice" class="product-duplicate-notice hidden" role="status" aria-live="polite"></div>
+    <div id="productError" class="error-text hidden"></div>
+    <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-pen-to-square"></i></span><div><strong>Basics</strong><small>Name it and describe it</small></div></div>
+    <label>Name <b class="lf-req">*</b></label>
+    <input type="text" id="prodName" placeholder="e.g. BP Monitor or Hair Braiding" />
+    <label id="prodIsServiceRow" style="display:flex;align-items:center;gap:0.5rem;font-weight:400;"><input type="checkbox" id="prodIsService" onchange="updateProductFormFields();updateProductSaveButtonLabel()" style="width:auto;margin:0;" /> This is a service, not a physical product (e.g. hairdressing, baking, repairs)</label>
+    <label>Description <b class="lf-req">*</b> <span class="lf-reqnote">required</span></label>
+    <textarea id="prodDesc" placeholder="Tell buyers what makes it good (required)" rows="3" required></textarea>
+    </div>
+    <div class="lm-sec lm-violet"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-layer-group"></i></span><div><strong>Where it belongs</strong><small>Helps buyers find it</small></div></div>
+    <label>Sector</label>
+    <select id="prodSector" onchange="loadProdCategoriesForSector()"></select>
+    <input type="text" id="prodSectorOther" class="hidden" placeholder="Name your sector (e.g. Beauty &amp; Wellness)" />
+    <label>Category</label>
+    <select id="prodCategory" onchange="toggleProdCategoryOther()"><option value="">Uncategorized</option></select>
+    <input type="text" id="prodCategoryOther" class="hidden" placeholder="Name your category (e.g. Wound Care)" />
+    </div>
+    <div class="lm-sec lm-green"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-tag"></i></span><div><strong>Price and type</strong></div></div>
+    <div class="flex">
+      <div style="flex:1;" id="prodConditionWrap">
+        <label>Condition</label>
+        <select id="prodCondition"><option value="new" selected>New</option><option value="used-good">Used - good</option><option value="used-fair">Used - fair</option></select>
+      </div>
+      <div style="flex:1;" id="prodListingTypeWrap">
+        <label>Listing type</label>
+        <select id="prodListingType" onchange="updateProductFormFields();updateProductSaveButtonLabel()"><option value="sale" selected>Sale only</option><option value="rent">Rent only</option><option value="both">Rent &amp; Sale</option></select>
+      </div>
+    </div>
+    <div id="prodBillingModelWrap" class="listing-billing-choice">
+      <label>How do you want to pay Levromart for this listing?</label>
+      <select id="prodBillingModel" onchange="syncListingBillingUI()">
+        <option value="commission">Commission based: pay Levromart from each completed sale</option>
+        <option value="monthly">Monthly: ₦999 per listing a month</option>
+      </select>
+      <p id="prodBillingHint" class="muted" style="font-size:.74rem;margin:.35rem 0 0;"></p>
+    </div>
+    <div class="flex">
+      <div style="flex:1;" id="prodSalePriceWrap"><label id="prodSalePriceLabel">Price (₦) <b class="lf-req">*</b></label><input type="number" id="prodSalePrice" step="0.01" min="0" /></div>
+      <div style="flex:1;" id="prodDiscountPriceWrap"><label>Discount price (₦) <span class="muted" style="font-weight:400;">optional</span></label><input type="number" id="prodDiscountPrice" step="0.01" min="0" placeholder="e.g. 8500" /></div>
+      <div style="flex:1;" id="prodRentalRateWrap"><label>Rental rate (₦)</label><input type="number" id="prodRentalRate" step="0.01" /></div>
+      <div style="flex:1;" id="prodServiceUnitWrap"><label>Price is</label><select id="prodServiceUnit" onchange="updateProductFormFields()"><option value="flat">One-time (flat)</option><option value="hour">Per hour</option><option value="day">Per day</option><option value="week">Per week</option></select></div>
+    </div>
+    <div id="prodRateUnitWrap"><label>Per</label><select id="prodRateUnit"><option value="day">Day</option><option value="week">Week</option></select></div>
+    <div id="prodDepositWrap"><label>Refundable deposit (₦, optional)</label><input type="number" id="prodDeposit" step="0.01" /></div>
+    </div>
+    <div class="lm-sec lm-amber"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-truck-fast"></i></span><div><strong>Delivery and payment</strong></div></div>
+    <div id="prodDeliverySettings" class="prod-delivery-settings">
+      <label style="margin:0;">Delivery for this product</label>
+      <select id="prodDeliveryMode" onchange="updateProductDeliveryFields()">
+        <option value="free">Free delivery</option>
+        <option value="flat">Flat fee</option>
+        <option value="distance">Distance-based</option>
+      </select>
+      <div id="prodDeliveryFlatRow" class="delivery-setting-grid" style="margin-top:.55rem;">
+        <div><label style="margin:0;">Delivery fee (₦)</label><input type="number" id="prodDeliveryFee" min="0" step="50" placeholder="e.g. 1500" /></div>
+      </div>
+      <div id="prodDeliveryDistanceRow" class="delivery-setting-grid hidden" style="margin-top:.55rem;">
+        <div><label style="margin:0;">Fee per km (₦)</label><input type="number" id="prodDeliveryPerKm" min="0" step="10" placeholder="e.g. 200" /></div>
+      </div>
+      <p id="prodDeliveryHint" class="muted" style="font-size:.76rem;margin:.45rem 0 0;"></p>
+    </div>
+    <div class="listing-payment-timing-settings" id="prodPaymentTimingSettings">
+      <label class="payment-timing-title"><i class="fa-solid fa-wallet"></i> Payment timing for this product</label>
+      <div class="payment-timing-choice" role="group" aria-label="Choose when buyers pay">
+        <button type="button" class="payment-timing-option pay-before" data-payment-timing="pay_before" onclick="setProductPaymentTiming('pay_before')">
+          <span class="payment-timing-option-dot"></span>
+          <span><strong>Pay before delivery</strong><small>Full payment before dispatch</small></span>
+        </button>
+        <button type="button" class="payment-timing-option pay-after" data-payment-timing="pay_after" onclick="setProductPaymentTiming('pay_after')">
+          <span class="payment-timing-option-dot"></span>
+          <span><strong>Pay after delivery</strong><small>Choose the buyer deposit percentage</small></span>
+        </button>
+      </div>
+      <input type="hidden" id="prodPaymentTiming" value="pay_before" />
+      <div id="prodPaymentDepositPercentWrap" class="payment-deposit-percent-wrap hidden">
+        <label>Buyer deposit before delivery (%)</label>
+        <input type="number" id="prodPaymentDepositPercent" min="1" max="99" step="1" value="20" inputmode="numeric" oninput="updateProductPaymentTimingHint()" onblur="normalizeProductPaymentDepositPercent()" />
+        <p class="muted payment-deposit-percent-note">The remaining <strong id="prodPaymentRemainingPercent">80%</strong> is due after delivery.</p>
+      </div>
+      <p id="prodPaymentTimingHint" class="muted payment-timing-hint"></p>
+    </div>
+    </div>
+    <details class="lm-more"><summary><i class="fa-solid fa-sliders"></i> More options <small>likes and comments</small></summary><div class="listing-engagement-settings" id="prodEngagementSettings"><div class="listing-engagement-head"><strong><i class="fa-solid fa-sliders"></i> Engagement settings</strong><span class="muted">Choose who can see likes and who can comment.</span></div><label>Like count visibility</label><select id="prodLikeVisibility"><option value="everyone">Everyone</option><option value="followers">Followers only</option><option value="no_one">No one</option></select><label class="inline-toggle-row"><span>Allow comments</span><input type="checkbox" id="prodAllowComments" checked onchange="syncProductEngagementSettingsUI()"></label><div id="prodCommentAudienceWrap"><label>Who can comment</label><select id="prodCommentAudience"><option value="everyone">Everyone</option><option value="followers">Followers only</option></select></div></div></details>
+    <div class="lm-sec lm-teal"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-boxes-stacked"></i></span><div><strong>Stock</strong></div></div>
+    <div id="prodQtyWrap">
+      <label class="inline-toggle-row"><span>Track quantity available</span><input type="checkbox" id="prodTrackQuantity" onchange="toggleProdQuantityField()"></label>
+      <p class="muted" style="font-size:.76rem;margin:.2rem 0 .6rem;">Switch this off for items that aren't counted in stock, like made-to-order food so it always shows as available instead of running out.</p>
+      <div id="prodQtyTotalRow">
+        <label>Quantity available</label>
+        <input type="number" id="prodQtyTotal" value="1" min="1" />
+      </div>
+    </div>
+    </div>
+    <div class="lm-sec lm-pink"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-image"></i></span><div><strong>Photos</strong><small>The display picture shows on the listing card</small></div></div>
+    <label>Display picture</label>
+    <div id="prodDisplayPicture" class="product-display-picture-editor" role="button" tabindex="0" onclick="openProductDisplayPictureActions(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProductDisplayPictureActions(event)}"></div>
+    <label>Additional photos</label>
+    <label class="photo-dropzone" id="photoDropzone" for="prodPhotoFiles">
+      <i class="fa-solid fa-cloud-arrow-up"></i>
+      <strong>Add photos</strong>
+      <span class="muted">Tap to choose, or drag images here</span>
+    </label>
+    <input type="file" id="prodPhotoFiles" accept="image/*" multiple class="hidden" onchange="previewNewProductPhotos()" />
+    <div class="photo-grid" id="prodExistingPhotos"></div>
+    <div class="photo-grid" id="prodNewPhotoPreviews"></div>
+    </div>
+    <div class="lm-sec lm-blue"><div class="lm-sec-head"><span class="lm-ico"><i class="fa-solid fa-shapes"></i></span><div><strong>Varieties</strong><small>Sizes, colours or options with their own price</small></div></div>
+    <div class="product-variant-pricing" id="productVariantPricing"></div>
+    <div class="lf-var-actions"><button type="button" class="btn btn-outline btn-sm lf-var-add" onclick="addProductVarietyDraft()"><i class="fa-solid fa-plus"></i> Add variety</button><button type="button" class="btn btn-sm lf-bulk" title="Pick many photos together; each becomes its own variety" onclick="byId('prodVarietyBulkFiles')?.click()"><i class="fa-solid fa-images"></i> Add many photos</button></div>
+    <input type="file" id="prodVarietyBulkFiles" accept="image/*" multiple class="hidden" onchange="bulkAddVarietiesFromPhotos(this)" />
+    </div>
+    <div class="flex lm-actions">
+      <button type="button" class="btn btn-sm lf-cancel" onclick="clearNewListingDraft('product');closeProductModal()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      <button class="btn btn-outline hidden" id="saveProductDraftBtn" onclick="saveProductAsDraft()"><i class="fa-solid fa-file-lines"></i> Save draft</button>
+      <button type="button" class="btn" id="saveProductBtn" onclick="saveProduct()">Save to Product</button>
+    </div>
+  </div>
+</div>
+
+<div id="productImageLightbox" class="image-lightbox hidden" onclick="closeProductImageLightbox(event)">
+  <button type="button" class="image-lightbox-close" onclick="closeProductImageLightbox(event)"><i class="fa-solid fa-xmark"></i></button>
+  <img id="productLightboxImage" src="" alt="Product image" draggable="false" />
+</div>
+

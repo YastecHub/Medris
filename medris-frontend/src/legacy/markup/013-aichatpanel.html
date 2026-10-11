@@ -1,0 +1,37 @@
+<div id="aiChatPanel" class="ai-chat-panel hidden">
+  <div class="drawer-header">
+    <h4><img id="aiChatHeaderLogo" class="ai-chat-header-logo" alt="" /> Levi</h4>
+    <div class="flex levi-header-actions" style="gap:0.3rem;">
+      <div class="levi-tools" id="leviTools">
+        <button class="icon-btn" onclick="shareCurrentAiChat()" title="Share this chat"><i class="fa-solid fa-share-nodes"></i></button>
+        <button class="icon-btn" onclick="startNewAiChat()" title="New chat"><i class="fa-solid fa-plus"></i></button>
+        <button class="icon-btn" id="aiChatHistoryToggleBtn" onclick="toggleAiChatHistory()" title="Recent chats"><i class="fa-solid fa-clock-rotate-left"></i></button>
+        <button class="icon-btn" id="aiChatExpandBtn" onclick="toggleAiChatExpanded()" title="Expand"><i class="fa-solid fa-expand"></i></button>
+        <button class="icon-btn" onclick="hideLeviFromPanel()" title="Hide Levi"><i class="fa-solid fa-eye-slash"></i></button>
+      </div>
+      <button class="icon-btn levi-tools-toggle" id="leviToolsToggle" onclick="toggleLeviTools()" title="More" aria-expanded="false" aria-controls="leviTools"><i class="fa-solid fa-chevron-left"></i></button>
+      <button class="drawer-close-btn" onclick="toggleAiChat()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+  <input type="text" id="aiChatHistorySearch" placeholder="Search chats…" oninput="searchAiChatHistory()" />
+  <div id="aiChatHistoryList" class="ai-chat-history-panel"></div>
+  <div id="aiChatMessages" class="ai-chat-messages"></div>
+  <button type="button" id="aiChatBottomBtn" class="ai-chat-bottom-btn hidden" onclick="scrollAiChatToBottom()" aria-label="Jump to latest message" title="Jump to latest message"><i class="fa-solid fa-arrow-down"></i></button>
+  <div id="aiVoiceStatus" class="voice-recording-status hidden" aria-live="polite">
+    <div class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <span id="aiVoiceStatusText">Listening...</span>
+    <button type="button" onclick="toggleAiChatMic(event)" title="Pause or resume recording" aria-label="Pause or resume recording"><i class="fa-solid fa-pause"></i></button>
+    <button type="button" onclick="cancelAiChatVoice()" title="Cancel recording" aria-label="Cancel recording"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="ai-chat-input-row">
+    <button class="ai-chat-mic-btn hidden" id="aiChatMicBtn" onclick="toggleAiChatMic(event)" title="Tap to talk" aria-label="Tap to talk"><i class="fa-solid fa-microphone"></i></button>
+    <textarea id="aiChatInput" rows="1" placeholder="Ask about products, renting, buying…" oninput="autoGrowChatInput(this)" onkeydown="if(event.key==='Enter' && !event.shiftKey && !isCoarsePointer()){event.preventDefault();sendAiChatMessage();}"></textarea>
+    <button class="icon-btn" onclick="sendAiChatMessage()" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
+  </div>
+</div>
+
+<script src="/assets/js/01-app.js?v={{asset-version}}" charset="utf-8"></script>
+
+<script src="/assets/js/02-levromart-legal-consent-final-js.js?v={{asset-version}}" charset="utf-8"></script>
+
+<div id="vendorProfileImageLightbox" class="hidden" role="dialog" aria-modal="true" aria-label="Vendor profile picture" onclick="closeVendorProfileImageLightbox(event)"><div class="vendor-profile-image-card"><img id="vendorProfileImageLightboxImg" alt="" draggable="false" /><div id="vendorProfileImageLightboxFallback" class="vendor-profile-image-fallback hidden"></div><button type="button" class="vendor-profile-image-close" aria-label="Close profile picture" onclick="closeVendorProfileImageLightbox(event)"><i class="fa-solid fa-xmark"></i></button></div></div>
