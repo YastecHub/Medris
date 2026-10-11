@@ -49,6 +49,9 @@ jobs:
       - name: Legacy script syntax
         run: npm run legacy:check -w medris-frontend
 
+      - name: Vercel function syntax (api/)
+        run: npm run api:check
+
       - name: Migration files
         run: npm run db:migrations:check -w medris-backend
 
@@ -63,8 +66,13 @@ jobs:
       - name: Tests (PGlite)
         run: npm test
 
+      # The whole repository (backend included), then the frontend-only build
+      # exactly as Vercel runs it (vercel.json buildCommand).
       - name: Build
         run: npm run build
+
+      - name: Vercel build (frontend only)
+        run: npm run build -w medris-frontend
 
   postgres:
     name: PostgreSQL 17

@@ -1,7 +1,8 @@
 # Backend (medris-backend)
 
-Node.js + TypeScript + [Express 5](https://expressjs.com), deployed as the existing 12 Vercel functions and runnable as a
-plain Node server. It owns the API, request validation, authorisation, every database read and write it makes, and the
+Node.js + TypeScript + [Express 5](https://expressjs.com), a plain Node server (`npm start`). **Not deployed yet:** production
+still runs the original `api/*.js` functions on Vercel (see `docs/DEPLOYMENT.md`); `src/vercel.ts` is kept for a
+possible Vercel deployment but nothing uses it today. It owns the API, request validation, authorisation, every database read and write it makes, and the
 integrations with Paystack, Resend, Web Push, Gemini, Cloudflare R2 and Supabase Auth/Storage.
 
 **API reference:** run the backend (`npm run dev:backend`) and open **http://localhost:8787/api/v1/docs** (Swagger UI) or
@@ -120,7 +121,7 @@ async setQuantity(me, itemId, quantity) {
 - **Types stay in step**: `input` is typed from the route's schemas, handlers must reply with what the route's success
   response schema says (TypeScript checks it), and
   `tests/v1/contracts.test.ts` fails type-checking if `contracts/v1.ts` (used by the frontend) drifts from the schemas.
-- **Lint**: `eslint.config.js` forbids Drizzle, `database/rpc|json|client|schema` outside `src/database`, and
+- **Lint**: `eslint.config.mjs` forbids Drizzle, `database/rpc|json|client|schema` outside `src/database`, and
   repositories/`database/index` in controllers and routers.
 
 **Original endpoints** (`/api/notify`, `/api/chat`, ...) follow the same split - `*.controller.ts` (method check,

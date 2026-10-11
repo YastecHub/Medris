@@ -5,7 +5,8 @@ Nigerian marketplace PWA: buy, sell, connect. The repository is a monorepo with 
 | App | What it is | Tech |
 |---|---|---|
 | [`medris-frontend/`](medris-frontend) | The web app people use (PWA, service worker, push) | React 19 + TypeScript entry, Vite 7, existing runtime in `src/legacy/` |
-| [`medris-backend/`](medris-backend) | The API (`/api/v1` and the original `/api/*`), link previews, share cards | Node.js + TypeScript + Express 5, Drizzle on PostgreSQL, Zod; deployed as Vercel functions |
+| [`medris-backend/`](medris-backend) | The new API (`/api/v1` and a port of the original `/api/*`), link previews, share cards | Node.js + TypeScript + Express 5, Drizzle on PostgreSQL, Zod; **not deployed yet** (planned: its own host) |
+| [`api/`](api) | The original 12 Vercel functions, as before the restructure | Plain Node.js (CommonJS), Supabase REST with the service-role key |
 
 The backend reads and writes PostgreSQL directly (`DATABASE_URL`) with the same row-level security as before, verifies
 sessions itself and integrates Paystack, Resend, Web Push, Gemini, Cloudflare R2 and TURN providers. Supabase hosts
@@ -71,9 +72,13 @@ PostgreSQL 17) and the build. It needs no secrets and never touches Supabase or 
 
 ## Deploying
 
-Vercel builds from the repository root (`vercel.json`): `npm ci`, `npm run build`, static output
-`medris-frontend/dist`. The `api/*.js` files are the same 12 functions at the same URLs as before; each re-exports the
-compiled Express app; `/api/v1/*` is rewritten to one of them. They have to stay in `api/` at the repository root,
-because that is the only place Vercel deploys functions from; all the backend code itself is in `medris-backend/`.
-Server environment variables are listed in `medris-backend/.env.example`. **`DATABASE_URL` must be set before deploying** - a production build without it fails
-on purpose. Rollout, rollback and the steps that need approval: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+**Vercel deploys the frontend only** - the app and its direct Supabase calls, exactly as before the restructure:
+
+- `vercel.json`: `npm ci`, then `npm run build -w medris-frontend`, static output `medris-frontend/dist`.
+- `api/*.js` are the original 12 functions (payments, notifications, sign-up, admin codes, Levi, uploads, link
+  previews, daily cron), restored as they were and using the same Vercel environment variables as before
+  (Supabase URL + service-role key, Paystack, Resend, VAPID, Gemini, R2, cron/webhook secrets). They have to sit in
+  `api/` at the repository root: that is where Vercel deploys functions from.
+- `medris-backend` is **not** built or deployed by Vercel and needs no `DATABASE_URL` there.
+
+Details, checks and roll-back: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).

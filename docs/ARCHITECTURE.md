@@ -12,10 +12,10 @@ built changed (plus one bug fix, listed below).
 
 ```
 medris/
-├── api/*.js                      12 Vercel functions (same names/URLs as before), each re-exports the Express app
-├── vercel.json                   build + output settings, the original rewrites, daily cron
+├── api/*.js                      the original 12 Vercel functions, restored as before the restructure (CommonJS)
+├── vercel.json                   frontend-only build + output, the original rewrites, daily cron
 ├── package.json                  npm workspaces + root scripts
-├── eslint.config.js
+├── eslint.config.mjs
 ├── medris-frontend/
 │   ├── index.html                minimal Vite template (React entry only)
 │   ├── build/legacy-document.ts  Vite plugin: assembles the legacy document, /assets files and /sw.js
