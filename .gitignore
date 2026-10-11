@@ -7,3 +7,5 @@ medris-backend/.env
 .vercel/
 coverage/
 medris-backend/drizzle/
+.agent/
+.antigravity/

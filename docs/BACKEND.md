@@ -144,10 +144,15 @@ Generated from the route definitions on first request, so it cannot drift from t
 
 ```text
   Medris backend   http://localhost:8787   (NODE_ENV=development)
+  Config file      C:\Projects\Medris\medris-backend\.env loaded
   Swagger UI       http://localhost:8787/api/v1/docs
   OpenAPI JSON     http://localhost:8787/api/v1/openapi.json
   Health           http://localhost:8787/api/v1/health/ready
+  Database         connected to aws-0-eu-west-1.pooler.supabase.com:6543 (85 ms, API roles ok)
 ```
+
+The Database line is a real connection check at start-up; on failure it shows the driver's reason (wrong password,
+unknown host, refused connection) without the password.
 
 Without `NODE_ENV` the configuration assumes production (the safe default for a deployment), so `npm start` /
 `node dist/server.js` keep the docs off unless `NODE_ENV=development` or `API_DOCS_ENABLED=true` is set.
