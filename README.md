@@ -66,6 +66,7 @@ document. The backend is layered controller → service → repository ([docs/BA
 
 Vercel builds from the repository root (`vercel.json`): `npm ci`, `npm run build`, static output
 `medris-frontend/dist`. The `api/*.js` files are the same 12 functions at the same URLs as before; each re-exports the
-compiled Express app; `/api/v1/*` is rewritten to one of them. Server environment variables are listed in
-`medris-backend/.env.example`. **`DATABASE_URL` must be set before deploying** - a production build without it fails
+compiled Express app; `/api/v1/*` is rewritten to one of them. They have to stay in `api/` at the repository root,
+because that is the only place Vercel deploys functions from; all the backend code itself is in `medris-backend/`.
+Server environment variables are listed in `medris-backend/.env.example`. **`DATABASE_URL` must be set before deploying** - a production build without it fails
 on purpose. Rollout, rollback and the steps that need approval: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
