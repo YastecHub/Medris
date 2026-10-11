@@ -1,6 +1,12 @@
-import { SupabaseAdmin, SupabaseUserClient, lookupUser } from "../../integrations/supabase.js";
+import type { Identity } from "../../database/context.js";
+import { findPgError } from "../../database/errors.js";
+import { getDataContext } from "../../database/index.js";
+import { BillingRepository } from "../../database/repositories/billing.repository.js";
+import { UsersRepository } from "../../database/repositories/users.repository.js";
+import { VendorsRepository } from "../../database/repositories/vendors.repository.js";
+import { identityFromAccessToken } from "../auth/caller.js";
 import { createSubaccount as paystackCreateSubaccount, initializeTransaction, resolveBankAccount } from "../../integrations/paystack.js";
-import type { ServiceResult } from "../../types/service.js";
+import type { ServiceResult } from "../../shared/types/service.js";
 
 /**
  * Vendor payout set-up and the two vendor billing payments:
@@ -9,22 +15,19 @@ import type { ServiceResult } from "../../types/service.js";
  *  - setting up monthly card billing.
  */
 
-/** Looks up the caller's vendor row with their own token, so RLS applies. */
-async function ownVendorRow<T>(accessToken: string, userId: string, columns: string): Promise<T | undefined> {
-  const res = await SupabaseUserClient.fromEnv(accessToken).rest(`vendors?user_id=eq.${encodeURIComponent(userId)}&select=${columns}&limit=1`);
-  const [row] = (await res.json()) as T[];
-  return row;
+/** The caller's vendor row, read as the caller so RLS applies (as before, with their own token). */
+async function ownVendorRow(me: Identity) {
+  return getDataContext().asUser(me, (tx) => new VendorsRepository(tx).firstOwnedBy(me.userId));
 }
 
 export async function createSubaccount(body: Record<string, unknown>): Promise<ServiceResult> {
   const { accessToken, bankCode, accountNumber } = body as { accessToken?: string; bankCode?: string; accountNumber?: string };
   if (!accessToken || !bankCode || !accountNumber) return { status: 400, body: { error: "accessToken, bankCode and accountNumber are required" } };
 
-  const db = SupabaseAdmin.fromEnv();
-  const { user: me } = await lookupUser(accessToken);
+  const me = await identityFromAccessToken(accessToken);
   if (!me) return { status: 401, body: { error: "Invalid session" } };
 
-  const vendorRow = await ownVendorRow<{ id: string; business_name: string; commission_pct: number | null }>(accessToken, me.id, "id,business_name,commission_pct");
+  const vendorRow = await ownVendorRow(me);
   if (!vendorRow) return { status: 404, body: { error: "No vendor profile found for this account." } };
 
   const { res: resolveRes, json: resolveJson } = await resolveBankAccount(accountNumber, bankCode);
@@ -39,12 +42,14 @@ export async function createSubaccount(body: Record<string, unknown>): Promise<S
   });
   if (!subRes.ok || !subJson.status) return { status: 400, body: { error: subJson.message || "Could not set up payouts with Paystack." } };
 
-  await db.patch(`vendors?id=eq.${encodeURIComponent(vendorRow.id)}`, {
-    bank_code: bankCode,
-    account_number: accountNumber,
-    account_name: accountName,
-    paystack_subaccount_code: subJson.data?.subaccount_code,
-  });
+  await getDataContext().asService((tx) =>
+    new VendorsRepository(tx).update(vendorRow.id, {
+      bankCode,
+      accountNumber,
+      accountName,
+      paystackSubaccountCode: subJson.data?.subaccount_code,
+    }),
+  );
   return { status: 200, body: { account_name: accountName, subaccount_code: subJson.data?.subaccount_code } };
 }
 
@@ -52,20 +57,23 @@ export async function payCommission(body: Record<string, unknown>, origin: strin
   const accessToken = body.accessToken as string | undefined;
   if (!accessToken) return { status: 400, body: { error: "accessToken is required" } };
 
-  const db = SupabaseAdmin.fromEnv();
-  const { user: me } = await lookupUser(accessToken);
+  const me = await identityFromAccessToken(accessToken);
   if (!me) return { status: 401, body: { error: "Invalid session" } };
 
-  const vendorRow = await ownVendorRow<{ id: string }>(accessToken, me.id, "id");
+  const vendorRow = await ownVendorRow(me);
   if (!vendorRow) return { status: 404, body: { error: "No vendor profile found for this account." } };
 
-  const rpcRes = await SupabaseUserClient.fromEnv(accessToken).rpc("create_commission_payment_intent", { p_vendor_id: vendorRow.id });
-  const rpcJson = (await rpcRes.json()) as Record<string, unknown> | Record<string, unknown>[];
-  if (!rpcRes.ok) return { status: 400, body: { error: (rpcJson as Record<string, unknown>).message || "Could not start commission payment." } };
-  const intent = (Array.isArray(rpcJson) ? rpcJson[0] : rpcJson) as { reference?: string; amount?: number } | undefined;
+  let intent: { reference?: string; amount?: number } | undefined;
+  try {
+    intent = await getDataContext().asUser(me, (tx) => new BillingRepository(tx).createCommissionPaymentIntent(vendorRow.id));
+  } catch (err) {
+    const pg = findPgError(err);
+    if (!pg) throw err;
+    return { status: 400, body: { error: pg.message || "Could not start commission payment." } };
+  }
   const { reference, amount } = intent || {};
 
-  const userRow = await db.first<{ email?: string }>(`users?id=eq.${encodeURIComponent(me.id)}&select=email&limit=1`);
+  const userRow = await getDataContext().asService((tx) => new UsersRepository(tx).emailAndName(me.userId));
   const email = userRow?.email || me.email;
   if (!email || !reference || !Number.isFinite(Number(amount))) return { status: 400, body: { error: "Could not prepare the commission payment." } };
 
@@ -86,36 +94,28 @@ export async function setupMonthlyBilling(body: Record<string, unknown>, origin:
   const accessToken = body.accessToken as string | undefined;
   if (!accessToken) return { status: 400, body: { error: "accessToken is required" } };
 
-  const db = SupabaseAdmin.fromEnv();
-  const { user: me } = await lookupUser(accessToken);
+  const me = await identityFromAccessToken(accessToken);
   if (!me) return { status: 401, body: { error: "Invalid session" } };
+  const data = getDataContext();
 
-  const vendorRow = await db.first<{ id: string; billing_model: string }>(`vendors?user_id=eq.${encodeURIComponent(me.id)}&select=id,billing_model&limit=1`);
+  const vendorRow = await data.asService((tx) => new VendorsRepository(tx).firstOwnedBy(me.userId));
   if (!vendorRow) return { status: 404, body: { error: "No vendor profile found for this account." } };
   if (vendorRow.billing_model !== "monthly") return { status: 400, body: { error: "Switch to monthly billing in your profile first." } };
 
-  const amountRes = await db.rest("rpc/compute_monthly_billing_amount", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ p_vendor_id: vendorRow.id }),
-  });
-  const amountJson = (await amountRes.json()) as { listing_count?: number; amount?: number } | { listing_count?: number; amount?: number }[];
-  const intentAmount = Array.isArray(amountJson) ? amountJson[0] : amountJson;
+  // As before, a failing amount calculation falls back to the minimum charge.
+  const intentAmount = await data.asService((tx) => new BillingRepository(tx).computeMonthlyBillingAmount(vendorRow.id)).catch(() => null);
   const listingCount = Number(intentAmount?.listing_count || 0);
   const dueAmount = Math.max(Number(intentAmount?.amount || 0), MONTHLY_BILLING_MINIMUM);
 
-  const u = await db.first<{ email?: string }>(`users?id=eq.${encodeURIComponent(me.id)}&select=email&limit=1`);
+  const u = await data.asService((tx) => new UsersRepository(tx).emailAndName(me.userId));
   if (!u?.email) return { status: 400, body: { error: "Could not resolve your email." } };
 
   const reference = "billing_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const chargeRes = await db.insert("vendor_monthly_charges", {
-    vendor_id: vendorRow.id,
-    listing_count: listingCount,
-    amount: dueAmount,
-    status: "pending",
-    provider_reference: reference,
-  });
-  if (!chargeRes.ok) return { status: 500, body: { error: "Could not prepare monthly billing." } };
+  try {
+    await data.asService((tx) => new BillingRepository(tx).insertMonthlyCharge({ vendorId: vendorRow.id, listingCount, amount: dueAmount, reference }));
+  } catch {
+    return { status: 500, body: { error: "Could not prepare monthly billing." } };
+  }
 
   const { res: initRes, json: initJson } = await initializeTransaction({
     email: u.email,

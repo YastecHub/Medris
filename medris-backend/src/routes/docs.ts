@@ -1,0 +1,80 @@
+import { OpenAPIRegistry, OpenApiGeneratorV31 } from "@asteasolutions/zod-to-openapi";
+import { Router } from "express";
+import helmet from "helmet";
+import swaggerUi from "swagger-ui-express";
+import type { AppServices } from "../container.js";
+import { sessionCookieName } from "../modules/auth/session-cookie.js";
+import type { RouteDefinition } from "../shared/http/route.js";
+import { registerSecuritySchemes } from "../shared/openapi/security.js";
+import { legacyDefinitions } from "./legacy.js";
+import { v1Definitions } from "./v1.js";
+
+export const OPENAPI_PATH = "/api/v1/openapi.json";
+export const DOCS_PATH = "/api/v1/docs";
+/** Common guesses for where the docs live; they redirect to DOCS_PATH. */
+export const DOCS_ALIASES = ["/docs", "/api-docs", "/swagger", "/api/docs"];
+
+const DESCRIPTION = `
+The Medris (Levromart) backend.
+
+* **/api/v1/...** - the backend's own API. Success: \`{ "data": ... }\`. Failure:
+  \`{ "error": { "code", "message", "details"? }, "requestId" }\` with a matching status.
+  Sign in with **Authorize -> bearerAuth** and a Supabase access token
+  (in the app's console: \`(await supabase.auth.getSession()).data.session.access_token\`).
+* **/api/...** (tag *Original endpoints*) - the endpoints the app used before /api/v1, unchanged in paths, bodies
+  and responses (\`{ "error": "message" }\` on failure). Most take the access token in the JSON body (\`accessToken\`).
+
+Every response carries an \`X-Request-Id\` header.
+`.trim();
+
+const TAGS = [
+  { name: "Health", description: "Probes for load balancers and deploy checks." },
+  { name: "Auth", description: "Who is calling; backend sign-in (off until AUTH_BACKEND_SESSIONS=true)." },
+  { name: "Account", description: "The signed-in user." },
+  { name: "Catalogue", description: "Public reference data." },
+  { name: "Cart", description: "The signed-in buyer's cart." },
+  { name: "Favorites", description: "Saved products and packages." },
+  { name: "Follows", description: "Followed shops." },
+  { name: "Notifications", description: "In-app notifications." },
+  { name: "Original endpoints", description: "Endpoints from before /api/v1, kept byte-compatible for the app." },
+];
+
+function register(registry: OpenAPIRegistry, prefix: string, definitions: RouteDefinition[]): void {
+  for (const { middleware: _middleware, ...route } of definitions) registry.registerPath({ ...route, path: `${prefix}${route.path}` });
+}
+
+/** The OpenAPI 3.1 document, generated from every controller's route definitions (so it cannot drift from the code). */
+export function buildOpenApiDocument(services: AppServices) {
+  const registry = new OpenAPIRegistry();
+  registerSecuritySchemes(registry, sessionCookieName(services.config));
+  register(registry, "/api/v1", v1Definitions);
+  register(registry, "/api", legacyDefinitions);
+  return new OpenApiGeneratorV31(registry.definitions).generateDocument({
+    openapi: "3.1.0",
+    info: { title: "Medris API", version: "1.0.0", description: DESCRIPTION },
+    servers: [{ url: "/", description: "This deployment" }],
+    tags: TAGS,
+  });
+}
+
+/**
+ * Swagger UI at /api/v1/docs/ and the OpenAPI document at /api/v1/openapi.json.
+ * Off in production unless API_DOCS_ENABLED=true. Swagger UI's files are served
+ * from the swagger-ui-dist package (no CDN).
+ */
+export function apiDocs(services: AppServices): Router {
+  const router = Router();
+  if (!services.config.docs.enabled) return router;
+
+  let document: ReturnType<typeof buildOpenApiDocument> | undefined;
+  router.use([OPENAPI_PATH, DOCS_PATH], helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false, crossOriginOpenerPolicy: false }));
+  router.get(OPENAPI_PATH, (_req, res) => {
+    document ??= buildOpenApiDocument(services);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(document);
+  });
+  const ui = { customSiteTitle: "Medris API", swaggerOptions: { url: OPENAPI_PATH, persistAuthorization: false } };
+  router.use(DOCS_PATH, swaggerUi.serveFiles(undefined, ui), swaggerUi.setup(undefined, ui));
+  for (const alias of DOCS_ALIASES) router.get(alias, (_req, res) => res.redirect(302, `${DOCS_PATH}/`));
+  return router;
+}

@@ -117,8 +117,8 @@ async function commitPendingNotificationReads(){
   // matter how often the page is opened. Mark the whole inbox read here
   // instead of just the ids that happened to be on screen.
   const { error } = notifViewMode === "all"
-    ? await sb.from("notifications").update({ read: true }).eq("user_id", session.user.id).eq("read", false).is("deleted_at", null)
-    : await sb.from("notifications").update({ read: true }).eq("user_id", session.user.id).in("id", ids);
+    ? await levroData.notifications.markAllRead(session.user.id)
+    : await levroData.notifications.markReadForUser(session.user.id, ids);
   if(error){ids.forEach(id=>pendingNotificationReads.add(String(id)));console.warn("[Levromart] Notification read-state commit failed:",error);return;}
   refreshNotifications(false).catch(()=>{});
 }

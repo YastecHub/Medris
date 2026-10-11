@@ -4,8 +4,8 @@ async function renderRequestEquipment() {
   const [{ data: myRequests, error: myRequestsError }] = await Promise.all([
     withRouteTimeout(sb.from("equipment_requests").select("*, offers:request_offers(id, vendor_id, message, price, status, created_at, vendor:vendors(business_name, avg_rating, phone, whatsapp_number, delivery_fee))")
       .eq("buyer_id", session.user.id).order("created_at", { ascending: false }), 7000, { data: null, error: new Error("Your requests are taking too long to load.") }),
-    (async () => { if (!sectors.length) { const { data } = await sb.from("sectors").select("*").order("sort_order"); sectors = data || []; } })(),
-    (async () => { if (!window.__categories?.length) { const { data } = await sb.from("categories").select("*").order("name"); window.__categories = data || []; } })(),
+    (async () => { if (!sectors.length) { const { data } = await levroData.catalogue.sectors("sort_order"); sectors = data || []; } })(),
+    (async () => { if (!window.__categories?.length) { const { data } = await levroData.catalogue.categories(); window.__categories = data || []; } })(),
   ]);
 
   let html = `<h2><i class='fa-solid fa-hand'></i> Request an item ${infoPopoverHtml("reqEquipInfo", "Can't find what you need? Post it and nearby vendors will send you offers.")}</h2>
@@ -98,7 +98,7 @@ async function renderVendorRequests() {
   if (reqPref === "none") allowedRequests = [];
   else if (reqPref === "sector") {
     let cats = window.__categories;
-    if (!cats?.length) { const { data } = await sb.from("categories").select("*").order("name"); cats = window.__categories = data || []; }
+    if (!cats?.length) { const { data } = await levroData.catalogue.categories(); cats = window.__categories = data || []; }
     const sectorOf = new Map(cats.map((c) => [String(c.id), String(c.sector_id || "")]));
     allowedRequests = allowedRequests.filter((r) => r.category_id && vendor.sector_id && sectorOf.get(String(r.category_id)) === String(vendor.sector_id));
   }

@@ -34,7 +34,7 @@ async function __refreshNotificationsNow(renderPanel = true, includeSlow = true)
 
   // Independent badge/count reads run concurrently so one slow table cannot
   // hold up unrelated UI state.
-  const unreadQ = sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("archived", false).eq("read", false).is("deleted_at", null);
+  const unreadQ = levroData.notifications.unreadCount(session.user.id);
   const ordFresh = !!(window.__ordCnt && window.__ordCnt.uid === session.user.id && Date.now() - window.__ordCnt.at < 15000);
   const vendorQ = ordFresh ? Promise.resolve({ count: window.__ordCnt.v }) : vendor ? vendorAttentionCount() : Promise.resolve({ count: 0 });
   const vendorProductCountQ = (vendor && includeSlow) ? sb.from("products").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id) : Promise.resolve(null);
@@ -47,7 +47,7 @@ async function __refreshNotificationsNow(renderPanel = true, includeSlow = true)
   const buyerQ = ordFresh ? Promise.resolve({ count: window.__ordCnt.b }) : sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).in("status", NON_TERMINAL_ORDER_STATUSES);
   // Slow-changing numbers (following count, lifetime order count, suggestions,
   // product count, profile views) are only re-read about once a minute.
-  const followingQ = (profile?.role !== "admin" && includeSlow) ? sb.from("vendor_follows").select("id", { count: "exact", head: true }).eq("follower_id", session.user.id) : Promise.resolve(profile?.role !== "admin" ? null : { count: 0 });
+  const followingQ = (profile?.role !== "admin" && includeSlow) ? levroData.follows.count(session.user.id) : Promise.resolve(profile?.role !== "admin" ? null : { count: 0 });
   const totalOrdersQ = (profile?.role !== "admin" && includeSlow) ? sb.from("orders").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id) : Promise.resolve(profile?.role !== "admin" ? null : { count: 0 });
   const suggestionQ = !includeSlow ? Promise.resolve(null) : profile?.role === "admin" ? sb.rpc("get_platform_suggestions") : vendor ? sb.rpc("get_vendor_suggestions") : Promise.resolve({ data: [] });
   // The chat list and the cart count are re-read at most every 30s unless something just
@@ -55,9 +55,9 @@ async function __refreshNotificationsNow(renderPanel = true, includeSlow = true)
   const convFresh = Array.isArray(window.__convRaw) && Date.now() - (window.__convRawAt || 0) < 30000;
   const conversationsQ = convFresh ? Promise.resolve({ data: window.__convRaw }) : sb.rpc("list_my_conversations").then((r) => { if (!r.error) { window.__convRaw = r.data; window.__convRawAt = Date.now(); } return r; });
   const cartFresh = typeof window.__cartCountVal === "number" && Date.now() - (window.__cartCountAt || 0) < 30000;
-  const cartQ = profile?.role === "admin" ? Promise.resolve({ count: 0 }) : cartFresh ? Promise.resolve({ count: window.__cartCountVal }) : sb.from("cart_items").select("id", { count: "exact", head: true }).eq("buyer_id", session.user.id).then((r) => { if (!r.error) { window.__cartCountVal = r.count || 0; window.__cartCountAt = Date.now(); } return r; });
+  const cartQ = profile?.role === "admin" ? Promise.resolve({ count: 0 }) : cartFresh ? Promise.resolve({ count: window.__cartCountVal }) : levroData.cart.count(session.user.id).then((r) => { if (!r.error) { window.__cartCountVal = r.count || 0; window.__cartCountAt = Date.now(); } return r; });
   let requestSeenAt = ""; try { requestSeenAt = sessionStorage.getItem("levromart-request-offers-seen-at") || ""; } catch (_) {}
-  const requestOfferQ = profile?.role !== "admin" ? sb.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", session.user.id).eq("type", "new_offer").eq("read", false).eq("archived", false).is("deleted_at", null).gt("created_at", requestSeenAt || "1970-01-01T00:00:00.000Z") : Promise.resolve({ count: 0 });
+  const requestOfferQ = profile?.role !== "admin" ? levroData.notifications.offerCount(session.user.id, requestSeenAt || "1970-01-01T00:00:00.000Z") : Promise.resolve({ count: 0 });
 
   const vendorOrdersTodayQ = (vendor && includeSlow) ? sb.from("orders").select("id", { count: "exact", head: true }).eq("vendor_id", vendor.id).gte("created_at", todayStartLocal.toISOString()) : Promise.resolve(null);
   const [unreadRes, vendorRes, buyerRes, suggestionRes, conversationsRes, cartRes, requestOfferRes, vendorProductCountRes, followingRes, totalOrdersRes, vendorProfileViewsTodayRes, vendorOrdersTodayRes] = await Promise.all([
@@ -187,7 +187,7 @@ async function renderNotifPanel(opts = {}) {
   // Every unread one (so the badge can always reach zero) plus the last 30 days of read
   // ones, capped -- older read notifications are no longer re-downloaded on every open.
   const readSince = new Date(Date.now() - 30 * 86400000).toISOString();
-  let q = sb.from("notifications").select("*").eq("user_id", session.user.id).is("deleted_at", null).or(`read.eq.false,created_at.gte.${readSince}`).order("created_at", { ascending: false }).limit(150);
+  let q = levroData.notifications.panel(session.user.id, readSince);
   let rawItems, error;
   if (reuse) rawItems = window.__notifRaw.items;
   else {
@@ -434,7 +434,7 @@ async function batchMarkNotifsRead(read) {
   const count = ids.length;
   exitNotifSelectMode(false);
   showToast(`${count} notification${count === 1 ? "" : "s"} marked ${read ? "read" : "unread"}.`, "success");
-  const { error } = await sb.from("notifications").update({ read }).in("id", ids);
+  const { error } = await levroData.notifications.setRead(ids, read);
   if (error) {
     oldUnread.forEach((wasUnread, id) => panel?.querySelector(`.notif-item[data-id="${CSS.escape(String(id))}"]`)?.classList.toggle("unread", wasUnread));
     renderNotifPanel();
@@ -472,7 +472,7 @@ function subscribeNotifications() {
       if (String(payload.new.type || "") === "new_message" && currentView === "messages" && !document.hidden
           && activeConversationId && String(nParams.conversationId || "") === String(activeConversationId)) {
         try { window.__levroReconcileChatNow?.(); } catch (_) {}
-        Promise.resolve(sb.from("notifications").update({ read: true }).eq("id", payload.new.id)).catch(() => {});
+        Promise.resolve(levroData.notifications.markRead(payload.new.id)).catch(() => {});
         refreshNotifications(false);
         return;
       }

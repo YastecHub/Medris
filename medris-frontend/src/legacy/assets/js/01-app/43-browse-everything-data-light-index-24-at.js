@@ -418,8 +418,8 @@ async function toggleFavoriteViaDoubleTap(imgContainer, productId) {
   showToast(wasFav ? "Removed from wishlist." : "Added to your wishlist \u2764", "success");
   try {
     const { error } = wasFav
-      ? await sb.from("favorites").delete().eq("buyer_id", session.user.id).eq("product_id", productId)
-      : await sb.from("favorites").insert({ buyer_id: session.user.id, product_id: productId });
+      ? await levroData.favorites.removeProduct(session.user.id, productId)
+      : await levroData.favorites.addProduct(session.user.id, productId);
     if (error) throw error;
     await hydrateProductLikeCountsInView();
   } catch (err) {
@@ -473,7 +473,7 @@ const favoriteMutations=new Set();
 async function toggleFavorite(evt,productId){
   evt.stopPropagation();if(!session){showLogin();return;}if(favoriteMutations.has(productId))return;
   favoriteMutations.add(productId);const btn=evt.currentTarget;btn.disabled=true;
-  try{const old=favoriteIds.has(productId),{error}=old?await sb.from('favorites').delete().eq('buyer_id',session.user.id).eq('product_id',productId):await sb.from('favorites').insert({buyer_id:session.user.id,product_id:productId});if(error)throw error;
+  try{const old=favoriteIds.has(productId),{error}=old?await levroData.favorites.removeProduct(session.user.id,productId):await levroData.favorites.addProduct(session.user.id,productId);if(error)throw error;
     if(old)favoriteIds.delete(productId);else favoriteIds.add(productId);
     btn.innerHTML=old?"<i class='fa-regular fa-heart'></i>":"<i class='fa-solid fa-heart'></i>";btn.classList.toggle('active',!old);await hydrateProductLikeCountsInView();
   }catch(err){showToast(err.message||'Could not update like.','error');}finally{favoriteMutations.delete(productId);btn.disabled=false;}

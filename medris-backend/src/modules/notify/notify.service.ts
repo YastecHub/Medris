@@ -1,8 +1,11 @@
 import crypto from "node:crypto";
-import type { SupabaseAdmin } from "../../integrations/supabase.js";
+import type { DataContext } from "../../database/context.js";
+import { NotifyRepository } from "../../database/repositories/messaging.repository.js";
+import { UsersRepository } from "../../database/repositories/users.repository.js";
+import { VendorsRepository } from "../../database/repositories/vendors.repository.js";
 import { sendNotificationEmail } from "../../integrations/email.js";
 import { configureVapid, pushServiceKind, sendWebPush, type PushTarget } from "../../integrations/web-push.js";
-import { appOrigin, iconOrigin } from "../../config/env.js";
+import { appOrigin, iconOrigin, requireEnv } from "../../config/env.js";
 
 /**
  * Turns a row of the `notifications` table into an e-mail (Resend) and a
@@ -39,12 +42,12 @@ export function isPushOnlyType(type: string): boolean {
   return type === "incoming_call" || type === "missed_call" || type === "points" || type === "rank_change";
 }
 
-export async function sendNotificationEmailFor(db: SupabaseAdmin, n: NotificationRow) {
-  const u = await db.first<{ email?: string; name?: string }>(`users?id=eq.${n.user_id}&select=email,name`);
+export async function sendNotificationEmailFor(data: DataContext, n: NotificationRow) {
+  const u = await data.asService((tx) => new UsersRepository(tx).emailAndName(n.user_id));
   if (!u?.email) return { sent: false, reason: "no email on file" };
   const resendKey = process.env.RESEND_API_KEY || "";
   if (!resendKey) return { sent: false, reason: "RESEND_API_KEY not configured" };
-  const result = await sendNotificationEmail(resendKey, { to: u.email, name: u.name, title: n.title, body: n.body, link: notificationUrl(n) });
+  const result = await sendNotificationEmail(resendKey, { to: u.email, name: u.name, title: n.title, body: n.body ?? undefined, link: notificationUrl(n) });
   return { sent: result.ok, status: result.status, error: result.error };
 }
 
@@ -75,16 +78,14 @@ export function iconForType(type: string): string {
   return hit ? composeIcon({ k: hit[1] }) : "/levromart-notification-icon.png";
 }
 
-export async function pickNotificationIcon(db: SupabaseAdmin, n: NotificationRow): Promise<string> {
+export async function pickNotificationIcon(data: DataContext, n: NotificationRow): Promise<string> {
   const tp = (n.target_params || {}) as Record<string, unknown>;
   const person = tp.callerAvatar || tp.senderAvatar;
   if (isHttps(person)) return composeIcon({ u: person, n: tp.callerName || tp.senderName || n.actor_name });
   if (tp.callerName || tp.senderName) return composeIcon({ n: tp.callerName || tp.senderName });
   if (n.vendor_id) {
     try {
-      const v = await db.first<{ logo_url?: string; business_name?: string; user_id?: string }>(
-        `vendors?id=eq.${n.vendor_id}&select=logo_url,business_name,user_id`,
-      );
+      const v = await data.asService((tx) => new VendorsRepository(tx).brand(n.vendor_id!));
       if (v && v.user_id !== n.user_id && (isHttps(v.logo_url) || v.business_name)) {
         return composeIcon({ u: isHttps(v.logo_url) ? v.logo_url : "", n: v.business_name });
       }
@@ -102,22 +103,24 @@ export interface PushOutcome {
   results?: { kind: string; ok: boolean; status?: number }[];
 }
 
-export async function sendPush(db: SupabaseAdmin, n: NotificationRow): Promise<PushOutcome> {
+/** The key behind call-decline tokens: the service-role key, as before, so links already sent keep working. */
+function callTokenSecret(): string {
+  return requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+}
+
+export async function sendPush(data: DataContext, n: NotificationRow): Promise<PushOutcome> {
   // While the app is open on screen everything shows in-app, so no system
   // push (calls still ring). The page heartbeats every ~20 s.
   if (n.type !== "incoming_call") {
     try {
       const since = new Date(Date.now() - 45000).toISOString();
-      const rows = (await db.select(`app_presence?user_id=eq.${n.user_id}&seen_at=gte.${encodeURIComponent(since)}&select=user_id`)) as unknown;
-      if (Array.isArray(rows) && rows.length) return { sent: 0, reason: "user is in the app" };
+      if (await data.asService((tx) => new NotifyRepository(tx).appOpenSince(n.user_id, since))) return { sent: 0, reason: "user is in the app" };
     } catch {
       /* fall through and push */
     }
   }
 
-  let subs = (await db.select<PushTarget & { id: string; created_at?: string }>(`push_subscriptions?user_id=eq.${n.user_id}&select=*`)) as
-    | (PushTarget & { id: string; created_at?: string })[]
-    | null;
+  let subs: (PushTarget & { id: string; created_at?: string })[] | null = await data.asService((tx) => new NotifyRepository(tx).pushSubscriptions(n.user_id));
   if (n.reminder && Array.isArray(subs) && subs.length > 1) {
     // Reminders repeat often: one per push service (newest first) so a phone with the app and a browser tab doesn't buzz twice.
     const seen = new Set<string>();
@@ -143,14 +146,14 @@ export async function sendPush(db: SupabaseAdmin, n: NotificationRow): Promise<P
   // after 45 s so a stale "ringing" never shows up late.
   const isIncomingCall = n.type === "incoming_call";
   const callId = isIncomingCall ? (n.target_params?.callId as string | undefined) : null;
-  const iconUrl = await pickNotificationIcon(db, n);
+  const iconUrl = await pickNotificationIcon(data, n);
   const callActions = isIncomingCall
     ? [
         { action: "answer", title: "Answer" },
         { action: "decline", title: "Decline" },
       ]
     : undefined;
-  const declineToken = callId ? callToken(db.key, callId, n.user_id) : undefined;
+  const declineToken = callId ? callToken(callTokenSecret(), callId, n.user_id) : undefined;
   const tag = isIncomingCall ? "levromart-incoming-call" : `levromart-${n.id}`;
   const payload = JSON.stringify({
     actions: callActions,
@@ -193,7 +196,7 @@ export async function sendPush(db: SupabaseAdmin, n: NotificationRow): Promise<P
         const statusCode = (err as { statusCode?: number }).statusCode;
         results.push({ kind: pushServiceKind(s.endpoint), ok: false, status: statusCode || 0 });
         // 404/410: the browser unsubscribed or the subscription expired.
-        if (statusCode === 404 || statusCode === 410) await db.delete(`push_subscriptions?id=eq.${s.id}`);
+        if (statusCode === 404 || statusCode === 410) await data.asService((tx) => new NotifyRepository(tx).deletePushSubscription(s.id));
       }
     }),
   );

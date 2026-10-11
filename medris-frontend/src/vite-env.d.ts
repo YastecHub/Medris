@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_VAPID_PUBLIC_KEY: string;
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_DEV_API_PROXY?: string;
+  /** Features served through medris-backend (/api/v1): comma list, "all" or empty. See src/services/backend-features.ts. */
+  readonly VITE_BACKEND_FEATURES?: string;
 }
 
 interface ImportMeta {

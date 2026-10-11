@@ -319,7 +319,7 @@
     if (profile?.role === "admin") return '<div class="empty-state">Admin accounts can\'t own a vendor store on Levromart.</div>';
     const { data: existing } = await sb.from("vendors").select("id").eq("user_id", session.user.id).is("deleted_at", null).maybeSingle();
     if (existing) { navigate("vendorDashboard"); return '<p class="muted">Redirecting…</p>'; }
-    if (!sectors.length) { const { data } = await sb.from("sectors").select("*").order("sort_order"); sectors = data || []; }
+    if (!sectors.length) { const { data } = await levroData.catalogue.sectors("sort_order"); sectors = data || []; }
     return `<div class="card" style="max-width:480px;margin:0 auto;">
       <h2>Apply as a vendor</h2>
       <p class="muted">Tell us about your business. An admin will review this manually.</p>

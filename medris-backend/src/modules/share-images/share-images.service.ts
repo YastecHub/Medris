@@ -1,5 +1,6 @@
 import sharp, { type OverlayOptions } from "sharp";
-import { requireEnv } from "../../config/env.js";
+import { getDataContext } from "../../database/index.js";
+import { SharingRepository } from "../../database/repositories/sharing.repository.js";
 import { readStaticFile, staticFilePath } from "../../config/static-files.js";
 import { ogCircle, ogFit, ogFonts, ogGrab, ogHue, ogInitials, ogMoney, ogNaira, ogText, ogWidth, ogWrap } from "./svg-text.js";
 
@@ -20,22 +21,15 @@ interface CardQuery {
   ogpkg?: string;
 }
 
-async function firstRow<T>(path: string): Promise<T | null> {
-  const url = requireEnv("SUPABASE_URL");
-  const key = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
-  const r = await fetch(`${url}/rest/v1/${path}`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-  const j = (await r.json()) as unknown;
-  return Array.isArray(j) ? ((j[0] as T) ?? null) : null;
-}
 
 interface Listing {
-  name?: string;
-  sale_price?: number;
-  discount_price?: number;
-  rental_rate?: number;
-  price?: number;
-  photos?: string[];
-  vendor?: { business_name?: string; logo_url?: string };
+  name?: string | null;
+  sale_price?: number | null;
+  discount_price?: number | null;
+  rental_rate?: number | null;
+  price?: number | null;
+  photos?: string[] | null;
+  vendor?: { business_name?: string | null; logo_url?: string | null } | null;
 }
 
 export async function renderShareCard(query: CardQuery): Promise<ImageResult> {
@@ -48,8 +42,7 @@ export async function renderShareCard(query: CardQuery): Promise<ImageResult> {
       CX = 880,
       CY = 315,
       D = 392;
-    requireEnv("SUPABASE_URL");
-    requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+    const data = getDataContext();
     const F = ogFonts();
     let kind: "store" | "product" | "package" = "store";
     let name = "";
@@ -59,17 +52,13 @@ export async function renderShareCard(query: CardQuery): Promise<ImageResult> {
     let priceText = "";
 
     if (storeId) {
-      const v = await firstRow<{ business_name?: string; logo_url?: string }>(
-        `vendors?id=eq.${encodeURIComponent(storeId)}&verification_status=eq.verified&is_active=eq.true&select=business_name,logo_url`,
-      );
+      const v = await data.asService((tx) => new SharingRepository(tx).storefront(storeId));
       name = v?.business_name || "Levromart storefront";
       photo = v?.logo_url || null;
       vendorName = name;
     } else if (productId) {
       kind = "product";
-      const p = await firstRow<Listing>(
-        `products?id=eq.${encodeURIComponent(productId)}&select=name,sale_price,discount_price,rental_rate,photos,vendor:vendors(business_name,logo_url)`,
-      );
+      const p: Listing | null = await data.asService((tx) => new SharingRepository(tx).product(productId));
       name = p?.name || "Levromart listing";
       photo = Array.isArray(p?.photos) && p.photos[0] ? p.photos[0] : null;
       vendorName = p?.vendor?.business_name || "";
@@ -80,7 +69,7 @@ export async function renderShareCard(query: CardQuery): Promise<ImageResult> {
       if (price > 0) priceText = ogMoney(price);
     } else if (packageId) {
       kind = "package";
-      const p = await firstRow<Listing>(`vendor_packages?id=eq.${encodeURIComponent(packageId)}&select=name,price,photos,vendor:vendors(business_name,logo_url)`);
+      const p: Listing | null = await data.asService((tx) => new SharingRepository(tx).package(packageId));
       name = p?.name || "Levromart package";
       photo = Array.isArray(p?.photos) && p.photos[0] ? p.photos[0] : null;
       vendorName = p?.vendor?.business_name || "";

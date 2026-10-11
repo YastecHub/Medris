@@ -296,7 +296,7 @@ function parseAiAddCartTags(content) {
 async function applyAiAddCartItems(items) {
   let added = 0, failed = 0;
   for (const it of items) {
-    const { error } = await sb.rpc("add_to_cart", { p_product_id: it.productId, p_quantity: it.quantity });
+    const { error } = await levroData.cart.add(it.productId, it.quantity);
     if (error) failed++; else added++;
   }
   if (added) refreshNotifications();
@@ -596,7 +596,7 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
           if (!rows?.length) { clearBtn.innerHTML = `<i class="fa-solid fa-check"></i> Cart already empty`; return; }
           const ok = await showConfirmDialog(`Remove all ${rows.length} item${rows.length === 1 ? "" : "s"} from your cart?`, { title:"Clear cart", okLabel:"Clear cart", danger:true });
           if (!ok) { clearBtn.disabled = false; return; }
-          const { error: delErr } = await sb.from("cart_items").delete().eq("buyer_id", session.user.id);
+          const { error: delErr } = await levroData.cart.clear(session.user.id);
           if (delErr) throw delErr;
           updateCartFab(); refreshNotifications();
           clearBtn.innerHTML = `<i class="fa-solid fa-check"></i> Cart cleared`;
@@ -620,7 +620,7 @@ function appendAiChatMessage(role, content, autoSpeak, isReplay, msgId, existing
           if (!rows?.length) { clearBtn.innerHTML = `<i class="fa-solid fa-check"></i> Cart already empty`; return; }
           const ok = await showConfirmDialog(`Remove all ${rows.length} item${rows.length===1?"":"s"} from your cart?`, { title:"Clear cart", okLabel:"Clear cart", danger:true });
           if (!ok) { clearBtn.disabled=false; return; }
-          const { error: delErr } = await sb.from("cart_items").delete().eq("buyer_id", session.user.id);
+          const { error: delErr } = await levroData.cart.clear(session.user.id);
           if (delErr) throw delErr;
           updateCartFab(); refreshNotifications();
           clearBtn.innerHTML = `<i class="fa-solid fa-check"></i> Cart cleared`;

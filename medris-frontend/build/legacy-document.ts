@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { build as esbuild } from "esbuild";
 import type { Plugin, ViteDevServer } from "vite";
 import { loadEnv } from "vite";
 
@@ -11,7 +12,11 @@ import { loadEnv } from "vite";
  *  - the legacy asset files served at /assets/css/* and /assets/js/*
  *    (`external` in the manifest; 01-app.js is concatenated from its section
  *    files in src/legacy/assets/js/01-app/);
- *  - the service worker (/sw.js) from src/service-worker/sw.js.
+ *  - the service worker (/sw.js) from src/service-worker/sw.js;
+ *  - the data gateway: src/bridge/data-gateway.ts compiled to one classic
+ *    script and inlined where the document has `<!-- levro:data-gateway -->`
+ *    (just before the legacy runtime), so legacy code can reach the backend
+ *    through typed code and the gateway can never fail to load on its own.
  *
  * Why assemble instead of bundling? The legacy runtime is classic scripts and
  * stylesheets that rely on parse order (scripts run while the page parses,
@@ -47,6 +52,7 @@ export interface LegacyManifest {
 
 export const REQUIRED_ENV = ["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "VITE_VAPID_PUBLIC_KEY"] as const;
 export const SERVICE_WORKER_OUTPUT = "sw.js";
+export const DATA_GATEWAY_MARKER = "<!-- levro:data-gateway -->";
 
 const MIME_BY_EXT: Record<string, string> = {
   webp: "image/webp",
@@ -172,17 +178,54 @@ export function injectApiBase(legacyHtml: string, apiBaseUrl: string | undefined
   return legacyHtml.slice(0, at) + "\n" + shim + legacyHtml.slice(at);
 }
 
+/**
+ * Compiles src/bridge/data-gateway.ts (and the typed API client it imports)
+ * into a self-contained classic script. It must be a classic script, not a
+ * module: legacy scripts that run while the page parses may call it. VITE_*
+ * values are inlined exactly as Vite does for the React bundle.
+ */
+export async function buildDataGateway(root: string, env: Record<string, string>, mode: string): Promise<string> {
+  const production = mode === "production";
+  const result = await esbuild({
+    entryPoints: [path.join(root, "src", "bridge", "data-gateway.ts")],
+    bundle: true,
+    format: "iife",
+    platform: "browser",
+    target: "es2020",
+    write: false,
+    minify: production,
+    legalComments: "none",
+    logLevel: "silent",
+    tsconfig: path.join(root, "tsconfig.app.json"),
+    define: {
+      "import.meta.env": JSON.stringify({ ...env, MODE: mode, DEV: !production, PROD: production, SSR: false, BASE_URL: "/" }),
+    },
+  });
+  // An inline script must never contain "</script".
+  const code = (result.outputFiles[0]?.text ?? "").replace(/<\/script/gi, "<\\/script").trimEnd();
+  return `/* Levromart data gateway: generated from src/bridge/data-gateway.ts - do not edit. */\n${code}`;
+}
+
+/** Replaces the marker with the compiled gateway as an inline classic script. */
+export function inlineDataGateway(legacyHtml: string, code: string): string {
+  const at = legacyHtml.indexOf(DATA_GATEWAY_MARKER);
+  if (at === -1) throw new Error(`[legacy-document] the legacy document has no ${DATA_GATEWAY_MARKER} marker`);
+  return legacyHtml.slice(0, at) + `<script id="levro-data-gateway">\n${code}\n</script>` + legacyHtml.slice(at + DATA_GATEWAY_MARKER.length);
+}
+
 const CONTENT_TYPES: Record<string, string> = { ".js": "application/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
 
 export function legacyDocumentPlugin(): Plugin {
   let root = process.cwd();
   let env: Record<string, string> = {};
+  let mode = "production";
   let devServer: ViteDevServer | null = null;
 
   return {
     name: "medris:legacy-document",
     configResolved(config) {
       root = config.root;
+      mode = config.mode;
       env = loadEnv(config.mode, config.envDir || root, "VITE_");
       const missing = REQUIRED_ENV.filter((name) => !env[name]);
       if (missing.length) throw new Error(`[legacy-document] missing ${missing.join(", ")} (see medris-frontend/.env.example)`);
@@ -190,9 +233,11 @@ export function legacyDocumentPlugin(): Plugin {
     configureServer(server) {
       devServer = server;
       const { legacyDir, inlineAssetsDir, serviceWorker } = legacyPaths(root);
-      server.watcher.add([legacyDir, inlineAssetsDir, serviceWorker]);
+      const bridgeDir = path.join(root, "src", "bridge");
+      const servicesDir = path.join(root, "src", "services");
+      server.watcher.add([legacyDir, inlineAssetsDir, serviceWorker, bridgeDir]);
       server.watcher.on("change", (file) => {
-        if ([legacyDir, inlineAssetsDir, serviceWorker].some((p) => file.startsWith(p))) server.ws.send({ type: "full-reload" });
+        if ([legacyDir, inlineAssetsDir, serviceWorker, bridgeDir, servicesDir].some((p) => file.startsWith(p))) server.ws.send({ type: "full-reload" });
       });
       // Serve the assembled legacy files at their production URLs.
       server.middlewares.use((req, res, next) => {
@@ -207,8 +252,9 @@ export function legacyDocumentPlugin(): Plugin {
     },
     transformIndexHtml: {
       order: "post",
-      handler(html) {
-        return mergeViteTags(html, injectApiBase(buildLegacy(root, env).document, env.VITE_API_BASE_URL));
+      async handler(html) {
+        const legacy = inlineDataGateway(buildLegacy(root, env).document, await buildDataGateway(root, env, mode));
+        return mergeViteTags(html, injectApiBase(legacy, env.VITE_API_BASE_URL));
       },
     },
     generateBundle() {

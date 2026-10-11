@@ -1,4 +1,7 @@
-import { SupabaseAdmin } from "../../integrations/supabase.js";
+import type { ServiceResult } from "../../shared/types/service.js";
+import { getDataContext } from "../../database/index.js";
+import { NotifyRepository } from "../../database/repositories/messaging.repository.js";
+import { OrdersRepository } from "../../database/repositories/orders.repository.js";
 
 /**
  * 30-minute order reminder sweep (triggered by GitHub Actions, see
@@ -64,37 +67,31 @@ export function remindersForOrder(o: ReminderOrder): Reminder[] {
 }
 
 export async function runOrderReminderSweep(): Promise<{ checked: number; reminded: number }> {
-  const db = SupabaseAdmin.fromEnv();
+  const data = getDataContext();
   const graceCutoff = new Date(Date.now() - GRACE_MINUTES * 60000).toISOString();
   const repeatCutoff = new Date(Date.now() - REPEAT_MINUTES * 60000).toISOString();
 
-  const due = (await db.select<ReminderOrder>(
-    `orders?status=in.(confirmed,handed_over,returned)` +
-      `&created_at=lte.${graceCutoff}` +
-      `&or=(last_reminder_sent_at.is.null,last_reminder_sent_at.lte.${repeatCutoff})` +
-      `&select=id,order_type,status,delivery_method,buyer_id,vendor:vendors(id,business_name,user_id),payments(payment_type,status)`,
-  )) as unknown;
-  if (!Array.isArray(due)) return { checked: 0, reminded: 0 };
+  const due = (await data.asService((tx) => new OrdersRepository(tx).dueForReminders(graceCutoff, repeatCutoff))) as unknown as ReminderOrder[];
 
   let reminded = 0;
-  for (const o of due as ReminderOrder[]) {
+  for (const o of due) {
     const notifs = remindersForOrder(o);
     if (notifs.length === 0) continue;
-    await Promise.all(
-      notifs.map((n) =>
-        db.insert("notifications", {
-          user_id: n.userId,
-          type: "order_reminder",
-          title: n.title,
-          body: n.body,
-          target_view: "orderDetail",
-          target_params: { orderId: o.id },
-        }),
-      ),
-    );
-    await db.patch(`orders?id=eq.${o.id}`, { last_reminder_sent_at: new Date().toISOString() });
+    // One transaction per order: its reminders and the "last reminded" stamp land together.
+    await data.asService(async (tx) => {
+      const notify = new NotifyRepository(tx);
+      for (const n of notifs) {
+        await notify.insertNotification({ userId: n.userId, type: "order_reminder", title: n.title, body: n.body, targetView: "orderDetail", targetParams: { orderId: o.id } });
+      }
+      await new OrdersRepository(tx).update(o.id, { lastReminderSentAt: new Date().toISOString() });
+    });
     reminded++;
   }
   // Chats are never deleted: a finished order's conversation just drops out of the lists.
   return { checked: due.length, reminded };
+}
+
+/** ANY /api/order-reminders (cron): the sweep's counts. */
+export async function runOrderReminders(): Promise<ServiceResult> {
+  return { status: 200, body: await runOrderReminderSweep() };
 }

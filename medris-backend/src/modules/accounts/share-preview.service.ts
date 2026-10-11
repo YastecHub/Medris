@@ -1,5 +1,6 @@
 import fs from "node:fs";
-import { SupabaseAdmin } from "../../integrations/supabase.js";
+import { getDataContext } from "../../database/index.js";
+import { SharingRepository } from "../../database/repositories/sharing.repository.js";
 import { staticFilePath } from "../../config/static-files.js";
 import { escapeAttr } from "../../lib/format.js";
 
@@ -52,13 +53,6 @@ export interface PreviewQuery {
   package?: string;
 }
 
-interface NamedRow {
-  id: string;
-  name?: string;
-  description?: string;
-  vendor?: { business_name?: string };
-}
-
 /**
  * Returns the HTML to serve. `path` is the request path ("/", "/s/<id>", ...).
  * Falls back to the unmodified app page on any problem.
@@ -70,14 +64,12 @@ export async function renderSharePreview(query: PreviewQuery, host: string, path
     const packageId = String(query.package || "").trim();
     if (!vendorId && !productId && !packageId) return readAppHtml();
 
-    const db = SupabaseAdmin.fromEnv();
+    const data = getDataContext();
     const origin = `https://${host}`;
     let meta: PreviewMeta | null = null;
 
     if (vendorId) {
-      const v = await db.first<{ id: string; business_name?: string; bio?: string }>(
-        `vendors?id=eq.${encodeURIComponent(vendorId)}&verification_status=eq.verified&is_active=eq.true&select=id,business_name,bio,logo_url`,
-      );
+      const v = await data.asService((tx) => new SharingRepository(tx).storefront(vendorId));
       if (v) {
         meta = {
           title: `${v.business_name || "Levromart storefront"} | Levromart`,
@@ -87,7 +79,7 @@ export async function renderSharePreview(query: PreviewQuery, host: string, path
         };
       }
     } else if (packageId) {
-      const k = await db.first<NamedRow>(`vendor_packages?id=eq.${encodeURIComponent(packageId)}&select=id,name,description,vendor:vendors(business_name)`);
+      const k = await data.asService((tx) => new SharingRepository(tx).package(packageId));
       if (k) {
         meta = {
           title: `${k.name || "Levromart package"} | Levromart`,
@@ -97,7 +89,7 @@ export async function renderSharePreview(query: PreviewQuery, host: string, path
         };
       }
     } else {
-      const p = await db.first<NamedRow>(`products?id=eq.${encodeURIComponent(productId)}&select=id,name,description,photos,vendor:vendors(business_name)`);
+      const p = await data.asService((tx) => new SharingRepository(tx).product(productId));
       if (p) {
         meta = {
           title: `${p.name || "Levromart listing"} | Levromart`,

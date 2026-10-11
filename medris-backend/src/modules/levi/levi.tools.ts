@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- tool payloads are untyped JSON from PostgREST and Gemini */
+import type { DataContext, Identity } from "../../database/context.js";
+import { LeviRepository } from "../../database/repositories/levi.repository.js";
+import { CartRepository } from "../../database/repositories/cart.repository.js";
 import { cleanText, enc, haversineKm, normalize, relatedTerms, scoreText } from "./levi.text.js";
 
 /**
@@ -9,10 +12,9 @@ import { cleanText, enc, haversineKm, normalize, relatedTerms, scoreText } from 
  */
 
 export interface LeviContext {
-  url: string;
-  anonKey: string;
-  serviceHeaders: Record<string, string>;
-  accessToken: string;
+  data: DataContext;
+  /** The verified caller; cart writes run as this user so the database applies its own rules. */
+  identity: Identity;
   userId: string;
   lat: number | null;
   lng: number | null;
@@ -21,26 +23,24 @@ export interface LeviContext {
 type Row = Record<string, any>;
 type Args = Record<string, any>;
 
-interface RestResult {
+interface QueryResult {
   ok: boolean;
-  status: number;
   data: any;
 }
 
 const TOOL_CACHE_TTL = 20_000;
 
-async function restJson(base: string, path: string, headers: Record<string, string>, options: RequestInit = {}): Promise<RestResult> {
-  const response = await fetch(`${base}${path}`, {
-    ...options,
-    headers: { ...headers, ...((options.headers as Record<string, string>) || {}) },
-  });
-  let data: any = null;
+/**
+ * Runs one read as service_role. A failure (bad id from the model, database
+ * hiccup) comes back as { ok: false } - what a failed REST call gave before -
+ * so a tool degrades to "nothing found" instead of breaking the chat.
+ */
+async function query(ctx: LeviContext, read: (repo: LeviRepository) => Promise<Row[]>): Promise<QueryResult> {
   try {
-    data = await response.json();
+    return { ok: true, data: await ctx.data.asService((tx) => read(new LeviRepository(tx))) };
   } catch {
-    /* empty body */
+    return { ok: false, data: null };
   }
-  return { ok: response.ok, status: response.status, data };
 }
 
 interface Catalog {
@@ -55,13 +55,9 @@ let catalogCache: { expires: number; value: Catalog | null } = { expires: 0, val
 async function getCatalog(ctx: LeviContext): Promise<Catalog> {
   if (catalogCache.value && catalogCache.expires > Date.now()) return catalogCache.value;
   const [sectorsRes, categoriesRes, vendorsRes] = await Promise.all([
-    restJson(ctx.url, "/rest/v1/sectors?select=id,name,sort_order&order=sort_order.asc", ctx.serviceHeaders),
-    restJson(ctx.url, "/rest/v1/categories?select=id,name,sector_id,parent_category_id&order=name.asc&limit=1000", ctx.serviceHeaders),
-    restJson(
-      ctx.url,
-      "/rest/v1/vendors?select=id,business_name,city,sector_id,avg_rating,review_count,lat,lng,verification_status,is_active&verification_status=eq.verified&is_active=eq.true&limit=600",
-      ctx.serviceHeaders,
-    ),
+    query(ctx, (r) => r.sectors()),
+    query(ctx, (r) => r.categories()),
+    query(ctx, (r) => r.verifiedVendors()),
   ]);
   const value: Catalog = {
     sectors: sectorsRes.ok ? sectorsRes.data || [] : [],
@@ -73,9 +69,7 @@ async function getCatalog(ctx: LeviContext): Promise<Catalog> {
 }
 
 async function getProductSnapshot(ctx: LeviContext): Promise<Row[]> {
-  const path =
-    "/rest/v1/products?status=eq.active&select=id,name,description,created_at,listing_type,sale_price,discount_price,rental_rate,rental_rate_unit,quantity_available,is_service,service_price_unit,view_count,category_id,vendor:vendors!inner(id,business_name,city,sector_id,avg_rating,review_count,lat,lng,verification_status,is_active)&vendor.verification_status=eq.verified&vendor.is_active=eq.true&order=created_at.desc&limit=700";
-  const res = await restJson(ctx.url, path, ctx.serviceHeaders);
+  const res = await query(ctx, (r) => r.activeProducts());
   return res.ok ? res.data || [] : [];
 }
 
@@ -238,11 +232,7 @@ async function getCatalogOverview(ctx: LeviContext) {
 async function searchPackages(args: Args, ctx: LeviContext) {
   const q = cleanText(args.query, 120);
   const terms = relatedTerms(q);
-  const res = await restJson(
-    ctx.url,
-    "/rest/v1/vendor_packages?status=eq.active&select=id,vendor_id,name,description,price,photos,created_at,vendor:vendors!inner(id,business_name,city,avg_rating,review_count,lat,lng,verification_status,is_active)&vendor.verification_status=eq.verified&vendor.is_active=eq.true&order=created_at.desc&limit=500",
-    ctx.serviceHeaders,
-  );
+  const res = await query(ctx, (r) => r.activePackages());
   const rows: Row[] = res.ok ? res.data || [] : [];
   const scored = rows
     .map((pkg) => {
@@ -299,11 +289,7 @@ async function searchEverything(args: Args, ctx: LeviContext) {
 
 async function getProductByIdOrQuery(args: Args, ctx: LeviContext) {
   if (args.productId) {
-    const res = await restJson(
-      ctx.url,
-      `/rest/v1/products?id=eq.${enc(args.productId)}&select=id,name,description,created_at,listing_type,sale_price,discount_price,rental_rate,rental_rate_unit,quantity_available,is_service,service_price_unit,view_count,category_id,vendor:vendors(id,business_name,city,sector_id,avg_rating,review_count,lat,lng,verification_status,is_active)`,
-      ctx.serviceHeaders,
-    );
+    const res = await query(ctx, (r) => r.product(String(args.productId)));
     const catalog = await getCatalog(ctx);
     return { results: res.ok ? (res.data || []).map((p: Row) => publicProduct(p, catalog, ctx.lat, ctx.lng)) : [] };
   }
@@ -312,11 +298,7 @@ async function getProductByIdOrQuery(args: Args, ctx: LeviContext) {
 
 async function getVendorByIdOrQuery(args: Args, ctx: LeviContext): Promise<{ results: Row[] }> {
   if (args.vendorId) {
-    const res = await restJson(
-      ctx.url,
-      `/rest/v1/vendors?id=eq.${enc(args.vendorId)}&select=id,business_name,city,address,phone,whatsapp_number,avg_rating,review_count,verification_status,is_active,lat,lng,sector_id,business_hours,allow_after_hours_messages`,
-      ctx.serviceHeaders,
-    );
+    const res = await query(ctx, (r) => r.vendor(String(args.vendorId)));
     const catalog = await getCatalog(ctx);
     return {
       results: res.ok
@@ -375,66 +357,42 @@ async function getMarketplaceTrends(ctx: LeviContext) {
 /* --------------------------------------------------- the signed-in user's own */
 
 export async function getMyVendor(ctx: LeviContext): Promise<Row | null> {
-  const res = await restJson(
-    ctx.url,
-    `/rest/v1/vendors?user_id=eq.${enc(ctx.userId)}&deleted_at=is.null&select=id,business_name,city,address,phone,avg_rating,review_count,is_active,verification_status,commission_pct,business_hours,allow_after_hours_messages,lat,lng,sector_id`,
-    ctx.serviceHeaders,
-  );
+  const res = await query(ctx, (r) => r.myVendor(ctx.userId));
   return res.ok ? res.data?.[0] || null : null;
 }
 
 async function getMyProfile(ctx: LeviContext) {
-  const res = await restJson(ctx.url, `/rest/v1/users?id=eq.${enc(ctx.userId)}&select=id,name,email,phone,city,address,avatar_url,role,ai_data_consent,created_at`, ctx.serviceHeaders);
+  const res = await query(ctx, (r) => r.myProfile(ctx.userId));
   return { profile: res.ok ? res.data?.[0] || null : null };
 }
 
 async function getMyWishlist(ctx: LeviContext) {
-  const res = await restJson(
-    ctx.url,
-    `/rest/v1/favorites?buyer_id=eq.${enc(ctx.userId)}&select=id,created_at,product:products(id,name,sale_price,discount_price,rental_rate,listing_type,quantity_available,status,vendor:vendors(id,business_name))&order=created_at.desc&limit=100`,
-    ctx.serviceHeaders,
-  );
+  const res = await query(ctx, (r) => r.myWishlist(ctx.userId));
   return { items: res.ok ? res.data || [] : [] };
 }
 
 async function getMyVendorProducts(ctx: LeviContext) {
   const vendor = await getMyVendor(ctx);
   if (!vendor) return { is_vendor: false, products: [] };
-  const res = await restJson(
-    ctx.url,
-    `/rest/v1/products?vendor_id=eq.${enc(vendor.id)}&select=id,name,status,listing_type,sale_price,discount_price,rental_rate,rental_rate_unit,quantity_total,quantity_available,view_count,created_at,is_service,category_id&order=created_at.desc&limit=500`,
-    ctx.serviceHeaders,
-  );
+  const res = await query(ctx, (r) => r.vendorProducts(String(vendor.id)));
   return { is_vendor: true, vendor: { id: vendor.id, business_name: vendor.business_name }, products: res.ok ? res.data || [] : [] };
 }
 
 async function getMyVendorOrders(ctx: LeviContext) {
   const vendor = await getMyVendor(ctx);
   if (!vendor) return { is_vendor: false, orders: [] };
-  const res = await restJson(
-    ctx.url,
-    `/rest/v1/orders?vendor_id=eq.${enc(vendor.id)}&select=id,status,order_type,total_amount,created_at,updated_at,package_id,items:order_items(quantity,unit_price,product:products(id,name))&order=created_at.desc&limit=200`,
-    ctx.serviceHeaders,
-  );
+  const res = await query(ctx, (r) => r.vendorOrders(String(vendor.id)));
   return { is_vendor: true, vendor: { id: vendor.id, business_name: vendor.business_name }, orders: res.ok ? res.data || [] : [] };
 }
 
 async function getMyCart(ctx: LeviContext) {
-  const res = await restJson(
-    ctx.url,
-    `/rest/v1/cart_items?buyer_id=eq.${enc(ctx.userId)}&select=id,quantity,product:products(id,name,listing_type,sale_price,discount_price,rental_rate,quantity_available,status,vendor:vendors(id,business_name))`,
-    ctx.serviceHeaders,
-  );
+  const res = await query(ctx, (r) => r.myCart(ctx.userId));
   return { items: res.ok ? res.data || [] : [] };
 }
 
 async function getMyOrders(args: Args, ctx: LeviContext) {
   const limit = Math.min(50, Math.max(1, Number(args.limit) || 20));
-  const select = "select=id,status,order_type,total_amount,created_at,updated_at,vendor:vendors(id,business_name),items:order_items(quantity,unit_price,product:products(id,name))";
-  const path = args.status
-    ? `/rest/v1/orders?buyer_id=eq.${enc(ctx.userId)}&status=eq.${enc(args.status)}&${select}&order=created_at.desc&limit=${limit}`
-    : `/rest/v1/orders?buyer_id=eq.${enc(ctx.userId)}&${select}&order=created_at.desc&limit=${limit}`;
-  const res = await restJson(ctx.url, path, ctx.serviceHeaders);
+  const res = await query(ctx, (r) => r.myOrders(ctx.userId, args.status ? String(args.status) : null, limit));
   const orders: Row[] = res.ok ? res.data || [] : [];
   const ordinal = Number(args.ordinal);
   if (Number.isInteger(ordinal) && ordinal > 0) {
@@ -446,17 +404,12 @@ async function getMyOrders(args: Args, ctx: LeviContext) {
 
 async function getMyMessages(args: Args, ctx: LeviContext) {
   const vendor = await getMyVendor(ctx);
-  const ownerFilter = vendor ? `vendor_id=eq.${enc(vendor.id)}` : `buyer_id=eq.${enc(ctx.userId)}`;
-  const convRes = await restJson(ctx.url, `/rest/v1/conversations?${ownerFilter}&select=id,buyer_id,vendor_id,buyer:users(id,name),vendor:vendors(id,business_name)&limit=100`, ctx.serviceHeaders);
+  const convRes = await query(ctx, (r) => r.conversations(vendor ? { vendorId: String(vendor.id) } : { buyerId: ctx.userId }));
   if (!convRes.ok) return { conversations: [] };
   const convs: Row[] = convRes.data || [];
   const ids = convs.map((c) => c.id).filter(Boolean);
   if (!ids.length) return { conversations: [] };
-  const messagesRes = await restJson(
-    ctx.url,
-    `/rest/v1/messages?conversation_id=in.(${ids.join(",")})&select=conversation_id,sender_id,body,created_at,read_at&order=created_at.desc&limit=300`,
-    ctx.serviceHeaders,
-  );
+  const messagesRes = await query(ctx, (r) => r.messagesIn(ids.map(String)));
   const messages: Row[] = messagesRes.ok ? messagesRes.data || [] : [];
   return {
     conversations: convs
@@ -479,14 +432,14 @@ async function getVendorAnalytics(ctx: LeviContext) {
   const vendor = await getMyVendor(ctx);
   if (!vendor) return { is_vendor: false };
   const [ordersRes, productsRes, orderItemsRes] = await Promise.all([
-    restJson(ctx.url, `/rest/v1/orders?vendor_id=eq.${enc(vendor.id)}&select=id,status,total_amount,created_at&order=created_at.desc&limit=500`, ctx.serviceHeaders),
-    restJson(ctx.url, `/rest/v1/products?vendor_id=eq.${enc(vendor.id)}&select=id,name,status,view_count,quantity_available,created_at&order=view_count.desc&limit=500`, ctx.serviceHeaders),
-    restJson(ctx.url, `/rest/v1/order_items?select=product_id,quantity,unit_price,order:orders!inner(status,vendor_id)&order.vendor_id=eq.${enc(vendor.id)}&limit=1000`, ctx.serviceHeaders),
+    query(ctx, (r) => r.vendorOrderSummaries(String(vendor.id))),
+    query(ctx, (r) => r.vendorProductStats(String(vendor.id))),
+    query(ctx, (r) => r.vendorOrderItems(String(vendor.id))),
   ]);
   const orders: Row[] = ordersRes.ok ? ordersRes.data || [] : [];
   const products: Row[] = productsRes.ok ? productsRes.data || [] : [];
   const productIds = products.map((p) => p.id).filter(Boolean).slice(0, 500);
-  const favRes = productIds.length ? await restJson(ctx.url, `/rest/v1/favorites?product_id=in.(${productIds.join(",")})&select=product_id`, ctx.serviceHeaders) : { ok: true, data: [] };
+  const favRes = productIds.length ? await query(ctx, (r) => r.favoritesOf(productIds.map(String))) : { ok: true, data: [] };
   const favorites: Row[] = favRes.ok ? favRes.data || [] : [];
   const orderItems: Row[] = orderItemsRes.ok ? orderItemsRes.data || [] : [];
   const completed = orders.filter((o) => o.status === "completed");
@@ -512,27 +465,22 @@ async function addToCart(args: Args, ctx: LeviContext) {
   const productId = cleanText(args.productId, 100);
   const quantity = Math.max(1, Math.min(20, Number(args.quantity) || 1));
   if (!productId) return { ok: false, message: "No product id supplied." };
-  const pRes = await restJson(
-    ctx.url,
-    `/rest/v1/products?id=eq.${enc(productId)}&status=eq.active&select=id,name,listing_type,sale_price,quantity_available,is_service,vendor:vendors!inner(id,business_name,verification_status,is_active)&vendor.verification_status=eq.verified&vendor.is_active=eq.true`,
-    ctx.serviceHeaders,
-  );
+  const pRes = await query(ctx, (r) => r.purchasableProduct(productId));
   const p: Row | null = pRes.ok ? pRes.data?.[0] : null;
   if (!p) return { ok: false, message: "That listing is no longer available." };
   if (p.is_service || !["sale", "both"].includes(String(p.listing_type))) return { ok: false, message: "That listing needs to be opened rather than added directly to the cart." };
   if (Number(p.quantity_available || 0) < 1) return { ok: false, message: `${p.name} is out of stock.` };
   // The cart write itself runs with the user's own token, so the database applies its own rules.
-  const rpc = await restJson(ctx.url, "/rest/v1/rpc/add_to_cart", ctx.serviceHeaders, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: ctx.anonKey, Authorization: `Bearer ${ctx.accessToken}` },
-    body: JSON.stringify({ p_product_id: productId, p_quantity: quantity }),
-  });
-  if (!rpc.ok) return { ok: false, message: "I couldn't add that item to the cart." };
+  try {
+    await ctx.data.asUser(ctx.identity, (tx) => new CartRepository(tx).add(productId, quantity));
+  } catch {
+    return { ok: false, message: "I couldn't add that item to the cart." };
+  }
   return { ok: true, product: { id: p.id, name: p.name, vendor: p.vendor?.business_name }, quantity, clientDirective: `[[CARTSYNC]]` };
 }
 
 async function clearCart(ctx: LeviContext) {
-  const existing = await restJson(ctx.url, `/rest/v1/cart_items?buyer_id=eq.${enc(ctx.userId)}&select=id`, ctx.serviceHeaders);
+  const existing = await query(ctx, (r) => r.cartIds(ctx.userId));
   if (!existing.ok) return { ok: false, message: "I couldn't read your cart right now." };
   const count = (existing.data || []).length;
   if (!count) return { ok: true, alreadyEmpty: true, count: 0, message: "Your cart is already empty." };
@@ -542,10 +490,13 @@ async function clearCart(ctx: LeviContext) {
 
 async function removeFromCart(args: Args, ctx: LeviContext) {
   const productId = cleanText(args.productId, 100);
-  const res = await restJson(ctx.url, `/rest/v1/cart_items?buyer_id=eq.${enc(ctx.userId)}&product_id=eq.${enc(productId)}&select=id,product:products(name)`, ctx.serviceHeaders);
+  const res = await query(ctx, (r) => r.cartLine(ctx.userId, productId));
   const row: Row | null = res.ok ? res.data?.[0] : null;
   if (!row) return { ok: false, message: "That item isn't in your cart." };
-  const del = await restJson(ctx.url, `/rest/v1/cart_items?id=eq.${enc(row.id)}&buyer_id=eq.${enc(ctx.userId)}`, ctx.serviceHeaders, { method: "DELETE" });
+  const del = await query(ctx, async (r) => {
+    await r.deleteCartLine(ctx.userId, String(row.id));
+    return [];
+  });
   if (!del.ok) return { ok: false, message: "I couldn't remove that item." };
   return { ok: true, product: { id: productId, name: row.product?.name || "item" }, clientDirective: `[[CARTSYNC]]` };
 }

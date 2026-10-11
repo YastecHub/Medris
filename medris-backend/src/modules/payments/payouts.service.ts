@@ -1,4 +1,6 @@
-import { SupabaseAdmin } from "../../integrations/supabase.js";
+import { getDataContext } from "../../database/index.js";
+import { OrdersRepository, PaymentsRepository } from "../../database/repositories/orders.repository.js";
+import { VendorsRepository } from "../../database/repositories/vendors.repository.js";
 import { createRefund, createTransfer, createTransferRecipient } from "../../integrations/paystack.js";
 
 /**
@@ -28,7 +30,7 @@ export async function getOrCreateTransferRecipient(vendor: PayoutVendor): Promis
   });
   if (!res.ok || !json.status) throw new Error(json.message || "Could not register the vendor's bank account for payout.");
   const recipientCode = String(json.data?.recipient_code);
-  await SupabaseAdmin.fromEnv().patch(`vendors?id=eq.${vendor.id}`, { transfer_recipient_code: recipientCode });
+  await getDataContext().asService((tx) => new VendorsRepository(tx).update(vendor.id, { transferRecipientCode: recipientCode }));
   return recipientCode;
 }
 
@@ -44,14 +46,12 @@ export interface ReleaseResult {
  * passes through to the vendor in full.
  */
 export async function releaseOrderPayout(orderId: string): Promise<ReleaseResult> {
-  const db = SupabaseAdmin.fromEnv();
-  const order = await db.first<{ id: string; payout_status: string; vendor?: PayoutVendor }>(
-    `orders?id=eq.${orderId}&select=id,payout_status,vendor:vendors(id,commission_pct,bank_code,account_number,account_name,transfer_recipient_code)`,
-  );
+  const data = getDataContext();
+  const order = await data.asService((tx) => new OrdersRepository(tx).withPayoutVendor(orderId));
   if (!order) throw new Error("order not found");
   if (order.payout_status !== "held") return { transferred: false, reason: `payout_status is ${order.payout_status}, nothing to release` };
 
-  const payments = await db.select<{ payment_type: string; amount: number }>(`payments?order_id=eq.${orderId}&status=eq.paid&select=payment_type,amount`);
+  const payments = await data.asService((tx) => new PaymentsRepository(tx).paidAmounts(orderId));
   const feeAmount = (payments || [])
     .filter((p) => p.payment_type === "sale_price" || p.payment_type === "rental_fee")
     .reduce((s, p) => s + Number(p.amount), 0);
@@ -76,12 +76,14 @@ export async function releaseOrderPayout(orderId: string): Promise<ReleaseResult
     throw new Error(json.message || "Paystack transfer failed");
   }
 
-  await db.patch(`orders?id=eq.${orderId}`, {
-    payout_status: "released",
-    payout_released_at: new Date().toISOString(),
-    payout_transfer_code: json.data?.transfer_code || json.data?.reference || null,
-    status: "completed",
-  });
+  await data.asService((tx) =>
+    new OrdersRepository(tx).update(orderId, {
+      payoutStatus: "released",
+      payoutReleasedAt: new Date().toISOString(),
+      payoutTransferCode: json.data?.transfer_code || json.data?.reference || null,
+      status: "completed",
+    }),
+  );
   return { transferred: true, amount: payoutAmount };
 }
 
@@ -90,17 +92,17 @@ export async function releaseOrderPayout(orderId: string): Promise<ReleaseResult
  * order the refund comes out of the platform's own Paystack balance.
  */
 export async function refundOrderPayout(orderId: string): Promise<{ refunded: true }> {
-  const db = SupabaseAdmin.fromEnv();
-  const order = await db.first<{ id: string; payout_status: string | null }>(`orders?id=eq.${orderId}&select=id,payout_status`);
+  const data = getDataContext();
+  const order = await data.asService((tx) => new OrdersRepository(tx).payoutStatus(orderId));
   if (!order) throw new Error("order not found");
   if (order.payout_status === "refunded") throw new Error(`Can't refund, this order was already refunded.`);
 
-  const payment = await db.first<{ provider_reference: string }>(`payments?order_id=eq.${orderId}&status=eq.paid&select=provider_reference&limit=1`);
+  const payment = await data.asService((tx) => new PaymentsRepository(tx).firstPaidReference(orderId));
   if (!payment) throw new Error("No paid payment found for this order.");
 
-  const { res, json } = await createRefund(payment.provider_reference);
+  const { res, json } = await createRefund(payment.provider_reference as string);
   if (!res.ok || !json.status) throw new Error(json.message || "Paystack refund failed");
 
-  await db.patch(`orders?id=eq.${orderId}`, { payout_status: "refunded", status: "cancelled" });
+  await data.asService((tx) => new OrdersRepository(tx).update(orderId, { payoutStatus: "refunded", status: "cancelled" }));
   return { refunded: true };
 }

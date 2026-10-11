@@ -40,11 +40,11 @@ async function togglePackageFavorite(evt, packageId) {
   if (btn) btn.disabled = true;
   try {
     if (isFav) {
-      const { error } = await sb.from("package_favorites").delete().eq("buyer_id", session.user.id).eq("package_id", packageId);
+      const { error } = await levroData.favorites.removePackage(session.user.id, packageId);
       if (error) throw error;
       packageFavoriteIds.delete(packageId);
     } else {
-      const { error } = await sb.from("package_favorites").insert({ buyer_id: session.user.id, package_id: packageId });
+      const { error } = await levroData.favorites.addPackage(session.user.id, packageId);
       if (error) throw error;
       packageFavoriteIds.add(packageId);
     }

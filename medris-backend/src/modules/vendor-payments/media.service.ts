@@ -1,10 +1,11 @@
 import { CopyObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import sharp from "sharp";
-import { SupabaseAdmin, lookupUser } from "../../integrations/supabase.js";
+import { getDataContext } from "../../database/index.js";
+import { UsersRepository } from "../../database/repositories/users.repository.js";
 import { R2_ALLOWED_FOLDERS, R2_IMAGE_CACHE_CONTROL, getR2Client, r2BucketName, r2PublicUrl } from "../../integrations/r2.js";
-import { requireEnv } from "../../config/env.js";
-import type { ServiceResult } from "../../types/service.js";
+import { R2Storage, SupabaseStorage } from "../../integrations/storage/index.js";
+import { identityFromAccessToken } from "../auth/caller.js";
+import type { ServiceResult } from "../../shared/types/service.js";
 
 /**
  * Public image storage on Cloudflare R2: presigned browser uploads, plus two
@@ -21,8 +22,7 @@ async function streamToBuffer(stream: AsyncIterable<Uint8Array>): Promise<Buffer
 }
 
 async function isAdmin(userId: string): Promise<boolean> {
-  const roleRow = await SupabaseAdmin.fromEnv().first<{ role?: string }>(`users?id=eq.${userId}&select=role`);
-  return roleRow?.role === "admin";
+  return (await getDataContext().asService((tx) => new UsersRepository(tx).roleOf(userId))) === "admin";
 }
 
 /** Short-lived presigned PUT so the browser uploads straight to R2. */
@@ -32,12 +32,11 @@ export async function presignUpload(body: Record<string, unknown>): Promise<Serv
   if (!isAllowedFolder(String(key).split("/")[0] ?? "")) return { status: 400, body: { error: "Unknown upload folder." } };
   if (/\.\.|\/\/|^\/|\0/.test(key)) return { status: 400, body: { error: "Invalid key." } };
 
-  const { user: me } = await lookupUser(accessToken);
+  const me = await identityFromAccessToken(accessToken);
   if (!me) return { status: 401, body: { error: "Invalid session" } };
 
-  const command = new PutObjectCommand({ Bucket: r2BucketName(), Key: key, ContentType: contentType, CacheControl: R2_IMAGE_CACHE_CONTROL });
-  const uploadUrl = await getSignedUrl(getR2Client(), command, { expiresIn: 120 });
-  return { status: 200, body: { uploadUrl, publicUrl: r2PublicUrl(key), cacheControl: R2_IMAGE_CACHE_CONTROL } };
+  const upload = await new R2Storage().createDirectUpload(key, contentType);
+  return { status: 200, body: { uploadUrl: upload.uploadUrl, publicUrl: upload.publicUrl, cacheControl: R2_IMAGE_CACHE_CONTROL } };
 }
 
 /** Admin: copy one Supabase Storage object into R2; skips files already copied, so it can be re-run safely. */
@@ -47,9 +46,9 @@ export async function migrateFile(body: Record<string, unknown>): Promise<Servic
   if (!isAllowedFolder(bucket)) return { status: 400, body: { error: "Unknown bucket." } };
   if (/\.\.|\0/.test(key)) return { status: 400, body: { error: "Invalid key." } };
 
-  const { user: me } = await lookupUser(accessToken);
+  const me = await identityFromAccessToken(accessToken);
   if (!me) return { status: 401, body: { error: "Invalid session" } };
-  if (!(await isAdmin(me.id))) return { status: 403, body: { error: "Admin access required." } };
+  if (!(await isAdmin(me.userId))) return { status: 403, body: { error: "Admin access required." } };
 
   const r2Key = `${bucket}/${key}`;
   const client = getR2Client();
@@ -61,7 +60,7 @@ export async function migrateFile(body: Record<string, unknown>): Promise<Servic
     // Not found: copy it.
   }
 
-  const srcRes = await fetch(`${requireEnv("SUPABASE_URL")}/storage/v1/object/public/${bucket}/${key}`);
+  const srcRes = await SupabaseStorage.fromEnv(bucket).fetchPublic(key);
   if (!srcRes.ok) return { status: 404, body: { error: `Source object not found: ${key}` } };
   const contentType = srcRes.headers.get("content-type") || "application/octet-stream";
   const bodyBuffer = Buffer.from(await srcRes.arrayBuffer());
@@ -76,9 +75,9 @@ export async function optimizeFile(body: Record<string, unknown>): Promise<Servi
   if (!isAllowedFolder(bucket)) return { status: 400, body: { error: "Unknown bucket." } };
   if (/\.\.|\0/.test(key)) return { status: 400, body: { error: "Invalid key." } };
 
-  const { user: me } = await lookupUser(accessToken);
+  const me = await identityFromAccessToken(accessToken);
   if (!me) return { status: 401, body: { error: "Invalid session" } };
-  if (!(await isAdmin(me.id))) return { status: 403, body: { error: "Admin access required." } };
+  if (!(await isAdmin(me.userId))) return { status: 403, body: { error: "Admin access required." } };
 
   const r2Key = `${bucket}/${key}`;
   const client = getR2Client();
