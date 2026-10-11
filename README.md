@@ -15,7 +15,7 @@ configuration are untouched.
 **Read next:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (structure, how the pieces talk) ·
 [`docs/BACKEND.md`](docs/BACKEND.md) · [`docs/DATABASE.md`](docs/DATABASE.md) · [`docs/AUTH.md`](docs/AUTH.md) ·
 [`docs/STORAGE.md`](docs/STORAGE.md) · [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) ·
-[`docs/SUPABASE_AUDIT.md`](docs/SUPABASE_AUDIT.md), then the database docs in [`supabase/`](supabase) and the manuals.
+[`docs/SUPABASE_AUDIT.md`](docs/SUPABASE_AUDIT.md) · [`docs/CLEANUP.md`](docs/CLEANUP.md) (manual §11 clean-up), then the database docs in [`supabase/`](supabase) and the manuals.
 
 ## Quick start
 

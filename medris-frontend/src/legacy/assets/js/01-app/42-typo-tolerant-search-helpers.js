@@ -88,9 +88,7 @@ async function runSearchPageQuery(term, saveToHistory) {
     [fullRows, vends, packageRows] = await Promise.all([
       wantProducts ? searchCached(`p2:${kind === "all" ? 20 : 60}:${enc}`, async () => {
         const args = { p_query: term, p_limit: kind === "all" ? 20 : 60 };
-        const r = await sb.rpc("search_products_full_v2", args).abortSignal(controller.signal);
-        // Older database without the richer function: fall back to the original one.
-        return r.error && !controller.signal.aborted ? sb.rpc("search_products_full", args).abortSignal(controller.signal) : r;
+        return sb.rpc("search_products_full_v2", args).abortSignal(controller.signal);
       }, controller.signal, true) : [],
       wantVendors ? searchCached(`v2:${kind === "all" ? 6 : 30}:${enc}`, async () => {
         // Vendors match by shop name AND by what they sell: a search for a product or service also surfaces the shops offering it.
@@ -98,8 +96,7 @@ async function runSearchPageQuery(term, saveToHistory) {
         const vendorCols = "id,business_name,logo_url,city,lat,lng,avg_rating,review_count,sector_id";
         const byName = await sb.from("vendors").select(vendorCols).eq("verification_status", "verified").eq("is_active", true).ilike("business_name", `%${term}%`).limit(limit).abortSignal(controller.signal);
         if (byName.error) return byName;
-        let prodRes = await sb.rpc("search_products_full_v2", { p_query: term, p_limit: 40 }).abortSignal(controller.signal);
-        if (prodRes.error && !controller.signal.aborted) prodRes = await sb.rpc("search_products_full", { p_query: term, p_limit: 40 }).abortSignal(controller.signal);
+        const prodRes = await sb.rpc("search_products_full_v2", { p_query: term, p_limit: 40 }).abortSignal(controller.signal);
         const known = new Set((byName.data || []).map((v) => String(v.id)));
         const ids = [...new Set((prodRes.data || []).map((r) => r.vendor_id).filter(Boolean).map(String))].filter((id) => !known.has(id)).slice(0, limit);
         let extra = [];

@@ -7,6 +7,8 @@
  *   db:migrate -- --apply --confirm <host>
  *                                     the same against a remote database: <host> must repeat the
  *                                     target's host name, so production is never changed by accident
+ *   db:migrate -- --only 0003[,0005]  limit the dry run / apply to these pending versions (apply the
+ *                                     files that are approved while others wait)
  *   db:migration:new -- <name>        creates the next numbered file from a template
  *   db:migrations:check [-- --base origin/main]
  *                                     validates the files without a database (CI); with --base,
@@ -144,6 +146,12 @@ async function migrate(args: string[]): Promise<void> {
   const files = readFilesOrFail();
   const t = target();
   const apply = args.includes("--apply");
+  const onlyArg = option(args, "--only");
+  const only = onlyArg ? onlyArg.split(",").map((v) => v.trim().padStart(4, "0")) : undefined;
+  if (only) {
+    const unknown = only.filter((v) => !files.some((f) => f.version === v));
+    if (unknown.length) fail(`--only: no migration file with version ${unknown.join(", ")}.`);
+  }
 
   if (apply) {
     if (t.url.port === "6543") {
@@ -166,18 +174,25 @@ async function migrate(args: string[]): Promise<void> {
     const plan = planMigrations(files, await readApplied(client));
     if (plan.problems.length) fail(`Nothing was applied. Problems:\n${plan.problems.map((p) => `  - ${p}`).join("\n")}`);
     for (const w of plan.warnings) console.log(`warning: ${w}`);
-    if (!plan.pending.length) {
-      console.log(`\n${t.label} is up to date (${files.length} migrations).\n`);
+    const selected = plan.pending.filter((f) => !only || only.includes(f.version));
+    if (only) {
+      const done = only.filter((v) => !selected.some((f) => f.version === v));
+      for (const v of done) console.log(`${v} is already applied.`);
+    }
+    if (!selected.length) {
+      console.log(`\n${t.label}: nothing to apply${only ? " for --only" : ""} (${files.length} migrations, ${plan.pending.length} pending).\n`);
       return;
     }
     if (!apply) {
       console.log(`\nDry run - would apply to ${t.label}:\n`);
-      for (const f of plan.pending) console.log(`  ${f.filename}${f.transactional ? "" : "  (no transaction)"}`);
-      console.log(`\nNothing was changed. Add --apply${t.local ? "" : ` --confirm ${t.url.hostname}`} to apply.\n`);
+      for (const f of selected) console.log(`  ${f.filename}${f.transactional ? "" : "  (no transaction)"}`);
+      const flags = `--apply${only ? ` --only ${only.join(",")}` : ""}${t.local ? "" : ` --confirm ${t.url.hostname}`}`;
+      console.log(`\nNothing was changed. Add ${flags} to apply.\n`);
       return;
     }
     console.log(`\nApplying to ${t.label}:\n`);
     const result = await applyMigrations(client, files, {
+      only,
       onApplied: (file, ms) => console.log(`  applied  ${file.filename}  (${ms} ms)`),
     });
     if (result.plan.problems.length) fail(`Nothing was applied. Problems:\n${result.plan.problems.map((p) => `  - ${p}`).join("\n")}`);

@@ -230,7 +230,12 @@ export interface ApplyResult {
 export async function applyMigrations(
   client: SqlClient,
   files: MigrationFile[],
-  options: { lockTimeout?: string; onApplied?: (file: MigrationFile, ms: number) => void } = {},
+  options: {
+    lockTimeout?: string;
+    /** Apply only these pending versions (others stay pending), e.g. one approved file. */
+    only?: readonly string[];
+    onApplied?: (file: MigrationFile, ms: number) => void;
+  } = {},
 ): Promise<ApplyResult> {
   const lockTimeout = options.lockTimeout ?? "10s";
   await ensureTrackingTable(client);
@@ -239,9 +244,10 @@ export async function applyMigrations(
     // Read again under the lock: another runner may have applied something meanwhile.
     const plan = planMigrations(files, await readApplied(client));
     if (plan.problems.length) return { applied: [], plan };
+    const only = options.only ? new Set(options.only) : undefined;
 
     const applied: ApplyResult["applied"] = [];
-    for (const file of plan.pending) {
+    for (const file of plan.pending.filter((f) => !only || only.has(f.version))) {
       const started = performance.now();
       if (file.transactional) {
         await client.exec("begin");

@@ -134,6 +134,22 @@ describe("migration runner", () => {
     await db.close();
   });
 
+  it("applies only the selected versions with `only`", async () => {
+    const { db, client } = pglite();
+    const { files } = readMigrations(
+      folder({ "0001_a.sql": "create table a (id int);", "0002_b.sql": "create table b (id int);", "0003_c.sql": "create table c (id int);" }),
+    );
+    const result = await applyMigrations(client, files, { only: ["0002"] });
+    expect(result.applied.map((a) => a.file.version)).toEqual(["0002"]);
+    expect(await tableExists(client, "a")).toBe(false);
+    expect(await tableExists(client, "b")).toBe(true);
+
+    const plan = planMigrations(files, await readApplied(client));
+    expect(plan.pending.map((f) => f.version)).toEqual(["0001", "0003"]);
+    expect(plan.warnings).toEqual(["0001_a.sql is pending but 0002 is already applied; it will run after it."]);
+    await db.close();
+  });
+
   it("rolls back a failing file completely and stops there", async () => {
     const { db, client } = pglite();
     const { files } = readMigrations(

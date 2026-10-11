@@ -80,6 +80,8 @@ npm run db:migrate -w medris-backend -- --apply --confirm aws-0-<region>.pooler.
 
 - `--apply` against anything that is not a local database also needs `--confirm <host>` repeating the target's host
   name, so a command meant for a laptop can never change production.
+- `--only 0003,0005` limits the dry run or the apply to those pending files, so an approved file can go out while an
+  earlier one is still waiting for approval (the earlier one stays pending and runs later).
 - Pending files run in order under an advisory lock (one runner at a time), each with `lock_timeout = 10s` so a
   migration waiting on a busy table fails instead of blocking the app. The first file that fails is rolled back and
   the run stops; files before it stay applied.
@@ -106,6 +108,7 @@ npm run db:migrate -w medris-backend -- --apply --confirm aws-0-<region>.pooler.
 | `supabase/01_tables.sql` ... `supabase/14_*.sql` | History: applied to production by hand before this process (09-14 through Supabase's MCP tool, which keeps its own `supabase_migrations` table - left untouched). Reference only, never re-run. |
 | `0001_backend_api_role.sql` | adds role `medris_api` (least-privilege connections) - pending, needs approval |
 | `0002_backend_auth_sessions.sql` | adds empty table `backend_sessions` (for `AUTH_BACKEND_SESSIONS=true`) - pending, needs approval |
+| `0003`-`0006` | clean-up from manual section 11: duplicate indexes, duplicate sectors, retire `inventory` and search v1 - pending, needs approval; see [CLEANUP.md](CLEANUP.md) (0006 only after the frontend with asset version 127 is live) |
 
 The authoritative state of any database is `npm run db:status` against it.
 
