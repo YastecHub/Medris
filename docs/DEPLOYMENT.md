@@ -52,8 +52,8 @@ No database change is part of this branch, so there is nothing to roll back in t
 |---|---|---|---|
 | 1 | Add `DATABASE_URL` (+ pool/TLS settings) to Vercel | required by this branch | yes |
 | 2 | Add `SUPABASE_JWT_SECRET` | local verification of HS256 tokens | yes |
-| 3 | Apply `0001_backend_api_role.sql`, set a password, switch `DATABASE_URL` to `medris_api` | least-privilege connections | `drop role medris_api` after switching back |
-| 4 | Apply `0002_backend_auth_sessions.sql` | creates the empty sessions table | `drop table public.backend_sessions` |
+| 3 | Apply `0001_backend_api_role.sql` with the migration tool (DATABASE.md §3), set a password, switch `DATABASE_URL` to `medris_api` | least-privilege connections | `drop role medris_api` after switching back |
+| 4 | Apply `0002_backend_auth_sessions.sql` with the migration tool (DATABASE.md §3) | creates the empty sessions table | `drop table public.backend_sessions` |
 | 5 | Create a Google OAuth client for the backend; set `GOOGLE_*` | backend Google sign-in (preview first) | yes |
 | 6 | `AUTH_BACKEND_SESSIONS=true` (preview, then production) | backend sign-in available | yes |
 | 7 | Cloudinary credentials + `IMAGE_STORAGE=cloudinary` | new images to Cloudinary | yes (existing images untouched) |

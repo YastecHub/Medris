@@ -1,0 +1,103 @@
+name: CI
+
+# Runs on every pull request and on every push to main. A pull request should
+# only be merged when both jobs are green (GitHub: Settings > Branches > branch
+# protection for main > "Require status checks to pass": "Checks" and
+# "PostgreSQL 17").
+#
+# Nothing here talks to Supabase, Vercel, Paystack or any production system:
+# tests use an in-process PostgreSQL (PGlite) or the throwaway PostgreSQL
+# service below, and no secrets are used.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the migration check compares with the base branch.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Legacy script syntax
+        run: npm run legacy:check -w medris-frontend
+
+      - name: Migration files
+        run: npm run db:migrations:check -w medris-backend
+
+      # A migration that is already on the base branch may have been applied to
+      # production, so it must never change; new changes go in a new file. If a
+      # merged migration has provably never been applied anywhere and must be
+      # fixed, add the label "migration-edit" to the pull request.
+      - name: Merged migrations are unchanged
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'migration-edit')
+        run: npm run db:migrations:check -w medris-backend -- --base "origin/${{ github.base_ref }}"
+
+      - name: Tests (PGlite)
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  postgres:
+    name: PostgreSQL 17
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        # Same major version as production (Supabase).
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medris_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/medris_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # The whole backend suite on a real server, including the migration runner
+      # applying every file in src/database/migrations to the baseline schema.
+      - name: Backend tests on PostgreSQL 17
+        run: npm run test:postgres -w medris-backend

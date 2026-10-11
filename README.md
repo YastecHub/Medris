@@ -55,12 +55,19 @@ document. The backend is layered controller → service → repository ([docs/BA
 | `npm run build` | Builds the backend (`medris-backend/dist`) then the frontend (`medris-frontend/dist`) |
 | `npm run typecheck` / `npm run lint` / `npm test` | TypeScript, ESLint, Vitest in both apps (`npm run check` runs all three); backend tests use an in-process PostgreSQL (PGlite) |
 | `TEST_DATABASE_URL=… npm run test:postgres -w medris-backend` | the backend suite against a real PostgreSQL (database name must end in `_test`) |
-| `npm run db:dev -w medris-backend` | load the development schema into a local database |
+| `npm run db:dev -w medris-backend` | load the development schema (baseline + every migration) into a local database |
+| `npm run db:migration:new -w medris-backend -- "<name>"` | create the next database migration file ([docs/DATABASE.md](docs/DATABASE.md#3-changing-the-database-migrations)) |
+| `npm run db:status -w medris-backend` | which migrations a database has and which are pending (`MIGRATE_DATABASE_URL` or `DATABASE_URL`) |
+| `npm run db:migrate -w medris-backend` | dry run of the pending migrations; `-- --apply` applies them (remote databases also need `--confirm <host>`) |
 | `npm run db:introspect -w medris-backend` | read-only: generate Drizzle definitions of the live schema |
 | `npm run audit:supabase` | where the code still depends on Supabase (`-- --json` for file:line) |
 | `npm run bump-version -w medris-frontend -- <n>` | Sets the `?v=` cache-buster on `/assets` URLs and the service-worker cache name (replaces `tools/bump-version.sh`; run on every deploy that changes legacy files) |
 | `npm run legacy:check -w medris-frontend` | `node --check` on every legacy script |
 | `npm run legacy:rebaseline -w medris-frontend` | Records an intentional change to the legacy files for the regression test |
+
+**CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every pull request and every push to `main`:
+typecheck, lint, the legacy syntax check, migration checks, the tests (PGlite, and the backend suite again on
+PostgreSQL 17) and the build. It needs no secrets and never touches Supabase or Vercel.
 
 ## Deploying
 

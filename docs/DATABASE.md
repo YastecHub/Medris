@@ -42,21 +42,76 @@ Today `DATABASE_URL` can use the `postgres` user. `src/database/migrations/0001_
 read access to the few `auth.users` / `auth.identities` columns needed by backend sign-in. Tested in
 `tests/v1/least-privilege.test.ts`. If Supabase refuses one of its grants (it manages those roles), keep `postgres`.
 
-## 3. Schema changes and migrations
+## 3. Changing the database (migrations)
 
-- The production schema is owned by the existing SQL workflow (`supabase/`, manual section 13). **The backend never
-  creates, alters or drops anything on its own**; there is no automatic migration on start-up or deploy.
-- New SQL the backend needs is a reviewed file in `medris-backend/src/database/migrations/` with a header stating
-  status, effect and roll-back. Apply it by hand (Supabase SQL editor) **only after approval**:
+Every change to the database - tables, columns, indexes, functions/RPCs, triggers, RLS policies, grants, cron jobs - is
+a numbered SQL file in **`medris-backend/src/database/migrations/`**, reviewed in a pull request and applied with the
+migration tool. Each database records what it has received in `medris_migrations.applied` (version, checksum, who,
+when), so `npm run db:status` answers "is this change live?" for any database. Nothing is applied on start-up or by a
+Vercel deploy.
 
-| File | Effect | Needed for | Status |
-|---|---|---|---|
-| `0001_backend_api_role.sql` | adds role `medris_api` | least-privilege connections | not applied |
-| `0002_backend_auth_sessions.sql` | adds empty table `backend_sessions` (RLS on, no policies) | `AUTH_BACKEND_SESSIONS=true` | not applied |
+### From idea to production
 
-- Drizzle table definitions (`src/database/schema/`) list only the columns the code uses. To see the full live schema
-  as Drizzle code: `DATABASE_URL=… npm run db:introspect -w medris-backend` (read-only; writes
-  `drizzle/introspected/`). `drizzle-kit push`/`migrate` are deliberately not used.
+1. **Create the file:** `npm run db:migration:new -w medris-backend -- "add order index"` writes the next number
+   (e.g. `0003_add_order_index.sql`) from a template with *Why / Effect / Roll back / Approved*.
+2. **Write the SQL.** The runner wraps each file in a transaction together with its tracking row, so a failing file
+   leaves nothing behind - do not add `BEGIN`/`COMMIT`. Statements PostgreSQL refuses inside a transaction
+   (`CREATE INDEX CONCURRENTLY`, `VACUUM`) go in a file of their own that starts with `-- migrate:no-transaction`.
+   Functions follow the existing convention: `create or replace function ... security definer set search_path = public`,
+   check `auth.uid()` first, grant execute only to the roles that call it (manual section 13).
+3. **Try it locally** (Docker database, section 4): `npm run db:migrate -w medris-backend -- --apply`, then `npm test`
+   (the test databases are built from the baseline plus every migration).
+4. **Open a pull request.** CI (`.github/workflows/ci.yml`) checks the file names and numbering, refuses files with their
+   own transaction, runs the backend tests on PGlite and on PostgreSQL 17 with all migrations applied through the
+   runner, and fails if a migration that is already on `main` was edited, renamed or deleted.
+5. **After approval and merge, apply it to production** (below), then deploy code that depends on it.
+
+### Applying to production (needs approval)
+
+Use a session-mode connection (Supabase **session pooler** or direct connection, port **5432**); the transaction pooler
+(6543) used by the app cannot hold the migration lock and is refused.
+
+```bash
+export MIGRATE_DATABASE_URL='postgresql://postgres.ovklnoroyxobijgvsyfp:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres'
+npm run db:status  -w medris-backend         # applied / pending / changed
+npm run db:migrate -w medris-backend         # dry run: lists what would be applied, changes nothing
+npm run db:migrate -w medris-backend -- --apply --confirm aws-0-<region>.pooler.supabase.com
+```
+
+- `--apply` against anything that is not a local database also needs `--confirm <host>` repeating the target's host
+  name, so a command meant for a laptop can never change production.
+- Pending files run in order under an advisory lock (one runner at a time), each with `lock_timeout = 10s` so a
+  migration waiting on a busy table fails instead of blocking the app. The first file that fails is rolled back and
+  the run stops; files before it stay applied.
+- For anything risky, take a backup first (run the *Weekly database backup* workflow by hand).
+- The first `--apply` creates schema `medris_migrations` with the table `applied`. It is not exposed through Supabase's
+  REST API and `public`/`anon`/`authenticated` have no access to it.
+- Keeping the standby project? Apply the same files to it the same way.
+
+### Rules
+
+- **Never edit, rename or delete a migration once it is on `main`** - write a new one. `db:status` reports an edited
+  file as `changed` and refuses to apply anything; CI fails the pull request. Only for a merged file that has provably
+  never been applied anywhere, the pull-request label `migration-edit` skips that CI check.
+- One concern per file, with its roll-back SQL in the header.
+- Two pull requests that pick the same number: CI fails on the second (duplicate version) - renumber it.
+- **No more changes from the Supabase SQL editor or an AI tool's "apply migration".** If an emergency fix is made that
+  way, add the same SQL as a migration straight away (idempotent: `if not exists`, `create or replace`) and apply it,
+  so the record matches the database.
+
+### Where things stand
+
+| Files | State |
+|---|---|
+| `supabase/01_tables.sql` ... `supabase/14_*.sql` | History: applied to production by hand before this process (09-14 through Supabase's MCP tool, which keeps its own `supabase_migrations` table - left untouched). Reference only, never re-run. |
+| `0001_backend_api_role.sql` | adds role `medris_api` (least-privilege connections) - pending, needs approval |
+| `0002_backend_auth_sessions.sql` | adds empty table `backend_sessions` (for `AUTH_BACKEND_SESSIONS=true`) - pending, needs approval |
+
+The authoritative state of any database is `npm run db:status` against it.
+
+Drizzle table definitions (`src/database/schema/`) list only the columns the code uses; they describe the schema, they
+do not change it. To see the full live schema as Drizzle code: `DATABASE_URL=... npm run db:introspect -w medris-backend`
+(read-only; writes `drizzle/introspected/`). `drizzle-kit push`/`migrate` are deliberately not used.
 
 ## 4. Local development database
 
@@ -65,7 +120,7 @@ docker compose up -d db                          # PostgreSQL 17 on localhost:54
 # medris-backend/.env
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/medris_dev
 DATABASE_SSL_MODE=disable
-npm run db:dev -w medris-backend -- --seed       # development schema + a buyer, a vendor and a product
+npm run db:dev -w medris-backend -- --seed       # baseline schema + every migration + a buyer, a vendor and a product
 npm run dev:backend
 ```
 

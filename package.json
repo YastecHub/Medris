@@ -1,7 +1,7 @@
 {
   "name": "medris",
   "private": true,
-  "description": "Levromart marketplace: React + TypeScript frontend and Hono + TypeScript backend.",
+  "description": "Levromart marketplace: React + TypeScript frontend and Express + TypeScript backend.",
   "type": "module",
   "workspaces": [
     "medris-frontend",

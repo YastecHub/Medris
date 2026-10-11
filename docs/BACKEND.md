@@ -50,7 +50,7 @@ medris-backend/
 │   │   ├── errors.ts           SQLSTATE -> API error mapping
 │   │   ├── schema/             Drizzle table definitions (only columns the code uses)
 │   │   ├── repositories/       one class per area; all SQL lives here
-│   │   ├── migrations/         reviewed SQL files - NOT applied (0001 least-privilege role, 0002 sessions)
+│   │   ├── migrations/         every database change, NNNN_name.sql, applied by scripts/migrate.ts (DATABASE.md §3)
 │   │   └── portability/        supabase-compat.sql: auth.uid() + API roles for non-Supabase PostgreSQL
 │   ├── middleware/             request-context (request id, access log), auth (bearer/cookie, roles, CSRF),
 │   │                           rate-limit, cron-auth (shared secrets, constant-time)
@@ -73,6 +73,7 @@ medris-backend/
 │   └── types/                  ambient module declarations
 ├── tests/                      Vitest: v1/ (incl. openapi, services, contracts), legacy/, support/, fixtures/
 ├── scripts/dev-database.ts     loads a development schema into a LOCAL database (refuses remote hosts)
+├── scripts/migrate.ts          db:status / db:migrate / db:migration:new / db:migrations:check (migrations.ts: the runner)
 ├── drizzle.config.ts           drizzle-kit, used read-only for introspection
 └── .env.example
 ```

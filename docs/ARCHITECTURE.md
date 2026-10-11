@@ -69,7 +69,7 @@ medris/
 │   └── tests/                    v1/ + legacy/ tests on a disposable PostgreSQL (PGlite or TEST_DATABASE_URL)
 ├── scripts/                      supabase-audit.mjs (dependency scan), check-deploy-env.mjs (production build guard)
 ├── docker-compose.yml            local PostgreSQL for development and tests
-├── supabase/                     database docs, SQL migrations and export script (unchanged)
+├── supabase/                     database docs, history SQL from before the migration process, export script
 ├── docs/                         manuals (the PDFs are the database/feature reference)
 └── .github/workflows/            weekly DB backup, optional order-reminder trigger (unchanged)
 ```
