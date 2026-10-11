@@ -247,7 +247,7 @@
     function close(){ m.remove(); }
     m.querySelector(".lv-cm-back").addEventListener("click",close);
     var got=await Promise.all([
-      sb.from("vendor_student_verification").select("*").eq("vendor_id",vendorId).maybeSingle(),
+      sb.from("vendor_student_verification").select("*").eq("vendor_id",vendorId).maybeSingle().then(function(r){ return (window.lvSignDocs&&r&&r.data)?window.lvSignDocs(r.data).then(function(){return r;}):r; }),
       sb.from("vendors").select("business_name,logo_url,verification_status,student_verified,campus_id").eq("id",vendorId).maybeSingle()
     ]);
     var sv=got[0]&&got[0].data, vd=(got[1]&&got[1].data)||{};
@@ -305,7 +305,7 @@
     if(!v||typeof sb==="undefined") return;
     nudged=true;
     sb.from("vendor_student_verification").select("status,selfie_url,id_card_url,biodata_url,face_v,matric_number").eq("vendor_id",v.id).maybeSingle().then(function(r){
-      var row=r&&r.data; if(!row||(row.face_v||0)>=2) return;
+      var row=r&&r.data; if(!row||(row.face_v||0)>=2) return; if(window.lvSignDocs) window.lvSignDocs(row);
       if(document.getElementById("lvFace")||document.getElementById("lvSetup")||document.getElementById("lvCampus")){ nudged=false; return; }
       var docs=[row.id_card_url,row.biodata_url].filter(Boolean);
       window.lvFacePreload(); window.lvFacePrepDocs(docs);
@@ -329,5 +329,5 @@
       });
     }).catch(function(){nudged=false;});
   }
-  setInterval(nudgeCheck,6000);
+  // selfie nudge switched off: a selfie is no longer asked for
 })();

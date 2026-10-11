@@ -1106,11 +1106,23 @@
     const hoursPreset=String(byId("vaHoursPreset")?.value||"").trim();
     const business_hours=hoursPreset==="custom"?collectBusinessHoursFromForm():vendorApplyHoursPresetToJson(hoursPreset);
 
-    if(!sectorSelection){errorEl.textContent="Please select your business sector.";errorEl.classList.remove("hidden");return;}
-    if(sectorSelection==="__other__"&&!customSector){errorEl.textContent="Please enter your business sector.";errorEl.classList.remove("hidden");openVendorApplyOtherSector();return;}
-    if(!business_name){errorEl.textContent="Please enter your business name.";errorEl.classList.remove("hidden");byId("vaBusinessName")?.focus();return;}
-    if(!phone){errorEl.textContent="Please enter your phone number.";errorEl.classList.remove("hidden");byId("vaPhone")?.focus();return;}
-    if(!whatsapp){errorEl.textContent="Please enter your WhatsApp number.";errorEl.classList.remove("hidden");byId("vaWhatsapp")?.focus();return;}
+    const flag=(id,msg,fallbackId)=>{
+      errorEl.textContent=msg;errorEl.classList.remove("hidden");
+      document.querySelectorAll(".va-missing").forEach(x=>x.classList.remove("va-missing"));
+      const el=byId(id)&&!byId(id).classList.contains("hidden")?byId(id):(byId(fallbackId)||byId(id));
+      if(el){
+        el.classList.add("va-missing");
+        try{el.scrollIntoView({block:"center",behavior:"smooth"});}catch(_){}
+        setTimeout(()=>{try{el.focus({preventScroll:true});}catch(_){}},350);
+        const clear=()=>{el.classList.remove("va-missing");el.removeEventListener("input",clear);el.removeEventListener("click",clear);};
+        el.addEventListener("input",clear);el.addEventListener("click",clear);
+      }
+    };
+    if(!sectorSelection){flag("vaSector","Please select your business sector.","vaSectorPickerBtn");return;}
+    if(sectorSelection==="__other__"&&!customSector){flag("vaOtherSector","Please enter your business sector.","vaSectorPickerBtn");openVendorApplyOtherSector();return;}
+    if(!business_name){flag("vaBusinessName","Please enter your business name.");return;}
+    if(!phone){flag("vaPhone","Please enter your phone number.");return;}
+    if(!whatsapp){flag("vaWhatsapp","Please enter your WhatsApp number.");return;}
 
     vendorApplyBusy=true;button.disabled=true;button.classList.add("is-busy");
     const original=button.innerHTML;

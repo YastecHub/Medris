@@ -1631,19 +1631,33 @@ async function setVendorRequestPref(v){
   };
 
   // ---------- student verification
-  var svMem={};
+  var svMem={}, SIGNED={};
+  var DOCF=["id_card_url","biodata_url","selfie_url"];
+  window.lvSignedUrl=function(u){ return (u&&SIGNED[u])||u; };
+  // turns private "sbdoc:" paths into short-lived links. keepRaw leaves the row's own values alone and only fills the lookup.
+  window.lvSignDocs=async function(row,keepRaw){
+    try{
+      if(!row) return row; var raws=DOCF.map(function(f){return row[f];}).filter(function(x){return x&&String(x).indexOf("sbdoc:")===0&&!SIGNED[x];});
+      if(raws.length){
+        var r=await sb.storage.from("vendor-docs").createSignedUrls(raws.map(function(x){return x.slice(6);}),3600);
+        ((r&&r.data)||[]).forEach(function(d,i){ if(d&&d.signedUrl) SIGNED[raws[i]]=d.signedUrl; });
+      }
+      if(!keepRaw) DOCF.forEach(function(f){ if(row[f]&&SIGNED[row[f]]) row[f]=SIGNED[row[f]]; });
+    }catch(_){}
+    return row;
+  };
   function levelOptions(sel){return '<option value="">Select your level</option>'+LEVELS.map(function(g){return '<optgroup label="'+g[0]+'">'+g[1].map(function(l){return '<option '+(l===sel?'selected':'')+'>'+l+'</option>';}).join("")+'</optgroup>';}).join("");}
   function mountSV(after,cb){
     if(after.parentNode.querySelector("[data-lvsv]")) return;
     var box=document.createElement("div"); box.className="lv-sv"; box.setAttribute("data-lvsv","1");
     after.insertAdjacentElement("afterend",box);
-    var v=V(), row=null, files={id:null,bio:null}, face=null, warmed=false, up_done={};
+    var v=V(), row=null, files={id:null,bio:null}, face=null, warmed=false, up_done={}, pend={};
     function isPdfUrl(u){ return /\.pdf(\?|$)/i.test(String(u||"")); }
     function notPdf(d){ return d&&!(d.type==="application/pdf"||isPdfUrl(typeof d==="string"?d:d.name)); }
     function fthumb(f,url,label,icon){
       if(!f&&!url) return '<i class="'+icon+'"></i>'+label;
       if((f&&f.pdf)||(!f&&isPdfUrl(url))) return '<i class="fa-regular fa-file-pdf"></i><span>'+(f&&f.name?e2(f.name.slice(0,20)):label+' (PDF)')+'</span>';
-      return '<img src="'+(f?f.url:e2(url))+'" alt=""><span>'+label+'</span>';
+      return '<img src="'+(f?f.url:e2(window.lvSignedUrl(url)))+'" alt=""><span>'+label+'</span>';
     }
     function stBadge(){ if(!row) return ""; var t={pending:["pending","fa-hourglass-half","Under review"],approved:["approved","fa-circle-check","Verified student"],rejected:["rejected","fa-circle-xmark","Needs attention"]}[row.status]||["pending","fa-hourglass-half","Under review"];
       if(row.matric_pending&&row.status!=="approved") t=["pending","fa-hourglass-half","Awaiting matric number"];
@@ -1666,23 +1680,57 @@ async function setVendorRequestPref(v){
        +'<div class="up"><button type="button" data-f="id" class="'+((files.id||r.id_card_url)?'has':'')+'">'+fthumb(files.id,r.id_card_url,"School ID card","fa-regular fa-id-card")+'</button>'
        +'<button type="button" data-f="bio" class="'+((files.bio||r.biodata_url)?'has':'')+'">'+fthumb(files.bio,r.biodata_url,"Biodata page","fa-regular fa-file-lines")+'</button></div>'
        +'<p class="sv-hint">Photos or PDF files both work.</p>'
-       +faceBtn(r)
        +'<input type="file" accept="image/*,application/pdf,.pdf" class="hidden" id="svFile">'
        +'<p class="sv-err hidden" id="svErr" role="alert"></p>'
        +'<button type="button" class="btn go" data-go="1">'+(row?"Resubmit for review":"Submit for review")+'</button>';
+    }
+    function srcOf(slot){ return slot==="face"?face:files[slot]; }
+    function upSlot(slot){
+      var src=srcOf(slot); if(!src||up_done[slot]) return Promise.resolve(up_done[slot]||null);
+      var blob=slot==="face"?src.blob:src.file, pdf=slot!=="face"&&src.pdf, type=pdf?"application/pdf":"image/jpeg";
+      if(typeof session==="undefined"||!session||!session.user) return Promise.resolve(null);
+      var uid=session.user.id, stamp=Date.now(), ext=pdf?".pdf":".jpg";
+      function within(pr,ms){ return Promise.race([pr,new Promise(function(_,rej){ setTimeout(function(){ rej(new Error("timeout")); },ms); })]); }
+      // route 1: private Supabase bucket (same host the app already talks to, so it works wherever the app works). Only the owner and admins can read it.
+      async function viaSupabase(){
+        var path=uid+"/verification/"+slot+"-"+stamp+ext;
+        var r=await within(sb.storage.from("vendor-docs").upload(path,blob,{contentType:type,upsert:true}),45000);
+        if(r&&r.error) throw r.error;
+        return "sbdoc:"+path;
+      }
+      // route 2: R2 presigned upload
+      function viaR2(){ return uploadToR2(blob,"vendor-logos/verification/"+uid+"/"+slot+"-"+stamp+ext,type); }
+      return (async function(){
+        var last=null, routes=[viaSupabase,viaR2,viaSupabase,viaR2];
+        for(var a=0;a<routes.length;a++){
+          try{
+            if(a>0){ await new Promise(function(r){setTimeout(r,400*a);}); try{ var rs=await sb.auth.refreshSession(); if(rs&&rs.data&&rs.data.session) session=rs.data.session; }catch(_){} }
+            var u=await routes[a]();
+            if(srcOf(slot)===src) up_done[slot]=u;
+            return u;
+          }catch(er){ last=er; }
+        }
+        throw last||new Error("Upload failed");
+      })();
+    }
+    function startUp(slot){ if(up_done[slot]) return; var p=upSlot(slot); pend[slot]=p; p.catch(function(){}); }
+    async function needUp(slot){
+      if(up_done[slot]) return up_done[slot];
+      var p=pend[slot]; if(p){ try{ var u=await p; if(u) return u; }catch(_){} }
+      return await upSlot(slot);
     }
     function keepFiles(){ try{ if(!window.lvDraftFiles) return; window.lvDraftFiles.save("sv",{id:files.id?{file:files.id.file,pdf:!!files.id.pdf,name:files.id.name}:null,bio:files.bio?{file:files.bio.file,pdf:!!files.bio.pdf,name:files.bio.name}:null,face:face?{blob:face.blob,distance:face.distance,match:face.match,liveness:face.liveness}:null}); }catch(_){} }
     async function restoreFiles(){
       try{ if(!window.lvDraftFiles) return; var d=await window.lvDraftFiles.load("sv"); if(!d) return; var any=false;
         ["id","bio"].forEach(function(k){ if(!files[k]&&d[k]&&d[k].file){ files[k]={file:d[k].file,url:d[k].pdf?"":URL.createObjectURL(d[k].file),pdf:d[k].pdf,name:d[k].name}; any=true; } });
         if(!face&&d.face&&d.face.blob){ face={blob:d.face.blob,url:URL.createObjectURL(d.face.blob),distance:d.face.distance,match:d.face.match,liveness:d.face.liveness}; any=true; }
-        if(any){ var k=keepInputs(); paint(); restoreInputs(k); }
+        if(any){ var k=keepInputs(); paint(); restoreInputs(k); ["id","bio","face"].forEach(function(x){ if(srcOf(x)) startUp(x); }); }
       }catch(_){}
     }
     function load(){
       setTimeout(restoreFiles,0);
       if(!v){ try{var p=JSON.parse(localStorage.getItem("lv-sv-pending")||"null"); if(p) row={matric_number:p.nm?null:p.matric,matric_pending:!!p.nm,faculty:p.faculty,department:p.department,level:p.level,id_card_url:p.idUrl,biodata_url:p.bioUrl,selfie_url:p.selfieUrl,face_match:p.faceMatch,status:"pending"};}catch(_){} paint(); return; }
-      sb.from("vendor_student_verification").select("*").eq("vendor_id",v.id).maybeSingle().then(function(r){ row=r&&r.data||null; paint(); });
+      sb.from("vendor_student_verification").select("*").eq("vendor_id",v.id).maybeSingle().then(function(r){ row=r&&r.data||null; return window.lvSignDocs(row,true); }).then(function(){ paint(); });
     }
     var cur=null;
     box.addEventListener("click",function(e){
@@ -1692,13 +1740,13 @@ async function setVendorRequestPref(v){
     });
     box.addEventListener("change",async function(e){
       if(e.target.id==="svNoMatric"){ setNo(e.target.checked); return; }
-      if(e.target.id!=="svFile"||!cur) return; var file=e.target.files[0]; e.target.value=""; if(!file) return;
+      if(e.target.id!=="svFile"||!cur) return; var slot=cur, file=e.target.files[0]; e.target.value=""; if(!file) return;
       var keep={m:box.querySelector("#svMatric").value,f:box.querySelector("#svFaculty").value,d:box.querySelector("#svDept").value,l:box.querySelector("#svLevel").value,n:box.querySelector("#svNoMatric").checked};
       try{
         if(file.type==="application/pdf"||/\.pdf$/i.test(file.name||"")){
           if(file.size>10*1024*1024){ toast("That PDF is too big. Use one under 10 MB.","error"); }
-          else { files[cur]={file:file,url:"",pdf:true,name:file.name||"document.pdf"}; delete up_done[cur]; keepFiles(); }
-        } else { var small=await lvPrepareImageFile(file,1400); files[cur]={file:small,url:URL.createObjectURL(small)}; delete up_done[cur]; keepFiles(); }
+          else { files[slot]={file:file,url:"",pdf:true,name:file.name||"document.pdf"}; delete up_done[slot]; keepFiles(); startUp(slot); }
+        } else { var small=await lvPrepareImageFile(file,1400); files[slot]={file:small,url:URL.createObjectURL(small)}; delete up_done[slot]; keepFiles(); startUp(slot); }
       }catch(_){ toast("Couldn't read that file. Try a different photo or a PDF.","error"); }
       row=row||null; paint(); setNo(keep.n); box.querySelector("#svMatric").value=keep.m; box.querySelector("#svFaculty").value=keep.f; box.querySelector("#svDept").value=keep.d; box.querySelector("#svLevel").value=keep.l;
     });
@@ -1712,6 +1760,13 @@ async function setVendorRequestPref(v){
     function setNo(on){ var c=box.querySelector("#svNoMatric"),i=box.querySelector("#svMatric"); if(!c||!i) return; c.checked=!!on; i.disabled=!!on; if(on) i.value=""; }
     function keepInputs(){ return {m:box.querySelector("#svMatric").value,f:box.querySelector("#svFaculty").value,d:box.querySelector("#svDept").value,l:box.querySelector("#svLevel").value,n:box.querySelector("#svNoMatric").checked}; }
     function restoreInputs(k){ setNo(k.n); box.querySelector("#svMatric").value=k.m; box.querySelector("#svFaculty").value=k.f; box.querySelector("#svDept").value=k.d; box.querySelector("#svLevel").value=k.l; }
+    function autoSend(){
+      try{
+        var g=function(q){return box.querySelector(q);}; if(!g("#svMatric")) return;
+        var nm=g("#svNoMatric").checked, ok=(nm||g("#svMatric").value.trim())&&g("#svFaculty").value.trim()&&g("#svDept").value.trim()&&g("#svLevel").value&&(files.id||(row&&row.id_card_url))&&(files.bio||(row&&row.biodata_url))&&(face||(row&&row.selfie_url));
+        var btn=g("[data-go]"); if(ok&&btn&&!btn.disabled) setTimeout(function(){ submit(btn); },350);
+      }catch(_){}
+    }
     async function doFace(){
       var r=row||{};
       if(!window.lvFaceCheck){ toast("The camera isn't available right now.","error"); return; }
@@ -1720,8 +1775,8 @@ async function setVendorRequestPref(v){
       var res=await window.lvFaceCheck({docs:docs});
       
       if(!res||!res.blob) return;
-      face=res; delete up_done.face; keepFiles(); paint(); restoreInputs(keep);
-      toast("Selfie saved.","success");
+      face=res; delete up_done.face; keepFiles(); startUp("face"); paint(); restoreInputs(keep);
+      toast("Selfie saved.","success"); autoSend();
     }
     async function submit(btn){
       var m=box.querySelector("#svMatric").value.trim(),f=box.querySelector("#svFaculty").value.trim(),d=box.querySelector("#svDept").value.trim(),l=box.querySelector("#svLevel").value;
@@ -1730,29 +1785,15 @@ async function setVendorRequestPref(v){
       if(miss.length){ ferr("Please add your "+miss.join(", ")+".",bad); return; }
       var hasId=files.id||(row&&row.id_card_url), hasBio=files.bio||(row&&row.biodata_url);
       if(!hasId||!hasBio){ ferr("Please add your "+(!hasId&&!hasBio?"ID card and biodata page":!hasId?"ID card":"biodata page")+" (a photo or a PDF).",[!hasId?'[data-f="id"]':null,!hasBio?'[data-f="bio"]':null].filter(Boolean)); return; }
-      if(!face&&!(row&&row.selfie_url)){ ferr("Please take your selfie (step 4). It only takes a few seconds.",['[data-face]']); return; }
       var old=btn.innerHTML; btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
       try{
         var uid=session&&session.user&&session.user.id, base="vendor-logos/verification/"+(v?v.id:uid)+"/", ts=Date.now();
-        // one at a time (steadier on weak mobile data), each retried, and kept after success so a retry never re-sends what already went through
-        var step=0, total=(files.id&&!up_done.id?1:0)+(files.bio&&!up_done.bio?1:0)+(face&&!up_done.face?1:0);
-        async function put(slot,blob,key,type){
-          if(up_done[slot]) return up_done[slot];
-          step++; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Uploading '+step+' of '+total+'…';
-          var last=null;
-          for(var a=0;a<4;a++){
-            try{
-              if(a>0){ await new Promise(function(r){setTimeout(r,700*a);}); try{ var rs=await sb.auth.refreshSession(); if(rs&&rs.data&&rs.data.session) session=rs.data.session; }catch(_){} }
-              var u=await uploadToR2(blob,key,type); up_done[slot]=u; return u;
-            }catch(er){ last=er; }
-          }
-          throw last||new Error("Upload failed");
-        }
-        var out=[];
-        out[0]=files.id?await put("id",files.id.file,base+"id-"+ts+(files.id.pdf?".pdf":".jpg"),files.id.pdf?"application/pdf":"image/jpeg"):(row&&row.id_card_url);
-        out[1]=files.bio?await put("bio",files.bio.file,base+"bio-"+ts+(files.bio.pdf?".pdf":".jpg"),files.bio.pdf?"application/pdf":"image/jpeg"):(row&&row.biodata_url);
-        out[2]=face?await put("face",face.blob,base+"face-"+ts+".jpg","image/jpeg"):((row&&row.selfie_url)||null);
-        btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
+        // most files are already uploaded (they start sending the moment they're picked); only top up what's missing
+        var out=await Promise.all([
+          files.id?needUp("id"):Promise.resolve(row&&row.id_card_url),
+          files.bio?needUp("bio"):Promise.resolve(row&&row.biodata_url),
+          face?needUp("face"):Promise.resolve((row&&row.selfie_url)||null)
+        ]);
         var idUrl=out[0],bioUrl=out[1],selfieUrl=out[2];
         var fd=face?{face_distance:face.distance,face_match:face.match,face_liveness:face.liveness}:{face_distance:row&&row.face_distance!=null?row.face_distance:null,face_match:(row&&row.face_match)||"unchecked",face_liveness:row&&row.face_liveness!=null?row.face_liveness:null};
         var idFile=files.id&&!files.id.pdf?files.id.file:null, bioFile=files.bio&&!files.bio.pdf?files.bio.file:null;
@@ -1760,7 +1801,7 @@ async function setVendorRequestPref(v){
           var rec=Object.assign({vendor_id:v.id,matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_checked_at:(face||selfieUrl)?new Date().toISOString():null,face_v:(face||selfieUrl)?2:0,status:"pending",review_note:null,updated_at:new Date().toISOString()},fd);
           var up=await sb.from("vendor_student_verification").upsert(rec,{onConflict:"vendor_id"});
           if(up.error) throw up.error;
-          row=Object.assign({},rec); files={id:null,bio:null}; face=null; up_done={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
+          row=Object.assign({},rec); files={id:null,bio:null}; face=null; up_done={}; pend={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
           toast("Submitted. We'll review your documents shortly.","success"); if(cb) setTimeout(cb,300);
           // quietly read the ID card text so the reviewer can see whether the matric number / name appear on it
           if(false&&window.lvOcrRead&&(idFile||bioFile)){
@@ -1771,9 +1812,10 @@ async function setVendorRequestPref(v){
           }
         } else {
           localStorage.setItem("lv-sv-pending",JSON.stringify({nm:nm,matric:m,faculty:f,department:d,level:l,idUrl:idUrl,bioUrl:bioUrl,selfieUrl:selfieUrl,faceDistance:fd.face_distance,faceMatch:fd.face_match,faceLiveness:fd.face_liveness}));
-          row={matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_match:fd.face_match,status:"pending"}; files={id:null,bio:null}; face=null; up_done={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
+          row={matric_number:nm?null:m,matric_pending:nm,faculty:f,department:d,level:l,id_card_url:idUrl,biodata_url:bioUrl,selfie_url:selfieUrl,face_match:fd.face_match,status:"pending"}; files={id:null,bio:null}; face=null; up_done={}; pend={}; try{window.lvDraftClear&&window.lvDraftClear();}catch(_){}
           toast("Saved. It will be submitted with your application.","success");
         }
+        try{ await window.lvSignDocs(row,true); }catch(_){}
         paint();
       }catch(err){ btn.disabled=false; btn.innerHTML=old; var em=String((err&&err.message)||""); ferr(/failed to fetch|load failed|network|upload/i.test(em)||!em?"Your connection dropped while uploading. Nothing was lost. Tap Submit again.":em,[]); }
     }
@@ -1960,7 +2002,7 @@ async function setVendorRequestPref(v){
         foot='<button type="button" class="btn btn-outline" data-a="back2" style="flex:0 0 5rem">Back</button><button type="button" class="btn" data-a="next2">Continue</button>';
       } else {
         head+='<h2>Verify you\'re a student</h2><p class="st-sub">Add your student details and upload your ID card and biodata page. Only LevroMart admins see them.</p></div>';
-        body=hero("Verified students earn more trust and more orders.")+perks([["fa-shield-heart","Get a Verified student badge","Shown on your store and vendor cards once approved."],["fa-lock","Your documents stay private","Only LevroMart admins can see your ID and biodata."],["fa-bolt","Reviewed quickly","Our team checks submissions as they come in."]])+'<div id="stSv"></div>'; foot=(needCampus||needScope?'<button type="button" class="btn btn-outline" data-a="back3" style="flex:0 0 5rem">Back</button>':'')+'<button type="button" class="st-out" data-a="logout">Log out</button>';
+        body=hero("Verified students earn more trust and more orders.")+perks([["fa-shield-heart","Get a Verified student badge","Shown on your store and vendor cards once approved."],["fa-lock","Your documents stay private","Only LevroMart admins can see your ID and biodata."],["fa-bolt","Reviewed quickly","Our team checks submissions as they come in."]])+'<div id="stSv"></div>'; foot=('<button type="button" class="btn btn-outline" data-a="back3" style="flex:0 0 5rem">Back</button>')+'<button type="button" class="st-out" data-a="logout">Log out</button>';
       }
       w.innerHTML=head+'<div class="st-body">'+body+'</div><div class="st-foot">'+foot+'</div>';
       if(step===3){ var host=w.querySelector("#stSv"); var anchor=document.createElement("div"); host.appendChild(anchor); window.lvMountSV(anchor,function(){ finish(); }); }
@@ -1973,9 +2015,9 @@ async function setVendorRequestPref(v){
       var b=e.target.closest("[data-a],[data-s]"); if(!b) return; var a=b.dataset.a;
       if(b.dataset.s){ ops.scope=b.dataset.s; render(); if(ops.scope==="multiple"&&!ops.list.length) b=null,pickMany(); return; }
       if(a==="major"){ window.lvOpenCampusPicker({title:"Your major campus",current:v.campus_id,onPick:async function(r){ if(r.none||r.all) return; try{ await window.lvSaveCampus(r.id); v.campus_id=r.id; render(); }catch(_){ toast("Couldn't save your campus.","error"); } }}); }
-      else if(a==="next1"){ if(!v.campus_id||v.campus_id==="none"){ toast("Choose your campus to continue.","error"); return; } step=needScope?2:3; render(); }
+      else if(a==="next1"){ if(!v.campus_id||v.campus_id==="none"){ toast("Choose your campus to continue.","error"); return; } step=2; render(); }
       else if(a==="many"){ pickMany(); }
-      else if(a==="back2"){ if(needCampus){ step=1; render(); } }
+      else if(a==="back2"){ step=1; render(); }
       else if(a==="next2"){
         if(ops.scope==="multiple"&&!ops.list.length){ toast("Tick at least one campus.","error"); return; }
         if(ops.scope==="multiple"&&v.campus_id&&ops.list.indexOf(v.campus_id)<0) ops.list.push(v.campus_id);
@@ -1983,7 +2025,7 @@ async function setVendorRequestPref(v){
         v.operating_scope=ops.scope; v.operating_campuses=ops.list;
         if(needSv){ step=3; render(); } else finish();
       }
-      else if(a==="back3"){ step=needScope?2:1; render(); }
+      else if(a==="back3"){ step=2; render(); }
       else if(a==="logout"){ try{ await sb.auth.signOut(); }catch(_){} cleanup(); location.reload(); }
     });
     function pickMany(){ window.lvOpenCampusPicker({title:"Campuses you sell on",multi:true,selected:ops.list,onDone:function(ids){ ops.list=ids; render(); }}); }

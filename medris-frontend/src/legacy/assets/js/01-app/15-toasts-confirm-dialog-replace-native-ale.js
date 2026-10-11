@@ -207,22 +207,46 @@ function profileAvatarHtml(url, name, size = "2.6rem", opts = {}) {
 // call it replaces.
 async function uploadToR2(blob, key, contentType) {
   const type = contentType || blob.type || "application/octet-stream";
-  const presignRes = await fetch("/api/vendor-payments", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "r2-presign-upload", accessToken: session.access_token, key, contentType: type }),
-  });
-  const presignJson = await presignRes.json().catch(() => ({}));
-  if (!presignRes.ok) throw new Error(presignJson.error || "Could not start the upload.");
-  // The presigned URL was signed with this exact Cache-Control included, so the
-  // PUT must send the same header back or the signature won't validate. It's
-  // what lets a browser (and Cloudflare's edge) reuse this image indefinitely
-  // instead of re-fetching it from storage on every repeat view.
-  const putHeaders = { "Content-Type": type };
-  if (presignJson.cacheControl) putHeaders["Cache-Control"] = presignJson.cacheControl;
-  const putRes = await fetch(presignJson.uploadUrl, { method: "PUT", headers: putHeaders, body: blob });
-  if (!putRes.ok) throw new Error("Upload to storage failed. Please try again.");
-  return presignJson.publicUrl;
+  const folder = String(key).split("/")[0];
+  const rest = String(key).split("/").slice(1).join("/");
+  // Same file, second route: Supabase Storage (the host the app already talks to). Used when the R2 upload route is slow
+  // or blocked on a person's network, so photo uploads still go through instead of silently doing nothing.
+  const viaSupabase = async () => {
+    const p = sb.storage.from(folder).upload(rest, blob, { contentType: type, upsert: true, cacheControl: "31536000" });
+    const r = await Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("Upload timed out. Check your connection and try again.")), 60000))]);
+    if (r && r.error) throw new Error(r.error.message || "Upload failed.");
+    const g = sb.storage.from(folder).getPublicUrl(rest);
+    if (!g?.data?.publicUrl) throw new Error("Upload failed.");
+    return g.data.publicUrl;
+  };
+  const canFallback = ["avatars", "vendor-logos", "product-photos", "homepage-carousel"].includes(folder) && !rest.startsWith("verification/");
+  let r2Bad = false; try { r2Bad = sessionStorage.getItem("lv-r2-bad") === "1"; } catch (_) {}
+  if (canFallback && r2Bad) { try { return await viaSupabase(); } catch (_) { /* fall through to R2 */ } }
+  try {
+    const tmo = (ms) => { try { const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; } catch (_) { return undefined; } };
+    const presignRes = await fetch("/api/vendor-payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "r2-presign-upload", accessToken: session.access_token, key, contentType: type }),
+      signal: tmo(15000),
+    });
+    const presignJson = await presignRes.json().catch(() => ({}));
+    if (!presignRes.ok) throw new Error(presignJson.error || "Could not start the upload.");
+    // The presigned URL was signed with this exact Cache-Control included, so the
+    // PUT must send the same header back or the signature won't validate.
+    const putHeaders = { "Content-Type": type };
+    if (presignJson.cacheControl) putHeaders["Cache-Control"] = presignJson.cacheControl;
+    const putMs = Math.max(25000, Math.round((blob.size || 0) / 25) );
+    const putRes = await fetch(presignJson.uploadUrl, { method: "PUT", headers: putHeaders, body: blob, signal: tmo(putMs) });
+    if (!putRes.ok) throw new Error("Upload to storage failed. Please try again.");
+    try { sessionStorage.removeItem("lv-r2-bad"); } catch (_) {}
+    return presignJson.publicUrl;
+  } catch (err) {
+    if (!canFallback) throw err;
+    try { sessionStorage.setItem("lv-r2-bad", "1"); } catch (_) {}
+    try { return await viaSupabase(); }
+    catch (e2) { throw new Error((e2 && e2.message) || (err && err.message) || "Upload failed. Please try again."); }
+  }
 }
 
 async function uploadCarouselImage(blob, storagePath, contentType) {
