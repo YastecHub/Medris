@@ -14,19 +14,6 @@ export const DOCS_PATH = "/api/v1/docs";
 /** Common guesses for where the docs live; they redirect to DOCS_PATH. */
 export const DOCS_ALIASES = ["/docs", "/api-docs", "/swagger", "/api/docs"];
 
-const DESCRIPTION = `
-The Medris (Levromart) backend.
-
-* **/api/v1/...** - the backend's own API. Success: \`{ "data": ... }\`. Failure:
-  \`{ "error": { "code", "message", "details"? }, "requestId" }\` with a matching status.
-  Sign in with **Authorize -> bearerAuth** and a Supabase access token
-  (in the app's console: \`(await supabase.auth.getSession()).data.session.access_token\`).
-* **/api/...** (tag *Original endpoints*) - the endpoints the app used before /api/v1, unchanged in paths, bodies
-  and responses (\`{ "error": "message" }\` on failure). Most take the access token in the JSON body (\`accessToken\`).
-
-Every response carries an \`X-Request-Id\` header.
-`.trim();
-
 const TAGS = [
   { name: "Health", description: "Probes for load balancers and deploy checks." },
   { name: "Auth", description: "Who is calling; backend sign-in (off until AUTH_BACKEND_SESSIONS=true)." },
@@ -51,7 +38,7 @@ export function buildOpenApiDocument(services: AppServices) {
   register(registry, "/api", legacyDefinitions);
   return new OpenApiGeneratorV31(registry.definitions).generateDocument({
     openapi: "3.1.0",
-    info: { title: "Medris API", version: "1.0.0", description: DESCRIPTION },
+    info: { title: "Medris API", version: "1.0.0" },
     servers: [{ url: "/", description: "This deployment" }],
     tags: TAGS,
   });
