@@ -78,5 +78,5 @@ Everything else behaves as before (same URLs, bodies, statuses, messages). Inten
    `sessionsPurged` once backend sessions are enabled.
 7. **Shared secrets** (cron, webhook, call-decline tokens) are compared in constant time.
 8. **Frontend:** a ~10 KB inline script (the data gateway) is added before the app's scripts; 58 call sites now go
-   through it - with features off they run the identical Supabase queries (tested). Asset version 120.
+   through it - with features off they run the identical Supabase queries (tested). Asset version 126 (main was at 125).
 9. **Saving to the wishlist through the backend is idempotent** (a repeated save does not create a duplicate row).
