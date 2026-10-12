@@ -1457,3 +1457,11 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 
 .va-missing{outline:2px solid #ef4444 !important;outline-offset:2px;border-radius:12px;animation:vaShake .35s}
 @keyframes vaShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+/* ---- distance-tier-0: under 5 km = light blue, in light AND dark mode, on every card/search row ---- */
+:root{--dt0:#0ea5e9}
+:root[data-theme="dark"],:root[data-theme="black"]{--dt0:#7dd3fc}
+:root:root body #app .dt0{--dtc:var(--dt0)}
+:root:root:root:root body #app .product-card-dist[class*="dt"],:root:root:root:root body #app .search-result-distance[class*="dt"],:root:root:root:root body #app .vendor-distance[class*="dt"],:root:root:root:root body #app .storefront-distance-link[class*="dt"],
+:root:root:root:root body #app .search-result-distance[class*="dt"] *,:root:root:root:root body #app .product-card-dist[class*="dt"] *,:root:root:root:root body #app .vendor-distance[class*="dt"] *,:root:root:root:root body #app .storefront-distance-link[class*="dt"] *{color:var(--dtc)!important;-webkit-text-fill-color:var(--dtc)!important}
+:root:root:root:root body #app .product-card-dist[class*="dt"]{background:color-mix(in srgb,var(--dtc) 16%,transparent)!important}
