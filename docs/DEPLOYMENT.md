@@ -35,6 +35,11 @@ look at its preview, and watch the function logs for errors.
 
 Roll back: Vercel → Deployments → the previous deployment → *Instant Rollback*.
 
+**The repository is public** (since 12 Oct 2026), so Vercel's Hobby plan deploys commits from any author. Before it
+was made public, the whole git history (1,313 commits) was scanned for secrets: it holds no service-role, Paystack,
+Resend or Gemini keys, database passwords or webhook secrets - only the public Supabase anon key, which every visitor
+receives anyway. Keep it that way: secrets live in Vercel environment variables and git-ignored `.env` files only.
+
 ---
 
 ## Later: deploying medris-backend on its own host
