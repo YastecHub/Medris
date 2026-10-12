@@ -38,9 +38,13 @@ describe("least-privilege connection role (migration 0001)", () => {
         throw err;
       });
       exec = async (text) => void (await owner.query(text));
+      // Servers that require passwords (e.g. the postgres:17 image in CI) refuse a login without
+      // one, so give the role a throwaway password on this test server (roles are server-wide).
+      const password = crypto.randomUUID();
+      await owner.query(`alter role medris_api with password '${password}'`);
       const apiUrl = new URL(ownerUrl.toString());
       apiUrl.username = "medris_api";
-      apiUrl.password = "";
+      apiUrl.password = password;
       const api = new pg.Pool({ connectionString: apiUrl.toString() });
       data = new DataContext(drizzlePg(api, { schema }) as unknown as Db);
       close = async () => {

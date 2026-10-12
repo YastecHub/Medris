@@ -1,9 +1,10 @@
 name: CI
 
 # Runs on every pull request and on every push to main. A pull request should
-# only be merged when both jobs are green (GitHub: Settings > Branches > branch
+# only be merged when the jobs are green (GitHub: Settings > Branches > branch
 # protection for main > "Require status checks to pass": "Checks" and
-# "PostgreSQL 17").
+# "PostgreSQL 17"; the latter is skipped - counted as passed - when no backend
+# or database file changed).
 #
 # Nothing here talks to Supabase, Vercel, Paystack or any production system:
 # tests use an in-process PostgreSQL (PGlite) or the throwaway PostgreSQL
@@ -22,6 +23,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Decides whether the PostgreSQL job is needed. It runs only when something the
+  # backend or the database depends on changed; a frontend-only change (e.g.
+  # medris-frontend/, api/, docs/) skips it. A job skipped this way counts as
+  # passed, so it never blocks a merge. Manual runs always run everything.
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.diff.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: diff
+        name: Backend or database files changed?
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            base=$(git merge-base "origin/$BASE_REF" HEAD)
+          elif [ "$EVENT" = "push" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            base="$BEFORE"
+          else
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "No comparison point ($EVENT): running everything."
+            exit 0
+          fi
+          changed=$(git diff --name-only "$base" HEAD)
+          printf 'Changed files:\n%s\n' "$changed"
+          if printf '%s\n' "$changed" | grep -qE '^(medris-backend/|supabase/|package\.json$|package-lock\.json$|\.github/workflows/ci\.yml$)'; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing the backend or database depends on changed: the PostgreSQL job is skipped."
+          fi
+
   checks:
     name: Checks
     runs-on: ubuntu-latest
@@ -76,6 +117,8 @@ jobs:
 
   postgres:
     name: PostgreSQL 17
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
