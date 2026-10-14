@@ -1637,3 +1637,41 @@ html body #app .delivery-method-row label input[type=radio][value=pickup]:checke
 @media (min-width:900px){html body #app .vd-grid.vendors-list-mode{grid-template-columns:repeat(auto-fill,minmax(440px,1fr))!important}}
 /* one tick per vendor card: when the name carries it, the little one on the logo is not drawn */
 html body #app .vd-card:has(i.lv-svi) .vd-verified{display:none!important}
+
+/* ===== round 2 feedback ===== */
+/* product picture: the box is exactly as tall as the picture (no grey strip underneath) */
+html body #app .product-detail-card:not(.service-detail-card) .product-gallery-main,html body #app .product-detail-card:not(.service-detail-card) .product-gallery-track{aspect-ratio:auto!important}
+html body #app .product-detail-card:not(.service-detail-card) .product-gallery-main,
+html body #app .product-detail-card:not(.service-detail-card) .product-gallery-track,
+html body #app .product-detail-card:not(.service-detail-card) .product-gallery-slide{height:auto!important;max-height:none!important;background:transparent!important;align-items:flex-start}
+html body #app .product-detail-card:not(.service-detail-card) .product-gallery-slide img{width:100%!important;height:auto!important;max-height:min(72vh,640px)!important;object-fit:contain!important;display:block;margin:0 auto}
+
+/* dashboard / profile row icons: solid black in light mode, white in dark mode (not grey) */
+:root:root:root:root:root body #app .lv-row-ico,
+:root:root:root:root:root body #app .vh-row-ico,
+:root:root:root:root:root body #app .vh-stat-ico,
+:root:root:root:root:root body #app .vh-row-ico i,
+:root:root:root:root:root body #app .vh-stat-ico i,
+:root:root:root:root:root body #app .lv-row-ico i{color:var(--text,#111)!important;-webkit-text-fill-color:currentColor!important;opacity:1!important}
+:root:root:root:root:root:root[data-theme="dark"] body #app .lv-row-ico, :root:root:root:root:root:root[data-theme="dark"] body #app .vh-row-ico, :root:root:root:root:root:root[data-theme="dark"] body #app .vh-stat-ico, :root:root:root:root:root:root[data-theme="dark"] body #app .lv-row-ico i, :root:root:root:root:root:root[data-theme="dark"] body #app .vh-row-ico i, :root:root:root:root:root:root[data-theme="dark"] body #app .vh-stat-ico i, :root:root:root:root:root:root[data-theme="black"] body #app .lv-row-ico, :root:root:root:root:root:root[data-theme="black"] body #app .vh-row-ico, :root:root:root:root:root:root[data-theme="black"] body #app .vh-stat-ico:root:root:root:root:root:root[data-theme="black"] body #app .lv-row-ico i, :root:root:root:root:root:root[data-theme="black"] body #app .vh-row-ico i, :root:root:root:root:root:root[data-theme="black"] body #app .vh-stat-ico i{color:#fff!important}
+
+/* distance colour of the nearest tier: azure, clearly different from the purple of the farthest tier */
+:root{--dt0:#0e8fe6}
+:root[data-theme="dark"],:root[data-theme="black"]{--dt0:#55b6ff}
+
+/* "Negotiable": sits on the same baseline as a distance, just above the divider */
+:root:root:root:root:root:root:root:root body #app .product-card-wrap.product-card-compact > .card > .product-card-meta > .card-svc-tag,
+:root:root:root:root:root:root:root body #app .product-card-meta .card-svc-tag{margin:0 auto .1rem 0!important;align-self:flex-end!important}
+
+/* verified tick: a flat green seal with a white check, a little bigger, right after the name. Shown ONLY when the vendor is verified */
+:root{--lv-tick:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%231fb86f'%3E%3Ccircle cx='12' cy='12' r='8.6'/%3E%3Ccircle cx='20.3' cy='12' r='3.5'/%3E%3Ccircle cx='17.87' cy='17.87' r='3.5'/%3E%3Ccircle cx='12' cy='20.3' r='3.5'/%3E%3Ccircle cx='6.13' cy='17.87' r='3.5'/%3E%3Ccircle cx='3.7' cy='12' r='3.5'/%3E%3Ccircle cx='6.13' cy='6.13' r='3.5'/%3E%3Ccircle cx='12' cy='3.7' r='3.5'/%3E%3Ccircle cx='17.87' cy='6.13' r='3.5'/%3E%3C/g%3E%3Cpath d='M7.4 12.4l3 3 6.2-6.4' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+:root:root:root body i.sr-verified,:root:root:root body i.vendor-inline-verified,:root:root:root body i.lv-cr-vtick,:root:root:root body i.lv-svi,:root:root:root body i.od-verified,
+:root:root:root body .lcl-v i,:root:root:root body .vd-verified i,:root:root:root body .verified-tick i,:root:root:root body .vendor-card-verified-badge i,:root:root:root body .od-verified i{width:1.55em!important;height:1.55em!important;margin-left:.3em!important;vertical-align:-.38em!important}
+/* (the tick style above forced display:inline-block on every tick, which showed it on vendors who are not verified) */
+:root:root:root:root:root body [data-vt]:not(.lv-on){display:none!important}
+/* storefront: the tick sits right after the name; the extra chip to the right is not drawn */
+html body #app .storefront-name-row .lv-camp-line:has(.lcl-v){display:none!important}
+:root:root:root body strong:has(> .lv-svi) > [data-vt]{display:none!important}
+
+/* search page: "Product" / "Service" are plain coloured words, no tinted pill behind them */
+:root:root:root body #app .sr-type,:root:root:root body #app .sr-type-service,:root:root:root body #app .sr-type-package{background:transparent!important;padding-left:0!important;padding-right:0!important;box-shadow:none!important;border:0!important}
