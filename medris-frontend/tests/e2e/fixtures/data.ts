@@ -150,7 +150,7 @@ export const WISHLIST_PRODUCT_ROWS = [
   { product_id: "00000000-0000-4000-8000-000000000402", product: wProduct(2, { name: "Blender 500W", sale_price: 18000, vendor: wVendor(2, { business_name: "Brisk Tech", delivery_fee: 500, delivery_fee_mode: "flat" }) }) },
   { product_id: "00000000-0000-4000-8000-000000000403", product: wProduct(3, { name: "Camping Tent", listing_type: "rent", sale_price: null, rental_rate: 1500, rental_rate_unit: "day", photos: [], vendor: wVendor(3, { business_name: "Outdoor Co", logo_url: "https://images.example.test/logo-c.png" }) }) },
   { product_id: "00000000-0000-4000-8000-000000000404", product: wProduct(4, { name: "Logo Design", is_service: true, billing_model: "commission", sale_price: null, photos: [] }) },
-  { product_id: "00000000-0000-4000-8000-000000000405", product: wProduct(5, { name: "<i>Fancy</i> & Bag", photos: [], vendor: wVendor(5, { business_name: "", logo_url: null }) }) },
+  { product_id: "00000000-0000-4000-8000-000000000405", product: wProduct(5, { name: '<i>Fancy</i> & "Quoted" Bag', photos: [], vendor: wVendor(5, { business_name: "", logo_url: null }) }) },
   { product_id: "00000000-0000-4000-8000-000000000406", product: wProduct(6, { name: "Paused Listing", status: "paused" }) },
   { product_id: "00000000-0000-4000-8000-000000000407", product: wProduct(7, { name: "Far Away Fan", sale_price: 9000, vendor: wVendor(7, { business_name: "Distant Ltd", delivery_fee: 300, delivery_fee_mode: "distance", delivery_fee_per_km: 120 }) }) },
   { product_id: "00000000-0000-4000-8000-000000000408", product: wProduct(8, { name: "Unverified Seller Item", vendor: wVendor(8, { verification_status: "pending" }) }) },
