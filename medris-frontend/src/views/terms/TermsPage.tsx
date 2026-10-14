@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import { go } from "@/views/legacy-navigate";
 
 /**
  * Terms of Service, drawn by React.
@@ -11,17 +11,6 @@ import type { MouseEvent } from "react";
  *
  * The two links keep the old behaviour: they call the app's own navigate() and do not follow "#".
  */
-declare global {
-  interface Window {
-    navigate?: (view: string, params?: Record<string, unknown>, pushHistory?: boolean) => unknown;
-  }
-}
-
-const go = (view: string) => (event: MouseEvent<HTMLAnchorElement>) => {
-  event.preventDefault();
-  window.navigate?.(view);
-};
-
 export default function Terms() {
   return (
     <div className="legal-page">

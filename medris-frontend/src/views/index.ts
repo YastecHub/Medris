@@ -13,4 +13,5 @@ export type ViewModule = { default: ComponentType<ViewProps> };
  */
 export const VIEW_LOADERS: Readonly<Record<string, () => Promise<ViewModule>>> = {
   terms: () => import("./terms/TermsPage"),
+  privacy: () => import("./privacy/PrivacyPage"),
 };
