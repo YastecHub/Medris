@@ -88,6 +88,7 @@ suite("buyer", BUYER_SCREENS);
 const MIGRATED: Array<{ view: string; name: string; heading: string }> = [
   { view: "terms", name: "terms", heading: "Terms of Service" },
   { view: "privacy", name: "privacy", heading: "Privacy Policy" },
+  { view: "refundPolicy", name: "refund-policy", heading: "Refund & Cancellation Policy" },
 ];
 for (const m of MIGRATED) {
   for (const theme of THEMES) {
