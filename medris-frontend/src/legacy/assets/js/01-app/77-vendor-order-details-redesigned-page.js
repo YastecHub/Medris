@@ -212,7 +212,7 @@ async function renderOrderDetail(orderId, sourcePerspective = "") {
         <h2 style="margin:0;text-transform:capitalize;">${order.order_type} order</h2>
         <p class="muted" style="margin:0.15rem 0 0;">${isVendor ? "Customer order" : esc(order.vendor?.business_name || "")}${order.package?.name ? " · " + esc(order.package.name) : ""}</p>
       </div>
-      <span class="badge order-status-badge ${order.__paymentUnresolved ? "order-status-badge-payment-unresolved" : `order-status-badge-${esc(order.status)} ${orderStatusBadgeClass(order.status)}`}" style="text-transform:capitalize;flex-shrink:0;">${order.__paymentUnresolved ? "Payment unresolved" : order.status.replace("_", " ")}</span>
+      <span class="badge order-status-badge ${order.__paymentUnresolved ? "order-status-badge-payment-unresolved" : `order-status-badge-${esc(order.status)} ${orderStatusBadgeClass(order.status)}`}" style="text-transform:capitalize;flex-shrink:0;">${order.__paymentUnresolved ? "Payment unresolved" : (lvOrderStageLabel(order) || order.status.replace("_", " "))}</span>
     </div>
     ${order.created_at ? `<p class="muted" style="font-size:0.8rem;margin-top:0.7rem;"><i class="fa-solid fa-calendar-days"></i> Placed ${orderDateTimeStr(order.created_at)}</p>` : ""}
     ${isCustomer&&order.status==='pending'?`<div class="order-follow-up"><p class="muted order-follow-up-note"><em>Vendor hasn’t responded after 5–10 minutes? Tap “Remind vendor” and we’ll nudge them.</em></p><div class="order-follow-up-actions"><button type="button" class="btn btn-sm order-remind-btn" onclick="remindOrderVendor('${esc(order.id)}',this)" title="Send a reminder to the vendor"><i class="fa-solid fa-bell"></i> Remind vendor</button></div></div>`:''}
