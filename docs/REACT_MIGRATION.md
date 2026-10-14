@@ -212,7 +212,7 @@ counted by file; links built from data such as notification targets are not visi
 | `search` | `renderSearchPage` → `…/js/01-app/40-dedicated-search-page.js:37` | 1 | guest | 09-auth-identifier-helpers×1, 86-floating-ai-chat-dragga×1 |
 | `vendorRequests` | `renderVendorRequests` → `…/js/01-app/61-request-equipment-buyers-post-needs-vend.js:76` | 1 | vendor | 12-lv-onboarding-auth-js.j×2, 22-auth.js×1, 26-bottom-nav-mobile.js×1, 61-request-equipment-buyer×1 |
 | `terms` | `renderTerms` → `…/js/01-app/85-legal-pages.js:2` | 1 | guest | — |
-| `privacy` | `renderPrivacy` → `…/js/01-app/85-legal-pages.js:55` | 1 | guest | — |
+| `privacy` | 1 | React-off | this PR (#10) | Same pattern as `terms`; chunk `PrivacyPage-*.js` 6.0 kB, loads only when on. Parity tests pass. Not on for anyone: `?react=privacy` / `VITE_REACT_VIEWS`. |
 | `refundPolicy` | `renderRefundPolicy` → `…/js/01-app/85-legal-pages.js:100` | 1 | guest | 85-legal-pages.js×1 |
 | `sharedAiChat` | `renderSharedAiChat` → `…/js/01-app/86-floating-ai-chat-draggable.js:180` | 1 | guest (share link token) | 88-modal-back-button-outsi×1 |
 | `suspended` | `renderSuspendedScreen` → `…/js/01-app/27-suspended-account-screen.js:2` | 1 | signed-in (suspended account only) | 27-suspended-account-scree×1 |
