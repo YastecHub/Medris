@@ -1487,13 +1487,13 @@ html body #app .product-comments-card{display:none!important}
 @media (max-width:799.98px){html body #app .product-detail-card:not(.service-detail-card) .product-gallery-main{aspect-ratio:4/5!important;max-height:none!important}}
 @media (min-width:800px){html body #app .product-detail-card:not(.service-detail-card) .product-gallery-main{aspect-ratio:1/1!important;max-height:min(78vh,720px)!important}}
 /* delivery / pickup choice: round filled radios, delivery = the same light orange as the address card, pickup = blue */
-:root:root:root body #app .delivery-method-row input[type=radio]{appearance:none;-webkit-appearance:none;width:1.25rem!important;height:1.25rem!important;border-radius:50%;border:2px solid color-mix(in srgb,var(--text-muted,#64748b) 55%,transparent);background:var(--card,#fff);display:inline-grid;place-content:center;flex:none;margin:0!important;transition:border-color .15s,background .15s,box-shadow .15s}
-:root:root:root body #app .delivery-method-row input[type=radio]::before{content:"";width:.55rem;height:.55rem;border-radius:50%;background:#fff;transform:scale(0);transition:transform .15s}
-:root:root:root body #app .delivery-method-row input[type=radio]:checked::before{transform:scale(1)}
-:root:root:root body #app .delivery-method-row input[type=radio][value=delivery]:checked{background:#fb923c;border-color:#fb923c;box-shadow:0 0 0 3px color-mix(in srgb,#fb923c 22%,transparent)}
-:root:root:root body #app .delivery-method-row input[type=radio][value=pickup]:checked{background:#3b82f6;border-color:#3b82f6;box-shadow:0 0 0 3px color-mix(in srgb,#3b82f6 22%,transparent)}
-:root:root:root body #app .delivery-method-row label:has(input[value=delivery]:checked){border-color:#fb923c!important;background:color-mix(in srgb,#fb923c 12%,var(--card))!important;box-shadow:0 0 0 3px color-mix(in srgb,#fb923c 14%,transparent)!important}
-:root:root:root body #app .delivery-method-row label:has(input[value=pickup]:checked){border-color:#3b82f6!important;background:color-mix(in srgb,#3b82f6 11%,var(--card))!important;box-shadow:0 0 0 3px color-mix(in srgb,#3b82f6 14%,transparent)!important}
+html body #app .delivery-method-row label input[type=radio]{appearance:none!important;-webkit-appearance:none!important;width:1.25rem!important;height:1.25rem!important;min-width:1.25rem!important;padding:0!important;border-radius:50%!important;border:2px solid color-mix(in srgb,var(--text-muted,#64748b) 55%,transparent)!important;background:var(--card,#fff)!important;background-image:none!important;display:inline-grid!important;place-content:center!important;flex:none!important;margin:0!important;box-shadow:none!important;transition:border-color .15s,background .15s,box-shadow .15s}
+html body #app .delivery-method-row label input[type=radio]::before{content:""!important;display:block!important;width:.5rem;height:.5rem;border-radius:50%;background:#fff!important;transform:scale(0);transition:transform .15s}
+html body #app .delivery-method-row label input[type=radio]:checked::before{transform:scale(1)}
+html body #app .delivery-method-row label input[type=radio][value=delivery]:checked{background:#fb923c!important;border-color:#fb923c!important;box-shadow:0 0 0 3px color-mix(in srgb,#fb923c 24%,transparent)!important}
+html body #app .delivery-method-row label input[type=radio][value=pickup]:checked{background:#3b82f6!important;border-color:#3b82f6!important;box-shadow:0 0 0 3px color-mix(in srgb,#3b82f6 24%,transparent)!important}
+:root:root:root:root body #app .delivery-method-row label:has(input[value=delivery]:checked){border-color:#fb923c!important;background:color-mix(in srgb,#fb923c 12%,var(--card))!important;box-shadow:0 0 0 3px color-mix(in srgb,#fb923c 14%,transparent)!important}
+:root:root:root:root body #app .delivery-method-row label:has(input[value=pickup]:checked){border-color:#3b82f6!important;background:color-mix(in srgb,#3b82f6 11%,var(--card))!important;box-shadow:0 0 0 3px color-mix(in srgb,#3b82f6 14%,transparent)!important}
 
 /* ===== UI overhaul: card badges ===== */
 /* nearest distance tier: a clear royal blue (not navy, not pastel) */
@@ -1568,3 +1568,38 @@ html[data-splash="auto"] #loginModal.lv-auth .lv-campus-btn .t small{color:#9db3
 .ac-tools .ac-chip.on{background:var(--primary,#16a34a);color:#fff;box-shadow:0 4px 10px -5px color-mix(in srgb,var(--primary,#16a34a) 70%,transparent)}
 @media (min-width:720px){.ac-stats{grid-template-columns:repeat(6,minmax(0,1fr))}.ac-tools{max-width:560px}}
 .ac-sec{margin:1rem 0 .3rem;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#667)}
+
+/* =====================================================================================================
+   DESKTOP SHELL
+   Root cause of the "clumped / spread-out" desktop look: the phone bottom bar (a row of equal-width flex items) was
+   turned into a vertical rail by turning its axis, but the items kept "flex:1", so each one stretched to a fifth of the
+   screen height and the labels floated apart. Fix: items no longer grow, and from 1024px the rail is a real sidebar
+   (icon + label side by side, ~248px) with the page and header laid out beside it. Phones (<900px) are untouched.
+   ===================================================================================================== */
+@media (min-width:900px), (orientation:landscape) and (max-height:560px) and (min-width:560px){
+  html body #bottomNav.bottom-nav .bottom-nav-item.bottom-nav-item,html body #bottomNav.bottom-nav .bn-group .bottom-nav-item.bottom-nav-item{flex:0 0 auto!important;height:auto!important}
+  html body #bottomNav,html body #bottomNav.has-add,html body #bottomNav.buyer-no-add{justify-content:flex-start!important;padding-top:1rem!important}
+}
+@media (min-width:1024px){
+  :root{--rail:248px}
+  html body{padding-left:var(--rail)!important}
+  html body header{left:var(--rail)!important;width:auto!important}
+  html body #bottomNav,html body #bottomNav.has-add,html body #bottomNav.buyer-no-add,html body #bottomNav.nav-scroll-hide,html body #bottomNav.nav-scroll-shrink{width:var(--rail)!important;padding:1.1rem .85rem 1.2rem!important;gap:.2rem!important;align-items:stretch!important;justify-content:flex-start!important;background:var(--card,#fff)!important}
+  html body #bottomNav::before{content:"LevroMart";display:block;flex:none;padding:.1rem .95rem 1.1rem;font-size:1.25rem;font-weight:800;letter-spacing:-.02em;color:var(--text,#111)}
+  html body #bottomNav .bn-group{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:.2rem!important}
+  html body #bottomNav.bottom-nav .bottom-nav-item.bottom-nav-item,html body #bottomNav.bottom-nav .bn-group .bottom-nav-item.bottom-nav-item{position:relative;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;gap:.85rem!important;width:100%!important;min-height:48px!important;height:48px!important;padding:0 .95rem!important;border-radius:12px!important;font-size:.95rem!important;font-weight:600!important;text-align:left!important;color:var(--text-muted,#64748b)!important}
+  html body #bottomNav.bottom-nav .bottom-nav-item.bottom-nav-item .bn-icon{position:relative;flex:0 0 1.7rem!important;width:1.7rem!important;display:inline-grid!important;place-items:center!important;font-size:1.2rem!important}
+  html body #bottomNav.bottom-nav .bottom-nav-item.bottom-nav-item>span:last-child,html body #bottomNav.bottom-nav .bn-group .bottom-nav-item.bottom-nav-item>span:last-child{font-size:.95rem!important;font-weight:inherit!important;white-space:nowrap;max-width:none!important;overflow:visible!important;text-overflow:clip!important}
+  html body #bottomNav.bottom-nav .bottom-nav-item.bottom-nav-item.active{color:var(--primary,#16a34a)!important;font-weight:700!important;background:color-mix(in srgb,var(--primary,#16a34a) 12%,transparent)!important}
+  html body #bottomNav.bottom-nav .bottom-nav-item.bottom-nav-item.active::before{content:"";position:absolute;left:0;top:11px;bottom:11px;width:3px;border-radius:3px;background:var(--primary,#16a34a)}
+  html body #bottomNav.bottom-nav .bottom-nav-add.bottom-nav-add{flex-direction:row!important;gap:.6rem!important;min-height:48px!important;height:48px!important;margin:.4rem 0 .7rem!important;padding:0 .95rem!important;border-radius:12px!important;font-size:.95rem!important;font-weight:700!important;justify-content:center!important}
+  html body #bottomNav.bottom-nav .bottom-nav-add.bottom-nav-add .bn-icon,html body #bottomNav.bottom-nav .bottom-nav-add.bottom-nav-add i{font-size:1.05rem!important}
+  html body #bottomNav .bn-badge{right:auto!important;left:1.35rem!important;top:-.35rem!important}
+  /* header lines up with the page: search in the middle, actions on the right, nothing pushed to the edges */
+  html body header .header-top-row{max-width:1400px;margin:0 auto;padding-left:1.5rem;padding-right:1.5rem;gap:1.25rem}
+  html body header .header-search-row{flex:1 1 auto;max-width:620px;margin-left:auto;margin-right:auto}
+  /* the page itself: centred, comfortably padded, never a ragged full-bleed strip */
+  html body #app{max-width:1400px!important;padding-left:1.75rem!important;padding-right:1.75rem!important}
+  html body.chat-full-page{padding-left:0!important}
+}
+@media (min-width:1700px){html body #app{padding-left:2.5rem!important;padding-right:2.5rem!important}}
