@@ -15,4 +15,5 @@ export const VIEW_LOADERS: Readonly<Record<string, () => Promise<ViewModule>>> =
   terms: () => import("./terms/TermsPage"),
   privacy: () => import("./privacy/PrivacyPage"),
   refundPolicy: () => import("./refund-policy/RefundPolicyPage"),
+  contactUs: () => import("./contact-us/ContactUsPage"),
 };

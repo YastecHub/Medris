@@ -632,7 +632,7 @@ browser.
 ## 7. Progress table
 
 Status values: **legacy** (not started), **React-off** (component merged, switched off), **React-on** (switched on for
-everyone), **legacy removed**. Every later pull request updates its own rows. Today every screen is **legacy** except `terms`, `privacy` and `refundPolicy`, which are **React-off** once their pull requests are merged.
+everyone), **legacy removed**. Every later pull request updates its own rows. Today every screen is **legacy** except `terms`, `privacy`, `refundPolicy` and `contactUs`, which are **React-off** once their pull requests are merged.
 
 | View | Wave | Status | Pull request | Notes |
 |---|---|---|---|---|
@@ -684,7 +684,7 @@ everyone), **legacy removed**. Every later pull request updates its own rows. To
 | `notifications` | 2 | legacy | — | |
 | `requestEquipment` | 4 | legacy | — | |
 | `supportRequest` | 4 | legacy | — | |
-| `contactUs` | 1 | legacy | — | |
+| `contactUs` | 1 | React-off | PR for contact us (see below) | Static page; keeps `trackSocialClick` and `navigate('supportRequest')`; chunk `ContactUsPage-*.js`. Parity tests pass. Not on for anyone: `?react=contactUs` / `VITE_REACT_VIEWS`. |
 | `leaderboard` | 2 | legacy | — | |
 | `adminPoints` | 5 | legacy | — | |
 | `search` | 3 | legacy | — | |
