@@ -17,4 +17,5 @@ export const VIEW_LOADERS: Readonly<Record<string, () => Promise<ViewModule>>> =
   refundPolicy: () => import("./refund-policy/RefundPolicyPage"),
   contactUs: () => import("./contact-us/ContactUsPage"),
   customerFollowing: () => import("./customer-following/CustomerFollowingPage"),
+  wishlist: () => import("./wishlist/WishlistPage"),
 };
