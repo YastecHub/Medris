@@ -92,6 +92,7 @@ const MIGRATED: Array<{ view: string; name: string; heading: string; root?: stri
   { view: "contactUs", name: "contact-us", heading: "Contact us", root: ".contact-us-page" },
   { view: "vendors", name: "vendors", heading: "All vendors", root: ".vd-page" },
   { view: "storefront", name: "storefront", heading: VENDOR.business_name, root: ".storefront-profile", params: { vendorId: VENDOR.id } },
+  { view: "productDetail", name: "product-detail", heading: PRODUCTS[0].name, root: ".product-detail-card", params: { productId: PRODUCTS[0].id } },
 ];
 for (const m of MIGRATED) {
   for (const theme of THEMES) {

@@ -11,7 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 declare const sb: SupabaseClient;
 declare const favoriteIds: Set<string>;
 declare const buyerLocation: { lat: number; lng: number } | null;
-declare const profile: { role?: string } | null;
+declare const profile: { role?: string; address?: string | null } | null;
 declare const session: { user?: { id: string } } | null;
 declare const vendor: { id?: string } | null;
 declare let currentView: string;
@@ -22,6 +22,8 @@ declare let notifCount: number;
 declare let notifRenderEpoch: number;
 declare let lastNotificationReturnView: string;
 declare let lastNotificationReturnParams: Record<string, unknown>;
+declare let currentProductDetail: unknown;
+declare const RELATED_EQUIPMENT: Record<string, string[]>;
 declare let storefrontCatalogTab: string;
 declare let storefrontViewMode: string;
 
@@ -60,6 +62,15 @@ export interface LegacyHelpers {
   batchMarkNotifsRead: Fn<[boolean], unknown>;
   closeAllPanels: Fn<[], unknown>;
   byId: Fn<[string], HTMLElement | null>;
+  effectivePrice: Fn<[unknown], number | null>;
+  estimateDeliveryRange: Fn<[number], string>;
+  formatDistanceKm: Fn<[number], string>;
+  variantStockLabel: Fn<[unknown], string>;
+  stripProductVariantMeta: Fn<[string], string>;
+  listingActivationValid: Fn<[unknown], boolean>;
+  ratingBadgeClass: Fn<[number], string>;
+  lvInitialsTileHtml: Fn<[string], string>;
+  servicePriceSuffix: Fn<[unknown], string>;
   renderNotifPanel: Fn<[unknown?], unknown>;
 }
 
@@ -103,6 +114,13 @@ export const legacyState = {
       return typeof session === "undefined" ? null : (session?.user?.id ?? null);
     } catch {
       return null;
+    }
+  },
+  address: (): string => {
+    try {
+      return typeof profile === "undefined" ? "" : (profile?.address ?? "");
+    } catch {
+      return "";
     }
   },
   client: (): SupabaseClient => sb,
@@ -153,4 +171,17 @@ export const storefrontState = {
   },
   catalogTab: (): string => (typeof storefrontCatalogTab === "undefined" ? "products" : storefrontCatalogTab),
   viewMode: (): string => (typeof storefrontViewMode === "undefined" ? "grid" : storefrontViewMode),
+};
+
+/** The product page's shared legacy state: the product it last loaded (read by Buy now, Reserve, the share box …) and the related-equipment table. */
+export const productDetailState = {
+  setCurrent: (product: unknown): void => {
+    try {
+      currentProductDetail = product;
+    } catch {
+      /* the legacy script has not defined it */
+    }
+  },
+  current: (): unknown => (typeof currentProductDetail === "undefined" ? null : currentProductDetail),
+  relatedNames: (categoryName: string | undefined): string[] => (typeof RELATED_EQUIPMENT === "undefined" || !categoryName ? [] : (RELATED_EQUIPMENT[categoryName] ?? [])),
 };

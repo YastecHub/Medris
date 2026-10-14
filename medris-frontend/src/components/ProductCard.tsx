@@ -46,7 +46,7 @@ export interface CardProduct {
 }
 
 /** The coloured tile the legacy code swaps in for a missing or broken picture (lvInitialsTileHtml). */
-function InitialsTile({ name }: { name: string }) {
+export function InitialsTile({ name }: { name: string }) {
   const n = String(name || "Levromart");
   let h = 0;
   for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 360;

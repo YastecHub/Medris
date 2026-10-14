@@ -198,7 +198,16 @@ export const PLACEHOLDER_CSS =
   "#levro-react-root>h2+.card,#levro-react-root>.page-title+.card{margin-top:.9rem!important}" +
   "#levro-react-root>h2+section.card,#levro-react-root>.page-title+section.card{margin-top:.9rem!important}" +
   "#levro-react-root>*:first-child{scroll-margin-top:80px!important}" +
-  "@media (max-width:720px){#levro-react-root>*:first-child{scroll-margin-top:72px!important}}";
+  "@media (max-width:720px){#levro-react-root>*:first-child{scroll-margin-top:72px!important}}" +
+  // Product page, desktop: photos and details on the left, the order card on the right (assets/css/04-shell.css, the
+  // `#app:has(> .product-detail-card)` rules). The placeholder is the grid container here, as #app is for the legacy page.
+  "@media (min-width:800px){" +
+  "#levro-react-root:has(>.product-detail-card){display:grid!important;grid-template-columns:minmax(0,1.15fr) minmax(320px,1fr);gap:1rem 1.25rem;align-items:start}" +
+  "#levro-react-root:has(>.product-detail-card)>*{grid-column:1 / -1}" +
+  "#levro-react-root:has(>.product-detail-card)>.product-detail-card{grid-column:1;grid-row:1 / span 3}" +
+  "#levro-react-root:has(>.product-detail-card)>.product-detail-card+.card{grid-column:2;grid-row:1}" +
+  "#levro-react-root:has(>.product-detail-card)>.product-detail-card+.card+.owner-listing-management{grid-column:2;grid-row:2}" +
+  "}";
 
 export type LevroReact = ReturnType<typeof createViewRegistry>;
 
