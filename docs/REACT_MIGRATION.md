@@ -632,7 +632,7 @@ browser.
 ## 7. Progress table
 
 Status values: **legacy** (not started), **React-off** (component merged, switched off), **React-on** (switched on for
-everyone), **legacy removed**. Every later pull request updates its own rows. Today every screen is **legacy** except `terms`, `privacy`, `refundPolicy` and `contactUs`, which are **React-off** once their pull requests are merged.
+everyone), **legacy removed**. Every later pull request updates its own rows. Today every screen is **legacy** except `terms`, `privacy`, `refundPolicy`, `contactUs` and `customerFollowing`, which are **React-off** once their pull requests are merged.
 
 | View | Wave | Status | Pull request | Notes |
 |---|---|---|---|---|
@@ -677,8 +677,8 @@ everyone), **legacy removed**. Every later pull request updates its own rows. To
 | `adminAuthLogs` | 5 | legacy | — | |
 | `adminConversations` | 5 | legacy | — | |
 | `adminMonthlyListings` | 5 | legacy | — | |
-| `wishlist` | 2 | legacy | — | |
-| `customerFollowing` | 2 | legacy | — | |
+| `wishlist` | 2 | legacy | — | Blocked on a shared step: its cards come from the legacy `productCardHtml` / `packageCardHtml` (used by Home, Search, Storefront too), so a shared `ProductCard`/`PackageCard` React component with its own parity tests comes first. |
+| `customerFollowing` | 2 | React-off | PR for "Vendors you follow" (wave 2, first screen) | Typed read in `src/services/follows.ts` (same query as legacy); keeps `lmFilterFollowing`; chunk `CustomerFollowingPage-*.js`. Parity tests pass (markup, same DB request, error/empty/guest/admin states, pixels). Not on for anyone: `?react=customerFollowing`. |
 | `cart` | 5 | legacy | — | |
 | `messages` | 5 | legacy | — | |
 | `notifications` | 2 | legacy | — | |

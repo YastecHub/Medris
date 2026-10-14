@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { FIXED_NOW } from "../fixtures/data";
-import { installFixtures, type NetworkLog } from "./network";
+import { installFixtures, type FixtureOptions, type NetworkLog } from "./network";
 
 export type Theme = "light" | "dark";
 export interface Session {
@@ -9,7 +9,7 @@ export interface Session {
 }
 
 /** Opens the app with all network answered by fixtures and waits until the legacy runtime is ready. */
-export async function openApp(page: Page, opts: { signedIn: boolean; theme: Theme }, path = "/"): Promise<Session> {
+export async function openApp(page: Page, opts: FixtureOptions, path = "/"): Promise<Session> {
   const log = await installFixtures(page, opts);
   await page.clock.install({ time: new Date(FIXED_NOW) });
   await page.goto(path);

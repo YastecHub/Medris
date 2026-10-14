@@ -86,3 +86,33 @@ export const TABLES: Record<string, unknown[]> = {
 
 /** RPC name -> JSON result. RPCs not listed answer with null. */
 export const RPCS: Record<string, unknown> = {};
+
+// ---- Vendors a customer follows (used by pilot-customer-following.spec.ts; NOT part of the defaults,
+// so the first-wave reference pictures keep showing the empty state) ----
+
+const followedVendor = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-0000000003${String(n).padStart(2, "0")}`,
+  business_name: `Vendor ${n}`,
+  logo_url: null,
+  cover_image_url: null,
+  bio: null,
+  city: "Lagos",
+  avg_rating: 4,
+  review_count: 3,
+  verification_status: "verified",
+  is_active: true,
+  sector_id: null,
+  ...over,
+});
+
+/** Rows as vendor_follows returns them (each embeds its vendor). Two of them must be hidden by the screen. */
+export const FOLLOWED_ROWS = [
+  { vendor: followedVendor(1, { business_name: "Ada's Kitchen", logo_url: "https://images.example.test/vendor-a.png", city: "Lagos", avg_rating: 4.6, review_count: 12 }) },
+  { vendor: followedVendor(2, { business_name: "Brisk Tech", city: null, avg_rating: null, review_count: null }) },
+  { vendor: followedVendor(3, { business_name: "Not Verified Yet", verification_status: "pending" }) },
+  { vendor: followedVendor(4, { business_name: "Paused Shop", is_active: false }) },
+  { vendor: followedVendor(5, { business_name: '<b>Bold</b> & "Quotes" Store', city: "Abuja", avg_rating: 3.25, review_count: 1 }) },
+];
+
+/** public.users row that makes the signed-in fixture user an administrator. */
+export const ADMIN_USER_ROW = { id: BUYER.id, email: BUYER.email, full_name: BUYER.full_name, role: "admin" };
