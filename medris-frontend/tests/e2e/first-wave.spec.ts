@@ -93,6 +93,7 @@ const MIGRATED: Array<{ view: string; name: string; heading: string; root?: stri
   { view: "vendors", name: "vendors", heading: "All vendors", root: ".vd-page" },
   { view: "storefront", name: "storefront", heading: VENDOR.business_name, root: ".storefront-profile", params: { vendorId: VENDOR.id } },
   { view: "productDetail", name: "product-detail", heading: PRODUCTS[0].name, root: ".product-detail-card", params: { productId: PRODUCTS[0].id } },
+  { view: "search", name: "search", heading: "Products", root: ".search-page" },
 ];
 for (const m of MIGRATED) {
   for (const theme of THEMES) {

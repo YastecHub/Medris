@@ -23,6 +23,7 @@ declare let notifCount: number;
 declare let notifRenderEpoch: number;
 declare let lastNotificationReturnView: string;
 declare let lastNotificationReturnParams: Record<string, unknown>;
+declare let searchPageFilter: string;
 declare let currentProductDetail: unknown;
 declare const RELATED_EQUIPMENT: Record<string, string[]>;
 declare let storefrontCatalogTab: string;
@@ -63,6 +64,7 @@ export interface LegacyHelpers {
   batchMarkNotifsRead: Fn<[boolean], unknown>;
   closeAllPanels: Fn<[], unknown>;
   byId: Fn<[string], HTMLElement | null>;
+  readSearchHistory: Fn<[], string[]>;
   effectivePrice: Fn<[unknown], number | null>;
   estimateDeliveryRange: Fn<[number], string>;
   formatDistanceKm: Fn<[number], string>;
@@ -173,6 +175,18 @@ export const storefrontState = {
   },
   catalogTab: (): string => (typeof storefrontCatalogTab === "undefined" ? "products" : storefrontCatalogTab),
   viewMode: (): string => (typeof storefrontViewMode === "undefined" ? "grid" : storefrontViewMode),
+};
+
+/** The search page's UI state lives in a legacy variable (the active filter tab); a fresh visit starts at "All", as in the legacy renderer. */
+export const searchState = {
+  reset: (): void => {
+    try {
+      searchPageFilter = "all";
+    } catch {
+      /* the legacy script has not defined it: nothing to reset */
+    }
+  },
+  filter: (): string => (typeof searchPageFilter === "undefined" ? "all" : searchPageFilter),
 };
 
 /** The product page's shared legacy state: the product it last loaded (read by Buy now, Reserve, the share box …) and the related-equipment table. */
