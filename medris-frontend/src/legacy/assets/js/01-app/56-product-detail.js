@@ -181,8 +181,9 @@ async function __levroOriginalRenderProductDetail(productId) {
     <div class="product-detail-actions">
       ${(() => {
         if (profile?.role === "admin") return "";
-        // No Message vendor button on product pages at all: customers message a vendor only from an accepted order.
-        return "";
+        // TEMPORARY (see LV_TEMP_WHATSAPP in the messaging script): customers can message a vendor from the product page,
+        // choosing in-app chat or WhatsApp. Otherwise customers message a vendor only from an accepted order.
+        if (window.LV_TEMP_WHATSAPP === false || (typeof isOwnVendorId === "function" && isOwnVendorId(product.vendor.id))) return "";
         if (!canMessageVendorNow(product.vendor)) {
           const hs = vendorHoursStatus(product.vendor);
           return `<span class="storefront-contact-closed" title="${esc(`${product.vendor.business_name || "This vendor"} is outside working hours right now${hs.todayText ? ` (${hs.todayLabel}: ${hs.todayText})` : ""}.`)}"><i class="fa-regular fa-clock"></i><span>Outside working hours</span></span>`;
