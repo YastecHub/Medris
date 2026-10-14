@@ -632,7 +632,7 @@ browser.
 ## 7. Progress table
 
 Status values: **legacy** (not started), **React-off** (component merged, switched off), **React-on** (switched on for
-everyone), **legacy removed**. Every later pull request updates its own rows. Today every screen is **legacy** except `terms`, `privacy`, `refundPolicy`, `contactUs`, `customerFollowing` and `wishlist`, which are **React-off** once their pull requests are merged.
+everyone), **legacy removed**. Every later pull request updates its own rows. Today every screen is **legacy** except `terms`, `privacy`, `refundPolicy`, `contactUs`, `customerFollowing`, `wishlist` and `notifications`, which are **React-off** once their pull requests are merged.
 
 | View | Wave | Status | Pull request | Notes |
 |---|---|---|---|---|
@@ -681,7 +681,7 @@ everyone), **legacy removed**. Every later pull request updates its own rows. To
 | `customerFollowing` | 2 | React-off | PR for "Vendors you follow" (wave 2, first screen) | Typed read in `src/services/follows.ts` (same query as legacy); keeps `lmFilterFollowing`; chunk `CustomerFollowingPage-*.js`. Parity tests pass (markup, same DB request, error/empty/guest/admin states, pixels). Not on for anyone: `?react=customerFollowing`. |
 | `cart` | 5 | legacy | — | |
 | `messages` | 5 | legacy | — | |
-| `notifications` | 2 | legacy | — | |
+| `notifications` | 2 | React-off | PR for Notifications | React draws the page and list; **all actions stay legacy functions** (open row, tabs, select mode, batch mark, read-queue commit); a bridge replaces `window.renderNotifPanel` while the React page is on screen so legacy redraws go to React. Same reads (`levroData.notifications.panel`, owner lookups) and same localStorage first-paint cache. Parity tests pass incl. same writes. Not on for anyone: `?react=notifications`. |
 | `requestEquipment` | 4 | legacy | — | |
 | `supportRequest` | 4 | legacy | — | |
 | `contactUs` | 1 | React-off | PR for contact us (see below) | Static page; keeps `trackSocialClick` and `navigate('supportRequest')`; chunk `ContactUsPage-*.js`. Parity tests pass. Not on for anyone: `?react=contactUs` / `VITE_REACT_VIEWS`. |

@@ -9,4 +9,4 @@
  * converted. Having a component does not turn it on: every screen is OFF until it is
  * listed in VITE_REACT_VIEWS or switched on per browser (see the registry).
  */
-export const MIGRATED_VIEWS: readonly string[] = ["terms", "privacy", "refundPolicy", "contactUs", "customerFollowing", "wishlist"];
+export const MIGRATED_VIEWS: readonly string[] = ["terms", "privacy", "refundPolicy", "contactUs", "customerFollowing", "wishlist", "notifications"];
