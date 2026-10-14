@@ -752,11 +752,34 @@ window.lvPdPrefetch = function (id) {
     cache.set(vendorId, p);
     return p;
   }
-  async function target(dir) {
+  // One endless feed: the vendor's own products first, then products from other verified vendors (same category first), then back to the start.
+  let feed = null;
+  async function buildFeed(cur, vid) {
+    const own = await siblings(String(vid));
+    let more = [];
+    try {
+      const { data } = await sb.from("products").select("id, category_id, vendor:vendors!inner(id, verification_status, is_active)")
+        .eq("status", "active").neq("vendor_id", vid).eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
+        .order("created_at", { ascending: false }).limit(80);
+      const cat = cur.category_id;
+      more = (data || []).map((r, i) => ({ id: String(r.id), k: (r.category_id && r.category_id === cat ? 0 : 1) * 1000 + i })).sort((a, b) => a.k - b.k).map((r) => r.id);
+    } catch (_) {}
+    const ids = [...own];
+    if (!ids.includes(String(cur.id))) ids.unshift(String(cur.id));
+    more.forEach((id) => { if (!ids.includes(id)) ids.push(id); });
+    feed = { ids, at: Date.now() };
+    return feed;
+  }
+  async function getFeed() {
     const cur = currentProductDetail, vid = cur?.vendor?.id || cur?.vendor_id;
     if (!cur?.id || !vid || currentView !== "productDetail") return null;
-    const ids = await siblings(String(vid));
-    const i = ids.indexOf(String(cur.id));
+    if (!feed || Date.now() - feed.at > 600000 || !feed.ids.includes(String(cur.id))) await buildFeed(cur, vid);
+    return feed;
+  }
+  async function target(dir) {
+    const f = await getFeed(), cur = currentProductDetail;
+    if (!f || !cur) return null;
+    const ids = f.ids, i = ids.indexOf(String(cur.id));
     if (i < 0 || ids.length < 2) return null;
     return ids[(i + dir + ids.length) % ids.length];
   }
@@ -786,7 +809,7 @@ window.lvPdPrefetch = function (id) {
     if (currentView !== "productDetail" || e.touches.length !== 1) return;
     if (e.target.closest?.(blocked) || !e.target.closest?.("#app")) return;
     t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
-    const vid = currentProductDetail?.vendor?.id || currentProductDetail?.vendor_id; if (vid) siblings(String(vid));
+    getFeed().catch(() => {});
   }, { passive: true });
   document.addEventListener("touchmove", (e) => {
     if (!t0) return;
@@ -831,7 +854,8 @@ window.lvPdPrefetch = function (id) {
       const cur = currentProductDetail, vid = cur?.vendor?.id || cur?.vendor_id;
       if (!cur?.id || !vid || warmedFor === String(cur.id)) return;
       warmedFor = String(cur.id);
-      const ids = await siblings(String(vid)), i = ids.indexOf(String(cur.id));
+      const f = await getFeed(); if (!f) return;
+      const ids = f.ids, i = ids.indexOf(String(cur.id));
       if (i < 0 || ids.length < 2) return;
       [ids[(i + 1) % ids.length], ids[(i - 1 + ids.length) % ids.length]].forEach((n) => window.lvPdPrefetch?.(n));
     } catch (_) {}

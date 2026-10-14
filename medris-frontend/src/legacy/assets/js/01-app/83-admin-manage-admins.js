@@ -12,7 +12,7 @@ async function renderAdminPeople() {
   setTimeout(async () => {
     try {
       const [{ data: people, error: peopleError }, { data: appeals, error: appealsError }] = await Promise.all([
-        sb.from("users").select("id, name, email, phone, role, city, created_at, suspended_at, suspended_reason").order("created_at", { ascending: false }),
+        sb.from("users").select("id, name, email, phone, role, city, created_at, suspended_at, suspended_reason, avatar_url").order("created_at", { ascending: false }),
         sb.rpc("admin_get_pending_appeals"),
       ]);
       if (peopleError) throw peopleError;
@@ -94,7 +94,7 @@ function renderAdminPeopleRows() {
   if (!tbody) return;
   const rows = getAdminPeopleFilteredRows();
   tbody.innerHTML = rows.map((p, idx) => `<tr>
-    <td>${idx + 1}</td><td>${esc(p.name || "-")}</td><td>${esc(p.email || "-")}</td><td>${esc(p.city || "-")}</td><td>${p.phone ? `<button type="button" class="admin-phone-btn" onclick="openAdminPhoneActions(event,'${esc(p.phone)}','${esc(p.name || p.email || "User")}')"><i class="fa-solid fa-phone"></i> ${esc(p.phone)}</button>` : "-"}</td>
+    <td>${idx + 1}</td><td><span class="ap-who"><span class="ap-av">${p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="" loading="lazy" onerror="this.remove()">` : ""}<b>${esc(initials(String(p.name || p.email || "U")))}</b></span><span class="ap-nm">${esc(p.name || "-")}</span></span></td><td>${esc(p.email || "-")}</td><td>${esc(p.city || "-")}</td><td>${p.phone ? `<button type="button" class="admin-phone-btn" onclick="openAdminPhoneActions(event,'${esc(p.phone)}','${esc(p.name || p.email || "User")}')"><i class="fa-solid fa-phone"></i> ${esc(p.phone)}</button>` : "-"}</td>
     <td>${p.created_at ? `<span class="admin-joined-cell">${new Date(p.created_at).toLocaleString("en-GB", {day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</span>${Date.now()-new Date(p.created_at).getTime() <= 48*60*60*1000 ? ` <span class="badge admin-new-tag">NEW</span>` : ""}` : "-"}</td>
     <td>${p.suspended_at ? `<span class="badge danger" title="${esc(p.suspended_reason || "")}">Suspended</span>` : `<span class="badge success">Active</span>`}</td>
     <td>${p.role === "admin" ? "" : p.suspended_at ? `<button class="btn btn-sm btn-outline" onclick="unsuspendUser('${p.id}','${esc(p.name || p.email)}')">Unsuspend</button>` : `<button class="btn btn-sm btn-danger" onclick="suspendUserPrompt('${p.id}','${esc(p.name || p.email)}')">Suspend</button>`}</td>

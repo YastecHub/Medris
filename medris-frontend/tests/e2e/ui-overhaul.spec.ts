@@ -424,4 +424,16 @@ test.describe("Round 4", () => {
     for (let i = 0; i < 12; i++) await page.clock.runFor(500);
     await expect(page.locator("body")).toHaveAttribute("data-view", "vendors");
   });
+  test("admin new-school buttons are styled (green approve, red reject), not plain black pills", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    const c = await page.evaluate(() => {
+      document.getElementById("app")!.insertAdjacentHTML("beforeend", '<div class="ac-sub-a"><button class="ok" id="zok">Approve</button><button id="zmid">Same as</button><button class="no" id="zno">Reject</button></div>');
+      const g = (id: string) => getComputedStyle(document.getElementById(id)!);
+      return { ok: g("zok").backgroundImage, mid: g("zmid").backgroundColor, no: g("zno").color, pad: g("zok").paddingTop };
+    });
+    expect(c.ok).toContain("gradient");
+    expect(c.mid).not.toBe("rgb(0, 0, 0)");
+    expect(c.no).toBe("rgb(220, 38, 38)");
+    expect(parseFloat(c.pad)).toBeGreaterThan(8);
+  });
 });

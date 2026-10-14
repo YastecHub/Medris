@@ -1881,3 +1881,21 @@ html body #app .vmpage{position:relative;width:100%;z-index:1;overflow:hidden;ba
 .vmpage[data-style="night"] .leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) saturate(.7) brightness(.82) contrast(.95)}
 body[data-view="vendorsMap"] #aiChatFab,body[data-view="vendorsMap"] #cartFab{display:none!important}
 html body .vmpage #vmpMap,html body .vmpage #vmpMap.leaflet-container{position:absolute!important;inset:0;width:100%;height:100%}
+
+/* Round 7: admin new-school buttons, people avatars, shorter product photos */
+.ac-sub{padding:.85rem 0;border-bottom:1px solid var(--border,#dde5e0)}
+.ac-sub-h{display:flex;align-items:center;gap:.75rem}
+.ac-sub-h > div{display:flex;flex-direction:column;gap:.1rem;min-width:0}
+.ac-sub-h b{font-size:.98rem;line-height:1.25}
+.ac-sub-h small{color:var(--text-muted);font-size:.78rem}
+.ac-sub-a{display:flex;gap:.5rem;margin-top:.7rem;flex-wrap:wrap}
+html body .ac-sub-a button{flex:1 1 0;min-width:6.2rem;padding:.6rem .8rem!important;border-radius:12px!important;border:1.5px solid var(--border,#cfd8d3)!important;background:var(--card,#fff)!important;color:var(--text)!important;font-weight:700;font-size:.86rem!important;cursor:pointer;box-shadow:none!important;text-shadow:none!important}
+html body .ac-sub-a button.ok{background:linear-gradient(180deg,#34d399,#16a34a)!important;border-color:#15803d!important;color:#fff!important;box-shadow:0 4px 10px rgba(22,163,74,.28)!important}
+html body .ac-sub-a button.no{color:#dc2626!important;border-color:color-mix(in srgb,#dc2626 45%,transparent)!important;background:color-mix(in srgb,#dc2626 8%,var(--card,#fff))!important}
+.ap-who{display:inline-flex;align-items:center;gap:.6rem;min-width:0}
+.ap-av{position:relative;width:2.3rem;height:2.3rem;flex:0 0 2.3rem;border-radius:50%;overflow:hidden;background:color-mix(in srgb,var(--primary,#3fb97f) 18%,var(--card,#fff));display:grid;place-items:center;color:var(--primary,#16a34a);font-size:.78rem}
+.ap-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ap-nm{min-width:0;overflow-wrap:anywhere}
+@media (max-width:799.98px){
+  html body #app .product-detail-card:not(.service-detail-card) .product-gallery-slide img{aspect-ratio:1/1!important;height:auto!important;max-height:none!important;object-fit:cover!important}
+}
