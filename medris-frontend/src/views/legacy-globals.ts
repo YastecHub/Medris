@@ -22,6 +22,7 @@ declare let notifCount: number;
 declare let notifRenderEpoch: number;
 declare let lastNotificationReturnView: string;
 declare let lastNotificationReturnParams: Record<string, unknown>;
+declare let searchPageFilter: string;
 declare let storefrontCatalogTab: string;
 declare let storefrontViewMode: string;
 
@@ -60,6 +61,7 @@ export interface LegacyHelpers {
   batchMarkNotifsRead: Fn<[boolean], unknown>;
   closeAllPanels: Fn<[], unknown>;
   byId: Fn<[string], HTMLElement | null>;
+  readSearchHistory: Fn<[], string[]>;
   renderNotifPanel: Fn<[unknown?], unknown>;
 }
 
@@ -153,4 +155,16 @@ export const storefrontState = {
   },
   catalogTab: (): string => (typeof storefrontCatalogTab === "undefined" ? "products" : storefrontCatalogTab),
   viewMode: (): string => (typeof storefrontViewMode === "undefined" ? "grid" : storefrontViewMode),
+};
+
+/** The search page's UI state lives in a legacy variable (the active filter tab); a fresh visit starts at "All", as in the legacy renderer. */
+export const searchState = {
+  reset: (): void => {
+    try {
+      searchPageFilter = "all";
+    } catch {
+      /* the legacy script has not defined it: nothing to reset */
+    }
+  },
+  filter: (): string => (typeof searchPageFilter === "undefined" ? "all" : searchPageFilter),
 };
