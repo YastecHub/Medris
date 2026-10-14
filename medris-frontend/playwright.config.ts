@@ -31,6 +31,9 @@ export default defineConfig({
     locale: "en-NG",
     timezoneId: "Africa/Lagos",
     reducedMotion: "reduce",
+    // Text is drawn with the same glyph shapes on every machine (no hinting, no LCD smoothing),
+    // so pictures made on a laptop match the ones CI makes.
+    launchOptions: { args: ["--font-render-hinting=none", "--disable-lcd-text", "--force-color-profile=srgb"] },
   },
   webServer: {
     command: `npx vite build --outDir dist-e2e --emptyOutDir && npx vite preview --outDir dist-e2e --port ${PORT} --strictPort --host 127.0.0.1`,
