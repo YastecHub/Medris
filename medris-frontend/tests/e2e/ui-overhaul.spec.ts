@@ -32,7 +32,8 @@ test.describe("Desktop shell", () => {
       expect(it.labelLeft).toBeGreaterThanOrEqual(it.iconRight); // label to the right of the icon
       expect(Math.abs(it.labelMid - it.iconMid)).toBeLessThan(6); // on the same line
     }
-    const gaps = nav.items.slice(1).map((it, i) => it.top - nav.items[i].top);
+    const sorted = [...nav.items].sort((a, b) => a.top - b.top);
+    const gaps = sorted.slice(1).map((it, i) => it.top - sorted[i]!.top);
     for (const g of gaps) expect(g).toBeLessThan(70); // not spread over the screen height
   });
 
@@ -435,5 +436,25 @@ test.describe("Round 4", () => {
     expect(c.mid).not.toBe("rgb(0, 0, 0)");
     expect(c.no).toBe("rgb(220, 38, 38)");
     expect(parseFloat(c.pad)).toBeGreaterThan(8);
+  });
+  test("desktop sidebar lists Home first", async ({ browser }) => {
+    const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    const labels = await page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>("#bottomNav .bottom-nav-item")).map((b) => ({ t: b.textContent!.trim(), y: b.getBoundingClientRect().top })).sort((a, b) => a.y - b.y).map((x) => x.t));
+    expect(labels[0]).toMatch(/^Home/);
+  });
+
+  test("swiping the page sideways no longer opens the profile or notification panels", async ({ browser }) => {
+    const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true })).newPage();
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    await page.evaluate(() => {
+      const el = document.getElementById("app")!;
+      const fire = (type: string, x: number) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, pointerType: "touch", isPrimary: true, clientX: x, clientY: 300 }));
+      fire("pointerdown", 300); fire("pointermove", 220); fire("pointermove", 120); fire("pointerup", 120);
+      fire("pointerdown", 60); fire("pointermove", 140); fire("pointermove", 260); fire("pointerup", 260);
+    });
+    for (let i = 0; i < 6; i++) await page.clock.runFor(400);
+    expect(await page.evaluate(() => document.body.dataset.view)).toBe("home");
+    expect(await page.evaluate(() => !!document.querySelector("#profilePanel.open, #notifPanel.open"))).toBe(false);
   });
 });

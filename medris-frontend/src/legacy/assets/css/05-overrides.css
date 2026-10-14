@@ -1899,3 +1899,11 @@ html body .ac-sub-a button.no{color:#dc2626!important;border-color:color-mix(in 
 @media (max-width:799.98px){
   html body #app .product-detail-card:not(.service-detail-card) .product-gallery-slide img{aspect-ratio:1/1!important;height:auto!important;max-height:none!important;object-fit:cover!important}
 }
+
+/* Round 8: Home comes first in the desktop sidebar; verified tick inside map cards / suggestions never shrinks away */
+@media (min-width:900px){html body #bottomNav .bottom-nav-item[onclick*="lvHomeTap"]{order:-1}}
+.vmp-card-name > i,.vmp-sg-copy strong > i{flex:0 0 auto}
+.vmp-sg-copy strong{display:flex;align-items:center;gap:.25rem}
+.vmp-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vmp-card-name{overflow:visible!important;text-overflow:clip!important}
+@media (min-width:900px){html body #bottomNav::before{order:-2}}

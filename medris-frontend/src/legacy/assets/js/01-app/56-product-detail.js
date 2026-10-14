@@ -733,7 +733,7 @@ window.lvPdPrefetch = function (id) {
   ]);
   window.__lvPdPre.set(k, { at: Date.now(), first, base });
   // the first picture too, so it is on screen the moment the page slides in
-  first.then(({ data }) => { try { const u = data?.photos?.[0]; if (u) { const im = new Image(); im.src = typeof lvThumb === "function" ? u : u; } } catch (_) {} });
+  first.then(({ data }) => { try { const u = data?.photos?.[0]; if (u) { const im = new Image(); im.decoding = "async"; im.src = u; (window.__lvPdImgs = window.__lvPdImgs || []).push(im); if (window.__lvPdImgs.length > 14) window.__lvPdImgs.shift(); try { im.decode && im.decode().catch(() => {}); } catch (_) {} } } catch (_) {} });
   if (window.__lvPdPre.size > 8) window.__lvPdPre.delete(window.__lvPdPre.keys().next().value);
 };
 
@@ -841,8 +841,8 @@ window.lvPdPrefetch = function (id) {
     const t0 = Date.now();
     while (Date.now() - t0 < 4000) {
       const card = document.querySelector(`#app .product-detail-card[data-product-detail-id="${CSS.escape(String(id))}"]`);
-      if (card) { await new Promise((r) => setTimeout(r, 50)); return true; }
-      await new Promise((r) => setTimeout(r, 40));
+      if (card) return true;
+      await new Promise((r) => setTimeout(r, 16));
     }
     return false;
   }
@@ -883,8 +883,18 @@ window.lvPdPrefetch = function (id) {
       spinner.className = "lv-swipe-wait"; spinner.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
       const spinTimer = setTimeout(() => document.body.appendChild(spinner), 450);
       let ok = true;
+      window.__lvSwipeNav = true; // the router must not paint a saved snapshot or a loading shell behind the slide
       try { await navigate("productDetail", { productId: id }); } catch (_) { ok = false; }
       ok = ok && await waitForProduct(id);
+      window.__lvSwipeNav = false;
+      if (ok) {
+        // do not slide in an empty frame: wait (briefly) for the first photo to be ready
+        const img = app()?.querySelector(".product-gallery-slide img, .product-detail-media img");
+        if (img) {
+          if (!img.complete) await Promise.race([new Promise((r) => { img.addEventListener("load", r, { once: true }); img.addEventListener("error", r, { once: true }); }), new Promise((r) => setTimeout(r, 900))]);
+          try { await Promise.race([img.decode(), new Promise((r) => setTimeout(r, 300))]); } catch (_) {}
+        }
+      }
       clearTimeout(spinTimer); spinner.remove();
       const now = app();
       if (!ok || !now) { snap.remove(); if (now) { now.style.opacity = ""; now.style.transform = ""; } return; }
@@ -898,7 +908,7 @@ window.lvPdPrefetch = function (id) {
       await new Promise((r) => setTimeout(r, 300));
       snap.remove();
       now.style.transition = ""; now.style.transform = ""; now.style.opacity = "";
-    } finally { busy = false; }
+    } finally { busy = false; window.__lvSwipeNav = false; }
   }, { passive: true });
   document.addEventListener("touchcancel", () => { if (lock === "h") reset(app(), true); t0 = null; lock = null; clearHint(); }, { passive: true });
 })();

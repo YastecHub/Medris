@@ -166,7 +166,7 @@ function vmpCardHtml(v) {
   const dir = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(v.lat + "," + v.lng)}`;
   return `<div class="vmp-card${id === vmpSelected ? " on" : ""}" data-vid="${esc(id)}" onclick="vmpSelect('${esc(id)}',true)">
     <div class="vmp-card-top"><div class="vmp-card-logo">${media}</div>
-      <div class="vmp-card-copy"><strong class="vmp-card-name">${esc(v.business_name || "Vendor")}<i data-vt="${esc(id)}" class="fa-solid fa-circle-check lv-svi" aria-label="Verified vendor"></i></strong><span>${meta}</span><em><i class="fa-solid fa-star"></i> ${Number(v.avg_rating || 0).toFixed(1)} <small>(${Number(v.review_count || 0)})</small></em></div></div>
+      <div class="vmp-card-copy"><strong class="vmp-card-name"><span class="vmp-nm">${esc(v.business_name || "Vendor")}</span><i data-vt="${esc(id)}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor"></i></strong><span>${meta}</span><em><i class="fa-solid fa-star"></i> ${Number(v.avg_rating || 0).toFixed(1)} <small>(${Number(v.review_count || 0)})</small></em></div></div>
     <div class="vmp-card-act"><button type="button" onclick="event.stopPropagation();navigate('storefront',{vendorId:'${esc(id)}'})"><i class="fa-solid fa-store"></i> View shop</button><a href="${dir}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><i class="fa-solid fa-diamond-turn-right"></i> Directions</a></div>
   </div>`;
 }
@@ -203,7 +203,7 @@ function vmpSearch(q, clear) {
   vmpDrawPins(); vmpDrawRail();
   if (!vmpQuery.trim()) { box.classList.add("hidden"); return; }
   const hits = vmpVisible().slice(0, 6);
-  box.innerHTML = hits.length ? hits.map((v) => `<button type="button" onclick="vmpSelect('${esc(String(v.id))}',true)"><span class="vmp-sg-logo">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" onerror="this.remove()">` : vdInitialsHtml(v.business_name || "V", v.id)}</span><span class="vmp-sg-copy"><strong>${esc(v.business_name || "Vendor")}</strong><small>${esc([vmpSectorOf(v), v.city].filter(Boolean).join(" · "))}</small></span><i class="fa-solid fa-location-arrow"></i></button>`).join("") : '<div class="vmp-sg-none">No vendor found</div>';
+  box.innerHTML = hits.length ? hits.map((v) => `<button type="button" onclick="vmpSelect('${esc(String(v.id))}',true)"><span class="vmp-sg-logo">${v.logo_url ? `<img src="${esc(v.logo_url)}" alt="" onerror="this.remove()">` : vdInitialsHtml(v.business_name || "V", v.id)}</span><span class="vmp-sg-copy"><strong><span class="vmp-nm">${esc(v.business_name || "Vendor")}</span><i data-vt="${esc(String(v.id))}" class="fa-solid fa-circle-check vendor-inline-verified" aria-label="Verified vendor"></i></strong><small>${esc([vmpSectorOf(v), v.city].filter(Boolean).join(" · "))}</small></span><i class="fa-solid fa-location-arrow"></i></button>`).join("") : '<div class="vmp-sg-none">No vendor found</div>';
   box.classList.remove("hidden");
   if (hits.length > 1) vmpFit(hits);
 }

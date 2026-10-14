@@ -338,7 +338,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   const persistedRouteHtml = reactView ? "" : getPersistedRouteHtml(view, params);
   const instantRouteHtml = (cachedRouteHtml && isUsableRouteSnapshot(String(cachedRouteHtml))) ? cachedRouteHtml : persistedRouteHtml;
   const sameOrdersTab = previousView === view && (view === "buyerOrders" || view === "vendorOrders");
-  if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && !sameOrdersTab) {
+  if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && !sameOrdersTab && !window.__lvSwipeNav) {
     // Storefront used to be excluded here, on the assumption its own
     // renderer was now fast enough not to need a shell. But the very first
     // visit to any given vendor in a session has no cached HTML yet, so
