@@ -98,28 +98,33 @@ test.describe("Wishlist: React matches legacy", () => {
     for (const mode of MODES) {
       const page = await (await browser.newContext()).newPage();
       await open(page, mode, "populated");
-      await expect(page.locator(".pc-name").filter({ hasText: "Fancy" })).toHaveText("<i>Fancy</i> & Bag");
+      await expect(page.locator(".pc-name").filter({ hasText: "Fancy" })).toHaveText('<i>Fancy</i> & "Quoted" Bag');
       await expect(page.locator(".pc-name i")).toHaveCount(0);
       await expect(page.locator(".package-card-includes").first()).toContainText("Pen <set>");
       await page.context().close();
     }
   });
 
-  test("React only: a product name with quotes and HTML in it is plain text and cannot add attributes to the card", async ({ page }) => {
-    // The legacy card writes names into attributes with an escaper that leaves double quotes alone (see the PR notes), so
-    // this case is checked on the React version only.
+  test("a hostile product name (quotes, HTML) is plain text and cannot add attributes to the card, in both versions", async ({ browser }) => {
     const evil = 'x" onmouseover="window.__pwned=1" data-x="<img src=x onerror=alert(1)>';
     const rows = [{ product_id: "00000000-0000-4000-8000-000000000499", product: { ...WISHLIST_PRODUCT_ROWS[1]!.product, id: "00000000-0000-4000-8000-000000000499", name: evil } }];
-    const errors = watchErrors(page);
-    await openApp(page, { signedIn: true, theme: "light", tables: { favorites: rows, package_favorites: [] } }, START.react);
-    await goTo(page, "wishlist");
-    for (let i = 0; i < 8; i++) await page.clock.runFor(500);
-    await expect(page.locator(".pc-name")).toHaveText(evil);
-    const card = page.locator(".product-card-wrap");
-    expect(await card.evaluate((el) => Array.from(el.querySelectorAll("*")).flatMap((n) => Array.from(n.attributes).map((a) => a.name)).filter((n) => n.startsWith("on") && n !== "onerror" || n === "data-x"))).toEqual([]);
-    await expect(page.locator(".card-cart-btn")).toHaveAttribute("aria-label", `Add ${evil} to cart`);
-    expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined();
-    expect(errors).toEqual([]);
+    const markups: string[] = [];
+    for (const mode of MODES) {
+      const page = await (await browser.newContext()).newPage();
+      const errors = watchErrors(page);
+      await openApp(page, { signedIn: true, theme: "light", tables: { favorites: rows, package_favorites: [] } }, START[mode]);
+      await goTo(page, "wishlist");
+      for (let i = 0; i < 8; i++) await page.clock.runFor(500);
+      await expect(page.locator(".pc-name")).toHaveText(evil);
+      const card = page.locator(".product-card-wrap");
+      expect(await card.evaluate((el) => Array.from(el.querySelectorAll("*")).flatMap((n) => Array.from(n.attributes).map((a) => a.name)).filter((n) => (n.startsWith("on") && n !== "onerror" && n !== "onclick") || n === "data-x"))).toEqual([]);
+      await expect(page.locator(".card-cart-btn")).toHaveAttribute("aria-label", `Add ${evil} to cart`);
+      expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined();
+      expect(errors).toEqual([]);
+      markups.push(await screenMarkup(page));
+      await page.context().close();
+    }
+    expect(markups[1]).toBe(markups[0]);
   });
 
   test("React draws into the placeholder; legacy draws straight into #app", async ({ browser }) => {
