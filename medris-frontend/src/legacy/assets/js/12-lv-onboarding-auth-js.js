@@ -1415,7 +1415,8 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
     var v=window.lvViewCampus(),mine=window.lvMyCampusId(),r=v==="all"?null:rec(v);
     var chev='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
     var pin='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
-    return '<button type="button" class="lvcb-main" aria-label="Choose a campus"><span class="ico">'+(r?logoHtml(r):pin)+'</span><span class="t"><b>'+esc2(r?r.name:"All campuses")+'</b></span><span class="chev">'+chev+'</span></button>'
+    var allArt='<svg class="lvcb-allart" width="28" height="28" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="38" fill="#e9edff"/><path d="M40 16L12 30l28 14 28-14z" fill="#5f6ff0"/><path d="M23 38v12c0 5 8 9 17 9s17-4 17-9V38L40 45z" fill="#8f7cf5"/><path d="M66 32v17" stroke="#f6c453" stroke-width="3.5" stroke-linecap="round"/><circle cx="66" cy="52" r="4" fill="#f6c453"/></svg>';
+    return '<button type="button" class="lvcb-main" aria-label="Choose a campus"><span class="ico">'+(r?logoHtml(r):allArt)+'</span><span class="t"><b>'+esc2(r?r.name:"All campuses")+'</b></span><span class="chev">'+chev+'</span></button>'
       +'<div class="seg" role="tablist"><button type="button" role="tab" data-m="mine" aria-selected="'+(mine&&v===mine)+'" class="'+(mine&&v===mine?'on':'')+'">Mine</button><button type="button" role="tab" data-m="all" aria-selected="'+(v==="all")+'" class="'+(v==="all"?'on':'')+'">All</button></div>'
       +'<button type="button" class="lvcb-trophy" data-lb="1" aria-label="Vendor of the Week" title="Vendor of the Week"><i class="fa-solid fa-trophy"></i></button>';
   }
@@ -2264,3 +2265,25 @@ document.addEventListener("click",function(e){
   var sel=document.getElementById("loginRole"); if(sel) sel.value=b.dataset.r;
   b.parentNode.querySelectorAll("button").forEach(function(x){ var on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-checked",String(on)); });
 });
+
+
+/* The bell next to "Following" shows the chosen notification mode: All = blue bell, Most relevant = star, Off = bell with a slash. */
+(function(){
+  var ICON={all:"fa-solid fa-bell",relevant:"fa-solid fa-star",off:"fa-regular fa-bell-slash"};
+  var Q=0;
+  function paint(){
+    Q=0;
+    document.querySelectorAll(".storefront-follow-wrap").forEach(function(w){
+      var bell=w.querySelector(".follow-settings-btn"); if(!bell) return;
+      var vid=w.getAttribute("data-follow-vendor-id")||"";
+      var menu=w.querySelector(".follow-menu")||(vid&&document.querySelector('.follow-menu[data-follow-sheet-vendor-id="'+CSS.escape(vid)+'"]'));
+      var row=menu&&menu.querySelector('.follow-mode-row[aria-pressed="true"]');
+      var mode=(row&&row.getAttribute("data-notify-mode"))||"all";
+      bell.setAttribute("data-mode",mode);
+      var i=bell.querySelector("i"); if(i&&i.className!==ICON[mode]) i.className=ICON[mode];
+    });
+  }
+  function sched(){ if(!Q) Q=requestAnimationFrame(paint); }
+  try{ new MutationObserver(sched).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["aria-pressed","disabled"]}); }catch(_){}
+  sched();
+})();

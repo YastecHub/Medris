@@ -939,7 +939,7 @@ function hideLeviFromPanel() {
     const isFol = followed.has(String(r.vendor_id));
     return `<div class="lb-row${r.is_me ? " me" : ""}" data-row onclick="navigate('storefront',{vendorId:'${esc(r.vendor_id)}'})" role="link" tabindex="0">
       <div class="lb-rank">${r.rank}</div>${av(r.logo_url, r.business_name, "2.7rem", "lb-av")}
-      <div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name)}</span>${r.is_me ? '<span class="lb-tag you">You</span>' : isFol ? '<i class="fa-solid fa-heart lb-fol" role="img" aria-label="You follow this vendor" title="You follow this vendor"></i>' : ""}</strong>${sub ? `<small>${sub}</small>` : ""}</div>
+      <div class="lb-row-copy"><strong><span class="nm">${esc(r.business_name)}</span>${r.is_me ? '<span class="lb-tag you">You</span>' : isFol ? '<span class="lb-tag fol" title="You follow this vendor"><i class="fa-solid fa-check" aria-hidden="true"></i> Following</span>' : ""}</strong>${sub ? `<small>${sub}</small>` : ""}</div>
       <div class="lb-row-pts"><b>${num(r.points)}</b>pts</div></div>`;
   }
 

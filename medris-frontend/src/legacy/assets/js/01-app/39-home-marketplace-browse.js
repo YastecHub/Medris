@@ -565,6 +565,13 @@ function levroCategoryArtKey(sector) {
   if (/agri|farm|pet/.test(name)) return "farm";
   if (/build|construct|hardware|tool|industrial/.test(name)) return "tools";
   if (/gift/.test(name)) return "gift";
+  if (/cloth|apparel|accessor|garment|hat|cap\b|belt|sock|thrift|vintage|wear|outfit/.test(name)) return "clothes";
+  if (/deliver|logistic|courier|transport|ride|dispatch|moving/.test(name)) return "delivery";
+  if (/print|design|graphic|brand|photograph/.test(name)) return "art";
+  if (/tutor|lesson|class|training|course/.test(name)) return "books";
+  if (/^all\b|everything|all categories/.test(name)) return "all";
+  if (/campus|school|universit|hostel|student/.test(name)) return "campus";
+  if (/vendor|shop|store|market/.test(name)) return "shop";
   return "default";
 }
 
@@ -596,7 +603,12 @@ function levroCategoryArtSvg(key) {
     farm: `<path d="M17 48c7-16 15-24 23-24s16 8 23 24z" fill="#67c982"/><path d="M40 24v30" stroke="#7b5b43" stroke-width="5"/><circle cx="26" cy="34" r="7" fill="#ffd166"/><path d="M21 53h38" stroke="#5f86ff" stroke-width="4" stroke-linecap="round"/>`,
     tools: `<path d="M25 22l28 28" stroke="#6d7cf0" stroke-width="8" stroke-linecap="round"/><path d="M51 20l-5 5 7 7 5-5z" fill="#ff8a5b"/><circle cx="25" cy="48" r="9" fill="#67d4a2"/>`,
     gift: `<rect x="21" y="28" width="38" height="27" rx="4" fill="#ff6f91"/><path d="M40 28v27M21 37h38" stroke="#ffd166" stroke-width="5"/><path d="M40 28c-11 0-13-12-6-13 5-1 8 6 6 13zM40 28c11 0 13-12 6-13-5-1-8 6-6 13z" fill="#67d4a2"/>`,
-    default: `<circle cx="40" cy="40" r="22" fill="#7d8cff"/><circle cx="32" cy="34" r="5" fill="#ffd166"/><circle cx="47" cy="34" r="5" fill="#ff7da7"/><path d="M29 45c7 8 15 8 22 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>`
+    clothes: `<path d="M40 16c4 0 6 3 5 6-1 2-5 3-5 7" fill="none" stroke="#9aa6b8" stroke-width="3.5" stroke-linecap="round"/><path d="M14 52L40 33l26 19c2 2 1 5-2 5H16c-3 0-4-3-2-5z" fill="#ff7bac"/><path d="M26 49h28" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".75"/><circle cx="40" cy="45" r="3" fill="#ffd166"/>`,
+    delivery: `<rect x="12" y="26" width="34" height="24" rx="4" fill="#5f86ff"/><path d="M46 33h12l8 9v8H46z" fill="#ffb347"/><circle cx="26" cy="52" r="6" fill="#27364d"/><circle cx="56" cy="52" r="6" fill="#27364d"/><circle cx="26" cy="52" r="2.4" fill="#fff"/><circle cx="56" cy="52" r="2.4" fill="#fff"/><path d="M50 36h6l4 6H50z" fill="#d9f2ff"/>`,
+    all: `<rect x="14" y="14" width="23" height="23" rx="7" fill="#ff7bac"/><rect x="43" y="14" width="23" height="23" rx="7" fill="#5f86ff"/><rect x="14" y="43" width="23" height="23" rx="7" fill="#f6c453"/><rect x="43" y="43" width="23" height="23" rx="7" fill="#43c59e"/>`,
+    campus: `<path d="M40 14L10 29l30 15 30-15z" fill="#5f6ff0"/><path d="M22 37v13c0 5 8 9 18 9s18-4 18-9V37L40 45z" fill="#8f7cf5"/><path d="M66 31v18" stroke="#f6c453" stroke-width="3.5" stroke-linecap="round"/><circle cx="66" cy="52" r="4" fill="#f6c453"/>`,
+    shop: `<path d="M13 30l5-14h44l5 14z" fill="#ff7a5c"/><path d="M13 30c0 5 4 7 9 7s9-2 9-7c0 5 4 7 9 7s9-2 9-7c0 5 4 7 9 7s9-2 9-7z" fill="#ffb347"/><rect x="18" y="37" width="44" height="24" rx="2" fill="#fff4de"/><rect x="33" y="44" width="14" height="17" rx="2" fill="#5f86ff"/>`,
+    default: `<path d="M20 30h40l-4 26H24z" fill="#7d8cff"/><path d="M29 31c0-12 22-12 22 0" fill="none" stroke="#f6c453" stroke-width="5" stroke-linecap="round"/><rect x="33" y="40" width="14" height="4" rx="2" fill="#fff" opacity=".85"/>`
   };
   const palettes = {
     scarf:["#e8fbf5","#d9f2ff"], dress:["#fff0f7","#efe6ff"], mens:["#edf3ff","#e5f4ff"],
@@ -607,7 +619,7 @@ function levroCategoryArtSvg(key) {
     home:["#fff1dc","#fff8e8"], car:["#eaf2ff","#e8fbf5"], books:["#fff0f5","#eaf0ff"],
     sport:["#fff7d9","#e8f8ff"], art:["#fff0fa","#fff8df"], baby:["#eafcff","#f5edff"],
     service:["#eaf1ff","#e8fbf5"], event:["#f0ebff","#fff0f7"], farm:["#eaf9e8","#fff7dc"],
-    tools:["#edf0ff","#fff0e7"], gift:["#fff0f5","#fff8df"], default:["#edf0ff","#e9fbf5"]
+    tools:["#edf0ff","#fff0e7"], gift:["#fff0f5","#fff8df"], clothes:["#fff0f6","#f0ebff"], delivery:["#eaf1ff","#fff4e0"], all:["#fff0f6","#eaf1ff"], campus:["#edf0ff","#f4edff"], shop:["#fff0e8","#fff8e0"], default:["#edf0ff","#e9fbf5"]
   };
   const [a,b] = palettes[key] || palettes.default;
   /*

@@ -1273,8 +1273,7 @@ img[data-lvimg]:not(.lv-ld){opacity:0}
 :root:root:root body #app .vd-views #vendorsViewGridBtn,:root:root:root body #app .vd-views #vendorsViewListBtn,:root:root:root body #app .vd-views #vendorsViewMapBtn{background:color-mix(in srgb,#10b981 12%,var(--card,#fff))!important;border:0!important;box-shadow:none!important;color:#059669!important}
 :root:root:root body #app .vd-views #vendorsViewGridBtn.active,:root:root:root body #app .vd-views #vendorsViewListBtn.active,:root:root:root body #app .vd-views #vendorsViewMapBtn.active{background:#10b981!important;box-shadow:none!important;color:#fff!important}
 
-/* No verified ticks anywhere for now */
-.vendor-inline-verified,.sr-verified,.vd-verified,.verified-tick,.od-verified,.vendor-card-verified-badge,[data-vt]{display:none!important}
+/* (verified ticks are shown again, only for vendors the lv-fv script marks as fully verified: see the tick style at the end of this file) */
 
 /* List view follow button matches the grid */
 #app .vd-grid.vendors-list-mode .vd-card .vd-follow:not(.following),#app .vendors-list-mode .vendor-card-follow-btn:not(.following){background:linear-gradient(135deg,#22c55e,#0d9f6e)!important;color:#fff!important;border:0!important;box-shadow:0 4px 12px rgba(13,159,110,.28)!important;font-weight:700;border-radius:12px!important;min-height:2.4rem}
@@ -1487,3 +1486,85 @@ html body #app .product-comments-card{display:none!important}
 /* a taller picture box on the product page */
 @media (max-width:799.98px){html body #app .product-detail-card:not(.service-detail-card) .product-gallery-main{aspect-ratio:4/5!important;max-height:none!important}}
 @media (min-width:800px){html body #app .product-detail-card:not(.service-detail-card) .product-gallery-main{aspect-ratio:1/1!important;max-height:min(78vh,720px)!important}}
+/* delivery / pickup choice: round filled radios, delivery = the same light orange as the address card, pickup = blue */
+:root:root:root body #app .delivery-method-row input[type=radio]{appearance:none;-webkit-appearance:none;width:1.25rem!important;height:1.25rem!important;border-radius:50%;border:2px solid color-mix(in srgb,var(--text-muted,#64748b) 55%,transparent);background:var(--card,#fff);display:inline-grid;place-content:center;flex:none;margin:0!important;transition:border-color .15s,background .15s,box-shadow .15s}
+:root:root:root body #app .delivery-method-row input[type=radio]::before{content:"";width:.55rem;height:.55rem;border-radius:50%;background:#fff;transform:scale(0);transition:transform .15s}
+:root:root:root body #app .delivery-method-row input[type=radio]:checked::before{transform:scale(1)}
+:root:root:root body #app .delivery-method-row input[type=radio][value=delivery]:checked{background:#fb923c;border-color:#fb923c;box-shadow:0 0 0 3px color-mix(in srgb,#fb923c 22%,transparent)}
+:root:root:root body #app .delivery-method-row input[type=radio][value=pickup]:checked{background:#3b82f6;border-color:#3b82f6;box-shadow:0 0 0 3px color-mix(in srgb,#3b82f6 22%,transparent)}
+:root:root:root body #app .delivery-method-row label:has(input[value=delivery]:checked){border-color:#fb923c!important;background:color-mix(in srgb,#fb923c 12%,var(--card))!important;box-shadow:0 0 0 3px color-mix(in srgb,#fb923c 14%,transparent)!important}
+:root:root:root body #app .delivery-method-row label:has(input[value=pickup]:checked){border-color:#3b82f6!important;background:color-mix(in srgb,#3b82f6 11%,var(--card))!important;box-shadow:0 0 0 3px color-mix(in srgb,#3b82f6 14%,transparent)!important}
+
+/* ===== UI overhaul: card badges ===== */
+/* nearest distance tier: a clear royal blue (not navy, not pastel) */
+:root{--dt0:#3a6fe0}
+:root[data-theme="dark"],:root[data-theme="black"]{--dt0:#6b9bff}
+/* distance on a product card: plain coloured text, no pill behind it */
+:root:root:root:root:root body #app .product-card-dist,
+:root:root:root:root:root body #app .product-card-dist[class*="dt"]{background:transparent!important;box-shadow:none!important;padding-left:0!important;padding-right:0!important;border:0!important}
+/* "Negotiable" on service cards: coloured text only, a little lower so it sits nearer the divider's other side */
+:root:root:root:root:root:root:root body #app .product-card-wrap.product-card-compact > .card > .product-card-meta > .card-svc-tag,
+:root:root:root:root:root:root body #app .product-card-meta .card-svc-tag{background:transparent!important;padding:0!important;margin:.35rem auto 0 0!important;align-self:center!important;box-shadow:none!important}
+
+/* ===== UI overhaul: dashboard icons are neutral (not brand green), in every theme ===== */
+:root:root:root:root body #app .lv-row-ico,
+:root:root:root:root body #app .vh-row-ico,
+:root:root:root:root body #app .vh-stat-ico,
+:root:root:root:root body #app .vh-row-ico i,
+:root:root:root:root body #app .vh-stat-ico i,
+:root:root:root:root body #app .lv-row-ico i{color:color-mix(in srgb,var(--text,#111) 58%,transparent)!important;-webkit-text-fill-color:currentColor!important}
+
+/* ===== UI overhaul: sign-in / create-account controls follow dark mode (they stayed bright white) ===== */
+html[data-splash="dark"] #loginModal.lv-auth .google-auth-btn{background:#16201b!important;color:#eaf6f0!important;border-color:#2a3a32!important;box-shadow:none!important}
+html[data-splash="dark"] #loginModal.lv-auth .google-auth-btn:hover{background:#1b2923!important}
+html[data-splash="dark"] #loginModal.lv-auth .lv-campus-btn{background:#16201b!important;color:#eaf6f0!important;border-color:#2a3a32!important}
+html[data-splash="dark"] #loginModal.lv-auth .lv-campus-btn .ico{background:#22302a!important;box-shadow:0 0 0 1px #2f4138!important}
+html[data-splash="dark"] #loginModal.lv-auth .lv-campus-btn .ico i{color:#5be39a!important}
+html[data-splash="dark"] #loginModal.lv-auth .lv-campus-btn .t small{color:#9db3a8!important}
+@media (prefers-color-scheme:dark){
+html[data-splash="auto"] #loginModal.lv-auth .google-auth-btn{background:#16201b!important;color:#eaf6f0!important;border-color:#2a3a32!important;box-shadow:none!important}
+html[data-splash="auto"] #loginModal.lv-auth .google-auth-btn:hover{background:#1b2923!important}
+html[data-splash="auto"] #loginModal.lv-auth .lv-campus-btn{background:#16201b!important;color:#eaf6f0!important;border-color:#2a3a32!important}
+html[data-splash="auto"] #loginModal.lv-auth .lv-campus-btn .ico{background:#22302a!important;box-shadow:0 0 0 1px #2f4138!important}
+html[data-splash="auto"] #loginModal.lv-auth .lv-campus-btn .ico i{color:#5be39a!important}
+html[data-splash="auto"] #loginModal.lv-auth .lv-campus-btn .t small{color:#9db3a8!important}
+}
+
+/* ===== UI overhaul: one modern green tick for every verified person/vendor ===== */
+:root{--lv-tick:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2334d399'/%3E%3Cstop offset='1' stop-color='%23059669'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='12' cy='12' r='11' fill='url(%23g)'/%3E%3Cpath d='M7 12.5l3.2 3.2L17 8.8' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+:root:root:root body i.sr-verified,:root:root:root body i.vendor-inline-verified,:root:root:root body i.lv-cr-vtick,:root:root:root body i.lv-svi,:root:root:root body i.od-verified,
+:root:root:root body .lcl-v i,:root:root:root body .vd-verified i,:root:root:root body .verified-tick i,:root:root:root body .vendor-card-verified-badge i,:root:root:root body .od-verified i{display:inline-block!important;width:1.1em!important;height:1.1em!important;font-size:inherit;margin-left:.25em;vertical-align:-.18em;background:var(--lv-tick) center/contain no-repeat!important;color:transparent!important;-webkit-text-fill-color:transparent!important;border-radius:0!important;box-shadow:none!important;flex:none}
+:root:root:root body i.sr-verified::before,:root:root:root body i.vendor-inline-verified::before,:root:root:root body i.lv-cr-vtick::before,:root:root:root body i.lv-svi::before,:root:root:root body i.od-verified::before,
+:root:root:root body .lcl-v i::before,:root:root:root body .vd-verified i::before,:root:root:root body .verified-tick i::before,:root:root:root body .vendor-card-verified-badge i::before,:root:root:root body .od-verified i::before{content:none!important}
+/* a name never carries two ticks */
+:root:root:root body strong:has(> .lv-svi) > [data-vt],:root:root:root body .storefront-name-row:has(.lcl-v) [data-vt]{display:none!important}
+/* wrappers around a tick are plain: no pill behind it */
+:root:root:root body .vd-verified,:root:root:root body .verified-tick,:root:root:root body .vendor-card-verified-badge,:root:root:root body .lcl-v{background:transparent!important;box-shadow:none!important;border:0!important}
+
+/* follow bell: the icon is the mode (see lv follow bell script) */
+:root:root:root:root body #app .storefront-profile .follow-settings-btn[data-mode="all"] i{color:#2f6fed!important}
+:root:root:root:root body #app .storefront-profile .follow-settings-btn[data-mode="relevant"] i{color:#f59e0b!important}
+:root:root:root:root body #app .storefront-profile .follow-settings-btn[data-mode="off"] i{color:var(--text-muted,#64748b)!important}
+:root:root:root:root body #app .storefront-profile .follow-settings-btn:disabled i{color:var(--text-muted,#64748b)!important}
+
+/* leaderboard: a followed vendor gets a quiet "Following" pill instead of a red heart */
+:root:root body #app .lb-tag.fol{text-transform:none;letter-spacing:0;font-size:.68rem;font-weight:700;padding:.14rem .5rem;background:color-mix(in srgb,#3b82f6 12%,transparent);color:#2f6fed;display:inline-flex;align-items:center;gap:.25rem}
+:root:root body #app .lb-tag.fol i{font-size:.6rem;color:inherit!important}
+:root[data-theme="dark"] body #app .lb-tag.fol,:root[data-theme="black"] body #app .lb-tag.fol{color:#8fb4ff;background:rgba(111,155,255,.16)}
+
+/* "All campuses" icon is a coloured picture, like the campus logos */
+#lvCampusBar .lvcb-main .ico:has(.lvcb-allart){background:transparent!important;box-shadow:none!important}
+#lvCampusBar .lvcb-allart{display:block;width:100%;height:100%}
+
+/* vendors page title tile: a solid gradient tile with a white storefront instead of a thin outlined box */
+:root:root:root body #app .vd-title-ico{width:2.7rem!important;height:2.7rem!important;border-radius:15px!important;border:0!important;background:linear-gradient(145deg,#34d399,#0d9f6e)!important;color:#fff!important;box-shadow:0 6px 14px -6px rgba(13,159,110,.65)}
+:root:root:root body #app .vd-title-ico svg{stroke:#fff!important;stroke-width:1.9!important}
+
+/* ===== UI overhaul: admin "Students & campuses" ===== */
+/* search on its own row, then ONE segmented control (To review / Verified / Unverified / By campus) with equal segments */
+.ac-tools{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:.25rem!important;padding:0;margin:.2rem 0 .9rem}
+.ac-tools input{grid-column:1/-1;margin-bottom:.45rem}
+.ac-tools .ac-chip{border:0;border-radius:11px;padding:.55rem .2rem;font-size:.76rem;text-align:center;white-space:nowrap;background:color-mix(in srgb,var(--text,#111) 6%,var(--card,#fff));color:var(--text-muted,#667)}
+.ac-tools .ac-chip.on{background:var(--primary,#16a34a);color:#fff;box-shadow:0 4px 10px -5px color-mix(in srgb,var(--primary,#16a34a) 70%,transparent)}
+@media (min-width:720px){.ac-stats{grid-template-columns:repeat(6,minmax(0,1fr))}.ac-tools{max-width:560px}}
+.ac-sec{margin:1rem 0 .3rem;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#667)}
