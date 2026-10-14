@@ -11,6 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 declare const sb: SupabaseClient;
 declare const favoriteIds: Set<string>;
 declare const buyerLocation: { lat: number; lng: number } | null;
+declare const MEDRIS_LOGO: string;
 declare const profile: { role?: string; address?: string | null } | null;
 declare const session: { user?: { id: string } } | null;
 declare const vendor: { id?: string } | null;
@@ -123,6 +124,7 @@ export const legacyState = {
       return "";
     }
   },
+  medrisLogo: (): string => (typeof MEDRIS_LOGO === "undefined" ? "" : MEDRIS_LOGO),
   client: (): SupabaseClient => sb,
   vendorId: (): string => {
     try {

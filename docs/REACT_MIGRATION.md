@@ -692,7 +692,7 @@ everyone), **legacy removed**. Every later pull request updates its own rows. To
 | `terms` | 1 | React-off (pilot, in PR #9) | #9 | Chunk `TermsPage-*.js` 8.2 kB, loads only when on. Parity tests pass. Not on for anyone: `?react=terms` / `VITE_REACT_VIEWS`. |
 | `privacy` | 1 | React-off | this PR (#10) | Same pattern as `terms`; chunk `PrivacyPage-*.js` 6.0 kB, loads only when on. Parity tests pass. Not on for anyone: `?react=privacy` / `VITE_REACT_VIEWS`. |
 | `refundPolicy` | 1 | React-off | PR for refund policy (see below) | Same pattern as `terms`/`privacy`; no links; chunk `RefundPolicyPage-*.js`. Parity tests pass. Not on for anyone: `?react=refundPolicy` / `VITE_REACT_VIEWS`. |
-| `sharedAiChat` | 2 | legacy | — | |
+| `sharedAiChat` | 2 | React-off | PR for the shared AI chat | One-to-one: same RPC (`get_shared_ai_conversation`), markup, date separators and clean-up of Levi's hidden tags (the app's own parsers and date helpers are reused). Parity tests pass (markup, request, escaping, link, Home buttons, pixels). Not on for anyone: `?react=sharedAiChat`. **Lesson for later screens:** a few old style rules are keyed on inline `onclick` attributes (e.g. `#app button[onclick*="navigate('home')"].btn-sm` is the grey "back" button, `assets/css/03-pages.css:2369`); React sets that attribute on such buttons (as their only handler) so they look the same. |
 | `suspended` | 5 | legacy | — | |
 
 ---
