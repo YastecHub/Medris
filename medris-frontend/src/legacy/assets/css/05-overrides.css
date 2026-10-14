@@ -1675,3 +1675,6 @@ html body #app .storefront-name-row .lv-camp-line:has(.lcl-v){display:none!impor
 
 /* search page: "Product" / "Service" are plain coloured words, no tinted pill behind them */
 :root:root:root body #app .sr-type,:root:root:root body #app .sr-type-service,:root:root:root body #app .sr-type-package{background:transparent!important;padding-left:0!important;padding-right:0!important;box-shadow:none!important;border:0!important}
+
+/* brand icon inside the action sheet (WhatsApp) */
+.media-action-sheet-item i.fa-whatsapp{font-family:"Font Awesome 6 Brands"!important;font-weight:400!important;color:#25d366}
