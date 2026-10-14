@@ -171,7 +171,7 @@ async function __levroOriginalRenderProductDetail(productId) {
   let html = `<div class="card product-detail-card" data-product-detail-id="${esc(product.id)}" style="position:relative;">
     <div class="product-detail-top-actions" aria-label="Product actions">
       <button class="fav-btn ${isFav ? "active" : ""}" onclick="toggleFavorite(event,'${product.id}')" title="Save to wishlist" aria-label="Save to wishlist">${isFav ? "<i class='fa-solid fa-heart'></i>" : "<i class='fa-regular fa-heart'></i>"}</button>
-      <button type="button" class="product-storefront-share-btn lv-top-comment-btn" onclick="lvOpenProductComments('${product.id}')" title="Comments" aria-label="Open comments"><span class="lv-cbubble"><i class="fa-regular fa-comment"></i><b class="lv-ccount" data-product-id="${esc(product.id)}">${window.__productCommentCounts?.get?.(String(product.id)) ?? ""}</b></span></button>
+      <button type="button" class="product-storefront-share-btn lv-top-comment-btn" onclick="lvOpenProductComments('${product.id}')" title="Comments" aria-label="Open comments"><span class="lv-cbubble"><i class="fa-solid fa-comment-dots"></i><b class="lv-ccount" data-product-id="${esc(product.id)}">${window.__productCommentCounts?.get?.(String(product.id)) ?? ""}</b></span></button>
       <button type="button" class="product-storefront-share-btn" onclick="openProductShare('${product.id}')" title="Share product" aria-label="Share product"><i class="fa-solid fa-share-nodes"></i></button>
     </div>
     <h2 class="product-detail-title">${esc(product.name)}${product.is_service ? ` <span class="badge">Service</span>` : ""}</h2>
@@ -711,3 +711,46 @@ async function buyNow(vendorId, productId) {
   await navigate("orderDetail", { orderId });
 }
 
+
+/* ---- swipe the page background to move to the vendor's next / previous product ---- */
+(function () {
+  let t0 = null;
+  const blocked = "input,textarea,select,button,a,label,.product-gallery-carousel,.product-gallery-track,.product-gallery-main,.product-gallery-thumbs,.product-gallery-varieties,.product-comments-panel,.lv-cmt-sheet,.modal,.drawer,[role=dialog],.horizontal-scroll,.carousel,.hscroll";
+  const cache = new Map();
+  async function siblings(vendorId) {
+    if (cache.has(vendorId)) return cache.get(vendorId);
+    const p = sb.from("products").select("id").eq("vendor_id", vendorId).eq("status", "active").order("created_at", { ascending: false }).limit(60)
+      .then(({ data }) => (data || []).map((r) => String(r.id))).catch(() => []);
+    cache.set(vendorId, p);
+    return p;
+  }
+  async function step(dir) {
+    const cur = currentProductDetail, vid = cur?.vendor?.id || cur?.vendor_id;
+    if (!cur?.id || !vid || currentView !== "productDetail") return;
+    const ids = await siblings(String(vid));
+    const i = ids.indexOf(String(cur.id));
+    if (i < 0 || ids.length < 2) { showToast("No other products from this vendor yet.", "info"); return; }
+    const next = ids[(i + dir + ids.length) % ids.length];
+    navigate("productDetail", { productId: next });
+  }
+  document.addEventListener("touchstart", (e) => {
+    t0 = null;
+    if (currentView !== "productDetail" || e.touches.length !== 1) return;
+    if (e.target.closest?.(blocked)) return;
+    if (!e.target.closest?.("#app")) return;
+    t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (!t0) return;
+    const t = e.changedTouches[0], dx = t.clientX - t0.x, dy = t.clientY - t0.y, dt = Date.now() - t0.t;
+    t0 = null;
+    if (Math.abs(dx) < 90 || Math.abs(dy) > 45 || Math.abs(dx) < Math.abs(dy) * 2.5 || dt > 700) return;
+    step(dx < 0 ? 1 : -1);
+  }, { passive: true });
+})();
+
+/* the comment badge on the product page's top button only shows when there are comments */
+(function () {
+  const mark = () => document.querySelectorAll(".product-detail-card .lv-ccount").forEach((b) => { const z = !Number(b.textContent); if (z !== (b.dataset.zero === "1")) b.dataset.zero = z ? "1" : ""; });
+  try { new MutationObserver(mark).observe(document.body, { childList: true, subtree: true, characterData: true }); } catch (_) {}
+})();

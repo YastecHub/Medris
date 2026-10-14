@@ -1538,13 +1538,67 @@ async function reqPhotosPicked(e){
   var room=4-(window.__reqPhotos||[]).length;
   for(var i=0;i<files.length&&i<room;i++){
     var f=files[i]; if(!/^image\//.test(f.type)) continue;
-    try{ var small=await lvPrepareImageFile(f,1600); window.__reqPhotos.push({file:small,url:URL.createObjectURL(small)}); }
+    try{ var small=await lvPrepareImageFile(f,1600); window.__reqPhotos.push({file:small,url:URL.createObjectURL(small)}); (window.__reqDraftPhotos=window.__reqDraftPhotos||[]).push(await reqFileToDataUrl(small)); }
     catch(_){ showToast("Couldn't read one of the photos.","error"); }
   }
   if(files.length>room) showToast("You can add up to 4 photos.","info");
+  reqPhotosPaint(); reqDraftSave();
+}
+function reqPhotoRemove(i){ var p=(window.__reqPhotos||[]).splice(i,1)[0]; if(p) try{URL.revokeObjectURL(p.url);}catch(_){} reqPhotosPaint(); reqDraftSave(); }
+/* A phone can reload the page while its photo picker is open (the camera / gallery takes the memory), which used to wipe the
+   form and drop the person back on the home page. The form and the picked photos are kept for a few minutes so they survive. */
+var REQ_DRAFT_KEY="lv-req-draft";
+function reqDraftRead(){ try{ var d=JSON.parse(sessionStorage.getItem(REQ_DRAFT_KEY)||"null"); return d&&Date.now()-d.t<30*60*1000?d:null; }catch(_){ return null; } }
+function reqDraftClear(){ try{ sessionStorage.removeItem(REQ_DRAFT_KEY); }catch(_){} }
+function reqDraftSave(){
+  if(!document.getElementById("reqTitle")) return;
+  var g=function(id){ var el=document.getElementById(id); return el?el.value:""; };
+  var typeEl=document.querySelector('input[name="reqType"]:checked');
+  var d={t:Date.now(),title:g("reqTitle"),desc:g("reqDesc"),city:g("reqCity"),type:typeEl?typeEl.value:"buy",sector:g("reqSector"),category:g("reqCategory"),photos:window.__reqDraftPhotos||[]};
+  try{ sessionStorage.setItem(REQ_DRAFT_KEY,JSON.stringify(d)); }
+  catch(_){ d.photos=[]; try{ sessionStorage.setItem(REQ_DRAFT_KEY,JSON.stringify(d)); }catch(__){} }
+}
+function reqFileToDataUrl(file){ return new Promise(function(res){ var r=new FileReader(); r.onload=function(){ res(String(r.result||"")); }; r.onerror=function(){ res(""); }; r.readAsDataURL(file); }); }
+async function reqDraftRestore(){
+  var d=reqDraftRead(); if(!d||!document.getElementById("reqTitle")) return;
+  var set=function(id,v){ var el=document.getElementById(id); if(el&&v!=null&&v!=="") el.value=v; };
+  set("reqTitle",d.title); set("reqDesc",d.desc); set("reqCity",d.city);
+  var radio=document.querySelector('input[name="reqType"][value="'+(d.type==="rent"?"rent":"buy")+'"]'); if(radio) radio.checked=true;
+  try{ updateRequestFormFields(); }catch(_){}
+  if(d.sector){ set("reqSector",d.sector); var sec=(typeof sectors!=="undefined"?sectors:[]).find(function(x){return String(x.id)===String(d.sector);}); var sl=document.getElementById("reqSectorLabel"); if(sl&&sec) sl.textContent=sec.name; try{ updateRequestCategoryOptions(); }catch(_){} }
+  if(d.category){ set("reqCategory",d.category); var cat=(window.__categories||[]).find(function(x){return String(x.id)===String(d.category);}); var cl=document.getElementById("reqCategoryLabel"); if(cl&&cat) cl.textContent=cat.name; }
+  window.__reqDraftPhotos=[];
+  for(var i=0;i<(d.photos||[]).length&&i<4;i++){
+    try{ var blob=await (await fetch(d.photos[i])).blob(); var f=new File([blob],"photo-"+i+".jpg",{type:blob.type||"image/jpeg"}); window.__reqPhotos.push({file:f,url:URL.createObjectURL(f)}); window.__reqDraftPhotos.push(d.photos[i]); }catch(_){}
+  }
   reqPhotosPaint();
 }
-function reqPhotoRemove(i){ var p=(window.__reqPhotos||[]).splice(i,1)[0]; if(p) try{URL.revokeObjectURL(p.url);}catch(_){} reqPhotosPaint(); }
+document.addEventListener("input",function(e){ var id=e.target&&e.target.id; if(id==="reqTitle"||id==="reqDesc"||id==="reqCity") reqDraftSave(); },true);
+document.addEventListener("change",function(e){ if(e.target&&e.target.name==="reqType") reqDraftSave(); },true);
+document.addEventListener("click",function(e){
+  if(e.target.closest&&e.target.closest("#reqPhotoBox .req-drop, #reqPhotoBox .req-ph.add")) reqDraftSave();
+},true);
+/* A phone can reload the whole page while its photo picker is open. Remember where the person was when any file picker
+   opens; if the page comes back reloaded (the picker never reports back), open that screen again instead of the home page. */
+(function(){
+  var KEY="lv-picker-resume";
+  document.addEventListener("click",function(e){
+    var t=e.target; if(!t||t.tagName!=="INPUT"||t.type!=="file") return;
+    try{ sessionStorage.setItem(KEY,JSON.stringify({t:Date.now(),view:typeof currentView!=="undefined"?currentView:"",params:typeof currentViewParams!=="undefined"?currentViewParams:{}})); }catch(_){}
+  },true);
+  /* the page survived the picker (it got focus back and is still here): nothing to resume */
+  window.addEventListener("focus",function(){ setTimeout(function(){ try{ sessionStorage.removeItem(KEY); }catch(_){} },8000); });
+  var r=null; try{ r=JSON.parse(sessionStorage.getItem(KEY)||"null"); }catch(_){}
+  if(!r||!r.view||Date.now()-r.t>3*60*1000) return;
+  var tries=0, timer=setInterval(function(){
+    tries++;
+    if(tries>60){ clearInterval(timer); return; }
+    if(typeof session==="undefined"||!session||typeof navigate!=="function"||typeof currentView==="undefined"||!currentView) return;
+    clearInterval(timer);
+    try{ sessionStorage.removeItem(KEY); }catch(_){}
+    if(currentView!==r.view) navigate(r.view,r.params||{},false);
+  },250);
+})();
 function reqPhotosHtml(photos){
   var l=Array.isArray(photos)?photos.filter(Boolean):[]; if(!l.length) return "";
   window.__reqPhotoSets=window.__reqPhotoSets||[]; var k=window.__reqPhotoSets.push(l)-1;

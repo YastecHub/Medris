@@ -1709,7 +1709,10 @@
       children.get(k).push(r);
     });
     return roots.map(root=>{
-      const replies=(children.get(String(root.id))||[]).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+      /* every reply under this comment, including replies to replies, oldest first (they were dropped before: only direct replies showed) */
+      const replies=[],seen=new Set([String(root.id)]),queue=[String(root.id)];
+      while(queue.length){const k=queue.shift();(children.get(k)||[]).forEach(r=>{const id=String(r.id);if(seen.has(id))return;seen.add(id);replies.push(r);queue.push(id)})}
+      replies.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
       const replyId=`levro-replies-${kind}-${root.id}`;
       return commentRow(root,likeMap,myLiked,0,kind)+
         (replies.length?`<button type="button" class="comment-replies-toggle" onclick="toggleInlineCommentReplies('${escSafe(root.id)}','${kind}')" aria-expanded="false" data-replies-for="${escSafe(root.id)}"><span class="cr-line"></span><span class="cr-label">View ${replies.length} ${replies.length===1?"reply":"replies"}</span></button><div id="${replyId}" class="comment-replies-dropdown hidden">${replies.map(r=>commentRow(r,likeMap,myLiked,1,kind)).join("")}</div>`:"");

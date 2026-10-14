@@ -1211,7 +1211,7 @@ html.lv-anim,html.lv-anim body{overflow-x:hidden}
 .lvsr-acts .ok{background:var(--primary,#16a34a);border-color:transparent;color:#fff}.lvsr-acts .no{color:#dc2626}
 
 /* ---- request page: photo dropzone ---- */
-.req-photos{display:grid;grid-template-columns:repeat(4,1fr);gap:.55rem;margin:.3rem 0 .8rem}
+.req-photos{display:grid;grid-template-columns:repeat(4,minmax(0,5.4rem));gap:.55rem;margin:.3rem 0 .8rem}
 .req-photos.empty{display:block}
 .req-photos .req-ph{width:auto;height:auto;aspect-ratio:1/1;border-radius:16px}
 .req-photos .req-ph.add{border-radius:16px}
@@ -1465,3 +1465,25 @@ html[data-levro-motion] #lvCampusBar .lvcb-trophy::before{content:"";position:ab
 :root:root:root:root body #app .product-card-dist[class*="dt"],:root:root:root:root body #app .search-result-distance[class*="dt"],:root:root:root:root body #app .vendor-distance[class*="dt"],:root:root:root:root body #app .storefront-distance-link[class*="dt"],
 :root:root:root:root body #app .search-result-distance[class*="dt"] *,:root:root:root:root body #app .product-card-dist[class*="dt"] *,:root:root:root:root body #app .vendor-distance[class*="dt"] *,:root:root:root:root body #app .storefront-distance-link[class*="dt"] *{color:var(--dtc)!important;-webkit-text-fill-color:var(--dtc)!important}
 :root:root:root:root body #app .product-card-dist[class*="dt"]{background:color-mix(in srgb,var(--dtc) 16%,transparent)!important}
+
+/* ===== UI overhaul: product page ===== */
+/* Heart / comments / share: three soft round buttons that match each other (no outline, no number inside a bubble).
+   The comment count sits on the corner as a small badge. */
+:root:root:root:root body #app .product-detail-card .product-detail-top-actions{gap:.5rem}
+:root:root:root:root body #app .product-detail-card .product-detail-top-actions > .fav-btn,
+:root:root:root:root body #app .product-detail-card .product-detail-top-actions > .product-storefront-share-btn{position:relative!important;width:2.5rem!important;height:2.5rem!important;border-radius:50%!important;border:0!important;display:inline-grid!important;place-items:center!important;background:color-mix(in srgb,var(--text,#111) 6%,var(--card,#fff))!important;box-shadow:none!important;transition:transform .15s ease,background .15s ease}
+:root:root:root:root body #app .product-detail-card .product-detail-top-actions > .fav-btn:active,
+:root:root:root:root body #app .product-detail-card .product-detail-top-actions > .product-storefront-share-btn:active{transform:scale(.92)!important}
+:root:root:root:root body #app .product-detail-card .product-detail-top-actions > .fav-btn:hover,
+:root:root:root:root body #app .product-detail-card .product-detail-top-actions > .product-storefront-share-btn:hover{background:color-mix(in srgb,var(--primary,#16a34a) 12%,var(--card,#fff))!important}
+:root:root:root:root body #app .product-detail-card .product-detail-top-actions i{font-size:1.05rem!important}
+:root:root:root:root body #app .product-detail-card .product-detail-top-actions .lv-top-comment-btn .lv-cbubble{position:static;display:inline-grid;width:auto;height:auto}
+:root:root:root:root body #app .product-detail-card .product-detail-top-actions .lv-top-comment-btn .lv-cbubble i{font-size:1.05rem!important}
+:root:root:root:root body #app .product-detail-card .lv-ccount{position:absolute!important;left:auto!important;right:-.1rem!important;top:-.1rem!important;transform:none!important;min-width:1.05rem;height:1.05rem;padding:0 .25rem;border-radius:999px;background:var(--primary,#16a34a);color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:.62rem!important;font-weight:800;line-height:1.05rem;text-align:center;box-shadow:0 0 0 2px var(--card,#fff)}
+:root:root:root:root body #app .product-detail-card .lv-ccount:empty,
+:root:root:root:root body #app .product-detail-card .lv-ccount[data-zero="1"]{display:none!important}
+/* one comments entry (the top button); the old dropdown under the reviews is gone, its panel still opens as the sheet */
+html body #app .product-comments-card{display:none!important}
+/* a taller picture box on the product page */
+@media (max-width:799.98px){html body #app .product-detail-card:not(.service-detail-card) .product-gallery-main{aspect-ratio:4/5!important;max-height:none!important}}
+@media (min-width:800px){html body #app .product-detail-card:not(.service-detail-card) .product-gallery-main{aspect-ratio:1/1!important;max-height:min(78vh,720px)!important}}

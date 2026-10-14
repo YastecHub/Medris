@@ -69,7 +69,8 @@ async function renderRequestEquipment() {
   html += `</div></div>`;
   setTimeout(updateRequestFormFields, 0);
   window.__reqPhotos = [];
-  setTimeout(reqPhotosPaint, 0);
+  window.__reqDraftPhotos = [];
+  setTimeout(() => { reqPhotosPaint(); reqDraftRestore(); }, 0);
   return html;
 }
 
