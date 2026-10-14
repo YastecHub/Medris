@@ -1783,3 +1783,101 @@ html body #app .sr-vendor-row .sr-side{flex:0 0 auto;margin-left:.4rem}
 
 /* Browse everything: a search icon inside the search bar, with the text clear of it */
 html body #app .browse-filter-toolbar #searchInput{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a3' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:.95rem 50%!important;background-size:1.1rem 1.1rem!important;padding-left:2.8rem!important}
+
+/* Round 6: long names keep their tick; map pins carry a small tick badge; softer, livelier map */
+html body #app .lv-nm-flex{display:flex!important;align-items:center;gap:.25rem;min-width:0}
+html body #app .lv-nm-flex > .lv-nm-t{min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body #app .lv-nm-flex > i,html body #app .lv-nm-flex > [data-vt]{flex:0 0 auto}
+.vmp-pin .vmp-tick{position:absolute!important;top:-5px;right:-6px;margin:0!important;width:19px!important;height:19px!important;font-size:0!important;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(15,23,42,.35)}
+.vmp-pin .vmp-tick::before{width:19px!important;height:19px!important}
+.vmp-pin{box-shadow:0 8px 18px rgba(15,23,42,.28),0 0 0 4px color-mix(in srgb,var(--primary,#3fb97f) 22%,transparent)!important}
+#vendorsMapWrap{border-radius:22px;overflow:hidden;border:1px solid var(--border);box-shadow:0 14px 34px rgba(15,23,42,.14)}
+#vendorsMap{border-radius:22px}
+#vendorsMap .leaflet-tile-pane{filter:saturate(.85) contrast(.96) brightness(1.03) hue-rotate(-8deg)!important}
+:root[data-theme="dark"] #vendorsMap .leaflet-tile-pane,:root[data-theme="black"] #vendorsMap .leaflet-tile-pane{filter:invert(1) hue-rotate(160deg) saturate(.75) brightness(.88) contrast(.92)!important}
+#vendorsMap::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:450;border-radius:22px;background:radial-gradient(120% 90% at 50% 0%,rgba(255,255,255,.18),transparent 55%),radial-gradient(130% 100% at 50% 110%,color-mix(in srgb,var(--primary,#3fb97f) 14%,transparent),transparent 60%)}
+#vendorsMap .leaflet-control-zoom{border:0!important;border-radius:14px!important;overflow:hidden;box-shadow:0 6px 18px rgba(15,23,42,.22)!important}
+#vendorsMap .leaflet-control-zoom a{width:36px!important;height:36px!important;line-height:36px!important;font-size:18px!important;background:var(--card,#fff)!important;color:var(--text,#111)!important;border-color:var(--border)!important}
+#vendorsMap .leaflet-control-attribution{background:color-mix(in srgb,var(--card,#fff) 80%,transparent)!important;border-radius:10px 0 0 0;font-size:.6rem}
+#vendorsMap .vendors-map-recenter-control{border-radius:14px!important;box-shadow:0 6px 18px rgba(15,23,42,.22)!important}
+#vendorsMap .leaflet-popup-content-wrapper{border-radius:16px!important;box-shadow:0 12px 30px rgba(15,23,42,.28)!important}
+
+/* ===== Vendors map page ===== */
+body[data-view="vendorsMap"] #app{padding:0!important;max-width:none!important}
+html body #app .vmpage{position:relative;width:100%;z-index:1;overflow:hidden;background:var(--bg)}
+.vmpage #vmpMap{position:absolute;inset:0;z-index:0;background:var(--border)}
+.vmpage .leaflet-control-attribution{font-size:.58rem;background:color-mix(in srgb,var(--card) 78%,transparent);border-radius:8px 0 0 0;margin-bottom:0}
+.vmpage[data-style="night"] .leaflet-control-attribution{color:#cbd5e1}
+.vmp-top{position:absolute;z-index:500;top:.7rem;left:.7rem;right:4.1rem;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.vmp-top > *{pointer-events:auto}
+.vmp-bar{display:flex;align-items:center;gap:.3rem;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:.2rem .7rem .2rem .25rem;box-shadow:0 10px 28px rgba(15,23,42,.22)}
+.vmp-bar input{flex:1;min-width:0;border:0!important;background:transparent!important;box-shadow:none!important;outline:none!important;color:var(--text);font-size:.95rem;padding:.6rem .2rem!important;margin:0!important;height:auto!important}
+.vmp-bar-ic{color:var(--text-muted);font-size:.9rem}
+.vmp-back,.vmp-clear{width:38px;height:38px;flex:0 0 38px;border:0;border-radius:50%;background:transparent;color:var(--text);display:grid;place-items:center;cursor:pointer}
+.vmp-clear{width:30px;height:30px;flex-basis:30px;background:color-mix(in srgb,var(--text) 10%,transparent)}
+.vmp-sugg{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 14px 34px rgba(15,23,42,.28);overflow:hidden;max-height:46vh;overflow-y:auto}
+.vmp-sugg button{display:flex;align-items:center;gap:.65rem;width:100%;padding:.6rem .8rem;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer;border-bottom:1px solid var(--border)}
+.vmp-sugg button:last-child{border-bottom:0}
+.vmp-sugg .vmp-sg-logo{width:36px;height:36px;flex:0 0 36px;border-radius:50%;overflow:hidden;display:grid;place-items:center;position:relative;background:var(--border)}
+.vmp-sugg .vmp-sg-logo img{width:100%;height:100%;object-fit:cover}
+.vmp-sugg .vmp-sg-logo .vd-initials{position:absolute;inset:0}
+.vmp-sg-copy{display:flex;flex-direction:column;min-width:0;flex:1}
+.vmp-sg-copy strong{font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmp-sg-copy small{color:var(--text-muted);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmp-sugg i.fa-location-arrow{color:var(--primary)}
+.vmp-sg-none{padding:.9rem;color:var(--text-muted);font-size:.88rem}
+.vmp-chips{display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;padding:.1rem .05rem .35rem;margin-right:-4rem;padding-right:4rem}
+.vmp-chips::-webkit-scrollbar{display:none}
+.vmp-chip{flex:0 0 auto;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:.38rem .85rem;font-size:.8rem;font-weight:650;box-shadow:0 4px 12px rgba(15,23,42,.16);cursor:pointer;white-space:nowrap}
+.vmp-chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.vmp-fabs{position:absolute;z-index:500;top:.7rem;right:.7rem;display:flex;flex-direction:column;gap:.2rem;align-items:flex-end}
+.vmp-fab{width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);display:grid;place-items:center;box-shadow:0 8px 20px rgba(15,23,42,.24);cursor:pointer;font-size:.95rem}
+.vmp-fab-gap{margin-top:.55rem}
+.vmp-fab.is-loading i{animation:vmpspin 1s linear infinite}
+@keyframes vmpspin{to{transform:rotate(360deg)}}
+.vmp-styles{position:absolute;top:7.6rem;right:3.2rem;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 14px 34px rgba(15,23,42,.3);overflow:hidden;min-width:9rem}
+.vmp-styles button{display:flex;align-items:center;gap:.6rem;padding:.65rem .9rem;border:0;background:transparent;color:var(--text);font-weight:650;font-size:.86rem;cursor:pointer;text-align:left}
+.vmp-styles button.on{color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent)}
+.vmp-styles i{width:1.1rem;text-align:center}
+.vmp-bottom{position:absolute;z-index:500;left:0;right:0;bottom:0;padding:0 0 .7rem;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.18),transparent)}
+.vmp-bottom > *{pointer-events:auto}
+.vmp-buddy{display:flex;align-items:flex-end;gap:.5rem;margin:0 .8rem .45rem;pointer-events:none}
+.vmp-buddy-m{width:54px;height:54px;flex:0 0 54px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.3));animation:vmpbob 3.2s ease-in-out infinite}
+.vmp-buddy-m svg{width:100%;height:100%}
+@keyframes vmpbob{50%{transform:translateY(-4px)}}
+.vmp-buddy-b{position:relative;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:.5rem .75rem;font-size:.8rem;line-height:1.35;box-shadow:0 8px 20px rgba(15,23,42,.24);max-width:min(78%,420px)}
+.vmp-rail{display:flex;gap:.6rem;overflow-x:auto;scroll-snap-type:x proximity;padding:.2rem .8rem .3rem;scrollbar-width:none;overscroll-behavior-x:contain}
+.vmp-rail::-webkit-scrollbar{display:none}
+.vmp-card{flex:0 0 min(82%,310px);scroll-snap-align:start;background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:.75rem;box-shadow:0 12px 28px rgba(15,23,42,.24);cursor:pointer;display:flex;flex-direction:column;gap:.6rem}
+.vmp-card.on{border-color:var(--primary);box-shadow:0 12px 30px color-mix(in srgb,var(--primary) 35%,transparent)}
+.vmp-card-top{display:flex;gap:.7rem;align-items:center}
+.vmp-card-logo{width:54px;height:54px;flex:0 0 54px;border-radius:16px;overflow:hidden;position:relative;background:var(--border)}
+.vmp-card-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.vmp-card-logo .vd-initials{position:absolute;inset:0}
+.vmp-card-copy{display:flex;flex-direction:column;gap:.12rem;min-width:0;flex:1}
+.vmp-card-name{display:flex;align-items:center;gap:.25rem;font-size:.95rem;min-width:0}
+.vmp-card-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmp-card-copy > span{font-size:.76rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmp-card-copy em{font-style:normal;font-size:.76rem;font-weight:700}
+.vmp-card-copy em i{color:#f59e0b}
+.vmp-card-copy em small{color:var(--text-muted);font-weight:500}
+.vmp-card-act{display:flex;gap:.5rem}
+.vmp-card-act > *{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem .6rem;border-radius:12px;font-size:.8rem;font-weight:700;text-decoration:none;cursor:pointer;border:0}
+.vmp-card-act button{background:var(--primary);color:#fff}
+.vmp-card-act a{background:color-mix(in srgb,var(--primary) 12%,var(--card));color:var(--primary)}
+.vmp-empty{flex:1;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:.9rem 1rem;color:var(--text-muted);font-size:.86rem;box-shadow:0 10px 24px rgba(15,23,42,.2)}
+.vmp-cl-b{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:1rem;background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--primary,#3fb97f) 70%,#fff),var(--primary,#3fb97f));border:3px solid #fff;box-shadow:0 8px 18px rgba(15,23,42,.35),0 0 0 7px color-mix(in srgb,var(--primary,#3fb97f) 25%,transparent);cursor:pointer}
+.vmp.vmp-sel .vmp-pin{transform:scale(1.25);box-shadow:0 10px 22px rgba(15,23,42,.4),0 0 0 6px color-mix(in srgb,var(--primary,#3fb97f) 40%,transparent)!important}
+.vmpage[data-style="satellite"] .vmp-me-dot{border-color:#fff}
+@media (min-width:900px){
+  .vmp-top{max-width:460px}
+  .vmp-chips{margin-right:0;padding-right:0;flex-wrap:wrap;overflow:visible}
+  .vmp-bottom{left:auto;right:4.2rem;width:min(430px,46%)}
+  .vmp-rail{flex-direction:column;max-height:46vh;overflow-y:auto;overflow-x:hidden;padding-bottom:0}
+  .vmp-card{flex:0 0 auto}
+}
+/* map styles: Map = softened OpenStreetMap, Night = the same tiles inverted */
+.vmpage[data-style="streets"] .leaflet-tile-pane{filter:saturate(1.15) contrast(1.02) brightness(1.03)}
+.vmpage[data-style="night"] .leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) saturate(.7) brightness(.82) contrast(.95)}
+body[data-view="vendorsMap"] #aiChatFab,body[data-view="vendorsMap"] #cartFab{display:none!important}
+html body .vmpage #vmpMap,html body .vmpage #vmpMap.leaflet-container{position:absolute!important;inset:0;width:100%;height:100%}

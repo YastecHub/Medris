@@ -381,12 +381,47 @@ test.describe("Round 4", () => {
       (document.getElementById("zb") as HTMLElement).click();
       const nav = () => getComputedStyle(document.getElementById("bottomNav")!).display;
       const sh = document.querySelector(".vl-sheet") as HTMLElement | null; const open = { pos: sh ? getComputedStyle(sh).position : "", bottom: sh ? getComputedStyle(sh).bottom : "", icon: sh ? getComputedStyle(sh.querySelector("button")!).display : "", navDisplay: nav(), inBody: !!document.querySelector("body > .vl-sheet"), backdrop: !!document.querySelector(".lv-sheet-backdrop") };
-      (window as any).vlCloseMenus();
+      (window as unknown as { vlCloseMenus: () => void }).vlCloseMenus();
       return { open, closed: { navDisplay: nav(), inBody: !!document.querySelector("body > .vl-sheet"), backdrop: !!document.querySelector(".lv-sheet-backdrop") } };
     });
     expect(r.open).toMatchObject({ pos: "fixed", bottom: "0px", navDisplay: "none", inBody: true, backdrop: true });
     expect(r.closed.navDisplay).not.toBe("none");
     expect(r.closed.inBody).toBe(false);
     expect(r.closed.backdrop).toBe(false);
+  });
+  test("delivery by distance never charges more than N1000 per km", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    const fees = await page.evaluate(() => [(0, eval)("distanceDeliveryFee(3000, 2)"), (0, eval)("distanceDeliveryFee(300, 2)")]);
+    expect(fees).toEqual([2000, 600]);
+  });
+
+  test("a long vendor name is cut with dots but its tick stays visible", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    const r = await page.evaluate(() => {
+      const app = document.getElementById("app")!;
+      app.insertAdjacentHTML("beforeend", '<div id="zw" style="width:140px"><strong id="zn" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">A very very long vendor business name here<i class="fa-solid fa-circle-check lv-svi"></i></strong></div>');
+      
+      document.body.appendChild(document.createElement("i")).className = "lv-tick-probe";
+      return null;
+    });
+    expect(r).toBeNull();
+    await page.evaluate(() => document.getElementById("app")!.appendChild(document.createElement("div"))); // wake the tick observer
+    await page.waitForFunction(() => document.getElementById("zn")?.classList.contains("lv-nm-flex"), null, { timeout: 8000 }).catch(() => {});
+    const box = await page.evaluate(() => { const w = document.getElementById("zw")!.getBoundingClientRect(), t = document.querySelector("#zn .lv-svi")!.getBoundingClientRect(); return { right: t.right, wrapRight: w.right, w: t.width }; });
+    expect(box.w).toBeGreaterThan(5);
+    expect(box.right).toBeLessThanOrEqual(box.wrapRight + 1);
+  });
+  test("the map button on Vendors opens a dedicated map page with its own search and category chips", async ({ page }) => {
+    await openApp(page, { signedIn: false, theme: "light", tables: { vendors: DIRECTORY_VENDORS, products: DIRECTORY_PRODUCTS, sectors: DIRECTORY_SECTORS } }, "/?react=off");
+    await goTo(page, "vendors");
+    await page.locator("#vendorsViewMapBtn").click();
+    for (let i = 0; i < 12; i++) { await page.clock.runFor(500); if ((await page.locator("body").getAttribute("data-view")) === "vendorsMap") break; }
+    await expect(page.locator("body")).toHaveAttribute("data-view", "vendorsMap");
+    await expect(page.locator("#vmPage #vmpQ")).toBeVisible();
+    const box = await page.locator("#vmPage").boundingBox();
+    expect(box!.height).toBeGreaterThan(200); // a real screen, not the small inline box
+    await page.locator(".vmp-back").click();
+    for (let i = 0; i < 12; i++) await page.clock.runFor(500);
+    await expect(page.locator("body")).toHaveAttribute("data-view", "vendors");
   });
 });

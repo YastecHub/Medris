@@ -1436,7 +1436,7 @@ async function saveProduct() {
     const rental_rate = is_service ? null : (byId("prodRentalRate").value ? Number(byId("prodRentalRate").value) : null);
     const delivery_fee_mode = is_service ? "free" : (byId("prodDeliveryMode").value || "free");
     const delivery_fee = is_service || delivery_fee_mode !== "flat" ? 0 : Math.max(0, Number(byId("prodDeliveryFee").value) || 0);
-    const delivery_fee_per_km = is_service || delivery_fee_mode !== "distance" ? 0 : Math.max(0, Number(byId("prodDeliveryPerKm").value) || 0);
+    const delivery_fee_per_km = is_service || delivery_fee_mode !== "distance" ? 0 : Math.min(1000, Math.max(0, Number(byId("prodDeliveryPerKm").value) || 0));
     const payment_timing = is_service ? "pay_before" : (byId("prodPaymentTiming")?.value === "pay_after" ? "pay_after" : "pay_before");
     const paymentDepositRaw = String(byId("prodPaymentDepositPercent")?.value ?? "").trim();
     const payment_deposit_percent = paymentDepositRaw === "" ? null : Math.max(1, Math.min(99, Number(paymentDepositRaw)));

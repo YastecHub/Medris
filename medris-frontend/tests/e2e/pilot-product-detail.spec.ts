@@ -173,10 +173,9 @@ test.describe("Product page: React matches legacy", () => {
   for (const mode of MODES) {
     test(`${mode}: gallery, varieties, quantity and the delivery switch do what they did`, async ({ page }) => {
       await open(page, mode, "full");
-      await expect(page.locator("#productGalleryCount")).toHaveText("1");
+      await expect(page.locator("#productGalleryCount")).toHaveCount(0); // the "1/8" counter is gone
       await page.locator(".product-gallery-thumb").nth(2).click();
       await settle(page, 2);
-      await expect(page.locator("#productGalleryCount")).toHaveText("3");
       await expect(page.locator(".product-gallery-thumb").nth(2)).toHaveClass(/active/);
 
       // Varieties: the second one in the list is "Large tray" (the first, by sort order, is "Regular tray").

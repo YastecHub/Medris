@@ -2238,6 +2238,22 @@ async function setVendorRequestPref(v){
       if(on!==el.classList.contains("lv-on")) el.classList.toggle("lv-on",on);
     });
     scanNames();
+    keepTicksVisible();
+  }
+  // A long name is cut with "..." and would swallow the tick printed after it: keep the name's text shrinkable and the tick always visible.
+  function keepTicksVisible(){
+    document.querySelectorAll("#app [data-vt].lv-on, #app .lv-svi, #app .lv-cr-vtick").forEach(function(t){
+      var h=t.parentElement; if(!h||h.dataset.lvfx||t.classList.contains("vmp-tick")||h.classList.contains("vmp-pin")) return;
+      if(!h.clientWidth) return;
+      var cs=getComputedStyle(h);
+      if(cs.textOverflow!=="ellipsis"||h.scrollWidth<=h.clientWidth+1) return;
+      h.dataset.lvfx="1";
+      var span=document.createElement("span"); span.className="lv-nm-t";
+      var n=h.firstChild, moved=false;
+      while(n&&n!==t){ var nx=n.nextSibling; if(n.nodeType===3||(n.nodeType===1&&n.tagName!=="I")){ span.appendChild(n); moved=true; } n=nx; }
+      if(!moved) return;
+      h.insertBefore(span,t); h.classList.add("lv-nm-flex");
+    });
   }
   function sched(){ if(!Q){ Q=requestAnimationFrame(paint); } }
   function load(){
@@ -2320,3 +2336,13 @@ document.addEventListener("click",function(e){
   try{ new MutationObserver(sched).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["aria-pressed","disabled"]}); }catch(_){}
   sched();
 })();
+
+// "Map" button on the Vendors page (and everything that asks for the map view) opens this page; the first-visit tour keeps the small inline map.
+(function () {
+  const inline = window.switchVendorsView; if (typeof inline !== "function") return;
+  window.switchVendorsView = function (mode) {
+    if (mode === "map" && !window.__lvInlineMap) { try { return navigate("vendorsMap"); } catch (_) {} }
+    return inline.apply(this, arguments);
+  };
+})();
+

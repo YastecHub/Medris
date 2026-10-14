@@ -210,6 +210,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       if (typeof vendorsMapMarkers !== "undefined") vendorsMapMarkers = [];
     }
   } catch (_) {}
+  try { if (currentView === "vendorsMap" && view !== "vendorsMap" && typeof vmpDestroy === "function") vmpDestroy(); } catch (_) {}
   if (navOptions && navOptions.replace) pushHistory = false;
   else pushHistory = shouldPushHistory;
   // A suspended account is locked to this one screen no matter what it
@@ -389,6 +390,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "packageDetail": html = await renderPackageDetail(params.packageId); break;
       case "storefront": html = await renderStorefront(params.vendorId); break;
       case "vendors": html = renderVendorsDirectory(); break;
+      case "vendorsMap": html = renderVendorsMapPage(); break;
       case "vendorApply": html = await renderVendorApply(); break;
       case "vendorDashboard": html = await renderVendorDashboard(); break;
       case "vendorEditProfile": html = await renderVendorEditProfile(); break;

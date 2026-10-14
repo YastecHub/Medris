@@ -68,7 +68,7 @@ async function renderCart() {
     const subtotal = vItems.reduce((s, it) => s + Number(it.variant?.discount_price ?? it.variant?.sale_price ?? it.product.discount_price ?? it.product.sale_price ?? 0) * it.quantity, 0);
     const ownCartVendor = isOwnVendorId(v.id);
     // The server adds each product's OWN delivery fee (create_cart_order), so the cart does too.
-    const feeLines = vItems.map((it) => ({ name: it.product.name, mode: String(it.product.delivery_fee_mode || "free").toLowerCase(), fee: Number(it.product.delivery_fee) || 0, perKm: Number(it.product.delivery_fee_per_km) || 0 }));
+    const feeLines = vItems.map((it) => ({ name: it.product.name, mode: String(it.product.delivery_fee_mode || "free").toLowerCase(), fee: Number(it.product.delivery_fee) || 0, perKm: Math.min(1000, Number(it.product.delivery_fee_per_km) || 0) }));
     const cartFlatFee = feeLines.reduce((n, l) => n + (l.mode === "flat" ? l.fee : 0), 0);
     const cartDistanceLine = feeLines.find((l) => l.mode === "distance" && l.perKm > 0);
     const deliveryHtml = deliveryFieldsHtml(`cart-${v.id}`, cartFlatFee, v.lat, v.lng, cartDistanceLine ? "distance" : "flat", cartDistanceLine ? cartDistanceLine.perKm : 0, "", subtotal)

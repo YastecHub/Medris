@@ -146,7 +146,6 @@ async function __levroOriginalRenderProductDetail(productId) {
         <div class="product-gallery-main product-gallery-track" id="productGalleryTrack" aria-label="Product photos">
           ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
         </div>
-        ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
         ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
         <button type="button" id="productGalleryReturnMain" class="product-gallery-return-main hidden" onclick="restoreProductGalleryMainImage()" aria-label="Return to main product image"><i class="fa-solid fa-arrow-left"></i> Main image</button>
@@ -291,6 +290,7 @@ const RELATED_EQUIPMENT = {
 };
 
 function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, perKm, pickupLabel, fixedItemTotal) {
+  perKm = Math.min(1000, Number(perKm) || 0);
   const fee = Number(deliveryFee) || 0;
   const isDistance = feeMode === "distance" && Number(perKm) > 0 && vendorLat != null && vendorLng != null;
   const hasVendorLoc = vendorLat != null && vendorLng != null;
@@ -319,7 +319,7 @@ function deliveryFeeCalcHtml(prefix) {
   const vLng = wrap.dataset.vendorLng !== "" ? Number(wrap.dataset.vendorLng) : null;
   let lines = [];
   if (wrap.dataset.feeLines) { try { lines = JSON.parse(wrap.dataset.feeLines); } catch (_) { lines = []; } }
-  else lines = [{ name: "", mode: wrap.dataset.feeMode || "flat", fee: Number(wrap.dataset.fee) || 0, perKm: Number(wrap.dataset.perKm) || 0 }];
+  else lines = [{ name: "", mode: wrap.dataset.feeMode || "flat", fee: Number(wrap.dataset.fee) || 0, perKm: Math.min(1000, Number(wrap.dataset.perKm) || 0) }];
   const rows = [];
   let km = null;
   if (buyerLocation && vLat != null && vLng != null) km = haversineKm(buyerLocation.lat, buyerLocation.lng, vLat, vLng);
