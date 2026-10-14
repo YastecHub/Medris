@@ -332,3 +332,14 @@ test("the order badge says what a confirmed order is waiting on", async ({ page 
   expect(await label({ ...after, status: "completed", payments: [pay("sale_price")] })).toBe("");
   expect(await label({ ...after, __paymentUnresolved: true, payments: [pay("delivery_deposit_20")] })).toBe("");
 });
+
+test("a student-verified vendor's name gets the green tick wherever it is printed (leaderboard, lists)", async ({ page }) => {
+  await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW], vendors: DIRECTORY_VENDORS.map((v, i) => ({ ...v, student_verified: i === 0 })) } }, "/?react=off");
+  const name = DIRECTORY_VENDORS[0].business_name, other = DIRECTORY_VENDORS[1].business_name;
+  await page.evaluate(([a, b]) => {
+    document.getElementById("app")!.insertAdjacentHTML("beforeend", `<div id="zz"><div class="lb-row"><div class="lb-row-copy"><strong id="n1"><span class="nm">${a}</span></strong></div></div><div class="fn-copy"><strong id="n2">${b}</strong></div></div>`);
+  }, [name, other]);
+  await settle(page, 6);
+  expect(await page.locator("#zz .nm + .lv-svi, #zz .nm .lv-svi, #n1 .lv-svi").count()).toBe(1);
+  expect(await page.locator("#n2 .lv-svi").count()).toBe(0); // not student-verified: no tick
+});

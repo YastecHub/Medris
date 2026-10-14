@@ -2198,20 +2198,47 @@ async function setVendorRequestPref(v){
 
 /* Fully verified ticks: show a tick only when the vendor is admin-approved AND student-verified */
 (function(){
-  var SET=null,T=0,Q=0;
+  var SET=null,NAMES=null,T=0,Q=0;
+  function norm(t){ return String(t||"").replace(/\s+/g," ").trim().toLowerCase(); }
+  var TICKED=/(^|\s)(lv-svi|lv-cr-vtick|lv-cr-vbadge)(\s|$)/;
+  function hasTick(el){
+    var p=el.parentElement;
+    if(el.querySelector("[data-vt],.lv-svi,.lv-cr-vtick")) return true;
+    if(p&&p.querySelector(":scope > [data-vt], :scope > .lv-svi, :scope > .lv-cr-vtick, :scope > .lv-cr-vbadge")) return true;
+    return false;
+  }
+  // Any place that prints a verified vendor's name (leaderboard, podium, follower lists, cart, orders ...) gets the green tick
+  // right after it, so the tick does not depend on every page's template remembering to add one.
+  function scanNames(){
+    if(!NAMES||!NAMES.size) return;
+    var root=document.getElementById("app"); if(!root) return;
+    root.querySelectorAll("strong,h1,h2,h3,h4,b,.nm,[class*='-name']").forEach(function(el){
+      if(el.dataset.lvnt) return;
+      if(el.closest(".product-card-wrap,.product-comment-row,.search-page-chip,button,input,textarea,select")&&!el.closest(".lb-row,.lb-pod")) return;
+      var text="",ok=true;
+      el.childNodes.forEach(function(n){ if(n.nodeType===3) text+=n.nodeValue; else if(!(n.nodeType===1&&(TICKED.test(n.className||"")||n.hasAttribute("data-vt")))) ok=false; });
+      if(!ok||!text.trim()) return;
+      if(!NAMES.has(norm(text))) return;
+      el.dataset.lvnt="1";
+      if(hasTick(el)) return;
+      var i=document.createElement("i"); i.className="fa-solid fa-circle-check lv-svi"; i.title="Verified vendor"; i.setAttribute("aria-label","Verified vendor");
+      el.appendChild(document.createTextNode(" ")); el.appendChild(i);
+    });
+  }
   function paint(){
     Q=0; if(!SET) return;
     document.querySelectorAll("[data-vt]").forEach(function(el){
       var on=SET.has(String(el.getAttribute("data-vt")));
       if(on!==el.classList.contains("lv-on")) el.classList.toggle("lv-on",on);
     });
+    scanNames();
   }
   function sched(){ if(!Q){ Q=requestAnimationFrame(paint); } }
   function load(){
     if(typeof sb==="undefined"||!sb||!sb.from){ setTimeout(load,400); return; }
     T=Date.now();
-    sb.from("vendors").select("id").eq("verification_status","verified").eq("student_verified",true).is("deleted_at",null).limit(5000)
-      .then(function(r){ if(r&&!r.error&&r.data){ SET=new Set(r.data.map(function(x){return String(x.id);})); sched(); } });
+    sb.from("vendors").select("id,business_name").eq("verification_status","verified").eq("student_verified",true).is("deleted_at",null).limit(5000)
+      .then(function(r){ if(r&&!r.error&&r.data){ SET=new Set(r.data.map(function(x){return String(x.id);})); NAMES=new Set(r.data.map(function(x){return norm(x.business_name);}).filter(Boolean)); sched(); } });
   }
   load();
   setInterval(function(){ if(Date.now()-T>180000) load(); },60000);
