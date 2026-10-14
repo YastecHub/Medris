@@ -1,12 +1,12 @@
 {
   "description": "SHA-256 of every legacy file the build emits (production .env). Recorded from the live files of commit 42c4105, so the refactor is byte-for-byte identical. Update only for an intentional legacy change: npm run legacy:rebaseline -w medris-frontend",
   "files": {
-    "index.html": "e9939ad4aaf63821bef6d30f8a3c2c315e83bdf5d8bf73dc2601c0b219566f7c",
+    "index.html": "25bae55bc787ae7f587ec35dcb034806fb0ef63b9541167f9172f9ebbe913791",
     "assets/css/01-base.css": "fa40558c85cc2cd70b4030d5ed03f2d121a03dbba73e5f2a449bf71958abc25a",
     "assets/css/02-components.css": "979d859d0599ebbccb8cb10aa4b9bd9793ca6a8026ec792b54a3b1e081a0bdff",
     "assets/css/03-pages.css": "75fc2a549b5170c1bba78c477501764e2f7322d763c82a87e33245acb85b4482",
     "assets/css/04-shell.css": "eb0c817881d1a3ea47f128d9770af080fb107c34f9ad57f4ca4fe346958ae3fa",
-    "assets/css/05-overrides.css": "dcef9ae7c187dfb6a549bd7b75a92ef20a61f4d9daa6a50a585709ce2aa920e3",
+    "assets/css/05-overrides.css": "aada190f348f45496bb3b53171247cd9a3d53f050f77ac4fa9daf143a666aa2a",
     "assets/js/01-app.js": "d965914d8fe3e8f744b7912701d63f9a5b8bbec3ba1dac8350918524fe324e44",
     "assets/js/02-levromart-legal-consent-final-js.js": "6600a61a633c0de722392a67fcdc2c3d9c37746598db1c6f587e10a0e23b8907",
     "assets/js/03-levromart-2026-09-09-vendor-logic-fixes.js": "1f2f68e37c5b1c4c4237c7f76e89763f30cfb8b732fdef3b0bd5dec7d8da468c",
@@ -22,6 +22,6 @@
     "assets/js/13-face-verify.js": "3a75cb24a727f537e21d256021093af7b284f929161b534209f5edc7ae14775b",
     "assets/js/14-motion.js": "92a9a5fd1f60409d77b4b28567a357da6f6b944c081df336ea41cc5d2a47521f",
     "assets/js/15-autosave.js": "d006bb511a42c50dc6f15999ebba27c228c6cbf9821e3a8b229aba2d8b82bf74",
-    "sw.js": "3601107452196902c9594b112203ebc40a7368aca97f14a81ba6c6d3652b38c3"
+    "sw.js": "2139e3c6490cd1c3e16d410df9b9276a891b828982be626ded8553d04cdc2737"
   }
 }

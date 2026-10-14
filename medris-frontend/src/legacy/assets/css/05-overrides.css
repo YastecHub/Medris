@@ -1632,3 +1632,8 @@ html body #app .delivery-method-row label input[type=radio][value=pickup]:checke
 .ac-drawer .ac-stat{padding:.45rem .55rem;border-radius:10px;background:color-mix(in srgb,var(--text,#111) 4%,var(--card,#fff));border:0}
 .ac-drawer .ac-stat b{font-size:1.05rem}
 .ac-drawer .ac-stat span{font-size:.64rem;line-height:1.15;display:block}
+
+/* vendors list view on desktop: wide rows (the narrow card columns squeezed the name into one letter per line) */
+@media (min-width:900px){html body #app .vd-grid.vendors-list-mode{grid-template-columns:repeat(auto-fill,minmax(440px,1fr))!important}}
+/* one tick per vendor card: when the name carries it, the little one on the logo is not drawn */
+html body #app .vd-card:has(i.lv-svi) .vd-verified{display:none!important}
