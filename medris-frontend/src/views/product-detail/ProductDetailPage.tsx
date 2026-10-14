@@ -358,29 +358,6 @@ function Product({ product, allowComments, related, anchorRef }: { product: PdPr
   const commentCount = (window as unknown as { __productCommentCounts?: Map<string, unknown> }).__productCommentCounts?.get?.(String(product.id)) ?? "";
   const unitPrice = (v: PdVariant) => Number(v.discount_price ?? v.sale_price ?? v.rental_rate ?? 0);
 
-  // TEMPORARY (LV_TEMP_WHATSAPP): customers can message the vendor from here, in-app or on WhatsApp.
-  const canMessage = !isAdmin && (window as unknown as { LV_TEMP_WHATSAPP?: boolean }).LV_TEMP_WHATSAPP !== false && !ownListing;
-  let messageVendor: ReactNode = null;
-  if (canMessage) {
-    if (!legacy("canMessageVendorNow")(vendor)) {
-      const hs = legacy("vendorHoursStatus")(vendor);
-      messageVendor = (
-        <span
-          className="storefront-contact-closed"
-          title={`${vendor.business_name || "This vendor"} is outside working hours right now${hs.todayText ? ` (${hs.todayLabel}: ${hs.todayText})` : ""}.`}
-        >
-          <i className="fa-regular fa-clock"></i>
-          <span>Outside working hours</span>
-        </span>
-      );
-    } else {
-      messageVendor = (
-        <button className="btn btn-sm" onClick={() => call("startConversationWithVendor", vendor.id)}>
-          <i className="fa-solid fa-comment-dots"></i> Message vendor
-        </button>
-      );
-    }
-  }
 
   const statItems = [
     !product.is_service && !variants.length && product.track_quantity !== false ? { label: "Available", value: `${product.quantity_available} / ${product.quantity_total}` } : null,
@@ -503,7 +480,6 @@ function Product({ product, allowComments, related, anchorRef }: { product: PdPr
           </div>
         ) : null}
         <div className="product-detail-actions">
-          {messageVendor}
           <span className={`badge ${legacy("ratingBadgeClass")(Number(st.avg_rating ?? 0))}`}>
             <i className="fa-solid fa-star"></i> {Number(st.avg_rating ?? 0).toFixed(1)} ({Number(st.review_count ?? 0)})
           </span>

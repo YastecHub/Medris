@@ -10,9 +10,9 @@
 // ordinary list items with a plain onclick, not a floating dropdown that
 // has to survive an input's blur event.
 const SEARCH_HISTORY_KEY = "levromart-search-history-v1";
-const SEARCH_HISTORY_MAX = 8;
+const SEARCH_HISTORY_MAX = 7;
 function readSearchHistory() {
-  try { const list = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || "[]"); return Array.isArray(list) ? list : []; } catch (_) { return []; }
+  try { const list = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || "[]"); return Array.isArray(list) ? list.slice(0, SEARCH_HISTORY_MAX) : []; } catch (_) { return []; }
 }
 function writeSearchHistory(term) {
   const q = String(term || "").trim();
@@ -24,7 +24,7 @@ function writeSearchHistory(term) {
 }
 document.addEventListener("click", (e) => {
   try {
-    if (!e.target.closest || !e.target.closest("#searchPageResults .search-result-row")) return;
+    if (!e.target.closest || !e.target.closest("#searchPageResults .search-result-row, #searchPageResults .lv-svr-item")) return;
     const t = byId("searchPageInput")?.value.trim();
     if (t) writeSearchHistory(t);
   } catch (_) {}

@@ -1678,3 +1678,23 @@ html body #app .storefront-name-row .lv-camp-line:has(.lcl-v){display:none!impor
 
 /* brand icon inside the action sheet (WhatsApp) */
 .media-action-sheet-item i.fa-whatsapp{font-family:"Font Awesome 6 Brands"!important;font-weight:400!important;color:#25d366}
+
+/* ===== round 3 ===== */
+/* product page order box: the truck and location-pin icons are plain black (light mode) / white (dark mode), not coloured */
+:root:root:root:root body #app .pd-step-title i,
+:root:root:root:root body #app #buyDeliveryFields .df-label i,
+:root:root:root:root body #app .dyn-delivery-fields .df-label i,
+:root:root:root:root body #app .delivery-fee-line i,
+:root:root:root:root body #app .dyn-delivery-fields p i.fa-truck{color:var(--text,#111)!important;-webkit-text-fill-color:currentColor!important;background:color-mix(in srgb,var(--text,#111) 7%,transparent)!important}
+:root:root:root:root body #app .delivery-fee-line i,:root:root:root:root body #app .dyn-delivery-fields p i.fa-truck{background:transparent!important}
+:root:root:root:root:root:root:root[data-theme="dark"] body #app .pd-step-title i,:root:root:root:root:root:root:root[data-theme="dark"] body #app #buyDeliveryFields .df-label i,:root:root:root:root:root:root:root[data-theme="dark"] body #app .dyn-delivery-fields .df-label i,:root:root:root:root:root:root:root[data-theme="dark"] body #app .delivery-fee-line i,:root:root:root:root:root:root:root[data-theme="black"] body #app .pd-step-title i,:root:root:root:root:root:root:root[data-theme="black"] body #app #buyDeliveryFields .df-label i,:root:root:root:root:root:root:root[data-theme="black"] body #app .dyn-delivery-fields .df-label i,:root:root:root:root:root:root:root[data-theme="black"] body #app .delivery-fee-line i{color:#fff!important}
+
+/* swiping between a vendor's products: the page follows the finger, with an arrow at the edge */
+#app{will-change:auto}
+.lv-swipe-hint{position:fixed;top:50%;right:.6rem;z-index:99998;width:2.6rem;height:2.6rem;border-radius:50%;display:grid;place-items:center;background:var(--card,#fff);color:var(--text,#111);box-shadow:0 6px 18px rgba(15,23,42,.25);opacity:0;pointer-events:none;transform:translateY(-50%)}
+.lv-swipe-hint.left{right:auto;left:.6rem}
+.lv-swipe-hint.ready{background:var(--primary,#16a34a);color:#fff}
+
+/* followers lists are flat rows with dividing lines, not cards */
+html body #app .fn-row{background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;padding:.85rem .1rem!important}
+html body #app .fn-list,html body #app .fn-page .grid{gap:0!important}

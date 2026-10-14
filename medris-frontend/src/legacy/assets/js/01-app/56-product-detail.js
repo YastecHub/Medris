@@ -181,9 +181,9 @@ async function __levroOriginalRenderProductDetail(productId) {
     <div class="product-detail-actions">
       ${(() => {
         if (profile?.role === "admin") return "";
-        // TEMPORARY (see LV_TEMP_WHATSAPP in the messaging script): customers can message a vendor from the product page,
-        // choosing in-app chat or WhatsApp. Otherwise customers message a vendor only from an accepted order.
-        if (window.LV_TEMP_WHATSAPP === false || (typeof isOwnVendorId === "function" && isOwnVendorId(product.vendor.id))) return "";
+        // No Message vendor button on product pages: customers message a vendor (in-app or, for now, WhatsApp) only
+        // from an order the vendor has confirmed. See the order pages.
+        return "";
         if (!canMessageVendorNow(product.vendor)) {
           const hs = vendorHoursStatus(product.vendor);
           return `<span class="storefront-contact-closed" title="${esc(`${product.vendor.business_name || "This vendor"} is outside working hours right now${hs.todayText ? ` (${hs.todayLabel}: ${hs.todayText})` : ""}.`)}"><i class="fa-regular fa-clock"></i><span>Outside working hours</span></span>`;
@@ -713,11 +713,14 @@ async function buyNow(vendorId, productId) {
 }
 
 
-/* ---- swipe the page background to move to the vendor's next / previous product ---- */
+/* ---- swipe the page sideways to move to the vendor's next / previous product ----
+   The page follows the finger (like a carousel) with a small arrow at the edge that grows as you drag; let go past
+   a third of the screen, or flick, and it slides away and the next product slides in. Let go early and it springs back. */
 (function () {
-  let t0 = null;
-  const blocked = "input,textarea,select,button,a,label,.product-gallery-carousel,.product-gallery-track,.product-gallery-main,.product-gallery-thumbs,.product-gallery-varieties,.product-comments-panel,.lv-cmt-sheet,.modal,.drawer,[role=dialog],.horizontal-scroll,.carousel,.hscroll";
+  let t0 = null, lock = null, hint = null;
+  const blocked = "input,textarea,select,button,a,label,.product-gallery-carousel,.product-gallery-track,.product-gallery-main,.product-gallery-thumbs,.product-gallery-varieties,.product-comments-panel,.lv-cmt-sheet,.modal,.drawer,[role=dialog],.horizontal-scroll,.carousel,.hscroll,#lvCs,#mediaActionSheet";
   const cache = new Map();
+  const app = () => document.getElementById("app");
   async function siblings(vendorId) {
     if (cache.has(vendorId)) return cache.get(vendorId);
     const p = sb.from("products").select("id").eq("vendor_id", vendorId).eq("status", "active").order("created_at", { ascending: false }).limit(60)
@@ -725,29 +728,73 @@ async function buyNow(vendorId, productId) {
     cache.set(vendorId, p);
     return p;
   }
-  async function step(dir) {
+  async function target(dir) {
     const cur = currentProductDetail, vid = cur?.vendor?.id || cur?.vendor_id;
-    if (!cur?.id || !vid || currentView !== "productDetail") return;
+    if (!cur?.id || !vid || currentView !== "productDetail") return null;
     const ids = await siblings(String(vid));
     const i = ids.indexOf(String(cur.id));
-    if (i < 0 || ids.length < 2) { showToast("No other products from this vendor yet.", "info"); return; }
-    const next = ids[(i + dir + ids.length) % ids.length];
-    navigate("productDetail", { productId: next });
+    if (i < 0 || ids.length < 2) return null;
+    return ids[(i + dir + ids.length) % ids.length];
+  }
+  function showHint(dx) {
+    if (!hint) {
+      hint = document.createElement("div");
+      hint.className = "lv-swipe-hint";
+      hint.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+      document.body.appendChild(hint);
+    }
+    const left = dx > 0, p = Math.min(1, Math.abs(dx) / (innerWidth * 0.33));
+    hint.classList.toggle("left", left);
+    hint.firstChild.className = "fa-solid " + (left ? "fa-chevron-left" : "fa-chevron-right");
+    hint.style.opacity = String(Math.min(1, p * 1.2));
+    hint.style.transform = `translateY(-50%) scale(${0.7 + p * 0.5})`;
+    hint.classList.toggle("ready", p >= 1);
+  }
+  function clearHint() { if (hint) { hint.remove(); hint = null; } }
+  function reset(el, animate) {
+    if (!el) return;
+    el.style.transition = animate ? "transform .22s cubic-bezier(.2,.8,.2,1), opacity .22s" : "none";
+    el.style.transform = ""; el.style.opacity = "";
+    setTimeout(() => { el.style.transition = ""; }, 260);
   }
   document.addEventListener("touchstart", (e) => {
-    t0 = null;
+    t0 = null; lock = null;
     if (currentView !== "productDetail" || e.touches.length !== 1) return;
-    if (e.target.closest?.(blocked)) return;
-    if (!e.target.closest?.("#app")) return;
+    if (e.target.closest?.(blocked) || !e.target.closest?.("#app")) return;
     t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+    const vid = currentProductDetail?.vendor?.id || currentProductDetail?.vendor_id; if (vid) siblings(String(vid));
   }, { passive: true });
-  document.addEventListener("touchend", (e) => {
+  document.addEventListener("touchmove", (e) => {
     if (!t0) return;
-    const t = e.changedTouches[0], dx = t.clientX - t0.x, dy = t.clientY - t0.y, dt = Date.now() - t0.t;
-    t0 = null;
-    if (Math.abs(dx) < 90 || Math.abs(dy) > 45 || Math.abs(dx) < Math.abs(dy) * 2.5 || dt > 700) return;
-    step(dx < 0 ? 1 : -1);
+    const dx = e.touches[0].clientX - t0.x, dy = e.touches[0].clientY - t0.y;
+    if (lock === null && (Math.abs(dx) > 12 || Math.abs(dy) > 12)) lock = Math.abs(dx) > Math.abs(dy) * 1.4 ? "h" : "v";
+    if (lock !== "h") return;
+    if (e.cancelable) e.preventDefault();
+    const el = app(); if (!el) return;
+    el.style.transition = "none";
+    el.style.transform = `translateX(${dx * 0.85}px)`;
+    el.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
+    showHint(dx);
+  }, { passive: false });
+  document.addEventListener("touchend", async (e) => {
+    const start = t0, was = lock; t0 = null; lock = null;
+    if (!start || was !== "h") { clearHint(); return; }
+    const el = app(), dx = e.changedTouches[0].clientX - start.x, dt = Date.now() - start.t;
+    clearHint();
+    const far = Math.abs(dx) > innerWidth * 0.33, flick = Math.abs(dx) > 60 && dt < 280;
+    if (!far && !flick) { reset(el, true); return; }
+    const dir = dx < 0 ? 1 : -1;
+    const id = await target(dir);
+    if (!id) { reset(el, true); try { showToast("No other products from this vendor yet.", "info"); } catch (_) {} return; }
+    el.style.transition = "transform .2s ease-in, opacity .2s";
+    el.style.transform = `translateX(${dir * -innerWidth}px)`; el.style.opacity = "0";
+    setTimeout(async () => {
+      try { await navigate("productDetail", { productId: id }); } catch (_) {}
+      el.style.transition = "none"; el.style.transform = `translateX(${dir * innerWidth * 0.35}px)`; el.style.opacity = "0";
+      requestAnimationFrame(() => requestAnimationFrame(() => reset(el, true)));
+    }, 190);
   }, { passive: true });
+  document.addEventListener("touchcancel", () => { if (lock === "h") reset(app(), true); t0 = null; lock = null; clearHint(); }, { passive: true });
 })();
 
 /* the comment badge on the product page's top button only shows when there are comments */
