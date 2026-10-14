@@ -687,7 +687,7 @@ everyone), **legacy removed**. Every later pull request updates its own rows. To
 | `contactUs` | 1 | React-off | PR for contact us (see below) | Static page; keeps `trackSocialClick` and `navigate('supportRequest')`; chunk `ContactUsPage-*.js`. Parity tests pass. Not on for anyone: `?react=contactUs` / `VITE_REACT_VIEWS`. |
 | `leaderboard` | 2 | legacy | — | |
 | `adminPoints` | 5 | legacy | — | |
-| `search` | 3 | legacy | — | |
+| `search` | 3 | React-off (frame) | PR for the search page | React draws the page frame once (back button, search box, the five filter tabs, scope note, results area with the "Recent searches" chips from the same saved list) and then does what the router did after the old HTML landed: reset the filter to "All", focus the box (again after 60 ms), draw the suggestions, bind the long-press on results. **Typing, the delayed query, Enter, the filter tabs, clear, the suggestions and results, "see more" scrolling and the recent-searches buttons stay legacy-owned** (they fill the frame by id). Parity tests pass. Not on for anyone: `?react=search`. Note: on a phone the header's search button focuses a temporary box first and hands focus to the real one when it appears; the React page appears after its chunk loads, so the very first open may need a second tap for the keyboard (not testable here). |
 | `vendorRequests` | 4 | legacy | — | |
 | `terms` | 1 | React-off (pilot, in PR #9) | #9 | Chunk `TermsPage-*.js` 8.2 kB, loads only when on. Parity tests pass. Not on for anyone: `?react=terms` / `VITE_REACT_VIEWS`. |
 | `privacy` | 1 | React-off | this PR (#10) | Same pattern as `terms`; chunk `PrivacyPage-*.js` 6.0 kB, loads only when on. Parity tests pass. Not on for anyone: `?react=privacy` / `VITE_REACT_VIEWS`. |
