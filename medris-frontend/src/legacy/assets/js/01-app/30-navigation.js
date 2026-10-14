@@ -180,6 +180,9 @@ async function navigate(view, params = {}, pushHistory = true) {
     try { await commitPendingNotificationReads(); } catch (_) {}
   }
   try { window.closeLevromartTransientFilters?.(); } catch (_) {}
+  // REACT-REGISTRY HOOK (1/4): release the React screen that is on display, if any, before
+  // #app is replaced. No-op unless a screen has been switched on (see docs/REACT_MIGRATION.md).
+  try { window.levroReact?.unmount(); } catch (_) {}
   const app = byId("app");
   // Re-rendering the whole page on every admin tab tap wipes the horizontal
   // scroll position of the admin tab rail itself, snapping it back to the
@@ -327,8 +330,11 @@ async function navigate(view, params = {}, pushHistory = true) {
   // tap on Supabase and do not show a generic "Loading..." page.
   const hasChatFastPath = view === "messages" && !!params?.conversationId && profile?.role !== "admin";
   const cacheKey = routeCacheKey(view, params);
-  const cachedRouteHtml = routeHtmlCache.get(cacheKey);
-  const persistedRouteHtml = getPersistedRouteHtml(view, params);
+  // REACT-REGISTRY HOOK (2/4): a screen that React draws (migrated AND switched on) never uses
+  // a saved legacy HTML snapshot. With every switch off, reactView is null and nothing changes.
+  const reactView = window.levroReact?.isOn(view) ? view : null;
+  const cachedRouteHtml = reactView ? undefined : routeHtmlCache.get(cacheKey);
+  const persistedRouteHtml = reactView ? "" : getPersistedRouteHtml(view, params);
   const instantRouteHtml = cachedRouteHtml || persistedRouteHtml;
   const sameOrdersTab = previousView === view && (view === "buyerOrders" || view === "vendorOrders");
   if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && !sameOrdersTab) {
@@ -368,13 +374,16 @@ async function navigate(view, params = {}, pushHistory = true) {
   // below still refreshes the data in the background and replaces this content
   // only when the fresh render is ready. This prevents the Home fallback/loading
   // state from ever becoming the visible result of a slow or transient request.
-  if (view === "home" && app && !routeHtmlCache.has(cacheKey) && !window.__levroCategorySwitch) {
+  if (view === "home" && app && !reactView && !routeHtmlCache.has(cacheKey) && !window.__levroCategorySwitch) {
     try { paintHomeFromLocalCatalog(false); } catch (_) {}
   }
   let html;
   let __levroRouteHadRenderError = false;
   try {
-    switch (view) {
+    // REACT-REGISTRY HOOK (3/4): React draws this screen into an empty placeholder (mounted
+    // below, right after #app is filled); otherwise the legacy renderer runs as always.
+    if (reactView) html = window.levroReact.placeholderHtml(view);
+    else switch (view) {
       case "home": html = await renderHome(); break;
       case "productDetail": html = await renderProductDetail(params.productId); break;
       case "packageDetail": html = await renderPackageDetail(params.packageId); break;
@@ -544,7 +553,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   clearTimeout(window.__lvShellTimer);
   // Ignore an older request if the user has already navigated somewhere else.
   if (navToken !== navigationGeneration) return;
-  if (html && !lastRenderError) {
+  if (html && !lastRenderError && !reactView) {
     routeHtmlCache.set(cacheKey, html);
     persistRouteHtml(view, params, html);
   }
@@ -573,6 +582,14 @@ async function navigate(view, params = {}, pushHistory = true) {
     }
   }
   app.innerHTML = html;
+  // REACT-REGISTRY HOOK (4/4): draw the React screen into the placeholder. If React is late or
+  // the screen fails, the registry switches that screen off for the session and the legacy
+  // screen is rendered instead, so the page is never left blank.
+  if (reactView) {
+    window.levroReact.mount(view, params || {}).then((shown) => {
+      if (!shown && navToken === navigationGeneration) navigate(view, params, false);
+    });
+  }
   try { setTimeout(() => window.maybePromptLevromartReview?.(), 900); } catch (_) {}
   try { if (vendor?.id && !window.__prodRefs) setTimeout(() => warmProductModalRefs(), 1200); } catch (_) {}
   try {
