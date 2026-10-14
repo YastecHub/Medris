@@ -313,3 +313,22 @@ test.describe("Round 3", () => {
     expect(await page.evaluate(() => document.getElementById("app")!.style.transform)).toBe("");
   });
 });
+
+test("the order badge says what a confirmed order is waiting on", async ({ page }) => {
+  await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+  const label = (order: Record<string, unknown>) => page.evaluate((o) => (window as unknown as { lvOrderStageLabel: (o: unknown) => string }).lvOrderStageLabel(o), order);
+  const pay = (payment_type: string, status = "paid") => ({ payment_type, status });
+  const base = { status: "confirmed", order_type: "sale" };
+  // pay before delivery / pickup
+  expect(await label({ ...base, delivery_method: "pickup", payments: [] })).toBe("");
+  expect(await label({ ...base, delivery_method: "pickup", payments: [pay("sale_price")] })).toBe("Payment confirmed");
+  expect(await label({ ...base, delivery_method: "delivery", payment_timing: "pay_before", payments: [pay("sale_price")] })).toBe("Payment confirmed");
+  // pay after delivery: deposit first, then the balance
+  const after = { ...base, delivery_method: "delivery", payment_timing: "pay_after" };
+  expect(await label({ ...after, payments: [pay("delivery_deposit_20")] })).toBe("Deposit confirmed · balance due");
+  expect(await label({ ...after, payments: [pay("delivery_deposit_20"), pay("sale_price")] })).toBe("Payment confirmed");
+  // a reported (pending) payment is still "payment unresolved", never relabelled; other statuses untouched
+  expect(await label({ ...after, payments: [pay("delivery_deposit_20", "pending")] })).toBe("");
+  expect(await label({ ...after, status: "completed", payments: [pay("sale_price")] })).toBe("");
+  expect(await label({ ...after, __paymentUnresolved: true, payments: [pay("delivery_deposit_20")] })).toBe("");
+});

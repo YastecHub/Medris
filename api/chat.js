@@ -14,11 +14,13 @@
 //   SUPABASE_SERVICE_ROLE_KEY
 const { readBody, env } = require("./_util");
 
-const MODEL = "gemini-3.8-flash";
-const FALLBACK_MODEL = "gemini-3.7-flash";
+// Levi runs on the newest Gemini Pro model. If it is rate-limited, overloaded or retired the call falls back to the
+// newest stable Flash model, so Levi never goes silent. Set GEMINI_MODEL in Vercel to change the primary without a deploy.
+const MODEL = String(process.env.GEMINI_MODEL || "").trim() || "gemini-3.1-pro-preview";
+const FALLBACK_MODEL = "gemini-3.8-flash";
 const DAILY_MESSAGE_LIMIT = 200;
 const TOOL_CACHE_TTL = 20_000;
-const MAX_TOOL_ROUNDS = 5;
+const MAX_TOOL_ROUNDS = 8;
 
 let catalogCache = { expires: 0, value: null };
 
