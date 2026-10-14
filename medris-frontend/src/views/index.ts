@@ -19,4 +19,5 @@ export const VIEW_LOADERS: Readonly<Record<string, () => Promise<ViewModule>>> =
   customerFollowing: () => import("./customer-following/CustomerFollowingPage"),
   wishlist: () => import("./wishlist/WishlistPage"),
   notifications: () => import("./notifications/NotificationsPage"),
+  vendors: () => import("./vendors/VendorsPage"),
 };

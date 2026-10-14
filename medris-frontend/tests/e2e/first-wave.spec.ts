@@ -90,6 +90,7 @@ const MIGRATED: Array<{ view: string; name: string; heading: string; root?: stri
   { view: "privacy", name: "privacy", heading: "Privacy Policy" },
   { view: "refundPolicy", name: "refund-policy", heading: "Refund & Cancellation Policy" },
   { view: "contactUs", name: "contact-us", heading: "Contact us", root: ".contact-us-page" },
+  { view: "vendors", name: "vendors", heading: "All vendors", root: ".vd-page" },
 ];
 for (const m of MIGRATED) {
   for (const theme of THEMES) {

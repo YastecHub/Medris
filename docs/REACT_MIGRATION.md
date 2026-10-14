@@ -640,7 +640,7 @@ everyone), **legacy removed**. Every later pull request updates its own rows. To
 | `productDetail` | 3 | legacy | — | |
 | `packageDetail` | 3 | legacy | — | |
 | `storefront` | 3 | legacy | — | |
-| `vendors` | 3 | legacy | — | |
+| `vendors` | 3 | React-off (frame only) | PR for the vendors directory | React draws the **page frame once** (title, view buttons, Buy/Rent tabs, search, filter panel, chips/grid/map containers incl. the rail); never re-renders it. **Everything inside stays owned by the legacy scripts** (cards, selects, chips, rail, Leaflet map, infinite scroll, shuffle/sort/view state live in closures): React calls the old `renderVendorsDirectory()` for its side effects (state reset + scheduled load) and ignores its HTML string; every control calls the same global the old inline handler called. Parity: same markup after load, same Supabase reads, same filters/tabs/modes/sort, card → storefront, pixels vs the legacy reference pictures. Not converted (decision for a later step): cards, filters, map. Not on for anyone: `?react=vendors`. |
 | `vendorApply` | 5 | legacy | — | |
 | `vendorDashboard` | 4 | legacy | — | |
 | `vendorEditProfile` | 5 | legacy | — | |
