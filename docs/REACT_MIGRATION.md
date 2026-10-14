@@ -632,7 +632,7 @@ browser.
 ## 7. Progress table
 
 Status values: **legacy** (not started), **React-off** (component merged, switched off), **React-on** (switched on for
-everyone), **legacy removed**. Every later pull request updates its own rows. Today every screen is **legacy** except `terms`, `privacy`, `refundPolicy`, `contactUs` and `customerFollowing`, which are **React-off** once their pull requests are merged.
+everyone), **legacy removed**. Every later pull request updates its own rows. Today every screen is **legacy** except `terms`, `privacy`, `refundPolicy`, `contactUs`, `customerFollowing` and `wishlist`, which are **React-off** once their pull requests are merged.
 
 | View | Wave | Status | Pull request | Notes |
 |---|---|---|---|---|
@@ -677,7 +677,7 @@ everyone), **legacy removed**. Every later pull request updates its own rows. To
 | `adminAuthLogs` | 5 | legacy | — | |
 | `adminConversations` | 5 | legacy | — | |
 | `adminMonthlyListings` | 5 | legacy | — | |
-| `wishlist` | 2 | legacy | — | Blocked on a shared step: its cards come from the legacy `productCardHtml` / `packageCardHtml` (used by Home, Search, Storefront too), so a shared `ProductCard`/`PackageCard` React component with its own parity tests comes first. |
+| `wishlist` | 2 | React-off | PR for Wishlist + shared cards | Introduces shared `ProductCard` / `PackageCard` (`src/components/`), typed read `src/services/wishlist.ts` (same queries; errors treated as empty, as legacy), legacy helpers reused through `src/views/legacy-globals.ts`. Parity tests pass (markup, requests, heart/quick-add/open/keyboard, broken images, pixels). Not on for anyone: `?react=wishlist`. Legacy finding: card `aria-label` built with an escaper that leaves `"` unescaped (see PR). |
 | `customerFollowing` | 2 | React-off | PR for "Vendors you follow" (wave 2, first screen) | Typed read in `src/services/follows.ts` (same query as legacy); keeps `lmFilterFollowing`; chunk `CustomerFollowingPage-*.js`. Parity tests pass (markup, same DB request, error/empty/guest/admin states, pixels). Not on for anyone: `?react=customerFollowing`. |
 | `cart` | 5 | legacy | — | |
 | `messages` | 5 | legacy | — | |

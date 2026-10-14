@@ -185,13 +185,18 @@ export function createViewRegistry(deps: RegistryDeps) {
  * level deeper (inside the placeholder), so those rules are repeated here for the placeholder's
  * children. Without this a screen could be laid out differently (found by the Terms pilot: the
  * legacy `#app > * { max-width: 100% !important }` lets .legal-page ignore its own 720px limit).
- * Sources: `#app > *` in styles/001-clean-page-heading-rhythm-headings-must-never-vi.css,
- * `#app > *:last-child` in assets/css/02-components.css, `#app>*:first-child` in assets/css/03-pages.css.
- * Keep in step with them until the legacy runtime is gone.
+ * Sources: `#app > *` in styles/001-clean-page-heading-rhythm-headings-must-never-vi.css; in
+ * assets/css/02-components.css `#app > *:last-child` and the `.container > h2` / `.container > .page-title` heading
+ * spacing rules (#app is a `.container`); `#app>*:first-child` in assets/css/03-pages.css (the 86px rule in the
+ * styles/001 file loses to it, so the winning 80px/72px values are used). Found by parity tests (Terms: width;
+ * Wishlist: heading spacing). Keep in step with them until the legacy runtime is gone.
  */
 export const PLACEHOLDER_CSS =
   "#levro-react-root>*{min-width:0!important;max-width:100%!important}" +
   "#levro-react-root>*:last-child{margin-bottom:0!important}" +
+  "#levro-react-root>h2,#levro-react-root>.page-title{margin-bottom:1rem!important}" +
+  "#levro-react-root>h2+.card,#levro-react-root>.page-title+.card{margin-top:.9rem!important}" +
+  "#levro-react-root>h2+section.card,#levro-react-root>.page-title+section.card{margin-top:.9rem!important}" +
   "#levro-react-root>*:first-child{scroll-margin-top:80px!important}" +
   "@media (max-width:720px){#levro-react-root>*:first-child{scroll-margin-top:72px!important}}";
 
