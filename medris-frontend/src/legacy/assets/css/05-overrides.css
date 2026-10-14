@@ -1698,3 +1698,7 @@ html body #app .storefront-name-row .lv-camp-line:has(.lcl-v){display:none!impor
 /* followers lists are flat rows with dividing lines, not cards */
 html body #app .fn-row{background:transparent!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;padding:.85rem .1rem!important}
 html body #app .fn-list,html body #app .fn-page .grid{gap:0!important}
+
+/* leaderboard: the "following" marker is the icon alone, in a small round chip */
+:root:root body #app .lb-tag.fol{width:1.45rem;height:1.45rem;padding:0!important;border-radius:50%;justify-content:center}
+:root:root body #app .lb-tag.fol i{font-size:.68rem}
