@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { DIRECTORY_PRODUCTS, DIRECTORY_SECTORS, DIRECTORY_VENDORS, PD_FULL, PD_ROWS, PD_VARIANTS } from "./fixtures/data";
+import { DIRECTORY_PRODUCTS, DIRECTORY_SECTORS, DIRECTORY_VENDORS, PD_FULL, PD_ROWS, PD_VARIANTS, PD_VENDOR } from "./fixtures/data";
 import { goTo, openApp } from "./support/app";
 
 // Checks for the UI overhaul (legacy pages; none of this is behind the React switch).
@@ -178,4 +178,41 @@ test("Create account: the Google button and campus field follow dark mode", asyn
   const lightness = (sel: string) => page.locator(sel).first().evaluate((e) => { const m = getComputedStyle(e).backgroundColor.match(/\d+/g)!.map(Number); return (m[0] + m[1] + m[2]) / 3; });
   expect(await lightness("#googleAuthBtn")).toBeLessThan(80);
   expect(await lightness(".lv-campus-btn")).toBeLessThan(80);
+});
+
+test.describe("Temporary WhatsApp contact", () => {
+  const open = async (page: Page, vendorRow: Record<string, unknown>) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW], products: PD_ROWS, product_variants: PD_VARIANTS, vendors: [vendorRow] } }, "/?react=off");
+    await goTo(page, "productDetail", { productId: PD_FULL.id });
+    await settle(page);
+  };
+  const VENDOR = { id: PD_VENDOR.id, user_id: PD_VENDOR.user_id, business_name: "Ada's Kitchen", verification_status: "verified", is_active: true, phone: "08000000000", whatsapp_number: "08031234567" };
+
+  test("Message vendor offers in-app or WhatsApp, and WhatsApp opens the vendor's number", async ({ page }) => {
+    await open(page, VENDOR);
+    await page.evaluate(() => { (window as unknown as { __opened: string[] }).__opened = []; window.open = ((u: string) => { (window as unknown as { __opened: string[] }).__opened.push(String(u)); return null; }) as typeof window.open; });
+    await page.getByRole("button", { name: /message vendor/i }).first().evaluate((e: HTMLElement) => e.click());
+    await settle(page, 3);
+    const items = page.locator("#mediaActionSheet .media-action-sheet-item");
+    await expect(items).toHaveCount(2);
+    await expect(items.nth(0)).toContainText("Message in app");
+    await expect(items.nth(1)).toContainText("Chat on WhatsApp");
+    await items.nth(1).evaluate((e: HTMLElement) => e.click());
+    expect(await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)).toEqual(["https://wa.me/2348031234567"]);
+  });
+
+  test("a vendor with no number goes straight to in-app chat (no chooser)", async ({ page }) => {
+    await open(page, { ...VENDOR, phone: null, whatsapp_number: null });
+    await page.getByRole("button", { name: /message vendor/i }).first().evaluate((e: HTMLElement) => e.click());
+    await settle(page, 3);
+    expect(await page.locator("#mediaActionSheet").count()).toBe(0);
+  });
+
+  test("with the switch off there is no Message vendor button on the product page", async ({ page }) => {
+    await open(page, VENDOR);
+    await page.evaluate(() => { (window as unknown as { LV_TEMP_WHATSAPP: boolean }).LV_TEMP_WHATSAPP = false; });
+    await goTo(page, "productDetail", { productId: PD_ROWS[1].id });
+    await settle(page);
+    expect(await page.getByRole("button", { name: /message vendor/i }).count()).toBe(0);
+  });
 });

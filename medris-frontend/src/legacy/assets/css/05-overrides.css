@@ -1637,3 +1637,6 @@ html body #app .delivery-method-row label input[type=radio][value=pickup]:checke
 @media (min-width:900px){html body #app .vd-grid.vendors-list-mode{grid-template-columns:repeat(auto-fill,minmax(440px,1fr))!important}}
 /* one tick per vendor card: when the name carries it, the little one on the logo is not drawn */
 html body #app .vd-card:has(i.lv-svi) .vd-verified{display:none!important}
+
+/* brand icon inside the action sheet (WhatsApp) */
+.media-action-sheet-item i.fa-whatsapp{font-family:"Font Awesome 6 Brands"!important;font-weight:400!important;color:#25d366}

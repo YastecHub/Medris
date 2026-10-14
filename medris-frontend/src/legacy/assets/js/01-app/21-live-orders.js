@@ -105,11 +105,15 @@ async function currentOrderSignature() {
   }
   return null;
 }
+let orderPollTick = 0;
 function startOrderSignaturePoll() {
   if (orderSignatureTimer) return;
+  // Realtime does the instant work; this check only catches a dropped or sleeping connection. An open order is checked
+  // every 4 seconds (the query is two tiny selects), order lists every 12.
   orderSignatureTimer = setInterval(async () => {
     if (document.hidden || !session) return;
     if (!["orderDetail", "buyerOrders", "vendorOrders", "orderHistory"].includes(currentView)) { __orderSigs.clear(); return; }
+    if (currentView !== "orderDetail" && (++orderPollTick % 3) !== 0) return;
     const key = currentView + ":" + (currentViewParams?.orderId || "");
     try {
       const sig = await currentOrderSignature();
@@ -118,7 +122,7 @@ function startOrderSignaturePoll() {
       __orderSigs.set(key, sig);
       if (prev !== undefined && prev !== sig) refreshVisibleOrderView();
     } catch (_) {}
-  }, 20000);
+  }, 4000);
 }
 
 let orderBadgeTimer = null;
@@ -165,7 +169,7 @@ function subscribeOrderUpdates() {
   ordersLiveChannel.subscribe(status("orders"));
 
   const aux = sb.channel(`order-extras-${uid}-${stamp}`);
-  for (const table of ["order_items", "order_notes", "service_offers"]) aux.on("postgres_changes", { event: "*", schema: "public", table }, refreshVisibleOrderView);
+  for (const table of ["order_items", "order_notes", "service_offers", "disputes"]) aux.on("postgres_changes", { event: "*", schema: "public", table }, refreshVisibleOrderView);
   aux.subscribe(status("orderExtras"));
 
   const req = sb.channel(`requests-live-${uid}-${stamp}`);

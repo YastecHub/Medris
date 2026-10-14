@@ -64,3 +64,44 @@ async function startConversationWithVendor(vendorId, draftText) {
   }
 }
 
+
+/* ---- TEMPORARY: choose "Message in app" or "Chat on WhatsApp" when messaging a vendor ----
+   Until escrow is live and in-app calling is reliable, a customer can reach a vendor on WhatsApp straight from
+   "Message vendor". Switch it off by setting window.LV_TEMP_WHATSAPP = false (or deleting this block).
+   Only the vendor's number is shown, and only to the customer. A vendor never sees a customer's number from
+   here, and the order pages still show none to the vendor before the order is accepted. */
+window.LV_TEMP_WHATSAPP = true;
+(function () {
+  const original = window.startConversationWithVendor;
+  if (typeof original !== "function" || original.__lvWa) return;
+  const contacts = new Map();
+  const waLink = (raw) => {
+    let d = String(raw || "").replace(/\D/g, "");
+    if (!d) return "";
+    if (d.startsWith("00")) d = d.slice(2); else if (d.startsWith("0")) d = "234" + d.slice(1); else if (d.length === 10) d = "234" + d;
+    return d.length >= 11 ? "https://wa.me/" + d : "";
+  };
+  async function vendorNumber(vendorId) {
+    const k = String(vendorId);
+    if (!contacts.has(k)) {
+      contacts.set(k, sb.from("vendors").select("business_name, phone, whatsapp_number").eq("id", vendorId).maybeSingle()
+        .then(({ data }) => (data ? { name: data.business_name || "the vendor", link: waLink(data.whatsapp_number) || waLink(data.phone) } : null))
+        .catch(() => null));
+    }
+    return contacts.get(k);
+  }
+  const wrapped = async function (vendorId, draftText) {
+    if (!window.LV_TEMP_WHATSAPP || !session || draftText || profile?.role === "admin" || (typeof isOwnVendorId === "function" && isOwnVendorId(vendorId))) return original.apply(this, arguments);
+    const c = await vendorNumber(vendorId);
+    if (!c || !c.link) return original.apply(this, arguments);
+    window.__lvContactVendorId = vendorId;
+    window.__lvContactWaLink = c.link;
+    openMediaActionSheet(`Message ${c.name}`, [
+      { label: "Message in app", icon: "fa-comment-dots", note: "Chat inside Levromart.", action: "closeMediaActionSheet();lvContactInApp();" },
+      { label: "Chat on WhatsApp", icon: "fa-whatsapp", note: "Opens WhatsApp with the vendor.", action: "closeMediaActionSheet();window.open(window.__lvContactWaLink,'_blank','noopener');" },
+    ]);
+  };
+  wrapped.__lvWa = true;
+  window.lvContactInApp = () => original(window.__lvContactVendorId);
+  window.startConversationWithVendor = wrapped;
+})();

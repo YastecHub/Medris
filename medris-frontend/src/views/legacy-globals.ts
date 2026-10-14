@@ -35,6 +35,8 @@ export interface LegacyHelpers {
   lvThumb: Fn<[string, number], string>;
   lvInitials: Fn<[string], string>;
   isOwnVendorId: Fn<[unknown], boolean>;
+  canMessageVendorNow: Fn<[unknown], boolean>;
+  vendorHoursStatus: Fn<[unknown], { todayText?: string; todayLabel?: string }>;
   haversineKm: Fn<[number, number, number, number], number>;
   distanceDeliveryFee: Fn<[number, number], number>;
   lvDistTier: Fn<[number], number>;
