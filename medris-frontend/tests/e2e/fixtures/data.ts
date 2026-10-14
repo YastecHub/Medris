@@ -232,3 +232,56 @@ export const MY_VENDOR_TABLES = {
   users: [{ id: BUYER.id, email: BUYER.email, full_name: BUYER.full_name, role: "vendor" }],
   vendors: [{ id: MY_VENDOR_ID, user_id: BUYER.id, business_name: "My Fixture Shop", verification_status: "verified", is_active: true, deleted_at: null }],
 };
+
+// ---- The vendors directory (used by pilot-vendors.spec.ts; NOT part of the defaults, so the first-wave
+// reference pictures keep showing the one default vendor) ----
+
+const directoryVendor = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-0000000004${String(n).padStart(2, "0")}`,
+  business_name: `Directory Vendor ${n}`,
+  city: "Lagos",
+  avg_rating: 4,
+  review_count: 3,
+  sector_id: "00000000-0000-4000-8000-000000000501",
+  logo_url: null,
+  cover_url: null,
+  cover_image_url: null,
+  lat: null,
+  lng: null,
+  verification_status: "verified",
+  is_active: true,
+  ...over,
+});
+
+export const DIRECTORY_VENDORS = [
+  directoryVendor(1, { business_name: "Ada's Kitchen", city: "Lagos", avg_rating: 4.6, review_count: 12, logo_url: "https://images.example.test/vendor-a.png" }),
+  directoryVendor(2, { business_name: "Brisk Tech", city: "Abuja", sector_id: "00000000-0000-4000-8000-000000000502", avg_rating: null, review_count: null }),
+  directoryVendor(3, { business_name: "Campus Rentals", city: "Lagos", sector_id: "00000000-0000-4000-8000-000000000502" }),
+  directoryVendor(4, { business_name: '<b>Bold</b> & "Quotes" Store', city: null, avg_rating: 3.25, review_count: 1 }),
+  directoryVendor(5, { business_name: "Not Verified Yet", verification_status: "pending" }),
+  directoryVendor(6, { business_name: "Paused Shop", is_active: false }),
+];
+
+const directoryProduct = (n: number, vendorN: number, name: string, listing: string, category: string) => ({
+  id: `00000000-0000-4000-8000-0000000006${String(n).padStart(2, "0")}`,
+  vendor_id: DIRECTORY_VENDORS[vendorN - 1]!.id,
+  name,
+  description: `${name} (fixture)`,
+  listing_type: listing,
+  is_service: false,
+  status: "active",
+  category: { name: category },
+});
+
+export const DIRECTORY_PRODUCTS = [
+  directoryProduct(1, 1, "Jollof Rice Pack", "sale", "Food"),
+  directoryProduct(2, 2, "Laptop Repair", "sale", "Electronics"),
+  directoryProduct(3, 3, "Projector", "rent", "Electronics"),
+  directoryProduct(4, 3, "Tent", "both", "Events"),
+  directoryProduct(5, 4, "Soap", "sale", "Beauty"),
+];
+
+export const DIRECTORY_SECTORS = [
+  { id: "00000000-0000-4000-8000-000000000501", name: "Food & Drinks", sort_order: 1 },
+  { id: "00000000-0000-4000-8000-000000000502", name: "Tech & Gadgets", sort_order: 2 },
+];
