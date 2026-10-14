@@ -81,3 +81,25 @@ function suite(who: "guest" | "buyer", screens: Screen[]) {
 
 suite("guest", GUEST_SCREENS);
 suite("buyer", BUYER_SCREENS);
+
+// Pilot (docs/REACT_MIGRATION.md): the Terms page drawn by React must look the same as the legacy
+// picture above. It is compared with the SAME reference file as the legacy test, so a pixel
+// difference (beyond the tolerance) fails here. The text/structure/interaction parity is in
+// pilot-terms.spec.ts.
+for (const theme of THEMES) {
+  for (const vp of VIEWPORTS) {
+    test.describe(`terms drawn by React / guest / ${theme} / ${vp.label}px`, () => {
+      test.use({ viewport: { width: vp.width, height: vp.height } });
+
+      test("looks like the legacy Terms page", async ({ page }) => {
+        const { log } = await openApp(page, { signedIn: false, theme }, "/?react=terms");
+        await goTo(page, "terms");
+        await expect(page.locator("#app #levro-react-root .legal-page")).toContainText("Terms of Service");
+        expect(log.blocked, "requests to unknown hosts").toEqual([]);
+        expect(log.writes, "writes sent to Supabase").toEqual([]);
+        await freezeForScreenshot(page);
+        await expect(page).toHaveScreenshot(`guest-${theme}-${vp.label}-terms.png`);
+      });
+    });
+  }
+}

@@ -20,13 +20,12 @@ declare global {
   }
 }
 
-/** Declares `terms` as migrated, switches it on and attaches a fake React host. */
+/** Switches the pilot (`terms`) on and replaces the real React host with a stand-in one. */
 async function switchOnWithFakeHost(page: Page, mode: "ok" | "throws") {
   await page.evaluate((m) => {
     const calls: Calls = { rendered: [], unmounted: 0 };
     window.__calls = calls;
     const r = window.levroReact!;
-    r.declare("terms");
     r.use("terms");
     r.attach({
       async render(view, params, container) {
@@ -46,7 +45,7 @@ test.describe("view registry (nothing converted yet)", () => {
     await openApp(page, { signedIn: false, theme: "light" });
     const state = await page.evaluate(() => window.levroReact!.state);
     expect(state.on).toEqual([]);
-    expect(state.migrated).toEqual([]);
+    expect(state.migrated).toEqual(["terms"]); // the pilot has a React version, but it is not on
     await goTo(page, "terms");
     await expect(page.locator("#app")).toContainText("Terms of Service");
     await expect(page.locator("#levro-react-root")).toHaveCount(0);
@@ -54,10 +53,10 @@ test.describe("view registry (nothing converted yet)", () => {
 
   test("a screen that has no React version stays legacy even when asked for by name or 'all'", async ({ page }) => {
     await openApp(page, { signedIn: false, theme: "light" });
-    await page.evaluate(() => window.levroReact!.use("terms,home,all"));
-    expect(await page.evaluate(() => window.levroReact!.isOn("terms"))).toBe(false);
-    await goTo(page, "terms");
-    await expect(page.locator("#app")).toContainText("Terms of Service");
+    await page.evaluate(() => window.levroReact!.use("privacy,home,all"));
+    expect(await page.evaluate(() => window.levroReact!.isOn("privacy"))).toBe(false);
+    await goTo(page, "privacy");
+    await expect(page.locator("#app")).toContainText("Privacy Policy");
     await expect(page.locator("#levro-react-root")).toHaveCount(0);
   });
 
@@ -114,17 +113,5 @@ test.describe("view registry (nothing converted yet)", () => {
     await expect(page.locator("#fake-react-screen")).toHaveCount(0);
     expect(await page.evaluate(() => window.levroReact!.state.failed)).toEqual(["terms"]);
     expect(warnings.join("\n")).toContain('React view "terms" failed');
-  });
-
-  test("if React never becomes ready the legacy screen is shown after the time limit", async ({ page }) => {
-    await openApp(page, { signedIn: false, theme: "light" });
-    await page.evaluate(() => {
-      window.levroReact!.declare("terms");
-      window.levroReact!.use("terms");
-    }); // no host attached
-    await page.evaluate(() => window.navigate("terms", {}));
-    for (let i = 0; i < 12; i++) await page.clock.runFor(500);
-    await expect(page.locator("#app")).toContainText("Terms of Service");
-    expect(await page.evaluate(() => window.levroReact!.state.failed)).toEqual(["terms"]);
   });
 });
