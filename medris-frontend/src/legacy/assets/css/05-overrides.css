@@ -1709,16 +1709,193 @@ html body #app .fn-list,html body #app .fn-page .grid{gap:0!important}
 .lv-swipe-wait{position:fixed;top:50%;left:50%;z-index:99998;transform:translate(-50%,-50%);width:2.6rem;height:2.6rem;border-radius:50%;display:grid;place-items:center;background:var(--card,#fff);color:var(--text,#111);box-shadow:0 6px 18px rgba(15,23,42,.25);pointer-events:none}
 
 /* ===== "Duplicate / Activate listing": a bottom drawer with bright icons instead of a small popup ===== */
-html body #app .vl-menu:not(.hidden){position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;min-width:0!important;z-index:99991!important;border-radius:22px 22px 0 0!important;padding:.35rem .9rem calc(1rem + env(safe-area-inset-bottom,0px))!important;border:0!important;background:var(--card,#fff)!important;box-shadow:0 -12px 40px rgba(0,0,0,.35)!important;animation:lvSheetUp .22s cubic-bezier(.2,.8,.2,1)}
-html body #app .vl-menu:not(.hidden)::before{content:"Listing options";display:block;padding:1.05rem .1rem .55rem;font-size:.78rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#667);background:linear-gradient(var(--text-muted,#667),var(--text-muted,#667)) top .45rem center/2.6rem .25rem no-repeat;opacity:1}
-html body #app .vl-menu button{min-height:3.4rem!important;padding:0 .3rem!important;border-radius:14px!important;gap:.9rem!important;font-size:1rem!important;font-weight:700!important}
-html body #app .vl-menu button + button{border-top:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent)!important}
-html body #app .vl-menu button i{flex:0 0 2.5rem;width:2.5rem!important;height:2.5rem;border-radius:13px;display:inline-grid;place-items:center;font-size:1.05rem;color:#fff!important}
-html body #app .vl-menu button i.fa-copy{background:linear-gradient(145deg,#60a5fa,#2563eb)}
-html body #app .vl-menu button i.fa-pause{background:linear-gradient(145deg,#fbbf24,#f97316)}
-html body #app .vl-menu button i.fa-play{background:linear-gradient(145deg,#4ade80,#16a34a)}
-html body #app .vl-menu button i.fa-receipt{background:linear-gradient(145deg,#a78bfa,#7c3aed)}
-html body #app .vl-menu button i.fa-clock{background:linear-gradient(145deg,#cbd5e1,#94a3b8)}
-.lv-sheet-backdrop{position:fixed;inset:0;z-index:99990;background:rgba(2,8,5,.5);animation:lvFade .2s ease}
+html body .vl-menu.vl-sheet{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;min-width:0!important;z-index:99991!important;border-radius:22px 22px 0 0!important;padding:.35rem .9rem calc(1rem + env(safe-area-inset-bottom,0px))!important;border:0!important;background:var(--card,#fff)!important;box-shadow:0 -12px 40px rgba(0,0,0,.35)!important;animation:lvSheetUp .22s cubic-bezier(.2,.8,.2,1)}
+html body .vl-menu.vl-sheet::before{content:"Listing options";display:block;padding:1.05rem .1rem .55rem;font-size:.78rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#667);background:linear-gradient(var(--text-muted,#667),var(--text-muted,#667)) top .45rem center/2.6rem .25rem no-repeat;opacity:1}
+html body .vl-menu.vl-sheet button{min-height:3.4rem!important;padding:0 .3rem!important;border-radius:14px!important;gap:.9rem!important;font-size:1rem!important;font-weight:700!important}
+html body .vl-menu.vl-sheet button + button{border-top:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent)!important}
+html body .vl-menu.vl-sheet button i{flex:0 0 2.5rem;width:2.5rem!important;height:2.5rem;border-radius:13px;display:inline-grid;place-items:center;font-size:1.05rem;color:#fff!important}
+html body .vl-menu.vl-sheet button i.fa-copy{background:linear-gradient(145deg,#60a5fa,#2563eb)}
+html body .vl-menu.vl-sheet button i.fa-pause{background:linear-gradient(145deg,#fbbf24,#f97316)}
+html body .vl-menu.vl-sheet button i.fa-play{background:linear-gradient(145deg,#4ade80,#16a34a)}
+html body .vl-menu.vl-sheet button i.fa-receipt{background:linear-gradient(145deg,#a78bfa,#7c3aed)}
+html body .vl-menu.vl-sheet button i.fa-clock{background:linear-gradient(145deg,#cbd5e1,#94a3b8)}
+.lv-sheet-backdrop{position:fixed;inset:0;z-index:99990;background:rgba(15,23,42,.16);animation:lvFade .2s ease}
+body.lv-sheet-open #bottomNav{display:none!important}
 @keyframes lvSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes lvFade{from{opacity:0}to{opacity:1}}
+/* any bottom drawer / sheet hides the bottom bar while it is up */
+body:has(.media-action-sheet) #bottomNav,body:has(#lvCs) #bottomNav,body:has(.follow-menu.is-sheet-open) #bottomNav{display:none!important}
+
+/* ===== My Listings: calm, spaced, flat (no pills, no boxed cards) ===== */
+html body #app .vl-page{--vl-gap:1.1rem}
+html body #app .vl-page .vl-head-copy h2{font-size:1.65rem!important;letter-spacing:-.02em}
+html body #app .vl-page .vl-head-copy p{font-size:.88rem;margin-top:.45rem}
+html body #app .vl-page .vl-add{min-height:2.9rem!important;border-radius:12px!important;font-size:.95rem!important;margin-top:.2rem}
+/* tabs: four equal bars, an underline under the one you are on */
+html body #app .vl-page .vl-tabs{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:0!important;margin:1.3rem 0 1.1rem!important;padding:0!important;overflow:visible!important;border-bottom:1px solid var(--border,#e3e9e5)}
+html body #app .vl-page .vl-tabs button{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:.1rem!important;min-height:3.1rem!important;padding:.2rem .1rem!important;border:0!important;border-bottom:2.5px solid transparent!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--text-muted,#667)!important;font-size:.84rem!important;font-weight:700!important;margin-bottom:-1px}
+html body #app .vl-page .vl-tabs button i{display:none!important}
+html body #app .vl-page .vl-tabs button em{font-style:normal;font-size:.7rem;font-weight:600;opacity:.75;background:transparent!important;padding:0!important;min-width:0!important;height:auto!important}
+html body #app .vl-page .vl-tabs button.active,html body #app .vl-page .vl-tabs button[aria-selected="true"]{color:var(--text,#111)!important;border-bottom-color:var(--primary,#16a34a)!important}
+/* discarded items: a quiet one-line row */
+html body #app .vl-page .vl-discard,html body #app .vl-page [class*="vl-discard"]{padding:.8rem 0!important;border-radius:0!important;background:transparent!important;border:0!important;border-bottom:1px solid var(--border,#e3e9e5)!important;box-shadow:none!important}
+/* the list: rows with dividing lines, generous spacing */
+html body #app .vl-page .vl-card{background:transparent!important;border:0!important;border-bottom:1px solid var(--border,#e3e9e5)!important;border-radius:0!important;box-shadow:none!important;padding:1.1rem 0!important;margin:0!important}
+html body #app .vl-page .vl-meta{gap:.9rem!important;font-size:.8rem;color:var(--text-muted,#667);margin:.35rem 0 .6rem!important}
+html body #app .vl-page .vl-meta i{display:none!important}
+html body #app .vl-page .vl-actions{gap:.5rem!important;margin-top:.7rem}
+html body #app .vl-page .vl-actions .vl-btn{min-height:2.4rem;border-radius:10px;font-size:.84rem;font-weight:700;padding:0 .9rem;box-shadow:none!important}
+html body #app .vl-page .vl-actions .vl-btn i{display:none}
+html body #app .vl-page .vl-media{border-radius:14px;overflow:hidden}
+html body #app .vl-page .vl-discarded{padding:.85rem 0!important;margin:0 0 .4rem!important;background:transparent!important;border:0!important;border-bottom:1px solid var(--border,#e3e9e5)!important;border-radius:0!important;box-shadow:none!important;gap:.7rem!important}
+html body #app .vl-page .vl-discarded-ico{width:auto!important;height:auto!important;background:transparent!important;border-radius:0!important;font-size:1rem!important;color:var(--text-muted,#667)!important}
+html body #app .vl-page .vl-discarded strong{font-size:.92rem}
+html body #app .vl-page .vl-discarded .muted,html body #app .vl-page .vl-discarded p,html body #app .vl-page .vl-discarded span:not(.vl-discarded-ico){font-size:.78rem}
+html body #app .vl-page .vl-listtitle{font-size:1.05rem!important;margin:1.1rem 0 .7rem!important}
+html body #app .vl-page .vl-tools{gap:.6rem!important;margin-bottom:.8rem!important}
+html body #app .vl-page .vl-select{background:transparent!important;border:1px solid var(--border,#dfe6e1)!important;box-shadow:none!important;border-radius:10px!important;min-height:2.4rem!important;font-size:.84rem!important;font-weight:700}
+html body #app .vl-page .vl-search{background:transparent!important;border:0!important;border-bottom:1px solid var(--border,#dfe6e1)!important;border-radius:0!important;box-shadow:none!important;min-height:2.6rem!important}
+html body #app .vl-page .vl-search input{background:transparent!important;border:0!important;box-shadow:none!important}
+html body #app .vl-page .vl-tools{display:grid!important;grid-template-columns:1fr 1fr;align-items:center}
+html body #app .vl-page .vl-listtitle{grid-column:1/-1}
+html body #app .vl-page .vl-select{justify-content:space-between;width:100%}
+html body #app .vl-page .vl-select > i:first-child{display:none}
+
+/* edit pencils (profile picture / banner): a true circle, neutral colour (dark on light, white on dark), not green */
+:root:root:root body #app .storefront-cover-edit,:root:root:root body #app .ep-cam,:root:root:root body #app .avatar-edit-badge{width:2.4rem!important;height:2.4rem!important;min-width:2.4rem!important;min-height:2.4rem!important;aspect-ratio:1/1;padding:0!important;border-radius:50%!important;display:inline-grid!important;place-items:center;background:var(--card,#fff)!important;color:var(--text,#111)!important;border:1px solid color-mix(in srgb,var(--text,#111) 14%,transparent)!important;box-shadow:0 4px 12px rgba(0,0,0,.18)!important;line-height:1;overflow:hidden}
+:root:root:root body #app .storefront-cover-edit i,:root:root:root body #app .ep-cam i,:root:root:root body #app .avatar-edit-badge i{color:var(--text,#111)!important;-webkit-text-fill-color:currentColor!important;font-size:.95rem!important;margin:0!important}
+:root:root:root body #app .ep-cam{right:0!important;bottom:0!important}
+/* on your own storefront the banner pencil sits top-left so it no longer stacks under the three dots */
+:root:root:root body #app .storefront-profile .storefront-cover .storefront-cover-edit,:root:root:root body #app .storefront-cover-wrap > .storefront-cover-edit{right:auto!important;left:.75rem!important}
+/* the profile page's banner is as tall as on the storefront */
+:root:root:root body #app .ep-banner .storefront-cover{height:176px!important}
+
+/* ===== follow / following buttons: one glossy green family everywhere (search, vendors, followers) ===== */
+html body #app .vendor-card-follow-btn,html body #app .fn-follow,html body #app .vd-follow,html body #app .sr-follow{flex:0 0 auto;min-width:6.4rem;white-space:nowrap!important;min-height:2.5rem;padding:0 1rem!important;border-radius:12px!important;border:0!important;font-weight:800!important;font-size:.9rem!important;display:inline-flex!important;align-items:center;justify-content:center;gap:.35rem;background:linear-gradient(135deg,#22c55e,#0d9f6e)!important;color:#fff!important;box-shadow:0 4px 12px rgba(13,159,110,.32),inset 0 1px 0 rgba(255,255,255,.28)!important}
+html body #app .vendor-card-follow-btn.following,html body #app .fn-follow.following,html body #app .vd-follow.following,html body #app .sr-follow.following{background:linear-gradient(135deg,#e8fbf0,#c7f0d9)!important;color:#0b7a49!important;box-shadow:0 3px 10px rgba(13,159,110,.18),inset 0 1px 0 rgba(255,255,255,.7)!important;border:1px solid #8fdcb4!important}
+:root[data-theme="dark"] body #app .vendor-card-follow-btn.following,:root[data-theme="black"] body #app .vendor-card-follow-btn.following,:root[data-theme="dark"] body #app .fn-follow.following,:root[data-theme="black"] body #app .fn-follow.following,:root[data-theme="dark"] body #app .vd-follow.following,:root[data-theme="black"] body #app .vd-follow.following{background:linear-gradient(135deg,#123826,#0f2c1e)!important;color:#6ee7a8!important;border-color:#1f6a45!important;box-shadow:0 3px 10px rgba(34,197,94,.15)!important}
+/* the campus chip never takes a grid cell on a vendor card (it used to push the button over the name) */
+html body #app .vd-card{position:relative}
+html body #app .vd-card > .lv-camp-line{position:absolute!important;top:.55rem;right:.6rem;margin:0!important;max-width:7rem;z-index:2}
+html body #app .vendors-list-mode .vd-card .vd-follow,html body #app .vendors-list-mode .vendor-card-follow-btn{grid-column:3}
+html body #app .sr-vendor-row .sr-main{min-width:0;flex:1 1 0}
+html body #app .sr-vendor-row .sr-side{flex:0 0 auto;margin-left:.4rem}
+
+/* Browse everything: a search icon inside the search bar, with the text clear of it */
+html body #app .browse-filter-toolbar #searchInput{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a3' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:.95rem 50%!important;background-size:1.1rem 1.1rem!important;padding-left:2.8rem!important}
+
+/* Round 6: long names keep their tick; map pins carry a small tick badge; softer, livelier map */
+html body #app .lv-nm-flex{display:flex!important;align-items:center;gap:.25rem;min-width:0}
+html body #app .lv-nm-flex > .lv-nm-t{min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body #app .lv-nm-flex > i,html body #app .lv-nm-flex > [data-vt]{flex:0 0 auto}
+.vmp-pin .vmp-tick{position:absolute!important;top:-5px;right:-6px;margin:0!important;width:19px!important;height:19px!important;font-size:0!important;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(15,23,42,.35)}
+.vmp-pin .vmp-tick::before{width:19px!important;height:19px!important}
+.vmp-pin{box-shadow:0 8px 18px rgba(15,23,42,.28),0 0 0 4px color-mix(in srgb,var(--primary,#3fb97f) 22%,transparent)!important}
+#vendorsMapWrap{border-radius:22px;overflow:hidden;border:1px solid var(--border);box-shadow:0 14px 34px rgba(15,23,42,.14)}
+#vendorsMap{border-radius:22px}
+#vendorsMap .leaflet-tile-pane{filter:saturate(.85) contrast(.96) brightness(1.03) hue-rotate(-8deg)!important}
+:root[data-theme="dark"] #vendorsMap .leaflet-tile-pane,:root[data-theme="black"] #vendorsMap .leaflet-tile-pane{filter:invert(1) hue-rotate(160deg) saturate(.75) brightness(.88) contrast(.92)!important}
+#vendorsMap::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:450;border-radius:22px;background:radial-gradient(120% 90% at 50% 0%,rgba(255,255,255,.18),transparent 55%),radial-gradient(130% 100% at 50% 110%,color-mix(in srgb,var(--primary,#3fb97f) 14%,transparent),transparent 60%)}
+#vendorsMap .leaflet-control-zoom{border:0!important;border-radius:14px!important;overflow:hidden;box-shadow:0 6px 18px rgba(15,23,42,.22)!important}
+#vendorsMap .leaflet-control-zoom a{width:36px!important;height:36px!important;line-height:36px!important;font-size:18px!important;background:var(--card,#fff)!important;color:var(--text,#111)!important;border-color:var(--border)!important}
+#vendorsMap .leaflet-control-attribution{background:color-mix(in srgb,var(--card,#fff) 80%,transparent)!important;border-radius:10px 0 0 0;font-size:.6rem}
+#vendorsMap .vendors-map-recenter-control{border-radius:14px!important;box-shadow:0 6px 18px rgba(15,23,42,.22)!important}
+#vendorsMap .leaflet-popup-content-wrapper{border-radius:16px!important;box-shadow:0 12px 30px rgba(15,23,42,.28)!important}
+
+/* ===== Vendors map page ===== */
+body[data-view="vendorsMap"] #app{padding:0!important;max-width:none!important}
+html body #app .vmpage{position:relative;width:100%;z-index:1;overflow:hidden;background:var(--bg)}
+.vmpage #vmpMap{position:absolute;inset:0;z-index:0;background:var(--border)}
+.vmpage .leaflet-control-attribution{font-size:.58rem;background:color-mix(in srgb,var(--card) 78%,transparent);border-radius:8px 0 0 0;margin-bottom:0}
+.vmpage[data-style="night"] .leaflet-control-attribution{color:#cbd5e1}
+.vmp-top{position:absolute;z-index:500;top:.7rem;left:.7rem;right:4.1rem;display:flex;flex-direction:column;gap:.5rem;pointer-events:none}
+.vmp-top > *{pointer-events:auto}
+.vmp-bar{display:flex;align-items:center;gap:.3rem;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:.2rem .7rem .2rem .25rem;box-shadow:0 10px 28px rgba(15,23,42,.22)}
+.vmp-bar input{flex:1;min-width:0;border:0!important;background:transparent!important;box-shadow:none!important;outline:none!important;color:var(--text);font-size:.95rem;padding:.6rem .2rem!important;margin:0!important;height:auto!important}
+.vmp-bar-ic{color:var(--text-muted);font-size:.9rem}
+.vmp-back,.vmp-clear{width:38px;height:38px;flex:0 0 38px;border:0;border-radius:50%;background:transparent;color:var(--text);display:grid;place-items:center;cursor:pointer}
+.vmp-clear{width:30px;height:30px;flex-basis:30px;background:color-mix(in srgb,var(--text) 10%,transparent)}
+.vmp-sugg{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 14px 34px rgba(15,23,42,.28);overflow:hidden;max-height:46vh;overflow-y:auto}
+.vmp-sugg button{display:flex;align-items:center;gap:.65rem;width:100%;padding:.6rem .8rem;border:0;background:transparent;color:var(--text);text-align:left;cursor:pointer;border-bottom:1px solid var(--border)}
+.vmp-sugg button:last-child{border-bottom:0}
+.vmp-sugg .vmp-sg-logo{width:36px;height:36px;flex:0 0 36px;border-radius:50%;overflow:hidden;display:grid;place-items:center;position:relative;background:var(--border)}
+.vmp-sugg .vmp-sg-logo img{width:100%;height:100%;object-fit:cover}
+.vmp-sugg .vmp-sg-logo .vd-initials{position:absolute;inset:0}
+.vmp-sg-copy{display:flex;flex-direction:column;min-width:0;flex:1}
+.vmp-sg-copy strong{font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmp-sg-copy small{color:var(--text-muted);font-size:.74rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmp-sugg i.fa-location-arrow{color:var(--primary)}
+.vmp-sg-none{padding:.9rem;color:var(--text-muted);font-size:.88rem}
+.vmp-chips{display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;padding:.1rem .05rem .35rem;margin-right:-4rem;padding-right:4rem}
+.vmp-chips::-webkit-scrollbar{display:none}
+.vmp-chip{flex:0 0 auto;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:.38rem .85rem;font-size:.8rem;font-weight:650;box-shadow:0 4px 12px rgba(15,23,42,.16);cursor:pointer;white-space:nowrap}
+.vmp-chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.vmp-fabs{position:absolute;z-index:500;top:.7rem;right:.7rem;display:flex;flex-direction:column;gap:.2rem;align-items:flex-end}
+.vmp-fab{width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);display:grid;place-items:center;box-shadow:0 8px 20px rgba(15,23,42,.24);cursor:pointer;font-size:.95rem}
+.vmp-fab-gap{margin-top:.55rem}
+.vmp-fab.is-loading i{animation:vmpspin 1s linear infinite}
+@keyframes vmpspin{to{transform:rotate(360deg)}}
+.vmp-styles{position:absolute;top:7.6rem;right:3.2rem;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 14px 34px rgba(15,23,42,.3);overflow:hidden;min-width:9rem}
+.vmp-styles button{display:flex;align-items:center;gap:.6rem;padding:.65rem .9rem;border:0;background:transparent;color:var(--text);font-weight:650;font-size:.86rem;cursor:pointer;text-align:left}
+.vmp-styles button.on{color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent)}
+.vmp-styles i{width:1.1rem;text-align:center}
+.vmp-bottom{position:absolute;z-index:500;left:0;right:0;bottom:0;padding:0 0 .7rem;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.18),transparent)}
+.vmp-bottom > *{pointer-events:auto}
+.vmp-buddy{display:flex;align-items:flex-end;gap:.5rem;margin:0 .8rem .45rem;pointer-events:none}
+.vmp-buddy-m{width:54px;height:54px;flex:0 0 54px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.3));animation:vmpbob 3.2s ease-in-out infinite}
+.vmp-buddy-m svg{width:100%;height:100%}
+@keyframes vmpbob{50%{transform:translateY(-4px)}}
+.vmp-buddy-b{position:relative;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:16px 16px 16px 4px;padding:.5rem .75rem;font-size:.8rem;line-height:1.35;box-shadow:0 8px 20px rgba(15,23,42,.24);max-width:min(78%,420px)}
+.vmp-rail{display:flex;gap:.6rem;overflow-x:auto;scroll-snap-type:x proximity;padding:.2rem .8rem .3rem;scrollbar-width:none;overscroll-behavior-x:contain}
+.vmp-rail::-webkit-scrollbar{display:none}
+.vmp-card{flex:0 0 min(82%,310px);scroll-snap-align:start;background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:.75rem;box-shadow:0 12px 28px rgba(15,23,42,.24);cursor:pointer;display:flex;flex-direction:column;gap:.6rem}
+.vmp-card.on{border-color:var(--primary);box-shadow:0 12px 30px color-mix(in srgb,var(--primary) 35%,transparent)}
+.vmp-card-top{display:flex;gap:.7rem;align-items:center}
+.vmp-card-logo{width:54px;height:54px;flex:0 0 54px;border-radius:16px;overflow:hidden;position:relative;background:var(--border)}
+.vmp-card-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.vmp-card-logo .vd-initials{position:absolute;inset:0}
+.vmp-card-copy{display:flex;flex-direction:column;gap:.12rem;min-width:0;flex:1}
+.vmp-card-name{display:flex;align-items:center;gap:.25rem;font-size:.95rem;min-width:0}
+.vmp-card-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmp-card-copy > span{font-size:.76rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vmp-card-copy em{font-style:normal;font-size:.76rem;font-weight:700}
+.vmp-card-copy em i{color:#f59e0b}
+.vmp-card-copy em small{color:var(--text-muted);font-weight:500}
+.vmp-card-act{display:flex;gap:.5rem}
+.vmp-card-act > *{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.55rem .6rem;border-radius:12px;font-size:.8rem;font-weight:700;text-decoration:none;cursor:pointer;border:0}
+.vmp-card-act button{background:var(--primary);color:#fff}
+.vmp-card-act a{background:color-mix(in srgb,var(--primary) 12%,var(--card));color:var(--primary)}
+.vmp-empty{flex:1;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:.9rem 1rem;color:var(--text-muted);font-size:.86rem;box-shadow:0 10px 24px rgba(15,23,42,.2)}
+.vmp-cl-b{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:1rem;background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--primary,#3fb97f) 70%,#fff),var(--primary,#3fb97f));border:3px solid #fff;box-shadow:0 8px 18px rgba(15,23,42,.35),0 0 0 7px color-mix(in srgb,var(--primary,#3fb97f) 25%,transparent);cursor:pointer}
+.vmp.vmp-sel .vmp-pin{transform:scale(1.25);box-shadow:0 10px 22px rgba(15,23,42,.4),0 0 0 6px color-mix(in srgb,var(--primary,#3fb97f) 40%,transparent)!important}
+.vmpage[data-style="satellite"] .vmp-me-dot{border-color:#fff}
+@media (min-width:900px){
+  .vmp-top{max-width:460px}
+  .vmp-chips{margin-right:0;padding-right:0;flex-wrap:wrap;overflow:visible}
+  .vmp-bottom{left:auto;right:4.2rem;width:min(430px,46%)}
+  .vmp-rail{flex-direction:column;max-height:46vh;overflow-y:auto;overflow-x:hidden;padding-bottom:0}
+  .vmp-card{flex:0 0 auto}
+}
+/* map styles: Map = softened OpenStreetMap, Night = the same tiles inverted */
+.vmpage[data-style="streets"] .leaflet-tile-pane{filter:saturate(1.15) contrast(1.02) brightness(1.03)}
+.vmpage[data-style="night"] .leaflet-tile-pane{filter:invert(1) hue-rotate(185deg) saturate(.7) brightness(.82) contrast(.95)}
+body[data-view="vendorsMap"] #aiChatFab,body[data-view="vendorsMap"] #cartFab{display:none!important}
+html body .vmpage #vmpMap,html body .vmpage #vmpMap.leaflet-container{position:absolute!important;inset:0;width:100%;height:100%}
+
+/* Round 7: admin new-school buttons, people avatars, shorter product photos */
+.ac-sub{padding:.85rem 0;border-bottom:1px solid var(--border,#dde5e0)}
+.ac-sub-h{display:flex;align-items:center;gap:.75rem}
+.ac-sub-h > div{display:flex;flex-direction:column;gap:.1rem;min-width:0}
+.ac-sub-h b{font-size:.98rem;line-height:1.25}
+.ac-sub-h small{color:var(--text-muted);font-size:.78rem}
+.ac-sub-a{display:flex;gap:.5rem;margin-top:.7rem;flex-wrap:wrap}
+html body .ac-sub-a button{flex:1 1 0;min-width:6.2rem;padding:.6rem .8rem!important;border-radius:12px!important;border:1.5px solid var(--border,#cfd8d3)!important;background:var(--card,#fff)!important;color:var(--text)!important;font-weight:700;font-size:.86rem!important;cursor:pointer;box-shadow:none!important;text-shadow:none!important}
+html body .ac-sub-a button.ok{background:linear-gradient(180deg,#34d399,#16a34a)!important;border-color:#15803d!important;color:#fff!important;box-shadow:0 4px 10px rgba(22,163,74,.28)!important}
+html body .ac-sub-a button.no{color:#dc2626!important;border-color:color-mix(in srgb,#dc2626 45%,transparent)!important;background:color-mix(in srgb,#dc2626 8%,var(--card,#fff))!important}
+.ap-who{display:inline-flex;align-items:center;gap:.6rem;min-width:0}
+.ap-av{position:relative;width:2.3rem;height:2.3rem;flex:0 0 2.3rem;border-radius:50%;overflow:hidden;background:color-mix(in srgb,var(--primary,#3fb97f) 18%,var(--card,#fff));display:grid;place-items:center;color:var(--primary,#16a34a);font-size:.78rem}
+.ap-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ap-nm{min-width:0;overflow-wrap:anywhere}
+@media (max-width:799.98px){
+  html body #app .product-detail-card:not(.service-detail-card) .product-gallery-slide img{aspect-ratio:1/1!important;height:auto!important;max-height:none!important;object-fit:cover!important}
+}

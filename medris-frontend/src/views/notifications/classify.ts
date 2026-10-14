@@ -18,7 +18,7 @@ export function classifyNotification(n: NotificationRow, owners: Map<string, str
   const owner = String(
     n.vendor_id || m.vendor_id || p.vendorId || p.vendor_id || owners.get(`product:${p.productId || p.product_id || m.product_id}`) || owners.get(`package:${p.packageId || p.package_id || m.package_id}`) || "",
   );
-  if (m.order_id || p.orderId || p.order_id || /^(order|payment|request|offer)(_|$)/.test(type) || ["orderDetail", "buyerOrders", "vendorOrders"].includes(n.target_view ?? "")) return "orders";
+  if (m.order_id || p.orderId || p.order_id || /^(order|payment|request|offer)(_|$)/.test(type) || ["orderDetail", "buyerOrders", "vendorOrders"].includes(n.target_view ?? "")) return currentVendorId ? "myListings" : "orders";
   const listing = /product|listing|package|service|variant|variety|comment|like|save|wishlist/.test(kind) || !!p.productId || !!p.packageId;
   if (listing && owner && owner === currentVendorId) return "myListings";
   if (owner && owner !== currentVendorId && (listing || /vendor/.test(kind))) return "vendors";

@@ -407,11 +407,6 @@ function Product({ product, allowComments, related, anchorRef }: { product: PdPr
                     </div>
                   ))}
                 </div>
-                {photos.length > 1 ? (
-                  <span className="product-gallery-count">
-                    <i className="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/{photos.length}
-                  </span>
-                ) : null}
               </div>
               {photos.length > 1 ? (
                 <div className="product-gallery-thumbs" aria-label="Product photo varieties">

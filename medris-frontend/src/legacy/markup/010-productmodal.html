@@ -58,7 +58,7 @@
         <div><label style="margin:0;">Delivery fee (₦)</label><input type="number" id="prodDeliveryFee" min="0" step="50" placeholder="e.g. 1500" /></div>
       </div>
       <div id="prodDeliveryDistanceRow" class="delivery-setting-grid hidden" style="margin-top:.55rem;">
-        <div><label style="margin:0;">Fee per km (₦)</label><input type="number" id="prodDeliveryPerKm" min="0" step="10" placeholder="e.g. 200" /></div>
+        <div><label style="margin:0;">Fee per km (₦)</label><input type="number" id="prodDeliveryPerKm" min="0" max="1000" step="10" placeholder="e.g. 200 (max 1000)" oninput="if(Number(this.value)>1000)this.value=1000" /></div>
       </div>
       <p id="prodDeliveryHint" class="muted" style="font-size:.76rem;margin:.45rem 0 0;"></p>
     </div>

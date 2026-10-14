@@ -127,9 +127,9 @@ test.describe("Notifications: React matches legacy", () => {
       return { labels, seen };
     });
     expect(out.react.labels).toEqual(out.legacy.labels);
-    expect(out.legacy.labels.length).toBe(5); // All, Personal, Orders & Requests, My Listings, Vendors
+    expect(out.legacy.labels.length).toBe(4); // All, Personal, My Listings, Vendors
     expect(out.react.seen).toEqual(out.legacy.seen);
-    expect(new Set(Object.values(out.react.seen)).size).toBeGreaterThan(3); // the tabs really differ
+    expect(new Set(Object.values(out.react.seen)).size).toBeGreaterThan(2); // the tabs really differ
     expect(out.react.requests).toEqual(out.legacy.requests);
     expect(out.react.errors).toEqual([]);
   });
@@ -175,7 +175,8 @@ test.describe("Notifications: React matches legacy", () => {
     });
     expect(out.react.view).toBe(out.legacy.view);
     expect(out.react.left).toBe(0); // leaving removed the React page
-    expect(out.react.requests).toEqual(out.legacy.requests);
+    const notPolling = (rs: string[]) => rs.filter((r) => !/select=status%2Cstatus_changed_at|\/payments\?select=id%2Cstatus%2Camount/.test(r)); // the order page's own live refresh, not the notifications page
+    expect(notPolling(out.react.requests)).toEqual(notPolling(out.legacy.requests));
     expect(out.react.requests.some((r) => r.startsWith("PATCH"))).toBe(true);
     expect(out.react.errors).toEqual([]);
   });

@@ -47,7 +47,7 @@ function persistedRouteHtmlKey(view, params = {}) {
   return `${ROUTE_HTML_SNAPSHOT_PREFIX}${routeCacheKey(view, params)}`;
 }
 function isUsableRouteSnapshot(raw) {
-  return !!(raw && raw.length > 100 && !/Your latest orders will refresh in the background\.|Refreshing in the background\.|Your latest shop data will refresh in the background\.|Opening…|Loading…/i.test(raw));
+  return !!(raw && raw.length > 100 && !/Your latest orders will refresh in the background\.|Refreshing in the background\.|Your latest shop data will refresh in the background\.|Opening…|Loading…|This shop is currently paused|Storefront not found|This (?:product|service|package) is not currently available|(?:Product|Package) not found|Couldn.t load this|Access denied|Please log in/i.test(raw));
 }
 function getPersistedRouteHtml(view, params = {}) {
   try {
@@ -210,6 +210,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       if (typeof vendorsMapMarkers !== "undefined") vendorsMapMarkers = [];
     }
   } catch (_) {}
+  try { if (currentView === "vendorsMap" && view !== "vendorsMap" && typeof vmpDestroy === "function") vmpDestroy(); } catch (_) {}
   if (navOptions && navOptions.replace) pushHistory = false;
   else pushHistory = shouldPushHistory;
   // A suspended account is locked to this one screen no matter what it
@@ -335,7 +336,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   const reactView = window.levroReact?.isOn(view) ? view : null;
   const cachedRouteHtml = reactView ? undefined : routeHtmlCache.get(cacheKey);
   const persistedRouteHtml = reactView ? "" : getPersistedRouteHtml(view, params);
-  const instantRouteHtml = cachedRouteHtml || persistedRouteHtml;
+  const instantRouteHtml = (cachedRouteHtml && isUsableRouteSnapshot(String(cachedRouteHtml))) ? cachedRouteHtml : persistedRouteHtml;
   const sameOrdersTab = previousView === view && (view === "buyerOrders" || view === "vendorOrders");
   if (app && (pushHistory || previousView !== view) && !hasChatFastPath && view !== "home" && !sameOrdersTab) {
     // Storefront used to be excluded here, on the assumption its own
@@ -389,6 +390,7 @@ async function navigate(view, params = {}, pushHistory = true) {
       case "packageDetail": html = await renderPackageDetail(params.packageId); break;
       case "storefront": html = await renderStorefront(params.vendorId); break;
       case "vendors": html = renderVendorsDirectory(); break;
+      case "vendorsMap": html = renderVendorsMapPage(); break;
       case "vendorApply": html = await renderVendorApply(); break;
       case "vendorDashboard": html = await renderVendorDashboard(); break;
       case "vendorEditProfile": html = await renderVendorEditProfile(); break;
@@ -554,7 +556,7 @@ async function navigate(view, params = {}, pushHistory = true) {
   // Ignore an older request if the user has already navigated somewhere else.
   if (navToken !== navigationGeneration) return;
   if (html && !lastRenderError && !reactView) {
-    routeHtmlCache.set(cacheKey, html);
+    if (isUsableRouteSnapshot(String(html))) routeHtmlCache.set(cacheKey, html); else routeHtmlCache.delete(cacheKey);
     persistRouteHtml(view, params, html);
   }
   const preserveSameViewScroll = !pushHistory && previousView === view;

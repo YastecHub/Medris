@@ -17,7 +17,7 @@ const HOME_TOUR_STEPS = [
   {
     icon: "fa-map-location-dot", title: "Find vendors near you", body: "Every verified vendor, plotted on a real map, closest first. Tap any pin, or any card up here, to open that vendor's storefront.",
     selector: "#vendorsMapWrap, .vendors-map-vendor-rail", view: "vendors",
-    onEnter: async () => { try { await switchVendorsView("map"); } catch (_) {} },
+    onEnter: async () => { window.__lvInlineMap = true; try { await switchVendorsView("map"); } catch (_) {} finally { window.__lvInlineMap = false; } },
   },
   { icon: "fa-compass", title: "Get around from here", body: "The bottom bar is always one tap away, wherever you are on the site.", selector: "#bottomNav", view: "home" },
   "ORDERS_TOUR_STEP",

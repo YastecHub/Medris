@@ -129,7 +129,6 @@ async function renderPackageDetail(packageId) {
         <div class="package-detail-gallery-track product-gallery-main" id="packageDetailGalleryTrack" aria-label="Package photos">
           ${photos.map((u,i) => `<div class="package-detail-gallery-slide" data-gallery-index="${i}" onclick="openPackageGallerySlide(event,${i})"><img class="package-detail-main" src="${esc(u)}" alt="${esc(pkg.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
         </div>
-        ${photos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="packageGalleryCount">1</span>/${photos.length}</span>` : ""}
       </div>`
     : `<div class="package-gallery-placeholder" style="height:260px;"><i class="fa-solid fa-box-open"></i>&nbsp; No package photos</div>`;
 

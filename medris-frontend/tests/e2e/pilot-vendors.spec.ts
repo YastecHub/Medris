@@ -184,15 +184,16 @@ test.describe("Vendors directory: React matches legacy", () => {
       await page.locator("#vendorsFiltersPanel .lm-x").click();
       await expect(page.locator("#vendorsFiltersPanel")).toHaveClass(/hidden/);
 
-      // View modes: grid, list, map — and the choice is remembered.
-      for (const view of ["grid", "list", "map"] as const) {
+      // View modes: grid and list are remembered; the map button opens the dedicated map page.
+      for (const view of ["grid", "list"] as const) {
         await page.locator(`#vendorsView${view[0]!.toUpperCase()}${view.slice(1)}Btn`).click();
         await settle(page, 3);
         await expect(page.locator(`#vendorsView${view[0]!.toUpperCase()}${view.slice(1)}Btn`)).toHaveClass(/active/);
         expect(await page.evaluate(() => localStorage.getItem("levromart_vendors_view"))).toBe(view);
       }
-      await expect(page.locator("#vendorsMapWrap")).not.toHaveClass(/hidden/);
-      await expect(page.locator("#vendorsGrid")).toHaveClass(/hidden/);
+      await page.locator("#vendorsViewMapBtn").click();
+      await settle(page, 4);
+      await expect(page.locator("body")).toHaveAttribute("data-view", "vendorsMap");
       expect(log.writes.filter((w) => !writes.includes(w))).toEqual([]);
     });
 

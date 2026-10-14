@@ -96,14 +96,19 @@ window.submitServiceOffer=async function(listingId){
 window.confirmServiceOfferPayment=async function(id){if(!(await showConfirmDialog('Confirm that you have received the buyer’s bank transfer for this service?',{title:'Confirm payment received',okLabel:'Confirm payment'})))return;try{const {data,error}=await sb.rpc('confirm_service_offer_payment',{p_offer_id:id});if(error)throw error;showToast('Payment confirmed. The service booking is complete.','success');if(data?.order_id){await navigate('orderDetail',{orderId:data.order_id},false);}else{await navigate('productDetail',{productId:currentProductDetail?.id,serviceOfferId:id},false);}}catch(e){showToast(e.message||'Could not confirm payment.','error')}};
 window.disputeServiceOfferPayment=async function(id){if(!(await showConfirmDialog('Dispute this reported payment? No commission will be added while it is disputed.',{title:'Dispute payment',okLabel:'Dispute',danger:true})))return;try{const {error}=await sb.rpc('dispute_service_offer_payment',{p_offer_id:id});if(error)throw error;showToast('Payment disputed.','success');await navigate('productDetail',{productId:currentProductDetail?.id,serviceOfferId:id},false);}catch(e){showToast(e.message||'Could not dispute payment.','error')}};
 window.__levroBaseRenderProductDetail = __levroOriginalRenderProductDetail;
+// Product data fetched ahead of time for the neighbouring products (see the swipe script below), so swiping to one needs no waiting.
+window.__lvPdPre = new Map();
+window.__lvPdTake = function (id) { const k = String(id), e = window.__lvPdPre.get(k); if (!e) return null; window.__lvPdPre.delete(k); return Date.now() - e.at < 90000 ? e : null; };
 window.renderProductDetail = async function(productId){
-  const {data:p,error}=await sb.from('products').select('id,name,description,photos,is_service,billing_model,status,category:categories(name),vendor:vendors(id,business_name,previous_business_name,name_changed_at,logo_url,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active)').eq('id',productId).maybeSingle();
+  const __pre = window.__lvPdTake(productId);
+  const {data:p,error}= __pre ? await __pre.first : await sb.from('products').select('id,name,description,photos,is_service,billing_model,status,category:categories(name),vendor:vendors(id,business_name,previous_business_name,name_changed_at,logo_url,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active)').eq('id',productId).maybeSingle();
   if(!error&&p?.is_service&&p.billing_model==='commission'){
     const own=isOwnVendorId(p.vendor?.id);
     if(!own&&(p.status!=='active'||p.vendor?.verification_status!=='verified'||!p.vendor?.is_active))return '<div class="empty-state">This service is not currently available.</div>';
     const hint=await getServicePriceHint(productId); const offers=await loadServiceOffers(productId); currentProductDetail=p;
     return renderCommissionServiceDetail(p,hint,offers);
   }
+  window.__lvPdBase = __pre ? __pre.base : null;
   return window.__levroBaseRenderProductDetail(productId);
 };
 
@@ -111,7 +116,8 @@ async function __levroOriginalRenderProductDetail(productId) {
   const productQuery = sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", productId).maybeSingle();
   const variantsQuery = sb.from("product_variants").select("*").eq("product_id", productId).order("sort_order", {ascending:true}).order("created_at", {ascending:true});
   const engagementQuery=sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id",productId).maybeSingle();
-  const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = await Promise.all([productQuery,variantsQuery,engagementQuery]);
+  const __base = window.__lvPdBase; window.__lvPdBase = null;
+  const [{data:product,error},{data:loadedProductVariants,error:variantsError},{data:productEngagement}] = __base ? await __base : await Promise.all([productQuery,variantsQuery,engagementQuery]);
   if(error){console.error("[Levromart] Product detail load failed:",error);return `<div class="empty-state"><strong>Couldn\'t load this product.</strong><p class="muted" style="margin:.35rem 0 0;">Please try again. If the problem continues, the listing may be unavailable right now.</p></div>`;}
   if(!product)return '<div class="empty-state">Product not found.</div>';
   const ownListing=isOwnVendorId(product.vendor?.id);
@@ -140,7 +146,6 @@ async function __levroOriginalRenderProductDetail(productId) {
         <div class="product-gallery-main product-gallery-track" id="productGalleryTrack" aria-label="Product photos">
           ${productPhotos.map((u,i) => `<div class="product-gallery-slide" data-gallery-index="${i}" onclick="openProductGallerySlide(event,${i})"><img src="${esc(u)}" alt="${esc(product.name)} photo ${i+1}" loading="${i===0 ? 'eager' : 'lazy'}" decoding="async" draggable="false" ${i===0 ? 'fetchpriority="high"' : ''} /></div>`).join("")}
         </div>
-        ${productPhotos.length > 1 ? `<span class="product-gallery-count"><i class="fa-solid fa-images"></i> <span id="productGalleryCount">1</span>/${productPhotos.length}</span>` : ""}
         </div>
         ${productPhotos.length > 1 ? `<div class="product-gallery-thumbs" aria-label="Product photo varieties">${productPhotos.map((u,i) => `<button type="button" class="product-gallery-thumb ${i===0 ? "active" : ""}" data-gallery-index="${i}" onclick="setProductGalleryPhoto(${i})" aria-label="View product photo ${i+1}"><img src="${esc(u)}" alt="" loading="lazy" decoding="async" /></button>`).join("")}</div>` : ""}
         <button type="button" id="productGalleryReturnMain" class="product-gallery-return-main hidden" onclick="restoreProductGalleryMainImage()" aria-label="Return to main product image"><i class="fa-solid fa-arrow-left"></i> Main image</button>
@@ -285,6 +290,7 @@ const RELATED_EQUIPMENT = {
 };
 
 function deliveryFieldsHtml(prefix, deliveryFee, vendorLat, vendorLng, feeMode, perKm, pickupLabel, fixedItemTotal) {
+  perKm = Math.min(1000, Number(perKm) || 0);
   const fee = Number(deliveryFee) || 0;
   const isDistance = feeMode === "distance" && Number(perKm) > 0 && vendorLat != null && vendorLng != null;
   const hasVendorLoc = vendorLat != null && vendorLng != null;
@@ -313,7 +319,7 @@ function deliveryFeeCalcHtml(prefix) {
   const vLng = wrap.dataset.vendorLng !== "" ? Number(wrap.dataset.vendorLng) : null;
   let lines = [];
   if (wrap.dataset.feeLines) { try { lines = JSON.parse(wrap.dataset.feeLines); } catch (_) { lines = []; } }
-  else lines = [{ name: "", mode: wrap.dataset.feeMode || "flat", fee: Number(wrap.dataset.fee) || 0, perKm: Number(wrap.dataset.perKm) || 0 }];
+  else lines = [{ name: "", mode: wrap.dataset.feeMode || "flat", fee: Number(wrap.dataset.fee) || 0, perKm: Math.min(1000, Number(wrap.dataset.perKm) || 0) }];
   const rows = [];
   let km = null;
   if (buyerLocation && vLat != null && vLng != null) km = haversineKm(buyerLocation.lat, buyerLocation.lng, vLat, vLng);
@@ -713,6 +719,24 @@ async function buyNow(vendorId, productId) {
 }
 
 
+
+/* Fetch a product's data ahead of time (the same queries the page makes), so opening it, e.g. by swiping, is instant. */
+window.lvPdPrefetch = function (id) {
+  const k = String(id);
+  if (!id || window.__lvPdPre.has(k)) return;
+  const run = (b) => Promise.resolve(b.then((r) => r)).catch((e) => ({ data: null, error: e }));
+  const first = run(sb.from('products').select('id,name,description,photos,is_service,billing_model,status,category:categories(name),vendor:vendors(id,business_name,previous_business_name,name_changed_at,logo_url,city,address,phone,whatsapp_number,whatsapp_visible,avg_rating,review_count,verification_status,is_active)').eq('id', id).maybeSingle());
+  const base = Promise.all([
+    run(sb.from("products").select("*, vendor:vendors!inner(id, business_name, previous_business_name, name_changed_at, city, address, phone, whatsapp_number, whatsapp_visible, avg_rating, review_count, verification_status, cac_number, created_at, is_active, logo_url, delivery_fee, delivery_fee_mode, delivery_fee_per_km, lat, lng, business_hours, allow_after_hours_messages), category:categories(name)").eq("id", id).maybeSingle()),
+    run(sb.from("product_variants").select("*").eq("product_id", id).order("sort_order", { ascending: true }).order("created_at", { ascending: true })),
+    run(sb.from("product_engagement_settings").select("allow_comments,like_visibility,comment_audience,vendor_id").eq("product_id", id).maybeSingle()),
+  ]);
+  window.__lvPdPre.set(k, { at: Date.now(), first, base });
+  // the first picture too, so it is on screen the moment the page slides in
+  first.then(({ data }) => { try { const u = data?.photos?.[0]; if (u) { const im = new Image(); im.src = typeof lvThumb === "function" ? u : u; } } catch (_) {} });
+  if (window.__lvPdPre.size > 8) window.__lvPdPre.delete(window.__lvPdPre.keys().next().value);
+};
+
 /* ---- swipe the page sideways to move to the vendor's next / previous product ----
    The page follows the finger (like a carousel) with a small arrow at the edge that grows as you drag; let go past
    a third of the screen, or flick, and it slides away and the next product slides in. Let go early and it springs back. */
@@ -728,11 +752,34 @@ async function buyNow(vendorId, productId) {
     cache.set(vendorId, p);
     return p;
   }
-  async function target(dir) {
+  // One endless feed: the vendor's own products first, then products from other verified vendors (same category first), then back to the start.
+  let feed = null;
+  async function buildFeed(cur, vid) {
+    const own = await siblings(String(vid));
+    let more = [];
+    try {
+      const { data } = await sb.from("products").select("id, category_id, vendor:vendors!inner(id, verification_status, is_active)")
+        .eq("status", "active").neq("vendor_id", vid).eq("vendor.verification_status", "verified").eq("vendor.is_active", true)
+        .order("created_at", { ascending: false }).limit(80);
+      const cat = cur.category_id;
+      more = (data || []).map((r, i) => ({ id: String(r.id), k: (r.category_id && r.category_id === cat ? 0 : 1) * 1000 + i })).sort((a, b) => a.k - b.k).map((r) => r.id);
+    } catch (_) {}
+    const ids = [...own];
+    if (!ids.includes(String(cur.id))) ids.unshift(String(cur.id));
+    more.forEach((id) => { if (!ids.includes(id)) ids.push(id); });
+    feed = { ids, at: Date.now() };
+    return feed;
+  }
+  async function getFeed() {
     const cur = currentProductDetail, vid = cur?.vendor?.id || cur?.vendor_id;
     if (!cur?.id || !vid || currentView !== "productDetail") return null;
-    const ids = await siblings(String(vid));
-    const i = ids.indexOf(String(cur.id));
+    if (!feed || Date.now() - feed.at > 600000 || !feed.ids.includes(String(cur.id))) await buildFeed(cur, vid);
+    return feed;
+  }
+  async function target(dir) {
+    const f = await getFeed(), cur = currentProductDetail;
+    if (!f || !cur) return null;
+    const ids = f.ids, i = ids.indexOf(String(cur.id));
     if (i < 0 || ids.length < 2) return null;
     return ids[(i + dir + ids.length) % ids.length];
   }
@@ -762,7 +809,7 @@ async function buyNow(vendorId, productId) {
     if (currentView !== "productDetail" || e.touches.length !== 1) return;
     if (e.target.closest?.(blocked) || !e.target.closest?.("#app")) return;
     t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
-    const vid = currentProductDetail?.vendor?.id || currentProductDetail?.vendor_id; if (vid) siblings(String(vid));
+    getFeed().catch(() => {});
   }, { passive: true });
   document.addEventListener("touchmove", (e) => {
     if (!t0) return;
@@ -799,6 +846,20 @@ async function buyNow(vendorId, productId) {
     }
     return false;
   }
+  // keep the neighbouring products fetched while a product page is open
+  let warmedFor = null;
+  setInterval(async () => {
+    try {
+      if (currentView !== "productDetail" || document.hidden) return;
+      const cur = currentProductDetail, vid = cur?.vendor?.id || cur?.vendor_id;
+      if (!cur?.id || !vid || warmedFor === String(cur.id)) return;
+      warmedFor = String(cur.id);
+      const f = await getFeed(); if (!f) return;
+      const ids = f.ids, i = ids.indexOf(String(cur.id));
+      if (i < 0 || ids.length < 2) return;
+      [ids[(i + 1) % ids.length], ids[(i - 1 + ids.length) % ids.length]].forEach((n) => window.lvPdPrefetch?.(n));
+    } catch (_) {}
+  }, 600);
   let busy = false;
   document.addEventListener("touchend", async (e) => {
     const start = t0, was = lock; t0 = null; lock = null;
@@ -820,11 +881,11 @@ async function buyNow(vendorId, productId) {
       el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "0";
       const spinner = document.createElement("div");
       spinner.className = "lv-swipe-wait"; spinner.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-      document.body.appendChild(spinner);
+      const spinTimer = setTimeout(() => document.body.appendChild(spinner), 450);
       let ok = true;
       try { await navigate("productDetail", { productId: id }); } catch (_) { ok = false; }
       ok = ok && await waitForProduct(id);
-      spinner.remove();
+      clearTimeout(spinTimer); spinner.remove();
       const now = app();
       if (!ok || !now) { snap.remove(); if (now) { now.style.opacity = ""; now.style.transform = ""; } return; }
       // 3. both slide together, like one carousel

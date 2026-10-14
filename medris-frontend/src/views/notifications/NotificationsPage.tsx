@@ -44,7 +44,7 @@ const tabsFor = (): TabDef[] => {
   return [
     ["all", "All"],
     ["personal", "Personal"],
-    ...(legacyState.role() !== "admin" ? ([["orders", vendorId ? "Orders & Requests" : "Orders"]] as TabDef[]) : []),
+    ...(legacyState.role() !== "admin" && !vendorId ? ([["orders", "Orders"]] as TabDef[]) : []),
     ...(vendorId ? ([["myListings", "My Listings"]] as TabDef[]) : []),
     ["vendors", "Vendors"],
   ];
