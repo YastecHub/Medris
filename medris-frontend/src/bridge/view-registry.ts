@@ -180,6 +180,21 @@ export function createViewRegistry(deps: RegistryDeps) {
   return api;
 }
 
+/**
+ * The legacy stylesheets contain rules about the DIRECT children of #app. A React screen sits one
+ * level deeper (inside the placeholder), so those rules are repeated here for the placeholder's
+ * children. Without this a screen could be laid out differently (found by the Terms pilot: the
+ * legacy `#app > * { max-width: 100% !important }` lets .legal-page ignore its own 720px limit).
+ * Sources: `#app > *` in styles/001-clean-page-heading-rhythm-headings-must-never-vi.css,
+ * `#app > *:last-child` in assets/css/02-components.css, `#app>*:first-child` in assets/css/03-pages.css.
+ * Keep in step with them until the legacy runtime is gone.
+ */
+export const PLACEHOLDER_CSS =
+  "#levro-react-root>*{min-width:0!important;max-width:100%!important}" +
+  "#levro-react-root>*:last-child{margin-bottom:0!important}" +
+  "#levro-react-root>*:first-child{scroll-margin-top:80px!important}" +
+  "@media (max-width:720px){#levro-react-root>*:first-child{scroll-margin-top:72px!important}}";
+
 export type LevroReact = ReturnType<typeof createViewRegistry>;
 
 declare global {
@@ -207,5 +222,13 @@ if (typeof window !== "undefined") {
     },
   });
   window.levroReact = registry;
+  try {
+    const style = document.createElement("style");
+    style.id = "levro-react-root-style";
+    style.textContent = PLACEHOLDER_CSS;
+    (document.head || document.documentElement).appendChild(style);
+  } catch {
+    /* no document yet: React screens would only lose these layout rules */
+  }
   window.addEventListener("pagehide", () => registry.unmount());
 }
