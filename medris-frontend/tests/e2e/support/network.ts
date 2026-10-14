@@ -6,11 +6,21 @@ import { BUYER, RPCS, TABLES } from "../fixtures/data";
 const require = createRequire(import.meta.url);
 const SUPABASE_UMD = readFileSync(require.resolve("@supabase/supabase-js/dist/umd/supabase.js"), "utf8");
 const FONT_WEIGHTS = [400, 500, 600, 700, 800];
-const FONT_FILES = new Map(FONT_WEIGHTS.map((w) => [`/fixture-fonts/Inter-${w}.woff2`, readFileSync(new URL(`../fixtures/fonts/Inter-${w}.woff2`, import.meta.url))]));
+const FONT_FILES = new Map<string, Buffer>([
+  ...FONT_WEIGHTS.map((w) => [`/fixture-fonts/Inter-${w}.woff2`, readFileSync(new URL(`../fixtures/fonts/Inter-${w}.woff2`, import.meta.url))] as const),
+  // The legacy CSS asks for "Arial" on buttons. Machines map it to different fonts, so Liberation Sans (the metric-compatible
+  // stand-in on Linux) is served under that name too: text in buttons then looks the same on every machine.
+  ...[400, 700].map((w) => [`/fixture-fonts/LiberationSans-${w}.woff2`, readFileSync(new URL(`../fixtures/fonts/LiberationSans-${w}.woff2`, import.meta.url))] as const),
+]);
 // What fonts.googleapis.com would answer, pointing at the local files above.
-const FONT_CSS = FONT_WEIGHTS.map(
-  (w) => `@font-face{font-family:"Inter";font-style:normal;font-weight:${w};font-display:block;src:url(https://fonts.gstatic.com/fixture-fonts/Inter-${w}.woff2) format("woff2")}`,
-).join("\n");
+const FONT_CSS = [
+  ...FONT_WEIGHTS.map(
+    (w) => `@font-face{font-family:"Inter";font-style:normal;font-weight:${w};font-display:block;src:url(https://fonts.gstatic.com/fixture-fonts/Inter-${w}.woff2) format("woff2")}`,
+  ),
+  ...[400, 700].map(
+    (w) => `@font-face{font-family:"Arial";font-style:normal;font-weight:${w};font-display:block;src:url(https://fonts.gstatic.com/fixture-fonts/LiberationSans-${w}.woff2) format("woff2")}`,
+  ),
+].join("\n");
 const FIXTURE_HOST = "e2e-fixture.supabase.co";
 // 1x1 transparent PNG, used for every remote image.
 const PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");

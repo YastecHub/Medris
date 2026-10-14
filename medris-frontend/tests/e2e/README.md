@@ -27,6 +27,18 @@ npm run test:e2e -w medris-frontend -- --update-snapshots           # refresh pi
 Pictures live in `tests/e2e/__screenshots__/`. They are only refreshed deliberately, in a pull
 request that says why the look changed.
 
+## Matching the CI machine locally
+
+The reference pictures are checked on GitHub's runner, which has no Inter font installed. If your machine has Inter installed
+system-wide, a few text-heavy pictures differ by tiny amounts. Hide it for the run:
+
+```
+FONTCONFIG_FILE=$PWD/tests/e2e/support/no-system-inter.conf npm run test:e2e -w medris-frontend
+```
+
+When a screen is converted to React, make its reference pictures from the LEGACY screen only
+(`-g "legacy looks like the reference" --update-snapshots`), then run everything without updating: the React version must match them.
+
 ## What the tests hold constant
 
 Inter is served from bundled copies (`fixtures/fonts/`), so text is drawn the same on every machine. Frozen clock (2 March 2026), reduced motion, no animations, service worker off, first-visit

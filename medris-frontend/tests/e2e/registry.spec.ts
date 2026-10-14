@@ -45,7 +45,7 @@ test.describe("view registry (nothing converted yet)", () => {
     await openApp(page, { signedIn: false, theme: "light" });
     const state = await page.evaluate(() => window.levroReact!.state);
     expect(state.on).toEqual([]);
-    expect(state.migrated).toEqual(["terms", "privacy", "refundPolicy", "contactUs", "customerFollowing", "wishlist"]); // these have React versions, but none is on
+    expect(state.migrated).toEqual(["terms", "privacy", "refundPolicy", "contactUs", "customerFollowing", "wishlist", "notifications"]); // these have React versions, but none is on
     await goTo(page, "terms");
     await expect(page.locator("#app")).toContainText("Terms of Service");
     await expect(page.locator("#levro-react-root")).toHaveCount(0);

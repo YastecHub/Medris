@@ -178,3 +178,57 @@ export const WISHLIST_PACKAGE_ROWS = [
   { package: wPackage(3, { name: "Party Pack", vendor: { id: "00000000-0000-4000-8000-000000000703", business_name: "Fun Co", logo_url: null, delivery_fee: 0, delivery_fee_mode: "distance", delivery_fee_per_km: 90, verification_status: "verified", is_active: true } }) },
   { package: wPackage(4, { name: "Hidden Bundle", vendor: { id: "x", business_name: "Nope", logo_url: null, delivery_fee: 0, verification_status: "pending", is_active: true } }) },
 ];
+
+// ---- Notifications (used by pilot-notifications.spec.ts; NOT part of the defaults) ----
+
+const minutesAgo = (m: number) => new Date(new Date(FIXED_NOW).getTime() - m * 60_000).toISOString();
+const OTHER_VENDOR_ID = "00000000-0000-4000-8000-0000000009a1";
+export const MY_VENDOR_ID = "00000000-0000-4000-8000-0000000009b1";
+export const CONVERSATION_ID = "00000000-0000-4000-8000-0000000009c1";
+export const NOTIF_OTHER_PRODUCT_ID = "00000000-0000-4000-8000-0000000009d1";
+export const NOTIF_MY_PACKAGE_ID = "00000000-0000-4000-8000-0000000009d2";
+
+const note = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-00000000${String(800 + n).padStart(4, "0")}`,
+  user_id: BUYER.id,
+  title: `Notification ${n}`,
+  body: null,
+  type: "system",
+  notification_category: null,
+  read: true,
+  created_at: minutesAgo(10 * n),
+  target_view: null,
+  target_params: {},
+  metadata: {},
+  actor_id: null,
+  actor_name: null,
+  actor_avatar_url: null,
+  ...over,
+});
+
+export const NOTIFICATION_ROWS = [
+  note(1, { title: "New order received", body: "Order for Jollof Party Pack", type: "order_placed", target_view: "orderDetail", target_params: { orderId: "00000000-0000-4000-8000-0000000009e1" }, read: false, created_at: minutesAgo(0) }),
+  note(2, { title: "Payment confirmed", type: "payment_received", metadata: { order_id: "x" }, read: true }),
+  note(3, { title: "New comment on your product", body: "Nice item!", type: "product_comment", target_view: "productDetail", target_params: { productId: NOTIF_OTHER_PRODUCT_ID }, read: false }),
+  note(4, { title: "Someone saved your package", type: "package_wishlisted", metadata: { kind: "package" }, target_view: "packageDetail", target_params: { packageId: NOTIF_MY_PACKAGE_ID }, read: false }),
+  note(5, { title: "New follower", body: "Chidi Obi started following you", type: "vendor_follow", notification_category: "new_follower", actor_name: "Chidi Obi", read: false }),
+  note(6, { title: "Security notice", body: "Call us on 08012345678 if this wasn't you", type: "admin_alert", read: true }),
+  note(7, { title: "Ada sent you a message", body: "Is it still available?", type: "new_message", target_view: "messages", target_params: { conversationId: CONVERSATION_ID }, actor_name: "Ada Eze", actor_avatar_url: "https://images.example.test/ada.png", read: false, created_at: minutesAgo(60) }),
+  note(8, { title: "Ada sent you a message", body: "Hello?", type: "new_message", target_view: "messages", target_params: { conversationId: CONVERSATION_ID }, actor_name: "Ada Eze", actor_avatar_url: "https://images.example.test/ada.png", read: false, created_at: minutesAgo(70) }),
+  note(9, { title: "Ada sent you a message", body: "Thanks!", type: "new_message", target_view: "messages", target_params: { conversationId: CONVERSATION_ID }, actor_name: "Ada Eze", actor_avatar_url: "https://images.example.test/ada.png", read: true, created_at: minutesAgo(80) }),
+  note(10, { title: "Bola sent you a message", body: "See you tomorrow", type: "new_message", target_view: "messages", target_params: { conversationId: "00000000-0000-4000-8000-0000000009c2" }, actor_name: "Bola A.", read: true, created_at: minutesAgo(90) }),
+  note(11, { title: "<b>Big</b> sale & more", body: "Vendor news", type: "vendor_update", metadata: { kind: "vendor" }, vendor_id: OTHER_VENDOR_ID, read: false, created_at: minutesAgo(200) }),
+  note(12, { title: "Points earned", type: "points", read: true, created_at: minutesAgo(3000) }),
+];
+
+/** Who owns the listings the notifications above point at. */
+export const NOTIF_OWNER_TABLES = {
+  products: [{ id: NOTIF_OTHER_PRODUCT_ID, vendor_id: OTHER_VENDOR_ID }],
+  vendor_packages: [{ id: NOTIF_MY_PACKAGE_ID, vendor_id: MY_VENDOR_ID }],
+};
+
+/** Makes the signed-in fixture user a vendor (owner of MY_VENDOR_ID). */
+export const MY_VENDOR_TABLES = {
+  users: [{ id: BUYER.id, email: BUYER.email, full_name: BUYER.full_name, role: "vendor" }],
+  vendors: [{ id: MY_VENDOR_ID, user_id: BUYER.id, business_name: "My Fixture Shop", verification_status: "verified", is_active: true, deleted_at: null }],
+};
