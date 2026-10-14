@@ -33,3 +33,9 @@ Inter is served from bundled copies (`fixtures/fonts/`), so text is drawn the sa
 welcome screens / app tour / permission reminders switched off, notifications
 reported as granted. The map library (Leaflet) and the icon font are not loaded, so the
 pictures show text without icons; this is the same for the legacy and the React version of a screen.
+
+## Files
+
+- `first-wave.spec.ts`: reference screenshots of the first-wave screens (legacy app, all React switches off).
+- `registry.spec.ts`: the view registry and the hook in `navigate()`, exercised with a stand-in React host
+  (OFF by default, ON draws into a placeholder, unmount on leaving, no stale snapshot, fallback to legacy).

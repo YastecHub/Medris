@@ -179,7 +179,7 @@ export function injectApiBase(legacyHtml: string, apiBaseUrl: string | undefined
 }
 
 /**
- * Compiles src/bridge/data-gateway.ts (and the typed API client it imports)
+ * Compiles src/bridge/bridge.ts (the data gateway, the view registry and the typed API client they import)
  * into a self-contained classic script. It must be a classic script, not a
  * module: legacy scripts that run while the page parses may call it. VITE_*
  * values are inlined exactly as Vite does for the React bundle.
@@ -187,7 +187,7 @@ export function injectApiBase(legacyHtml: string, apiBaseUrl: string | undefined
 export async function buildDataGateway(root: string, env: Record<string, string>, mode: string): Promise<string> {
   const production = mode === "production";
   const result = await esbuild({
-    entryPoints: [path.join(root, "src", "bridge", "data-gateway.ts")],
+    entryPoints: [path.join(root, "src", "bridge", "bridge.ts")],
     bundle: true,
     format: "iife",
     platform: "browser",
@@ -203,7 +203,7 @@ export async function buildDataGateway(root: string, env: Record<string, string>
   });
   // An inline script must never contain "</script".
   const code = (result.outputFiles[0]?.text ?? "").replace(/<\/script/gi, "<\\/script").trimEnd();
-  return `/* Levromart data gateway: generated from src/bridge/data-gateway.ts - do not edit. */\n${code}`;
+  return `/* Levromart data gateway and view registry: generated from src/bridge/bridge.ts - do not edit. */\n${code}`;
 }
 
 /** Replaces the marker with the compiled gateway as an inline classic script. */
