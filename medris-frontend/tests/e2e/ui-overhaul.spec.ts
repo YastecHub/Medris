@@ -211,6 +211,8 @@ test.describe("Round 2 feedback", () => {
     await goTo(page, "profile").catch(() => undefined);
     const color = await page.evaluate(() => { document.getElementById("app")!.insertAdjacentHTML("beforeend", '<span id="zi" class="lv-row-ico"><i class="fa-solid fa-heart"></i></span>'); return getComputedStyle(document.getElementById("zi")!).color; });
     expect(color).toBe("rgb(255, 255, 255)");
+  });
+});
 
 test.describe("Temporary WhatsApp contact", () => {
   const open = async (page: Page, vendorRow: Record<string, unknown>) => {
