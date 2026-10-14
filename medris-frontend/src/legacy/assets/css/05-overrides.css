@@ -1709,16 +1709,77 @@ html body #app .fn-list,html body #app .fn-page .grid{gap:0!important}
 .lv-swipe-wait{position:fixed;top:50%;left:50%;z-index:99998;transform:translate(-50%,-50%);width:2.6rem;height:2.6rem;border-radius:50%;display:grid;place-items:center;background:var(--card,#fff);color:var(--text,#111);box-shadow:0 6px 18px rgba(15,23,42,.25);pointer-events:none}
 
 /* ===== "Duplicate / Activate listing": a bottom drawer with bright icons instead of a small popup ===== */
-html body #app .vl-menu:not(.hidden){position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;min-width:0!important;z-index:99991!important;border-radius:22px 22px 0 0!important;padding:.35rem .9rem calc(1rem + env(safe-area-inset-bottom,0px))!important;border:0!important;background:var(--card,#fff)!important;box-shadow:0 -12px 40px rgba(0,0,0,.35)!important;animation:lvSheetUp .22s cubic-bezier(.2,.8,.2,1)}
-html body #app .vl-menu:not(.hidden)::before{content:"Listing options";display:block;padding:1.05rem .1rem .55rem;font-size:.78rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#667);background:linear-gradient(var(--text-muted,#667),var(--text-muted,#667)) top .45rem center/2.6rem .25rem no-repeat;opacity:1}
-html body #app .vl-menu button{min-height:3.4rem!important;padding:0 .3rem!important;border-radius:14px!important;gap:.9rem!important;font-size:1rem!important;font-weight:700!important}
-html body #app .vl-menu button + button{border-top:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent)!important}
-html body #app .vl-menu button i{flex:0 0 2.5rem;width:2.5rem!important;height:2.5rem;border-radius:13px;display:inline-grid;place-items:center;font-size:1.05rem;color:#fff!important}
-html body #app .vl-menu button i.fa-copy{background:linear-gradient(145deg,#60a5fa,#2563eb)}
-html body #app .vl-menu button i.fa-pause{background:linear-gradient(145deg,#fbbf24,#f97316)}
-html body #app .vl-menu button i.fa-play{background:linear-gradient(145deg,#4ade80,#16a34a)}
-html body #app .vl-menu button i.fa-receipt{background:linear-gradient(145deg,#a78bfa,#7c3aed)}
-html body #app .vl-menu button i.fa-clock{background:linear-gradient(145deg,#cbd5e1,#94a3b8)}
-.lv-sheet-backdrop{position:fixed;inset:0;z-index:99990;background:rgba(2,8,5,.5);animation:lvFade .2s ease}
+html body .vl-menu.vl-sheet{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;min-width:0!important;z-index:99991!important;border-radius:22px 22px 0 0!important;padding:.35rem .9rem calc(1rem + env(safe-area-inset-bottom,0px))!important;border:0!important;background:var(--card,#fff)!important;box-shadow:0 -12px 40px rgba(0,0,0,.35)!important;animation:lvSheetUp .22s cubic-bezier(.2,.8,.2,1)}
+html body .vl-menu.vl-sheet::before{content:"Listing options";display:block;padding:1.05rem .1rem .55rem;font-size:.78rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#667);background:linear-gradient(var(--text-muted,#667),var(--text-muted,#667)) top .45rem center/2.6rem .25rem no-repeat;opacity:1}
+html body .vl-menu.vl-sheet button{min-height:3.4rem!important;padding:0 .3rem!important;border-radius:14px!important;gap:.9rem!important;font-size:1rem!important;font-weight:700!important}
+html body .vl-menu.vl-sheet button + button{border-top:1px solid color-mix(in srgb,var(--text,#111) 8%,transparent)!important}
+html body .vl-menu.vl-sheet button i{flex:0 0 2.5rem;width:2.5rem!important;height:2.5rem;border-radius:13px;display:inline-grid;place-items:center;font-size:1.05rem;color:#fff!important}
+html body .vl-menu.vl-sheet button i.fa-copy{background:linear-gradient(145deg,#60a5fa,#2563eb)}
+html body .vl-menu.vl-sheet button i.fa-pause{background:linear-gradient(145deg,#fbbf24,#f97316)}
+html body .vl-menu.vl-sheet button i.fa-play{background:linear-gradient(145deg,#4ade80,#16a34a)}
+html body .vl-menu.vl-sheet button i.fa-receipt{background:linear-gradient(145deg,#a78bfa,#7c3aed)}
+html body .vl-menu.vl-sheet button i.fa-clock{background:linear-gradient(145deg,#cbd5e1,#94a3b8)}
+.lv-sheet-backdrop{position:fixed;inset:0;z-index:99990;background:rgba(15,23,42,.16);animation:lvFade .2s ease}
+body.lv-sheet-open #bottomNav{display:none!important}
 @keyframes lvSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes lvFade{from{opacity:0}to{opacity:1}}
+/* any bottom drawer / sheet hides the bottom bar while it is up */
+body:has(.media-action-sheet) #bottomNav,body:has(#lvCs) #bottomNav,body:has(.follow-menu.is-sheet-open) #bottomNav{display:none!important}
+
+/* ===== My Listings: calm, spaced, flat (no pills, no boxed cards) ===== */
+html body #app .vl-page{--vl-gap:1.1rem}
+html body #app .vl-page .vl-head-copy h2{font-size:1.65rem!important;letter-spacing:-.02em}
+html body #app .vl-page .vl-head-copy p{font-size:.88rem;margin-top:.45rem}
+html body #app .vl-page .vl-add{min-height:2.9rem!important;border-radius:12px!important;font-size:.95rem!important;margin-top:.2rem}
+/* tabs: four equal bars, an underline under the one you are on */
+html body #app .vl-page .vl-tabs{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:0!important;margin:1.3rem 0 1.1rem!important;padding:0!important;overflow:visible!important;border-bottom:1px solid var(--border,#e3e9e5)}
+html body #app .vl-page .vl-tabs button{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:.1rem!important;min-height:3.1rem!important;padding:.2rem .1rem!important;border:0!important;border-bottom:2.5px solid transparent!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;color:var(--text-muted,#667)!important;font-size:.84rem!important;font-weight:700!important;margin-bottom:-1px}
+html body #app .vl-page .vl-tabs button i{display:none!important}
+html body #app .vl-page .vl-tabs button em{font-style:normal;font-size:.7rem;font-weight:600;opacity:.75;background:transparent!important;padding:0!important;min-width:0!important;height:auto!important}
+html body #app .vl-page .vl-tabs button.active,html body #app .vl-page .vl-tabs button[aria-selected="true"]{color:var(--text,#111)!important;border-bottom-color:var(--primary,#16a34a)!important}
+/* discarded items: a quiet one-line row */
+html body #app .vl-page .vl-discard,html body #app .vl-page [class*="vl-discard"]{padding:.8rem 0!important;border-radius:0!important;background:transparent!important;border:0!important;border-bottom:1px solid var(--border,#e3e9e5)!important;box-shadow:none!important}
+/* the list: rows with dividing lines, generous spacing */
+html body #app .vl-page .vl-card{background:transparent!important;border:0!important;border-bottom:1px solid var(--border,#e3e9e5)!important;border-radius:0!important;box-shadow:none!important;padding:1.1rem 0!important;margin:0!important}
+html body #app .vl-page .vl-meta{gap:.9rem!important;font-size:.8rem;color:var(--text-muted,#667);margin:.35rem 0 .6rem!important}
+html body #app .vl-page .vl-meta i{display:none!important}
+html body #app .vl-page .vl-actions{gap:.5rem!important;margin-top:.7rem}
+html body #app .vl-page .vl-actions .vl-btn{min-height:2.4rem;border-radius:10px;font-size:.84rem;font-weight:700;padding:0 .9rem;box-shadow:none!important}
+html body #app .vl-page .vl-actions .vl-btn i{display:none}
+html body #app .vl-page .vl-media{border-radius:14px;overflow:hidden}
+html body #app .vl-page .vl-discarded{padding:.85rem 0!important;margin:0 0 .4rem!important;background:transparent!important;border:0!important;border-bottom:1px solid var(--border,#e3e9e5)!important;border-radius:0!important;box-shadow:none!important;gap:.7rem!important}
+html body #app .vl-page .vl-discarded-ico{width:auto!important;height:auto!important;background:transparent!important;border-radius:0!important;font-size:1rem!important;color:var(--text-muted,#667)!important}
+html body #app .vl-page .vl-discarded strong{font-size:.92rem}
+html body #app .vl-page .vl-discarded .muted,html body #app .vl-page .vl-discarded p,html body #app .vl-page .vl-discarded span:not(.vl-discarded-ico){font-size:.78rem}
+html body #app .vl-page .vl-listtitle{font-size:1.05rem!important;margin:1.1rem 0 .7rem!important}
+html body #app .vl-page .vl-tools{gap:.6rem!important;margin-bottom:.8rem!important}
+html body #app .vl-page .vl-select{background:transparent!important;border:1px solid var(--border,#dfe6e1)!important;box-shadow:none!important;border-radius:10px!important;min-height:2.4rem!important;font-size:.84rem!important;font-weight:700}
+html body #app .vl-page .vl-search{background:transparent!important;border:0!important;border-bottom:1px solid var(--border,#dfe6e1)!important;border-radius:0!important;box-shadow:none!important;min-height:2.6rem!important}
+html body #app .vl-page .vl-search input{background:transparent!important;border:0!important;box-shadow:none!important}
+html body #app .vl-page .vl-tools{display:grid!important;grid-template-columns:1fr 1fr;align-items:center}
+html body #app .vl-page .vl-listtitle{grid-column:1/-1}
+html body #app .vl-page .vl-select{justify-content:space-between;width:100%}
+html body #app .vl-page .vl-select > i:first-child{display:none}
+
+/* edit pencils (profile picture / banner): a true circle, neutral colour (dark on light, white on dark), not green */
+:root:root:root body #app .storefront-cover-edit,:root:root:root body #app .ep-cam,:root:root:root body #app .avatar-edit-badge{width:2.4rem!important;height:2.4rem!important;min-width:2.4rem!important;min-height:2.4rem!important;aspect-ratio:1/1;padding:0!important;border-radius:50%!important;display:inline-grid!important;place-items:center;background:var(--card,#fff)!important;color:var(--text,#111)!important;border:1px solid color-mix(in srgb,var(--text,#111) 14%,transparent)!important;box-shadow:0 4px 12px rgba(0,0,0,.18)!important;line-height:1;overflow:hidden}
+:root:root:root body #app .storefront-cover-edit i,:root:root:root body #app .ep-cam i,:root:root:root body #app .avatar-edit-badge i{color:var(--text,#111)!important;-webkit-text-fill-color:currentColor!important;font-size:.95rem!important;margin:0!important}
+:root:root:root body #app .ep-cam{right:0!important;bottom:0!important}
+/* on your own storefront the banner pencil sits top-left so it no longer stacks under the three dots */
+:root:root:root body #app .storefront-profile .storefront-cover .storefront-cover-edit,:root:root:root body #app .storefront-cover-wrap > .storefront-cover-edit{right:auto!important;left:.75rem!important}
+/* the profile page's banner is as tall as on the storefront */
+:root:root:root body #app .ep-banner .storefront-cover{height:176px!important}
+
+/* ===== follow / following buttons: one glossy green family everywhere (search, vendors, followers) ===== */
+html body #app .vendor-card-follow-btn,html body #app .fn-follow,html body #app .vd-follow,html body #app .sr-follow{flex:0 0 auto;min-width:6.4rem;white-space:nowrap!important;min-height:2.5rem;padding:0 1rem!important;border-radius:12px!important;border:0!important;font-weight:800!important;font-size:.9rem!important;display:inline-flex!important;align-items:center;justify-content:center;gap:.35rem;background:linear-gradient(135deg,#22c55e,#0d9f6e)!important;color:#fff!important;box-shadow:0 4px 12px rgba(13,159,110,.32),inset 0 1px 0 rgba(255,255,255,.28)!important}
+html body #app .vendor-card-follow-btn.following,html body #app .fn-follow.following,html body #app .vd-follow.following,html body #app .sr-follow.following{background:linear-gradient(135deg,#e8fbf0,#c7f0d9)!important;color:#0b7a49!important;box-shadow:0 3px 10px rgba(13,159,110,.18),inset 0 1px 0 rgba(255,255,255,.7)!important;border:1px solid #8fdcb4!important}
+:root[data-theme="dark"] body #app .vendor-card-follow-btn.following,:root[data-theme="black"] body #app .vendor-card-follow-btn.following,:root[data-theme="dark"] body #app .fn-follow.following,:root[data-theme="black"] body #app .fn-follow.following,:root[data-theme="dark"] body #app .vd-follow.following,:root[data-theme="black"] body #app .vd-follow.following{background:linear-gradient(135deg,#123826,#0f2c1e)!important;color:#6ee7a8!important;border-color:#1f6a45!important;box-shadow:0 3px 10px rgba(34,197,94,.15)!important}
+/* the campus chip never takes a grid cell on a vendor card (it used to push the button over the name) */
+html body #app .vd-card{position:relative}
+html body #app .vd-card > .lv-camp-line{position:absolute!important;top:.55rem;right:.6rem;margin:0!important;max-width:7rem;z-index:2}
+html body #app .vendors-list-mode .vd-card .vd-follow,html body #app .vendors-list-mode .vendor-card-follow-btn{grid-column:3}
+html body #app .sr-vendor-row .sr-main{min-width:0;flex:1 1 0}
+html body #app .sr-vendor-row .sr-side{flex:0 0 auto;margin-left:.4rem}
+
+/* Browse everything: a search icon inside the search bar, with the text clear of it */
+html body #app .browse-filter-toolbar #searchInput{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a3' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:.95rem 50%!important;background-size:1.1rem 1.1rem!important;padding-left:2.8rem!important}

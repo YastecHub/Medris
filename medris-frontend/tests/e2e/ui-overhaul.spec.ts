@@ -374,16 +374,19 @@ test.describe("Round 4", () => {
     }
   });
 
-  test("listing options open as a bottom drawer with coloured icons", async ({ page }) => {
+  test("opening listing options moves the drawer to the page body and hides the bottom bar until it is closed", async ({ page }) => {
     await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
-    const m = await page.evaluate(() => {
-      document.getElementById("app")!.insertAdjacentHTML("beforeend", '<div class="vl-more-wrap"><div class="vl-menu" id="zm"><button><i class="fa-solid fa-copy"></i> Duplicate</button><button><i class="fa-solid fa-play"></i> Activate listing</button></div></div>');
-      const menu = getComputedStyle(document.getElementById("zm")!);
-      const icon = getComputedStyle(document.querySelector("#zm button i")!);
-      return { position: menu.position, bottom: menu.bottom, bg: icon.backgroundImage };
+    const r = await page.evaluate(() => {
+      document.getElementById("app")!.insertAdjacentHTML("beforeend", '<div class="vl-more-wrap"><button id="zb" onclick="vlToggleMenu(this)">x</button><div class="vl-menu hidden"><button>Duplicate</button></div></div>');
+      (document.getElementById("zb") as HTMLElement).click();
+      const nav = () => getComputedStyle(document.getElementById("bottomNav")!).display;
+      const sh = document.querySelector(".vl-sheet") as HTMLElement | null; const open = { pos: sh ? getComputedStyle(sh).position : "", bottom: sh ? getComputedStyle(sh).bottom : "", icon: sh ? getComputedStyle(sh.querySelector("button")!).display : "", navDisplay: nav(), inBody: !!document.querySelector("body > .vl-sheet"), backdrop: !!document.querySelector(".lv-sheet-backdrop") };
+      (window as any).vlCloseMenus();
+      return { open, closed: { navDisplay: nav(), inBody: !!document.querySelector("body > .vl-sheet"), backdrop: !!document.querySelector(".lv-sheet-backdrop") } };
     });
-    expect(m.position).toBe("fixed");
-    expect(m.bottom).toBe("0px");
-    expect(m.bg).toContain("gradient");
+    expect(r.open).toMatchObject({ pos: "fixed", bottom: "0px", navDisplay: "none", inBody: true, backdrop: true });
+    expect(r.closed.navDisplay).not.toBe("none");
+    expect(r.closed.inBody).toBe(false);
+    expect(r.closed.backdrop).toBe(false);
   });
 });

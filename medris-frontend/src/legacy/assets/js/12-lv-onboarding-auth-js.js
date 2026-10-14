@@ -410,7 +410,7 @@
     });
   }
   var t=0;
-  function scan(){ t=0; document.querySelectorAll("#app .hscroll.trending-scroll:not(.service-trending-scroll)").forEach(setup); }
+  function scan(){ t=0; document.querySelectorAll("#app .hscroll.trending-scroll:not(.service-trending-scroll), #app .hscroll.top-rated-vendors-scroll").forEach(setup); }
   new MutationObserver(function(){ if(!t) t=setTimeout(scan,150); }).observe(document.documentElement,{childList:true,subtree:true});
 })();
 /* 30-second in-app reminders (while the app is open): unread chats, unfinished orders */
@@ -1915,7 +1915,7 @@ async function setVendorRequestPref(v){
     var el=document.createElement("span"); el.className="lv-camp-line";
     var inner="";
     if(r){ var logo=r.logo?'<img src="/campus-logos/'+e2(r.id)+'.webp" alt="" loading="lazy">':'<span style="width:100%;height:100%;display:grid;place-items:center;background:hsl('+((function(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;return h;})(r.id))+',55%,42%)">'+e2((r.abbr||r.name).slice(0,2).toUpperCase())+'</span>';
-      inner+='<span class="lcl-i">'+logo+'</span><span class="lcl-t">'+e2(full?r.name:(r.abbr&&r.abbr.length<=8?r.abbr:r.name))+'</span>'; }
+      inner+='<span class="lcl-i">'+logo+'</span><span class="lcl-t">'+e2(full?r.name:shortName(r))+'</span>'; }
     if(x.student_verified) inner+='<span class="lcl-v" title="Verified student"><i class="fa-solid fa-user-graduate"></i></span>';
     el.innerHTML=inner; return el;
   }
