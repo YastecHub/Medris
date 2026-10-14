@@ -22,6 +22,8 @@ declare let notifCount: number;
 declare let notifRenderEpoch: number;
 declare let lastNotificationReturnView: string;
 declare let lastNotificationReturnParams: Record<string, unknown>;
+declare let storefrontCatalogTab: string;
+declare let storefrontViewMode: string;
 
 type Fn<A extends unknown[], R> = (...args: A) => R;
 
@@ -137,4 +139,18 @@ export const notifState = {
     view: (typeof lastNotificationReturnView === "undefined" ? "" : lastNotificationReturnView) || "home",
     params: (typeof lastNotificationReturnParams === "undefined" ? null : lastNotificationReturnParams) || {},
   }),
+};
+
+/** The storefront screen's UI state lives in legacy variables (catalogue tab, grid/table mode); a fresh visit starts from the defaults, as in the legacy renderer. */
+export const storefrontState = {
+  reset: (): void => {
+    try {
+      storefrontCatalogTab = "products";
+      storefrontViewMode = "grid";
+    } catch {
+      /* the legacy script has not defined them: nothing to reset */
+    }
+  },
+  catalogTab: (): string => (typeof storefrontCatalogTab === "undefined" ? "products" : storefrontCatalogTab),
+  viewMode: (): string => (typeof storefrontViewMode === "undefined" ? "grid" : storefrontViewMode),
 };

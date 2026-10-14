@@ -85,12 +85,13 @@ suite("buyer", BUYER_SCREENS);
 // Migrated screens (docs/REACT_MIGRATION.md): each one drawn by React must look the same as its legacy
 // picture above. It is compared with the SAME reference file as the legacy test, so a pixel difference
 // (beyond the tolerance) fails here. Text/structure/interaction parity is in pilot-<view>.spec.ts.
-const MIGRATED: Array<{ view: string; name: string; heading: string; root?: string }> = [
+const MIGRATED: Array<{ view: string; name: string; heading: string; root?: string; params?: Record<string, unknown> }> = [
   { view: "terms", name: "terms", heading: "Terms of Service" },
   { view: "privacy", name: "privacy", heading: "Privacy Policy" },
   { view: "refundPolicy", name: "refund-policy", heading: "Refund & Cancellation Policy" },
   { view: "contactUs", name: "contact-us", heading: "Contact us", root: ".contact-us-page" },
   { view: "vendors", name: "vendors", heading: "All vendors", root: ".vd-page" },
+  { view: "storefront", name: "storefront", heading: VENDOR.business_name, root: ".storefront-profile", params: { vendorId: VENDOR.id } },
 ];
 for (const m of MIGRATED) {
   for (const theme of THEMES) {
@@ -100,7 +101,7 @@ for (const m of MIGRATED) {
 
         test(`looks like the legacy ${m.heading} page`, async ({ page }) => {
           const { log } = await openApp(page, { signedIn: false, theme }, `/?react=${m.view}`);
-          await goTo(page, m.view);
+          await goTo(page, m.view, m.params);
           await expect(page.locator(`#app #levro-react-root ${m.root ?? ".legal-page"}`)).toContainText(m.heading);
           expect(log.blocked, "requests to unknown hosts").toEqual([]);
           expect(log.writes, "writes sent to Supabase").toEqual([]);

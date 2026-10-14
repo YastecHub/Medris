@@ -285,3 +285,75 @@ export const DIRECTORY_SECTORS = [
   { id: "00000000-0000-4000-8000-000000000501", name: "Food & Drinks", sort_order: 1 },
   { id: "00000000-0000-4000-8000-000000000502", name: "Tech & Gadgets", sort_order: 2 },
 ];
+
+// ---- A vendor's public storefront (used by pilot-storefront.spec.ts; NOT part of the defaults) ----
+
+export const STOREFRONT_OWNER_ID = "00000000-0000-4000-8000-0000000007a2";
+export const SHOP = {
+  id: "00000000-0000-4000-8000-0000000007a1",
+  user_id: STOREFRONT_OWNER_ID,
+  business_name: "Ada's Kitchen",
+  previous_business_name: "Ada Foods",
+  name_changed_at: "2026-02-25T09:00:00.000Z", // inside the 14-day "formerly" window of the frozen clock
+  logo_url: "https://images.example.test/shop-logo.png",
+  cover_url: "https://images.example.test/shop-cover.png",
+  bio: "Home-style cooking for students and offices. ".repeat(5).trim(),
+  address: "12 Fixture Road",
+  city: "Lagos",
+  cac_number: "RC-123456",
+  opening_hours: "Mon-Sat 8am-6pm",
+  created_at: "2023-01-10T09:00:00.000Z",
+  is_active: true,
+  verification_status: "verified",
+  lat: null,
+  lng: null,
+  delivery_fee: 500,
+  delivery_fee_mode: "flat",
+  delivery_fee_per_km: null,
+  sector: { name: "Food & Drinks", icon: "fa-utensils" },
+};
+
+const shopProduct = (n: number, over: Record<string, unknown>) => ({
+  id: `00000000-0000-4000-8000-0000000008${String(n).padStart(2, "0")}`,
+  vendor_id: SHOP.id,
+  name: `Shop item ${n}`,
+  listing_type: "sale",
+  sale_price: 1000 * n,
+  discount_price: null,
+  rental_rate: null,
+  rental_rate_unit: null,
+  photos: ["https://images.example.test/item.png"],
+  quantity_available: 12,
+  condition: "new",
+  is_service: false,
+  service_price_unit: null,
+  status: "active",
+  category: { name: "Meals" },
+  vendor: { id: SHOP.id, business_name: SHOP.business_name, verification_status: "verified", logo_url: SHOP.logo_url, delivery_fee: 500, delivery_fee_mode: "flat", delivery_fee_per_km: null, lat: null, lng: null },
+  created_at: `2026-02-0${n}T09:00:00.000Z`,
+  ...over,
+});
+
+export const SHOP_PRODUCTS = [
+  shopProduct(1, { name: "Jollof Party Pack", sale_price: 2500, discount_price: 2000, category: { name: "Meals" } }),
+  shopProduct(2, { name: "Chin Chin Tub", sale_price: 1800, category: { name: "Snacks" }, photos: [] }),
+  shopProduct(3, { name: "Party Tent", listing_type: "rent", sale_price: null, rental_rate: 15000, rental_rate_unit: "day", category: { name: "Rentals" } }),
+  shopProduct(4, { name: "Cake Decorating", is_service: true, sale_price: 8000, service_price_unit: "hour", category: { name: "Classes" }, photos: [] }),
+  shopProduct(5, { name: '<i>Fancy</i> & "Quoted" Cake', sale_price: 6500, category: { name: "Snacks" } }),
+  shopProduct(6, { name: "Mystery Item", sale_price: null, rental_rate: null, photos: [], category: null }),
+  shopProduct(7, { name: "Seventh Item", sale_price: 700 }),
+];
+
+export const SHOP_REVIEWS = [
+  { id: "r1", rating: 5, comment: "Lovely food <b>fast</b>", buyer_name: "Ngozi", buyer_avatar_url: null, created_at: "2026-02-20T10:00:00.000Z" },
+  { id: "r2", rating: 3, comment: null, buyer_name: null, buyer_avatar_url: "https://images.example.test/avatar.png", created_at: "2026-02-10T10:00:00.000Z" },
+];
+
+export const SHOP_PACKAGES = [
+  { id: "00000000-0000-4000-8000-0000000009a1", vendor_id: SHOP.id, name: "Office Lunch Bundle", description: "Lunch for five.", price: 12000, photos: ["https://images.example.test/pkg.png"], status: "active", created_at: "2026-02-01T09:00:00.000Z", items: [{ quantity: 5, product: { name: "Jollof Party Pack" } }] },
+];
+
+export const SHOP_RPCS = {
+  get_vendor_stats: [{ review_count: 2, avg_rating: 4 }],
+  get_vendor_follow_state: [{ following: false, follower_count: 1234 }],
+};

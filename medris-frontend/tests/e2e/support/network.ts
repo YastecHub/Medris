@@ -87,6 +87,8 @@ export interface FixtureOptions {
   tables?: Record<string, unknown[]>;
   /** Reads of these tables fail with HTTP 500, to test error states. */
   failTables?: string[];
+  /** Replaces the JSON answered for these RPCs (on top of the defaults in fixtures/data.ts). */
+  rpcs?: Record<string, unknown>;
 }
 
 export async function installFixtures(page: Page, opts: FixtureOptions): Promise<NetworkLog> {
@@ -160,7 +162,7 @@ export async function installFixtures(page: Page, opts: FixtureOptions): Promise
       if (url.pathname.startsWith("/rest/v1/rpc/")) {
         const name = url.pathname.split("/").pop() ?? "";
         log.rpcs.push(name);
-        return json(route, RPCS[name] ?? null);
+        return json(route, opts.rpcs && name in opts.rpcs ? opts.rpcs[name] : (RPCS[name] ?? null));
       }
       if (url.pathname.startsWith("/rest/v1/")) {
         const table = url.pathname.slice("/rest/v1/".length);
