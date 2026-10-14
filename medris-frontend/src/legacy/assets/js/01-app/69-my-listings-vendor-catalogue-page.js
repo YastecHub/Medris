@@ -38,9 +38,14 @@ function vlToggleMenu(btn) {
   const menu = btn.nextElementSibling;
   const open = menu.classList.contains("hidden");
   vlCloseMenus();
-  if (open) { menu.classList.remove("hidden"); btn.setAttribute("aria-expanded", "true"); btn.closest(".vl-card")?.classList.add("vl-menu-open"); }
+  if (open) {
+    menu.classList.remove("hidden"); btn.setAttribute("aria-expanded", "true"); btn.closest(".vl-card")?.classList.add("vl-menu-open");
+    const back = document.createElement("div"); back.className = "lv-sheet-backdrop"; back.onclick = (e) => { e.stopPropagation(); vlCloseMenus(); };
+    document.body.appendChild(back);
+  }
 }
 function vlCloseMenus() {
+  document.querySelectorAll(".lv-sheet-backdrop").forEach((b) => b.remove());
   document.querySelectorAll(".vl-menu").forEach((m) => m.classList.add("hidden"));
   document.querySelectorAll(".vl-card-more").forEach((b) => b.setAttribute("aria-expanded", "false"));
   document.querySelectorAll(".vl-menu-open").forEach((c) => c.classList.remove("vl-menu-open"));

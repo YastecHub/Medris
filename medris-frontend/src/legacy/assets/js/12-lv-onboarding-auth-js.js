@@ -1506,11 +1506,17 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
       if(pend){ window.lvSaveCampus(pend).catch(function(){}); asked=true; return; }
       var skipAt=0; try{skipAt=Number(sessionStorage.getItem("lv-campus-skip")||0);}catch(_){}
       if(skipAt) return;
+      // already chosen on this device (the choice just has not reached the account): use it quietly, never ask again
+      var saved=""; try{saved=localStorage.getItem("lv-campus")||"";}catch(_){}
+      if(saved&&saved!=="pending"){ asked=true; window.lvSaveCampus(saved).catch(function(){}); return; }
+      // said "not now" in the last two weeks: leave it
+      var laterAt=0; try{laterAt=Number(localStorage.getItem("lv-campus-later")||0);}catch(_){}
+      if(laterAt&&Date.now()-laterAt<14*24*3600*1000) return;
       if(profile.role==="admin") return;
       asked=true;
       load().then(function(){ window.lvOpenCampusPicker({title:"Which campus are you on?",current:"",allowNone:true,skippable:true,
         onPick:function(r){window.lvSaveCampus(r.id).then(function(){try{showToast("Campus saved.","success");}catch(_){}}).catch(function(){try{showToast("Couldn't save your campus.","error");}catch(_){}});},
-        onSkip:function(){try{sessionStorage.setItem("lv-campus-skip","1");}catch(_){}}}); });
+        onSkip:function(){try{sessionStorage.setItem("lv-campus-skip","1");localStorage.setItem("lv-campus-later",String(Date.now()));}catch(_){}}}); });
     }catch(_){}
   }
   try{ new MutationObserver(function(){ scan(); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}

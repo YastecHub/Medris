@@ -346,3 +346,44 @@ test("a student-verified vendor's name gets the green tick wherever it is printe
   expect(await page.locator("#zz .nm + .lv-svi, #zz .nm .lv-svi, #n1 .lv-svi").count()).toBe(1);
   expect(await page.locator("#n2 .lv-svi").count()).toBe(0); // not student-verified: no tick
 });
+
+test.describe("Round 4", () => {
+  test("a verified vendor's tick shows right after the name on their storefront", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    const shown = await page.evaluate(() => {
+      document.getElementById("app")!.insertAdjacentHTML("beforeend", '<div class="storefront-name-row"><h1 class="storefront-profile-name">Shop <i id="zt" data-vt="v" class="fa-solid fa-circle-check vendor-inline-verified lv-on"></i></h1><span class="lv-camp-line"><span class="lcl-v"><i class="fa-solid fa-user-graduate"></i></span></span></div>');
+      const t = getComputedStyle(document.getElementById("zt")!);
+      return { display: t.display, w: parseFloat(t.width) };
+    });
+    expect(shown.display).not.toBe("none");
+    expect(shown.w).toBeGreaterThan(10);
+  });
+
+  test("the campus picker is not shown again once a school was picked on this device or put off recently", async ({ browser }) => {
+    // control: with nothing remembered the picker does appear (so the checks below are not vacuous)
+    const control = await (await browser.newContext()).newPage();
+    await openApp(control, { signedIn: true, theme: "light", tables: { users: [{ ...BUYER_ROW, campus_id: null }] } }, "/?react=off");
+    await settle(control, 12);
+    expect(await control.locator("#lvCampus").count()).toBeGreaterThan(0);
+    for (const store of [["lv-campus", "unilag"], ["lv-campus-later", String(Date.now())]] as const) {
+      const page = await (await browser.newContext()).newPage();
+      await page.addInitScript(([k, v]) => localStorage.setItem(k!, v!), store);
+      await openApp(page, { signedIn: true, theme: "light", tables: { users: [{ ...BUYER_ROW, campus_id: null }] } }, "/?react=off");
+      await settle(page, 12);
+      expect(await page.locator("#lvCampus").count(), `picker shown with ${store[0]}`).toBe(0);
+    }
+  });
+
+  test("listing options open as a bottom drawer with coloured icons", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    const m = await page.evaluate(() => {
+      document.getElementById("app")!.insertAdjacentHTML("beforeend", '<div class="vl-more-wrap"><div class="vl-menu" id="zm"><button><i class="fa-solid fa-copy"></i> Duplicate</button><button><i class="fa-solid fa-play"></i> Activate listing</button></div></div>');
+      const menu = getComputedStyle(document.getElementById("zm")!);
+      const icon = getComputedStyle(document.querySelector("#zm button i")!);
+      return { position: menu.position, bottom: menu.bottom, bg: icon.backgroundImage };
+    });
+    expect(m.position).toBe("fixed");
+    expect(m.bottom).toBe("0px");
+    expect(m.bg).toContain("gradient");
+  });
+});
