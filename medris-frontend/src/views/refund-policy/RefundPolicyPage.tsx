@@ -1,0 +1,37 @@
+/**
+ * Refund & Cancellation Policy, drawn by React.
+ *
+ * Converted one-to-one from renderRefundPolicy() (…/js/01-app/85-legal-pages.js:100): same markup,
+ * same classes, same text. The text is a static string of our own, written as plain JSX (escaped by
+ * React); nothing comes from the database. Until the legacy screen is deleted (a later pull request) any
+ * wording change must be made in BOTH places; the parity test (tests/e2e/pilot-refund-policy.spec.ts) fails if they drift apart.
+ */
+export default function RefundPolicyPage() {
+  return (
+    <div className="legal-page">
+      <h2>Refund &amp; Cancellation Policy</h2>
+      <p className="muted">Last updated: 2 October 2026</p>
+
+      <h3>1. Before a vendor confirms your order</h3>
+      <p>You can cancel freely from your Orders page. Any payment already made online is refunded in full to your original payment method via Paystack (refunds typically reflect within 5 - 10 business days, per Paystack's processing time).</p>
+
+      <h3>2. After a vendor confirms your order</h3>
+      <p>If you haven't paid yet, you can still cancel freely from your Orders page any time before the vendor marks your order as handed over. If you have paid, you can cancel and get a full refund yourself within 5 hours of paying. After that window (or once the order is handed over, whichever comes first), cancellations go through Levromart's dispute process instead. For rentals, once equipment has been handed over, the rental fee is non-refundable; only the refundable deposit (if any) is returned, and only after the equipment is returned in its original condition.</p>
+
+      <h3>3. Refundable deposits</h3>
+      <p>Rental deposits are meant to cover damage or non-return. If equipment is returned in its original condition, there's nothing further for you to do. If there's a disagreement about the equipment's condition or the deposit isn't returned, either side can raise a dispute for a Levromart admin to review, including a refund from Levromart where warranted.</p>
+
+      <h3>4. Damaged, wrong, or misrepresented equipment</h3>
+      <p>If what arrives doesn't match the listing, or is faulty on arrival, raise a dispute from the order page within 48 hours of handover. Admins will review evidence from both sides and can direct a full or partial refund from the vendor's proceeds.</p>
+
+      <h3>5. Vendor no-shows or non-delivery</h3>
+      <p>If a vendor fails to deliver/hand over confirmed equipment, the customer is entitled to a full refund of any amount paid online through Levromart.</p>
+
+      <h3>6. Chat and calls after an order</h3>
+      <p>You can message and call the vendor while your order is accepted and in progress, for example to arrange delivery or raise a problem. Once an order is completed the chat stays open for 24 hours and then closes (the messages are kept as a record). If something is wrong with a completed order, raise it as a dispute from the order page within the time limit in section 4 rather than through chat, so that your evidence is recorded.</p>
+
+      <h3>7. How refunds are paid</h3>
+      <p>Refunds for online payments are issued back through Paystack to your original payment method. For orders paid offline (cash/transfer directly to the vendor), any refund is arranged directly between buyer and vendor, with Levromart admins available to mediate a dispute.</p>
+    </div>
+  );
+}

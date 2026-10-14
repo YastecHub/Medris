@@ -45,7 +45,7 @@ test.describe("view registry (nothing converted yet)", () => {
     await openApp(page, { signedIn: false, theme: "light" });
     const state = await page.evaluate(() => window.levroReact!.state);
     expect(state.on).toEqual([]);
-    expect(state.migrated).toEqual(["terms", "privacy"]); // these have React versions, but none is on
+    expect(state.migrated).toEqual(["terms", "privacy", "refundPolicy"]); // these have React versions, but none is on
     await goTo(page, "terms");
     await expect(page.locator("#app")).toContainText("Terms of Service");
     await expect(page.locator("#levro-react-root")).toHaveCount(0);
@@ -53,10 +53,10 @@ test.describe("view registry (nothing converted yet)", () => {
 
   test("a screen that has no React version stays legacy even when asked for by name or 'all'", async ({ page }) => {
     await openApp(page, { signedIn: false, theme: "light" });
-    await page.evaluate(() => window.levroReact!.use("refundPolicy,home"));
-    expect(await page.evaluate(() => window.levroReact!.isOn("refundPolicy"))).toBe(false);
-    await goTo(page, "refundPolicy");
-    await expect(page.locator("#app")).toContainText("Refund");
+    await page.evaluate(() => window.levroReact!.use("leaderboard,home"));
+    expect(await page.evaluate(() => window.levroReact!.isOn("leaderboard"))).toBe(false);
+    await goTo(page, "leaderboard");
+    await expect(page.locator("#app")).toContainText("Leaderboard");
     await expect(page.locator("#levro-react-root")).toHaveCount(0);
   });
 

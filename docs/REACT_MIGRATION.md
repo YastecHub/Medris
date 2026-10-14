@@ -632,7 +632,7 @@ browser.
 ## 7. Progress table
 
 Status values: **legacy** (not started), **React-off** (component merged, switched off), **React-on** (switched on for
-everyone), **legacy removed**. Every later pull request updates its own rows. Today every screen is **legacy** except `terms` and `privacy`, which are **React-off** once their pull requests (#9, #10) are merged.
+everyone), **legacy removed**. Every later pull request updates its own rows. Today every screen is **legacy** except `terms`, `privacy` and `refundPolicy`, which are **React-off** once their pull requests are merged.
 
 | View | Wave | Status | Pull request | Notes |
 |---|---|---|---|---|
@@ -691,7 +691,7 @@ everyone), **legacy removed**. Every later pull request updates its own rows. To
 | `vendorRequests` | 4 | legacy | — | |
 | `terms` | 1 | React-off (pilot, in PR #9) | #9 | Chunk `TermsPage-*.js` 8.2 kB, loads only when on. Parity tests pass. Not on for anyone: `?react=terms` / `VITE_REACT_VIEWS`. |
 | `privacy` | 1 | React-off | this PR (#10) | Same pattern as `terms`; chunk `PrivacyPage-*.js` 6.0 kB, loads only when on. Parity tests pass. Not on for anyone: `?react=privacy` / `VITE_REACT_VIEWS`. |
-| `refundPolicy` | 1 | legacy | — | |
+| `refundPolicy` | 1 | React-off | PR for refund policy (see below) | Same pattern as `terms`/`privacy`; no links; chunk `RefundPolicyPage-*.js`. Parity tests pass. Not on for anyone: `?react=refundPolicy` / `VITE_REACT_VIEWS`. |
 | `sharedAiChat` | 2 | legacy | — | |
 | `suspended` | 5 | legacy | — | |
 
