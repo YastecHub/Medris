@@ -290,7 +290,7 @@ test.describe("Round 3", () => {
     for (const c of colours) expect(c).toBe("rgb(255, 255, 255)");
   });
 
-  test("dragging the product page sideways moves it, and letting go early springs back", async ({ browser }) => {
+  test("dragging the product page sideways moves it; letting go slides to the next product without a reload", async ({ browser }) => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
     const page = await ctx.newPage();
     await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW], products: PD_ROWS, product_variants: PD_VARIANTS } }, "/?react=off");
@@ -309,8 +309,11 @@ test.describe("Round 3", () => {
     });
     expect(moved.during).not.toBe("none");
     expect(moved.hint).toBe(true);
-    await page.waitForTimeout(400);
+    // let go past the flick threshold: the next product slides in, with no reload flash and nothing left behind
+    await expect.poll(async () => { await page.clock.runFor(400); return page.evaluate(() => document.querySelector(".product-detail-card")?.getAttribute("data-product-detail-id")); }, { timeout: 20000 }).not.toBe(PD_FULL.id);
+    await expect.poll(async () => { await page.clock.runFor(400); return page.evaluate(() => document.querySelectorAll(".lv-swipe-snap,.lv-swipe-wait").length); }, { timeout: 10000 }).toBe(0);
     expect(await page.evaluate(() => document.getElementById("app")!.style.transform)).toBe("");
+    expect(await page.evaluate(() => document.getElementById("app")!.style.opacity)).toBe("");
   });
 });
 
@@ -331,4 +334,56 @@ test("the order badge says what a confirmed order is waiting on", async ({ page 
   expect(await label({ ...after, payments: [pay("delivery_deposit_20", "pending")] })).toBe("");
   expect(await label({ ...after, status: "completed", payments: [pay("sale_price")] })).toBe("");
   expect(await label({ ...after, __paymentUnresolved: true, payments: [pay("delivery_deposit_20")] })).toBe("");
+});
+
+test("a student-verified vendor's name gets the green tick wherever it is printed (leaderboard, lists)", async ({ page }) => {
+  await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW], vendors: DIRECTORY_VENDORS.map((v, i) => ({ ...v, student_verified: i === 0 })) } }, "/?react=off");
+  const name = DIRECTORY_VENDORS[0].business_name, other = DIRECTORY_VENDORS[1].business_name;
+  await page.evaluate(([a, b]) => {
+    document.getElementById("app")!.insertAdjacentHTML("beforeend", `<div id="zz"><div class="lb-row"><div class="lb-row-copy"><strong id="n1"><span class="nm">${a}</span></strong></div></div><div class="fn-copy"><strong id="n2">${b}</strong></div></div>`);
+  }, [name, other]);
+  await settle(page, 6);
+  expect(await page.locator("#zz .nm + .lv-svi, #zz .nm .lv-svi, #n1 .lv-svi").count()).toBe(1);
+  expect(await page.locator("#n2 .lv-svi").count()).toBe(0); // not student-verified: no tick
+});
+
+test.describe("Round 4", () => {
+  test("a verified vendor's tick shows right after the name on their storefront", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    const shown = await page.evaluate(() => {
+      document.getElementById("app")!.insertAdjacentHTML("beforeend", '<div class="storefront-name-row"><h1 class="storefront-profile-name">Shop <i id="zt" data-vt="v" class="fa-solid fa-circle-check vendor-inline-verified lv-on"></i></h1><span class="lv-camp-line"><span class="lcl-v"><i class="fa-solid fa-user-graduate"></i></span></span></div>');
+      const t = getComputedStyle(document.getElementById("zt")!);
+      return { display: t.display, w: parseFloat(t.width) };
+    });
+    expect(shown.display).not.toBe("none");
+    expect(shown.w).toBeGreaterThan(10);
+  });
+
+  test("the campus picker is not shown again once a school was picked on this device or put off recently", async ({ browser }) => {
+    // control: with nothing remembered the picker does appear (so the checks below are not vacuous)
+    const control = await (await browser.newContext()).newPage();
+    await openApp(control, { signedIn: true, theme: "light", tables: { users: [{ ...BUYER_ROW, campus_id: null }] } }, "/?react=off");
+    await settle(control, 12);
+    expect(await control.locator("#lvCampus").count()).toBeGreaterThan(0);
+    for (const store of [["lv-campus", "unilag"], ["lv-campus-later", String(Date.now())]] as const) {
+      const page = await (await browser.newContext()).newPage();
+      await page.addInitScript(([k, v]) => localStorage.setItem(k!, v!), store);
+      await openApp(page, { signedIn: true, theme: "light", tables: { users: [{ ...BUYER_ROW, campus_id: null }] } }, "/?react=off");
+      await settle(page, 12);
+      expect(await page.locator("#lvCampus").count(), `picker shown with ${store[0]}`).toBe(0);
+    }
+  });
+
+  test("listing options open as a bottom drawer with coloured icons", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    const m = await page.evaluate(() => {
+      document.getElementById("app")!.insertAdjacentHTML("beforeend", '<div class="vl-more-wrap"><div class="vl-menu" id="zm"><button><i class="fa-solid fa-copy"></i> Duplicate</button><button><i class="fa-solid fa-play"></i> Activate listing</button></div></div>');
+      const menu = getComputedStyle(document.getElementById("zm")!);
+      const icon = getComputedStyle(document.querySelector("#zm button i")!);
+      return { position: menu.position, bottom: menu.bottom, bg: icon.backgroundImage };
+    });
+    expect(m.position).toBe("fixed");
+    expect(m.bottom).toBe("0px");
+    expect(m.bg).toContain("gradient");
+  });
 });

@@ -1506,11 +1506,17 @@ try{sb.auth.onAuthStateChange(function(ev){ if(ev==="SIGNED_OUT") window.__notif
       if(pend){ window.lvSaveCampus(pend).catch(function(){}); asked=true; return; }
       var skipAt=0; try{skipAt=Number(sessionStorage.getItem("lv-campus-skip")||0);}catch(_){}
       if(skipAt) return;
+      // already chosen on this device (the choice just has not reached the account): use it quietly, never ask again
+      var saved=""; try{saved=localStorage.getItem("lv-campus")||"";}catch(_){}
+      if(saved&&saved!=="pending"){ asked=true; window.lvSaveCampus(saved).catch(function(){}); return; }
+      // said "not now" in the last two weeks: leave it
+      var laterAt=0; try{laterAt=Number(localStorage.getItem("lv-campus-later")||0);}catch(_){}
+      if(laterAt&&Date.now()-laterAt<14*24*3600*1000) return;
       if(profile.role==="admin") return;
       asked=true;
       load().then(function(){ window.lvOpenCampusPicker({title:"Which campus are you on?",current:"",allowNone:true,skippable:true,
         onPick:function(r){window.lvSaveCampus(r.id).then(function(){try{showToast("Campus saved.","success");}catch(_){}}).catch(function(){try{showToast("Couldn't save your campus.","error");}catch(_){}});},
-        onSkip:function(){try{sessionStorage.setItem("lv-campus-skip","1");}catch(_){}}}); });
+        onSkip:function(){try{sessionStorage.setItem("lv-campus-skip","1");localStorage.setItem("lv-campus-later",String(Date.now()));}catch(_){}}}); });
     }catch(_){}
   }
   try{ new MutationObserver(function(){ scan(); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}
@@ -2198,20 +2204,47 @@ async function setVendorRequestPref(v){
 
 /* Fully verified ticks: show a tick only when the vendor is admin-approved AND student-verified */
 (function(){
-  var SET=null,T=0,Q=0;
+  var SET=null,NAMES=null,T=0,Q=0;
+  function norm(t){ return String(t||"").replace(/\s+/g," ").trim().toLowerCase(); }
+  var TICKED=/(^|\s)(lv-svi|lv-cr-vtick|lv-cr-vbadge)(\s|$)/;
+  function hasTick(el){
+    var p=el.parentElement;
+    if(el.querySelector("[data-vt],.lv-svi,.lv-cr-vtick")) return true;
+    if(p&&p.querySelector(":scope > [data-vt], :scope > .lv-svi, :scope > .lv-cr-vtick, :scope > .lv-cr-vbadge")) return true;
+    return false;
+  }
+  // Any place that prints a verified vendor's name (leaderboard, podium, follower lists, cart, orders ...) gets the green tick
+  // right after it, so the tick does not depend on every page's template remembering to add one.
+  function scanNames(){
+    if(!NAMES||!NAMES.size) return;
+    var root=document.getElementById("app"); if(!root) return;
+    root.querySelectorAll("strong,h1,h2,h3,h4,b,.nm,[class*='-name']").forEach(function(el){
+      if(el.dataset.lvnt) return;
+      if(el.closest(".product-card-wrap,.product-comment-row,.search-page-chip,button,input,textarea,select")&&!el.closest(".lb-row,.lb-pod")) return;
+      var text="",ok=true;
+      el.childNodes.forEach(function(n){ if(n.nodeType===3) text+=n.nodeValue; else if(!(n.nodeType===1&&(TICKED.test(n.className||"")||n.hasAttribute("data-vt")))) ok=false; });
+      if(!ok||!text.trim()) return;
+      if(!NAMES.has(norm(text))) return;
+      el.dataset.lvnt="1";
+      if(hasTick(el)) return;
+      var i=document.createElement("i"); i.className="fa-solid fa-circle-check lv-svi"; i.title="Verified vendor"; i.setAttribute("aria-label","Verified vendor");
+      el.appendChild(document.createTextNode(" ")); el.appendChild(i);
+    });
+  }
   function paint(){
     Q=0; if(!SET) return;
     document.querySelectorAll("[data-vt]").forEach(function(el){
       var on=SET.has(String(el.getAttribute("data-vt")));
       if(on!==el.classList.contains("lv-on")) el.classList.toggle("lv-on",on);
     });
+    scanNames();
   }
   function sched(){ if(!Q){ Q=requestAnimationFrame(paint); } }
   function load(){
     if(typeof sb==="undefined"||!sb||!sb.from){ setTimeout(load,400); return; }
     T=Date.now();
-    sb.from("vendors").select("id").eq("verification_status","verified").eq("student_verified",true).is("deleted_at",null).limit(5000)
-      .then(function(r){ if(r&&!r.error&&r.data){ SET=new Set(r.data.map(function(x){return String(x.id);})); sched(); } });
+    sb.from("vendors").select("id,business_name").eq("verification_status","verified").eq("student_verified",true).is("deleted_at",null).limit(5000)
+      .then(function(r){ if(r&&!r.error&&r.data){ SET=new Set(r.data.map(function(x){return String(x.id);})); NAMES=new Set(r.data.map(function(x){return norm(x.business_name);}).filter(Boolean)); sched(); } });
   }
   load();
   setInterval(function(){ if(Date.now()-T>180000) load(); },60000);

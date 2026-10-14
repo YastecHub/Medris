@@ -776,23 +776,68 @@ async function buyNow(vendorId, productId) {
     el.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
     showHint(dx);
   }, { passive: false });
+  // Frozen picture of the page being left: it slides away while the next product is prepared behind it, so the person
+  // never sees a loading state or a reload, only one product sliding out and the next sliding in.
+  function snapshotOf(el) {
+    el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "";
+    const r = el.getBoundingClientRect();
+    const snap = el.cloneNode(true);
+    snap.removeAttribute("id");
+    snap.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    snap.querySelectorAll("video,audio").forEach((n) => n.remove());
+    Object.assign(snap.style, { position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", margin: "0", overflow: "hidden", zIndex: "5", pointerEvents: "none", transition: "none", background: "var(--bg,transparent)" });
+    snap.classList.add("lv-swipe-snap");
+    document.body.appendChild(snap);
+    return snap;
+  }
+  async function waitForProduct(id) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 4000) {
+      const card = document.querySelector(`#app .product-detail-card[data-product-detail-id="${CSS.escape(String(id))}"]`);
+      if (card) { await new Promise((r) => setTimeout(r, 50)); return true; }
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    return false;
+  }
+  let busy = false;
   document.addEventListener("touchend", async (e) => {
     const start = t0, was = lock; t0 = null; lock = null;
     if (!start || was !== "h") { clearHint(); return; }
     const el = app(), dx = e.changedTouches[0].clientX - start.x, dt = Date.now() - start.t;
     clearHint();
     const far = Math.abs(dx) > innerWidth * 0.33, flick = Math.abs(dx) > 60 && dt < 280;
-    if (!far && !flick) { reset(el, true); return; }
+    if (!far && !flick || busy) { reset(el, true); return; }
     const dir = dx < 0 ? 1 : -1;
-    const id = await target(dir);
-    if (!id) { reset(el, true); try { showToast("No other products from this vendor yet.", "info"); } catch (_) {} return; }
-    el.style.transition = "transform .2s ease-in, opacity .2s";
-    el.style.transform = `translateX(${dir * -innerWidth}px)`; el.style.opacity = "0";
-    setTimeout(async () => {
-      try { await navigate("productDetail", { productId: id }); } catch (_) {}
-      el.style.transition = "none"; el.style.transform = `translateX(${dir * innerWidth * 0.35}px)`; el.style.opacity = "0";
-      requestAnimationFrame(() => requestAnimationFrame(() => reset(el, true)));
-    }, 190);
+    busy = true;
+    try {
+      const id = await target(dir);
+      if (!id) { reset(el, true); try { showToast("No other products from this vendor yet.", "info"); } catch (_) {} return; }
+      // 1. freeze what is on screen exactly where the finger left it
+      const snap = snapshotOf(el);
+      snap.style.transform = `translateX(${dx * 0.85}px)`;
+      snap.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / (innerWidth * 1.6)));
+      // 2. load the next product behind it, out of sight
+      el.style.transition = "none"; el.style.transform = ""; el.style.opacity = "0";
+      const spinner = document.createElement("div");
+      spinner.className = "lv-swipe-wait"; spinner.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      document.body.appendChild(spinner);
+      let ok = true;
+      try { await navigate("productDetail", { productId: id }); } catch (_) { ok = false; }
+      ok = ok && await waitForProduct(id);
+      spinner.remove();
+      const now = app();
+      if (!ok || !now) { snap.remove(); if (now) { now.style.opacity = ""; now.style.transform = ""; } return; }
+      // 3. both slide together, like one carousel
+      try { window.scrollTo(0, 0); } catch (_) {}
+      now.style.transition = "none"; now.style.transform = `translateX(${dir * innerWidth}px)`; now.style.opacity = "1";
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const ease = "transform .28s cubic-bezier(.2,.8,.2,1)";
+      snap.style.transition = ease; snap.style.transform = `translateX(${-dir * innerWidth}px)`;
+      now.style.transition = ease; now.style.transform = "translateX(0)";
+      await new Promise((r) => setTimeout(r, 300));
+      snap.remove();
+      now.style.transition = ""; now.style.transform = ""; now.style.opacity = "";
+    } finally { busy = false; }
   }, { passive: true });
   document.addEventListener("touchcancel", () => { if (lock === "h") reset(app(), true); t0 = null; lock = null; clearHint(); }, { passive: true });
 })();
