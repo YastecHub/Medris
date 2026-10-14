@@ -1,0 +1,165 @@
+import { expect, test, type Page } from "@playwright/test";
+import { FIXED_NOW } from "./fixtures/data";
+import { goTo, openApp } from "./support/app";
+import { installFixtures } from "./support/network";
+
+// Privacy Policy drawn by React (src/views/privacy) against the legacy renderPrivacy().
+// Both versions are driven with the same fixtures and the same steps and must come out the same.
+// Pixel parity is in first-wave.spec.ts (same reference pictures as the legacy page).
+
+type Mode = "legacy" | "react";
+const MODES = ["legacy", "react"] as const;
+const START: Record<Mode, string> = { legacy: "/?react=off", react: "/?react=privacy" };
+
+async function legalMarkup(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const el = document.querySelector("#app .legal-page");
+    if (!el) return "";
+    const copy = el.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll("[onclick]").forEach((n) => n.removeAttribute("onclick"));
+    return copy.outerHTML.replace(/>\s+</g, "><").replace(/\s+/g, " ").trim();
+  });
+}
+
+async function open(page: Page, mode: Mode, theme: "light" | "dark" = "light") {
+  const session = await openApp(page, { signedIn: false, theme }, START[mode]);
+  await goTo(page, "privacy");
+  return session;
+}
+
+test.describe("Privacy: React matches legacy", () => {
+  test("same markup, same text, same classes", async ({ browser }) => {
+    const result: Record<string, string> = {};
+    for (const mode of MODES) {
+      const page = await (await browser.newContext()).newPage();
+      await open(page, mode);
+      result[mode] = await legalMarkup(page);
+      await page.context().close();
+    }
+    expect(result.legacy!.length).toBeGreaterThan(4000);
+    expect(result.react).toBe(result.legacy);
+  });
+
+  test("React draws into the placeholder; legacy draws straight into #app", async ({ browser }) => {
+    const react = await (await browser.newContext()).newPage();
+    await open(react, "react");
+    await expect(react.locator("#app > #levro-react-root > .legal-page")).toHaveCount(1);
+    const legacy = await (await browser.newContext()).newPage();
+    await open(legacy, "legacy");
+    await expect(legacy.locator("#app > .legal-page")).toHaveCount(1);
+    await expect(legacy.locator("#levro-react-root")).toHaveCount(0);
+  });
+
+  for (const mode of MODES) {
+    test(`${mode}: the support-request link opens the form, and Back returns to Privacy`, async ({ page }) => {
+      await open(page, mode);
+      await page.getByRole("link", { name: "support request" }).click();
+      await expect(page.locator("body")).toHaveAttribute("data-view", "supportRequest");
+      expect(page.url()).not.toMatch(/#$/);
+
+      await page.goBack();
+      for (let i = 0; i < 6; i++) await page.clock.runFor(500);
+      await expect(page.locator("body")).toHaveAttribute("data-view", "privacy");
+      await expect(page.locator("#app .legal-page h2")).toHaveText("Privacy Policy");
+    });
+
+    test(`${mode}: the address and history entry, and the page starts at the top`, async ({ page }) => {
+      await openApp(page, { signedIn: false, theme: "light" }, START[mode]);
+      await page.evaluate(() => window.scrollTo(0, 400));
+      await goTo(page, "privacy");
+      expect(new URL(page.url()).searchParams.get("appView")).toBe("privacy");
+      for (let i = 0; i < 10 && (await page.evaluate(() => window.scrollY)) > 3; i++) await page.clock.runFor(200);
+      expect(await page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(3);
+    });
+
+    test(`${mode}: a deep link to the Privacy page opens it`, async ({ page }) => {
+      // A signed-in buyer (a signed-out visitor meets the sign-in screen first, in both versions).
+      await installFixtures(page, { signedIn: true, theme: "light" });
+      await page.clock.install({ time: new Date(FIXED_NOW) });
+      await page.goto(`${START[mode]}&appView=privacy&appParams=%7B%7D`);
+      for (let i = 0; i < 10; i++) await page.clock.runFor(500);
+      await expect(page.locator("body")).toHaveAttribute("data-view", "privacy");
+      await expect(page.locator("#app .legal-page h2")).toHaveText("Privacy Policy");
+      await expect(page.locator("#app #levro-react-root")).toHaveCount(mode === "react" ? 1 : 0);
+    });
+  }
+
+  test("reloading on the Privacy page keeps working (persisted route is not a stale snapshot)", async ({ page }) => {
+    await open(page, "react");
+    await page.reload();
+    await page.waitForFunction(() => typeof (window as unknown as { navigate?: unknown }).navigate === "function");
+    for (let i = 0; i < 8; i++) await page.clock.runFor(500).catch(() => undefined);
+    await expect(page.locator("#app .legal-page h2")).toHaveText("Privacy Policy");
+  });
+
+  test("the React screen is only downloaded when it is switched on and opened", async ({ browser }) => {
+    const chunks: Record<Mode, string[]> = { legacy: [], react: [] };
+    for (const mode of MODES) {
+      const page = await (await browser.newContext()).newPage();
+      page.on("request", (r) => {
+        if (/\/assets\/PrivacyPage-[\w-]+\.js/.test(r.url())) chunks[mode].push(r.url());
+      });
+      await open(page, mode);
+      await page.context().close();
+    }
+    expect(chunks.legacy).toEqual([]);
+    expect(chunks.react.length).toBe(1);
+  });
+
+  test("switching only privacy on leaves Terms legacy, and the two React pages do not interfere", async ({ page }) => {
+    await openApp(page, { signedIn: false, theme: "light" }, "/?react=privacy");
+    await goTo(page, "terms");
+    await expect(page.locator("#levro-react-root")).toHaveCount(0);
+    await expect(page.locator("#app .legal-page h2")).toHaveText("Terms of Service");
+    await page.evaluate(() => window.levroReact!.use("terms,privacy"));
+    await goTo(page, "privacy");
+    await expect(page.locator("#app #levro-react-root .legal-page h2")).toHaveText("Privacy Policy");
+    await goTo(page, "terms");
+    await expect(page.locator("#app #levro-react-root .legal-page h2")).toHaveText("Terms of Service");
+    await expect(page.locator("#levro-react-root")).toHaveCount(1);
+  });
+
+  test("dark mode: the React Privacy page uses the same colours as legacy", async ({ browser }) => {
+    const colours: Record<string, string[]> = {};
+    for (const mode of MODES) {
+      const page = await (await browser.newContext()).newPage();
+      await open(page, mode, "dark");
+      colours[mode] = await page.evaluate(() =>
+        ["h2", "h3", "p.muted", "p", "li", "a"].map((sel) => {
+          const el = document.querySelector("#app .legal-page " + sel);
+          if (!el) return sel + ": missing";
+          const cs = getComputedStyle(el);
+          return `${sel}: ${cs.color} | ${cs.fontSize} | ${cs.fontWeight} | ${cs.lineHeight} | ${cs.marginTop} | ${cs.marginBottom}`;
+        }),
+      );
+      await page.context().close();
+    }
+    expect(colours.react).toEqual(colours.legacy);
+  });
+
+  for (const width of [390, 1280]) {
+    test(`${width}px: the page boxes are exactly where legacy puts them`, async ({ browser }) => {
+      const boxes: Record<string, unknown[]> = {};
+      for (const mode of MODES) {
+        const ctx = await browser.newContext({ viewport: { width, height: 800 } });
+        const page = await ctx.newPage();
+        await open(page, mode);
+        boxes[mode] = await page.evaluate(() =>
+          ["", " h2", " h3", " ul", " li:last-child", " p:last-of-type"].map((sel) => {
+            const r = document.querySelector("#app .legal-page" + sel)?.getBoundingClientRect();
+            return r ? [r.x, r.y + window.scrollY, r.width, r.height].map((n) => Math.round(n * 10) / 10) : null;
+          }),
+        );
+        await ctx.close();
+      }
+      // Within half a pixel: the app has a sub-pixel horizontal slide-in that can land on 16 or 16.1.
+      const flat = (b: unknown[]) => b.flat() as Array<number | null>;
+      const [a, b] = [flat(boxes.legacy!), flat(boxes.react!)];
+      expect(b.length).toBe(a.length);
+      a.forEach((v, i) => {
+        if (v === null) expect(b[i]).toBeNull();
+        else expect(Math.abs((b[i] as number) - v), `box value #${i}: legacy ${v}, react ${b[i]}`).toBeLessThan(0.5);
+      });
+    });
+  }
+});
