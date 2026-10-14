@@ -12,13 +12,15 @@
     "test": "vitest run",
     "legacy:check": "tsx scripts/check-legacy-syntax.ts",
     "legacy:rebaseline": "tsx scripts/rebaseline-legacy.ts",
-    "bump-version": "tsx scripts/bump-asset-version.ts"
+    "bump-version": "tsx scripts/bump-asset-version.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@supabase/supabase-js": "^2.117.3",
     "@types/node": "^22.18.0",
     "@types/react": "^19.1.0",
