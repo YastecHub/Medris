@@ -1603,3 +1603,32 @@ html[data-splash="auto"] #loginModal.lv-auth .lv-campus-btn .t small{color:#9db3
   html body.chat-full-page{padding-left:0!important}
 }
 @media (min-width:1700px){html body #app{padding-left:2.5rem!important;padding-right:2.5rem!important}}
+
+/* ===== map pins without a logo: initials on a light, per-vendor colour ===== */
+.vmp-pin.vmp-pin-ini{background:var(--vmp-bg,#e6f4ec)!important;color:var(--vmp-fg,#1b5e3c)!important}
+.vmp-pin.vmp-pin-ini::after{background:var(--vmp-bg,#e6f4ec)!important}
+.vmp-pin .vmp-ini{font-weight:800;font-size:.95rem;letter-spacing:.02em;line-height:1}
+
+/* ===== product picture: tall enough to see the whole product, not stretched ===== */
+@media (max-width:799.98px){html body #app .product-detail-card:not(.service-detail-card) .product-gallery-main{aspect-ratio:9/10!important}}
+@media (min-width:800px){html body #app .product-detail-card:not(.service-detail-card) .product-gallery-main{max-height:min(68vh,620px)!important}}
+
+/* ===== delivery / pickup: lighter orange (and a light blue to match) ===== */
+html body #app .delivery-method-row label input[type=radio][value=delivery]:checked{background:#fdba74!important;border-color:#fdba74!important;box-shadow:0 0 0 3px color-mix(in srgb,#fdba74 30%,transparent)!important}
+html body #app .delivery-method-row label input[type=radio][value=pickup]:checked{background:#93c5fd!important;border-color:#93c5fd!important;box-shadow:0 0 0 3px color-mix(in srgb,#93c5fd 30%,transparent)!important}
+:root:root:root:root body #app .delivery-method-row label:has(input[value=delivery]:checked){border-color:#fdba74!important;background:color-mix(in srgb,#fdba74 14%,var(--card))!important;box-shadow:none!important}
+:root:root:root:root body #app .delivery-method-row label:has(input[value=pickup]:checked){border-color:#93c5fd!important;background:color-mix(in srgb,#93c5fd 14%,var(--card))!important;box-shadow:none!important}
+
+/* ===== admin "Students & campuses": the numbers live in a closed drawer; tiles are small ===== */
+.ac-drawer{border:1px solid var(--border,#dde5e0);border-radius:14px;background:var(--card,#fff);margin:.7rem 0 .8rem;overflow:hidden}
+.ac-drawer>summary{list-style:none;display:flex;align-items:center;gap:.6rem;padding:.7rem .85rem;cursor:pointer;font-size:.82rem}
+.ac-drawer>summary::-webkit-details-marker{display:none}
+.ac-sum-t{font-weight:800;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted,#667)}
+.ac-sum-v{flex:1;min-width:0;color:var(--text-muted,#667);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-sum-v b{color:var(--text,#111)}.ac-sum-v i{font-style:normal;margin:0 .3rem;opacity:.5}
+.ac-sum-chev{width:.55rem;height:.55rem;border-right:2px solid var(--text-muted,#667);border-bottom:2px solid var(--text-muted,#667);transform:rotate(45deg);transition:transform .18s;margin:0 .2rem .2rem 0}
+.ac-drawer[open]>summary .ac-sum-chev{transform:rotate(225deg);margin-bottom:0;margin-top:.25rem}
+.ac-drawer .ac-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.4rem;margin:0;padding:0 .7rem .8rem}
+.ac-drawer .ac-stat{padding:.45rem .55rem;border-radius:10px;background:color-mix(in srgb,var(--text,#111) 4%,var(--card,#fff));border:0}
+.ac-drawer .ac-stat b{font-size:1.05rem}
+.ac-drawer .ac-stat span{font-size:.64rem;line-height:1.15;display:block}

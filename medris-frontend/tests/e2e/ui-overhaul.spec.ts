@@ -120,9 +120,9 @@ test.describe("Product page", () => {
     await settle(page);
     const color = (value: string) => page.locator(`.delivery-method-row input[value=${value}]`).evaluate((e) => getComputedStyle(e).backgroundColor);
     await page.locator(".delivery-method-row input[value=delivery]").evaluate((e: HTMLInputElement) => e.click());
-    expect(await color("delivery")).toBe("rgb(251, 146, 60)");
+    expect(await color("delivery")).toBe("rgb(253, 186, 116)");
     await page.locator(".delivery-method-row input[value=pickup]").evaluate((e: HTMLInputElement) => e.click());
-    expect(await color("pickup")).toBe("rgb(59, 130, 246)");
+    expect(await color("pickup")).toBe("rgb(147, 197, 253)");
   });
 });
 
