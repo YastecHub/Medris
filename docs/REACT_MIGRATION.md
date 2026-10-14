@@ -1,6 +1,6 @@
 # React migration plan and screen inventory
 
-*Status: PR 1 of 4 (inventory and plan). Documentation only: no application code is changed by this pull request.*
+*Status: PR 1 of 4 (inventory and plan). Documentation only: no application code is changed by this pull request. Updated after PRs 2-4 (#7 tests, #8 registry, #9 pilot) were opened.*
 
 This document is the working map for moving the Levromart frontend from the legacy runtime to React, **one screen at a
 time, without changing what any screen does or looks like**. It follows the strangler pattern described in the task
@@ -385,7 +385,9 @@ by other code, deep links, storage and realtime, and the side effects `navigate`
 - **Must keep:** the heading structure and `legal-page` class (the CSS styles `h2/h3/p` inside it), the text exactly as
   written (a parity test compares screenshots), light and dark mode, large font scale.
 - **Why it is the pilot candidate:** it exercises the whole mechanism (registry, switch, mount, unmount, theme, back
-  button, scroll reset, deep link `?appView=terms`) with no data and no way to harm a user.
+  button, scroll reset, deep link `?appView=terms` for a signed-in user) with no data and no way to harm a user.
+  (Correction found while building the pilot: a signed-out visitor meets the sign-in screen first, in the legacy app too,
+  and lands on Home after "Browse as guest"; `?appView=` deep links open the page only once signed in.)
 
 ### 3.2 `contactUs`
 
@@ -687,7 +689,7 @@ everyone), **legacy removed**. Every later pull request updates its own rows. To
 | `adminPoints` | 5 | legacy | — | |
 | `search` | 3 | legacy | — | |
 | `vendorRequests` | 4 | legacy | — | |
-| `terms` | 1 | legacy | — | |
+| `terms` | 1 | React-off (pilot, in PR #9) | #9 | Chunk `TermsPage-*.js` 8.2 kB, loads only when on. Parity tests pass. Not on for anyone: `?react=terms` / `VITE_REACT_VIEWS`. |
 | `privacy` | 1 | legacy | — | |
 | `refundPolicy` | 1 | legacy | — | |
 | `sharedAiChat` | 2 | legacy | — | |
