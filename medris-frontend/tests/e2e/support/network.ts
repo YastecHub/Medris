@@ -70,7 +70,18 @@ const json = (route: Route, body: unknown, status = 200, headers: Record<string,
  * Answers every network request of the page locally. `signedIn` writes a fake Supabase session
  * before the app starts; `theme` sets the saved theme.
  */
-export async function installFixtures(page: Page, opts: { signedIn: boolean; theme: "light" | "dark" }): Promise<NetworkLog> {
+export interface FixtureOptions {
+  signedIn: boolean;
+  theme: "light" | "dark";
+  /** Replaces the rows returned for these tables (on top of the defaults in fixtures/data.ts). */
+  tables?: Record<string, unknown[]>;
+  /** Reads of these tables fail with HTTP 500, to test error states. */
+  failTables?: string[];
+}
+
+export async function installFixtures(page: Page, opts: FixtureOptions): Promise<NetworkLog> {
+  const tables = { ...TABLES, ...(opts.tables ?? {}) };
+  const failing = new Set(opts.failTables ?? []);
   const log: NetworkLog = { writes: [], rpcs: [], unmappedTables: new Set(), blocked: [], api: [] };
   const session = fakeSession();
 
@@ -147,7 +158,8 @@ export async function installFixtures(page: Page, opts: { signedIn: boolean; the
           log.writes.push(`${method} ${table}`);
           return route.fulfill({ status: method === "POST" ? 201 : 204, headers: { "access-control-allow-origin": "*" }, body: "" });
         }
-        const rows = filterRows(TABLES[table], url.searchParams);
+        if (failing.has(table)) return json(route, { code: "XX000", message: "fixture: forced failure" }, 500);
+        const rows = filterRows(tables[table], url.searchParams);
         if (!rows) log.unmappedTables.add(table);
         const list = rows ?? [];
         const headers = { "content-range": `0-${Math.max(list.length - 1, 0)}/${list.length}` };
