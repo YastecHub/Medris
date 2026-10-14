@@ -1702,3 +1702,8 @@ html body #app .fn-list,html body #app .fn-page .grid{gap:0!important}
 /* leaderboard: the "following" marker is the icon alone, in a small round chip */
 :root:root body #app .lb-tag.fol{width:1.45rem;height:1.45rem;padding:0!important;border-radius:50%;justify-content:center}
 :root:root body #app .lb-tag.fol i{font-size:.68rem}
+
+/* "Negotiable" a touch lower, as close to the divider as a distance is on product cards */
+:root:root:root:root:root:root:root:root:root body #app .product-card-meta .card-svc-tag{position:relative!important;top:.32rem!important}
+
+.lv-swipe-wait{position:fixed;top:50%;left:50%;z-index:99998;transform:translate(-50%,-50%);width:2.6rem;height:2.6rem;border-radius:50%;display:grid;place-items:center;background:var(--card,#fff);color:var(--text,#111);box-shadow:0 6px 18px rgba(15,23,42,.25);pointer-events:none}

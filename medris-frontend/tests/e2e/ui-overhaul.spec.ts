@@ -290,7 +290,7 @@ test.describe("Round 3", () => {
     for (const c of colours) expect(c).toBe("rgb(255, 255, 255)");
   });
 
-  test("dragging the product page sideways moves it, and letting go early springs back", async ({ browser }) => {
+  test("dragging the product page sideways moves it; letting go slides to the next product without a reload", async ({ browser }) => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
     const page = await ctx.newPage();
     await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW], products: PD_ROWS, product_variants: PD_VARIANTS } }, "/?react=off");
@@ -309,8 +309,11 @@ test.describe("Round 3", () => {
     });
     expect(moved.during).not.toBe("none");
     expect(moved.hint).toBe(true);
-    await page.waitForTimeout(400);
+    // let go past the flick threshold: the next product slides in, with no reload flash and nothing left behind
+    await expect.poll(async () => { await page.clock.runFor(400); return page.evaluate(() => document.querySelector(".product-detail-card")?.getAttribute("data-product-detail-id")); }, { timeout: 20000 }).not.toBe(PD_FULL.id);
+    await expect.poll(async () => { await page.clock.runFor(400); return page.evaluate(() => document.querySelectorAll(".lv-swipe-snap,.lv-swipe-wait").length); }, { timeout: 10000 }).toBe(0);
     expect(await page.evaluate(() => document.getElementById("app")!.style.transform)).toBe("");
+    expect(await page.evaluate(() => document.getElementById("app")!.style.opacity)).toBe("");
   });
 });
 
