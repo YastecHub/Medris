@@ -181,7 +181,7 @@ test.describe("Vendors directory: React matches legacy", () => {
       const names = await cardNames(page);
       expect(names.length).toBe(4);
       expect(names[0]).toContain("Bold"); // punctuation sorts before letters
-      await page.getByRole("button", { name: "Close" }).click();
+      await page.locator("#vendorsFiltersPanel .lm-x").click();
       await expect(page.locator("#vendorsFiltersPanel")).toHaveClass(/hidden/);
 
       // View modes: grid, list, map — and the choice is remembered.
@@ -218,6 +218,7 @@ test.describe("Vendors directory: React matches legacy", () => {
 
     test(`${mode}: a deep link opens the directory; nothing is written`, async ({ page }) => {
       const log = await installFixtures(page, { signedIn: true, theme: "light", ...DATA.populated });
+      await page.addInitScript(() => localStorage.setItem("levromart_vendors_view", "list"));
       await page.clock.install({ time: new Date(FIXED_NOW) });
       await page.goto(`${START[mode]}&appView=vendors&appParams=%7B%7D`);
       await settle(page, 14);
