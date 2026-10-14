@@ -215,17 +215,16 @@ test.describe("Round 2 feedback", () => {
 });
 
 test.describe("Temporary WhatsApp contact", () => {
+  const VENDOR = { id: PD_VENDOR.id, user_id: PD_VENDOR.user_id, business_name: "Ada's Kitchen", verification_status: "verified", is_active: true, phone: "08000000000", whatsapp_number: "08031234567" };
   const open = async (page: Page, vendorRow: Record<string, unknown>) => {
     await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW], products: PD_ROWS, product_variants: PD_VARIANTS, vendors: [vendorRow] } }, "/?react=off");
-    await goTo(page, "productDetail", { productId: PD_FULL.id });
-    await settle(page);
-  };
-  const VENDOR = { id: PD_VENDOR.id, user_id: PD_VENDOR.user_id, business_name: "Ada's Kitchen", verification_status: "verified", is_active: true, phone: "08000000000", whatsapp_number: "08031234567" };
-
-  test("Message vendor offers in-app or WhatsApp, and WhatsApp opens the vendor's number", async ({ page }) => {
-    await open(page, VENDOR);
     await page.evaluate(() => { (window as unknown as { __opened: string[] }).__opened = []; window.open = ((u: string) => { (window as unknown as { __opened: string[] }).__opened.push(String(u)); return null; }) as typeof window.open; });
-    await page.getByRole("button", { name: /message vendor/i }).first().evaluate((e: HTMLElement) => e.click());
+  };
+  const message = (page: Page) => page.evaluate((id) => (window as unknown as { startConversationWithVendor: (id: string) => Promise<void> }).startConversationWithVendor(id), VENDOR.id);
+
+  test("messaging a vendor offers in-app or WhatsApp, and WhatsApp opens the vendor's number", async ({ page }) => {
+    await open(page, VENDOR);
+    await message(page);
     await settle(page, 3);
     const items = page.locator("#mediaActionSheet .media-action-sheet-item");
     await expect(items).toHaveCount(2);
@@ -237,16 +236,80 @@ test.describe("Temporary WhatsApp contact", () => {
 
   test("a vendor with no number goes straight to in-app chat (no chooser)", async ({ page }) => {
     await open(page, { ...VENDOR, phone: null, whatsapp_number: null });
-    await page.getByRole("button", { name: /message vendor/i }).first().evaluate((e: HTMLElement) => e.click());
+    await message(page);
     await settle(page, 3);
     expect(await page.locator("#mediaActionSheet").count()).toBe(0);
   });
 
-  test("with the switch off there is no Message vendor button on the product page", async ({ page }) => {
+  test("with the switch off there is no chooser", async ({ page }) => {
     await open(page, VENDOR);
     await page.evaluate(() => { (window as unknown as { LV_TEMP_WHATSAPP: boolean }).LV_TEMP_WHATSAPP = false; });
-    await goTo(page, "productDetail", { productId: PD_ROWS[1].id });
+    await message(page);
+    await settle(page, 3);
+    expect(await page.locator("#mediaActionSheet").count()).toBe(0);
+  });
+
+  test("the product page has no Message vendor button (it comes with a confirmed order)", async ({ page }) => {
+    await open(page, VENDOR);
+    await goTo(page, "productDetail", { productId: PD_FULL.id });
     await settle(page);
     expect(await page.getByRole("button", { name: /message vendor/i }).count()).toBe(0);
+  });
+});
+
+test.describe("Round 3", () => {
+  test("search history keeps at most 7 searches", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW] } }, "/?react=off");
+    const stored = await page.evaluate(() => {
+      for (let i = 1; i <= 10; i++) (window as unknown as { writeSearchHistory: (t: string) => void }).writeSearchHistory("term " + i);
+      return JSON.parse(localStorage.getItem("levromart-search-history-v1") || "[]");
+    });
+    expect(stored).toHaveLength(7);
+    expect(stored[0]).toBe("term 10");
+  });
+
+  test("tapping a suggested vendor records the typed search", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW], vendors: DIRECTORY_VENDORS, products: DIRECTORY_PRODUCTS, sectors: DIRECTORY_SECTORS } }, "/?react=off");
+    await goTo(page, "search");
+    await settle(page);
+    await page.evaluate(() => {
+      const input = document.getElementById("searchPageInput") as HTMLInputElement;
+      input.value = "brisk";
+      document.getElementById("searchPageResults")!.insertAdjacentHTML("afterbegin", '<div class="lv-svr"><button class="lv-svr-item" data-vid="x">x</button></div>');
+      (document.querySelector("#searchPageResults .lv-svr-item") as HTMLElement).click();
+    });
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("levromart-search-history-v1") || "[]"))).toContain("brisk");
+  });
+
+  test("the truck and pin icons on the product page are plain text colour", async ({ page }) => {
+    await openApp(page, { signedIn: true, theme: "dark", tables: { users: [BUYER_ROW], products: PD_ROWS, product_variants: PD_VARIANTS } }, "/?react=off");
+    await goTo(page, "productDetail", { productId: PD_ROWS[1].id });
+    await settle(page);
+    const colours = await page.evaluate(() => Array.from(document.querySelectorAll(".pd-step-title i, #buyDeliveryFields .df-label i")).map((e) => getComputedStyle(e).color));
+    expect(colours.length).toBeGreaterThan(0);
+    for (const c of colours) expect(c).toBe("rgb(255, 255, 255)");
+  });
+
+  test("dragging the product page sideways moves it, and letting go early springs back", async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+    const page = await ctx.newPage();
+    await openApp(page, { signedIn: true, theme: "light", tables: { users: [BUYER_ROW], products: PD_ROWS, product_variants: PD_VARIANTS } }, "/?react=off");
+    await goTo(page, "productDetail", { productId: PD_FULL.id });
+    await settle(page);
+    const moved = await page.evaluate(() => {
+      const touch = (type: string, x: number, y: number) => {
+        const t = new Touch({ identifier: 1, target: document.querySelector(".product-detail-info")!, clientX: x, clientY: y });
+        document.querySelector(".product-detail-info")!.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: type === "touchend" ? [] : [t], changedTouches: [t] }));
+      };
+      touch("touchstart", 300, 400); touch("touchmove", 260, 402); touch("touchmove", 200, 404);
+      const during = getComputedStyle(document.getElementById("app")!).transform;
+      const hint = !!document.querySelector(".lv-swipe-hint");
+      touch("touchend", 200, 404);
+      return { during, hint };
+    });
+    expect(moved.during).not.toBe("none");
+    expect(moved.hint).toBe(true);
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => document.getElementById("app")!.style.transform)).toBe("");
   });
 });
